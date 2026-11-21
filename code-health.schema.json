@@ -567,6 +567,14 @@
             "parameters": {
               "type": "number",
               "default": 5
+            },
+            "bumps": {
+              "type": "number",
+              "default": 3
+            },
+            "deepBumps": {
+              "type": "number",
+              "default": 2
             }
           },
           "additionalProperties": false,
@@ -580,7 +588,9 @@
               "high": 25
             },
             "nesting": 4,
-            "parameters": 5
+            "parameters": 5,
+            "bumps": 3,
+            "deepBumps": 2
           }
         },
         "cyclomaticSwitch": {
