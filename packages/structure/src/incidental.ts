@@ -4,24 +4,11 @@ import { compareIds } from "@code-health/graph/graph";
 import { measureRepo } from "@code-health/transcripts/measure-repo";
 import { parseWindow } from "@code-health/transcripts/time-window";
 import type { TaskEffort } from "@code-health/transcripts/agent-effort";
-import type { CouplingRow } from "./coupling.ts";
+import type { CouplingRow, IncidentalPriority, IncidentalReason } from "./coupling.ts";
 import type { StructureSettings } from "./config.ts";
 import { findCycles, unblocksOf } from "./cycles.ts";
-import { layerRuleOf } from "./evidence-pack.ts";
+import { layerRuleOf } from "./layer-rule.ts";
 import type { Model } from "./model.ts";
-
-/**
- * Why an incidental pair matters beyond being entangled. Incidental coupling does not cost change effort
- * directly, so on its own it ranks low.
- */
-export type IncidentalReason = "blocks-locality-move" | "in-cycle" | "layer-violation" | "agent-reads";
-
-export interface IncidentalPriority {
-  rank: "high" | "low";
-  reasons: IncidentalReason[];
-  /** Tasks that edited one side and opened the other only to follow the dependency. Null when no transcripts were read. */
-  agentReads: number | null;
-}
 
 const day = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);
 

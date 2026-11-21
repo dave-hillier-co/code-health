@@ -2,7 +2,6 @@ import { compareIds } from "@code-health/graph/graph";
 import type { Activity } from "./activity.ts";
 import type { StructureSettings } from "./config.ts";
 import type { Model } from "./model.ts";
-import type { IncidentalPriority } from "./incidental.ts";
 import { describeEdge, type ModuleGraph } from "./modules.ts";
 import type { Project } from "./project.ts";
 import { coChangePValue } from "./significance.ts";
@@ -103,6 +102,19 @@ export function judgePair(
     coChange: { shared, fromChanges, toChanges, expected: total === 0 ? 0 : round3((fromChanges * toChanges) / total), pValue, high },
     bothActive,
   };
+}
+
+/**
+ * Why an incidental pair matters beyond being entangled. Incidental coupling does not cost change effort
+ * directly, so on its own it ranks low.
+ */
+export type IncidentalReason = "blocks-locality-move" | "in-cycle" | "layer-violation" | "agent-reads";
+
+export interface IncidentalPriority {
+  rank: "high" | "low";
+  reasons: IncidentalReason[];
+  /** Tasks that edited one side and opened the other only to follow the dependency. Null when no transcripts were read. */
+  agentReads: number | null;
 }
 
 export interface CouplingRow {
