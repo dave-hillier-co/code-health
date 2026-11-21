@@ -5,7 +5,7 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { scorePredictions } from "../src/abandonment/backtest.ts";
 import { expectGolden } from "./support/golden.ts";
-import { auth, deps, engine, knowledgeHistory, lexer, log, parser, routes, view } from "./support/knowledge-scenario.ts";
+import { auth, cy, deps, di, engine, knowledgeHistory, lexer, log, parser, routes, view } from "./support/knowledge-scenario.ts";
 import { runCochange } from "./support/run.ts";
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -132,4 +132,58 @@ test("before enough history to estimate turnover it asks for a stated rate", asy
 test("the options of other subcommands are not accepted", async () => {
   expect((await backtest("--mode", "k-leavers")).code).toBe(ExitCode.Usage);
   expect((await runCochange(repo.path, ["abandonment", "current", "--at", "2024-01-01"])).code).toBe(ExitCode.Usage);
+});
+
+/** What a prediction made on 29 February 2024 rests on, taken from a repository whose later history is whatever the caller added. */
+async function predictionAfter(later: Parameters<GitFixture["apply"]>[0]) {
+  const variant = knowledgeHistory();
+  try {
+    if (later.length > 0) variant.apply(later);
+    writeFileSync(join(variant.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { enabled: true, trials: 500, turnoverRate: 100 } } }));
+    const run = await runCochange(variant.path, ["abandonment", "backtest", "--at", "2024-02-29", "--limit", "all", "--json"]);
+    expect(run.stderr).toBe("");
+    expect(run.code).toBe(ExitCode.Success);
+    const { results } = JSON.parse(run.stdout);
+    return {
+      model: results.model,
+      start: results.commits.at,
+      probabilities: Object.fromEntries(results.files.map((f: { path: string; probability: number }) => [f.path, f.probability])),
+      actual: results.actual.files as number,
+    };
+  } finally {
+    variant.dispose();
+  }
+}
+
+test("nothing after the date reaches the prediction: later commits, a leaver coming back, a new hot file and a changed owner leave it untouched", async () => {
+  const plain = await predictionAfter([]);
+  // Cy, who left in September 2023, returns and takes over the engine; Di comes back too, and another file turns hot.
+  const lines = (name: string) => Array.from({ length: 10 }, (_, i) => `export const ${name}${i} = ${i + 100};`).join("\n") + "\n";
+  const later = await predictionAfter([
+    { type: "commit", message: "Cy returns and rewrites the engine", date: "2024-06-03T09:00:00Z", author: cy, changes: [{ op: "modify", path: engine, content: lines("engine") }] },
+    { type: "commit", message: "Di returns", date: "2025-06-03T09:00:00Z", author: di, changes: [{ op: "modify", path: lexer, content: lines("lexer") }] },
+    ...Array.from({ length: 12 }, (_, i) => ({
+      type: "commit" as const,
+      message: `Log churn ${i}`,
+      date: `2025-0${1 + (i % 3)}-${String(10 + i).padStart(2, "0")}T09:00:00Z`,
+      author: cy,
+      changes: [{ op: "modify" as const, path: log, content: lines(`log${i}`) }],
+    })),
+  ]);
+  expect(later.start).toBe(plain.start);
+  expect(later.model).toEqual(plain.model);
+  // Every file the two share has the probability it had, whatever came after.
+  for (const [path, probability] of Object.entries(plain.probabilities)) expect(later.probabilities[path], path).toBe(probability);
+  // What did change is the outcome, which is allowed to look at the future.
+  expect(later.actual).not.toBe(plain.actual);
+}, 240_000);
+
+test("someone active in the window at the date but gone by the head is still active at the date", async () => {
+  const { results } = await json("--at", "2024-02-29");
+  // Cy (last commit 15 September 2023) and Di (1 March 2024 is after the date) are both inside a six month window then, with Ann and Bob.
+  expect(results.model.activeDevelopers).toBe(4);
+  // At the head only Ann, Bob and Eve are active.
+  const current = JSON.parse((await runCochange(repo.path, ["abandonment", "simulate", "--json"])).stdout);
+  expect(current.results.mode).toBeDefined();
+  expect(current.developers.active).toBe(3);
 });
