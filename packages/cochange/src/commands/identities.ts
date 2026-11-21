@@ -18,6 +18,13 @@ type Subcommand = (typeof SUBCOMMANDS)[number];
  * is never stored as a report for another plugin to read.
  */
 export const command: Command = {
+  subcommands: {
+    list: { summary: "Every identity in the history with its commits, dates, areas and mapping", options: ["unmapped", "no-refresh"] },
+    propose: { summary: "Clusters of identities that look like one person, with the evidence", options: ["no-refresh"] },
+    classify: { summary: "Identities classified as bots, services or agents, and how", options: ["no-refresh"] },
+    apply: { summary: "Write approved decisions to the mapping (a dry run unless --apply is given)", options: ["from", "apply", "location", "no-refresh"] },
+    check: { summary: "Findings about the mapping as it stands", options: ["no-refresh"] },
+  },
   summary: "Resolve who is who: list, propose, classify, apply and check the identity mapping",
   options: {
     "no-refresh": { type: "boolean" },

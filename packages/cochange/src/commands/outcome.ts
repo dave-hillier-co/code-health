@@ -33,6 +33,10 @@ const isoDay = (seconds: number): string => new Date(seconds * 1000).toISOString
  * same session, with and without the completeness hook. Neither writes a report.
  */
 export const command: Command = {
+  subcommands: {
+    spread: { summary: "Change spread and revisions of the files acted on, against similarly ranked files left alone, either side of a date", options: ["at", "months", "min-samples", "noise", "no-refresh"] },
+    completeness: { summary: "How often an agent's edit is followed by an edit to a coupled file in the same session, with and without the hook", options: ["since", "until", "projects-dir", "min-samples", "noise", "no-refresh"] },
+  },
   summary: "Measure whether acting on findings worked: change spread against untouched files, and agent completeness with and without the hook",
   options: {
     at: { type: "string" },

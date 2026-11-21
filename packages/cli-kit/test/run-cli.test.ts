@@ -21,6 +21,15 @@ const cli: CliDefinition = {
       options: { since: { type: "string" } },
       run: ({ values }) => ({ inputs: { since: values.since ?? null }, results: rows, columns: ["path", "score", "churn"] }),
     },
+    grouped: {
+      summary: "Subcommands",
+      options: { alpha: { type: "string" }, beta: { type: "boolean" } },
+      subcommands: {
+        one: { summary: "First subcommand", options: ["alpha"] },
+        two: { summary: "Second subcommand", options: ["beta"] },
+      },
+      run: () => ({ results: [] }),
+    },
     sections: {
       summary: "Extra sections",
       run: () => ({ results: [], extra: { evidence: { grade: "weak" } } }),
@@ -229,6 +238,27 @@ test("--help lists commands, and command help lists options", async () => {
   expect(command.code).toBe(0);
   expect(command.stdout).toContain("--since");
   expect(command.stdout).toContain("--limit");
+});
+
+test("help for a subcommand lists its summary and only its own options", async () => {
+  const one = await run(["grouped", "one", "--help"]);
+  expect(one.code).toBe(0);
+  expect(one.stdout).toContain("Usage: demo grouped one [options]");
+  expect(one.stdout).toContain("First subcommand");
+  expect(one.stdout).toContain("--alpha <alpha>");
+  expect(one.stdout).not.toContain("--beta");
+  expect(one.stdout).toContain("--limit");
+  const two = await run(["grouped", "--help", "two"]);
+  expect(two.stdout).toContain("--beta");
+  expect(two.stdout).not.toContain("--alpha");
+});
+
+test("help for a command with subcommands lists them, and one without lists none", async () => {
+  const all = await run(["grouped", "--help"]);
+  expect(all.stdout).toMatch(/Subcommands:\n\s+one\s+First subcommand\n\s+two\s+Second subcommand/);
+  expect(all.stdout).toContain("--alpha");
+  expect(all.stdout).toContain("--beta");
+  expect((await run(["list", "--help"])).stdout).not.toContain("Subcommands:");
 });
 
 test("no command prints usage to stderr and exits 2", async () => {

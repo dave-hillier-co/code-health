@@ -29,9 +29,18 @@ export interface CommandOutput {
   failed?: boolean;
 }
 
+/** What `--help` says about one subcommand of a command that dispatches on its first positional. */
+export interface SubcommandHelp {
+  summary: string;
+  /** Names of the command's options that this subcommand takes. */
+  options?: readonly string[];
+}
+
 export interface Command {
   summary: string;
   options?: OptionSpec;
+  /** The subcommands the command dispatches to, so `--help` can describe each with only its own options. */
+  subcommands?: Record<string, SubcommandHelp>;
   run(context: CommandContext): CommandOutput | Promise<CommandOutput>;
 }
 
@@ -108,7 +117,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
 
   const args = parseArguments(io.argv, command.options);
   if (args.help) {
-    io.stdout.write(commandHelp(cli, name, command));
+    io.stdout.write(commandHelp(cli, name, command, args.positionals[0]));
     return ExitCode.Success;
   }
 
@@ -201,18 +210,33 @@ function helpText(cli: CliDefinition): string {
   ].join("\n");
 }
 
-function commandHelp(cli: CliDefinition, name: string, command: Command): string {
-  const own = Object.entries(command.options ?? {}).map(([option, spec]) => {
-    const argument = spec.type === "string" ? ` <${option}>` : "";
-    return `  --${option}${argument}`;
-  });
+function commandHelp(cli: CliDefinition, name: string, command: Command, requested?: string): string {
+  const sub = requested === undefined ? undefined : command.subcommands?.[requested];
+  const optionLine = ([option, spec]: [string, { type: string }]) => `  --${option}${spec.type === "string" ? ` <${option}>` : ""}`;
+  const all = Object.entries(command.options ?? {});
+  if (sub !== undefined) {
+    const taken = new Set(sub.options ?? []);
+    return [
+      `Usage: ${cli.tool} ${name} ${requested} [options]`,
+      "",
+      sub.summary,
+      "",
+      "Options:",
+      ...all.filter(([option]) => taken.has(option)).map(optionLine),
+      ...commonOptionHelp,
+      "",
+    ].join("\n");
+  }
+  const subcommands = Object.entries(command.subcommands ?? {});
+  const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli.tool} ${name} [options]`,
+    `Usage: ${cli.tool} ${name}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
     command.summary,
     "",
+    ...(subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli.tool} ${name} <subcommand> --help for the options of one.`, ""] : []),
     "Options:",
-    ...own,
+    ...all.map(optionLine),
     ...commonOptionHelp,
     "",
   ].join("\n");
