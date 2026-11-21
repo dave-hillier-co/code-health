@@ -15,4 +15,4 @@ The bundled CLIs and grammar files under `plugins/<plugin>/dist/` include third-
 
 ## Contributions
 
-The project does not accept external contributions, so all of the code is copyright David Hillier.
+External contributions are not accepted yet, so all of the code is copyright David Hillier. When contributions open, the terms they are accepted on will be set out in [CONTRIBUTING.md](CONTRIBUTING.md), in a form that keeps both licences available.

@@ -4,7 +4,7 @@ The specs in `docs/specs/` are the source of truth, starting with `docs/specs/su
 
 ## Contributions
 
-This project does not accept external contributions. Pull requests, patches and other submitted code will not be merged. Issues reporting bugs are welcome. This file describes how the code is developed.
+External contributions are not accepted yet. Until contribution terms are published here, pull requests, patches and other submitted code will not be merged. Issues reporting bugs are welcome. This file describes how the code is developed.
 
 ## Working rules
 
