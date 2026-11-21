@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { compareBytes, confidenceOf, countCoupling, degreeOf, type CouplingChange, type PairCount } from "../src/coupling.ts";
+import { compareBytes, confidenceOf, countCoupling, degreeOf, partnersOf, type CouplingChange, type PairCount } from "../src/coupling.ts";
 
 /** Deterministic pseudo random numbers, so a failing history can be regenerated from its seed. */
 function random(seed: number): () => number {
@@ -55,6 +55,32 @@ test("pair counts match the literal definition on 300 generated histories", () =
     expect(counts.oversizedChanges, `seed ${seed}`).toBe(changes.filter((c) => c.oversized).length);
     expect(counts.eligibleChanges, `seed ${seed}`).toBe(changes.filter((c) => !c.oversized).length);
   }
+});
+
+test("partnersOf agrees with the counts of every pair that includes the file, on 300 generated histories", () => {
+  for (let seed = 1; seed <= 300; seed++) {
+    const { changes, universe } = generate(seed);
+    const all = countCoupling(changes, { minSupport: 1, minDegree: 0 });
+    for (const focus of universe) {
+      const expected = all.pairs
+        .filter((pair) => pair.a === focus || pair.b === focus)
+        .map((pair) =>
+          pair.a === focus
+            ? { path: pair.b, support: pair.support, changesFocus: pair.changesA, changesPartner: pair.changesB }
+            : { path: pair.a, support: pair.support, changesFocus: pair.changesB, changesPartner: pair.changesA },
+        )
+        .sort((x, y) => compareBytes(x.path, y.path));
+      const found = partnersOf(changes, focus);
+      expect(found.partners, `seed ${seed} ${focus}`).toEqual(expected);
+      expect(found.changesFocus, `seed ${seed} ${focus}`).toBe(
+        changes.filter((c) => !c.oversized && c.files.includes(focus)).length,
+      );
+    }
+  }
+});
+
+test("partnersOf reports zero changes for a file nothing touched", () => {
+  expect(partnersOf([{ files: ["a.ts", "b.ts"], oversized: false }], "c.ts")).toEqual({ changesFocus: 0, partners: [] });
 });
 
 test("degree and confidence follow the spec formulas", () => {

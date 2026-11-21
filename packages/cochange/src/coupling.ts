@@ -85,3 +85,43 @@ export function countCoupling(changes: readonly CouplingChange[], thresholds: Co
   pairs.sort((p, q) => compareBytes(p.a, q.a) || compareBytes(p.b, q.b));
   return { eligibleChanges, oversizedChanges, pairs };
 }
+
+export interface Partner {
+  path: string;
+  /** n(focus and path): eligible changes touching both. */
+  support: number;
+  /** n(focus): eligible changes touching the focused file. */
+  changesFocus: number;
+  /** n(path): eligible changes touching the partner. */
+  changesPartner: number;
+}
+
+export interface Partners {
+  /** n(focus). Zero when no eligible change touched the file. */
+  changesFocus: number;
+  /** Every file that shared at least one eligible change with the focus, in UTF-8 byte order of path. */
+  partners: Partner[];
+}
+
+/**
+ * The same counts as `countCoupling`, restricted to the pairs that include one
+ * file and without any threshold. It never builds the pair table of the whole
+ * repository, which keeps it cheap enough for a hook.
+ */
+export function partnersOf(changes: readonly CouplingChange[], focus: string): Partners {
+  const perFile = new Map<string, number>();
+  const together = new Map<string, number>();
+  let changesFocus = 0;
+  for (const change of changes) {
+    if (change.oversized) continue;
+    const files = new Set(change.files);
+    for (const file of files) perFile.set(file, (perFile.get(file) ?? 0) + 1);
+    if (!files.has(focus)) continue;
+    changesFocus++;
+    for (const file of files) if (file !== focus) together.set(file, (together.get(file) ?? 0) + 1);
+  }
+  const partners = [...together]
+    .map(([path, support]) => ({ path, support, changesFocus, changesPartner: perFile.get(path)! }))
+    .sort((x, y) => compareBytes(x.path, y.path));
+  return { changesFocus, partners };
+}
