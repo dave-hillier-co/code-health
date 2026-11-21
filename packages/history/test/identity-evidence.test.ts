@@ -1,5 +1,9 @@
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import {
+  COUNTER_MIN_WEEKS,
+  HANDOVER_MAX_GAP_DAYS,
+  HANDOVER_MAX_OVERLAP_DAYS,
+  PAIRING_MIN_COMMITS,
   buildNodes,
   buildProposals,
   findLinks,
@@ -239,4 +243,83 @@ test("identities that share no key and nothing else are not linked by their keys
     { name: "Pat Quill", email: "pat@home.net", signingKeys: ["gpg:2222222222222222"] },
   ]);
   expect(links).toEqual([]);
+});
+
+// Each signal's threshold, pinned on both sides of the boundary, so a changed number cannot pass by regenerating a golden.
+describe("thresholds", () => {
+  const named = (firstDay: number, lastDay: number, email: string): Spec => ({ name: "Ann Lee", email, firstDay, lastDay, files: ["src/a.ts"] });
+
+  test.each([
+    [HANDOVER_MAX_GAP_DAYS, true],
+    [HANDOVER_MAX_GAP_DAYS + 1, false],
+    [-HANDOVER_MAX_OVERLAP_DAYS, true],
+    [-HANDOVER_MAX_OVERLAP_DAYS - 1, false],
+  ])("a gap of %i days between one identity stopping and the other starting is a handover: %s", (gap, expected) => {
+    const links = analyse([named(0, 100, "ann@home.net"), named(100 + gap, 300, "ann@corp.com")]).links;
+    expect(signalsOf(links).includes("handover")).toBe(expected);
+  });
+
+  test.each([
+    [PAIRING_MIN_COMMITS, true],
+    [PAIRING_MIN_COMMITS - 1, false],
+  ])("%i commits authored by one identity and all committed by another are exclusive pairing: %s", (count, expected) => {
+    const pairing: Pairing = {
+      committersOfAuthor: new Map([["jo@home", new Map([["jo@corp", count]])]]),
+      authorsOfCommitter: new Map([["jo@corp", new Set(["jo@home"])]]),
+    };
+    const links = analyse([{ name: "Jo K", email: "jo@home" }, { name: "Jo K", email: "jo@corp" }], pairing).links;
+    expect(signalsOf(links).includes("exclusive-pairing")).toBe(expected);
+  });
+
+  test.each([
+    [COUNTER_MIN_WEEKS, true],
+    [COUNTER_MIN_WEEKS - 1, false],
+  ])("%i shared weeks in disjoint areas are counter-evidence: %s", (weeks, expected) => {
+    const active = (area: string) => Object.fromEntries(Array.from({ length: weeks }, (_, week) => [week + 1, area]));
+    const { links } = analyse([
+      { name: "Alex Kim", email: "alex@a.com", weeks: active("src/ui") },
+      { name: "Alex Kim", email: "akim@b.com", weeks: active("infra/db") },
+    ]);
+    expect(links[0]!.counterEvidence).toBe(expected);
+  });
+});
+
+describe("names and addresses", () => {
+  test("case, diacritics and spacing do not hide the same name, and a different name with the same shape is not it", () => {
+    expect(signalsOf(analyse([{ name: "José  García", email: "a@x.org" }, { name: "jose garcia", email: "b@y.org" }]).links)).toContain("same-name");
+    expect(analyse([{ name: "José García", email: "a@x.org" }, { name: "Jose Garza", email: "b@y.org" }]).links).toEqual([]);
+  });
+
+  test("Last, First order is the same name", () => {
+    expect(signalsOf(analyse([{ name: "García, José", email: "a@x.org" }, { name: "José García", email: "b@y.org" }]).links)).toContain("same-name");
+  });
+
+  test("identical names with different emails among many people link only the pair that shares the name", () => {
+    const specs: Spec[] = Array.from({ length: 30 }, (_, index) => ({ name: `Person${index} Family${index}`, email: `p${index}@d${index}.org` }));
+    specs.push({ name: "Person7 Family7", email: "other@elsewhere.net" });
+    const { links } = analyse(specs);
+    expect(links).toHaveLength(1);
+    expect(links[0]!.signals.map((signal) => signal.signal)).toEqual(["same-name"]);
+  });
+
+  test("GitHub noreply addresses with the numeric id before the + are the same user whatever the username", () => {
+    const { links } = analyse([
+      { name: "A", email: "12345+old@users.noreply.github.com" },
+      { name: "B", email: "12345+new@users.noreply.github.com" },
+    ]);
+    expect(links[0]).toMatchObject({ strength: "strong", signals: [{ signal: "noreply-same-user", detail: "id:12345" }] });
+  });
+
+  test("the same username with different numeric ids still yields a username signal, naming the username", () => {
+    const { links } = analyse([
+      { name: "Ann Lee", email: "1+ann@users.noreply.github.com" },
+      { name: "Bo Chen", email: "2+ann@users.noreply.github.com" },
+    ]);
+    expect(links[0]!.signals.map((signal) => signal.detail)).toContain("user:ann");
+  });
+
+  test("a bot named like a person is a link like any other identity: classifying bots is a separate step", () => {
+    const { links } = analyse([{ name: "Dependabot Bot", email: "bot@x.org" }, { name: "dependabot bot", email: "bot2@y.org" }]);
+    expect(signalsOf(links)).toContain("same-name");
+  });
 });
