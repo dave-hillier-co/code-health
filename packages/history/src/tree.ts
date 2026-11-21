@@ -6,6 +6,29 @@ export async function listTree(repoPath: string, ref: string): Promise<string[]>
   return out.split("\0").filter((p) => p !== "").sort();
 }
 
+export interface TreeBlob {
+  path: string;
+  /** Object id of the file's content. */
+  blob: string;
+}
+
+/**
+ * Regular files in the tree of `ref` with their blob ids, sorted by path.
+ * Symbolic links and submodules are left out: neither has content to blame.
+ */
+export async function listBlobs(repoPath: string, ref: string): Promise<TreeBlob[]> {
+  const out = await runGit(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref]);
+  const blobs: TreeBlob[] = [];
+  // Records are `<mode> SP <type> SP <oid> TAB <path>`.
+  for (const record of out.split("\0")) {
+    const tab = record.indexOf("\t");
+    if (tab === -1) continue;
+    const [mode, type, oid] = record.slice(0, tab).split(" ");
+    if (type === "blob" && mode !== "120000" && oid !== undefined) blobs.push({ path: record.slice(tab + 1), blob: oid });
+  }
+  return blobs.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
+
 /** Contents of a file at `ref`, or undefined when it does not exist there. */
 export async function readBlobAt(repoPath: string, ref: string, path: string): Promise<string | undefined> {
   try {

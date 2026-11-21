@@ -794,6 +794,17 @@ async function listTree(repoPath, ref) {
   const out = await runGit(repoPath, ["ls-tree", "-r", "--name-only", "-z", "--full-tree", ref]);
   return out.split("\0").filter((p) => p !== "").sort();
 }
+async function listBlobs(repoPath, ref) {
+  const out = await runGit(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref]);
+  const blobs = [];
+  for (const record of out.split("\0")) {
+    const tab = record.indexOf("	");
+    if (tab === -1) continue;
+    const [mode, type, oid] = record.slice(0, tab).split(" ");
+    if (type === "blob" && mode !== "120000" && oid !== void 0) blobs.push({ path: record.slice(tab + 1), blob: oid });
+  }
+  return blobs.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+}
 async function readBlobAt(repoPath, ref, path) {
   try {
     return await runGit(repoPath, ["cat-file", "blob", `${ref}:${path}`]);
@@ -1044,7 +1055,9 @@ async function locateCache(repoPath) {
     gitDir,
     cacheDir,
     dbPath: join2(cacheDir, "history.sqlite"),
-    lockPath: join2(cacheDir, "history.lock")
+    lockPath: join2(cacheDir, "history.lock"),
+    blamePath: join2(cacheDir, "blame.sqlite"),
+    blameLockPath: join2(cacheDir, "blame.lock")
   };
 }
 function ensureCacheDir(location) {
@@ -5041,42 +5054,61 @@ function checkMapping(analysis, detail) {
 // packages/history/src/blame-lines.ts
 import { existsSync as existsSync10 } from "node:fs";
 import { join as join7 } from "node:path";
-async function listTextFiles(root, sha) {
-  let out;
-  try {
-    out = await runGit(root, ["grep", "-I", "-c", "-z", "-e", "", sha]);
-  } catch {
-    return [];
-  }
-  const files = [];
+var GREP_CHUNK = 200;
+async function textFilesAt(root, sha, paths) {
+  const text = /* @__PURE__ */ new Set();
   const prefix = `${sha}:`;
-  for (const record of out.split("\n")) {
-    if (record === "") continue;
-    const [pathPart] = record.split("\0");
-    if (pathPart?.startsWith(prefix)) files.push(pathPart.slice(prefix.length));
+  for (let i = 0; i < paths.length; i += GREP_CHUNK) {
+    let out;
+    try {
+      out = await runGit(root, ["--literal-pathspecs", "grep", "-I", "-c", "-z", "-e", "", sha, "--", ...paths.slice(i, i + GREP_CHUNK)]);
+    } catch {
+      continue;
+    }
+    for (const record of out.split("\n")) {
+      const [pathPart] = record.split("\0");
+      if (pathPart?.startsWith(prefix)) text.add(pathPart.slice(prefix.length));
+    }
   }
-  return files.sort();
+  return text;
+}
+async function authoredFilesAt(root, sha, exclude = []) {
+  const excluded = compileGlobs(exclude);
+  const lockfiles = new Set(DEFAULT_LOCKFILES);
+  const blobs = await listBlobs(root, sha);
+  const paths = blobs.map((b) => b.path);
+  const attributes = await readPathAttributes(root, sha, paths, paths);
+  return blobs.filter(
+    ({ path }) => !excluded(path) && !lockfiles.has(path.slice(path.lastIndexOf("/") + 1)) && !attributes.generated.has(path) && !attributes.vendored.has(path)
+  );
+}
+function parseBlameRanges(output) {
+  const ranges = [];
+  for (const line of output.split("\n")) {
+    const match = /^([0-9a-f]{40}) \d+ (\d+) (\d+)$/.exec(line);
+    if (match) ranges.push({ start: Number(match[2]), count: Number(match[3]), sha: match[1] });
+  }
+  ranges.sort((a, b) => a.start - b.start);
+  const joined = [];
+  for (const range of ranges) {
+    const last = joined[joined.length - 1];
+    if (last && last.sha === range.sha && last.start + last.count === range.start) last.count += range.count;
+    else joined.push({ ...range });
+  }
+  return joined;
 }
 function parseIncrementalBlame(output, into) {
   let lines = 0;
-  for (const line of output.split("\n")) {
-    const match = /^([0-9a-f]{40}) \d+ \d+ (\d+)$/.exec(line);
-    if (!match) continue;
-    const count = Number(match[2]);
-    into.set(match[1], (into.get(match[1]) ?? 0) + count);
-    lines += count;
+  for (const range of parseBlameRanges(output)) {
+    into.set(range.sha, (into.get(range.sha) ?? 0) + range.count);
+    lines += range.count;
   }
   return lines;
 }
 async function blameLineCounts(root, sha, options = {}) {
-  const excluded = compileGlobs(options.exclude ?? []);
-  const lockfiles = new Set(DEFAULT_LOCKFILES);
-  const tree = await listTree(root, sha);
-  const attributes = await readPathAttributes(root, sha, tree, tree);
-  const text = await listTextFiles(root, sha);
-  const files = text.filter(
-    (path) => !excluded(path) && !lockfiles.has(path.slice(path.lastIndexOf("/") + 1)) && !attributes.generated.has(path) && !attributes.vendored.has(path)
-  );
+  const candidates = await authoredFilesAt(root, sha, options.exclude);
+  const text = await textFilesAt(root, sha, candidates.map((c) => c.path));
+  const files = candidates.map((c) => c.path).filter((path) => text.has(path));
   const ignoreFile = options.ignoreRevsFile ?? ".git-blame-ignore-revs";
   const ignoreArgs = existsSync10(join7(root, ignoreFile)) ? [`--ignore-revs-file=${join7(root, ignoreFile)}`] : [];
   const bySha = /* @__PURE__ */ new Map();

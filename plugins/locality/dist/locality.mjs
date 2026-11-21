@@ -6504,7 +6504,9 @@ async function locateCache(repoPath) {
     gitDir,
     cacheDir,
     dbPath: join4(cacheDir, "history.sqlite"),
-    lockPath: join4(cacheDir, "history.lock")
+    lockPath: join4(cacheDir, "history.lock"),
+    blamePath: join4(cacheDir, "blame.sqlite"),
+    blameLockPath: join4(cacheDir, "blame.lock")
   };
 }
 function ensureCacheDir(location) {

@@ -1,7 +1,7 @@
 {
   "name": "structure",
   "displayName": "Structure",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Finds dependencies that make change expensive: import cycles with minimal breaking sets, and dependencies pointing from stable towards volatile code, with an evidence pack for each.",
   "author": {
     "name": "Dave Hillier"

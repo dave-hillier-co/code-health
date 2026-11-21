@@ -62,6 +62,43 @@ A plugin parses when its bundle includes `packages/parse/src/grammars.ts`, direc
 
 Bundles import only Node builtins and install without `npm install`. Do not add runtime dependencies that cannot be bundled, and do not read files by repository-relative path at run time: anything a bundle needs ships in `dist/` and is found through `import.meta.url`.
 
+## Shared blame cache
+
+`packages/history` keeps line authorship in `.cache/code-health/blame.sqlite`, for the abandonment and change-risk skills. It is separate from `history.sqlite` (own schema version `BLAME_SCHEMA_VERSION`, own lock `blame.lock`, same rebuild-on-mismatch and `withLock` conventions), and it stores only the commit behind each line range. Identities are never stored, so a mailmap or decision change needs no re-blame. Import the modules by path, for example `@code-health/history/blame-refresh`.
+
+**Refresh** (`blame-refresh.ts`) writes, under the blame lock:
+
+```ts
+refreshBlame(repoPath, options?: BlameRefreshOptions): Promise<BlameRefreshResult>
+```
+
+- Options: `ref` (default HEAD), `exclude` (globs), `paths` (blame only these files, and prune nothing), `copyDetection` (`-C`, default true), `ignoreRevsFile` (default `.git-blame-ignore-revs`, read from the tree at the ref), `concurrency`, `batchSize`, `onProgress({ done, total })`, `signal` (abort; what finished stays stored and the next call resumes), `lock`.
+- Blames use `git blame --incremental -w -M [-C] [--ignore-revs-file]`. Vendored and generated files (gitattributes), lockfiles, excluded paths, symlinks, submodules, and binary or empty files are not blamed; the last are remembered, so they are not examined again until their blob changes.
+- Result: `headSha`, `optionsId`, `files`, `blamed`, `reused`, `noText`, `failed`, `pruned`, `rebuilt`, `aborted`.
+
+**Read** (`blame-read.ts`) never blames and never writes:
+
+```ts
+readBlame(repoPath, options?: BlameReadOptions): Promise<BlameSnapshot>
+// BlameSnapshot { headSha, optionsId, files: Map<path, FileBlame>, missing: string[] }
+// FileBlame { path, blob, lines, ranges: { start, count, sha }[] }   (1-based lines, ordered, covering the file)
+```
+
+Use the same `exclude`, `copyDetection` and `ignoreRevsFile` as the refresh. `files` holds files with lines. `missing` lists authored files with no right blame in the cache (never refreshed, or changed since); their authorship is unknown, not zero, and consumers report it as unavailable. Without a cache every file is missing.
+
+**Owners** (`blame-owners.ts`) apply identities at query time:
+
+```ts
+resolveOwners(root, shas, { localMailmap?, matcher? }): Promise<Map<sha, Owner>>   // Owner { key, name, email, kind }
+lineShares(ranges, owners): LineShares        // { total, people, nonPerson, unattributed, byOwner }
+shareHeldBy(shares, ownerKeys): number | null // the people's share held by the given owners, null when no person holds a line
+commitsInSnapshot(snapshot): Set<sha>
+```
+
+`resolveOwners` reads each commit's author (merges included), maps it through the working tree `.mailmap` and the local mailmap, then classifies it with the matcher built from the identity decisions and config (`kind` is `person`, `bot`, `service` or `agent`). Lines of non-people belong to nobody and are counted apart.
+
+**Why a blob is not the whole key.** A blame is fixed by the blob and the history behind it, and one blob can have several blames: a file reverted to earlier content is blamed on the revert. The cache is keyed by path, blob and options (`optionsId`: a hash of the flags and of the full ignore-revs SHAs), and records the commit each blame was made at. A stored blame is reused only when nothing between that commit and the ref changed the path (one `git log` per distinct stored commit, `blame-reuse.ts`). Blames made on a branch that is neither an ancestor nor a descendant of the ref are not reused, and a full refresh prunes blames whose blob is no longer in the tree. `blameLineCounts` in `blame-lines.ts` is the uncached, `-C`-less measure the identity commands use.
+
 ## Skills
 
 A skill lives at `plugins/<p>/skills/<skill>/`. `npm run check:skills` enforces these conventions:

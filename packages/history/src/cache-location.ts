@@ -11,6 +11,9 @@ export interface CacheLocation {
   cacheDir: string;
   dbPath: string;
   lockPath: string;
+  /** Line authorship per file blob, kept apart from the history store so neither rebuilds the other. */
+  blamePath: string;
+  blameLockPath: string;
 }
 
 /**
@@ -35,6 +38,8 @@ export async function locateCache(repoPath: string): Promise<CacheLocation> {
     cacheDir,
     dbPath: join(cacheDir, "history.sqlite"),
     lockPath: join(cacheDir, "history.lock"),
+    blamePath: join(cacheDir, "blame.sqlite"),
+    blameLockPath: join(cacheDir, "blame.lock"),
   };
 }
 

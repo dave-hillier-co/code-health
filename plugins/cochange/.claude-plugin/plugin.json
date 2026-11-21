@@ -1,7 +1,7 @@
 {
   "name": "cochange",
   "displayName": "Co-change",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Mines git history for hotspots, temporal coupling and change spread to show where code is expensive to change, briefs agents on what usually changes with a file before they edit it, and can hint at files an edit has left out.",
   "author": { "name": "Dave Hillier" },
   "license": "MIT",
