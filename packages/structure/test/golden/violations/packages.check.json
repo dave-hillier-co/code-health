@@ -1,0 +1,122 @@
+{
+  "command": "packages",
+  "config": "e5edf91edf90c73b",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 8,
+      "laterMedian": 4,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 2,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 0,
+    "window": {
+      "months": 12,
+      "since": 1672650000,
+      "until": 1704186000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "base": "f237c3ee5235dafa99d6fad35283d373ed8be45b",
+    "subcommand": "check"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "1df6ea4ea2cd1b997a03416f8825c921dc532d89"
+  },
+  "results": [
+    {
+      "detail": "2 packages depend on each other in a cycle; cutting packages/a->packages/b breaks it, which means moving 2 symbols",
+      "key": "cycle:packages/a,packages/b",
+      "kind": "package-cycle",
+      "packages": [
+        "packages/a",
+        "packages/b"
+      ]
+    },
+    {
+      "detail": "packages/a imports packages/b/src/internal.ts, past the entry points of packages/b",
+      "key": "deep:packages/a->packages/b/src/internal.ts",
+      "kind": "deep-import",
+      "packages": [
+        "packages/b",
+        "packages/a"
+      ]
+    },
+    {
+      "detail": "packages/c uses @chk/b without declaring it",
+      "key": "undeclared:packages/c:@chk/b",
+      "kind": "undeclared-dependency",
+      "packages": [
+        "packages/c"
+      ]
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "added": 3,
+    "base": "f237c3ee5235dafa99d6fad35283d373ed8be45b",
+    "existing": 1,
+    "head": "1df6ea4ea2cd1b997a03416f8825c921dc532d89"
+  },
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 3
+  },
+  "window": {
+    "since": "2023-01-02T09:00:00.000Z",
+    "until": "2024-01-02T09:00:00.000Z"
+  }
+}

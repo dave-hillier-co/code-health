@@ -253,6 +253,130 @@
             "type": "object",
             "properties": {
               "subcommand": {
+                "const": "evidence"
+              }
+            },
+            "required": [
+              "subcommand"
+            ]
+          }
+        },
+        "required": [
+          "inputs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
+                "const": "evidence"
+              },
+              "target": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "subcommand",
+              "target"
+            ],
+            "additionalProperties": false
+          },
+          "results": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/packageEvidence"
+              },
+              {
+                "$ref": "#/$defs/pairEvidence"
+              }
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
+                "const": "check"
+              }
+            },
+            "required": [
+              "subcommand"
+            ]
+          }
+        },
+        "required": [
+          "inputs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
+                "const": "check"
+              },
+              "base": {
+                "$ref": "common.schema.json#/$defs/sha"
+              }
+            },
+            "required": [
+              "subcommand",
+              "base"
+            ],
+            "additionalProperties": false
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/violation"
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "head": {
+                "$ref": "common.schema.json#/$defs/sha"
+              },
+              "base": {
+                "$ref": "common.schema.json#/$defs/sha"
+              },
+              "added": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "existing": {
+                "$ref": "common.schema.json#/$defs/count"
+              }
+            },
+            "required": [
+              "head",
+              "base",
+              "added",
+              "existing"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "summary"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
                 "const": "coupling"
               }
             },
@@ -320,6 +444,8 @@
             "cohesion",
             "boundaries",
             "candidates",
+            "evidence",
+            "check",
             "coupling"
           ]
         }
@@ -331,13 +457,601 @@
     "repository": true,
     "balance": true,
     "unavailable": true,
-    "withheld": true
+    "withheld": true,
+    "summary": true
   },
   "required": [
     "inputs"
   ],
   "unevaluatedProperties": false,
   "$defs": {
+    "violation": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "package-cycle",
+            "deep-import",
+            "undeclared-dependency"
+          ]
+        },
+        "key": {
+          "type": "string"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "key",
+        "packages",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    "packageEvidence": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "package"
+        },
+        "id": {
+          "type": "string"
+        },
+        "row": {
+          "$ref": "#/$defs/packageRow"
+        },
+        "balance": {
+          "$ref": "#/$defs/balance"
+        },
+        "closure": {
+          "type": "object",
+          "properties": {
+            "changes": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "share": {
+              "type": "number"
+            },
+            "closure": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "crossing": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "comparable": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "standing": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "changes",
+            "share",
+            "closure",
+            "crossing",
+            "comparable",
+            "standing"
+          ],
+          "additionalProperties": false
+        },
+        "coChange": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "package": {
+                "type": "string"
+              },
+              "shared": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "fromChanges": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "toChanges": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "confidenceFromTo": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "confidenceToFrom": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "lift": {
+                "type": "number",
+                "minimum": 0
+              },
+              "tail": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "cost": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "package",
+              "shared",
+              "fromChanges",
+              "toChanges",
+              "confidenceFromTo",
+              "confidenceToFrom",
+              "lift",
+              "tail",
+              "cost"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "reuse": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "wildcardExports": {
+                  "type": "boolean"
+                },
+                "hasExportsMap": {
+                  "type": "boolean"
+                },
+                "surface": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      },
+                      "exportedAs": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "exportedAs"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "consumers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "package": {
+                        "type": "string"
+                      },
+                      "used": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "share": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "package",
+                      "used",
+                      "share"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "components": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "exports": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "consumers": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "exports",
+                      "consumers"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "unused": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "deepUses": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string"
+                      },
+                      "to": {
+                        "type": "string"
+                      },
+                      "package": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "from",
+                      "to",
+                      "package"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "passThroughShare": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "entries",
+                "wildcardExports",
+                "hasExportsMap",
+                "surface",
+                "consumers",
+                "components",
+                "unused",
+                "deepUses",
+                "passThroughShare"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "row",
+        "balance",
+        "closure",
+        "coChange",
+        "reuse",
+        "findings"
+      ],
+      "additionalProperties": false
+    },
+    "pairEvidence": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "pair"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "dependencies": {
+          "type": "object",
+          "properties": {
+            "fromTo": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string"
+                    },
+                    "to": {
+                      "type": "string"
+                    },
+                    "declared": {
+                      "enum": [
+                        "runtime",
+                        "dev",
+                        null
+                      ]
+                    },
+                    "productionImports": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    },
+                    "testImports": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "to",
+                    "declared",
+                    "productionImports",
+                    "testImports"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "toFrom": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string"
+                    },
+                    "to": {
+                      "type": "string"
+                    },
+                    "declared": {
+                      "enum": [
+                        "runtime",
+                        "dev",
+                        null
+                      ]
+                    },
+                    "productionImports": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    },
+                    "testImports": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "to",
+                    "declared",
+                    "productionImports",
+                    "testImports"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "required": [
+            "fromTo",
+            "toFrom"
+          ],
+          "additionalProperties": false
+        },
+        "coChange": {
+          "type": "object",
+          "properties": {
+            "shared": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "fromChanges": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "toChanges": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "confidenceFromTo": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "confidenceToFrom": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "lift": {
+              "type": "number",
+              "minimum": 0
+            },
+            "tail": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "cost": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "shared",
+            "fromChanges",
+            "toChanges",
+            "confidenceFromTo",
+            "confidenceToFrom",
+            "lift",
+            "tail",
+            "cost"
+          ],
+          "additionalProperties": false
+        },
+        "sharedChanges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/sha"
+              },
+              "date": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "touched": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "date",
+              "files",
+              "touched"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "sharedChangesTotal": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "symbols": {
+          "type": "object",
+          "properties": {
+            "fromTo": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "symbol": {
+                    "type": "string"
+                  },
+                  "sites": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "kind": {
+                    "enum": [
+                      "call",
+                      "reference"
+                    ]
+                  },
+                  "usedBy": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "symbol",
+                  "sites",
+                  "kind",
+                  "usedBy"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "toFrom": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "symbol": {
+                    "type": "string"
+                  },
+                  "sites": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "kind": {
+                    "enum": [
+                      "call",
+                      "reference"
+                    ]
+                  },
+                  "usedBy": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "symbol",
+                  "sites",
+                  "kind",
+                  "usedBy"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "fromTo",
+            "toFrom"
+          ],
+          "additionalProperties": false
+        },
+        "commonConsumers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "from",
+        "to",
+        "dependencies",
+        "coChange",
+        "sharedChanges",
+        "sharedChangesTotal",
+        "symbols",
+        "commonConsumers",
+        "findings"
+      ],
+      "additionalProperties": false
+    },
     "candidate": {
       "type": "object",
       "properties": {
