@@ -155,6 +155,15 @@ class Extractor {
     }
   }
 
+  /** Decorators run where the class is declared, so they belong to the outer scope, not to the class. */
+  private classParts(node: Node, outer: Context, inner: Context): void {
+    for (let i = 0; i < node.childCount; i++) {
+      const child = node.child(i);
+      if (!child || !child.isNamed) continue;
+      this.visit(child, child.type === "decorator" ? outer : inner, node, node.fieldNameForChild(i));
+    }
+  }
+
   private withShadow(context: Context, names: string[]): Context {
     if (names.length === 0) return context;
     return { unit: context.unit, shadow: new Set([...context.shadow, ...names]) };
@@ -179,7 +188,7 @@ class Extractor {
       case "abstract_class_declaration": {
         const name = node.childForFieldName("name")?.text;
         const inner = name ? this.declareUnit(name, "class", node, wrapperOf(parent), context) : context;
-        this.visitChildren(node, inner);
+        this.classParts(node, context, inner);
         return;
       }
       case "method_definition": {
@@ -371,6 +380,8 @@ class Extractor {
     for (const declarator of declarators) {
       const name = declarator.childForFieldName("name");
       const value = declarator.childForFieldName("value");
+      const annotation = declarator.childForFieldName("type");
+      if (annotation) this.visit(annotation, context, declarator, "type");
       const extent = sole ? (parent.type === "export_statement" ? parent : node) : declarator;
       if (name?.type === "identifier" && value) {
         if (this.requireDeclarator(declarator, name, value, context)) continue;

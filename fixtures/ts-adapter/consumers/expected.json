@@ -1,0 +1,21 @@
+{
+  "consumers": [
+    "__tests__/helper.ts -> lib.ts#g test x1",
+    "app.ts -> lib.ts#deco reference x1",
+    "app.ts#run -> def.ts#def call x1",
+    "app.ts#run -> lib.ts#K call x1",
+    "app.ts#run -> lib.ts:Shape reference x1",
+    "app.ts#run -> lib.ts#f call x2",
+    "app.ts#run -> lib.ts#g reference x1",
+    "app.ts#run -> lib.ts:v reference x2",
+    "lib.spec.ts -> lib.ts#f test x1",
+    "view.tsx -> lib.ts#K reference x1"
+  ],
+  "fileEdges": [
+    "__tests__/helper.ts -> lib.ts test call=0 reference=1",
+    "app.ts -> def.ts call call=1 reference=0",
+    "app.ts -> lib.ts call call=3 reference=5",
+    "lib.spec.ts -> lib.ts test call=1 reference=0",
+    "view.tsx -> lib.ts reference call=0 reference=1"
+  ]
+}

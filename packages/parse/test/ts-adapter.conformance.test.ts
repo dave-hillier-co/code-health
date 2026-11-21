@@ -35,7 +35,7 @@ function render(analysis: ProjectAnalysis): Required<Expected> {
     ),
     consumers: analysis.consumers.map(
       (consumer) =>
-        `${consumer.from}${consumer.fromUnit ? `#${consumer.fromUnit}` : ""} -> ${consumer.to}${consumer.toSymbol ? `#${consumer.toSymbol}` : ""} ${consumer.kind} x${consumer.count}`,
+        `${consumer.from}${consumer.fromUnit ? `#${consumer.fromUnit}` : ""} -> ${consumer.to}${consumer.toSymbol ? `#${consumer.toSymbol}` : `:${consumer.toExport}`} ${consumer.kind} x${consumer.count}`,
     ),
     unresolved: analysis.unresolved.map(
       (item) => `${item.from}:${item.line} ${item.specifier ?? "<expression>"} ${item.reason}`,

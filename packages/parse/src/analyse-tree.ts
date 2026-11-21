@@ -257,6 +257,7 @@ class GraphBuilder {
       else if (target.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
     }
     const unitNames = new Set(file.units.map((unit) => unit.qualifiedName));
+    const exportedLocals = new Set(file.exports.map((exported) => exported.local));
     for (const imported of file.imports) {
       if (imported.kind === "dynamic") {
         this.addUnresolved(path, imported.line, imported.specifier, "dynamic-import");
@@ -270,6 +271,9 @@ class GraphBuilder {
       if (imported.bindings.length === 0) this.touch(path, target.path);
       for (const binding of imported.bindings) {
         const uses = file.references.filter((reference) => reference.local === binding.local);
+        // An import that is only re-exported is a pass-through, not a dependency of this file.
+        const passThrough = uses.length === 0 && exportedLocals.has(binding.local);
+        if (passThrough) continue;
         if (binding.imported === "*") {
           this.useNamespace(path, target.path, uses, unitNames);
           continue;
