@@ -108,6 +108,12 @@ export interface AnalysisSummary {
 
 export interface AnalysisResult {
   candidates: Candidate[];
+  /**
+   * Units already beside their consumers, which the analysis does not report because there is nothing to
+   * propose for them. They are not printed. `move` and `verify-move` read them, so that a unit can be moved
+   * on purpose, with a reason, to somewhere the analyser would not choose, and back to where it was.
+   */
+  placed: Candidate[];
   summary: AnalysisSummary;
   /** Leading indicators and the gaming check: distance removed rather than relocated, and code not buried. */
   metrics: { totalWeightedDistance: number; singleFileFolders: number; maxDepth: number };
@@ -486,6 +492,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   const reported = all
     .filter((candidate) => candidate.rule !== "near-consumers")
     .sort((a, b) => b.score - a.score || compareIds(a.path, b.path));
+  const placed = all.filter((candidate) => candidate.rule === "near-consumers").sort((a, b) => compareIds(a.path, b.path));
   const byRecommendation: Record<string, number> = {};
   for (const candidate of reported) byRecommendation[candidate.recommendation] = (byRecommendation[candidate.recommendation] ?? 0) + 1;
 
@@ -493,6 +500,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   for (const file of project.production) folders.set(folderOf(file), (folders.get(folderOf(file)) ?? 0) + 1);
   return {
     candidates: reported,
+    placed,
     summary: { files: project.production.length, units: all.length, byRecommendation },
     metrics: {
       totalWeightedDistance: model.edges
