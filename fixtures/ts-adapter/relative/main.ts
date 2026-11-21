@@ -1,0 +1,16 @@
+import { a } from "./lib/a";
+import { b } from "./lib/b.js";
+import { c } from "./dir";
+import { d } from "./jsx-comp";
+import { e } from "./legacy.cjs";
+import { f } from "./missing";
+import fs from "node:fs";
+import path from "path";
+import React from "react";
+import "./side-effect";
+import type { T } from "./types";
+export * from "./lib/a";
+export const lazy = () => import("./lib/a");
+export const computed = (name: string) => import(name);
+export const used = [a, b, c, d, e, f, fs, path, React];
+export type { T };

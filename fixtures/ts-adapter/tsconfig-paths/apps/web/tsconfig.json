@@ -1,0 +1,7 @@
+{
+  // paths replace the base config's paths; baseUrl is inherited
+  "extends": "../../tsconfig.base",
+  "compilerOptions": {
+    "paths": { "~/*": ["apps/web/src/*"], },
+  },
+}

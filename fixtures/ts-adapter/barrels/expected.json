@@ -1,0 +1,41 @@
+{
+  "barrels": [
+    "src/index.ts",
+    "src/inner/index.ts"
+  ],
+  "importEdges": [
+    "consumer.ts -> src/cycle1.ts import",
+    "consumer.ts -> src/index.ts import",
+    "src/cycle1.ts -> src/cycle2.ts reexport",
+    "src/cycle2.ts -> src/cycle1.ts reexport",
+    "src/index.ts -> src/a.ts reexport",
+    "src/index.ts -> src/b.ts reexport",
+    "src/index.ts -> src/c.ts import",
+    "src/index.ts -> src/c.ts reexport",
+    "src/index.ts -> src/d.ts reexport",
+    "src/index.ts -> src/inner/index.ts reexport",
+    "src/inner/index.ts -> src/inner/x.ts reexport"
+  ],
+  "consumers": [
+    "consumer.ts#run -> src/a.ts#a call x1",
+    "consumer.ts#run -> src/b.ts#b call x1",
+    "consumer.ts#run -> src/c.ts#cc call x1",
+    "consumer.ts#run -> src/c.ts#ee call x1",
+    "consumer.ts#run -> src/cycle1.ts#one call x1",
+    "consumer.ts#run -> src/cycle2.ts#two call x1",
+    "consumer.ts#run -> src/d.ts#d call x1",
+    "consumer.ts#run -> src/inner/x.ts#x call x1"
+  ],
+  "fileEdges": [
+    "consumer.ts -> src/a.ts call call=1 reference=0",
+    "consumer.ts -> src/b.ts call call=1 reference=0",
+    "consumer.ts -> src/c.ts call call=2 reference=0",
+    "consumer.ts -> src/cycle1.ts call call=1 reference=0",
+    "consumer.ts -> src/cycle2.ts call call=1 reference=0",
+    "consumer.ts -> src/d.ts call call=1 reference=0",
+    "consumer.ts -> src/inner/x.ts call call=1 reference=0"
+  ],
+  "unresolved": [
+    "consumer.ts:1 ./src export-not-found"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "units": {
+    "shapes.ts": [
+      ["plain", "function", 1, 3],
+      ["overloaded", "function", 7, 9],
+      ["arrow", "arrow", 11, 11],
+      ["multi", "arrow", 13, 15],
+      ["fnExpr", "function", 17, 19],
+      ["first", "arrow", 21, 21],
+      ["second", "arrow", 22, 22],
+      ["default", "function", 24, 26],
+      ["Widget", "class", 28, 59],
+      ["Widget.handler", "arrow", 30, 32],
+      ["Widget.constructor", "method", 34, 34],
+      ["Widget.render", "method", 36, 42],
+      ["Widget.render.helper", "arrow", 37, 37],
+      ["Widget.render.inner", "function", 38, 40],
+      ["Widget.size", "method", 44, 46],
+      ["Widget.size~2", "method", 48, 50],
+      ["Widget.create", "method", 52, 54],
+      ["Widget.#secret", "method", 56, 56],
+      ["Widget.[Symbol.iterator]", "method", 58, 58],
+      ["Base", "class", 61, 64],
+      ["Base.walk", "method", 63, 63],
+      ["registry.register", "method", 67, 67],
+      ["registry.lookup", "arrow", 68, 68],
+      ["registry.build", "function", 69, 69],
+      ["Outer.deep", "function", 74, 76],
+      ["Expr", "class", 79, 81],
+      ["Expr.method", "method", 80, 80],
+      ["named", "function", 85, 85],
+      ["dup", "function", 88, 88],
+      ["dup~2", "function", 89, 89]
+    ]
+  }
+}

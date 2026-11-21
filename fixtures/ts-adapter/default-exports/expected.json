@@ -1,0 +1,40 @@
+{
+  "units": {
+    "anon.ts": [
+      [
+        "default",
+        "arrow",
+        1,
+        1
+      ]
+    ],
+    "classy.ts": [
+      [
+        "default",
+        "class",
+        1,
+        1
+      ]
+    ],
+    "lib.ts": [
+      [
+        "internal",
+        "function",
+        1,
+        1
+      ],
+      [
+        "named",
+        "arrow",
+        3,
+        3
+      ]
+    ]
+  },
+  "consumers": [
+    "user.ts -> anon.ts#default call x1",
+    "user.ts -> classy.ts#default call x1",
+    "user.ts -> lib.ts#internal call x1",
+    "user.ts -> value.ts:default reference x1"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "units": {
+    "a.js": [
+      [
+        "lazy",
+        "arrow",
+        4,
+        4
+      ]
+    ]
+  },
+  "importEdges": [
+    "a.js -> b.js require",
+    "a.js -> c.js require",
+    "a.js -> side.js require"
+  ],
+  "consumers": [
+    "a.js -> b.js:x call x1",
+    "a.js -> c.js:c call x1"
+  ],
+  "fileEdges": [
+    "a.js -> b.js call call=1 reference=0",
+    "a.js -> c.js call call=1 reference=0",
+    "a.js -> side.js reference call=0 reference=0"
+  ],
+  "unresolved": [
+    "a.js:4 ./b dynamic-import"
+  ]
+}

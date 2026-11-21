@@ -1,0 +1,17 @@
+{
+  "importEdges": [
+    "main.ts -> dir/index.ts import",
+    "main.ts -> jsx-comp.tsx import",
+    "main.ts -> legacy.cjs import",
+    "main.ts -> lib/a.ts import",
+    "main.ts -> lib/a.ts reexport",
+    "main.ts -> lib/b.ts import",
+    "main.ts -> side-effect.ts import",
+    "main.ts -> types.ts import type"
+  ],
+  "unresolved": [
+    "main.ts:6 ./missing not-found",
+    "main.ts:13 ./lib/a dynamic-import",
+    "main.ts:14 <expression> dynamic-import"
+  ]
+}
