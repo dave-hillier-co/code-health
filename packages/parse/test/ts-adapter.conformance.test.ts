@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { analyseTree, type ProjectAnalysis } from "../src/analyse-tree.ts";
@@ -49,6 +49,19 @@ const cases = readdirSync(root, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
+const knownSections = ["units", "importEdges", "fileEdges", "consumers", "unresolved", "barrels"];
+
+describe("conformance fixtures are well formed", () => {
+  it.each(cases)("%s has an expected.json that names only known sections and pins its units", (name) => {
+    expect(existsSync(`${root}${name}/expected.json`), `${name} has no expected.json`).toBe(true);
+    const expected = JSON.parse(readFileSync(`${root}${name}/expected.json`, "utf8")) as Record<string, unknown>;
+    for (const section of Object.keys(expected)) {
+      expect(knownSections, `${name}/expected.json has an unknown section "${section}", which would be silently skipped`).toContain(section);
+    }
+    expect(Object.keys(expected).length, `${name} pins nothing`).toBeGreaterThan(0);
+  });
+});
+
 describe.each(cases)("ts-adapter fixture %s", (name) => {
   const expected = JSON.parse(readFileSync(`${root}${name}/expected.json`, "utf8")) as Expected;
   const sections = Object.keys(expected) as (keyof Expected)[];
@@ -57,5 +70,26 @@ describe.each(cases)("ts-adapter fixture %s", (name) => {
     const tree = await treeFromDirectory(`${root}${name}`);
     const actual = render(await analyseTree(tree));
     expect(actual[section]).toEqual(expected[section]);
+  });
+});
+
+describe("syntax errors", () => {
+  it("are reported for the file that has them, and its other units are still found", async () => {
+    const analysis = await analyseTree(await treeFromDirectory(`${root}syntax-errors`));
+    expect(analysis.filesWithSyntaxErrors).toEqual(["broken.ts"]);
+    expect(analysis.units.map((unit) => unit.qualifiedName)).toContain("ok");
+  });
+});
+
+describe("determinism", () => {
+  it("gives identical output whatever order the tree lists its files in", async () => {
+    for (const name of cases) {
+      const tree = await treeFromDirectory(`${root}${name}`);
+      const shuffled = {
+        ...tree,
+        files: new Map([...tree.files].reverse()),
+      };
+      expect(JSON.stringify(await analyseTree(shuffled)), name).toBe(JSON.stringify(await analyseTree(tree)));
+    }
   });
 });

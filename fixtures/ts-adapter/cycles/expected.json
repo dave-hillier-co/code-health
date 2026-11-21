@@ -1,0 +1,16 @@
+{
+  "units": {
+    "a.ts": [["a", "function", 3, 5]],
+    "b.ts": [["b", "function", 3, 5]],
+    "self.ts": [["me", "function", 3, 5]]
+  },
+  "importEdges": [
+    "a.ts -> b.ts import",
+    "b.ts -> a.ts import",
+    "barrel-a.ts -> barrel-b.ts reexport",
+    "barrel-b.ts -> barrel-a.ts reexport",
+    "self.ts -> self.ts import",
+    "use.ts -> barrel-a.ts import"
+  ],
+  "unresolved": []
+}

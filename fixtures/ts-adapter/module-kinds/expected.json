@@ -1,0 +1,17 @@
+{
+  "units": {
+    "helper.mts": [["helper", "function", 1, 3]],
+    "lazy.ts": [["load", "function", 1, 5]],
+    "legacy.cts": [["legacy", "function", 3, 5]],
+    "view.tsx": [["View", "function", 4, 6]]
+  },
+  "importEdges": [
+    "legacy.cts -> helper.mts import",
+    "view.tsx -> helper.mts import",
+    "view.tsx -> types.d.ts import"
+  ],
+  "unresolved": [
+    "lazy.ts:2 ./helper.mjs dynamic-import",
+    "lazy.ts:3 <expression> dynamic-import"
+  ]
+}

@@ -81,3 +81,25 @@ describe("symbolGraph", () => {
 function byBytes(a: string, b: string): number {
   return Buffer.compare(Buffer.from(a), Buffer.from(b));
 }
+
+describe("determinism and cycles", () => {
+  it("lists nodes and neighbours in the same order whatever order the tree is walked in", async () => {
+    for (const name of ["barrels", "consumers", "cycles"]) {
+      const tree = await treeFromDirectory(`${fixtures}${name}`);
+      const reversed = { ...tree, files: new Map([...tree.files].reverse()) };
+      const a = await analyseTree(tree);
+      const b = await analyseTree(reversed);
+      expect(JSON.stringify([...importGraph(b, { includeTests: true })]), name).toBe(JSON.stringify([...importGraph(a, { includeTests: true })]));
+      expect(JSON.stringify([...consumerGraph(b)]), name).toBe(JSON.stringify([...consumerGraph(a)]));
+      expect(JSON.stringify([...symbolGraph(b)]), name).toBe(JSON.stringify([...symbolGraph(a)]));
+    }
+  });
+
+  it("keeps import cycles and self-imports as edges", async () => {
+    const graph = plain(importGraph(await analyse("cycles")));
+    expect(graph["a.ts"]).toEqual(["b.ts"]);
+    expect(graph["b.ts"]).toEqual(["a.ts"]);
+    expect(graph["self.ts"]).toEqual(["self.ts"]);
+    expect(graph["barrel-a.ts"]).toEqual(["barrel-b.ts"]);
+  });
+});

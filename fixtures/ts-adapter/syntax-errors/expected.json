@@ -1,0 +1,11 @@
+{
+  "units": {
+    "broken.ts": [
+      ["ok", "function", 1, 3],
+      ["broken", "function", 5, 7]
+    ]
+  },
+  "importEdges": ["user.ts -> broken.ts import"],
+  "fileEdges": ["user.ts -> broken.ts call call=1 reference=0"],
+  "unresolved": []
+}
