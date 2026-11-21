@@ -60,7 +60,7 @@
       "issuePattern": "[A-Z][A-Z0-9]+-\\d+",
       "mergedCommits": 12,
       "mode": "issue-key",
-      "windowSeconds": null
+      "windowSeconds": 7776000
     },
     "lockfiles": true,
     "maxChangesetSize": 30,

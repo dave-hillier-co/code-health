@@ -702,6 +702,9 @@ function compileGlobs(patterns) {
 }
 
 // packages/history/src/grouping.ts
+var DEFAULT_ISSUE_PATTERN = "[A-Z][A-Z0-9]+-\\d+";
+var NOT_ISSUE_PREFIXES = /* @__PURE__ */ new Set(["UTF", "SHA", "MD", "ISO", "RFC", "TLS", "SSL", "AES", "RSA", "CVE", "PEP", "WCAG", "IPV", "ES", "HTTP", "TCP", "UDP"]);
+var ISSUE_KEY_WINDOW_SECONDS = 90 * 86400;
 function groupCommits(items, grouping, compilePattern) {
   if (grouping.mode === "off") return items.map((_, index) => [index]);
   const groups = [];
@@ -710,10 +713,11 @@ function groupCommits(items, grouping, compilePattern) {
     const open = /* @__PURE__ */ new Map();
     items.forEach((item, index) => {
       const match = pattern.exec(item.message);
-      const key = match === null ? void 0 : match[1] ?? match[0];
+      let key = match === null ? void 0 : match[1] ?? match[0];
+      if (key !== void 0 && grouping.pattern === DEFAULT_ISSUE_PATTERN && NOT_ISSUE_PREFIXES.has(key.slice(0, key.lastIndexOf("-")))) key = void 0;
       if (key === void 0 || key === "") return void groups.push([index]);
       let group = open.get(key);
-      if (!group) {
+      if (group === void 0 || item.date - items[group.at(-1)].date > ISSUE_KEY_WINDOW_SECONDS) {
         group = [];
         open.set(key, group);
         groups.push(group);
@@ -1003,7 +1007,7 @@ async function filterHistory(repoPath, view, options = {}) {
       grouping: {
         mode: grouping.mode,
         issuePattern: grouping.mode === "issue-key" ? grouping.pattern : null,
-        windowSeconds: grouping.mode === "author-window" ? grouping.windowSeconds : null,
+        windowSeconds: grouping.mode === "author-window" ? grouping.windowSeconds : grouping.mode === "issue-key" ? ISSUE_KEY_WINDOW_SECONDS : null,
         mergedCommits: survivors.length - changes.length
       },
       dropped,

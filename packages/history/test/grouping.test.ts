@@ -82,7 +82,7 @@ test("grouping by issue key merges commits into one logical change with the unio
   // The model file was created and then edited: one addition, with both commits' lines.
   expect(abc.files.find((f) => f.path === "src/model.ts")).toMatchObject({ status: "A", added: 4, deleted: 0 });
   expect(abc.committerDate).toBe(Date.parse("2024-03-02T09:00:00Z") / 1000);
-  expect(result.filtersApplied.grouping).toEqual({ mode: "issue-key", issuePattern: DEFAULT_ISSUE_PATTERN, windowSeconds: null, mergedCommits: 1 });
+  expect(result.filtersApplied.grouping).toEqual({ mode: "issue-key", issuePattern: DEFAULT_ISSUE_PATTERN, windowSeconds: 90 * 86400, mergedCommits: 1 });
 });
 
 test("oversized is judged on the merged change, so a split bulk edit is still bulk", async () => {

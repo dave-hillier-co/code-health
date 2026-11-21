@@ -1,5 +1,5 @@
 import { compileGlobs } from "./glob.ts";
-import { groupCommits, mergeFileChanges, type Grouping } from "./grouping.ts";
+import { groupCommits, ISSUE_KEY_WINDOW_SECONDS, mergeFileChanges, type Grouping } from "./grouping.ts";
 import { detectImportedHistory, type ImportDetectionOptions, type ImportedHistory } from "./imported.ts";
 import type { HistoryChange, HistoryCommit, HistoryView } from "./read.ts";
 import { hasCodeHealthTrailer } from "./trailers.ts";
@@ -302,7 +302,7 @@ export async function filterHistory(
       grouping: {
         mode: grouping.mode,
         issuePattern: grouping.mode === "issue-key" ? grouping.pattern : null,
-        windowSeconds: grouping.mode === "author-window" ? grouping.windowSeconds : null,
+        windowSeconds: grouping.mode === "author-window" ? grouping.windowSeconds : grouping.mode === "issue-key" ? ISSUE_KEY_WINDOW_SECONDS : null,
         mergedCommits: survivors.length - changes.length,
       },
       dropped,

@@ -32,7 +32,7 @@ Out of scope:
 
 **Revision.** A commit that touches a file, after noise filtering.
 
-**Logical change.** One or more commits that form a single unit of intent. By default each commit is its own logical change. Configurable grouping merges commits that share an issue key in the message (for example `ABC-123`) or come from the same author within a time window. Coupling is computed over logical changes, not raw commits, because a change split across three commits is still one change.
+**Logical change.** One or more commits that form a single unit of intent. By default each commit is its own logical change. Configurable grouping merges commits that share an issue key in the message (for example `ABC-123`) or come from the same author within a time window. Under issue-key grouping a key is reused over years and shares tokens with encodings and hashes (`UTF-8`, `SHA-256`), so commits join one change only within 90 days of the previous commit of the key, and those prefixes are not keys under the default pattern. Coupling is computed over logical changes, not raw commits, because a change split across three commits is still one change.
 
 **Changeset size.** The number of files in a logical change after filtering. Logical changes above the configured maximum are excluded from coupling and spread, since bulk edits (formatting, licence headers, dependency bumps) couple everything to everything and carry no signal.
 

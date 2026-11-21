@@ -178,7 +178,7 @@
                 "null"
               ],
               "minimum": 1,
-              "description": "The longest pause between commits of one change. Only with author-window."
+              "description": "The longest pause between commits of one change: with author-window the configured window, with issue-key the longest gap between commits sharing a key."
             },
             "mergedCommits": {
               "$ref": "#/$defs/count",

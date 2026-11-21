@@ -6,7 +6,9 @@ import type { HistoryChange } from "./read.ts";
  * - `off`: every commit is its own change.
  * - `issue-key`: commits whose message matches `pattern` with the same key form one change. The key
  *   is the first capture group of the first match, or the whole match when the pattern has none.
- *   Commits with no key stay on their own.
+ *   Commits with no key stay on their own. A key is reused over years, so a commit joins the open
+ *   change of its key only when it follows that change's last commit by at most
+ *   `ISSUE_KEY_WINDOW_SECONDS`; later it starts a new change.
  * - `author-window`: commits by the same author form one change while each follows the previous one
  *   by at most `windowSeconds`, so a burst of commits is one change and a pause ends it.
  */
@@ -17,6 +19,16 @@ export type Grouping =
 
 /** The issue keys of common trackers: `ABC-123`. */
 export const DEFAULT_ISSUE_PATTERN = "[A-Z][A-Z0-9]+-\\d+";
+
+/**
+ * Prefixes that the default pattern also matches but that name encodings, hashes and standards
+ * (`UTF-8`, `SHA-256`, `ISO-8601`), not issues. They are skipped under the default pattern only, so a
+ * configured pattern means exactly what it says.
+ */
+const NOT_ISSUE_PREFIXES = new Set(["UTF", "SHA", "MD", "ISO", "RFC", "TLS", "SSL", "AES", "RSA", "CVE", "PEP", "WCAG", "IPV", "ES", "HTTP", "TCP", "UDP"]);
+
+/** The longest gap between consecutive commits of one issue key that still form a single change. */
+export const ISSUE_KEY_WINDOW_SECONDS = 90 * 86400;
 
 export interface Groupable {
   message: string;
@@ -39,10 +51,11 @@ export function groupCommits(items: readonly Groupable[], grouping: Grouping, co
     const open = new Map<string, number[]>();
     items.forEach((item, index) => {
       const match = pattern.exec(item.message);
-      const key = match === null ? undefined : (match[1] ?? match[0]);
+      let key = match === null ? undefined : (match[1] ?? match[0]);
+      if (key !== undefined && grouping.pattern === DEFAULT_ISSUE_PATTERN && NOT_ISSUE_PREFIXES.has(key.slice(0, key.lastIndexOf("-")))) key = undefined;
       if (key === undefined || key === "") return void groups.push([index]);
       let group = open.get(key);
-      if (!group) {
+      if (group === undefined || item.date - items[group.at(-1)!]!.date > ISSUE_KEY_WINDOW_SECONDS) {
         group = [];
         open.set(key, group);
         groups.push(group);

@@ -67,7 +67,7 @@
           "properties": {
             "mode": { "enum": ["off", "issue-key", "author-window"] },
             "issuePattern": { "type": ["string", "null"], "description": "The regular expression whose match is the issue key. Only with issue-key." },
-            "windowSeconds": { "type": ["integer", "null"], "minimum": 1, "description": "The longest pause between commits of one change. Only with author-window." },
+            "windowSeconds": { "type": ["integer", "null"], "minimum": 1, "description": "The longest pause between commits of one change: with author-window the configured window, with issue-key the longest gap between commits sharing a key." },
             "mergedCommits": { "$ref": "#/$defs/count", "description": "Commits folded into another logical change." }
           },
           "required": ["mode", "issuePattern", "windowSeconds", "mergedCommits"],
