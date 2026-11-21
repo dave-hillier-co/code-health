@@ -108,6 +108,24 @@ async function performMove(tree: SourceTree, operations: readonly FileOperation[
     needs.set(consumer.from, (needs.get(consumer.from) ?? new Set()).add(top));
   }
 
+  // A package-private class is out of reach once the file that uses it, or the file that declares it, leaves their package.
+  const packageAfter = (path: string): string => moves.get(path)?.newPackage ?? heads.get(path)?.packageName ?? "";
+  const reachable = new Set(analysis.exports.map((exported) => `${exported.defined.file}\0${exported.defined.name}`));
+  const stranded = new Set<string>();
+  for (const consumer of analysis.consumers) {
+    if (consumer.from === consumer.to || !consumer.from.endsWith(".java") || !consumer.to.endsWith(".java")) continue;
+    if (!moves.has(consumer.from) && !moves.has(consumer.to)) continue;
+    const before = heads.get(consumer.from)?.packageName;
+    if (before === undefined || before !== heads.get(consumer.to)?.packageName || packageAfter(consumer.from) === packageAfter(consumer.to)) continue;
+    if (reachable.has(`${consumer.to}\0${consumer.toExport}`)) continue;
+    const name = consumer.toExport.slice(before === "" ? 0 : before.length + 1);
+    const warning = `${moves.get(consumer.from)?.to ?? consumer.from} uses ${name} of ${moves.get(consumer.to)?.to ?? consumer.to}, which is package-private in ${before} and out of reach from ${packageAfter(consumer.from) === before ? packageAfter(consumer.to) : packageAfter(consumer.from)}`;
+    if (!stranded.has(warning)) {
+      stranded.add(warning);
+      warnings.push(warning);
+    }
+  }
+
   const rewrites: Rewrite[] = [];
   const changed = new Map<string, string>();
   const inCodeOf = new Map<string, string[]>();

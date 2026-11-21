@@ -52,6 +52,23 @@ describe("moving files of the shared Java and Kotlin graph", () => {
     expect(result.texts.get("src/main/kotlin/acme/service/Totals.kt")).toBe("package acme.service\n\nimport acme.cart.Cart\nimport acme.cart.Price\n\nfun total(cart: Cart, price: Price) = 0\n");
   });
 
+  it("warns that package-private members no longer reach across when a Java file leaves a package-private class behind", async () => {
+    const tree = treeFromTexts({
+      "src/main/java/com/a/Util.java": "package com.a;\n\npublic class Util {\n    int hidden;\n    Peer peer;\n}\n",
+      "src/main/java/com/a/Peer.java": "package com.a;\n\nclass Peer {\n    int read(Util util) { return util.hidden; }\n}\n",
+      "src/main/java/com/a/Alone.java": "package com.a;\n\npublic class Alone {\n}\n",
+    });
+    const result = await performMove(tree, [{ from: "src/main/java/com/a/Util.java", to: "src/main/java/com/z/Util.java", role: "unit" }], { searchPath: "" });
+    expect(result.warnings).toEqual([
+      "src/main/java/com/z/Util.java uses Peer of src/main/java/com/a/Peer.java, which is package-private in com.a and out of reach from com.z",
+    ]);
+  });
+
+  it("does not warn about Kotlin files, which have no package-private visibility", async () => {
+    const result = await performMove(mixed, [{ from: "src/main/kotlin/acme/model/Cart.kt", to: "src/main/kotlin/acme/cart/Cart.kt", role: "unit" }], { searchPath: "" });
+    expect(result.warnings).toEqual([]);
+  });
+
   it("reports each language's tool as not confirmed when it is not installed", async () => {
     const result = await performMove(
       mixed,
