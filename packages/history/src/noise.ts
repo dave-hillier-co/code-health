@@ -1,4 +1,5 @@
 import { compileGlobs } from "./glob.ts";
+import { groupCommits, mergeFileChanges, type Grouping } from "./grouping.ts";
 import { detectImportedHistory, type ImportDetectionOptions, type ImportedHistory } from "./imported.ts";
 import type { HistoryChange, HistoryCommit, HistoryView } from "./read.ts";
 import { hasCodeHealthTrailer } from "./trailers.ts";
@@ -30,8 +31,8 @@ export const DEFAULT_LOCKFILES: readonly string[] = [
 export class InvalidPatternError extends Error {
   readonly pattern: string;
 
-  constructor(pattern: string, reason: string) {
-    super(`invalid bot pattern "${pattern}": ${reason}`);
+  constructor(pattern: string, reason: string, kind = "bot pattern") {
+    super(`invalid ${kind} "${pattern}": ${reason}`);
     this.name = "InvalidPatternError";
     this.pattern = pattern;
   }
@@ -42,6 +43,14 @@ function compileBotPattern(pattern: string): RegExp {
     return new RegExp(pattern, "i");
   } catch (error) {
     throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error));
+  }
+}
+
+function compileIssuePattern(pattern: string): RegExp {
+  try {
+    return new RegExp(pattern);
+  } catch (error) {
+    throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error), "issue pattern");
   }
 }
 
@@ -68,6 +77,8 @@ export interface NoiseOptions {
    * should set this. Default false: such commits are kept, flagged `suiteCommit`.
    */
   excludeSuiteCommits?: boolean;
+  /** How surviving commits form logical changes. Default: each commit is its own change. */
+  grouping?: Grouping;
   importDetection?: ImportDetectionOptions;
   /** Window, in unix seconds of committer date. `since` is inclusive, `until` exclusive. */
   since?: number;
@@ -76,12 +87,13 @@ export interface NoiseOptions {
 
 /**
  * One unit of intent. With grouping off (the default) every commit is its own
- * logical change. Grouping by issue key or author window arrives later and
- * merges several commits here.
+ * logical change. Grouping by issue key or author window merges several commits
+ * here: `files` is then the union over the commits, one entry per file.
  */
 export interface LogicalChange {
   /** SHA of the first commit. */
   id: string;
+  /** The commits of the change, oldest first. */
   shas: string[];
   /** Latest committer date among the commits, unix seconds. */
   committerDate: number;
@@ -104,6 +116,13 @@ export interface FiltersApplied {
   maxChangesetSize: number;
   excludeImported: boolean;
   excludeSuiteCommits: boolean;
+  /** How commits were grouped into logical changes, and how many were folded into another change. */
+  grouping: {
+    mode: Grouping["mode"];
+    issuePattern: string | null;
+    windowSeconds: number | null;
+    mergedCommits: number;
+  };
   /** What was dropped, so a reader can see how much each filter removed. */
   dropped: {
     outsideWindow: number;
@@ -148,6 +167,7 @@ export async function filterHistory(
   const botPatterns = options.botPatterns ?? [];
   const excludeImported = options.excludeImported ?? true;
   const excludeSuiteCommits = options.excludeSuiteCommits ?? false;
+  const grouping: Grouping = options.grouping ?? { mode: "off" };
   const excluded = compileGlobs(options.exclude ?? []);
   const bots = botPatterns.map(compileBotPattern);
 
@@ -196,6 +216,7 @@ export async function filterHistory(
     return true;
   }
 
+  const survivors: { commit: HistoryCommit; files: HistoryChange[] }[] = [];
   for (const commit of view.commits) {
     if (commitDropped(commit)) continue;
     const files: HistoryChange[] = [];
@@ -218,14 +239,29 @@ export async function filterHistory(
       dropped.emptyAfterFiltering++;
       continue;
     }
+    survivors.push({ commit, files });
+  }
+
+  const groups = groupCommits(
+    survivors.map(({ commit }) => ({ message: commit.message, author: commit.mappedEmail, date: commit.committerDate })),
+    grouping,
+    compileIssuePattern,
+  );
+  for (const group of groups) {
+    const members = group.map((index) => survivors[index]!);
+    const byFile = new Map<string, HistoryChange[]>();
+    for (const { files } of members) {
+      for (const file of files) byFile.set(file.fileId, [...(byFile.get(file.fileId) ?? []), file]);
+    }
+    const files = [...byFile.values()].map(mergeFileChanges);
     changes.push({
-      id: commit.sha,
-      shas: [commit.sha],
-      committerDate: commit.committerDate,
-      authors: [commit.mappedEmail],
+      id: members[0]!.commit.sha,
+      shas: members.map(({ commit }) => commit.sha),
+      committerDate: Math.max(...members.map(({ commit }) => commit.committerDate)),
+      authors: [...new Set(members.map(({ commit }) => commit.mappedEmail))],
       files,
       oversized: files.length > maxChangesetSize,
-      suiteCommit: hasCodeHealthTrailer(commit.message),
+      suiteCommit: members.some(({ commit }) => hasCodeHealthTrailer(commit.message)),
     });
   }
 
@@ -241,6 +277,12 @@ export async function filterHistory(
       maxChangesetSize,
       excludeImported,
       excludeSuiteCommits,
+      grouping: {
+        mode: grouping.mode,
+        issuePattern: grouping.mode === "issue-key" ? grouping.pattern : null,
+        windowSeconds: grouping.mode === "author-window" ? grouping.windowSeconds : null,
+        mergedCommits: survivors.length - changes.length,
+      },
       dropped,
       oversizedChanges: changes.filter((c) => c.oversized).length,
     },
