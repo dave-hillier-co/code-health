@@ -1,0 +1,46 @@
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+import { runGit } from "./git.ts";
+
+export interface CacheLocation {
+  /** Top level of the working tree being analysed. */
+  repoRoot: string;
+  /** Absolute path of the repository's common git directory. */
+  gitDir: string;
+  /** `.cache/code-health` directory. Shared by all linked worktrees. */
+  cacheDir: string;
+  dbPath: string;
+  lockPath: string;
+}
+
+/**
+ * Resolves where the shared cache lives for the repository containing
+ * `repoPath`. Linked worktrees share the main worktree's cache, because the
+ * history store is content-addressed.
+ */
+export async function locateCache(repoPath: string): Promise<CacheLocation> {
+  const out = await runGit(repoPath, [
+    "rev-parse",
+    "--path-format=absolute",
+    "--show-toplevel",
+    "--git-common-dir",
+  ]);
+  const [repoRoot, gitDir] = out.split("\n");
+  if (!repoRoot || !gitDir) throw new Error(`Not a git working tree: ${repoPath}`);
+  const cacheRoot = basename(gitDir) === ".git" ? dirname(gitDir) : repoRoot;
+  const cacheDir = join(cacheRoot, ".cache", "code-health");
+  return {
+    repoRoot,
+    gitDir,
+    cacheDir,
+    dbPath: join(cacheDir, "history.sqlite"),
+    lockPath: join(cacheDir, "history.lock"),
+  };
+}
+
+/** Creates the cache directory and, on first use, its self-ignoring `.gitignore`. */
+export function ensureCacheDir(location: CacheLocation): void {
+  mkdirSync(location.cacheDir, { recursive: true });
+  const ignore = join(location.cacheDir, ".gitignore");
+  if (!existsSync(ignore)) writeFileSync(ignore, "*\n");
+}
