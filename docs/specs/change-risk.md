@@ -206,7 +206,8 @@ The skill works from history alone. Results from sibling plugins reach it in two
 
 - **Per-branch results are passed in.** `complexity diff` and `structure check` describe one branch, so they are not reports in the suite's sense, which are full runs stamped with HEAD. The skill runs them and hands their JSON to `cochange risk --evidence`. The CLI folds them in as `complexity-delta` and `structure-delta`, and never invokes another plugin itself.
 - **Fan-in comes from a report.** `blast-radius` reads locality's report when it is present and stamped with the current HEAD ([suite.md](suite.md#shared-caches)).
-- The blame cache supplies placement, and knowledge analysis supplies `abandoned-touched`.
+- **`abandoned-touched` reads abandonment's report.** A configured `abandonment simulate` run on a clean tree stores `reports/cochange.abandonment.simulate.json`: every file with its abandoned flag and probability, never a person. When it is stamped with the change's tip and the current config and overrides, the factor reads it and `inputs.abandonment` names it. Otherwise the factor is measured from the blame cache at the change's base.
+- The blame cache supplies placement.
 
 Without them, the lexical and history fallbacks in the tables apply, or the factor is `unavailable`.
 

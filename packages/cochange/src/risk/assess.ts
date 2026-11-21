@@ -53,6 +53,8 @@ export interface Assessed {
   /** What the skill passed in with --evidence, and the locality report when one covers this tip. */
   evidence: EvidenceInputs;
   locality: LocalityFanIn | null;
+  /** The abandonment report `abandoned-touched` was read from, when it was. */
+  abandonment: { report: string; head: string; config: string } | null;
 }
 
 export function measureContext(context: CommandContext, history: LoadedHistory, risk: RiskSettings): MeasureContext {
@@ -128,9 +130,10 @@ export async function assessBranch(
     moved: change.moved,
   };
   state.advance(time);
+  const abandoned = await abandonedTouched(context, history, change);
   const measurements = [
     ...measureHistoryLayer(facts, state, measure),
-    ...(await liveMeasurements(root, change, risk, evidence, await abandonedTouched(context, history, change))),
+    ...(await liveMeasurements(root, change, risk, evidence, abandoned.measurement)),
   ];
   const baselineMeasures = past.map((p) => p.measurements);
   const bander = makeBander(baselineMeasures, risk);
@@ -167,6 +170,7 @@ export async function assessBranch(
     facts,
     evidence,
     locality,
+    abandonment: abandoned.report,
   };
 }
 

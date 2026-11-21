@@ -60,7 +60,7 @@ async function risk(...args: string[]) {
   expect(run.code, run.stderr).toBe(ExitCode.Success);
   const document = JSON.parse(run.stdout);
   const factors: Factor[] = document.results.factors;
-  return { stdout: run.stdout, factor: factors.find((f) => f.name === "abandoned-touched")!, findings: document.results.findings as { id: string; response: string; factor: string | null }[] };
+  return { stdout: run.stdout, inputs: document.inputs as Record<string, unknown>, factor: factors.find((f) => f.name === "abandoned-touched")!, findings: document.results.findings as { id: string; response: string; factor: string | null }[] };
 }
 
 describe("abandoned-touched", () => {
@@ -120,5 +120,42 @@ describe("abandoned-touched", () => {
     const { factor } = await risk("main..fresh");
     expect(factor).toMatchObject({ status: "ok", band: "low" });
     expect(factor.value).toMatchObject({ count: 0, files: 0 });
+  });
+
+  describe("with the abandonment report", () => {
+    test("reads the report of the simulation when it describes the tip of the change, and names it in the inputs", async () => {
+      configure({});
+      repo.git("checkout", "--quiet", "orphans");
+      const computed = await risk("main..orphans");
+      expect(computed.factor.source).toBe("knowledge analysis");
+      expect(computed.inputs.abandonment).toBeNull();
+
+      expect((await runCochange(repo.path, ["abandonment", "simulate"])).code).toBe(ExitCode.Success);
+      const composed = await risk("main..orphans");
+      expect(composed.factor).toMatchObject({ status: "ok", band: computed.factor.band, source: "abandonment report" });
+      expect(composed.factor.value).toMatchObject({ count: 1 });
+      expect(composed.factor.evidence).toEqual([expect.objectContaining({ file: engine, abandoned: true, probability: 1 })]);
+      expect(composed.inputs.abandonment).toMatchObject({ report: "cochange.abandonment.simulate", config: expect.any(String) });
+      expect(composed.stdout).not.toMatch(/Ann Active|Cy Gone|example\.com/);
+    });
+
+    test("is not read once the configuration changed, or when the run was not the configured one", async () => {
+      configure({});
+      repo.git("checkout", "--quiet", "orphans");
+      await runCochange(repo.path, ["abandonment", "simulate", "--trials", "50"]);
+      expect((await risk("main..orphans")).factor.source).toBe("knowledge analysis");
+
+      await runCochange(repo.path, ["abandonment", "simulate"]);
+      expect((await risk("main..orphans")).factor.source).toBe("abandonment report");
+      configure({ trials: 300 });
+      expect((await risk("main..orphans")).factor.source).toBe("knowledge analysis");
+    });
+
+    test("is not read for a change that ends elsewhere than the commit the report describes", async () => {
+      configure({});
+      repo.git("checkout", "--quiet", "orphans");
+      await runCochange(repo.path, ["abandonment", "simulate"]);
+      expect((await risk("main..living")).factor.source).toBe("knowledge analysis");
+    });
   });
 });
