@@ -63,3 +63,8 @@ function parseFields(raw: string | undefined): string[] | undefined {
   if (fields.some((field) => field === "")) throw usageError("--fields must be a comma separated list of field names");
   return fields;
 }
+
+/** Finds the command name before its options are known, since those depend on the command. */
+export function discoverCommand(argv: string[]): string | undefined {
+  return parseArgs({ args: argv, options: commonOptions, allowPositionals: true, strict: false }).positionals[0];
+}
