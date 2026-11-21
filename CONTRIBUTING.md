@@ -2,6 +2,19 @@
 
 The specs in `docs/specs/` are the source of truth, starting with `docs/specs/suite.md`. This file says how to work in the repository: how to add a plugin, a command or a skill, and which checks gate a change. `README.md` describes the layout.
 
+## Contributions and copyright
+
+Code Health is dual-licensed under `AGPL-3.0-only` and a commercial licence (see [LICENSING.md](LICENSING.md)). Offering both requires that one person holds the copyright in all of the code, so contributions are accepted only on these terms.
+
+By submitting a contribution to this repository (a pull request, patch, commit or any other material you intend to be included), you agree that:
+
+1. You assign to David Hillier all copyright and other intellectual property rights in the contribution, worldwide, for their full term, including the right to license it under any terms, the AGPL and commercial licences included.
+2. To the extent the law does not allow a right to be assigned, you grant David Hillier an exclusive, perpetual, irrevocable, worldwide, royalty-free licence to it, with the right to sublicense, and you waive, or agree not to assert, any moral rights in the contribution.
+3. The contribution is your own original work, or you otherwise have the right to make this assignment, and it does not knowingly infringe anyone else's rights. If your employer or anyone else has rights in work you create, you have their permission to contribute it on these terms.
+4. You keep a licence to use your own contribution under the AGPL, like anyone else.
+
+If you cannot agree to these terms, please open an issue to discuss the change instead of submitting it.
+
 ## Working rules
 
 - TypeScript ESM, no `index.ts` barrel files. Import modules by their real path.

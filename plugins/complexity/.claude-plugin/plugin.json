@@ -3,8 +3,8 @@
   "displayName": "Complexity",
   "version": "0.1.0",
   "description": "Finds the functions that are hard to understand, explains where their cognitive and cyclomatic complexity comes from, guides simplifications that avoid shallow helpers, and guards CI against regressions.",
-  "author": { "name": "Dave Hillier" },
-  "license": "MIT",
+  "author": { "name": "David Hillier", "email": "dave@hillier.co" },
+  "license": "AGPL-3.0-only OR LicenseRef-Commercial",
   "repository": "https://github.com/dave-hillier-co/code-health",
   "keywords": ["complexity", "cognitive-complexity", "cyclomatic-complexity", "refactoring", "ci", "code-health"],
   "engines": { "claude-code": ">=2.1.0" }

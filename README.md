@@ -47,3 +47,7 @@ npm run typecheck
 Tests are sociable: they run against real git repositories created by `fixtures/git-fixture.ts` with fixed identities and dates. Run one package with `npx vitest run packages/<name>`.
 
 See `CONTRIBUTING.md` for adding a plugin, writing a skill and running evals.
+
+## Licence
+
+Dual-licensed under `AGPL-3.0-only` ([LICENSE](LICENSE)) or a commercial licence. See [LICENSING.md](LICENSING.md). Contributions assign copyright to David Hillier; see [CONTRIBUTING.md](CONTRIBUTING.md#contributions-and-copyright).

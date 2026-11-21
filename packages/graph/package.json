@@ -8,5 +8,6 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
-  }
+  },
+  "license": "AGPL-3.0-only OR LicenseRef-Commercial"
 }

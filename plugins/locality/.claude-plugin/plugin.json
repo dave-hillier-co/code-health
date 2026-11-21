@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "description": "Finds code that lives far from the code that uses it and recommends moving, inlining or splitting it.",
   "author": {
-    "name": "Dave Hillier"
+    "name": "David Hillier",
+    "email": "dave@hillier.co"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-only OR LicenseRef-Commercial",
   "repository": "https://github.com/dave-hillier-co/code-health",
   "engines": {
     "claude-code": ">=2.1.0"

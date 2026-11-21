@@ -32,5 +32,6 @@
     "typescript": "^7.0.2",
     "vitest": "^5.1.1",
     "yaml": "^2.9.1"
-  }
+  },
+  "license": "AGPL-3.0-only OR LicenseRef-Commercial"
 }
