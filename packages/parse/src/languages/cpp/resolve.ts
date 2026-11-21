@@ -81,9 +81,10 @@ export function resolveCpp(input: ResolveInput): ResolvedDependencies {
   for (const path of input.facts.keys()) {
     if (!isSource(path)) continue;
     const stem = stemOf(path);
-    const header =
-      (includes.get(path) ?? []).find((target) => isHeader(target) && stemOf(target) === stem) ??
-      (headersByDirectoryAndStem.get(`${posix.dirname(path)}\0${stem}`) ?? [])[0];
+    // The header of the source's own folder wins over a foreign header of the same stem that it merely includes.
+    const sameFolder = headersByDirectoryAndStem.get(`${posix.dirname(path)}\0${stem}`) ?? [];
+    const included = includes.get(path) ?? [];
+    const header = sameFolder.find((target) => included.includes(target)) ?? sameFolder[0] ?? included.find((target) => isHeader(target) && stemOf(target) === stem);
     if (header === undefined) continue;
     pairedWith.set(path, header);
     implementations.set(header, [...(implementations.get(header) ?? []), path]);

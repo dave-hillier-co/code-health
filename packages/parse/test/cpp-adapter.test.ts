@@ -96,6 +96,18 @@ describe("header and source pairing", () => {
     expect(analysis.importEdges.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual(["a/x.h -> a/x.cpp"]);
   });
 
+  it("pairs a source file with the header of its own folder, not a foreign header of the same stem that sorts first", async () => {
+    const analysis = await analyse({
+      "core/config.h": "int core();\n",
+      "net/config.h": "int net();\n",
+      "net/config.cpp": '#include "../core/config.h"\n#include "config.h"\nint net() { return core(); }\n',
+    });
+    const edges = analysis.importEdges.map((edge) => `${edge.from} -> ${edge.to}`);
+    expect(edges).toContain("net/config.h -> net/config.cpp");
+    expect(edges).toContain("net/config.cpp -> core/config.h");
+    expect(edges).not.toContain("core/config.h -> net/config.cpp");
+  });
+
   it("does not pair files of different stems or folders", async () => {
     const analysis = await analyse({ "a/x.h": "int x();\n", "b/x.cpp": '#include "../a/y.h"\nint x() { return 1; }\n', "a/y.h": "int y();\n" });
     expect(analysis.importEdges.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual(["b/x.cpp -> a/y.h"]);
