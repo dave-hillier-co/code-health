@@ -1,0 +1,24 @@
+{
+  "operations": [
+    {
+      "from": "src/main/java/acme/model/Ledger.java",
+      "to": "src/main/java/acme/ledger/Ledger.java"
+    }
+  ],
+  "rewrites": [
+    { "path": "src/main/java/acme/Main.java", "line": 3, "from": "acme.model.Ledger.open", "to": "acme.ledger.Ledger.open" },
+    { "path": "src/main/java/acme/ledger/Ledger.java", "line": 1, "from": "acme.model", "to": "acme.ledger" },
+    { "path": "src/main/java/acme/ledger/Ledger.java", "line": 3, "from": "", "to": "acme.model.Account" },
+    { "path": "src/main/java/acme/model/Audit.java", "line": 3, "from": "", "to": "acme.ledger.Ledger" },
+    { "path": "src/main/java/acme/service/Billing.java", "line": 4, "from": "acme.model.Ledger", "to": "acme.ledger.Ledger" },
+    { "path": "src/main/java/acme/service/Reports.java", "line": 4, "from": "", "to": "acme.ledger.Ledger" }
+  ],
+  "texts": {
+    "src/main/java/acme/Main.java": "package acme;\n\nimport static acme.ledger.Ledger.open;\n\npublic class Main {\n    public static void main(String[] args) {\n        open();\n    }\n}\n",
+    "src/main/java/acme/ledger/Ledger.java": "package acme.ledger;\n\nimport acme.model.Account;\n\npublic class Ledger {\n    private final Account account = new Account();\n\n    public static Ledger open() {\n        return new Ledger();\n    }\n}\n",
+    "src/main/java/acme/model/Audit.java": "package acme.model;\n\nimport acme.ledger.Ledger;\n\npublic class Audit {\n    Ledger ledger;\n}\n",
+    "src/main/java/acme/service/Billing.java": "package acme.service;\n\nimport acme.model.Account;\nimport acme.ledger.Ledger;\n\npublic class Billing {\n    public static void charge(Account account) {\n        Ledger ledger = Ledger.open();\n    }\n}\n",
+    "src/main/java/acme/service/Reports.java": "package acme.service;\n\nimport acme.model.*;\nimport acme.ledger.Ledger;\n\npublic class Reports {\n    Ledger ledger = Ledger.open();\n}\n"
+  },
+  "warnings": []
+}
