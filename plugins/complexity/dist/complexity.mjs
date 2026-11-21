@@ -618,12 +618,6 @@ var declarationStatements = /* @__PURE__ */ new Set([
 ]);
 var notStatements = /* @__PURE__ */ new Set(["empty_statement", "labeled_statement"]);
 var Measurer = class {
-  constructor(options, names) {
-    this.options = options;
-    this.names = names;
-  }
-  options;
-  names;
   cyclomatic = 1;
   cyclomaticModified = 1;
   cognitive = 0;
@@ -631,6 +625,12 @@ var Measurer = class {
   statements = 0;
   recursion = false;
   increments = [];
+  options;
+  names;
+  constructor(options, names) {
+    this.options = options;
+    this.names = names;
+  }
   record(node, metric, construct, amount, nesting) {
     if (this.options.explain) {
       this.increments.push({ line: node.startPosition.row + 1, metric, construct, amount, nesting });
@@ -982,10 +982,6 @@ function blockNames(block, out2) {
   for (const statement of block.namedChildren) declaredNames(statement, out2);
 }
 var Extractor = class {
-  constructor(explain2) {
-    this.explain = explain2;
-  }
-  explain;
   units = [];
   imports = [];
   reexports = [];
@@ -994,6 +990,10 @@ var Extractor = class {
   nameCounts = /* @__PURE__ */ new Map();
   codeRows;
   root;
+  explain;
+  constructor(explain2) {
+    this.explain = explain2;
+  }
   extract(root) {
     this.root = root;
     const context = { unit: void 0, shadow: /* @__PURE__ */ new Set() };
@@ -2938,7 +2938,7 @@ import { createRequire } from "node:module";
 import { join as join6 } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// ../../../node_modules/web-tree-sitter/web-tree-sitter.js
+// node_modules/web-tree-sitter/web-tree-sitter.js
 var __defProp2 = Object.defineProperty;
 var __name = (target, value) => __defProp2(target, "name", { value, configurable: true });
 var Edit = class {

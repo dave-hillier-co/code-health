@@ -644,8 +644,308 @@ function compileGlobs(patterns) {
 // packages/locality/src/project.ts
 import { posix as posix2 } from "node:path";
 
+// packages/parse/src/unit-metrics.ts
+var functionLike = /* @__PURE__ */ new Set([
+  "arrow_function",
+  "function_expression",
+  "function",
+  "generator_function",
+  "function_declaration",
+  "generator_function_declaration",
+  "method_definition"
+]);
+var loopNames = {
+  for_statement: "for",
+  for_in_statement: "for-in",
+  while_statement: "while",
+  do_statement: "do-while"
+};
+var logicalOperators = /* @__PURE__ */ new Set(["&&", "||"]);
+var cyclomaticAssignments = /* @__PURE__ */ new Set(["&&=", "||=", "??="]);
+var declarationStatements = /* @__PURE__ */ new Set([
+  "lexical_declaration",
+  "variable_declaration",
+  "function_declaration",
+  "generator_function_declaration",
+  "class_declaration",
+  "abstract_class_declaration"
+]);
+var notStatements = /* @__PURE__ */ new Set(["empty_statement", "labeled_statement"]);
+var Measurer = class {
+  cyclomatic = 1;
+  cyclomaticModified = 1;
+  cognitive = 0;
+  nesting = 0;
+  statements = 0;
+  recursion = false;
+  increments = [];
+  options;
+  names;
+  constructor(options, names) {
+    this.options = options;
+    this.names = names;
+  }
+  record(node, metric, construct, amount, nesting) {
+    if (this.options.explain) {
+      this.increments.push({ line: node.startPosition.row + 1, metric, construct, amount, nesting });
+    }
+  }
+  decision(node, construct) {
+    this.cyclomatic++;
+    this.cyclomaticModified++;
+    this.record(node, "cyclomatic", construct, 1, 0);
+  }
+  flow(node, construct, level) {
+    this.cognitive += 1 + level;
+    this.record(node, "cognitive", construct, 1 + level, level);
+  }
+  flat(node, construct) {
+    this.cognitive += 1;
+    this.record(node, "cognitive", construct, 1, 0);
+  }
+  /** Walks the function's own parameters and body, at level 0. */
+  function(fn) {
+    this.statementsOfExpressionBody(fn);
+    this.children(fn, 0, 0);
+  }
+  statementsOfExpressionBody(fn) {
+    const body2 = fn.childForFieldName("body");
+    if (body2 !== null && fn.type === "arrow_function" && body2.type !== "statement_block") this.statements++;
+  }
+  children(node, level, depth, skip) {
+    for (let i2 = 0; i2 < node.childCount; i2++) {
+      const child = node.child(i2);
+      if (child !== null && child.isNamed && child.id !== skip?.id) this.visit(child, level, depth);
+    }
+  }
+  visit(node, level, depth) {
+    const type = node.type;
+    if (this.isStatement(node)) this.statements++;
+    if (functionLike.has(type)) {
+      this.statementsOfExpressionBody(node);
+      this.children(node, level + 1, depth);
+      return;
+    }
+    switch (type) {
+      case "if_statement":
+        this.ifStatement(node, level, depth, false);
+        return;
+      case "for_statement":
+      case "for_in_statement":
+      case "while_statement":
+      case "do_statement":
+        this.loop(node, level, depth);
+        return;
+      case "switch_statement": {
+        this.flow(node, "switch", level);
+        this.cyclomaticModified++;
+        this.nesting = Math.max(this.nesting, depth + 1);
+        const body2 = node.childForFieldName("body");
+        this.children(node, level, depth, body2);
+        if (body2 !== null) this.children(body2, level + 1, depth + 1);
+        return;
+      }
+      case "switch_case":
+        this.cyclomatic++;
+        this.record(node, "cyclomatic", "case", 1, 0);
+        this.children(node, level, depth);
+        return;
+      case "try_statement":
+        this.nesting = Math.max(this.nesting, depth + 1);
+        this.children(node, level, depth + 1);
+        return;
+      case "catch_clause": {
+        this.flow(node, "catch", level);
+        this.decision(node, "catch");
+        const body2 = node.childForFieldName("body");
+        this.children(node, level, depth, body2);
+        if (body2 !== null) this.visit(body2, level + 1, depth);
+        return;
+      }
+      case "ternary_expression": {
+        this.flow(node, "ternary", level);
+        this.decision(node, "ternary");
+        const condition = node.childForFieldName("condition");
+        if (condition !== null) this.visit(condition, level, depth);
+        for (const name3 of ["consequence", "alternative"]) {
+          const branch = node.childForFieldName(name3);
+          if (branch !== null) this.visit(branch, level + 1, depth);
+        }
+        return;
+      }
+      case "binary_expression": {
+        const operator = this.operatorOf(node);
+        if (operator !== void 0 && logicalOperators.has(operator)) {
+          this.logicalChain(node, level, depth);
+          return;
+        }
+        if (operator === "??") this.decision(node, "??");
+        this.children(node, level, depth);
+        return;
+      }
+      case "augmented_assignment_expression": {
+        const operator = node.childForFieldName("operator")?.type;
+        if (operator !== void 0 && cyclomaticAssignments.has(operator)) this.decision(node, operator);
+        this.children(node, level, depth);
+        return;
+      }
+      case "break_statement":
+      case "continue_statement":
+        if (node.childForFieldName("label") !== null) this.flat(node, `labelled ${type.slice(0, -10)}`);
+        return;
+      case "call_expression":
+        this.recursionCheck(node);
+        this.children(node, level, depth);
+        return;
+      default:
+        this.children(node, level, depth);
+    }
+  }
+  /** A statement node, except the initialiser and condition of a `for`, which the grammar also types as statements. */
+  isStatement(node) {
+    const type = node.type;
+    if (!(type.endsWith("_statement") ? !notStatements.has(type) : declarationStatements.has(type))) return false;
+    const parent = node.parent;
+    return !(parent?.type === "for_statement" && parent.childForFieldName("body")?.id !== node.id);
+  }
+  operatorOf(node) {
+    return node.childForFieldName("operator")?.type;
+  }
+  ifStatement(node, level, depth, isElseIf) {
+    if (isElseIf) this.flat(node, "else if");
+    else {
+      this.flow(node, "if", level);
+      this.nesting = Math.max(this.nesting, depth + 1);
+    }
+    this.decision(node, isElseIf ? "else if" : "if");
+    const condition = node.childForFieldName("condition");
+    if (condition !== null) this.visit(condition, level, depth);
+    const consequence = node.childForFieldName("consequence");
+    if (consequence !== null) this.visit(consequence, level + 1, depth + 1);
+    const alternative = node.childForFieldName("alternative");
+    if (alternative === null) return;
+    const inner = alternative.namedChildren.find((child) => child.type !== "comment") ?? null;
+    if (inner === null) return;
+    if (inner.type === "if_statement") {
+      this.statements++;
+      this.ifStatement(inner, level, depth, true);
+    } else {
+      this.flat(alternative, "else");
+      this.visit(inner, level + 1, depth + 1);
+    }
+  }
+  loop(node, level, depth) {
+    const construct = loopNames[node.type] ?? node.type;
+    this.flow(node, construct, level);
+    this.decision(node, construct);
+    this.nesting = Math.max(this.nesting, depth + 1);
+    const body2 = node.childForFieldName("body");
+    this.children(node, level, depth, body2);
+    if (body2 !== null) this.visit(body2, level + 1, depth + 1);
+  }
+  /**
+   * One increment per run of like operators. The operands of the chain, with parentheses looked through,
+   * are walked as ordinary nodes, so a chain inside a `!` or a call argument is counted on its own.
+   */
+  logicalChain(node, level, depth) {
+    const operators = [];
+    const operands = [];
+    const collect = (candidate) => {
+      let inner = candidate;
+      while (inner.type === "parenthesized_expression" && inner.namedChildCount === 1) inner = inner.namedChild(0);
+      const operator = inner.type === "binary_expression" ? this.operatorOf(inner) : void 0;
+      if (operator !== void 0 && logicalOperators.has(operator)) {
+        collect(inner.childForFieldName("left"));
+        operators.push({ type: operator, node: inner.childForFieldName("operator") });
+        collect(inner.childForFieldName("right"));
+      } else operands.push(candidate);
+    };
+    collect(node);
+    let previous;
+    for (const operator of operators) {
+      this.cyclomatic++;
+      this.cyclomaticModified++;
+      this.record(operator.node, "cyclomatic", operator.type, 1, 0);
+      if (operator.type !== previous) this.flat(operator.node, `sequence of ${operator.type}`);
+      previous = operator.type;
+    }
+    for (const operand of operands) this.visit(operand, level, depth);
+  }
+  recursionCheck(call) {
+    if (this.recursion || this.names.size === 0) return;
+    const callee = call.childForFieldName("function");
+    if (callee === null) return;
+    const direct = callee.type === "identifier" && this.names.has(callee.text);
+    const viaThis = callee.type === "member_expression" && callee.childForFieldName("object")?.type === "this" && this.names.has(callee.childForFieldName("property")?.text ?? "");
+    if (direct || viaThis) {
+      this.recursion = true;
+      this.flat(call, "recursion");
+    }
+  }
+};
+function parameterCounts(fn) {
+  let parameters = 0;
+  let optionCount = 0;
+  const single = fn.childForFieldName("parameter");
+  const list = fn.childForFieldName("parameters");
+  const entries = list === null ? single === null ? [] : [single] : list.namedChildren;
+  for (const entry of entries) {
+    if (entry.type === "comment") continue;
+    let pattern = entry;
+    if (entry.type === "required_parameter" || entry.type === "optional_parameter") pattern = entry.childForFieldName("pattern");
+    while (pattern !== null && pattern.type === "assignment_pattern") pattern = pattern.childForFieldName("left");
+    if (pattern === null) continue;
+    if (pattern.type === "this") continue;
+    parameters++;
+    if (pattern.type === "object_pattern") {
+      optionCount += pattern.namedChildren.filter((property) => property.type !== "comment").length;
+    }
+  }
+  return { parameters, optionCount };
+}
+function codeRowsOf(root) {
+  const rows = new Array(root.endPosition.row + 1).fill(false);
+  const walk = (node) => {
+    if (node.type === "comment") return;
+    if (node.childCount === 0) {
+      for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows[row] = true;
+      return;
+    }
+    for (let i2 = 0; i2 < node.childCount; i2++) walk(node.child(i2));
+  };
+  walk(root);
+  return rows;
+}
+function measureFunction(fn, options) {
+  const names = /* @__PURE__ */ new Set();
+  if (options.name !== void 0) names.add(options.name);
+  const own = fn.childForFieldName("name");
+  if (own !== null && fn.type !== "method_definition") names.add(own.text);
+  const measurer = new Measurer(options, names);
+  measurer.function(fn);
+  let length = 0;
+  for (let line = options.startLine; line <= options.endLine; line++) if (options.codeRows[line - 1] === true) length++;
+  const { parameters, optionCount } = parameterCounts(fn);
+  const metrics = {
+    cyclomatic: measurer.cyclomatic,
+    cyclomaticModified: measurer.cyclomaticModified,
+    cognitive: measurer.cognitive,
+    nesting: measurer.nesting,
+    length,
+    statements: measurer.statements,
+    parameters,
+    optionCount
+  };
+  if (!options.explain) return { metrics };
+  const increments = [
+    { line: options.startLine, metric: "cyclomatic", construct: "function", amount: 1, nesting: 0 },
+    ...measurer.increments
+  ];
+  return { metrics, increments };
+}
+
 // packages/parse/src/extract-facts.ts
-var extractorVersion = 3;
+var extractorVersion = 4;
 var functionTypes = /* @__PURE__ */ new Set([
   "arrow_function",
   "function_expression",
@@ -742,7 +1042,14 @@ var Extractor = class {
   exports = [];
   references = [];
   nameCounts = /* @__PURE__ */ new Map();
+  codeRows;
+  root;
+  explain;
+  constructor(explain2) {
+    this.explain = explain2;
+  }
   extract(root) {
+    this.root = root;
     const context = { unit: void 0, shadow: /* @__PURE__ */ new Set() };
     this.visitChildren(root, context);
     const locals = /* @__PURE__ */ new Set();
@@ -785,7 +1092,7 @@ var Extractor = class {
       case "function_declaration":
       case "generator_function_declaration": {
         const name3 = node.childForFieldName("name")?.text;
-        const inner = name3 ? this.declareUnit(name3, "function", node, wrapperOf(parent), context) : context;
+        const inner = name3 ? this.declareUnit(name3, "function", node, wrapperOf(parent), context, node) : context;
         this.functionBody(node, inner);
         return;
       }
@@ -798,7 +1105,7 @@ var Extractor = class {
       }
       case "method_definition": {
         const name3 = node.childForFieldName("name");
-        const inner = name3 && parent.type === "class_body" ? this.declareUnit(name3.text, "method", node, void 0, context) : context;
+        const inner = name3 && parent.type === "class_body" ? this.declareUnit(name3.text, "method", node, void 0, context, node) : context;
         this.functionBody(node, inner);
         return;
       }
@@ -806,7 +1113,7 @@ var Extractor = class {
         const name3 = node.childForFieldName("name");
         const value = node.childForFieldName("value");
         if (name3 && value && isFunctionValue(value)) {
-          this.functionBody(value, this.declareUnit(name3.text, functionKind(value), node, void 0, context));
+          this.functionBody(value, this.declareUnit(name3.text, functionKind(value), node, void 0, context, value));
         } else if (value) {
           this.visit(value, context, node, "value");
         }
@@ -934,7 +1241,7 @@ var Extractor = class {
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
   }
-  declareUnit(name3, kind, node, wrapper, context) {
+  declareUnit(name3, kind, node, wrapper, context, fn) {
     const base = context.unit === void 0 ? name3 : `${context.unit}.${name3}`;
     const seen = this.nameCounts.get(base) ?? 0;
     this.nameCounts.set(base, seen + 1);
@@ -948,6 +1255,18 @@ var Extractor = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (fn !== void 0 && kind !== "class") {
+      this.codeRows ??= codeRowsOf(this.root);
+      const measured = measureFunction(fn, {
+        name: name3,
+        startLine: unit.startLine,
+        endLine: unit.endLine,
+        codeRows: this.codeRows,
+        explain: this.explain
+      });
+      unit.metrics = measured.metrics;
+      if (measured.increments !== void 0) unit.increments = measured.increments;
+    }
     this.units.push(unit);
     return { unit: qualifiedName, shadow: context.shadow };
   }
@@ -975,7 +1294,7 @@ var Extractor = class {
       if (name3?.type === "identifier" && value) {
         if (this.requireDeclarator(declarator, name3, value, context)) continue;
         if (isFunctionValue(value)) {
-          this.functionBody(value, this.declareUnit(name3.text, functionKind(value), value, extent, context));
+          this.functionBody(value, this.declareUnit(name3.text, functionKind(value), value, extent, context, value));
           continue;
         }
         if (value.type === "class") {
@@ -1032,7 +1351,7 @@ var Extractor = class {
     for (const member of object.namedChildren) {
       if (member.type === "method_definition") {
         const key = member.childForFieldName("name");
-        const inner = key ? this.declareUnit(key.text, "method", member, void 0, scopeOf(context, name3)) : context;
+        const inner = key ? this.declareUnit(key.text, "method", member, void 0, scopeOf(context, name3), member) : context;
         this.functionBody(member, inner);
         continue;
       }
@@ -1040,7 +1359,7 @@ var Extractor = class {
         const key = member.childForFieldName("key");
         const value = member.childForFieldName("value");
         if (key && value && isFunctionValue(value)) {
-          const inner = this.declareUnit(key.text, functionKind(value), member, void 0, scopeOf(context, name3));
+          const inner = this.declareUnit(key.text, functionKind(value), member, void 0, scopeOf(context, name3), value);
           this.functionBody(value, inner);
           continue;
         }
@@ -1145,7 +1464,7 @@ var Extractor = class {
     const exported = "default";
     if (isDefault && (isFunctionValue(value) || value.type === "class")) {
       const kind = value.type === "class" ? "class" : functionKind(value);
-      const inner = this.declareUnit("default", kind, value, node, context);
+      const inner = this.declareUnit("default", kind, value, node, context, value);
       if (kind === "class") this.visitChildren(value, inner);
       else this.functionBody(value, inner);
       this.exports.push({ exported, local: "default", line });
@@ -1168,7 +1487,7 @@ var Extractor = class {
       this.exports.push({ exported: "default", local: unitName, line });
       if (anonymous && !name3) {
         const kind = classTypes.has(declaration.type) ? "class" : "function";
-        const inner = this.declareUnit("default", kind, declaration, statement, context);
+        const inner = this.declareUnit("default", kind, declaration, statement, context, declaration);
         if (kind === "class") this.visitChildren(declaration, inner);
         else this.functionBody(declaration, inner);
         return;
@@ -1267,8 +1586,18 @@ function scopeOf(context, name3) {
   const unit = context.unit === void 0 ? name3 : `${context.unit}.${name3}`;
   return { unit, shadow: context.shadow };
 }
-function extractFacts(root) {
-  return new Extractor().extract(root);
+function extractFacts(root, options = {}) {
+  return new Extractor(options.explain === true).extract(root);
+}
+
+// packages/parse/src/file-facts.ts
+function parseFacts(grammar, source, options = {}) {
+  const tree = grammar.parse(source);
+  try {
+    return extractFacts(tree.rootNode, options);
+  } finally {
+    tree.delete();
+  }
 }
 
 // packages/parse/src/grammars.ts
@@ -5724,9 +6053,7 @@ async function analyseTree(tree, options = {}) {
     const sources = await tree.readMany(pending.slice(start2, start2 + batchSize));
     for (const [path, source] of sources) {
       const grammar = grammars.get(grammarIdForPath(path));
-      const parsed = grammar.parse(source);
-      const fileFacts = extractFacts(parsed.rootNode);
-      parsed.delete();
+      const fileFacts = parseFacts(grammar, source);
       loaded2.set(path, fileFacts);
       stats.parsed++;
       await options.cache?.set(tree.files.get(path), grammar.version, fileFacts);
@@ -5788,6 +6115,7 @@ var GraphBuilder = class {
           endLine: unit.endLine,
           source: unit.source,
           ...unit.parent === void 0 ? {} : { parent: unit.parent },
+          ...unit.metrics === void 0 ? {} : { metrics: unit.metrics },
           exported: unit.parent === void 0 && exportedLocals.has(unit.qualifiedName)
         });
       }
@@ -6103,7 +6431,7 @@ var ParseCache = class _ParseCache {
 // packages/parse/src/source-tree.ts
 import { spawn as spawn2 } from "node:child_process";
 import { createHash as createHash3 } from "node:crypto";
-import { readdirSync, readFileSync as readFileSync3 } from "node:fs";
+import { lstatSync, readdirSync, readFileSync as readFileSync3 } from "node:fs";
 import { join as join6 } from "node:path";
 function sortedMap(entries) {
   return new Map(entries.sort(([a], [b]) => Buffer.compare(Buffer.from(a), Buffer.from(b))));
