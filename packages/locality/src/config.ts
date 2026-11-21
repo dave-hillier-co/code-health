@@ -38,6 +38,10 @@ export const localityConfig: PluginConfigSpec = {
     historyMinSupport: 4,
     /** History-only mode: percent of a unit's changes that must also touch a partner for it to count as a consumer. */
     historyMinConfidence: 30,
+    /** `measure compare` concludes nothing from fewer than this many tasks, or measured changes, in any of its four figures. */
+    measureMinSamples: 10,
+    /** `measure compare` calls a difference no change when it is within this percent of the acted-on files' own starting figure. */
+    measureNoisePercent: 10,
     /** Globs of files that must not move and folders code may not move into (routes, migrations, app folders). */
     fixedPoints: [] as string[],
   },
@@ -59,6 +63,8 @@ export interface LocalitySettings {
   minCoChangeChanges: number;
   historyMinSupport: number;
   historyMinConfidence: number;
+  measureMinSamples: number;
+  measureNoisePercent: number;
   /** The suite's shared `entryPoints` globs. Empty means entries are detected. */
   entryPoints: string[];
   /** The suite's shared `exclude` globs. */
@@ -119,6 +125,8 @@ export function readSettings(config: LoadedConfig): LocalitySettings {
     minCoChangeChanges: positive("minCoChangeChanges"),
     historyMinSupport: positive("historyMinSupport"),
     historyMinConfidence: percent("historyMinConfidence"),
+    measureMinSamples: positive("measureMinSamples"),
+    measureNoisePercent: percent("measureNoisePercent"),
     entryPoints: config.effective.entryPoints,
     exclude: config.effective.exclude,
     vagueNames: config.effective.vagueNames,
