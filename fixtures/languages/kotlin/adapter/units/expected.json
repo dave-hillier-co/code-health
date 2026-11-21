@@ -1,0 +1,25 @@
+{
+  "units": {
+    "src/main/kotlin/acme/Shapes.kt": [
+      ["Shapes", "class", 5, 54],
+      ["Shapes.count", "method", 9, 11],
+      ["Shapes.count~2", "method", 13, 13],
+      ["Shapes.toString", "method", 15, 18],
+      ["Shapes.Visitor", "class", 20, 25],
+      ["Shapes.Visitor.leave", "method", 23, 24],
+      ["Shapes.Kind", "class", 27, 34],
+      ["Shapes.Kind.isRound", "method", 31, 33],
+      ["Shapes.Point", "class", 36, 38],
+      ["Shapes.Point.sum", "method", 37, 37],
+      ["Shapes.constructor", "method", 40, 42],
+      ["Shapes.make", "method", 44, 49],
+      ["Shapes.make.run", "method", 46, 47],
+      ["Shapes.Factory", "class", 51, 53],
+      ["Shapes.Factory.of", "method", 52, 52],
+      ["Registry", "class", 56, 58],
+      ["top", "function", 60, 63],
+      ["top.local", "function", 61, 61]
+    ]
+  },
+  "syntaxErrors": []
+}

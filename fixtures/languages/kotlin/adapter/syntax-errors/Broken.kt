@@ -1,0 +1,4 @@
+class Broken {
+    fun m( {
+    }
+}
