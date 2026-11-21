@@ -14,7 +14,7 @@ import type {
  * Bump when the extraction rules change in a way that alters facts for the
  * same source, so cached facts from older rules are not reused.
  */
-export const extractorVersion = 1;
+export const extractorVersion = 2;
 
 interface Context {
   /** Qualified name of the innermost enclosing unit; names of nested units are built from it. */
