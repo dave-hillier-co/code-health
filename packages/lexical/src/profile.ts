@@ -69,6 +69,13 @@ export interface LexerProfile {
    * expression. Only arrows bound to a name are blocks, as callbacks passed inline are not units.
    */
   expressionArrows?: boolean;
+  /**
+   * Statements end at a line break and not at a `;` (Go's automatic semicolons), so the text before a break
+   * is not part of the next header. Regex source tested against the code of a line, trimmed: a line break
+   * ends the statement when it matches, or when the line ends in a string literal. A header that continues
+   * on the next line (an open parenthesis, a trailing operator or comma) is not ended.
+   */
+  statementEnd?: string;
 }
 
 const doubleQuote: DelimitedString = {
@@ -303,6 +310,8 @@ const go: LexerProfile = {
   shortCircuitOperators: ["&&", "\\|\\|"],
   bumpOpeners: ["if", "else", "for", "switch", "select", "case", "default"],
   headerNoise: ["^//go:.*$"],
+  // `package`, `import`, `const`, `var` and `type` declarations end at the line break, and so does any statement.
+  statementEnd: "(?:[\\w)\\]}]|\\+\\+|--)$|^\\s*(?:case\\b.*|default|\\w+):$",
   controlHeader: "^(?:else\\s+if|else|if|for|switch|select)\\b",
   typeHeaders: ["\\btype\\s+(?<name>\\w+)(?:\\s*\\[[^\\]]*\\])?\\s+(?:struct|interface)\\b"],
   functionHeaders: [
