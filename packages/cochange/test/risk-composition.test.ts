@@ -77,6 +77,11 @@ describe("without the sibling plugins", () => {
     expect(result.findings.map((f) => f.id)).toContain("complexity-delta");
   });
 
+  test("indented prose is not code, so a licence text adds no complexity", async () => {
+    const delta = factor(await risk("main..licence"), "complexity-delta");
+    expect(delta.value).toMatchObject({ count: 0, files: 0 });
+  });
+
   test("a change that adds no complexity has none", async () => {
     expect(factor(await risk("main..quiet"), "complexity-delta").value).toMatchObject({ count: 0 });
   });
@@ -200,7 +205,7 @@ describe("locality's report", () => {
     const blast = factor(result, "blast-radius");
     expect(blast.value).toMatchObject({ files: 0, fanIn: 40 });
     expect(blast.band).toBe("high");
-    expect(blast.source).toBe("co-change and locality report");
+    expect(blast.source).toBe("co-change, locality report and parse");
     expect(blast.evidence).toEqual([{ file: calc, fanIn: 40, from: "locality" }]);
     expect(result.inputs.locality).toEqual({ report: "locality.analyse", head: repo.git("rev-parse", "HEAD"), config: "0123456789abcdef" });
   });

@@ -1,4 +1,5 @@
 import type { UnitShape } from "@code-health/lexical/unit";
+import { exportedUnitNames } from "./exported-units.ts";
 import { parseWith } from "./file-facts.ts";
 import type { FileFacts, UnitKind, UnitMetrics } from "./facts.ts";
 import { cacheKeyOf, GrammarSet, type LoadOptions } from "./grammars.ts";
@@ -123,10 +124,7 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
     if (fileFacts.generated === true) generatedFiles.push(path);
     if (fileFacts.hasSyntaxErrors) filesWithSyntaxErrors.push(path);
     if (fileFacts.macroGenerated !== undefined) filesWithMacroCode.push(path);
-    const exportedLocals = new Set([
-      ...fileFacts.exports.filter((exported) => exported.internal !== true).map((exported) => exported.local),
-      ...(fileFacts.symbols?.declarations ?? []).filter((declaration) => declaration.exported).map((declaration) => declaration.unit),
-    ]);
+    const exportedLocals = exportedUnitNames(fileFacts);
     for (const unit of fileFacts.units) {
       units.push({
         path,

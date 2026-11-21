@@ -6,6 +6,7 @@ import { extractChange, resolveRange, type BranchChange } from "./change.ts";
 import { abandonedTouched } from "./abandoned-touched.ts";
 import { liveMeasurements, readLocalityFanIn, withFanIn, type LocalityFanIn } from "./composition.ts";
 import type { Factor } from "./factor.ts";
+import { changedSignatures, withSignatures } from "./signatures.ts";
 import { NO_EVIDENCE, readEvidence, type EvidenceInputs } from "./evidence-inputs.ts";
 import { chronologicalPass, SECONDS_PER_MONTH, type PastChange } from "./history-pass.ts";
 import type { HistoryState } from "./history-state.ts";
@@ -124,9 +125,12 @@ export async function assessBranch(
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change.head);
   const touched = change.files.filter((file) => file.status !== "D").map((file) => file.fileId);
+  const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change);
   const factors = banded.map(({ m, result }) => {
-    const factor = toFactor(m, result, risk);
-    return locality !== null && factor.name === "blast-radius" && factor.status !== "disabled" ? withFanIn(factor, touched, locality, risk) : factor;
+    let factor = toFactor(m, result, risk);
+    if (factor.name !== "blast-radius" || factor.status === "disabled") return factor;
+    if (locality !== null) factor = withFanIn(factor, touched, locality, risk);
+    return signatures === null ? factor : withSignatures(factor, signatures, risk);
   });
   const impact = impactOf(
     factors.map((f) => ({ name: f.name, family: f.family, band: f.band ?? "unavailable", disabled: f.status === "disabled" })),

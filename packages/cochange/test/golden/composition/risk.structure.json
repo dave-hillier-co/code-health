@@ -329,13 +329,15 @@
         "name": "blast-radius",
         "reason": null,
         "scored": true,
-        "source": "co-change",
+        "source": "co-change and parse",
         "status": "ok",
         "thresholds": {
           "files": null
         },
         "value": {
-          "files": 0
+          "files": 0,
+          "signatureChanges": 0,
+          "symbolFanIn": 0
         }
       },
       {

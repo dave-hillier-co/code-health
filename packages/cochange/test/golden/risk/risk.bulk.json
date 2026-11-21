@@ -83,7 +83,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "eead67bfce2033a2bd6d0602ea3e9c0d1c04fe2d"
+    "head": "a8315ddcd7fd55944a8c26867938cd8591afee71"
   },
   "results": {
     "change": {
@@ -416,7 +416,7 @@
         "name": "blast-radius",
         "reason": null,
         "scored": true,
-        "source": "co-change",
+        "source": "co-change and parse",
         "status": "ok",
         "thresholds": {
           "files": {
@@ -425,7 +425,9 @@
           }
         },
         "value": {
-          "files": 0
+          "files": 0,
+          "signatureChanges": 0,
+          "symbolFanIn": 0
         }
       },
       {

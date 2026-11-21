@@ -24,7 +24,7 @@ Factors that measure nearly the same thing form a **family**, and a family count
 | `missing-co-change` | completeness | Files that usually change with a touched file and are not in the change | Open each and decide. This comes first |
 | `novel-coupling` | completeness | Distant files that never changed together before | Confirm the dependency is intended |
 | `test-evidence` | completeness | Source changed without the tests that usually change with it, or tests deleted | Add or update the tests, or say why not |
-| `blast-radius` | structure and content | Files that change with the touched ones, and fan-in when locality's report is present | Scrutinise: a flaw here is inherited widely |
+| `blast-radius` | structure and content | Files that change with the touched ones, fan-in when locality's report is present, and the users of exported symbols whose signature changed | Scrutinise: a flaw here is inherited widely |
 | `complexity-delta` | structure and content | New hard-to-read units, or touched files that gained complexity | `complexity explain` on the named units |
 | `structure-delta` | structure and content | New cycles and layer violations (needs `structure check`) | Review the new dependency |
 | `sensitive-paths` | structure and content | Migrations, authentication, CI, manifests | Ask a reviewer who knows what they affect |
@@ -35,6 +35,7 @@ Factors that measure nearly the same thing form a **family**, and a family count
 
 - **History alone** gives everything except the structural factors. It works in any language.
 - **`--evidence`** takes `complexity diff --json` and `structure check --json` for this branch's base and tip. Evidence made for another base is refused.
+- **The parse adapters** add exported symbols whose signature changed or that were removed to `blast-radius`, with how many files used each at the base. This needs no other plugin, and is left out for files no adapter reads.
 - **Locality's report** adds fan-in to `blast-radius` when it is whole and stamped with the change's tip.
 - **The blame cache** supplies placement.
 
