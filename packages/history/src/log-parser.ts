@@ -38,7 +38,8 @@ export interface LogSettings {
   renameLimit: number;
 }
 
-const RS = "\x1e";
+/** Starts every record. Long and unlikely enough that no path or message contains it. */
+const RS = "\x1e@@code-health:record:8c1f6e2a-5b7d-4a90-b3e1@@\x1e";
 const US = "\x1f";
 const FORMAT = ["%H", "%P", "%an", "%ae", "%aN", "%aE", "%at", "%ct", "%B"].join("%x1f");
 

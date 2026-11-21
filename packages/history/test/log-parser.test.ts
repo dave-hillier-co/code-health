@@ -82,3 +82,18 @@ test("merge commits are recorded with parents and no changes", async () => {
   expect(merge.parents).toHaveLength(2);
   expect(merge.changes).toEqual([]);
 });
+
+test("control bytes in paths and messages do not break record splitting", async () => {
+  const f = build([
+    {
+      type: "commit",
+      message: "has\x1erecord\x1fseparators",
+      date: "2024-01-01T10:00:00Z",
+      changes: [{ op: "add", path: "rs\x1ename.txt", content: "x\n" }],
+    },
+  ]);
+  const commits = await logOf(f);
+  expect(commits).toHaveLength(1);
+  expect(commits[0]!.message).toBe("has\x1erecord\x1fseparators");
+  expect(commits[0]!.changes[0]!.path).toBe("rs\x1ename.txt");
+});
