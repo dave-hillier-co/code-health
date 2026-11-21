@@ -20,7 +20,7 @@ describe("ambient exports", () => {
   ] as const) {
     it(`resolves an import of an exported ambient ${label}`, async () => {
       const analysis = await analyseTree(
-        treeOf({ "t.ts": declaration, "u.ts": `import { ${name} } from "./t";\n${name};\n` }),
+        treeOf({ "t.ts": `export const other = 1;\n${declaration}`, "u.ts": `import { ${name} } from "./t";\n${name};\n` }),
       );
       expect(analysis.unresolved).toEqual([]);
       expect(analysis.fileEdges.map((edge) => [edge.from, edge.to])).toEqual([["u.ts", "t.ts"]]);

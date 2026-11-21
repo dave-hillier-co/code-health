@@ -14,7 +14,7 @@ import type {
  * Bump when the extraction rules change in a way that alters facts for the
  * same source, so cached facts from older rules are not reused.
  */
-export const extractorVersion = 2;
+export const extractorVersion = 3;
 
 interface Context {
   /** Qualified name of the innermost enclosing unit; names of nested units are built from it. */
@@ -577,12 +577,17 @@ class Extractor {
     context: Context,
     line: number,
   ): void {
+    // `export declare ...` wraps what is declared in an ambient_declaration, so the names come from inside it.
+    const named =
+      declaration.type === "ambient_declaration"
+        ? (declaration.namedChildren.find((child) => child.type !== "comment") ?? declaration)
+        : declaration;
     const names: string[] = [];
-    declaredNames(declaration, names);
-    const name = declaration.childForFieldName("name");
+    declaredNames(named, names);
+    const name = named.childForFieldName("name");
     if (names.length === 0 && name) names.push(name.text);
     // `export import X = N;` names X with its first identifier child rather than a name field.
-    const alias = declaration.type === "import_alias" ? declaration.namedChildren.find((c) => c.type === "identifier") : undefined;
+    const alias = named.type === "import_alias" ? named.namedChildren.find((c) => c.type === "identifier") : undefined;
     if (names.length === 0 && alias) names.push(alias.text);
     if (isDefault) {
       const anonymous = functionTypes.has(declaration.type) || classTypes.has(declaration.type);
