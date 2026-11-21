@@ -1,0 +1,9 @@
+{
+  "operations": [
+    { "from": "src/Core/Ledger.cs", "to": "src/Core/Accounts/Ledger.cs" },
+    { "from": "src/Core/Ledger.Rules.cs", "to": "src/Core/Accounts/Ledger.Rules.cs" }
+  ],
+  "rewrites": [],
+  "texts": {},
+  "warnings": []
+}

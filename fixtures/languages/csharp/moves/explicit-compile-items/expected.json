@@ -1,0 +1,14 @@
+{
+  "operations": [
+    { "from": "src/Legacy/Billing/Invoice.cs", "to": "src/Legacy/Domain/Invoice.cs" },
+    { "from": "src/Legacy/Billing/Money.cs", "to": "src/Legacy/Domain/Money.cs" }
+  ],
+  "rewrites": [
+    { "path": "src/Legacy/Legacy.csproj", "line": 5, "from": "Billing\\Invoice.cs", "to": "Domain\\Invoice.cs" },
+    { "path": "src/Legacy/Legacy.csproj", "line": 6, "from": "Billing\\Money.cs", "to": "Domain\\Money.cs" }
+  ],
+  "texts": {
+    "src/Legacy/Legacy.csproj": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<Project ToolsVersion=\"15.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n  <ItemGroup>\n    <Compile Include=\"Program.cs\" />\n    <Compile Include=\"Domain\\Invoice.cs\" />\n    <Compile Include=\"Domain\\Money.cs\" />\n    <Compile Include=\"Properties\\AssemblyInfo.cs\" />\n  </ItemGroup>\n</Project>\n"
+  },
+  "warnings": []
+}

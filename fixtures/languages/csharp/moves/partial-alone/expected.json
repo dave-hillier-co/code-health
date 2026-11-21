@@ -1,0 +1,8 @@
+{
+  "operations": [{ "from": "src/Core/Ledger.Rules.cs", "to": "src/Core/Rules/Ledger.Rules.cs" }],
+  "rewrites": [],
+  "texts": {},
+  "warnings": [
+    "src/Core/Rules/Ledger.Rules.cs holds a part of partial type Ledger whose other parts will be in src/Core: the parts of one type move together"
+  ]
+}
