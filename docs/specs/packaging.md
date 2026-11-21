@@ -225,7 +225,7 @@ Package discovery reads manifests, so it works in any language the suite has a m
 | TypeScript/JavaScript | Workspace package (`package.json`) | Anything outside `exports` or the entry point | Interfaces and abstract classes. Type aliases are not counted, since they would make any types-heavy package look fully abstract. |
 | C# | Project (`.csproj`) | `internal`, with `InternalsVisibleTo` as the bypass | Interfaces, abstract classes |
 | C++ | Build target | Headers outside the target's public include directory | Classes with pure virtual members |
-| Python | Distribution (`pyproject.toml`) | Leading-underscore modules and names; anything outside `__all__` | `Protocol` and `ABC` classes |
+| Python | Distribution (`pyproject.toml`) | Leading-underscore modules and names; anything outside `__all__`. Without an `__all__`, a module other than an `__init__.py` does not offer what it imports. | `Protocol` classes (interfaces) and `ABC` classes (abstract classes) |
 | Java / Kotlin | Gradle or Maven module | Package-private and `internal`; non-exported packages in a module descriptor | Interfaces, abstract classes |
 | Go | Module (`go.mod`) | Unexported (lower-case) identifiers, and packages under `internal/` | Interfaces |
 | Rust | Crate | Anything not `pub` at the crate root | Traits |
