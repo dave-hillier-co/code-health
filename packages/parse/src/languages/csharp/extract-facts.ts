@@ -6,7 +6,7 @@ import { functionShape, modifiersOf, nodeCount, passThroughOf, typeShape } from 
 import { bodyOf, csharpMetricRules, parameterInfo } from "./metric-rules.ts";
 
 /** Bump when the extraction rules change in a way that alters facts for the same source, so cached facts are not reused. */
-export const extractorVersion = 2;
+export const extractorVersion = 3;
 
 const typeDeclarations = new Set([
   "class_declaration",
@@ -328,6 +328,8 @@ class Extractor {
     if (parent !== undefined) unit.parent = parent;
     const forwarded = passThroughOf(fn, new Set(parameterInfo(fn).map((parameter) => parameter.name)));
     if (forwarded !== undefined) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if (modifiersOf(fn).includes("override")) unit.override = true;
     if (measured.increments !== undefined) unit.increments = measured.increments;
     this.units.push(unit);
     return { ...context, unit: qualifiedName };

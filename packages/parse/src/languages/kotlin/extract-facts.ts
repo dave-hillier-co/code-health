@@ -340,6 +340,8 @@ class Extractor {
     unit.shape = { nodes: nodeCount(node, isComment), interfaceSize: Math.max(1, measured.metrics.parameters) };
     const forwarded = passThroughOf(node, parameterNames(node));
     if (forwarded !== undefined) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if (modifierWords(node).has("override")) unit.override = true;
     if (measured.increments !== undefined) unit.increments = measured.increments;
     this.units.push(unit);
     if (context.topLevel && !isConstructor) {

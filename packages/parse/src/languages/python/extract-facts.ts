@@ -5,7 +5,7 @@ import { boundParameterNames, classShape, functionShape, nodeCount, passThroughO
 import { enclosingClass, pythonMetricRules } from "./metric-rules.ts";
 
 /** Bump when the extraction rules change in a way that alters facts for the same source, so cached facts from older rules are not reused. */
-export const extractorVersion = 2;
+export const extractorVersion = 3;
 
 interface Context {
   /** Qualified name of the innermost enclosing unit; names of nested units are built from it. */
@@ -542,6 +542,8 @@ class Extractor {
       unit.shape = functionShape(fn, measured.metrics.parameters);
       const forwarded = passThroughOf(fn);
       if (forwarded !== undefined) unit.passThrough = forwarded;
+      if (measured.recursive) unit.recursive = true;
+      if (fn.parent?.type === "decorated_definition" && fn.parent.namedChildren.some((child) => child.type === "decorator" && /^@\s*(typing(_extensions)?\.)?override\b/.test(child.text))) unit.override = true;
       if (measured.increments !== undefined) unit.increments = measured.increments;
     }
     this.units.push(unit);

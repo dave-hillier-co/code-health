@@ -40,6 +40,8 @@ export interface MeasureOptions {
 
 export interface Measured {
   metrics: UnitMetrics;
+  /** The function calls itself directly. */
+  recursive: boolean;
   increments?: Increment[];
 }
 
@@ -49,7 +51,7 @@ class Measurer {
   cognitive = 0;
   nesting = 0;
   statements = 0;
-  private recursion = false;
+  recursion = false;
   readonly increments: Increment[] = [];
 
   private readonly options: MeasureOptions;
@@ -444,10 +446,10 @@ export function measureFunction(fn: Node, options: MeasureOptions, rules: Metric
     parameters,
     optionCount,
   };
-  if (!options.explain) return { metrics };
+  if (!options.explain) return { metrics, recursive: measurer.recursion };
   const increments = [
     { line: options.startLine, metric: "cyclomatic" as const, construct: "function", amount: 1, nesting: 0 },
     ...measurer.increments,
   ];
-  return { metrics, increments };
+  return { metrics, recursive: measurer.recursion, increments };
 }

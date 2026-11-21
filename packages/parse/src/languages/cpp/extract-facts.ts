@@ -465,6 +465,8 @@ class Extractor {
     const parameters = new Set(this.parameterNames(functionDeclarator(fn) ?? fn.childForFieldName("declarator")));
     const forwarded = passThroughOf(fn, parameters);
     if (forwarded !== undefined) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if ((functionDeclarator(fn)?.namedChildren ?? []).some((child) => child.type === "virtual_specifier" && child.text === "override")) unit.override = true;
     if (measured.increments !== undefined) unit.increments = measured.increments;
     return unit;
   }
