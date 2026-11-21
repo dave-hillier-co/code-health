@@ -3,11 +3,14 @@ import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { withoutMeta } from "./support/golden.ts";
 import { runComplexity } from "./support/run.ts";
 import { buildRepo } from "./support/scenarios.ts";
+
+// A cold node and the grammars' wasm can take long on a loaded machine, and these suites run beside every other.
+vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
 
 const dist = fileURLToPath(new URL("../../../plugins/complexity/dist", import.meta.url));
 

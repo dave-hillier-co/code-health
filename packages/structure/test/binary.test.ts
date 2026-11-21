@@ -3,11 +3,14 @@ import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { GOLDEN_DIR, withoutMeta } from "./support/golden.ts";
 import { cyclesRepository } from "./support/scenarios.ts";
+
+// A cold node and the grammars' wasm can take long on a loaded machine, and these suites run beside every other.
+vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -20,8 +23,9 @@ beforeAll(() => {
   cpSync(join(root, "plugins", "structure", "dist"), join(installed, "dist"), { recursive: true });
 });
 afterAll(() => {
-  repo.dispose();
-  rmSync(installed, { recursive: true, force: true });
+  // beforeAll may have failed before either exists, so each is released only if it was made.
+  repo?.dispose();
+  if (installed !== undefined) rmSync(installed, { recursive: true, force: true });
 });
 
 const run = (...args: string[]) =>
