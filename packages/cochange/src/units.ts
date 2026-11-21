@@ -23,8 +23,7 @@ export function readBy(context: CommandContext): By {
 export const isGrouped = (context: CommandContext): boolean => readBy(context) !== "file";
 
 /** The files or components of the history, restricted to files that still exist at the analysed commit. */
-export async function loadUnits(context: CommandContext, history: LoadedHistory): Promise<Unit[]> {
-  const by = readBy(context);
+export async function loadUnits(context: CommandContext, history: LoadedHistory, by: By = readBy(context)): Promise<Unit[]> {
   const present = new Set(await listTree(context.repo.root, history.view.headSha));
   const { changes } = history.filtered;
   return by === "file"

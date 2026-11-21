@@ -1,9 +1,7 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
-import { monthsBefore } from "@code-health/history/evidence";
 import { analysisCommand } from "../analysis-command.ts";
-import { loadComplexity } from "../complexity-source.ts";
-import { midRankPercentiles, shareStrictlyAbove } from "../ranking.ts";
-import { SECONDS_PER_DAY, byOption, isGrouped, isoDate, loadUnits, readBy } from "../units.ts";
+import { rankHotspots } from "../hotspot-ranking.ts";
+import { byOption, isGrouped, readBy } from "../units.ts";
 
 export const name = "hotspots";
 
@@ -28,45 +26,7 @@ export const command = analysisCommand(name, {
   partial: isGrouped,
   async analyse({ context, history }) {
     const by = readBy(context);
-    const { settings } = history;
-    const units = await loadUnits(context, history);
-
-    const paths = [...new Set(units.flatMap((u) => [...u.members]))].sort();
-    const complexity = await loadComplexity(context, history.view.headSha, paths);
-    const unitComplexity = units.map((unit) => {
-      const known = [...unit.members].map((path) => complexity.values.get(path) ?? null).filter((v) => v !== null);
-      return known.length === 0 ? null : known.reduce((sum, v) => sum + v, 0);
-    });
-
-    const frequencyPercentile = midRankPercentiles(units.map((u) => u.revisions));
-    const scoredIndexes = unitComplexity.flatMap((value, index) => (value === null ? [] : [index]));
-    const complexityPercentile = new Map(
-      midRankPercentiles(scoredIndexes.map((i) => unitComplexity[i]!)).map((p, k) => [scoredIndexes[k]!, p]),
-    );
-    const scores = units.map((_, i) => (complexityPercentile.has(i) ? frequencyPercentile[i]! * complexityPercentile.get(i)! : null));
-    const scored = scores.filter((s) => s !== null);
-
-    const anchor = history.view.headDate;
-    const recentSince = monthsBefore(anchor, settings.recentMonths);
-    const topShare = (100 - settings.hotspotPercentile) / 100;
-
-    const rows = units.map((unit, i) => {
-      const score = scores[i]!;
-      const isHotspot =
-        score !== null && shareStrictlyAbove(scored, score) < topShare && unit.lastChanged >= recentSince;
-      return {
-        path: unit.name,
-        score,
-        ...(by === "component" ? { files: unit.files } : {}),
-        frequency: unit.revisions,
-        churn: unit.churn,
-        complexity: unitComplexity[i]!,
-        ageDays: Math.floor((anchor - unit.lastChanged) / SECONDS_PER_DAY),
-        lastChanged: isoDate(unit.lastChanged),
-        recommendation: isHotspot ? "hotspot" : null,
-      };
-    });
-
+    const { rows, complexity } = await rankHotspots(context, history, by);
     return {
       inputs: { by, complexityReport: complexity.input },
       results: rows,
