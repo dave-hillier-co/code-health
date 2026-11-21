@@ -97,6 +97,17 @@ describe("check:self", () => {
     expect(excludedSource({ root: repositoryRoot })).toEqual([]);
   });
 
+  it("reports source hidden by any exclude pattern the analysis would honour, not only full-path globs", () => {
+    for (const exclude of [["test"], ["packages/a/src"], ["*.ts"], ["/packages/a/test"], ["{test,docs}"]]) {
+      const repo = repoWith({
+        "packages/a/test/x.ts": "export const x = 1;\n",
+        "packages/a/src/y.ts": "export const y = 1;\n",
+        "code-health.json": JSON.stringify({ exclude }),
+      });
+      expect(excludedSource({ root: repo.path }), JSON.stringify(exclude)).not.toEqual([]);
+    }
+  });
+
   it("fails when a command exits non-zero", async () => {
     const report = await check(repoWith({ ...clean, "code-health.json": "{ not json" }));
     expect(report.failures.length).toBeGreaterThan(0);

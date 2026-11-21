@@ -1,7 +1,8 @@
 import { execFile, execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { dirname, join, matchesGlob, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { compileGlobs } from "@code-health/history/glob";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -47,7 +48,9 @@ export function excludedSource({ root }) {
     .toString()
     .split("\0")
     .filter((path) => /\.(ts|tsx|mjs)$/.test(path));
-  return tracked.filter((path) => globs.some((glob) => matchesGlob(path, glob)));
+  // The analysis's own matcher, so the guard and the analysis agree on what an exclude hides.
+  const excluded = compileGlobs(globs);
+  return tracked.filter((path) => excluded(path));
 }
 
 /**
