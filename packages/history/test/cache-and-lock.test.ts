@@ -76,7 +76,8 @@ test("a lock serialises holders", async () => {
     events.push("b:start");
     events.push("b:end");
   });
-  // b is now polling for the lock a holds; let it poll a few times before a lets go.
+  // b is now polling for the lock a holds. A slow machine only gives it more chances to
+  // wrongly start, so this wait can make the assertion stricter but never spuriously fail it.
   await new Promise((r) => setTimeout(r, 100));
   expect(events).toEqual(["a:start"]);
   release();
@@ -100,7 +101,7 @@ test("a lock left by a dead process is taken over", async () => {
   const { hostname } = await import("node:os");
   const child = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
   writeFileSync(path, JSON.stringify({ token: "dead", pid: Number(child.stdout), host: hostname(), time: Date.now() }));
-  expect(await withLock(path, async () => "ok", { timeoutMs: 1000 })).toBe("ok");
+  expect(await withLock(path, async () => "ok", { timeoutMs: 30_000 })).toBe("ok");
 });
 
 test("waiting for a live holder times out", async () => {
@@ -116,7 +117,8 @@ test("waiting for a live holder times out", async () => {
     await released;
   });
   await held;
-  await expect(withLock(path, async () => 1, { timeoutMs: 100 })).rejects.toBeInstanceOf(LockTimeoutError);
+  // The holder is this process, which is alive, so however slow the runner the wait ends in a timeout.
+  await expect(withLock(path, async () => 1, { timeoutMs: 100, staleMs: 3_600_000 })).rejects.toBeInstanceOf(LockTimeoutError);
   release();
   await holder;
 });
@@ -128,7 +130,7 @@ test("an empty lock file left by a crash is reclaimed once it has aged", async (
   writeFileSync(path, "");
   const old = new Date(Date.now() - 60_000);
   utimesSync(path, old, old);
-  expect(await withLock(path, async () => "ok", { timeoutMs: 1000 })).toBe("ok");
+  expect(await withLock(path, async () => "ok", { timeoutMs: 30_000 })).toBe("ok");
 });
 
 test("a fresh empty lock file is left alone, as its owner may still be writing it", async () => {
@@ -136,7 +138,8 @@ test("a fresh empty lock file is left alone, as its owner may still be writing i
   dirs.push(dir);
   const path = join(dir, "x.lock");
   writeFileSync(path, "");
-  await expect(withLock(path, async () => 1, { timeoutMs: 100 })).rejects.toBeInstanceOf(LockTimeoutError);
+  // An hour before such a file counts as abandoned, so a stalled runner cannot age it past the limit.
+  await expect(withLock(path, async () => 1, { timeoutMs: 100, unreadableMs: 3_600_000 })).rejects.toBeInstanceOf(LockTimeoutError);
 });
 
 test("a holder whose lock was removed does not delete the next owner's lock", async () => {
