@@ -1,0 +1,123 @@
+{
+  "command": "hotspots",
+  "complexitySource": "indentation",
+  "config": "18353697bd40d72e",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 6,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 4.7,
+    "window": {
+      "months": 12,
+      "since": 1685610000,
+      "until": 1717232400
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "gitattributes": true,
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "by": "file",
+    "complexityReport": null
+  },
+  "repo": {
+    "dirty": false,
+    "head": "9f65c10e2680360c26e94d73aa12fc4b81bdd0dc"
+  },
+  "results": [
+    {
+      "ageDays": 0,
+      "churn": 16,
+      "complexity": 0,
+      "frequency": 4,
+      "lastChanged": "2024-06-01T09:00:00.000Z",
+      "path": "src/billing/invoice.ts",
+      "recommendation": "hotspot",
+      "score": 0.4375
+    },
+    {
+      "ageDays": 31,
+      "churn": 14,
+      "complexity": 0,
+      "frequency": 3,
+      "lastChanged": "2024-05-01T09:00:00.000Z",
+      "path": "src/reporting/summary.ts",
+      "recommendation": null,
+      "score": 0.3125
+    },
+    {
+      "ageDays": 88,
+      "churn": 3,
+      "complexity": 0,
+      "frequency": 2,
+      "lastChanged": "2024-03-05T09:00:00.000Z",
+      "path": "test/billing/invoice.test.ts",
+      "recommendation": null,
+      "score": 0.1875
+    },
+    {
+      "ageDays": 61,
+      "churn": 1,
+      "complexity": 0,
+      "frequency": 1,
+      "lastChanged": "2024-04-01T09:00:00.000Z",
+      "path": "README.md",
+      "recommendation": null,
+      "score": 0.0625
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 4
+  },
+  "window": {
+    "since": "2023-06-01T09:00:00.000Z",
+    "until": "2024-06-01T09:00:00.000Z"
+  }
+}

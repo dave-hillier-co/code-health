@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020Module from "ajv/dist/2020.js";
@@ -7,7 +7,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { probeCli } from "./support/probe-cli.ts";
 import { runCochange } from "./support/run.ts";
-import { steadyHistory } from "./support/scenarios.ts";
+import { indentedHistory, steadyHistory } from "./support/scenarios.ts";
 
 // Ajv is CommonJS: under NodeNext the default import is the module object, whose `default` is the class.
 const Ajv2020 = Ajv2020Module.default;
@@ -21,6 +21,8 @@ addFormats(ajv);
 ajv.addSchema(load("common.schema.json"));
 ajv.addSchema(load("refresh.schema.json"));
 ajv.addSchema(load("spread.schema.json"));
+ajv.addSchema(load("hotspots.schema.json"));
+ajv.addSchema(load("age.schema.json"));
 // How a command schema for an analysis command is composed. The probe stands in for a real one.
 ajv.addSchema({
   $id: "probe.schema.json",
@@ -68,4 +70,20 @@ test("the spread output, as printed with meta, matches its schema, and a stray f
   const stray = JSON.parse(stdout);
   stray.results.overall.surprise = 1;
   expect(validates("spread.schema.json", JSON.stringify(stray))).not.toEqual([]);
+});
+
+test("hotspots and age output, as printed with meta, matches its schema in both views", async () => {
+  const indented = indentedHistory();
+  try {
+    writeFileSync(join(indented.path, "code-health.json"), JSON.stringify({ components: { core: ["src/core/**"] } }));
+    for (const command of ["hotspots", "age"]) {
+      for (const by of ["file", "component"]) {
+        const { code, stdout } = await runCochange(indented.path, [command, "--by", by]);
+        expect(code).toBe(0);
+        expect(validates(`${command}.schema.json`, stdout)).toEqual([]);
+      }
+    }
+  } finally {
+    indented.dispose();
+  }
 });

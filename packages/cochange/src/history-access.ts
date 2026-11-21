@@ -24,6 +24,12 @@ export interface HistoryOptions {
   /** Read the cache as it is. Without it the cache is brought up to date first. */
   noRefresh?: boolean;
   window?: ExplicitWindow;
+  /**
+   * Read all usable history instead of the analysis window, for answers about
+   * a file's whole life such as its first and last revision. The returned
+   * window then starts at the earliest revision.
+   */
+  wholeHistory?: boolean;
 }
 
 export interface LoadedHistory extends HistoryAnalysis {
@@ -58,7 +64,7 @@ export async function loadHistory(context: CommandContext, options: HistoryOptio
   const refreshed = options.noRefresh ? null : await refreshHistory(context, settings);
 
   const anchor = Number((await runGit(root, ["log", "-1", "--format=%ct", settings.ref])).trim());
-  const since = options.window?.since ?? monthsBefore(anchor, settings.windowMonths);
+  const since = options.wholeHistory ? undefined : (options.window?.since ?? monthsBefore(anchor, settings.windowMonths));
   const until = options.window?.until;
 
   const analysis = await analyseHistory(root, {
@@ -73,5 +79,6 @@ export async function loadHistory(context: CommandContext, options: HistoryOptio
     },
     evidence: { windowMonths: settings.windowMonths, thresholds: settings.evidenceThresholds },
   });
-  return { ...analysis, settings, window: { since, until: until ?? anchor }, refreshed };
+  const earliest = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
+  return { ...analysis, settings, window: { since: since ?? earliest, until: until ?? anchor }, refreshed };
 }

@@ -9,7 +9,8 @@
   "dependencies": {
     "@code-health/cli-kit": "^0.0.0",
     "@code-health/graph": "^0.0.0",
-    "@code-health/history": "^0.0.0"
+    "@code-health/history": "^0.0.0",
+    "@code-health/lexical": "^0.0.0"
   },
   "devDependencies": {
     "@code-health/fixtures": "^0.0.0"
