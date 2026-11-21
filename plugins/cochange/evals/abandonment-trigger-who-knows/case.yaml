@@ -1,0 +1,17 @@
+schema_version: "1.0"
+name: abandonment-trigger-who-knows
+description: "The abandonment skill loads on a question about spreading knowledge through reviews."
+tags: [trigger, positive, abandonment]
+runs: 3
+execution:
+  prompt: "Which parts of this codebase should we get more people reviewing, so that knowledge of them does not sit with one or two engineers?"
+  model: claude-sonnet-5-5
+  max_turns: 6
+  timeout_seconds: 180
+graders:
+  - type: "tool_used"
+    name: "loads-the-abandonment-skill"
+    tool: "Skill"
+    input_match: "abandonment"
+    min: 1
+    arm: "with-only"
