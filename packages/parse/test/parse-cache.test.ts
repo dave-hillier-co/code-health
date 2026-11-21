@@ -3,8 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
+import { fixtureCases } from "@code-health/fixtures/language-conformance";
+import { analyseTree } from "../src/analyse-tree.ts";
 import type { FileFacts } from "../src/facts.ts";
+import { cacheKeyOf } from "../src/grammars.ts";
+import { adapterById, overrideSupportedAdapters, registeredAdapters } from "../src/languages.ts";
 import { ParseCache } from "../src/parse-cache.ts";
+import { treeFromDirectory } from "../src/source-tree.ts";
 
 const dirs: string[] = [];
 const fixtures: GitFixture[] = [];
@@ -103,5 +108,42 @@ describe("ParseCache under concurrent writers", () => {
     const withUndefined = { ...facts, units: [{ ...facts.units[0]!, parent: undefined }] } as FileFacts;
     await cache.set(blob, "typescript-aaa", withUndefined);
     expect(await cache.get(blob, "typescript-aaa")).toEqual(facts);
+  });
+});
+
+describe("the key facts are cached under", () => {
+  const grammar = { version: "grammar-aaa+runtime-bbb" };
+
+  it("changes when the extractor version does, so facts of an older extractor are not served", () => {
+    expect(cacheKeyOf({ id: "go", extractorVersion: 1 }, grammar)).not.toBe(cacheKeyOf({ id: "go", extractorVersion: 2 }, grammar));
+  });
+
+  it("differs between two adapters that share a grammar", () => {
+    expect(cacheKeyOf({ id: "java", extractorVersion: 1 }, grammar)).not.toBe(cacheKeyOf({ id: "kotlin", extractorVersion: 1 }, grammar));
+  });
+
+  it("makes a cache written for one extractor version a miss for the next", async () => {
+    const cache = new ParseCache(tempDir());
+    await cache.set(blob, cacheKeyOf({ id: "go", extractorVersion: 1 }, grammar), facts);
+    expect(await cache.get(blob, cacheKeyOf({ id: "go", extractorVersion: 2 }, grammar))).toBeUndefined();
+  });
+});
+
+describe.each(registeredAdapters.map((adapter) => adapter.id))("%s: a warm cache", (id) => {
+  it("gives output identical to a cold one for every adapter fixture", async () => {
+    overrideSupportedAdapters([adapterById(id)!]);
+    try {
+      for (const fixture of fixtureCases(id, "adapter")) {
+        const tree = await treeFromDirectory(fixture.directory);
+        const cache = new ParseCache(tempDir());
+        const { stats: coldStats, ...cold } = await analyseTree(tree, { cache });
+        const { stats: warmStats, ...warm } = await analyseTree(tree, { cache });
+        expect(JSON.stringify(warm), `${id}/${fixture.name}`).toBe(JSON.stringify(cold));
+        expect(coldStats.cached, `${id}/${fixture.name} cold run`).toBe(0);
+        expect(warmStats.parsed, `${id}/${fixture.name} warm run`).toBe(0);
+      }
+    } finally {
+      overrideSupportedAdapters(undefined);
+    }
   });
 });
