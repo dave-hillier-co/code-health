@@ -2,7 +2,7 @@ schema_version: "1.0"
 name: ignores-unrelated-request
 description: The skill stays unloaded for a request that has nothing to do with where code lives.
 tags: [trigger]
-runs: 1
+runs: 3
 context:
   scaffold_script: ../scaffold.sh
 execution:

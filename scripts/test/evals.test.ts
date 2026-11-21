@@ -120,3 +120,19 @@ test("the pins name a model, a judge model and a positive ceiling", () => {
   expect(pins.judgeModel).toBeTruthy();
   expect(pins.maxCostUsd).toBeGreaterThan(0);
 });
+
+test("a plugin with a skill needs trigger, negative and behaviour cases", () => {
+  mkdirSync(join(root, "plugins", "p", "skills", "p"), { recursive: true });
+  writeCase("p", "greeting", valid("greeting").replace("name: greeting", "name: greeting\ntags: [trigger]"));
+  expect(checkEvals(root).problems).toEqual([
+    'plugins/p/evals: no case is tagged "negative"; a skill needs trigger, negative and behaviour cases',
+    'plugins/p/evals: no case is tagged "behaviour"; a skill needs trigger, negative and behaviour cases',
+  ]);
+  writeCase("p", "declines", valid("declines").replace("name: declines", "name: declines\ntags: [negative, behaviour]"));
+  expect(checkEvals(root).problems).toEqual([]);
+});
+
+test("a plugin with a skill and no evals is a problem", () => {
+  mkdirSync(join(root, "plugins", "p", "skills", "p"), { recursive: true });
+  expect(checkEvals(root).problems).toEqual(["plugins/p: ships a skill but has no evals"]);
+});

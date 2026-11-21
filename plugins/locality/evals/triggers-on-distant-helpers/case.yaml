@@ -2,7 +2,7 @@ schema_version: "1.0"
 name: triggers-on-distant-helpers
 description: The skill loads for a question about whether helpers in a shared folder are worth keeping, runs the analyser, and answers from its evidence.
 tags: [trigger, behaviour]
-runs: 1
+runs: 3
 context:
   scaffold_script: ../scaffold.sh
 execution:
@@ -29,4 +29,4 @@ graders:
     flags: i
   - type: llm
     name: answers-from-evidence
-    criteria: The answer identifies slugify as used by one file only and recommends inlining or moving it next to its consumer, naming the rule or the consumer count. It does not recommend creating a new helper. It does not propose changing formatMoney, which two files use.
+    criteria: The answer identifies slugify as used by one file only and recommends inlining or moving it next to its consumer, naming the rule or the consumer count. It does not recommend creating a new helper. It does not propose inlining formatMoney, which two files use. A move of formatMoney toward its two consumers, as the analyser suggests, is acceptable.

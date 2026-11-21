@@ -1,0 +1,26 @@
+schema_version: "1.0"
+name: triggers-on-too-many-hops
+description: A second phrasing of the triggering request, in terms of effort and navigation and with none of the skill's own vocabulary. The skill loads and the analyser runs.
+tags: [trigger]
+runs: 3
+context:
+  scaffold_script: ../scaffold.sh
+execution:
+  prompt: Every time I touch the order flow I end up opening files all over the tree. Is any of that code sitting in the wrong place?
+  model: claude-sonnet-5-5
+  max_turns: 15
+  timeout_seconds: 300
+  allowed_tools: [Skill, Bash, Read, Grep, Glob]
+graders:
+  - type: tool_used
+    name: loads-the-skill
+    tool: Skill
+    input_match: locality
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: runs-the-analyser
+    tool: Bash
+    input_match: locality\\.mjs analyse
+    min: 1
+    arm: with-only

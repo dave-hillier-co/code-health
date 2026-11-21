@@ -1,0 +1,26 @@
+schema_version: "1.0"
+name: trigger-where-to-start
+description: A second phrasing of the triggering request, with no complexity vocabulary in it. The skill loads and the CLI runs.
+tags: [trigger]
+runs: 3
+context:
+  scaffold_script: ../scaffold.sh
+execution:
+  prompt: Our new hires keep getting lost in one function in this repo. Which code is the most confusing, and why?
+  model: claude-sonnet-5-5
+  allowed_tools: [Skill, Bash, Read, Grep, Glob]
+  max_turns: 10
+  timeout_seconds: 300
+graders:
+  - type: tool_used
+    name: loads-the-skill
+    tool: Skill
+    input_match: complexity
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: runs-the-cli
+    tool: Bash
+    input_match: "complexity\\.mjs (analyse|explain)"
+    min: 1
+    arm: with-only

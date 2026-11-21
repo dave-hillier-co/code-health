@@ -2,7 +2,7 @@ schema_version: "1.0"
 name: inline-with-commit-discipline
 description: The skill analyses first, inlines only the unit the evidence supports, in a commit of its own that records the rule and carries the Code-Health trailer.
 tags: [behaviour]
-runs: 1
+runs: 3
 context:
   scaffold_script: ../scaffold.sh
 execution:

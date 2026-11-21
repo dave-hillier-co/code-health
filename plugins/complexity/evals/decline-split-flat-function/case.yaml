@@ -1,0 +1,29 @@
+schema_version: "1.0"
+name: decline-split-flat-function
+description: A long but flat function is not complex, so the skill leaves it alone and says why, instead of splitting it into helpers to look tidier.
+tags: [behaviour, negative]
+runs: 3
+context:
+  scaffold_script: ../flat-scaffold.sh
+execution:
+  prompt: The describe function in src/describe.js is long. Split it into smaller helper functions.
+  model: claude-sonnet-5-5
+  allowed_tools: [Skill, Bash, Read, Edit, Write, Grep, Glob]
+  max_turns: 15
+  timeout_seconds: 400
+graders:
+  - type: tool_used
+    name: measures-first
+    tool: Bash
+    input_match: "complexity\\.mjs (analyse|explain)"
+    min: 1
+    arm: with-only
+  - type: llm
+    name: leaves-the-flat-function-and-says-why
+    criteria: >-
+      The agent measures the function, finds that its cognitive complexity and nesting are low (it is long but flat),
+      and either leaves it unchanged or changes it only minimally, explaining that length alone is not complexity and
+      that splitting it into single-use helpers would scatter the code. It does not split the function into several
+      small helpers.
+    focus: trace
+    arm: both

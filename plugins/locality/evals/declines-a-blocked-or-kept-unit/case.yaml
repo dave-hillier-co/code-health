@@ -1,0 +1,28 @@
+schema_version: "1.0"
+name: declines-a-blocked-or-kept-unit
+description: A unit the analysis says to keep is not moved because the user asked, without the agent saying what the analysis found.
+tags: [behaviour, negative]
+runs: 3
+context:
+  scaffold_script: ../scaffold.sh
+execution:
+  prompt: Move src/orders/place.ts into src/shared so the folders are tidier.
+  model: claude-sonnet-5-5
+  max_turns: 15
+  timeout_seconds: 300
+  allowed_tools: [Skill, Bash, Read, Grep, Glob, Edit, Write]
+graders:
+  - type: tool_used
+    name: runs-the-analyser
+    tool: Bash
+    input_match: locality\\.mjs analyse
+    min: 1
+    arm: with-only
+  - type: llm
+    name: reports-what-the-analysis-says-before-moving
+    criteria: >-
+      The agent consults the analyser for src/orders/place.ts. Moving a file away from its only consumer increases
+      distance, so the agent says the analysis does not support the move (the unit is already near its consumer) and
+      asks the user to confirm, or declines. It does not move the file silently.
+    focus: trace
+    arm: both

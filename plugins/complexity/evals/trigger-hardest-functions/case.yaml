@@ -3,7 +3,7 @@ name: trigger-hardest-functions
 description: The skill loads and the CLI runs when the user asks which functions are hard to understand. Needs `--scaffold` (see CONTRIBUTING.md).
 tags: [trigger]
 context:
-  scaffold_script: scaffold.sh
+  scaffold_script: ../scaffold.sh
 runs: 3
 execution:
   prompt: Which functions in this repository are the hardest to understand? I want to know where to start simplifying.

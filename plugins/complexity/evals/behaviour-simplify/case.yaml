@@ -3,7 +3,7 @@ name: behaviour-simplify
 description: Given a deeply nested function, the skill measures it, explains it, simplifies it in place with the tests green, and commits with the suite trailer. Needs `--scaffold` and `--allow-tools Bash,Read,Edit,Write,Grep,Glob` (see CONTRIBUTING.md).
 tags: [behaviour]
 context:
-  scaffold_script: scaffold.sh
+  scaffold_script: ../scaffold.sh
 runs: 2
 execution:
   prompt: The ship function in src/ship.js is a nightmare to read. Simplify it and commit the result.

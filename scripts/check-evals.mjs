@@ -17,6 +17,9 @@ export const readEvalPins = (root = defaultRoot) => JSON.parse(readFileSync(join
  * - the case directory name equals `name`, and grader names are unique
  * - `execution.model` is the model pinned in `shared/evals.json`
  *
+ * - a plugin that ships a skill has cases tagged `trigger` (it loads when it should), `negative`
+ *   (it stays out of the way or declines) and `behaviour` (what it does once loaded), as suite.md asks
+ *
  * Cases are `case.yaml` files only. The `prompt.md` form cannot pin a model.
  * `evals/results/` is output and is skipped.
  *
@@ -33,7 +36,12 @@ export function checkEvals(root = defaultRoot) {
   const plugins = join(root, "plugins");
   for (const plugin of existsSync(plugins) ? readdirSync(plugins).sort() : []) {
     const evals = join(plugins, plugin, "evals");
-    if (!existsSync(evals)) continue;
+    const tags = new Set();
+    const hasSkill = existsSync(join(plugins, plugin, "skills"));
+    if (!existsSync(evals)) {
+      if (hasSkill) problems.push(`plugins/${plugin}: ships a skill but has no evals`);
+      continue;
+    }
     for (const entry of readdirSync(evals, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
       if (!entry.isDirectory() || entry.name === "results") continue;
       const where = `plugins/${plugin}/evals/${entry.name}`;
@@ -58,9 +66,15 @@ export function checkEvals(root = defaultRoot) {
       if (document.execution.model !== pins.model) {
         problems.push(`${where}/case.yaml: execution.model must be ${pins.model}, as pinned in shared/evals.json`);
       }
+      for (const tag of document.tags ?? []) tags.add(tag);
       const names = document.graders.map((g) => g.name);
       for (const name of new Set(names.filter((n, i) => names.indexOf(n) !== i))) {
         problems.push(`${where}/case.yaml: duplicate grader name "${name}"`);
+      }
+    }
+    if (hasSkill) {
+      for (const tag of ["trigger", "negative", "behaviour"]) {
+        if (!tags.has(tag)) problems.push(`plugins/${plugin}/evals: no case is tagged "${tag}"; a skill needs trigger, negative and behaviour cases`);
       }
     }
   }

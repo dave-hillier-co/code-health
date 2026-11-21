@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds the repository the behaviour case works in: one deeply nested function with tests, committed.
+# Builds the repository the cases work in: one deeply nested function with tests, committed on a fixed date.
 set -eu
 git init -q --initial-branch=main
 git config user.name "Eval Author"
@@ -65,4 +65,4 @@ cat > package.json <<'EOF'
 EOF
 
 git add --all
-git commit -q -m "Add shipping"
+GIT_AUTHOR_DATE=2024-01-01T09:00:00Z GIT_COMMITTER_DATE=2024-01-01T09:00:00Z git commit -q -m "Add shipping"
