@@ -59,24 +59,56 @@ Treat each recommendation as a default to confirm or override. Before acting:
 4. Skip or defer units that are changing now. Check `git log --since` on the unit and its consumers, and leave anything with open work. Old, stable units are the cheapest moves.
 5. Units younger than `locality.graceDays` (90 by default) are weak evidence for `inline` and `move`: one callsite is only evidence once reuse has had time to happen. The analyser applies this as the `within-grace-period` rule using `age`. Its `creates-cycle` rule refuses a move that would make two folders import each other. The checks it does not make for you: an interface, an override or a recursive function is not a free-standing helper, so read the unit before inlining it.
 
-`scrutinise` units are not moved. Review them with `references/scrutinise.md`. `blocked` units need a blocker resolved first: see `references/blocked-moves.md`.
+`scrutinise` units are not moved. Review them with `locality scrutinise` and `references/scrutinise.md`. `blocked` units need a blocker resolved first: see `references/blocked-moves.md`.
 
 ## Apply one unit per commit
 
 Every commit is a single, revertible step with the tests green before and after. A reviewer never evaluates a move and a behaviour change together.
 
 - **Split first.** A `split` is its own commit: move each export group to a new sibling file, rewrite imports, change nothing else. The resulting units are then moved or inlined in later commits. Re-run the analyser afterwards, because the graph changed.
-- **Move second.** A move commit contains only the file moves (`git mv`) and the import rewrites that follow. Keep the unit's internal layout and its owned tests together, so git's rename detection keeps history intact. Show the planned file operations to the user before you make them.
+- **Move second, with the mover.** A move commit contains only the file moves and the import rewrites that follow. `locality move` plans and makes it deterministically, keeping the unit's layout and carrying its owned tests, so git's rename detection keeps history intact. Always run it as a dry run first and show the planned file operations to the user before `--apply`. See "Move with the mover" below.
 - **Inline third, in its own commit.** Substitute parameters, watch for name collisions, side-effect order and early returns, then delete the unit and its owned tests only if the caller's tests cover the behaviour.
 - **Leaves before roots.** For nested units, the smallest land first, then re-analyse. A branch rooted above scattered files (`scattered-unit`) is handled by moving its leaves.
 - **Never move across published package boundaries.** `package-entry` and `fixed-point` mean flag it and stop.
 - **Run the project's own checks** (type check, tests, lint) between commits. If they fail after a move, fix the import rewrite, not the tests.
 
-There is no deterministic mover yet. Make moves with `git mv` and update imports by hand or with the editor's rename refactoring, and confirm with the type checker that nothing else changed.
+### Move with the mover
+
+```
+node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs move src/shared/utils/money.ts --json
+```
+
+This is a dry run. It changes nothing and reports:
+
+- `results`: the exact file operations (`from`, `to`, and `role` `unit` or `test`).
+- `rewrites`: every import specifier it would change, with file and line. Specifiers keep the extension style the repository writes (`.ts`, `.js` or none).
+- `refusals`: why it will not move the unit. Guards (`package-entry`, `fixed-point`, `fixed-point-destination`, `package-boundary`, `collision`, `barrel`, `no-change`, `invalid-destination`) cannot be overridden. Stop and report them.
+- `mentions`: files outside the source (docs, config, scripts) that name a moved path. The mover does not edit them. Update them yourself in the same commit, or say why not.
+- `warnings`: an import that could not be repaired, or an alias that became a relative path. Read each one.
+
+Show the operations and rewrites to the user, then apply:
+
+```
+node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs move src/shared/utils/money.ts --apply
+```
+
+`--apply` needs a clean working tree, makes the moves with `git mv`, rewrites the imports and commits the lot as one move-only commit whose message records the rule, the consumer count, any red flag and the `Code-Health:` trailer. `--no-commit` leaves it staged, for when you must add the mention fixes before committing. Then run the project's checks.
+
+- `--to <folder>` chooses a destination other than the analyser's target. Say why in your report.
+- A unit whose recommendation is not `move` is refused with `needs-reason` until you pass `--reason "<why>"`. The reason goes in the commit message as the override. Use it only for a judgement the rules cannot see, such as a name that explains the code.
+- Imports written as `jest.mock("...")`, string paths in config and generated files are not rewritten. The type checker and the tests are the check on those.
+
+When the mover cannot do what is needed (a path you must place by hand, or a language it does not cover), make the move yourself with `git mv` and your editor's rename refactoring, in a move-only commit with the `Code-Health:` trailer, then prove it reproduces the plan:
+
+```
+node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs verify-move src/shared/utils/money.ts
+```
+
+`verify-move` plans the move from the code before the commit (`--commit <ref>` to check another commit, `--to <folder>` if you chose another destination) and checks that every planned file moved, nothing else was added or removed, every file holds the text the mover would have written, and the message carries the trailer. It exits 1 and lists what differs: `missing` operations, `unexpectedAdded` or `unexpectedDeleted` files, `specifierDifferences` (an import spelled differently from the mover's, with expected and actual) and `otherChanges` (a change that is not an import path, so the commit is not move-only). Fix the commit and verify again. `references/moving.md` has the details.
 
 ### Commit message
 
-Record the evidence in the body: the rule that fired, the consumer count, any red flag cited, and any override of the default with its reason. End with the trailer that keeps the commit out of outcome windows, in the final paragraph of the message:
+When you commit by hand, record the evidence in the body: the rule that fired, the consumer count, any red flag cited, and any override of the default with its reason. End with the trailer that keeps the commit out of outcome windows, in the final paragraph of the message:
 
 ```
 Move the money formatter next to its consumers
