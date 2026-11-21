@@ -1,0 +1,17 @@
+schema_version: "1.0"
+name: no-trigger-explain-regex
+description: "The cochange skill stays unloaded on a task that has nothing to do with change history."
+tags: [trigger, negative]
+runs: 3
+execution:
+  prompt: "Explain what this regular expression does: ^(?:\\d{3}-){2}\\d{4}$"
+  model: claude-sonnet-5-5
+  max_turns: 6
+  timeout_seconds: 180
+graders:
+  - type: "tool_used"
+    name: "does-not-load-the-cochange-skill"
+    tool: "Skill"
+    input_match: "cochange"
+    max: 0
+    arm: "with-only"

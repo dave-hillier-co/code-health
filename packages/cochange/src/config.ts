@@ -71,6 +71,8 @@ export interface CochangeSettings {
   evidenceThresholds: EvidenceThresholds;
   /** True when the config file states the analysis window, which a shallow clone requires. */
   windowStated: boolean;
+  /** The opt-in change-set completeness hook. */
+  hook: { enabled: boolean; confidence: number; maxCommitsBehind: number };
 }
 
 /** Validates the effective cochange section and returns it typed. Throws a config error (exit 2). */
@@ -104,6 +106,15 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
   const minDegree = positive("minDegree");
   if (minDegree > 100) throw configError(`code-health.json: ${at("minDegree")} is a percentage, at most 100`);
   const evidence = section.evidence as EvidenceThresholds;
+  const hook = section.hook as { enabled: boolean; confidence: unknown; maxCommitsBehind: unknown };
+  const hookConfidence = hook.confidence;
+  if (typeof hookConfidence !== "number" || !Number.isInteger(hookConfidence) || hookConfidence < 1 || hookConfidence > 100) {
+    throw configError(`code-health.json: ${at("hook.confidence")} must be a percentage from 1 to 100`);
+  }
+  const behind = hook.maxCommitsBehind;
+  if (typeof behind !== "number" || !Number.isInteger(behind) || behind < 0) {
+    throw configError(`code-health.json: ${at("hook.maxCommitsBehind")} must be a non-negative integer`);
+  }
 
   return {
     ref: branch ?? "HEAD",
@@ -123,6 +134,7 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
     botPatterns: botPatterns as string[],
     evidenceThresholds: evidence,
     windowStated: config.sources[at("windowMonths")] === "file",
+    hook: { enabled: hook.enabled === true, confidence: hookConfidence, maxCommitsBehind: behind },
   };
 }
 

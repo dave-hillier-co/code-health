@@ -1,5 +1,6 @@
 import type { Command, Rule } from "@code-health/cli-kit/run-cli";
 import * as age from "./commands/age.ts";
+import * as brief from "./commands/brief.ts";
 import * as clusters from "./commands/clusters.ts";
 import * as coupling from "./commands/coupling.ts";
 import * as hotspots from "./commands/hotspots.ts";
@@ -23,6 +24,7 @@ export interface CommandModule {
  */
 export const commandModules: CommandModule[] = [
   age,
+  brief,
   clusters,
   coupling,
   hotspots,

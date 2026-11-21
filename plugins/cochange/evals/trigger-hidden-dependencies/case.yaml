@@ -1,0 +1,17 @@
+schema_version: "1.0"
+name: trigger-hidden-dependencies
+description: "The cochange skill loads on a prompt about change history, as a user would phrase it."
+tags: [trigger, positive]
+runs: 3
+execution:
+  prompt: "Why does a change to one of our config files always end up touching a dozen other files in different folders?"
+  model: claude-sonnet-5-5
+  max_turns: 6
+  timeout_seconds: 180
+graders:
+  - type: "tool_used"
+    name: "loads-the-cochange-skill"
+    tool: "Skill"
+    input_match: "cochange"
+    min: 1
+    arm: "with-only"

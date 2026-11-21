@@ -1,0 +1,42 @@
+schema_version: "1.0"
+name: measuring-outcome
+description: "Asked whether a refactoring helped, the agent uses change spread, takes a baseline, reports sample sizes, warns about regression to the mean and does not claim an effect the data cannot show."
+tags: [behaviour, spread]
+runs: 2
+context:
+  scaffold_script: ./scaffold.sh
+execution:
+  prompt: "We just moved the billing and reports files into one folder to cut down on scattered changes. How do I know whether that made later changes cheaper?"
+  model: claude-sonnet-5-5
+  max_turns: 16
+  timeout_seconds: 400
+  allowed_tools: [Bash, Edit, Write]
+graders:
+  - type: "tool_used"
+    name: "loads-the-cochange-skill"
+    tool: "Skill"
+    input_match: "cochange"
+    min: 1
+    arm: "with-only"
+  - type: "tool_used"
+    name: "runs-cochange-spread"
+    tool: "Bash"
+    input_match: "dist/cochange\\.mjs spread"
+    min: 1
+  - type: "tool_order"
+    name: "skill-before-cli"
+    before: {"tool": "Skill", "input_match": "cochange"}
+    after: {"tool": "Bash", "input_match": "dist/cochange\\.mjs"}
+    arm: "with-only"
+  - type: "tool_used"
+    name: "does-not-edit-files"
+    tool: "Edit"
+    max: 0
+  - type: "tool_used"
+    name: "does-not-write-files"
+    tool: "Write"
+    max: 0
+  - type: "llm"
+    name: "baseline-sample-sizes-and-comparison-group"
+    focus: "last_message"
+    criteria: "The answer measures change spread (mean pairwise folder distance per logical change), not a count of files. It compares a window before the move with a window of matching length after it, and states how many changes each window holds. It says that a comparison of the moved files alone can mislead because extreme values drift back toward average, and proposes comparing against similar files that were not moved. It notes that spread falls by construction when files that change together are co-located, so it is a leading indicator and an independent measure such as agent effort is needed to show work got cheaper. It does not claim the move helped unless the numbers it ran show that."
