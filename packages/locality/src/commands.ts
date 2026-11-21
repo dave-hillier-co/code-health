@@ -2,6 +2,7 @@ import type { Command, Rule } from "@code-health/cli-kit/run-cli";
 import * as analyse from "./commands/analyse.ts";
 import * as history from "./commands/history.ts";
 import * as move from "./commands/move.ts";
+import * as scrutinise from "./commands/scrutinise.ts";
 import * as verifyMove from "./commands/verify-move.ts";
 
 /** What a module in `commands/` exports. */
@@ -22,6 +23,7 @@ export const commandModules: CommandModule[] = [
   analyse,
   history,
   move,
+  scrutinise,
   verifyMove,
 ];
 

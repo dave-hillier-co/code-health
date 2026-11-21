@@ -1,0 +1,313 @@
+{
+  "command": "scrutinise",
+  "config": "6518cbda11730a42",
+  "inputs": {
+    "highFanIn": 6,
+    "paths": []
+  },
+  "repo": {
+    "dirty": false,
+    "head": "6f99733724738983921d396bc6aba32ebd160942"
+  },
+  "results": [
+    {
+      "consumerFolders": [
+        "src/billing",
+        "src/orders",
+        "src/reports"
+      ],
+      "consumers": [
+        "src/billing/code.ts",
+        "src/billing/memo.ts",
+        "src/orders/label.ts",
+        "src/orders/title.ts",
+        "src/reports/head.ts",
+        "src/reports/stamp.ts"
+      ],
+      "exports": [
+        {
+          "callSites": 5,
+          "consumers": [
+            "src/billing/code.ts",
+            "src/billing/memo.ts",
+            "src/orders/label.ts",
+            "src/orders/title.ts",
+            "src/reports/head.ts"
+          ],
+          "lines": 5,
+          "name": "clean",
+          "parameters": [
+            {
+              "mode": false,
+              "name": "value",
+              "optional": false,
+              "passedBy": 5,
+              "values": [
+                {
+                  "count": 5,
+                  "value": "(expression)"
+                }
+              ]
+            },
+            {
+              "mode": true,
+              "name": "trim",
+              "optional": false,
+              "passedBy": 5,
+              "values": [
+                {
+                  "count": 4,
+                  "value": "true"
+                },
+                {
+                  "count": 1,
+                  "value": "false"
+                }
+              ]
+            },
+            {
+              "mode": true,
+              "name": "upper",
+              "optional": false,
+              "passedBy": 5,
+              "values": [
+                {
+                  "count": 4,
+                  "value": "false"
+                },
+                {
+                  "count": 1,
+                  "value": "true"
+                }
+              ]
+            }
+          ],
+          "postProcessed": [
+            {
+              "how": ".toUpperCase",
+              "line": 2,
+              "path": "src/orders/label.ts"
+            },
+            {
+              "how": "?? fallback",
+              "line": 2,
+              "path": "src/orders/title.ts"
+            },
+            {
+              "how": "wrapper shout fixes arguments",
+              "line": 2,
+              "path": "src/reports/head.ts"
+            }
+          ],
+          "testCallSites": 0,
+          "valueReferences": 0
+        },
+        {
+          "callSites": 1,
+          "consumers": [
+            "src/reports/stamp.ts"
+          ],
+          "lines": 4,
+          "name": "ordered",
+          "parameters": [
+            {
+              "mode": false,
+              "name": "values",
+              "optional": false,
+              "passedBy": 1,
+              "values": [
+                {
+                  "count": 1,
+                  "value": "(expression)"
+                }
+              ]
+            }
+          ],
+          "postProcessed": [],
+          "testCallSites": 0,
+          "valueReferences": 0
+        },
+        {
+          "callSites": 3,
+          "consumers": [
+            "src/billing/code.ts",
+            "src/billing/memo.ts",
+            "src/reports/head.ts"
+          ],
+          "lines": 3,
+          "name": "pad",
+          "parameters": [
+            {
+              "mode": false,
+              "name": "value",
+              "optional": false,
+              "passedBy": 3,
+              "values": [
+                {
+                  "count": 3,
+                  "value": "(expression)"
+                }
+              ]
+            },
+            {
+              "mode": false,
+              "name": "width",
+              "optional": false,
+              "passedBy": 3,
+              "values": [
+                {
+                  "count": 1,
+                  "value": "12"
+                },
+                {
+                  "count": 1,
+                  "value": "20"
+                },
+                {
+                  "count": 1,
+                  "value": "8"
+                }
+              ]
+            },
+            {
+              "mode": false,
+              "name": "fill",
+              "optional": true,
+              "passedBy": 1,
+              "values": [
+                {
+                  "count": 1,
+                  "value": "\"0\""
+                }
+              ]
+            }
+          ],
+          "postProcessed": [
+            {
+              "how": "wrapper column fixes arguments",
+              "line": 3,
+              "path": "src/reports/head.ts"
+            }
+          ],
+          "testCallSites": 0,
+          "valueReferences": 0
+        },
+        {
+          "callSites": 1,
+          "consumers": [
+            "src/reports/stamp.ts"
+          ],
+          "lines": 3,
+          "name": "stamp",
+          "parameters": [
+            {
+              "mode": false,
+              "name": "when",
+              "optional": false,
+              "passedBy": 1,
+              "values": [
+                {
+                  "count": 1,
+                  "value": "(expression)"
+                }
+              ]
+            }
+          ],
+          "postProcessed": [],
+          "testCallSites": 0,
+          "valueReferences": 0
+        }
+      ],
+      "fanIn": 6,
+      "findings": [
+        {
+          "consumers": [
+            "src/orders/label.ts",
+            "src/orders/title.ts",
+            "src/reports/head.ts"
+          ],
+          "detail": "3 of 5 call sites in 3 files change or work around what it returns (.toUpperCase, ?? fallback, wrapper shout fixes arguments): it may be doing the wrong thing for them",
+          "flag": "divergent-use",
+          "subject": "clean"
+        },
+        {
+          "consumers": [
+            "src/billing/code.ts",
+            "src/billing/memo.ts",
+            "src/reports/head.ts"
+          ],
+          "detail": "fill is passed by 1 of 3 call sites: an option most callers never use",
+          "flag": "overexposure",
+          "subject": "pad"
+        },
+        {
+          "consumers": [
+            "src/billing/code.ts",
+            "src/billing/memo.ts",
+            "src/reports/head.ts"
+          ],
+          "detail": "3 parameters in front of a body of 1 statement over 3 lines: the interface is nearly as complex as what it hides",
+          "flag": "shallow-module",
+          "subject": "pad"
+        },
+        {
+          "consumers": [
+            "src/billing/code.ts",
+            "src/billing/memo.ts",
+            "src/orders/label.ts",
+            "src/orders/title.ts",
+            "src/reports/head.ts"
+          ],
+          "detail": "trim switches behaviour for different callers: true x4, false x1 over 5 call sites",
+          "flag": "special-general-mixture",
+          "subject": "clean"
+        },
+        {
+          "consumers": [
+            "src/billing/code.ts",
+            "src/billing/memo.ts",
+            "src/orders/label.ts",
+            "src/orders/title.ts",
+            "src/reports/head.ts"
+          ],
+          "detail": "upper switches behaviour for different callers: false x4, true x1 over 5 call sites",
+          "flag": "special-general-mixture",
+          "subject": "clean"
+        }
+      ],
+      "hints": [
+        {
+          "evidence": "values.sort();",
+          "kind": "mutates-argument",
+          "line": 12,
+          "subject": "ordered"
+        },
+        {
+          "evidence": "return when.toLocaleDateString() + when.getHours();",
+          "kind": "locale",
+          "line": 17,
+          "subject": "stamp"
+        },
+        {
+          "evidence": "return when.toLocaleDateString() + when.getHours();",
+          "kind": "time-zone",
+          "line": 17,
+          "subject": "stamp"
+        }
+      ],
+      "location": "src/shared",
+      "notes": [],
+      "path": "src/shared/text.ts",
+      "reason": "high-fan-in",
+      "rule": "high-fan-in"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 1
+  },
+  "warnings": []
+}
