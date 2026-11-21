@@ -284,6 +284,10 @@ export class ImportModel {
         if (result.status !== "missing") return result;
       }
     }
+    if (this.resolver.importsAreVisible === true) {
+      const binding = this.importBinding(file, name);
+      if (binding) return this.followBinding(path, binding.specifier, binding.imported, visiting);
+    }
     const submodule = this.resolver.submodule?.(path, name);
     if (submodule !== undefined) return { status: "namespace", file: submodule, submodule: true };
     return file.exports.length === 0 && file.reexports.length === 0

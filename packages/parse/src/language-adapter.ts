@@ -112,6 +112,11 @@ export interface ModuleResolver {
    * inside `cli.rs`, where `inner` is an inline module). TypeScript keeps a self-import as an edge and leaves it out.
    */
   dropsSelfDependencies?: boolean;
+  /**
+   * True when a name a module only imports, without exporting it, can still be imported from that module
+   * (Rust `use super::Name`, where the parent has a private `use`). The name is followed to what it imports.
+   */
+  importsAreVisible?: boolean;
 }
 
 export interface ResolveInput {
