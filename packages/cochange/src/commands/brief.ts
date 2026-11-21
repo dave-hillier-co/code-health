@@ -6,7 +6,7 @@ import { listTree } from "@code-health/history/tree";
 import { analysisCommand } from "../analysis-command.ts";
 import { compareBytes, confidenceOf, degreeOf, partnersOf, reachesDegree } from "../coupling.ts";
 import { rankHotspots, type HotspotRow } from "../hotspot-ranking.ts";
-import { repoRelative } from "../repo-paths.ts";
+import { repoRelative } from "@code-health/history/repo-paths";
 import { SECONDS_PER_DAY, isoDate } from "../units.ts";
 
 export const name = "brief";

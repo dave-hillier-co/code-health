@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { loadConfig } from "@code-health/cli-kit/config";
 import { monthsBefore } from "@code-health/history/evidence";
+import { readEditEvent, within } from "@code-health/history/hook-event";
 import { locateCache } from "@code-health/history/cache-location";
 import { runGit } from "@code-health/history/git";
 import { filterHistory } from "@code-health/history/noise";
@@ -10,16 +11,7 @@ import { updateSession, type SessionState } from "@code-health/history/session-s
 import { openForRead } from "@code-health/history/store";
 import { cochangeConfig, readSettings, type CochangeSettings } from "./config.ts";
 import { confidenceOf, partnersOf } from "./coupling.ts";
-import { repoRelative } from "./repo-paths.ts";
 import { loadIdentityState } from "./identity-access.ts";
-
-/** What Claude Code sends a hook on stdin. Only the fields the hook uses are read. */
-interface HookInput {
-  session_id?: unknown;
-  cwd?: unknown;
-  tool_name?: unknown;
-  tool_input?: { file_path?: unknown };
-}
 
 export interface HookRequest {
   /** The raw stdin of the hook process. */
@@ -39,9 +31,6 @@ export interface HookRequest {
 /** Names the hook in its session state, apart from other plugins' hooks. */
 const HOOK_NAME = "cochange";
 
-/** The tools whose edits the hook watches. */
-export const WATCHED_TOOLS = new Set(["Edit", "Write", "MultiEdit"]);
-
 /** The most partners one note names. */
 const MAX_PARTNERS_NAMED = 3;
 
@@ -51,17 +40,6 @@ const MAX_PARTNERS_NAMED = 3;
  * session. The hook's own timeout in `hooks.json` is a backstop above it.
  */
 export const DEFAULT_BUDGET_MS = 250;
-
-/** The directory holding `.git`, found by walking up from `start` with no process spawned. Undefined outside a repository. */
-function findRepoRoot(start: string): string | undefined {
-  let directory = start;
-  for (;;) {
-    if (existsSync(join(directory, ".git"))) return directory;
-    const parent = dirname(directory);
-    if (parent === directory) return undefined;
-    directory = parent;
-  }
-}
 
 /** How many commits the cache is behind the ref, or undefined when it is further behind than `limit` or has no usable commit. */
 async function commitsBehind(root: string, dbPath: string, ref: string, limit: number): Promise<{ behind: number; sha: string } | undefined> {
@@ -149,29 +127,24 @@ async function consider(root: string, file: string, settings: CochangeSettings, 
 export async function runHook(request: HookRequest): Promise<string> {
   const started = request.startedAt ?? performance.now();
   try {
-    const input = JSON.parse(request.stdin) as HookInput;
-    const path = input.tool_input?.file_path;
-    if (typeof input.session_id !== "string" || input.session_id === "" || typeof path !== "string") return "";
-    if (typeof input.tool_name === "string" && !WATCHED_TOOLS.has(input.tool_name)) return "";
-
-    const cwd = typeof input.cwd === "string" && input.cwd !== "" ? input.cwd : request.cwd;
-    const root = findRepoRoot(cwd);
-    if (root === undefined) return "";
+    const event = readEditEvent(request.stdin, request.cwd);
+    if (event === undefined) return "";
+    const { root, file, sessionId } = event;
     const settings = readSettings(loadConfig(root, cochangeConfig));
     if (!settings.hook.enabled) return "";
 
-    const file = repoRelative(root, path);
-    if (file.startsWith("..") || file.startsWith("/") || file === "") return "";
-
     // The edit is recorded first, under the lock, so it survives however the rest of the run ends.
-    const state = updateSession(root, input.session_id, HOOK_NAME, (current) => {
+    const state = updateSession(root, sessionId, HOOK_NAME, (current) => {
       if (!current.edited.includes(file)) current.edited.push(file);
     });
 
     const decision: Decision = state.spokenAbout.includes(file)
       ? { note: null, outcome: "silent: already spoke about this file" }
-      : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state));
-    updateSession(root, input.session_id, HOOK_NAME, (current) => {
+      : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state), {
+          note: null,
+          outcome: "silent: over the time budget",
+        });
+    updateSession(root, sessionId, HOOK_NAME, (current) => {
       if (decision.note !== null && !current.spokenAbout.includes(file)) current.spokenAbout.push(file);
       current.lastRun = { outcome: decision.outcome, durationMs: Math.round(performance.now() - started) };
     });
@@ -182,22 +155,4 @@ export async function runHook(request: HookRequest): Promise<string> {
   } catch {
     return "";
   }
-}
-
-/** Resolves with the decision, or with silence when the budget is spent first. The work is abandoned, not awaited. */
-function within(budgetMs: number, started: number, work: Promise<Decision>): Promise<Decision> {
-  const remaining = Math.max(0, budgetMs - (performance.now() - started));
-  return new Promise<Decision>((resolve, reject) => {
-    const timer = setTimeout(() => resolve({ note: null, outcome: "silent: over the time budget" }), remaining);
-    work.then(
-      (decision) => {
-        clearTimeout(timer);
-        resolve(decision);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
 }

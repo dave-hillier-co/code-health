@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import { loadConfig } from "@code-health/cli-kit/config";
 import { cochangeConfig, readSettings } from "../src/config.ts";
-import { DEFAULT_BUDGET_MS, WATCHED_TOOLS } from "../src/hook.ts";
+import { WATCHED_TOOLS } from "@code-health/history/hook-event";
+import { DEFAULT_BUDGET_MS } from "../src/hook.ts";
 
 const plugin = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "plugins", "cochange");
 const manifest = JSON.parse(readFileSync(join(plugin, "hooks", "hooks.json"), "utf8"));
