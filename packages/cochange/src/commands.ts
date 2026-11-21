@@ -5,6 +5,7 @@ import * as coupling from "./commands/coupling.ts";
 import * as hotspots from "./commands/hotspots.ts";
 import * as refresh from "./commands/refresh.ts";
 import * as spread from "./commands/spread.ts";
+import * as trend from "./commands/trend.ts";
 
 /** What a module in `commands/` exports. */
 export interface CommandModule {
@@ -27,6 +28,7 @@ export const commandModules: CommandModule[] = [
   hotspots,
   refresh,
   spread,
+  trend,
 ];
 
 export const commands: Record<string, Command> = Object.fromEntries(commandModules.map((m) => [m.name, m.command]));

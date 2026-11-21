@@ -1,9 +1,9 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
-import { listTree } from "@code-health/history/tree";
 import { treeDistance } from "@code-health/graph/tree-distance";
 import { analysisCommand } from "../analysis-command.ts";
 import { readSettings } from "../config.ts";
 import { coupledPairs, integerOption } from "../coupled-pairs.ts";
+import { focusPath } from "../focus-path.ts";
 import { compareBytes, confidenceOf, degreeOf, type PairCount } from "../coupling.ts";
 
 export const name = "coupling";
@@ -63,14 +63,7 @@ export const command = analysisCommand(name, {
     const counts = coupledPairs(history, { minSupport, minDegree });
 
     const requested = context.values.file;
-    // A path that exists at the analysed commit names the file there, even if an older file of
-    // that name was renamed away. Only a path that is gone is followed forward through renames.
-    const focus =
-      typeof requested !== "string"
-        ? undefined
-        : (await listTree(context.repo.root, history.view.headSha)).includes(requested)
-          ? requested
-          : history.view.renames.resolve(requested, -1);
+    const focus = typeof requested === "string" ? await focusPath(context, history, requested) : undefined;
 
     const rows = counts.pairs
       .filter((pair) => focus === undefined || pair.a === focus || pair.b === focus)
