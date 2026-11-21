@@ -1,0 +1,172 @@
+import { compareIds } from "@code-health/graph/graph";
+import type { Unblock } from "./locality-report.ts";
+import { findCycles, unblocksOf } from "./cycles.ts";
+import type { StructureSettings } from "./config.ts";
+import type { Model } from "./model.ts";
+import { describeEdge, type SymbolUse } from "./modules.ts";
+import { edgeKey } from "./project.ts";
+import { round3, type AgainstStability, type Stability } from "./stability.ts";
+import { judgeEdge, unstableId } from "./unstable.ts";
+
+const round1 = (value: number): number => Math.round(value * 10) / 10;
+
+export type ProblemKind = "cycle" | "unstable-dependency";
+
+export interface CoChangeFigures {
+  /** Eligible logical changes that touched both sides. */
+  shared: number;
+  fromChanges: number;
+  toChanges: number;
+  /** Percent of changes to `from` that also touched `to`. */
+  confidenceFromTo: number;
+  /** Percent of changes to `to` that also touched `from`. */
+  confidenceToFrom: number;
+  /** What independence would predict: `fromChanges * toChanges / eligibleChanges`. */
+  expected: number;
+  eligibleChanges: number;
+}
+
+export interface Misplacement {
+  symbol: string;
+  /** Distinct files other than the defining one that use it. */
+  consumerFiles: number;
+  onFromSide: number;
+  onToSide: number;
+  elsewhere: number;
+  /** The side holding a strict majority of the consumer files, or "split". */
+  mostlyOn: "from" | "to" | "split";
+  /** Its consumers mostly sit on the depending side, so moving it there may remove the dependency. */
+  moveMayRemoveDependency: boolean;
+}
+
+export interface EvidencePack {
+  id: string;
+  /** The first problem the edge is part of, or null when it is no problem at all. */
+  kind: ProblemKind | null;
+  /** Every problem the edge is part of. */
+  kinds: ProblemKind[];
+  /** Ids of the findings (`cycle:...`, `unstable:...`) the edge belongs to. */
+  findings: string[];
+  level: string;
+  from: string;
+  to: string;
+  /** Deferred to the coupling-quadrant milestone. The figures it will rest on are in `coChange` and `breakingSet`. */
+  quadrant: null;
+  /** The cycle's minimum breaking set contains this edge. Null when the edge is in no cycle. */
+  inBreakingSet: boolean | null;
+  /** The symbols used across the boundary, most used first. */
+  breakingSet: SymbolUse[];
+  imports: { fileEdges: number; importStatements: number; typeOnly: boolean; files: { from: string; to: string }[] };
+  stability: { from: Stability; to: Stability };
+  stabilityVerdict: AgainstStability;
+  coChange: CoChangeFigures;
+  misplacement: Misplacement[];
+  unblocks: Unblock[];
+  /** Deferred to the mechanism census milestone. */
+  nearbyMechanisms: never[];
+  /** Deferred to the layer rules milestone. */
+  layerRule: null;
+}
+
+function coChangeFigures(model: Model, from: string, to: string): CoChangeFigures {
+  const { activity } = model;
+  const fromChanges = activity.eligibleRevisions(from);
+  const toChanges = activity.eligibleRevisions(to);
+  const shared = activity.shared(from, to);
+  const total = activity.eligibleChanges;
+  return {
+    shared,
+    fromChanges,
+    toChanges,
+    confidenceFromTo: fromChanges === 0 ? 0 : round1((shared / fromChanges) * 100),
+    confidenceToFrom: toChanges === 0 ? 0 : round1((shared / toChanges) * 100),
+    expected: total === 0 ? 0 : round3((fromChanges * toChanges) / total),
+    eligibleChanges: total,
+  };
+}
+
+/** For each symbol crossing the boundary, which side its consumers sit on. */
+function misplacement(model: Model, from: string, to: string, symbols: readonly SymbolUse[]): Misplacement[] {
+  const wanted = new Set(symbols.map((s) => s.symbol));
+  const consumers = new Map<string, Set<string>>();
+  for (const use of model.project.analysis.consumers) {
+    if (use.kind === "test") continue;
+    const symbol = `${use.to}#${use.toSymbol ?? use.toExport}`;
+    if (!wanted.has(symbol) || use.from === use.to) continue;
+    if (!consumers.has(symbol)) consumers.set(symbol, new Set());
+    consumers.get(symbol)!.add(use.from);
+  }
+  return symbols.map(({ symbol }): Misplacement => {
+    const files = [...(consumers.get(symbol) ?? [])];
+    let onFromSide = 0;
+    let onToSide = 0;
+    for (const file of files) {
+      const side = model.graph.moduleByFile.get(file);
+      if (side === from) onFromSide++;
+      else if (side === to) onToSide++;
+    }
+    const total = files.length;
+    const mostlyOn = onFromSide * 2 > total ? "from" : onToSide * 2 > total ? "to" : "split";
+    return {
+      symbol,
+      consumerFiles: total,
+      onFromSide,
+      onToSide,
+      elsewhere: total - onFromSide - onToSide,
+      mostlyOn,
+      moveMayRemoveDependency: mostlyOn === "from",
+    };
+  });
+}
+
+/** The full evidence pack for one dependency between two modules of the model. The pack recommends nothing. */
+export function evidencePack(
+  model: Model,
+  from: string,
+  to: string,
+  settings: Pick<StructureSettings, "exactLimit" | "minVolatilityRatio" | "minInstabilityGap">,
+): EvidencePack {
+  const level = model.graph.level;
+  const detail = describeEdge(model.project, model.graph, from, to);
+  const judged = judgeEdge(model, from, to, settings);
+  const { stability, id: _id, level: _l, from: _f, to: _t, fileEdges: _e, ...verdict } = judged;
+  const row = findCycles(model, settings).find((c) => c.nodes.includes(from) && c.nodes.includes(to));
+  const cycle = row && { id: row.id, inBreakingSet: row.breakingSet.some((e) => e.from === from && e.to === to) };
+
+  const kinds: ProblemKind[] = [];
+  const findings: string[] = [];
+  if (cycle) {
+    kinds.push("cycle");
+    findings.push(cycle.id);
+  }
+  if (verdict.violates) {
+    kinds.push("unstable-dependency");
+    findings.push(unstableId(level, from, to));
+  }
+
+  return {
+    id: `edge:${level}:${from}->${to}`,
+    kind: kinds[0] ?? null,
+    kinds,
+    findings,
+    level,
+    from,
+    to,
+    quadrant: null,
+    inBreakingSet: cycle ? cycle.inBreakingSet : null,
+    breakingSet: detail.symbols,
+    imports: {
+      fileEdges: detail.fileEdges,
+      importStatements: detail.importStatements,
+      typeOnly: detail.typeOnly,
+      files: [...(model.graph.members.get(edgeKey(from, to)) ?? [])],
+    },
+    stability,
+    stabilityVerdict: verdict,
+    coChange: coChangeFigures(model, from, to),
+    misplacement: misplacement(model, from, to, detail.symbols),
+    unblocks: unblocksOf(model, from, to).sort((a, b) => b.unblockedGain - a.unblockedGain || compareIds(a.unit, b.unit)),
+    nearbyMechanisms: [],
+    layerRule: null,
+  };
+}

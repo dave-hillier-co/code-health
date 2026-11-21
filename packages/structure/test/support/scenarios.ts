@@ -106,3 +106,18 @@ export function stabilityRepository(): GitFixture {
   });
   return GitFixture.build(steps);
 }
+
+/**
+ * One helper in src/y with three consumers: one in src/x and two in src/y itself,
+ * so most of its consumers sit with it and not on the side that depends on it.
+ */
+export function misplacementRepository(): GitFixture {
+  return GitFixture.build([
+    commit("Add the modules", "2024-01-10T09:00:00Z", [
+      { op: "add", path: "src/y/helper.ts", content: module("helper", []) },
+      { op: "add", path: "src/y/one.ts", content: module("one", [["./helper.ts", "helper"]]) },
+      { op: "add", path: "src/y/two.ts", content: module("two", [["./helper.ts", "helper"]]) },
+      { op: "add", path: "src/x/a.ts", content: module("a", [["../y/helper.ts", "helper"]]) },
+    ]),
+  ]);
+}
