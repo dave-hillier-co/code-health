@@ -20,7 +20,7 @@ Not rewritten, so check them with the type checker and the tests: `jest.mock` an
 
 ## Guards
 
-Refused outright, and not overridable: a unit a published package names as an entry point (`package-entry`), a file matching `locality.fixedPoints` or a destination inside one, a move that would take a file out of its nearest `package.json` folder (`package-boundary`), a destination that already holds a file (`collision`), a barrel (inline it instead), a move to where it already is, and a destination outside the repository.
+Refused outright, and not overridable: a unit a published package names as an entry point (`package-entry`), a file matching `locality.fixedPoints` or a destination inside one, a Go file moved into or out of an `internal/` directory (`fixed-point`: the compiler limits who may import it), a move that would take a file out of its nearest `package.json` folder (`package-boundary`), a destination that already holds a file (`collision`), a barrel (inline it instead), a move to where it already is, and a destination outside the repository.
 
 `needs-reason` is the one that an agent's judgement can lift: the analyser recommended something other than a move (`inline`, `review`, `keep`, `scrutinise`, `blocked`, `split`). Pass `--reason`, and the commit message records the override.
 

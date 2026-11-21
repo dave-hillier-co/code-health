@@ -71,6 +71,12 @@ function packageRoot(path: string, boundaries: ReadonlySet<string>): string {
   }
 }
 
+/** The `internal/` directories a path sits under, outermost first. Go lets only code under an `internal/` directory's parent import it. */
+function internalScopes(path: string): string[] {
+  const folders = posix.dirname(path).split("/");
+  return folders.flatMap((folder, index) => (folder === "internal" ? [folders.slice(0, index + 1).join("/")] : []));
+}
+
 /**
  * The file operations that move a unit to a destination folder. The unit's layout is kept: each file
  * lands at the same place relative to the destination as it has now relative to the unit's folder, and a
@@ -139,6 +145,9 @@ export function planMove(
   for (const operation of operations) {
     if (packageRoot(operation.from, manifests) !== packageRoot(operation.to, manifests)) {
       refuse("package-boundary", `${operation.from} would leave its package for ${operation.to}`);
+    }
+    if (operation.from.endsWith(".go") && internalScopes(operation.from).join("\0") !== internalScopes(operation.to).join("\0")) {
+      refuse("fixed-point", `${operation.from} to ${operation.to} crosses an internal/ directory, which the Go compiler restricts to code under its parent`);
     }
     if (landing.has(operation.to)) refuse("collision", `${operation.to} is the destination of two files`);
     else if (tree.has(operation.to) && !leaving.has(operation.to)) refuse("collision", `${operation.to} already exists`);
