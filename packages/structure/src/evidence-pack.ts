@@ -84,7 +84,8 @@ export interface LayerRuleBreach {
 
 const violationsByProject = new WeakMap<object, LayerViolation[]>();
 
-function layerRule(model: Model, from: string, to: string, settings: Pick<StructureSettings, "layers">): LayerRuleBreach[] | null {
+/** The layer rules the imports between two modules break, or null when they break none. */
+export function layerRuleOf(model: Model, from: string, to: string, settings: Pick<StructureSettings, "layers">): LayerRuleBreach[] | null {
   if (settings.layers.length === 0) return null;
   let violations = violationsByProject.get(model.project);
   if (violations === undefined) {
@@ -178,7 +179,7 @@ export function evidencePack(
     kinds.push("cycle");
     findings.push(cycle.id);
   }
-  const rule = layerRule(model, from, to, settings);
+  const rule = layerRuleOf(model, from, to, settings);
   if (rule) {
     kinds.push("layer-violation");
     for (const breach of rule) for (const edge of breach.fileEdges) findings.push(layerViolationId(edge.from, edge.to));

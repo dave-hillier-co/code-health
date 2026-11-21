@@ -36,6 +36,10 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "exclusiveMaximum": 1
+        },
+        "transcripts": {
+          "type": "boolean",
+          "description": "Session transcripts were read (--projects-dir), so incidental pairs carry agent reads."
         }
       },
       "required": [
@@ -44,7 +48,8 @@
         "minStaticCoupling",
         "minSupport",
         "minRevisions",
-        "significanceLevel"
+        "significanceLevel",
+        "transcripts"
       ],
       "additionalProperties": false
     },
@@ -194,6 +199,46 @@
           },
           "bothActive": {
             "type": "boolean"
+          },
+          "incidental": {
+            "type": "object",
+            "description": "Incidental pairs only. Incidental coupling ranks low on its own and high when it blocks a locality move, is part of a cycle, violates a layer rule, or burdens agents with reads.",
+            "properties": {
+              "rank": {
+                "enum": [
+                  "high",
+                  "low"
+                ]
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "blocks-locality-move",
+                    "in-cycle",
+                    "layer-violation",
+                    "agent-reads"
+                  ]
+                }
+              },
+              "agentReads": {
+                "description": "Tasks that edited one side and opened the other only to follow the dependency. Null when no transcripts were read.",
+                "anyOf": [
+                  {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "rank",
+              "reasons",
+              "agentReads"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [

@@ -2,6 +2,7 @@ import { compareIds } from "@code-health/graph/graph";
 import type { Activity } from "./activity.ts";
 import type { StructureSettings } from "./config.ts";
 import type { Model } from "./model.ts";
+import type { IncidentalPriority } from "./incidental.ts";
 import { describeEdge, type ModuleGraph } from "./modules.ts";
 import type { Project } from "./project.ts";
 import { coChangePValue } from "./significance.ts";
@@ -113,6 +114,8 @@ export interface CouplingRow {
   staticCoupling: StaticCoupling;
   coChange: CoChangeJudgement;
   bothActive: boolean;
+  /** Incidental pairs only: whether the pair ranks high, and why. Set by `rankIncidental`. */
+  incidental?: IncidentalPriority;
 }
 
 export const couplingId = (level: string, from: string, to: string): string => `coupling:${level}:${from}->${to}`;

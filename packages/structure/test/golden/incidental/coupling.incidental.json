@@ -1,0 +1,255 @@
+{
+  "command": "coupling",
+  "config": "ed2184e3af7b8aa2",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 41,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 2.7,
+    "window": {
+      "months": 12,
+      "since": 1679821200,
+      "until": 1711443600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "level": "folder",
+    "minRevisions": 3,
+    "minStaticCoupling": 3,
+    "minSupport": 3,
+    "quadrant": "incidental",
+    "significanceLevel": 0.01,
+    "transcripts": true
+  },
+  "population": {
+    "eligibleChanges": 41,
+    "modules": 10
+  },
+  "quadrants": {
+    "hidden": 0,
+    "incidental": 5,
+    "independent": 0,
+    "insufficient-evidence": 0,
+    "real": 0,
+    "stable": 0
+  },
+  "repo": {
+    "dirty": false,
+    "head": "8350c2f19e750d8c42fb9900148cc7ff2f1be454"
+  },
+  "results": [
+    {
+      "bothActive": true,
+      "coChange": {
+        "expected": 0.61,
+        "fromChanges": 5,
+        "high": false,
+        "pValue": 0.49694,
+        "shared": 1,
+        "toChanges": 5
+      },
+      "from": "src/cyclic",
+      "id": "coupling:folder:src/cyclic->src/cycliclib",
+      "incidental": {
+        "agentReads": 0,
+        "rank": "high",
+        "reasons": [
+          "in-cycle"
+        ]
+      },
+      "level": "folder",
+      "quadrant": "incidental",
+      "staticCoupling": {
+        "fromTo": 3,
+        "high": true,
+        "sites": 6,
+        "symbols": 4,
+        "toFrom": 3
+      },
+      "to": "src/cycliclib"
+    },
+    {
+      "bothActive": true,
+      "coChange": {
+        "expected": 0.61,
+        "fromChanges": 5,
+        "high": false,
+        "pValue": 0.49694,
+        "shared": 1,
+        "toChanges": 5
+      },
+      "from": "src/blocked",
+      "id": "coupling:folder:src/blocked->src/blockedlib",
+      "incidental": {
+        "agentReads": 0,
+        "rank": "high",
+        "reasons": [
+          "blocks-locality-move"
+        ]
+      },
+      "level": "folder",
+      "quadrant": "incidental",
+      "staticCoupling": {
+        "fromTo": 3,
+        "high": true,
+        "sites": 3,
+        "symbols": 3,
+        "toFrom": 0
+      },
+      "to": "src/blockedlib"
+    },
+    {
+      "bothActive": true,
+      "coChange": {
+        "expected": 0.61,
+        "fromChanges": 5,
+        "high": false,
+        "pValue": 0.49694,
+        "shared": 1,
+        "toChanges": 5
+      },
+      "from": "src/burden",
+      "id": "coupling:folder:src/burden->src/burdenlib",
+      "incidental": {
+        "agentReads": 3,
+        "rank": "high",
+        "reasons": [
+          "agent-reads"
+        ]
+      },
+      "level": "folder",
+      "quadrant": "incidental",
+      "staticCoupling": {
+        "fromTo": 3,
+        "high": true,
+        "sites": 3,
+        "symbols": 3,
+        "toFrom": 0
+      },
+      "to": "src/burdenlib"
+    },
+    {
+      "bothActive": true,
+      "coChange": {
+        "expected": 0.61,
+        "fromChanges": 5,
+        "high": false,
+        "pValue": 0.49694,
+        "shared": 1,
+        "toChanges": 5
+      },
+      "from": "src/data",
+      "id": "coupling:folder:src/data->src/ui",
+      "incidental": {
+        "agentReads": 0,
+        "rank": "high",
+        "reasons": [
+          "layer-violation"
+        ]
+      },
+      "level": "folder",
+      "quadrant": "incidental",
+      "staticCoupling": {
+        "fromTo": 3,
+        "high": true,
+        "sites": 3,
+        "symbols": 3,
+        "toFrom": 0
+      },
+      "to": "src/ui"
+    },
+    {
+      "bothActive": true,
+      "coChange": {
+        "expected": 0.61,
+        "fromChanges": 5,
+        "high": false,
+        "pValue": 0.49694,
+        "shared": 1,
+        "toChanges": 5
+      },
+      "from": "src/plain",
+      "id": "coupling:folder:src/plain->src/plainlib",
+      "incidental": {
+        "agentReads": 0,
+        "rank": "low",
+        "reasons": []
+      },
+      "level": "folder",
+      "quadrant": "incidental",
+      "staticCoupling": {
+        "fromTo": 5,
+        "high": true,
+        "sites": 5,
+        "symbols": 5,
+        "toFrom": 0
+      },
+      "to": "src/plainlib"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 5
+  },
+  "window": {
+    "since": "2023-03-26T09:00:00.000Z",
+    "until": "2024-03-26T09:00:00.000Z"
+  }
+}

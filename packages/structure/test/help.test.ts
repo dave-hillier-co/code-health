@@ -15,6 +15,14 @@ test("every option of a command is described, with the values it accepts", async
   expect(await help("check")).toMatch(/--base <base>\s+the revision to compare against/);
 });
 
+test("explain describes the finding kinds of the evidence pack, incidental and hidden coupling included", async () => {
+  for (const rule of ["incidental-coupling", "hidden-coupling"]) {
+    const { code, stdout } = await runStructure(process.cwd(), ["explain", rule]);
+    expect(code).toBe(ExitCode.Success);
+    expect(stdout.startsWith(`${rule}:`)).toBe(true);
+  }
+});
+
 test("commands that take positional arguments show them in the usage line", async () => {
   expect(await help("evidence")).toContain("Usage: structure evidence <from>-><to> | <finding id> [options]");
   const outcome = await help("outcome");
