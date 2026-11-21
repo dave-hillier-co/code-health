@@ -1062,8 +1062,88 @@ function measureFunction(fn, options) {
   return { metrics, increments };
 }
 
+// packages/parse/src/interface-shape.ts
+function nodeCount(node, skip) {
+  let count = 0;
+  const walk = (current) => {
+    if (!current.isNamed || current.type === "comment") return;
+    if (skip?.(current) === true) return;
+    count++;
+    for (let i2 = 0; i2 < current.childCount; i2++) {
+      const child = current.child(i2);
+      if (child !== null) walk(child);
+    }
+  };
+  walk(node);
+  return count;
+}
+function functionShape(fn, parameters) {
+  return { nodes: nodeCount(fn), interfaceSize: Math.max(1, parameters) };
+}
+var memberTypes = /* @__PURE__ */ new Set([
+  "method_definition",
+  "public_field_definition",
+  "abstract_method_signature",
+  "method_signature",
+  "index_signature",
+  "property_signature"
+]);
+function isHidden(member) {
+  if (member.namedChildren.some((child) => child.type === "accessibility_modifier" && child.text === "private")) return true;
+  return member.childForFieldName("name")?.type === "private_property_identifier";
+}
+function classShape(declaration) {
+  const body2 = declaration.childForFieldName("body");
+  let interfaceSize = 0;
+  for (const member of body2?.namedChildren ?? []) {
+    if (!memberTypes.has(member.type) || isHidden(member)) continue;
+    if (member.type === "method_definition" && member.childForFieldName("name")?.text === "constructor") {
+      interfaceSize += parameterCounts(member).parameters;
+    } else {
+      interfaceSize++;
+    }
+  }
+  return { nodes: nodeCount(declaration), interfaceSize: Math.max(1, interfaceSize) };
+}
+var literalTypes = /* @__PURE__ */ new Set(["string", "number", "true", "false", "null", "undefined", "this"]);
+function unwrap(node) {
+  let current = node;
+  while (current !== null && ["parenthesized_expression", "await_expression", "as_expression", "non_null_expression", "satisfies_expression"].includes(current.type)) {
+    current = current.namedChildren.find((child) => child.type !== "comment") ?? null;
+  }
+  return current;
+}
+function isForwarded(argument, parameters) {
+  if (argument.type === "identifier") return parameters.has(argument.text);
+  if (argument.type === "spread_element") {
+    const spread = argument.namedChildren[0];
+    return spread?.type === "identifier" && parameters.has(spread.text);
+  }
+  return literalTypes.has(argument.type);
+}
+function passThroughOf(fn, parameterNames2) {
+  const body2 = fn.childForFieldName("body");
+  if (body2 === null) return void 0;
+  let expression = body2;
+  if (body2.type === "statement_block") {
+    const statements = body2.namedChildren.filter((child) => child.type !== "comment");
+    if (statements.length !== 1) return void 0;
+    const [statement] = statements;
+    if (statement.type !== "return_statement" && statement.type !== "expression_statement") return void 0;
+    expression = statement.namedChildren.find((child) => child.type !== "comment") ?? null;
+  }
+  const call = unwrap(expression);
+  if (call === null || call.type !== "call_expression") return void 0;
+  const callee = call.childForFieldName("function");
+  if (callee === null || callee.type === "import") return void 0;
+  const args2 = call.childForFieldName("arguments");
+  if (args2 === null || args2.type !== "arguments") return void 0;
+  const forwarded = args2.namedChildren.filter((child) => child.type !== "comment").every((argument) => isForwarded(argument, parameterNames2));
+  return forwarded ? callee.text : void 0;
+}
+
 // packages/parse/src/extract-facts.ts
-var extractorVersion = 4;
+var extractorVersion = 5;
 var functionTypes = /* @__PURE__ */ new Set([
   "arrow_function",
   "function_expression",
@@ -1178,6 +1258,7 @@ var Extractor = class {
       reexports: this.reexports,
       exports: this.exports,
       references: this.references.filter((reference) => locals.has(reference.local)),
+      nodes: nodeCount(root, (node) => node.type === "import_statement") - 1,
       hasSyntaxErrors: root.hasError
     };
   }
@@ -1373,6 +1454,7 @@ var Extractor = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (kind === "class") unit.shape = classShape(node);
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root);
       const measured = measureFunction(fn, {
@@ -1383,6 +1465,11 @@ var Extractor = class {
         explain: this.explain
       });
       unit.metrics = measured.metrics;
+      unit.shape = functionShape(fn, measured.metrics.parameters);
+      const names = [];
+      parameterNames(fn.childForFieldName("parameters") ?? fn.childForFieldName("parameter"), names);
+      const forwarded = passThroughOf(fn, new Set(names));
+      if (forwarded !== void 0) unit.passThrough = forwarded;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
     this.units.push(unit);
