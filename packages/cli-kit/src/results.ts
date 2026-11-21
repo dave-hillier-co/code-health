@@ -22,7 +22,7 @@ export function shapeResults(results: unknown, options: ShapeOptions): { results
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
 
   const { limit, fields, columns } = options;
-  if (fields && columns) {
+  if (fields && columns && columns.length > 0) {
     const unknown = fields.filter((field) => !columns.includes(field));
     if (unknown.length > 0) {
       throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns.join(", ")}`);

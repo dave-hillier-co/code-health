@@ -57,3 +57,8 @@ test("results that are not a list pass through untouched", () => {
   expect(shaped.results).toBe(value);
   expect(shaped.truncated).toEqual({ limit: null, total: null, cut: 0 });
 });
+
+test("an empty result list accepts any fields, since no columns are known", () => {
+  const { results } = shapeResults([], { limit: 5, fields: ["path"], columns: [] });
+  expect(results).toEqual([]);
+});
