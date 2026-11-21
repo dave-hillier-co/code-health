@@ -1,0 +1,116 @@
+{
+  "command": "measure",
+  "config": "9468b0611e318a67",
+  "evidence": {
+    "activeContributors": 2,
+    "grade": "weak",
+    "logicalChangesInWindow": 28,
+    "shallow": false,
+    "usableHistoryMonths": 10.9
+  },
+  "inputs": {
+    "since": null,
+    "transcripts": {
+      "stamp": "2c6c1bf68f2fe133",
+      "tasks": 16
+    },
+    "until": null
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3de5fcd69ef623babdf72a887d014457da424aa7"
+  },
+  "results": {
+    "distance": {
+      "max": 3,
+      "mean": 1.25,
+      "median": 1
+    },
+    "figures": {
+      "filesRead": {
+        "conclusion": "costlier-when-distant",
+        "far": {
+          "mean": 5.375,
+          "tasks": 8
+        },
+        "n": 16,
+        "near": {
+          "mean": 3.375,
+          "tasks": 8
+        },
+        "partialSpearman": 0.78774,
+        "spearman": 0.675937,
+        "z": 3.690816
+      },
+      "reReads": {
+        "conclusion": "not-measured",
+        "far": {
+          "mean": 0,
+          "tasks": 8
+        },
+        "n": 16,
+        "near": {
+          "mean": 0,
+          "tasks": 8
+        },
+        "partialSpearman": null,
+        "spearman": null,
+        "z": null
+      },
+      "tokens": {
+        "conclusion": "costlier-when-distant",
+        "far": {
+          "mean": 4350,
+          "tasks": 8
+        },
+        "n": 16,
+        "near": {
+          "mean": 2350,
+          "tasks": 8
+        },
+        "partialSpearman": 0.84681,
+        "spearman": 0.843661,
+        "z": 4.312001
+      }
+    },
+    "history": {
+      "spread": {
+        "changes": 28,
+        "mean": 1.928571,
+        "measured": 28,
+        "median": 2,
+        "oversized": 0
+      }
+    },
+    "limits": [
+      "Observational: tasks were not assigned to near or far files, so what the task was is a confounder the data cannot remove.",
+      "Distance is that of the files a task edited. Tasks editing a single file have none and are left out.",
+      "Effort is the main agent's reads and tokens. Work delegated to subagents is not counted.",
+      "A correlation here is not a measure of what a move would save."
+    ],
+    "meaning": "tasks touching more distant files cost more, beyond what the number of files edited explains",
+    "minSamples": 3,
+    "sessions": {
+      "measured": 1,
+      "notMeasured": 0
+    },
+    "status": "premise",
+    "tasks": {
+      "inWindow": 16,
+      "measured": 16,
+      "singleFile": 0
+    },
+    "verdict": "supported",
+    "window": {
+      "from": "2023-01-01",
+      "to": "2024-01-02"
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}

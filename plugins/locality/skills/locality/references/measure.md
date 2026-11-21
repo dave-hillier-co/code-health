@@ -2,6 +2,23 @@
 
 The analyser's gain says the tool moved code closer. It does not say anything got cheaper. `measure` does that: it records a baseline before the first tidy-up, then compares against it afterwards.
 
+## Does distance cost anything here?
+
+```
+node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs measure premise --json
+```
+
+Locality is worth the effort only where tasks that edit files further apart really cost more reads and tokens. `premise` tests that from existing history and session transcripts, so it can run before any move and before any baseline. `--since` and `--until` (days, `until` excluded) choose the window, which is the last `locality.windowMonths` back from HEAD otherwise.
+
+Each task's distance is the change spread of the files it edited, and tasks editing a single file have none and are left out (`tasks.singleFile`). Each of `filesRead`, `reReads` and `tokens` is correlated with distance (Spearman), and the conclusion rests on the partial correlation that holds the number of files edited constant, because larger tasks both spread further and read more. `near` and `far` are the means either side of the median distance.
+
+Read `verdict` with `tasks.measured`, `evidence` and `limits`:
+
+- `supported` needs two figures that cost more when distant. `partly-supported` is one. Say how many tasks it rests on.
+- `not-shown` is not evidence that distance is free: say the data shows no relationship.
+- `insufficient-sample` means fewer tasks than `locality.measureMinSamples`: conclude nothing, and let locality's priority rest on the static signals.
+- The result is an association over tasks nobody assigned to near or far files. It is not a measure of what a move would save. Only `measure compare` after a tidy-up shows that.
+
 ## Before the first move
 
 ```

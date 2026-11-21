@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "measure.schema.json",
-  "title": "locality measure baseline|compare --json",
+  "title": "locality measure baseline|compare|premise --json",
   "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
   "type": "object",
   "$defs": {
@@ -89,6 +89,76 @@
         "maxDepth": { "$ref": "common.schema.json#/$defs/count" }
       },
       "required": ["totalWeightedDistance", "singleFileFolders", "maxDepth"],
+      "additionalProperties": false
+    },
+    "premiseGroup": {
+      "type": "object",
+      "properties": { "tasks": { "$ref": "common.schema.json#/$defs/count" }, "mean": { "type": ["number", "null"] } },
+      "required": ["tasks", "mean"],
+      "additionalProperties": false
+    },
+    "premiseFigure": {
+      "type": "object",
+      "description": "One cost figure against distance. The conclusion rests on the partial correlation, which holds the number of files edited constant.",
+      "properties": {
+        "n": { "$ref": "common.schema.json#/$defs/count", "description": "Tasks the figure rests on." },
+        "spearman": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
+        "partialSpearman": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
+        "z": { "type": ["number", "null"], "description": "Fisher z of the partial correlation. Beyond 1.96 either way chance is an unlikely explanation." },
+        "near": { "$ref": "#/$defs/premiseGroup", "description": "Tasks at or below the median distance." },
+        "far": { "$ref": "#/$defs/premiseGroup", "description": "Tasks above the median distance." },
+        "conclusion": { "enum": ["costlier-when-distant", "cheaper-when-distant", "no-relationship-shown", "insufficient-sample", "not-measured"] }
+      },
+      "required": ["n", "spearman", "partialSpearman", "z", "near", "far", "conclusion"],
+      "additionalProperties": false
+    },
+    "premiseResults": {
+      "type": "object",
+      "description": "From existing history and session transcripts: whether tasks that edit files further apart cost more reads and tokens. An association over observed tasks, never a cause.",
+      "properties": {
+        "status": { "const": "premise" },
+        "window": { "$ref": "#/$defs/window" },
+        "sessions": {
+          "type": "object",
+          "properties": { "measured": { "$ref": "common.schema.json#/$defs/count" }, "notMeasured": { "$ref": "common.schema.json#/$defs/count" } },
+          "required": ["measured", "notMeasured"],
+          "additionalProperties": false
+        },
+        "minSamples": { "$ref": "common.schema.json#/$defs/count", "description": "locality.measureMinSamples: nothing is concluded from fewer tasks." },
+        "history": {
+          "type": "object",
+          "properties": { "spread": { "$ref": "#/$defs/spread" } },
+          "required": ["spread"],
+          "additionalProperties": false
+        },
+        "tasks": {
+          "type": "object",
+          "properties": {
+            "inWindow": { "$ref": "common.schema.json#/$defs/count" },
+            "measured": { "$ref": "common.schema.json#/$defs/count", "description": "Tasks editing two or more files: the sample every figure rests on." },
+            "singleFile": { "$ref": "common.schema.json#/$defs/count", "description": "Tasks with no distance, left out." }
+          },
+          "required": ["inWindow", "measured", "singleFile"],
+          "additionalProperties": false
+        },
+        "distance": {
+          "type": "object",
+          "description": "Change spread of the files each measured task edited.",
+          "properties": { "mean": { "type": ["number", "null"] }, "median": { "type": ["number", "null"] }, "max": { "type": ["number", "null"] } },
+          "required": ["mean", "median", "max"],
+          "additionalProperties": false
+        },
+        "figures": {
+          "type": "object",
+          "properties": { "filesRead": { "$ref": "#/$defs/premiseFigure" }, "reReads": { "$ref": "#/$defs/premiseFigure" }, "tokens": { "$ref": "#/$defs/premiseFigure" } },
+          "required": ["filesRead", "reReads", "tokens"],
+          "additionalProperties": false
+        },
+        "verdict": { "enum": ["supported", "partly-supported", "contradicted", "mixed", "not-shown", "insufficient-sample"] },
+        "meaning": { "type": "string" },
+        "limits": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["status", "window", "sessions", "minSamples", "history", "tasks", "distance", "figures", "verdict", "meaning", "limits"],
       "additionalProperties": false
     },
     "baselineResults": {
@@ -280,9 +350,9 @@
           },
           "additionalProperties": false
         },
-        "since": { "type": ["string", "null"] }
+        "since": { "type": ["string", "null"] },
+        "until": { "type": ["string", "null"] }
       },
-      "required": ["name"],
       "additionalProperties": false
     },
     "evidence": {
@@ -299,7 +369,7 @@
       "additionalProperties": false
     },
     "results": {
-      "oneOf": [{ "$ref": "#/$defs/baselineResults" }, { "$ref": "#/$defs/nothingActedOn" }, { "$ref": "#/$defs/comparedResults" }]
+      "oneOf": [{ "$ref": "#/$defs/baselineResults" }, { "$ref": "#/$defs/nothingActedOn" }, { "$ref": "#/$defs/comparedResults" }, { "$ref": "#/$defs/premiseResults" }]
     }
   },
   "unevaluatedProperties": false

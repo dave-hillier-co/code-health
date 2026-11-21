@@ -145,6 +145,17 @@ export class Sessions {
     writeFileSync(join(this.project, `corrupt-${++this.count}.jsonl`), `{"type":"user","message":{"content":"${text}"\n${text} not json at all\n`);
   }
 
+  /** One session of tasks, each reading and editing the named repo-relative paths and spending `tokens`. */
+  tasks(start: string, specs: ReadonlyArray<{ reads: string[]; edits: string[]; tokens: number }>): void {
+    const session = new SyntheticSession({ cwd: this.root, sessionId: `session-${++this.count}`, start });
+    specs.forEach((spec, index) => {
+      session.prompt(`Task ${index}`);
+      const calls = [...spec.reads.map((path) => read(join(this.root, path))), ...spec.edits.map((path) => edit(join(this.root, path)))];
+      session.assistant(`m${this.count}-${index}`, calls, { input: spec.tokens });
+    });
+    writeFileSync(join(this.project, `session-${this.count}.jsonl`), session.toJsonl());
+  }
+
   dispose(): void {
     rmSync(this.directory, { recursive: true, force: true });
   }

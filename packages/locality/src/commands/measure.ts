@@ -19,6 +19,7 @@ import { addDays, dayOf, matchingWindow, windowEndingAt, windowLength, windowSec
 import { loadProject } from "../project.ts";
 import { actionsSince, countSuiteCommits } from "../suite-commits.ts";
 import { gamingCheck, type StructureMetrics } from "../structure-metrics.ts";
+import { testPremise } from "../premise.ts";
 import { claimOf, differenceOf, effortConclusion, type Arm } from "../verdict.ts";
 
 export const name = "measure";
@@ -29,18 +30,23 @@ const HEAT_FILES = 50;
 const TOOL_PLUGIN = "locality";
 
 export const command: Command = {
-  summary: "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare)",
+  summary:
+    "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare); or test from existing history and sessions whether distant files cost more (measure premise)",
   options: {
     name: { type: "string" },
     "projects-dir": { type: "string" },
     candidates: { type: "string" },
     since: { type: "string" },
+    until: { type: "string" },
     force: { type: "boolean" },
   },
   async run(context): Promise<CommandOutput> {
     const [subcommand] = context.positionals;
-    if (subcommand !== "baseline" && subcommand !== "compare") throw usageError("measure takes one subcommand: baseline or compare");
+    if (subcommand !== "baseline" && subcommand !== "compare" && subcommand !== "premise") {
+      throw usageError("measure takes one subcommand: baseline, compare or premise");
+    }
     const settings = readSettings(context.config);
+    if (subcommand === "premise") return premise(context, settings);
     return subcommand === "baseline" ? baseline(context, settings) : compare(context, settings);
   },
 };
@@ -273,6 +279,78 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
       spread: { role: "outcome, partly by construction", ...spreadDifference },
       effort: { role: "primary outcome", conclusion: effort, ...effortDifferences },
       claim: claimOf(effort, spreadDifference.conclusion),
+    },
+  };
+}
+
+const PREMISE_LIMITS = [
+  "Observational: tasks were not assigned to near or far files, so what the task was is a confounder the data cannot remove.",
+  "Distance is that of the files a task edited. Tasks editing a single file have none and are left out.",
+  "Effort is the main agent's reads and tokens. Work delegated to subagents is not counted.",
+  "A correlation here is not a measure of what a move would save.",
+];
+
+const PREMISE_VERDICTS = {
+  supported: "tasks touching more distant files cost more, beyond what the number of files edited explains",
+  "partly-supported": "one cost figure rises with distance beyond what the number of files edited explains, and the others show nothing",
+  contradicted: "tasks touching more distant files cost less",
+  mixed: "the cost figures disagree",
+  "not-shown": "no relationship between distance and cost was shown. That is not evidence there is none",
+  "insufficient-sample": "too few tasks to conclude anything",
+} as const;
+
+/** Reads `--since` and `--until` as days, `until` excluded, defaulting to the window of months ending at HEAD. */
+function premiseWindow(context: CommandContext, settings: LocalitySettings, headDate: number): DayWindow {
+  const day = (option: string): string | undefined => {
+    const value = stringOption(context, option);
+    if (value !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw usageError(`--${option} must be a date such as 2024-03-01`);
+    return value;
+  };
+  const fallback = windowEndingAt(headDate, settings.windowMonths);
+  const window = { from: day("since") ?? fallback.from, to: day("until") ?? fallback.to };
+  if (window.from >= window.to) throw usageError("--since must be before --until");
+  return window;
+}
+
+/**
+ * The suite's build-order premise check: from existing history and session transcripts, whether tasks whose edited
+ * files are further apart cost more reads and tokens. It runs before any mover has changed anything, and it says
+ * how many tasks it rests on and stops short of what that sample can show.
+ */
+async function premise(context: CommandContext, settings: LocalitySettings): Promise<CommandOutput> {
+  const analysis = await readMeasureHistory(context.repo.root, settings);
+  const { view } = analysis;
+  const window = premiseWindow(context, settings, view.headDate);
+  const seconds = windowSeconds(window);
+  const spread = summariseSpread(changesBetween(analysis.filtered.changes, seconds.since, seconds.until));
+
+  const effort = readEffort(projectsDirectory(context), await checkouts(context.repo.root), window);
+  const result = testPremise(effort.tasks, settings.measureMinSamples);
+
+  return {
+    inputs: {
+      transcripts: { tasks: effort.tasks.length, stamp: stampOf(effort.tasks) },
+      since: stringOption(context, "since") ?? null,
+      until: stringOption(context, "until") ?? null,
+    },
+    extra: {
+      evidence: {
+        grade: analysis.evidence.grade,
+        logicalChangesInWindow: analysis.evidence.logicalChangesInWindow,
+        usableHistoryMonths: analysis.evidence.usableHistoryMonths,
+        activeContributors: analysis.evidence.activeContributors,
+        shallow: analysis.evidence.truncated.shallow,
+      },
+    },
+    results: {
+      status: "premise",
+      window,
+      sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length },
+      minSamples: settings.measureMinSamples,
+      history: { spread },
+      ...result,
+      meaning: PREMISE_VERDICTS[result.verdict],
+      limits: PREMISE_LIMITS,
     },
   };
 }
