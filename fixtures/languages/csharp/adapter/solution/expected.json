@@ -124,7 +124,6 @@
   "importEdges": [
     "src/App/Billing/Invoice.cs -> src/Core/Money.cs import",
     "src/App/Program.cs -> src/App/Billing/Invoice.cs import",
-    "src/App/Program.cs -> src/Core/Ledger.Rules.cs import",
     "src/App/Program.cs -> src/Core/Ledger.cs import",
     "src/App/Program.cs -> src/Core/Money.cs import",
     "src/Core/Ledger.Rules.cs -> src/Core/IClock.cs import",
@@ -138,7 +137,6 @@
   "fileEdges": [
     "src/App/Billing/Invoice.cs -> src/Core/Money.cs reference call=0 reference=3",
     "src/App/Program.cs -> src/App/Billing/Invoice.cs call call=1 reference=0",
-    "src/App/Program.cs -> src/Core/Ledger.Rules.cs call call=1 reference=0",
     "src/App/Program.cs -> src/Core/Ledger.cs call call=1 reference=0",
     "src/App/Program.cs -> src/Core/Money.cs reference call=0 reference=1",
     "src/Core/Ledger.Rules.cs -> src/Core/IClock.cs reference call=0 reference=1",
