@@ -2240,7 +2240,7 @@ function passThroughOf(fn, parameterNames2) {
 }
 
 // packages/parse/src/extract-facts.ts
-var extractorVersion = 5;
+var extractorVersion = 6;
 var functionTypes = /* @__PURE__ */ new Set([
   "arrow_function",
   "function_expression",
