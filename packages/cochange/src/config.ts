@@ -5,6 +5,7 @@ import { DEFAULT_EVIDENCE_THRESHOLDS, type EvidenceThresholds } from "@code-heal
 import type { MappingLocation } from "@code-health/history/identity-decisions";
 import { DEFAULT_MAX_CHANGESET_SIZE } from "@code-health/history/noise";
 import { DEFAULT_RENAME_LIMIT, DEFAULT_SIMILARITY } from "@code-health/history/refresh";
+import { riskDefaults } from "./risk/settings.ts";
 import { TOOL } from "./tool.ts";
 
 /**
@@ -42,6 +43,8 @@ export const cochangeConfig: PluginConfigSpec = {
     minDegree: 30,
     minDistance: 2,
     hook: { enabled: false, confidence: 80, maxCommitsBehind: 50 },
+    /** The change-risk skill: see risk/settings.ts. */
+    risk: riskDefaults,
     identities: {
       /** Where the mapping lives: "committed" or "local". null decides from the files present, and the identities skill asks when there are none. */
       location: null,
