@@ -1,11 +1,11 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { couplingHistory } from "../../packages/cochange/test/support/coupling-scenarios.ts";
-import { bundle } from "../bundle.mjs";
+import { bundle, bundleChunks, grammarsPath } from "../bundle.mjs";
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -17,7 +17,10 @@ let cli: string;
 beforeAll(async () => {
   work = mkdtempSync(join(tmpdir(), "cochange-hook-"));
   cli = join(work, "cochange.mjs");
+  // The chunks and grammars sit beside the bundle, as they do in an installed plugin.
+  cpSync(grammarsPath("cochange"), join(work, "grammars"), { recursive: true });
   writeFileSync(cli, await bundle("cochange"));
+  for (const [name, text] of await bundleChunks("cochange")) writeFileSync(join(work, name), text);
   repo = couplingHistory();
   writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { hook: { enabled: true } } }));
   const refreshed = spawnSync("node", [cli, "refresh"], { cwd: repo.path, encoding: "utf8" });
