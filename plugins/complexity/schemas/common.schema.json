@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "Shared definitions for complexity --json output",
+  "$defs": {
+    "sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repo": {
+      "type": "object",
+      "properties": {
+        "head": {
+          "$ref": "#/$defs/sha"
+        },
+        "dirty": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "head",
+        "dirty"
+      ],
+      "additionalProperties": false
+    },
+    "truncated": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "total": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cut": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "required": [
+        "limit",
+        "total",
+        "cut"
+      ],
+      "additionalProperties": false
+    },
+    "envelope": {
+      "description": "Fields every document has. A command schema adds its own `command` and `results` and closes the document with unevaluatedProperties.",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "tool": {
+          "const": "complexity"
+        },
+        "command": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/repo"
+        },
+        "config": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "inputs": {
+          "type": "object"
+        },
+        "results": {},
+        "truncated": {
+          "$ref": "#/$defs/truncated"
+        },
+        "meta": {
+          "description": "Wall-clock facts. Absent from reports and ignored by golden comparisons.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "tool",
+        "command",
+        "repo",
+        "config",
+        "inputs",
+        "results",
+        "truncated"
+      ]
+    },
+    "metricId": {
+      "enum": [
+        "cognitive",
+        "cyclomatic",
+        "nesting",
+        "parameters",
+        "length",
+        "keyword",
+        "bumps"
+      ]
+    },
+    "metricValues": {
+      "description": "The metrics a unit has. The structural layer gives cognitive, cyclomatic, nesting, parameters and length. The lexical layer gives nesting, length, keyword and bumps. `--metrics` leaves out the others.",
+      "type": "object",
+      "properties": {
+        "cognitive": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cyclomatic": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nesting": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parameters": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keyword": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bumps": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "tree": {
+      "description": "What was measured: the commit at HEAD when the tree is clean, otherwise the files on disk.",
+      "enum": [
+        "head",
+        "working-tree"
+      ]
+    },
+    "layer": {
+      "enum": [
+        "auto",
+        "lexical",
+        "structural"
+      ]
+    },
+    "source": {
+      "description": "The layer that measured the unit.",
+      "enum": [
+        "structural",
+        "lexical"
+      ]
+    },
+    "labels": {
+      "description": "For example cognitive-warn, cognitive-high, nesting-warn, bumpy-road.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "kind": {
+      "enum": [
+        "function",
+        "arrow",
+        "method",
+        "class",
+        "block"
+      ]
+    },
+    "skippedFiles": {
+      "description": "Files left out of the measurement, by cause.",
+      "type": "object",
+      "properties": {
+        "binary": {
+          "$ref": "#/$defs/count"
+        },
+        "large": {
+          "$ref": "#/$defs/count"
+        },
+        "excluded": {
+          "$ref": "#/$defs/count"
+        },
+        "tests": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "required": [
+        "binary",
+        "large",
+        "excluded",
+        "tests"
+      ],
+      "additionalProperties": false
+    },
+    "agreement": {
+      "description": "Agreement of each lexer profile with the structural layer, for the profiles whose per-function metrics were released.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "exactRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "spuriousRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "bar": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "exactRate",
+          "spuriousRate",
+          "bar"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "skipped": {
+      "description": "What could not be measured, with the number of files each reason applied to.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/count"
+      }
+    }
+  }
+}

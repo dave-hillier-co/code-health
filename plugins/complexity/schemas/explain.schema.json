@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "explain.schema.json",
+  "title": "complexity explain --json",
+  "description": "With a unit (path#Qualified.name) the results are the increments. With a rule name the result is the rule's description.",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "explain"
+    },
+    "results": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "metric": {
+                "enum": [
+                  "cognitive",
+                  "cyclomatic"
+                ]
+              },
+              "construct": {
+                "type": "string",
+                "description": "For example if, else if, sequence of &&, recursion."
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "nesting": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The nesting level that added to a cognitive increment."
+              },
+              "code": {
+                "type": "string",
+                "description": "The source line, trimmed."
+              }
+            },
+            "required": [
+              "line",
+              "metric",
+              "construct",
+              "amount",
+              "nesting",
+              "code"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "rule": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "explanation": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rule",
+            "summary",
+            "explanation"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "tree": {
+          "$ref": "common.schema.json#/$defs/tree"
+        },
+        "unit": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "unit": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "common.schema.json#/$defs/kind"
+        },
+        "startLine": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "endLine": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "metrics": {
+          "$ref": "common.schema.json#/$defs/metricValues"
+        },
+        "labels": {
+          "$ref": "common.schema.json#/$defs/labels"
+        },
+        "cyclomaticSwitch": {
+          "enum": [
+            "case",
+            "modified"
+          ],
+          "description": "The increments always list each case. In modified mode the cyclomatic total counts one per switch."
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "startLine",
+        "endLine",
+        "metrics",
+        "labels",
+        "cyclomaticSwitch"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "unevaluatedProperties": false
+}
