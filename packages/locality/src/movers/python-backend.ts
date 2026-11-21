@@ -171,7 +171,9 @@ class PythonMove {
   /** `from pkg import sub` where `sub` is a module of `pkg` that moved elsewhere: the name is imported from where it now is. */
   private movedSubmodules(node: Node, from: string, to: string, init: string, edits: Edit[]): void {
     if (posix.basename(init) !== "__init__.py") return;
-    const initText = this.sources.get(init) ?? "";
+    // What the package defines itself: its text without the statement being repaired, which would otherwise define every name it imports.
+    const initSource = this.sources.get(init) ?? "";
+    const initText = from === init ? initSource.slice(0, node.startIndex) + initSource.slice(node.endIndex) : initSource;
     const own: string[] = [];
     const split: { alias: string; module: string; name: string }[] = [];
     for (const name of node.childrenForFieldName("name")) {

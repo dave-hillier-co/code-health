@@ -29,6 +29,18 @@ describe("a Python move without rope", () => {
   });
 });
 
+describe("a Python move of a module that its own package __init__ imports by name", () => {
+  it("repairs `from . import util` in the __init__.py rather than keeping it as a name the package defines", async () => {
+    const tree = treeFromTexts({
+      "pkg/__init__.py": "from . import util\nfrom .util import helper\n",
+      "pkg/util.py": "def helper():\n    return 1\n",
+      "pkg/sub/__init__.py": "",
+    });
+    const result = await performMove(tree, [{ from: "pkg/util.py", to: "pkg/sub/util.py", role: "unit" }], { searchPath: "" });
+    expect(result.texts.get("pkg/__init__.py")).toBe("from .sub import util\nfrom .sub.util import helper\n");
+  });
+});
+
 describe.skipIf(!ropeInstalled)("rope confirms the Python moves (needs rope)", () => {
   describe.each(fixtureCases("python", "moves"))("$name", (fixture) => {
     // Rope does not follow every import (`from . import name` raises inside it). When it fails the move is `not confirmed`
