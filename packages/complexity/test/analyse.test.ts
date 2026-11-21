@@ -70,6 +70,20 @@ describe("analyse", () => {
     expect(document.agreement.typescript.exactRate).toBeGreaterThanOrEqual(0.9);
   });
 
+  test("a configured agreement bar the recorded rate misses withholds the lexical metrics and says why, and a language with no measured agreement stays withheld", async () => {
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ complexity: { agreementBar: 1 } }));
+    try {
+      const document = JSON.parse((await analyse("--layer", "lexical")).stdout);
+      expect(document.results).toEqual([]);
+      expect(document.agreement).toEqual({});
+      expect(Object.keys(document.skipped)).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^per-function metrics: typescript agreement 0\.\d+ is below the bar 1$/), "per-function metrics: no agreement measured for go"]),
+      );
+    } finally {
+      rmSync(join(repo.path, "code-health.json"), { force: true });
+    }
+  });
+
   test("restricts the rows to the paths given, while ranking against the whole repository", async () => {
     const everything = JSON.parse((await analyse()).stdout).results as Row[];
     const only = JSON.parse((await analyse("src/label.ts")).stdout).results as Row[];

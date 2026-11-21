@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import { addAgreement, compareUnits, exactRate, noAgreement, spuriousRate, type AgreementCounts } from "@code-health/lexical/agreement";
+import { isFunctionUnit } from "@code-health/lexical/unit";
 import { recordedAgreement } from "@code-health/lexical/agreement-rates";
 import { analyseSource, DEFAULT_AGREEMENT_BAR } from "@code-health/lexical/analyse-source";
 import { analyseTree } from "../src/analyse-tree.ts";
@@ -35,6 +36,34 @@ async function measure(directories: string[]): Promise<AgreementCounts> {
   return total;
 }
 
+/**
+ * Structural units no lexical block overlaps, each a known limit of the lexer. A file with syntax errors has no
+ * function boundaries to find, and the lexer does not follow a destructured, typed parameter list in .tsx.
+ */
+const EXPECTED_MISSES = ["fixtures/ts-adapter/syntax-errors/broken.ts#broken", "fixtures/ts-metrics/flow-shapes/list.tsx#List"];
+
+/** The most lexical blocks that may match no structural function: a regenerated record cannot make the lexer noisier than this. */
+const MAX_SPURIOUS_RATE = 0.1;
+
+/** The structural function units that no lexical block overlaps, as `path#name`, so a miss is named and not just counted. */
+async function missedUnits(directories: string[]): Promise<string[]> {
+  const missed: string[] = [];
+  for (const directory of directories) {
+    const tree = await treeFromDirectory(directory);
+    const analysis = await analyseTree(tree);
+    for (const path of tree.files.keys()) {
+      if (!/\.(?:[cm]?[jt]s|tsx)$/.test(path)) continue;
+      const blocks = analyseSource(path, (await tree.read(path)) as string).functions.blocks;
+      for (const unit of analysis.units.filter((candidate) => candidate.path === path && isFunctionUnit(candidate))) {
+        if (!blocks.some((block) => unit.startLine <= block.endLine && block.startLine <= unit.endLine)) {
+          missed.push(`${directory.slice(directory.indexOf("fixtures/")).replace(/\/$/, "")}/${path}#${unit.qualifiedName}`);
+        }
+      }
+    }
+  }
+  return missed.sort();
+}
+
 function render(measured: Record<string, AgreementCounts>): string {
   const rows = Object.keys(measured)
     .sort()
@@ -63,7 +92,11 @@ test("lexical function blocks agree with the structural units at the recorded ra
   const measured: Record<string, AgreementCounts> = {};
   for (const [name, directories] of Object.entries(corpora)) measured[name] = await measure(directories);
 
-  if (process.env.UPDATE_AGREEMENT === "1") writeFileSync(ratesFile, render(measured));
+  if (process.env.UPDATE_AGREEMENT === "1") {
+    // Recording the rates is a deliberate local act. Run in CI it would rewrite the file and pass with nothing checked.
+    expect(process.env.CI, "UPDATE_AGREEMENT=1 must not be set in CI").toBeUndefined();
+    writeFileSync(ratesFile, render(measured));
+  }
   else {
     for (const name of Object.keys(measured)) {
       const recorded = recordedAgreement[name];
@@ -75,6 +108,17 @@ test("lexical function blocks agree with the structural units at the recorded ra
       ).toEqual(recorded);
     }
   }
+});
+
+test("no profile's recorded or measured rate of spurious blocks exceeds the ceiling", async () => {
+  for (const [name, counts] of Object.entries(recordedAgreement)) {
+    expect(spuriousRate(counts), `${name} recorded spurious rate`).toBeLessThanOrEqual(MAX_SPURIOUS_RATE);
+    expect(spuriousRate(await measure(corpora[name]!)), `${name} measured spurious rate`).toBeLessThanOrEqual(MAX_SPURIOUS_RATE);
+  }
+});
+
+test("the units the lexer misses are the ones known, so a new miss is a failure that names the unit", async () => {
+  expect(await missedUnits(corpora.typescript!)).toEqual(EXPECTED_MISSES);
 });
 
 test("the corpus is big enough for the rates to mean something", async () => {
