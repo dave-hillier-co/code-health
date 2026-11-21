@@ -52,24 +52,32 @@ async function eachFile(profile: string, body: (file: { corpus: Corpus; path: st
   }
 }
 
-async function measure(profile: string): Promise<AgreementCounts> {
-  let total = noAgreement;
-  await eachFile(profile, ({ path, text, units }) => {
-    total = addAgreement(total, compareUnits(units, analyseSource(path, text).functions.blocks));
-  });
-  return total;
+interface Measured {
+  counts: AgreementCounts;
+  /** The structural function units that no lexical block overlaps, as `area/path#name`, so a miss is named and not just counted. */
+  missed: string[];
 }
 
-/** The structural function units that no lexical block overlaps, as `area/path#name`, so a miss is named and not just counted. */
-async function missedUnits(profile: string): Promise<string[]> {
-  const missed: string[] = [];
-  await eachFile(profile, ({ corpus, path, text, units }) => {
-    const blocks = analyseSource(path, text).functions.blocks;
-    for (const unit of units.filter(isFunctionUnit)) {
-      if (!blocks.some((block) => unit.startLine <= block.endLine && block.startLine <= unit.endLine)) missed.push(`${corpus.label}/${path}#${unit.qualifiedName}`);
-    }
-  });
-  return missed.sort();
+const measured = new Map<string, Promise<Measured>>();
+
+/** Both layers over the corpus of a profile, once: parsing every fixture is the cost, and every check of a profile reads the same pass. */
+function measure(profile: string): Promise<Measured> {
+  const known = measured.get(profile);
+  if (known !== undefined) return known;
+  const pass = (async (): Promise<Measured> => {
+    let counts = noAgreement;
+    const missed: string[] = [];
+    await eachFile(profile, ({ corpus, path, text, units }) => {
+      const blocks = analyseSource(path, text).functions.blocks;
+      counts = addAgreement(counts, compareUnits(units, blocks));
+      for (const unit of units.filter(isFunctionUnit)) {
+        if (!blocks.some((block) => unit.startLine <= block.endLine && block.startLine <= unit.endLine)) missed.push(`${corpus.label}/${path}#${unit.qualifiedName}`);
+      }
+    });
+    return { counts, missed: missed.sort() };
+  })();
+  measured.set(profile, pass);
+  return pass;
 }
 
 function render(profile: string, counts: AgreementCounts): string {
@@ -114,7 +122,7 @@ describe("lexer profiles", () => {
 
 describe.each(profileNames)("%s", (profile) => {
   it("agrees with the structural units at the recorded rate", async () => {
-    const now = await measure(profile);
+    const now = (await measure(profile)).counts;
     if (process.env.UPDATE_AGREEMENT === "1") {
       // Recording the rates is a deliberate local act. Run in CI it would rewrite the file and pass with nothing checked.
       expect(process.env.CI, "UPDATE_AGREEMENT=1 must not be set in CI").toBeUndefined();
@@ -128,16 +136,16 @@ describe.each(profileNames)("%s", (profile) => {
 
   it("has a recorded and a measured rate of spurious blocks within the ceiling", async () => {
     expect(spuriousRate(recordedAgreement[profile] ?? noAgreement), `${profile} recorded spurious rate`).toBeLessThanOrEqual(MAX_SPURIOUS_RATE);
-    expect(spuriousRate(await measure(profile)), `${profile} measured spurious rate`).toBeLessThanOrEqual(MAX_SPURIOUS_RATE);
+    expect(spuriousRate((await measure(profile)).counts), `${profile} measured spurious rate`).toBeLessThanOrEqual(MAX_SPURIOUS_RATE);
   });
 
   it("misses the units known to be missed, so a new miss is a failure that names the unit", async () => {
     const expected = byProfile.get(profile)!.flatMap((adapter) => expectedMisses(adapter.id).map((miss) => miss)).sort();
-    expect(await missedUnits(profile)).toEqual(expected);
+    expect((await measure(profile)).missed).toEqual(expected);
   });
 
   it("has a corpus big enough for the rates to mean something", async () => {
-    const counts = await measure(profile);
+    const { counts } = await measure(profile);
     expect(counts.units).toBeGreaterThanOrEqual(MIN_CORPUS_UNITS);
     expect(counts.found).toBeLessThanOrEqual(counts.units);
   });
