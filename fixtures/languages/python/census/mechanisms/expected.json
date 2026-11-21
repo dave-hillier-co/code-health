@@ -1,0 +1,13 @@
+{
+  "files": 7,
+  "occurrences": [
+    "callbacks function-parameter app/retry.py:4 | retry(task) is called from jobs",
+    "interfaces interface ports/store.py:4 | Store is implemented in adapters",
+    "dependency-injection constructor-injection app/service.py:4 | Service takes Store from ports",
+    "events base-type events/bus.py:4 | Bus extends EventEmitter",
+    "events call events/bus.py:9 | bus.emit",
+    "registries keyed-map registry/handlers.py:1 | handlers",
+    "ports-and-adapters folder adapters | adapters",
+    "ports-and-adapters folder ports | ports"
+  ]
+}

@@ -64,12 +64,14 @@ const isPrivateSegment = (segment: string): boolean => segment.startsWith("_") &
  * Reads the entry files of the Python distributions that have code: every module a consumer may import,
  * which is every module of the distribution whose path has no leading-underscore segment, tests excluded. The
  * names an entry module exports are public unless they start with an underscore or, when the module has an
- * `__all__`, are left out of it.
+ * `__all__`, are left out of it. Without one, what a module imports is not offered, unless it is a package's `__init__`.
  */
 async function readEntries(model: PackageModel): Promise<Map<string, PackageEntries>> {
   const entries = new Map<string, PackageEntries>();
-  const exportedBy = new Map<string, string[]>();
-  for (const exported of model.project.analysis.exports) exportedBy.set(exported.file, [...(exportedBy.get(exported.file) ?? []), exported.name]);
+  const exportedBy = new Map<string, { name: string; reexport: boolean }[]>();
+  for (const exported of model.project.analysis.exports) {
+    exportedBy.set(exported.file, [...(exportedBy.get(exported.file) ?? []), { name: exported.name, reexport: exported.defined.file !== exported.file }]);
+  }
 
   for (const pkg of model.packages) {
     if (pkg.ecosystem !== "python" || pkg.manifest === null || (model.codeFiles.get(pkg.id)?.length ?? 0) === 0) continue;
@@ -85,7 +87,13 @@ async function readEntries(model: PackageModel): Promise<Map<string, PackageEntr
     const hidden = new Set<string>();
     for (const file of files) {
       const all = allOf(texts.get(file) ?? "");
-      for (const name of exportedBy.get(file) ?? []) if (all === null ? name.startsWith("_") : !all.has(name)) hidden.add(`${file}#${name}`);
+      const isPackageInit = file.endsWith("/__init__.py") || file === "__init__.py";
+      for (const { name, reexport } of exportedBy.get(file) ?? []) {
+        // Without an `__all__`, a name is public unless it starts with an underscore, and a module other than a package's
+        // `__init__` passes along what it imports without meaning to offer it.
+        const isHidden = all === null ? name.startsWith("_") || (reexport && !isPackageInit) : !all.has(name);
+        if (isHidden) hidden.add(`${file}#${name}`);
+      }
     }
     entries.set(pkg.id, { id: pkg.id, files: new Set([...files].sort(compareIds)), wildcard: false, hasExportsMap: true, hidden });
   }

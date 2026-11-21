@@ -1,0 +1,15 @@
+{
+  "files": 4,
+  "occurrences": [
+    "dependency-injection decorator wiring/container.py:6 | @singleton",
+    "dependency-injection container-registration wiring/container.py:11 | container.register",
+    "dependency-injection container-registration wiring/container.py:12 | container.bind",
+    "events call signals.py:3 | signal",
+    "events call signals.py:7 | order_placed.send",
+    "handlers handler-registration messaging/commands.py:7 | mediator.register_handler",
+    "handlers dispatch messaging/commands.py:8 | mediator.send",
+    "registries keyed-map plugins.py:3 | plugin_registry",
+    "registries keyed-map plugins.py:8 | strategies",
+    "registries register-call plugins.py:15 | registry.register"
+  ]
+}
