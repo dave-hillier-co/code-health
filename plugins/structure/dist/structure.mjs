@@ -823,7 +823,7 @@ async function readPathAttributes(repoPath, ref, paths, treeFiles) {
   const names = ["linguist-generated", "linguist-vendored"];
   let out2;
   try {
-    out2 = await runGit(repoPath, [...base, `--source=${ref}`, ...names], { input });
+    out2 = await runGit(repoPath, ref === void 0 ? [...base, ...names] : [...base, `--source=${ref}`, ...names], { input });
   } catch {
     out2 = await runGit(repoPath, [...base, ...names], { input });
   }
@@ -1685,6 +1685,16 @@ async function readBlobs(cwd, shas) {
   }
   return out2;
 }
+async function withoutMarkedPaths(repoPath, ref, entries) {
+  const paths = entries.map(([path]) => path);
+  let marked;
+  try {
+    marked = await readPathAttributes(repoPath, ref, paths, paths);
+  } catch {
+    return entries;
+  }
+  return entries.filter(([path]) => !marked.generated.has(path) && !marked.vendored.has(path));
+}
 async function treeFromRef(repoPath, ref) {
   const listing = (await git2(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref])).toString("utf8");
   const entries = [];
@@ -1695,7 +1705,7 @@ async function treeFromRef(repoPath, ref) {
     if (type !== "blob" || mode === "120000" || !sha) continue;
     entries.push([record4.slice(tab + 1), sha]);
   }
-  const files = sortedMap(entries);
+  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, entries));
   const readMany = async (wanted) => {
     const known = wanted.filter((path) => files.has(path));
     const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path)))]);
@@ -7576,6 +7586,48 @@ function extractFileCensus2(root) {
   return facts;
 }
 
+// packages/parse/src/languages/kotlin/grammar-repair.ts
+function kotlinRepairs(_root, source) {
+  const repairs = [];
+  let lastTokenOnLine = -1;
+  let index = 0;
+  const skipTo = (end) => {
+    lastTokenOnLine = end - 1;
+    index = end;
+  };
+  while (index < source.length) {
+    const char = source[index];
+    if (char === "\n") {
+      lastTokenOnLine = -1;
+      index++;
+    } else if (char === " " || char === "	" || char === "\r") {
+      index++;
+    } else if (source.startsWith("//", index)) {
+      const end = source.indexOf("\n", index);
+      index = end < 0 ? source.length : end;
+    } else if (source.startsWith("/*", index)) {
+      const end = source.indexOf("*/", index + 2);
+      const stop2 = end < 0 ? source.length : end + 2;
+      index = stop2;
+    } else if (source.startsWith('"""', index)) {
+      const end = source.indexOf('"""', index + 3);
+      skipTo(end < 0 ? source.length : end + 3);
+    } else if (char === '"' || char === "'") {
+      let end = index + 1;
+      while (end < source.length && source[end] !== char && source[end] !== "\n") end += source[end] === "\\" ? 2 : 1;
+      skipTo(Math.min(end + 1, source.length));
+    } else {
+      if (char === "}" && lastTokenOnLine >= 0 && index - 1 > lastTokenOnLine && /[ \t]/.test(source[index - 1])) {
+        const before = source[lastTokenOnLine];
+        if (before !== "{" && before !== ";") repairs.push({ offset: index - 1, character: ";" });
+      }
+      lastTokenOnLine = index;
+      index++;
+    }
+  }
+  return repairs;
+}
+
 // packages/parse/src/languages/kotlin/adapter.ts
 var adapter2 = {
   id: "kotlin",
@@ -7583,8 +7635,8 @@ var adapter2 = {
   tier: 2,
   support: "supported",
   lexerProfile: "kotlin",
-  grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm" }, extensions: [".kt"] }],
-  extractorVersion: 1,
+  grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm", repairs: kotlinRepairs }, extensions: [".kt"] }],
+  extractorVersion: 2,
   extract: extractFacts2,
   isTestPath: (path) => isJvmTestPath(path, /\.kt$/),
   metrics: kotlinMetricRules,
@@ -8527,6 +8579,52 @@ function extractFacts3(root, options2 = {}) {
   return new Extractor3(options2.explain === true).extract(root);
 }
 
+// packages/parse/src/languages/typescript/grammar-repair.ts
+var labelWords = /* @__PURE__ */ new Set([
+  "string",
+  "number",
+  "boolean",
+  "object",
+  "any",
+  "never",
+  "void",
+  "unknown",
+  "undefined",
+  "null",
+  "symbol",
+  "bigint",
+  "this",
+  "readonly",
+  "keyof",
+  "new",
+  "typeof",
+  "unique",
+  "infer",
+  "asserts",
+  "is"
+]);
+var statementWords = /* @__PURE__ */ new Set(["abstract", "as", "satisfies"]);
+var afterStatementWord = /^\s*(\+\+|--|[-+*/%&|^]?=|\*\*=|\.|\(|\[|,|;|\)|$)/;
+function typescriptRepairs(root, source) {
+  const offsets = /* @__PURE__ */ new Set();
+  const visit = (node) => {
+    if (!node.hasError) return;
+    if (node.type === "ERROR") {
+      const start2 = node.startIndex;
+      const word = /^[A-Za-z_$][\w$]*/.exec(source.slice(start2, start2 + 20))?.[0];
+      if (word !== void 0) {
+        const rest = source.slice(start2 + word.length, start2 + word.length + 20);
+        const before = source.slice(0, start2).trimEnd().slice(-1);
+        if (labelWords.has(word) && /^\s*\??\s*:/.test(rest) && (before === "[" || before === ",")) offsets.add(start2);
+        else if (statementWords.has(word) && afterStatementWord.test(rest)) offsets.add(start2);
+      }
+    }
+    for (const child2 of node.children) visit(child2);
+  };
+  visit(root);
+  return [...offsets].sort((a, b) => a - b).map((offset) => ({ offset, character: "_" }));
+}
+
 // packages/parse/src/languages/typescript/resolve-specifier.ts
 import { builtinModules } from "node:module";
 import { posix as posix3 } from "node:path";
@@ -8860,11 +8958,11 @@ var adapter3 = {
   support: "supported",
   lexerProfile: "typescript",
   grammars: [
-    { spec: { id: "typescript", packageName: "tree-sitter-typescript", file: "tree-sitter-typescript.wasm" }, extensions: [".ts", ".mts", ".cts"] },
-    { spec: { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm" }, extensions: [".tsx"] },
+    { spec: { id: "typescript", packageName: "tree-sitter-typescript", file: "tree-sitter-typescript.wasm", repairs: typescriptRepairs }, extensions: [".ts", ".mts", ".cts"] },
+    { spec: { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm", repairs: typescriptRepairs }, extensions: [".tsx"] },
     { spec: { id: "javascript", packageName: "tree-sitter-javascript", file: "tree-sitter-javascript.wasm" }, extensions: [".js", ".mjs", ".cjs", ".jsx"] }
   ],
-  extractorVersion: 6,
+  extractorVersion: 7,
   extract: extractFacts3,
   isTestPath: (path) => /(^|\/)(__tests__|__mocks__|tests?)\//.test(path) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(path),
   metrics: typescriptMetricRules,
@@ -15009,6 +15107,8 @@ var PathResolver = class {
   tree;
   /** A `use` of an inline module of the file itself is no dependency. */
   dropsSelfDependencies = true;
+  /** A module's own `use` declarations are visible to its child modules, so `use super::Name` finds a name the parent only imports. */
+  importsAreVisible = true;
   constructor(paths, configs) {
     this.tree = new ModuleTree(paths, readCrates(paths, configs));
   }
@@ -15188,9 +15288,38 @@ async function load(spec, grammarDir) {
     parse(source) {
       const tree = parser.parse(source);
       if (!tree) throw new Error(`Parsing failed for grammar ${id}`);
-      return tree;
+      if (spec.repairs === void 0 || !tree.rootNode.hasError) return tree;
+      return repaired(parser, tree, source, spec.repairs);
     }
   };
+}
+var repairPasses = 4;
+function errorCount(node) {
+  if (node.isMissing || node.type === "ERROR") return 1;
+  if (!node.hasError) return 0;
+  let count2 = 0;
+  for (const child2 of node.children) count2 += errorCount(child2);
+  return Math.max(count2, 1);
+}
+function repaired(parser, original, source, repairs) {
+  let best = original;
+  let text2 = source;
+  for (let pass = 0; pass < repairPasses && best.rootNode.hasError; pass++) {
+    const edits = repairs(best.rootNode, text2);
+    if (edits.length === 0) break;
+    for (const { offset, character } of edits) text2 = `${text2.slice(0, offset)}${character}${text2.slice(offset + 1)}`;
+    const next = parser.parse(text2);
+    if (!next) break;
+    if (errorCount(next.rootNode) < errorCount(best.rootNode)) {
+      if (best !== original) best.delete();
+      best = next;
+    } else {
+      next.delete();
+      break;
+    }
+  }
+  if (best !== original) original.delete();
+  return best;
 }
 function cacheKeyOf(adapter9, grammar) {
   return `${grammar.version}.${adapter9.id}-extract-${adapter9.extractorVersion}`;
@@ -15357,7 +15486,11 @@ var ImportModel = class {
       for (const binding of imported.bindings) {
         const uses = file.references.filter((reference) => reference.local === binding.local);
         const passThrough = uses.length === 0 && exportedLocals.has(binding.local);
-        if (passThrough) continue;
+        if (passThrough) {
+          const exposed = binding.imported === "*" ? void 0 : this.resolveExport(target2.path, binding.imported, /* @__PURE__ */ new Set());
+          if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly);
+          continue;
+        }
         if (binding.imported === "*") {
           this.useNamespace(path, target2.path, uses, unitNames);
           continue;
@@ -15459,6 +15592,8 @@ var ImportModel = class {
         const unit = file.units.find((candidate) => candidate.qualifiedName === exported.local && !candidate.parent);
         return unit ? { status: "defined", file: path, exportName: name13, symbol: unit.qualifiedName } : { status: "defined", file: path, exportName: name13 };
       }
+      const target2 = this.resolve(path, binding.specifier);
+      if (target2.kind === "file" && target2.path === path && binding.imported === name13) continue;
       return this.followBinding(path, binding.specifier, binding.imported, visiting);
     }
     for (const reexport of file.reexports) {
@@ -15470,6 +15605,10 @@ var ImportModel = class {
         const result = this.followBinding(path, reexport.specifier, name13, visiting);
         if (result.status !== "missing") return result;
       }
+    }
+    if (this.resolver.importsAreVisible === true) {
+      const binding = this.importBinding(file, name13);
+      if (binding) return this.followBinding(path, binding.specifier, binding.imported, visiting);
     }
     const submodule = this.resolver.submodule?.(path, name13);
     if (submodule !== void 0) return { status: "namespace", file: submodule, submodule: true };
@@ -19946,6 +20085,13 @@ var language16 = { id: "rust", readEntries: readEntries7, manifestChecks: manife
 
 // packages/structure/src/packaging/language.ts
 var packagingLanguages = Object.values(registered_languages_exports2).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+async function readEntries8(model) {
+  const entries = /* @__PURE__ */ new Map();
+  for (const language17 of packagingLanguages) {
+    for (const [id, found] of await language17.readEntries(model)) entries.set(id, found);
+  }
+  return entries;
+}
 
 // packages/structure/src/packaging/boundaries.ts
 function deepImports(context, reuse) {
@@ -20027,15 +20173,6 @@ function purposeMismatches(context, deep) {
 async function boundaryFindings(context, reuse) {
   const deep = deepImports(context, reuse);
   return [...deep, ...await manifestChecks8(context, reuse), ...purposeMismatches(context, deep)];
-}
-
-// packages/structure/src/packaging/entries.ts
-async function readEntries8(model) {
-  const entries = /* @__PURE__ */ new Map();
-  for (const language17 of packagingLanguages) {
-    for (const [id, found] of await language17.readEntries(model)) entries.set(id, found);
-  }
-  return entries;
 }
 
 // packages/structure/src/packaging/reuse.ts
@@ -20412,17 +20549,17 @@ function measureAbstractness(reuse) {
   const result = /* @__PURE__ */ new Map();
   for (const [id, profile] of reuse.profiles) {
     let types = 0;
-    let abstract = 0;
+    let abstractCount = 0;
     for (const element2 of profile.surface) {
       const detection = adapterForPath(element2.file)?.abstractTypes;
       if (element2.kind === null || detection === void 0 || !detection.typeKinds.includes(element2.kind)) continue;
       types++;
-      if (detection.abstractKinds.includes(element2.kind)) abstract++;
+      if (detection.abstractKinds.includes(element2.kind)) abstractCount++;
     }
     result.set(id, {
       exportedTypes: types,
-      abstractTypes: abstract,
-      value: types === 0 ? 0 : round3(abstract / types),
+      abstractTypes: abstractCount,
+      value: types === 0 ? 0 : round3(abstractCount / types),
       weak: types < WEAK_BELOW_TYPES
     });
   }

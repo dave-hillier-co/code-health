@@ -3,7 +3,7 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   bindingForPath,
   grammarSpecById
-} from "./chunk-JLMLNIDH.mjs";
+} from "./chunk-BTR7QRFU.mjs";
 
 // packages/parse/src/grammars.ts
 import { createHash } from "node:crypto";
@@ -4085,9 +4085,38 @@ async function load(spec, grammarDir) {
     parse(source) {
       const tree = parser.parse(source);
       if (!tree) throw new Error(`Parsing failed for grammar ${id}`);
-      return tree;
+      if (spec.repairs === void 0 || !tree.rootNode.hasError) return tree;
+      return repaired(parser, tree, source, spec.repairs);
     }
   };
+}
+var repairPasses = 4;
+function errorCount(node) {
+  if (node.isMissing || node.type === "ERROR") return 1;
+  if (!node.hasError) return 0;
+  let count = 0;
+  for (const child of node.children) count += errorCount(child);
+  return Math.max(count, 1);
+}
+function repaired(parser, original, source, repairs) {
+  let best = original;
+  let text = source;
+  for (let pass = 0; pass < repairPasses && best.rootNode.hasError; pass++) {
+    const edits = repairs(best.rootNode, text);
+    if (edits.length === 0) break;
+    for (const { offset, character } of edits) text = `${text.slice(0, offset)}${character}${text.slice(offset + 1)}`;
+    const next = parser.parse(text);
+    if (!next) break;
+    if (errorCount(next.rootNode) < errorCount(best.rootNode)) {
+      if (best !== original) best.delete();
+      best = next;
+    } else {
+      next.delete();
+      break;
+    }
+  }
+  if (best !== original) original.delete();
+  return best;
 }
 function cacheKeyOf(adapter, grammar) {
   return `${grammar.version}.${adapter.id}-extract-${adapter.extractorVersion}`;

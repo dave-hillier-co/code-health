@@ -3,13 +3,13 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   GrammarSet,
   cacheKeyOf
-} from "./chunk-IHJS3JTB.mjs";
+} from "./chunk-RQ6NPLHK.mjs";
 import {
   isConfigPath,
   isTestPath,
   resolveBySymbols,
   supportedAdapters
-} from "./chunk-JLMLNIDH.mjs";
+} from "./chunk-BTR7QRFU.mjs";
 
 // packages/parse/src/file-facts.ts
 function parseWith(adapter, grammar, source, options = {}) {
@@ -147,7 +147,11 @@ var ImportModel = class {
       for (const binding of imported.bindings) {
         const uses = file.references.filter((reference) => reference.local === binding.local);
         const passThrough = uses.length === 0 && exportedLocals.has(binding.local);
-        if (passThrough) continue;
+        if (passThrough) {
+          const exposed = binding.imported === "*" ? void 0 : this.resolveExport(target.path, binding.imported, /* @__PURE__ */ new Set());
+          if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly);
+          continue;
+        }
         if (binding.imported === "*") {
           this.useNamespace(path, target.path, uses, unitNames);
           continue;
@@ -249,6 +253,8 @@ var ImportModel = class {
         const unit = file.units.find((candidate) => candidate.qualifiedName === exported.local && !candidate.parent);
         return unit ? { status: "defined", file: path, exportName: name, symbol: unit.qualifiedName } : { status: "defined", file: path, exportName: name };
       }
+      const target = this.resolve(path, binding.specifier);
+      if (target.kind === "file" && target.path === path && binding.imported === name) continue;
       return this.followBinding(path, binding.specifier, binding.imported, visiting);
     }
     for (const reexport of file.reexports) {
@@ -260,6 +266,10 @@ var ImportModel = class {
         const result = this.followBinding(path, reexport.specifier, name, visiting);
         if (result.status !== "missing") return result;
       }
+    }
+    if (this.resolver.importsAreVisible === true) {
+      const binding = this.importBinding(file, name);
+      if (binding) return this.followBinding(path, binding.specifier, binding.imported, visiting);
     }
     const submodule = this.resolver.submodule?.(path, name);
     if (submodule !== void 0) return { status: "namespace", file: submodule, submodule: true };

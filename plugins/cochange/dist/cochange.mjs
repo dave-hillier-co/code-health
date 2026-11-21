@@ -840,7 +840,7 @@ async function readPathAttributes(repoPath, ref, paths, treeFiles) {
   const names = ["linguist-generated", "linguist-vendored"];
   let out;
   try {
-    out = await runGit(repoPath, [...base, `--source=${ref}`, ...names], { input });
+    out = await runGit(repoPath, ref === void 0 ? [...base, ...names] : [...base, `--source=${ref}`, ...names], { input });
   } catch {
     out = await runGit(repoPath, [...base, ...names], { input });
   }
@@ -3712,7 +3712,7 @@ __export(recorded_agreement_exports, {
 });
 
 // packages/lexical/src/agreement-rates/typescript.ts
-var recorded = { units: 103, found: 101, exact: 101, blocks: 111, spurious: 6 };
+var recorded = { units: 107, found: 105, exact: 105, blocks: 115, spurious: 6 };
 
 // packages/lexical/src/agreement-rates/csharp.ts
 var recorded2 = { units: 71, found: 70, exact: 69, blocks: 74, spurious: 2 };
@@ -3721,7 +3721,7 @@ var recorded2 = { units: 71, found: 70, exact: 69, blocks: 74, spurious: 2 };
 var recorded3 = { units: 66, found: 65, exact: 65, blocks: 67, spurious: 1 };
 
 // packages/lexical/src/agreement-rates/python.ts
-var recorded4 = { units: 66, found: 64, exact: 63, blocks: 63, spurious: 0 };
+var recorded4 = { units: 70, found: 68, exact: 67, blocks: 67, spurious: 0 };
 
 // packages/lexical/src/agreement-rates/go.ts
 var recorded5 = { units: 51, found: 51, exact: 51, blocks: 57, spurious: 3 };
@@ -3730,10 +3730,10 @@ var recorded5 = { units: 51, found: 51, exact: 51, blocks: 57, spurious: 3 };
 var recorded6 = { units: 68, found: 65, exact: 65, blocks: 73, spurious: 0 };
 
 // packages/lexical/src/agreement-rates/kotlin.ts
-var recorded7 = { units: 67, found: 67, exact: 67, blocks: 68, spurious: 0 };
+var recorded7 = { units: 70, found: 70, exact: 70, blocks: 71, spurious: 0 };
 
 // packages/lexical/src/agreement-rates/rust.ts
-var recorded8 = { units: 58, found: 56, exact: 53, blocks: 53, spurious: 0 };
+var recorded8 = { units: 61, found: 59, exact: 56, blocks: 56, spurious: 0 };
 
 // packages/lexical/src/agreement-rates.ts
 var recordedAgreement = { ...recorded_agreement_exports };

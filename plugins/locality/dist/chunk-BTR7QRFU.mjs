@@ -4148,6 +4148,48 @@ function extractFileCensus2(root) {
   return facts;
 }
 
+// packages/parse/src/languages/kotlin/grammar-repair.ts
+function kotlinRepairs(_root, source) {
+  const repairs = [];
+  let lastTokenOnLine = -1;
+  let index = 0;
+  const skipTo = (end) => {
+    lastTokenOnLine = end - 1;
+    index = end;
+  };
+  while (index < source.length) {
+    const char = source[index];
+    if (char === "\n") {
+      lastTokenOnLine = -1;
+      index++;
+    } else if (char === " " || char === "	" || char === "\r") {
+      index++;
+    } else if (source.startsWith("//", index)) {
+      const end = source.indexOf("\n", index);
+      index = end < 0 ? source.length : end;
+    } else if (source.startsWith("/*", index)) {
+      const end = source.indexOf("*/", index + 2);
+      const stop = end < 0 ? source.length : end + 2;
+      index = stop;
+    } else if (source.startsWith('"""', index)) {
+      const end = source.indexOf('"""', index + 3);
+      skipTo(end < 0 ? source.length : end + 3);
+    } else if (char === '"' || char === "'") {
+      let end = index + 1;
+      while (end < source.length && source[end] !== char && source[end] !== "\n") end += source[end] === "\\" ? 2 : 1;
+      skipTo(Math.min(end + 1, source.length));
+    } else {
+      if (char === "}" && lastTokenOnLine >= 0 && index - 1 > lastTokenOnLine && /[ \t]/.test(source[index - 1])) {
+        const before = source[lastTokenOnLine];
+        if (before !== "{" && before !== ";") repairs.push({ offset: index - 1, character: ";" });
+      }
+      lastTokenOnLine = index;
+      index++;
+    }
+  }
+  return repairs;
+}
+
 // packages/parse/src/languages/kotlin/adapter.ts
 var adapter2 = {
   id: "kotlin",
@@ -4155,8 +4197,8 @@ var adapter2 = {
   tier: 2,
   support: "supported",
   lexerProfile: "kotlin",
-  grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm" }, extensions: [".kt"] }],
-  extractorVersion: 1,
+  grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm", repairs: kotlinRepairs }, extensions: [".kt"] }],
+  extractorVersion: 2,
   extract: extractFacts4,
   isTestPath: (path) => isJvmTestPath(path, /\.kt$/),
   metrics: kotlinMetricRules,
@@ -5099,6 +5141,52 @@ function extractFacts5(root, options = {}) {
   return new Extractor5(options.explain === true).extract(root);
 }
 
+// packages/parse/src/languages/typescript/grammar-repair.ts
+var labelWords = /* @__PURE__ */ new Set([
+  "string",
+  "number",
+  "boolean",
+  "object",
+  "any",
+  "never",
+  "void",
+  "unknown",
+  "undefined",
+  "null",
+  "symbol",
+  "bigint",
+  "this",
+  "readonly",
+  "keyof",
+  "new",
+  "typeof",
+  "unique",
+  "infer",
+  "asserts",
+  "is"
+]);
+var statementWords = /* @__PURE__ */ new Set(["abstract", "as", "satisfies"]);
+var afterStatementWord = /^\s*(\+\+|--|[-+*/%&|^]?=|\*\*=|\.|\(|\[|,|;|\)|$)/;
+function typescriptRepairs(root, source) {
+  const offsets = /* @__PURE__ */ new Set();
+  const visit = (node) => {
+    if (!node.hasError) return;
+    if (node.type === "ERROR") {
+      const start = node.startIndex;
+      const word = /^[A-Za-z_$][\w$]*/.exec(source.slice(start, start + 20))?.[0];
+      if (word !== void 0) {
+        const rest = source.slice(start + word.length, start + word.length + 20);
+        const before = source.slice(0, start).trimEnd().slice(-1);
+        if (labelWords.has(word) && /^\s*\??\s*:/.test(rest) && (before === "[" || before === ",")) offsets.add(start);
+        else if (statementWords.has(word) && afterStatementWord.test(rest)) offsets.add(start);
+      }
+    }
+    for (const child of node.children) visit(child);
+  };
+  visit(root);
+  return [...offsets].sort((a, b) => a - b).map((offset) => ({ offset, character: "_" }));
+}
+
 // packages/parse/src/languages/typescript/resolve-specifier.ts
 import { builtinModules } from "node:module";
 import { posix as posix9 } from "node:path";
@@ -5432,11 +5520,11 @@ var adapter3 = {
   support: "supported",
   lexerProfile: "typescript",
   grammars: [
-    { spec: { id: "typescript", packageName: "tree-sitter-typescript", file: "tree-sitter-typescript.wasm" }, extensions: [".ts", ".mts", ".cts"] },
-    { spec: { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm" }, extensions: [".tsx"] },
+    { spec: { id: "typescript", packageName: "tree-sitter-typescript", file: "tree-sitter-typescript.wasm", repairs: typescriptRepairs }, extensions: [".ts", ".mts", ".cts"] },
+    { spec: { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm", repairs: typescriptRepairs }, extensions: [".tsx"] },
     { spec: { id: "javascript", packageName: "tree-sitter-javascript", file: "tree-sitter-javascript.wasm" }, extensions: [".js", ".mjs", ".cjs", ".jsx"] }
   ],
-  extractorVersion: 6,
+  extractorVersion: 7,
   extract: extractFacts5,
   isTestPath: (path) => /(^|\/)(__tests__|__mocks__|tests?)\//.test(path) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(path),
   metrics: typescriptMetricRules,
@@ -9285,6 +9373,8 @@ var PathResolver = class {
   tree;
   /** A `use` of an inline module of the file itself is no dependency. */
   dropsSelfDependencies = true;
+  /** A module's own `use` declarations are visible to its child modules, so `use super::Name` finds a name the parent only imports. */
+  importsAreVisible = true;
   constructor(paths, configs) {
     this.tree = new ModuleTree(paths, readCrates(paths, configs));
   }

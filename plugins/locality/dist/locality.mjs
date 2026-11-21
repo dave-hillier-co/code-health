@@ -15,21 +15,27 @@ import {
   hasCodeHealthTrailer
 } from "./chunk-OIQQ7Q7W.mjs";
 import {
+  isSourceFile
+} from "./chunk-PGCVECV2.mjs";
+import {
+  GitError,
+  gitVersion,
+  listTree,
+  readBlameIgnoreRevs,
+  readPathAttributes,
+  runGit,
   treeFromRef
-} from "./chunk-U2IXLVHY.mjs";
+} from "./chunk-PIRPT4TJ.mjs";
 import {
   analyseTree
-} from "./chunk-EIIDG75E.mjs";
-import "./chunk-IHJS3JTB.mjs";
-import {
-  isSourceFile
-} from "./chunk-VALAITAM.mjs";
+} from "./chunk-TMVGVZJI.mjs";
+import "./chunk-RQ6NPLHK.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isTestPath
-} from "./chunk-JLMLNIDH.mjs";
+} from "./chunk-BTR7QRFU.mjs";
 import {
   __export
 } from "./chunk-ICEC5XXC.mjs";
@@ -507,102 +513,6 @@ __export(analyse_exports, {
   name: () => name,
   rules: () => rules
 });
-
-// packages/history/src/git.ts
-import { spawn } from "node:child_process";
-var GitError = class extends Error {
-  args;
-  code;
-  stderr;
-  constructor(args, code, stderr) {
-    super(`git ${args.join(" ")} failed (${code}): ${stderr.trim()}`);
-    this.name = "GitError";
-    this.args = args;
-    this.code = code;
-    this.stderr = stderr;
-  }
-};
-function runGit(cwd, args, options = {}) {
-  return new Promise((resolve, reject) => {
-    const child = spawn("git", args, {
-      cwd,
-      env: {
-        ...process.env,
-        LC_ALL: "C",
-        GIT_OPTIONAL_LOCKS: "0",
-        // The user's and the system's git config must not change what is read.
-        GIT_CONFIG_NOSYSTEM: "1",
-        GIT_CONFIG_GLOBAL: "/dev/null",
-        ...options.env
-      },
-      stdio: ["pipe", "pipe", "pipe"]
-    });
-    const out = [];
-    const err = [];
-    child.stdout.on("data", (chunk) => out.push(chunk));
-    child.stderr.on("data", (chunk) => err.push(chunk));
-    child.on("error", reject);
-    child.stdin.on("error", () => {
-    });
-    child.on("close", (code) => {
-      if (code === 0) resolve(Buffer.concat(out).toString("utf8"));
-      else reject(new GitError(args, code, Buffer.concat(err).toString("utf8")));
-    });
-    child.stdin.end(options.input ?? "");
-  });
-}
-async function gitVersion(cwd) {
-  const out = await runGit(cwd, ["--version"]);
-  return out.trim().replace(/^git version /, "");
-}
-
-// packages/history/src/tree.ts
-async function listTree(repoPath, ref) {
-  const out = await runGit(repoPath, ["ls-tree", "-r", "--name-only", "-z", "--full-tree", ref]);
-  return out.split("\0").filter((p) => p !== "").sort();
-}
-async function readBlobAt(repoPath, ref, path) {
-  try {
-    return await runGit(repoPath, ["cat-file", "blob", `${ref}:${path}`]);
-  } catch {
-    return void 0;
-  }
-}
-function parseBlameIgnoreRevs(text) {
-  const revs = [];
-  for (const line of text.split("\n")) {
-    const token = line.replace(/#.*/, "").trim().split(/\s+/)[0] ?? "";
-    if (/^[0-9a-f]{7,40}$/i.test(token)) revs.push(token.toLowerCase());
-  }
-  return revs;
-}
-async function readBlameIgnoreRevs(repoPath, ref, file) {
-  const text = await readBlobAt(repoPath, ref, file);
-  return text === void 0 ? [] : parseBlameIgnoreRevs(text);
-}
-var isSet = (value) => value === "set" || value === "true";
-async function readPathAttributes(repoPath, ref, paths, treeFiles) {
-  const result = { generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set() };
-  const hasAttributes = treeFiles.some((p) => p === ".gitattributes" || p.endsWith("/.gitattributes"));
-  if (!hasAttributes || paths.length === 0) return result;
-  const input = paths.join("\0") + "\0";
-  const base = ["check-attr", "-z", "--stdin"];
-  const names = ["linguist-generated", "linguist-vendored"];
-  let out;
-  try {
-    out = await runGit(repoPath, [...base, `--source=${ref}`, ...names], { input });
-  } catch {
-    out = await runGit(repoPath, [...base, ...names], { input });
-  }
-  const tokens = out.split("\0");
-  for (let i = 0; i + 2 < tokens.length; i += 3) {
-    const [path, attribute, value] = [tokens[i], tokens[i + 1], tokens[i + 2]];
-    if (!isSet(value)) continue;
-    if (attribute === "linguist-generated") result.generated.add(path);
-    else if (attribute === "linguist-vendored") result.vendored.add(path);
-  }
-  return result;
-}
 
 // packages/history/src/glob.ts
 function escape(ch) {
@@ -4401,7 +4311,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-S4IJERJY.mjs");
+    const { performMove } = await import("./chunk-A4WXCJII.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -4420,7 +4330,8 @@ var command4 = {
         refusals,
         rewrites: moved?.rewrites ?? [],
         mentions,
-        warnings: moved?.warnings ?? []
+        warnings: moved?.warnings ?? [],
+        confirmations: moved?.confirmations ?? []
       },
       results: plan.operations,
       columns: ["from", "to", "role"],
@@ -4450,7 +4361,7 @@ var command5 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-JSOSPFX4.mjs");
-      const { buildProject } = await import("./chunk-ZIZIDDIQ.mjs");
+      const { buildProject } = await import("./chunk-IZZ44VUN.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -4667,7 +4578,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-OQTMS4LE.mjs");
+    const { verifyMove } = await import("./chunk-ZG37FZJ5.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;
