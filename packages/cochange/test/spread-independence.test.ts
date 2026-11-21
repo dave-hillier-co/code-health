@@ -37,11 +37,12 @@ function spreadIn(repo: GitFixture, env: Record<string, string>, ...args: string
 
 test("buckets and windows do not depend on the time zone or locale", () => {
   const baseline = spreadIn(first, { TZ: "UTC", LANG: "C" });
-  for (const env of [
+  const environments: Record<string, string>[] = [
     { TZ: "Pacific/Kiritimati", LANG: "C" },
     { TZ: "America/Los_Angeles", LANG: "de_DE.UTF-8" },
     { TZ: "Asia/Kolkata", LC_ALL: "tr_TR.UTF-8" },
-  ]) {
+  ];
+  for (const env of environments) {
     expect(spreadIn(first, env), JSON.stringify(env)).toBe(baseline);
     expect(spreadIn(first, env, "--bucket", "week"), JSON.stringify(env)).toBe(spreadIn(first, { TZ: "UTC" }, "--bucket", "week"));
   }
