@@ -1,0 +1,305 @@
+{
+  "command": "measure",
+  "config": "9468b0611e318a67",
+  "inputs": {
+    "baseline": {
+      "head": "3de5fcd69ef623babdf72a887d014457da424aa7",
+      "stamp": "20fc6615f2146571"
+    },
+    "name": "default",
+    "since": null,
+    "transcripts": {
+      "stamp": "1d4d3f450191e65a",
+      "tasksAfter": 24
+    }
+  },
+  "repo": {
+    "dirty": false,
+    "head": "42716a6df61614ac88001913522c7eb6d7882530"
+  },
+  "results": {
+    "actedOn": {
+      "after": {
+        "effort": {
+          "edits": {
+            "mean": 1,
+            "median": 1
+          },
+          "filesRead": {
+            "mean": 3,
+            "median": 3
+          },
+          "foldersVisited": {
+            "mean": 1,
+            "median": 1
+          },
+          "reReads": {
+            "mean": 0,
+            "median": 0
+          },
+          "tasks": 8,
+          "tokens": {
+            "mean": 3000,
+            "median": 3000
+          }
+        },
+        "spread": {
+          "changes": 13,
+          "mean": 0,
+          "measured": 13,
+          "median": 0,
+          "oversized": 0
+        }
+      },
+      "before": {
+        "effort": {
+          "edits": {
+            "mean": 1,
+            "median": 1
+          },
+          "filesRead": {
+            "mean": 3,
+            "median": 3
+          },
+          "foldersVisited": {
+            "mean": 2,
+            "median": 2
+          },
+          "reReads": {
+            "mean": 1,
+            "median": 1
+          },
+          "tasks": 8,
+          "tokens": {
+            "mean": 5000,
+            "median": 5000
+          }
+        },
+        "spread": {
+          "changes": 13,
+          "mean": 2,
+          "measured": 13,
+          "median": 2,
+          "oversized": 0
+        }
+      },
+      "candidates": [
+        "src/shared/utils/h1.ts",
+        "src/shared/utils/h2.ts"
+      ]
+    },
+    "after": {
+      "complete": true,
+      "days": 366,
+      "from": "2024-01-11",
+      "matchingDays": 366,
+      "to": "2025-01-11"
+    },
+    "baseline": {
+      "effort": {
+        "edits": {
+          "mean": 1,
+          "median": 1
+        },
+        "filesRead": {
+          "mean": 3,
+          "median": 3
+        },
+        "foldersVisited": {
+          "mean": 2,
+          "median": 2
+        },
+        "reReads": {
+          "mean": 1,
+          "median": 1
+        },
+        "tasks": 24,
+        "tokens": {
+          "mean": 5000,
+          "median": 5000
+        }
+      },
+      "head": "3de5fcd69ef623babdf72a887d014457da424aa7",
+      "spread": {
+        "changes": 28,
+        "mean": 1.928571,
+        "measured": 28,
+        "median": 2,
+        "oversized": 0
+      },
+      "window": {
+        "from": "2023-01-01",
+        "to": "2024-01-02"
+      }
+    },
+    "claim": "cheaper",
+    "comparison": {
+      "after": {
+        "effort": {
+          "edits": {
+            "mean": 1,
+            "median": 1
+          },
+          "filesRead": {
+            "mean": 3,
+            "median": 3
+          },
+          "foldersVisited": {
+            "mean": 2,
+            "median": 2
+          },
+          "reReads": {
+            "mean": 1,
+            "median": 1
+          },
+          "tasks": 8,
+          "tokens": {
+            "mean": 5000,
+            "median": 5000
+          }
+        },
+        "spread": {
+          "changes": 9,
+          "mean": 2,
+          "measured": 9,
+          "median": 2,
+          "oversized": 0
+        }
+      },
+      "before": {
+        "effort": {
+          "edits": {
+            "mean": 1,
+            "median": 1
+          },
+          "filesRead": {
+            "mean": 3,
+            "median": 3
+          },
+          "foldersVisited": {
+            "mean": 2,
+            "median": 2
+          },
+          "reReads": {
+            "mean": 1,
+            "median": 1
+          },
+          "tasks": 8,
+          "tokens": {
+            "mean": 5000,
+            "median": 5000
+          }
+        },
+        "spread": {
+          "changes": 9,
+          "mean": 2,
+          "measured": 9,
+          "median": 2,
+          "oversized": 0
+        }
+      },
+      "candidates": [
+        "src/shared/utils/h3.ts",
+        "src/shared/utils/h4.ts"
+      ]
+    },
+    "effort": {
+      "conclusion": "lower",
+      "filesRead": {
+        "actedOn": {
+          "change": 0
+        },
+        "comparison": {
+          "change": 0
+        },
+        "conclusion": "no-change",
+        "difference": 0,
+        "smallestSample": 8
+      },
+      "foldersVisited": {
+        "actedOn": {
+          "change": -1
+        },
+        "comparison": {
+          "change": 0
+        },
+        "conclusion": "lower",
+        "difference": -1,
+        "smallestSample": 8
+      },
+      "reReads": {
+        "actedOn": {
+          "change": -1
+        },
+        "comparison": {
+          "change": 0
+        },
+        "conclusion": "lower",
+        "difference": -1,
+        "smallestSample": 8
+      },
+      "role": "primary outcome",
+      "tokens": {
+        "actedOn": {
+          "change": -2000
+        },
+        "comparison": {
+          "change": 0
+        },
+        "conclusion": "lower",
+        "difference": -2000,
+        "smallestSample": 8
+      }
+    },
+    "name": "default",
+    "pairs": [
+      {
+        "actedOn": {
+          "path": "src/shared/utils/h1.ts",
+          "rank": 1
+        },
+        "comparison": {
+          "path": "src/shared/utils/h3.ts",
+          "rank": 3
+        }
+      },
+      {
+        "actedOn": {
+          "path": "src/shared/utils/h2.ts",
+          "rank": 2
+        },
+        "comparison": {
+          "path": "src/shared/utils/h4.ts",
+          "rank": 4
+        }
+      }
+    ],
+    "spread": {
+      "actedOn": {
+        "change": -2
+      },
+      "comparison": {
+        "change": 0
+      },
+      "conclusion": "lower",
+      "difference": -2,
+      "role": "outcome, partly by construction",
+      "smallestSample": 9
+    },
+    "spreadReproduced": true,
+    "status": "compared",
+    "suite": {
+      "actedOn": 2,
+      "commits": 2,
+      "comparison": 2,
+      "overlapping": 4
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}

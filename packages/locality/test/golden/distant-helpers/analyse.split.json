@@ -3,7 +3,7 @@
     "src/billing/index.ts"
   ],
   "command": "analyse",
-  "config": "59e9516fe0a1f9ff",
+  "config": "51cdd76045403046",
   "filesWithSyntaxErrors": [],
   "history": {
     "activeContributors": 1,
@@ -22,7 +22,8 @@
     ],
     "entrySource": "config",
     "paths": [],
-    "recommendation": "split"
+    "recommendation": "split",
+    "source": "structural"
   },
   "metrics": {
     "maxDepth": 3,

@@ -1,0 +1,83 @@
+{
+  "command": "analyse",
+  "config": "ac1566f25affd53a",
+  "history": {
+    "activeContributors": 2,
+    "grade": "moderate",
+    "logicalChangesInWindow": 63,
+    "usableHistoryMonths": 9.9,
+    "window": {
+      "months": 12,
+      "since": 1667120400,
+      "until": 1698656400
+    }
+  },
+  "historyOnly": {
+    "omitted": {
+      "earned-distance": 0,
+      "fixed-point": 0,
+      "near-partners": 0,
+      "superseded": 1
+    },
+    "reason": null
+  },
+  "inputs": {
+    "paths": [],
+    "recommendation": null,
+    "source": "history"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "2743d074d079b9ad4dff58f3e55168ecf962f623"
+  },
+  "results": [
+    {
+      "age": 300,
+      "amongConsumers": 100,
+      "churn": 41,
+      "consumers": [
+        {
+          "confidence": 95.2,
+          "path": "billing/invoice.txt",
+          "support": 20,
+          "weight": 19
+        },
+        {
+          "confidence": 95.2,
+          "path": "billing/tax.txt",
+          "support": 20,
+          "weight": 19
+        }
+      ],
+      "distance": 3,
+      "fanIn": 2,
+      "gain": 114,
+      "lastChanged": "2023-10-27",
+      "location": "lib/config",
+      "netDistance": {
+        "atTarget": 0,
+        "current": 114
+      },
+      "path": "lib/config/rates.yaml",
+      "recommendation": "move",
+      "rule": "history-partners",
+      "score": 114,
+      "source": "history",
+      "target": "billing",
+      "unit": {
+        "files": [
+          "lib/config/rates.yaml"
+        ],
+        "kind": "file",
+        "root": "lib/config/rates.yaml"
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 1
+  }
+}

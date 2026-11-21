@@ -1,0 +1,77 @@
+{
+  "command": "measure",
+  "config": "9468b0611e318a67",
+  "evidence": {
+    "activeContributors": 2,
+    "grade": "weak",
+    "logicalChangesInWindow": 28,
+    "shallow": false,
+    "usableHistoryMonths": 10.9
+  },
+  "inputs": {
+    "name": "default",
+    "transcripts": {
+      "stamp": "20fc6615f2146571",
+      "tasks": 24
+    }
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3de5fcd69ef623babdf72a887d014457da424aa7"
+  },
+  "results": {
+    "candidates": {
+      "ranked": 18,
+      "recorded": 18
+    },
+    "effort": {
+      "edits": {
+        "mean": 1,
+        "median": 1
+      },
+      "filesRead": {
+        "mean": 3,
+        "median": 3
+      },
+      "foldersVisited": {
+        "mean": 2,
+        "median": 2
+      },
+      "reReads": {
+        "mean": 1,
+        "median": 1
+      },
+      "sessions": {
+        "measured": 6,
+        "notMeasured": 0
+      },
+      "tasks": 24,
+      "tokens": {
+        "mean": 5000,
+        "median": 5000
+      }
+    },
+    "file": ".code-health/local/locality.baseline.default.json",
+    "head": "3de5fcd69ef623babdf72a887d014457da424aa7",
+    "name": "default",
+    "priorSuiteCommits": 0,
+    "spread": {
+      "changes": 28,
+      "mean": 1.928571,
+      "measured": 28,
+      "median": 2,
+      "oversized": 0
+    },
+    "window": {
+      "from": "2023-01-01",
+      "to": "2024-01-02"
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}

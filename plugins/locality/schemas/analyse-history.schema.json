@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "analyse-history.schema.json",
+  "title": "locality analyse --source history --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "type": "object",
+  "$defs": {
+    "omitted": {
+      "type": "object",
+      "description": "Why files that history alone would have considered were left out.",
+      "properties": {
+        "earned-distance": { "$ref": "common.schema.json#/$defs/count", "description": "Three or more partners that change together: the distance is earned." },
+        "fixed-point": { "$ref": "common.schema.json#/$defs/count" },
+        "near-partners": { "$ref": "common.schema.json#/$defs/count", "description": "Already as close to the partners as a move could get." },
+        "superseded": { "$ref": "common.schema.json#/$defs/count", "description": "Pulled towards a file that is itself pulled towards it: the stronger pull is kept." }
+      },
+      "required": ["earned-distance", "fixed-point", "near-partners", "superseded"],
+      "additionalProperties": false
+    },
+    "candidate": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "The unit's first file in path order." },
+        "score": { "$ref": "common.schema.json#/$defs/count", "description": "The gain." },
+        "recommendation": { "enum": ["move", "review"] },
+        "rule": { "type": "string", "description": "Described by `locality explain <rule>`." },
+        "source": { "const": "history" },
+        "unit": {
+          "type": "object",
+          "properties": {
+            "kind": { "enum": ["file", "cluster"] },
+            "root": { "type": "string" },
+            "files": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+          },
+          "required": ["kind", "root", "files"],
+          "additionalProperties": false
+        },
+        "location": { "type": "string" },
+        "target": { "type": "string" },
+        "distance": { "$ref": "common.schema.json#/$defs/count" },
+        "gain": { "$ref": "common.schema.json#/$defs/count" },
+        "netDistance": {
+          "type": "object",
+          "properties": { "current": { "$ref": "common.schema.json#/$defs/count" }, "atTarget": { "$ref": "common.schema.json#/$defs/count" } },
+          "required": ["current", "atTarget"],
+          "additionalProperties": false
+        },
+        "consumers": {
+          "type": "array",
+          "description": "The co-change partners standing in for consumers, strongest first.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "support": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes touching the unit and the partner." },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of the unit's changes that also touch the partner." },
+              "weight": { "type": "integer", "minimum": 1 }
+            },
+            "required": ["path", "support", "confidence", "weight"],
+            "additionalProperties": false
+          }
+        },
+        "fanIn": { "$ref": "common.schema.json#/$defs/count" },
+        "amongConsumers": { "type": ["number", "null"], "description": "Median co-change degree between pairs of partners, percent." },
+        "age": { "type": ["integer", "null"], "description": "Days since the youngest file of the unit first appeared." },
+        "lastChanged": { "type": ["string", "null"] },
+        "churn": { "$ref": "common.schema.json#/$defs/count" }
+      },
+      "required": [
+        "path", "score", "recommendation", "rule", "source", "unit", "location", "target", "distance", "gain",
+        "netDistance", "consumers", "fanIn", "amongConsumers", "age", "lastChanged", "churn"
+      ],
+      "additionalProperties": false
+    },
+    "history": {
+      "description": "What the history cache gave the analysis, or null when it was off or could not give an honest answer.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "window": {
+              "type": "object",
+              "properties": { "months": { "type": "integer", "minimum": 1 }, "since": { "type": "integer" }, "until": { "type": "integer" } },
+              "required": ["months", "since", "until"],
+              "additionalProperties": false
+            },
+            "grade": { "enum": ["strong", "moderate", "weak"] },
+            "logicalChangesInWindow": { "$ref": "common.schema.json#/$defs/count" },
+            "usableHistoryMonths": { "type": "number", "minimum": 0 },
+            "activeContributors": { "$ref": "common.schema.json#/$defs/count" }
+          },
+          "required": ["window", "grade", "logicalChangesInWindow", "usableHistoryMonths", "activeContributors"],
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
+    "historyOnly": {
+      "type": "object",
+      "properties": {
+        "omitted": { "$ref": "#/$defs/omitted" },
+        "reason": { "type": ["string", "null"], "description": "Why nothing was reported, when the evidence is too weak or history is unavailable." }
+      },
+      "required": ["omitted", "reason"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "command": { "const": "analyse" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "source": { "const": "history" },
+        "paths": { "type": "array", "items": { "type": "string" } },
+        "recommendation": { "enum": ["move", "review", null] }
+      },
+      "required": ["source", "paths", "recommendation"],
+      "additionalProperties": false
+    },
+    "historyOnly": { "$ref": "#/$defs/historyOnly" },
+    "history": { "$ref": "#/$defs/history" },
+    "results": { "type": "array", "items": { "$ref": "#/$defs/candidate" } }
+  },
+  "unevaluatedProperties": false
+}
