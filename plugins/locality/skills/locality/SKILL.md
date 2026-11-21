@@ -107,6 +107,17 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs verify-move src/shared/utils/money.
 
 `verify-move` plans the move from the code before the commit (`--commit <ref>` to check another commit, `--to <folder>` if you chose another destination) and checks that every planned file moved, nothing else was added or removed, every file holds the text the mover would have written, and the message carries the trailer. It exits 1 and lists what differs: `missing` operations, `unexpectedAdded` or `unexpectedDeleted` files, `specifierDifferences` (an import spelled differently from the mover's, with expected and actual) and `otherChanges` (a change that is not an import path, so the commit is not move-only). Fix the commit and verify again. `references/moving.md` has the details.
 
+### C# namespaces
+
+A C# move changes no namespace. Making namespaces follow the folders is a separate, optional commit, because reflection, serialisation, XAML and dependency injection by name can see a namespace, and for a library it is a public API change. After the move commit, and only when the user wants it:
+
+```
+node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs update-namespaces
+node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs update-namespaces --apply
+```
+
+It reads the C# files the move commit (`--commit <ref>`, which must carry the `Code-Health:` trailer) renamed, and renames a namespace only when the move vacates it: every file that declares it moved, and no child namespace reaches its types by enclosure. The `using` directives that name it are rewritten. Every other namespace is listed in `warnings` and left alone, as is every fully qualified use in code. `--apply` needs a clean working tree and commits on its own; `--no-commit` leaves it staged.
+
 ### Commit message
 
 When you commit by hand, record the evidence in the body: the rule that fired, the consumer count, any red flag cited, and any override of the default with its reason. End with the trailer that keeps the commit out of outcome windows, in the final paragraph of the message:

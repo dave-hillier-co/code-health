@@ -55,3 +55,7 @@ An override adds an `Override:` line with the reason. The trailer keeps the comm
 A `specifierDifferences` entry is not always a mistake (a shorter alias may be better), but it fails verification so that a person looks at it. Either match the mover's spelling or explain it in your report.
 
 It cannot verify a merge or a root commit. The plan uses the analysis as it stood at the parent, with history read from `HEAD`, so when the commit moved to a folder other than the analyser's target, pass `--to`.
+
+## The optional C# namespace commit
+
+`locality update-namespaces [--commit <ref>] [--apply [--no-commit]]` follows a C# move commit. A moved file's namespace follows its folder when it ends with the folder path the move leaves (`Acme.Billing` for `src/Billing`, moved to `src/Payments`, becomes `Acme.Payments`). A namespace is renamed only when the move vacates it, and the `using` directives that name it follow. A namespace that stays partly in use, one that encloses a child namespace, one that does not follow its folder and fully qualified names in code are reported under `warnings` and not edited. The commit is separate from the move and carries `Code-Health: locality namespaces`.

@@ -4,6 +4,7 @@ import * as history from "./commands/history.ts";
 import * as measure from "./commands/measure.ts";
 import * as move from "./commands/move.ts";
 import * as scrutinise from "./commands/scrutinise.ts";
+import * as updateNamespaces from "./commands/update-namespaces.ts";
 import * as verifyMove from "./commands/verify-move.ts";
 
 /** What a module in `commands/` exports. */
@@ -26,6 +27,7 @@ export const commandModules: CommandModule[] = [
   measure,
   move,
   scrutinise,
+  updateNamespaces,
   verifyMove,
 ];
 

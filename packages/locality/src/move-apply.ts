@@ -80,8 +80,13 @@ export async function applyMove(
     mkdirSync(dirname(join(root, operation.to)), { recursive: true });
     await git(root, ["mv", operation.from, operation.to]);
   }
-  for (const [path, text] of result.texts) writeFileSync(join(root, path), text);
-  if (result.texts.size > 0) await git(root, ["add", "--", ...result.texts.keys()]);
+  return commitTexts(root, result.texts, message, commit);
+}
+
+/** Writes rewritten files into the working tree, stages them, and commits them as one commit unless `commit` is false. */
+export async function commitTexts(root: string, texts: ReadonlyMap<string, string>, message: string, commit: boolean): Promise<string | null> {
+  for (const [path, text] of texts) writeFileSync(join(root, path), text);
+  if (texts.size > 0) await git(root, ["add", "--", ...texts.keys()]);
   if (!commit) return null;
   const identity: Record<string, string> = (await hasIdentity(root))
     ? {}

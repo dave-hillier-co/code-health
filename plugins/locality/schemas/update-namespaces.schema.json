@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "update-namespaces.schema.json",
+  "title": "locality update-namespaces --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "type": "object",
+  "$defs": {
+    "rewrite": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 },
+        "from": { "type": "string" },
+        "to": { "type": "string" }
+      },
+      "required": ["path", "line", "from", "to"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "command": { "const": "update-namespaces" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "commit": { "$ref": "common.schema.json#/$defs/sha", "description": "The move commit the namespaces follow." },
+        "apply": { "type": "boolean" },
+        "noCommit": { "type": ["boolean", "null"], "description": "Whether --no-commit was given with --apply. Null on a dry run." }
+      },
+      "required": ["commit", "apply", "noCommit"],
+      "additionalProperties": false
+    },
+    "applied": { "type": "boolean", "description": "The namespaces were rewritten in the working tree." },
+    "commit": { "anyOf": [{ "$ref": "common.schema.json#/$defs/sha" }, { "type": "null" }], "description": "The namespace commit, or null on a dry run, with --no-commit, or when nothing changes." },
+    "renamed": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Each namespace the move vacated, old to new." },
+    "rewrites": { "type": "array", "items": { "$ref": "#/$defs/rewrite" }, "description": "Every namespace declaration and using the update changes." },
+    "warnings": { "type": "array", "items": { "type": "string" }, "description": "Every namespace left as it is and why, and every fully qualified use that is not rewritten." },
+    "results": { "type": "array", "items": { "$ref": "#/$defs/rewrite" } }
+  },
+  "required": ["applied", "commit", "renamed", "rewrites", "warnings"],
+  "unevaluatedProperties": false
+}
