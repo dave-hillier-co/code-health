@@ -1,0 +1,294 @@
+{
+  "command": "risk",
+  "config": "5355d5de561381ed",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 17,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 5.4,
+    "window": {
+      "months": 12,
+      "since": 1687251600,
+      "until": 1718874000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "topic": "level"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "eead67bfce2033a2bd6d0602ea3e9c0d1c04fe2d"
+  },
+  "results": {
+    "factors": [
+      {
+        "banding": "percentile",
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "size",
+        "signal": "Lines added plus deleted, and files touched"
+      },
+      {
+        "banding": "percentile",
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "spread",
+        "signal": "Change spread of the touched files, with folders and components touched"
+      },
+      {
+        "banding": "percentile",
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "entropy",
+        "signal": "How evenly the churn is distributed over the touched files"
+      },
+      {
+        "banding": "count",
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "mixed-purpose",
+        "signal": "Renames or moves combined with content changes"
+      },
+      {
+        "banding": "percentile",
+        "family": "history",
+        "layer": "history",
+        "name": "hotspots-touched",
+        "signal": "Share of the change's churn landing in hot files"
+      },
+      {
+        "banding": "percentile",
+        "family": "history",
+        "layer": "history",
+        "name": "defect-history",
+        "signal": "Share of each touched file's revisions that were fixes or reverts"
+      },
+      {
+        "banding": "percentile",
+        "family": "history",
+        "layer": "history",
+        "name": "contention",
+        "signal": "Distinct authors who changed the touched files in the recent window"
+      },
+      {
+        "banding": "percentile",
+        "family": "history",
+        "layer": "history",
+        "name": "age",
+        "signal": "Touched files not changed within the stale window, and files changed within the last few days"
+      },
+      {
+        "banding": "none",
+        "family": "history",
+        "layer": "history",
+        "name": "abandoned-touched",
+        "signal": "Touched files already abandoned, or with high abandonment probability"
+      },
+      {
+        "banding": "count",
+        "family": "completeness",
+        "layer": "history",
+        "name": "missing-co-change",
+        "signal": "Files that usually change with a touched file and are missing from the change"
+      },
+      {
+        "banding": "count",
+        "family": "completeness",
+        "layer": "history",
+        "name": "novel-coupling",
+        "signal": "Pairs of touched files at high tree distance that have never changed together"
+      },
+      {
+        "banding": "count",
+        "family": "completeness",
+        "layer": "history",
+        "name": "test-evidence",
+        "signal": "Source files changed without the tests that usually change with them, and test deletions"
+      },
+      {
+        "banding": "percentile",
+        "family": "structure-and-content",
+        "layer": "history",
+        "name": "blast-radius",
+        "signal": "Files with high co-change confidence towards the touched files"
+      },
+      {
+        "banding": "count",
+        "family": "structure-and-content",
+        "layer": "lexical",
+        "name": "complexity-delta",
+        "signal": "Units that are new and over a threshold, or over a threshold and worse"
+      },
+      {
+        "banding": "count",
+        "family": "structure-and-content",
+        "layer": "structural",
+        "name": "structure-delta",
+        "signal": "New cycles and layer violations"
+      },
+      {
+        "banding": "count",
+        "family": "structure-and-content",
+        "layer": "history",
+        "name": "sensitive-paths",
+        "signal": "Touched files matching the configured sensitive globs"
+      },
+      {
+        "banding": "none",
+        "family": "placement",
+        "layer": "placement",
+        "name": "authorship",
+        "signal": "Share of each touched file's lines last authored by the change's authors"
+      },
+      {
+        "banding": "none",
+        "family": "placement",
+        "layer": "placement",
+        "name": "change-familiarity",
+        "signal": "The authors' earlier changes to each touched file, weighted by recency"
+      },
+      {
+        "banding": "none",
+        "family": "placement",
+        "layer": "placement",
+        "name": "neighbourhood",
+        "signal": "The authors' earlier changes to files coupled with the touched files, and to the same folder"
+      },
+      {
+        "banding": "none",
+        "family": "placement",
+        "layer": "placement",
+        "name": "first-touch-share",
+        "signal": "Share of the change's churn in first-touch files"
+      },
+      {
+        "banding": "none",
+        "family": "placement",
+        "layer": "placement",
+        "name": "owner-distance",
+        "signal": "Touched files with a clear owner who is not among the change's authors"
+      },
+      {
+        "banding": "none",
+        "family": "placement",
+        "layer": "placement",
+        "name": "no-owner",
+        "signal": "Touched files with no active developer holding a meaningful share"
+      }
+    ],
+    "kind": "explain",
+    "rules": [
+      {
+        "id": "baseline",
+        "text": "The baseline population is the repository's past changes as they were merged: the commits a merge commit brought in, taken together, or a squash commit, or a single commit on the main line. The most recent cochange.risk.baselineChanges of them inside the analysis window form it, each measured as of its own time."
+      },
+      {
+        "id": "bands",
+        "text": "A factor's value is placed against the baseline: above the cochange.risk.moderatePercentile (default 75th) is moderate, above the highPercentile (default 90th) is high. The comparison is strict, percentiles are nearest rank, and a value of zero is always low. Count-based factors band on the count: cochange.risk.countModerate and countHigh. A two-sided factor takes the higher of its sides."
+      },
+      {
+        "id": "unavailable",
+        "text": "A factor that cannot be computed, or whose value cannot be placed because fewer than cochange.risk.minBaseline merged changes could be compared, is unavailable. It is never reported as low and it adds nothing to the score."
+      },
+      {
+        "id": "families",
+        "text": "Factors that measure nearly the same thing form a family: size and diffusion, history of the touched code, completeness, and structure and content. A family counts once, at the band of its highest scored factor (low 0, moderate 1, high 2). The score is the sum."
+      },
+      {
+        "id": "impact",
+        "text": "The impact band is the score placed against the baseline's own scores, by the same strict percentiles. By construction no more than a quarter of changes are moderate or above and no more than a tenth are high, however many factors there are."
+      },
+      {
+        "id": "events",
+        "text": "Three findings are events, not positions in a distribution: a high missing-co-change, any structure-delta, and any sensitive-paths match. Together they raise the impact band by one step, once. sensitive-paths, structure-delta and complexity-delta are not also counted in the score."
+      },
+      {
+        "id": "placement",
+        "text": "Placement is close when most of the change's churn is in owner or regular files, distant when most is in first-touch files or no-owner is high, mixed otherwise, and unknown when most files are unknown. It is computed for the invoking user's own change, or for anyone's when cochange.risk.placement is any."
+      },
+      {
+        "id": "level",
+        "text": "Impact low: routine when placement is close or mixed or unknown, attention when distant. Impact moderate: routine when close, attention when mixed or unknown, elevated when distant. Impact high: attention when close, elevated otherwise."
+      },
+      {
+        "id": "backtest",
+        "text": "No level is shown until cochange risk backtest has been run on the repository and its stored result shows that the levels separate past changes. Until then the bands, findings and responses stand alone. The level is advice for review, never a gate."
+      }
+    ],
+    "settings": {
+      "baselineChanges": 200,
+      "countHigh": 3,
+      "countModerate": 1,
+      "disabled": [],
+      "highPercentile": 90,
+      "minBaseline": 10,
+      "moderatePercentile": 75
+    },
+    "topic": "level"
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2024-01-08T09:00:00.000Z",
+    "until": "2024-06-20T09:00:00.000Z"
+  }
+}

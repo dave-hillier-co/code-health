@@ -5,6 +5,7 @@ import { assessBranch } from "../risk/assess.ts";
 import { readRiskSettings } from "../risk/settings.ts";
 import { resolveRange } from "../risk/change.ts";
 import { describeChange } from "../risk/result.ts";
+import { explainFactor, explainRules } from "../risk/explain.ts";
 
 export const name = "risk";
 
@@ -49,6 +50,15 @@ export const command = analysisCommand(name, {
   },
   async analyse({ context, history }) {
     const { sub, rest } = parse(context.positionals);
+    if (sub === "explain") {
+      if (rest.length > 1) throw usageError("usage: risk explain [FACTOR]");
+      const risk = readRiskSettings(context.config);
+      if (rest[0] === undefined) return { inputs: { topic: "level" }, results: explainRules(risk) };
+      return {
+        inputs: { topic: rest[0], worktree: context.values.worktree === true },
+        results: await explainFactor(rest[0], () => assessBranch(context, history, { range: undefined, worktree: context.values.worktree === true })),
+      };
+    }
     if (sub !== null) throw usageError(`risk ${sub} is not available yet`);
     const assessed = await assessBranch(context, history, { range: rangeOf(rest), worktree: context.values.worktree === true });
     return {

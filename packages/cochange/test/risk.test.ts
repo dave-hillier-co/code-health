@@ -216,3 +216,47 @@ test("the assessment of a very large change, byte for byte", async () => {
   const { stdout } = await runCochange(repo.path, ["risk", "main..bulk"]);
   expectGolden("risk", "risk.bulk", stdout);
 });
+
+test("explain prints the rules behind the level and the factors, without reading the branch", async () => {
+  const { code, document } = await risk("explain");
+  expect(code).toBe(ExitCode.Success);
+  const results = document.results as unknown as { kind: string; rules: { id: string }[]; factors: { name: string }[]; settings: Record<string, unknown> };
+  expect(results.kind).toBe("explain");
+  expect(results.rules.map((r) => r.id)).toEqual(["baseline", "bands", "unavailable", "families", "impact", "events", "placement", "level", "backtest"]);
+  expect(results.factors.map((f) => f.name)).toContain("missing-co-change");
+  expect(results.settings).toMatchObject({ moderatePercentile: 75, highPercentile: 90, countModerate: 1, countHigh: 3 });
+});
+
+test("explain of a factor gives its definition, thresholds and the files that drove it on the branch", async () => {
+  repo.git("checkout", "--quiet", "missing");
+  const { document } = await risk("explain", "missing-co-change");
+  const results = document.results as unknown as { topic: string; doc: { definition: string }; branch: Factor };
+  expect(results.topic).toBe("missing-co-change");
+  expect(results.doc.definition).toMatch(/confidence/);
+  expect(results.branch.thresholds).toEqual({ count: { moderate: 1, high: 3 } });
+  expect(results.branch.evidence.map((e) => e.file)).toEqual([invoiceTest, tax]);
+});
+
+test("explain of a placement factor defines it and does not compute it", async () => {
+  const { document } = await risk("explain", "authorship");
+  const results = document.results as unknown as { branch: Factor | null; doc: { family: string } };
+  expect(results.doc.family).toBe("placement");
+  expect(results.branch).toBeNull();
+});
+
+test("explain of an unknown factor is a usage error that lists the factors", async () => {
+  const { code, stderr } = await risk("explain", "nonesuch");
+  expect(code).toBe(ExitCode.Usage);
+  expect(stderr).toMatch(/size, spread, entropy/);
+});
+
+test("the rules behind the level, byte for byte", async () => {
+  const { stdout } = await runCochange(repo.path, ["risk", "explain"]);
+  expectGolden("risk", "risk.explain", stdout);
+});
+
+test("one factor explained on a branch, byte for byte", async () => {
+  repo.git("checkout", "--quiet", "missing");
+  const { stdout } = await runCochange(repo.path, ["risk", "explain", "missing-co-change"]);
+  expectGolden("risk", "risk.explain-factor", stdout);
+});
