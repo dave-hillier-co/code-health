@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Language, Parser, type Tree } from "web-tree-sitter";
+import { Language, Parser, type Node, type Tree } from "web-tree-sitter";
 import type { GrammarSpec, LanguageAdapter } from "./language-adapter.ts";
 import { bindingForPath, declaredSupportedAdapters, grammarSpecById } from "./languages.ts";
 
@@ -118,9 +118,48 @@ async function load(spec: GrammarSpec, grammarDir: string | undefined): Promise<
     parse(source) {
       const tree = parser.parse(source);
       if (!tree) throw new Error(`Parsing failed for grammar ${id}`);
-      return tree;
+      if (spec.repairs === undefined || !tree.rootNode.hasError) return tree;
+      return repaired(parser, tree, source, spec.repairs);
     },
   };
+}
+
+/** How many times a tree is repaired and parsed again: each pass removes the errors it found, nested ones surface on the next. */
+const repairPasses = 4;
+
+/**
+ * Error and missing nodes in a tree. A missing node that is hidden (an external token the grammar does not
+ * list among a node's children) is seen only as `hasError` on its parent, so a node that has an error and no
+ * child with one counts once.
+ */
+function errorCount(node: Node): number {
+  if (node.isMissing || node.type === "ERROR") return 1;
+  if (!node.hasError) return 0;
+  let count = 0;
+  for (const child of node.children) count += errorCount(child);
+  return Math.max(count, 1);
+}
+
+/** The tree of the repaired text when it has fewer errors than the original, otherwise the original. Caller owns the result. */
+function repaired(parser: Parser, original: Tree, source: string, repairs: NonNullable<GrammarSpec["repairs"]>): Tree {
+  let best = original;
+  let text = source;
+  for (let pass = 0; pass < repairPasses && best.rootNode.hasError; pass++) {
+    const edits = repairs(best.rootNode, text);
+    if (edits.length === 0) break;
+    for (const { offset, character } of edits) text = `${text.slice(0, offset)}${character}${text.slice(offset + 1)}`;
+    const next = parser.parse(text);
+    if (!next) break;
+    if (errorCount(next.rootNode) < errorCount(best.rootNode)) {
+      if (best !== original) best.delete();
+      best = next;
+    } else {
+      next.delete();
+      break;
+    }
+  }
+  if (best !== original) original.delete();
+  return best;
 }
 
 /** The parse cache key of facts an adapter extracted from a tree of this grammar: changed extraction never reads old facts. */

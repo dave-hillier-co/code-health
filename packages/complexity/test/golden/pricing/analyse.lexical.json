@@ -7,8 +7,8 @@
     },
     "typescript": {
       "bar": 0.9,
-      "exactRate": 0.9806,
-      "spuriousRate": 0.0541
+      "exactRate": 0.9813,
+      "spuriousRate": 0.0522
     }
   },
   "command": "analyse",

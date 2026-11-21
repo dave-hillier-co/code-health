@@ -3,6 +3,7 @@ import { jvmBoundaries } from "../jvm/boundaries.ts";
 import { isJvmTestPath, jvmDependencies } from "../jvm/dependencies.ts";
 import { extractFileCensus } from "./census.ts";
 import { extractFacts } from "./extract-facts.ts";
+import { kotlinRepairs } from "./grammar-repair.ts";
 import { kotlinMetricRules } from "./metric-rules.ts";
 
 /**
@@ -15,8 +16,8 @@ export const adapter: LanguageAdapter = {
   tier: 2,
   support: "supported",
   lexerProfile: "kotlin",
-  grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm" }, extensions: [".kt"] }],
-  extractorVersion: 1,
+  grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm", repairs: kotlinRepairs }, extensions: [".kt"] }],
+  extractorVersion: 2,
   extract: extractFacts,
   isTestPath: (path) => isJvmTestPath(path, /\.kt$/),
   metrics: kotlinMetricRules,

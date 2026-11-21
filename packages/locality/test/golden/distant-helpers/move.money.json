@@ -3,6 +3,7 @@
   "command": "move",
   "commit": null,
   "config": "51cdd76045403046",
+  "confirmations": [],
   "inputs": {
     "apply": false,
     "commit": null,

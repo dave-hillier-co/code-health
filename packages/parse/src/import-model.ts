@@ -153,7 +153,12 @@ export class ImportModel {
         const uses = file.references.filter((reference) => reference.local === binding.local);
         // An import that is only re-exported is a pass-through, not a dependency of this file.
         const passThrough = uses.length === 0 && exportedLocals.has(binding.local);
-        if (passThrough) continue;
+        if (passThrough) {
+          // A submodule imported only to be exposed (`from . import x` in `__init__.py`) is still imported: the package loads it.
+          const exposed = binding.imported === "*" ? undefined : this.resolveExport(target.path, binding.imported, new Set());
+          if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly);
+          continue;
+        }
         if (binding.imported === "*") {
           this.useNamespace(path, target.path, uses, unitNames);
           continue;
@@ -272,6 +277,9 @@ export class ImportModel {
           ? { status: "defined", file: path, exportName: name, symbol: unit.qualifiedName }
           : { status: "defined", file: path, exportName: name };
       }
+      // `from . import name` inside a package's own `__init__`: the name is imported from the file itself, so it is a submodule, not an export.
+      const target = this.resolve(path, binding.specifier);
+      if (target.kind === "file" && target.path === path && binding.imported === name) continue;
       return this.followBinding(path, binding.specifier, binding.imported, visiting);
     }
     for (const reexport of file.reexports) {
@@ -283,6 +291,10 @@ export class ImportModel {
         const result = this.followBinding(path, reexport.specifier, name, visiting);
         if (result.status !== "missing") return result;
       }
+    }
+    if (this.resolver.importsAreVisible === true) {
+      const binding = this.importBinding(file, name);
+      if (binding) return this.followBinding(path, binding.specifier, binding.imported, visiting);
     }
     const submodule = this.resolver.submodule?.(path, name);
     if (submodule !== undefined) return { status: "namespace", file: submodule, submodule: true };

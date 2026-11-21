@@ -64,6 +64,17 @@ export interface GrammarSpec {
   packageName: string;
   /** File name of the .wasm, both inside the npm package and in `dist/grammars`. */
   file: string;
+  /**
+   * For a grammar that rejects some valid constructs: given the tree of a file with errors, single characters
+   * to overwrite so the file parses. Each replaces one character with one, so positions never move. The
+   * loader repairs, parses again and keeps the repaired tree only when it has fewer errors.
+   */
+  repairs?: (root: Node, source: string) => SourceRepair[];
+}
+
+export interface SourceRepair {
+  offset: number;
+  character: string;
 }
 
 export interface GrammarBinding {
@@ -106,6 +117,11 @@ export interface ModuleResolver {
    * inside `cli.rs`, where `inner` is an inline module). TypeScript keeps a self-import as an edge and leaves it out.
    */
   dropsSelfDependencies?: boolean;
+  /**
+   * True when a name a module only imports, without exporting it, can still be imported from that module
+   * (Rust `use super::Name`, where the parent has a private `use`). The name is followed to what it imports.
+   */
+  importsAreVisible?: boolean;
 }
 
 export interface ResolveInput {

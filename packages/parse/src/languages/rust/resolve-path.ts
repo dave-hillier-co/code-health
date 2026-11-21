@@ -22,6 +22,8 @@ export class PathResolver implements ModuleResolver {
   readonly tree: ModuleTree;
   /** A `use` of an inline module of the file itself is no dependency. */
   readonly dropsSelfDependencies = true;
+  /** A module's own `use` declarations are visible to its child modules, so `use super::Name` finds a name the parent only imports. */
+  readonly importsAreVisible = true;
 
   constructor(paths: readonly string[], configs: ReadonlyMap<string, string>) {
     this.tree = new ModuleTree(paths, readCrates(paths, configs));

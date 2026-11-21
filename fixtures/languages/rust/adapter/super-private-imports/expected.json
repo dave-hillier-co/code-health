@@ -1,0 +1,10 @@
+{
+  "unresolved": [],
+  "consumers": [
+    "src/engine/mod.rs#run -> src/config.rs#Settings reference x1",
+    "src/engine/mod.rs#run -> src/config.rs#load call x1",
+    "src/engine/mod.rs#run -> src/engine/rules.rs#check call x1",
+    "src/engine/rules.rs#check -> src/config.rs#Settings reference x1"
+  ],
+  "syntaxErrors": []
+}
