@@ -1,3 +1,6 @@
+import { rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { withoutMeta } from "@code-health/fixtures/cli-testing";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
@@ -85,6 +88,23 @@ test("every module is listed with its stability, the most volatile first", async
 
 test("golden", async () => {
   expectGolden("stability", "stability", (await stability()).stdout);
+});
+
+test("output is byte identical between runs", async () => {
+  expect(withoutMeta((await stability()).stdout)).toBe(withoutMeta((await stability()).stdout));
+});
+
+test("--by component ranks configured components, and matches its golden", async () => {
+  const config = join(repo.path, "code-health.json");
+  writeFileSync(config, JSON.stringify({ components: { steady: ["src/stable/**"], moving: ["src/volatile/**"] } }));
+  try {
+    const first = (await stability("--by", "component")).stdout;
+    expect(withoutMeta((await stability("--by", "component")).stdout)).toBe(withoutMeta(first));
+    expect((JSON.parse(first) as Document).units.map((unit) => unit.id).sort()).toEqual(["moving", "steady"]);
+    expectGolden("stability", "stability.component", first);
+  } finally {
+    rmSync(config);
+  }
 });
 
 test("--by component needs components configured", async () => {

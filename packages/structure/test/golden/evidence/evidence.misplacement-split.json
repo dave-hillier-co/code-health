@@ -1,0 +1,198 @@
+{
+  "command": "evidence",
+  "config": "d4c2f7445b2b2f00",
+  "deferred": [
+    {
+      "field": "quadrant",
+      "milestone": 6
+    },
+    {
+      "field": "nearbyMechanisms",
+      "milestone": 3
+    },
+    {
+      "field": "layerRule",
+      "milestone": 5
+    }
+  ],
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 6,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 3.8,
+    "window": {
+      "months": 12,
+      "since": 1683277200,
+      "until": 1714899600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "level": "folder",
+    "locality": null,
+    "target": "src/app->src/lib"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "ad52cb77a996912de60431c1c668a61fb2832714"
+  },
+  "results": [
+    {
+      "breakingSet": [
+        {
+          "kind": "call",
+          "sites": 1,
+          "symbol": "src/lib/api.ts#api",
+          "usedBy": [
+            "src/app/main.ts"
+          ]
+        }
+      ],
+      "coChange": {
+        "confidenceFromTo": 50,
+        "confidenceToFrom": 100,
+        "eligibleChanges": 6,
+        "expected": 0.333,
+        "fromChanges": 2,
+        "shared": 1,
+        "toChanges": 1
+      },
+      "findings": [],
+      "from": "src/app",
+      "id": "edge:folder:src/app->src/lib",
+      "imports": {
+        "fileEdges": 1,
+        "files": [
+          {
+            "from": "src/app/main.ts",
+            "to": "src/lib/api.ts"
+          }
+        ],
+        "importStatements": 1,
+        "typeOnly": false
+      },
+      "inBreakingSet": null,
+      "kind": null,
+      "kinds": [],
+      "layerRule": null,
+      "level": "folder",
+      "misplacement": [
+        {
+          "consumerFiles": 3,
+          "elsewhere": 2,
+          "mostlyOn": "split",
+          "moveMayRemoveDependency": false,
+          "onFromSide": 1,
+          "onToSide": 0,
+          "symbol": "src/lib/api.ts#api"
+        }
+      ],
+      "nearbyMechanisms": [],
+      "quadrant": null,
+      "stability": {
+        "from": {
+          "change": {
+            "active": false,
+            "churn": 8,
+            "files": 1,
+            "revisions": 2,
+            "revisionsPerFile": 2
+          },
+          "structural": {
+            "ca": 0,
+            "ce": 3,
+            "instability": 1
+          }
+        },
+        "to": {
+          "change": {
+            "active": false,
+            "churn": 4,
+            "files": 1,
+            "revisions": 1,
+            "revisionsPerFile": 1
+          },
+          "structural": {
+            "ca": 3,
+            "ce": 1,
+            "instability": 0.25
+          }
+        }
+      },
+      "stabilityVerdict": {
+        "basis": "structure",
+        "changeViolation": null,
+        "disagree": false,
+        "structuralViolation": false,
+        "violates": false,
+        "volatilityRatio": 0.5
+      },
+      "to": "src/lib",
+      "unblocks": []
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "window": {
+    "since": "2023-05-05T09:00:00.000Z",
+    "until": "2024-05-05T09:00:00.000Z"
+  }
+}

@@ -50,7 +50,7 @@ describe("file level", () => {
   });
 
   test("breaks the triangle at the edge whose sides co-change least, and names the symbol used", async () => {
-    const { document } = await cycles(repo, "--level", "file");
+    const { document, stdout } = await cycles(repo, "--level", "file");
     const triangle = document.results[0]!;
     expect(triangle.method).toBe("exact");
     expect(triangle.breakingSet).toHaveLength(1);
@@ -131,11 +131,12 @@ test("a component larger than structure.exactLimit gets the heuristic set, which
   const config = join(repo.path, "code-health.json");
   writeFileSync(config, JSON.stringify({ structure: { exactLimit: 2 } }));
   try {
-    const { document } = await cycles(repo, "--level", "file");
+    const { document, stdout } = await cycles(repo, "--level", "file");
     const triangle = document.results[0]!;
     expect(triangle.method).toBe("heuristic");
     expect(triangle.breakingSet).toHaveLength(1);
     expect(document.results[1]!.method).toBe("exact");
+    expectGolden("cycles", "cycles.heuristic", stdout);
   } finally {
     rmSync(config);
   }

@@ -1,0 +1,168 @@
+{
+  "command": "stability",
+  "config": "2fe040c05091bd15",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 6,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 3.8,
+    "window": {
+      "months": 12,
+      "since": 1683277200,
+      "until": 1714899600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "by": "component",
+    "minInstabilityGap": 20,
+    "minRevisions": 3,
+    "minVolatilityRatio": 2
+  },
+  "repo": {
+    "dirty": false,
+    "head": "ad52cb77a996912de60431c1c668a61fb2832714"
+  },
+  "results": [
+    {
+      "basis": "change",
+      "changeViolation": true,
+      "disagree": true,
+      "fileEdges": 1,
+      "from": "steady",
+      "id": "unstable:component:steady->moving",
+      "level": "component",
+      "stability": {
+        "from": {
+          "change": {
+            "active": false,
+            "churn": 7,
+            "files": 2,
+            "revisions": 1,
+            "revisionsPerFile": 0.5
+          },
+          "structural": {
+            "ca": 0,
+            "ce": 1,
+            "instability": 1
+          }
+        },
+        "to": {
+          "change": {
+            "active": true,
+            "churn": 16,
+            "files": 2,
+            "revisions": 6,
+            "revisionsPerFile": 3
+          },
+          "structural": {
+            "ca": 1,
+            "ce": 0,
+            "instability": 0
+          }
+        }
+      },
+      "structuralViolation": false,
+      "to": "moving",
+      "violates": true,
+      "volatilityRatio": 6
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "units": [
+    {
+      "change": {
+        "active": true,
+        "churn": 16,
+        "files": 2,
+        "revisions": 6,
+        "revisionsPerFile": 3
+      },
+      "id": "moving",
+      "structural": {
+        "ca": 1,
+        "ce": 0,
+        "instability": 0
+      }
+    },
+    {
+      "change": {
+        "active": false,
+        "churn": 7,
+        "files": 2,
+        "revisions": 1,
+        "revisionsPerFile": 0.5
+      },
+      "id": "steady",
+      "structural": {
+        "ca": 0,
+        "ce": 1,
+        "instability": 1
+      }
+    }
+  ],
+  "unitsTotal": 2,
+  "window": {
+    "since": "2023-05-05T09:00:00.000Z",
+    "until": "2024-05-05T09:00:00.000Z"
+  }
+}

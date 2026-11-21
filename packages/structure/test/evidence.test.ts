@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import { withoutMeta } from "@code-health/fixtures/cli-testing";
 import { expectGolden } from "./support/golden.ts";
 import { runStructure } from "./support/run.ts";
 import { cyclesRepository, misplacementRepository, stabilityRepository } from "./support/scenarios.ts";
@@ -193,6 +194,30 @@ describe("a locality report", () => {
   test("a report taken on a dirty tree is ignored", async () => {
     writeLocalityReport(cycles, head(), true, { from: "src/e.ts", to: "src/c.ts" });
     expect((await evidence(cycles, "src/e.ts->src/c.ts")).document.inputs.locality).toBeNull();
+  });
+});
+
+describe("goldens and determinism", () => {
+  test("a symbol that belongs where it is, and one used from three places, match their goldens", async () => {
+    const stays = await evidence(misplacement, "src/x->src/y");
+    expect(stays.document.results[0]!.misplacement[0]).toMatchObject({ mostlyOn: "to", moveMayRemoveDependency: false });
+    expectGolden("evidence", "evidence.misplacement-to", stays.stdout);
+    const split = await evidence(stability, "src/app->src/lib");
+    expect(split.document.results[0]!.misplacement[0]).toMatchObject({ mostlyOn: "split" });
+    expectGolden("evidence", "evidence.misplacement-split", split.stdout);
+  });
+
+  test("a locality report for another commit leaves the pack as if there were none, and the goldens of an edge and a finding differ", async () => {
+    const plain = (await evidence(cycles, "src/e.ts->src/c.ts")).stdout;
+    expect(withoutMeta((await evidence(cycles, "src/e.ts->src/c.ts")).stdout)).toBe(withoutMeta(plain));
+    const finding = (await evidence(stability, "unstable:folder:src/stable->src/volatile")).stdout;
+    expect(withoutMeta(plain)).not.toBe(withoutMeta(finding));
+  });
+
+  test("evidence is byte identical between runs, for an edge and for a finding", async () => {
+    for (const [fixture, target] of [[cycles, "src/e.ts->src/c.ts"], [stability, "unstable:folder:src/stable->src/volatile"]] as const) {
+      expect(withoutMeta((await evidence(fixture, target)).stdout)).toBe(withoutMeta((await evidence(fixture, target)).stdout));
+    }
   });
 });
 
