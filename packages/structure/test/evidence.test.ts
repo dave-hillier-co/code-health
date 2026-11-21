@@ -75,7 +75,7 @@ describe("an edge in a cycle", () => {
     expect(coChange.expected).toBe(3);
   });
 
-  test("the quadrant, mechanisms and layer rule wait for their milestones", async () => {
+  test("the quadrant and layer rule wait for their milestones, and a codebase with no mechanisms has none nearby", async () => {
     const { document } = await evidence(cycles, "src/e.ts->src/c.ts");
     expect(document.results[0]).toMatchObject({ quadrant: null, nearbyMechanisms: [], layerRule: null });
   });

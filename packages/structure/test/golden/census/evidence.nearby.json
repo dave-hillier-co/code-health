@@ -1,0 +1,292 @@
+{
+  "command": "evidence",
+  "config": "a5f57b8f692394b7",
+  "deferred": [
+    {
+      "field": "quadrant",
+      "milestone": 6
+    },
+    {
+      "field": "layerRule",
+      "milestone": 5
+    }
+  ],
+  "evidence": {
+    "activeContributors": 0,
+    "commitSize": {
+      "earlierMedian": 0,
+      "laterMedian": 0,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [
+      {
+        "committerDate": 1709283600,
+        "files": 20,
+        "sha": "410687bcc36645be6a9101b3085f3d6b830ec33c",
+        "share": 1
+      }
+    ],
+    "logicalChangesInWindow": 0,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 0,
+    "window": {
+      "months": 12,
+      "since": 1677661200,
+      "until": 1709283600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 1,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "level": "file",
+    "locality": null,
+    "target": "src/orders/report.ts->src/billing/lines.ts"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "410687bcc36645be6a9101b3085f3d6b830ec33c"
+  },
+  "results": [
+    {
+      "breakingSet": [
+        {
+          "kind": "call",
+          "sites": 1,
+          "symbol": "src/billing/lines.ts#forEachLine",
+          "usedBy": [
+            "src/orders/report.ts"
+          ]
+        }
+      ],
+      "coChange": {
+        "confidenceFromTo": 0,
+        "confidenceToFrom": 0,
+        "eligibleChanges": 0,
+        "expected": 0,
+        "fromChanges": 0,
+        "shared": 0,
+        "toChanges": 0
+      },
+      "findings": [],
+      "from": "src/orders/report.ts",
+      "id": "edge:file:src/orders/report.ts->src/billing/lines.ts",
+      "imports": {
+        "fileEdges": 1,
+        "files": [
+          {
+            "from": "src/orders/report.ts",
+            "to": "src/billing/lines.ts"
+          }
+        ],
+        "importStatements": 1,
+        "typeOnly": false
+      },
+      "inBreakingSet": null,
+      "kind": null,
+      "kinds": [],
+      "layerRule": null,
+      "level": "file",
+      "misplacement": [
+        {
+          "consumerFiles": 2,
+          "elsewhere": 1,
+          "mostlyOn": "split",
+          "moveMayRemoveDependency": false,
+          "onFromSide": 1,
+          "onToSide": 0,
+          "symbol": "src/billing/lines.ts#forEachLine"
+        }
+      ],
+      "nearbyMechanisms": [
+        {
+          "detail": "forEachLine(visit) is called from src/orders",
+          "distance": 0,
+          "line": 1,
+          "mechanism": "callbacks",
+          "near": "both",
+          "path": "src/billing/lines.ts",
+          "variant": "function-parameter"
+        },
+        {
+          "detail": "bus.on",
+          "distance": 0,
+          "line": 2,
+          "mechanism": "events",
+          "near": "to",
+          "path": "src/billing/listen.ts",
+          "variant": "call"
+        },
+        {
+          "detail": "bus.emit",
+          "distance": 0,
+          "line": 3,
+          "mechanism": "events",
+          "near": "from",
+          "path": "src/orders/place.ts",
+          "variant": "call"
+        },
+        {
+          "detail": "Storage is implemented in src/adapters",
+          "distance": 2,
+          "line": 1,
+          "mechanism": "interfaces",
+          "near": "both",
+          "path": "src/ports/storage.ts",
+          "variant": "interface"
+        },
+        {
+          "detail": "container.register",
+          "distance": 2,
+          "line": 4,
+          "mechanism": "dependency-injection",
+          "near": "both",
+          "path": "src/app/container.ts",
+          "variant": "container-registration"
+        },
+        {
+          "detail": "@Injectable",
+          "distance": 2,
+          "line": 3,
+          "mechanism": "dependency-injection",
+          "near": "both",
+          "path": "src/app/service.ts",
+          "variant": "decorator"
+        },
+        {
+          "detail": "Service takes Storage from src/ports",
+          "distance": 2,
+          "line": 4,
+          "mechanism": "dependency-injection",
+          "near": "both",
+          "path": "src/app/service.ts",
+          "variant": "constructor-injection"
+        },
+        {
+          "detail": "Bus extends EventEmitter",
+          "distance": 2,
+          "line": 2,
+          "mechanism": "events",
+          "near": "both",
+          "path": "src/events/bus.ts",
+          "variant": "base-type"
+        },
+        {
+          "detail": "commandBus.execute",
+          "distance": 2,
+          "line": 3,
+          "mechanism": "handlers",
+          "near": "both",
+          "path": "src/app/dispatch.ts",
+          "variant": "dispatch"
+        },
+        {
+          "detail": "@CommandHandler",
+          "distance": 2,
+          "line": 3,
+          "mechanism": "handlers",
+          "near": "both",
+          "path": "src/handlers/place-order.ts",
+          "variant": "handler-decorator"
+        }
+      ],
+      "quadrant": null,
+      "stability": {
+        "from": {
+          "change": {
+            "active": false,
+            "churn": 0,
+            "files": 1,
+            "revisions": 0,
+            "revisionsPerFile": 0
+          },
+          "structural": {
+            "ca": 0,
+            "ce": 1,
+            "instability": 1
+          }
+        },
+        "to": {
+          "change": {
+            "active": false,
+            "churn": 0,
+            "files": 1,
+            "revisions": 0,
+            "revisionsPerFile": 0
+          },
+          "structural": {
+            "ca": 2,
+            "ce": 0,
+            "instability": 0
+          }
+        }
+      },
+      "stabilityVerdict": {
+        "basis": "structure",
+        "changeViolation": null,
+        "disagree": false,
+        "structuralViolation": false,
+        "violates": false,
+        "volatilityRatio": null
+      },
+      "to": "src/billing/lines.ts",
+      "unblocks": []
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "window": {
+    "since": "2023-03-01T09:00:00.000Z",
+    "until": "2024-03-01T09:00:00.000Z"
+  }
+}

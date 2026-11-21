@@ -297,8 +297,63 @@
           },
           "nearbyMechanisms": {
             "type": "array",
-            "maxItems": 0,
-            "description": "Deferred to the mechanism census milestone."
+            "maxItems": 10,
+            "description": "Census entries in or next to the two modules, nearest first. `structure census` has the whole inventory.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "mechanism": {
+                  "enum": [
+                    "callbacks",
+                    "interfaces",
+                    "dependency-injection",
+                    "events",
+                    "handlers",
+                    "registries",
+                    "ports-and-adapters"
+                  ]
+                },
+                "variant": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "line": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "description": "Null for a folder."
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "distance": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Steps through the folder tree to the nearest of the two modules. Zero is inside one of them."
+                },
+                "near": {
+                  "enum": [
+                    "from",
+                    "to",
+                    "both"
+                  ]
+                }
+              },
+              "required": [
+                "mechanism",
+                "variant",
+                "path",
+                "line",
+                "detail",
+                "distance",
+                "near"
+              ],
+              "additionalProperties": false
+            }
           },
           "layerRule": {
             "type": "null",

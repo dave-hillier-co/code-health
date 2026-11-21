@@ -1,4 +1,6 @@
 import { usageError } from "@code-health/cli-kit/errors";
+import { buildCensus } from "../census/census.ts";
+import { treeFromRef } from "@code-health/parse/source-tree";
 import { analysisCommand } from "../analysis-command.ts";
 import { findCycles } from "../cycles.ts";
 import { evidencePack } from "../evidence-pack.ts";
@@ -71,14 +73,14 @@ export const command = analysisCommand(name, {
       edges = [[target.from, target.to]];
     }
 
+    const census = await buildCensus(await treeFromRef(context.repo.root, history.view.headSha), model.project, settings.census);
     return {
       inputs: { target: text, level: model.graph.level, locality: model.locality?.input ?? null },
-      results: edges.map(([from, to]) => evidencePack(model, from, to, settings)),
+      results: edges.map(([from, to]) => evidencePack(model, from, to, settings, census)),
       columns: ["id", "kind", "findings", "inBreakingSet", "breakingSet", "stability", "coChange", "misplacement", "unblocks"],
       extra: {
         deferred: [
           { field: "quadrant", milestone: 6 },
-          { field: "nearbyMechanisms", milestone: 3 },
           { field: "layerRule", milestone: 5 },
         ],
       },
