@@ -119,6 +119,8 @@ export interface SymbolDeclaration {
   /** Part of the file's public surface (public or exported, or visible outside its package). */
   exported: boolean;
   line: number;
+  /** Declared with the `partial` modifier, so other files may hold further parts of the same type. */
+  partial?: boolean;
 }
 
 export interface SymbolReference {

@@ -52,7 +52,7 @@ function partialTypes(facts: ReadonlyMap<string, FileFacts>, owner: (path: strin
   const declared = new Map<string, Part[]>();
   for (const [file, fileFacts] of facts) {
     for (const declaration of fileFacts.symbols?.declarations ?? []) {
-      if (declaration.unit === undefined) continue;
+      if (declaration.unit === undefined || declaration.partial !== true) continue;
       const key = `${owner(file)}\0${declaration.name}`;
       const list = declared.get(key) ?? [];
       if (!list.some((part) => part.file === file)) list.push({ file, unit: declaration.unit });
@@ -90,7 +90,15 @@ function mergePartials(resolved: ResolvedDependencies, partial: ReadonlyMap<stri
     addConsumer(target === undefined ? consumer : { ...consumer, to: target.file, toSymbol: target.unit });
   }
 
-  const fileEdges = new Map<string, FileEdge>(resolved.fileEdges.map((edge) => [`${edge.from}\0${edge.to}`, edge]));
+  // A name resolves to every file that declares it, so a use of a partial type reached each part. The use now
+  // belongs to the lead part alone: an edge to another part stays only where a use of that part survives the merge.
+  const behind = new Set<string>();
+  for (const [key, parts] of partial) for (const part of parts.slice(1)) behind.add(`${part.file}\0${nameOf(key)}`);
+  const behindFiles = new Set([...behind].map((entry) => entry.slice(0, entry.indexOf("\0"))));
+  const used = new Set([...consumers.values()].map((consumer) => `${consumer.from}\0${consumer.to}`));
+  const explained = (edge: { from: string; to: string }): boolean => !behindFiles.has(edge.to) || used.has(`${edge.from}\0${edge.to}`);
+
+  const fileEdges = new Map<string, FileEdge>(resolved.fileEdges.filter(explained).map((edge) => [`${edge.from}\0${edge.to}`, edge]));
   for (const [key, parts] of partial) {
     for (const from of parts) {
       for (const to of parts) {
@@ -107,7 +115,7 @@ function mergePartials(resolved: ResolvedDependencies, partial: ReadonlyMap<stri
     const target = lead.get(`${exported.defined.file}\0${exported.defined.name}`);
     return target === undefined ? exported : { ...exported, defined: { ...exported.defined, file: target.file, symbol: target.unit } };
   });
-  const importEdges = new Map<string, ImportEdge>(resolved.importEdges.map((edge) => [`${edge.from}\0${edge.to}`, edge]));
+  const importEdges = new Map<string, ImportEdge>(resolved.importEdges.filter(explained).map((edge) => [`${edge.from}\0${edge.to}`, edge]));
   for (const edge of fileEdges.values()) {
     if (!importEdges.has(`${edge.from}\0${edge.to}`)) importEdges.set(`${edge.from}\0${edge.to}`, { from: edge.from, to: edge.to, kind: "import", typeOnly: false });
   }

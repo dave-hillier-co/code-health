@@ -6,7 +6,7 @@ import { functionShape, modifiersOf, nodeCount, passThroughOf, typeShape } from 
 import { bodyOf, csharpMetricRules, parameterInfo } from "./metric-rules.ts";
 
 /** Bump when the extraction rules change in a way that alters facts for the same source, so cached facts are not reused. */
-export const extractorVersion = 1;
+export const extractorVersion = 2;
 
 const typeDeclarations = new Set([
   "class_declaration",
@@ -229,7 +229,7 @@ class Extractor {
     const declaredName = this.namespace === "" ? written : `${this.namespace}.${written}`;
     // `Box` and `Box<T>` are written alike in a reference, so they are one declaration: a use would count for both otherwise.
     if (!this.declarations.some((declaration) => declaration.name === declaredName)) {
-      this.declarations.push({ name: declaredName, kind, unit: qualifiedName, exported: visible, line: unit.startLine });
+      this.declarations.push({ name: declaredName, kind, unit: qualifiedName, exported: visible, line: unit.startLine, ...(modifiers.includes("partial") ? { partial: true } : {}) });
     }
 
     const parameters = new Set<string>();
