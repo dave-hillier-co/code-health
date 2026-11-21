@@ -155,7 +155,10 @@ function select(db: DatabaseSync, ref: string, headSha: string, firstParent: boo
     const isMerge = row.parent_count > 1;
     if (isMerge) continue;
     const position = commits.length;
-    for (const ch of rawChanges) if (ch.status === "R" && ch.old_path) renames.add(ch.old_path, ch.path, position);
+    for (const ch of rawChanges) {
+      if (ch.status === "R" && ch.old_path) renames.add(ch.old_path, ch.path, position);
+      else if (ch.status === "D") renames.delete(ch.path, position);
+    }
     commits.push({
       sha: row.sha,
       position,

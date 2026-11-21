@@ -132,6 +132,20 @@ test("reusing a path after a rename starts a new identity", async () => {
   expect(view.commits.map((c) => c.changes[0]!.fileId)).toEqual(["b.ts", "b.ts", "a.ts"]);
 });
 
+test("a deleted file and a later file reusing its path are different identities once the new one is renamed", async () => {
+  const repo = build([
+    add("add p", 1, "p.txt", "one\n"),
+    { type: "commit", message: "modify p", date: "2024-02-02T00:00:00Z", changes: [{ op: "modify", path: "p.txt", content: "two\n" }] },
+    { type: "commit", message: "delete p", date: "2024-02-03T00:00:00Z", changes: [{ op: "delete", path: "p.txt" }] },
+    add("add other p", 4, "p.txt", "completely different\n"),
+    { type: "commit", message: "move p to q", date: "2024-02-05T00:00:00Z", changes: [{ op: "rename", from: "p.txt", path: "q.txt" }] },
+  ]);
+  await refresh(repo.path);
+  const view = await readHistory(repo.path);
+  const ids = view.commits.map((c) => c.changes[0]!.fileId);
+  expect(ids).toEqual(["p.txt", "p.txt", "p.txt", "q.txt", "q.txt"]);
+});
+
 test("binary changes have no line counts", async () => {
   const repo = build([add("bin", 1, "x.bin", "\u0000\u0001\u0002\u0003")]);
   await refresh(repo.path);
