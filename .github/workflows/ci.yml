@@ -22,8 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # The version-bump check compares against the merge base, and the
-          # tests build fixture repositories, so history must be complete.
+          # The tests build fixture repositories and self-analysis reads this
+          # repository's history, so history must be complete.
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
@@ -64,11 +64,6 @@ jobs:
 
       - name: Eval cases are valid and pinned
         run: npm run check:evals
-
-      - name: Version bump
-        env:
-          BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
-        run: npm run check:version-bump
 
       - name: Golden outputs match their JSON Schemas
         run: npm run check:schemas

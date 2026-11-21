@@ -75,7 +75,7 @@ Rules:
 
 ### plugin.json
 
-Each plugin's manifest is `name`, `displayName`, `version`, `description`, `author`, `license`, `repository`, `keywords` and `engines.claude-code`. The version is set **in plugin.json only**, never also in the marketplace entry: plugin.json would win there, with only a `claude plugin validate` warning to show for it. Users of a third-party marketplace get updates only when the version string changes, so CI fails a change under `plugins/<plugin>/` that does not bump that plugin's version.
+Each plugin's manifest is `name`, `displayName`, `version`, `description`, `author`, `license`, `repository`, `keywords` and `engines.claude-code`. The version is set **in plugin.json only**, never also in the marketplace entry: plugin.json would win there, with only a `claude plugin validate` warning to show for it. Users of a third-party marketplace get updates only when the version string changes, so once the marketplace is published CI fails a change under `plugins/<plugin>/` that does not bump that plugin's version. Until then every plugin stays at `0.1.0` and no bump is required.
 
 ### Skills
 
@@ -231,7 +231,7 @@ The testing style is classic TDD with sociable tests. Mocks are reserved for pro
 ## Release
 
 - Each plugin is versioned with semver independently. A breaking JSON schema change is a major bump, and a change in recommendation output for the same input is at least a minor bump, called out in the changelog.
-- CI gates: build reproducibility, the version-bump check, the full test suite, plugin validation and schema checks of the golden outputs.
+- CI gates: build reproducibility, the version-bump check (from the first public release), the full test suite, plugin validation and schema checks of the golden outputs.
 - Team adoption: commit `extraKnownMarketplaces` and `enabledPlugins` in the project's `.claude/settings.json`, then each collaborator runs `claude plugin install <plugin>@code-health --scope project` once per clone.
 
 ## Measurement across the suite

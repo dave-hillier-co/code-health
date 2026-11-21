@@ -39,11 +39,10 @@ npm run typecheck
 - `npm run check:red-flags` fails when a skill's `references/red-flags.md` differs from `shared/red-flags.md`; `npm run build` refreshes the copies
 - `npm run check:skills` and `npm run check:evals` enforce the skill and eval conventions
 - `npm run check:schemas` validates every golden output against its JSON Schema in `plugins/<plugin>/schemas/`
-- `npm run check:version-bump -- --base <ref>` fails when a change under `plugins/<plugin>/` since the merge base does not bump that plugin's `version`
 - `npm run check:self` runs the bundled CLIs on this repository (hotspots, coupling, complexity and locality analyse, structure cycles) and fails on a non-zero exit, a source file with syntax errors or an import cycle; `code-health.json` at the root keeps bundles, goldens and fixtures out of that analysis
 - `npm run check:plugins` runs `claude plugin validate --strict` when the `claude` CLI is installed
 
-`npm run check` runs everything except the version bump.
+`npm run check` runs every check.
 
 Tests are sociable: they run against real git repositories created by `fixtures/git-fixture.ts` with fixed identities and dates. Run one package with `npx vitest run packages/<name>`.
 
