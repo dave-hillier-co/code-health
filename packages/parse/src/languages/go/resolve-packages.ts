@@ -18,7 +18,8 @@ import { isExported } from "./shape.ts";
  * dot-imports; `alias.Name` is looked for among the exported names of the imported package; and `Type.method`,
  * a method reached through its own receiver, in the file's own package.
  *
- * Imports of packages outside the repository are reported as external imports, named by the module go.mod
+ * A blank import (`_ "pkg"`) has no names to follow, so it is an edge to the files of the package that
+ * have an `init` function. Imports of packages outside the repository are reported as external imports, named by the module go.mod
  * requires. The standard library is not. An import inside a module of the repository whose directory holds
  * no Go file is unresolved.
  */
@@ -37,6 +38,8 @@ export interface FileImports {
   locals: ReadonlyMap<string, string>;
   /** Packages imported with a dot, whose exported names are in scope unqualified. */
   dotted: readonly string[];
+  /** Packages imported with `_`, for what their `init` functions and variables do. */
+  blank: readonly string[];
   unresolved: Unresolved[];
   externals: ExternalImport[];
 }
@@ -84,6 +87,7 @@ export class PackageGraph {
   importsOf(file: string): FileImports {
     const locals = new Map<string, string>();
     const dotted: string[] = [];
+    const blank: string[] = [];
     const unresolved: Unresolved[] = [];
     const externals: ExternalImport[] = [];
     for (const imported of this.facts.get(file)?.imports ?? []) {
@@ -100,12 +104,12 @@ export class PackageGraph {
         continue;
       }
       const local = imported.bindings[0]?.local ?? "";
-      if (local === "_") continue;
       const key = PackageGraph.keyOf(reached.dir, reached.name);
-      if (local === ".") dotted.push(key);
+      if (local === "_") blank.push(key);
+      else if (local === ".") dotted.push(key);
       else locals.set(local === "" ? reached.name : local, key);
     }
-    return { locals, dotted, unresolved, externals };
+    return { locals, dotted, blank, unresolved, externals };
   }
 
   /**
@@ -140,6 +144,7 @@ export function resolvePackages(input: ResolveInput): ResolvedDependencies {
   const unresolved: Unresolved[] = [];
   const externals = new Map<string, ExternalImport>();
 
+  const blankImports: { from: string; key: string }[] = [];
   const resolved = new Map<string, FileFacts>();
   for (const [file, facts] of input.facts) {
     const symbols = facts.symbols;
@@ -147,6 +152,7 @@ export function resolvePackages(input: ResolveInput): ResolvedDependencies {
     const own = graph.keyOfFile(file);
     const imports = graph.importsOf(file);
     unresolved.push(...imports.unresolved);
+    for (const key of imports.blank) blankImports.push({ from: file, key });
     for (const external of imports.externals) externals.set(`${file}${SEPARATOR}${external.packageName}`, external);
 
     const references: SymbolReference[] = [];
@@ -160,6 +166,15 @@ export function resolvePackages(input: ResolveInput): ResolvedDependencies {
   }
 
   const result = resolveBySymbols({ ...input, facts: resolved });
+  // A blank import names nothing, so it reaches the files of the package that do something when it is imported: the ones with an `init`.
+  for (const { from, key } of blankImports) {
+    for (const to of graph.packages.get(key)?.files ?? []) {
+      const initialises = input.facts.get(to)?.units.some((unit) => unit.qualifiedName === "init" || unit.qualifiedName.startsWith("init~")) === true;
+      if (!initialises || to === from || result.fileEdges.some((edge) => edge.from === from && edge.to === to)) continue;
+      result.fileEdges.push({ from, to, kind: input.isTestPath(from) ? "test" : "reference", calls: 0, references: 1 });
+      result.importEdges.push({ from, to, kind: "import", typeOnly: false });
+    }
+  }
   const unmangle = (name: string): string => name.slice(name.indexOf(SEPARATOR) + 1);
   return {
     ...result,
