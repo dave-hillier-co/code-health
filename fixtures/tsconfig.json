@@ -1,5 +1,5 @@
 {
   "extends": "../tsconfig.base.json",
   "include": ["."],
-  "exclude": ["ts-adapter", "ts-depth", "ts-metrics-wide", "ts-metrics/flow-shapes", "ts-metrics/recursion"]
+  "exclude": ["languages/*/adapter", "languages/*/depth", "languages/*/metrics-wide", "languages/*/metrics/flow-shapes", "languages/*/metrics/recursion", "languages/*/census", "languages/*/packaging", "languages/*/moves"]
 }

@@ -1,11 +1,9 @@
 import type { AgreementCounts } from "./agreement.ts";
+import * as recorded from "./recorded-agreement.ts";
 
 /**
- * Agreement of each lexer profile with the structural layer over the corpus in fixtures/lexical-agreement,
- * fixtures/ts-adapter and fixtures/ts-metrics. Written by the agreement test (run it with UPDATE_AGREEMENT=1 after a deliberate
- * change) and checked by it in CI, so a profile change cannot make the rates worse unnoticed.
- * Only profiles with a structural adapter appear here.
+ * Agreement of each lexer profile with the structural layer, recorded per profile in agreement-rates/<profile>.ts
+ * and registered by one line in recorded-agreement.ts. Only profiles with a structural adapter appear here.
+ * The agreement test records them and checks them in CI (see packages/parse/test/lexical-agreement.test.ts).
  */
-export const recordedAgreement: Record<string, AgreementCounts> = {
-  typescript: { units: 103, found: 101, exact: 101, blocks: 111, spurious: 6 },
-};
+export const recordedAgreement: Record<string, AgreementCounts> = { ...recorded };

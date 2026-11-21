@@ -11,8 +11,30 @@ import * as registered from "./registered-adapters.ts";
  */
 export const registeredAdapters: readonly LanguageAdapter[] = Object.values(registered).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
+let override: readonly LanguageAdapter[] | undefined;
+
+/**
+ * Analyses as if exactly these adapters were the supported ones, until called again with `undefined`. For
+ * the conformance suites, which run every registered adapter, experimental ones included, through each
+ * plugin's real code. Not for production code: what ships is decided by `support` alone.
+ */
+export function overrideSupportedAdapters(adapters: readonly LanguageAdapter[] | undefined): void {
+  override = adapters;
+}
+
+/** The adapters that analyse repositories. */
 export function supportedAdapters(): readonly LanguageAdapter[] {
+  return override ?? declaredSupportedAdapters();
+}
+
+/** The adapters whose `support` is `supported`, whatever a conformance suite has overridden. These are the ones whose grammars ship. */
+export function declaredSupportedAdapters(): readonly LanguageAdapter[] {
   return registeredAdapters.filter((adapter) => adapter.support === "supported");
+}
+
+/** True for a manifest of any supported adapter's boundaries, from its path alone. */
+export function isBoundaryManifest(path: string, adapters: readonly LanguageAdapter[] = supportedAdapters()): boolean {
+  return adapters.some((adapter) => adapter.boundaries.isManifest(path));
 }
 
 export function adapterById(id: string): LanguageAdapter | undefined {

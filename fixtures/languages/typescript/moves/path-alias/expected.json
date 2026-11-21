@@ -1,0 +1,22 @@
+{
+  "operations": [
+    {
+      "from": "src/tax.ts",
+      "to": "src/rates/tax.ts"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "src/price.ts",
+      "line": 1,
+      "from": "@app/tax",
+      "to": "./rates/tax"
+    }
+  ],
+  "texts": {
+    "src/price.ts": "import { tax } from \"./rates/tax\";\n\nexport function price(value: number): number {\n  return value + tax(value);\n}\n"
+  },
+  "warnings": [
+    "src/price.ts:1 \"@app/tax\" became the relative \"./rates/tax\": check whether an alias still fits"
+  ]
+}

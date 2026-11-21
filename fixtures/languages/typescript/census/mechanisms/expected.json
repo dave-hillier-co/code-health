@@ -1,0 +1,13 @@
+{
+  "files": 7,
+  "occurrences": [
+    "callbacks function-parameter src/app/retry.ts:1 | retry(task) is called from src/jobs",
+    "interfaces interface src/ports/store.ts:1 | Store is implemented in src/adapters",
+    "dependency-injection constructor-injection src/app/service.ts:3 | Service takes Store from src/ports",
+    "events base-type src/events/bus.ts:3 | Bus extends EventEmitter",
+    "events call src/events/bus.ts:6 | bus.emit",
+    "registries keyed-map src/registry/handlers.ts:1 | handlers",
+    "ports-and-adapters folder src/adapters | adapters",
+    "ports-and-adapters folder src/ports | ports"
+  ]
+}

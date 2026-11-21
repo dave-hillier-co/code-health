@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Language, Parser, type Tree } from "web-tree-sitter";
 import type { GrammarSpec, LanguageAdapter } from "./language-adapter.ts";
-import { bindingForPath, grammarSpecById, supportedAdapters } from "./languages.ts";
+import { bindingForPath, declaredSupportedAdapters, grammarSpecById } from "./languages.ts";
 
 export type { GrammarSpec } from "./language-adapter.ts";
 export type GrammarId = string;
@@ -16,7 +16,7 @@ export type GrammarId = string;
  */
 export function shippedGrammarSpecs(): GrammarSpec[] {
   const specs = new Map<string, GrammarSpec>();
-  for (const adapter of supportedAdapters()) for (const binding of adapter.grammars) specs.set(binding.spec.id, binding.spec);
+  for (const adapter of declaredSupportedAdapters()) for (const binding of adapter.grammars) specs.set(binding.spec.id, binding.spec);
   return [...specs.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 

@@ -1,5 +1,5 @@
 // Wider metric conformance, counted by hand in expected.json from the definitions in unit-metrics.ts.
-// Kept apart from fixtures/ts-metrics, which is also the lexical agreement corpus, so adding cases here never moves the recorded agreement.
+// Kept apart from fixtures/languages/typescript/metrics, which is also the lexical agreement corpus, so adding cases here never moves the recorded agreement.
 export function grade(score: number): string {
   if (score >= 90) {
     return "A";

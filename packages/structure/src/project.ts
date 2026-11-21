@@ -3,7 +3,7 @@ import { compileGlobs } from "@code-health/history/glob";
 import { analyseTree, compareUtf8, type Consumer, type ImportEdge, type ProjectAnalysis } from "@code-health/parse/analyse-tree";
 import { discoverBoundaries, hasAdapter, isTestPath } from "@code-health/parse/languages";
 import { ParseCache } from "@code-health/parse/parse-cache";
-import { treeFromRef } from "@code-health/parse/source-tree";
+import { treeFromRef, type SourceTree } from "@code-health/parse/source-tree";
 
 export const edgeKey = (from: string, to: string): string => `${from}\u0000${to}`;
 
@@ -32,7 +32,12 @@ export function folderOf(path: string): string {
 /** Analyses the tree of a commit, so the answer never depends on the working directory's state. */
 export async function loadProject(root: string, headSha: string, exclude: readonly string[]): Promise<Project> {
   const tree = await treeFromRef(root, headSha);
-  const analysis = await analyseTree(tree, { cache: await ParseCache.forRepository(root) });
+  return projectFromTree(tree, headSha, exclude, await ParseCache.forRepository(root));
+}
+
+/** The same for a tree already read, which the conformance suites build from a fixture directory. */
+export async function projectFromTree(tree: SourceTree, headSha: string, exclude: readonly string[], cache?: ParseCache): Promise<Project> {
+  const analysis = await analyseTree(tree, cache === undefined ? {} : { cache });
   const excluded = compileGlobs(exclude);
 
   const files = [...tree.files.keys()]

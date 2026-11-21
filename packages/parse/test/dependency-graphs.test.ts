@@ -4,7 +4,7 @@ import { analyseTree } from "../src/analyse-tree.ts";
 import { consumerGraph, importGraph, symbolGraph } from "../src/dependency-graphs.ts";
 import { treeFromDirectory } from "../src/source-tree.ts";
 
-const fixtures = fileURLToPath(new URL("../../../fixtures/ts-adapter/", import.meta.url));
+const fixtures = fileURLToPath(new URL("../../../fixtures/languages/typescript/adapter/", import.meta.url));
 
 async function analyse(name: string) {
   return analyseTree(await treeFromDirectory(`${fixtures}${name}`));

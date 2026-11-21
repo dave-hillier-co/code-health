@@ -1,0 +1,10 @@
+{
+  "packages": {
+    "packages/app": { "ecosystem": "npm", "exportedTypes": 0, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
+    "packages/core": { "ecosystem": "npm", "exportedTypes": 4, "abstractness": 0.5, "abstractnessWeak": false, "consumers": ["packages/app"] }
+  },
+  "findings": [
+    "deep-import packages/core packages/app | packages/app imports 1 file of packages/core past its entry points: packages/core/src/internal.ts",
+    "unused-dependency packages/core | packages/core declares lodash and its code never uses it: coupling with no purpose, and build weight"
+  ]
+}

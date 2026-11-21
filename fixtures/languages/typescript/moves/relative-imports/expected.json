@@ -1,0 +1,31 @@
+{
+  "operations": [
+    {
+      "from": "src/money.ts",
+      "to": "src/billing/money.ts"
+    },
+    {
+      "from": "src/money.test.ts",
+      "to": "src/billing/money.test.ts"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "src/billing/money.ts",
+      "line": 1,
+      "from": "./round.ts",
+      "to": "../round.ts"
+    },
+    {
+      "path": "src/invoice.ts",
+      "line": 1,
+      "from": "./money.ts",
+      "to": "./billing/money.ts"
+    }
+  ],
+  "texts": {
+    "src/billing/money.ts": "import { round } from \"../round.ts\";\n\nexport function money(value: number): string {\n  return round(value).toFixed(2);\n}\n",
+    "src/invoice.ts": "import { money } from \"./billing/money.ts\";\n\nexport function total(value: number): string {\n  return money(value);\n}\n"
+  },
+  "warnings": []
+}

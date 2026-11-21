@@ -1,0 +1,6 @@
+{
+  "name": "@acme/app",
+  "private": true,
+  "bin": { "app": "./src/main.ts" },
+  "dependencies": { "@acme/core": "*" }
+}

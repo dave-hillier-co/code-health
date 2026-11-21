@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { compileGlobs } from "@code-health/history/glob";
+import { isBoundaryManifest } from "@code-health/parse/languages";
 import type { LocalitySettings } from "./config.ts";
 import type { Candidate } from "./candidates.ts";
 
@@ -59,12 +60,12 @@ function normaliseFolder(folder: string): string | undefined {
   return normal;
 }
 
-/** The folder of the nearest package.json at or above a file, or "" for the root. */
-function packageRoot(path: string, manifests: ReadonlySet<string>): string {
+/** The folder of the nearest boundary (a directory holding a manifest) at or above a file, or "" for the root. */
+function packageRoot(path: string, boundaries: ReadonlySet<string>): string {
   let folder = posix.dirname(path);
   for (;;) {
     const dir = folder === "." ? "" : folder;
-    if (manifests.has(dir === "" ? "package.json" : `${dir}/package.json`)) return dir;
+    if (boundaries.has(dir)) return dir;
     if (dir === "") return "";
     folder = posix.dirname(folder);
   }
@@ -132,7 +133,7 @@ export function planMove(
   }
   operations.sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
 
-  const manifests = new Set([...tree].filter((path) => path === "package.json" || path.endsWith("/package.json")));
+  const manifests = new Set([...tree].filter((path) => isBoundaryManifest(path)).map((path) => (posix.dirname(path) === "." ? "" : posix.dirname(path))));
   const leaving = new Set(operations.map((operation) => operation.from));
   const landing = new Set<string>();
   for (const operation of operations) {

@@ -9,9 +9,9 @@ import { runComplexity } from "./support/run.ts";
 
 /**
  * The sources are the interface shape fixtures, whose node counts and interface sizes were counted by
- * hand (fixtures/ts-depth/expected.json), so every depth below is a hand-checked division.
+ * hand (fixtures/languages/typescript/depth/expected.json), so every depth below is a hand-checked division.
  */
-const fixtures = fileURLToPath(new URL("../../../fixtures/ts-depth/", import.meta.url));
+const fixtures = fileURLToPath(new URL("../../../fixtures/languages/typescript/depth/", import.meta.url));
 const source = (name: string) => readFileSync(join(fixtures, name), "utf8");
 
 interface Row {

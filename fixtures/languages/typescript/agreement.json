@@ -1,0 +1,3 @@
+{
+  "expectedMisses": ["adapter/syntax-errors/broken.ts#broken", "metrics/flow-shapes/list.tsx#List"]
+}
