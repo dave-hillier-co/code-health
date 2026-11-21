@@ -33,10 +33,18 @@ describe.each(ids)("%s: the move fixtures", (id) => {
   afterAll(() => overrideSupportedAdapters(undefined));
 
   describe.each(fixtureCases(id, "moves"))("$name", (fixture) => {
+    // An empty search path hides every installed tool, so what is checked never depends on the machine: a language
+    // server that is slow, or that words its answer differently, cannot change the result. The tools have tests of their own.
+    let moved: ReturnType<typeof performMove> | undefined;
+    const move = () => {
+      const operations: FileOperation[] = readExpected<MovesExpected>(fixture).operations.map((operation) => ({ ...operation, role: "unit" }));
+      moved ??= treeFromDirectory(`${fixture.directory}before/`).then((tree) => performMove(tree, operations, { searchPath: "" }));
+      return moved;
+    };
+
     it("leaves the rewrites and file texts worked out by hand, and a warning for nothing it did not expect", async () => {
       const expected = readExpected<MovesExpected>(fixture);
-      const operations: FileOperation[] = expected.operations.map((operation) => ({ ...operation, role: "unit" }));
-      const result = await performMove(await treeFromDirectory(`${fixture.directory}before/`), operations);
+      const result = await move();
       expect({
         rewrites: result.rewrites,
         texts: Object.fromEntries([...result.texts].sort(([a], [b]) => (a < b ? -1 : 1))),
@@ -44,10 +52,10 @@ describe.each(ids)("%s: the move fixtures", (id) => {
       }).toEqual({ rewrites: expected.rewrites, texts: expected.texts, warnings: expected.warnings });
     });
 
-    it("declares what confirms references, or says nothing could", async () => {
-      const result = await performMove(await treeFromDirectory(`${fixture.directory}before/`), readExpected<MovesExpected>(fixture).operations.map((operation) => ({ ...operation, role: "unit" as const })));
+    it("declares what confirms references, and with no tool to hand says not confirmed", async () => {
+      const result = await move();
       const tool = adapterById(id)!.mover.confirmation;
-      expect(result.confirmations.map((entry) => entry.tool)).toEqual(tool === null ? [] : [tool.name]);
+      expect(result.confirmations.map((entry) => `${entry.tool}: ${entry.status}`)).toEqual(tool === null ? [] : [`${tool.name}: not confirmed`]);
     });
   });
 });
