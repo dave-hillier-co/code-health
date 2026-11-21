@@ -1,0 +1,12 @@
+{
+  "name": "@acme/core",
+  "exports": {
+    ".": "./src/main.ts",
+    "./util/*": "./src/util/*.ts",
+    "./conditional": {
+      "types": "./dist/c.d.ts",
+      "import": "./src/c.ts",
+      "default": "./dist/c.js"
+    }
+  }
+}

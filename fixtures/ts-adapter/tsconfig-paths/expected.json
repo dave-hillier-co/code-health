@@ -1,0 +1,12 @@
+{
+  "importEdges": [
+    "apps/api/src/server.ts -> apps/web/src/main.ts import",
+    "apps/api/src/server.ts -> libs/shared/src/x.ts import",
+    "apps/web/src/main.ts -> apps/web/src/util.ts import",
+    "apps/web/src/main.ts -> libs/shared/src/x.ts import",
+    "libs/other/src/a.ts -> libs/other/src/b.ts import"
+  ],
+  "unresolved": [
+    "apps/api/src/server.ts:3 @shared/missing not-found"
+  ]
+}

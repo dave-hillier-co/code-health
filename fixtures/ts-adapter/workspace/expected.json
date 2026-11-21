@@ -1,0 +1,12 @@
+{
+  "importEdges": [
+    "packages/app/src/index.ts -> packages/core/src/c.ts import",
+    "packages/app/src/index.ts -> packages/core/src/main.ts import",
+    "packages/app/src/index.ts -> packages/core/src/util/strings.ts import",
+    "packages/app/src/index.ts -> packages/legacy/lib/entry.js import",
+    "packages/app/src/index.ts -> packages/legacy/lib/helpers.js import"
+  ],
+  "unresolved": [
+    "packages/app/src/index.ts:4 @acme/core/hidden not-found"
+  ]
+}
