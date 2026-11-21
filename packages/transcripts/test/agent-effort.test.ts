@@ -113,6 +113,7 @@ test("an unrecognised version yields not measured with the version", () => {
     version: "4.0.0",
     reason: "unrecognised transcript version",
     startedAt: "2026-03-01T09:00:01.000Z",
+    cwds: ["/work/repo"],
   });
 });
 

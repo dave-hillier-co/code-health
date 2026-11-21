@@ -30,8 +30,15 @@ export interface TaskEffort {
 }
 
 export type SessionMeasurement =
-  | { status: "measured"; sessionId: string; version: string; tasks: TaskEffort[] }
-  | { status: "not-measured"; sessionId: string; version: string | null; reason: string; startedAt: string | null };
+  | { status: "measured"; sessionId: string; version: string; tasks: TaskEffort[]; cwds: string[] }
+  | {
+      status: "not-measured";
+      sessionId: string;
+      version: string | null;
+      reason: string;
+      startedAt: string | null;
+      cwds: string[];
+    };
 
 function compareBytes(a: string, b: string): number {
   return Buffer.compare(Buffer.from(a), Buffer.from(b));
@@ -115,10 +122,10 @@ function measureTask(
 export function measureSession(text: string, sessionId: string, roots: readonly string[]): SessionMeasurement {
   const parsed = parseTranscript(text);
   if (parsed.status === "not-measured") {
-    return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt };
+    return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
   }
   const tasks = segment(parsed.events)
     .map((task, index) => measureTask(sessionId, index, task.startedAt, task.turns, roots))
     .filter((task) => task.edits > 0);
-  return { status: "measured", sessionId, version: parsed.version, tasks };
+  return { status: "measured", sessionId, version: parsed.version, tasks, cwds: parsed.cwds };
 }

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { isWithinRepo } from "./repo-path.ts";
 import { measureSession, type TaskEffort } from "./agent-effort.ts";
 import { inWindow, type TimeWindow } from "./time-window.ts";
 
@@ -77,12 +78,14 @@ function sessionFiles(projectsDir: string, root: string): { sessionId: string; p
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl"))
-    .map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join(dir, entry.name) }));
+    .map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join(dir, entry.name) }))
+    .sort((a, b) => compareBytes(a.sessionId, b.sessionId));
 }
 
 /**
  * Agent effort for a repo over an explicit window. Only the top-level session
- * transcripts of each root's project directory are read. Everything returned is
+ * transcripts of each root's project directory are read, and only those whose recorded working
+ * directory is inside one of the roots. Everything returned is
  * paths and counts, in a deterministic order.
  */
 export function measureRepo(options: MeasureRepoOptions): EffortReport {
@@ -96,7 +99,16 @@ export function measureRepo(options: MeasureRepoOptions): EffortReport {
     for (const file of sessionFiles(projectsDir, root)) {
       if (seen.has(file.path)) continue;
       seen.add(file.path);
-      const result = measureSession(readFileSync(file.path, "utf8"), file.sessionId, repoRoots);
+      let text: string;
+      try {
+        text = readFileSync(file.path, "utf8");
+      } catch {
+        continue; // unreadable now, so it cannot be placed in a window either
+      }
+      const result = measureSession(text, file.sessionId, repoRoots);
+      // The directory name is a lossy encoding (/work/my.repo and /work/my-repo collide), so the working
+      // directory recorded in the session decides whether it belongs to this repo.
+      if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;
       if (result.status === "not-measured") {
         if (result.startedAt !== null && inWindow(window, result.startedAt)) {
           notMeasured.push({ sessionId: result.sessionId, version: result.version, reason: result.reason });

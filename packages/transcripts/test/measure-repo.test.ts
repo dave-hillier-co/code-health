@@ -24,7 +24,7 @@ function addSession(root: string, id: string, session: SyntheticSession): void {
 }
 
 function simple(start: string, ...files: string[]): SyntheticSession {
-  const session = new SyntheticSession({ start });
+  const session = new SyntheticSession({ cwd: repo, start });
   session.prompt();
   files.forEach((file, i) => session.assistant(`m${i}`, [read(`${R}${file}`), edit(`${R}${file}`)], { output: 10 }));
   return session;
@@ -54,8 +54,8 @@ test("only tasks that started inside the window are kept", () => {
 });
 
 test("sessions in an unrecognised format are listed as not measured, if they fall in the window", () => {
-  addSession(repo, "old", new SyntheticSession({ version: "7.0.0", start: "2026-03-05T00:00:00.000Z" }).prompt());
-  addSession(repo, "outside", new SyntheticSession({ version: "7.0.0", start: "2026-06-05T00:00:00.000Z" }).prompt());
+  addSession(repo, "old", new SyntheticSession({ cwd: repo, version: "7.0.0", start: "2026-03-05T00:00:00.000Z" }).prompt());
+  addSession(repo, "outside", new SyntheticSession({ cwd: repo, version: "7.0.0", start: "2026-06-05T00:00:00.000Z" }).prompt());
   const report = measureRepo({ projectsDir: projects, repoRoots: [repo], window: march });
   expect(report.tasks).toEqual([]);
   expect(report.sessions).toEqual({
@@ -66,7 +66,7 @@ test("sessions in an unrecognised format are listed as not measured, if they fal
 
 test("worktree sessions of the same repo are read when their root is listed", () => {
   const worktree = `${repo}/.claude/worktrees/w1`;
-  const session = new SyntheticSession({ start: "2026-03-03T00:00:00.000Z" }).prompt().assistant("m", [
+  const session = new SyntheticSession({ cwd: worktree, start: "2026-03-03T00:00:00.000Z" }).prompt().assistant("m", [
     edit(`${worktree}/src/a.ts`),
   ]);
   addSession(worktree, "w", session);
@@ -128,4 +128,38 @@ test("the report records its window and is stable across runs", () => {
   const second = measureRepo({ projectsDir: projects, repoRoots: [repo], window: march });
   expect(JSON.stringify(first)).toBe(JSON.stringify(second));
   expect(first.window).toEqual({ from: "2026-03-01", to: "2026-04-01" });
+});
+
+test("a sibling repo whose directory name encodes the same is not attributed to this repo", () => {
+  expect(encodeProjectDir("/work/my-repo")).toBe(encodeProjectDir("/work/my.repo"));
+  const stranger = new SyntheticSession({ cwd: "/work/my-repo", start: "2026-03-03T00:00:00.000Z" })
+    .prompt()
+    .assistant("m", [edit("/work/my-repo/a.ts")]);
+  addSession(repo, "stranger", stranger);
+  addSession(repo, "mine", simple("2026-03-04T00:00:00.000Z", "a.ts"));
+  const report = measureRepo({ projectsDir: projects, repoRoots: [repo], window: march });
+  expect(report.tasks.map((t) => t.sessionId)).toEqual(["mine"]);
+});
+
+test("files that are not session transcripts, and unreadable ones, are ignored", () => {
+  addSession(repo, "good", simple("2026-03-04T00:00:00.000Z", "a.ts"));
+  const dir = join(projects, encodeProjectDir(repo));
+  writeFileSync(join(dir, "notes.txt"), "not a transcript");
+  mkdirSync(join(dir, "subdir.jsonl"));
+  const report = measureRepo({ projectsDir: projects, repoRoots: [repo], window: march });
+  expect(report.tasks.map((t) => t.sessionId)).toEqual(["good"]);
+});
+
+test("ties at the same start time are ordered by session id whatever order files were written in", () => {
+  for (const id of ["c", "a", "b"]) addSession(repo, id, simple("2026-03-04T00:00:00.000Z", "a.ts"));
+  const report = measureRepo({ projectsDir: projects, repoRoots: [repo], window: march });
+  expect(report.tasks.map((t) => t.sessionId)).toEqual(["a", "b", "c"]);
+});
+
+test("not-measured sessions are listed in session order whatever order files were written in", () => {
+  for (const id of ["z", "m", "a"]) {
+    addSession(repo, id, new SyntheticSession({ cwd: repo, version: "7.0.0", start: "2026-03-05T00:00:00.000Z" }).prompt());
+  }
+  const report = measureRepo({ projectsDir: projects, repoRoots: [repo], window: march });
+  expect(report.sessions.notMeasured.map((n) => n.sessionId)).toEqual(["a", "m", "z"]);
 });
