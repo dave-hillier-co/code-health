@@ -18,7 +18,9 @@ const cli: CliDefinition = {
   commands: {
     list: {
       summary: "List rows",
+      usage: "<path>...",
       options: { since: { type: "string" } },
+      optionHelp: { since: "only changes after this date" },
       run: ({ values }) => ({ inputs: { since: values.since ?? null }, results: rows, columns: ["path", "score", "churn"] }),
     },
     sections: {
@@ -229,6 +231,12 @@ test("--help lists commands, and command help lists options", async () => {
   expect(command.code).toBe(0);
   expect(command.stdout).toContain("--since");
   expect(command.stdout).toContain("--limit");
+});
+
+test("command help shows its positional arguments and describes each option", async () => {
+  const { stdout } = await run(["list", "--help"]);
+  expect(stdout).toContain("Usage: demo list <path>... [options]");
+  expect(stdout).toMatch(/--since <since>\s+only changes after this date/);
 });
 
 test("no command prints usage to stderr and exits 2", async () => {
