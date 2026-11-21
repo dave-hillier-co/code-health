@@ -38,6 +38,16 @@ export type Step =
       committer?: Identity;
     };
 
+/**
+ * The environment git runs in, without any `GIT_*` variable of the parent. A
+ * leaked `GIT_DIR`, `GIT_OBJECT_DIRECTORY` or `GIT_INDEX_FILE` (from a git hook,
+ * a runner or another test) sends objects or the index to a repository other
+ * than the fixture's, and a later command then fails with `could not parse HEAD`.
+ */
+function inheritedWithoutGit(): NodeJS.ProcessEnv {
+  return Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.toUpperCase().startsWith("GIT_")));
+}
+
 const defaultIdentity: Identity = { name: "Fixture Author", email: "author@example.com" };
 
 /**
@@ -61,6 +71,10 @@ export class GitFixture {
     fixture.git("init", "--quiet", `--initial-branch=${defaultBranch}`);
     fixture.git("config", "commit.gpgsign", "false");
     fixture.git("config", "core.autocrlf", "false");
+    // Every commit would otherwise start a detached `git maintenance run --auto`
+    // that outlives the command and races the next one, and the removal of the repository.
+    fixture.git("config", "maintenance.auto", "false");
+    fixture.git("config", "gc.auto", "0");
     return fixture;
   }
 
@@ -154,7 +168,7 @@ export class GitFixture {
       cwd: this.path,
       encoding: "utf8",
       env: {
-        ...process.env,
+        ...inheritedWithoutGit(),
         GIT_CONFIG_GLOBAL: "/dev/null",
         GIT_CONFIG_NOSYSTEM: "1",
         ...env,

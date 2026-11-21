@@ -91,3 +91,35 @@ test("identical scripts produce identical commit hashes", () => {
 
   expect(first.git("rev-parse", "HEAD")).toBe(second.git("rev-parse", "HEAD"));
 });
+
+test("git variables leaking in from the environment do not reach the fixture's repository", () => {
+  const outer = create();
+  outer.commit({ message: "outer", date: "2024-01-01T00:00:00Z", changes: [{ op: "add", path: "o.txt", content: "o\n" }] });
+  const leaked = {
+    GIT_DIR: join(outer.path, ".git"),
+    GIT_OBJECT_DIRECTORY: join(outer.path, "stray-objects"),
+    GIT_INDEX_FILE: join(outer.path, "stray-index"),
+    GIT_WORK_TREE: outer.path,
+  };
+  const previous = Object.fromEntries(Object.keys(leaked).map((k) => [k, process.env[k]]));
+  Object.assign(process.env, leaked);
+  try {
+    const inner = create();
+    inner.commit({ message: "one", date: "2024-01-01T00:00:00Z", changes: [{ op: "add", path: "a.txt", content: "1\n" }] });
+    inner.commit({ message: "two", date: "2024-01-02T00:00:00Z", changes: [{ op: "modify", path: "a.txt", content: "2\n" }] });
+    expect(inner.git("rev-list", "--count", "HEAD")).toBe("2");
+    expect(inner.git("rev-parse", "--git-dir")).toBe(".git");
+  } finally {
+    for (const [k, v] of Object.entries(previous)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+  expect(outer.git("rev-list", "--count", "HEAD")).toBe("1");
+});
+
+test("a fixture runs no background maintenance that could touch its repository while a test builds or removes it", () => {
+  const repo = create();
+  expect(repo.git("config", "--get", "maintenance.auto")).toBe("false");
+  expect(repo.git("config", "--get", "gc.auto")).toBe("0");
+});
