@@ -40,6 +40,8 @@ export const complexityConfig: PluginConfigSpec = {
     windowMonths: 12,
     /** `{ "paths": [globs], "thresholds": { ...partial thresholds } }`, the last matching entry winning per metric. */
     overrides: [],
+    /** The post-edit hook, off unless a repository turns it on. It uses `thresholds`, `delta`, `analyseTests` and `agreementBar`. */
+    hook: { enabled: false },
   },
 };
 
@@ -61,6 +63,8 @@ export interface ComplexitySettings {
   analyseTests: boolean;
   changeWeighting: boolean;
   windowMonths: number;
+  /** The opt-in post-edit hook. */
+  hook: { enabled: boolean };
   /** The suite's shared `exclude` globs. */
   isExcluded: (path: string) => boolean;
 }
@@ -114,6 +118,7 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     analyseTests: section.analyseTests === true,
     changeWeighting: section.changeWeighting === true,
     windowMonths: number(section.windowMonths, at("windowMonths"), 1),
+    hook: { enabled: (section.hook as { enabled: boolean }).enabled === true },
     isExcluded: compileGlobs(config.effective.exclude),
   };
 }

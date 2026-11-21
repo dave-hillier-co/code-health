@@ -1,7 +1,7 @@
 {
   "changedFiles": 1,
   "command": "diff",
-  "config": "d6bf24b7a8f24936",
+  "config": "f432a8fb73d4bb5b",
   "inputs": {
     "against": "revision",
     "base": {
