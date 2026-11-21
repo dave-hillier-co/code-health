@@ -55,7 +55,13 @@ Prefer reviews and pairing on changes that are happening anyway over meetings an
 
 ## Measuring whether it worked
 
-Compare expected loss and KaR over time at the same settings. A falling KaR after reviewers rotate, with no change in turnover rate, is the evidence that mitigation worked. Also count hotspot files with at least two active authors holding at least 10 percent of the lines each: redundancy in important code. The backtest tells you whether the model is calibrated for this repository at all.
+Three commands give the instruments, all counts and no names:
+
+- `cochange abandonment trend --points N` repeats the simulation at dates one period apart, each from the history and blame of the commit then, with one turnover rate and the same trials, seed, horizon and alphas at every point. Report the direction and the points together with the rate. A falling KaR after reviewers rotate, with no change in turnover rate, is the evidence that mitigation worked. If the points were taken with different settings they are not comparable, so say so rather than compare them.
+- `cochange abandonment redundancy` gives the share of hotspot files with at least two active authors each holding at least 10 percent of the lines (`--min-authors`, `--min-share`): redundancy in important code. Run it before and after the mitigation and report the counts behind the share.
+- `cochange abandonment adoption --at DATE` takes the files abandoned at a past date and reports how many were picked up by an active developer within the horizon, and how many by one of the top recommended successors, using only the history before that date. A hit rate below the paper's 34 to 48 percent is a reason to trust `successors` less here, not to drop it.
+
+The backtest tells you whether the model is calibrated for this repository at all.
 
 ## Limits to report
 

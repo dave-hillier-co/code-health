@@ -1,0 +1,129 @@
+{
+  "blame": {
+    "unattributedLines": 0,
+    "unknownFiles": 0
+  },
+  "command": "abandonment",
+  "config": "5927bcca0355a5e9",
+  "developers": {
+    "active": 3,
+    "inactive": 2
+  },
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 7,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 25.7,
+    "window": {
+      "months": 12,
+      "since": 1709283600,
+      "until": 1740819600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 19,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 20,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "abandonmentThreshold": 90,
+    "activityWindowMonths": 6,
+    "copyDetection": true,
+    "minAuthors": 2,
+    "minSharePercent": 10,
+    "overrides": {
+      "active": 0,
+      "hash": null,
+      "inactive": 0
+    },
+    "periodMonths": 3,
+    "subcommand": "redundancy"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6"
+  },
+  "results": [
+    {
+      "activeAuthors": 1,
+      "hotspotPercentile": 0.6667,
+      "path": "src/api/auth.ts",
+      "peopleLines": 10,
+      "qualifyingAuthors": 1,
+      "redundant": false
+    },
+    {
+      "activeAuthors": 2,
+      "hotspotPercentile": 0.6667,
+      "path": "src/api/routes.ts",
+      "peopleLines": 10,
+      "qualifyingAuthors": 2,
+      "redundant": true
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "hotspotFiles": 2,
+    "redundant": 1,
+    "share": 0.5
+  },
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 2
+  },
+  "window": {
+    "since": "2024-03-01T09:00:00.000Z",
+    "until": "2025-03-01T09:00:00.000Z"
+  }
+}

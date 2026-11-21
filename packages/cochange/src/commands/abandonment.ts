@@ -7,6 +7,7 @@ import { fileFindings, hotspotWeights, rankScore, rules as abandonmentRules } fr
 import { readRank } from "../abandonment/settings.ts";
 import { noSuccessorCheck } from "../abandonment/successors.ts";
 import { simulationOptions } from "../abandonment/selection.ts";
+import { adoptionCommand, redundancyCommand, trendCommand } from "../abandonment/outcome-run.ts";
 import { simulateCommand, turnoverCommand } from "../abandonment/simulate-run.ts";
 import { readComponents } from "../components.ts";
 import { byOption, readBy } from "../units.ts";
@@ -15,7 +16,7 @@ export const name = "abandonment";
 
 export const rules = abandonmentRules;
 
-const SUBCOMMANDS = ["backtest", "current", "simulate", "turnover"] as const;
+const SUBCOMMANDS = ["adoption", "backtest", "current", "redundancy", "simulate", "trend", "turnover"] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
 
 /**
@@ -25,19 +26,25 @@ type Subcommand = (typeof SUBCOMMANDS)[number];
  */
 export const command: Command = {
   summary: "Knowledge lost when people leave: files already abandoned, simulated turnover, and a backtest of the model",
-  options: { ...byOption, ...simulationOptions, top: { type: "string" }, rank: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
+  options: { ...byOption, ...simulationOptions, top: { type: "string" }, points: { type: "string" }, successors: { type: "string" }, "min-authors": { type: "string" }, "min-share": { type: "string" }, rank: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
     const [sub, ...rest] = context.positionals;
     if (!SUBCOMMANDS.includes(sub as Subcommand) || rest.length > 0) throw usageError(`usage: abandonment <${SUBCOMMANDS.join("|")}>`);
     const subcommand = sub as Subcommand;
     rejectOptionsOutsideTheirCommand(subcommand, context);
     switch (subcommand) {
+      case "adoption":
+        return adoptionCommand(context);
       case "backtest":
         return backtestCommand(context);
       case "current":
         return current(context);
+      case "redundancy":
+        return redundancyCommand(context);
       case "simulate":
         return simulateCommand(context);
+      case "trend":
+        return trendCommand(context);
       case "turnover":
         return turnoverCommand(context);
     }
@@ -47,13 +54,17 @@ export const command: Command = {
 function rejectOptionsOutsideTheirCommand(sub: Subcommand, context: CommandContext): void {
   const only: Record<string, Subcommand[]> = {
     by: ["current"],
-    at: ["backtest"],
+    at: ["adoption", "backtest"],
+    points: ["trend"],
+    successors: ["adoption"],
+    "min-authors": ["redundancy"],
+    "min-share": ["redundancy"],
     rank: ["current", "simulate"],
     mode: ["simulate"],
     k: ["simulate"],
-    trials: ["backtest", "simulate"],
-    horizon: ["backtest", "simulate"],
-    seed: ["backtest", "simulate"],
+    trials: ["backtest", "simulate", "trend"],
+    horizon: ["adoption", "backtest", "simulate", "trend"],
+    seed: ["backtest", "simulate", "trend"],
     top: ["backtest", "simulate"],
   };
   for (const [option, owners] of Object.entries(only)) {

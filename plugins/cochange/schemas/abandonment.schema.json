@@ -1,14 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "abandonment.schema.json",
-  "title": "cochange abandonment <current|turnover|simulate|backtest> --json",
+  "title": "cochange abandonment <current|turnover|simulate|backtest|redundancy|trend|adoption> --json",
   "description": "Knowledge lost when people leave. Developers appear only as counts. The output is never stored as a report. `inputs.subcommand` says which shape `results` takes.",
   "$defs": {
     "inputs": {
       "type": "object",
       "properties": {
-        "subcommand": { "enum": ["current", "turnover", "simulate", "backtest"] },
-        "at": { "type": "string", "format": "date", "description": "Backtest: the date the model is built at." },
+        "subcommand": { "enum": ["current", "turnover", "simulate", "backtest", "redundancy", "trend", "adoption"] },
+        "points": { "type": "integer", "minimum": 2, "description": "Trend: how many dates, one period apart, are measured." },
+        "successors": { "type": "integer", "minimum": 1, "description": "Adoption: how many of the ranked successors count as recommended." },
+        "minAuthors": { "type": "integer", "minimum": 1, "description": "Redundancy: active authors a file needs." },
+        "minSharePercent": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Redundancy: the percentage of a file's lines each of them must hold." },
+        "at": { "type": "string", "format": "date", "description": "Backtest and adoption: the date the model is built at." },
         "atRiskProbability": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Backtest: the percentage at which a file is predicted to be abandoned." },
         "by": { "enum": ["file", "component"] },
         "rank": { "enum": ["hotspot", "abandonment"], "description": "How files are ranked: the probability weighted by the hotspot percentile, or the raw measure." },
@@ -249,6 +253,94 @@
       "required": ["at", "outcomeAt", "commits", "model", "candidates", "predicted", "actual", "truePositives", "precision", "recall", "expectedAbandoned", "files"],
       "additionalProperties": false
     },
+    "redundancyFile": {
+      "description": "A hotspot file and whether enough active developers each hold enough of its lines.",
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "redundant": { "type": "boolean" },
+        "qualifyingAuthors": { "$ref": "common.schema.json#/$defs/count", "description": "Active developers holding at least the minimum share." },
+        "activeAuthors": { "$ref": "common.schema.json#/$defs/count", "description": "Active developers holding any lines." },
+        "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
+        "hotspotPercentile": { "$ref": "#/$defs/share" }
+      },
+      "required": ["path", "redundant", "qualifyingAuthors", "activeAuthors", "peopleLines", "hotspotPercentile"],
+      "additionalProperties": false
+    },
+    "redundancySummary": {
+      "type": "object",
+      "properties": {
+        "hotspotFiles": { "$ref": "common.schema.json#/$defs/count", "description": "Hotspot files with lines held by people." },
+        "redundant": { "$ref": "common.schema.json#/$defs/count" },
+        "share": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "redundant over hotspotFiles. Null when there are none." }
+      },
+      "required": ["hotspotFiles", "redundant", "share"],
+      "additionalProperties": false
+    },
+    "trendPoint": {
+      "type": "object",
+      "description": "The simulation at one date, with the same settings and rate as every other point. The loss is in lines.",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "commit": { "$ref": "common.schema.json#/$defs/sha" },
+        "activeDevelopers": { "$ref": "common.schema.json#/$defs/count" },
+        "files": { "$ref": "common.schema.json#/$defs/count", "description": "Files holding lines of people." },
+        "abandonedFiles": { "$ref": "common.schema.json#/$defs/count" },
+        "lines": { "$ref": "#/$defs/loss" }
+      },
+      "required": ["date", "commit", "activeDevelopers", "files", "abandonedFiles", "lines"],
+      "additionalProperties": false
+    },
+    "trend": {
+      "type": "object",
+      "properties": {
+        "ratePerPeriod": { "type": "number", "minimum": 0, "maximum": 1, "description": "The one rate every point is simulated with." },
+        "rateSource": { "enum": ["history", "configured"] },
+        "skippedPoints": { "$ref": "common.schema.json#/$defs/count", "description": "Dates before the history begins." },
+        "direction": { "enum": ["rising", "falling", "flat", null], "description": "The total expected share of lines lost, last point against first. Null with fewer than two points." },
+        "points": { "type": "array", "items": { "$ref": "#/$defs/trendPoint" }, "description": "Oldest first." }
+      },
+      "required": ["ratePerPeriod", "rateSource", "skippedPoints", "direction", "points"],
+      "additionalProperties": false
+    },
+    "adoption": {
+      "type": "object",
+      "description": "Files abandoned at a past date, and whether an active developer picked them up within the horizon. Counts and paths only.",
+      "properties": {
+        "at": { "type": "string", "format": "date" },
+        "outcomeAt": { "type": "string", "format": "date" },
+        "commits": {
+          "type": "object",
+          "properties": { "at": { "$ref": "common.schema.json#/$defs/sha" }, "outcome": { "$ref": "common.schema.json#/$defs/sha" } },
+          "required": ["at", "outcome"],
+          "additionalProperties": false
+        },
+        "abandoned": { "$ref": "common.schema.json#/$defs/count" },
+        "changed": { "$ref": "common.schema.json#/$defs/count", "description": "Abandoned files with an eligible change in the horizon." },
+        "adopted": { "$ref": "common.schema.json#/$defs/count", "description": "Changed by someone who is active at the outcome date." },
+        "byRecommended": { "$ref": "common.schema.json#/$defs/count", "description": "Adopted by one of the top recommended successors, ranked from the history before the date." },
+        "byNewcomer": { "$ref": "common.schema.json#/$defs/count", "description": "Adopted only by people with no commit before the date." },
+        "adoptionRate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "recommendationHitRate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "byRecommended over adopted." },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "changed": { "type": "boolean" },
+              "adopted": { "type": "boolean" },
+              "byRecommended": { "type": "boolean" },
+              "byNewcomer": { "type": "boolean" }
+            },
+            "required": ["path", "changed", "adopted", "byRecommended", "byNewcomer"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["at", "outcomeAt", "commits", "abandoned", "changed", "adopted", "byRecommended", "byNewcomer", "adoptionRate", "recommendationHitRate", "files"],
+      "additionalProperties": false
+    },
     "currentSummary": {
       "type": "object",
       "description": "With `current`: the repository as a whole.",
@@ -335,7 +427,7 @@
       "required": ["unknownFiles", "unattributedLines"],
       "additionalProperties": false
     },
-    "summary": { "$ref": "#/$defs/currentSummary" },
+    "summary": { "oneOf": [{ "$ref": "#/$defs/currentSummary" }, { "$ref": "#/$defs/redundancySummary" }] },
     "turnover": { "$ref": "#/$defs/turnoverSummary" },
     "results": {}
   },
@@ -390,6 +482,42 @@
           "required": ["subcommand", "at", "atRiskProbability", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
         },
         "results": { "$ref": "#/$defs/backtest" }
+      },
+      "required": ["inputs"]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "redundancy" }, "minAuthors": true, "minSharePercent": true, "overrides": true },
+          "required": ["subcommand", "minAuthors", "minSharePercent", "overrides"]
+        },
+        "results": { "type": "array", "items": { "$ref": "#/$defs/redundancyFile" } },
+        "summary": { "$ref": "#/$defs/redundancySummary" },
+        "developers": true,
+        "blame": true
+      },
+      "required": ["inputs", "summary", "developers", "blame"]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "trend" }, "points": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
+          "required": ["subcommand", "points", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
+        },
+        "results": { "$ref": "#/$defs/trend" }
+      },
+      "required": ["inputs"]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "adoption" }, "at": true, "successors": true, "horizonPeriods": true },
+          "required": ["subcommand", "at", "successors", "horizonPeriods"]
+        },
+        "results": { "$ref": "#/$defs/adoption" }
       },
       "required": ["inputs"]
     }
