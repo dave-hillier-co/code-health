@@ -17079,7 +17079,7 @@ function depthRows(file, shallow) {
     });
   }
   const { module: module3 } = file.interfaces;
-  if (module3.exports > 0) {
+  if (module3.exports > 0 && module3.nodes > 0) {
     add({
       unit: file.path,
       id: file.path,
