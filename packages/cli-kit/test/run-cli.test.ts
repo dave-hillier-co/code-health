@@ -1,6 +1,9 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
-import { ExitCode, usageError } from "../src/errors.ts";
+import { configError, environmentError, ExitCode, usageError } from "../src/errors.ts";
 import { runCli, type CliDefinition } from "../src/run-cli.ts";
 
 const rows = [
@@ -47,10 +50,13 @@ interface Run {
   stderr: string;
 }
 
-async function run(argv: string[], options: { tty?: boolean; cwd?: string } = {}): Promise<Run> {
+async function run(
+  argv: string[],
+  options: { tty?: boolean; cwd?: string; cli?: CliDefinition } = {},
+): Promise<Run> {
   let stdout = "";
   let stderr = "";
-  const code = await runCli(cli, {
+  const code = await runCli(options.cli ?? cli, {
     argv,
     cwd: options.cwd ?? repo.path,
     stdout: { write: (text) => (stdout += text), isTTY: options.tty ?? false },
@@ -163,9 +169,14 @@ test("unknown commands and options are usage errors, even before the command is 
 });
 
 test("outside a git repository exits 3", async () => {
-  const { code, stderr } = await run(["list", "--json"], { cwd: "/" });
-  expect(code).toBe(ExitCode.Environment);
-  expect(JSON.parse(stderr).error.code).toBe("not-a-git-repo");
+  const dir = mkdtempSync(join(tmpdir(), "code-health-nogit-"));
+  try {
+    const { code, stderr } = await run(["list", "--json"], { cwd: dir });
+    expect(code).toBe(ExitCode.Environment);
+    expect(JSON.parse(stderr).error.code).toBe("not-a-git-repo");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("an invalid config file exits 2", async () => {
@@ -208,4 +219,55 @@ test("no command prints usage to stderr and exits 2", async () => {
   expect(code).toBe(2);
   expect(stdout).toBe("");
   expect(stderr).toContain("Commands:");
+});
+
+class MissingCache extends Error {}
+
+const withMapping: CliDefinition = {
+  ...cli,
+  commands: {
+    ...cli.commands,
+    cache: { summary: "Needs a cache", run: () => { throw new MissingCache("no cache"); } },
+  },
+  mapError: (error) => (error instanceof MissingCache ? environmentError("no-cache", "Run refresh first.") : undefined),
+};
+
+test("a CLI can map its own errors to exit codes, and unmapped errors stay internal", async () => {
+  const mapped = await run(["cache", "--json"], { cli: withMapping });
+  expect(mapped.code).toBe(ExitCode.Environment);
+  expect(JSON.parse(mapped.stderr).error).toEqual({ code: "no-cache", message: "Run refresh first.", exitCode: 3 });
+  const unmapped = await run(["boom", "--json"], { cli: withMapping });
+  expect(JSON.parse(unmapped.stderr).error.code).toBe("internal");
+});
+
+test("a mapper may turn an error into a usage error", async () => {
+  const cliWithConfig: CliDefinition = { ...withMapping, mapError: () => configError("bad pattern") };
+  const { code } = await run(["boom"], { cli: cliWithConfig });
+  expect(code).toBe(ExitCode.Usage);
+});
+
+const withRules: CliDefinition = {
+  ...cli,
+  rules: {
+    "hidden-coupling": { summary: "Files that change together without a dependency", explanation: "Long form text." },
+  },
+};
+
+test("explain <rule> prints the rule's explanation", async () => {
+  const { code, stdout } = await run(["explain", "hidden-coupling"], { cli: withRules, tty: true });
+  expect(code).toBe(0);
+  expect(stdout).toContain("Long form text.");
+});
+
+test("explain with no rule lists them, and an unknown rule is a usage error", async () => {
+  const list = await run(["explain"], { cli: withRules, tty: true });
+  expect(list.stdout).toContain("hidden-coupling");
+  const unknown = await run(["explain", "nope", "--json"], { cli: withRules });
+  expect(unknown.code).toBe(ExitCode.Usage);
+  expect(JSON.parse(unknown.stderr).error.message).toContain("hidden-coupling");
+});
+
+test("explain is listed in help only when the CLI has rules", async () => {
+  expect((await run(["--help"], { cli: withRules })).stdout).toContain("explain <rule>");
+  expect((await run(["--help"])).stdout).not.toContain("explain <rule>");
 });

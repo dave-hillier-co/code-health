@@ -1,6 +1,6 @@
 import { discoverCommand, parseArguments, type OptionSpec, type ParsedArguments } from "./args.ts";
 import { explainConfig, loadConfig, type LoadedConfig, type PluginConfigSpec } from "./config.ts";
-import { assertNodeVersion, suppressSqliteWarning } from "./environment.ts";
+import { assertNodeVersion } from "./environment.ts";
 import { CliError, ExitCode, usageError } from "./errors.ts";
 import { readRepoState, type RepoState } from "./repo-state.ts";
 import { shapeResults } from "./results.ts";
@@ -32,11 +32,20 @@ export interface Command {
   run(context: CommandContext): CommandOutput | Promise<CommandOutput>;
 }
 
+export interface Rule {
+  summary: string;
+  explanation: string;
+}
+
 export interface CliDefinition {
   tool: string;
   schemaVersion?: number;
   config: PluginConfigSpec;
   commands: Record<string, Command>;
+  /** Recommendation rules, described by `explain <rule>`. */
+  rules?: Record<string, Rule>;
+  /** Turns the errors of the libraries a CLI uses into usage or environment errors. */
+  mapError?: (error: unknown) => CliError | undefined;
 }
 
 export interface CliIo {
@@ -60,13 +69,13 @@ export async function runCli(cli: CliDefinition, io: CliIo): Promise<number> {
   const jsonErrors = io.argv.includes("--json");
   try {
     assertNodeVersion();
-    suppressSqliteWarning();
     return await execute(cli, io);
   } catch (error) {
     const failure =
       error instanceof CliError
         ? error
-        : new CliError(ExitCode.Environment, "internal", error instanceof Error ? error.message : String(error));
+        : (cli.mapError?.(error) ??
+          new CliError(ExitCode.Environment, "internal", error instanceof Error ? error.message : String(error)));
     io.stderr.write(
       jsonErrors
         ? serialise({ error: { code: failure.code, message: failure.message, exitCode: failure.exitCode } })
@@ -88,6 +97,8 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
     io.stderr.write(helpText(cli));
     return ExitCode.Usage;
   }
+
+  if (name === "explain" && cli.rules && !cli.commands.explain) return explain(cli, discoverPositionals(io.argv), io);
 
   const command = name === "config" ? configExplain : cli.commands[name];
   if (!command) throw usageError(`unknown command "${name}"; run with --help to list commands`);
@@ -138,6 +149,26 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
   return output.failed ? ExitCode.CheckFailed : ExitCode.Success;
 }
 
+function discoverPositionals(argv: string[]): string[] {
+  return parseArguments(argv).positionals;
+}
+
+function explain(cli: CliDefinition, positionals: string[], io: CliIo): number {
+  const rules = cli.rules ?? {};
+  const [id] = positionals;
+  if (id === undefined) {
+    const width = Math.max(...Object.keys(rules).map((r) => r.length));
+    io.stdout.write(
+      [`Rules:`, ...Object.entries(rules).map(([r, rule]) => `  ${r.padEnd(width)}  ${rule.summary}`), ""].join("\n"),
+    );
+    return ExitCode.Success;
+  }
+  const rule = rules[id];
+  if (!rule) throw usageError(`unknown rule "${id}"; rules: ${Object.keys(rules).join(", ")}`);
+  io.stdout.write(`${id}: ${rule.summary}\n\n${rule.explanation}\n`);
+  return ExitCode.Success;
+}
+
 const commonOptionHelp = [
   "  --json            JSON output (default when stdout is not a terminal)",
   "  --limit <n|all>   maximum rows (default 20)",
@@ -149,6 +180,7 @@ function helpText(cli: CliDefinition): string {
   const commands: [string, string][] = [
     ...Object.entries(cli.commands).map(([name, command]): [string, string] => [name, command.summary]),
     ["config explain", configExplain.summary],
+    ...(cli.rules ? [["explain <rule>", "Describe a recommendation rule"] as [string, string]] : []),
   ];
   const width = Math.max(...commands.map(([name]) => name.length));
   return [

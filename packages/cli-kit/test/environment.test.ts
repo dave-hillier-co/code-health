@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { expect, test } from "vitest";
 import { CliError, ExitCode } from "../src/errors.ts";
 import { assertNodeVersion } from "../src/environment.ts";
@@ -21,33 +20,3 @@ test("rejects older Node with an environment error", () => {
     }
   }
 });
-
-test("importing node:sqlite prints no experimental warning once suppressed", () => {
-  const script = `
-    import { suppressSqliteWarning } from ${JSON.stringify(new URL("../src/environment.ts", import.meta.url).href)};
-    suppressSqliteWarning();
-    await import("node:sqlite");
-  `;
-  const stderr = runScript(script);
-  expect(stderr).not.toMatch(/ExperimentalWarning|SQLite/);
-});
-
-test("without suppression node prints the warning (guards the test above)", () => {
-  const stderr = runScript(`await import("node:sqlite");`);
-  if (!/SQLite/.test(stderr)) return; // newer Node releases no longer warn
-  expect(stderr).toMatch(/ExperimentalWarning/);
-});
-
-test("other warnings still get through", () => {
-  const script = `
-    import { suppressSqliteWarning } from ${JSON.stringify(new URL("../src/environment.ts", import.meta.url).href)};
-    suppressSqliteWarning();
-    process.emitWarning("something else", "ExperimentalWarning");
-  `;
-  expect(runScript(script)).toContain("something else");
-});
-
-function runScript(source: string): string {
-  const result = spawnSync(process.execPath, ["--input-type=module", "-e", source], { encoding: "utf8" });
-  return result.stderr;
-}

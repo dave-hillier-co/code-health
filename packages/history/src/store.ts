@@ -1,5 +1,6 @@
 import { existsSync, rmSync } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync } from "node:sqlite";
+import { createDatabase, loadSqlite } from "./sqlite.ts";
 import type { ParsedCommit } from "./log-parser.ts";
 
 /** Bump when the table layout changes. A mismatch rebuilds the cache. */
@@ -69,7 +70,7 @@ function compatible(db: DatabaseSync, settings: IngestSettings): boolean {
 }
 
 function create(path: string, settings: IngestSettings): DatabaseSync {
-  const db = new DatabaseSync(path, { timeout: 30_000 });
+  const db = createDatabase(path, { timeout: 30_000 });
   configure(db);
   db.exec(DDL);
   db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
@@ -91,9 +92,10 @@ export interface WritableStore {
  * again. Call only while holding the write lock.
  */
 export function openForWrite(path: string, settings: IngestSettings): WritableStore {
+  loadSqlite(); // an unavailable sqlite must not be mistaken for a damaged cache
   if (existsSync(path)) {
     try {
-      const db = new DatabaseSync(path, { timeout: 30_000 });
+      const db = createDatabase(path, { timeout: 30_000 });
       configure(db);
       if (compatible(db, settings)) return { db, rebuilt: false };
       db.close();
@@ -108,9 +110,10 @@ export function openForWrite(path: string, settings: IngestSettings): WritableSt
 
 /** Opens an existing, compatible store read-only. Returns undefined when there is none. */
 export function openForRead(path: string): DatabaseSync | undefined {
+  loadSqlite();
   if (!existsSync(path)) return undefined;
   try {
-    const db = new DatabaseSync(path, { readOnly: true, timeout: 30_000 });
+    const db = createDatabase(path, { readOnly: true, timeout: 30_000 });
     const version = (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
     if (version === SCHEMA_VERSION) return db;
     db.close();
