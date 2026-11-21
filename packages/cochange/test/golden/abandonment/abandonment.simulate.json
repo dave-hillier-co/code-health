@@ -1,0 +1,333 @@
+{
+  "blame": {
+    "unattributedLines": 0,
+    "unknownFiles": 0
+  },
+  "command": "abandonment",
+  "config": "8af900be7a62dbed",
+  "developers": {
+    "active": 3,
+    "inactive": 2
+  },
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 7,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 25.7,
+    "window": {
+      "months": 12,
+      "since": 1709283600,
+      "until": 1740819600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 19,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 20,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "abandonmentThreshold": 90,
+    "activityWindowMonths": 6,
+    "alphas": [
+      95,
+      99
+    ],
+    "copyDetection": true,
+    "horizonPeriods": 4,
+    "k": null,
+    "mode": "rate",
+    "overrides": {
+      "active": 0,
+      "hash": null,
+      "inactive": 0
+    },
+    "periodMonths": 3,
+    "seed": 42,
+    "subcommand": "simulate",
+    "trials": 2000,
+    "turnoverRate": null
+  },
+  "repo": {
+    "dirty": false,
+    "head": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6"
+  },
+  "results": {
+    "components": [
+      {
+        "abandonedLines": 32,
+        "atRisk": [
+          {
+            "alpha": 95,
+            "expectedTailLoss": 43,
+            "kar": 43,
+            "karShare": 0.5733,
+            "tailRatio": 2.6042
+          },
+          {
+            "alpha": 99,
+            "expectedTailLoss": 43,
+            "kar": 43,
+            "karShare": 0.5733,
+            "tailRatio": 2.6042
+          }
+        ],
+        "expectedLoss": 16.5115,
+        "path": "(unassigned)",
+        "peopleLines": 75
+      }
+    ],
+    "files": [
+      {
+        "abandoned": true,
+        "activeAuthors": 0,
+        "formerAuthors": 1,
+        "path": "src/core/engine.ts",
+        "peopleLines": 10,
+        "probability": 1,
+        "score": 1,
+        "tailShare": 0
+      },
+      {
+        "abandoned": true,
+        "activeAuthors": 1,
+        "formerAuthors": 1,
+        "path": "src/core/parser.ts",
+        "peopleLines": 10,
+        "probability": 1,
+        "score": 1,
+        "tailShare": 0
+      },
+      {
+        "abandoned": true,
+        "activeAuthors": 0,
+        "formerAuthors": 1,
+        "path": "src/gen/deps.ts",
+        "peopleLines": 5,
+        "probability": 1,
+        "score": 1,
+        "tailShare": 0
+      },
+      {
+        "abandoned": false,
+        "activeAuthors": 1,
+        "formerAuthors": 0,
+        "path": "src/api/auth.ts",
+        "peopleLines": 10,
+        "probability": 0.388,
+        "score": 0.388,
+        "tailShare": 1
+      },
+      {
+        "abandoned": false,
+        "activeAuthors": 1,
+        "formerAuthors": 0,
+        "path": "src/ui/view.ts",
+        "peopleLines": 10,
+        "probability": 0.3835,
+        "score": 0.3835,
+        "tailShare": 1
+      },
+      {
+        "abandoned": false,
+        "activeAuthors": 1,
+        "formerAuthors": 1,
+        "path": "src/core/lexer.ts",
+        "peopleLines": 10,
+        "probability": 0.3805,
+        "score": 0.3805,
+        "tailShare": 1
+      },
+      {
+        "abandoned": false,
+        "activeAuthors": 1,
+        "formerAuthors": 0,
+        "path": "src/util/log.ts",
+        "peopleLines": 10,
+        "probability": 0.3805,
+        "score": 0.3805,
+        "tailShare": 1
+      },
+      {
+        "abandoned": false,
+        "activeAuthors": 2,
+        "formerAuthors": 0,
+        "path": "src/api/routes.ts",
+        "peopleLines": 10,
+        "probability": 0.1485,
+        "score": 0.1485,
+        "tailShare": 1
+      }
+    ],
+    "horizonPeriods": 4,
+    "loss": {
+      "files": {
+        "baseline": 3,
+        "increment": {
+          "atRisk": [
+            {
+              "alpha": 95,
+              "expectedTailLoss": 5,
+              "kar": 5,
+              "karShare": 0.625,
+              "tailRatio": 2.9744
+            },
+            {
+              "alpha": 99,
+              "expectedTailLoss": 5,
+              "kar": 5,
+              "karShare": 0.625,
+              "tailRatio": 2.9744
+            }
+          ],
+          "expected": 1.681,
+          "expectedShare": 0.2101
+        },
+        "population": 8,
+        "total": {
+          "atRisk": [
+            {
+              "alpha": 95,
+              "expectedTailLoss": 8,
+              "kar": 8,
+              "karShare": 1,
+              "tailRatio": 1.709
+            },
+            {
+              "alpha": 99,
+              "expectedTailLoss": 8,
+              "kar": 8,
+              "karShare": 1,
+              "tailRatio": 1.709
+            }
+          ],
+          "expected": 4.681,
+          "expectedShare": 0.5851
+        }
+      },
+      "lines": {
+        "baseline": 32,
+        "increment": {
+          "atRisk": [
+            {
+              "alpha": 95,
+              "expectedTailLoss": 43,
+              "kar": 43,
+              "karShare": 0.5733,
+              "tailRatio": 2.6042
+            },
+            {
+              "alpha": 99,
+              "expectedTailLoss": 43,
+              "kar": 43,
+              "karShare": 0.5733,
+              "tailRatio": 2.6042
+            }
+          ],
+          "expected": 16.5115,
+          "expectedShare": 0.2202
+        },
+        "population": 75,
+        "total": {
+          "atRisk": [
+            {
+              "alpha": 95,
+              "expectedTailLoss": 75,
+              "kar": 75,
+              "karShare": 1,
+              "tailRatio": 1.546
+            },
+            {
+              "alpha": 99,
+              "expectedTailLoss": 75,
+              "kar": 75,
+              "karShare": 1,
+              "tailRatio": 1.546
+            }
+          ],
+          "expected": 48.5115,
+          "expectedShare": 0.6468
+        }
+      }
+    },
+    "mode": "rate",
+    "population": {
+      "activeDevelopers": 3,
+      "files": 8,
+      "peopleLines": 75
+    },
+    "seed": 42,
+    "selection": {
+      "leaverProbability": 0.3757,
+      "leavers": null,
+      "ratePerPeriod": 0.1111,
+      "source": "history"
+    },
+    "trials": 2000
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "turnover": {
+    "atRisk": 18,
+    "departed": 2,
+    "periods": 6,
+    "rate": 0.1111
+  },
+  "window": {
+    "since": "2024-03-01T09:00:00.000Z",
+    "until": "2025-03-01T09:00:00.000Z"
+  }
+}

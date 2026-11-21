@@ -1,14 +1,21 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "abandonment.schema.json",
-  "title": "cochange abandonment <current> --json",
+  "title": "cochange abandonment <current|turnover|simulate> --json",
   "description": "Knowledge lost when people leave. Developers appear only as counts. The output is never stored as a report. `inputs.subcommand` says which shape `results` takes.",
   "$defs": {
     "inputs": {
       "type": "object",
       "properties": {
-        "subcommand": { "enum": ["current"] },
+        "subcommand": { "enum": ["current", "turnover", "simulate"] },
         "by": { "enum": ["file", "component"] },
+        "mode": { "enum": ["rate", "historical", "k-leavers"] },
+        "k": { "type": ["integer", "null"], "minimum": 1 },
+        "trials": { "type": "integer", "minimum": 1 },
+        "horizonPeriods": { "type": "integer", "minimum": 1 },
+        "seed": { "type": "integer", "minimum": 0 },
+        "alphas": { "type": "array", "items": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 100 }, "minItems": 1 },
+        "turnoverRate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "The configured per-period rate as a fraction, or null when it is estimated." },
         "activityWindowMonths": { "type": "integer", "minimum": 1 },
         "periodMonths": { "type": "integer", "minimum": 1 },
         "abandonmentThreshold": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Percentage of a file's lines held by people who have left at which it is abandoned." },
@@ -27,6 +34,135 @@
         "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
       },
       "required": ["subcommand", "activityWindowMonths", "periodMonths", "abandonmentThreshold", "copyDetection", "overrides"],
+      "additionalProperties": false
+    },
+    "share": { "type": "number", "minimum": 0 },
+    "distribution": {
+      "description": "One loss across the trials: its mean and share of the whole, and knowledge at risk (the alpha percentile) with the tail ratio and the mean of the losses at or beyond it.",
+      "type": "object",
+      "properties": {
+        "expected": { "type": "number", "minimum": 0 },
+        "expectedShare": { "$ref": "#/$defs/share" },
+        "atRisk": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "alpha": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 100 },
+              "kar": { "type": "number", "minimum": 0 },
+              "karShare": { "$ref": "#/$defs/share" },
+              "tailRatio": { "type": ["number", "null"], "minimum": 0, "description": "kar over the expected loss. Null when nothing is expected to be lost." },
+              "expectedTailLoss": { "type": "number", "minimum": 0 }
+            },
+            "required": ["alpha", "kar", "karShare", "tailRatio", "expectedTailLoss"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["expected", "expectedShare", "atRisk"],
+      "additionalProperties": false
+    },
+    "loss": {
+      "type": "object",
+      "properties": {
+        "baseline": { "$ref": "common.schema.json#/$defs/count", "description": "Already abandoned before any scenario." },
+        "population": { "$ref": "common.schema.json#/$defs/count", "description": "All lines held by people, or all files that hold such lines." },
+        "increment": { "$ref": "#/$defs/distribution", "description": "The loss over the baseline: the part that can still be prevented." },
+        "total": { "$ref": "#/$defs/distribution", "description": "The baseline plus the increment." }
+      },
+      "required": ["baseline", "population", "increment", "total"],
+      "additionalProperties": false
+    },
+    "turnoverSummary": {
+      "type": "object",
+      "description": "The turnover observed in history, pooled over its usable periods. Counts of people, never names.",
+      "properties": {
+        "rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Departures over developers on the team at each period's start. Null when no period is usable." },
+        "atRisk": { "$ref": "common.schema.json#/$defs/count", "description": "Developer-periods: developers on the team at the start of each usable period, summed." },
+        "departed": { "$ref": "common.schema.json#/$defs/count" },
+        "periods": { "$ref": "common.schema.json#/$defs/count" },
+        "configuredRate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Only with `turnover`: the rate the config states, which simulation uses instead of the estimate." }
+      },
+      "required": ["rate", "atRisk", "departed", "periods"],
+      "additionalProperties": false
+    },
+    "turnoverPeriod": {
+      "type": "object",
+      "properties": {
+        "start": { "type": "string", "format": "date" },
+        "end": { "type": "string", "format": "date" },
+        "developers": { "$ref": "common.schema.json#/$defs/count", "description": "On the team at the start of the period." },
+        "departed": { "$ref": "common.schema.json#/$defs/count" },
+        "rate": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "required": ["start", "end", "developers", "departed", "rate"],
+      "additionalProperties": false
+    },
+    "simulationFile": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "score": { "$ref": "#/$defs/share", "description": "What the list is ranked by." },
+        "probability": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fraction of trials in which the file ends up abandoned. 1 for a file already abandoned." },
+        "tailShare": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fraction of the worst trials (by files lost, at the lowest alpha) in which the file is lost." },
+        "abandoned": { "type": "boolean", "description": "Already abandoned at the analysed commit." },
+        "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
+        "activeAuthors": { "$ref": "common.schema.json#/$defs/count" },
+        "formerAuthors": { "$ref": "common.schema.json#/$defs/count" }
+      },
+      "required": ["path", "score", "probability", "tailShare", "abandoned", "peopleLines", "activeAuthors", "formerAuthors"],
+      "additionalProperties": false
+    },
+    "simulationComponent": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "The component, or (unassigned)." },
+        "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
+        "abandonedLines": { "$ref": "common.schema.json#/$defs/count", "description": "Already abandoned." },
+        "expectedLoss": { "type": "number", "minimum": 0, "description": "Expected increment in abandoned lines." },
+        "atRisk": { "$ref": "#/$defs/distribution/properties/atRisk", "description": "Knowledge at risk of the increment, in lines." }
+      },
+      "required": ["path", "peopleLines", "abandonedLines", "expectedLoss", "atRisk"],
+      "additionalProperties": false
+    },
+    "simulation": {
+      "type": "object",
+      "properties": {
+        "mode": { "enum": ["rate", "historical", "k-leavers"] },
+        "trials": { "type": "integer", "minimum": 1 },
+        "horizonPeriods": { "type": "integer", "minimum": 1 },
+        "seed": { "type": "integer", "minimum": 0 },
+        "selection": {
+          "type": "object",
+          "properties": {
+            "source": { "enum": ["history", "configured", "k-leavers"], "description": "Where the turnover rate came from." },
+            "ratePerPeriod": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Rate mode only." },
+            "leavers": { "type": ["integer", "null"], "minimum": 1, "description": "k-leavers mode only." },
+            "leaverProbability": { "type": "number", "minimum": 0, "maximum": 1, "description": "The mean probability that an active developer leaves over the horizon." }
+          },
+          "required": ["source", "ratePerPeriod", "leavers", "leaverProbability"],
+          "additionalProperties": false
+        },
+        "population": {
+          "type": "object",
+          "properties": {
+            "activeDevelopers": { "$ref": "common.schema.json#/$defs/count" },
+            "files": { "$ref": "common.schema.json#/$defs/count" },
+            "peopleLines": { "$ref": "common.schema.json#/$defs/count" }
+          },
+          "required": ["activeDevelopers", "files", "peopleLines"],
+          "additionalProperties": false
+        },
+        "loss": {
+          "type": "object",
+          "properties": { "lines": { "$ref": "#/$defs/loss" }, "files": { "$ref": "#/$defs/loss" } },
+          "required": ["lines", "files"],
+          "additionalProperties": false
+        },
+        "files": { "type": "array", "items": { "$ref": "#/$defs/simulationFile" } },
+        "components": { "type": "array", "items": { "$ref": "#/$defs/simulationComponent" } }
+      },
+      "required": ["mode", "trials", "horizonPeriods", "seed", "selection", "population", "loss", "files", "components"],
       "additionalProperties": false
     },
     "currentSummary": {
@@ -113,6 +249,7 @@
       "additionalProperties": false
     },
     "summary": { "$ref": "#/$defs/currentSummary" },
+    "turnover": { "$ref": "#/$defs/turnoverSummary" },
     "results": {}
   },
   "required": ["developers", "blame"],
@@ -128,6 +265,30 @@
         "summary": true
       },
       "required": ["inputs", "summary"]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "turnover" } },
+          "required": ["subcommand"]
+        },
+        "results": { "type": "array", "items": { "$ref": "#/$defs/turnoverPeriod" } },
+        "turnover": true
+      },
+      "required": ["inputs", "turnover"]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "simulate" }, "mode": true, "k": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
+          "required": ["subcommand", "mode", "k", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
+        },
+        "results": { "$ref": "#/$defs/simulation" },
+        "turnover": true
+      },
+      "required": ["inputs", "turnover"]
     }
   ],
   "unevaluatedProperties": false

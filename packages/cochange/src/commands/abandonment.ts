@@ -2,12 +2,14 @@ import { usageError } from "@code-health/cli-kit/errors";
 import type { Command, CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { groupByComponent, measureCurrent, summariseCurrent } from "../abandonment/current.ts";
 import { commonExtra, commonInputs, prepare } from "../abandonment/prepare.ts";
+import { simulationOptions } from "../abandonment/selection.ts";
+import { simulateCommand, turnoverCommand } from "../abandonment/simulate-run.ts";
 import { readComponents } from "../components.ts";
 import { byOption, readBy } from "../units.ts";
 
 export const name = "abandonment";
 
-const SUBCOMMANDS = ["current"] as const;
+const SUBCOMMANDS = ["current", "simulate", "turnover"] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
 
 /**
@@ -17,7 +19,7 @@ type Subcommand = (typeof SUBCOMMANDS)[number];
  */
 export const command: Command = {
   summary: "Knowledge lost when people leave: files already abandoned, simulated turnover, and a backtest of the model",
-  options: { ...byOption, "no-refresh": { type: "boolean" } },
+  options: { ...byOption, ...simulationOptions, top: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
     const [sub, ...rest] = context.positionals;
     if (!SUBCOMMANDS.includes(sub as Subcommand) || rest.length > 0) throw usageError(`usage: abandonment <${SUBCOMMANDS.join("|")}>`);
@@ -26,12 +28,24 @@ export const command: Command = {
     switch (subcommand) {
       case "current":
         return current(context);
+      case "simulate":
+        return simulateCommand(context);
+      case "turnover":
+        return turnoverCommand(context);
     }
   },
 };
 
 function rejectOptionsOutsideTheirCommand(sub: Subcommand, context: CommandContext): void {
-  const only: Record<string, Subcommand[]> = { by: ["current"] };
+  const only: Record<string, Subcommand[]> = {
+    by: ["current"],
+    mode: ["simulate"],
+    k: ["simulate"],
+    trials: ["simulate"],
+    horizon: ["simulate"],
+    seed: ["simulate"],
+    top: ["simulate"],
+  };
   for (const [option, owners] of Object.entries(only)) {
     if (context.values[option] !== undefined && !owners.includes(sub)) throw usageError(`--${option} belongs to abandonment ${owners.join(", ")}`);
   }
