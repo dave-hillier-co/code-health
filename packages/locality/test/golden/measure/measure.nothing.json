@@ -1,0 +1,37 @@
+{
+  "command": "measure",
+  "config": "9468b0611e318a67",
+  "inputs": {
+    "baseline": {
+      "head": "3de5fcd69ef623babdf72a887d014457da424aa7",
+      "stamp": "20fc6615f2146571"
+    },
+    "name": "default"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3de5fcd69ef623babdf72a887d014457da424aa7"
+  },
+  "results": {
+    "baseline": {
+      "head": "3de5fcd69ef623babdf72a887d014457da424aa7",
+      "window": {
+        "from": "2023-01-01",
+        "to": "2024-01-02"
+      }
+    },
+    "name": "default",
+    "status": "nothing-acted-on",
+    "suite": {
+      "actedOn": 0,
+      "commits": 0
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}

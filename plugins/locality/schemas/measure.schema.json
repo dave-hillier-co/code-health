@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "measure.schema.json",
+  "title": "locality measure baseline|compare --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "type": "object",
+  "$defs": {
+    "day": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "window": {
+      "type": "object",
+      "description": "Whole UTC days, `from` included and `to` excluded. History and transcripts are cut at the same days.",
+      "properties": { "from": { "$ref": "#/$defs/day" }, "to": { "$ref": "#/$defs/day" } },
+      "required": ["from", "to"],
+      "additionalProperties": false
+    },
+    "spread": {
+      "type": "object",
+      "description": "Change spread: mean pairwise tree distance of the files of each logical change, each at its path as of that change.",
+      "properties": {
+        "changes": { "$ref": "common.schema.json#/$defs/count" },
+        "measured": { "$ref": "common.schema.json#/$defs/count", "description": "Changes at or under the maximum changeset size: the sample the figures rest on." },
+        "oversized": { "$ref": "common.schema.json#/$defs/count" },
+        "mean": { "type": ["number", "null"] },
+        "median": { "type": ["number", "null"] }
+      },
+      "required": ["changes", "measured", "oversized", "mean", "median"],
+      "additionalProperties": false
+    },
+    "distribution": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": { "mean": { "type": "number" }, "median": { "type": "number" } },
+          "required": ["mean", "median"],
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
+    "effort": {
+      "type": "object",
+      "description": "Agent effort per task, from session transcripts: paths and counts only. Tasks with no edits are left out.",
+      "properties": {
+        "tasks": { "$ref": "common.schema.json#/$defs/count", "description": "The sample every figure rests on." },
+        "filesRead": { "$ref": "#/$defs/distribution" },
+        "foldersVisited": { "$ref": "#/$defs/distribution" },
+        "reReads": { "$ref": "#/$defs/distribution" },
+        "edits": { "$ref": "#/$defs/distribution" },
+        "tokens": { "$ref": "#/$defs/distribution" }
+      },
+      "required": ["tasks", "filesRead", "foldersVisited", "reReads", "edits", "tokens"],
+      "additionalProperties": false
+    },
+    "arm": {
+      "type": "object",
+      "properties": { "spread": { "$ref": "#/$defs/spread" }, "effort": { "$ref": "#/$defs/effort" } },
+      "required": ["spread", "effort"],
+      "additionalProperties": false
+    },
+    "group": {
+      "type": "object",
+      "properties": {
+        "candidates": { "type": "array", "items": { "type": "string" } },
+        "before": { "$ref": "#/$defs/arm" },
+        "after": { "$ref": "#/$defs/arm" }
+      },
+      "required": ["candidates", "before", "after"],
+      "additionalProperties": false
+    },
+    "conclusion": { "enum": ["lower", "higher", "no-change", "insufficient-sample", "not-measured"] },
+    "difference": {
+      "type": "object",
+      "properties": {
+        "actedOn": { "type": "object", "properties": { "change": { "type": ["number", "null"] } }, "required": ["change"], "additionalProperties": false },
+        "comparison": { "type": "object", "properties": { "change": { "type": ["number", "null"] } }, "required": ["change"], "additionalProperties": false },
+        "difference": { "type": ["number", "null"], "description": "The acted-on change minus the comparison change. Negative: the acted-on files improved more." },
+        "smallestSample": { "$ref": "common.schema.json#/$defs/count" },
+        "conclusion": { "$ref": "#/$defs/conclusion" }
+      },
+      "required": ["actedOn", "comparison", "difference", "smallestSample", "conclusion"]
+    },
+    "closedDifference": { "type": "object", "allOf": [{ "$ref": "#/$defs/difference" }], "unevaluatedProperties": false },
+    "baselineResults": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "file": { "type": "string", "description": "Where the baseline was written, under .code-health/local/." },
+        "head": { "$ref": "common.schema.json#/$defs/sha" },
+        "window": { "$ref": "#/$defs/window" },
+        "spread": { "$ref": "#/$defs/spread" },
+        "effort": {
+          "type": "object",
+          "properties": {
+            "sessions": {
+              "type": "object",
+              "properties": { "measured": { "$ref": "common.schema.json#/$defs/count" }, "notMeasured": { "$ref": "common.schema.json#/$defs/count", "description": "Sessions in a transcript format the tool does not recognise." } },
+              "required": ["measured", "notMeasured"],
+              "additionalProperties": false
+            },
+            "tasks": { "$ref": "common.schema.json#/$defs/count" },
+            "filesRead": { "$ref": "#/$defs/distribution" },
+            "foldersVisited": { "$ref": "#/$defs/distribution" },
+            "reReads": { "$ref": "#/$defs/distribution" },
+            "edits": { "$ref": "#/$defs/distribution" },
+            "tokens": { "$ref": "#/$defs/distribution" }
+          },
+          "required": ["sessions", "tasks", "filesRead", "foldersVisited", "reReads", "edits", "tokens"],
+          "additionalProperties": false
+        },
+        "candidates": {
+          "type": "object",
+          "properties": { "recorded": { "$ref": "common.schema.json#/$defs/count" }, "ranked": { "$ref": "common.schema.json#/$defs/count" } },
+          "required": ["recorded", "ranked"],
+          "additionalProperties": false
+        },
+        "priorSuiteCommits": { "$ref": "common.schema.json#/$defs/count", "description": "Commits already carrying this tool's Code-Health trailer: above 0, the baseline was taken after the first tidy-up." }
+      },
+      "required": ["name", "file", "head", "window", "spread", "effort", "candidates", "priorSuiteCommits"],
+      "additionalProperties": false
+    },
+    "nothingActedOn": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "status": { "const": "nothing-acted-on" },
+        "baseline": {
+          "type": "object",
+          "properties": { "head": { "$ref": "common.schema.json#/$defs/sha" }, "window": { "$ref": "#/$defs/window" } },
+          "required": ["head", "window"],
+          "additionalProperties": false
+        },
+        "suite": {
+          "type": "object",
+          "properties": { "commits": { "$ref": "common.schema.json#/$defs/count" }, "actedOn": { "const": 0 } },
+          "required": ["commits", "actedOn"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["name", "status", "baseline", "suite"],
+      "additionalProperties": false
+    },
+    "comparedResults": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "status": { "const": "compared" },
+        "baseline": {
+          "type": "object",
+          "properties": {
+            "head": { "$ref": "common.schema.json#/$defs/sha" },
+            "window": { "$ref": "#/$defs/window" },
+            "spread": { "$ref": "#/$defs/spread" },
+            "effort": { "$ref": "#/$defs/effort" }
+          },
+          "required": ["head", "window", "spread", "effort"],
+          "additionalProperties": false
+        },
+        "spreadReproduced": { "type": "boolean", "description": "The history, read now, still gives the spread the baseline recorded over its window. False after history was rewritten." },
+        "after": {
+          "type": "object",
+          "description": "The window that matches the baseline's: the same number of days, cut short where HEAD ends it.",
+          "properties": {
+            "from": { "$ref": "#/$defs/day" },
+            "to": { "$ref": "#/$defs/day" },
+            "complete": { "type": "boolean" },
+            "days": { "$ref": "common.schema.json#/$defs/count" },
+            "matchingDays": { "$ref": "common.schema.json#/$defs/count" }
+          },
+          "required": ["from", "to", "complete", "days", "matchingDays"],
+          "additionalProperties": false
+        },
+        "suite": {
+          "type": "object",
+          "properties": {
+            "commits": { "$ref": "common.schema.json#/$defs/count", "description": "Commits with this tool's Code-Health trailer since the baseline. Left out of the outcome windows." },
+            "actedOn": { "$ref": "common.schema.json#/$defs/count" },
+            "comparison": { "$ref": "common.schema.json#/$defs/count" },
+            "overlapping": { "$ref": "common.schema.json#/$defs/count", "description": "Candidates left alone that were passed over because they share a file with something acted on." }
+          },
+          "required": ["commits", "actedOn", "comparison", "overlapping"],
+          "additionalProperties": false
+        },
+        "pairs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "actedOn": { "type": "object", "properties": { "path": { "type": "string" }, "rank": { "type": "integer", "minimum": 1 } }, "required": ["path", "rank"], "additionalProperties": false },
+              "comparison": {
+                "anyOf": [
+                  { "type": "object", "properties": { "path": { "type": "string" }, "rank": { "type": "integer", "minimum": 1 } }, "required": ["path", "rank"], "additionalProperties": false },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["actedOn", "comparison"],
+            "additionalProperties": false
+          }
+        },
+        "actedOn": { "$ref": "#/$defs/group" },
+        "comparison": { "$ref": "#/$defs/group" },
+        "spread": {
+          "type": "object",
+          "description": "An outcome, but partly by construction: the target minimises the distances spread measures.",
+          "allOf": [{ "$ref": "#/$defs/difference" }],
+          "properties": { "role": { "type": "string" } },
+          "required": ["role"],
+          "unevaluatedProperties": false
+        },
+        "effort": {
+          "type": "object",
+          "description": "The primary outcome. It fell when at least two of its four figures fell and none rose.",
+          "properties": {
+            "role": { "type": "string" },
+            "conclusion": { "enum": ["lower", "higher", "no-change", "insufficient-sample", "not-measured", "mixed"] },
+            "filesRead": { "$ref": "#/$defs/closedDifference" },
+            "foldersVisited": { "$ref": "#/$defs/closedDifference" },
+            "reReads": { "$ref": "#/$defs/closedDifference" },
+            "tokens": { "$ref": "#/$defs/closedDifference" }
+          },
+          "required": ["role", "conclusion", "filesRead", "foldersVisited", "reReads", "tokens"],
+          "additionalProperties": false
+        },
+        "claim": { "enum": ["cheaper", "costlier", "spread-without-effort", "no-effect-shown", "unproven"], "description": "All the data supports saying. `spread-without-effort` is unproven: spread falls by construction." }
+      },
+      "required": ["name", "status", "baseline", "spreadReproduced", "after", "suite", "pairs", "actedOn", "comparison", "spread", "effort", "claim"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "command": { "const": "measure" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "baseline": {
+          "type": "object",
+          "properties": { "head": { "$ref": "common.schema.json#/$defs/sha" }, "stamp": { "type": "string" } },
+          "required": ["head", "stamp"],
+          "additionalProperties": false
+        },
+        "transcripts": {
+          "type": "object",
+          "description": "The session transcripts the figures were read from, named by a stamp of their paths and counts.",
+          "properties": {
+            "tasks": { "$ref": "common.schema.json#/$defs/count" },
+            "tasksAfter": { "$ref": "common.schema.json#/$defs/count" },
+            "stamp": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "since": { "type": ["string", "null"] }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "description": "The repository's evidence for the baseline's window. With a weak grade the spread is tentative.",
+      "properties": {
+        "grade": { "enum": ["strong", "moderate", "weak"] },
+        "logicalChangesInWindow": { "$ref": "common.schema.json#/$defs/count" },
+        "usableHistoryMonths": { "type": "number", "minimum": 0 },
+        "activeContributors": { "$ref": "common.schema.json#/$defs/count" },
+        "shallow": { "type": "boolean" }
+      },
+      "required": ["grade", "logicalChangesInWindow", "usableHistoryMonths", "activeContributors", "shallow"],
+      "additionalProperties": false
+    },
+    "results": {
+      "oneOf": [{ "$ref": "#/$defs/baselineResults" }, { "$ref": "#/$defs/nothingActedOn" }, { "$ref": "#/$defs/comparedResults" }]
+    }
+  },
+  "unevaluatedProperties": false
+}

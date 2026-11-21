@@ -21,6 +21,7 @@ Run it from the repository root. It analyses `HEAD` and never edits code. Useful
 - `--limit <n|all>` and `--fields path,recommendation,rule,target,gain,fanIn` keep the output small. The default is 20 rows.
 - `--recommendation inline|move|split|blocked|keep|scrutinise|review` lists one kind.
 - Path arguments (`analyse src/shared`) limit the run to units under those paths.
+- `--source history` analyses co-change alone, for languages with no structural adapter: moves and reviews only, on moderate or strong evidence. `--source both` adds `hiddenCoupling`, units the import graph places well whose co-change partners are all elsewhere.
 - `explain <rule>` describes any rule named in a result, and `config explain` shows the effective settings.
 
 A whole-repository run on a clean tree also stores every result in `.cache/code-health/reports/locality.analyse.json`, which other plugins read.
@@ -89,7 +90,7 @@ Code-Health: locality two-consumers
 
 ## Report honestly
 
-State sample sizes and say what the evidence does not show. The analyser's gain is a leading indicator, not an outcome: a unit that moved closer has not yet made anything cheaper to change. Agent effort over later tasks is the outcome, and nothing here measures it yet. Do not claim an improvement the data cannot show.
+State sample sizes and say what the evidence does not show. The analyser's gain is a leading indicator, not an outcome: a unit that moved closer has not yet made anything cheaper to change. Agent effort over later tasks is the outcome. Take a baseline before the first move and compare afterwards with `measure`: see `references/measure.md`. Do not claim an improvement the data cannot show.
 
 Do not move code to make the score better. If a target would bury code deeper than the configured `locality.maxDepth`, the analyser clamps it, and you should not work around that.
 
