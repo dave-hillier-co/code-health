@@ -1,8 +1,8 @@
 import type { Command, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { readSettings } from "../config.ts";
-import { scrutinise } from "../scrutiny.ts";
-import { buildProject } from "../ts-project.ts";
+import type { Scrutiny } from "../scrutiny.ts";
+import type { TreeProject } from "../ts-project.ts";
 import { analyseRevision } from "../unit-analysis.ts";
 
 export const name = "scrutinise";
@@ -20,8 +20,16 @@ export const command: Command = {
       prefixes.length === 0 ? candidate.recommendation === "scrutinise" : under(candidate.path) && (candidate.recommendation === "scrutinise" || prefixes.includes(candidate.path)),
     );
 
-    const typed = chosen.length === 0 ? undefined : await buildProject(await treeFromRef(context.repo.root, "HEAD"));
-    const results = typed === undefined ? [] : chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", typed, project.isTest));
+    // ts-morph is loaded only when there is something to review: it is most of the bundle, and `analyse` has no use for it.
+    let typed: TreeProject | undefined;
+    let results: Scrutiny[] = [];
+    if (chosen.length > 0) {
+      const { scrutinise } = await import("../scrutiny.ts");
+      const { buildProject } = await import("../ts-project.ts");
+      const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
+      typed = loaded;
+      results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
+    }
 
     return {
       inputs: { paths: prefixes, highFanIn: settings.highFanIn },

@@ -1,8 +1,7 @@
 import { InMemoryFileSystemHost, Project, type CompilerOptions, ts } from "ts-morph";
 import type { SourceTree } from "@code-health/parse/source-tree";
+import { SOURCE_EXTENSION } from "./move-plan.ts";
 
-/** Source files ts-morph reads and rewrites. */
-export const SOURCE_EXTENSION = /\.(?:[cm]?[jt]sx?)$/;
 
 const manifestName = /(?:^|\/)(?:tsconfig(?:\.[\w.-]+)?|jsconfig)\.json$|(?:^|\/)package\.json$/;
 

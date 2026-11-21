@@ -2,8 +2,7 @@ import { Project } from "ts-morph";
 import { hasCodeHealthTrailer } from "@code-health/history/trailers";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import { performMove } from "./move-engine.ts";
-import type { FileOperation } from "./move-plan.ts";
-import { SOURCE_EXTENSION } from "./ts-project.ts";
+import { SOURCE_EXTENSION, type FileOperation } from "./move-plan.ts";
 
 export interface SpecifierDifference {
   path: string;

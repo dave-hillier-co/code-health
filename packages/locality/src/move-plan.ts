@@ -3,6 +3,9 @@ import { compileGlobs } from "@code-health/history/glob";
 import type { LocalitySettings } from "./config.ts";
 import type { Candidate } from "./candidates.ts";
 
+/** Source files ts-morph reads and rewrites. */
+export const SOURCE_EXTENSION = /\.(?:[cm]?[jt]sx?)$/;
+
 /** One file the move relocates. Imports are rewritten separately, so these are the only file operations. */
 export interface FileOperation {
   from: string;

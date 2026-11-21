@@ -4,7 +4,6 @@ import { runGit } from "@code-health/history/git";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { readSettings } from "../config.ts";
 import { planMove } from "../move-plan.ts";
-import { verifyMove } from "../move-verify.ts";
 import { analyseRevision } from "../unit-analysis.ts";
 
 export const name = "verify-move";
@@ -40,6 +39,7 @@ export const command: Command = {
     // Whether the analyser recommends the move is not what is being verified, so a reason always stands in for it.
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to: to as string | undefined, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
+    const { verifyMove } = await import("../move-verify.ts");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

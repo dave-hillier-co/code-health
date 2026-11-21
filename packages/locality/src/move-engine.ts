@@ -1,8 +1,8 @@
 import { posix } from "node:path";
 import { ts, type Project, type SourceFile } from "ts-morph";
 import type { SourceTree } from "@code-health/parse/source-tree";
-import type { FileOperation } from "./move-plan.ts";
-import { buildProject, SOURCE_EXTENSION } from "./ts-project.ts";
+import { SOURCE_EXTENSION, type FileOperation } from "./move-plan.ts";
+import { buildProject } from "./ts-project.ts";
 
 /** One import specifier the move changed. `path` is where the file is after the move. */
 export interface Rewrite {
