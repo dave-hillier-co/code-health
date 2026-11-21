@@ -165,3 +165,11 @@ test("an invalid bot pattern is reported as such, naming the pattern", async () 
   await expect(filtered(repo, { botPatterns: ["[bot"] })).rejects.toBeInstanceOf(InvalidPatternError);
   await expect(filtered(repo, { botPatterns: ["[bot"] })).rejects.toThrow("[bot");
 });
+
+test("a change is oversized above the maximum changeset size, not at it", async () => {
+  const many = (n: number, day: number) => commit(`n${n}`, day, Array.from({ length: n }, (_, i) => file(`d${day}/f${i}`)));
+  const repo = build([many(3, 1), many(4, 2)]);
+  const result = await filtered(repo, { maxChangesetSize: 3 });
+  expect(result.changes.map((c) => c.oversized)).toEqual([false, true]);
+  expect(result.filtersApplied.oversizedChanges).toBe(1);
+});

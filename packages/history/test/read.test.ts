@@ -169,6 +169,29 @@ test("the mailmap is applied at read time from the tree at the ref, so editing i
   expect(mapped.commits[1]).toMatchObject({ mappedName: "Alice", mappedEmail: "alice@example.com" });
 });
 
+test("a rename below the similarity threshold is a delete and an add with a new identity", async () => {
+  const repo = build([
+    add("add old", 1, "old.txt", "a\nb\nc\nd\ne\nf\n"),
+    { type: "commit", message: "rewrite as new", date: "2024-02-02T00:00:00Z", changes: [{ op: "rename", from: "old.txt", path: "new.txt", content: "completely\ndifferent\ntext\nhere\nnow\nok\n" }] },
+  ]);
+  await refresh(repo.path);
+  const view = await readHistory(repo.path);
+  const statuses = view.commits[1]!.changes.map((c) => c.status).sort();
+  expect(statuses).toEqual(["A", "D"]);
+  expect(view.commits[0]!.changes[0]!.fileId).toBe("old.txt");
+  expect(view.commits[1]!.changes.find((c) => c.status === "A")!.fileId).toBe("new.txt");
+});
+
+test("paths with spaces, quotes and unicode survive ingestion", async () => {
+  const names = ["sp ace/x y.txt", 'quo"te.txt', "caf\u00e9/\u65e5\u672c.txt"];
+  const repo = build([
+    { type: "commit", message: "odd names", date: "2024-02-01T00:00:00Z", changes: names.map((path) => ({ op: "add" as const, path, content: "1\n" })) },
+  ]);
+  await refresh(repo.path);
+  const view = await readHistory(repo.path);
+  expect(view.commits[0]!.changes.map((c) => c.path).sort()).toEqual([...names].sort());
+});
+
 test("binary changes have no line counts", async () => {
   const repo = build([add("bin", 1, "x.bin", "\u0000\u0001\u0002\u0003")]);
   await refresh(repo.path);

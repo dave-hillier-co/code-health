@@ -169,6 +169,24 @@ test("steady commit sizes report no shift", async () => {
   expect(evidence.commitSize.shifted).toBe(false);
 });
 
+test("history that is empty after filtering grades weak with zero values", async () => {
+  const repo = build([edit("2024-01-01T10:00:00Z", "a", 1)]);
+  await refresh(repo.path);
+  const { evidence } = await analyseHistory(repo.path, { noise: { exclude: ["a"] } });
+  expect(evidence).toMatchObject({ grade: "weak", usableHistoryMonths: 0, logicalChangesInWindow: 0, activeContributors: 0 });
+});
+
+test("contributors alone can hold a long, busy history at moderate", async () => {
+  const steps: Step[] = [];
+  for (let i = 0; i < 8; i++) steps.push(edit(`2023-${String(i + 1).padStart(2, "0")}-10T10:00:00Z`, `f${i}`, i));
+  steps.push(edit("2024-03-10T10:00:00Z", "last", 1));
+  const repo = build(steps);
+  await refresh(repo.path);
+  const { evidence } = await analyseHistory(repo.path, { evidence: { thresholds, windowMonths: 12 } });
+  expect(evidence.activeContributors).toBe(1);
+  expect(evidence.grade).toBe("moderate");
+});
+
 test("a shallow clone reports its truncated window", async () => {
   const source = build([
     edit("2024-01-01T10:00:00Z", "a", 1),
