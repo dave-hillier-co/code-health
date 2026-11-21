@@ -1,0 +1,47 @@
+{
+  "units": {
+    "billing/billing_test.go": [["TestNewInvoice", "function", 9, 13]],
+    "billing/invoice.go": [
+      ["Invoice", "class", 6, 9],
+      ["NewInvoice", "function", 11, 13],
+      ["Invoice.Amount", "method", 15, 17]
+    ],
+    "billing/invoice_test.go": [["TestAmount", "function", 5, 10]],
+    "billing/totals.go": [
+      ["Total", "function", 3, 5],
+      ["round", "function", 7, 9]
+    ],
+    "internal/tax/tax.go": [["Rate", "function", 5, 10]],
+    "main.go": [["main", "function", 10, 13]]
+  },
+  "importEdges": [
+    "billing/billing_test.go -> billing/invoice.go import",
+    "billing/invoice.go -> billing/totals.go import",
+    "billing/invoice.go -> internal/tax/tax.go import",
+    "billing/invoice_test.go -> billing/invoice.go import",
+    "billing/invoice_test.go -> billing/totals.go import",
+    "main.go -> billing/invoice.go import",
+    "main.go -> internal/tax/tax.go import"
+  ],
+  "fileEdges": [
+    "billing/billing_test.go -> billing/invoice.go test call=1 reference=0",
+    "billing/invoice.go -> billing/totals.go call call=1 reference=0",
+    "billing/invoice.go -> internal/tax/tax.go call call=1 reference=0",
+    "billing/invoice_test.go -> billing/invoice.go test call=1 reference=0",
+    "billing/invoice_test.go -> billing/totals.go test call=1 reference=0",
+    "main.go -> billing/invoice.go call call=1 reference=0",
+    "main.go -> internal/tax/tax.go call call=1 reference=0"
+  ],
+  "consumers": [
+    "billing/billing_test.go#TestNewInvoice -> billing/invoice.go#NewInvoice test x1",
+    "billing/invoice.go#Invoice.Amount -> billing/totals.go#Total call x1",
+    "billing/invoice.go#Invoice.Amount -> internal/tax/tax.go#Rate call x1",
+    "billing/invoice_test.go#TestAmount -> billing/invoice.go#NewInvoice test x1",
+    "billing/invoice_test.go#TestAmount -> billing/totals.go#round test x1",
+    "main.go#main -> billing/invoice.go#NewInvoice call x1",
+    "main.go#main -> internal/tax/tax.go#Rate call x1"
+  ],
+  "unresolved": [],
+  "barrels": [],
+  "syntaxErrors": []
+}

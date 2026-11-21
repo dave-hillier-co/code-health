@@ -192,7 +192,7 @@ class Extractor {
       case "function_declaration": {
         const name = node.childForFieldName("name")?.text;
         if (name === undefined) return;
-        if (name !== "init" && name !== "_") this.declare(name, "function", name, node.startPosition.row + 1);
+        if (name !== "init" && name !== "_") this.addDeclaration(name, "function", name, node.startPosition.row + 1);
         this.functionUnit(name, node, node, undefined, context, "function");
         return;
       }
@@ -201,7 +201,7 @@ class Extractor {
         const type = receiverTypeOf(node);
         if (name === undefined) return;
         const qualified = type === undefined ? name : `${type}.${name}`;
-        if (type !== undefined) this.declare(qualified, "function", qualified, node.startPosition.row + 1, false);
+        if (type !== undefined) this.addDeclaration(qualified, "function", qualified, node.startPosition.row + 1, false);
         const parent = type !== undefined && this.typeUnits.has(type) ? type : undefined;
         this.functionUnit(qualified, node, node, parent, { ...context, unit: undefined }, "method", name, type);
         return;
@@ -233,7 +233,7 @@ class Extractor {
     }
   }
 
-  private declare(name: string, kind: DeclarationKind, unit: string | undefined, line: number, exported = isExported(name)): void {
+  private addDeclaration(name: string, kind: DeclarationKind, unit: string | undefined, line: number, exported = isExported(name)): void {
     this.declarations.push({ name, kind, ...(unit === undefined ? {} : { unit }), exported, line });
   }
 
@@ -280,7 +280,7 @@ class Extractor {
       if (name === undefined || type === null) continue;
       const kind: DeclarationKind = type.type === "interface_type" ? "interface" : type.type === "struct_type" ? "class" : "type";
       const isUnit = kind !== "type" && spec.type === "type_spec";
-      this.declare(name, kind, isUnit ? name : undefined, spec.startPosition.row + 1);
+      this.addDeclaration(name, kind, isUnit ? name : undefined, spec.startPosition.row + 1);
       const parameters = new Set((spec.childForFieldName("type_parameters")?.namedChildren ?? []).flatMap((parameter) => parameter.childrenForFieldName("name").map((n) => n.text)));
       let inner = context;
       if (isUnit) {
@@ -306,7 +306,7 @@ class Extractor {
       names.forEach((name, index) => {
         const value = values[index];
         const bound = value?.type === "func_literal" && names.length === values.length;
-        if (packageLevel && name.text !== "_") this.declare(name.text, bound ? "function" : "variable", bound ? name.text : undefined, name.startPosition.row + 1);
+        if (packageLevel && name.text !== "_") this.addDeclaration(name.text, bound ? "function" : "variable", bound ? name.text : undefined, name.startPosition.row + 1);
         if (bound && value !== undefined) this.functionUnit(name.text, value, sole ? node : spec, undefined, context, "function");
       });
       values.forEach((value, index) => {

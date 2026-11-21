@@ -1,0 +1,20 @@
+{
+  "units": {
+    "units.go": [
+      ["Shape", "class", 3, 5],
+      ["Rect", "class", 7, 9],
+      ["Point", "class", 14, 14],
+      ["Named", "class", 15, 15],
+      ["Rect.Area", "method", 18, 18],
+      ["Rect.Scale", "method", 20, 23],
+      ["New", "function", 25, 28],
+      ["New.grow", "function", 26, 26],
+      ["Handler", "function", 30, 32],
+      ["init", "function", 34, 34],
+      ["init~2", "function", 36, 36]
+    ]
+  },
+  "fileEdges": [],
+  "consumers": [],
+  "syntaxErrors": []
+}

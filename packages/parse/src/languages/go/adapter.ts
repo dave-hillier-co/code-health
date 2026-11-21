@@ -15,7 +15,7 @@ export const adapter: LanguageAdapter = {
   id: "go",
   name: "Go",
   tier: 2,
-  support: "experimental",
+  support: "supported",
   lexerProfile: "go",
   grammars: [{ spec: { id: "go", packageName: "tree-sitter-go", file: "tree-sitter-go.wasm" }, extensions: [".go"] }],
   extractorVersion,

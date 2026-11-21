@@ -1,0 +1,12 @@
+{
+  "units": {
+    "app/main.go": [["main", "function", 5, 7]],
+    "lib/greet/greet.go": [
+      ["Hello", "function", 3, 5],
+      ["prefix", "function", 7, 9]
+    ]
+  },
+  "fileEdges": ["app/main.go -> lib/greet/greet.go call call=1 reference=0"],
+  "consumers": ["app/main.go#main -> lib/greet/greet.go#Hello call x1"],
+  "unresolved": []
+}

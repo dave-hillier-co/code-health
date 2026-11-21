@@ -13,8 +13,8 @@
   },
   "layers": {
     "lexical": 0,
-    "none": 3,
-    "structural": 3
+    "none": 2,
+    "structural": 4
   },
   "ranking": {
     "basis": "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
@@ -33,7 +33,7 @@
     {
       "changeWeight": 0.5,
       "cognitive": 8,
-      "complexityScore": 0.833333,
+      "complexityScore": 0.875,
       "dominant": "cognitive",
       "endLine": 11,
       "id": "src/pricing.ts#price",
@@ -41,14 +41,34 @@
       "labels": [],
       "path": "src/pricing.ts",
       "percentiles": {
-        "cognitive": 0.833333
+        "cognitive": 0.875
       },
       "revisions": 1,
-      "score": 0.416667,
+      "score": 0.4375,
       "source": "structural",
       "startLine": 1,
       "test": false,
       "unit": "price"
+    },
+    {
+      "changeWeight": 0.5,
+      "cognitive": 3,
+      "complexityScore": 0.625,
+      "dominant": "cognitive",
+      "endLine": 11,
+      "id": "src/total.go#Total",
+      "kind": "function",
+      "labels": [],
+      "path": "src/total.go",
+      "percentiles": {
+        "cognitive": 0.625
+      },
+      "revisions": 1,
+      "score": 0.3125,
+      "source": "structural",
+      "startLine": 3,
+      "test": false,
+      "unit": "Total"
     },
     {
       "changeWeight": 0.5,
@@ -73,7 +93,7 @@
     {
       "changeWeight": 0.5,
       "cognitive": 0,
-      "complexityScore": 0.333333,
+      "complexityScore": 0.25,
       "dominant": "cognitive",
       "endLine": 3,
       "id": "src/label.ts#label",
@@ -81,10 +101,10 @@
       "labels": [],
       "path": "src/label.ts",
       "percentiles": {
-        "cognitive": 0.333333
+        "cognitive": 0.25
       },
       "revisions": 1,
-      "score": 0.166667,
+      "score": 0.125,
       "source": "structural",
       "startLine": 1,
       "test": false,
@@ -93,7 +113,7 @@
     {
       "changeWeight": 0.5,
       "cognitive": 0,
-      "complexityScore": 0.333333,
+      "complexityScore": 0.25,
       "dominant": "cognitive",
       "endLine": 13,
       "id": "src/pricing.ts#double",
@@ -101,10 +121,10 @@
       "labels": [],
       "path": "src/pricing.ts",
       "percentiles": {
-        "cognitive": 0.333333
+        "cognitive": 0.25
       },
       "revisions": 1,
-      "score": 0.166667,
+      "score": 0.125,
       "source": "structural",
       "startLine": 13,
       "test": false,
@@ -114,7 +134,6 @@
   "schemaVersion": 1,
   "skipped": {
     "comment and string stripping: no lexer profile": 1,
-    "per-function metrics: no agreement measured for go": 1,
     "per-function metrics: no agreement measured for python": 1,
     "per-function metrics: no lexer profile": 1
   },
@@ -128,6 +147,6 @@
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 4
+    "total": 5
   }
 }

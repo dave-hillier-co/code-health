@@ -1,0 +1,10 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "closures.go": [
+      ["Run", 3, 3, 4, 2, 15, 10, 1, 0],
+      ["Counter", 2, 2, 2, 1, 11, 7, 0, 0],
+      ["Counter.next", 2, 2, 1, 1, 7, 4, 0, 0]
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "files": 5,
+  "occurrences": [
+    "callbacks function-parameter retry/retry.go:3 | Retry(op) is called from service",
+    "interfaces interface ports/store.go:3 | Store is implemented in adapters/memory",
+    "dependency-injection constructor-injection adapters/memory/memory.go:5 | Memory takes Store from ports",
+    "dependency-injection decorator service/service.go:12 | @inject",
+    "events call service/service.go:22 | bus.Publish",
+    "handlers handler-registration cmd/app/main.go:12 | mux.HandleFunc",
+    "registries keyed-map adapters/memory/memory.go:10 | handlers",
+    "ports-and-adapters folder adapters | adapters",
+    "ports-and-adapters folder ports | ports"
+  ]
+}

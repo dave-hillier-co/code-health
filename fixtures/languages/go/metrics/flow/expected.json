@@ -1,0 +1,12 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "flow.go": [
+      ["Plain", 1, 1, 0, 0, 3, 1, 1, 0],
+      ["Branches", 3, 3, 3, 1, 9, 5, 2, 0],
+      ["Loops", 5, 5, 5, 2, 16, 10, 1, 0],
+      ["Conditions", 6, 6, 4, 1, 6, 3, 3, 0],
+      ["Walk", 2, 2, 2, 1, 6, 3, 1, 0]
+    ]
+  }
+}

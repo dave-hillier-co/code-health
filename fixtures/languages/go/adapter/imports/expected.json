@@ -1,0 +1,19 @@
+{
+  "units": {
+    "cmd/app/main.go": [["main", "function", 11, 13]],
+    "plugins/plugins.go": [["init", "function", 3, 5]],
+    "util/util.go": [["Join", "function", 5, 7]]
+  },
+  "importEdges": [
+    "cmd/app/main.go -> plugins/plugins.go import",
+    "cmd/app/main.go -> util/util.go import"
+  ],
+  "fileEdges": [
+    "cmd/app/main.go -> plugins/plugins.go reference call=0 reference=1",
+    "cmd/app/main.go -> util/util.go call call=1 reference=0"
+  ],
+  "consumers": ["cmd/app/main.go#main -> util/util.go#Join call x1"],
+  "unresolved": ["cmd/app/main.go:8 example.com/app/missing not-found"],
+  "barrels": [],
+  "syntaxErrors": []
+}
