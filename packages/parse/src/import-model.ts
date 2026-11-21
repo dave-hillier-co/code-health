@@ -90,7 +90,9 @@ export class ImportModel {
         seen.add(name);
         const result = this.resolveExport(path, name, new Set());
         if (result.status !== "defined") continue;
-        const kind = this.facts.get(result.file)?.exports.find((exported) => exported.exported === result.exportName)?.kind;
+        const definition = this.facts.get(result.file)?.exports.find((exported) => exported.exported === result.exportName);
+        if (definition?.internal === true) continue;
+        const kind = definition?.kind;
         names.push({
           file: path,
           name,

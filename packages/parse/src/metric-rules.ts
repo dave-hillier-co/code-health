@@ -31,6 +31,12 @@ export interface ConstructMap {
   ternary: { type: string; condition: string; consequence: string; alternative: string };
   /** Binary expressions. `logical` operators are chained (one increment per run of like operators), `decisions` add to cyclomatic only. */
   binary: { type: string; operator: string; left: string; right: string; logical: ReadonlySet<string>; decisions: ReadonlySet<string> };
+  /**
+   * A node that holds a whole run of operands joined by logical operators as flat children, with the operator
+   * tokens between them (Rust's `if a && let Some(b) = c`). Each operator token is a decision, and the run
+   * is one cognitive increment. Languages whose logical expressions are nested binary nodes leave it out.
+   */
+  flatLogical?: { type: string; operators: ReadonlySet<string> };
   /** `x ||= y` and friends: decision points when the operator is in `decisions`. */
   compoundAssignment: { type: string; operator: string; decisions: ReadonlySet<string> };
   /** Parentheses, looked through when a chain of logical operators is collected. */
@@ -63,6 +69,8 @@ export interface MetricRules {
   isRecursiveCall(call: Node, scope: RecursionScope): boolean;
   /** The node type of a call, which `isRecursiveCall` is asked about. */
   callType: string;
+  /** True when a `break` or `continue` names a label, for a language whose grammar gives the label no field. Defaults to the `label` field of the construct map. */
+  isLabelled?(jump: Node): boolean;
   /** Declared parameters, `this` excluded, and the properties destructured out of option-object parameters. */
   parameterCounts(fn: Node): { parameters: number; optionCount: number };
 }

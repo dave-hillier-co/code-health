@@ -168,6 +168,10 @@ class Measurer {
       this.children(node, level, depth);
       return;
     }
+    if (c.flatLogical !== undefined && type === c.flatLogical.type) {
+      this.flatChain(node, c.flatLogical.operators, level, depth);
+      return;
+    }
     if (type === c.compoundAssignment.type) {
       const operator = node.childForFieldName(c.compoundAssignment.operator)?.type;
       if (operator !== undefined && c.compoundAssignment.decisions.has(operator)) this.decision(node, operator);
@@ -176,7 +180,7 @@ class Measurer {
     }
     const jump = c.labelledJumps[type];
     if (jump !== undefined) {
-      if (node.childForFieldName(c.label) !== null) this.flat(node, `labelled ${jump}`);
+      if (this.rules.isLabelled === undefined ? node.childForFieldName(c.label) !== null : this.rules.isLabelled(node)) this.flat(node, `labelled ${jump}`);
       return;
     }
     if (type === this.rules.callType) this.recursionCheck(node);
@@ -251,6 +255,24 @@ class Measurer {
       previous = operator.type;
     }
     for (const operand of operands) this.visit(operand, level, depth);
+  }
+
+  /** A run of operands under one node, with the operator tokens between them: each token is a decision, and a run of one operator is one increment. */
+  private flatChain(node: Node, logical: ReadonlySet<string>, level: number, depth: number): void {
+    let previous: string | undefined;
+    for (let i = 0; i < node.childCount; i++) {
+      const child = node.child(i)!;
+      if (child.isNamed) {
+        this.visit(child, level, depth);
+        continue;
+      }
+      if (!logical.has(child.type)) continue;
+      this.cyclomatic++;
+      this.cyclomaticModified++;
+      this.record(child, "cyclomatic", child.type, 1, 0);
+      if (child.type !== previous) this.flat(child, `sequence of ${child.type}`);
+      previous = child.type;
+    }
   }
 
   private recursionCheck(call: Node): void {

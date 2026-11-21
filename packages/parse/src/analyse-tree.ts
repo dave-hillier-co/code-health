@@ -198,7 +198,7 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
   for (const [path, fileFacts] of facts) {
     if (fileFacts.hasSyntaxErrors) filesWithSyntaxErrors.push(path);
     const exportedLocals = new Set([
-      ...fileFacts.exports.map((exported) => exported.local),
+      ...fileFacts.exports.filter((exported) => exported.internal !== true).map((exported) => exported.local),
       ...(fileFacts.symbols?.declarations ?? []).filter((declaration) => declaration.exported).map((declaration) => declaration.unit),
     ]);
     for (const unit of fileFacts.units) {
