@@ -24,7 +24,7 @@ afterAll(() => {
   rmSync(parent, { recursive: true, force: true });
 });
 
-const windowed = [["hotspots"], ["coupling"], ["clusters"], ["brief", "src/billing/invoice.ts"]] as const;
+const windowed: [string, ...string[]][] = [["hotspots"], ["coupling"], ["clusters"], ["brief", "src/billing/invoice.ts"]];
 
 describe.each(windowed)("cochange %s in a shallow clone", (command, ...rest) => {
   test("refuses without a window, and the window the error asks for can be given", async () => {
