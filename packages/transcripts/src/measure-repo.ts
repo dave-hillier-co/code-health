@@ -45,7 +45,7 @@ export function encodeProjectDir(cwd: string): string {
   return cwd.replaceAll(/[^A-Za-z0-9]/g, "-");
 }
 
-function compareBytes(a: string, b: string): number {
+export function compareBytes(a: string, b: string): number {
   return Buffer.compare(Buffer.from(a), Buffer.from(b));
 }
 
@@ -73,7 +73,7 @@ export function summariseTasks(tasks: readonly TaskEffort[]): EffortSummary {
   };
 }
 
-function sessionFiles(projectsDir: string, root: string): { sessionId: string; path: string }[] {
+export function sessionFiles(projectsDir: string, root: string): { sessionId: string; path: string }[] {
   const dir = join(projectsDir, encodeProjectDir(root));
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { withFileTypes: true })
