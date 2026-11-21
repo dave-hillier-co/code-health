@@ -83,3 +83,14 @@ describe("dominatorTree", () => {
     expect(tree.idom.get("n20000")).toBe("n19999");
   });
 });
+
+describe("un-normalised adjacency", () => {
+  it("unreachableFrom sees leaf targets", () => {
+    expect(unreachableFrom(new Map([["root", ["a"]], ["x", ["y"]]]), "root")).toEqual(["x", "y"]);
+  });
+
+  it("dominatorTree sees leaf targets", () => {
+    const tree = dominatorTree(new Map([["root", ["a"]], ["a", ["b"]]]), "root");
+    expect(tree.idom.get("b")).toBe("a");
+  });
+});

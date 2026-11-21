@@ -1,5 +1,5 @@
 import { dominatedSubtree, dominatorTree, unreachableFrom } from "./dominators.ts";
-import { compareIds, type Graph } from "./graph.ts";
+import { compareIds, normalise, type Graph } from "./graph.ts";
 import { condense, expandComponent } from "./scc.ts";
 
 export interface DominatorUnits {
@@ -18,10 +18,11 @@ export interface DominatorUnits {
  * over the condensed graph from the virtual root, then expand back into files.
  * The root itself is not a unit.
  */
-export function dominatorUnits(graph: Graph, root: string): DominatorUnits {
+export function dominatorUnits(input: Graph, root: string): DominatorUnits {
+  const graph = normalise(input);
   const condensation = condense(graph);
   const rootComponent = condensation.componentOf.get(root);
-  if (rootComponent === undefined) return { units: new Map(), unreachable: [] };
+  if (rootComponent === undefined) return { units: new Map(), unreachable: unreachableFrom(graph, root) };
 
   const tree = dominatorTree(condensation.graph, rootComponent);
   const units = new Map<string, readonly string[]>();

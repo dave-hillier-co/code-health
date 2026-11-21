@@ -1,4 +1,4 @@
-import { compareIds, reachableFrom, type Graph } from "./graph.ts";
+import { compareIds, normalise, reachableFrom, type Graph } from "./graph.ts";
 
 export interface DominatorTree {
   root: string;
@@ -11,7 +11,8 @@ export interface DominatorTree {
  * The tree is unique, so the result does not depend on the order nodes or edges are listed in.
  * Nodes the root cannot reach have no dominator and are absent from the tree.
  */
-export function dominatorTree(graph: Graph, root: string): DominatorTree {
+export function dominatorTree(input: Graph, root: string): DominatorTree {
+  const graph = normalise(input);
   if (!graph.has(root)) return { root, idom: new Map() };
 
   // Iterative depth-first search giving postorder numbers.
@@ -74,7 +75,8 @@ export function dominatorTree(graph: Graph, root: string): DominatorTree {
 }
 
 /** Nodes in the graph the root cannot reach (dead code, or an entry point missing from config), sorted. */
-export function unreachableFrom(graph: Graph, root: string): string[] {
+export function unreachableFrom(input: Graph, root: string): string[] {
+  const graph = normalise(input);
   const reachable = reachableFrom(graph, [root]);
   return [...graph.keys()].filter((id) => !reachable.has(id)).sort(compareIds);
 }

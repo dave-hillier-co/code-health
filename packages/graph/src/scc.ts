@@ -6,7 +6,8 @@ import { compareIds, normalise, type Graph } from "./graph.ts";
  * ordered by their lowest member, so the result does not depend on traversal order.
  * A node with no cycle is a singleton component.
  */
-export function stronglyConnectedComponents(graph: Graph): string[][] {
+export function stronglyConnectedComponents(input: Graph): string[][] {
+  const graph = normalise(input);
   const index = new Map<string, number>();
   const lowlink = new Map<string, number>();
   const onStack = new Set<string>();

@@ -50,3 +50,18 @@ describe("dominatorUnits", () => {
     }
   });
 });
+
+describe("dominatorUnits on un-normalised adjacency", () => {
+  it("treats leaf targets as nodes", () => {
+    const graph = new Map([["root", ["a"]], ["a", ["b"]]]);
+    const result = dominatorUnits(graph, "root");
+    expect(result.units.get("a")).toEqual(["a", "b"]);
+    expect(result.units.get("b")).toEqual(["b"]);
+  });
+
+  it("reports every node as unreachable when the root is not in the graph", () => {
+    const result = dominatorUnits(new Map([["x", ["y"]], ["y", []]]), "root");
+    expect(result.units.size).toBe(0);
+    expect(result.unreachable).toEqual(["x", "y"]);
+  });
+});

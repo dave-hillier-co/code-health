@@ -76,3 +76,10 @@ describe("condense", () => {
     }
   });
 });
+
+describe("un-normalised adjacency", () => {
+  it("includes leaf targets as components", () => {
+    const graph = new Map([["root", ["a"]], ["a", ["b"]]]);
+    expect(stronglyConnectedComponents(graph)).toEqual([["a"], ["b"], ["root"]]);
+  });
+});
