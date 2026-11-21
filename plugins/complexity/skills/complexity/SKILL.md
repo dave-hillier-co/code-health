@@ -180,13 +180,20 @@ When you finish, report in this order and keep it short:
 2. What you left alone and why.
 3. What the numbers cannot tell: lexical-only languages, code outside the ranked set, and, when `ranking.changeWeighted`
    is false, that the ranking is not weighted by change frequency.
-4. The outcome to watch: whether the simplified functions are cheaper to change over the next commits. Do not claim an
-   effect the data cannot show yet.
+4. The outcome to watch: whether the simplified functions are cheaper to change over the next commits. Once there are
+   commits after the simplification, produce it with
+   `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs outcome <last-commit> [--from <first-commit>] [--projects-dir ~/.claude/projects] --json`
+   and report `changeCost` (commits and lines churned per change in the acted-on files, with `fixCommitRate`), the
+   `difference` against the comparison files, the `rank` as a leading indicator only, `gamingCheck` (say so when
+   `suspected` is true: functions rose while interface depth fell) and `agentEffort` (files read and re-read per task
+   that edited the files). State each sample size, and when a figure is null or `agentEffort` is `not-measured`, say
+   the data cannot show it. Do not claim an effect from the acted-on files alone: the `difference` is what counts.
 
 ## Reference
 
 - [references/metrics.md](references/metrics.md): how each metric is counted, the default thresholds and every config key.
 - [references/remedies.md](references/remedies.md): the remedies with before and after examples, and the gaming patterns to refuse.
 - [references/hook.md](references/hook.md): the opt-in post-edit hook, what it measures, when it speaks and how to read its state.
+- [references/outcome.md](references/outcome.md): the `outcome` command, its instruments and how to read them.
 - [references/ci.md](references/ci.md): `check` and `diff` in CI and pre-commit, exit codes, and choosing a base.
 - [references/red-flags.md](references/red-flags.md): the shared design vocabulary.

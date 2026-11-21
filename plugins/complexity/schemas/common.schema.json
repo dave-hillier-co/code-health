@@ -110,7 +110,7 @@
       ]
     },
     "metricValues": {
-      "description": "The metrics a unit has. The structural layer gives cognitive, cyclomatic, nesting, parameters and length. The lexical layer gives nesting, length, keyword and bumps. `--metrics` leaves out the others.",
+      "description": "The metrics a unit has. The structural layer gives cognitive, cyclomatic, nesting, parameters, length and bumps. The lexical layer gives nesting, length, keyword and bumps. `--metrics` leaves out the others.",
       "type": "object",
       "properties": {
         "cognitive": {

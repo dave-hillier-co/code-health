@@ -5,6 +5,7 @@ import * as depth from "./commands/depth.ts";
 import * as diff from "./commands/diff.ts";
 import * as explain from "./commands/explain.ts";
 import * as files from "./commands/files.ts";
+import * as outcome from "./commands/outcome.ts";
 
 /** What a module in `commands/` exports. */
 export interface CommandModule {
@@ -27,6 +28,7 @@ export const commandModules: CommandModule[] = [
   diff,
   explain,
   files,
+  outcome,
 ];
 
 export const commands: Record<string, Command> = Object.fromEntries(commandModules.map((m) => [m.name, m.command]));
