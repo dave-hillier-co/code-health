@@ -57,6 +57,7 @@ test("lists new functions as added, with no before, and leaves out functions tha
     ["src/simple.ts#simple", "added", null],
   ]);
   expect(run.document.summary).toEqual({ added: 2, changed: 0, removed: 0, moved: 0, unchanged: 0 });
+  expectGolden("ratchet-added", "diff", run.stdout);
 });
 
 test("a function that only moved is matched to itself and not listed", async () => {
@@ -77,6 +78,7 @@ test("a function that moved and changed is listed, naming where it came from", a
   const run = await diff(repo, "main..feature");
   expect(run.rows).toHaveLength(1);
   expect(run.rows[0]).toMatchObject({ id: "src/billing.ts#computePrice", change: "changed", renamedFrom: "src/pricing.ts#price" });
+  expectGolden("ratchet-moved", "diff", run.stdout);
 });
 
 test("a revision alone is compared with the working tree, uncommitted and new files included", async () => {
@@ -85,6 +87,7 @@ test("a revision alone is compared with the working tree, uncommitted and new fi
   const run = await diff(repo, "main");
   expect(run.document.inputs).toMatchObject({ against: "working-tree", head: null });
   expect(run.rows.map((row) => row.id)).toEqual(["src/risky.ts#risky", "src/simple.ts#simple"]);
+  expectGolden("ratchet-dirty", "diff", run.stdout);
 });
 
 test("sorts the largest rise in cognitive complexity first", async () => {

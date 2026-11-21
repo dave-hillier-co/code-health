@@ -1,0 +1,80 @@
+{
+  "changedFiles": 2,
+  "command": "diff",
+  "config": "d6bf24b7a8f24936",
+  "inputs": {
+    "against": "revision",
+    "base": {
+      "rev": "main",
+      "sha": "849a854beefaa30058b27200084942c4e60f6dec"
+    },
+    "head": {
+      "rev": "feature",
+      "sha": "9cf74d19e85e45965b915e7d9848d3264cbcf205"
+    }
+  },
+  "repo": {
+    "dirty": false,
+    "head": "9cf74d19e85e45965b915e7d9848d3264cbcf205"
+  },
+  "results": [
+    {
+      "after": {
+        "cognitive": 10,
+        "cyclomatic": 5,
+        "length": 12,
+        "nesting": 4,
+        "parameters": 4
+      },
+      "before": null,
+      "change": "added",
+      "delta": null,
+      "endLine": 12,
+      "id": "src/risky.ts#risky",
+      "labels": [
+        "cyclomatic-warn",
+        "cognitive-warn"
+      ],
+      "path": "src/risky.ts",
+      "renamedFrom": null,
+      "score": 10,
+      "startLine": 1,
+      "unit": "risky"
+    },
+    {
+      "after": {
+        "cognitive": 0,
+        "cyclomatic": 1,
+        "length": 3,
+        "nesting": 0,
+        "parameters": 1
+      },
+      "before": null,
+      "change": "added",
+      "delta": null,
+      "endLine": 3,
+      "id": "src/simple.ts#simple",
+      "labels": [],
+      "path": "src/simple.ts",
+      "renamedFrom": null,
+      "score": 0,
+      "startLine": 1,
+      "unit": "simple"
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "added": 2,
+    "changed": 0,
+    "moved": 0,
+    "removed": 0,
+    "unchanged": 0
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 2
+  },
+  "unsupportedFiles": 0
+}

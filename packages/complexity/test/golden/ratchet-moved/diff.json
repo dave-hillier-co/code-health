@@ -1,0 +1,72 @@
+{
+  "changedFiles": 2,
+  "command": "diff",
+  "config": "d6bf24b7a8f24936",
+  "inputs": {
+    "against": "revision",
+    "base": {
+      "rev": "main",
+      "sha": "849a854beefaa30058b27200084942c4e60f6dec"
+    },
+    "head": {
+      "rev": "feature",
+      "sha": "e51d3590e879ce3507cc413f770fcf4db3069926"
+    }
+  },
+  "repo": {
+    "dirty": false,
+    "head": "e51d3590e879ce3507cc413f770fcf4db3069926"
+  },
+  "results": [
+    {
+      "after": {
+        "cognitive": 9,
+        "cyclomatic": 6,
+        "length": 12,
+        "nesting": 2,
+        "parameters": 1
+      },
+      "before": {
+        "cognitive": 8,
+        "cyclomatic": 5,
+        "length": 11,
+        "nesting": 2,
+        "parameters": 1
+      },
+      "change": "changed",
+      "delta": {
+        "cognitive": 1,
+        "cyclomatic": 1,
+        "length": 1,
+        "nesting": 0,
+        "parameters": 0
+      },
+      "endLine": 12,
+      "id": "src/billing.ts#computePrice",
+      "labels": [
+        "cyclomatic-warn",
+        "cognitive-warn"
+      ],
+      "path": "src/billing.ts",
+      "renamedFrom": "src/pricing.ts#price",
+      "score": 1,
+      "startLine": 1,
+      "unit": "computePrice"
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "added": 0,
+    "changed": 1,
+    "moved": 1,
+    "removed": 0,
+    "unchanged": 0
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 1
+  },
+  "unsupportedFiles": 0
+}

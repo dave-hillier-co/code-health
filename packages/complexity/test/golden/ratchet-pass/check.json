@@ -1,0 +1,34 @@
+{
+  "changedFiles": 1,
+  "command": "check",
+  "config": "d6bf24b7a8f24936",
+  "inputs": {
+    "against": "head",
+    "base": {
+      "rev": "merge base of HEAD and main",
+      "sha": "849a854beefaa30058b27200084942c4e60f6dec"
+    },
+    "delta": 0
+  },
+  "repo": {
+    "dirty": false,
+    "head": "03dca42c16e4261f63e00748dba5214729f13cc0"
+  },
+  "results": [],
+  "schemaVersion": 1,
+  "summary": {
+    "added": 1,
+    "changed": 0,
+    "compared": 1,
+    "moved": 0,
+    "removed": 0,
+    "violations": 0
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 0
+  },
+  "unsupportedFiles": 0
+}

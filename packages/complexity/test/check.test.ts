@@ -81,6 +81,7 @@ describe("a function that existed at the base", () => {
     const run = await check(repo);
     expect(run.code).toBe(ExitCode.Success);
     expect(run.document.summary.compared).toBe(1);
+    expectGolden("ratchet-pass", "check", run.stdout);
   });
 });
 
@@ -109,6 +110,7 @@ describe("a function that moved or was renamed", () => {
     const run = await check(repo);
     expect(run.code).toBe(ExitCode.Success);
     expect(run.document.summary).toMatchObject({ moved: 1, removed: 0 });
+    expectGolden("ratchet-moved", "check", run.stdout);
   });
 
   test("is still caught when it worsened on the way", async () => {
@@ -122,6 +124,7 @@ describe("a function that moved or was renamed", () => {
       ["src/billing.ts#computePrice", "worsened", "cognitive", "src/pricing.ts#price"],
       ["src/billing.ts#computePrice", "worsened", "cyclomatic", "src/pricing.ts#price"],
     ]);
+    expectGolden("ratchet-moved-worsened", "check", run.stdout);
   });
 
   test("counts as new when it was rewritten beyond recognition", async () => {
@@ -169,6 +172,7 @@ describe("the base", () => {
     const sameCommit = await check(repo, "--base", "HEAD");
     expect(sameCommit.code).toBe(ExitCode.Success);
     expect(sameCommit.document.summary.compared).toBe(0);
+    expectGolden("ratchet-base", "check", sameCommit.stdout);
     expect((await check(repo, "--base", "HEAD~1")).code).toBe(ExitCode.CheckFailed);
     const unknown = await check(repo, "--base", "nope");
     expect(unknown.code).toBe(ExitCode.Usage);
@@ -202,6 +206,7 @@ describe("uncommitted work", () => {
     expect(run.document.inputs.against).toBe("working-tree");
     expect(run.document.summary).toMatchObject({ added: 2 });
     expect(run.findings.map((f) => f.id)).toEqual(["src/risky.ts#risky", "src/risky.ts#risky"]);
+    expectGolden("ratchet-dirty", "check", run.stdout);
   });
 });
 
@@ -220,7 +225,9 @@ test("the config can raise thresholds for some paths", async () => {
     lenient,
   );
   const run = await check(repo);
+  expect(run.code).toBe(ExitCode.CheckFailed);
   expect([...new Set(run.findings.map((f) => f.id))]).toEqual(["src/risky.ts#risky"]);
+  expectGolden("ratchet-override", "check", run.stdout);
 });
 
 test("without config the thresholds are the defaults (cognitive 15, cyclomatic 10), which risky is under", async () => {

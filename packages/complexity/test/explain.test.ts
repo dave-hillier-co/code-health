@@ -50,6 +50,7 @@ test("describes a rule when given a name instead of a unit", async () => {
   const run = await runComplexity(repo.path, ["explain", "bumpy-road", "--json"]);
   expect(run.code).toBe(ExitCode.Success);
   expect(JSON.parse(run.stdout).results).toMatchObject({ rule: "bumpy-road" });
+  expectGolden("pricing", "explain.rule", run.stdout);
 });
 
 test("names the functions a file has when the unit is not found", async () => {
