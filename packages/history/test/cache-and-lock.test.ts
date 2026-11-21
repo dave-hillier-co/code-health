@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
@@ -95,4 +95,33 @@ test("waiting for a live holder times out", async () => {
   await new Promise((r) => setTimeout(r, 20));
   await expect(withLock(path, async () => 1, { timeoutMs: 100 })).rejects.toBeInstanceOf(LockTimeoutError);
   await holder;
+});
+
+test("an empty lock file left by a crash is reclaimed once it has aged", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "code-health-lock-"));
+  dirs.push(dir);
+  const path = join(dir, "x.lock");
+  writeFileSync(path, "");
+  const old = new Date(Date.now() - 60_000);
+  utimesSync(path, old, old);
+  expect(await withLock(path, async () => "ok", { timeoutMs: 1000 })).toBe("ok");
+});
+
+test("a fresh empty lock file is left alone, as its owner may still be writing it", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "code-health-lock-"));
+  dirs.push(dir);
+  const path = join(dir, "x.lock");
+  writeFileSync(path, "");
+  await expect(withLock(path, async () => 1, { timeoutMs: 100 })).rejects.toBeInstanceOf(LockTimeoutError);
+});
+
+test("a holder whose lock was removed does not delete the next owner's lock", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "code-health-lock-"));
+  dirs.push(dir);
+  const path = join(dir, "x.lock");
+  await withLock(path, async () => {
+    rmSync(path);
+    writeFileSync(path, JSON.stringify({ token: "someone-else", pid: process.pid, host: "elsewhere", time: Date.now() }));
+  });
+  expect(existsSync(path)).toBe(true);
 });
