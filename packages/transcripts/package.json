@@ -1,0 +1,15 @@
+{
+  "name": "@code-health/transcripts",
+  "version": "0.0.0",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@code-health/graph": "^0.0.0"
+  }
+}
