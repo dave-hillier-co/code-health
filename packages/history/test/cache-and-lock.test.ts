@@ -1,4 +1,5 @@
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
@@ -59,13 +60,27 @@ test("a lock serialises holders", async () => {
   dirs.push(dir);
   const path = join(dir, "x.lock");
   const events: string[] = [];
-  const hold = (name: string, ms: number) =>
-    withLock(path, async () => {
-      events.push(`${name}:start`);
-      await new Promise((r) => setTimeout(r, ms));
-      events.push(`${name}:end`);
-    });
-  await Promise.all([hold("a", 80), hold("b", 10)]);
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  let signalHeld!: () => void;
+  const held = new Promise<void>((resolve) => (signalHeld = resolve));
+
+  const a = withLock(path, async () => {
+    events.push("a:start");
+    signalHeld();
+    await released;
+    events.push("a:end");
+  });
+  await held;
+  const b = withLock(path, async () => {
+    events.push("b:start");
+    events.push("b:end");
+  });
+  // b is now polling for the lock a holds; let it poll a few times before a lets go.
+  await new Promise((r) => setTimeout(r, 100));
+  expect(events).toEqual(["a:start"]);
+  release();
+  await Promise.all([a, b]);
   expect(events).toEqual(["a:start", "a:end", "b:start", "b:end"]);
   expect(existsSync(path)).toBe(false);
 });
@@ -83,7 +98,8 @@ test("a lock left by a dead process is taken over", async () => {
   dirs.push(dir);
   const path = join(dir, "x.lock");
   const { hostname } = await import("node:os");
-  writeFileSync(path, JSON.stringify({ pid: 2 ** 22 + 12345, host: hostname(), time: Date.now() }));
+  const child = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
+  writeFileSync(path, JSON.stringify({ token: "dead", pid: Number(child.stdout), host: hostname(), time: Date.now() }));
   expect(await withLock(path, async () => "ok", { timeoutMs: 1000 })).toBe("ok");
 });
 
@@ -91,9 +107,17 @@ test("waiting for a live holder times out", async () => {
   const dir = mkdtempSync(join(tmpdir(), "code-health-lock-"));
   dirs.push(dir);
   const path = join(dir, "x.lock");
-  const holder = withLock(path, () => new Promise((r) => setTimeout(r, 300)));
-  await new Promise((r) => setTimeout(r, 20));
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  let signalHeld!: () => void;
+  const held = new Promise<void>((resolve) => (signalHeld = resolve));
+  const holder = withLock(path, async () => {
+    signalHeld();
+    await released;
+  });
+  await held;
   await expect(withLock(path, async () => 1, { timeoutMs: 100 })).rejects.toBeInstanceOf(LockTimeoutError);
+  release();
   await holder;
 });
 
