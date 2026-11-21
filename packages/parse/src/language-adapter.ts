@@ -101,6 +101,11 @@ export interface ModuleResolver {
    * `__init__.py`, whose imports are the package's public names. Elsewhere an import nothing uses is still a dependency.
    */
   reexportsImplicitly?(path: string): boolean;
+  /**
+   * True when a path that leads back into its own file is no dependency (Rust `use crate::cli::inner::Thing`
+   * inside `cli.rs`, where `inner` is an inline module). TypeScript keeps a self-import as an edge and leaves it out.
+   */
+  dropsSelfDependencies?: boolean;
 }
 
 export interface ResolveInput {

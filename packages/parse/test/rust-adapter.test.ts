@@ -42,6 +42,19 @@ describe("what a crate exposes", () => {
   });
 });
 
+describe("a `use` path that names an inline module of its own file", () => {
+  it("makes no edge from the file to itself", async () => {
+    const analysis = await analyse({
+      "src/lib.rs": "mod cli;\n",
+      "src/cli.rs": "use crate::cli::inner::Thing;\n\npub mod inner {\n    pub struct Thing;\n}\n\npub fn make() -> Thing { Thing }\n",
+    });
+    const selves = (list: { from: string; to: string }[]) => list.filter((edge) => edge.from === edge.to);
+    expect(selves(analysis.importEdges)).toEqual([]);
+    expect(selves(analysis.fileEdges)).toEqual([]);
+    expect(selves(analysis.consumers)).toEqual([]);
+  });
+});
+
 describe("the module tree", () => {
   it("finds a module as `name.rs` or `name/mod.rs`, and the children of `name.rs` under `name/`", async () => {
     const analysis = await analyse({

@@ -20,6 +20,8 @@ const builtinCrates = new Set(["std", "core", "alloc", "proc_macro", "test"]);
 
 export class PathResolver implements ModuleResolver {
   readonly tree: ModuleTree;
+  /** A `use` of an inline module of the file itself is no dependency. */
+  readonly dropsSelfDependencies = true;
 
   constructor(paths: readonly string[], configs: ReadonlyMap<string, string>) {
     this.tree = new ModuleTree(paths, readCrates(paths, configs));

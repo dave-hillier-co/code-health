@@ -74,6 +74,7 @@ export class ImportModel {
   }
 
   private addImportEdge(from: string, to: string, kind: ImportEdge["kind"], typeOnly: boolean): void {
+    if (from === to && this.resolver.dropsSelfDependencies === true) return;
     this.importEdges.set(`${from}\0${to}\0${kind}\0${typeOnly}`, { from, to, kind, typeOnly });
   }
 
@@ -186,6 +187,8 @@ export class ImportModel {
 
   /** Records that a file depends on another, even when nothing in it is referenced. */
   private touch(from: string, to: string): FileEdge {
+    // The edge of a file to itself is counted into nothing when the language does not want it.
+    if (from === to && this.resolver.dropsSelfDependencies === true) return { from, to, kind: "reference", calls: 0, references: 0 };
     const key = `${from}\0${to}`;
     let edge = this.fileEdges.get(key);
     if (!edge) {
@@ -226,6 +229,7 @@ export class ImportModel {
     toSymbol: string | undefined,
     memberOfNamespace: boolean,
   ): void {
+    if (from === to && this.resolver.dropsSelfDependencies === true) return;
     const direct = use.member === undefined || memberOfNamespace;
     const kind = direct ? use.kind : "reference";
     const edge = this.touch(from, to);
