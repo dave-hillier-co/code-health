@@ -167,3 +167,28 @@ test("a historical blob is analysed from git without checking it out", async () 
   expect(old.file.keywordComplexity).toBe(0);
   expect(current.file.keywordComplexity).toBe(1);
 });
+
+test("per-function metrics are released for a profile whose recorded agreement clears the bar", () => {
+  const agreement = { typescript: { units: 10, found: 10, exact: 9, blocks: 10, spurious: 1 } };
+  const { functions } = analyseSource("sample.ts", read("sample.ts"), { agreement, agreementBar: 0.9 });
+  expect(functions.gated).toBe(false);
+  if (!functions.gated) expect(functions.agreement).toEqual({ exactRate: 0.9, spuriousRate: 0.1, bar: 0.9 });
+});
+
+test("per-function metrics stay gated below the bar, without a measurement, for mapped profiles and without a profile", () => {
+  const agreement = { typescript: { units: 10, found: 10, exact: 8, blocks: 10, spurious: 1 } };
+  expect(analyseSource("sample.ts", read("sample.ts"), { agreement, agreementBar: 0.9 }).functions.gated).toBe(true);
+  expect(analyseSource("sample.ts", read("sample.ts"), { agreement: {} }).functions.gated).toBe(true);
+  const mapped = analyseSource("a.foo", read("sample.ts"), {
+    agreement: { typescript: { units: 10, found: 10, exact: 10, blocks: 10, spurious: 0 } },
+    mappings: { foo: "typescript" },
+  });
+  expect(mapped.unverified).toBe(true);
+  expect(mapped.functions.gated).toBe(true);
+  expect(analyseSource("notes.txt", "a\n").functions.gated).toBe(true);
+});
+
+test("the recorded agreement is the default measurement, so a zero bar releases it", () => {
+  const { functions } = analyseSource("sample.ts", read("sample.ts"), { agreementBar: 0 });
+  expect(functions.gated).toBe(false);
+});

@@ -1,3 +1,5 @@
+import { exactRate, spuriousRate, type AgreementCounts } from "./agreement.ts";
+import { recordedAgreement } from "./agreement-rates.ts";
 import { findFunctionBlocks, type FunctionBlock } from "./blocks.ts";
 import { indentationMetrics, lengthMetrics, type IndentationMetrics, type LengthMetrics } from "./indentation.ts";
 import {
@@ -10,7 +12,14 @@ import {
 import { selectProfile } from "./profile.ts";
 import { stripSource } from "./strip.ts";
 
+/** Default minimum exact-boundary rate against the structural layer for per-function metrics to be reported. */
+export const DEFAULT_AGREEMENT_BAR = 0.9;
+
 export interface AnalyseOptions {
+  /** Minimum exact-boundary agreement rate (0 to 1) for per-function metrics to be released. Defaults to 0.9. */
+  agreementBar?: number;
+  /** Measured agreement per profile name. Defaults to the rates recorded in the repository. */
+  agreement?: Record<string, AgreementCounts>;
   /** Config mapping from file extension (no dot) to a profile name. */
   mappings?: Record<string, string>;
   bumpDepth?: number;
@@ -28,6 +37,15 @@ export interface MeasuredBlock extends FunctionBlock {
   bumpyRoad: boolean;
 }
 
+export type FunctionRelease =
+  | { gated: true; gate: "agreement"; reason: string; blocks: MeasuredBlock[] }
+  | {
+      gated: false;
+      gate: "agreement";
+      agreement: { exactRate: number; spuriousRate: number; bar: number };
+      blocks: MeasuredBlock[];
+    };
+
 export interface FileAnalysis {
   path: string;
   /** Which layer produced the values. */
@@ -39,11 +57,11 @@ export interface FileAnalysis {
   /** The shipped output of this layer. */
   file: FileMetrics;
   /**
-   * Per-function metrics are computed but withheld until the agreement test
-   * against the structural layer clears the bar for the language (milestone 2).
-   * Consumers must not report `blocks` while `gated` is true.
+   * Per-function metrics are released only where the profile's recorded agreement with the structural
+   * layer clears the bar (milestone 2). While `gated` is true the blocks are computed but must not be
+   * reported. When released, `agreement` carries the rates that travel with them.
    */
-  functions: { gated: true; gate: "agreement"; blocks: MeasuredBlock[] };
+  functions: FunctionRelease;
   /** What could not be measured, and why. */
   skipped: string[];
 }
@@ -82,7 +100,24 @@ export function analyseSource(path: string, content: string, options: AnalyseOpt
     profile: profile?.name ?? null,
     unverified: selection?.mapped ?? false,
     file,
-    functions: { gated: true, gate: "agreement", blocks },
+    functions: releaseFunctions(profile?.name, selection?.mapped ?? false, blocks, options),
     skipped,
   };
+}
+
+function releaseFunctions(
+  profileName: string | undefined,
+  mapped: boolean,
+  blocks: MeasuredBlock[],
+  options: AnalyseOptions,
+): FunctionRelease {
+  const gated = (reason: string): FunctionRelease => ({ gated: true, gate: "agreement", reason, blocks });
+  if (profileName === undefined) return gated("no lexer profile");
+  if (mapped) return gated("profile mapped by config, so no agreement is measured for this language");
+  const counts = (options.agreement ?? recordedAgreement)[profileName];
+  if (counts === undefined) return gated(`no agreement measured for ${profileName}`);
+  const bar = options.agreementBar ?? DEFAULT_AGREEMENT_BAR;
+  const rate = exactRate(counts);
+  if (rate < bar) return gated(`${profileName} agreement ${rate} is below the bar ${bar}`);
+  return { gated: false, gate: "agreement", agreement: { exactRate: rate, spuriousRate: spuriousRate(counts), bar }, blocks };
 }
