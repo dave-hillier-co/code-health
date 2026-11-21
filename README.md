@@ -50,4 +50,4 @@ See `CONTRIBUTING.md` for adding a plugin, writing a skill and running evals.
 
 ## Licence
 
-Dual-licensed under `AGPL-3.0-only` ([LICENSE](LICENSE)) or a commercial licence. See [LICENSING.md](LICENSING.md). Contributions assign copyright to David Hillier; see [CONTRIBUTING.md](CONTRIBUTING.md#contributions-and-copyright).
+Dual-licensed under `AGPL-3.0-only` ([LICENSE](LICENSE)) or a commercial licence. See [LICENSING.md](LICENSING.md). External contributions are not accepted.
