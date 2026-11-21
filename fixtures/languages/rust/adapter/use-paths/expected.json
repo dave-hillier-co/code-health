@@ -1,0 +1,44 @@
+{
+  "units": {
+    "src/config.rs": [
+      ["Settings", "class", 1, 3],
+      ["Mode", "class", 5, 8],
+      ["default_ok", "function", 10, 12]
+    ],
+    "src/engine/mod.rs": [["run", "function", 9, 16]],
+    "src/engine/rules.rs": [
+      ["check", "function", 4, 6],
+      ["unused", "function", 8, 10]
+    ]
+  },
+  "importEdges": [
+    "src/engine/mod.rs -> src/config.rs import",
+    "src/engine/mod.rs -> src/engine/rules.rs import",
+    "src/engine/mod.rs -> src/lib.rs import",
+    "src/engine/rules.rs -> src/config.rs import",
+    "src/engine/rules.rs -> src/engine/mod.rs import",
+    "src/lib.rs -> src/config.rs import",
+    "src/lib.rs -> src/engine/mod.rs import",
+    "src/lib.rs -> src/engine/mod.rs reexport"
+  ],
+  "fileEdges": [
+    "src/engine/mod.rs -> src/config.rs call call=1 reference=2",
+    "src/engine/mod.rs -> src/engine/rules.rs call call=1 reference=0",
+    "src/engine/rules.rs -> src/config.rs reference call=0 reference=1",
+    "src/engine/rules.rs -> src/engine/mod.rs call call=1 reference=0"
+  ],
+  "consumers": [
+    "src/engine/mod.rs#run -> src/config.rs#Mode reference x1",
+    "src/engine/mod.rs#run -> src/config.rs#Settings reference x1",
+    "src/engine/mod.rs#run -> src/config.rs#default_ok call x1",
+    "src/engine/mod.rs#run -> src/engine/rules.rs#check call x1",
+    "src/engine/rules.rs#unused -> src/config.rs#Settings reference x1",
+    "src/engine/rules.rs#unused -> src/engine/mod.rs#run call x1"
+  ],
+  "unresolved": [
+    "src/engine/rules.rs:2 crate::engine export-not-found",
+    "src/lib.rs:3 mod missing not-found"
+  ],
+  "barrels": ["src/lib.rs"],
+  "syntaxErrors": []
+}
