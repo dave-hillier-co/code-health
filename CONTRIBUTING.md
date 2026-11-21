@@ -165,6 +165,8 @@ Register it by adding one line to each of these, named for the id (a dash is wri
 | `packages/complexity/src/registered-languages.ts` | `export { language as <id> } from "./languages/<id>.ts";` |
 | `packages/lexical/src/recorded-agreement.ts` | Written for you by `UPDATE_AGREEMENT=1`, with `agreement-rates/<profile>.ts`. |
 
+A registry depends only on the language files, and the module that looks languages up depends only on the registry. The types a language file needs (`PackagingLanguage`, `MoverBackend`, `ComplexityLanguage`, `CensusLanguage`, and the resolved dependency types in `packages/parse/src/resolved-dependencies.ts`) live in modules that neither the registry nor the lookup imports back through, so a language file never imports the lookup module. `packages/structure/test/own-source.test.ts` fails on an import cycle in `packages/`.
+
 The lexer profile the adapter names (`lexerProfile`) already exists in `packages/lexical/src/profile.ts`. A grammar's npm package is installed with the npm CLI (`npm install <package> -w @code-health/parse`).
 
 ### Conformance
