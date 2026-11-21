@@ -6,7 +6,7 @@ import { goMetricRules, receiverNameOf } from "./metric-rules.ts";
 import { functionShape, isExported, passThroughOf, typeShape } from "./shape.ts";
 
 /** Bump when the extraction rules change in a way that alters facts for the same source. */
-export const extractorVersion = 1;
+export const extractorVersion = 2;
 
 /**
  * Go facts for the symbol-based dependency model with a resolver of its own (resolve-packages.ts). Imports
@@ -40,11 +40,12 @@ interface Context {
   receiver?: { name: string; type: string };
 }
 
-function isGenerated(root: Node): boolean {
-  for (const child of root.children) {
-    if (child === null) continue;
-    if (child.type === "package_clause") return false;
-    if (child.type === "comment" && GENERATED.test(child.text)) return true;
+/** True when a line comment above the package clause says the file was generated. */
+export function isGeneratedSource(text: string): boolean {
+  for (const line of text.split("\n")) {
+    const trimmed = line.trimEnd();
+    if (GENERATED.test(trimmed)) return true;
+    if (/^package\s/.test(trimmed)) return false;
   }
   return false;
 }
@@ -154,8 +155,8 @@ class Extractor {
     for (const child of root.namedChildren) {
       if (child.type === "package_clause") packageName = child.namedChildren[0]?.text ?? "";
     }
-    if (isGenerated(root)) {
-      return { units: [], imports: [], reexports: [], exports: [], references: [], symbols: { namespaces: [packageName], uses: [], declarations: [], references: [] }, nodes: 0, hasSyntaxErrors: root.hasError };
+    if (isGeneratedSource(root.text)) {
+      return { generated: true, units: [], imports: [], reexports: [], exports: [], references: [], symbols: { namespaces: [packageName], uses: [], declarations: [], references: [] }, nodes: 0, hasSyntaxErrors: root.hasError };
     }
     for (const child of root.namedChildren) {
       if (child.type === "type_declaration") {

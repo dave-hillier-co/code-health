@@ -1,6 +1,6 @@
 import { analyseSource, type FileAnalysis } from "@code-health/lexical/analyse-source";
 import type { LengthMetrics } from "@code-health/lexical/indentation";
-import { isTestPath } from "@code-health/parse/languages";
+import { adapterForPath, isTestPath } from "@code-health/parse/languages";
 import { factsForBlob } from "@code-health/parse/file-facts";
 import { GrammarSet } from "@code-health/parse/grammars";
 import type { ParseCache } from "@code-health/parse/parse-cache";
@@ -86,7 +86,7 @@ export interface MeasureOptions {
 
 export interface Measurement {
   files: FileRecord[];
-  /** Files left out because they are binary or too large to be worth reading. */
+  /** Files left out because they are binary or too large to be worth reading. `excluded` also counts generated files. */
   skippedFiles: { binary: number; large: number; excluded: number; tests: number };
   stats: { parsed: number; cached: number };
 }
@@ -124,6 +124,10 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
       }
       if (text.includes("\0")) {
         skippedFiles.binary++;
+        continue;
+      }
+      if (adapterForPath(path)?.isGeneratedSource?.(text) === true) {
+        skippedFiles.excluded++;
         continue;
       }
       const lexical = analyseSource(path, text, { agreementBar: settings.agreementBar });

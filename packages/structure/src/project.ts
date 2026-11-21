@@ -40,8 +40,9 @@ export async function projectFromTree(tree: SourceTree, headSha: string, exclude
   const analysis = await analyseTree(tree, cache === undefined ? {} : { cache });
   const excluded = compileGlobs(exclude);
 
+  const generated = new Set(analysis.generatedFiles);
   const files = [...tree.files.keys()]
-    .filter((path) => hasAdapter(path) && !isTestPath(path) && !excluded(path))
+    .filter((path) => hasAdapter(path) && !isTestPath(path) && !excluded(path) && !generated.has(path))
     .sort(compareUtf8);
   const inProject = new Set(files);
 

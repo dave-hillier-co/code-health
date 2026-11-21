@@ -1,7 +1,7 @@
 import type { LanguageAdapter } from "../../language-adapter.ts";
 import { goBoundaries } from "./boundaries.ts";
 import { extractFileCensus } from "./census.ts";
-import { extractFacts, extractorVersion } from "./extract-facts.ts";
+import { extractFacts, extractorVersion, isGeneratedSource } from "./extract-facts.ts";
 import { isGoModFile, isGoWorkFile } from "./go-mod.ts";
 import { goMetricRules } from "./metric-rules.ts";
 import { resolvePackages } from "./resolve-packages.ts";
@@ -20,6 +20,7 @@ export const adapter: LanguageAdapter = {
   grammars: [{ spec: { id: "go", packageName: "tree-sitter-go", file: "tree-sitter-go.wasm" }, extensions: [".go"] }],
   extractorVersion,
   extract: extractFacts,
+  isGeneratedSource,
   isTestPath: (path) => path.endsWith("_test.go") || /(^|\/)testdata\//.test(path),
   metrics: goMetricRules,
   dependencies: {

@@ -153,6 +153,8 @@ export interface MacroFact {
 }
 
 export interface FileFacts {
+  /** A generated file, read as having no code: its facts are empty and the file is listed in `generatedFiles` of the analysis. */
+  generated?: boolean;
   units: UnitFact[];
   imports: ImportFact[];
   reexports: ReexportFact[];

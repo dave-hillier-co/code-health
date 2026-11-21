@@ -39,7 +39,8 @@ export function countLines(text: string): number {
 export async function loadProject(root: string, ref: string, settings: LocalitySettings): Promise<Project> {
   const tree = withoutExcluded(await treeFromRef(root, ref), settings.exclude);
   const analysis = await analyseTree(tree, { cache: await ParseCache.forRepository(root) });
-  const production = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path));
+  const generated = new Set(analysis.generatedFiles);
+  const production = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !generated.has(path));
   const texts = await tree.readMany(production);
   const packageEntries = await readPackageEntries(tree);
   return { analysis, production, isTest: isTestPath, texts, packageEntries };

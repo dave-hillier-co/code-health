@@ -110,11 +110,13 @@ export interface ProjectAnalysis {
   filesWithSyntaxErrors: string[];
   /** Files where a macro stands in for a declaration or a body of code, which a parser that does not run the preprocessor never sees. Languages with no preprocessor have none. */
   filesWithMacroCode: string[];
+  /** Generated files, which are read as empty: they have no units and no edges, and are not production code. */
+  generatedFiles: string[];
   stats: { parsed: number; cached: number };
 }
 
 /** What a dependency model derives from the facts: everything in a `ProjectAnalysis` that resolution decides. */
-export type ResolvedDependencies = Omit<ProjectAnalysis, "units" | "filesWithSyntaxErrors" | "filesWithMacroCode" | "stats">;
+export type ResolvedDependencies = Omit<ProjectAnalysis, "units" | "filesWithSyntaxErrors" | "filesWithMacroCode" | "generatedFiles" | "stats">;
 
 export interface AnalyseOptions extends LoadOptions {
   cache?: ParseCache;
@@ -198,7 +200,9 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
   const units: SourceUnit[] = [];
   const filesWithSyntaxErrors: string[] = [];
   const filesWithMacroCode: string[] = [];
+  const generatedFiles: string[] = [];
   for (const [path, fileFacts] of facts) {
+    if (fileFacts.generated === true) generatedFiles.push(path);
     if (fileFacts.hasSyntaxErrors) filesWithSyntaxErrors.push(path);
     if (fileFacts.macroGenerated !== undefined) filesWithMacroCode.push(path);
     const exportedLocals = new Set([
@@ -247,6 +251,7 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
     unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
     filesWithSyntaxErrors,
     filesWithMacroCode,
+    generatedFiles,
   };
 }
 

@@ -44,6 +44,8 @@ export interface LanguageAdapter {
   extractorVersion: number;
   /** Units with qualified names, and the imports, exports, references or symbols that dependency resolution reads. Lines are 1-based. */
   extract(root: Node, options: ExtractOptions): FileFacts;
+  /** True for text that says it was generated (a header the language's tools write). Generated files are left out of the production files and of measurement. Absent when a language has no such convention. */
+  isGeneratedSource?(text: string): boolean;
   /** True for test files, by the language's naming conventions. Asked only about paths the adapter's extensions claim. */
   isTestPath(path: string): boolean;
   metrics: MetricRules;
