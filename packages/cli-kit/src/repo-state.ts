@@ -36,5 +36,12 @@ export function readRepoState(cwd: string): RepoState {
 }
 
 function git(cwd: string, ...args: string[]): string {
-  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  return execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+    maxBuffer: 1024 * 1024 * 1024,
+    // Analysis never modifies the repository: do not refresh the index under a lock.
+    env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
+  }).trim();
 }
