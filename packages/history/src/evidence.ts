@@ -30,6 +30,20 @@ export interface EvidenceOptions {
   /** Analysis window in months back from the head commit's date. Default 12. */
   windowMonths?: number;
   thresholds?: EvidenceThresholds;
+  /** Changes needed in each half before a commit-size shift is reported. Default 20. */
+  minChangesForShift?: number;
+}
+
+/**
+ * Median files per logical change in the earlier and later half of the usable
+ * history. A large move either way usually means a change of merge policy
+ * (to or from squash merges), after which a commit means something different.
+ */
+export interface CommitSize {
+  earlierMedian: number;
+  laterMedian: number;
+  /** The later median is at least double, or at most half, the earlier one. */
+  shifted: boolean;
 }
 
 /** The suite's repository-level `evidence` block. */
@@ -48,6 +62,7 @@ export interface Evidence {
     availableSince: number | null;
   };
   importedHistory: ImportedHistory[];
+  commitSize: CommitSize;
   thresholds: EvidenceThresholds;
 }
 
@@ -62,6 +77,24 @@ export function monthsBefore(anchor: number, months: number): number {
   const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
   date.setUTCDate(Math.min(day, lastDay));
   return Math.floor(date.getTime() / 1000);
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+function commitSize(changes: readonly LogicalChange[], minChanges: number): CommitSize {
+  const half = changes.length >> 1;
+  const earlier = changes.slice(0, half).map((c) => c.files.length);
+  const later = changes.slice(half).map((c) => c.files.length);
+  const earlierMedian = median(earlier);
+  const laterMedian = median(later);
+  const enough = earlier.length >= minChanges && later.length >= minChanges;
+  const shifted = enough && earlierMedian > 0 && (laterMedian >= earlierMedian * 2 || laterMedian <= earlierMedian / 2);
+  return { earlierMedian, laterMedian, shifted };
 }
 
 const meets = (t: GradeThreshold, months: number, changes: number, contributors: number) =>
@@ -107,6 +140,7 @@ export function computeEvidence(
     window: { months: windowMonths, since, until },
     truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
     importedHistory: [...imported],
+    commitSize: commitSize(changes, options.minChangesForShift ?? 20),
     thresholds,
   };
 }

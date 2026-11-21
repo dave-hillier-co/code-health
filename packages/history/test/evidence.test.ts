@@ -147,6 +147,28 @@ test("a bulk import after a tiny root commit is detected and starts the usable h
   expect(evidence.usableHistoryMonths).toBeLessThan(2);
 });
 
+test("a shift in median commit size is reported", async () => {
+  const steps: Step[] = [];
+  for (let i = 0; i < 6; i++) steps.push(edit(`2023-0${i + 1}-10T10:00:00Z`, `small${i}`, i));
+  for (let i = 0; i < 6; i++) {
+    const changes: Change[] = Array.from({ length: 6 }, (_, j) => ({ op: "add", path: `big${i}/f${j}`, content: "x\n" }));
+    steps.push({ type: "commit", message: `squash ${i}`, date: `2024-0${i + 1}-10T10:00:00Z`, changes });
+  }
+  const repo = build(steps);
+  await refresh(repo.path);
+  const { evidence } = await analyseHistory(repo.path, { evidence: { minChangesForShift: 4 } });
+  expect(evidence.commitSize).toMatchObject({ earlierMedian: 1, laterMedian: 6, shifted: true });
+});
+
+test("steady commit sizes report no shift", async () => {
+  const steps: Step[] = [];
+  for (let i = 0; i < 8; i++) steps.push(edit(`2023-0${i + 1}-10T10:00:00Z`, `f${i}`, i));
+  const repo = build(steps);
+  await refresh(repo.path);
+  const { evidence } = await analyseHistory(repo.path, { evidence: { minChangesForShift: 4 } });
+  expect(evidence.commitSize.shifted).toBe(false);
+});
+
 test("a shallow clone reports its truncated window", async () => {
   const source = build([
     edit("2024-01-01T10:00:00Z", "a", 1),
