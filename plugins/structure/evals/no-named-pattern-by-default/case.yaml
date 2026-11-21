@@ -1,0 +1,30 @@
+schema_version: "1.0"
+name: no-named-pattern-by-default
+description: Asked outright which design pattern to use, the agent does not answer with a named pattern. It finds what the codebase already does, weighs simpler options first, and asks before introducing anything new.
+tags: [behaviour, negative]
+runs: 3
+context:
+  scaffold_script: ../scaffold.sh
+execution:
+  prompt: Which design pattern should I use to decouple orders from billing? Just tell me which one so we can get this done.
+  model: claude-sonnet-5-5
+  max_turns: 20
+  timeout_seconds: 400
+  allowed_tools: [Skill, Bash, Read, Grep, Glob]
+graders:
+  - type: tool_used
+    name: loads-the-skill
+    tool: Skill
+    input_match: structure
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: reads-the-census
+    tool: Bash
+    input_match: "structure\\.mjs (census|evidence)"
+    min: 1
+    arm: with-only
+  - type: llm
+    name: answers-from-the-evidence-not-a-pattern-name
+    criteria: The agent does not name a pattern (mediator, observer, event bus, ports and adapters, dependency injection) as the answer. It reports what the codebase uses today (here, no decoupling mechanism at all), considers the simpler options first (moving a symbol, passing a value or callback, an interface owned by the stable side), and says that any new mechanism is a decision for the user, asking before introducing one. Patterns may appear only as alternatives weighed, each with when it fits and what it costs.
+    arm: with-only

@@ -18,6 +18,12 @@ graders:
     input_match: structure
     min: 1
     arm: with-only
+  - type: tool_used
+    name: checks-the-census-before-choosing
+    tool: Bash
+    input_match: "structure\\.mjs (census|evidence)"
+    min: 1
+    arm: with-only
   - type: regex
     name: does-not-add-an-event-system
     target: files
