@@ -1,0 +1,13 @@
+{
+  "units": {
+    "counters.ts": [
+      ["count", "function", 1, 9],
+      ["after", "function", 11, 13]
+    ],
+    "tuples.ts": [
+      ["pairs", "function", 1, 3],
+      ["module", "function", 7, 9]
+    ]
+  },
+  "syntaxErrors": []
+}

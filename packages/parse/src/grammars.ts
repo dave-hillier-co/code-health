@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Language, Parser, type Tree } from "web-tree-sitter";
+import { Language, Parser, type Node, type Tree } from "web-tree-sitter";
 import type { GrammarSpec, LanguageAdapter } from "./language-adapter.ts";
 import { bindingForPath, declaredSupportedAdapters, grammarSpecById } from "./languages.ts";
 
@@ -118,9 +118,43 @@ async function load(spec: GrammarSpec, grammarDir: string | undefined): Promise<
     parse(source) {
       const tree = parser.parse(source);
       if (!tree) throw new Error(`Parsing failed for grammar ${id}`);
-      return tree;
+      if (spec.repairOffsets === undefined || !tree.rootNode.hasError) return tree;
+      return repaired(parser, tree, source, spec.repairOffsets);
     },
   };
+}
+
+/** How many times a tree is repaired and parsed again: each pass removes the errors it found, nested ones surface on the next. */
+const repairPasses = 4;
+
+function errorCount(node: Node): number {
+  if (!node.hasError) return 0;
+  if (node.type === "ERROR" || node.isMissing) return 1;
+  let count = 0;
+  for (const child of node.children) count += errorCount(child);
+  return count;
+}
+
+/** The tree of the repaired text when it has fewer errors than the original, otherwise the original. Caller owns the result. */
+function repaired(parser: Parser, original: Tree, source: string, repairOffsets: NonNullable<GrammarSpec["repairOffsets"]>): Tree {
+  let best = original;
+  let text = source;
+  for (let pass = 0; pass < repairPasses && best.rootNode.hasError; pass++) {
+    const offsets = repairOffsets(best.rootNode, text);
+    if (offsets.length === 0) break;
+    for (const offset of offsets) text = `${text.slice(0, offset)}_${text.slice(offset + 1)}`;
+    const next = parser.parse(text);
+    if (!next) break;
+    if (errorCount(next.rootNode) < errorCount(best.rootNode)) {
+      if (best !== original) best.delete();
+      best = next;
+    } else {
+      next.delete();
+      break;
+    }
+  }
+  if (best !== original) original.delete();
+  return best;
 }
 
 /** The parse cache key of facts an adapter extracted from a tree of this grammar: changed extraction never reads old facts. */
