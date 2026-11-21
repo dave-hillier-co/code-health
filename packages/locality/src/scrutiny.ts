@@ -173,6 +173,7 @@ function fixingWrapper(call: CallExpression): string | undefined {
   const own = new Set(owner.getParameters().map((parameter) => parameter.getName()));
   const args = call.getArguments();
   if (!args.some((argument) => literalOf(argument) !== undefined)) return undefined;
+  if (!args.some((argument) => Node.isIdentifier(argument) && own.has(argument.getText()))) return undefined;
   if (!args.every((argument) => literalOf(argument) !== undefined || (Node.isIdentifier(argument) && own.has(argument.getText())))) return undefined;
   const named = Node.isFunctionDeclaration(owner) || Node.isMethodDeclaration(owner) ? owner.getName() : owner.getFirstAncestorByKind(SyntaxKind.VariableDeclaration)?.getName();
   return `wrapper ${named ?? "(anonymous)"} fixes arguments`;

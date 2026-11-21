@@ -42,6 +42,8 @@ test("a flag that every caller passes the same way names the branch nobody uses"
   expect(results[0]?.reason).toBe("high-fan-in");
   const mixture = results[0]?.findings.find((finding) => finding.flag === "special-general-mixture");
   expect(mixture?.detail).toBe("compact switches behaviour, and every one of 8 call sites passes true: the other branch serves no caller");
+  // Eight consumers that each call it with a literal are consumers, not wrappers that fix its arguments.
+  expect(results[0]?.findings.map((finding) => finding.flag)).not.toContain("divergent-use");
 });
 
 test("an option most callers never pass is overexposure", async () => {
