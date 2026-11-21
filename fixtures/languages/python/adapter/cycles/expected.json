@@ -1,0 +1,10 @@
+{
+  "importEdges": [
+    "a.py -> b.py import",
+    "b.py -> a.py import"
+  ],
+  "consumers": [
+    "a.py#one -> b.py#two call x1",
+    "b.py#two -> a.py#one call x1"
+  ]
+}

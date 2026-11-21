@@ -100,7 +100,8 @@ export async function analyseReuse(model: PackageModel): Promise<ReuseAnalysis> 
 
   for (const exported of model.project.analysis.exports) {
     const owner = model.index.owner(exported.file);
-    if (owner === undefined || !entries.get(owner)?.files.has(exported.file)) continue;
+    const own = owner === undefined ? undefined : entries.get(owner);
+    if (owner === undefined || !own?.files.has(exported.file) || own.hidden?.has(`${exported.file}#${exported.name}`) === true) continue;
     const key = `${exported.defined.file}#${exported.defined.name}`;
     const surface = surfaces.get(owner)!;
     const element = surface.get(key) ?? { key, file: exported.defined.file, name: exported.defined.name, symbol: exported.defined.symbol ?? null, kind: exported.defined.kind ?? null, exportedAs: [] };

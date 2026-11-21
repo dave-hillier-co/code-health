@@ -1,0 +1,22 @@
+{
+  "barrels": [
+    "shop/__init__.py"
+  ],
+  "importEdges": [
+    "app.py -> shop/__init__.py import",
+    "app.py -> shop/pricing.py import",
+    "shop/__init__.py -> shop/cart.py import",
+    "shop/__init__.py -> shop/orders.py import"
+  ],
+  "fileEdges": [
+    "app.py -> shop/cart.py call call=1 reference=0",
+    "app.py -> shop/orders.py call call=1 reference=0",
+    "app.py -> shop/pricing.py call call=1 reference=0"
+  ],
+  "consumers": [
+    "app.py#run -> shop/cart.py#Cart call x1",
+    "app.py#run -> shop/orders.py#checkout call x1",
+    "app.py#run -> shop/pricing.py#tax call x1"
+  ],
+  "unresolved": []
+}

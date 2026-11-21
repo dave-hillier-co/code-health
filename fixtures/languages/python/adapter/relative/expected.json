@@ -1,0 +1,23 @@
+{
+  "importEdges": [
+    "pkg/a.py -> pkg/__init__.py import",
+    "pkg/a.py -> pkg/b.py import",
+    "pkg/a.py -> pkg/sub/deep.py import",
+    "pkg/sub/deep.py -> pkg/__init__.py import",
+    "pkg/sub/deep.py -> pkg/b.py import"
+  ],
+  "fileEdges": [
+    "pkg/a.py -> pkg/b.py call call=2 reference=0",
+    "pkg/a.py -> pkg/sub/deep.py call call=1 reference=0",
+    "pkg/sub/deep.py -> pkg/b.py call call=2 reference=0"
+  ],
+  "consumers": [
+    "pkg/a.py#run -> pkg/b.py#helper call x1",
+    "pkg/a.py#run -> pkg/b.py#other call x1",
+    "pkg/a.py#run -> pkg/sub/deep.py#deepfn call x1",
+    "pkg/sub/deep.py#deepfn -> pkg/b.py#helper call x1",
+    "pkg/sub/deep.py#deepfn -> pkg/b.py#other call x1"
+  ],
+  "unresolved": [],
+  "barrels": []
+}

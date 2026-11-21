@@ -1,0 +1,7 @@
+{
+  "importEdges": [],
+  "unresolved": [
+    "plugins.py:5 plugin_a dynamic-import",
+    "plugins.py:6 <expression> dynamic-import"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "barrels": [
+    "base/__init__.py"
+  ],
+  "importEdges": [
+    "base/__init__.py -> base/core.py import",
+    "base/__init__.py -> base/core.py reexport",
+    "main.py -> base/__init__.py import"
+  ],
+  "fileEdges": [
+    "base/__init__.py -> base/core.py reference call=0 reference=0",
+    "main.py -> base/core.py call call=1 reference=0"
+  ],
+  "consumers": [
+    "main.py#run -> base/core.py#build call x1"
+  ]
+}
