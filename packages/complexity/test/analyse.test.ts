@@ -70,7 +70,7 @@ describe("analyse", () => {
     expect(document.agreement.typescript.exactRate).toBeGreaterThanOrEqual(0.9);
   });
 
-  test("a configured agreement bar the recorded rate misses withholds the lexical metrics and says why, and a language with no measured agreement stays withheld", async () => {
+  test("a configured agreement bar the recorded rate misses withholds the lexical metrics and says why", async () => {
     writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ complexity: { agreementBar: 1 } }));
     try {
       const document = JSON.parse((await analyse("--layer", "lexical")).stdout);
@@ -78,7 +78,7 @@ describe("analyse", () => {
       expect((document.results as Row[]).some((row) => row.path.endsWith(".ts"))).toBe(false);
       expect(document.agreement.typescript).toBeUndefined();
       expect(Object.keys(document.skipped)).toEqual(
-        expect.arrayContaining([expect.stringMatching(/^per-function metrics: typescript agreement 0\.\d+ is below the bar 1$/), "per-function metrics: no agreement measured for python"]),
+        expect.arrayContaining([expect.stringMatching(/^per-function metrics: typescript agreement 0\.\d+ is below the bar 1$/)]),
       );
     } finally {
       rmSync(join(repo.path, "code-health.json"), { force: true });

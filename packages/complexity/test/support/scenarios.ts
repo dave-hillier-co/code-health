@@ -47,12 +47,14 @@ func Total(items []int) int {
 }
 `;
 
-export const pythonSource = `def total(items):
-    out = 0
-    for item in items:
-        if item > 0:
-            out += item
-    return out
+/** A language with no adapter and no lexer profile. */
+export const rubySource = `def total(items)
+  out = 0
+  items.each do |item|
+    out += item if item > 0
+  end
+  out
+end
 `;
 
 export function steps(): Step[] {
@@ -66,7 +68,7 @@ export function steps(): Step[] {
         { op: "add", path: "src/label.ts", content: flatSource },
         { op: "add", path: "test/pricing.test.ts", content: testSource },
         { op: "add", path: "src/total.go", content: goSource },
-        { op: "add", path: "tools/total.py", content: pythonSource },
+        { op: "add", path: "tools/total.rb", content: rubySource },
         { op: "add", path: "notes.md", content: "# Notes\n\n- one\n  - two\n" },
       ],
     },

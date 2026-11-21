@@ -27,7 +27,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "3f17e527361d4435314136f637ee9a5627290301"
+    "head": "b5978f869ab0de6181777e0d9602db0035369ce4"
   },
   "results": [
     {
@@ -55,20 +55,20 @@
       "cognitive": 3,
       "complexityScore": 0.625,
       "dominant": "cognitive",
-      "endLine": 6,
-      "id": "tools/total.py#total",
+      "endLine": 11,
+      "id": "src/total.go#Total",
       "kind": "function",
       "labels": [],
-      "path": "tools/total.py",
+      "path": "src/total.go",
       "percentiles": {
         "cognitive": 0.625
       },
       "revisions": 1,
       "score": 0.3125,
       "source": "structural",
-      "startLine": 1,
+      "startLine": 3,
       "test": false,
-      "unit": "total"
+      "unit": "Total"
     },
     {
       "changeWeight": 0.5,
@@ -133,9 +133,8 @@
   ],
   "schemaVersion": 1,
   "skipped": {
-    "comment and string stripping: no lexer profile": 1,
-    "per-function metrics: no agreement measured for go": 1,
-    "per-function metrics: no lexer profile": 1
+    "comment and string stripping: no lexer profile": 2,
+    "per-function metrics: no lexer profile": 2
   },
   "skippedFiles": {
     "binary": 0,

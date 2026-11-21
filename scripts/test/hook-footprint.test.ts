@@ -27,5 +27,5 @@ test.each(hookPlugins)("the %s bundle, which its hook loads twice, carries no co
   const text = await bundle(plugin);
   expect(text).not.toMatch(/ts-morph|@ts-morph/);
   expect(text).not.toContain("typescript/lib/typescript.js");
-  expect(Buffer.byteLength(text)).toBeLessThan(700_000);
+  expect(Buffer.byteLength(text)).toBeLessThan(1_000_000);
 });

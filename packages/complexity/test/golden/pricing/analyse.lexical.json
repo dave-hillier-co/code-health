@@ -1,9 +1,9 @@
 {
   "agreement": {
-    "python": {
+    "go": {
       "bar": 0.9,
-      "exactRate": 0.9545,
-      "spuriousRate": 0
+      "exactRate": 1,
+      "spuriousRate": 0.0526
     },
     "typescript": {
       "bar": 0.9,
@@ -46,7 +46,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "3f17e527361d4435314136f637ee9a5627290301"
+    "head": "b5978f869ab0de6181777e0d9602db0035369ce4"
   },
   "results": [
     {
@@ -104,9 +104,8 @@
   ],
   "schemaVersion": 1,
   "skipped": {
-    "comment and string stripping: no lexer profile": 1,
-    "per-function metrics: no agreement measured for go": 1,
-    "per-function metrics: no lexer profile": 1
+    "comment and string stripping: no lexer profile": 2,
+    "per-function metrics: no lexer profile": 2
   },
   "skippedFiles": {
     "binary": 0,

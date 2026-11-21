@@ -126,8 +126,8 @@ test("per-function metrics are released for TypeScript, whose recorded agreement
   expect(functions.blocks.every((b) => b.source === "lexical")).toBe(true);
 });
 
-test("per-function metrics stay gated for a profile with no structural adapter to measure it against", () => {
-  const { functions } = analyseSource("sample.go", read("sample.go"));
+test("per-function metrics stay gated for a profile with no recorded agreement to measure it against", () => {
+  const { functions } = analyseSource("sample.go", read("sample.go"), { agreement: {} });
   expect(functions.gated).toBe(true);
   if (functions.gated) expect(functions.reason).toBe("no agreement measured for go");
 });
