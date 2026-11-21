@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
@@ -21,4 +21,19 @@ test("the registration list is alphabetical, so parallel additions merge cleanly
 
 test("commands are looked up by name", () => {
   for (const module of commandModules) expect(commands[module.name]).toBe(module.command);
+});
+
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const goldenFiles = readdirSync(join(packageRoot, "test", "golden"), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .flatMap((entry) => readdirSync(join(packageRoot, "test", "golden", entry.name)));
+
+test("every command has at least one golden output, and so a schema that check:schemas validates it against", () => {
+  for (const { name } of commandModules) {
+    expect(
+      goldenFiles.some((file) => file === `${name}.json` || file.startsWith(`${name}.`)),
+      `no golden for ${name}`,
+    ).toBe(true);
+    expect(existsSync(join(packageRoot, "..", "..", "plugins", "cochange", "schemas", `${name}.schema.json`)), `no schema for ${name}`).toBe(true);
+  }
 });
