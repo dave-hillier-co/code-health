@@ -7044,9 +7044,9 @@ var FACTOR_DOCS = [
     name: "abandoned-touched",
     family: "history",
     layer: "history",
-    banding: "none",
+    banding: "count",
     signal: "Touched files already abandoned, or with high abandonment probability",
-    definition: "Needs the knowledge analysis (cochange.knowledge.enabled). It is unavailable here.",
+    definition: "Needs the knowledge analysis (cochange.knowledge.enabled), and is unavailable without it. Counts the touched files that existed at the base and are abandoned there (at least cochange.knowledge.abandonmentThreshold percent of the lines held by people belong to people who have left, judged at the tip's date), or whose simulated probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. Banded on the count. Computed from the blame cache and never stored, and the evidence names files, not people.",
     why: "Nobody is left who can review these with first-hand knowledge."
   },
   {
@@ -7236,6 +7236,74 @@ async function explainFactor(name14, assess) {
   return { kind: "explain", topic: name14, doc: { ...doc }, branch: driven };
 }
 
+// packages/cochange/src/risk/abandoned-touched.ts
+var SOURCE = "knowledge analysis";
+var unavailable = (reason) => ({
+  name: "abandoned-touched",
+  family: "history",
+  layer: "history",
+  kind: "count",
+  source: SOURCE,
+  unavailable: reason,
+  series: {},
+  value: {},
+  evidence: []
+});
+async function abandonedTouched(context, history, change) {
+  const section = context.config.effective[TOOL2].knowledge;
+  if (section?.enabled !== true) return unavailable("knowledge analysis is not enabled (cochange.knowledge.enabled)");
+  const settings = readKnowledgeSettings(context.config.effective);
+  const root = context.repo.root;
+  const paths = [...new Set(change.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
+  if (paths.length === 0) return measurement([], 0, 0);
+  const options = { ref: change.base, ...blameOptions(history, settings), paths };
+  if (context.values["no-refresh"] !== true) await refreshBlame(root, options);
+  const snapshot = await readBlame(root, options);
+  const identity = { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher };
+  const owners = await resolveOwners(root, commitsInSnapshot(snapshot), identity);
+  const activity = await readActivity(root, history.view.commits, identity);
+  const asOf = history.view.headDate;
+  const model = buildKnowledgeModel({ snapshot, owners, activity, asOf, windowSeconds: windowSecondsOf(settings), overrides: readOverrides(root) });
+  const turnover = estimateTurnover(activity, asOf, { windowSeconds: windowSecondsOf(settings), periodSeconds: periodSecondsOf(settings) });
+  const rate = settings.turnoverRate ?? turnover.rate;
+  const probabilities = /* @__PURE__ */ new Map();
+  if (rate !== null && model.files.length > 0) {
+    const result = simulate(model, {
+      selection: { mode: "rate", rate, periods: settings.horizonPeriods },
+      trials: settings.trials,
+      seed: settings.seed,
+      alphas: settings.alphas,
+      thresholdPercent: settings.abandonmentThreshold
+    });
+    for (const risk of result.fileRisks) probabilities.set(risk.path, risk.probability);
+  }
+  const rows = model.files.map((file) => {
+    const abandoned = reachesThreshold(goneLinesOf(file, model.developers), file.people, settings.abandonmentThreshold);
+    const probability = abandoned ? 1 : probabilities.get(file.path) ?? 0;
+    return { path: file.path, abandoned, probability, share: round4(goneLinesOf(file, model.developers) / file.people) };
+  }).filter((row2) => row2.abandoned || row2.probability > 0 && row2.probability * 100 >= settings.atRiskProbability);
+  const nowPath = new Map(change.files.map((f) => [f.oldPath ?? f.path, f.path]));
+  return measurement(
+    rows.map((row2) => ({ file: nowPath.get(row2.path) ?? row2.path, abandoned: row2.abandoned, probability: round4(row2.probability), abandonedShare: row2.share })),
+    snapshot.files.size,
+    snapshot.missing.length
+  );
+}
+function measurement(evidence, files, unknown) {
+  const sorted = [...evidence].sort((a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : 0);
+  return {
+    name: "abandoned-touched",
+    family: "history",
+    layer: "history",
+    kind: "count",
+    source: SOURCE,
+    unavailable: null,
+    series: { count: sorted.length },
+    value: { count: sorted.length, files, unknown },
+    evidence: sorted.slice(0, 5)
+  };
+}
+
 // packages/cochange/src/risk/composition.ts
 import { existsSync as existsSync13, readFileSync as readFileSync10 } from "node:fs";
 import { join as join11 } from "node:path";
@@ -7345,21 +7413,8 @@ function overThreshold(evidence) {
 }
 
 // packages/cochange/src/risk/composition.ts
-async function liveMeasurements(root, change, risk, evidence, knowledgeEnabled) {
-  return [await complexityDelta(root, change, risk, evidence), structureDelta(evidence), abandonedTouched(knowledgeEnabled)];
-}
-function abandonedTouched(enabled) {
-  return {
-    name: "abandoned-touched",
-    family: "history",
-    layer: "history",
-    kind: "percentile",
-    source: "knowledge analysis",
-    unavailable: enabled ? "the knowledge analysis is enabled, but this command does not read its report yet" : "knowledge analysis is not enabled (cochange.knowledge.enabled)",
-    series: {},
-    value: {},
-    evidence: []
-  };
+async function liveMeasurements(root, change, risk, evidence, abandoned) {
+  return [await complexityDelta(root, change, risk, evidence), structureDelta(evidence), abandoned];
 }
 function structureDelta(evidence) {
   const base = { name: "structure-delta", family: "structure-and-content", layer: "structural", kind: "count", source: "structure check" };
@@ -7637,10 +7692,10 @@ var HistoryState = class {
 var round = (value, places = 6) => Math.round(value * 10 ** places) / 10 ** places;
 var churnOf = (file) => (file.added ?? 0) + (file.deleted ?? 0);
 var FIRST_ROWS = 5;
-function measurement(name14, family, layer, kind, source, parts) {
+function measurement2(name14, family, layer, kind, source, parts) {
   return { name: name14, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts };
 }
-var unavailable = (name14, family, layer, kind, source, reason) => measurement(name14, family, layer, kind, source, { unavailable: reason });
+var unavailable2 = (name14, family, layer, kind, source, reason) => measurement2(name14, family, layer, kind, source, { unavailable: reason });
 function measureHistoryLayer(facts, state, context) {
   return [
     size(facts),
@@ -7660,7 +7715,7 @@ function measureHistoryLayer(facts, state, context) {
 }
 function size(facts) {
   const lines = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
-  return measurement("size", "size-and-diffusion", "history", "percentile", "history", {
+  return measurement2("size", "size-and-diffusion", "history", "percentile", "history", {
     series: { lines },
     value: { lines, files: facts.files.length }
   });
@@ -7670,7 +7725,7 @@ function spread(facts, context) {
   const value = round(changeSpread(paths));
   const folders = new Set(paths.map(folderOf)).size;
   const components2 = context.components.length === 0 ? null : new Set(paths.map((path) => componentOf(context.components, path))).size;
-  return measurement("spread", "size-and-diffusion", "history", "percentile", "history", {
+  return measurement2("spread", "size-and-diffusion", "history", "percentile", "history", {
     series: { spread: value },
     value: { spread: value, folders, components: components2 }
   });
@@ -7679,7 +7734,7 @@ function entropy(facts) {
   const churn = facts.files.map(churnOf).filter((c) => c > 0);
   const total = churn.reduce((sum, c) => sum + c, 0);
   const value = total === 0 ? 0 : round(churn.reduce((sum, c) => sum - c / total * Math.log2(c / total), 0));
-  return measurement("entropy", "size-and-diffusion", "history", "percentile", "history", {
+  return measurement2("entropy", "size-and-diffusion", "history", "percentile", "history", {
     series: { entropy: value },
     value: { entropy: value, files: churn.length }
   });
@@ -7690,7 +7745,7 @@ function mixedPurpose(facts) {
   const editedWhileMoved = facts.files.filter((file) => file.status === "R" && churnOf(file) > 0).length;
   const mixed = moved > 0 && (edited > 0 || editedWhileMoved > 0);
   const count = mixed ? moved : 0;
-  return measurement("mixed-purpose", "size-and-diffusion", "history", "count", "history", {
+  return measurement2("mixed-purpose", "size-and-diffusion", "history", "count", "history", {
     series: { count },
     value: { moved, edited, editedWhileMoved },
     evidence: mixed ? facts.files.filter((file) => file.status === "R").slice(0, FIRST_ROWS).map((file) => ({ file: file.path, from: file.oldPath })) : []
@@ -7706,7 +7761,7 @@ function hotspotsTouched(facts, state, context) {
   const total = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
   const inHot = hot.reduce((sum, file) => sum + churnOf(file), 0);
   const share3 = total === 0 ? 0 : round(inHot / total);
-  return measurement("hotspots-touched", "history", "history", "percentile", "history", {
+  return measurement2("hotspots-touched", "history", "history", "percentile", "history", {
     series: { share: share3 },
     value: { share: share3, hotFiles: hot.length },
     evidence: hot.map((file) => ({ file: file.fileId, revisions: state.revisionsInWindow(file.fileId) })).sort((a, b) => b.revisions - a.revisions || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS)
@@ -7714,7 +7769,7 @@ function hotspotsTouched(facts, state, context) {
 }
 function defectHistory(facts, state, context) {
   if (state.windowSummary().fixes === 0) {
-    return unavailable("defect-history", "history", "history", "percentile", "history", "no change in the window matches a fix or revert pattern, so the commit messages cannot say which revisions were fixes");
+    return unavailable2("defect-history", "history", "history", "percentile", "history", "no change in the window matches a fix or revert pattern, so the commit messages cannot say which revisions were fixes");
   }
   const since = facts.time - context.windowMonths * 30.4375 * SECONDS_PER_DAY2;
   let revisions = 0;
@@ -7728,7 +7783,7 @@ function defectHistory(facts, state, context) {
     if (fixed > 0) perFile.push({ file: file.fileId, fixes: fixed, revisions: own.length });
   }
   const share3 = revisions === 0 ? 0 : round(fixes / revisions);
-  return measurement("defect-history", "history", "history", "percentile", "history", {
+  return measurement2("defect-history", "history", "history", "percentile", "history", {
     series: { share: share3 },
     value: { share: share3, fixes, revisions },
     evidence: perFile.sort((a, b) => b.fixes - a.fixes || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS)
@@ -7747,7 +7802,7 @@ function contention(facts, state, context) {
     for (const author of here) others.add(author);
     if (here.size > 0) perFile.push({ file: file.fileId, authors: here.size });
   }
-  return measurement("contention", "history", "history", "percentile", "history", {
+  return measurement2("contention", "history", "history", "percentile", "history", {
     series: { authors: others.size },
     value: { authors: others.size },
     evidence: perFile.sort((a, b) => b.authors - a.authors || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS)
@@ -7760,7 +7815,7 @@ function age(facts, state, context) {
   const stale = known.filter((file) => state.lastChanged(file.fileId) < staleBefore);
   const settling = known.filter((file) => state.lastChanged(file.fileId) >= settlingFrom);
   const share3 = (n) => known.length === 0 ? 0 : round(n / known.length);
-  return measurement("age", "history", "history", "percentile", "history", {
+  return measurement2("age", "history", "history", "percentile", "history", {
     series: { stale: share3(stale.length), settling: share3(settling.length) },
     value: { stale: stale.length, settling: settling.length, known: known.length },
     evidence: [
@@ -7790,7 +7845,7 @@ function coupledPartners(facts, state, context) {
 function missingCoChange(facts, state, context) {
   const touched = new Set(facts.files.map((file) => file.fileId));
   const missing = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
-  return measurement("missing-co-change", "completeness", "history", "count", "history", {
+  return measurement2("missing-co-change", "completeness", "history", "count", "history", {
     series: { count: missing.length },
     value: { count: missing.length },
     evidence: missing.map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence, support: partner.support }))
@@ -7806,7 +7861,7 @@ function novelCoupling(facts, state, context) {
     }
   }
   pairs.sort((x, y) => y.distance - x.distance || (x.a + x.b < y.a + y.b ? -1 : 1));
-  return measurement("novel-coupling", "completeness", "history", "count", "history", {
+  return measurement2("novel-coupling", "completeness", "history", "count", "history", {
     series: { count: pairs.length },
     value: { count: pairs.length },
     evidence: pairs.slice(0, FIRST_ROWS).map((pair) => ({ ...pair }))
@@ -7828,7 +7883,7 @@ function testEvidence(facts, state, context) {
   }
   for (const file of facts.files) if (file.status === "D" && isTestPath(file.path)) rows.push({ file: file.fileId, test: file.fileId, kind: "deleted" });
   rows.sort((a, b) => String(a.file) < String(b.file) ? -1 : 1);
-  return measurement("test-evidence", "completeness", "history", "count", "history", {
+  return measurement2("test-evidence", "completeness", "history", "count", "history", {
     series: { count: rows.length },
     value: { count: rows.length },
     evidence: rows
@@ -7836,7 +7891,7 @@ function testEvidence(facts, state, context) {
 }
 function blastRadius(facts, state, context) {
   const partners = coupledPartners(facts, state, context);
-  return measurement("blast-radius", "structure-and-content", "history", "percentile", "co-change", {
+  return measurement2("blast-radius", "structure-and-content", "history", "percentile", "co-change", {
     series: { files: partners.length },
     value: { files: partners.length },
     evidence: partners.slice(0, FIRST_ROWS).map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence }))
@@ -7845,7 +7900,7 @@ function blastRadius(facts, state, context) {
 function sensitivePaths(facts, context) {
   const matches = compileGlobs(context.risk.sensitivePaths);
   const hits = facts.files.filter((file) => matches(file.path) || file.oldPath !== null && matches(file.oldPath)).map((file) => file.path).sort();
-  return measurement("sensitive-paths", "structure-and-content", "history", "count", "configured globs", {
+  return measurement2("sensitive-paths", "structure-and-content", "history", "count", "configured globs", {
     series: { count: hits.length },
     value: { count: hits.length },
     evidence: hits.map((file) => ({ file }))
@@ -8079,18 +8134,18 @@ function makeBander(baseline, settings) {
     }
     return cache.get(key);
   };
-  return (measurement2) => {
-    if (measurement2.unavailable !== null) return { band: "unavailable", reason: measurement2.unavailable, thresholds: {} };
-    if (measurement2.kind === "count") {
+  return (measurement3) => {
+    if (measurement3.unavailable !== null) return { band: "unavailable", reason: measurement3.unavailable, thresholds: {} };
+    if (measurement3.kind === "count") {
       const thresholds2 = { moderate: settings.countModerate, high: settings.countHigh };
-      const count = Object.values(measurement2.series)[0] ?? 0;
+      const count = Object.values(measurement3.series)[0] ?? 0;
       return { band: bandCount(count, thresholds2), reason: null, thresholds: { count: thresholds2 } };
     }
     let band = "low";
     let reason = null;
     const thresholds = {};
-    for (const [series, value] of Object.entries(measurement2.series)) {
-      const found = cutoffs(measurement2.name, series);
+    for (const [series, value] of Object.entries(measurement3.series)) {
+      const found = cutoffs(measurement3.name, series);
       thresholds[series] = found === null ? null : { moderate: found.moderate, high: found.high };
       if (found === null) {
         if (value > 0) reason = `fewer than ${settings.minBaseline} merged changes in the baseline, so a value of ${value} cannot be placed`;
@@ -8144,21 +8199,21 @@ function measureContext(context, history, risk) {
     components: readComponents(context.config.effective.components)
   };
 }
-function toFactor(measurement2, banded, risk) {
-  const disabled = risk.disabled.has(measurement2.name);
-  const status = disabled ? "disabled" : measurement2.unavailable === null && banded.band !== "unavailable" ? "ok" : "unavailable";
+function toFactor(measurement3, banded, risk) {
+  const disabled = risk.disabled.has(measurement3.name);
+  const status = disabled ? "disabled" : measurement3.unavailable === null && banded.band !== "unavailable" ? "ok" : "unavailable";
   return {
-    name: measurement2.name,
-    family: measurement2.family,
-    layer: measurement2.layer,
+    name: measurement3.name,
+    family: measurement3.family,
+    layer: measurement3.layer,
     status,
     band: disabled ? null : banded.band === "unavailable" ? null : banded.band,
-    scored: SCORED_FACTORS.has(measurement2.name) && !disabled,
-    value: disabled ? {} : measurement2.value,
+    scored: SCORED_FACTORS.has(measurement3.name) && !disabled,
+    value: disabled ? {} : measurement3.value,
     thresholds: disabled ? {} : banded.thresholds,
-    evidence: disabled ? [] : measurement2.evidence,
-    source: measurement2.source,
-    reason: disabled ? "switched off by cochange.risk.disable" : measurement2.unavailable ?? banded.reason
+    evidence: disabled ? [] : measurement3.evidence,
+    source: measurement3.source,
+    reason: disabled ? "switched off by cochange.risk.disable" : measurement3.unavailable ?? banded.reason
   };
 }
 async function assessBranch(context, history, request) {
@@ -8190,10 +8245,9 @@ async function assessBranch(context, history, request) {
     moved: change.moved
   };
   state.advance(time);
-  const knowledge = context.config.effective[TOOL2].knowledge;
   const measurements = [
     ...measureHistoryLayer(facts, state, measure),
-    ...await liveMeasurements(root, change, risk, evidence, knowledge?.enabled === true)
+    ...await liveMeasurements(root, change, risk, evidence, await abandonedTouched(context, history, change))
   ];
   const baselineMeasures = past.map((p) => p.measurements);
   const bander = makeBander(baselineMeasures, risk);
@@ -8570,6 +8624,13 @@ var RESPONSES = {
     explanation: "Neither the author nor any reviewer has first-hand knowledge of these files. Needs placement, so it is shown for the invoking user's own change, or when cochange.risk.placement is any.",
     redFlag: null
   },
+  "abandoned-touched": {
+    step: "test",
+    response: "Characterisation tests before the change, and a short note capturing what was learned.",
+    summary: "Touched files are abandoned, or likely to be: nobody active holds most of their lines",
+    explanation: "From the knowledge analysis (cochange.knowledge.enabled), computed from the blame cache and the abandonment model at the base, and never stored. Files are counted when at least cochange.knowledge.abandonmentThreshold percent of the lines held by people belong to people who have left, or when their probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. `cochange successors PATH` names who could adopt one.",
+    redFlag: null
+  },
   "complexity-delta": {
     step: "simplify",
     response: "Run `complexity explain` on the named units and simplify before merge.",
@@ -8652,6 +8713,8 @@ function findingsOf(assessed, placement) {
   }
   const tests = get("test-evidence");
   if (atLeastModerate(tests)) found.push(make("test-evidence", tests, `${count(tests)} source file${count(tests) === 1 ? "" : "s"} changed without the tests that usually change with ${count(tests) === 1 ? "it" : "them"}, or tests deleted`, tests.evidence));
+  const abandoned = get("abandoned-touched");
+  if (atLeastModerate(abandoned)) found.push(make("abandoned-touched", abandoned, `${count(abandoned)} touched file${count(abandoned) === 1 ? " is" : "s are"} abandoned or likely to be: nobody active holds most of ${count(abandoned) === 1 ? "its" : "their"} lines`, abandoned.evidence));
   const complexity = get("complexity-delta");
   if (atLeastModerate(complexity)) found.push(make("complexity-delta", complexity, `${count(complexity)} unit${count(complexity) === 1 ? "" : "s"} or file${count(complexity) === 1 ? "" : "s"} gained complexity`, complexity.evidence));
   const novel = get("novel-coupling");
@@ -8784,18 +8847,18 @@ async function placementFor(context, assessed, noRefresh) {
     blame: { used: blame.facts.size > 0, missing: blame.missing, refreshed: blame.refreshed }
   };
 }
-var row = (name14, value, evidence, unavailable2 = null) => ({
+var row = (name14, value, evidence, unavailable3 = null) => ({
   name: name14,
   family: "placement",
   layer: "placement",
-  status: unavailable2 === null ? "ok" : "unavailable",
+  status: unavailable3 === null ? "ok" : "unavailable",
   band: null,
   scored: false,
-  value: unavailable2 === null ? value : {},
+  value: unavailable3 === null ? value : {},
   thresholds: {},
-  evidence: unavailable2 === null ? evidence : [],
+  evidence: unavailable3 === null ? evidence : [],
   source: name14 === "authorship" || name14 === "owner-distance" || name14 === "no-owner" ? "blame" : "history",
-  reason: unavailable2
+  reason: unavailable3
 });
 function placementFactors(placement, withBlame) {
   const noBlame = "no blame is cached for the touched files at the base; the labels come from change-familiarity alone";
@@ -8885,6 +8948,10 @@ async function reviewersFor(context, assessed, noRefresh) {
   const time = assessed.facts.time;
   const activeSince = monthsBefore(time, history.settings.windowMonths);
   const authors = new Set(assessed.facts.authors);
+  if (change.worktree) {
+    const user = await invokingUser(root, history.identities.localMailmap);
+    if (user !== null) authors.add(user.email.toLowerCase());
+  }
   const names = /* @__PURE__ */ new Map();
   for (const commit of history.view.commits) names.set(commit.mappedEmail.toLowerCase(), commit.mappedName);
   const paths = [...new Set(change.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
@@ -8973,6 +9040,7 @@ async function runRisk(context, history, range) {
   const behind = stored === null ? null : await commitsSince(context.repo.root, stored.head, assessed.change.head);
   const level = levelResult(assessed, placement, stored, behind);
   const impactOnly = { kind: "assessment", change: describeChange(assessed), impact: assessed.impact, factors: assessed.factors };
+  const kept = { ...impactOnly, factors: assessed.factors.filter((f) => f.name !== "abandoned-touched" || f.status !== "ok") };
   const inputs = {
     range: range ?? null,
     worktree,
@@ -8981,7 +9049,7 @@ async function runRisk(context, history, range) {
     locality: assessed.locality?.input ?? null,
     backtest: stored === null ? null : { head: stored.head, config: context.config.hash }
   };
-  if (range === void 0 && !worktree) await writeReport2(context, "risk", { inputs, results: impactOnly }, history.view.headSha);
+  if (range === void 0 && !worktree) await writeReport2(context, "risk", { inputs, results: kept }, history.view.headSha);
   return {
     inputs,
     results: {

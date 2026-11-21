@@ -243099,7 +243099,7 @@ function fixingWrapper(call) {
 function hintsOf(fn, subject) {
   const hints = [];
   const parameters = fn.getParameters().map((parameter) => parameter.getName()).filter((name8) => /^[\w$]+$/.test(name8));
-  const text = fn.getBody()?.getFullText() ?? "";
+  const text = fn.getBody()?.getText() ?? "";
   const first = fn.getBody()?.getStartLineNumber() ?? fn.getStartLineNumber();
   text.split("\n").forEach((line, offset) => {
     const lineNumber = first + offset;
@@ -253224,6 +253224,19 @@ function countSuiteCommits(view, plugin) {
   return view.commits.filter((commit) => codeHealthTrailers(commit.message).some((trailer) => trailer.plugin === plugin)).length;
 }
 
+// packages/locality/src/structure-metrics.ts
+function gamingCheck(before, after) {
+  if (before === null || after.totalWeightedDistance >= before.totalWeightedDistance) return { flagged: false, reasons: [] };
+  const reasons = [];
+  if (after.singleFileFolders > before.singleFileFolders) {
+    reasons.push(`single-file folders rose from ${before.singleFileFolders} to ${after.singleFileFolders} while weighted import distance fell`);
+  }
+  if (after.maxDepth > before.maxDepth) {
+    reasons.push(`maximum folder depth rose from ${before.maxDepth} to ${after.maxDepth} while weighted import distance fell`);
+  }
+  return { flagged: reasons.length > 0, reasons };
+}
+
 // packages/locality/src/verdict.ts
 var change = (arm) => arm.before.mean === null || arm.after.mean === null ? null : arm.after.mean - arm.before.mean;
 function differenceOf(actedOn, comparison, minSamples, noisePercent) {
@@ -253312,7 +253325,8 @@ async function baseline(context, settings) {
   const effort = readEffort(projectsDirectory(context), await checkouts(root), window2);
   const project = await loadProject(root, "HEAD", settings);
   const history = settings.useHistory ? await readHistory2(context, settings) : void 0;
-  const ranked = analyseProject(project, buildModel(project, settings, history), settings, history).candidates;
+  const analysed = analyseProject(project, buildModel(project, settings, history), settings, history);
+  const ranked = analysed.candidates;
   const candidates = ranked.slice(0, keep).map(
     (candidate, index) => ({
       rank: index + 1,
@@ -253343,6 +253357,7 @@ async function baseline(context, settings) {
     spread,
     effort: { sessions: effort.sessions, summary: effort.summary, tasks: effort.tasks, stamp: stampOf(effort.tasks) },
     readHeat: readHeat(effort.tasks, HEAT_FILES),
+    structure: analysed.metrics,
     candidates,
     candidateCount: ranked.length,
     priorSuiteCommits: prior
@@ -253357,6 +253372,7 @@ async function baseline(context, settings) {
       head: record.head,
       window: window2,
       spread,
+      structure: analysed.metrics,
       effort: { sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length }, ...effort.summary },
       candidates: { recorded: candidates.length, ranked: ranked.length },
       priorSuiteCommits: prior
@@ -253370,6 +253386,11 @@ var mean = (value) => value === null ? null : value.mean;
 function reproduced(now, recorded) {
   const same = now.mean === null || recorded.mean === null ? now.mean === recorded.mean : roundFloat(now.mean) === roundFloat(recorded.mean);
   return now.measured === recorded.measured && now.changes === recorded.changes && same;
+}
+async function structureNow(context, settings) {
+  const project = await loadProject(context.repo.root, "HEAD", settings);
+  const history = settings.useHistory ? await readHistory2(context, settings) : void 0;
+  return analyseProject(project, buildModel(project, settings, history), settings, history).metrics;
 }
 var EFFORT_FIGURES = ["filesRead", "foldersVisited", "reReads", "tokens"];
 async function compare(context, settings) {
@@ -253398,6 +253419,8 @@ async function compare(context, settings) {
       }
     };
   }
+  const now = await structureNow(context, settings);
+  const structure = { before: before.structure ?? null, after: now, gaming: gamingCheck(before.structure ?? null, now) };
   const comparison = chooseComparison(before.candidates, actedOn);
   const ends = addDays(dayOf(view.headDate), 1);
   const requested = stringOption(context, "since");
@@ -253455,6 +253478,7 @@ async function compare(context, settings) {
       status: "compared",
       baseline: { head: before.head, window: before.window, spread: before.spread, effort: before.effort.summary },
       spreadReproduced: reproduced(recomputed, before.spread),
+      structure,
       after: { ...after, days: windowLength(after), matchingDays: windowLength(before.window) },
       suite: { commits: done.commits, actedOn: actedOn.length, comparison: comparison.group.length, overlapping: comparison.overlapping },
       pairs: comparison.pairs,

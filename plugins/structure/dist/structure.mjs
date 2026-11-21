@@ -9274,6 +9274,11 @@ function judgePair(project, graph, activity, from, to, settings) {
 }
 var couplingId = (level, from, to) => `coupling:${level}:${from}->${to}`;
 var pairKey = (a, b) => a < b ? `${a}\0${b}` : `${b}\0${a}`;
+function orientPair(project, graph, x, y) {
+  const forward = usage(project, graph, x, y).sites;
+  const backward = usage(project, graph, y, x).sites;
+  return backward > forward || backward === forward && compareIds(y, x) < 0 ? [y, x] : [x, y];
+}
 function findCoupling(model, settings) {
   const pairs = /* @__PURE__ */ new Map();
   for (const [from, targets] of model.graph.graph) for (const to of targets) pairs.set(pairKey(from, to), [from, to]);
@@ -9282,9 +9287,7 @@ function findCoupling(model, settings) {
   }
   const level = model.graph.level;
   const rows = [...pairs.values()].map(([x, y]) => {
-    const forward = usage(model.project, model.graph, x, y).sites;
-    const backward = usage(model.project, model.graph, y, x).sites;
-    const [from, to] = backward > forward || backward === forward && compareIds(y, x) < 0 ? [y, x] : [x, y];
+    const [from, to] = orientPair(model.project, model.graph, x, y);
     const { name: name13, staticCoupling: staticCoupling2, coChange, bothActive } = judgePair(model.project, model.graph, model.activity, from, to, settings);
     return { id: couplingId(level, from, to), level, from, to, quadrant: name13, staticCoupling: staticCoupling2, coChange, bothActive };
   });
@@ -9600,6 +9603,9 @@ function nearbyMechanisms(census, from, to, limit = NEARBY_LIMIT) {
 
 // packages/structure/src/unstable.ts
 var unstableId = (level, from, to) => `unstable:${level}:${from}->${to}`;
+function stabilityOfModule(model, id) {
+  return model.structural.has(id) && model.change.has(id) ? stabilityOf(model.structural, model.change, id) : void 0;
+}
 function judgeEdge(model, from, to, settings) {
   const stability = { from: stabilityOf(model.structural, model.change, from), to: stabilityOf(model.structural, model.change, to) };
   return {
@@ -9720,6 +9726,12 @@ function evidencePack(model, from, to, settings, census) {
     kinds2.push("unstable-dependency");
     findings.push(unstableId(level, from, to));
   }
+  const quadrant = judgePair(model.project, model.graph, model.activity, from, to, settings);
+  if (quadrant.name === "incidental" || quadrant.name === "hidden") {
+    kinds2.push(quadrant.name === "incidental" ? "incidental-coupling" : "hidden-coupling");
+    const [a, b] = orientPair(model.project, model.graph, from, to);
+    findings.push(couplingId(level, a, b));
+  }
   return {
     id: `edge:${level}:${from}->${to}`,
     kind: kinds2[0] ?? null,
@@ -9728,7 +9740,7 @@ function evidencePack(model, from, to, settings, census) {
     level,
     from,
     to,
-    quadrant: judgePair(model.project, model.graph, model.activity, from, to, settings),
+    quadrant,
     inBreakingSet: cycle ? cycle.inBreakingSet : null,
     breakingSet: detail.symbols,
     imports: {
@@ -9750,88 +9762,35 @@ function evidencePack(model, from, to, settings, census) {
     layerRule: rule2
   };
 }
-
-// packages/structure/src/commands/evidence.ts
-var name6 = "evidence";
-var allLevels = ["file", "folder", "package", "component"];
-var usage2 = "usage: evidence <from>-><to> [--level file|folder|package|component], or evidence <finding id> (cycle:<level>:<node>, layer:<from>-><to> or unstable:<level>:<from>-><to>)";
-function parseTarget(text, requested) {
-  const cycle = /^cycle:(file|folder|package):(.+)$/.exec(text);
-  if (cycle) return { kind: "cycle", level: cycle[1], id: text };
-  const layer = /^layer:(.+)$/.exec(text);
-  if (layer) return { ...parseEdge(layer[1]), level: "file" };
-  const unstable = /^unstable:(folder|component):(.+)$/.exec(text);
-  const edge = unstable ? unstable[2] : text;
-  return { ...parseEdge(edge), level: unstable ? unstable[1] : requested };
+function hubEvidencePack(model, hub, census) {
+  const features = hub.features.map((feature) => {
+    const imported = model.graph.graph.get(hub.module)?.includes(feature.module) === true;
+    const detail = imported ? describeEdge(model.project, model.graph, hub.module, feature.module) : void 0;
+    const symbols = detail?.symbols ?? [];
+    return { ...feature, breakingSet: symbols, misplacement: misplacement(model, hub.module, feature.module, symbols) };
+  });
+  const unblocks = hub.features.flatMap((feature) => model.graph.graph.get(hub.module)?.includes(feature.module) ? unblocksOf(model, hub.module, feature.module) : []).sort((a, b) => b.unblockedGain - a.unblockedGain || compareIds(a.unit, b.unit));
+  return {
+    id: hub.id,
+    kind: "registration-hub",
+    kinds: ["registration-hub"],
+    findings: [hub.id],
+    level: hub.level,
+    file: hub.file,
+    module: hub.module,
+    featureCount: hub.featureCount,
+    revisions: hub.revisions,
+    features,
+    signals: hub.signals,
+    stability: stabilityOfModule(model, hub.module) ?? null,
+    unblocks,
+    nearbyMechanisms: nearbyMechanisms(
+      census,
+      [folderOf(hub.file)],
+      hub.features.flatMap((feature) => (model.graph.filesOf.get(feature.module) ?? []).map(folderOf))
+    )
+  };
 }
-function parseEdge(edge) {
-  const arrow = edge.indexOf("->");
-  if (arrow <= 0 || arrow + 2 >= edge.length) throw usageError(usage2);
-  return { kind: "edge", from: edge.slice(0, arrow), to: edge.slice(arrow + 2) };
-}
-var command5 = analysisCommand(name6, {
-  summary: "The evidence pack for one dependency or one finding: symbols across it, stability, co-change, misplacement",
-  options: { level: { type: "string" } },
-  // A query about one dependency, never the whole-repository answer a report stores.
-  partial: () => true,
-  async analyse({ context, history }) {
-    const [text] = context.positionals;
-    if (text === void 0) throw usageError(usage2);
-    const requested = context.values.level === void 0 ? void 0 : readLevel("level", context.values.level, allLevels, "file");
-    const target = parseTarget(text, requested);
-    const { settings } = history;
-    let model;
-    let edges;
-    if (target.kind === "cycle") {
-      model = await buildModel(context, history, target.level);
-      const cycle = findCycles(model, settings).find((c) => c.id === target.id);
-      if (!cycle) throw usageError(`no cycle "${target.id}" at the analysed commit`);
-      edges = cycle.breakingSet.map((e) => [e.from, e.to]);
-    } else {
-      const project = await loadProject(context.repo.root, history.view.headSha, settings.exclude);
-      const level = target.level ?? inferLevel(project, target.from, target.to);
-      model = await buildModel(context, history, level, project);
-      if (!model.graph.graph.get(target.from)?.includes(target.to)) {
-        throw usageError(`no dependency from "${target.from}" to "${target.to}" at level ${level}`);
-      }
-      edges = [[target.from, target.to]];
-    }
-    const census = await buildCensus(await treeFromRef(context.repo.root, history.view.headSha), model.project, settings.census);
-    return {
-      inputs: { target: text, level: model.graph.level, locality: model.locality?.input ?? null },
-      results: edges.map(([from, to]) => evidencePack(model, from, to, settings, census)),
-      columns: ["id", "kind", "findings", "quadrant", "inBreakingSet", "breakingSet", "stability", "coChange", "misplacement", "unblocks"],
-      extra: {
-        deferred: []
-      }
-    };
-  }
-});
-
-// packages/structure/src/commands/hidden.ts
-var hidden_exports = {};
-__export(hidden_exports, {
-  command: () => command6,
-  name: () => name7
-});
-var name7 = "hidden";
-var views2 = ["file", "folder", "component"];
-var command6 = analysisCommand(name7, {
-  summary: "Pairs with high co-change and low static coupling, often the result of earlier indirection (coupling --quadrant hidden)",
-  options: { by: { type: "string" } },
-  partial: ({ values }) => values.by !== void 0 && values.by !== "folder",
-  analyse(input) {
-    return analyseCoupling(input, readLevel("by", input.context.values.by, views2, "folder"), "hidden");
-  }
-});
-
-// packages/structure/src/commands/hubs.ts
-var hubs_exports = {};
-__export(hubs_exports, {
-  command: () => command7,
-  name: () => name8,
-  rules: () => rules4
-});
 
 // packages/lexical/src/hunk-shape.ts
 function parseUnifiedHunks(diff) {
@@ -10093,7 +10052,105 @@ async function findHubs({ root, headSha, model, changes, settings }) {
   return hubs.sort((a, b) => b.featureCount - a.featureCount || b.revisions - a.revisions || compareIds(a.file, b.file));
 }
 
+// packages/structure/src/commands/evidence.ts
+var name6 = "evidence";
+var allLevels = ["file", "folder", "package", "component"];
+var usage2 = "usage: evidence <from>-><to> [--level file|folder|package|component], or evidence <finding id> (cycle:<level>:<node>, layer:<from>-><to>, unstable:<level>:<from>-><to>, coupling:<level>:<from>-><to> or hub:<file>)";
+function parseTarget(text, requested) {
+  const hub = /^hub:(.+)$/.exec(text);
+  if (hub) return { kind: "hub", level: requested, id: text };
+  const pair = /^coupling:(file|folder|component):(.+)$/.exec(text);
+  if (pair) return { ...parseEdge(pair[2]), level: pair[1] };
+  const cycle = /^cycle:(file|folder|package):(.+)$/.exec(text);
+  if (cycle) return { kind: "cycle", level: cycle[1], id: text };
+  const layer = /^layer:(.+)$/.exec(text);
+  if (layer) return { ...parseEdge(layer[1]), level: "file" };
+  const unstable = /^unstable:(folder|component):(.+)$/.exec(text);
+  const edge = unstable ? unstable[2] : text;
+  return { ...parseEdge(edge), level: unstable ? unstable[1] : requested };
+}
+function parseEdge(edge) {
+  const arrow = edge.indexOf("->");
+  if (arrow <= 0 || arrow + 2 >= edge.length) throw usageError(usage2);
+  return { kind: "edge", from: edge.slice(0, arrow), to: edge.slice(arrow + 2) };
+}
+var command5 = analysisCommand(name6, {
+  summary: "The evidence pack for one dependency or one finding: symbols across it, stability, co-change, misplacement",
+  options: { level: { type: "string" } },
+  // A query about one dependency, never the whole-repository answer a report stores.
+  partial: () => true,
+  async analyse({ context, history }) {
+    const [text] = context.positionals;
+    if (text === void 0) throw usageError(usage2);
+    const requested = context.values.level === void 0 ? void 0 : readLevel("level", context.values.level, allLevels, "file");
+    const target = parseTarget(text, requested);
+    const { settings } = history;
+    let model;
+    let edges;
+    if (target.kind === "hub") {
+      const level = target.level ?? "folder";
+      model = await buildModel(context, history, level, void 0, { everyPair: true });
+      const hub = (await findHubs({ root: context.repo.root, headSha: history.view.headSha, model, changes: history.filtered.changes, settings })).find((h) => h.id === target.id);
+      if (!hub) throw usageError(`no registration hub "${target.id.slice("hub:".length)}" at level ${level} at the analysed commit`);
+      const census2 = await buildCensus(await treeFromRef(context.repo.root, history.view.headSha), model.project, settings.census);
+      return {
+        inputs: { target: text, level: model.graph.level, locality: model.locality?.input ?? null },
+        results: [hubEvidencePack(model, hub, census2)],
+        columns: ["id", "kind", "findings", "features", "signals", "stability", "unblocks"]
+      };
+    }
+    if (target.kind === "cycle") {
+      model = await buildModel(context, history, target.level);
+      const cycle = findCycles(model, settings).find((c) => c.id === target.id);
+      if (!cycle) throw usageError(`no cycle "${target.id}" at the analysed commit`);
+      edges = cycle.breakingSet.map((e) => [e.from, e.to]);
+    } else {
+      const project = await loadProject(context.repo.root, history.view.headSha, settings.exclude);
+      const level = target.level ?? inferLevel(project, target.from, target.to);
+      model = await buildModel(context, history, level, project);
+      const imported = (a, b) => model.graph.graph.get(a)?.includes(b) === true;
+      if (imported(target.from, target.to)) {
+        edges = [[target.from, target.to]];
+      } else {
+        model = await buildModel(context, history, level, project, { everyPair: true });
+        const row = findCoupling(model, settings).find((r) => r.from === target.from && r.to === target.to || r.from === target.to && r.to === target.from);
+        if (!row) throw usageError(`no dependency from "${target.from}" to "${target.to}" at level ${level}, and the two do not change together`);
+        edges = [orientPair(model.project, model.graph, row.from, row.to)];
+      }
+    }
+    const census = await buildCensus(await treeFromRef(context.repo.root, history.view.headSha), model.project, settings.census);
+    return {
+      inputs: { target: text, level: model.graph.level, locality: model.locality?.input ?? null },
+      results: edges.map(([from, to]) => evidencePack(model, from, to, settings, census)),
+      columns: ["id", "kind", "findings", "quadrant", "inBreakingSet", "breakingSet", "stability", "coChange", "misplacement", "unblocks"]
+    };
+  }
+});
+
+// packages/structure/src/commands/hidden.ts
+var hidden_exports = {};
+__export(hidden_exports, {
+  command: () => command6,
+  name: () => name7
+});
+var name7 = "hidden";
+var views2 = ["file", "folder", "component"];
+var command6 = analysisCommand(name7, {
+  summary: "Pairs with high co-change and low static coupling, often the result of earlier indirection (coupling --quadrant hidden)",
+  options: { by: { type: "string" } },
+  partial: ({ values }) => values.by !== void 0 && values.by !== "folder",
+  analyse(input) {
+    return analyseCoupling(input, readLevel("by", input.context.values.by, views2, "folder"), "hidden");
+  }
+});
+
 // packages/structure/src/commands/hubs.ts
+var hubs_exports = {};
+__export(hubs_exports, {
+  command: () => command7,
+  name: () => name8,
+  rules: () => rules4
+});
 var name8 = "hubs";
 var views3 = ["folder", "component"];
 var rules4 = {
@@ -12906,25 +12963,8 @@ async function structuralModel(root, sha, settings) {
   const nothing = { changes: [], imported: [] };
   return assemblePackageModel(sha, { settings, filtered: nothing, window: { since: date, until: date } }, tree, packages, components, await loadProject(root, sha, settings.exclude));
 }
-async function baseRevision(root, requested, settings) {
-  if (requested !== void 0) {
-    try {
-      return (await runGit(root, ["rev-parse", "--verify", `${requested}^{commit}`])).trim();
-    } catch {
-      throw usageError(`--base "${requested}" is not a revision of this repository`);
-    }
-  }
-  const candidates2 = [settings.ref === "HEAD" ? void 0 : settings.ref, "origin/main", "origin/master", "main", "master"].filter((c) => c !== void 0);
-  for (const candidate of candidates2) {
-    try {
-      const head = (await runGit(root, ["rev-parse", "--verify", "HEAD"])).trim();
-      const other = (await runGit(root, ["rev-parse", "--verify", `${candidate}^{commit}`])).trim();
-      if (other === head) continue;
-      return (await runGit(root, ["merge-base", "HEAD", candidate])).trim();
-    } catch {
-    }
-  }
-  throw usageError("no base revision: pass --base <rev>, or configure structure.branch to the main branch");
+async function baseRevision(root, headSha, requested, settings) {
+  return (await resolveBase(root, headSha, settings, requested)).sha;
 }
 
 // packages/structure/src/packaging/commands/check.ts
@@ -12934,7 +12974,7 @@ var check = {
   async analyse({ context, history, model }) {
     const { root } = context.repo;
     const requested = typeof context.values.base === "string" ? context.values.base : void 0;
-    const base = await baseRevision(root, requested, history.settings);
+    const base = await baseRevision(root, model.headSha, requested, history.settings);
     const before = new Set((await violationsAt(root, base, history.settings)).map((v) => v.key));
     const now = await violationsAt(root, model.headSha, history.settings, model);
     const added = now.filter((v) => !before.has(v.key));
