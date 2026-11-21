@@ -1,0 +1,36 @@
+schema_version: "1.0"
+name: uses-the-mechanism-the-codebase-has
+description: When the codebase already decouples with an event emitter next to the boundary, the agent finds it from the census and either fixes the cycle with less machinery or uses that emitter, and never brings in a different mechanism.
+tags: [behaviour]
+runs: 3
+context:
+  scaffold_script: ../scaffold-events.sh
+execution:
+  prompt: Break the dependency cycle between orders and billing properly. Decide the approach yourself and make the change.
+  model: claude-sonnet-5-5
+  max_turns: 25
+  timeout_seconds: 400
+  allowed_tools: [Skill, Bash, Read, Grep, Glob, Edit, Write]
+graders:
+  - type: tool_used
+    name: loads-the-skill
+    tool: Skill
+    input_match: structure
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: looks-at-the-mechanisms-in-use
+    tool: Bash
+    input_match: "structure\\.mjs (census|evidence)"
+    min: 1
+    arm: with-only
+  - type: regex
+    name: does-not-bring-in-another-mechanism
+    target: files
+    pattern: "(Mediator|container\\.register|@Injectable|registerHandler|new Map<string, )"
+    match: not_contains
+    arm: with-only
+  - type: llm
+    name: stays-with-what-the-codebase-does
+    criteria: The agent chose its remedy knowing which mechanisms the codebase already uses, from the census or the evidence pack. Either it broke the cycle with less machinery than any mechanism (moving a symbol, passing a value or callback, removing a dead import) and says why, or it used the event emitter in src/events that other folders already use and says it chose it because the codebase already works that way. It did not introduce any other new mechanism (mediator, injection container, registry) and did not stop to ask permission for the emitter that already exists.
+    arm: with-only

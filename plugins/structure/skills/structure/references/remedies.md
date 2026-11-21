@@ -15,11 +15,11 @@ The questions in SKILL.md pick the remedy. This is the background for each answe
 - **Information leakage**: one design decision written in two modules. The cure is to put the decision in one place.
 - **Stable dependencies principle**: depend towards code that changes less. A stable module depending on a volatile one must change with it.
 - **Hidden coupling**: co-change between modules with no import between them. It is what a dependency "broken" by indirection often becomes.
-- **Mediator, observer, ports and adapters**: background names for options 4 and 5. Each fits when the evidence supports it and the census (or your search) shows the codebase already uses it.
+- **Mediator, observer, ports and adapters**: background names for options 4 and 5. Each fits when the evidence supports it and the census shows the codebase already uses it. `patterns.md` says when each fits and what it costs.
 
 ## When to stop and ask
 
-If the mechanism you would choose does not appear anywhere in the codebase, ask the user before writing it. State the alternatives you weighed, including moving or passing a value, and what the evidence says for each. Do not introduce a mechanism because it is the usual answer.
+If the mechanism you would choose has a zero row in `structure census`, or is used only in folders far from this boundary (`nearbyMechanisms`), ask the user before writing it. State the alternatives you weighed, including moving or passing a value, and what the evidence says for each. Do not introduce a mechanism because it is the usual answer. `mechanisms.md` explains how to read the census, including what it cannot see.
 
 ## Registration hubs
 

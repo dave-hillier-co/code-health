@@ -4,6 +4,7 @@ import { DEFAULT_EVIDENCE_THRESHOLDS, type EvidenceThresholds } from "@code-heal
 import { DEFAULT_MAX_CHANGESET_SIZE } from "@code-health/history/noise";
 import { DEFAULT_RENAME_LIMIT, DEFAULT_SIMILARITY } from "@code-health/history/refresh";
 import { DEFAULT_EXACT_LIMIT } from "@code-health/graph/feedback-arc-set";
+import type { CensusSettings } from "./census/census.ts";
 import { TOOL } from "./tool.ts";
 
 /**
@@ -32,6 +33,20 @@ export const structureConfig: PluginConfigSpec = {
     minVolatilityRatio: 2,
     /** A dependency points against structural stability when the depended-on side's instability exceeds the dependant's by at least this many percentage points. */
     minInstabilityGap: 20,
+    /**
+     * The mechanism census. The call lists add to what is built in. Names are matched exactly:
+     * folder names against a folder's own name, call names against the called method on any receiver.
+     */
+    census: {
+      /** Folders whose name marks ports and adapters. This is the whole list: stating it replaces the default. */
+      folderNames: ["ports", "adapters", "infrastructure"] as string[],
+      /** Methods that publish or subscribe to events, beyond emit, on, subscribe, publish, dispatch and the like. */
+      eventCalls: [] as string[],
+      /** Methods that register or dispatch to handlers, beyond send and execute on a mediator or command bus. */
+      handlerCalls: [] as string[],
+      /** Methods that register into a registry, beyond those named register*. */
+      registerCalls: [] as string[],
+    },
     evidence: {
       strong: { ...DEFAULT_EVIDENCE_THRESHOLDS.strong },
       moderate: { ...DEFAULT_EVIDENCE_THRESHOLDS.moderate },
@@ -57,6 +72,7 @@ export interface StructureSettings {
   exclude: string[];
   /** The suite's shared `components` config, as written. */
   components: Record<string, unknown>;
+  census: CensusSettings;
   evidenceThresholds: EvidenceThresholds;
   /** True when the config file states the analysis window, which a shallow clone requires. */
   windowStated: boolean;
@@ -88,6 +104,15 @@ export function readSettings(config: LoadedConfig): StructureSettings {
   const exactLimit = positive("exactLimit");
   if (exactLimit > 30) throw configError(`code-health.json: ${at("exactLimit")} is at most 30, the largest component the exact search supports`);
 
+  const census = section.census as Record<string, unknown>;
+  const names = (key: string): string[] => {
+    const value = census[key];
+    if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item === "")) {
+      throw configError(`code-health.json: ${at(`census.${key}`)} must be an array of non-empty strings`);
+    }
+    return value as string[];
+  };
+
   return {
     ref: branch ?? "HEAD",
     firstParent: section.firstParent === true,
@@ -102,6 +127,7 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     minInstabilityGap,
     exclude: config.effective.exclude,
     components: config.effective.components,
+    census: { folderNames: names("folderNames"), eventCalls: names("eventCalls"), handlerCalls: names("handlerCalls"), registerCalls: names("registerCalls") },
     evidenceThresholds: section.evidence as EvidenceThresholds,
     windowStated: config.sources[at("windowMonths")] === "file",
   };

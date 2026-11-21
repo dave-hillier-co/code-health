@@ -1,10 +1,12 @@
 import { compareIds } from "@code-health/graph/graph";
+import type { Census } from "./census/census.ts";
+import { nearbyMechanisms, type NearbyMechanism } from "./census/nearby.ts";
 import type { Unblock } from "./locality-report.ts";
 import { findCycles, unblocksOf } from "./cycles.ts";
 import type { StructureSettings } from "./config.ts";
 import type { Model } from "./model.ts";
 import { describeEdge, type SymbolUse } from "./modules.ts";
-import { edgeKey } from "./project.ts";
+import { edgeKey, folderOf } from "./project.ts";
 import { round3, type AgainstStability, type Stability } from "./stability.ts";
 import { judgeEdge, unstableId } from "./unstable.ts";
 
@@ -62,8 +64,8 @@ export interface EvidencePack {
   coChange: CoChangeFigures;
   misplacement: Misplacement[];
   unblocks: Unblock[];
-  /** Deferred to the mechanism census milestone. */
-  nearbyMechanisms: never[];
+  /** Census entries in or next to the two modules, nearest first. See `structure census` for the whole inventory. */
+  nearbyMechanisms: NearbyMechanism[];
   /** Deferred to the layer rules milestone. */
   layerRule: null;
 }
@@ -125,6 +127,7 @@ export function evidencePack(
   from: string,
   to: string,
   settings: Pick<StructureSettings, "exactLimit" | "minVolatilityRatio" | "minInstabilityGap">,
+  census: Census,
 ): EvidencePack {
   const level = model.graph.level;
   const detail = describeEdge(model.project, model.graph, from, to);
@@ -166,7 +169,11 @@ export function evidencePack(
     coChange: coChangeFigures(model, from, to),
     misplacement: misplacement(model, from, to, detail.symbols),
     unblocks: unblocksOf(model, from, to).sort((a, b) => b.unblockedGain - a.unblockedGain || compareIds(a.unit, b.unit)),
-    nearbyMechanisms: [],
+    nearbyMechanisms: nearbyMechanisms(
+      census,
+      (model.graph.filesOf.get(from) ?? []).map(folderOf),
+      (model.graph.filesOf.get(to) ?? []).map(folderOf),
+    ),
     layerRule: null,
   };
 }

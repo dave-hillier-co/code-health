@@ -1,4 +1,5 @@
 import type { Command, Rule } from "@code-health/cli-kit/run-cli";
+import * as census from "./commands/census.ts";
 import * as cycles from "./commands/cycles.ts";
 import * as evidence from "./commands/evidence.ts";
 import * as stability from "./commands/stability.ts";
@@ -18,6 +19,7 @@ export interface CommandModule {
  * and add it to this list, one line each, in alphabetical order.
  */
 export const commandModules: CommandModule[] = [
+  census,
   cycles,
   evidence,
   stability,

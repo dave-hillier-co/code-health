@@ -1,0 +1,30 @@
+schema_version: "1.0"
+name: trigger-how-does-it-decouple
+description: The skill loads and the census runs when the user asks how the codebase already decouples things, and the answer reports what is there and what is not.
+tags: [trigger, behaviour]
+runs: 3
+context:
+  scaffold_script: ../scaffold-events.sh
+execution:
+  prompt: Before I add a feature that touches orders and billing, how does this codebase already keep its modules apart? I want to match what it does.
+  model: claude-sonnet-5-5
+  max_turns: 15
+  timeout_seconds: 300
+  allowed_tools: [Skill, Bash, Read, Grep, Glob]
+graders:
+  - type: tool_used
+    name: loads-the-skill
+    tool: Skill
+    input_match: structure
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: runs-the-census
+    tool: Bash
+    input_match: "structure\\.mjs census"
+    min: 1
+    arm: with-only
+  - type: llm
+    name: reports-what-is-there-and-what-is-not
+    criteria: The answer says the codebase uses an event emitter (emit and on calls through the bus in src/events, used by shipping and notifications) and gives where. It says plainly that the census found no dependency injection, handlers, registries or ports and adapters folders, rather than listing mechanisms that are not there. It describes and does not tell the user which mechanism is best.
+    arm: with-only

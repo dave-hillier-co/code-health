@@ -16,10 +16,10 @@ const made: string[] = [];
 afterAll(() => made.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
 
 /** What `claude plugin eval --scaffold` does with a case's script: run it in an empty working directory. */
-function scaffold(plugin: string): string {
+function scaffold(plugin: string, script = "scaffold.sh"): string {
   const dir = mkdtempSync(join(tmpdir(), `${plugin}-eval-`));
   made.push(dir);
-  execFileSync("sh", [join(plugins, plugin, "evals", "scaffold.sh")], { cwd: dir, stdio: "pipe", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" } });
+  execFileSync("sh", [join(plugins, plugin, "evals", script)], { cwd: dir, stdio: "pipe", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" } });
   return dir;
 }
 
@@ -79,5 +79,26 @@ describe("structure", () => {
     expect(results).toHaveLength(1);
     expect(results[0].breakingSet).toHaveLength(1);
     expect(results[0].nodes).toEqual(["src/billing/charge.ts", "src/orders/total.ts"]);
+  });
+
+  test("its census finds no mechanism, so any would be new", async () => {
+    const { results } = await json(structure, scaffold("structure"), "census");
+    expect(results.map((row: { mechanism: string; count: number }) => [row.mechanism, row.count]).filter(([, count]: [string, number]) => count > 0)).toEqual([]);
+  });
+
+  test("the events scaffold keeps the same cycle and adds an event emitter the census finds", async () => {
+    const dir = scaffold("structure", "scaffold-events.sh");
+    const { results: cycles } = await json(structure, dir, "cycles");
+    expect(cycles).toHaveLength(1);
+    const { results } = await json(structure, dir, "census");
+    const events = results.find((row: { mechanism: string }) => row.mechanism === "events");
+    expect(events.count).toBe(3);
+    expect(events.folders.map((f: { folder: string }) => f.folder).sort()).toEqual(["src/events", "src/notifications", "src/shipping"]);
+    expect(results.filter((row: { mechanism: string; count: number }) => row.mechanism !== "events" && row.count > 0)).toEqual([]);
+  });
+
+  test("the events scaffold is reproducible and leaves a clean tree", () => {
+    expect(head(scaffold("structure", "scaffold-events.sh"))).toBe(head(scaffold("structure", "scaffold-events.sh")));
+    expect(execFileSync("git", ["status", "--porcelain"], { cwd: scaffold("structure", "scaffold-events.sh"), encoding: "utf8" })).toBe("");
   });
 });
