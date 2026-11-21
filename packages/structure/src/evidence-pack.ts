@@ -121,7 +121,11 @@ function coChangeFigures(model: Model, from: string, to: string): CoChangeFigure
   };
 }
 
-/** For each symbol crossing the boundary, which side its consumers sit on. */
+/**
+ * For each symbol crossing the boundary, which side its consumers sit on. The spec words this as "from a locality
+ * score". It is a count of consumer files by side instead, which is the same evidence locality scores a move from,
+ * so the pack answers whether the symbol belongs on the other side without needing a locality report to be present.
+ */
 function misplacement(model: Model, from: string, to: string, symbols: readonly SymbolUse[]): Misplacement[] {
   const wanted = new Set(symbols.map((s) => s.symbol));
   const consumers = new Map<string, Set<string>>();
