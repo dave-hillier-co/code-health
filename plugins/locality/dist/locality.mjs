@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-KZJRK7W4.mjs";
+} from "./chunk-BO6O4Q6D.mjs";
 import {
   GitError,
   gitVersion,
@@ -29,7 +29,7 @@ import {
 } from "./chunk-Z55QIW6L.mjs";
 import {
   analyseTree
-} from "./chunk-R46TUXOE.mjs";
+} from "./chunk-ISP6GH5Y.mjs";
 import "./chunk-EUZU5IVE.mjs";
 import {
   discoverBoundaries,
@@ -4580,7 +4580,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-X7J2NRYN.mjs");
+    const { performMove } = await import("./chunk-EABPRGAO.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -4851,7 +4851,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-YDRUBPZJ.mjs");
+    const { verifyMove } = await import("./chunk-S7CMPERL.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

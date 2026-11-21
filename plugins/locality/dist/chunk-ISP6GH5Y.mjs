@@ -22,6 +22,14 @@ function parseWith(adapter, grammar, source, options = {}) {
   }
 }
 
+// packages/parse/src/exported-units.ts
+function exportedUnitNames(facts) {
+  return /* @__PURE__ */ new Set([
+    ...facts.exports.filter((exported) => exported.internal !== true).map((exported) => exported.local),
+    ...(facts.symbols?.declarations ?? []).filter((declaration) => declaration.exported).map((declaration) => declaration.unit)
+  ]);
+}
+
 // packages/parse/src/import-model.ts
 var ImportModel = class {
   facts;
@@ -361,10 +369,7 @@ function assemble(facts, resolved) {
     if (fileFacts.generated === true) generatedFiles.push(path);
     if (fileFacts.hasSyntaxErrors) filesWithSyntaxErrors.push(path);
     if (fileFacts.macroGenerated !== void 0) filesWithMacroCode.push(path);
-    const exportedLocals = /* @__PURE__ */ new Set([
-      ...fileFacts.exports.filter((exported) => exported.internal !== true).map((exported) => exported.local),
-      ...(fileFacts.symbols?.declarations ?? []).filter((declaration) => declaration.exported).map((declaration) => declaration.unit)
-    ]);
+    const exportedLocals = exportedUnitNames(fileFacts);
     for (const unit of fileFacts.units) {
       units.push({
         path,

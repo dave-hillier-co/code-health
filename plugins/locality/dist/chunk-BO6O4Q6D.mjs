@@ -25,13 +25,13 @@ __export(registered_languages_exports, {
 // packages/locality/src/movers/java.ts
 var language = {
   id: "java",
-  load: async () => (await import("./chunk-6L2NLRIR.mjs")).backend
+  load: async () => (await import("./chunk-B57NHII2.mjs")).backend
 };
 
 // packages/locality/src/movers/kotlin.ts
 var language2 = {
   id: "kotlin",
-  load: async () => (await import("./chunk-6L2NLRIR.mjs")).backend
+  load: async () => (await import("./chunk-B57NHII2.mjs")).backend
 };
 
 // packages/locality/src/movers/typescript.ts
@@ -55,7 +55,7 @@ var language5 = {
 // packages/locality/src/movers/python.ts
 var language6 = {
   id: "python",
-  load: async () => (await import("./chunk-QLZBQ2SM.mjs")).load()
+  load: async () => (await import("./chunk-FKGBVEQE.mjs")).load()
 };
 
 // packages/locality/src/movers/go.ts
