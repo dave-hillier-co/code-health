@@ -16,6 +16,8 @@ interface PackageSpec {
   exports?: boolean;
   /** Source files by name, relative to `src/`. */
   files: Record<string, string>;
+  /** Test files by name, relative to `test/`. */
+  tests?: Record<string, string>;
 }
 
 const scope = (name: string): string => `@acme/${name}`;
@@ -47,6 +49,8 @@ const reexports = (names: string[]): string => `${names.map((n) => `export { ${n
  * - `p1` and `p2` import each other.
  * - `orphan` has no consumer and uses `shared` without declaring it.
  * - `ui` declares `orphan` without using it.
+ * - `lib` and `testkit` form a cycle that only exists through a development dependency, and the
+ *   tests of `helper` import `api`, which imports `helper`: a cycle through test code alone.
  */
 export const workspace: PackageSpec[] = [
   {
@@ -70,6 +74,7 @@ export const workspace: PackageSpec[] = [
     name: "lib",
     private: false,
     version: "1.0.0",
+    devDependencies: ["testkit"],
     files: {
       "parse.ts": fn("parse"),
       "render.ts": fn("render"),
@@ -82,6 +87,7 @@ export const workspace: PackageSpec[] = [
   },
   {
     name: "helper",
+    tests: { "helper.test.ts": fn("helperTest", [["@acme/api", "handle"]]) },
     files: {
       "index.ts": fn("help"),
       "secret.ts": fn("secret"),
@@ -131,7 +137,8 @@ export const workspace: PackageSpec[] = [
   },
   {
     name: "testkit",
-    files: { "index.ts": fn("fixture"), "work.ts": fn("testkitWork") },
+    dependencies: ["lib"],
+    files: { "index.ts": fn("fixture", [["@acme/lib", "parse"]]), "work.ts": fn("testkitWork") },
   },
   {
     name: "app",
@@ -200,6 +207,7 @@ export function workspaceRepository(): GitFixture {
       commit(`Add ${spec.name}`, isoDay("2023-06-01T09:00:00Z", i), [
         add(`packages/${spec.name}/package.json`, manifest(spec)),
         ...Object.entries(spec.files).map(([file, content]) => add(`packages/${spec.name}/src/${file}`, content)),
+        ...Object.entries(spec.tests ?? {}).map(([file, content]) => add(`packages/${spec.name}/test/${file}`, content)),
       ]),
     );
   });

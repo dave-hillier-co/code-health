@@ -11,6 +11,7 @@
       "if": {
         "properties": {
           "inputs": {
+            "type": "object",
             "properties": {
               "subcommand": {
                 "const": "list"
@@ -18,8 +19,7 @@
             },
             "required": [
               "subcommand"
-            ],
-            "type": "object"
+            ]
           }
         },
         "required": [
@@ -29,7 +29,21 @@
       "then": {
         "properties": {
           "inputs": {
-            "$ref": "#/$defs/listInputs"
+            "type": "object",
+            "properties": {
+              "subcommand": {
+                "const": "list"
+              },
+              "graceDays": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "subcommand",
+              "graceDays"
+            ],
+            "additionalProperties": false
           },
           "results": {
             "type": "array",
@@ -50,6 +64,7 @@
       "if": {
         "properties": {
           "inputs": {
+            "type": "object",
             "properties": {
               "subcommand": {
                 "const": "cohesion"
@@ -57,8 +72,7 @@
             },
             "required": [
               "subcommand"
-            ],
-            "type": "object"
+            ]
           }
         },
         "required": [
@@ -68,7 +82,23 @@
       "then": {
         "properties": {
           "inputs": {
-            "$ref": "#/$defs/cohesionInputs"
+            "type": "object",
+            "properties": {
+              "subcommand": {
+                "const": "cohesion"
+              },
+              "package": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "subcommand",
+              "package"
+            ],
+            "additionalProperties": false
           },
           "results": {
             "type": "array",
@@ -76,7 +106,67 @@
               "$ref": "#/$defs/finding"
             }
           }
-        }
+        },
+        "required": []
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
+                "const": "coupling"
+              }
+            },
+            "required": [
+              "subcommand"
+            ]
+          }
+        },
+        "required": [
+          "inputs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
+                "const": "coupling"
+              },
+              "minRevisions": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "minVolatilityRatio": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "minInstabilityGap": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "subcommand",
+              "minRevisions",
+              "minVolatilityRatio",
+              "minInstabilityGap"
+            ],
+            "additionalProperties": false
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/finding"
+            }
+          }
+        },
+        "required": []
       }
     }
   ],
@@ -91,7 +181,8 @@
         "subcommand": {
           "enum": [
             "list",
-            "cohesion"
+            "cohesion",
+            "coupling"
           ]
         }
       },
@@ -101,44 +192,11 @@
     },
     "repository": true
   },
+  "required": [
+    "inputs"
+  ],
   "unevaluatedProperties": false,
   "$defs": {
-    "listInputs": {
-      "type": "object",
-      "properties": {
-        "subcommand": {
-          "const": "list"
-        },
-        "graceDays": {
-          "type": "integer",
-          "minimum": 0
-        }
-      },
-      "required": [
-        "subcommand",
-        "graceDays"
-      ],
-      "additionalProperties": false
-    },
-    "cohesionInputs": {
-      "type": "object",
-      "properties": {
-        "subcommand": {
-          "const": "cohesion"
-        },
-        "package": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "subcommand",
-        "package"
-      ],
-      "additionalProperties": false
-    },
     "repository": {
       "type": "object",
       "properties": {
@@ -306,6 +364,28 @@
       ],
       "additionalProperties": false
     },
+    "figure": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
     "finding": {
       "type": "object",
       "properties": {
@@ -344,13 +424,7 @@
         "evidence": {
           "type": "object",
           "additionalProperties": {
-            "anyOf": [
-              { "type": "number" },
-              { "type": "string" },
-              { "type": "boolean" },
-              { "type": "null" },
-              { "type": "array", "items": { "type": "string" } }
-            ]
+            "$ref": "#/$defs/figure"
           }
         },
         "changeCost": {

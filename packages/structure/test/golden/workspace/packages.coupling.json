@@ -1,0 +1,203 @@
+{
+  "command": "packages",
+  "config": "fab20fbe38119c11",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": true
+    },
+    "grade": "moderate",
+    "importedHistory": [],
+    "logicalChangesInWindow": 94,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 12.7,
+    "window": {
+      "months": 12,
+      "since": 1687251600,
+      "until": 1718874000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "minInstabilityGap": 20,
+    "minRevisions": 3,
+    "minVolatilityRatio": 2,
+    "subcommand": "coupling"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "b9c335f47d83b9946ef4b346046b5cb318e62e9a"
+  },
+  "results": [
+    {
+      "changeCost": 2.814,
+      "evidence": {
+        "breakingSet": [
+          "packages/p1->packages/p2"
+        ],
+        "coChangeAcross": 4,
+        "method": "exact",
+        "size": 2,
+        "symbolsAcross": 1
+      },
+      "id": "package-cycle:packages/p1",
+      "kind": "package-cycle",
+      "packages": [
+        "packages/p1",
+        "packages/p2"
+      ],
+      "principle": "ADP",
+      "priority": "normal",
+      "summary": "2 packages depend on each other in a cycle; cutting packages/p1->packages/p2 breaks it, which means moving 1 symbol",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "basis": "change",
+        "dependantInstability": 0.5,
+        "dependantRevisionsPerFile": 2,
+        "dependencyInstability": 0,
+        "dependencyRevisionsPerFile": 7.714,
+        "disagree": true,
+        "volatilityRatio": 3.857
+      },
+      "id": "against-stability:packages/orphan->packages/shared",
+      "kind": "against-stability",
+      "packages": [
+        "packages/orphan",
+        "packages/shared"
+      ],
+      "principle": "SDP",
+      "priority": "normal",
+      "summary": "packages/orphan depends on packages/shared, which changes 3.857 times as often per file",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "basis": "change",
+        "dependantInstability": 0.5,
+        "dependantRevisionsPerFile": 0.333,
+        "dependencyInstability": 0.6,
+        "dependencyRevisionsPerFile": 5,
+        "disagree": true,
+        "volatilityRatio": 15.015
+      },
+      "id": "against-stability:packages/wrap->packages/ui",
+      "kind": "against-stability",
+      "packages": [
+        "packages/wrap",
+        "packages/ui"
+      ],
+      "principle": "SDP",
+      "priority": "normal",
+      "summary": "packages/wrap depends on packages/ui, which changes 15.015 times as often per file",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "size": 2,
+        "testOnly": false,
+        "via": [
+          "packages/lib->packages/testkit:development-dependency"
+        ]
+      },
+      "id": "hidden-cycle:packages/lib",
+      "kind": "hidden-cycle",
+      "packages": [
+        "packages/lib",
+        "packages/testkit"
+      ],
+      "principle": "ADP",
+      "priority": "normal",
+      "summary": "packages/lib, packages/testkit form a cycle that only exists through packages/lib->packages/testkit (development-dependency)",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "size": 2,
+        "testOnly": true,
+        "via": [
+          "packages/helper->packages/api:test-import"
+        ]
+      },
+      "id": "hidden-cycle:packages/api",
+      "kind": "hidden-cycle",
+      "packages": [
+        "packages/api",
+        "packages/helper"
+      ],
+      "principle": "ADP",
+      "priority": "low",
+      "summary": "packages/api, packages/helper form a cycle only through imports from test code",
+      "tentative": false,
+      "unit": null
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 5
+  },
+  "window": {
+    "since": "2023-06-20T09:00:00.000Z",
+    "until": "2024-06-20T09:00:00.000Z"
+  }
+}
