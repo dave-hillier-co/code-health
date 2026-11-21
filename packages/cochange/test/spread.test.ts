@@ -182,3 +182,32 @@ test("the default run is stored as a report, a bounded or re-bucketed run is not
   await spread();
   expect(existsSync(reportPath(repo.path, "spread"))).toBe(true);
 });
+
+test("a change dated after the head commit is outside the window, so overall and the buckets agree", async () => {
+  const { GitFixture } = await import("@code-health/fixtures/git-fixture");
+  const skewed = GitFixture.build([
+    {
+      type: "commit",
+      message: "Rebased commit with a later committer date",
+      date: "2024-01-10T09:00:00Z",
+      committerDate: "2024-05-10T09:00:00Z",
+      changes: [{ op: "add", path: "src/a.ts", content: "a(1);\n" }, { op: "add", path: "docs/b.md", content: "b\n" }],
+    },
+    {
+      type: "commit",
+      message: "Head",
+      date: "2024-03-19T09:00:00Z",
+      committerDate: "2024-03-20T09:00:00Z",
+      changes: [{ op: "modify", path: "src/a.ts", content: "a(2);\n" }, { op: "modify", path: "docs/b.md", content: "b2\n" }],
+    },
+  ]);
+  try {
+    const { stdout } = await runCochange(skewed.path, ["spread"]);
+    const { results, window } = JSON.parse(stdout);
+    expect(window.until).toBe("2024-03-20T09:00:00.000Z");
+    expect(results.overall.logicalChanges).toBe(results.buckets.reduce((sum: number, b: Row) => sum + (b.logicalChanges as number), 0));
+    expect(results.overall.logicalChanges).toBe(1);
+  } finally {
+    skewed.dispose();
+  }
+});

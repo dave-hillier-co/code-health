@@ -65,7 +65,9 @@ export async function loadHistory(context: CommandContext, options: HistoryOptio
 
   const anchor = Number((await runGit(root, ["log", "-1", "--format=%ct", settings.ref])).trim());
   const since = options.wholeHistory ? undefined : (options.window?.since ?? monthsBefore(anchor, settings.windowMonths));
-  const until = options.window?.until;
+  // The window is anchored at the analysed commit: a commit with a later committer date
+  // (clock skew, a rebase) is outside it. `until` is exclusive, so the anchor itself stays in.
+  const until = options.window?.until ?? anchor + 1;
 
   const analysis = await analyseHistory(root, {
     ref: settings.ref,
@@ -80,5 +82,5 @@ export async function loadHistory(context: CommandContext, options: HistoryOptio
     evidence: { windowMonths: settings.windowMonths, thresholds: settings.evidenceThresholds },
   });
   const earliest = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
-  return { ...analysis, settings, window: { since: since ?? earliest, until: until ?? anchor }, refreshed };
+  return { ...analysis, settings, window: { since: since ?? earliest, until: options.window?.until ?? anchor }, refreshed };
 }
