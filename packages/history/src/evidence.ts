@@ -56,7 +56,11 @@ const SECONDS_PER_MONTH = 30.4375 * 86_400;
 /** Unix seconds `months` calendar months before `anchor`, in UTC. */
 export function monthsBefore(anchor: number, months: number): number {
   const date = new Date(anchor * 1000);
+  const day = date.getUTCDate();
+  date.setUTCDate(1);
   date.setUTCMonth(date.getUTCMonth() - months);
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(day, lastDay));
   return Math.floor(date.getTime() / 1000);
 }
 

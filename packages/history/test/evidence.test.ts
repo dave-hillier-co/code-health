@@ -37,8 +37,17 @@ const thresholds: EvidenceThresholds = {
 
 test("months are counted back from the head commit's date, not the wall clock", () => {
   const anchor = Date.parse("2024-03-31T00:00:00Z") / 1000;
-  expect(new Date(monthsBefore(anchor, 1) * 1000).toISOString().slice(0, 7)).toBe("2024-03");
+  expect(new Date(monthsBefore(anchor, 1) * 1000).toISOString().slice(0, 7)).toBe("2024-02");
   expect(new Date(monthsBefore(Date.parse("2024-06-15T00:00:00Z") / 1000, 12) * 1000).toISOString().slice(0, 10)).toBe("2023-06-15");
+});
+
+test("subtracting months clamps to the last day of a shorter month", () => {
+  const day = (iso: string, months: number) =>
+    new Date(monthsBefore(Date.parse(iso) / 1000, months) * 1000).toISOString().slice(0, 10);
+  expect(day("2024-03-31T00:00:00Z", 1)).toBe("2024-02-29");
+  expect(day("2023-03-31T00:00:00Z", 1)).toBe("2023-02-28");
+  expect(day("2024-08-31T00:00:00Z", 6)).toBe("2024-02-29");
+  expect(day("2024-02-29T00:00:00Z", 12)).toBe("2023-02-28");
 });
 
 test("a long, busy, multi-author history grades strong", async () => {
