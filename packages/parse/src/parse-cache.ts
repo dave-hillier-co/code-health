@@ -1,0 +1,46 @@
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { ensureCacheDir, locateCache } from "@code-health/history/cache-location";
+import { extractorVersion } from "./extract-facts.ts";
+import type { FileFacts } from "./facts.ts";
+
+/**
+ * Parse results keyed by git blob SHA and grammar version, under
+ * `.cache/code-health/parse/`. Content-addressed, so entries are never
+ * invalidated, and a historical revision is analysed by its blobs.
+ */
+export class ParseCache {
+  private readonly directory: string;
+
+  constructor(directory: string) {
+    this.directory = directory;
+  }
+
+  /** The cache of the repository containing `repoPath`, shared by its linked worktrees. */
+  static async forRepository(repoPath: string): Promise<ParseCache> {
+    const location = await locateCache(repoPath);
+    ensureCacheDir(location);
+    return new ParseCache(join(location.cacheDir, "parse"));
+  }
+
+  async get(blobSha: string, grammarVersion: string): Promise<FileFacts | undefined> {
+    try {
+      return JSON.parse(await readFile(this.entryPath(blobSha, grammarVersion), "utf8")) as FileFacts;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async set(blobSha: string, grammarVersion: string, facts: FileFacts): Promise<void> {
+    const path = this.entryPath(blobSha, grammarVersion);
+    await mkdir(dirname(path), { recursive: true });
+    const temporary = `${path}.${process.pid}.tmp`;
+    await writeFile(temporary, JSON.stringify(facts));
+    await rename(temporary, path);
+  }
+
+  /** The extractor version is part of the key, so changed extraction rules never read old facts. */
+  private entryPath(blobSha: string, grammarVersion: string): string {
+    return join(this.directory, `${grammarVersion}.extract-${extractorVersion}`, blobSha.slice(0, 2), `${blobSha}.json`);
+  }
+}
