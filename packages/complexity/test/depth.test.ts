@@ -161,3 +161,27 @@ test("the depth of a file's exports and its pass-throughs sit on its row in `fil
   expect(files.find((file) => file.path === "src/shapes.ts")).toMatchObject({ interfaceDepth: 13.16, passThroughs: 4 });
   expect(files.find((file) => file.path === "src/plain.rb")).toMatchObject({ interfaceDepth: null, passThroughs: 0 });
 });
+
+test("a module that only re-exports with a star import has no body to measure and is not a row", async () => {
+  const star = GitFixture.build([
+    {
+      type: "commit",
+      message: "Package",
+      date: "2024-01-01T00:00:00+00:00",
+      changes: [
+        { op: "add", path: "base/__init__.py", content: "from .core import *\n" },
+        { op: "add", path: "base/core.py", content: "def build():\n    return 1\n" },
+      ],
+    },
+  ]);
+  try {
+    const run = await runComplexity(star.path, ["depth", "--json", "--limit", "all"]);
+    expect(run.stderr).toBe("");
+    expect(run.code).toBe(ExitCode.Success);
+    const found = (JSON.parse(run.stdout).results as Row[]).map((row) => row.path);
+    expect(found).toContain("base/core.py");
+    expect(found).not.toContain("base/__init__.py");
+  } finally {
+    star.dispose();
+  }
+});

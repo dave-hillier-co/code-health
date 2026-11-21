@@ -92,7 +92,8 @@ export function depthRows(file: FileRecord, shallow: number): DepthRow[] {
     });
   }
   const { module } = file.interfaces;
-  if (module.exports > 0) {
+  // A module with no node of its own (a Python `__init__.py` that only star-imports) hides nothing and has no depth to divide.
+  if (module.exports > 0 && module.nodes > 0) {
     add({
       unit: file.path,
       id: file.path,
