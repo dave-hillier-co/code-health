@@ -2698,7 +2698,6 @@ function parseKey(key) {
 }
 
 // packages/cochange/src/abandonment/activity.ts
-var SECONDS_PER_MONTH2 = 2629800;
 async function readActivity(root, commits, options) {
   const raws = /* @__PURE__ */ new Map();
   for (const c of commits) raws.set(identityKey({ name: c.authorName, email: c.authorEmail }), { name: c.authorName, email: c.authorEmail });
@@ -2718,14 +2717,6 @@ async function readActivity(root, commits, options) {
   }
   for (const times of byPerson.values()) times.sort((a, b) => a - b);
   return { commits: new Map([...byPerson].sort(([a], [b]) => Buffer.compare(Buffer.from(a), Buffer.from(b)))) };
-}
-function activeAt(times, asOf, windowSeconds) {
-  let last;
-  for (const t of times) {
-    if (t > asOf) break;
-    last = t;
-  }
-  return last !== void 0 && last > asOf - windowSeconds;
 }
 function tenuresOf(times, asOf, windowSeconds) {
   const known = times.filter((t) => t <= asOf);
@@ -2809,17 +2800,44 @@ function shareHeldBy(shares, ownerKeys) {
   return held / shares.people;
 }
 
+// packages/cochange/src/active-developers.ts
+var SECONDS_PER_MONTH2 = 2629800;
+var windowSecondsOf = (settings) => settings.activityWindowMonths * SECONDS_PER_MONTH2;
+function activeAt(times, asOf, windowSeconds) {
+  let last;
+  for (const t of times) {
+    if (t > asOf) break;
+    last = t;
+  }
+  return last !== void 0 && last > asOf - windowSeconds;
+}
+function isActiveDeveloper(key, times, asOf, rule) {
+  if (rule.overrides.inactive.has(key)) return false;
+  if (rule.overrides.active.has(key)) return true;
+  return activeAt(times, asOf, rule.windowSeconds);
+}
+var emailOf2 = (identity) => (/<([^>]*)>$/.exec(identity)?.[1] ?? "").toLowerCase();
+async function readActiveDevelopers(context, history, asOf) {
+  const { root } = context.repo;
+  const settings = readKnowledgeSettings(context.config.effective);
+  const rule = { windowSeconds: windowSecondsOf(settings), overrides: readOverrides(root) };
+  const activity = await readActivity(root, history.view.commits, { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher });
+  const active = /* @__PURE__ */ new Set();
+  for (const [key, times] of activity.commits) if (isActiveDeveloper(key, times, asOf, rule)) active.add(emailOf2(key));
+  return { has: (email) => active.has(email.toLowerCase()) };
+}
+
 // packages/cochange/src/abandonment/knowledge-model.ts
 var compareBytes2 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
 function buildKnowledgeModel(input) {
   const { snapshot, owners, activity, asOf, windowSeconds, overrides } = input;
+  const rule = { windowSeconds, overrides: overrides ?? { active: /* @__PURE__ */ new Set(), inactive: /* @__PURE__ */ new Set() } };
   const keys = new Set(activity.commits.keys());
   for (const owner of owners.values()) if (owner.kind === "person") keys.add(owner.key);
   const sorted = [...keys].sort(compareBytes2);
   const index2 = new Map(sorted.map((key, i) => [key, i]));
   const developers = sorted.map((key) => {
-    const forced = overrides?.inactive.has(key) ? false : overrides?.active.has(key) ? true : void 0;
-    return { key, active: forced ?? activeAt(activity.commits.get(key) ?? [], asOf, windowSeconds) };
+    return { key, active: isActiveDeveloper(key, activity.commits.get(key) ?? [], asOf, rule) };
   });
   const files = [];
   for (const file of snapshot.files.values()) {
@@ -3254,7 +3272,6 @@ async function refreshBlame(repoPath, options = {}) {
 }
 
 // packages/cochange/src/abandonment/load.ts
-var windowSecondsOf = (settings) => settings.activityWindowMonths * SECONDS_PER_MONTH2;
 var periodSecondsOf = (settings) => settings.periodMonths * SECONDS_PER_MONTH2;
 function blameOptions(history, settings) {
   return { exclude: history.settings.exclude, copyDetection: settings.copyDetection };
@@ -3684,11 +3701,39 @@ function spuriousRate(counts) {
 // packages/lexical/src/recorded-agreement.ts
 var recorded_agreement_exports = {};
 __export(recorded_agreement_exports, {
+  cpp: () => recorded3,
+  csharp: () => recorded2,
+  go: () => recorded5,
+  java: () => recorded6,
+  kotlin: () => recorded7,
+  python: () => recorded4,
+  rust: () => recorded8,
   typescript: () => recorded
 });
 
 // packages/lexical/src/agreement-rates/typescript.ts
 var recorded = { units: 103, found: 101, exact: 101, blocks: 111, spurious: 6 };
+
+// packages/lexical/src/agreement-rates/csharp.ts
+var recorded2 = { units: 71, found: 70, exact: 69, blocks: 74, spurious: 2 };
+
+// packages/lexical/src/agreement-rates/cpp.ts
+var recorded3 = { units: 66, found: 65, exact: 65, blocks: 67, spurious: 1 };
+
+// packages/lexical/src/agreement-rates/python.ts
+var recorded4 = { units: 66, found: 64, exact: 63, blocks: 63, spurious: 0 };
+
+// packages/lexical/src/agreement-rates/go.ts
+var recorded5 = { units: 51, found: 51, exact: 51, blocks: 57, spurious: 3 };
+
+// packages/lexical/src/agreement-rates/java.ts
+var recorded6 = { units: 58, found: 55, exact: 55, blocks: 63, spurious: 0 };
+
+// packages/lexical/src/agreement-rates/kotlin.ts
+var recorded7 = { units: 57, found: 57, exact: 57, blocks: 58, spurious: 0 };
+
+// packages/lexical/src/agreement-rates/rust.ts
+var recorded8 = { units: 58, found: 56, exact: 53, blocks: 53, spurious: 0 };
 
 // packages/lexical/src/agreement-rates.ts
 var recordedAgreement = { ...recorded_agreement_exports };
@@ -3766,7 +3811,9 @@ function compile2(profile) {
       noise: profile.headerNoise.map((source) => new RegExp(source)),
       control: new RegExp(profile.controlHeader),
       types: profile.typeHeaders.map((source) => new RegExp(source)),
-      functions: profile.functionHeaders.map((source) => new RegExp(source))
+      functions: profile.functionHeaders.map((source) => new RegExp(source)),
+      members: profile.expressionMembers?.map((source) => new RegExp(source)),
+      statementEnd: profile.statementEnd === void 0 ? void 0 : new RegExp(profile.statementEnd)
     };
     compiledProfiles.set(profile, compiled);
   }
@@ -3819,6 +3866,14 @@ var boundArrow = [
 var keywordAssignment = /^(?:export\s+)?(?:const|let|var)\b/;
 var continuesExpression = /[-+*/%&|^?:=<>.,([!~]$/;
 var continuesFromStart = /^[-+*/%&|^?:=<>.)\]]/;
+function isPlainEquals(code, index2) {
+  return code[index2 + 1] !== "=" && code[index2 + 1] !== ">" && !/[-+*/%&|^!<>=]/.test(code[index2 - 1] ?? "");
+}
+function endsStatement(code, following) {
+  const text = code.trimEnd();
+  if (text === "" || /[-+*/%&|^?:=<.,([!~]$/.test(text) || /(?:^|\s)>$/.test(text) || text.endsWith("->")) return false;
+  return !continuesFromStart.test(following) && !following.startsWith("{") && !/^else\b/.test(following);
+}
 function angleBalanced(text) {
   const flat = text.replace(/=>|->/g, "");
   return (flat.match(/</g)?.length ?? 0) <= (flat.match(/>/g)?.length ?? 0);
@@ -3831,12 +3886,33 @@ function findBracedBlocks(lines, profile) {
   let parenDepth = 0;
   let arrow;
   let inDeclaration = false;
+  const { statementEnd } = compile2(profile);
+  const endsLineWithoutSemicolon = (line) => {
+    const code = line.code.trimEnd();
+    if (statementEnd === void 0 || code === "") return false;
+    return /^["'`]/.test(line.text.slice(code.length).trimStart()) || statementEnd.test(code);
+  };
   const headerText = (extra) => [...header.map((part) => part.text), extra].join(" ").replace(/\s+/g, " ").trim();
   const closeArrow = () => {
     if (arrow === void 0) return;
     arrow.block.endLine = arrow.lastLine;
     closed.push(arrow.block);
     arrow = void 0;
+  };
+  const openExpressionBody = (before, line) => {
+    const top = stack[stack.length - 1];
+    if (top?.typeOnly === true) return false;
+    const kept = [...header, { line: line.number, text: before }];
+    const classification = classifyHeader(kept, profile);
+    if (classification.kind !== "function") return false;
+    const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+    const block = { startLine: classification.line, endLine: -1, source: "lexical" };
+    if (classification.name !== void 0) {
+      block.name = classification.name;
+      block.qualifiedName = qualify(names, classification.name);
+    }
+    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: false };
+    return true;
   };
   const openArrow = (before, line, column, index2) => {
     const rest = line.code.slice(column + 1).trim();
@@ -3849,7 +3925,14 @@ function findBracedBlocks(lines, profile) {
     const text = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
     let name14;
     let matched = false;
-    for (const [i, pattern] of boundArrow.entries()) {
+    const members = compile2(profile).members;
+    if (members !== void 0) {
+      const found = members.map((pattern) => pattern.exec(text)).find((match) => match !== null);
+      if (found === void 0) return false;
+      name14 = found?.groups?.name;
+      matched = true;
+    }
+    for (const [i, pattern] of members === void 0 ? [...boundArrow.entries()] : []) {
       const match = pattern.exec(text);
       if (match === null) continue;
       if (i === 0 && !inDeclaration && !keywordAssignment.test(text) && top?.name === void 0) continue;
@@ -3879,7 +3962,7 @@ function findBracedBlocks(lines, profile) {
       const ch = code[i];
       if (arrow !== void 0 && ch.trim() !== "") arrow.lastLine = line.number;
       if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
-        if (ch === ";" || ch === ",") {
+        if (ch === ";" || ch === "," && profile.expressionArrows === true) {
           inDeclaration = ch === "," && arrow.declaration;
           closeArrow();
           header = [];
@@ -3898,10 +3981,15 @@ function findBracedBlocks(lines, profile) {
           closeArrow();
         }
         parenDepth = Math.max(0, parenDepth - 1);
-      } else if (ch === "=" && code[i + 1] === ">" && profile.expressionArrows === true && arrow === void 0) {
+      } else if (ch === "=" && code[i + 1] === ">" && (profile.expressionArrows === true || profile.expressionMembers !== void 0) && arrow === void 0) {
         if (openArrow(segment, line, i + 1, index2)) {
           segment += "=>";
           i++;
+          continue;
+        }
+      } else if (ch === "=" && profile.expressionBodies === true && arrow === void 0 && parenDepth === 0 && isPlainEquals(code, i)) {
+        if (openExpressionBody(segment, line)) {
+          segment += "=";
           continue;
         }
       } else if (ch === ";" && parenDepth === 0) {
@@ -3916,7 +4004,7 @@ function findBracedBlocks(lines, profile) {
         continue;
       } else if (ch === "{") {
         header.push({ line: line.number, text: segment });
-        if (parenDepth > 0 && /[(,=:]\s*$/.test(header.map((part) => part.text).join(" "))) {
+        if (parenDepth > 0 && /(?:[(,=:]|\b(?:struct|interface))\s*$/.test(header.map((part) => part.text).join(" "))) {
           stack.push({ name: void 0, block: void 0, parenDepth, resume: header });
           header = [];
           segment = "";
@@ -3961,10 +4049,12 @@ function findBracedBlocks(lines, profile) {
       segment += ch;
     }
     header.push({ line: line.number, text: segment });
+    if (parenDepth === 0 && arrow === void 0 && endsLineWithoutSemicolon(line)) header = [];
+    if (profile.newlineEndsStatements === true && arrow === void 0 && parenDepth === 0 && endsStatement(code, codeLines[index2 + 1]?.code.trim() ?? "")) header = [];
     if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
       const text = code.trimEnd();
       const following = codeLines[index2 + 1]?.code.trim() ?? "";
-      if (text !== "" && !continuesExpression.test(text) && !continuesFromStart.test(following)) {
+      if (text !== "" && !continuesExpression.test(text) && !continuesFromStart.test(following) && !(profile.expressionBodies === true && /^else\b/.test(following))) {
         closeArrow();
         header = [];
       }
@@ -4222,10 +4312,26 @@ var csharp = {
   bumpOpeners: [...cBumpOpeners, "foreach"],
   headerNoise: annotationNoise,
   controlHeader,
-  typeHeaders: cTypeHeaders,
+  // `object` and `record` are not declarations here: `object o` is a parameter.
+  typeHeaders: ["(?:^|\\s)(?:class|struct|interface|enum|namespace|record(?:\\s+(?:class|struct))?)\\s+(?<name>[\\w.]+)"],
   functionHeaders: [
-    "(?:[^]*\\s)?(?<name>(?!(?:base|this)\\b)[\\w.<>]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    // A method, constructor or operator, with an optional constraint clause and constructor initialiser.
+    "(?:[^]*\\s)?(?<name>(?!(?:base|this)\\b)[\\w.<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    // An accessor with a block body.
+    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$",
     "=>\\s*$"
+  ],
+  expressionMembers: [
+    // A method or operator: `public int Twice(int x)`, `static bool operator ==(A a, B b)`.
+    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|async|extern|unsafe|new|partial|readonly)\\s+)*[\\w.<>\\[\\]?,()]+\\s+(?<name>[\\w.]+|operator\\s*[^\\s(]+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:where\\s+[^=]+)?$",
+    // A conversion operator, which has no return type of its own: `public static implicit operator int(Money m)`.
+    "^(?:(?:public|static)\\s+)*(?:implicit|explicit)\\s+(?<name>operator\\s+[\\w.<>\\[\\]?]+)\\s*\\([^]*\\)$",
+    // A constructor or finaliser, which has modifiers and no return type: `public Money(decimal amount)`.
+    "^(?:(?:public|private|protected|internal|static)\\s+)+(?<name>~?\\w+)\\s*\\([^]*\\)\\s*(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    // A property or indexer: `public int Count`, `public int this[int i]`.
+    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|new|readonly)\\s+)+[\\w.<>\\[\\]?,()]+\\s+(?<name>\\w+|this\\s*\\[[^\\]]*\\])$",
+    // An accessor: `set => value = x;`.
+    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$"
   ]
 };
 var cpp = {
@@ -4247,7 +4353,8 @@ var cpp = {
   branchKeywords: cBranchKeywords,
   shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "\\|\\|"],
   bumpOpeners: cBumpOpeners,
-  headerNoise: ["^#.*$", "^\\[\\[.*\\]\\]$"],
+  // Access specifiers and Qt's `signals:` end in a colon and are not part of the member that follows them.
+  headerNoise: ["^#.*$", "^\\[\\[.*\\]\\]$", "^(?:public|private|protected)(?:\\s+(?:slots|Q_SLOTS))?\\s*:$", "^(?:signals|Q_SIGNALS)\\s*:$"],
   controlHeader,
   typeHeaders: [typeHeader],
   functionHeaders: [cMethodHeader, "\\]\\s*(?:\\([^]*\\))?\\s*(?:mutable|noexcept|->\\s*[^{;]+)*\\s*$"]
@@ -4281,15 +4388,19 @@ var kotlin = {
     charLiteral
   ],
   branchKeywords: [...cBranchKeywords, "when"],
-  shortCircuitOperators: ["&&", "\\|\\|", "\\?:"],
+  // The elvis operator is null-coalescing, not a decision (suite.md, Metric definitions per language).
+  shortCircuitOperators: ["&&", "\\|\\|"],
   bumpOpeners: [...cBumpOpeners, "when"],
   headerNoise: annotationNoise,
   controlHeader,
   typeHeaders: [typeHeader],
   functionHeaders: [
     "\\bfun\\b\\s*(?:<[^>]*>\\s*)?(?:[\\w.<>?]+\\.)?(?<name>[\\w$]+)\\s*\\([^]*\\)\\s*(?::\\s*[^{=]+)?$",
+    "^(?:(?:public|private|protected|internal)\\s+)?constructor\\s*\\([^]*\\)(?:\\s*:\\s*(?:this|super)\\s*\\([^]*\\))?$",
     "->\\s*$"
-  ]
+  ],
+  newlineEndsStatements: true,
+  expressionBodies: true
 };
 var rust = {
   name: "rust",
@@ -4337,6 +4448,8 @@ var go = {
   shortCircuitOperators: ["&&", "\\|\\|"],
   bumpOpeners: ["if", "else", "for", "switch", "select", "case", "default"],
   headerNoise: ["^//go:.*$"],
+  // `package`, `import`, `const`, `var` and `type` declarations end at the line break, and so does any statement.
+  statementEnd: "(?:[\\w)\\]}]|\\+\\+|--)$|^\\s*(?:case\\b.*|default|\\w+):$",
   controlHeader: "^(?:else\\s+if|else|if|for|switch|select)\\b",
   typeHeaders: ["\\btype\\s+(?<name>\\w+)(?:\\s*\\[[^\\]]*\\])?\\s+(?:struct|interface)\\b"],
   functionHeaders: [
@@ -4922,7 +5035,6 @@ var rules = {
 };
 
 // packages/cochange/src/abandonment/successors.ts
-var emailOf2 = (identity) => (/<([^>]*)>$/.exec(identity)?.[1] ?? "").toLowerCase();
 function buildSuccessorIndex(history) {
   const { minSupport, minDegree } = history.settings;
   const partners = /* @__PURE__ */ new Map();
@@ -5072,7 +5184,7 @@ async function simulateCommand(context) {
       formerAuthors: former,
       findings: fileFindings2({ abandoned, probability: f.probability, hot: weight?.hot ?? false, noSuccessor: () => noSuccessor(f.path) }, settings.atRiskProbability)
     };
-  }).sort((a, b) => b.score - a.score || b.probability - a.probability || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))).slice(0, top);
+  }).sort((a, b) => b.score - a.score || b.probability - a.probability || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
   const componentRows = result.componentRisks.map((c) => {
     const loss = reportLoss(c.lines, c.baselineLines, c.peopleLines);
     const tailRatio = loss.increment.atRisk[0].tailRatio;
@@ -5085,9 +5197,9 @@ async function simulateCommand(context) {
       atRisk: loss.increment.atRisk,
       findings: concentrated ? ["concentrated-component"] : []
     };
-  }).sort((a, b) => b.expectedLoss - a.expectedLoss || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))).slice(0, top);
+  }).sort((a, b) => b.expectedLoss - a.expectedLoss || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
   const leaverProbability = round4(result.meanLeaverProbability);
-  return {
+  const output = {
     inputs: commonInputs(p, "simulate", {
       mode: sim.mode,
       k: sim.k,
@@ -5119,6 +5231,13 @@ async function simulateCommand(context) {
       components: componentRows
     }
   };
+  if (isConfiguredRun(context, sim.mode)) await writeReport2(context, REPORT, output, p.history.view.headSha);
+  const results = output.results;
+  return { ...output, results: { ...results, files: results.files.slice(0, top), components: results.components.slice(0, top) } };
+}
+var REPORT = "abandonment.simulate";
+function isConfiguredRun(context, mode) {
+  return mode === "rate" && ["mode", "k", "trials", "horizon", "seed"].every((option) => context.values[option] === void 0);
 }
 
 // packages/cochange/src/commands/abandonment.ts
@@ -7243,6 +7362,28 @@ async function explainFactor(name14, assess) {
   return { kind: "explain", topic: name14, doc: { ...doc }, branch: driven };
 }
 
+// packages/cochange/src/risk/abandonment-report.ts
+import { existsSync as existsSync13, readFileSync as readFileSync9 } from "node:fs";
+function readAbandonmentReport(root, head, config, overridesStamp) {
+  const file = reportPath2(root, REPORT);
+  if (!existsSync13(file)) return null;
+  try {
+    const document = JSON.parse(readFileSync9(file, "utf8"));
+    if (document.tool !== "cochange" || document.command !== REPORT) return null;
+    if (document.repo?.head !== head || document.repo?.dirty !== false || document.config !== config) return null;
+    if (document.inputs?.mode !== "rate" || (document.inputs.overrides?.hash ?? null) !== overridesStamp) return null;
+    if (!Array.isArray(document.results?.files)) return null;
+    const files = /* @__PURE__ */ new Map();
+    for (const row2 of document.results.files) {
+      if (typeof row2.path !== "string" || typeof row2.probability !== "number" || typeof row2.abandoned !== "boolean") continue;
+      files.set(row2.path, { abandoned: row2.abandoned, probability: row2.probability });
+    }
+    return { input: { report: `cochange.${REPORT}`, head, config }, files };
+  } catch {
+    return null;
+  }
+}
+
 // packages/cochange/src/risk/abandoned-touched.ts
 var SOURCE = "knowledge analysis";
 var unavailable = (reason) => ({
@@ -7258,8 +7399,24 @@ var unavailable = (reason) => ({
 });
 async function abandonedTouched(context, history, change) {
   const section = context.config.effective[TOOL2].knowledge;
-  if (section?.enabled !== true) return unavailable("knowledge analysis is not enabled (cochange.knowledge.enabled)");
+  if (section?.enabled !== true) return { measurement: unavailable("knowledge analysis is not enabled (cochange.knowledge.enabled)"), report: null };
   const settings = readKnowledgeSettings(context.config.effective);
+  const root = context.repo.root;
+  const report = change.worktree ? null : readAbandonmentReport(root, change.head, context.config.hash, readOverrides(root).stamp);
+  if (report !== null) return { measurement: fromReport(report, change, settings.atRiskProbability), report: report.input };
+  return { measurement: await fromBlame(context, history, change, settings), report: null };
+}
+function fromReport(report, change, atRiskProbability) {
+  const touched = [...new Set(change.files.filter((f) => f.status !== "A" && f.status !== "D").map((f) => f.path))].sort();
+  const rows = touched.flatMap((file) => {
+    const row2 = report.files.get(file);
+    if (row2 === void 0) return [];
+    const abandoned = row2.abandoned;
+    return abandoned || row2.probability > 0 && row2.probability * 100 >= atRiskProbability ? [{ file, abandoned, probability: round4(abandoned ? 1 : row2.probability) }] : [];
+  });
+  return { ...measurement(rows, touched.length, 0), source: "abandonment report" };
+}
+async function fromBlame(context, history, change, settings) {
   const root = context.repo.root;
   const paths = [...new Set(change.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
   if (paths.length === 0) return measurement([], 0, 0);
@@ -7312,7 +7469,7 @@ function measurement(evidence, files, unknown) {
 }
 
 // packages/cochange/src/risk/composition.ts
-import { existsSync as existsSync13, readFileSync as readFileSync10 } from "node:fs";
+import { existsSync as existsSync14, readFileSync as readFileSync11 } from "node:fs";
 import { join as join11 } from "node:path";
 
 // packages/cochange/src/risk/bands.ts
@@ -7344,7 +7501,7 @@ function bandCount(count, thresholds) {
 
 // packages/cochange/src/risk/evidence-inputs.ts
 import { createHash as createHash7 } from "node:crypto";
-import { readFileSync as readFileSync9 } from "node:fs";
+import { readFileSync as readFileSync10 } from "node:fs";
 import { isAbsolute as isAbsolute3, join as join10 } from "node:path";
 var NO_EVIDENCE = { complexity: null, structure: null, stamps: [] };
 function readEvidence(root, files, change) {
@@ -7355,7 +7512,7 @@ function readEvidence(root, files, change) {
     const path = isAbsolute3(file) ? file : join10(root, file);
     let text;
     try {
-      text = readFileSync9(path, "utf8");
+      text = readFileSync10(path, "utf8");
     } catch {
       throw usageError(`--evidence ${file}: cannot read it (a relative path is taken from the repository root)`);
     }
@@ -7389,7 +7546,7 @@ function readEvidence(root, files, change) {
       if (structure) throw usageError("--evidence names structure check twice");
       structure = {
         stamp: stamp2,
-        findings: document.results.filter((row2) => (row2.kind === "cycle" || row2.kind === "layer-violation") && row2.new !== false).map((row2) => ({ kind: String(row2.kind), id: String(row2.id ?? row2.edge ?? row2.path ?? "") }))
+        findings: document.results.filter((row2) => row2.kind === "cycle" || row2.kind === "layer-violation").map((row2) => ({ kind: String(row2.kind), id: String(row2.id ?? row2.edge ?? row2.path ?? "") }))
       };
     } else {
       throw usageError(`--evidence ${file}: ${tool}/${command14} is not evidence this command reads; pass \`complexity diff --json\` or \`structure check --json\``);
@@ -7403,13 +7560,13 @@ function numberAt(value, key) {
   return typeof found === "number" ? found : null;
 }
 function checkAgainst(file, document, change) {
-  const base = document.inputs?.base?.sha;
+  const base = document.inputs?.base?.sha ?? document.inputs?.baseSha;
   if (typeof base === "string" && base !== change.base) {
     throw usageError(`--evidence ${file}: made against ${base.slice(0, 10)}, but this change starts at ${change.base.slice(0, 10)}; run it for the same base`);
   }
-  const head = document.inputs?.head;
-  if (!change.worktree && head !== null && head !== void 0 && typeof head.sha === "string" && head.sha !== change.head) {
-    throw usageError(`--evidence ${file}: made up to ${head.sha.slice(0, 10)}, but this change ends at ${change.head.slice(0, 10)}`);
+  const head = document.inputs?.head?.sha ?? document.inputs?.analysed;
+  if (!change.worktree && typeof head === "string" && head !== change.head) {
+    throw usageError(`--evidence ${file}: made up to ${head.slice(0, 10)}, but this change ends at ${change.head.slice(0, 10)}`);
   }
 }
 function overThreshold(evidence) {
@@ -7477,16 +7634,16 @@ async function complexityDelta(root, change, risk, evidence) {
 }
 function readWorktree(root, path) {
   try {
-    return readFileSync10(join11(root, path), "utf8");
+    return readFileSync11(join11(root, path), "utf8");
   } catch {
     return void 0;
   }
 }
 function readLocalityFanIn(root, head) {
   const file = reportPath2(root, "analyse", "locality");
-  if (!existsSync13(file)) return null;
+  if (!existsSync14(file)) return null;
   try {
-    const document = JSON.parse(readFileSync10(file, "utf8"));
+    const document = JSON.parse(readFileSync11(file, "utf8"));
     if (document.tool !== "locality" || document.command !== "analyse") return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false) return null;
     if (!Array.isArray(document.results) || typeof document.config !== "string") return null;
@@ -8252,9 +8409,10 @@ async function assessBranch(context, history, request) {
     moved: change.moved
   };
   state.advance(time);
+  const abandoned = await abandonedTouched(context, history, change);
   const measurements = [
     ...measureHistoryLayer(facts, state, measure),
-    ...await liveMeasurements(root, change, risk, evidence, await abandonedTouched(context, history, change))
+    ...await liveMeasurements(root, change, risk, evidence, abandoned.measurement)
   ];
   const baselineMeasures = past.map((p) => p.measurements);
   const bander = makeBander(baselineMeasures, risk);
@@ -8290,7 +8448,8 @@ async function assessBranch(context, history, request) {
     context: measure,
     facts,
     evidence,
-    locality
+    locality,
+    abandonment: abandoned.report
   };
 }
 function authorEmails(change) {
@@ -8515,13 +8674,13 @@ function summarise(scored, all, outcomes, risk) {
 }
 
 // packages/cochange/src/risk/stored-backtest.ts
-import { existsSync as existsSync14, readFileSync as readFileSync11 } from "node:fs";
+import { existsSync as existsSync15, readFileSync as readFileSync12 } from "node:fs";
 var BACKTEST_REPORT = "risk-backtest";
 function readStoredBacktest(root, configHash) {
   const file = reportPath2(root, BACKTEST_REPORT);
-  if (!existsSync14(file)) return null;
+  if (!existsSync15(file)) return null;
   try {
-    const document = JSON.parse(readFileSync11(file, "utf8"));
+    const document = JSON.parse(readFileSync12(file, "utf8"));
     const results = document.results;
     if (document.tool !== TOOL2 || document.command !== BACKTEST_REPORT || document.config !== configHash) return null;
     if (typeof document.repo?.head !== "string" || results?.kind !== "backtest" || !results.separation) return null;
@@ -8790,7 +8949,7 @@ var none = (mode, status, reason) => ({
   blame: { used: false, missing: 0, refreshed: false }
 });
 async function blameFacts(context, assessed, authorKeys, noRefresh) {
-  const { change, history, risk, state } = assessed;
+  const { change, history, risk } = assessed;
   const root = context.repo.root;
   const paths = [...new Set(change.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
   const facts = /* @__PURE__ */ new Map();
@@ -8802,11 +8961,8 @@ async function blameFacts(context, assessed, authorKeys, noRefresh) {
     localMailmap: history.identities.localMailmap,
     matcher: history.identities.matcher
   });
-  const activeSince = monthsBefore(assessed.facts.time, history.settings.windowMonths);
-  const active = (owner) => {
-    const seen = state.identity(owner.email);
-    return seen !== null && seen.last >= activeSince;
-  };
+  const developers = await readActiveDevelopers(context, history, assessed.facts.time);
+  const active = (owner) => developers.has(owner.email);
   const byKey = new Map([...owners.values()].map((o) => [o.key, o]));
   for (const file of change.files) {
     const blame = snapshot.files.get(file.oldPath ?? file.path);
@@ -8953,7 +9109,8 @@ async function reviewersFor(context, assessed, noRefresh) {
   const { change, history, state, risk } = assessed;
   const root = context.repo.root;
   const time = assessed.facts.time;
-  const activeSince = monthsBefore(time, history.settings.windowMonths);
+  const developers = await readActiveDevelopers(context, history, time);
+  const windowSince = monthsBefore(time, history.settings.windowMonths);
   const authors = new Set(assessed.facts.authors);
   if (change.worktree) {
     const user = await invokingUser(root, history.identities.localMailmap);
@@ -8983,13 +9140,6 @@ async function reviewersFor(context, assessed, noRefresh) {
       shares.set(file.fileId, byEmail);
     }
   }
-  const isActivePerson = (email) => {
-    const seen = state.identity(email);
-    if (seen === null || seen.last < activeSince) return false;
-    const classified = history.identities.matcher.classify(names.get(email) ?? "", email);
-    return classified === null;
-  };
-  const windowSince = activeSince;
   const byArea = /* @__PURE__ */ new Map();
   for (const file of change.files) {
     const area = assessed.context.components.length > 0 ? componentOf(assessed.context.components, file.path) : folderOf(file.path) || ".";
@@ -9020,7 +9170,7 @@ async function reviewersFor(context, assessed, noRefresh) {
         }
       }
     }
-    const candidates = [...scores.values()].filter((c) => isActivePerson(c.email) && !authors.has(c.email.toLowerCase())).map((c) => ({ ...c, authorship: round5(c.authorship) })).sort((a, b) => b.authorship - a.authorship || b.coupledChanges - a.coupledChanges || (a.email < b.email ? -1 : 1));
+    const candidates = [...scores.values()].filter((c) => developers.has(c.email) && !authors.has(c.email.toLowerCase())).map((c) => ({ ...c, authorship: round5(c.authorship) })).sort((a, b) => b.authorship - a.authorship || b.coupledChanges - a.coupledChanges || (a.email < b.email ? -1 : 1));
     return { area, files: files.length, candidates };
   });
   const total = change.files.length;
@@ -9054,6 +9204,7 @@ async function runRisk(context, history, range) {
     baseline: assessed.baseline,
     evidence: assessed.evidence.stamps,
     locality: assessed.locality?.input ?? null,
+    abandonment: assessed.abandonment,
     backtest: stored === null ? null : { head: stored.head, config: context.config.hash }
   };
   if (range === void 0 && !worktree) await writeReport2(context, "risk", { inputs, results: kept }, history.view.headSha);
@@ -9461,17 +9612,17 @@ async function runHookProcess(hook) {
 }
 
 // packages/cochange/src/hook.ts
-import { existsSync as existsSync16 } from "node:fs";
+import { existsSync as existsSync17 } from "node:fs";
 import { join as join14 } from "node:path";
 
 // packages/history/src/hook-event.ts
-import { existsSync as existsSync15 } from "node:fs";
+import { existsSync as existsSync16 } from "node:fs";
 import { dirname as dirname4, join as join12 } from "node:path";
 var WATCHED_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit"]);
 function findRepoRoot(start) {
   let directory = start;
   for (; ; ) {
-    if (existsSync15(join12(directory, ".git"))) return directory;
+    if (existsSync16(join12(directory, ".git"))) return directory;
     const parent = dirname4(directory);
     if (parent === directory) return void 0;
     directory = parent;
@@ -9508,7 +9659,7 @@ function within(budgetMs2, started, work, silence) {
 
 // packages/history/src/session-state.ts
 import { createHash as createHash8 } from "node:crypto";
-import { closeSync as closeSync2, mkdirSync as mkdirSync5, openSync as openSync2, readFileSync as readFileSync12, renameSync as renameSync5, rmSync as rmSync5, statSync as statSync2, writeFileSync as writeFileSync6 } from "node:fs";
+import { closeSync as closeSync2, mkdirSync as mkdirSync5, openSync as openSync2, readFileSync as readFileSync13, renameSync as renameSync5, rmSync as rmSync5, statSync as statSync2, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join13 } from "node:path";
 var emptySession = () => ({ edited: [], spokenAbout: [], lastRun: null, measurements: {} });
 function sessionDirectory(root) {
@@ -9521,7 +9672,7 @@ function sessionFile(root, sessionId, hook) {
 var strings = (value) => Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
 function readSession(root, sessionId, hook) {
   try {
-    const parsed = JSON.parse(readFileSync12(sessionFile(root, sessionId, hook), "utf8"));
+    const parsed = JSON.parse(readFileSync13(sessionFile(root, sessionId, hook), "utf8"));
     const last = parsed.lastRun;
     return {
       edited: strings(parsed.edited),
@@ -9628,7 +9779,7 @@ async function consider(root, file, settings, state) {
   );
   const edited = new Set(state.edited);
   const named = partners.map((partner) => ({ path: partner.path, support: partner.support, confidence: confidenceOf(partner.support, changesFocus) })).filter(
-    (partner) => partner.support >= settings.minSupport && partner.confidence >= settings.hook.confidence && !edited.has(partner.path) && existsSync16(join14(root, partner.path))
+    (partner) => partner.support >= settings.minSupport && partner.confidence >= settings.hook.confidence && !edited.has(partner.path) && existsSync17(join14(root, partner.path))
   ).sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)).slice(0, MAX_PARTNERS_NAMED);
   if (named.length === 0) return { note: null, outcome: "silent: no unedited partner above the threshold" };
   return { note: describeNote(file, named), outcome: "spoke" };
