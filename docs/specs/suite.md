@@ -90,7 +90,7 @@ Hooks are opt-in per repository, because injected context costs tokens. A plugin
 
 - Exec form with `${CLAUDE_PLUGIN_ROOT}`, and a hard time budget of a few hundred ms. Every hook run is a fresh process, so the budget covers process start and anything the hook loads.
 - A hook never refreshes the history cache and never writes analysis results. It exits 0 on every path, its own errors included. `PostToolUse` runs after the tool, so it could not block the edit in any case.
-- **Session state.** The one thing a hook writes is its own state for the session, in `.cache/code-health/sessions/<session_id>.json`, keyed by the `session_id` in the hook input: the files edited so far, the files it has already spoken about, and any last measurement. The hook keeps this itself on each edit. It does not read the transcript for it, because the transcript is written asynchronously and can lag.
+- **Session state.** The one thing a hook writes is its own state for the session, in `.cache/code-health/sessions/<session_id>.<hook>.json`, one file per plugin hook so that what one hook has said never silences another, keyed by the `session_id` in the hook input: the files edited so far, the files it has already spoken about, and any last measurement. The hook keeps this itself on each edit. It does not read the transcript for it, because the transcript is written asynchronously and can lag.
 - **Staleness.** A hook that reads history tolerates a cache up to a configured number of commits behind HEAD, and is silent beyond that. Requiring an exact match would silence it after every commit or pull.
 - Context goes back through `hookSpecificOutput.additionalContext` as one short factual sentence, at most once per file per session.
 

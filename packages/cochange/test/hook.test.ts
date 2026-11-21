@@ -100,14 +100,14 @@ describe("once per file per session", () => {
     await refresh();
     await edit(invoice);
     await edit(registry);
-    const state = readSession(repo.path, "session-1");
+    const state = readSession(repo.path, "session-1", "cochange");
     expect(state.edited).toEqual([invoice, registry]);
     expect(state.spokenAbout).toEqual([]);
     expect(state.lastRun?.outcome).toMatch(/^silent/);
 
     await edit("src/reporting/summary.ts", "session-3");
-    expect(readSession(repo.path, "session-3").spokenAbout).toEqual(["src/reporting/summary.ts"]);
-    expect(existsSync(join(repo.path, ".cache", "code-health", "sessions", "session-3.json"))).toBe(true);
+    expect(readSession(repo.path, "session-3", "cochange").spokenAbout).toEqual(["src/reporting/summary.ts"]);
+    expect(existsSync(join(repo.path, ".cache", "code-health", "sessions", "session-3.cochange.json"))).toBe(true);
   });
 
   test("the state lives only in .cache/code-health/sessions and is ignored by git", async () => {
@@ -195,12 +195,12 @@ describe("when it stays silent", () => {
       stdin: JSON.stringify({ session_id: "s", cwd: repo.path, tool_name: "Edit", tool_input: { file_path: join(repo.path, registry) } }),
     });
     expect(stdout).toBe("");
-    expect(readSession(repo.path, "s").lastRun?.outcome).toBe("silent: over the time budget");
+    expect(readSession(repo.path, "s", "cochange").lastRun?.outcome).toBe("silent: over the time budget");
   });
 });
 
 test("a session id that is not a safe file name cannot name a path outside the sessions directory", () => {
-  const file = sessionFile(repo.path, "../../../etc/passwd");
+  const file = sessionFile(repo.path, "../../../etc/passwd", "cochange");
   expect(file.startsWith(join(repo.path, ".cache", "code-health", "sessions"))).toBe(true);
   expect(file).not.toContain("..");
 });

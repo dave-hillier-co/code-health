@@ -3,10 +3,14 @@ import { closeSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statS
 import { join } from "node:path";
 import { ensureSelfIgnoring } from "./cache-location.ts";
 
+/** What a hook measured of one file: metric values per unit, by unit id. */
+export type FileMeasurement = Record<string, Record<string, number>>;
+
 /**
  * What a hook remembers about one session. It is the hook's own record,
  * written on each edit it sees: it never reads the transcript, which is
- * written asynchronously and can lag behind the tool call.
+ * written asynchronously and can lag behind the tool call. Each hook has its
+ * own file, so what one hook has spoken about never silences another.
  */
 export interface SessionState {
   /** Files edited so far, repo-relative, in the order first edited. */
@@ -15,9 +19,11 @@ export interface SessionState {
   spokenAbout: string[];
   /** The previous run's outcome and how long it took, for diagnosing a slow or silent hook. */
   lastRun: { outcome: string; durationMs: number } | null;
+  /** The last measurement of each file the hook measured, by repo-relative path. */
+  measurements: Record<string, FileMeasurement>;
 }
 
-export const emptySession = (): SessionState => ({ edited: [], spokenAbout: [], lastRun: null });
+export const emptySession = (): SessionState => ({ edited: [], spokenAbout: [], lastRun: null, measurements: {} });
 
 /** Where a session's state lives, under the repository's `.cache/code-health/sessions`. */
 export function sessionDirectory(root: string): string {
@@ -25,27 +31,28 @@ export function sessionDirectory(root: string): string {
 }
 
 /**
- * The state file name for a session id. An id is used as is when it is a safe
- * file name; anything else is replaced by a digest, so no id can name a path
- * outside the directory.
+ * The state file of a hook for a session id: `<id>.<hook>.json`. An id is used as is
+ * when it is a safe file name; anything else is replaced by a digest, so no id can
+ * name a path outside the directory. `hook` is the plugin's own constant name.
  */
-export function sessionFile(root: string, sessionId: string): string {
+export function sessionFile(root: string, sessionId: string, hook: string): string {
   const safe = /^[A-Za-z0-9_-]{1,128}$/.test(sessionId) ? sessionId : `h-${createHash("sha256").update(sessionId).digest("hex").slice(0, 32)}`;
-  return join(sessionDirectory(root), `${safe}.json`);
+  return join(sessionDirectory(root), `${safe}.${hook}.json`);
 }
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
 /** The stored state, or an empty one when there is none or it cannot be read. */
-export function readSession(root: string, sessionId: string): SessionState {
+export function readSession(root: string, sessionId: string, hook: string): SessionState {
   try {
-    const parsed = JSON.parse(readFileSync(sessionFile(root, sessionId), "utf8")) as Record<string, unknown>;
+    const parsed = JSON.parse(readFileSync(sessionFile(root, sessionId, hook), "utf8")) as Record<string, unknown>;
     const last = parsed.lastRun as { outcome?: unknown; durationMs?: unknown } | null | undefined;
     return {
       edited: strings(parsed.edited),
       spokenAbout: strings(parsed.spokenAbout),
       lastRun: last && typeof last.outcome === "string" && typeof last.durationMs === "number" ? { outcome: last.outcome, durationMs: last.durationMs } : null,
+      measurements: typeof parsed.measurements === "object" && parsed.measurements !== null && !Array.isArray(parsed.measurements) ? (parsed.measurements as Record<string, FileMeasurement>) : {},
     };
   } catch {
     return emptySession();
@@ -53,8 +60,8 @@ export function readSession(root: string, sessionId: string): SessionState {
 }
 
 /** Writes the state through a temporary file and a rename, so a reader never sees half a file. */
-export function writeSession(root: string, sessionId: string, state: SessionState): void {
-  const file = sessionFile(root, sessionId);
+export function writeSession(root: string, sessionId: string, hook: string, state: SessionState): void {
+  const file = sessionFile(root, sessionId, hook);
   // The cache's own .gitignore comes first: the hook may be the first thing to write here.
   ensureSelfIgnoring(join(root, ".cache", "code-health"));
   mkdirSync(sessionDirectory(root), { recursive: true });
@@ -101,14 +108,14 @@ function withLock<T>(file: string, work: () => T): T {
  * Reads the latest state, applies `change` to it and writes it back, all under the session's lock.
  * Two hooks editing different files in one session each see the other's edit, so neither is lost.
  */
-export function updateSession(root: string, sessionId: string, change: (state: SessionState) => void): SessionState {
-  const file = sessionFile(root, sessionId);
+export function updateSession(root: string, sessionId: string, hook: string, change: (state: SessionState) => void): SessionState {
+  const file = sessionFile(root, sessionId, hook);
   ensureSelfIgnoring(join(root, ".cache", "code-health"));
   mkdirSync(sessionDirectory(root), { recursive: true });
   return withLock(file, () => {
-    const state = readSession(root, sessionId);
+    const state = readSession(root, sessionId, hook);
     change(state);
-    writeSession(root, sessionId, state);
+    writeSession(root, sessionId, hook, state);
     return state;
   });
 }

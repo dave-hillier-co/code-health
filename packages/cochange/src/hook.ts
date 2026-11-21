@@ -36,6 +36,9 @@ export interface HookRequest {
   startedAt?: number;
 }
 
+/** Names the hook in its session state, apart from other plugins' hooks. */
+const HOOK_NAME = "cochange";
+
 /** The tools whose edits the hook watches. */
 export const WATCHED_TOOLS = new Set(["Edit", "Write", "MultiEdit"]);
 
@@ -161,14 +164,14 @@ export async function runHook(request: HookRequest): Promise<string> {
     if (file.startsWith("..") || file.startsWith("/") || file === "") return "";
 
     // The edit is recorded first, under the lock, so it survives however the rest of the run ends.
-    const state = updateSession(root, input.session_id, (current) => {
+    const state = updateSession(root, input.session_id, HOOK_NAME, (current) => {
       if (!current.edited.includes(file)) current.edited.push(file);
     });
 
     const decision: Decision = state.spokenAbout.includes(file)
       ? { note: null, outcome: "silent: already spoke about this file" }
       : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state));
-    updateSession(root, input.session_id, (current) => {
+    updateSession(root, input.session_id, HOOK_NAME, (current) => {
       if (decision.note !== null && !current.spokenAbout.includes(file)) current.spokenAbout.push(file);
       current.lastRun = { outcome: decision.outcome, durationMs: Math.round(performance.now() - started) };
     });

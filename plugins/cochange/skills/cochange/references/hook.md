@@ -34,7 +34,7 @@ It names at most three partners, strongest first.
 - **Silent when it cannot help.** No cache, a cache further behind than `maxCommitsBehind`, a file outside the repository, an invalid config, a partner already edited or no longer on disk, or no partner above the threshold.
 - **Once per file per session.** A second edit of the same file stays quiet.
 - **Always exits 0** and never blocks an edit. It abandons its work after 500 ms and stays silent, process start included.
-- **Session state** is its own record in `.cache/code-health/sessions/<session_id>.json`: files edited, files spoken about, and the last run's outcome and duration. It does not read the transcript. The cache folder ignores itself, so nothing needs adding to `.gitignore`. Delete the file to reset a session.
+- **Session state** is its own record in `.cache/code-health/sessions/<session_id>.cochange.json`: files edited, files spoken about, and the last run's outcome and duration. It does not read the transcript. The cache folder ignores itself, so nothing needs adding to `.gitignore`. Delete the file to reset a session.
 
 ## When the user asks why it is silent
 
