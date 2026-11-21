@@ -71,11 +71,12 @@ export function hasCodeHealthTrailer(message: string): boolean {
 
 /** Strict date parsing for `--since` and `--until`: `YYYY-MM-DD` (UTC midnight) or an ISO 8601 date-time with a zone. Unix seconds, or null. */
 export function parseDate(text: string): number | null {
-  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
-  if (day) {
-    const ms = Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
-    return new Date(ms).toISOString().slice(0, 10) === text ? ms / 1000 : null;
-  }
+  const day = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text);
+  if (!day) return null;
+  // The calendar day must exist, in either form: February 31st is not silently March 2nd.
+  const midnight = Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
+  if (new Date(midnight).toISOString().slice(0, 10) !== text.slice(0, 10)) return null;
+  if (day[4] === undefined) return midnight / 1000;
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text)) return null;
   const ms = Date.parse(text);
   return Number.isNaN(ms) ? null : Math.floor(ms / 1000);

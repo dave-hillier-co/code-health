@@ -78,6 +78,9 @@ test("dates are strict ISO 8601", () => {
   expect(parseDate("2024-03-01T10:00:00Z")).toBe(utc("2024-03-01T10:00:00Z"));
   expect(parseDate("2024-03-01T10:00:00+02:00")).toBe(utc("2024-03-01T08:00:00Z"));
   expect(parseDate("2024-02-30")).toBeNull();
+  expect(parseDate("2024-02-31T10:00:00Z")).toBeNull();
+  expect(parseDate("2024-02-30T10:00Z")).toBeNull();
+  expect(parseDate("2024-02-29T10:00:00Z")).toBe(utc("2024-02-29T10:00:00Z"));
   expect(parseDate("2024-13-01")).toBeNull();
   expect(parseDate("03/01/2024")).toBeNull();
   expect(parseDate("yesterday")).toBeNull();
