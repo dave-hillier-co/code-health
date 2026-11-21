@@ -30,7 +30,7 @@ export const command: Command = {
       results: rows,
       columns: ["path", "complexity", "functions", "overThreshold", "source", "profile", "test", "codeLines"],
     };
-    if (!isPartial(context)) await storeReport(context, name, output);
+    if (!isPartial(context) && current.kind === "head") await storeReport(context, name, output);
     return output;
   },
 };

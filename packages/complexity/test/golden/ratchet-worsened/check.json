@@ -1,0 +1,65 @@
+{
+  "changedFiles": 1,
+  "command": "check",
+  "config": "d93380546118225f",
+  "inputs": {
+    "against": "head",
+    "base": {
+      "rev": "merge base of HEAD and main",
+      "sha": "849a854beefaa30058b27200084942c4e60f6dec"
+    },
+    "delta": 0
+  },
+  "repo": {
+    "dirty": false,
+    "head": "1e184ff18a7e8d71256b3bf82e001ebf550ec412"
+  },
+  "results": [
+    {
+      "after": 9,
+      "before": 8,
+      "delta": 1,
+      "endLine": 12,
+      "finding": "worsened",
+      "id": "src/pricing.ts#price",
+      "metric": "cognitive",
+      "path": "src/pricing.ts",
+      "renamedFrom": null,
+      "score": 3,
+      "startLine": 1,
+      "threshold": 6,
+      "unit": "price"
+    },
+    {
+      "after": 6,
+      "before": 5,
+      "delta": 1,
+      "endLine": 12,
+      "finding": "worsened",
+      "id": "src/pricing.ts#price",
+      "metric": "cyclomatic",
+      "path": "src/pricing.ts",
+      "renamedFrom": null,
+      "score": 2,
+      "startLine": 1,
+      "threshold": 4,
+      "unit": "price"
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "added": 0,
+    "changed": 1,
+    "compared": 1,
+    "moved": 0,
+    "removed": 0,
+    "violations": 2
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 2
+  },
+  "unsupportedFiles": 0
+}

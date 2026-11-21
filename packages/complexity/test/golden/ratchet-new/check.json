@@ -1,0 +1,65 @@
+{
+  "changedFiles": 2,
+  "command": "check",
+  "config": "d93380546118225f",
+  "inputs": {
+    "against": "head",
+    "base": {
+      "rev": "merge base of HEAD and main",
+      "sha": "849a854beefaa30058b27200084942c4e60f6dec"
+    },
+    "delta": 0
+  },
+  "repo": {
+    "dirty": false,
+    "head": "9cf74d19e85e45965b915e7d9848d3264cbcf205"
+  },
+  "results": [
+    {
+      "after": 10,
+      "before": null,
+      "delta": null,
+      "endLine": 12,
+      "finding": "new",
+      "id": "src/risky.ts#risky",
+      "metric": "cognitive",
+      "path": "src/risky.ts",
+      "renamedFrom": null,
+      "score": 4,
+      "startLine": 1,
+      "threshold": 6,
+      "unit": "risky"
+    },
+    {
+      "after": 5,
+      "before": null,
+      "delta": null,
+      "endLine": 12,
+      "finding": "new",
+      "id": "src/risky.ts#risky",
+      "metric": "cyclomatic",
+      "path": "src/risky.ts",
+      "renamedFrom": null,
+      "score": 1,
+      "startLine": 1,
+      "threshold": 4,
+      "unit": "risky"
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "added": 2,
+    "changed": 0,
+    "compared": 2,
+    "moved": 0,
+    "removed": 0,
+    "violations": 2
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 2
+  },
+  "unsupportedFiles": 0
+}

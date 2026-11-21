@@ -142,3 +142,19 @@ describe("a dirty tree", () => {
     expect(existsSync(join(repo.path, "src/label.ts"))).toBe(true);
   });
 });
+
+describe("a new file that is not committed", () => {
+  test("is measured too and nothing is stored, although the tracked files are clean", async () => {
+    writeFileSync(join(repo.path, "src/fresh.ts"), "export function fresh(a: boolean): number {\n  return a ? 1 : 2;\n}\n");
+    writeFileSync(reportFile("analyse"), "stale");
+    try {
+      const document = JSON.parse((await analyse()).stdout);
+      expect(document.repo.dirty).toBe(false);
+      expect(document.inputs.tree).toBe("working-tree");
+      expect(document.results.map((row: Row) => row.unit)).toContain("fresh");
+      expect(readFileSync(reportFile("analyse"), "utf8")).toBe("stale");
+    } finally {
+      rmSync(join(repo.path, "src/fresh.ts"));
+    }
+  });
+});

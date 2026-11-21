@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "diff.schema.json",
+  "title": "complexity diff --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "diff"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "$ref": "common.schema.json#/$defs/revision"
+        },
+        "head": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/revision"
+            }
+          ]
+        },
+        "against": {
+          "enum": [
+            "revision",
+            "working-tree"
+          ]
+        }
+      },
+      "required": [
+        "base",
+        "head",
+        "against"
+      ],
+      "additionalProperties": false
+    },
+    "summary": {
+      "description": "Every function of the changed files, by what happened to it. Only added and changed ones are listed in the results.",
+      "type": "object",
+      "properties": {
+        "added": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "changed": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "removed": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "moved": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "unchanged": {
+          "$ref": "common.schema.json#/$defs/count"
+        }
+      },
+      "required": [
+        "added",
+        "changed",
+        "removed",
+        "moved",
+        "unchanged"
+      ],
+      "additionalProperties": false
+    },
+    "changedFiles": {
+      "$ref": "common.schema.json#/$defs/count"
+    },
+    "unsupportedFiles": {
+      "$ref": "common.schema.json#/$defs/count",
+      "description": "Changed files with no structural adapter, whose functions cannot be compared."
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "change": {
+            "enum": [
+              "added",
+              "changed"
+            ]
+          },
+          "renamedFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The id the function had before, when it was renamed or moved."
+          },
+          "startLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "endLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "before": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "common.schema.json#/$defs/metricValues"
+              }
+            ]
+          },
+          "after": {
+            "$ref": "common.schema.json#/$defs/metricValues"
+          },
+          "delta": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "common.schema.json#/$defs/deltaValues"
+              }
+            ]
+          },
+          "score": {
+            "type": "integer",
+            "description": "The sort key: cognitive complexity added by the change, or its whole value for a new function."
+          },
+          "labels": {
+            "$ref": "common.schema.json#/$defs/labels"
+          }
+        },
+        "required": [
+          "path",
+          "unit",
+          "id",
+          "change",
+          "renamedFrom",
+          "startLine",
+          "endLine",
+          "before",
+          "after",
+          "delta",
+          "score",
+          "labels"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "changedFiles",
+    "unsupportedFiles"
+  ],
+  "unevaluatedProperties": false
+}

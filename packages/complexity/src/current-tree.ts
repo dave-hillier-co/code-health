@@ -1,15 +1,25 @@
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
+import { runGit } from "@code-health/history/git";
 import { treeFromRef, treeFromWorkingTree, type SourceTree } from "@code-health/parse/source-tree";
 
 export interface CurrentTree {
   tree: SourceTree;
-  /** `head` for a clean tree, `working-tree` when there are uncommitted changes, so the work in progress is measured. */
+  /** `head` for a clean tree, `working-tree` when there is uncommitted work, so work in progress is measured. */
   kind: "head" | "working-tree";
+}
+
+/**
+ * Whether the working tree holds anything the commit at HEAD does not: edits to tracked files, or new files
+ * that are not ignored. The repository state of the CLI kit counts only the first.
+ */
+export async function hasUncommittedWork(context: CommandContext): Promise<boolean> {
+  if (context.repo.dirty) return true;
+  return (await runGit(context.repo.root, ["ls-files", "--others", "--exclude-standard", "-z"])) !== "";
 }
 
 /** The code as it stands: the commit at HEAD when the tree is clean, otherwise the files on disk. */
 export async function currentTree(context: CommandContext): Promise<CurrentTree> {
-  if (context.repo.dirty) return { tree: await treeFromWorkingTree(context.repo.root), kind: "working-tree" };
+  if (await hasUncommittedWork(context)) return { tree: await treeFromWorkingTree(context.repo.root), kind: "working-tree" };
   return { tree: await treeFromRef(context.repo.root, "HEAD"), kind: "head" };
 }
 

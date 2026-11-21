@@ -66,7 +66,7 @@ export const command: Command = {
         "labels",
       ],
     };
-    if (!isPartial(context)) await storeReport(context, name, output);
+    if (!isPartial(context) && current.kind === "head") await storeReport(context, name, output);
     return output;
   },
 };

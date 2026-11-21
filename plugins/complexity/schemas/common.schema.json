@@ -242,6 +242,50 @@
       "additionalProperties": {
         "$ref": "#/$defs/count"
       }
+    },
+    "revision": {
+      "description": "A revision as it was named, or how it was found, with the commit it resolved to.",
+      "type": "object",
+      "properties": {
+        "rev": {
+          "type": "string"
+        },
+        "sha": {
+          "$ref": "#/$defs/sha"
+        }
+      },
+      "required": [
+        "rev",
+        "sha"
+      ],
+      "additionalProperties": false
+    },
+    "deltaValues": {
+      "type": "object",
+      "properties": {
+        "cognitive": {
+          "type": "integer"
+        },
+        "cyclomatic": {
+          "type": "integer"
+        },
+        "nesting": {
+          "type": "integer"
+        },
+        "parameters": {
+          "type": "integer"
+        },
+        "length": {
+          "type": "integer"
+        },
+        "keyword": {
+          "type": "integer"
+        },
+        "bumps": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
