@@ -11,6 +11,8 @@ interface PackageSpec {
   version?: string;
   bin?: boolean;
   dependencies?: string[];
+  /** Outside packages the manifest declares. */
+  externals?: string[];
   devDependencies?: string[];
   /** Without it the manifest names a `main`, and the package has no `exports` map. */
   exports?: boolean;
@@ -29,7 +31,7 @@ function manifest(spec: PackageSpec): string {
     ...(spec.private === false ? {} : { private: true }),
     ...(spec.bin ? { bin: { [spec.name]: "./bin.js" } } : {}),
     ...(spec.exports === false ? { main: "src/index.ts" } : { exports: { ".": "./src/index.ts" } }),
-    dependencies: Object.fromEntries((spec.dependencies ?? []).map((d) => [scope(d), "*"])),
+    dependencies: Object.fromEntries([...(spec.dependencies ?? []).map((d) => [scope(d), "*"]), ...(spec.externals ?? []).map((d) => [d, "^1.0.0"])]),
     devDependencies: Object.fromEntries((spec.devDependencies ?? []).map((d) => [scope(d), "*"])),
   });
 }
@@ -43,7 +45,9 @@ const reexports = (names: string[]): string => `${names.map((n) => `export { ${n
  *
  * - `app` is the entry point.
  * - `shared` is used in disjoint parts by `ui`, `api`, `app` and `orphan`.
- * - `lib` is published, with five exports of which its two consumers use one each.
+ * - `lib` is published, with five exports of which its consumers use one each, and three of which need
+ *   outside packages that the others do not. It declares a fourth outside package it never imports.
+ * - `lib-extra` is published and versioned beside `lib`: both change version in the same three commits.
  * - `helper` has one consumer, `api`, which also reaches into its internals.
  * - `wrap` only re-exports `ui`.
  * - `p1` and `p2` import each other.
@@ -75,15 +79,22 @@ export const workspace: PackageSpec[] = [
     private: false,
     version: "1.0.0",
     devDependencies: ["testkit"],
+    externals: ["ajv", "yaml", "jsdiff", "left-pad"],
     files: {
       "parse.ts": fn("parse"),
       "render.ts": fn("render"),
-      "validate.ts": fn("validate"),
-      "serialize.ts": fn("serialize"),
-      "diff.ts": fn("diff"),
+      "validate.ts": fn("validate", [["ajv", "Ajv"]]),
+      "serialize.ts": fn("serialize", [["yaml", "stringify"]]),
+      "diff.ts": fn("diff", [["jsdiff", "createPatch"]]),
       "index.ts": reexports(["parse", "render", "validate", "serialize", "diff"]),
       "work.ts": fn("libWork"),
     },
+  },
+  {
+    name: "lib-extra",
+    private: false,
+    version: "2.0.0",
+    files: { "index.ts": fn("extra"), "work.ts": fn("libExtraWork") },
   },
   {
     name: "helper",
@@ -97,9 +108,9 @@ export const workspace: PackageSpec[] = [
   },
   {
     name: "ui",
-    dependencies: ["shared", "lib", "orphan"],
+    dependencies: ["shared", "lib", "lib-extra", "orphan"],
     files: {
-      "index.ts": fn("view", [["@acme/shared", "formatDate"], ["@acme/lib", "render"]]),
+      "index.ts": fn("view", [["@acme/shared", "formatDate"], ["@acme/lib", "render"], ["@acme/lib-extra", "extra"]]),
       "work.ts": fn("uiWork"),
     },
   },
@@ -159,6 +170,11 @@ export const workspace: PackageSpec[] = [
   },
 ];
 
+// Most packages hold three files, so the two that hold two are the small ones.
+for (const spec of workspace) {
+  if (Object.keys(spec.files).length < 3 && spec.name !== "wrap" && spec.name !== "lib-extra") spec.files["internal.ts"] = fn(`${spec.name}Internal`);
+}
+
 const young: PackageSpec = { name: "young", files: { "index.ts": fn("young"), "work.ts": fn("youngWork") } };
 
 /** What each logical change touches, in the order the history gets them. A `package:file` target names a file other than `work.ts`. */
@@ -172,6 +188,7 @@ function plan(): string[][] {
     [2, ["app"]],
     [3, ["helper"]],
     [3, ["lib"]],
+    [3, ["lib@version", "lib-extra@version"]],
     [4, ["p1", "p2"]],
     [1, ["orphan"]],
     [1, ["testkit"]],
@@ -190,7 +207,7 @@ const appIndex = (extra: [string, string][] = []): string =>
   fn("main", [["@acme/wrap", "wrapped"], ["@acme/api", "handle"], ["@acme/shared", "log"], ["@acme/lib", "parse"], ["@acme/p1", "one"], ...extra]);
 
 /**
- * The workspace over a year. Every package is added one day apart from 2023-06-01, then a hundred and one
+ * The workspace over a year. Every package is added one day apart from 2023-06-01, then a hundred and four
  * changes follow every three days, then `young` is added in May 2024. Every package except `young` is
  * older than the grace period at the end. The config relaxes two thresholds, so a hundred changes are enough.
  */
@@ -213,9 +230,18 @@ export function workspaceRepository(): GitFixture {
   });
   steps.push(commit("Test the app", "2023-06-14T09:00:00Z", [add("packages/app/test/app.test.ts", fn("appTest", [["@acme/testkit", "fixture"]]))]));
   const authors = [alice, bob, carol];
+  const bumps = new Map<string, number>();
   plan().forEach((touch, i) => {
     const changes: Change[] = [];
     for (const target of touch) {
+      if (target.endsWith("@version")) {
+        const pkg = target.slice(0, -"@version".length);
+        const spec = workspace.find((p) => p.name === pkg)!;
+        const next = (bumps.get(pkg) ?? 0) + 1;
+        bumps.set(pkg, next);
+        changes.push(modify(`packages/${pkg}/package.json`, manifest({ ...spec, version: `${spec.version!.split(".")[0]}.0.${next}` })));
+        continue;
+      }
       const [pkg, file] = target.split(":") as [string, string | undefined];
       const path = `packages/${pkg}/src/${file ?? "work"}.ts`;
       const next = (revision.get(path) ?? 1) + 1;

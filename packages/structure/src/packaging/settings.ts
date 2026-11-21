@@ -36,6 +36,14 @@ export const packagesDefaults = {
   crossingUnitMargin: 0.25,
   /** `partial-use`: most consumers use less than this share of the exported surface. */
   partialUseShare: 0.25,
+  /** `partial-use`: a package with fewer exports than this has no share small enough to mean anything. */
+  partialUseMinSurface: 3,
+  /** `overexposed`: raised when at least this share of the exports is used by no other package. */
+  overexposedShare: 0.5,
+  /** `inherited-weight`: at least this many outside packages acquired through a package, and not needed by the part used. */
+  inheritedWeightPackages: 3,
+  /** `pass-through-package`: raised when at least this share of the exports is defined in other packages. */
+  passThroughShare: 0.5,
   /** `disjoint-reuse`: consumers of two export components overlap by at most this share. */
   disjointOverlap: 0.2,
   /** Names that prompt the `dumping-ground` check. */
@@ -44,6 +52,8 @@ export const packagesDefaults = {
   dumpingMinConsumers: 3,
   /** `dumping-ground`: at least this many export components. */
   dumpingMinComponents: 3,
+  /** `dumping-ground`: at least this many people changed it, unless its name prompts the check. */
+  dumpingMinContributors: 3,
   /** `tiny`: size at or below this percentile of the packages. */
   tinyPercentile: 10,
   /** A package younger than this many days has had no time to be reused: its findings are tentative. */
@@ -123,10 +133,15 @@ export function readPackageSettings(section: Record<string, unknown>, at: string
     crossingUnitShare: number("crossingUnitShare", 0, 1),
     crossingUnitMargin: number("crossingUnitMargin", 0, 1),
     partialUseShare: number("partialUseShare", 0, 1),
+    partialUseMinSurface: integer("partialUseMinSurface", 2),
+    overexposedShare: number("overexposedShare", 0, 1),
+    inheritedWeightPackages: integer("inheritedWeightPackages", 1),
+    passThroughShare: number("passThroughShare", 0, 1),
     disjointOverlap: number("disjointOverlap", 0, 1),
     dumpingNames: strings("dumpingNames"),
     dumpingMinConsumers: integer("dumpingMinConsumers", 1),
     dumpingMinComponents: integer("dumpingMinComponents", 2),
+    dumpingMinContributors: integer("dumpingMinContributors", 1),
     tinyPercentile: number("tinyPercentile", 0, 100),
     graceDays: integer("graceDays", 0),
     volatileInterfaceShare: number("volatileInterfaceShare", 0, 1),

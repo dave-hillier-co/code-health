@@ -38,7 +38,7 @@ async function list(): Promise<{ rows: Map<string, Row>; stdout: string; documen
 test("lists every workspace package and not the workspace root", async () => {
   const { rows } = await list();
   expect([...rows.keys()]).toEqual([
-    "packages/api", "packages/app", "packages/helper", "packages/lib", "packages/orphan", "packages/p1",
+    "packages/api", "packages/app", "packages/helper", "packages/lib", "packages/lib-extra", "packages/orphan", "packages/p1",
     "packages/p2", "packages/shared", "packages/testkit", "packages/ui", "packages/wrap", "packages/young",
   ]);
 });
@@ -97,7 +97,7 @@ describe("history", () => {
     // ui changed in 15 changes, 12 of them together with api
     expect(rows.get("packages/ui")).toMatchObject({ revisions: 15, closure: 0.2, crossing: 12 });
     expect(rows.get("packages/shared")!.closure).toBeCloseTo(0.648, 3);
-    expect(rows.get("packages/ui")!.share).toBeCloseTo(0.16, 2);
+    expect(rows.get("packages/ui")!.share).toBeCloseTo(0.155, 3);
   });
 
   test("a package is young until the grace period has passed, by when it first appeared in the whole history", async () => {

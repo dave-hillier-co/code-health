@@ -1,6 +1,6 @@
 {
   "command": "packages",
-  "config": "fab20fbe38119c11",
+  "config": "50804ef111cee2ed",
   "evidence": {
     "activeContributors": 3,
     "commitSize": {
@@ -10,7 +10,7 @@
     },
     "grade": "moderate",
     "importedHistory": [],
-    "logicalChangesInWindow": 94,
+    "logicalChangesInWindow": 97,
     "thresholds": {
       "moderate": {
         "contributors": 2,
@@ -74,11 +74,11 @@
   },
   "repo": {
     "dirty": false,
-    "head": "b9c335f47d83b9946ef4b346046b5cb318e62e9a"
+    "head": "aa84f1bc76f67e8a25cfe4d21dd98466e0bfacee"
   },
   "results": [
     {
-      "changeCost": 2.814,
+      "changeCost": 2.839,
       "evidence": {
         "breakingSet": [
           "packages/p1->packages/p2"
@@ -104,12 +104,35 @@
       "changeCost": 0,
       "evidence": {
         "basis": "change",
-        "dependantInstability": 0.5,
-        "dependantRevisionsPerFile": 2,
+        "dependantInstability": 0.667,
+        "dependantRevisionsPerFile": 3.75,
         "dependencyInstability": 0,
         "dependencyRevisionsPerFile": 7.714,
         "disagree": true,
-        "volatilityRatio": 3.857
+        "volatilityRatio": 2.057
+      },
+      "id": "against-stability:packages/api->packages/shared",
+      "kind": "against-stability",
+      "packages": [
+        "packages/api",
+        "packages/shared"
+      ],
+      "principle": "SDP",
+      "priority": "normal",
+      "summary": "packages/api depends on packages/shared, which changes 2.057 times as often per file",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "basis": "change",
+        "dependantInstability": 0.5,
+        "dependantRevisionsPerFile": 1.5,
+        "dependencyInstability": 0,
+        "dependencyRevisionsPerFile": 7.714,
+        "disagree": true,
+        "volatilityRatio": 5.143
       },
       "id": "against-stability:packages/orphan->packages/shared",
       "kind": "against-stability",
@@ -119,7 +142,53 @@
       ],
       "principle": "SDP",
       "priority": "normal",
-      "summary": "packages/orphan depends on packages/shared, which changes 3.857 times as often per file",
+      "summary": "packages/orphan depends on packages/shared, which changes 5.143 times as often per file",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "basis": "change",
+        "dependantInstability": 1,
+        "dependantRevisionsPerFile": 0.25,
+        "dependencyInstability": 0,
+        "dependencyRevisionsPerFile": 0.75,
+        "disagree": true,
+        "volatilityRatio": 3
+      },
+      "id": "against-stability:packages/testkit->packages/lib",
+      "kind": "against-stability",
+      "packages": [
+        "packages/testkit",
+        "packages/lib"
+      ],
+      "principle": "SDP",
+      "priority": "normal",
+      "summary": "packages/testkit depends on packages/lib, which changes 3 times as often per file",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "basis": "change",
+        "dependantInstability": 0.667,
+        "dependantRevisionsPerFile": 3.75,
+        "dependencyInstability": 0,
+        "dependencyRevisionsPerFile": 7.714,
+        "disagree": true,
+        "volatilityRatio": 2.057
+      },
+      "id": "against-stability:packages/ui->packages/shared",
+      "kind": "against-stability",
+      "packages": [
+        "packages/ui",
+        "packages/shared"
+      ],
+      "principle": "SDP",
+      "priority": "normal",
+      "summary": "packages/ui depends on packages/shared, which changes 2.057 times as often per file",
       "tentative": false,
       "unit": null
     },
@@ -129,10 +198,10 @@
         "basis": "change",
         "dependantInstability": 0.5,
         "dependantRevisionsPerFile": 0.333,
-        "dependencyInstability": 0.6,
-        "dependencyRevisionsPerFile": 5,
+        "dependencyInstability": 0.667,
+        "dependencyRevisionsPerFile": 3.75,
         "disagree": true,
-        "volatilityRatio": 15.015
+        "volatilityRatio": 11.261
       },
       "id": "against-stability:packages/wrap->packages/ui",
       "kind": "against-stability",
@@ -142,7 +211,7 @@
       ],
       "principle": "SDP",
       "priority": "normal",
-      "summary": "packages/wrap depends on packages/ui, which changes 15.015 times as often per file",
+      "summary": "packages/wrap depends on packages/ui, which changes 11.261 times as often per file",
       "tentative": false,
       "unit": null
     },
@@ -194,7 +263,7 @@
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 5
+    "total": 8
   },
   "window": {
     "since": "2023-06-20T09:00:00.000Z",

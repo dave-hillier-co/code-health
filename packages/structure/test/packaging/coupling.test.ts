@@ -81,7 +81,7 @@ describe("against-stability", () => {
     const wrap = found.find((f) => f.id === "against-stability:packages/wrap->packages/ui")!;
     expect(wrap).toMatchObject({ principle: "SDP", packages: ["packages/wrap", "packages/ui"] });
     expect(wrap.evidence).toMatchObject({ basis: "change", disagree: true });
-    expect(wrap.evidence.volatilityRatio).toBeGreaterThan(15);
+    expect(wrap.evidence.volatilityRatio).toBeGreaterThan(11);
   });
 
   test("a dependency towards the more volatile side is not raised when the dependant is the more volatile", async () => {

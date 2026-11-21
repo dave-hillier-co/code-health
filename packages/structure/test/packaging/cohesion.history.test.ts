@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
-import { expectGolden } from "../support/golden.ts";
 import { packages, packagesRun, withPackageSettings } from "./support/run.ts";
 import { workspaceRepository } from "./support/workspace.ts";
 
@@ -34,7 +33,7 @@ describe("always-together", () => {
     expect(ui.principle).toBe("CCP");
     // 12 shared changes of 15 each
     expect(ui.evidence).toMatchObject({ shared: 12, fromChanges: 15, toChanges: 15, confidenceFromTo: 0.8, confidenceToFrom: 0.8 });
-    expect(ui.evidence.lift as number).toBeCloseTo(5.013, 3);
+    expect(ui.evidence.lift as number).toBeCloseTo(5.173, 3);
     expect(ui.evidence.tail).toBe(0);
   });
 
@@ -96,7 +95,7 @@ describe("wide-change", () => {
   test("is a finding about the repository, from the share of changes touching three or more packages", async () => {
     const [wide] = byKind(await findings(), "wide-change");
     expect(wide).toMatchObject({ id: "wide-change:repository", packages: [] });
-    expect(wide!.evidence).toMatchObject({ wide: 5, changes: 94, packagesPerWideChange: 3 });
+    expect(wide!.evidence).toMatchObject({ wide: 5, changes: 97, packagesPerWideChange: 3 });
     expect(wide!.evidence.mostOften).toEqual(["packages/app", "packages/helper", "packages/shared"]);
   });
 
@@ -107,8 +106,15 @@ describe("wide-change", () => {
 });
 
 describe("low-closure", () => {
-  test("with fewer than five packages of comparable share it is not raised", async () => {
-    expect(byKind(await findings(), "low-closure")).toEqual([]);
+  test("a package is judged only against packages of comparable share, and only when there are enough of them", async () => {
+    const found = await withPackageSettings(repo, { minComparable: 8 }, () => findings());
+    expect(byKind(found, "low-closure")).toEqual([]);
+  });
+
+  test("by default the packages that never change alone are the lowest quartile of their comparable group", async () => {
+    const found = byKind(await findings(), "low-closure");
+    expect(found.map((f) => f.packages[0]).sort()).toEqual(["packages/lib-extra", "packages/p1", "packages/p2"]);
+    expect(found.find((f) => f.packages[0] === "packages/p1")!.evidence).toMatchObject({ closure: 0, comparable: 5, crossing: 4, changes: 4 });
   });
 
   test("among comparable packages, one in the lowest quartile is raised, with the count of its crossing changes", async () => {
@@ -124,7 +130,8 @@ describe("tentative findings", () => {
   test("a package inside the grace period holds its findings as tentative", async () => {
     const found = await withPackageSettings(repo, { graceDays: 2000 }, () => findings());
     expect(found.filter((f) => f.packages.length > 0).every((f) => f.tentative)).toBe(true);
-    expect((await findings()).some((f) => f.tentative)).toBe(false);
+    // by default only what involves the package added a month before the end is tentative
+    expect((await findings()).filter((f) => f.tentative).every((f) => f.packages.includes("packages/young"))).toBe(true);
   });
 });
 
@@ -138,8 +145,4 @@ test("a package that does not exist is a usage error", async () => {
   const run = await packagesRun(repo, "cohesion", "packages/nowhere");
   expect(run.code).toBe(2);
   expect(run.stderr).toContain("is not a package");
-});
-
-test("golden", async () => {
-  expectGolden("workspace", "packages.cohesion.history", (await packages(repo, "cohesion")).stdout);
 });

@@ -1,0 +1,1128 @@
+{
+  "balance": [
+    {
+      "closure": {
+        "changesWith": [
+          "packages/ui"
+        ],
+        "crossing": 12,
+        "share": 0.155,
+        "value": 0.2
+      },
+      "cost": 8.484,
+      "id": "packages/api",
+      "matters": "closure",
+      "neglected": [
+        "CCP",
+        "REP"
+      ],
+      "reading": "it changes often and only 1 package uses it: it pays for a boundary and gets little back, so closure matters most and merging is the default candidate",
+      "release": {
+        "consumers": [
+          "packages/app"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": false,
+        "versionChanges": null,
+        "young": false
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 1,
+        "medianShare": 1,
+        "surface": 1,
+        "unused": 0
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [
+          "packages/shared",
+          "packages/helper",
+          "packages/young"
+        ],
+        "crossing": 20,
+        "share": 0.237,
+        "value": 0.13
+      },
+      "cost": 13.458,
+      "id": "packages/app",
+      "matters": "closure",
+      "neglected": [
+        "CCP",
+        "CRP",
+        "REP"
+      ],
+      "reading": "it changes often and nothing uses it: it pays for a boundary and gets little back, so closure matters most and merging is the default candidate",
+      "release": {
+        "consumers": [],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": false,
+        "versionChanges": null,
+        "young": false
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 0,
+        "medianShare": null,
+        "surface": 1,
+        "unused": 1
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [
+          "packages/app",
+          "packages/orphan",
+          "packages/shared"
+        ],
+        "crossing": 10,
+        "share": 0.134,
+        "value": 0.231
+      },
+      "cost": 3.575,
+      "id": "packages/helper",
+      "matters": "closure",
+      "neglected": [
+        "CCP",
+        "REP"
+      ],
+      "reading": "it changes often and only 1 package uses it: it pays for a boundary and gets little back, so closure matters most and merging is the default candidate",
+      "release": {
+        "consumers": [
+          "packages/api"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": false,
+        "versionChanges": null,
+        "young": false
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 1,
+        "medianShare": 1,
+        "surface": 1,
+        "unused": 0
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [
+          "packages/lib-extra"
+        ],
+        "crossing": 3,
+        "share": 0.062,
+        "value": 0.5
+      },
+      "cost": 6.417,
+      "id": "packages/lib",
+      "matters": "reuse",
+      "neglected": [
+        "CRP",
+        "REP"
+      ],
+      "reading": "it rarely changes and 3 packages use it: it has earned its boundary, so reuse matters most and the question is whether consumers carry parts they do not need",
+      "release": {
+        "consumers": [
+          "packages/app",
+          "packages/testkit",
+          "packages/ui"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": true,
+        "versionChanges": 3,
+        "young": false
+      },
+      "reuse": {
+        "components": 5,
+        "consumers": 3,
+        "medianShare": 0.2,
+        "surface": 5,
+        "unused": 3
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [
+          "packages/lib"
+        ],
+        "crossing": 3,
+        "share": 0.031,
+        "value": 0
+      },
+      "cost": 6.417,
+      "id": "packages/lib-extra",
+      "matters": "mixed",
+      "neglected": [
+        "CCP",
+        "REP"
+      ],
+      "reading": "no one force dominates: it changes and is used at a middling rate",
+      "release": {
+        "consumers": [
+          "packages/ui"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": true,
+        "versionChanges": 3,
+        "young": false
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 1,
+        "medianShare": 1,
+        "surface": 1,
+        "unused": 0
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [
+          "packages/helper"
+        ],
+        "crossing": 5,
+        "share": 0.062,
+        "value": 0.167
+      },
+      "cost": 3.575,
+      "id": "packages/orphan",
+      "matters": "mixed",
+      "neglected": [
+        "CCP",
+        "REP"
+      ],
+      "reading": "no one force dominates: it changes and is used at a middling rate",
+      "release": {
+        "consumers": [],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": false,
+        "versionChanges": null,
+        "young": false
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 0,
+        "medianShare": null,
+        "surface": 1,
+        "unused": 1
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [
+          "packages/p2"
+        ],
+        "crossing": 4,
+        "share": 0.041,
+        "value": 0
+      },
+      "cost": 8.517,
+      "id": "packages/p1",
+      "matters": "mixed",
+      "neglected": [
+        "CCP",
+        "REP"
+      ],
+      "reading": "no one force dominates: it changes and is used at a middling rate",
+      "release": {
+        "consumers": [
+          "packages/app",
+          "packages/p2"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": false,
+        "versionChanges": null,
+        "young": false
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 2,
+        "medianShare": 1,
+        "surface": 1,
+        "unused": 0
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [
+          "packages/p1"
+        ],
+        "crossing": 4,
+        "share": 0.041,
+        "value": 0
+      },
+      "cost": 8.517,
+      "id": "packages/p2",
+      "matters": "mixed",
+      "neglected": [
+        "CCP",
+        "REP"
+      ],
+      "reading": "no one force dominates: it changes and is used at a middling rate",
+      "release": {
+        "consumers": [
+          "packages/p1"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": false,
+        "versionChanges": null,
+        "young": false
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 1,
+        "medianShare": 1,
+        "surface": 1,
+        "unused": 0
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [
+          "packages/app",
+          "packages/helper"
+        ],
+        "crossing": 19,
+        "share": 0.557,
+        "value": 0.648
+      },
+      "cost": 40.374,
+      "id": "packages/shared",
+      "matters": "mixed",
+      "neglected": [
+        "CCP",
+        "CRP"
+      ],
+      "reading": "no one force dominates: it changes and is used at a middling rate",
+      "release": {
+        "consumers": [
+          "packages/api",
+          "packages/app",
+          "packages/orphan",
+          "packages/ui"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": false,
+        "versionChanges": null,
+        "young": false
+      },
+      "reuse": {
+        "components": 3,
+        "consumers": 4,
+        "medianShare": 0.25,
+        "surface": 4,
+        "unused": 0
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [],
+        "crossing": 0,
+        "share": 0.01,
+        "value": 1
+      },
+      "cost": 0,
+      "id": "packages/testkit",
+      "matters": "mixed",
+      "neglected": [
+        "CRP"
+      ],
+      "reading": "no one force dominates: it changes and is used at a middling rate",
+      "release": {
+        "consumers": [],
+        "deployables": [],
+        "published": false,
+        "versionChanges": null,
+        "young": false
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 0,
+        "medianShare": null,
+        "surface": 1,
+        "unused": 1
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [
+          "packages/api"
+        ],
+        "crossing": 12,
+        "share": 0.155,
+        "value": 0.2
+      },
+      "cost": 8.484,
+      "id": "packages/ui",
+      "matters": "closure",
+      "neglected": [
+        "CCP",
+        "CRP",
+        "REP"
+      ],
+      "reading": "it changes often and only 1 package uses it: it pays for a boundary and gets little back, so closure matters most and merging is the default candidate",
+      "release": {
+        "consumers": [
+          "packages/wrap"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": false,
+        "versionChanges": null,
+        "young": false
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 1,
+        "medianShare": 1,
+        "surface": 1,
+        "unused": 0
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [],
+        "crossing": 0,
+        "share": 0.01,
+        "value": 1
+      },
+      "cost": 0,
+      "id": "packages/wrap",
+      "matters": "mixed",
+      "neglected": [
+        "REP"
+      ],
+      "reading": "no one force dominates: it changes and is used at a middling rate",
+      "release": {
+        "consumers": [
+          "packages/app"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": false,
+        "versionChanges": null,
+        "young": false
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 1,
+        "medianShare": 1,
+        "surface": 1,
+        "unused": 0
+      }
+    },
+    {
+      "closure": {
+        "changesWith": [
+          "packages/app"
+        ],
+        "crossing": 1,
+        "share": 0.01,
+        "value": 0
+      },
+      "cost": 0.958,
+      "id": "packages/young",
+      "matters": "tentative",
+      "neglected": [
+        "REP"
+      ],
+      "reading": "it is inside the grace period, so what it shows about reuse is held as tentative",
+      "release": {
+        "consumers": [
+          "packages/app"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": false,
+        "versionChanges": null,
+        "young": true
+      },
+      "reuse": {
+        "components": 1,
+        "consumers": 1,
+        "medianShare": 1,
+        "surface": 1,
+        "unused": 0
+      }
+    }
+  ],
+  "command": "packages",
+  "config": "50804ef111cee2ed",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": true
+    },
+    "grade": "moderate",
+    "importedHistory": [],
+    "logicalChangesInWindow": 97,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 12.7,
+    "window": {
+      "months": 12,
+      "since": 1687251600,
+      "until": 1718874000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "package": null,
+    "subcommand": "cohesion"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "aa84f1bc76f67e8a25cfe4d21dd98466e0bfacee"
+  },
+  "results": [
+    {
+      "changeCost": 13.458,
+      "evidence": {
+        "components": 3,
+        "componentsTotal": 3,
+        "groups": [
+          "formatDate:packages/ui",
+          "newId+formatMoney:packages/api+packages/orphan",
+          "log:packages/app"
+        ],
+        "overlap": 0
+      },
+      "id": "disjoint-reuse:packages/shared",
+      "kind": "disjoint-reuse",
+      "packages": [
+        "packages/shared"
+      ],
+      "principle": "CRP",
+      "priority": "normal",
+      "summary": "packages/shared exports 3 groups of names that different consumers use: {formatDate} for packages/ui; {newId, formatMoney} for packages/api, packages/orphan; {log} for packages/app",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 13.458,
+      "evidence": {
+        "components": 3,
+        "consumers": 4,
+        "contributors": 3,
+        "medianRevisions": 6,
+        "named": true,
+        "revisions": 54
+      },
+      "id": "dumping-ground:packages/shared",
+      "kind": "dumping-ground",
+      "packages": [
+        "packages/shared"
+      ],
+      "principle": "CRP",
+      "priority": "normal",
+      "summary": "packages/shared is used by 4 packages, in 3 unrelated parts, and changed in 54 changes by 3 people: every change risks everything and most consumers needed none of it",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 13.458,
+      "evidence": {
+        "confidenceFromTo": 0.826,
+        "confidenceToFrom": 0.352,
+        "fromChanges": 23,
+        "lift": 1.484,
+        "shared": 19,
+        "tail": 0.002,
+        "toChanges": 54
+      },
+      "id": "follower:packages/app->packages/shared",
+      "kind": "follower",
+      "packages": [
+        "packages/app",
+        "packages/shared"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "83% of the changes to packages/app also touched packages/shared, which it depends on, while only 35% of the changes to packages/shared touched packages/app",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 8.484,
+      "evidence": {
+        "confidenceFromTo": 0.8,
+        "confidenceToFrom": 0.8,
+        "fromChanges": 15,
+        "lift": 5.173,
+        "shared": 12,
+        "tail": 0,
+        "toChanges": 15
+      },
+      "id": "always-together:packages/api->packages/ui",
+      "kind": "always-together",
+      "packages": [
+        "packages/api",
+        "packages/ui"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/api and packages/ui changed together in 12 changes, 80% of those to packages/api and 80% of those to packages/ui: one unit of change split in two",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 3.575,
+      "evidence": {
+        "packageShare": 0.333,
+        "partners": 5,
+        "partnersInOther": 5,
+        "partnersInOwn": 0,
+        "revisions": 5,
+        "share": 1
+      },
+      "id": "crossing-unit:packages/helper->packages/orphan->packages/helper/src/toOrphan.ts",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/helper",
+        "packages/orphan"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/helper/src/toOrphan.ts in packages/helper changes with files of packages/orphan (5 of 5 co-changed files) more than with its own package (0)",
+      "tentative": false,
+      "unit": "packages/helper/src/toOrphan.ts"
+    },
+    {
+      "changeCost": 3.555,
+      "evidence": {
+        "changes": 97,
+        "earlierShare": 0.052,
+        "laterShare": 0.051,
+        "mostOften": [
+          "packages/app",
+          "packages/helper",
+          "packages/shared"
+        ],
+        "packagesPerWideChange": 3,
+        "share": 0.052,
+        "wide": 5
+      },
+      "id": "wide-change:repository",
+      "kind": "wide-change",
+      "packages": [],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "5 of 97 changes (5%) touched at least 3 packages: the packages cut across the features",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 2.839,
+      "evidence": {
+        "confidenceFromTo": 1,
+        "confidenceToFrom": 1,
+        "fromChanges": 4,
+        "lift": 24.25,
+        "shared": 4,
+        "tail": 0,
+        "toChanges": 4
+      },
+      "id": "always-together:packages/p1->packages/p2",
+      "kind": "always-together",
+      "packages": [
+        "packages/p1",
+        "packages/p2"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/p1 and packages/p2 changed together in 4 changes, 100% of those to packages/p1 and 100% of those to packages/p2: one unit of change split in two",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 2.839,
+      "evidence": {
+        "changes": 4,
+        "closure": 0,
+        "comparable": 5,
+        "crossing": 4,
+        "quartile": 0,
+        "share": 0.041
+      },
+      "id": "low-closure:packages/p1",
+      "kind": "low-closure",
+      "packages": [
+        "packages/p1"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "100% of the 4 changes to packages/p1 also touched another package, more than most packages with a comparable share of changes",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 2.839,
+      "evidence": {
+        "changes": 4,
+        "closure": 0,
+        "comparable": 5,
+        "crossing": 4,
+        "quartile": 0,
+        "share": 0.041
+      },
+      "id": "low-closure:packages/p2",
+      "kind": "low-closure",
+      "packages": [
+        "packages/p2"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "100% of the 4 changes to packages/p2 also touched another package, more than most packages with a comparable share of changes",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 2.839,
+      "evidence": {
+        "consumers": 1,
+        "purpose": null,
+        "revisions": 4
+      },
+      "id": "single-consumer:packages/p2",
+      "kind": "single-consumer",
+      "packages": [
+        "packages/p2",
+        "packages/p1"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "packages/p2 is internal and packages/p1 is the only package that uses it: nothing is being reused",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 2.139,
+      "evidence": {
+        "components": 2,
+        "componentsTotal": 5,
+        "groups": [
+          "parse:packages/app+packages/testkit",
+          "render:packages/ui"
+        ],
+        "overlap": 0
+      },
+      "id": "disjoint-reuse:packages/lib",
+      "kind": "disjoint-reuse",
+      "packages": [
+        "packages/lib"
+      ],
+      "principle": "CRP",
+      "priority": "normal",
+      "summary": "packages/lib exports 2 groups of names that different consumers use: {parse} for packages/app, packages/testkit; {render} for packages/ui",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 2.139,
+      "evidence": {
+        "ratio": 1,
+        "versionChanges": 3
+      },
+      "id": "lockstep:packages/lib->packages/lib-extra",
+      "kind": "lockstep",
+      "packages": [
+        "packages/lib",
+        "packages/lib-extra"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "packages/lib and packages/lib-extra changed version in the same 3 commits, with no policy fixing their versions together: separate versions are ceremony",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 2.139,
+      "evidence": {
+        "changes": 3,
+        "closure": 0,
+        "comparable": 5,
+        "crossing": 3,
+        "quartile": 0,
+        "share": 0.031
+      },
+      "id": "low-closure:packages/lib-extra",
+      "kind": "low-closure",
+      "packages": [
+        "packages/lib-extra"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "100% of the 3 changes to packages/lib-extra also touched another package, more than most packages with a comparable share of changes",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 2.139,
+      "evidence": {
+        "consumers": 3,
+        "medianShare": 0.2,
+        "shares": [
+          "packages/app:0.2",
+          "packages/testkit:0.2",
+          "packages/ui:0.2"
+        ],
+        "smallUsers": 3,
+        "surface": 5
+      },
+      "id": "partial-use:packages/lib",
+      "kind": "partial-use",
+      "packages": [
+        "packages/lib"
+      ],
+      "principle": "CRP",
+      "priority": "normal",
+      "summary": "3 of 3 consumers of packages/lib use under 25% of its 5 exports, so they depend on what they do not use",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 2.139,
+      "evidence": {
+        "files": 2,
+        "percentile": 10,
+        "percentileSize": 2
+      },
+      "id": "tiny:packages/lib-extra",
+      "kind": "tiny",
+      "packages": [
+        "packages/lib-extra"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "packages/lib-extra holds 2 files beside its manifest: the package costs more to have than it contains",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0.958,
+      "evidence": {
+        "files": 2,
+        "percentile": 10,
+        "percentileSize": 2
+      },
+      "id": "tiny:packages/young",
+      "kind": "tiny",
+      "packages": [
+        "packages/young"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "packages/young holds 2 files beside its manifest: the package costs more to have than it contains",
+      "tentative": true,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "acquired": 3,
+        "excess": [
+          "ajv",
+          "jsdiff",
+          "yaml"
+        ],
+        "needed": 0,
+        "surface": 5,
+        "used": 1
+      },
+      "id": "inherited-weight:packages/lib->packages/app",
+      "kind": "inherited-weight",
+      "packages": [
+        "packages/lib",
+        "packages/app"
+      ],
+      "principle": "CRP",
+      "priority": "normal",
+      "summary": "packages/app uses 1 of 5 exports of packages/lib and acquires 3 outside packages it does not need: ajv, jsdiff, yaml",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "acquired": 3,
+        "excess": [
+          "ajv",
+          "jsdiff",
+          "yaml"
+        ],
+        "needed": 0,
+        "surface": 5,
+        "used": 1
+      },
+      "id": "inherited-weight:packages/lib->packages/testkit",
+      "kind": "inherited-weight",
+      "packages": [
+        "packages/lib",
+        "packages/testkit"
+      ],
+      "principle": "CRP",
+      "priority": "normal",
+      "summary": "packages/testkit uses 1 of 5 exports of packages/lib and acquires 3 outside packages it does not need: ajv, jsdiff, yaml",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "acquired": 3,
+        "excess": [
+          "ajv",
+          "jsdiff",
+          "yaml"
+        ],
+        "needed": 0,
+        "surface": 5,
+        "used": 1
+      },
+      "id": "inherited-weight:packages/lib->packages/ui",
+      "kind": "inherited-weight",
+      "packages": [
+        "packages/lib",
+        "packages/ui"
+      ],
+      "principle": "CRP",
+      "priority": "normal",
+      "summary": "packages/ui uses 1 of 5 exports of packages/lib and acquires 3 outside packages it does not need: ajv, jsdiff, yaml",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "declaredBy": [
+          "packages/ui"
+        ],
+        "published": false
+      },
+      "id": "no-consumer:packages/orphan",
+      "kind": "no-consumer",
+      "packages": [
+        "packages/orphan"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "nothing uses packages/orphan, and it is not an entry point or a deployable; packages/ui declares it without using it",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "names": [
+          "diff",
+          "serialize",
+          "validate"
+        ],
+        "share": 0.6,
+        "surface": 5,
+        "unused": 3
+      },
+      "id": "overexposed:packages/lib",
+      "kind": "overexposed",
+      "packages": [
+        "packages/lib"
+      ],
+      "principle": "CRP",
+      "priority": "normal",
+      "summary": "3 of the 5 exports of packages/lib are used by no other package: diff, serialize, validate",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "passThroughShare": 1,
+        "surface": 1
+      },
+      "id": "pass-through-package:packages/wrap",
+      "kind": "pass-through-package",
+      "packages": [
+        "packages/wrap"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "100% of what packages/wrap exports is defined in other packages and only passed along: a shallow module at package level",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "consumers": 1,
+        "purpose": null,
+        "revisions": 15
+      },
+      "id": "single-consumer:packages/api",
+      "kind": "single-consumer",
+      "packages": [
+        "packages/api",
+        "packages/app"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "packages/api is internal and packages/app is the only package that uses it: nothing is being reused",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "consumers": 1,
+        "purpose": null,
+        "revisions": 13
+      },
+      "id": "single-consumer:packages/helper",
+      "kind": "single-consumer",
+      "packages": [
+        "packages/helper",
+        "packages/api"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "packages/helper is internal and packages/api is the only package that uses it: nothing is being reused",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "consumers": 1,
+        "purpose": null,
+        "revisions": 15
+      },
+      "id": "single-consumer:packages/ui",
+      "kind": "single-consumer",
+      "packages": [
+        "packages/ui",
+        "packages/wrap"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "packages/ui is internal and packages/wrap is the only package that uses it: nothing is being reused",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "consumers": 1,
+        "purpose": null,
+        "revisions": 1
+      },
+      "id": "single-consumer:packages/wrap",
+      "kind": "single-consumer",
+      "packages": [
+        "packages/wrap",
+        "packages/app"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "packages/wrap is internal and packages/app is the only package that uses it: nothing is being reused",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "files": 2,
+        "percentile": 10,
+        "percentileSize": 2
+      },
+      "id": "tiny:packages/wrap",
+      "kind": "tiny",
+      "packages": [
+        "packages/wrap"
+      ],
+      "principle": "REP",
+      "priority": "normal",
+      "summary": "packages/wrap holds 2 files beside its manifest: the package costs more to have than it contains",
+      "tentative": false,
+      "unit": null
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 27
+  },
+  "unavailable": [],
+  "window": {
+    "since": "2023-06-20T09:00:00.000Z",
+    "until": "2024-06-20T09:00:00.000Z"
+  }
+}

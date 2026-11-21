@@ -105,9 +105,24 @@
             "items": {
               "$ref": "#/$defs/finding"
             }
+          },
+          "balance": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/balance"
+            }
+          },
+          "unavailable": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/unavailable"
+            }
           }
         },
-        "required": []
+        "required": [
+          "balance",
+          "unavailable"
+        ]
       }
     },
     {
@@ -190,13 +205,194 @@
         "subcommand"
       ]
     },
-    "repository": true
+    "repository": true,
+    "balance": true,
+    "unavailable": true
   },
   "required": [
     "inputs"
   ],
   "unevaluatedProperties": false,
   "$defs": {
+    "balance": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "matters": {
+          "enum": [
+            "closure",
+            "reuse",
+            "release",
+            "tentative",
+            "mixed"
+          ]
+        },
+        "closure": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "share": {
+              "type": "number"
+            },
+            "crossing": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "changesWith": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "value",
+            "share",
+            "crossing",
+            "changesWith"
+          ],
+          "additionalProperties": false
+        },
+        "reuse": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "surface": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "consumers": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "medianShare": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "components": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "unused": {
+                  "$ref": "common.schema.json#/$defs/count"
+                }
+              },
+              "required": [
+                "surface",
+                "consumers",
+                "medianShare",
+                "components",
+                "unused"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "release": {
+          "type": "object",
+          "properties": {
+            "consumers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "published": {
+              "type": "boolean"
+            },
+            "deployables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "versionChanges": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "common.schema.json#/$defs/count"
+                }
+              ]
+            },
+            "young": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "consumers",
+            "published",
+            "deployables",
+            "versionChanges",
+            "young"
+          ],
+          "additionalProperties": false
+        },
+        "neglected": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "CCP",
+              "CRP",
+              "REP"
+            ]
+          }
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reading": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "matters",
+        "closure",
+        "reuse",
+        "release",
+        "neglected",
+        "cost",
+        "reading"
+      ],
+      "additionalProperties": false
+    },
+    "unavailable": {
+      "type": "object",
+      "properties": {
+        "package": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "package",
+        "reason",
+        "findings"
+      ],
+      "additionalProperties": false
+    },
     "repository": {
       "type": "object",
       "properties": {
