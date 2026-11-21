@@ -112,6 +112,28 @@ describe("the module tree", () => {
   });
 });
 
+describe("crates named in code", () => {
+  it("count as imports when a path starts with a name the file neither declares nor imports", async () => {
+    const analysis = await analyse({
+      "src/lib.rs": 'mod util;\nuse util::helper;\npub fn f() -> String {\n    log::info!("x");\n    util::other();\n    u32::MAX;\n    serde_json::to_string(&helper()).unwrap()\n}\n',
+      "src/util.rs": "pub fn helper() {}\npub fn other() {}\n",
+    });
+    expect(analysis.externalImports.map((external) => external.packageName)).toEqual(["log", "serde_json"]);
+    expect(analysis.unresolved).toEqual([]);
+  });
+
+  it("reach a workspace crate through the path, down to the item", async () => {
+    const analysis = await analyse({
+      "a/Cargo.toml": '[package]\nname = "a"\n\n[dependencies]\nb = { path = "../b" }\n',
+      "a/src/lib.rs": "pub fn f() { b::store::Store::open(); }\n",
+      "b/Cargo.toml": '[package]\nname = "b"\n',
+      "b/src/lib.rs": "pub mod store;\n",
+      "b/src/store.rs": "pub struct Store;\nimpl Store { pub fn open() {} }\n",
+    });
+    expect(analysis.consumers.map((consumer) => `${consumer.from}#${consumer.fromUnit} -> ${consumer.to}#${consumer.toSymbol}`)).toEqual(["a/src/lib.rs#f -> b/src/store.rs#Store"]);
+  });
+});
+
 describe("names in macros", () => {
   it("count as uses, with the member of a path", async () => {
     const analysis = await analyse({

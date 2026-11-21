@@ -189,6 +189,17 @@ function inlineModulesOf(scope: Node, prefix: readonly string[], out: Set<string
   }
 }
 
+const primitives = new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
+const builtinCrates = new Set(["std", "core", "alloc", "proc_macro", "test"]);
+
+/** A path written out in code whose first name may be a crate, kept until the file's own names are known. */
+interface InlinePath {
+  segments: string[];
+  line: number;
+  kind: "call" | "reference";
+  unit: string | undefined;
+}
+
 const compareLines = (a: { line: number }, b: { line: number }): number => a.line - b.line;
 
 class Extractor {
@@ -200,6 +211,7 @@ class Extractor {
   private readonly references: ReferenceFact[] = [];
   private readonly nameCounts = new Map<string, number>();
   private readonly inlineModules = new Set<string>();
+  private readonly inlinePaths: InlinePath[] = [];
   private codeRows: boolean[] | undefined;
   private root: Node | undefined;
   private readonly explain: boolean;
@@ -220,6 +232,8 @@ class Extractor {
     }
     const locals = new Set<string>();
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
+    this.inlineCrates(root, locals);
+    for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
     const classes = new Set(this.units.filter((unit) => unit.kind === "class").map((unit) => unit.qualifiedName));
     for (const unit of this.units) {
       const dot = unit.qualifiedName.lastIndexOf(".");
@@ -234,6 +248,35 @@ class Extractor {
       nodes: nodeCount(root, (node) => isComment(node) || node.type === "use_declaration") - 1,
       hasSyntaxErrors: root.hasError,
     };
+  }
+
+  /**
+   * A path in code that starts with a name the file does not declare or import, such as `serde_json::to_string(x)`
+   * or `log::info!(..)`, names a crate. It is imported like a `use` of the same path, under the path as its binding.
+   */
+  private inlineCrates(root: Node, locals: ReadonlySet<string>): void {
+    const modules = new Set(root.descendantsOfType("mod_item").map((item) => item.childForFieldName("name")?.text));
+    const known = new Set<string>();
+    for (const path of this.inlinePaths) {
+      const [first] = path.segments as [string];
+      if (locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first)) continue;
+      let item = path.segments.findIndex((segment, index) => index > 0 && upper.test(segment));
+      if (item < 0) item = path.segments.length - 1;
+      const local = path.segments.slice(0, item + 1).join("::");
+      if (!known.has(local)) {
+        known.add(local);
+        this.imports.push({ specifier: path.segments.slice(0, item).join("::"), kind: "import", typeOnly: false, line: path.line, bindings: [{ imported: path.segments[item]!, local, typeOnly: false }] });
+      }
+      const member = path.segments[item + 1];
+      const fact: ReferenceFact = { local, kind: path.kind, line: path.line };
+      if (member !== undefined) fact.member = member;
+      if (path.unit !== undefined) fact.inUnit = path.unit;
+      this.references.push(fact);
+    }
+  }
+
+  private inlinePath(segments: string[], line: number, kind: "call" | "reference", context: Context): void {
+    if (segments.length >= 2 && /^[a-z_]/.test(segments[0]!)) this.inlinePaths.push({ segments, line, kind, unit: context.unit });
   }
 
   /** The modules a scope declares, so a path that starts with one is relative to the scope. */
@@ -359,6 +402,8 @@ class Extractor {
         return;
       case "attribute_item":
       case "inner_attribute_item":
+        this.attribute(node, context);
+        return;
       case "label":
         return;
       case "call_expression":
@@ -403,6 +448,16 @@ class Extractor {
         return;
       default:
         this.visitChildren(node, context);
+    }
+  }
+
+  /** An attribute names a crate when its path has one (`#[tokio::main]`, `#[derive(thiserror::Error)]`). */
+  private attribute(node: Node, context: Context): void {
+    for (const attribute of node.namedChildren.filter((child) => child.type === "attribute")) {
+      const name = attribute.namedChildren[0];
+      if (name?.type === "scoped_identifier") this.path(name, context, "reference");
+      const args = attribute.childForFieldName("arguments");
+      if (args !== null) this.tokens(args, context);
     }
   }
 
@@ -540,6 +595,7 @@ class Extractor {
     const [first, second] = segments as [string, string | undefined];
     if (first === "self" || first === "crate" || first === "super" || first === "Self") return;
     this.reference(first, node, context, kind, second);
+    this.inlinePath(segments, node.startPosition.row + 1, kind, context);
     // Type arguments inside the path (`Vec::<Foo>::new`) are uses of their own.
     for (const generic of node.descendantsOfType("type_arguments")) this.visitChildren(generic, context);
   }
@@ -571,10 +627,16 @@ class Extractor {
       const token = children[i]!;
       if (token.type === "token_tree") this.tokens(token, context);
       else if (token.type === "identifier" || token.type === "type_identifier") {
-        const named = children[i + 1]?.type === "::" && children[i + 2]?.type === "identifier";
-        this.reference(token.text, token, context, "reference", named ? children[i + 2]!.text : undefined);
-        // The name after `::` is the member, not a use of a name of its own.
-        if (named) i += 2;
+        const segments = [token.text];
+        let next = i + 1;
+        while (children[next]?.type === "::" && children[next + 1]?.type === "identifier") {
+          segments.push(children[next + 1]!.text);
+          next += 2;
+        }
+        this.reference(token.text, token, context, "reference", segments[1]);
+        this.inlinePath(segments, token.startPosition.row + 1, "reference", context);
+        // The names after `::` are the path's, not uses of names of their own.
+        i = next - 1;
       }
     }
   }
