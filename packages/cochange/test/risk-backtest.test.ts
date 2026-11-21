@@ -9,6 +9,9 @@ import { expectGolden } from "./support/golden.ts";
 import { runCochange } from "./support/run.ts";
 import { outcomesOf, scoreMainline, separationOf, type BandRow, type ScoredChange } from "../src/risk/backtest.ts";
 import { readStoredBacktest } from "../src/risk/stored-backtest.ts";
+import { bandAgainst, cutoffsOf } from "../src/risk/bands.ts";
+import { chronologicalPass } from "../src/risk/history-pass.ts";
+import { baselineScores, makeBander } from "../src/risk/scoring.ts";
 import { reportPath } from "../src/reports.ts";
 
 let repo: GitFixture;
@@ -87,6 +90,47 @@ describe("as of each change", () => {
     const full = score(prepared);
     expect(windowed.map((s) => s.index)).toEqual(Array.from({ length: 10 }, (_, i) => 30 + i));
     expect(windowed.map(verdict)).toEqual(full.slice(30).map(verdict));
+  });
+});
+
+describe("bands over a real baseline", () => {
+  test("no more than a quarter of the baseline is moderate or above on any banded factor or on impact, and no more than a tenth is high", () => {
+    const { past } = chronologicalPass(prepared.mainline.changes, prepared.context, {
+      windowMonths: prepared.windowMonths,
+      maxChangesetSize: prepared.maxChangesetSize,
+      fixPatterns: [...prepared.risk.fixPatterns, ...prepared.risk.revertPatterns],
+    });
+    const baseline = past.slice(5).map((p) => p.measurements);
+    const bander = makeBander(baseline, prepared.risk);
+    const names = baseline[0]!.filter((m) => m.kind === "percentile").map((m) => m.name);
+    for (const name of names) {
+      const bands = baseline.flatMap((measures) => {
+        const m = measures.find((x) => x.name === name)!;
+        return m.unavailable === null ? [bander(m).band] : [];
+      }).filter((band) => band !== "unavailable");
+      expect(bands.filter((b) => b !== "low").length, `${name} moderate or above`).toBeLessThanOrEqual(Math.floor(bands.length / 4));
+      expect(bands.filter((b) => b === "high").length, `${name} high`).toBeLessThanOrEqual(Math.floor(bands.length / 10));
+    }
+    const scores = baselineScores(baseline, prepared.risk);
+    const cutoffs = cutoffsOf(scores, prepared.risk.moderatePercentile, prepared.risk.highPercentile)!;
+    const impact = scores.map((score) => bandAgainst(score, cutoffs));
+    expect(impact.filter((b) => b !== "low").length).toBeLessThanOrEqual(Math.floor(scores.length / 4));
+    expect(impact.filter((b) => b === "high").length).toBeLessThanOrEqual(Math.floor(scores.length / 10));
+  });
+
+  test("a zero is low on every factor, however the baseline falls", () => {
+    const { past } = chronologicalPass(prepared.mainline.changes, prepared.context, {
+      windowMonths: prepared.windowMonths,
+      maxChangesetSize: prepared.maxChangesetSize,
+      fixPatterns: [],
+    });
+    const baseline = past.slice(0, 30).map((p) => p.measurements);
+    const bander = makeBander(baseline, prepared.risk);
+    for (const measures of baseline) {
+      for (const m of measures) {
+        if (m.unavailable === null && Object.values(m.series).every((v) => v === 0)) expect(bander(m).band, m.name).toBe("low");
+      }
+    }
   });
 });
 
