@@ -1,5 +1,5 @@
 import { folderOf } from "@code-health/graph/tree-distance";
-import { toRepoPath } from "./repo-path.ts";
+import { isWithinRepo, toRepoPath } from "./repo-path.ts";
 import { parseTranscript, type SessionEvent, type TokenCounts, type ToolAction } from "./transcript-format.ts";
 
 export interface TaskTokens extends TokenCounts {
@@ -71,7 +71,7 @@ function measureTask(
     for (const action of turn.actions) {
       const path = toRepoPath(action.path, roots);
       if (action.kind === "search") {
-        searches++;
+        if (isWithinRepo(action.path, roots)) searches++;
       } else if (path === null) {
         continue;
       } else if (action.kind === "read") {

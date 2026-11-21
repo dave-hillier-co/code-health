@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { toRepoPath } from "../src/repo-path.ts";
+import { isWithinRepo, toRepoPath } from "../src/repo-path.ts";
 
 const roots = ["/work/repo"];
 
@@ -40,4 +40,28 @@ test("any of several roots, such as worktree checkouts, may match", () => {
 
 test("Windows separators are converted to POSIX", () => {
   expect(toRepoPath("C:\\work\\repo\\src\\a.ts", ["C:\\work\\repo"])).toBe("src/a.ts");
+});
+
+test("Windows drive letters compare case-insensitively", () => {
+  expect(toRepoPath("c:\\repo\\a.ts", ["C:\\repo"])).toBe("a.ts");
+  expect(toRepoPath("C:\\Repo\\src\\a.ts", ["c:\\repo"])).toBe("src/a.ts");
+});
+
+test("home-relative paths are not repo files", () => {
+  expect(toRepoPath("~/x", ["/r"])).toBeNull();
+});
+
+test("files under .git and node_modules are not the repo's own code", () => {
+  expect(toRepoPath("/r/.git/config", ["/r"])).toBeNull();
+  expect(toRepoPath("/r/node_modules/p/index.js", ["/r"])).toBeNull();
+  expect(toRepoPath("/r/packages/a/node_modules/p/index.js", ["/r"])).toBeNull();
+  expect(toRepoPath("/r/src/node_modules_like.ts", ["/r"])).toBe("src/node_modules_like.ts");
+});
+
+test("isWithinRepo accepts the root, repo paths and a missing path, and rejects outside paths", () => {
+  expect(isWithinRepo(null, ["/r"])).toBe(true);
+  expect(isWithinRepo("/r", ["/r"])).toBe(true);
+  expect(isWithinRepo("/r/src", ["/r"])).toBe(true);
+  expect(isWithinRepo("/elsewhere", ["/r"])).toBe(false);
+  expect(isWithinRepo("~/x", ["/r"])).toBe(false);
 });

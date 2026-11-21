@@ -123,3 +123,11 @@ test("task records carry paths and counts only, never message text", () => {
   expect(JSON.stringify(task)).not.toContain("SECRET");
   expect(JSON.stringify(task)).not.toContain("synthetic reply");
 });
+
+test("searches outside the repo are not counted, searches of the repo and of the working directory are", () => {
+  const session = new SyntheticSession()
+    .prompt()
+    .assistant("m1", [grep("/elsewhere/lib"), grep("/work/repo/src"), grep(), edit("/work/repo/a.ts")]);
+  const result = measureSession(session.toJsonl(), "s", ["/work/repo"]);
+  expect(result.status === "measured" && result.tasks[0]?.searches).toBe(2);
+});
