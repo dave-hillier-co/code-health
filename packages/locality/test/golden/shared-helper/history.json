@@ -1,0 +1,27 @@
+{
+  "command": "history",
+  "config": "59e9516fe0a1f9ff",
+  "inputs": {},
+  "repo": {
+    "dirty": false,
+    "head": "2e49fcc3589ef5bf6479d90285e39c4e6a2c7e1c"
+  },
+  "results": {
+    "added": 13,
+    "head": "2e49fcc3589ef5bf6479d90285e39c4e6a2c7e1c",
+    "reachable": 13,
+    "rebuilt": false,
+    "ref": "HEAD",
+    "shallow": {
+      "boundaryCommits": 0,
+      "isShallow": false
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}

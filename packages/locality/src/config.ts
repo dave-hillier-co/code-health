@@ -22,6 +22,18 @@ export const localityConfig: PluginConfigSpec = {
     highFanIn: 8,
     /** Deepest folder nesting a target may have. */
     maxDepth: 6,
+    /** Read co-change, age and churn from the history cache, so the history guards and rules can fire. */
+    useHistory: true,
+    /** A unit younger than this many days is not inlined or moved: one callsite is only evidence once reuse has had time. */
+    graceDays: 90,
+    /** The window for churn and co-change, back from HEAD's commit date. */
+    windowMonths: 12,
+    /** Consumers co-changing at or below this degree (percent) look independent: coincidental reuse. */
+    lowCoChange: 10,
+    /** Consumers co-changing at or above this degree (percent) share a reason to change: the distance is earned. */
+    highCoChange: 40,
+    /** Logical changes touching any of the consumers that the co-change rules need before they speak. */
+    minCoChangeChanges: 6,
     /** Globs of files that must not move and folders code may not move into (routes, migrations, app folders). */
     fixedPoints: [] as string[],
   },
@@ -35,6 +47,12 @@ export interface LocalitySettings {
   highFanIn: number;
   maxDepth: number;
   fixedPoints: string[];
+  useHistory: boolean;
+  graceDays: number;
+  windowMonths: number;
+  lowCoChange: number;
+  highCoChange: number;
+  minCoChangeChanges: number;
   /** The suite's shared `entryPoints` globs. Empty means entries are detected. */
   entryPoints: string[];
   /** The suite's shared `exclude` globs. */
@@ -66,6 +84,19 @@ export function readSettings(config: LoadedConfig): LocalitySettings {
     throw configError(`code-health.json: ${at("tinyLines")} must be below ${at("largeLines")}`);
   }
 
+  const percent = (key: string): number => {
+    const value = section[key];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 100) {
+      throw configError(`code-health.json: ${at(key)} must be a percentage from 0 to 100`);
+    }
+    return value;
+  };
+  const lowCoChange = percent("lowCoChange");
+  const highCoChange = percent("highCoChange");
+  if (lowCoChange >= highCoChange) {
+    throw configError(`code-health.json: ${at("lowCoChange")} must be below ${at("highCoChange")}`);
+  }
+
   return {
     minDistance: positive("minDistance"),
     tinyLines,
@@ -74,6 +105,12 @@ export function readSettings(config: LoadedConfig): LocalitySettings {
     highFanIn: positive("highFanIn"),
     maxDepth: positive("maxDepth"),
     fixedPoints: fixedPoints as string[],
+    useHistory: section.useHistory === true,
+    graceDays: positive("graceDays"),
+    windowMonths: positive("windowMonths"),
+    lowCoChange,
+    highCoChange,
+    minCoChangeChanges: positive("minCoChangeChanges"),
     entryPoints: config.effective.entryPoints,
     exclude: config.effective.exclude,
     vagueNames: config.effective.vagueNames,

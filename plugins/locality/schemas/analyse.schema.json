@@ -73,6 +73,29 @@
       "required": ["totalWeightedDistance", "singleFileFolders", "maxDepth"],
       "additionalProperties": false
     },
+    "history": {
+      "description": "What the history cache gave the analysis, or null when it was off or could not give an honest answer (a shallow clone). With a weak grade, history-based fields are tentative.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "window": {
+              "type": "object",
+              "properties": { "months": { "type": "integer", "minimum": 1 }, "since": { "type": "integer" }, "until": { "type": "integer" } },
+              "required": ["months", "since", "until"],
+              "additionalProperties": false
+            },
+            "grade": { "enum": ["strong", "moderate", "weak"] },
+            "logicalChangesInWindow": { "$ref": "common.schema.json#/$defs/count" },
+            "usableHistoryMonths": { "type": "number", "minimum": 0 },
+            "activeContributors": { "$ref": "common.schema.json#/$defs/count" }
+          },
+          "required": ["window", "grade", "logicalChangesInWindow", "usableHistoryMonths", "activeContributors"],
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
     "unreachable": { "$ref": "#/$defs/paths", "description": "Production files the virtual root cannot reach: dead code, or an entry point missing from config." },
     "barrels": { "$ref": "#/$defs/paths" },
     "unresolved": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Imports the resolver could not follow, by reason." },
@@ -132,10 +155,37 @@
           },
           "ownDeps": { "$ref": "#/$defs/paths", "description": "Production files the unit imports from outside itself." },
           "visibility": { "enum": ["exported", "package-entry"] },
-          "age": { "type": "null", "description": "Reserved for history enrichment." },
-          "lastChanged": { "type": "null" },
-          "churn": { "type": "null" },
-          "coChange": { "type": "null" },
+          "age": { "type": ["integer", "null"], "minimum": 0, "description": "Days from the first appearance of the unit's entry file to HEAD's commit date. Null without history." },
+          "lastChanged": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Latest commit date of any file of the unit." },
+          "churn": { "type": ["integer", "null"], "minimum": 0, "description": "Lines added and deleted across the unit's files in the window." },
+          "coChange": {
+            "description": "How the unit changed with its consumers over the window. Null without history.",
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "consumers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": { "type": "string" },
+                        "support": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes touching the unit and the consumer." },
+                        "consumerChanges": { "$ref": "common.schema.json#/$defs/count" },
+                        "degree": { "type": "number", "minimum": 0, "maximum": 100 }
+                      },
+                      "required": ["path", "support", "consumerChanges", "degree"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "amongConsumers": { "type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Median degree between pairs of consumers. Null with fewer than locality.minCoChangeChanges changes, or with more consumers than are compared." }
+                },
+                "required": ["consumers", "amongConsumers"],
+                "additionalProperties": false
+              },
+              { "type": "null" }
+            ]
+          },
           "signals": {
             "type": "array",
             "items": {
@@ -159,7 +209,22 @@
                 "kind": { "enum": ["dependency", "stray"] },
                 "weight": { "$ref": "common.schema.json#/$defs/count" },
                 "otherConsumers": { "$ref": "common.schema.json#/$defs/count" },
-                "coChange": { "type": "null" },
+                "coChange": {
+                  "description": "How the unit and the blocker changed together. Few blockerChanges means a stable dependency. Null without history.",
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "support": { "$ref": "common.schema.json#/$defs/count" },
+                        "degree": { "type": "number", "minimum": 0, "maximum": 100 },
+                        "blockerChanges": { "$ref": "common.schema.json#/$defs/count" }
+                      },
+                      "required": ["support", "degree", "blockerChanges"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
                 "unblockedGain": { "$ref": "common.schema.json#/$defs/count" }
               },
               "required": ["path", "from", "kind", "weight", "otherConsumers", "coChange", "unblockedGain"],

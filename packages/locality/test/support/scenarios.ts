@@ -1,4 +1,4 @@
-import { GitFixture, type Change } from "@code-health/fixtures/git-fixture";
+import { GitFixture, type Change, type Step } from "@code-health/fixtures/git-fixture";
 
 const add = (path: string, content: string): Change => ({ op: "add", path, content });
 
@@ -38,6 +38,8 @@ export function guardedUnits(): GitFixture {
         add("src/generated/client.ts", "export const generated = () => 1;\n"),
       ],
     },
+    // The code is old by the time of the last commit, so the grace period does not hold anything back.
+    { type: "commit", message: "Add notes", date: "2025-01-01T09:00:00Z", changes: [add("NOTES.md", "Notes.\n")] },
   ]);
 }
 
@@ -48,7 +50,7 @@ export function guardedUnits(): GitFixture {
  */
 export function distantHelpers(): GitFixture {
   const features = Array.from({ length: featureCount }, (_, index) => index + 1);
-  return GitFixture.build([
+  const steps: Step[] = [
     {
       type: "commit",
       message: "Add the app",
@@ -172,5 +174,19 @@ export function distantHelpers(): GitFixture {
         add("src/legacy/dead.ts", 'import { formatMoney } from "../shared/utils/money.ts";\nexport const dead = () => formatMoney(0);\n'),
       ],
     },
+  ];
+  // One bulk commit would be taken for an import of history from elsewhere, and history would start after it.
+  // The app arrives a file at a time, so no two files co-change, and is old by the time of the last commit.
+  const [bulk, ...rest] = steps as [Extract<Step, { type: "commit" }>, ...Step[]];
+  const arrival = bulk.changes.map((change, index): Step => ({
+    ...bulk,
+    message: `Add file ${index + 1}`,
+    date: `2024-01-01T09:${String(index).padStart(2, "0")}:00Z`,
+    changes: [change],
+  }));
+  return GitFixture.build([
+    ...arrival,
+    ...rest,
+    { type: "commit", message: "Add notes", date: "2025-01-01T09:00:00Z", changes: [add("NOTES.md", "Notes.\n")] },
   ]);
 }

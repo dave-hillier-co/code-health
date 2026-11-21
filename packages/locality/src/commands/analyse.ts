@@ -4,6 +4,7 @@ import { compareIds } from "@code-health/graph/graph";
 import { analyseProject } from "../candidates.ts";
 import { readSettings } from "../config.ts";
 import { buildModel } from "../model.ts";
+import { readHistory } from "../history-evidence.ts";
 import { loadProject } from "../project.ts";
 import { writeReport } from "../reports.ts";
 import { ruleDescriptions } from "../rules.ts";
@@ -26,8 +27,9 @@ export const command: Command = {
     const prefixes = context.positionals.map((path) => path.replace(/\/+$/, ""));
 
     const project = await loadProject(context.repo.root, "HEAD", settings);
-    const model = buildModel(project, settings);
-    const analysis = analyseProject(project, model, settings);
+    const history = settings.useHistory ? await readHistory(context, settings) : undefined;
+    const model = buildModel(project, settings, history);
+    const analysis = analyseProject(project, model, settings, history);
 
     const partial = prefixes.length > 0 || wanted !== undefined;
     const rows = analysis.candidates.filter(
@@ -52,6 +54,7 @@ export const command: Command = {
         unreachable: model.unreachable,
         barrels: project.analysis.barrels,
         unresolved,
+        history: history === undefined ? null : { window: history.window, ...history.evidence },
         filesWithSyntaxErrors: project.analysis.filesWithSyntaxErrors,
       },
       results: rows,

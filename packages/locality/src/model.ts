@@ -5,6 +5,7 @@ import { siblingSetUnits } from "@code-health/graph/sibling-units";
 import { folderOf } from "@code-health/graph/tree-distance";
 import { compileGlobs } from "@code-health/history/glob";
 import type { LocalitySettings } from "./config.ts";
+import { pairing, type History } from "./history-evidence.ts";
 import type { Project } from "./project.ts";
 
 /** The virtual root that imports every production entry point. It cannot be a path. */
@@ -78,7 +79,7 @@ function chooseEntries(
 }
 
 /** The production dependency graph, the virtual root, and the units found in it. */
-export function buildModel(project: Project, settings: LocalitySettings): Model {
+export function buildModel(project: Project, settings: LocalitySettings, history?: History): Model {
   const { analysis, production, isTest } = project;
   const productionSet = new Set(production);
   const importSets = new Map<string, Set<string>>(production.map((path) => [path, new Set()]));
@@ -117,6 +118,9 @@ export function buildModel(project: Project, settings: LocalitySettings): Model 
   }
   for (const importEdge of analysis.importEdges) if (importEdge.kind === "reexport") pair(importEdge.from, importEdge.to);
   const edges = [...pairs.values()].sort((a, b) => compareIds(a.from, b.from) || compareIds(a.to, b.to));
+  // Net distance counts an edge by its uses, raised by the logical changes the two files shared: files that
+  // change together are pulled together, and a dependency nothing else moves with is not.
+  if (history !== undefined) for (const edge of edges) edge.weight += pairing(history, new Set([edge.from]), edge.to).support;
   const incoming = new Map<string, Edge[]>();
   const outgoing = new Map<string, Edge[]>();
   for (const edge of edges) {

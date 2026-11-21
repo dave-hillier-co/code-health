@@ -4,6 +4,8 @@
  * changes are left out of the pair counts and of both denominators.
  */
 
+import { coChangeDegree } from "@code-health/history/co-change";
+
 export interface CouplingChange {
   /** Files in the change, as stable identities. Duplicates are counted once. */
   files: readonly string[];
@@ -40,7 +42,7 @@ export function compareBytes(a: string, b: string): number {
 
 /** Symmetric strength as a percentage: n(A and B) / ((n(A) + n(B)) / 2). Unrounded. */
 export function degreeOf(pair: PairCount): number {
-  return (200 * pair.support) / (pair.changesA + pair.changesB);
+  return coChangeDegree(pair.support, pair.changesA, pair.changesB);
 }
 
 /**

@@ -2444,12 +2444,17 @@ function treeDistance(a, b) {
   return folderDistance(folderOf(a), folderOf(b));
 }
 
+// packages/history/src/co-change.ts
+function coChangeDegree(support, changesA, changesB) {
+  return changesA + changesB === 0 ? 0 : 200 * support / (changesA + changesB);
+}
+
 // packages/cochange/src/coupling.ts
 function compareBytes(a, b) {
   return Buffer.compare(Buffer.from(a), Buffer.from(b));
 }
 function degreeOf(pair) {
-  return 200 * pair.support / (pair.changesA + pair.changesB);
+  return coChangeDegree(pair.support, pair.changesA, pair.changesB);
 }
 function reachesDegree(pair, minDegree) {
   return 200 * pair.support >= minDegree * (pair.changesA + pair.changesB);

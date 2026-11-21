@@ -36,8 +36,40 @@ export const ruleDescriptions: Record<string, Rule> = {
       "Two production files use the unit. It moves to the folder that minimises its net distance: the consumers'",
       "lowest common ancestor when the unit has no outside dependencies.",
       "",
-      "With co-change history, two consumers that rarely change together suggest coincidental reuse, and inlining into",
-      "each may be better. This analyser reads no history yet, so the default is the move.",
+      "Two consumers that rarely change together suggest coincidental reuse: see independent-consumers. When the",
+      "history gives too little to judge, the default is the move.",
+    ),
+  },
+  "independent-consumers": {
+    summary: "Two consumers that rarely change together: coincidental reuse, so review before moving",
+    explanation: lines(
+      "Two production files use the unit, but their median co-change degree over the window is at or below",
+      "locality.lowCoChange percent, with at least locality.minCoChangeChanges logical changes touching them. Independent",
+      "consumers suggest the reuse is coincidence: inlining into each may be better than moving to the common folder.",
+      "Look at coChange.consumers to see whether the unit itself changes with either.",
+    ),
+  },
+  "consumers-co-change": {
+    summary: "Three or more consumers that change together: the distance is earned, keep",
+    explanation: lines(
+      "At least three production files use the unit and their median co-change degree over the window is at or above",
+      "locality.highCoChange percent: they share a reason to change, so the unit's distance from them is earned.",
+      "It is kept where it is. Scrutinise it if its fan-in is high.",
+    ),
+  },
+  "within-grace-period": {
+    summary: "A unit younger than locality.graceDays is not inlined or moved",
+    explanation: lines(
+      "One callsite is only evidence once reuse has had time to happen, so a unit whose entry file first appeared fewer",
+      "than locality.graceDays days before HEAD is reviewed instead of inlined or moved. Re-run once it has aged.",
+    ),
+  },
+  "creates-cycle": {
+    summary: "Moving to the target would create an import cycle between folders",
+    explanation: lines(
+      "Moving the unit to its target folder would make folders import each other that do not now, and an import cycle",
+      "is not made by a move. Cycles between a folder and its own subfolders are not counted. Review the unit's",
+      "dependencies, or break the dependency first with the structure plugin, then re-analyse.",
     ),
   },
   "three-or-more-consumers": {
@@ -45,7 +77,9 @@ export const ruleDescriptions: Record<string, Rule> = {
     explanation: lines(
       "At the third consumer the rule of three asks for judgement, not a mechanical answer. If the consumers change",
       "together, the distance is earned and the unit is kept. If they change independently, consider moving or",
-      "inlining where the consumers diverge. This analyser reads no history yet, so it cannot tell, and says review.",
+      "inlining where the consumers diverge. With enough history the median co-change between consumers decides: at or",
+      "above locality.highCoChange percent the rule is consumers-co-change (keep). Otherwise, and when history gives",
+      "too little to judge, the answer is review.",
     ),
   },
   "high-fan-in": {

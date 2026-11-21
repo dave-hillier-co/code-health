@@ -1,10 +1,12 @@
-import { compareIds } from "@code-health/graph/graph";
+import { compareIds, type Graph } from "@code-health/graph/graph";
+import { stronglyConnectedComponents } from "@code-health/graph/scc";
 import { depthOf, folderDistance, folderOf, treeDistance } from "@code-health/graph/tree-distance";
 import type { Consumer, SourceUnit } from "@code-health/parse/analyse-tree";
 import { compileGlobs } from "@code-health/history/glob";
 import { fileCohesion, type ExportComponent, type FileCohesion } from "./cohesion.ts";
 import type { LocalitySettings } from "./config.ts";
 import { bestTarget, type BoundaryEdge } from "./footprint.ts";
+import { ageDays, isoDate, pairing, type History } from "./history-evidence.ts";
 import type { Edge, Model, RawUnit } from "./model.ts";
 import { countLines, unitText, type Project } from "./project.ts";
 import { recommend, type Decision, type RecommendInput } from "./recommend.ts";
@@ -31,9 +33,27 @@ export interface Blocker {
   weight: number;
   /** Distinct production files outside the unit that also use the blocker. */
   otherConsumers: number;
-  coChange: null;
+  coChange: BlockerCoChange | null;
   /** The unit's gain if every edge to this blocker were resolved. */
   unblockedGain: number;
+}
+
+/** How a unit and a file it is held back by changed together, over the history window. */
+export interface BlockerCoChange {
+  /** Logical changes touching the unit and the blocker. */
+  support: number;
+  /** Co-change degree, percent. */
+  degree: number;
+  /** Logical changes touching the blocker: few means a stable dependency. */
+  blockerChanges: number;
+}
+
+/** How a unit changed together with its consumers, over the history window. */
+export interface UnitCoChange {
+  /** The unit with each production consumer file: shared logical changes, and the consumer's own count. */
+  consumers: Array<{ path: string; support: number; consumerChanges: number; degree: number }>;
+  /** The median degree between pairs of consumers, or null when fewer than locality.minCoChangeChanges changes touched them. */
+  amongConsumers: number | null;
 }
 
 export interface ScoredComponent extends ExportComponent {
@@ -67,10 +87,13 @@ export interface Candidate {
   size: { lines: number; files: number; units: number };
   ownDeps: string[];
   visibility: "exported" | "package-entry";
-  age: null;
-  lastChanged: null;
-  churn: null;
-  coChange: null;
+  /** Days since the unit's entry file first appeared, from the history cache. */
+  age: number | null;
+  /** Latest commit date of any file of the unit. */
+  lastChanged: string | null;
+  /** Lines added and deleted in the unit's files over the window. */
+  churn: number | null;
+  coChange: UnitCoChange | null;
   signals: Signal[];
   strays: string[];
   blockers: Blocker[];
@@ -116,8 +139,48 @@ function countBy(entries: Iterable<[string, number]>): PathCount[] {
   return [...totals].map(([path, count]) => ({ path, count })).sort((a, b) => compareIds(a.path, b.path));
 }
 
+function blockerCoChange(history: History | undefined, unitFiles: ReadonlySet<string>, blocker: string): BlockerCoChange | null {
+  if (history === undefined) return null;
+  const paired = pairing(history, unitFiles, blocker);
+  return { support: paired.support, degree: paired.degree, blockerChanges: paired.fileChanges };
+}
+
+function latest(history: History, files: readonly string[]): string | null {
+  const dates = files.flatMap((file) => history.lastChanged.get(file) ?? []);
+  return dates.length === 0 ? null : isoDate(Math.max(...dates));
+}
+
+function median(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = sorted.length >> 1;
+  return sorted.length % 2 === 1 ? sorted[middle]! : Math.round(((sorted[middle - 1]! + sorted[middle]!) / 2) * 10) / 10;
+}
+
+function unitCoChange(history: History | undefined, unitFiles: ReadonlySet<string>, consumers: readonly string[], minChanges: number): UnitCoChange | null {
+  if (history === undefined || consumers.length === 0) return null;
+  const withUnit = consumers.map((path) => {
+    const paired = pairing(history, unitFiles, path);
+    return { path, support: paired.support, consumerChanges: paired.fileChanges, degree: paired.degree };
+  });
+  let among: number | null = null;
+  if (consumers.length >= 2 && consumers.length <= MAX_COMPARED_CONSUMERS) {
+    const touching = new Set(consumers.flatMap((path) => history.changesOf.get(path) ?? []));
+    if (touching.size >= minChanges) {
+      const degrees: number[] = [];
+      for (const [index, a] of consumers.entries()) {
+        for (const b of consumers.slice(index + 1)) degrees.push(pairing(history, new Set([a]), b).degree);
+      }
+      among = median(degrees);
+    }
+  }
+  return { consumers: withUnit, amongConsumers: among };
+}
+
+/** The most consumers whose pairs are compared: a unit with more is scrutinised and moves nowhere. */
+const MAX_COMPARED_CONSUMERS = 7;
+
 /** Finds, scores and recommends units. Everything here is deterministic over the project, model and settings. */
-export function analyseProject(project: Project, model: Model, settings: LocalitySettings): AnalysisResult {
+export function analyseProject(project: Project, model: Model, settings: LocalitySettings, history?: History): AnalysisResult {
   const { analysis } = project;
   const isFixed = compileGlobs(settings.fixedPoints);
   const forbidden = (folder: string) => settings.fixedPoints.length > 0 && isFixed(folder === "" ? "_" : `${folder}/_`);
@@ -127,10 +190,44 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     largeLines: settings.largeLines,
     inlineHostLines: settings.inlineHostLines,
     highFanIn: settings.highFanIn,
+    graceDays: settings.graceDays,
+    lowCoChange: settings.lowCoChange,
+    highCoChange: settings.highCoChange,
   };
   const barrels = new Set(analysis.barrels);
   const lines = (path: string) => countLines(project.texts.get(path) ?? "");
   const live = (file: string) => model.reachable.has(file) && !project.isTest(file);
+
+  // Folder-level import cycles now: moving a unit may merge folders into one, which is a cycle that was not there.
+  const folderGraph = (place: (file: string) => string): Graph => {
+    const graph = new Map<string, Set<string>>();
+    for (const edge of model.edges) {
+      if (!model.reachable.has(edge.from)) continue;
+      const from = place(edge.from);
+      const to = place(edge.to);
+      if (!graph.has(from)) graph.set(from, new Set());
+      if (!graph.has(to)) graph.set(to, new Set());
+      // A folder and its own subfolders depending on each other is how shared code is laid out, not a cycle between modules.
+      if (from !== to && !under(from, to) && !under(to, from)) graph.get(from)!.add(to);
+    }
+    return new Map([...graph].map(([folder, targets]) => [folder, [...targets].sort(compareIds)]));
+  };
+  const cycleGroups = (graph: Graph): Map<string, number> => {
+    const groups = new Map<string, number>();
+    stronglyConnectedComponents(graph).forEach((component, index) => {
+      if (component.length > 1) for (const folder of component) groups.set(folder, index);
+    });
+    return groups;
+  };
+  let cyclesNow: Map<string, number> | undefined;
+  function movingCreatesCycle(unitFiles: readonly string[], base: string, target: string): boolean {
+    cyclesNow ??= cycleGroups(folderGraph(folderOf));
+    const moved = new Set(unitFiles);
+    const placeAfter = (file: string) => (moved.has(file) ? (relative(folderOf(file), base) === "" ? target : `${target}/${relative(folderOf(file), base)}`) : folderOf(file));
+    const after = stronglyConnectedComponents(folderGraph(placeAfter)).filter((component) => component.length > 1);
+    // A cycle is new when its folders were not already one cycle before the move.
+    return after.some((component) => new Set(component.map((folder) => cyclesNow!.get(folder))).size > 1 || cyclesNow!.get(component[0]!) === undefined);
+  }
 
   const consumersTo = new Map<string, Consumer[]>();
   for (const consumer of analysis.consumers) {
@@ -233,6 +330,9 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       passThrough: units.length === 1 && isPassThrough(unitText(project, units[0] as SourceUnit)),
       barrelWithOneConsumer: false,
       splitCandidate: false,
+      age: null,
+      consumerCoChange: null,
+      createsCycle: false,
       ...thresholds,
     });
     return {
@@ -284,7 +384,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
           kind: base !== "" && under(folderOf(target), base) ? "stray" : "dependency",
           weight,
           otherConsumers: others.size,
-          coChange: null,
+          coChange: blockerCoChange(history, fileSet, target),
           unblockedGain: without.gain,
         });
       }
@@ -307,6 +407,8 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       ),
     );
     const tests = testsOf(fileSet);
+    const coChange = unitCoChange(history, fileSet, consumerFiles, settings.minCoChangeChanges);
+    const createsCycle = choice.gain >= settings.minDistance && choice.target !== base && movingCreatesCycle(files, base, choice.target);
     const totalLines = files.reduce((sum, file) => sum + lines(file), 0);
     const only = consumerFiles.length === 1 ? (consumerFiles[0] as string) : undefined;
     const signals = signalsOf(unit.root, consumerFiles.length, importerCount);
@@ -325,6 +427,9 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       passThrough: signals.some((signal) => signal.name === "pass-through") && files.length === 1,
       barrelWithOneConsumer: barrelAlone,
       splitCandidate: cohesion?.mixed === true,
+      age: history === undefined ? null : ageDays(history, unit.root),
+      consumerCoChange: coChange?.amongConsumers ?? null,
+      createsCycle,
       ...thresholds,
     };
     const decision = recommend(input);
@@ -366,10 +471,10 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       size: { lines: totalLines, files: files.length, units: files.reduce((sum, file) => sum + (unitsByFile.get(file)?.length ?? 0), 0) },
       ownDeps,
       visibility: input.packageEntry ? "package-entry" : "exported",
-      age: null,
-      lastChanged: null,
-      churn: null,
-      coChange: null,
+      age: input.age,
+      lastChanged: history === undefined ? null : latest(history, files),
+      churn: history === undefined ? null : files.reduce((sum, file) => sum + (history.churn.get(file) ?? 0), 0),
+      coChange,
       signals,
       strays: blockers.filter((blocker) => blocker.kind === "stray").map((blocker) => blocker.path).sort(compareIds),
       blockers,

@@ -12,6 +12,8 @@ These apply to units whose gain is at least `locality.minDistance`. Consumers ar
 | 1 | medium | `single-consumer-medium` | `inline` while the consumer plus the unit stay within `inlineHostLines`, otherwise `move` | Will the consumer stay readable? |
 | 1 | large (over `largeLines`) | `single-consumer-large` | `move`, kept as its own module next to the consumer | Does anything else import its internals? |
 | 2 | any | `two-consumers` | `move` to the target | Do the two consumers change together? If they change independently, inlining into each may be better |
+| 2 | any | `independent-consumers` | `review` | The consumers' median co-change is at or below `locality.lowCoChange`: coincidental reuse. Is inlining into each better? |
+| 3 or more | any | `consumers-co-change` | `keep` | The consumers' median co-change is at or above `locality.highCoChange`: the distance is earned. Still scrutinise if fan-in is high |
 | 3 or more | any | `three-or-more-consumers` | `review` | Do the consumers share a reason to change? If so the distance is earned. If not, move or inline where they diverge |
 
 A unit of several files cannot be inlined, so the inline defaults become moves.
@@ -32,12 +34,14 @@ A unit of several files cannot be inlined, so the inline defaults become moves.
 
 A guard turns an inline or a move into `review`, or `keep`:
 
+- `within-grace-period`: the unit's entry file first appeared fewer than `locality.graceDays` days before HEAD. Re-run when it has aged.
+- `creates-cycle`: moving to the target would make two folders import each other. A folder and its own subfolders are not counted.
 - `other-references`: a consumer passes the unit as a value, registers it or decorates with it, so callsite counts are unreliable. Find every use before deciding.
 - `package-entry`: a non-private `package.json` names the file as an entry point, so consumers outside the repository may exist.
 - `scattered-unit`: some files of the unit live outside its entry file's folder. Handle its leaves first.
 - `fixed-point`: the file matches `locality.fixedPoints` (routes, migrations, app folders). It does not move, and nothing moves into a fixed folder.
 
-Guards the analyser cannot check yet, so check them yourself: grace period (a unit younger than 90 days is weak evidence), interfaces and overrides (not free-standing helpers), recursion, framework conventions the config does not list, and moves that would create an import cycle through a barrel.
+Guards the analyser cannot check, so check them yourself: interfaces and overrides (not free-standing helpers), recursion, and framework conventions the config does not list. The grace period and the cycle guard need history and the import graph, which the analyser has, so they are rules above.
 
 ## Gain, target and blockers
 

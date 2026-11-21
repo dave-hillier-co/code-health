@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { recommend, type RecommendInput } from "../src/recommend.ts";
 
-const thresholds = { minDistance: 2, tinyLines: 15, largeLines: 150, inlineHostLines: 300, highFanIn: 8 };
+const thresholds = { minDistance: 2, tinyLines: 15, largeLines: 150, inlineHostLines: 300, highFanIn: 8, graceDays: 90, lowCoChange: 10, highCoChange: 40 };
 
 function input(overrides: Partial<RecommendInput>): RecommendInput {
   return {
@@ -19,6 +19,9 @@ function input(overrides: Partial<RecommendInput>): RecommendInput {
     passThrough: false,
     barrelWithOneConsumer: false,
     splitCandidate: false,
+    age: null,
+    consumerCoChange: null,
+    createsCycle: false,
     ...overrides,
   };
 }
@@ -83,4 +86,28 @@ test("a unit nothing in production uses is left for review", () => {
     recommendation: "review",
     rule: "no-production-consumers",
   });
+});
+
+test("a unit younger than the grace period is reviewed, not inlined or moved; with no history there is no age to guard on", () => {
+  expect(recommend(input({ lines: 10, age: 89 }))).toEqual({ recommendation: "review", rule: "within-grace-period" });
+  expect(recommend(input({ fanIn: 2, age: 10 }))).toEqual({ recommendation: "review", rule: "within-grace-period" });
+  expect(recommend(input({ lines: 10, age: 90 }))).toEqual({ recommendation: "inline", rule: "single-consumer-tiny" });
+  expect(recommend(input({ lines: 10, age: null }))).toEqual({ recommendation: "inline", rule: "single-consumer-tiny" });
+});
+
+test("two consumers that rarely change together look independent and are reviewed, not moved", () => {
+  expect(recommend(input({ fanIn: 2, consumerCoChange: 10 }))).toEqual({ recommendation: "review", rule: "independent-consumers" });
+  expect(recommend(input({ fanIn: 2, consumerCoChange: 10.1 }))).toEqual({ recommendation: "move", rule: "two-consumers" });
+  expect(recommend(input({ fanIn: 2, consumerCoChange: null }))).toEqual({ recommendation: "move", rule: "two-consumers" });
+});
+
+test("three or more consumers that change together earn the distance: keep", () => {
+  expect(recommend(input({ fanIn: 3, consumerCoChange: 40 }))).toEqual({ recommendation: "keep", rule: "consumers-co-change" });
+  expect(recommend(input({ fanIn: 3, consumerCoChange: 39.9 }))).toEqual({ recommendation: "review", rule: "three-or-more-consumers" });
+  expect(recommend(input({ fanIn: 4, consumerCoChange: null }))).toEqual({ recommendation: "review", rule: "three-or-more-consumers" });
+});
+
+test("a move that would create a folder cycle is reviewed, but an inline is not", () => {
+  expect(recommend(input({ fanIn: 2, createsCycle: true }))).toEqual({ recommendation: "review", rule: "creates-cycle" });
+  expect(recommend(input({ lines: 10, createsCycle: true }))).toEqual({ recommendation: "inline", rule: "single-consumer-tiny" });
 });

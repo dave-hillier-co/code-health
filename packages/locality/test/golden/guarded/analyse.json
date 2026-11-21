@@ -1,8 +1,19 @@
 {
   "barrels": [],
   "command": "analyse",
-  "config": "ab17101087059be7",
+  "config": "937f5269029ca4f4",
   "filesWithSyntaxErrors": [],
+  "history": {
+    "activeContributors": 1,
+    "grade": "weak",
+    "logicalChangesInWindow": 2,
+    "usableHistoryMonths": 12,
+    "window": {
+      "months": 12,
+      "since": 1704099600,
+      "until": 1735722000
+    }
+  },
   "inputs": {
     "entries": [
       "src/app/main.ts"
@@ -14,18 +25,28 @@
   "metrics": {
     "maxDepth": 2,
     "singleFileFolders": 1,
-    "totalWeightedDistance": 4
+    "totalWeightedDistance": 8
   },
   "repo": {
     "dirty": false,
-    "head": "4514ba999da91b59ea5d748d3d50499fe2347be1"
+    "head": "13641675e2751ee3600e485c81c868dd105a2c9a"
   },
   "results": [
     {
-      "age": null,
+      "age": 366,
       "blockers": [],
-      "churn": null,
-      "coChange": null,
+      "churn": 3,
+      "coChange": {
+        "amongConsumers": null,
+        "consumers": [
+          {
+            "consumerChanges": 1,
+            "degree": 100,
+            "path": "src/app/main.ts",
+            "support": 1
+          }
+        ]
+      },
       "directCalls": [
         {
           "count": 1,
@@ -34,19 +55,19 @@
       ],
       "distance": 2,
       "fanIn": 1,
-      "gain": 2,
-      "lastChanged": null,
+      "gain": 4,
+      "lastChanged": "2024-01-01",
       "location": "src/shared",
       "netDistance": {
         "atTarget": 0,
-        "current": 2
+        "current": 4
       },
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/api.ts",
       "recommendation": "review",
       "rule": "package-entry",
-      "score": 2,
+      "score": 4,
       "signals": [],
       "size": {
         "files": 1,
@@ -60,7 +81,7 @@
         "external": [],
         "owned": []
       },
-      "unblockedGain": 2,
+      "unblockedGain": 4,
       "unit": {
         "cycle": false,
         "entries": [],
@@ -74,19 +95,29 @@
       "visibility": "package-entry"
     },
     {
-      "age": null,
+      "age": 366,
       "blockers": [],
-      "churn": null,
-      "coChange": null,
+      "churn": 3,
+      "coChange": {
+        "amongConsumers": null,
+        "consumers": [
+          {
+            "consumerChanges": 1,
+            "degree": 100,
+            "path": "src/app/main.ts",
+            "support": 1
+          }
+        ]
+      },
       "directCalls": [],
       "distance": 2,
       "fanIn": 1,
-      "gain": 2,
-      "lastChanged": null,
+      "gain": 4,
+      "lastChanged": "2024-01-01",
       "location": "src/shared",
       "netDistance": {
         "atTarget": 0,
-        "current": 2
+        "current": 4
       },
       "otherRefs": [
         {
@@ -98,7 +129,7 @@
       "path": "src/shared/helper.ts",
       "recommendation": "review",
       "rule": "other-references",
-      "score": 2,
+      "score": 4,
       "signals": [],
       "size": {
         "files": 1,
@@ -112,7 +143,7 @@
         "external": [],
         "owned": []
       },
-      "unblockedGain": 2,
+      "unblockedGain": 4,
       "unit": {
         "cycle": false,
         "entries": [],

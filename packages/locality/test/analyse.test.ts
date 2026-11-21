@@ -191,7 +191,7 @@ test("the output is byte for byte reproducible", async () => {
 
 test("explain describes every rule the analyser can name", async () => {
   const { stdout } = await runLocality(repo.path, ["explain"]);
-  for (const rule of ["single-consumer-tiny", "two-consumers", "high-fan-in", "mixed-exports", "blocked-by-dependency"]) {
+  for (const rule of ["single-consumer-tiny", "two-consumers", "high-fan-in", "mixed-exports", "blocked-by-dependency", "independent-consumers", "consumers-co-change", "within-grace-period", "creates-cycle"]) {
     expect(stdout).toContain(rule);
   }
   const { stdout: one } = await runLocality(repo.path, ["explain", "pass-through"]);

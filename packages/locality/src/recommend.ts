@@ -25,6 +25,15 @@ export interface RecommendInput {
   largeLines: number;
   inlineHostLines: number;
   highFanIn: number;
+  /** Days since the unit's entry file first appeared, or null when there is no history. */
+  age: number | null;
+  graceDays: number;
+  /** The median co-change degree (percent) between pairs of the unit's consumers, or null when history gives too little. */
+  consumerCoChange: number | null;
+  lowCoChange: number;
+  highCoChange: number;
+  /** Moving the unit to its target would create an import cycle between folders that is not there now. */
+  createsCycle: boolean;
 }
 
 export interface Decision {
@@ -51,8 +60,18 @@ export function recommend(input: RecommendInput): Decision {
       ? { recommendation: "blocked", rule: "blocked-by-dependency" }
       : { recommendation: "keep", rule: "near-consumers" };
   }
-  if (input.fanIn >= 3) return { recommendation: "review", rule: "three-or-more-consumers" };
-  if (input.fanIn === 2) return guard(input, { recommendation: "move", rule: "two-consumers" });
+  if (input.fanIn >= 3) {
+    // The consumers sharing a reason to change earn the distance; otherwise it is for judgement.
+    return input.consumerCoChange !== null && input.consumerCoChange >= input.highCoChange
+      ? { recommendation: "keep", rule: "consumers-co-change" }
+      : { recommendation: "review", rule: "three-or-more-consumers" };
+  }
+  if (input.fanIn === 2) {
+    if (input.consumerCoChange !== null && input.consumerCoChange <= input.lowCoChange) {
+      return guard(input, { recommendation: "review", rule: "independent-consumers" });
+    }
+    return guard(input, { recommendation: "move", rule: "two-consumers" });
+  }
   return guard(input, singleConsumer(input));
 }
 
@@ -68,8 +87,11 @@ function singleConsumer(input: RecommendInput): Decision {
 
 function guard(input: RecommendInput, decision: Decision): Decision {
   if (decision.recommendation !== "inline" && decision.recommendation !== "move") return decision;
+  // One callsite is only evidence once reuse has had time to happen.
+  if (input.age !== null && input.age < input.graceDays) return { recommendation: "review", rule: "within-grace-period" };
   if (input.otherRefs > 0) return { recommendation: "review", rule: "other-references" };
   if (input.packageEntry) return { recommendation: "review", rule: "package-entry" };
   if (input.scattered) return { recommendation: "review", rule: "scattered-unit" };
+  if (decision.recommendation === "move" && input.createsCycle) return { recommendation: "review", rule: "creates-cycle" };
   return decision;
 }

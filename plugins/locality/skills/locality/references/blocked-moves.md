@@ -16,4 +16,4 @@ Choose one outcome per blocker by judgement:
 
 Resolving a blocker lands in order: the split or the break first, as its own commit, then a re-analysis, then the move. The re-analysis is required, because resolving one blocker changes the graph and may change the target.
 
-The analyser reads no co-change history yet, so `coChange` is null. Use the git log of the unit and the blocker to judge whether they change together.
+Each blocker carries `coChange`: `support` and `degree` between the unit and the blocker, and `blockerChanges`, how often the blocker itself changed in the window. A high `degree` is the accept-the-coupling outcome. A low `degree` with few `blockerChanges` is a stable dependency, so move anyway. A low `degree` with many `blockerChanges` is incidental coupling to break. When `coChange` is null there is no history, so use the git log of the unit and the blocker.

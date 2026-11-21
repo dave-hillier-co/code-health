@@ -38,6 +38,7 @@ Each row is a unit: a file, a branch (a file plus everything only it imports), o
 - `rule` names what fired. `recommendation` is the default for it: `inline`, `move`, `split`, `blocked`, `scrutinise`, `review` or `keep`.
 - `location`, `target`, `distance` and `gain` say where the unit is, where net distance is lowest, and how much distance the move saves. Net distance counts the unit's own dependencies as well as its consumers, so a unit is not pulled away from what it depends on.
 - `fanIn`, `directCalls` and `otherRefs` say who uses it. `testRefs.owned` are tests that move with the unit.
+- `age`, `lastChanged`, `churn` and `coChange` come from the history cache and are null without it (`locality history refresh` builds it; `analyse` refreshes it itself).
 - `signals` name red flags the CLI saw: `pass-through`, `vague-name`, `overexposure`, `special-general-mixture`, `barrel`.
 - `blockers` and `strays` are the edges that hold a move back, each with the gain it would unblock.
 - `cohesion.components` shows, for a file, which exports belong together and who uses each group.
@@ -54,9 +55,9 @@ Treat each recommendation as a default to confirm or override. Before acting:
    - A helper that encodes a domain rule needing one source of truth stays, however small.
    - A name that explains the code better than the code does can justify a move instead of an inline.
    - A unit with its own direct tests may be a deliberate seam.
-   - At three or more consumers, ask whether they share a reason to change. Without co-change history the CLI cannot tell you, so read the git log of the consumers together before moving or inlining.
+   - At three or more consumers, ask whether they share a reason to change. `coChange.amongConsumers` is the median co-change degree between them, and the `consumers-co-change` and `independent-consumers` rules already act on it. When it is null the history gave too little, so read the git log of the consumers together before moving or inlining. Under a `weak` `history.grade`, treat history-based fields as tentative and do not let them overturn a static recommendation.
 4. Skip or defer units that are changing now. Check `git log --since` on the unit and its consumers, and leave anything with open work. Old, stable units are the cheapest moves.
-5. Units younger than about 90 days are weak evidence for `inline` and `move`: one callsite is only evidence once reuse has had time to happen. The analyser does not read history yet, so check the age yourself with `git log --follow --format=%aI -- <file>`.
+5. Units younger than `locality.graceDays` (90 by default) are weak evidence for `inline` and `move`: one callsite is only evidence once reuse has had time to happen. The analyser applies this as the `within-grace-period` rule using `age`. Its `creates-cycle` rule refuses a move that would make two folders import each other. The checks it does not make for you: an interface, an override or a recursive function is not a free-standing helper, so read the unit before inlining it.
 
 `scrutinise` units are not moved. Review them with `references/scrutinise.md`. `blocked` units need a blocker resolved first: see `references/blocked-moves.md`.
 
