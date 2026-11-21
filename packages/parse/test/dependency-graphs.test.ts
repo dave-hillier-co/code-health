@@ -28,6 +28,20 @@ describe("importGraph", () => {
   });
 });
 
+describe("importGraph test separation", () => {
+  it("leaves test files out by default and keeps them with includeTests", async () => {
+    const analysis = await analyse("consumers");
+    expect(Object.keys(plain(importGraph(analysis)))).not.toContain("lib.spec.ts");
+    expect(Object.keys(plain(importGraph(analysis, { includeTests: true })))).toContain("lib.spec.ts");
+  });
+
+  it("accepts a custom test-path rule", async () => {
+    const graph = importGraph(await analyse("consumers"), { isTestPath: (path) => path === "app.ts" });
+    expect(graph.has("app.ts")).toBe(false);
+    expect(graph.has("lib.spec.ts")).toBe(true);
+  });
+});
+
 describe("consumerGraph", () => {
   it("points consumers at defining files and leaves test files out by default", async () => {
     const analysis = await analyse("consumers");
