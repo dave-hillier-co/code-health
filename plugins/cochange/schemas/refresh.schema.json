@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "refresh.schema.json",
+  "title": "cochange refresh --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "refresh" },
+    "results": {
+      "type": "object",
+      "properties": {
+        "ref": { "type": "string", "description": "The analysed ref: the configured branch, or HEAD." },
+        "head": { "$ref": "common.schema.json#/$defs/sha", "description": "The commit the ref resolved to." },
+        "added": { "$ref": "common.schema.json#/$defs/count", "description": "Commits newly stored by this refresh." },
+        "reachable": { "$ref": "common.schema.json#/$defs/count", "description": "Commits reachable from the ref, all stored after the refresh." },
+        "rebuilt": { "type": "boolean", "description": "The cache was discarded and rebuilt because its schema or ingest settings changed." },
+        "shallow": {
+          "type": "object",
+          "properties": {
+            "isShallow": { "type": "boolean" },
+            "boundaryCommits": { "$ref": "common.schema.json#/$defs/count" }
+          },
+          "required": ["isShallow", "boundaryCommits"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["ref", "head", "added", "reachable", "rebuilt", "shallow"],
+      "additionalProperties": false
+    }
+  },
+  "unevaluatedProperties": false
+}

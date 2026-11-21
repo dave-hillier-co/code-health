@@ -1,0 +1,12 @@
+{
+  "name": "code-health",
+  "owner": { "name": "Dave Hillier" },
+  "metadata": { "description": "Plugins that find where code is expensive to change and measure whether changes made it cheaper." },
+  "plugins": [
+    {
+      "name": "cochange",
+      "source": "./plugins/cochange",
+      "description": "Mines git history for hotspots, temporal coupling and change spread."
+    }
+  ]
+}

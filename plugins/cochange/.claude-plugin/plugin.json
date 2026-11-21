@@ -1,0 +1,11 @@
+{
+  "name": "cochange",
+  "displayName": "Co-change",
+  "version": "0.1.0",
+  "description": "Mines git history for hotspots, temporal coupling and change spread, to show where code is expensive to change.",
+  "author": { "name": "Dave Hillier" },
+  "license": "MIT",
+  "repository": "https://github.com/dave-hillier-co/code-health",
+  "keywords": ["git", "history", "co-change", "hotspots", "coupling", "code-health"],
+  "engines": { "claude-code": ">=2.1.0" }
+}
