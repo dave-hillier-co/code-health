@@ -33,3 +33,10 @@ test("braces, question marks and classes", () => {
 test("an empty pattern list matches nothing", () => {
   expect(compileGlobs([])("anything")).toBe(false);
 });
+
+test("an unbalanced brace is a literal, not a crash", () => {
+  const match = compileGlobs(["a{b", "c}d"]);
+  expect(match("a{b")).toBe(true);
+  expect(match("c}d")).toBe(true);
+  expect(match("ab")).toBe(false);
+});

@@ -2,6 +2,16 @@ function escape(ch: string): string {
   return /[.+^${}()|[\]\\]/.test(ch) ? `\\${ch}` : ch;
 }
 
+/** Whether the `{` at `start` has a matching `}`. An unmatched one is a literal. */
+function hasClosingBrace(pattern: string, start: number): boolean {
+  let depth = 0;
+  for (let i = start; i < pattern.length; i++) {
+    if (pattern[i] === "{") depth++;
+    else if (pattern[i] === "}" && --depth === 0) return true;
+  }
+  return false;
+}
+
 function toRegExp(pattern: string): RegExp {
   let out = "";
   let braces = 0;
@@ -21,7 +31,7 @@ function toRegExp(pattern: string): RegExp {
       }
     } else if (ch === "?") {
       out += "[^/]";
-    } else if (ch === "{") {
+    } else if (ch === "{" && hasClosingBrace(pattern, i)) {
       braces++;
       out += "(?:";
     } else if (ch === "}" && braces > 0) {
