@@ -1,0 +1,17 @@
+schema_version: "1.0"
+name: identities-trigger-split-authors
+description: "The identities skill loads when a user describes one person counted twice, without naming the skill."
+tags: [trigger, positive, identities]
+runs: 3
+execution:
+  prompt: "git shortlog shows one of our developers twice, once under her work email and once under her personal one. Can you sort out who is who in this repository's history?"
+  model: claude-sonnet-5-5
+  max_turns: 6
+  timeout_seconds: 180
+graders:
+  - type: "tool_used"
+    name: "loads-the-identities-skill"
+    tool: "Skill"
+    input_match: "identities"
+    min: 1
+    arm: "with-only"

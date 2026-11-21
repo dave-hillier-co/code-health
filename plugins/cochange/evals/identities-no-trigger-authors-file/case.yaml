@@ -1,0 +1,17 @@
+schema_version: "1.0"
+name: identities-no-trigger-authors-file
+description: "The identities skill stays unloaded on a task that mentions authors but not duplicate identities."
+tags: [trigger, negative, identities]
+runs: 3
+execution:
+  prompt: "Add a line to the AUTHORS file crediting Jo Marsh for the logo design."
+  model: claude-sonnet-5-5
+  max_turns: 6
+  timeout_seconds: 180
+graders:
+  - type: "tool_used"
+    name: "does-not-load-the-identities-skill"
+    tool: "Skill"
+    input_match: "identities"
+    max: 0
+    arm: "with-only"
