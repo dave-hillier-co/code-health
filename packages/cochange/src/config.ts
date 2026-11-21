@@ -23,6 +23,8 @@ export const cochangeConfig: PluginConfigSpec = {
     windowMonths: 12,
     recentMonths: 3,
     staleMonths: 12,
+    /** A hotspot's score must be in the top (100 - this) percent of scored files. */
+    hotspotPercentile: 90,
     /** How commits form logical changes. Only "off" (each commit is its own change) is supported. */
     grouping: "off",
     maxChangesetSize: DEFAULT_MAX_CHANGESET_SIZE,
@@ -48,6 +50,7 @@ export interface CochangeSettings {
   windowMonths: number;
   recentMonths: number;
   staleMonths: number;
+  hotspotPercentile: number;
   maxChangesetSize: number;
   minSupport: number;
   minDegree: number;
@@ -70,6 +73,12 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
     if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
       throw configError(`code-health.json: ${at(key)} must be a positive integer`);
     }
+    return value;
+  };
+
+  const hotspotPercentile = (): number => {
+    const value = positive("hotspotPercentile");
+    if (value > 99) throw configError(`code-health.json: ${at("hotspotPercentile")} must be between 1 and 99`);
     return value;
   };
 
@@ -96,6 +105,7 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
     windowMonths: positive("windowMonths"),
     recentMonths: positive("recentMonths"),
     staleMonths: positive("staleMonths"),
+    hotspotPercentile: hotspotPercentile(),
     maxChangesetSize: positive("maxChangesetSize"),
     minSupport: positive("minSupport"),
     minDegree,

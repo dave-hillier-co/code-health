@@ -18,6 +18,8 @@ export interface AnalysisSpec {
    * states one is not stored as a report.
    */
   window?(context: CommandContext): ExplicitWindow | undefined;
+  /** Read all usable history rather than the analysis window (see `HistoryOptions.wholeHistory`). */
+  wholeHistory?: boolean;
   /**
    * True when this run covers less than the whole repository: path arguments,
    * a `--file` filter, a `--by` view that is not the default. Partial runs
@@ -51,7 +53,7 @@ export function analysisCommand(name: string, spec: AnalysisSpec): Command {
     options: { ...spec.options, ...sharedOptions },
     async run(context) {
       const window = spec.window?.(context);
-      const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, window });
+      const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, window, wholeHistory: spec.wholeHistory });
       const output = await spec.analyse({ context, history });
       const finished: CommandOutput = {
         ...output,
