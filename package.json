@@ -14,7 +14,10 @@
     "test": "vitest run",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p scripts/tsconfig.json",
     "check:schemas": "node scripts/check-schemas.mjs",
-    "check:dist": "node scripts/bundle.mjs --check"
+    "check:dist": "node scripts/bundle.mjs --check",
+    "check:version-bump": "node scripts/check-version-bump.mjs",
+    "check:plugins": "node scripts/validate-plugins.mjs",
+    "check": "npm run typecheck && npm test && npm run check:dist && npm run check:schemas && npm run check:plugins"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
