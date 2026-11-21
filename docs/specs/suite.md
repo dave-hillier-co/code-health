@@ -46,6 +46,7 @@ plugins/                            what users install; one self-contained folde
     skills/<skill>/references/*.md  loaded on demand (incl. generated red-flags.md)
     hooks/hooks.json                opt-in hooks, if any
     dist/<plugin>.mjs               bundled CLI (built, committed)
+    dist/chunk-<hash>.mjs           modules a command imports on demand, only if the plugin has any
     dist/grammars/*.wasm            tree-sitter grammars, only if the plugin parses
     schemas/*.schema.json           JSON Schemas for every --json output
     evals/<case>/                   claude plugin eval cases
@@ -63,7 +64,7 @@ fixtures/                           scripts that build deterministic fixture rep
 
 Rules:
 
-- **Installed plugins are copied** to `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`. Nothing outside the plugin folder is copied, and paths that escape it are rejected. Shared code therefore reaches a plugin only by bundling: esbuild bundles each CLI with its `packages/*` dependencies into one ESM file in `dist/`.
+- **Installed plugins are copied** to `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`. Nothing outside the plugin folder is copied, and paths that escape it are rejected. Shared code therefore reaches a plugin only by bundling: esbuild bundles each CLI with its `packages/*` dependencies into one ESM file in `dist/`. A module a command loads with `import()` goes in a content-named `chunk-<hash>.mjs` beside it, read only when that command runs, so a large dependency (locality's ts-morph) does not slow every start. Chunks are plain ESM files in the same folder, so there is still no runtime install.
 - **`dist/` is committed**, because installation is a git copy with no build step. CI rebuilds every plugin and fails if `dist/` differs from the committed build, so the shipped bundle always matches its source.
 - **No runtime npm install.** Bundles have no external dependencies. WASM assets sit next to the bundle and are resolved relative to `import.meta.url`.
 - **No `index.ts` barrel files.** Modules are imported by their real path, which keeps the suite's own import graph honest for the locality analyser.

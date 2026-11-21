@@ -52,6 +52,10 @@ Every command gets:
 
 A command may group subcommands that share its setup, as `structure packages <list|cohesion|coupling|boundaries|candidates|evidence|check|outcome>` does. The command module dispatches on its first positional argument to subcommands in `packages/<p>/src/<area>/commands/`, which each export a `Subcommand` (`summary`, optional `options`, `analyse`). They share one schema, `plugins/<p>/schemas/<command>.schema.json`, whose branches are selected by `inputs.subcommand`. Goldens name the subcommand as the variant, such as `packages.list.json`.
 
+### Modules loaded on demand
+
+A module a command loads with `await import("./x.ts")` is built into `plugins/<p>/dist/chunk-<hash>.mjs`, with whatever only it uses, and is read only when the command runs. Use it for a heavy dependency that most commands never need, as locality does for ts-morph. A module that holds shared state, or the hook worker's entry (`workerEntry` in `packages/history/src/hook-process.ts`), must stay in the main bundle: a chunk is another file, so it would not be the same module. `npm run build` writes the chunks and removes ones that are no longer produced, and `npm run check:dist` compares them.
+
 ### Plugins that parse
 
 A plugin parses when its bundle includes `packages/parse/src/grammars.ts`, directly or through another package. The build detects this and copies the tree-sitter `.wasm` files into `plugins/<p>/dist/grammars/` with `copyGrammars` from `packages/parse/src/copy-grammars.ts`. Nothing else is needed in the plugin:

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { distantHelpers } from "../../packages/locality/test/support/scenarios.ts";
-import { bundle, grammarsPath } from "../bundle.mjs";
+import { bundle, bundleChunks, grammarsPath } from "../bundle.mjs";
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -21,6 +21,7 @@ beforeAll(async () => {
   locality = join(work, "locality.mjs");
   structure = join(work, "structure.mjs");
   writeFileSync(locality, await bundle("locality"));
+  for (const [name, text] of await bundleChunks("locality")) writeFileSync(join(work, name), text);
   writeFileSync(structure, await bundle("structure"));
   repo = distantHelpers();
 });
