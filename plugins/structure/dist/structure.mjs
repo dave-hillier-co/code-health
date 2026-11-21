@@ -5942,6 +5942,8 @@ var Measurer = class {
   cognitive = 0;
   nesting = 0;
   statements = 0;
+  bumps = 0;
+  bumpSize = 0;
   recursion = false;
   increments = [];
   options;
@@ -5971,6 +5973,23 @@ var Measurer = class {
   flat(node, construct) {
     this.cognitive += 1;
     this.record(node, "cognitive", construct, 1, 0);
+  }
+  /**
+   * Walks the body of a control structure one level and one nesting depth deeper, and counts it as a bump when
+   * the structure sits directly in the function (`depth` 0). `header` is the node whose line opens the body.
+   */
+  body(region, header, level, depth) {
+    if (depth === 0) this.bump(region, header.startPosition.row);
+    this.visit(region, level + 1, depth + 1);
+  }
+  bump(region, headerRow) {
+    const last = region.endPosition.row;
+    if (last <= headerRow) return;
+    let size = 0;
+    for (let row = Math.max(region.startPosition.row, headerRow + 1); row <= last; row++) if (this.options.codeRows[row] === true) size++;
+    if (region.text.includes("\n") && region.text.split("\n").at(-1).trim() === "}") size--;
+    this.bumps++;
+    this.bumpSize = Math.max(this.bumpSize, size);
   }
   /** Walks the function's own parameters and body, at level 0. */
   function(fn) {
@@ -6028,6 +6047,7 @@ var Measurer = class {
     }
     if (type === c.tryType || c.alsoTryTypes?.has(type)) {
       this.nesting = Math.max(this.nesting, depth + 1);
+      if (depth === 0) this.bump(node, node.startPosition.row);
       this.children(node, level, depth + 1);
       return;
     }
@@ -6102,6 +6122,7 @@ var Measurer = class {
     this.cyclomaticModified++;
     this.record(node, "cyclomatic", "switch", 1, 0, "modified");
     this.nesting = Math.max(this.nesting, depth + 1);
+    if (depth === 0) this.bump(node, node.startPosition.row);
     if (c.headTypes !== void 0) {
       const heads = c.headTypes;
       for (const child2 of node.namedChildren) this.visit(child2, heads.has(child2.type) ? level : level + 1, heads.has(child2.type) ? depth : depth + 1);
@@ -6145,6 +6166,7 @@ var Measurer = class {
     this.cyclomaticModified++;
     this.record(node, "cyclomatic", "switch", 1, 0, "modified");
     this.nesting = Math.max(this.nesting, depth + 1);
+    if (depth === 0) this.bump(node, node.startPosition.row);
     for (let i2 = 0; i2 < node.childCount; i2++) {
       const child2 = node.child(i2);
       if (child2 === null || !child2.isNamed) continue;
@@ -6177,7 +6199,7 @@ var Measurer = class {
       this.visit(child2, level, depth);
     }
     if (condition !== null) this.visit(condition, level, depth);
-    if (consequence !== null) this.visit(consequence, level + 1, depth + 1);
+    if (consequence !== null) this.body(consequence, node, level, depth);
     if (c.clauses !== void 0) {
       this.clauseChain(node, level, depth);
       return;
@@ -6190,7 +6212,7 @@ var Measurer = class {
       this.ifStatement(inner2, level, depth, true);
     } else {
       this.flat(alternative, "else");
-      this.visit(inner2, level + 1, depth + 1);
+      this.body(inner2, alternative, level, depth);
     }
   }
   /** The `elif` and `else` clauses of an `if` whose alternatives are clause nodes. They sit at the `if`'s level and depth. */
@@ -6203,11 +6225,11 @@ var Measurer = class {
         const condition = clause.childForFieldName(c.condition);
         if (condition !== null) this.visit(condition, level, depth);
         const consequence = clause.childForFieldName(c.consequence);
-        if (consequence !== null) this.visit(consequence, level + 1, depth + 1);
+        if (consequence !== null) this.body(consequence, clause, level, depth);
       } else if (clause.type === c.clauses.else) {
         this.flat(clause, "else");
         const body2 = clause.childForFieldName("body");
-        if (body2 !== null) this.visit(body2, level + 1, depth + 1);
+        if (body2 !== null) this.body(body2, clause, level, depth);
       }
     }
   }
@@ -6218,7 +6240,7 @@ var Measurer = class {
     this.nesting = Math.max(this.nesting, depth + 1);
     const body2 = this.bodyOf(node);
     this.children(node, level, depth, body2);
-    if (body2 !== null) this.visit(body2, level + 1, depth + 1);
+    if (body2 !== null) this.body(body2, node, level, depth);
   }
   /**
    * One increment per run of like operators. The operands of the chain, with parentheses looked through,
@@ -6304,7 +6326,10 @@ function measureFunction(fn, options2, rules11) {
     length,
     statements: measurer.statements,
     parameters,
-    optionCount
+    optionCount,
+    bumps: measurer.bumps,
+    bumpDepth: measurer.bumps > 0 ? measurer.nesting + 1 : 0,
+    bumpSize: measurer.bumpSize
   };
   if (!options2.explain) return { metrics };
   const increments = [
@@ -7027,7 +7052,7 @@ var adapter = {
   support: "supported",
   lexerProfile: "java",
   grammars: [{ spec: { id: "java", packageName: "tree-sitter-java", file: "tree-sitter-java.wasm" }, extensions: [".java"] }],
-  extractorVersion: 1,
+  extractorVersion: 2,
   extract: extractFacts,
   isTestPath: (path) => isJvmTestPath(path, /\.java$/),
   metrics: javaMetricRules,
@@ -7650,7 +7675,7 @@ var adapter2 = {
   support: "supported",
   lexerProfile: "kotlin",
   grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm", repairs: kotlinRepairs }, extensions: [".kt"] }],
-  extractorVersion: 2,
+  extractorVersion: 3,
   extract: extractFacts2,
   isTestPath: (path) => isJvmTestPath(path, /\.kt$/),
   metrics: kotlinMetricRules,
@@ -8976,7 +9001,7 @@ var adapter3 = {
     { spec: { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm", repairs: typescriptRepairs }, extensions: [".tsx"] },
     { spec: { id: "javascript", packageName: "tree-sitter-javascript", file: "tree-sitter-javascript.wasm" }, extensions: [".js", ".mjs", ".cjs", ".jsx"] }
   ],
-  extractorVersion: 7,
+  extractorVersion: 8,
   extract: extractFacts3,
   isTestPath: (path) => /(^|\/)(__tests__|__mocks__|tests?)\//.test(path) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(path),
   metrics: typescriptMetricRules,
@@ -9288,7 +9313,7 @@ function passThroughOf4(fn, parameterNames6) {
 }
 
 // packages/parse/src/languages/csharp/extract-facts.ts
-var extractorVersion = 2;
+var extractorVersion = 3;
 var typeDeclarations3 = /* @__PURE__ */ new Set([
   "class_declaration",
   "struct_declaration",
@@ -11501,7 +11526,7 @@ var adapter5 = {
   support: "supported",
   lexerProfile: "cpp",
   grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm" }, extensions: claimed }],
-  extractorVersion: 1,
+  extractorVersion: 2,
   extract: extractFacts5,
   isTestPath: (path) => /(^|\/)(tests?|unittests?|gtest|testing)\//i.test(path) || /(^|\/)(test_[^/]+|[^/]+_(test|tests|unittest|unittests)|[^/]+Tests?|[^/]+\.(test|spec))\.[^/.]+$/.test(path),
   metrics: cppMetricRules,
@@ -11942,7 +11967,7 @@ function passThroughOf6(fn) {
 }
 
 // packages/parse/src/languages/python/extract-facts.ts
-var extractorVersion2 = 2;
+var extractorVersion2 = 3;
 var importTypes = /* @__PURE__ */ new Set(["import_statement", "import_from_statement", "future_import_statement"]);
 var targetTypes = /* @__PURE__ */ new Set(["pattern_list", "tuple_pattern", "list_pattern", "list_splat_pattern", "tuple", "list"]);
 var comprehensionTypes = /* @__PURE__ */ new Set(["list_comprehension", "set_comprehension", "dictionary_comprehension", "generator_expression"]);
@@ -13368,7 +13393,7 @@ function passThroughOf7(fn) {
 }
 
 // packages/parse/src/languages/go/extract-facts.ts
-var extractorVersion3 = 2;
+var extractorVersion3 = 3;
 var GENERATED = /^\/\/ Code generated .* DO NOT EDIT\.$/;
 var predeclared = /* @__PURE__ */ new Set([
   "any",
@@ -14380,7 +14405,7 @@ var rustMetricRules = {
 };
 
 // packages/parse/src/languages/rust/extract-facts.ts
-var extractorVersion4 = 1;
+var extractorVersion4 = 2;
 function visibilityOf(node) {
   const modifier = node.namedChildren.find((child2) => child2.type === "visibility_modifier");
   if (modifier === void 0) return "private";

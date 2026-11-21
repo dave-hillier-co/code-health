@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-ODC77YVS.mjs";
+} from "./chunk-K3GL2KZS.mjs";
 import {
   GitError,
   gitVersion,
@@ -29,14 +29,14 @@ import {
 } from "./chunk-Z55QIW6L.mjs";
 import {
   analyseTree
-} from "./chunk-LORZADOG.mjs";
-import "./chunk-MOEBXVFO.mjs";
+} from "./chunk-7NVFBBI4.mjs";
+import "./chunk-KV56MSHG.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isTestPath
-} from "./chunk-Q7RMJOZ7.mjs";
+} from "./chunk-LPGP6MCF.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -4485,7 +4485,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-YWQKLBIS.mjs");
+    const { performMove } = await import("./chunk-HOH5DAUQ.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -4535,7 +4535,7 @@ var command5 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-LNFQYRA6.mjs");
+      const { buildProject } = await import("./chunk-OK6F6SNR.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -4752,7 +4752,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-O3FWX5MF.mjs");
+    const { verifyMove } = await import("./chunk-TORVJ6RC.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;
