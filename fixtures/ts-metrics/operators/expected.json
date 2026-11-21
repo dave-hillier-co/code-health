@@ -1,0 +1,10 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "operators.ts": [
+      ["access", 11, 11, 7, 1, 6, 3, 5, 0],
+      ["pick", 2, 2, 0, 0, 1, 1, 1, 0],
+      ["assign", 4, 4, 1, 0, 5, 3, 2, 0]
+    ]
+  }
+}
