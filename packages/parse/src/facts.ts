@@ -4,19 +4,17 @@
  * SHA and reused wherever the same content appears.
  */
 
-export type UnitKind = "function" | "arrow" | "method" | "class";
+import type { UnitKind, UnitShape } from "@code-health/lexical/unit";
 
-/** A source unit. Matches the shape shared with the lexical layer, minus the path. */
-export interface UnitFact {
+export type { UnitKind } from "@code-health/lexical/unit";
+
+/** A source unit: the shared `UnitShape`, structural, minus the path. */
+export interface UnitFact extends UnitShape {
   /** Qualified name within the file, such as `Widget.render`, with `~n` on later duplicates. */
   qualifiedName: string;
   kind: UnitKind;
-  /** 1-based, inclusive. Decorators are not part of the range. */
-  startLine: number;
-  endLine: number;
+  /** Decorators are not part of the range. */
   source: "structural";
-  /** Qualified name of the enclosing unit, when nested. */
-  parent?: string;
 }
 
 export interface BindingFact {

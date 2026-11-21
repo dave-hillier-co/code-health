@@ -1,3 +1,4 @@
+import type { UnitShape } from "@code-health/lexical/unit";
 import { extractFacts } from "./extract-facts.ts";
 import type { FileFacts, ReferenceFact, UnitKind } from "./facts.ts";
 import { grammarIdForPath, loadGrammar, type GrammarId, type LoadedGrammar, type LoadOptions } from "./grammars.ts";
@@ -5,8 +6,8 @@ import type { ParseCache } from "./parse-cache.ts";
 import { isConfigPath, SpecifierResolver, type Resolution } from "./resolve-specifier.ts";
 import type { SourceTree } from "./source-tree.ts";
 
-/** A source unit as the structural layer reports it. The lexical layer reports the same shape with `source: "lexical"`. */
-export interface SourceUnit {
+/** A source unit as the structural layer reports it: the shared `UnitShape` (see the lexical package's unit.ts) with a path. */
+export interface SourceUnit extends UnitShape {
   /** Repo-relative POSIX path. */
   path: string;
   /** Symbol id: `path#qualifiedName`. */
@@ -14,10 +15,6 @@ export interface SourceUnit {
   /** Qualified name within the file, with `~n` on later duplicates. */
   qualifiedName: string;
   kind: UnitKind;
-  /** 1-based, inclusive. */
-  startLine: number;
-  endLine: number;
-  source: "structural" | "lexical";
   /** Declared with `export` or listed in an export clause at module level. */
   exported: boolean;
 }
@@ -192,6 +189,7 @@ class GraphBuilder {
           startLine: unit.startLine,
           endLine: unit.endLine,
           source: unit.source,
+          ...(unit.parent === undefined ? {} : { parent: unit.parent }),
           exported: unit.parent === undefined && exportedLocals.has(unit.qualifiedName),
         });
       }

@@ -1,19 +1,16 @@
 import { detectIndentUnit, levelOf } from "./indentation.ts";
 import type { LexerProfile } from "./profile.ts";
 import type { SourceLine } from "./strip.ts";
+import type { UnitShape } from "./unit.ts";
 
 /**
- * An approximate function found without a parser. It has the same shape as a
- * structural unit so the two layers can be compared by start and end line.
+ * An approximate function found without a parser. It is a `UnitShape` (see unit.ts for how the two
+ * layers are matched): `startLine` is the first header line after annotations, or the `def` line for
+ * Python, and `endLine` is the closing brace line, or the last body line for Python.
  */
-export interface FunctionBlock {
-  /** 1-based, inclusive. For braces, the first line of the header after annotations; for Python, the `def` line. */
-  startLine: number;
-  /** 1-based, inclusive. The line of the closing brace, or the last body line for Python. */
-  endLine: number;
+export interface FunctionBlock extends UnitShape {
+  /** The unqualified name, when the header gives one. */
   name?: string;
-  /** Enclosing named scopes and the name, joined by dots. */
-  qualifiedName?: string;
   source: "lexical";
 }
 
