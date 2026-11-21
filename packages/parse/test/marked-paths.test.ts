@@ -1,0 +1,53 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { GitFixture } from "@code-health/fixtures/git-fixture";
+import { treeFromRef, treeFromWorkingTree } from "../src/source-tree.ts";
+
+const fixtures: GitFixture[] = [];
+afterEach(() => {
+  for (const fixture of fixtures.splice(0)) fixture.dispose();
+});
+
+function repoWith(files: Record<string, string>): GitFixture {
+  const fixture = GitFixture.build([
+    {
+      type: "commit",
+      message: "initial",
+      date: "2024-01-01T00:00:00+00:00",
+      changes: Object.entries(files).map(([path, content]) => ({ op: "add" as const, path, content })),
+    },
+  ]);
+  fixtures.push(fixture);
+  return fixture;
+}
+
+const attributes = "dist/** linguist-generated\nthird_party/** linguist-vendored\n";
+const files = {
+  ".gitattributes": attributes,
+  "src/a.ts": "export const a = 1;\n",
+  "dist/bundle.js": "var a=1;\n",
+  "third_party/lib.js": "var b=2;\n",
+};
+
+describe("trees leave out files marked linguist-generated or linguist-vendored", () => {
+  it("from a revision", async () => {
+    const repo = repoWith(files);
+    const tree = await treeFromRef(repo.path, "HEAD");
+    expect([...tree.files.keys()]).toEqual([".gitattributes", "src/a.ts"]);
+    expect(await tree.read("dist/bundle.js")).toBeUndefined();
+  });
+
+  it("from the working tree, including new files under a marked path", async () => {
+    const repo = repoWith(files);
+    writeFileSync(join(repo.path, "dist/new.js"), "var c=3;\n");
+    const tree = await treeFromWorkingTree(repo.path);
+    expect([...tree.files.keys()]).toEqual([".gitattributes", "src/a.ts"]);
+  });
+
+  it("keeps everything when the repository has no attributes file", async () => {
+    const repo = repoWith({ "src/a.ts": "A", "dist/bundle.js": "B" });
+    const tree = await treeFromRef(repo.path, "HEAD");
+    expect([...tree.files.keys()]).toEqual(["dist/bundle.js", "src/a.ts"]);
+  });
+});

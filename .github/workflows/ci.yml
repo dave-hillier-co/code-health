@@ -53,6 +53,9 @@ jobs:
             exit 1
           fi
 
+      - name: Self-analysis finds no failures, syntax errors or import cycles
+        run: npm run check:self
+
       - name: Skill copies of the red flags match the shared source
         run: npm run check:red-flags
 

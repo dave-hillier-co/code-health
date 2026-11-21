@@ -7,7 +7,7 @@ function commit(message: string, date: string, changes: Change[]): Step {
 }
 
 /** A module exporting one function that calls each of `uses`, so every import is also referenced. */
-export function module(name: string, imports: [specifier: string, symbol: string][], revision = 1): string {
+export function module(name: string, imports: [specifier: string, imported: string][], revision = 1): string {
   const head = imports.map(([specifier, symbol]) => `import { ${symbol} } from "${specifier}";`);
   const calls = imports.map(([, symbol]) => `${symbol}()`).join(" + ") || "0";
   return [...head, `export function ${name}(): number {`, `  return ${calls} + ${revision};`, "}", ""].join("\n");

@@ -17,12 +17,13 @@
     "check:dist": "node scripts/bundle.mjs --check",
     "check:version-bump": "node scripts/check-version-bump.mjs",
     "check:plugins": "node scripts/validate-plugins.mjs",
-    "check": "npm run typecheck && npm test && npm run check:dist && npm run check:red-flags && npm run check:skills && npm run check:evals && npm run check:schemas && npm run check:plugins",
+    "check": "npm run typecheck && npm test && npm run check:dist && npm run check:red-flags && npm run check:skills && npm run check:evals && npm run check:schemas && npm run check:plugins && npm run check:self",
     "check:red-flags": "node scripts/sync-red-flags.mjs --check",
     "check:skills": "node scripts/check-skills.mjs",
     "check:evals": "node scripts/check-evals.mjs",
     "evals": "node scripts/run-evals.mjs",
-    "new-plugin": "node scripts/new-plugin.mjs"
+    "new-plugin": "node scripts/new-plugin.mjs",
+    "check:self": "node scripts/check-self.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

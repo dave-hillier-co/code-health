@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readPathAttributes } from "@code-health/history/tree";
 
 /**
  * The files of one revision (a git ref, or a directory on disk), each with its
@@ -77,7 +78,7 @@ export async function treeFromWorkingTree(repoPath: string): Promise<SourceTree>
       // Listed but gone from disk: deleted and not yet staged.
     }
   }
-  const files = sortedMap(entries);
+  const files = sortedMap(await withoutMarkedPaths(repoPath, undefined, entries));
   const read = async (path: string) => (files.has(path) ? readFileSync(join(repoPath, path), "utf8") : undefined);
   return {
     files,
@@ -159,6 +160,21 @@ async function readBlobs(cwd: string, shas: readonly string[]): Promise<Map<stri
   return out;
 }
 
+/**
+ * Drops the files that `.gitattributes` marks `linguist-generated` or `linguist-vendored`, the same
+ * paths the history filters treat as noise, so every plugin analyses one set of files.
+ */
+async function withoutMarkedPaths(repoPath: string, ref: string | undefined, entries: [string, string][]): Promise<[string, string][]> {
+  const paths = entries.map(([path]) => path);
+  let marked;
+  try {
+    marked = await readPathAttributes(repoPath, ref, paths, paths);
+  } catch {
+    return entries;
+  }
+  return entries.filter(([path]) => !marked.generated.has(path) && !marked.vendored.has(path));
+}
+
 /** A tree of the files at a git ref. Submodules and symlinks are left out. */
 export async function treeFromRef(repoPath: string, ref: string): Promise<SourceTree> {
   const listing = (await git(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref])).toString("utf8");
@@ -170,7 +186,7 @@ export async function treeFromRef(repoPath: string, ref: string): Promise<Source
     if (type !== "blob" || mode === "120000" || !sha) continue;
     entries.push([record.slice(tab + 1), sha]);
   }
-  const files = sortedMap(entries);
+  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, entries));
   const readMany = async (wanted: readonly string[]) => {
     const known = wanted.filter((path) => files.has(path));
     const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path) as string))]);

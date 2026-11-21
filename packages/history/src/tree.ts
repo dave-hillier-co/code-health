@@ -76,11 +76,12 @@ const isSet = (value: string) => value === "set" || value === "true";
 /**
  * Paths carrying `linguist-generated` or `linguist-vendored`, as git itself
  * evaluates them (nested files, patterns and negation) against the tree of `ref`.
- * Skipped entirely when the tree has no .gitattributes.
+ * Skipped entirely when the tree has no .gitattributes. Without a `ref` the files on disk are
+ * evaluated, which is what a working-tree analysis needs.
  */
 export async function readPathAttributes(
   repoPath: string,
-  ref: string,
+  ref: string | undefined,
   paths: readonly string[],
   treeFiles: readonly string[],
 ): Promise<PathAttributes> {
@@ -92,7 +93,7 @@ export async function readPathAttributes(
   const names = ["linguist-generated", "linguist-vendored"];
   let out: string;
   try {
-    out = await runGit(repoPath, [...base, `--source=${ref}`, ...names], { input });
+    out = await runGit(repoPath, ref === undefined ? [...base, ...names] : [...base, `--source=${ref}`, ...names], { input });
   } catch {
     // git older than 2.40 has no --source: fall back to the working tree.
     out = await runGit(repoPath, [...base, ...names], { input });

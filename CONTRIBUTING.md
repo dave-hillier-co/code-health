@@ -227,5 +227,6 @@ Results and the HTML report are written to `.cache/evals/<plugin>/`, outside the
 | `npm run check:skills` | a skill breaks the conventions above |
 | `npm run check:evals` | an eval case is invalid or does not use the pinned model |
 | `npm run check:schemas` | a schema does not compile or a golden does not match it |
+| `npm run check:self` | a bundled CLI exits non-zero on this repository, reports syntax errors in a source file, or finds an import cycle outside the paths `code-health.json` excludes |
 | `npm run check:plugins` | `claude plugin validate --strict` reports a problem (skipped locally without the `claude` CLI, required in CI) |
 | `npm run check:version-bump -- --base <ref>` | a change under `plugins/<p>/` since the merge base does not bump that plugin's version (CI) |

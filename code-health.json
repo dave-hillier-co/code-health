@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dave-hillier-co/code-health/main/code-health.schema.json",
+  "exclude": [
+    "plugins/*/dist/**",
+    "**/test/golden/**",
+    "fixtures/languages/**",
+    "plugins/*/evals/**",
+    "shared/evals.json"
+  ]
+}
