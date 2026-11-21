@@ -209,7 +209,8 @@ const cpp: LexerProfile = {
   branchKeywords: cBranchKeywords,
   shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "\\|\\|"],
   bumpOpeners: cBumpOpeners,
-  headerNoise: ["^#.*$", "^\\[\\[.*\\]\\]$"],
+  // Access specifiers and Qt's `signals:` end in a colon and are not part of the member that follows them.
+  headerNoise: ["^#.*$", "^\\[\\[.*\\]\\]$", "^(?:public|private|protected)(?:\\s+(?:slots|Q_SLOTS))?\\s*:$", "^(?:signals|Q_SIGNALS)\\s*:$"],
   controlHeader,
   typeHeaders: [typeHeader],
   functionHeaders: [cMethodHeader, "\\]\\s*(?:\\([^]*\\))?\\s*(?:mutable|noexcept|->\\s*[^{;]+)*\\s*$"],
