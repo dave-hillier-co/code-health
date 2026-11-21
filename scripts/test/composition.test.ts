@@ -45,3 +45,13 @@ test("the dependency a unit is blocked by is named, by structure, as holding tha
   expect(evidence.inputs.locality).toMatchObject({ report: "locality.analyse", head: analysed.repo.head });
   expect(evidence.results[0].unblocks).toEqual([{ unit: "src/lib/kernel/tool.ts", unblockedGain: tool.blockers[0].unblockedGain }]);
 });
+
+test("the bundled locality plans a move and scrutinises a widely used unit, with ts-morph inside the bundle", () => {
+  const planned = run(locality, "move", "src/shared/utils/money.ts");
+  expect(planned.results).toEqual([{ from: "src/shared/utils/money.ts", to: "src/money.ts", role: "unit" }]);
+  expect(planned.rewrites).toHaveLength(3);
+
+  const reviewed = run(locality, "scrutinise");
+  expect(reviewed.results.map((row: { path: string }) => row.path)).toEqual(["src/shared/format.ts"]);
+  expect(reviewed.results[0].findings.map((finding: { flag: string }) => finding.flag)).toContain("special-general-mixture");
+});

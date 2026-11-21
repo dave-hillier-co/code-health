@@ -2,6 +2,9 @@ import type { Command, Rule } from "@code-health/cli-kit/run-cli";
 import * as analyse from "./commands/analyse.ts";
 import * as history from "./commands/history.ts";
 import * as measure from "./commands/measure.ts";
+import * as move from "./commands/move.ts";
+import * as scrutinise from "./commands/scrutinise.ts";
+import * as verifyMove from "./commands/verify-move.ts";
 
 /** What a module in `commands/` exports. */
 export interface CommandModule {
@@ -21,6 +24,9 @@ export const commandModules: CommandModule[] = [
   analyse,
   history,
   measure,
+  move,
+  scrutinise,
+  verifyMove,
 ];
 
 export const commands: Record<string, Command> = Object.fromEntries(commandModules.map((m) => [m.name, m.command]));

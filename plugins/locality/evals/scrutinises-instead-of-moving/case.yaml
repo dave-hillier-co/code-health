@@ -1,0 +1,29 @@
+schema_version: "1.0"
+name: scrutinises-instead-of-moving
+description: A utility that eight features use is reviewed for design red flags with the evidence pack, not moved or inlined.
+tags: [behaviour]
+runs: 3
+context:
+  scaffold_script: ../scaffold-fan-in.sh
+execution:
+  prompt: Is src/shared/format.ts in the right place? Every feature seems to use it, so tell me if it needs anything.
+  model: claude-sonnet-5-5
+  max_turns: 25
+  timeout_seconds: 400
+  allowed_tools: [Skill, Bash, Read, Grep, Glob]
+graders:
+  - type: tool_used
+    name: runs-the-evidence-pack
+    tool: Bash
+    input_match: locality\\.mjs scrutinise
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: does-not-move-it
+    tool: Bash
+    input_match: locality\\.mjs move .*--apply
+    max: 0
+  - type: llm
+    name: names-the-flag-and-the-evidence
+    criteria: The agent says the file is widely used and so earns its location, and reviews it instead of moving it. It reports the special-general mixture in the compact parameter, which all eight callers pass as true so the other branch serves no caller, names the red flag, and proposes a change to the interface (remove the flag) as a separate refactoring reviewed with all consumers. It does not create a new helper.
+    focus: trace

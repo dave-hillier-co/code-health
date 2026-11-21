@@ -1,0 +1,38 @@
+schema_version: "1.0"
+name: moves-with-a-dry-run-first
+description: A move the analysis supports is made with the mover, shown as a dry run before it is applied, and left as one move-only commit with the trailer.
+tags: [behaviour]
+runs: 3
+context:
+  scaffold_script: ../scaffold.sh
+execution:
+  prompt: Move the money formatter to wherever its consumers make it belong, and commit it.
+  model: claude-sonnet-5-5
+  max_turns: 40
+  timeout_seconds: 600
+  allowed_tools: [Skill, Bash, Read, Edit, Write, Grep, Glob]
+graders:
+  - type: tool_order
+    name: analyses-before-moving
+    before:
+      tool: Bash
+      input_match: locality\\.mjs analyse
+    after:
+      tool: Bash
+      input_match: locality\\.mjs move
+  - type: tool_order
+    name: dry-run-before-apply
+    before:
+      tool: Bash
+      input_match: locality\\.mjs move (?!.*--apply)
+    after:
+      tool: Bash
+      input_match: locality\\.mjs move .*--apply
+  - type: regex
+    name: no-hand-edits-to-imports
+    target: trace
+    pattern: git mv .*money\.ts
+    match: not_contains
+  - type: llm
+    name: shows-the-plan-and-makes-one-commit
+    criteria: The agent showed the user the planned file operations from the dry run before applying, applied with the mover, and ended with a single move-only commit carrying a Code-Health trailer. It did not edit imports by hand or change behaviour in the same commit.

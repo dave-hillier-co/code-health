@@ -1,0 +1,56 @@
+{
+  "checks": {
+    "content": true,
+    "operations": true,
+    "trailer": true
+  },
+  "command": "verify-move",
+  "config": "59e9516fe0a1f9ff",
+  "content": {
+    "identical": 4,
+    "otherChanges": [],
+    "specifierDifferences": []
+  },
+  "inputs": {
+    "commit": "HEAD",
+    "parent": "78ddadd4de155734ef2b56a253b72b25b5f87053",
+    "to": null,
+    "unit": "src/shared/utils/money.ts"
+  },
+  "operations": {
+    "missing": [],
+    "planned": [
+      {
+        "from": "src/shared/utils/money.ts",
+        "role": "unit",
+        "to": "src/money.ts"
+      }
+    ],
+    "unexpectedAdded": [],
+    "unexpectedDeleted": []
+  },
+  "refusals": [],
+  "repo": {
+    "dirty": false,
+    "head": "47420723d03a032630eb9453c5ed63b85e7f6227"
+  },
+  "results": [
+    {
+      "from": "src/shared/utils/money.ts",
+      "role": "unit",
+      "to": "src/money.ts"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "unit": {
+    "destination": "src",
+    "path": "src/shared/utils/money.ts"
+  },
+  "verified": true
+}

@@ -4,6 +4,26 @@ A unit with many consumers has earned its location. It has also earned scrutiny,
 
 Report findings with the red flag named. A fix is a normal refactoring with its own commit and tests, and any change to the interface is reviewed with every consumer in view.
 
+## Start from the evidence pack
+
+```
+node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs scrutinise --json
+```
+
+It covers every unit the analyser sent here. Name paths to limit it (`scrutinise src/shared/text.ts`); naming a unit the analyser did not send here reviews it anyway, with `reason: requested`. For each unit it finds the references to every exported function and reports:
+
+- `findings`: red flags with the counts they rest on, each with the consumer files it comes from.
+  - `special-general-mixture`: a boolean or string-literal-union parameter, with what call sites pass for it. When every call site passes the same literal, the other branch serves no caller.
+  - `overexposure`: a parameter that fewer than half of the call sites pass.
+  - `divergent-use`: call sites in two or more files that call a method on the result, fall back with `??` or `||`, cast it, or wrap the unit in a function that fixes some arguments. The unit may be doing the wrong thing for them.
+  - `shallow-module`: two or more parameters in front of a one-statement body.
+  - `pass-through-method` and `vague-name`: what the analyser's signals saw in the file.
+- `hints`: lines to read against every caller's assumptions, by kind and line: `locale`, `time-zone`, `nondeterministic`, `mutates-argument`, `throws`, `swallows-errors`. They are pattern matches. A hint is a place to look, not a defect.
+- `exports`: per exported function, its parameters with what call sites pass, its call sites, consumers and `postProcessed` calls with file and line, and `testCallSites` (tests are never counted as consumers).
+- `notes`: `consumers-in-one-folder` says the unit may be misplaced rather than shared.
+
+Every finding is a claim to confirm. Open the call sites it names and read them before reporting it, and drop the ones the code does not bear out. Calls through a value (`items.map(fn)`) show up as `valueReferences`, and calls the analysis cannot see (dynamic access, other languages) are not counted, so a count is a floor.
+
 ## Checklist
 
 1. **Red flags** (see `red-flags.md`). Look first for:
