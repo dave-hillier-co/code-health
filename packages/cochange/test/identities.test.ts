@@ -45,8 +45,9 @@ beforeEach(() => {
 const key = (a: { name: string; email: string }) => `${a.name} <${a.email}>`;
 const identities = (...args: string[]) => runCochange(repo.path, ["identities", ...args]);
 const json = (stdout: string) => JSON.parse(stdout);
+let inputs = 0;
 const input = (document: unknown): string => {
-  const file = join(scratch, `input-${Math.random().toString(36).slice(2)}.json`);
+  const file = join(scratch, `input-${++inputs}.json`);
   writeFileSync(file, JSON.stringify(document));
   return file;
 };
