@@ -1,6 +1,7 @@
 import type { Command, Rule } from "@code-health/cli-kit/run-cli";
 import * as coupling from "./commands/coupling.ts";
 import * as refresh from "./commands/refresh.ts";
+import * as spread from "./commands/spread.ts";
 
 /** What a module in `commands/` exports. */
 export interface CommandModule {
@@ -19,6 +20,7 @@ export interface CommandModule {
 export const commandModules: CommandModule[] = [
   coupling,
   refresh,
+  spread,
 ];
 
 export const commands: Record<string, Command> = Object.fromEntries(commandModules.map((m) => [m.name, m.command]));

@@ -20,6 +20,7 @@ const ajv = new Ajv2020({ strict: true, allErrors: true });
 addFormats(ajv);
 ajv.addSchema(load("common.schema.json"));
 ajv.addSchema(load("refresh.schema.json"));
+ajv.addSchema(load("spread.schema.json"));
 // How a command schema for an analysis command is composed. The probe stands in for a real one.
 ajv.addSchema({
   $id: "probe.schema.json",
@@ -59,4 +60,12 @@ test("a document with a field the schema does not know is rejected", async () =>
   const { stdout } = await runCochange(repo.path, ["refresh"]);
   const extra = JSON.stringify({ ...JSON.parse(stdout), surprise: true });
   expect(validates("refresh.schema.json", extra)).toEqual([" must NOT have unevaluated properties"]);
+});
+
+test("the spread output, as printed with meta, matches its schema, and a stray field does not", async () => {
+  const { stdout } = await runCochange(repo.path, ["spread"]);
+  expect(validates("spread.schema.json", stdout)).toEqual([]);
+  const stray = JSON.parse(stdout);
+  stray.results.overall.surprise = 1;
+  expect(validates("spread.schema.json", JSON.stringify(stray))).not.toEqual([]);
 });

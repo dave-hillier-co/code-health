@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spread.schema.json",
+  "title": "cochange spread --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "spread" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "bucket": { "enum": ["week", "month"] },
+        "trailerExcluded": { "const": "Code-Health", "description": "The trailer key whose commits are left out." }
+      },
+      "required": ["bucket", "trailerExcluded"],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "object",
+      "properties": {
+        "bucket": { "enum": ["week", "month"], "description": "The bucket size. Months are labelled YYYY-MM, weeks by their Monday, YYYY-MM-DD. Both are UTC." },
+        "overall": { "allOf": [{ "$ref": "#/$defs/distribution" }], "type": "object", "unevaluatedProperties": false, "description": "The distribution over the whole window, not an average of the buckets." },
+        "buckets": {
+          "description": "Oldest first, from the first bucket holding any change to the one holding the end of the window, with no gaps.",
+          "type": "array",
+          "items": {
+            "allOf": [{ "$ref": "#/$defs/distribution" }],
+            "type": "object",
+            "properties": {
+              "bucket": { "type": "string", "pattern": "^\\d{4}-\\d{2}(-\\d{2})?$" },
+              "start": { "type": "string", "format": "date-time", "description": "Start of the bucket. The first and last may extend beyond the window." }
+            },
+            "required": ["bucket", "start"],
+            "unevaluatedProperties": false
+          }
+        }
+      },
+      "required": ["bucket", "overall", "buckets"],
+      "additionalProperties": false
+    }
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "nullableNumber": { "type": ["number", "null"], "minimum": 0 },
+    "distribution": {
+      "type": "object",
+      "properties": {
+        "logicalChanges": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes, leaving out those with a Code-Health trailer." },
+        "measured": { "$ref": "common.schema.json#/$defs/count", "description": "Changes at or under the maximum changeset size: the sample the statistics describe." },
+        "singleFile": { "$ref": "common.schema.json#/$defs/count", "description": "Measured changes of one file, which have spread 0." },
+        "oversized": { "$ref": "common.schema.json#/$defs/count", "description": "Changes over the maximum changeset size, left out of the statistics." },
+        "oversizedShare": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "oversized / logicalChanges. Null when there are no changes." },
+        "excludedByTrailer": { "$ref": "common.schema.json#/$defs/count", "description": "Changes left out because the commit carries a Code-Health trailer. Not part of logicalChanges." },
+        "mean": { "$ref": "#/$defs/nullableNumber" },
+        "median": { "$ref": "#/$defs/nullableNumber" },
+        "p75": { "$ref": "#/$defs/nullableNumber" },
+        "p90": { "$ref": "#/$defs/nullableNumber" },
+        "max": { "$ref": "#/$defs/nullableNumber" }
+      },
+      "required": [
+        "logicalChanges",
+        "measured",
+        "singleFile",
+        "oversized",
+        "oversizedShare",
+        "excludedByTrailer",
+        "mean",
+        "median",
+        "p75",
+        "p90",
+        "max"
+      ]
+    }
+  }
+}
