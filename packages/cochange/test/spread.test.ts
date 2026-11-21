@@ -125,6 +125,7 @@ test("weeks start on Monday and are labelled by that date", async () => {
 });
 
 test("--since is inclusive and --until exclusive, both from the committer date, and either makes the window stated", async () => {
+  expectGolden("spread", "spread.window", (await spread("--since", "2024-02-12", "--until", "2024-05-20")).stdout);
   const document = await json("--since", "2024-02-12", "--until", "2024-05-20");
   expect(document.window).toEqual({ since: "2024-02-12T00:00:00.000Z", until: "2024-05-20T00:00:00.000Z" });
   expect(document.results.overall).toMatchObject({ logicalChanges: 3, measured: 2, excludedByTrailer: 1 });
@@ -144,6 +145,7 @@ test("--until alone looks back the configured window from that date, not from th
 });
 
 test("a window with no changes has no buckets and says so with its sample size", async () => {
+  expectGolden("spread", "spread.empty-window", (await spread("--since", "2025-01-01")).stdout);
   const document = await json("--since", "2025-01-01");
   expect(document.results.buckets).toEqual([]);
   expect(document.results.overall).toMatchObject({ logicalChanges: 0, measured: 0, median: null });

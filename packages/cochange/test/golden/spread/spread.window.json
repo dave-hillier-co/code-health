@@ -1,0 +1,158 @@
+{
+  "command": "spread",
+  "config": "ba84c3d30c2d7726",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 7,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 4.4,
+    "window": {
+      "months": 12,
+      "since": 1684573200,
+      "until": 1716195600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 3,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "gitattributes": true,
+    "lockfiles": true,
+    "maxChangesetSize": 4,
+    "oversizedChanges": 1
+  },
+  "inputs": {
+    "bucket": "month",
+    "trailerExcluded": "Code-Health"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "bce9cc945295e57eef0381fcec27fdfc1b5cc16d"
+  },
+  "results": {
+    "bucket": "month",
+    "buckets": [
+      {
+        "bucket": "2024-02",
+        "excludedByTrailer": 1,
+        "logicalChanges": 1,
+        "max": 2,
+        "mean": 2,
+        "measured": 1,
+        "median": 2,
+        "oversized": 0,
+        "oversizedShare": 0,
+        "p75": 2,
+        "p90": 2,
+        "singleFile": 0,
+        "start": "2024-02-01T00:00:00.000Z"
+      },
+      {
+        "bucket": "2024-03",
+        "excludedByTrailer": 0,
+        "logicalChanges": 0,
+        "max": null,
+        "mean": null,
+        "measured": 0,
+        "median": null,
+        "oversized": 0,
+        "oversizedShare": null,
+        "p75": null,
+        "p90": null,
+        "singleFile": 0,
+        "start": "2024-03-01T00:00:00.000Z"
+      },
+      {
+        "bucket": "2024-04",
+        "excludedByTrailer": 0,
+        "logicalChanges": 2,
+        "max": 0,
+        "mean": 0,
+        "measured": 1,
+        "median": 0,
+        "oversized": 1,
+        "oversizedShare": 0.5,
+        "p75": 0,
+        "p90": 0,
+        "singleFile": 0,
+        "start": "2024-04-01T00:00:00.000Z"
+      },
+      {
+        "bucket": "2024-05",
+        "excludedByTrailer": 0,
+        "logicalChanges": 0,
+        "max": null,
+        "mean": null,
+        "measured": 0,
+        "median": null,
+        "oversized": 0,
+        "oversizedShare": null,
+        "p75": null,
+        "p90": null,
+        "singleFile": 0,
+        "start": "2024-05-01T00:00:00.000Z"
+      }
+    ],
+    "overall": {
+      "excludedByTrailer": 1,
+      "logicalChanges": 3,
+      "max": 2,
+      "mean": 1,
+      "measured": 2,
+      "median": 1,
+      "oversized": 1,
+      "oversizedShare": 0.333333,
+      "p75": 1.5,
+      "p90": 1.8,
+      "singleFile": 0
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2024-02-12T00:00:00.000Z",
+    "until": "2024-05-20T00:00:00.000Z"
+  }
+}
