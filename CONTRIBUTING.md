@@ -134,6 +134,57 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<p>.mjs *)
 
 `shared/red-flags.md` is the single source of the design vocabulary. `npm run build` copies it byte for byte to `plugins/*/skills/*/references/red-flags.md`, and `npm run check:red-flags` (part of `npm run check` and CI) fails when a copy differs or is missing. Edit only the shared file, then build and commit the copies together with a version bump for every plugin whose skill changed. Specs link to `shared/red-flags.md`.
 
+## Adding a language
+
+A language is a contained change: new files in a fixed set of places, and one registration line in each of six registries. A track adds nothing to a shared module, so tracks for different languages do not touch the same lines. Replace `<id>` with the adapter's id, kebab-case and unique (`csharp`, `cpp`, `python`, `go`, `java`, `kotlin`, `rust`). It is also the folder name under `fixtures/languages/`.
+
+The contract is `LanguageAdapter` in `packages/parse/src/language-adapter.ts`. It covers both dependency models of `docs/specs/suite.md`: `import-based` (a resolver maps a specifier to a file, and the shared import model follows re-exports and barrels) and `symbol-based` (the adapter extracts `FileFacts.symbols`, and the shared symbol model resolves names through namespaces and usings; a language may replace it with its own `resolve`). Both produce the same file edges, consumers, exports and units, so the graph consumers read them alike.
+
+| Add | What it holds |
+|---|---|
+| `packages/parse/src/languages/<id>/adapter.ts` | The adapter: grammars and extensions, `extract`, `isTestPath`, `dependencies`, `boundaries`, `census`, `packaging`, `abstractTypes` and `mover`. Split the extractor, resolver, metric rules and census into sibling files in the same folder. |
+| `packages/parse/src/languages/<id>/metric-rules.ts` | The `MetricRules` that map the grammar's node types onto the metric engine (`ConstructMap`), plus the hooks for statements, recursion and parameters. The engine in `unit-metrics.ts` is shared, so it is not edited. |
+| `packages/structure/src/census/languages/<id>.ts` | The census detectors: the event, injection, handler and callback conventions of the language's ecosystem. |
+| `packages/structure/src/packaging/languages/<id>.ts` | How packages of the language's ecosystems expose entry points (`readEntries`) and how their manifests compare with their imports (`manifestChecks`). Reading manifests into packages stays in `packaging/discovery.ts`, which already covers every ecosystem. |
+| `packages/locality/src/movers/<id>.ts` and `<id>-backend.ts` | The mover language: a loader, so a heavy backend is loaded only when a move is planned, and the backend that moves files, rewrites references and builds the verification skeleton. An optional external tool that confirms references is declared on the adapter (`mover.confirmation`) and used when installed. |
+| `packages/complexity/src/languages/<id>.ts` | The notes `complexity explain <rule>` adds where the language's constructs differ from the shared definitions. |
+| `fixtures/languages/<id>/` | One folder per area (below). |
+
+Register it by adding one line to each of these, named for the id (a dash is written as an underscore):
+
+| Registry | Line |
+|---|---|
+| `packages/parse/src/registered-adapters.ts` | `export { adapter as <id> } from "./languages/<id>/adapter.ts";` |
+| `packages/structure/src/census/registered-languages.ts` | `export { language as <id> } from "./languages/<id>.ts";` |
+| `packages/structure/src/packaging/registered-languages.ts` | `export { language as <id> } from "./languages/<id>.ts";` |
+| `packages/locality/src/movers/registered-languages.ts` | `export { language as <id> } from "./<id>.ts";` |
+| `packages/complexity/src/registered-languages.ts` | `export { language as <id> } from "./languages/<id>.ts";` |
+| `packages/lexical/src/recorded-agreement.ts` | Written for you by `UPDATE_AGREEMENT=1`, with `agreement-rates/<profile>.ts`. |
+
+The lexer profile the adapter names (`lexerProfile`) already exists in `packages/lexical/src/profile.ts`. A grammar's npm package is installed with the npm CLI (`npm install <package> -w @code-health/parse`).
+
+### Conformance
+
+An adapter starts `support: "experimental"`. It is registered and tested, analyses no repository and ships no grammar. It becomes `supported` only when every suite below passes for it, so the change that flips the field is the one that proves the language. Every suite runs over every registered adapter, through each plugin's real code.
+
+| Area under `fixtures/languages/<id>/` | Run by | Pins, counted by hand |
+|---|---|---|
+| `adapter/<case>/` | parse | Units with qualified names, import and file edges, consumers with kinds, unresolved references, barrels, syntax errors. |
+| `metrics/<case>/`, `metrics-wide/<case>/` | parse, complexity | Cyclomatic (both switch modes), cognitive, nesting, length, statements and parameters of every function. `metrics` is also in the agreement corpus, `metrics-wide` is not. |
+| `depth/` | parse, complexity | Implementation nodes, interface size and forwarded call of every unit. |
+| `agreement/` and `agreement.json` | lexical | Files with the awkward shapes, and the units the lexer is known to miss. |
+| `census/<case>/` | structure | The decoupling mechanisms found. |
+| `packaging/<case>/` | structure | Packages, entry points, abstractness and boundary findings, through `structure packages`. |
+| `moves/<case>/` | locality | The reference rewrites and file texts of a move, with a `before/` tree. |
+
+`fixtureAreas` in `fixtures/language-conformance.ts` is the list, with what each case pins and which are required. A case folder holds the sources and an `expected.json` whose values were read off the sources, never copied from the output. `describeWithTool` from the same module skips a suite with a notice when an external tool (Roslyn LSP, clangd, rope, gopls, jdtls, Kotlin LSP, rust-analyzer) is not installed: core resolution and metrics never need them, and a move without one reports `not confirmed`.
+
+Record the lexical agreement with `UPDATE_AGREEMENT=1 npx vitest run packages/parse/test/lexical-agreement.test.ts`, review the rates, and commit them. A supported language's exact-boundary rate must clear the configured bar (0.9). To run one language while building it, `overrideSupportedAdapters` in `packages/parse/src/languages.ts` makes the real code analyse as if it were supported, which the suites do themselves.
+
+### Grammars
+
+A parsing plugin ships the grammar of every supported adapter in `dist/grammars/`, from the adapters' `grammars`, and loads only the ones the analysed repository has files for. Nothing is listed by hand: a new supported language changes the committed `dist/grammars` of every parsing plugin, so `npm run build` and the version bumps follow.
+
 ## Evals
 
 Skill evals run with `claude plugin eval`, which bills tokens, so they run on demand and before a release and never in CI. Cases live at `plugins/<p>/evals/<case>/case.yaml`, one folder per case, and ship with the plugin.

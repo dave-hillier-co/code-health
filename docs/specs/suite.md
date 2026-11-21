@@ -58,7 +58,7 @@ packages/                           source; never installed directly
   <plugin>/                         each plugin's CLI source and tests
 shared/red-flags.md                 single source, copied into each skill's references
 docs/specs/                         these specs
-fixtures/                           scripts that build deterministic fixture repos
+fixtures/                           scripts that build deterministic fixture repos, and languages/<id>/ conformance fixtures
 ```
 
 Rules:
@@ -179,7 +179,7 @@ Tree-sitter WASM grammars run through `web-tree-sitter`, with no native builds. 
 
 Within tier 1 the build order is TypeScript, then C#, then C++, from easiest to hardest resolution. TypeScript also has a mature codemod (ts-morph) for deterministic moves.
 
-An adapter is listed as supported only when it passes the shared conformance fixtures for every plugin that uses it.
+An adapter is listed as supported only when it passes the shared conformance fixtures for every plugin that uses it. A language is one adapter behind one contract, registered by one line, with one file per language in each plugin that has language-specific tables, so adding a language does not edit a shared module (see CONTRIBUTING.md, "Adding a language").
 
 ### Dependency models
 
@@ -211,8 +211,8 @@ The testing style is classic TDD with sociable tests. Mocks are reserved for pro
 - **Fixture repositories.** Scripts in `fixtures/` build real git repositories in temp directories with fixed author and committer dates, so their histories are reproducible. Tests run the real CLI against them. There are no mocked git or parser layers.
 - **Golden outputs.** JSON output per fixture is compared byte for byte. An intentional change updates the golden file in the same commit.
 - **Algorithm properties.** Graph algorithms (dominators, LCA, coupling) are checked against naive reference implementations on generated graphs. For dominators, the reference is the textbook iterative data-flow method: *d* dominates *n* exactly when removing *d* disconnects *n* from the root. SCC condensation is checked by confirming that no unit splits a cycle.
-- **Metric conformance.** Small source fixtures per language with hand-verified expected values for each metric.
-- **Lexical agreement.** Tier 1 and 2 languages have both layers, so the structural layer is ground truth for the lexical one. A corpus per language (the conformance fixtures, plus files with the awkward shapes: lambdas, nested classes, expression-bodied functions, C++ macros and templates) runs through both, and lexical function blocks are matched to structural units by start and end line. The result is an agreement rate per profile and language: units found, units with exact boundaries, and spurious blocks. The rates are recorded in the repository and checked in CI, so a profile change cannot make them worse unnoticed. They decide where per-function lexical metrics are reported (see [Analysis layers](#analysis-layers)).
+- **Conformance fixtures.** Each language keeps small source fixtures with hand-verified expected values in `fixtures/languages/<id>/`, one folder per area: the adapter's units and dependency edges, each metric, interface shape, census mechanisms, packages and boundary findings, and file moves. Every plugin that uses the adapter runs the areas it owns, and a language is supported only when they all pass. Suites that need an external tool skip with a notice when it is not installed.
+- **Lexical agreement.** Tier 1 and 2 languages have both layers, so the structural layer is ground truth for the lexical one. A corpus per language (the adapter and metric fixtures, plus files with the awkward shapes: lambdas, nested classes, expression-bodied functions, C++ macros and templates) runs through both, and lexical function blocks are matched to structural units by start and end line. The result is an agreement rate per profile and language: units found, units with exact boundaries, and spurious blocks. The rates are recorded in the repository, one file per language, and checked in CI, so a profile change cannot make them worse unnoticed. They decide where per-function lexical metrics are reported (see [Analysis layers](#analysis-layers)).
 - **Skill evals.** `claude plugin eval` cases in each plugin's `evals/` cover triggering (the skill loads on relevant prompts and not on unrelated ones) and behaviour (it runs the CLI, respects grace periods and commit discipline, and cites red flags). The model and judge model are pinned explicitly (neither is by default), and a cost ceiling is set. Evals run on demand and before release, not on every push, because each run is billed.
 - **Validation.** `claude plugin validate --strict` runs on the marketplace and every plugin in CI.
 

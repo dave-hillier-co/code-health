@@ -12,7 +12,8 @@ export interface PackagingLanguage {
   id: string;
   /**
    * The entry files of every package of this language's ecosystems that has code the adapter reads,
-   * by package id. Packages it cannot read are left out and reported as unavailable.
+   * by package id: the files outside the language's internals marker (packaging.md, Languages). Packages it
+   * cannot read are left out and reported as unavailable.
    */
   readEntries(model: PackageModel): Promise<Map<string, PackageEntries>>;
   /** What each package's manifest declares against what its code uses: undeclared and unused dependencies. */

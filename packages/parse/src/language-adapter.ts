@@ -169,7 +169,9 @@ export interface CensusExtraction {
 /**
  * How the structure packaging skill reads packages of this language. Discovery of packages from manifests
  * is the plugin's (`packaging/discovery.ts`), because a manifest names a build system, not a language;
- * this says which discovered ecosystems the adapter can read.
+ * this says which discovered ecosystems the adapter can read. The language's internals marker (packaging.md,
+ * Languages: `exports`, `internal`, a leading underscore, `internal/`, `pub`) is applied by the plugin's
+ * packaging language when it reads a package's entry files, since what a package exposes is the complement.
  */
 export interface PackagingInternals {
   /** The `Ecosystem` values of discovered packages whose code this adapter reads. */
@@ -178,7 +180,7 @@ export interface PackagingInternals {
   description: string;
 }
 
-/** Which declaration kinds count as exported types for Martin's abstractness, and which of those are abstract. */
+/** Which declaration kinds count as exported types for Martin's abstractness, and which of those are abstract (packaging.md, Languages: interfaces, abstract classes, traits, protocols, pure-virtual classes). */
 export interface AbstractTypeDetection {
   typeKinds: readonly DeclarationKind[];
   abstractKinds: readonly DeclarationKind[];

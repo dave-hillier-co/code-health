@@ -176,7 +176,7 @@ In the `complexity` section of the suite config:
 
 ## Languages
 
-The plugin supports the suite's tier-1 languages through tree-sitter adapters (see [suite.md](suite.md#languages)). An adapter provides queries for function units, decision points, nesting structures, boolean-operator sequences, parameters and exports, and must pass the shared metric conformance fixtures before it is listed as supported.
+The plugin supports the suite's tier-1 languages through tree-sitter adapters (see [suite.md](suite.md#languages)). An adapter provides a construct map for function units, decision points, nesting structures, boolean-operator sequences and parameters, which the shared metric engine reads, and must pass the shared metric conformance fixtures before it is listed as supported. Where a language's constructs differ from the shared definitions, the plugin keeps one file for the language that says so in `complexity explain`.
 
 ## Decisions
 
