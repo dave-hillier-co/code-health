@@ -158,7 +158,7 @@ Every plugin's analysis is built in three layers. Each one works without the lay
 | **Lexical** | Indentation, plus an optional per-family lexer profile: comment and string delimiters, block style (braces or indentation) and a branch-keyword list | Any text file and any historical blob, at best effort: indentation metrics always, profile metrics where a profile fits | Indentation complexity, bumpy road, nesting, approximate function blocks and their length, keyword complexity, append-shaped edits, lexical duplication |
 | **Structural** | Tree-sitter grammar plus a language adapter | Tier 1 and tier 2 languages | Exact units and metric definitions, import and symbol resolution, dominator units, census, deterministic moves |
 
-The lexical layer is the lowest common denominator. Its indentation metrics (indentation complexity, nesting, length) need no profile and apply to any text file. Lexer profiles are data, not code, and add comment and string stripping, keyword complexity, approximate function blocks and the per-function metrics built on them. A C-family profile covers C++, C#, Java, Kotlin, JavaScript, TypeScript and Rust, and an indentation profile covers Python. Other languages can be mapped to a profile in config, but nothing outside tier 1 and 2 is tested or promised.
+The lexical layer is the lowest common denominator. Its indentation metrics (indentation complexity, nesting, length) need no profile and apply to any text file. Lexer profiles are data, not code, and add comment and string stripping, keyword complexity, approximate function blocks and the per-function metrics built on them. A C-family profile covers C++, C#, Java, Kotlin, JavaScript, TypeScript, Go and Rust, and an indentation profile covers Python. Other languages can be mapped to a profile in config, but nothing outside tier 1 and 2 is tested or promised.
 
 Lexical values are approximations, offered at best effort and labelled as such. A language gets whatever the layer can measure for it, and the output says what was skipped.
 
@@ -173,7 +173,7 @@ Tree-sitter WASM grammars run through `web-tree-sitter`, with no native builds. 
 | Tier | Languages | Support |
 |---|---|---|
 | **1** | TypeScript/JavaScript, C#, C++ | All three layers, with full adapters for every plugin |
-| **2** | Python, Java, Kotlin, Rust | Next, in roughly that order. Java and Kotlin share one JVM graph, so mixed projects resolve across both. |
+| **2** | Python, Go, Java, Kotlin, Rust | Next, in roughly that order. Java and Kotlin share one JVM graph, so mixed projects resolve across both. |
 | **0** | Everything else | History layer, plus best-effort lexical metrics: indentation metrics always, profile metrics only if the language is mapped to a profile. No deterministic moves and no import-graph units. |
 
 Within tier 1 the build order is TypeScript, then C#, then C++, from easiest to hardest resolution. TypeScript also has a mature codemod (ts-morph) for deterministic moves.
@@ -185,7 +185,7 @@ An adapter is listed as supported only when it passes the shared conformance fix
 A language adapter turns source into file and symbol dependencies. Languages differ in how dependencies are written, so adapters work in one of two modes, and the graph package consumes both the same way.
 
 - **Import-based**: a statement names a file or module (TypeScript, Python, Rust `mod`/`use`). The resolver maps specifiers to files.
-- **Symbol-based**: a statement brings in a namespace, or nothing at all (C# `using`, Java and Kotlin same-package references, C++ declarations visible through headers). The adapter builds a table of declared types and members per file, then resolves referenced identifiers against it to derive file edges. The resolution is heuristic: it follows names without overload or template resolution, so it is good enough for ranking. Before any move, references are confirmed with the language's LSP server.
+- **Symbol-based**: a statement brings in a namespace, or nothing at all (C# `using`, Java, Kotlin and Go same-package references, C++ declarations visible through headers). The adapter builds a table of declared types and members per file, then resolves referenced identifiers against it to derive file edges. The resolution is heuristic: it follows names without overload or template resolution, so it is good enough for ranking. Before any move, references are confirmed with the language's LSP server.
 
 ### Language notes
 
@@ -196,11 +196,12 @@ A language adapter turns source into file and symbol dependencies. Languages dif
 | C++ | `#include` resolved with include paths from `compile_commands.json`. A header and its source file form one unit. Symbol-based for calls. | Build targets (CMake targets, and other build systems by config) | Move plus rewriting `#include` paths and target source lists. There is no mature codemod, so the agent performs the build-file edits and clangd confirms references. | The preprocessor is not run. Conditional compilation is parsed as written, and macro-generated code is invisible, which is reported per file. |
 | Python | Package roots, `__init__.py` re-exports | Distribution packages (`pyproject.toml`) | rope | Dynamic imports need configured entry points |
 | Java / Kotlin | Packages map to folders; symbol-based within a package | Gradle and Maven modules | LSP rename (jdtls, Kotlin LSP) | One graph across both languages |
+| Go | Import paths resolved against the module path in `go.mod` (and `go.work`) to a package directory, then symbol-based within the package, since files in one directory share a package without importing each other | Modules (`go.mod`), and `internal/` directories, which the compiler restricts to their parent tree | Moving a file within its directory changes nothing. Moving it to another directory changes its package, so the move rewrites the package clause and every qualified reference, and is not a pure move. Package renames go through gopls. Other moves are performed by the agent, with gopls confirming references. | Build constraints (`//go:build`) are parsed as written, like the C++ preprocessor. Generated files (the standard `// Code generated … DO NOT EDIT.` header) are excluded by default. |
 | Rust | `mod` tree and `use` paths | Crates and Cargo workspaces | rust-analyzer | The module tree is explicit, so resolution is precise |
 
 ### Metric definitions per language
 
-The complexity plugin's conformance fixtures pin down per-language constructs: C# switch expressions, pattern combinators and `??=`; C++ lambdas and `goto`, with preprocessor branches not counted; Kotlin `when`, with elvis not counted (it is null-coalescing); Rust `match` and `if let`, with `?` not counted. Each language follows the cognitive complexity specification's rules for its constructs.
+The complexity plugin's conformance fixtures pin down per-language constructs: C# switch expressions, pattern combinators and `??=`; C++ lambdas and `goto`, with preprocessor branches not counted; Kotlin `when`, with elvis not counted (it is null-coalescing); Rust `match` and `if let`, with `?` not counted; Go `switch`, type switches and `select`, with `if err != nil` counted as an ordinary `if` and `defer` and `go` statements not counted. Each language follows the cognitive complexity specification's rules for its constructs.
 
 ## Testing
 
