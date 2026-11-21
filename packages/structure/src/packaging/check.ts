@@ -49,7 +49,7 @@ export async function violationsAt(root: string, sha: string, settings: Structur
 export async function structuralModel(root: string, sha: string, settings: StructureSettings): Promise<PackageModel> {
   const tree = await treeFromRef(root, sha);
   const components = readComponents(settings.components);
-  const packages = await discoverPackages(tree, { ignore: settings.packages.ignore, extra: settings.packages.extra, components, exclude: settings.exclude });
+  const packages = await discoverPackages(tree, { ignore: settings.packages.ignore, extra: settings.packages.extra, components, exclude: settings.exclude, entryPoints: settings.entryPoints });
   const date = Number((await runGit(root, ["log", "-1", "--format=%ct", sha])).trim());
   const nothing = { changes: [], imported: [] } as unknown as FilteredHistory;
   return assemblePackageModel(sha, { settings, filtered: nothing, window: { since: date, until: date } }, tree, packages, components, await loadProject(root, sha, settings.exclude));

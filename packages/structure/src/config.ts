@@ -123,6 +123,8 @@ export interface StructureSettings {
   base: string | null;
   /** The suite's shared `exclude` globs. */
   exclude: string[];
+  /** The suite's shared `entryPoints` globs. */
+  entryPoints: string[];
   /** The suite's shared `components` config, as written. */
   components: Record<string, unknown>;
   census: CensusSettings;
@@ -208,10 +210,16 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     mainBranch,
     base: base as string | null,
     exclude: config.effective.exclude,
+    entryPoints: config.effective.entryPoints,
     components: config.effective.components,
     census: { folderNames: names("folderNames"), eventCalls: names("eventCalls"), handlerCalls: names("handlerCalls"), registerCalls: names("registerCalls") },
     evidenceThresholds: section.evidence as EvidenceThresholds,
-    packages: readPackageSettings(section.packages as Record<string, unknown>, at("packages")),
+    packages: withVagueNames(readPackageSettings(section.packages as Record<string, unknown>, at("packages")), config.effective.vagueNames),
     windowStated: config.sources[at("windowMonths")] === "file",
   };
+}
+
+/** The suite's shared `vagueNames` prompt the `dumping-ground` check as well as the package setting's own names. */
+function withVagueNames(packages: PackageSettings, vagueNames: readonly string[]): PackageSettings {
+  return { ...packages, dumpingNames: [...new Set([...packages.dumpingNames, ...vagueNames])] };
 }

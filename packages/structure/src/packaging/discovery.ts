@@ -53,6 +53,8 @@ export interface DiscoveryOptions {
   components: readonly ComponentMatcher[];
   /** The suite's `exclude` globs. */
   exclude: readonly string[];
+  /** The suite's `entryPoints` globs: a package holding a file that matches one is an entry point, whatever its manifest says. */
+  entryPoints?: readonly string[];
 }
 
 interface Raw {
@@ -565,6 +567,7 @@ export async function discoverPackages(tree: SourceTree, options: DiscoveryOptio
       dependencies,
     };
   });
+  markConfiguredEntries(packages, paths, options.entryPoints ?? []);
 
   if (packages.length === 0) {
     return options.components
@@ -584,6 +587,15 @@ export async function discoverPackages(tree: SourceTree, options: DiscoveryOptio
       .sort((a, b) => compareIds(a.id, b.id));
   }
   return packages.sort((a, b) => compareIds(a.id, b.id));
+}
+
+/** A package that owns a file matching the configured `entryPoints` is an entry point: nothing is expected to depend on it. */
+function markConfiguredEntries(packages: DiscoveredPackage[], paths: readonly string[], entryPoints: readonly string[]): void {
+  if (entryPoints.length === 0 || packages.length === 0) return;
+  const isEntryFile = compileGlobs([...entryPoints]);
+  const index = indexPackages(packages);
+  const owners = new Set(paths.filter(isEntryFile).map((path) => index.owner(path)));
+  for (const pkg of packages) if (owners.has(pkg.id)) pkg.entry = true;
 }
 
 export interface PackageIndex {

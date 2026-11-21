@@ -91,6 +91,7 @@ export async function buildPackageModel(context: CommandContext, history: Loaded
     extra: settings.packages.extra,
     components,
     exclude: settings.exclude,
+    entryPoints: settings.entryPoints,
   });
   return assemblePackageModel(headSha, history, tree, packages, components, await loadProject(root, headSha, settings.exclude));
 }
