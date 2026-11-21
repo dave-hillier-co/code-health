@@ -32,7 +32,7 @@ Run them from the repository root. They analyse `HEAD`. The subcommands:
 - `outcome REV [--from REV] [--projects-dir DIR]`: whether a repackaging made change cheaper.
 - `explain <finding>` describes a finding and its thresholds. `config explain` shows the settings under `structure.packages`.
 
-Read the envelope first. `evidence.grade` says how far to trust history: with `weak`, lean on the manifests and imports and present co-change as tentative. A finding with `tentative: true` involves a package inside the grace period (180 days by default), which has had no time to be reused. A package listed under `unavailable` is one the structural layer cannot read (no TypeScript or JavaScript): its closure and co-change findings stand, its reuse and boundary findings do not exist, and you must say so rather than call it clean.
+Read the envelope first. `evidence.grade` says how far to trust history: with `weak`, lean on the manifests and imports and present co-change as tentative. A finding with `tentative: true` involves a package inside the grace period (180 days by default), which has had no time to be reused. A package listed under `unavailable` is one the structural layer cannot read (its language has no adapter): its closure and co-change findings stand, its reuse and boundary findings do not exist, and you must say so rather than call it clean.
 
 ## Workflow
 
@@ -71,6 +71,6 @@ Name problems with the red flags in `references/red-flags.md`. A `pass-through-p
 ## What this CLI does not do
 
 - It does not edit anything, and it does not choose between a candidate's alternatives. It cannot see build time, which is often the real reason for or against a package, so ask.
-- Reuse, deep import and manifest checks need the structural layer, which reads TypeScript and JavaScript. For a C#, C++, Python, JVM, Go or Rust package it reads the manifest only: the dependency graph, closure, co-change, lockstep and wide-change findings still apply.
+- Reuse, deep import and manifest checks need the structural layer, which reads TypeScript, JavaScript, C#, C++, Python, Java, Kotlin, Go and Rust. For a package in any other language it reads the manifest only: the dependency graph, closure, co-change, lockstep and wide-change findings still apply.
 - `abstractness` is weak where little is declared abstract, as in code that is mostly functions. The finding says so, and the change evidence carries the judgement.
 - Evidence beats convention. A package diagram is a hypothesis, and a package in the zone of pain that never changes is not in pain.

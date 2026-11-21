@@ -1,6 +1,6 @@
 ---
 name: locality
-description: Use when code is hard to follow because it lives far from the code that uses it, before tidying or reorganising folders, when a utils, helpers or common folder has grown, when a change means opening many distant files, or when asked whether a helper, wrapper, barrel file or shared module is worth keeping, moving, inlining or splitting. Finds TypeScript and JavaScript code far from its consumers, recommends a remedy for each unit, and guides the agent through the moves and inlines one commit at a time.
+description: Use when code is hard to follow because it lives far from the code that uses it, before tidying or reorganising folders, when a utils, helpers or common folder has grown, when a change means opening many distant files, or when asked whether a helper, wrapper, barrel file or shared module is worth keeping, moving, inlining or splitting. Finds TypeScript, JavaScript, C#, C++, Python, Java, Kotlin, Go and Rust code far from its consumers, recommends a remedy for each unit, and guides the agent through the moves and inlines one commit at a time.
 allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs *)
 ---
 

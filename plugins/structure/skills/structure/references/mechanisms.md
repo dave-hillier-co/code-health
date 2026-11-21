@@ -18,11 +18,11 @@ There is one row per mechanism, always in this order, including the ones with a 
 
 ## Reading it
 
-- **Zero means not in use here.** The census read every production TypeScript and JavaScript file (`filesRead`). If the mechanism you would choose has a count of zero, it is new to this codebase and the user decides.
+- **Zero means not in use here.** The census read every production file in a supported language (`filesRead`). If the mechanism you would choose has a count of zero, it is new to this codebase and the user decides.
 - **Count and spread both matter.** One `container.register` call in a single file is not a convention. Many folders using events through one bus is. Look at `folders` before calling something established.
 - **The nearest wins.** For one dependency, `nearbyMechanisms` in the evidence pack lists census entries by distance through the folder tree, with `near` saying which side they are closer to. Prefer what is used closest to the boundary you are breaking.
 - **Detection is by name and shape.** It knows no framework. A look-alike can be counted, such as a method that happens to be called `on`, and a convention with other names is missed. Read the `examples` before relying on a row, and use `structure.census.eventCalls`, `handlerCalls` and `registerCalls` in `code-health.json` to teach it the codebase's own names.
 - **Type annotations are read in TypeScript only.** `callbacks` and constructor injection are not found in plain JavaScript, so a JavaScript codebase can show zero for them while using them. Search the code before concluding.
-- **Other languages are not covered yet.** For C# or C++, search for the equivalents: DI container registration and constructor injection, MediatR-style handlers, events and delegates, virtual interfaces and callbacks, signal and slot libraries. Say you searched by hand.
+- **Other languages are not covered.** For a language with no adapter, search for the equivalents: DI container registration and constructor injection, handlers behind a mediator, events and delegates, interfaces and callbacks, signal and slot libraries. Say you searched by hand.
 
 The census does not count tests, excluded paths or files outside the grammars. A mechanism used only in tests is not a mechanism the code uses.

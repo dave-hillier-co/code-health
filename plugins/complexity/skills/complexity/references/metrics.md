@@ -3,7 +3,8 @@
 ## How each metric is counted
 
 All structural metrics come from the syntax tree of TypeScript and JavaScript (`.ts`, `.tsx`, `.mts`, `.cts`, `.js`,
-`.jsx`, `.mjs`, `.cjs`). A unit is a named function, method, constructor, accessor, or an arrow or function expression
+`.jsx`, `.mjs`, `.cjs`), C#, C++, Python, Java, Kotlin, Go or Rust. `complexity explain <rule>` lists how each language
+counts the constructs it has. A unit is a named function, method, constructor, accessor, or an arrow or function expression
 bound to a name. Anonymous callbacks are not units: they add to the function that contains them.
 
 | Metric | Counted as |
@@ -30,7 +31,7 @@ approximations and carry `source: "lexical"`.
 | `nesting`, `length` | As above, from indentation. |
 
 Per-function lexical values are released only for a profile whose recorded agreement with the structural layer
-reaches `agreementBar` (default 0.9) on exact function boundaries. TypeScript and JavaScript clear it. A profile with no
+reaches `agreementBar` (default 0.9) on exact function boundaries. Every supported language clears it at its recorded rate. A profile with no
 structural adapter has no agreement measured, so its functions are not reported and the file gets file-level metrics
 only. A language mapped to a profile by config is marked `unverified`.
 
@@ -40,7 +41,7 @@ line counts and, with a profile, `keywordComplexity`.
 ## Interface depth
 
 `complexity depth` reports the signal behind the *shallow module* and *pass-through method* red flags, from the syntax tree
-of TypeScript and JavaScript. It is never gated.
+of any supported language. It is never gated.
 
 | Value | Counted as |
 |---|---|

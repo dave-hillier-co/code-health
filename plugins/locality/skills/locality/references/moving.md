@@ -10,9 +10,11 @@
 
 ## Imports
 
-The moves and the rewriting are done with ts-morph over the committed tree, with the repository's `tsconfig.json` when it has one (path mappings and `baseUrl` are followed). Afterwards every import specifier is checked to resolve to the file it reached before the move. If TypeScript's own rewrite lost the extension the repository writes (`./money.ts`, `./money.js`), it is put back. A specifier that no longer resolves is rewritten as a relative path, and when it was an alias the mover warns, because another alias may fit better.
+In TypeScript and JavaScript the moves and the rewriting are done with ts-morph over the committed tree, with the repository's `tsconfig.json` when it has one (path mappings and `baseUrl` are followed). Afterwards every import specifier is checked to resolve to the file it reached before the move. If TypeScript's own rewrite lost the extension the repository writes (`./money.ts`, `./money.js`), it is put back. A specifier that no longer resolves is rewritten as a relative path, and when it was an alias the mover warns, because another alias may fit better.
 
-Rewritten: static imports and exports, dynamic `import()` and `require()` with literal paths, `import x = require()`.
+Other languages have their own mover, which rewrites what that language names a file by (`using` and project items in C#, `#include` and CMake source lists in C++, imports in Python, package clauses and imports in Java and Kotlin, import paths in Go, `mod` and `use` in Rust). When the language's tool is installed (Roslyn, clangd, rope, gopls, jdtls, Kotlin LSP, rust-analyzer) it confirms the move, and otherwise the move is reported as not confirmed: check it with the build and the tests.
+
+Rewritten in TypeScript and JavaScript: static imports and exports, dynamic `import()` and `require()` with literal paths, `import x = require()`.
 
 Not rewritten, so check them with the type checker and the tests: `jest.mock` and `vi.mock` paths, string paths in config, build scripts and generated code, and documentation. Files outside the source that name a moved path are listed as `mentions`.
 

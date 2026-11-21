@@ -24,7 +24,7 @@ With several findings it names the worst and counts the rest.
 
 ## What it measures
 
-The lexical layer, because loading the WASM runtime and a grammar costs about the whole time budget. Per-function lexical values are released only for a language whose agreement with the structural layer clears `agreementBar`, which is TypeScript and JavaScript. Any other file leaves the hook silent. The values and their thresholds:
+The lexical layer, because loading the WASM runtime and a grammar costs about the whole time budget. Per-function lexical values are released only for a language whose agreement with the structural layer clears `agreementBar`, which every supported language does at the recorded rates. Any other file leaves the hook silent. The values and their thresholds:
 
 | Lexical value | Over its threshold when |
 |---|---|

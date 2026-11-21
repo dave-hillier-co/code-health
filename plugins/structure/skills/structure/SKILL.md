@@ -36,7 +36,7 @@ Read the envelope before the rows. The top-level `evidence.grade` is how far to 
 
 Questions about whether the packages themselves are the right ones (too many, a boundary in the wrong place, whether to add a package) belong to the packaging skill, which reads the same graph at package level and adds cohesion evidence. `cycles --level package` here groups files by their nearest `package.json`. The packaging skill's `packages coupling` reads packages from every manifest and adds hidden cycles.
 
-The census covers TypeScript and JavaScript only: for any other language, search the code for the mechanisms listed in `references/mechanisms.md` and say that you did.
+The census covers TypeScript, JavaScript, C#, C++, Python, Java, Kotlin, Go and Rust: for any other language, search the code for the mechanisms listed in `references/mechanisms.md` and say that you did.
 
 ## Read the evidence pack
 
