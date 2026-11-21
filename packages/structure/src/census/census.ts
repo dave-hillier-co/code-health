@@ -10,7 +10,7 @@ export type Mechanism = (typeof MECHANISMS)[number];
 
 /** What the codebase's own conventions add to the built-in vocabulary. */
 export interface CensusSettings {
-  /** Folder names that mark ports and adapters, matched against a folder's own name. */
+  /** Folder names that mark ports and adapters, matched against a folder's own name without regard to case (`Ports` is a C# folder). */
   folderNames: readonly string[];
   /** Method names that count as events, on any receiver. */
   eventCalls: readonly string[];
@@ -40,7 +40,7 @@ export interface Census {
 }
 
 function isNamed(folder: string, names: ReadonlySet<string>): boolean {
-  return names.has(folder.slice(folder.lastIndexOf("/") + 1));
+  return names.has(folder.slice(folder.lastIndexOf("/") + 1).toLowerCase());
 }
 
 class Reader {
@@ -220,7 +220,7 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
     });
   }
 
-  const names = new Set(settings.folderNames);
+  const names = new Set(settings.folderNames.map((name) => name.toLowerCase()));
   const seen = new Set<string>();
   for (const path of project.files) {
     for (let folder = folderOf(path); folder !== "."; folder = folderOf(folder)) {

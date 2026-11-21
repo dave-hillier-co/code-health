@@ -1,0 +1,17 @@
+{
+  "files": 8,
+  "occurrences": [
+    "interfaces interface src/Ports/IStore.cs:3 | IStore is implemented in src/Adapters",
+    "dependency-injection decorator src/App/Audit.cs:7 | @Inject",
+    "dependency-injection constructor-injection src/App/OrderService.cs:7 | OrderService takes IStore from src/Ports",
+    "dependency-injection container-registration src/App/Startup.cs:11 | services.AddScoped",
+    "events base-type src/Events/OrderEvents.cs:5 | OrderEvents extends INotifyPropertyChanged",
+    "events call src/Events/OrderEvents.cs:12 | Placed.Invoke",
+    "handlers dispatch src/App/OrderService.cs:21 | mediator.Send",
+    "handlers handler-registration src/App/Startup.cs:12 | services.AddMediatR",
+    "handlers handler-type src/Handlers/PlaceOrderHandler.cs:7 | PlaceOrderHandler implements IRequestHandler",
+    "registries keyed-map src/Registry/HandlerMap.cs:5 | handlers",
+    "ports-and-adapters folder src/Adapters | Adapters",
+    "ports-and-adapters folder src/Ports | Ports"
+  ]
+}
