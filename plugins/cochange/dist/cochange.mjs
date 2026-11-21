@@ -2105,45 +2105,778 @@ __export(hotspots_exports, {
 // packages/cochange/src/complexity-source.ts
 import { existsSync as existsSync5, readFileSync as readFileSync4 } from "node:fs";
 
-// packages/lexical/src/indentation-complexity.ts
+// packages/lexical/src/indentation.ts
 var DEFAULT_UNIT = 4;
-var isBlank = (line) => line.trim() === "";
-function leadingWhitespace(line) {
-  return /^[ \t]*/.exec(line)[0];
-}
-function indentWidth(line, unit) {
-  let width = 0;
-  for (const ch of leadingWhitespace(line)) width += ch === "	" ? unit : 1;
-  return width;
+var MAX_UNIT = 8;
+function isIndentLine(line) {
+  return line.kind === "code" && !line.startsInLiteral;
 }
 function detectIndentUnit(lines) {
-  const steps = /* @__PURE__ */ new Map();
+  const votes = /* @__PURE__ */ new Map();
   let previous = 0;
   for (const line of lines) {
-    if (isBlank(line)) continue;
-    const spaces = leadingWhitespace(line).replaceAll("	", "").length;
-    if (spaces > previous) steps.set(spaces - previous, (steps.get(spaces - previous) ?? 0) + 1);
-    previous = spaces;
+    if (!isIndentLine(line)) continue;
+    if (line.text.startsWith("	")) {
+      previous = 0;
+      continue;
+    }
+    const width = leadingSpaces(line.text);
+    const increase = width - previous;
+    if (increase > 0 && increase <= MAX_UNIT) votes.set(increase, (votes.get(increase) ?? 0) + 1);
+    previous = width;
   }
   let best = DEFAULT_UNIT;
-  let bestCount = 0;
-  for (const [step, count] of steps) {
-    if (count > bestCount || count === bestCount && step < best) {
-      best = step;
-      bestCount = count;
+  let bestVotes = 0;
+  for (const [unit, count] of [...votes].sort((a, b) => a[0] - b[0])) {
+    if (count > bestVotes) {
+      best = unit;
+      bestVotes = count;
     }
   }
   return best;
 }
-function indentationComplexity(text) {
-  const lines = text.split(/\r?\n/);
-  const unit = detectIndentUnit(lines);
-  let total = 0;
+function leadingSpaces(text) {
+  let width = 0;
+  while (text[width] === " ") width++;
+  return width;
+}
+function levelOf(text, unit) {
+  let tabs = 0;
+  while (text[tabs] === "	") tabs++;
+  let spaces = 0;
+  while (text[tabs + spaces] === " ") spaces++;
+  return tabs + Math.floor(spaces / unit);
+}
+function indentationMetrics(lines) {
+  const indentUnit = detectIndentUnit(lines);
+  let indentationComplexity2 = 0;
+  let maxIndent = 0;
   for (const line of lines) {
-    if (isBlank(line)) continue;
-    total += Math.floor(indentWidth(line, unit) / unit);
+    if (!isIndentLine(line)) continue;
+    const level = levelOf(line.text, indentUnit);
+    indentationComplexity2 += level;
+    if (level > maxIndent) maxIndent = level;
   }
-  return total;
+  return { indentUnit, indentationComplexity: indentationComplexity2, maxIndent };
+}
+function lengthMetrics(lines) {
+  let nonBlankLines = 0;
+  let codeLines = 0;
+  for (const line of lines) {
+    if (line.kind !== "blank") nonBlankLines++;
+    if (line.kind === "code" || line.kind === "literal") codeLines++;
+  }
+  return { lineCount: lines.length, nonBlankLines, codeLines };
+}
+
+// packages/lexical/src/blocks.ts
+var compiledProfiles = /* @__PURE__ */ new WeakMap();
+function compile(profile) {
+  let compiled = compiledProfiles.get(profile);
+  if (compiled === void 0) {
+    compiled = {
+      noise: profile.headerNoise.map((source) => new RegExp(source)),
+      control: new RegExp(profile.controlHeader),
+      types: profile.typeHeaders.map((source) => new RegExp(source)),
+      functions: profile.functionHeaders.map((source) => new RegExp(source))
+    };
+    compiledProfiles.set(profile, compiled);
+  }
+  return compiled;
+}
+function classifyHeader(segments, profile) {
+  const { noise, control, types, functions } = compile(profile);
+  const kept = segments.filter((segment) => {
+    const trimmed = segment.text.trim();
+    return trimmed !== "" && !noise.some((pattern) => pattern.test(trimmed));
+  });
+  if (kept.length === 0) return { kind: "other" };
+  const text = kept.map((segment) => segment.text.trim()).join(" ").replace(/\s+/g, " ");
+  const line = kept[0].line;
+  if (control.test(text)) return { kind: "other" };
+  for (const pattern of types) {
+    const match = pattern.exec(text);
+    if (match?.groups?.name !== void 0) return { kind: "type", name: cleanName(match.groups.name), line };
+  }
+  for (const pattern of functions) {
+    const match = pattern.exec(text);
+    if (match !== null) {
+      const name6 = match.groups?.name;
+      return { kind: "function", name: name6 === void 0 ? void 0 : cleanName(name6), line };
+    }
+  }
+  return { kind: "other" };
+}
+function cleanName(name6) {
+  return name6.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
+}
+function findFunctionBlocks(lines, profile) {
+  const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines, profile) : findBracedBlocks(lines, profile);
+  return blocks.sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
+}
+function qualify(scopes, name6) {
+  return name6 === void 0 ? void 0 : [...scopes, name6].join(".");
+}
+function findBracedBlocks(lines, profile) {
+  const closed = [];
+  const stack = [];
+  let header = [];
+  let parenDepth = 0;
+  for (const line of lines) {
+    if (line.kind !== "code") continue;
+    let segment = "";
+    const code = line.code;
+    for (let i = 0; i < code.length; i++) {
+      const ch = code[i];
+      if (ch === "(" || ch === "[") parenDepth++;
+      else if (ch === ")" || ch === "]") parenDepth = Math.max(0, parenDepth - 1);
+      else if (ch === ";" && parenDepth === 0) {
+        header = [];
+        segment = "";
+        continue;
+      } else if (ch === "{") {
+        header.push({ line: line.number, text: segment });
+        const classification = classifyHeader(header, profile);
+        const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+        let block;
+        let name6;
+        if (classification.kind === "function") {
+          name6 = classification.name;
+          block = { startLine: classification.line, endLine: -1, source: "lexical" };
+          if (name6 !== void 0) {
+            block.name = name6;
+            block.qualifiedName = qualify(names, name6);
+          }
+        } else if (classification.kind === "type") name6 = classification.name;
+        stack.push({ name: name6, block, parenDepth });
+        header = [];
+        segment = "";
+        continue;
+      } else if (ch === "}") {
+        const scope = stack.pop();
+        if (scope !== void 0) {
+          parenDepth = scope.parenDepth;
+          if (scope.block !== void 0) {
+            scope.block.endLine = line.number;
+            closed.push(scope.block);
+          }
+        }
+        header = [];
+        segment = "";
+        continue;
+      }
+      segment += ch;
+    }
+    header.push({ line: line.number, text: segment });
+  }
+  return closed;
+}
+function findIndentedBlocks(lines, profile) {
+  const unit = detectIndentUnit(lines);
+  const closed = [];
+  const stack = [];
+  let lastBodyLine = 0;
+  let bracketDepth = 0;
+  const close = (scope) => {
+    if (scope.block === void 0) return;
+    scope.block.endLine = Math.max(lastBodyLine, scope.block.startLine);
+    closed.push(scope.block);
+  };
+  for (const line of lines) {
+    if (line.kind === "literal") {
+      lastBodyLine = line.number;
+      continue;
+    }
+    if (line.kind !== "code") continue;
+    const continuation = bracketDepth > 0;
+    for (const ch of line.code) {
+      if (ch === "(" || ch === "[" || ch === "{") bracketDepth++;
+      else if (ch === ")" || ch === "]" || ch === "}") bracketDepth = Math.max(0, bracketDepth - 1);
+    }
+    if (continuation || line.startsInLiteral) {
+      lastBodyLine = line.number;
+      continue;
+    }
+    const level = levelOf(line.text, unit);
+    while (stack.length > 0 && stack[stack.length - 1].level >= level) close(stack.pop());
+    const classification = classifyHeader([{ line: line.number, text: line.code }], profile);
+    if (classification.kind !== "other") {
+      const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+      let block;
+      if (classification.kind === "function") {
+        block = { startLine: line.number, endLine: -1, source: "lexical" };
+        if (classification.name !== void 0) {
+          block.name = classification.name;
+          block.qualifiedName = qualify(names, classification.name);
+        }
+      }
+      stack.push({ level, name: classification.name, block });
+    }
+    lastBodyLine = line.number;
+  }
+  while (stack.length > 0) close(stack.pop());
+  return closed;
+}
+
+// packages/lexical/src/metrics.ts
+var DEFAULT_BUMP_DEPTH = 2;
+var keywordPatterns = /* @__PURE__ */ new WeakMap();
+var openerPatterns = /* @__PURE__ */ new WeakMap();
+function keywordPattern(profile) {
+  let pattern = keywordPatterns.get(profile);
+  if (pattern === void 0) {
+    const words = `\\b(?:${profile.branchKeywords.join("|")})\\b`;
+    pattern = new RegExp([words, ...profile.shortCircuitOperators].join("|"), "g");
+    keywordPatterns.set(profile, pattern);
+  }
+  return pattern;
+}
+function openerPattern(profile) {
+  let pattern = openerPatterns.get(profile);
+  if (pattern === void 0) {
+    pattern = new RegExp(`\\b(?:${profile.bumpOpeners.join("|")})\\b`);
+    openerPatterns.set(profile, pattern);
+  }
+  return pattern;
+}
+function keywordComplexity(lines, profile, from = 1, to = lines.length) {
+  const pattern = keywordPattern(profile);
+  let count = 0;
+  for (let n = from; n <= to; n++) {
+    const line = lines[n - 1];
+    if (line === void 0 || line.kind !== "code") continue;
+    count += line.code.match(pattern)?.length ?? 0;
+  }
+  return count;
+}
+function blockMetrics(lines, block, profile, options = {}) {
+  const unit = options.indentUnit ?? detectIndentUnit(lines);
+  const threshold = options.bumpDepth ?? DEFAULT_BUMP_DEPTH;
+  const header = lines[block.startLine - 1];
+  const base = levelOf(header.text, unit);
+  let length = 0;
+  let indentationComplexity2 = 0;
+  let maxRelative = 0;
+  const codeLines = [];
+  for (let n = block.startLine; n <= block.endLine; n++) {
+    const line = lines[n - 1];
+    if (line.kind === "code" || line.kind === "literal") length++;
+    if (line.kind !== "code" || line.startsInLiteral) continue;
+    const relative = Math.max(0, levelOf(line.text, unit) - base);
+    indentationComplexity2 += relative;
+    if (n > block.startLine && relative > maxRelative) maxRelative = relative;
+    codeLines.push({ relative, text: line.code });
+  }
+  return {
+    length,
+    indentationComplexity: indentationComplexity2,
+    maxNesting: Math.max(0, maxRelative - 1),
+    keywordComplexity: keywordComplexity(lines, profile, block.startLine, block.endLine),
+    ...findBumps(codeLines, profile, threshold)
+  };
+}
+function findBumps(codeLines, profile, threshold) {
+  const opener = openerPattern(profile);
+  let bumps = 0;
+  let bumpDepth = 0;
+  let bumpSize = 0;
+  let runSize = 0;
+  let runDepth = 0;
+  let state = "outside";
+  const endRun = () => {
+    if (state === "bump") {
+      bumps++;
+      bumpDepth = Math.max(bumpDepth, runDepth);
+      bumpSize = Math.max(bumpSize, runSize);
+    }
+    state = "outside";
+  };
+  for (let i = 0; i < codeLines.length; i++) {
+    const line = codeLines[i];
+    if (line.relative < threshold) {
+      endRun();
+      continue;
+    }
+    if (state === "outside") {
+      let previous = codeLines[i - 1];
+      if (previous !== void 0 && profile.blocks === "braces" && previous.text.trim() === "{") {
+        previous = codeLines[i - 2];
+      }
+      state = previous !== void 0 && opener.test(previous.text) ? "bump" : "other";
+      runSize = 0;
+      runDepth = 0;
+    }
+    runSize++;
+    runDepth = Math.max(runDepth, line.relative);
+  }
+  endRun();
+  return { bumps, bumpDepth, bumpSize };
+}
+function isBumpyRoad(metrics, thresholds = {}) {
+  const { bumps = 3, deepBumps = 2, nesting = 4 } = thresholds;
+  if (metrics.bumps >= bumps) return true;
+  return metrics.bumps >= deepBumps && metrics.bumpDepth > nesting;
+}
+
+// packages/lexical/src/profile.ts
+var doubleQuote = {
+  kind: "delimited",
+  triggers: '"',
+  open: '"',
+  close: '"',
+  escape: "\\",
+  multiline: false
+};
+var singleQuote = {
+  kind: "delimited",
+  triggers: "'",
+  open: "'",
+  close: "'",
+  escape: "\\",
+  multiline: false
+};
+var charLiteral = {
+  kind: "whole",
+  triggers: "'",
+  pattern: "'(?:\\\\[^'\\n]*|[^\\\\'\\n])'"
+};
+var cBranchKeywords = ["if", "for", "while", "case", "catch"];
+var cBumpOpeners = [...cBranchKeywords, "else", "do", "default", "switch", "try", "finally"];
+var controlHeader = "^(?:else\\s+if|else|if|for|foreach|while|do|switch|catch|try|finally|with|using|lock|synchronized|unsafe|checked|fixed|match|loop|unless)\\b";
+var typeHeader = "\\b(?:class|struct|interface|enum|namespace|trait|object|record|union)\\s+(?<name>[\\w.:$]+)";
+var cTypeHeaders = [typeHeader];
+var annotationNoise = ["^\\[.*\\]$", "^@\\w[\\w.]*(?:\\(.*\\))?$", "^#.*$"];
+var cMethodHeader = "(?<![\\w.])(?<name>~?[\\w:.$<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:(?:const|noexcept|override|final|volatile|mutable|throws\\s+[\\w.,\\s]+|where\\s+[^{;]+|&&|&)\\s*)*(?:->\\s*[^{;]+)?(?::\\s*[^{;]*)?$";
+var regexLiteral = {
+  kind: "whole",
+  triggers: "/",
+  pattern: "/(?![*/])(?:\\\\.|\\[(?:\\\\.|[^\\]\\\\\\n])*\\]|[^/\\\\\\[\\n])+/[a-z]*",
+  after: "(?:^|[(,=:\\[!&|?{};<>~^%*]|\\b(?:return|typeof|case|in|of|delete|void|throw|new|else|do|yield|await))\\s*$"
+};
+var typescript = {
+  name: "typescript",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    doubleQuote,
+    singleQuote,
+    {
+      kind: "delimited",
+      triggers: "`",
+      open: "`",
+      close: "`",
+      escape: "\\",
+      multiline: true,
+      interpolation: { open: "${", close: "}" }
+    },
+    regexLiteral
+  ],
+  branchKeywords: cBranchKeywords,
+  shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],
+  bumpOpeners: cBumpOpeners,
+  headerNoise: ["^@\\w[\\w.]*(?:\\(.*\\))?$"],
+  controlHeader,
+  typeHeaders: cTypeHeaders,
+  functionHeaders: [
+    "\\bfunction\\b\\s*\\*?\\s*(?<name>[\\w$]+)?\\s*(?:<[^>]*>)?\\s*\\([^]*\\)[^;{}=]*$",
+    "^(?:export\\s+(?:default\\s+)?)?(?:(?:const|let|var)\\s+(?<name>[\\w$]+)\\s*(?::[^=]+)?=\\s*)?[^]*=>\\s*(?::[^{;]+)?$",
+    "^(?:(?:public|private|protected|static|async|readonly|get|set|override|abstract|declare)\\s+)*\\*?\\s*(?<name>[#\\w$]+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?::\\s*[^{;]+)?$"
+  ]
+};
+var csharp = {
+  name: "csharp",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    // Raw string literals first, they start with three or more quotes.
+    {
+      kind: "delimited",
+      triggers: '$"',
+      open: '\\$*("{3,})',
+      close: "$1",
+      multiline: true
+    },
+    {
+      kind: "delimited",
+      triggers: '@$"',
+      open: '(?:@\\$?|\\$@)"',
+      close: '"',
+      doubledCloseEscapes: true,
+      multiline: true
+    },
+    { ...doubleQuote, triggers: '$"', open: '\\$?"' },
+    charLiteral
+  ],
+  branchKeywords: [...cBranchKeywords, "foreach"],
+  shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],
+  bumpOpeners: [...cBumpOpeners, "foreach"],
+  headerNoise: annotationNoise,
+  controlHeader,
+  typeHeaders: cTypeHeaders,
+  functionHeaders: [
+    "(?:[^]*\\s)?(?<name>(?!(?:base|this)\\b)[\\w.<>]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    "=>\\s*$"
+  ]
+};
+var cpp = {
+  name: "cpp",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    {
+      kind: "delimited",
+      triggers: "R",
+      open: '(?:u8|u|U|L)?R"([^()\\s\\\\]{0,16})\\(',
+      close: ')$1"',
+      multiline: true
+    },
+    { ...doubleQuote },
+    charLiteral
+  ],
+  branchKeywords: cBranchKeywords,
+  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "\\|\\|"],
+  bumpOpeners: cBumpOpeners,
+  headerNoise: ["^#.*$", "^\\[\\[.*\\]\\]$"],
+  controlHeader,
+  typeHeaders: [typeHeader],
+  functionHeaders: [cMethodHeader, "\\]\\s*(?:\\([^]*\\))?\\s*(?:mutable|noexcept|->\\s*[^{;]+)*\\s*$"]
+};
+var java = {
+  name: "java",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    { kind: "delimited", triggers: '"', open: '"""', close: '"""', escape: "\\", multiline: true },
+    doubleQuote,
+    charLiteral
+  ],
+  branchKeywords: cBranchKeywords,
+  shortCircuitOperators: ["&&", "\\|\\|"],
+  bumpOpeners: cBumpOpeners,
+  headerNoise: annotationNoise,
+  controlHeader,
+  typeHeaders: [typeHeader],
+  functionHeaders: [cMethodHeader, "->\\s*$"]
+};
+var kotlin = {
+  name: "kotlin",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/", nested: true }],
+  strings: [
+    { kind: "delimited", triggers: '"', open: '"""', close: '"""', multiline: true },
+    doubleQuote,
+    charLiteral
+  ],
+  branchKeywords: [...cBranchKeywords, "when"],
+  shortCircuitOperators: ["&&", "\\|\\|", "\\?:"],
+  bumpOpeners: [...cBumpOpeners, "when"],
+  headerNoise: annotationNoise,
+  controlHeader,
+  typeHeaders: [typeHeader],
+  functionHeaders: [
+    "\\bfun\\b\\s*(?:<[^>]*>\\s*)?(?:[\\w.<>?]+\\.)?(?<name>[\\w$]+)\\s*\\([^]*\\)\\s*(?::\\s*[^{=]+)?$",
+    "->\\s*$"
+  ]
+};
+var rust = {
+  name: "rust",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/", nested: true }],
+  strings: [
+    {
+      kind: "delimited",
+      triggers: "rb",
+      open: '(?<![\\w])b?r(#*)"',
+      close: '"$1',
+      multiline: true
+    },
+    { ...doubleQuote, multiline: true },
+    charLiteral
+  ],
+  branchKeywords: ["if", "for", "while", "loop", "match"],
+  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "(?<!\\bmove)(?<=[\\w)\\]])\\s*\\|\\|"],
+  bumpOpeners: ["if", "for", "while", "loop", "match", "else"],
+  headerNoise: ["^#!?\\[.*\\]$"],
+  controlHeader: "^(?:else\\s+if|else|if|for|while|loop|match|unsafe)\\b",
+  typeHeaders: [
+    "\\b(?:struct|enum|trait|mod|union)\\s+(?<name>\\w+)",
+    "\\bimpl\\b(?:\\s*<[^>]*>)?\\s+(?:[\\w:<>,\\s]+?\\s+for\\s+)?(?<name>\\w+)"
+  ],
+  functionHeaders: [
+    "\\bfn\\s+(?<name>\\w+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:->\\s*[^{;]+)?(?:where\\s+[^{;]+)?$",
+    "\\|[^|]*\\|\\s*(?:->\\s*[^{;]+)?$"
+  ]
+};
+var python = {
+  name: "python",
+  blocks: "indentation",
+  lineComments: ["#"],
+  blockComments: [],
+  strings: [
+    { kind: "delimited", triggers: '"', open: '"""', close: '"""', escape: "\\", multiline: true },
+    { kind: "delimited", triggers: "'", open: "'''", close: "'''", escape: "\\", multiline: true },
+    doubleQuote,
+    singleQuote
+  ],
+  branchKeywords: ["if", "elif", "for", "while", "except", "case"],
+  shortCircuitOperators: ["\\band\\b", "\\bor\\b"],
+  bumpOpeners: ["if", "elif", "else", "for", "while", "try", "except", "finally", "with", "match", "case"],
+  headerNoise: ["^@.*$"],
+  controlHeader: "^(?:if|elif|else|for|while|try|except|finally|with|match|case)\\b",
+  typeHeaders: ["^class\\s+(?<name>\\w+)"],
+  functionHeaders: ["^(?:async\\s+)?def\\s+(?<name>\\w+)"]
+};
+var profiles = {
+  typescript,
+  csharp,
+  cpp,
+  java,
+  kotlin,
+  rust,
+  python
+};
+var extensionProfiles = {
+  ts: "typescript",
+  tsx: "typescript",
+  mts: "typescript",
+  cts: "typescript",
+  js: "typescript",
+  jsx: "typescript",
+  mjs: "typescript",
+  cjs: "typescript",
+  cs: "csharp",
+  c: "cpp",
+  h: "cpp",
+  cc: "cpp",
+  cpp: "cpp",
+  cxx: "cpp",
+  hh: "cpp",
+  hpp: "cpp",
+  hxx: "cpp",
+  java: "java",
+  kt: "kotlin",
+  kts: "kotlin",
+  rs: "rust",
+  py: "python"
+};
+function selectProfile(path, mappings = {}) {
+  const name6 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name6.lastIndexOf(".");
+  if (dot <= 0) return void 0;
+  const extension = name6.slice(dot + 1).toLowerCase();
+  const mappedName = mappings[extension];
+  if (mappedName !== void 0) {
+    const profile2 = profiles[mappedName];
+    if (profile2 === void 0) throw new Error(`unknown lexer profile "${mappedName}"`);
+    return { profile: profile2, mapped: true };
+  }
+  const builtIn = extensionProfiles[extension];
+  const profile = builtIn === void 0 ? void 0 : profiles[builtIn];
+  return profile === void 0 ? void 0 : { profile, mapped: false };
+}
+
+// packages/lexical/src/strip.ts
+function normaliseNewlines(content) {
+  const withoutBom = content.charCodeAt(0) === 65279 ? content.slice(1) : content;
+  return withoutBom.replace(/\r\n?/g, "\n");
+}
+var NONE = 0;
+var COMMENT = 1;
+var STRING = 2;
+var compiledProfiles2 = /* @__PURE__ */ new WeakMap();
+function compileRules(profile) {
+  const cached = compiledProfiles2.get(profile);
+  if (cached !== void 0) return cached;
+  const compiled = profile.strings.map(
+    (rule) => rule.kind === "delimited" ? { rule, open: new RegExp(rule.open, "y") } : { rule, pattern: new RegExp(rule.pattern, "y"), after: rule.after === void 0 ? void 0 : new RegExp(rule.after) }
+  );
+  compiledProfiles2.set(profile, compiled);
+  return compiled;
+}
+function stripSource(rawContent, profile) {
+  const content = normaliseNewlines(rawContent);
+  const mask = profile === void 0 ? new Uint8Array(content.length) : maskLiterals(content, profile);
+  const lines = [];
+  let start = 0;
+  let number = 1;
+  while (start <= content.length) {
+    let end = content.indexOf("\n", start);
+    if (end === -1) end = content.length;
+    if (end === content.length && start === content.length && start > 0) break;
+    const text = content.slice(start, end);
+    let code = "";
+    let sawComment = false;
+    for (let i = start; i < end; i++) {
+      if (mask[i] === NONE) code += content[i];
+      else {
+        code += " ";
+        if (mask[i] === COMMENT) sawComment = true;
+      }
+    }
+    const startsInString = start > 0 && mask[start - 1] === STRING;
+    let kind;
+    if (text.trim() === "") kind = "blank";
+    else if (startsInString && code.trim() === "") kind = "literal";
+    else if (code.trim() !== "") kind = "code";
+    else kind = sawComment || start > 0 && mask[start - 1] === COMMENT ? "comment" : "code";
+    lines.push({ number, text, code, kind, startsInLiteral: startsInString });
+    number++;
+    start = end + 1;
+  }
+  return lines;
+}
+function maskLiterals(content, profile) {
+  const mask = new Uint8Array(content.length);
+  const rules5 = compileRules(profile);
+  const triggers = /* @__PURE__ */ new Set();
+  for (const comment of profile.lineComments) triggers.add(comment[0]);
+  for (const comment of profile.blockComments) triggers.add(comment.open[0]);
+  for (const { rule } of rules5) for (const ch of rule.triggers) triggers.add(ch);
+  scan(0, false);
+  return mask;
+  function scan(from, untilBrace, closer = "}") {
+    let depth = 0;
+    let i = from;
+    while (i < content.length) {
+      const ch = content[i];
+      if (untilBrace) {
+        if (ch === "{") depth++;
+        else if (content.startsWith(closer, i)) {
+          if (depth === 0) return i;
+          depth--;
+        }
+      }
+      if (!triggers.has(ch)) {
+        i++;
+        continue;
+      }
+      const skipped = tryLiteral(i);
+      i = skipped > i ? skipped : i + 1;
+    }
+    return i;
+  }
+  function tryLiteral(i) {
+    for (const comment of profile.lineComments) {
+      if (content.startsWith(comment, i)) {
+        let end = content.indexOf("\n", i);
+        if (end === -1) end = content.length;
+        mask.fill(COMMENT, i, end);
+        return end;
+      }
+    }
+    for (const comment of profile.blockComments) {
+      if (content.startsWith(comment.open, i)) return maskBlockComment(i, comment.open, comment.close, comment.nested === true);
+    }
+    for (const compiled of rules5) {
+      if ("pattern" in compiled) {
+        if (compiled.after !== void 0 && !compiled.after.test(content.slice(Math.max(0, i - 16), i))) continue;
+        compiled.pattern.lastIndex = i;
+        const match = compiled.pattern.exec(content);
+        if (match !== null) {
+          mask.fill(STRING, i, i + match[0].length);
+          return i + match[0].length;
+        }
+      } else {
+        compiled.open.lastIndex = i;
+        const match = compiled.open.exec(content);
+        if (match !== null) return maskDelimited(i, match, compiled.rule);
+      }
+    }
+    return i;
+  }
+  function maskBlockComment(from, open, close, nested) {
+    let depth = 1;
+    let i = from + open.length;
+    while (i < content.length) {
+      if (nested && content.startsWith(open, i)) {
+        depth++;
+        i += open.length;
+      } else if (content.startsWith(close, i)) {
+        depth--;
+        i += close.length;
+        if (depth === 0) break;
+      } else i++;
+    }
+    mask.fill(COMMENT, from, i);
+    return i;
+  }
+  function maskDelimited(from, opener, rule) {
+    const close = rule.close.replace("$1", opener[1] ?? "");
+    let i = from + opener[0].length;
+    let segmentStart = from;
+    const finish = (end) => {
+      mask.fill(STRING, segmentStart, end);
+      return end;
+    };
+    while (i < content.length) {
+      const ch = content[i];
+      if (rule.escape !== void 0 && ch === rule.escape) {
+        i += 2;
+        continue;
+      }
+      if (ch === "\n" && !rule.multiline) return finish(i);
+      if (rule.doubledCloseEscapes === true && content.startsWith(close + close, i)) {
+        i += close.length * 2;
+        continue;
+      }
+      if (content.startsWith(close, i)) return finish(i + close.length);
+      if (rule.interpolation !== void 0 && content.startsWith(rule.interpolation.open, i)) {
+        const innerStart = i + rule.interpolation.open.length;
+        const innerEnd = scan(innerStart, true, rule.interpolation.close);
+        mask.fill(STRING, segmentStart, innerStart);
+        i = Math.min(innerEnd, content.length);
+        segmentStart = i;
+        continue;
+      }
+      i++;
+    }
+    return finish(Math.min(i, content.length));
+  }
+}
+
+// packages/lexical/src/analyse-source.ts
+function analyseSource(path, content, options = {}) {
+  const selection = selectProfile(path, options.mappings);
+  const profile = selection?.profile;
+  const lines = stripSource(content, profile);
+  const file = { ...indentationMetrics(lines), ...lengthMetrics(lines) };
+  const skipped = [];
+  const blocks = [];
+  if (profile === void 0) {
+    const reason = `no lexer profile for ${path}`;
+    skipped.push(`comment and string stripping: ${reason}`);
+    skipped.push(`keywordComplexity: ${reason}`);
+    skipped.push(`function blocks: ${reason}`);
+  } else {
+    file.keywordComplexity = keywordComplexity(lines, profile);
+    for (const block of findFunctionBlocks(lines, profile)) {
+      const metrics = blockMetrics(lines, block, profile, {
+        indentUnit: file.indentUnit,
+        ...options.bumpDepth === void 0 ? {} : { bumpDepth: options.bumpDepth }
+      });
+      blocks.push({ ...block, metrics, bumpyRoad: isBumpyRoad(metrics, options.bumpyRoad) });
+    }
+  }
+  return {
+    path,
+    source: "lexical",
+    profile: profile?.name ?? null,
+    unverified: selection?.mapped ?? false,
+    file,
+    functions: { gated: true, gate: "agreement", blocks },
+    skipped
+  };
+}
+
+// packages/lexical/src/indentation-complexity.ts
+function indentationComplexity(text, path = "") {
+  return analyseSource(path, text).file.indentationComplexity;
 }
 
 // packages/cochange/src/complexity-source.ts
