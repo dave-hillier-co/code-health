@@ -1,5 +1,6 @@
 import { discoverCommand, parseArguments, type OptionSpec, type ParsedArguments } from "./args.ts";
 import { explainConfig, loadConfig, type LoadedConfig, type PluginConfigSpec } from "./config.ts";
+import { buildDocument } from "./document.ts";
 import { assertNodeVersion } from "./environment.ts";
 import { CliError, ExitCode, usageError } from "./errors.ts";
 import { readRepoState, type RepoState } from "./repo-state.ts";
@@ -18,6 +19,8 @@ export interface CommandContext {
 export interface CommandOutput {
   /** Everything the results depend on beyond repo, config and history. */
   inputs?: Record<string, unknown>;
+  /** Sections emitted beside the envelope in JSON, such as `evidence` or `window`. Not shown in tables. */
+  extra?: Record<string, unknown>;
   /** A list of rows (sorted, limited and projected by the kit) or any other JSON value. */
   results: unknown;
   /** Table columns, and the valid values for --fields. Defaults to the keys of the first row. */
@@ -124,22 +127,25 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
 
   if (args.json || !io.stdout.isTTY) {
     io.stdout.write(
-      serialise({
-        schemaVersion: cli.schemaVersion ?? 1,
-        tool: cli.tool,
-        command: commandName,
-        repo: { head: repo.head, dirty: repo.dirty },
-        config: config.hash,
-        inputs: output.inputs ?? {},
-        results,
-        truncated,
-        meta: {
-          durationMs: Date.now() - started,
-          generatedAt: new Date().toISOString(),
-          gitVersion: repo.gitVersion,
-          node: process.versions.node,
-        },
-      }),
+      serialise(
+        buildDocument({
+          schemaVersion: cli.schemaVersion ?? 1,
+          tool: cli.tool,
+          command: commandName,
+          repo: { head: repo.head, dirty: repo.dirty },
+          configHash: config.hash,
+          inputs: output.inputs,
+          extra: output.extra,
+          results,
+          truncated,
+          meta: {
+            durationMs: Date.now() - started,
+            generatedAt: new Date().toISOString(),
+            gitVersion: repo.gitVersion,
+            node: process.versions.node,
+          },
+        }),
+      ),
     );
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results as Record<string, unknown>[], args.fields ?? columns, truncated));

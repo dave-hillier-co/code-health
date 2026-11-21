@@ -21,6 +21,11 @@ const cli: CliDefinition = {
       options: { since: { type: "string" } },
       run: ({ values }) => ({ inputs: { since: values.since ?? null }, results: rows, columns: ["path", "score", "churn"] }),
     },
+    sections: {
+      summary: "Extra sections",
+      run: () => ({ results: [], extra: { evidence: { grade: "weak" } } }),
+    },
+    clash: { summary: "Clashing extra", run: () => ({ results: [], extra: { results: 1 } }) },
     check: { summary: "Fail", run: () => ({ results: [], failed: true }) },
     summary: { summary: "Object result", run: () => ({ results: { verdict: "ok" } }) },
     usage: { summary: "Usage error", run: () => { throw usageError("bad input"); } },
@@ -132,6 +137,18 @@ test("a command that reports a failed check exits 1 and still prints its output"
   const { code, stdout } = await run(["check"]);
   expect(code).toBe(ExitCode.CheckFailed);
   expect(JSON.parse(stdout).results).toEqual([]);
+});
+
+test("extra sections are emitted beside the envelope", async () => {
+  const document = JSON.parse((await run(["sections"])).stdout);
+  expect(document.evidence).toEqual({ grade: "weak" });
+  expect(document.results).toEqual([]);
+});
+
+test("an extra section that clashes with the envelope is an internal error", async () => {
+  const { code, stderr } = await run(["clash"]);
+  expect(code).toBe(ExitCode.Environment);
+  expect(stderr).toContain("results");
 });
 
 test("object results pass through", async () => {
