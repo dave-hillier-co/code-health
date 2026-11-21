@@ -127,7 +127,13 @@ export interface HistoryAnalysis {
 export async function analyseHistory(repoPath: string, options: HistoryAnalysisOptions = {}): Promise<HistoryAnalysis> {
   const view = await readHistory(repoPath, options);
   const filtered = await filterHistory(repoPath, view, options.noise);
+  // Usable history and the grade are properties of the whole repository, so a
+  // window passed through the noise options must not clip them.
+  const windowed = options.noise?.since !== undefined || options.noise?.until !== undefined;
+  const whole = windowed
+    ? await filterHistory(repoPath, view, { ...options.noise, since: undefined, until: undefined })
+    : filtered;
   const shallow = await readShallowInfo(repoPath);
-  const evidence = computeEvidence(view, filtered.changes, shallow, filtered.imported, options.evidence);
+  const evidence = computeEvidence(view, whole.changes, shallow, whole.imported, options.evidence);
   return { view, filtered, filtersApplied: filtered.filtersApplied, evidence };
 }

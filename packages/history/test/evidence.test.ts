@@ -93,6 +93,23 @@ test("only changes inside the window count, but usable history is not clipped to
   expect(evidence.usableHistoryMonths).toBeGreaterThan(24);
 });
 
+test("windowing the changes through noise.since does not clip usable history or the grade", async () => {
+  const steps: Step[] = [edit("2022-01-01T10:00:00Z", "a", 1)];
+  for (let i = 0; i < 8; i++) {
+    steps.push(edit(`2024-${String(i + 1).padStart(2, "0")}-10T10:00:00Z`, `f${i}`, i, i % 2 ? bob : alice));
+  }
+  const repo = build(steps);
+  await refresh(repo.path);
+  const since = Date.parse("2023-09-01T00:00:00Z") / 1000;
+  const { evidence, filtered } = await analyseHistory(repo.path, {
+    noise: { since },
+    evidence: { thresholds, windowMonths: 12 },
+  });
+  expect(filtered.changes).toHaveLength(8);
+  expect(evidence.usableHistoryMonths).toBeGreaterThan(24);
+  expect(evidence.grade).toBe("strong");
+});
+
 test("bots and filtered-out noise do not count as contributors or changes", async () => {
   const bot = { name: "renovate[bot]", email: "bot@example.com" };
   const repo = build([edit("2024-01-01T10:00:00Z", "a", 1), edit("2024-01-02T10:00:00Z", "b", 1, bot)]);
