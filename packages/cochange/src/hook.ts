@@ -29,7 +29,7 @@ export interface HookRequest {
 }
 
 /** Names the hook in its session state, apart from other plugins' hooks. */
-const HOOK_NAME = "cochange";
+export const HOOK_NAME = "cochange";
 
 /** The most partners one note names. */
 const MAX_PARTNERS_NAMED = 3;

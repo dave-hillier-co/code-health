@@ -102,6 +102,7 @@ Applied at query time, not ingestion, so changing config never needs a rebuild:
 | `cochange spread [--since DATE] [--until DATE] [--bucket week\|month]` | Change-spread distribution per bucket. Used for baselines and outcome comparison. |
 | `cochange age [--by file\|component]` | Last-changed and first-seen per file. |
 | `cochange trend PATH [--samples N]` | Complexity proxy and size of one file sampled across its history, to show whether a hotspot is getting worse. |
+| `cochange outcome spread --at DATE PATH... [--months N]`, `cochange outcome completeness --since DATE --until DATE [--projects-dir DIR]` | The change-spread outcome against matched untouched files, and the agent completeness outcome from session transcripts with and without the hook. See [Measurement](#measurement). |
 | `cochange brief PATH...` | A compact pre-change briefing: files usually changed alongside, recent activity, whether the file is a hotspot. Built for agents. |
 | `cochange blame refresh`, `cochange abandonment …`, `cochange successors` | Knowledge-loss analysis. Only when enabled. See [abandonment.md](abandonment.md#cli). |
 | `cochange risk …` | Risk of a branch against its base. See [change-risk.md](change-risk.md#cli). |
@@ -162,6 +163,8 @@ This plugin supplies the suite's primary outcome measure, change spread. Its own
 | Revisions per hotspot over a matching window | Effort concentration decreased | Secondary outcome |
 | Hotspot score of acted-on files | The file got simpler or less churned | Leading indicator only |
 | Agent edits followed by a coupled file being edited later in the same session, with and without the hook | The briefing and hook prevented missed changes | Agent outcome |
+
+`outcome spread` takes the files acted on and a date. The comparison group is the untouched file of nearest rank for each, ranked by revisions in the before window, since a hotspot score exists only at the analysed commit, and files that changed together with an acted-on file are passed over. `outcome completeness` reads session transcripts for the edits of each session in order, counts a file's first edit as an opportunity when a coupled partner the hook would name is not yet edited, and counts it followed when one is edited later in the session. Sessions are with the hook when it left session state for them. The two arms are not randomised, so the difference is reported as an association. Both read only paths and counts, and neither writes a report.
 
 ## Privacy
 

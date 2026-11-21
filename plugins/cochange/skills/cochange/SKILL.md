@@ -90,9 +90,11 @@ Use this when someone acted on findings and asks whether it helped. Change sprea
 1. Take a baseline before the work: `spread --until DATE --bucket month`, with the same filters you will use afterwards. A baseline cannot be taken after the fact once history has moved on, so offer to take one at the start of any refactoring effort.
 2. After the work, run `spread --since DATE` over a window of matching length.
 3. Report sample sizes (`measured` per bucket) next to every figure, and the `oversizedShare`, since the widest changes are left out of the distribution and a shift in that share is part of the result.
-4. Do not compare raw before and after for the files you acted on. They were chosen because they were extreme, and extreme values drift back toward average when left alone. Set them beside files of similar rank that were not acted on, and report the difference between the two groups.
+4. Do not compare raw before and after for the files you acted on. They were chosen because they were extreme, and extreme values drift back toward average when left alone. `outcome spread --at DATE PATH...` does the comparison: it sets each acted-on file beside the untouched file of nearest rank (by revisions in the before window, skipping files that changed together with an acted-on one), over matching windows either side of the date, and reports the difference between the two groups' changes in spread (primary) and revisions per file (secondary). Read its `conclusion`, `smallestSample` and `windows.after.complete`, and name the sample sizes.
 5. Spread falls by construction when files that change together are moved together. Say so, and treat it as a leading indicator, not proof that work got cheaper.
 6. If the data cannot show an effect, say that. Do not claim one.
+
+To ask whether the completeness hook helped agents, run `outcome completeness --since DATE --until DATE`. It reads the session transcripts on this machine (paths and counts only) and reports, with and without the hook, how often an edit to a file with unedited coupled partners was followed by an edit to one of them later in the same session. Sessions were not assigned to the hook at random, so report the difference as an association, with its sample sizes, and say when `conclusion` is `insufficient-sample`.
 
 Commits made through the suite's skills carry a `Code-Health:` trailer. `spread` leaves those out and reports how many in `excludedByTrailer`.
 

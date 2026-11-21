@@ -7,6 +7,7 @@ import * as clusters from "./commands/clusters.ts";
 import * as coupling from "./commands/coupling.ts";
 import * as hotspots from "./commands/hotspots.ts";
 import * as identities from "./commands/identities.ts";
+import * as outcome from "./commands/outcome.ts";
 import * as refresh from "./commands/refresh.ts";
 import * as risk from "./commands/risk.ts";
 import * as spread from "./commands/spread.ts";
@@ -36,6 +37,7 @@ export const commandModules: CommandModule[] = [
   coupling,
   hotspots,
   identities,
+  outcome,
   refresh,
   risk,
   spread,
