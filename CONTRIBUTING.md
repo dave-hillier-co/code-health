@@ -50,6 +50,8 @@ Every command gets:
 
 `npm run check:schemas` compiles every schema and validates every golden against the schema named by its file name. Scenario folders starting with an underscore are exempt.
 
+A command may group subcommands that share its setup, as `structure packages <list|cohesion|coupling|boundaries|candidates|evidence|check|outcome>` does. The command module dispatches on its first positional argument to subcommands in `packages/<p>/src/<area>/commands/`, which each export a `Subcommand` (`summary`, optional `options`, `analyse`). They share one schema, `plugins/<p>/schemas/<command>.schema.json`, whose branches are selected by `inputs.subcommand`. Goldens name the subcommand as the variant, such as `packages.list.json`.
+
 ### Plugins that parse
 
 A plugin parses when its bundle includes `packages/parse/src/grammars.ts`, directly or through another package. The build detects this and copies the tree-sitter `.wasm` files into `plugins/<p>/dist/grammars/` with `copyGrammars` from `packages/parse/src/copy-grammars.ts`. Nothing else is needed in the plugin:
