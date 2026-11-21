@@ -1,0 +1,8 @@
+{
+  "importEdges": [
+    "pkg/__init__.py -> pkg/__init__.py import",
+    "pkg/__init__.py -> pkg/names.py import",
+    "pkg/__init__.py -> pkg/ordered.py import",
+    "pkg/__init__.py -> pkg/used.py import"
+  ]
+}
