@@ -10,7 +10,8 @@ import type { ModuleResolver, Resolution } from "./language-adapter.ts";
 
 type ExportResult =
   | { status: "defined"; file: string; exportName: string; symbol?: string }
-  | { status: "namespace"; file: string }
+  /** The module itself, as a whole. `submodule` is set when the name was a module of a package and no export (Python `from package import module`). */
+  | { status: "namespace"; file: string; submodule?: true }
   /** The file's exports are not statically known (CommonJS, JSON, other formats). */
   | { status: "opaque"; file: string }
   | { status: "external" }
@@ -162,6 +163,8 @@ export class ImportModel {
             }
             break;
           case "namespace":
+            // A module imported by name from its package is a dependency on that module file, not only on the package.
+            if (result.submodule === true) this.addImportEdge(path, result.file, "import", imported.typeOnly);
             this.useNamespace(path, result.file, uses, unitNames);
             break;
           case "opaque":
@@ -274,6 +277,8 @@ export class ImportModel {
         if (result.status !== "missing") return result;
       }
     }
+    const submodule = this.resolver.submodule?.(path, name);
+    if (submodule !== undefined) return { status: "namespace", file: submodule, submodule: true };
     return file.exports.length === 0 && file.reexports.length === 0
       ? { status: "opaque", file: path }
       : { status: "missing" };

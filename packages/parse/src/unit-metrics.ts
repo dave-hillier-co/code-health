@@ -129,8 +129,16 @@ class Measurer {
       return;
     }
     if (type === c.switch.caseType) {
-      this.cyclomatic++;
-      this.record(node, "cyclomatic", "case", 1, 0, "case");
+      if (this.rules.isDefaultCase?.(node) !== true) {
+        this.cyclomatic++;
+        this.record(node, "cyclomatic", "case", 1, 0, "case");
+      }
+      this.children(node, level, depth);
+      return;
+    }
+    const only = c.cyclomaticOnly?.[type];
+    if (only !== undefined) {
+      this.decision(node, only);
       this.children(node, level, depth);
       return;
     }
@@ -142,7 +150,7 @@ class Measurer {
     if (type === c.catchType) {
       this.flow(node, "catch", level);
       this.decision(node, "catch");
-      const body = node.childForFieldName("body");
+      const body = c.catchBodyType === undefined ? node.childForFieldName("body") : (node.namedChildren.find((child) => child.type === c.catchBodyType) ?? null);
       this.children(node, level, depth, body);
       if (body !== null) this.visit(body, level + 1, depth);
       return;
@@ -150,12 +158,9 @@ class Measurer {
     if (type === c.ternary.type) {
       this.flow(node, "ternary", level);
       this.decision(node, "ternary");
-      const condition = node.childForFieldName(c.ternary.condition);
+      const [condition, ...branches] = this.ternaryParts(node);
       if (condition !== null) this.visit(condition, level, depth);
-      for (const name of [c.ternary.consequence, c.ternary.alternative]) {
-        const branch = node.childForFieldName(name);
-        if (branch !== null) this.visit(branch, level + 1, depth);
-      }
+      for (const branch of branches) if (branch !== null) this.visit(branch, level + 1, depth);
       return;
     }
     if (type === c.binary.type) {
@@ -183,6 +188,14 @@ class Measurer {
     this.children(node, level, depth);
   }
 
+  /** The condition, consequence and alternative of a ternary, by field or by position. */
+  private ternaryParts(node: Node): [Node | null, Node | null, Node | null] {
+    const t = this.c.ternary;
+    if (t.positional !== true) return [node.childForFieldName(t.condition), node.childForFieldName(t.consequence), node.childForFieldName(t.alternative)];
+    const parts = node.namedChildren.filter((child) => !this.c.commentTypes.has(child.type));
+    return [parts[1] ?? null, parts[0] ?? null, parts[2] ?? null];
+  }
+
   private operatorOf(node: Node): string | undefined {
     return node.childForFieldName(this.c.binary.operator)?.type;
   }
@@ -200,6 +213,10 @@ class Measurer {
     const consequence = node.childForFieldName(c.consequence);
     // An else-if sits at its if's depth, so every body in the chain is one level deeper than the chain.
     if (consequence !== null) this.visit(consequence, level + 1, depth + 1);
+    if (c.clauses !== undefined) {
+      this.clauseChain(node, level, depth);
+      return;
+    }
     const alternative = node.childForFieldName(c.alternative);
     if (alternative === null) return;
     const inner = c.alternativeIsClause ? (alternative.namedChildren.find((child) => !this.c.commentTypes.has(child.type)) ?? null) : alternative;
@@ -210,6 +227,25 @@ class Measurer {
     } else {
       this.flat(alternative, "else");
       this.visit(inner, level + 1, depth + 1);
+    }
+  }
+
+  /** The `elif` and `else` clauses of an `if` whose alternatives are clause nodes. They sit at the `if`'s level and depth. */
+  private clauseChain(node: Node, level: number, depth: number): void {
+    const c = this.c.conditional;
+    for (const clause of node.childrenForFieldName(c.alternative)) {
+      if (clause.type === c.clauses!.elif) {
+        this.flat(clause, "else if");
+        this.decision(clause, "else if");
+        const condition = clause.childForFieldName(c.condition);
+        if (condition !== null) this.visit(condition, level, depth);
+        const consequence = clause.childForFieldName(c.consequence);
+        if (consequence !== null) this.visit(consequence, level + 1, depth + 1);
+      } else if (clause.type === c.clauses!.else) {
+        this.flat(clause, "else");
+        const body = clause.childForFieldName("body");
+        if (body !== null) this.visit(body, level + 1, depth + 1);
+      }
     }
   }
 
