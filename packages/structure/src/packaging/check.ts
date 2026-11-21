@@ -46,7 +46,7 @@ export async function violationsAt(root: string, sha: string, settings: Structur
   return violations.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 }
 
-async function structuralModel(root: string, sha: string, settings: StructureSettings): Promise<PackageModel> {
+export async function structuralModel(root: string, sha: string, settings: StructureSettings): Promise<PackageModel> {
   const tree = await treeFromRef(root, sha);
   const components = readComponents(settings.components);
   const packages = await discoverPackages(tree, { ignore: settings.packages.ignore, extra: settings.packages.extra, components, exclude: settings.exclude });

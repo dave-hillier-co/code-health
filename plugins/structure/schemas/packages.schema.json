@@ -377,6 +377,58 @@
             "type": "object",
             "properties": {
               "subcommand": {
+                "const": "outcome"
+              }
+            },
+            "required": [
+              "subcommand"
+            ]
+          }
+        },
+        "required": [
+          "inputs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
+                "const": "outcome"
+              },
+              "at": {
+                "$ref": "common.schema.json#/$defs/sha"
+              },
+              "before": {
+                "$ref": "common.schema.json#/$defs/sha"
+              },
+              "transcripts": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "subcommand",
+              "at",
+              "before",
+              "transcripts"
+            ],
+            "additionalProperties": false
+          },
+          "results": {
+            "$ref": "#/$defs/outcome"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
                 "const": "coupling"
               }
             },
@@ -446,6 +498,7 @@
             "candidates",
             "evidence",
             "check",
+            "outcome",
             "coupling"
           ]
         }
@@ -465,6 +518,941 @@
   ],
   "unevaluatedProperties": false,
   "$defs": {
+    "outcome": {
+      "type": "object",
+      "properties": {
+        "reshaped": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "$ref": "common.schema.json#/$defs/sha"
+            },
+            "before": {
+              "$ref": "common.schema.json#/$defs/sha"
+            },
+            "kind": {
+              "enum": [
+                "merge",
+                "split",
+                "move",
+                "removal"
+              ]
+            },
+            "replaced": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "created": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "movedFiles": {
+              "$ref": "common.schema.json#/$defs/count"
+            }
+          },
+          "required": [
+            "at",
+            "before",
+            "kind",
+            "replaced",
+            "created",
+            "movedFiles"
+          ],
+          "additionalProperties": false
+        },
+        "windows": {
+          "type": "object",
+          "properties": {
+            "before": {
+              "type": "object",
+              "properties": {
+                "since": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "until": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "since",
+                "until"
+              ],
+              "additionalProperties": false
+            },
+            "after": {
+              "type": "object",
+              "properties": {
+                "since": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "until": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "since",
+                "until"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "before",
+            "after"
+          ],
+          "additionalProperties": false
+        },
+        "byConstruction": {
+          "type": "boolean"
+        },
+        "before": {
+          "type": "object",
+          "properties": {
+            "changes": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "packagesPerChange": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "closure": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "comparable": {
+              "type": "object",
+              "properties": {
+                "packages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "packagesPerChange": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "closure": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "packages",
+                "packagesPerChange",
+                "closure"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "changes",
+            "packagesPerChange",
+            "closure",
+            "comparable"
+          ],
+          "additionalProperties": false
+        },
+        "after": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "changes": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "packagesPerChange": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "closure": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "comparable": {
+                  "type": "object",
+                  "properties": {
+                    "packages": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "packagesPerChange": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "closure": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "packages",
+                    "packagesPerChange",
+                    "closure"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "changes",
+                "packagesPerChange",
+                "closure",
+                "comparable"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "reuse": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "before": {
+                  "type": "object",
+                  "properties": {
+                    "consumers": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    },
+                    "medianShare": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "components": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    }
+                  },
+                  "required": [
+                    "consumers",
+                    "medianShare",
+                    "components"
+                  ],
+                  "additionalProperties": false
+                },
+                "after": {
+                  "type": "object",
+                  "properties": {
+                    "consumers": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    },
+                    "medianShare": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "components": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    }
+                  },
+                  "required": [
+                    "consumers",
+                    "medianShare",
+                    "components"
+                  ],
+                  "additionalProperties": false
+                },
+                "tradedOneCostForAnother": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "before",
+                "after",
+                "tradedOneCostForAnother"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "leading": {
+          "type": "object",
+          "properties": {
+            "packages": {
+              "type": "object",
+              "properties": {
+                "before": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "after": {
+                  "$ref": "common.schema.json#/$defs/count"
+                }
+              },
+              "required": [
+                "before",
+                "after"
+              ],
+              "additionalProperties": false
+            },
+            "medianDistance": {
+              "type": "object",
+              "properties": {
+                "before": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "after": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "before",
+                "after"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "packages",
+            "medianDistance"
+          ],
+          "additionalProperties": false
+        },
+        "agentEffort": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "const": "measured"
+                },
+                "before": {
+                  "type": "object",
+                  "properties": {
+                    "tasks": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    },
+                    "filesRead": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mean": {
+                              "type": "number"
+                            },
+                            "median": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mean",
+                            "median"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "foldersVisited": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mean": {
+                              "type": "number"
+                            },
+                            "median": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mean",
+                            "median"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "reReads": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mean": {
+                              "type": "number"
+                            },
+                            "median": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mean",
+                            "median"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "edits": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mean": {
+                              "type": "number"
+                            },
+                            "median": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mean",
+                            "median"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "tokens": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mean": {
+                              "type": "number"
+                            },
+                            "median": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mean",
+                            "median"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "tasks",
+                    "filesRead",
+                    "foldersVisited",
+                    "reReads",
+                    "edits",
+                    "tokens"
+                  ],
+                  "additionalProperties": false
+                },
+                "after": {
+                  "type": "object",
+                  "properties": {
+                    "tasks": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    },
+                    "filesRead": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mean": {
+                              "type": "number"
+                            },
+                            "median": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mean",
+                            "median"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "foldersVisited": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mean": {
+                              "type": "number"
+                            },
+                            "median": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mean",
+                            "median"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "reReads": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mean": {
+                              "type": "number"
+                            },
+                            "median": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mean",
+                            "median"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "edits": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mean": {
+                              "type": "number"
+                            },
+                            "median": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mean",
+                            "median"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "tokens": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mean": {
+                              "type": "number"
+                            },
+                            "median": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mean",
+                            "median"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "tasks",
+                    "filesRead",
+                    "foldersVisited",
+                    "reReads",
+                    "edits",
+                    "tokens"
+                  ],
+                  "additionalProperties": false
+                },
+                "control": {
+                  "type": "object",
+                  "properties": {
+                    "before": {
+                      "type": "object",
+                      "properties": {
+                        "tasks": {
+                          "$ref": "common.schema.json#/$defs/count"
+                        },
+                        "filesRead": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mean": {
+                                  "type": "number"
+                                },
+                                "median": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "mean",
+                                "median"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "foldersVisited": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mean": {
+                                  "type": "number"
+                                },
+                                "median": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "mean",
+                                "median"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "reReads": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mean": {
+                                  "type": "number"
+                                },
+                                "median": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "mean",
+                                "median"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "edits": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mean": {
+                                  "type": "number"
+                                },
+                                "median": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "mean",
+                                "median"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "tokens": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mean": {
+                                  "type": "number"
+                                },
+                                "median": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "mean",
+                                "median"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tasks",
+                        "filesRead",
+                        "foldersVisited",
+                        "reReads",
+                        "edits",
+                        "tokens"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "after": {
+                      "type": "object",
+                      "properties": {
+                        "tasks": {
+                          "$ref": "common.schema.json#/$defs/count"
+                        },
+                        "filesRead": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mean": {
+                                  "type": "number"
+                                },
+                                "median": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "mean",
+                                "median"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "foldersVisited": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mean": {
+                                  "type": "number"
+                                },
+                                "median": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "mean",
+                                "median"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "reReads": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mean": {
+                                  "type": "number"
+                                },
+                                "median": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "mean",
+                                "median"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "edits": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mean": {
+                                  "type": "number"
+                                },
+                                "median": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "mean",
+                                "median"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "tokens": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mean": {
+                                  "type": "number"
+                                },
+                                "median": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "mean",
+                                "median"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tasks",
+                        "filesRead",
+                        "foldersVisited",
+                        "reReads",
+                        "edits",
+                        "tokens"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "before",
+                    "after"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "status",
+                "before",
+                "after",
+                "control"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "const": "not-measured"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "status",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "reshaped",
+        "windows",
+        "byConstruction",
+        "before",
+        "after",
+        "reuse",
+        "leading",
+        "agentEffort"
+      ],
+      "additionalProperties": false
+    },
     "violation": {
       "type": "object",
       "properties": {

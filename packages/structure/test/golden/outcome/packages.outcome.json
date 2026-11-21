@@ -1,0 +1,260 @@
+{
+  "command": "packages",
+  "config": "e5edf91edf90c73b",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 37,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 4.3,
+    "window": {
+      "months": 12,
+      "since": 1652518800,
+      "until": 1684054800
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 1,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "at": "bd3097bd7710eaca807372848f56f4ad9cb20e4f",
+    "before": "fce501fcf6e5d8ef8e0e859ef67afdfff896d013",
+    "subcommand": "outcome",
+    "transcripts": true
+  },
+  "repo": {
+    "dirty": false,
+    "head": "52ff135b05f2bc7ddc62b15d4bd7530264624c4b"
+  },
+  "results": {
+    "after": {
+      "changes": 10,
+      "closure": 0.8,
+      "comparable": {
+        "closure": 1,
+        "packages": [
+          "packages/solo"
+        ],
+        "packagesPerChange": 1
+      },
+      "packagesPerChange": 1.2
+    },
+    "agentEffort": {
+      "after": {
+        "edits": {
+          "mean": 1,
+          "median": 1
+        },
+        "filesRead": {
+          "mean": 1,
+          "median": 1
+        },
+        "foldersVisited": {
+          "mean": 1,
+          "median": 1
+        },
+        "reReads": {
+          "mean": 0,
+          "median": 0
+        },
+        "tasks": 1,
+        "tokens": {
+          "mean": 100,
+          "median": 100
+        }
+      },
+      "before": {
+        "edits": {
+          "mean": 1,
+          "median": 1
+        },
+        "filesRead": {
+          "mean": 1,
+          "median": 1
+        },
+        "foldersVisited": {
+          "mean": 1,
+          "median": 1
+        },
+        "reReads": {
+          "mean": 0,
+          "median": 0
+        },
+        "tasks": 2,
+        "tokens": {
+          "mean": 100,
+          "median": 100
+        }
+      },
+      "control": {
+        "after": {
+          "edits": {
+            "mean": 1,
+            "median": 1
+          },
+          "filesRead": {
+            "mean": 1,
+            "median": 1
+          },
+          "foldersVisited": {
+            "mean": 1,
+            "median": 1
+          },
+          "reReads": {
+            "mean": 0,
+            "median": 0
+          },
+          "tasks": 1,
+          "tokens": {
+            "mean": 100,
+            "median": 100
+          }
+        },
+        "before": {
+          "edits": {
+            "mean": 1,
+            "median": 1
+          },
+          "filesRead": {
+            "mean": 1,
+            "median": 1
+          },
+          "foldersVisited": {
+            "mean": 1,
+            "median": 1
+          },
+          "reReads": {
+            "mean": 0,
+            "median": 0
+          },
+          "tasks": 1,
+          "tokens": {
+            "mean": 100,
+            "median": 100
+          }
+        }
+      },
+      "status": "measured"
+    },
+    "before": {
+      "changes": 9,
+      "closure": 0.889,
+      "comparable": {
+        "closure": 0.857,
+        "packages": [
+          "packages/solo"
+        ],
+        "packagesPerChange": 1.286
+      },
+      "packagesPerChange": 1.222
+    },
+    "byConstruction": true,
+    "leading": {
+      "medianDistance": {
+        "after": 0,
+        "before": 1
+      },
+      "packages": {
+        "after": 3,
+        "before": 4
+      }
+    },
+    "reshaped": {
+      "at": "bd3097bd7710eaca807372848f56f4ad9cb20e4f",
+      "before": "fce501fcf6e5d8ef8e0e859ef67afdfff896d013",
+      "created": [
+        "packages/left"
+      ],
+      "kind": "merge",
+      "movedFiles": 1,
+      "replaced": [
+        "packages/left",
+        "packages/right"
+      ]
+    },
+    "reuse": {
+      "after": {
+        "components": 1,
+        "consumers": 1,
+        "medianShare": 1
+      },
+      "before": {
+        "components": 2,
+        "consumers": 1,
+        "medianShare": 1
+      },
+      "tradedOneCostForAnother": false
+    },
+    "windows": {
+      "after": {
+        "since": "2023-04-02T09:00:00.000Z",
+        "until": "2023-05-14T09:00:00.000Z"
+      },
+      "before": {
+        "since": "2022-04-02T09:00:00.000Z",
+        "until": "2023-04-02T09:00:00.000Z"
+      }
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2022-05-14T09:00:00.000Z",
+    "until": "2023-05-14T09:00:00.000Z"
+  }
+}
