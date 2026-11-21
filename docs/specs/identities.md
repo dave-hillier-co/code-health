@@ -29,13 +29,14 @@ The CLI computes link evidence between pairs of raw identities. Each link carrie
 | Signal | Example | Strength |
 |---|---|---|
 | Exact email match after normalisation (case, `+tag`) | `Jo@x.com` / `jo+git@x.com` | Strong |
-| GitHub noreply username matches another identity's email local part or name | `1234+jsmith@users.noreply.github.com` / `jsmith@corp.com` | Strong |
+| Two GitHub noreply addresses with the same username or numeric id | `1234+jsmith@users.noreply.github.com` / `jsmith@users.noreply.github.com` | Strong |
+| GitHub noreply username matches another identity's email local part or name | `1234+jsmith@users.noreply.github.com` / `jsmith@corp.com` | Medium: the same evidence as a shared local part |
 | Same normalised name (case, diacritics, whitespace, `Last, First` order) | `José Pérez` / `jose perez` | Medium: common names collide |
 | Name derivable from email local part | `John Smith` / `j.smith@`, `jsmith@`, `john.smith@` | Medium |
 | Same email local part, different domains | `jsmith@corp.com` / `jsmith@gmail.com` | Medium |
 | Handover in time: one identity stops as the other starts, on overlapping files | Personal email until March, work email from March | Supporting |
-| Co-occurrence as author and committer on the same commits | Author `jo@home`, committer `jo@corp` | Strong |
-| Same signing key across identities, where commits are signed | GPG or SSH key fingerprint | Strong |
+| Exclusive pairing as author and committer: each identity appears on commits only with the other | Author `jo@home`, committer `jo@corp`, neither ever paired with anyone else | Supporting. Plain co-occurrence is not evidence, because a maintainer who applies, rebases or merges a patch is the committer on someone else's commit. Platform committers such as `GitHub <noreply@github.com>` are ignored. |
+| Same signing key across identities, where commits are signed | GPG or SSH key fingerprint | Strong, except for platform keys. GitHub's web-flow key signs every user's web-UI commits, so a key seen on many otherwise unlinked identities is ignored. |
 | Simultaneous activity on disjoint areas with the same name | Two `Alex Kim`s active in the same week in unrelated folders | Counter-evidence |
 
 Clusters are built from links, but **never transitively merged on weak links alone**. A chain of medium links (A~B by name, B~C by local part) is shown as a chain for review, not as one cluster.
@@ -51,12 +52,12 @@ Clusters are built from links, but **never transitively merged on weak links alo
 The skill writes two things:
 
 - **`.mailmap`** in git's standard format, so git itself, and every tool in the suite, honour it: `git log`, `git shortlog` and `git blame` all apply it.
-- **Decisions file** recording what `.mailmap` cannot express: rejected merges ("these are different people"), and classifications (bot, service, agent). It lives at `.cache/code-health/identity-decisions.json` by default.
+- **Decisions file** recording what `.mailmap` cannot express: rejected merges ("these are different people"), and classifications (bot, service, agent). It lives at `.code-health/local/identity-decisions.json` by default, outside the cache, because it cannot be regenerated ([suite.md](suite.md#local-state)).
 
 Where they go is a decision for the team, and the skill asks the first time:
 
 - **Committed** `.mailmap` (common practice, and it reveals nothing beyond what history already shows) plus a committed decisions file at `.code-health/identity-decisions.json`, so the whole team shares one reviewed mapping.
-- **Local only**: the mailmap goes to `.cache/code-health/mailmap`, passed to git with `-c mailmap.file=…`, for people who would rather not commit identity mappings.
+- **Local only**: the mailmap goes to `.code-health/local/mailmap`, passed to git with `-c mailmap.file=…`, for people who would rather not commit identity mappings.
 
 The CLI resolves identities the same way in both modes.
 
@@ -94,6 +95,14 @@ Rules for the agent:
 - When in doubt, keep identities separate. A missed merge understates one person's knowledge. A wrong merge invents a person and corrupts every downstream number.
 - Results go to the user only, and identity data is not included in reports from other skills unless those skills' own rules allow it.
 
+## Privacy
+
+The rest of the suite keeps data about people off by default. This skill is the stated exception, because it cannot map identities without showing them.
+
+- It shows the names and emails `git log` already shows, plus activity dates and areas as evidence for a merge. It shows nothing else about a person.
+- Its commands run through this skill or on an explicit request. No other skill's workflow includes them, except the `check` the abandonment skill runs, which reports counts and shares only.
+- Identity output is never written to `reports/`, so no other plugin can read it.
+
 ## Measurement
 
 - Share of HEAD lines (and of commits in the analysis window) attributed to mapped identities. It should be close to 100 % before abandonment results are trusted, and the abandonment skill reports it alongside its results.
@@ -111,7 +120,7 @@ Rules for the agent:
 In `cochange.identities`:
 
 - Mapping location (committed or local).
-- Additional bot and service patterns.
+- Bot and service patterns. This is the one place they are configured. Cochange's noise filters and the abandonment skill read them from here, together with the classifications in the decisions file.
 - The unmapped-share threshold that makes the abandonment skill invoke this one.
 - Agent trailer patterns.
 

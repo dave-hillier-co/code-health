@@ -27,7 +27,7 @@ Out of scope:
 
 ## Concepts
 
-**Problem dependency.** An import edge, or a set of edges between two folders or components, that is part of a cycle, violates a layer rule, or points against stability.
+**Problem dependency.** An import edge, or a set of edges between two folders or components, that is part of a cycle, violates a layer rule, or points against stability. Hidden coupling counts as one too, though it has no import edge: the dependency exists and the graph does not show it.
 
 **Breaking set.** For a cycle, the minimum set of symbol-level edges whose removal makes the folder or file graph acyclic: a minimum feedback arc set. That is NP-hard in general, but cycles in import graphs are small after folder grouping. Small components are solved exactly, and larger ones use the Eades–Lin–Smyth heuristic with deterministic tie-breaks (lower co-change first, then path order). Many cycles come down to one or two symbols used in the "wrong" direction.
 
@@ -43,13 +43,19 @@ Out of scope:
 | **High static coupling**, depended-on side rarely changes | **Stable dependency**: healthy. Keep it. | (Cannot occur: a side that rarely changes cannot co-change often.) |
 | **Low static coupling** | **Independent**: nothing to do. | **Hidden**: see below. Make the dependency explicit, or co-locate. |
 
-"Both sides active" means each side has at least the configured minimum revisions in the window, so low co-change is evidence and not just an absence of data. Co-change is judged against what independence would predict, `n(A)·n(B)/N` shared changes over *N* logical changes. Incidental means observed co-change at or below that, despite high static coupling.
+"Both sides active" means each side has at least the configured minimum revisions in the window, so low co-change is evidence and not just an absence of data. Co-change is judged against what independence would predict, `E = n(A)·n(B)/N` shared changes over *N* logical changes, using cochange's eligible-change counts. Comparing the observed count with *E* directly is not enough. On real histories *E* is usually well below one, so a single shared change would exceed it and almost every pair would look coupled. Instead:
+
+- **High co-change**: support clears the minimum, and the observed count is significantly above *E* (a one-sided exact test at the configured level, default 0.01).
+- **Low co-change**: both sides are active, and the observed count is not significantly above *E*.
+- **Insufficient evidence**: too little activity to tell. The pair is reported as such and placed in no quadrant.
+
+Incidental means low co-change despite high static coupling.
 
 Incidental coupling is cheap to break but does not cost change effort directly, so on its own it ranks low. It ranks high when it also blocks a locality move, forms part of a cycle, violates a layer rule, or burdens agents with reads (files opened only to follow the dependency, from transcripts).
 
 **Registration hub.** A central file that every feature has to edit: route tables, menu definitions, reducer or handler maps, DI module lists, feature-flag lists. It is a one-to-many shape, detected deterministically from four signals together:
 
-- **Star co-change.** The hub co-changes with many distinct folders or components, at high confidence feature→hub, while those features rarely co-change with each other (each pair at or below its expected co-change).
+- **Star co-change.** The hub co-changes with many distinct folders or components, at high confidence feature→hub, while those features rarely co-change with each other (each pair has low co-change, as defined under the quadrants).
 - **Outward dependencies.** The hub imports the features, or holds their identifiers (component references, path strings), so the stable mechanism depends on the volatile features.
 - **Append-shaped edits.** Most of the hub's diff hunks add or remove entries in one collection literal (array, object, switch). The lexical layer detects it in any language: hunks that are pure additions or removals of a few lines at a constant indentation, inside the same block, and lexically similar to their neighbours. Where a structural adapter exists, hunks are mapped onto the syntax tree to confirm the collection literal.
 - **Contention.** Many distinct authors edit it within short windows, a proxy for merge conflicts. Only the count is used, never names.
@@ -78,8 +84,8 @@ For each problem dependency the CLI emits:
 
 | Field | Meaning |
 |---|---|
-| `kind` | `cycle`, `layer-violation`, `unstable-dependency`, `incidental-coupling` or `registration-hub` |
-| `quadrant` | Incidental, real, stable or hidden, with the static-coupling, co-change and expected-co-change figures behind it |
+| `kind` | `cycle`, `layer-violation`, `unstable-dependency`, `incidental-coupling`, `hidden-coupling` or `registration-hub` |
+| `quadrant` | Incidental, real, stable, hidden or independent, or `insufficient-evidence`, with the static-coupling, co-change and expected-co-change figures behind it |
 | `from` / `to` | Modules (file, folder or component) and the edge direction |
 | `breakingSet` | The specific symbols used across the boundary that cause the problem |
 | `stability` | Structural and change stability of each side |
@@ -157,12 +163,13 @@ In the `structure` section of the suite config:
 - Layer rules: ordered layers as globs, and allowed directions.
 - Component boundaries, shared with the suite-wide `components`.
 - Additional census patterns (custom event or handler conventions).
-- Thresholds for static coupling, co-change, minimum revisions for "active", and hidden coupling.
+- Thresholds for static coupling, minimum support and the significance level for high co-change, minimum revisions for "active", and hidden coupling.
 - Baseline path for `check`.
 
 ## Decisions
 
 - **Evidence, not prescriptions.** Remedy choice depends on context the tool cannot see. Making it deterministic would mean making it wrong by default.
+- **A stated departure from suite principle 6.** The suite forbids plugins from creating shared helpers or abstractions. Breaking a dependency sometimes needs one: an interface owned by the stable side, or a contribution type. The skill may introduce one only as the remedy for a specific problem dependency, only after moving the symbol and passing a value or callback have been ruled out, preferring a mechanism the census already shows, and asking first for anything new.
 - **Follow the codebase.** The census makes existing patterns visible, so the agent stays consistent with them. Anything new needs agreement.
 - **Change evidence outranks structure.** Instability metrics describe the graph. Co-change describes the cost.
 - **Measure hidden coupling.** It is the failure mode most specific to dependency breaking. Without it, indirection looks like success.
@@ -176,7 +183,7 @@ In the `structure` section of the suite config:
 ## Milestones
 
 1. File and folder cycles with exact and heuristic breaking sets.
-2. Stability from structure and history, and the evidence pack.
+2. Stability from structure and history, and the evidence pack. Its `quadrant` field arrives with milestone 6.
 3. Mechanism census for TypeScript/JavaScript, then C# (DI containers, MediatR-style handlers, events) and C++ (virtual interfaces, callbacks, signal/slot libraries).
 4. Skill reasoning guide and references, with evals that check it asks before introducing a new mechanism and does not default to a named pattern.
 5. Layer rules and `check`.

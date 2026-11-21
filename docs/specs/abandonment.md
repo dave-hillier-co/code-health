@@ -39,15 +39,17 @@ Out of scope:
 
 ## Concepts
 
-**Author of a line.** The commit that last introduced the line at HEAD, from `git blame -w -M -C --line-porcelain`, ignoring revisions in `.git-blame-ignore-revs`. `-M -C` make moved and copied lines keep their original author, so the locality plugin's move commits do not reset authorship, and nor do formatting sweeps.
+**Author of a line.** The commit that last introduced the line at HEAD, from `git blame -w -M -C --line-porcelain`, ignoring revisions in `.git-blame-ignore-revs`. `-M -C` make moved and copied lines keep their original author, so the locality plugin's move commits do not reset authorship. Formatting sweeps are covered by `-w` and the ignore-revs file. The blame cache stores the commit behind each line range, per blob. Identities, activity and overrides are resolved at query time, so a change to the mailmap never needs a re-blame. The first run blames every file and is the slow step on a large repository, `-C` most of all. It reports progress, can be resumed, and `-C` can be turned off in config.
 
-**Developer identity.** Resolved through a reviewed `.mailmap`, built with the [identities](identities.md) skill. Bot authors (cochange config) are excluded from the population, and their lines count as owned by nobody. They are reported separately rather than treated as abandoned.
+**Developer identity.** Resolved through a reviewed `.mailmap`, built with the [identities](identities.md) skill. Bot and service authors (from the identities classification) are excluded from the population, and their lines count as owned by nobody. Those lines are left out of both sides of a file's abandoned share, and are reported separately rather than treated as abandoned.
 
 **Active developer.** A developer with at least one commit in the activity window (default 6 months). Inactive developers are treated as having left. That is a proxy: people on leave or moved to another repo look inactive. A local overrides file corrects it (see [Privacy](#privacy)).
 
-**Turnover rate.** The fraction of developers active in one period (default quarter) who are inactive in the next. It is estimated from history, or set explicitly in config.
+**Departure.** A developer has left, as of their last commit, when no further commit follows within the activity window. This is the same test as *active*, so someone who commits every few months stays active throughout and never counts as a leaver in a quiet period. Departures in the most recent activity window cannot be known yet, so those periods are left out of rate estimation.
 
-**Loss.** For a scenario with leaver set *L*, the number of lines (and files) abandoned once *L* and all already-inactive developers are removed. Reported as lines, files and the share of the codebase.
+**Turnover rate.** Per period (default quarter): the developers whose departure falls in that period, over the developers active at its start. It is estimated from history, or set explicitly in config.
+
+**Loss.** For a scenario with leaver set *L*, the number of lines (and files) abandoned once *L* and all already-inactive developers are removed. Reported as lines, files and the share of the codebase, both in total and as the increment over what is already abandoned at HEAD, since only the increment can still be prevented.
 
 **Abandonment probability.** For one file, the fraction of trials in which it ends up abandoned.
 
@@ -61,8 +63,8 @@ Modes:
 
 | Mode | Leaver selection per trial | Use |
 |---|---|---|
-| `rate` (default) | Each active developer leaves independently with probability *p* over the horizon, from the estimated or configured turnover rate | Expected exposure under normal turnover |
-| `historical` | Sample a turnover rate from the repository's own past quarterly rates (bootstrap), then apply as in `rate` | Exposure including bad quarters. The paper found it gives fatter tails. |
+| `rate` (default) | Each active developer leaves independently with probability *p* over the horizon: `p = 1 − (1 − q)^h` for a per-period turnover rate *q*, estimated or configured, and a horizon of *h* periods | Expected exposure under normal turnover |
+| `historical` | Sample *h* of the repository's own past per-period rates with replacement (bootstrap), compound them into *p*, then apply as in `rate` | Exposure including bad quarters. The paper found it gives fatter tails. |
 | `k-leavers` | Exactly *k* active developers, sampled uniformly | Stress test. It replaces the truck factor with a distribution. |
 
 Defaults: 10,000 trials, a one-year horizon, and α = 0.95 and 0.99.
@@ -111,7 +113,7 @@ This is the most sensitive analysis in the suite, so it is the most constrained.
 - **Off by default.** It needs `cochange.knowledge.enabled: true` in the repo config.
 - **No names by default.** Outputs are per file and per component, with developers as counts. `successors --names` is the only command that shows identities, and it shows only *active* developers as recommended reviewers and pair partners. It never lists leavers, or the people whose departure would cause the most loss.
 - **No individual departure ranking.** The CLI does not output "impact if person X leaves". The `k-leavers` mode samples uniformly and reports distributions only. Named scenarios (a specific person or team leaving) are deliberately unsupported. Their output reads as an evaluation of people.
-- **Overrides stay local.** Corrections to the activity window (someone on leave, someone gone) go in `.cache/code-health/knowledge-overrides.json`, which the cache's own `.gitignore` already excludes from git. Clearing the cache clears them. Identities never go in the committed config.
+- **Overrides stay local.** Corrections to the activity window (someone on leave, someone gone) go in `.code-health/local/knowledge-overrides.json`, which that folder's own `.gitignore` excludes from git ([suite.md](suite.md#local-state)). It is not part of the cache, so clearing the cache keeps them. Identities never go in the committed config.
 - **Local only.** As for the rest of the suite.
 
 The skill must decline to use these results to assess individuals, to rank people by "risk", or to speculate about who might leave, and say why: the model assumes random turnover and says nothing about any person.
@@ -123,7 +125,7 @@ Skill name `abandonment`, in `plugins/cochange/skills/abandonment/`. It triggers
 Workflow:
 
 1. Check enablement and cache freshness, and refresh history and blame if needed. Run `cochange identities check`, and if unmapped identities hold more than the configured share of lines, use the identities skill first. Report the mapped share alongside the results.
-2. Run `simulate` in `rate` mode, and in `historical` when there are at least eight quarters of history. Report expected loss, KaR and the tail ratio in plain terms ("in a bad year, expect to lose authorship of around N files; the typical year is M").
+2. Run `simulate` in `rate` mode, and in `historical` when there are at least eight quarters of history. Report expected loss, KaR and the tail ratio in plain terms ("in a bad year, expect to lose authorship of around N files; the typical year is M"). Give the backtest's precision and recall with them, so the user knows how well the model has predicted this repository's own past.
 3. Present the top-ranked at-risk files with their findings.
 4. For files the user wants to act on, run `successors` and propose mitigations from the table, preferring the cheapest that works: assign reviews to successors on the next changes, pair on the next change to a hotspot, and write characterisation tests or a short design note for cold code.
 5. Note interactions with the rest of the suite. Simplifying an at-risk complex file (complexity plugin) reduces the knowledge needed to adopt it. Co-locating scattered code (locality plugin) reduces how much someone must know to change it safely.
@@ -161,7 +163,7 @@ In `cochange.knowledge`:
 - Trials, α values, seed.
 - Ranking mode.
 
-Local, never committed: `.cache/code-health/knowledge-overrides.json`, holding activity overrides by identity.
+Local, never committed: `.code-health/local/knowledge-overrides.json`, holding activity overrides by identity.
 
 ## Decisions
 
@@ -172,6 +174,7 @@ Local, never committed: `.cache/code-health/knowledge-overrides.json`, holding a
 ## Open questions
 
 - Whether to weight lines by complexity, so that knowledge of complex code counts for more than knowledge of boilerplate.
+- Whether to estimate and apply the turnover rate within tenure bands. Occasional contributors leave at a far higher rate than established ones, so one pooled rate overstates the loss of core authors. Bands describe groups, not people, but the backtest should show the pooled rate is miscalibrated before the model gains that complexity.
 - Whether authorship should decay with time since the author last touched the file, since knowledge fades even without turnover.
 - How to treat code authored by agents, which have no knowledge to lose. One option is to attribute agent-authored lines to the reviewing or committing human. The identities skill already records agent trailers, so this is a policy choice rather than a detection problem.
 
@@ -179,8 +182,8 @@ Local, never committed: `.cache/code-health/knowledge-overrides.json`, holding a
 
 1. Identities skill ([identities.md](identities.md)), then the blame cache with `-M -C`, ignore-revs and mailmap, and `abandonment current`.
 2. Turnover estimation and `simulate` in `rate` and `k-leavers` modes, deterministic.
-3. `historical` mode, KaR, tail ratio and expected tail loss.
-4. Hotspot-weighted ranking and findings.
-5. `successors` from coupling.
-6. Skill, evals (including the decline cases) and privacy gating.
-7. `backtest`.
+3. `backtest`, so the model is checked against this repository's own past before anything presents its numbers.
+4. `historical` mode, KaR, tail ratio and expected tail loss.
+5. Hotspot-weighted ranking and findings.
+6. `successors` from coupling.
+7. Skill, evals (including the decline cases) and privacy gating.

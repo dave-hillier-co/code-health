@@ -39,11 +39,11 @@ Out of scope:
 
 **Churn.** Lines added plus lines deleted within the window, taken from `--numstat`.
 
-**Complexity proxy.** Indentation complexity: the sum of logical indentation levels across a file's non-blank lines, with tabs and spaces normalised using the file's own detected indent unit. It is language-agnostic, needs no parser and can be computed for any historical blob cheaply. It correlates well with structural complexity measures and is enough for ranking. When a complexity report from the complexity plugin is present (see [Composition](#composition)), its file-level values are used instead and the output says which source was used.
+**Complexity proxy.** Indentation complexity: the sum of logical indentation levels across a file's non-blank lines, leaving out comment lines where a lexer profile identifies them, with tabs and spaces normalised using the file's own detected indent unit. The definition is implemented once, in the shared `lexical` package, and the complexity plugin uses the same one. It is language-agnostic, needs no parser and can be computed for any historical blob cheaply. It correlates well with structural complexity measures and is enough for ranking. When a complexity report from the complexity plugin is present (see [Composition](#composition)), its file-level values are used instead and the output says which source was used.
 
 **Hotspot score.** `normalise(changeFrequency) × normalise(complexity)`, where normalise is the rank percentile within the repository. Percentiles avoid the score being dominated by one outlier and keep it comparable across repositories.
 
-**Temporal coupling.** For files A and B with revision counts `n(A)`, `n(B)` and `n(A∩B)` shared logical changes:
+**Temporal coupling.** Every count is in the same unit and over the same population: *eligible* logical changes, meaning those left after noise filtering and at or below the maximum changeset size. For files A and B, `n(A)` and `n(B)` are the eligible logical changes touching each, and `n(A∩B)` those touching both. Raw revision counts are not used here, because a change split over three commits, or a file swept up in an excluded bulk edit, would inflate the denominators and understate the coupling.
 
 - *Degree*: `n(A∩B) / ((n(A) + n(B)) / 2)`, the symmetric strength, as a percentage.
 - *Confidence A→B*: `n(A∩B) / n(A)`, the probability that a change to A also touches B. Directional, since a small file may always drag a large one along without the reverse holding.
@@ -51,9 +51,9 @@ Out of scope:
 
 **Coupling distance.** The folder-tree distance between the two files, using the suite's distance function (see [suite.md](suite.md#shared-vocabulary)). High coupling at high distance is the interesting case. High coupling between a file and its sibling test is expected.
 
-**Change spread.** For a logical change touching files `F`, the mean pairwise tree distance between files in `F`. A single-file change has spread 0. Reported as a distribution over a time window: median, p75, p90.
+**Change spread.** For a logical change touching files `F`, the mean pairwise tree distance between files in `F`. A single-file change has spread 0. Each file is placed at its path as of that change, not its current path, so moving files later does not lower the spread of changes made before the move. Reported as a distribution over a time window: median, p75, p90, with the number and share of logical changes left out for exceeding the maximum changeset size. Those are the widest changes of all, so a shift in that share is part of the result.
 
-**Code age.** Time since a file's last revision. Recently changed code is likely to change again. Stable code is cheap to move and costly to rewrite.
+**Code age.** Time from a file's last revision to HEAD's commit date. Recently changed code is likely to change again. Stable code is cheap to move and costly to rewrite.
 
 ## Architecture
 
@@ -72,10 +72,10 @@ There is no parser dependency. This plugin ships no tree-sitter grammars and sta
 
 The ingestion must be correct before anything built on it can be trusted, so it is specified closely.
 
-- Read with `git log --no-merges --numstat -M -z --format=<fixed>` (plus `--first-parent` when enabled) from the configured branch. First-parent is configurable. It defaults to off for trunk-based repos and on for repos that merge long-lived feature branches, where it avoids double-counting.
+- Read with `git log --no-merges --numstat -M -z --format=<fixed>` (plus `--first-parent` when enabled) from the analysed ref: HEAD by default, or the configured branch. The rename similarity and rename limit are passed on the command line, so the user's git config cannot change the result, and the git version is recorded in `meta`. First-parent is configurable. It defaults to off for trunk-based repos and on for repos that merge long-lived feature branches, where it avoids double-counting.
 - Rename detection is on (`-M`, configurable similarity). Renames are recorded in a rename table, and every query resolves a path through it to a stable file identity, so moved files keep their history. This matters for this suite in particular, because the locality plugin moves files and its success is measured through this history.
 - Binary files (numstat `-`) are recorded as changed with no line counts.
-- Incremental: the cache stores the last processed commit. A refresh reads `last..HEAD`. When the stored commit is no longer an ancestor of HEAD (history rewritten, branch switched), the cache rebuilds from scratch. Correctness wins over speed.
+- Incremental: commits are stored by SHA and never invalidated ([suite.md](suite.md#shared-caches)). A refresh reads the commits reachable from the analysed ref that are not yet stored, and queries select by reachability. A rewritten history or a branch switch adds the new commits and leaves the rest, so there is no rebuild.
 - Shallow clones are detected. The tool reports the truncated window instead of silently analysing partial history. CI usage needs `fetch-depth: 0` or an explicit window.
 - Author identity respects `.mailmap`, which the [identities](identities.md) skill builds and reviews.
 
@@ -85,15 +85,15 @@ Applied at query time, not ingestion, so changing config never needs a rebuild:
 
 - Paths excluded by the suite's shared `exclude` globs, `.gitattributes` `linguist-generated` / `linguist-vendored`, and lockfiles by default.
 - Commits listed in `.git-blame-ignore-revs` (formatting sweeps).
-- Authors matching configured bot patterns (dependabot, renovate).
-- Logical changes above the maximum changeset size (default 30 files) are excluded from coupling and spread, but still count towards change frequency.
+- Authors classified as bots or service accounts by the identities configuration and decisions ([identities.md](identities.md#non-person-classification)).
+- Logical changes above the maximum changeset size (default 30 files) are excluded from coupling and spread, but still count towards change frequency. Coupling's own counts leave them out on both sides of the ratio, and spread reports how many were excluded.
 - Pure renames (100 % similarity, no content change) count neither as revisions nor as coupling.
 
 ## CLI
 
 | Command | Output |
 |---|---|
-| `cochange refresh` | Updates the cache. Reports commits added and whether a rebuild happened. |
+| `cochange refresh` | Updates the cache. Reports commits added. |
 | `cochange hotspots [--by file\|component] [--limit N]` | Ranked hotspots with frequency, churn, complexity, age, and score. |
 | `cochange coupling [--file PATH] [--min-degree D] [--min-support S]` | Coupled pairs with degree, confidence in both directions, support and distance. With `--file`, the files that change with that one. |
 | `cochange clusters` | Groups of mutually coupled files (connected components above the threshold), with their spread. Candidates for co-location. |
@@ -114,11 +114,12 @@ The tool classifies findings, and the skill turns the classifications into actio
 | `hotspot` | Score in the top configured percentile and changed within the recent window | Complexity review of the file's worst functions |
 | `distant-coupling` | Degree ≥ threshold, support ≥ minimum, distance ≥ minimum | Locality review: should these live together? Otherwise check for *information leakage*, where one design decision is encoded in both files. |
 | `change-magnet` | A file that co-changes with many folders, which rarely co-change with each other (a star shape) | Likely a registration hub. See [structure](structure.md#concepts) for confirmation and the inversion remedy. |
-| `hidden-coupling` | High degree with no static dependency between the files | Often the result of indirection (events, registries). See [structure](structure.md#concepts). |
 | `asymmetric-coupling` | Confidence A→B high, B→A low | A depends on B implicitly. Check for *information leakage* or *temporal decomposition* (code split by when it runs rather than by what it knows). |
 | `cluster` | Coupled component spanning ≥ 3 folders | Candidate for co-location or a module boundary |
 | `cold` | Not changed within the stale window | Lowest priority for refactoring; cheapest to move |
 | `test-drift` | A source file with high frequency whose sibling test never co-changes | Behaviour may be changing without tests following |
+
+This plugin has no parser, so it cannot tell whether a coupled pair also has a static dependency. *Hidden coupling* (co-change with no static dependency) is therefore classified by [structure](structure.md#concepts), from this plugin's coupling data.
 
 These are prompts for investigation, not verdicts. The skill reviews each finding against the suite's design red flags ([red-flags.md](red-flags.md)). Co-change is the strongest evidence the suite has for *information leakage* and *conjoined methods*, two red flags that static analysis cannot see. The skill records why a finding was acted on or dismissed.
 
@@ -130,13 +131,13 @@ The skill instructs the agent to run `cochange brief` on the files it plans to c
 
 ### Change-set completeness hook (opt-in)
 
-A `PostToolUse` hook on `Edit` and `Write` looks up the edited file in the cache (read-only, no refresh, with a time budget of about 200 ms) and, when there are coupled files above a high confidence threshold that have not been touched in this session, injects a short note:
+A `PostToolUse` hook on `Edit` and `Write` looks up the edited file in the cache (read-only, no refresh, with a time budget of about 200 ms) and, when there are coupled files above a high confidence threshold that have not been edited in this session (from the hook's own session state, [suite.md](suite.md#hooks)), injects a short note:
 
 > `src/billing/invoice.ts` usually changes with `src/reports/invoice-summary.ts` (confidence 82 %, 17 changes). Not yet edited in this session.
 
 Rules for the hook:
 
-- Silent when the cache is missing or stale. It never triggers a refresh, never blocks the edit, and never fails loudly.
+- Silent when the cache is missing, or more than the configured number of commits behind HEAD (default 50). Coupling evidence barely moves over a few commits, and a hook that fell silent after every commit or pull would rarely speak. It never triggers a refresh, never blocks the edit, and never fails loudly.
 - At most one note per file per session. Repeated nagging trains the model to ignore it.
 - Off by default and enabled per repository in config, because injected context has a token cost.
 
@@ -145,7 +146,7 @@ Rules for the hook:
 The plugin is self-contained. It reads reports produced by sibling plugins when they exist, and never requires them:
 
 - Writes its latest results to `.cache/code-health/reports/cochange.<command>.json`.
-- Reads `.cache/code-health/reports/complexity.files.json` when present and newer than HEAD's commit time, and uses it as the complexity source for hotspots.
+- Reads `.cache/code-health/reports/complexity.files.json` when it is present and stamped with the current HEAD, and uses it as the complexity source for hotspots. The output names it in `inputs`.
 - The locality plugin reads coupling and spread from the shared cache directly, using the same bundled history core.
 
 ## Measurement
@@ -154,7 +155,7 @@ This plugin supplies the suite's primary outcome measure, change spread. Its own
 
 | Measure | What it shows | Role |
 |---|---|---|
-| Change spread on files in acted-on findings, before and after | Changes became more local | Primary outcome |
+| Change spread on files in acted-on findings, before and after, against similarly ranked findings left alone ([suite.md](suite.md#measurement-across-the-suite)) | Changes became more local | Primary outcome |
 | Revisions per hotspot over a matching window | Effort concentration decreased | Secondary outcome |
 | Hotspot score of acted-on files | The file got simpler or less churned | Leading indicator only |
 | Agent edits followed by a coupled file being edited later in the same session, with and without the hook | The briefing and hook prevented missed changes | Agent outcome |
@@ -163,6 +164,7 @@ This plugin supplies the suite's primary outcome measure, change spread. Its own
 
 - Nothing leaves the machine. There is no network access and no telemetry.
 - Default outputs contain no author identities. Change counts are aggregated per file.
+- The `identities` commands necessarily show names and emails. They show only what `git log` already shows, run only through the identities skill or on an explicit request, and never write to `reports/`, so no other plugin can pick identities up ([identities.md](identities.md#privacy)).
 - Knowledge and abandonment analysis is disabled unless config enables it, and has stricter rules of its own ([abandonment.md](abandonment.md#privacy)). The skills must not use history data to judge individuals and should say so if asked to.
 
 ## Configuration
@@ -173,9 +175,8 @@ In the `cochange` section of the suite config:
 - Logical change grouping: off, by issue-key pattern, or by author and time window.
 - Maximum changeset size.
 - Minimum support, minimum degree, minimum coupling distance.
-- Bot author patterns.
-- Component mapping: globs to component names, for architectural-level aggregation.
-- Hook enablement and confidence threshold.
+- Hook enablement, confidence threshold and staleness tolerance.
+- Identity settings, including bot and service patterns, under `cochange.identities` ([identities.md](identities.md#configuration)).
 - Knowledge analysis settings under `cochange.knowledge` ([abandonment.md](abandonment.md#configuration)).
 
 ## Decisions
@@ -193,7 +194,7 @@ In the `cochange` section of the suite config:
 
 ## Milestones
 
-1. History core: ingestion, rename map, incremental refresh, rebuild-on-rewrite, noise filters, with fixture-repo tests.
+1. History core: ingestion keyed by commit, rename map, incremental refresh, reachability queries across branch switches and rewrites, noise filters, with fixture-repo tests.
 2. `hotspots`, `age` and `coupling` with JSON schemas.
 3. `spread` with bucketing, ready to baseline locality work.
 4. Skill playbooks and plugin packaging.

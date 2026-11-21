@@ -101,8 +101,8 @@ Packaging follows [suite.md](suite.md#plugin-anatomy). The bundle bundles the sh
 ## Analysis pipeline
 
 1. **Parse.** The tree-sitter adapter extracts imports, exports, definitions and callsites per file. Results are cached by blob SHA.
-2. **Resolve.** Per-language resolvers turn import specifiers into files and symbols: tsconfig `paths` and package `exports`, Python package roots, Go modules. Re-exports and barrel files (`index.ts`, `__init__.py`) are followed through to the real definition, and each barrel is itself recorded as a candidate for removal.
-3. **Build the graph.** Symbol-level and file-level import graphs, with a virtual root importing every production entry point: app entries and configured dynamic entries. Test entries form a separate graph, used to assign tests to units.
+2. **Resolve.** Per-language resolvers turn import specifiers into files and symbols: tsconfig `paths` and package `exports`, Python package roots. Re-exports and barrel files (`index.ts`, `__init__.py`) are followed through to the real definition, and each barrel is itself recorded as a candidate for removal.
+3. **Build the graph.** Symbol-level and file-level import graphs, with a virtual root importing every production entry point: app entries and configured dynamic entries. Test entries form a separate graph, used to assign tests to units. Files the virtual root cannot reach have no dominator. They are reported in an `unreachable` list (dead code, or an entry point missing from config) and take no part in unit finding until that is settled.
 4. **Find units.** Each candidate unit is a node plus the subtree it dominates in the production graph:
    - **Condense cycles first.** Collapse strongly connected components (Tarjan) into single nodes, so a cycle can only move whole, then expand them back into files in the output.
    - **Dominators by Cooper–Harvey–Kennedy** over the condensed graph from the virtual root. It is simple, runs fast on graphs the size of import graphs, and its result (the dominator tree) is unique whatever order nodes are visited in, so units are deterministic. Lengauer–Tarjan is asymptotically faster but not needed at this scale.
@@ -122,6 +122,7 @@ For languages without a structural adapter, and as a cross-check where there is 
 - Units are single files, or co-change clusters, rather than dominator subtrees, because without an import graph there are no dominators.
 - Recommendations are limited to `move` and `review`, never `inline` or `split`, which need symbols. Moves are performed by the agent, with no deterministic mover.
 - Every candidate is marked `source: history`, and the mode needs `moderate` or `strong` evidence ([suite.md](suite.md#evidence-strength)). On young repositories it reports nothing rather than guessing.
+- Change spread cannot be the outcome for these moves. The target minimises the same distances spread measures, so spread would fall by construction. Agent effort is the outcome, and spread is a leading indicator only.
 
 Where both modes run, disagreement is itself a finding. A file the import graph says is well placed but whose co-change partners are all elsewhere has *hidden coupling* (see [structure](structure.md#concepts)).
 
@@ -159,7 +160,7 @@ Rules for units whose gain exceeds the configured minimum:
 | 1 | Tiny (fixed import overhead outweighs content) | `inline` |
 | 1 | Medium | `inline` if the consumer stays readable, otherwise `move` next to the consumer (same file or sibling) |
 | 1 | Large | `move`, kept as its own module next to the consumer |
-| 2 | Any | `move` to the consumers' LCA, or `review` when co-change between the two consumers is low, because independent consumers suggest coincidental reuse and inlining into each may be better |
+| 2 | Any | `move` to the target (the consumers' LCA when the unit has no outside dependencies), or `review` when co-change between the two consumers is low, because independent consumers suggest coincidental reuse and inlining into each may be better |
 | 3+ | Any | `review`: this is the point to judge whether the consumers share a reason to change. With high co-change among consumers, the distance is earned (`keep`). With low co-change, consider moving or inlining where consumers diverge. |
 
 Rules for any unit regardless of distance:
@@ -181,6 +182,7 @@ Guards that turn any recommendation into `review` or `keep`:
 - **Fixed points.** Framework conventions (routes, migrations, app folders) and layer rules limit where code may go.
 - **Strays.** A unit with strays is split, or its strays stay behind.
 - **Blockers.** A unit whose gain is below the minimum but whose unblocked gain is above it becomes `blocked`, not `keep` (see below).
+- **Depth cap.** A target deeper than the configured maximum nesting is clamped, so the score cannot be gamed by burying code.
 
 ### Blocked moves
 
@@ -195,7 +197,6 @@ Many moves are prevented by tight coupling: the unit depends on its neighbourhoo
 | Low co-change because the blocker rarely changes (a *stable* dependency) | **Move anyway** if the gain survives the longer edge to the blocker. A stable dependency costs little at any distance. |
 
 When a blocker is resolved, the work lands in order: the split or break first as its own commit, then a re-analysis, then the move. The re-analysis is required, because resolving one blocker changes the graph and may change the target.
-- **Depth cap.** A target deeper than the configured maximum nesting is clamped, so the score cannot be gamed by burying code.
 
 ### Scrutinising widely used utilities
 
@@ -221,28 +222,28 @@ Judgement covers what the rules cannot see:
 
 Every commit is a single, revertible refactoring step. A reviewer never evaluates a move and a behaviour change at the same time.
 
-- **Move first, deterministically.** File relocation plus import-path rewriting, using the per-language tooling in [suite.md](suite.md#language-notes): ts-morph for TypeScript/JavaScript, namespace updates for C#, include and build-target edits for C++, or LSP `workspace/willRenameFiles` where the server supports it. Where no deterministic tool exists, the agent performs the edit in a move-only commit, and the mover verifies it reproduces the planned file operations. The unit's internal layout and owned tests are preserved, so only boundary-crossing imports change. The mover reports the exact file operations in dry run, and the skill shows them before `--apply`.
+- **Move first, deterministically.** File relocation plus import-path rewriting, using the per-language tooling in [suite.md](suite.md#language-notes): ts-morph for TypeScript/JavaScript, file moves for C# (a namespace change is a separate commit), include and build-target edits for C++, or LSP `workspace/willRenameFiles` where the server supports it. Where no deterministic tool exists, the agent performs the edit in a move-only commit, and the mover verifies it reproduces the planned file operations. The unit's internal layout and owned tests are preserved, so only boundary-crossing imports change. The mover reports the exact file operations in dry run, and the skill shows them before `--apply`.
 - **Split before moving.** A `split` is its own commit: symbols move to new sibling files with imports rewritten, and nothing else changes. The resulting units are then moved or inlined in later commits.
 - **Inline second, as its own commit.** The agent performs it: parameter substitution, name collisions, side-effect order and early returns.
 - **One unit per commit.** Tests green between commits.
 - **Leaves before roots.** For nested units, the smallest moves land first.
 - **Mind in-flight work.** Units with recent churn are deferred, since open branches are likely touching them. Old, stable units are the cheapest moves and still pay off on every agent read.
 - **Rename-friendly moves.** A move commit contains only the move and import rewrites, so git's rename detection keeps the file's history intact for future co-change analysis.
-- **Commit message records the evidence.** The rule that fired, the consumer count, any red flag cited, and any agent override with its reason.
+- **Commit message records the evidence.** The rule that fired, the consumer count, any red flag cited, and any agent override with its reason. It ends with the `Code-Health:` trailer that keeps the commit out of outcome windows ([suite.md](suite.md#measurement-across-the-suite)).
 
 ## Measurement
 
-The tool succeeds if future changes get cheaper. Two outcome measures prove it. The static score only shows the tool did what it says.
+The tool succeeds if future changes get cheaper. Agent effort is the independent test of that. Change spread is the second outcome, with a caveat: targets are weighted by co-change, so co-locating files that change together lowers spread by construction. A fall in spread shows that changes now land closer together. It takes a fall in agent effort to show they got cheaper, and a spread improvement without one is reported as unproven. The static score only shows the tool did what it says.
 
 | Measure | Source | What it shows | Role |
 |---|---|---|---|
-| Change spread: mean tree distance between files touched in the same logical change | History cache | Changes land in fewer, closer folders | Primary outcome |
+| Change spread: mean tree distance between files touched in the same logical change | History cache | Changes land in fewer, closer folders | Outcome, partly by construction |
 | Agent effort: files read, hops, wasted reads and tokens per task | Claude Code session transcripts (Read, Grep, Glob calls) | Navigation cost for agents | Primary outcome |
 | Read heat per file | Session transcripts | Where scattering costs most; ranks candidates | Prioritisation |
 | Total weighted import distance (net, both directions) | The analyser | The tool removed distance rather than relocating it | Leading indicator only |
 | Single-file folder count and maximum depth | The analyser | Code is not being buried to game the score | Gaming check |
 
-Baseline both outcome measures before the first tidy-up, then compare over a matching window afterwards. `locality measure baseline` records the baseline in the cache, and `locality measure compare` reports the change with sample sizes.
+Baseline both outcome measures before the first tidy-up, then compare over a matching window afterwards. `locality measure baseline` records the baseline in `.code-health/local/`, outside the cache, because it cannot be regenerated once the code has moved. `locality measure compare` reports the change with sample sizes, beside the same figures for similarly ranked candidates that were left alone ([suite.md](suite.md#measurement-across-the-suite)).
 
 ## Configuration
 
@@ -279,8 +280,9 @@ These were open questions in the strawman. Each decision can be revisited with e
 1. Analyser for TypeScript/JavaScript: graph, dominator units, scored candidates as JSON.
 2. Deterministic recommendations, file cohesion and `split`, red-flag signals and config.
 3. Plugin packaging: bundled CLI, skill with `allowed-tools`, evals and marketplace entry.
-4. Deterministic mover through ts-morph.
-5. History enrichment: age, churn and co-change from the shared cache.
-6. `scrutinise` review workflow for high fan-in units.
-7. Outcome measurement: change-spread baseline and transcript metrics.
-8. C#, then C++.
+4. History enrichment: age, churn and co-change from the shared cache.
+5. `measure baseline`: change spread and transcript metrics, recorded before anything moves.
+6. Deterministic mover through ts-morph.
+7. `scrutinise` review workflow for high fan-in units.
+8. `measure compare`, with the comparison group.
+9. C#, then C++.

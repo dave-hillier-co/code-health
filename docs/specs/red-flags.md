@@ -14,17 +14,17 @@ For each flag, the table gives the suite's mechanical signal, if there is one, a
 
 | Red flag | Meaning | Mechanical signal | Emitted by |
 |---|---|---|---|
-| **Shallow module** | Interface nearly as complex as its implementation, so it hides little | Low ratio of implementation size (AST nodes) to interface size (exported symbols plus parameters) | complexity, locality |
-| **Information leakage** | One design decision is reflected in several modules | Distant or asymmetric temporal coupling; the same literal or structure in several files | cochange |
+| **Shallow module** | Interface nearly as complex as its implementation, so it hides little | Low ratio of implementation size (AST nodes) to interface size (exported symbols plus parameters) | complexity |
+| **Information leakage** | One design decision is reflected in several modules | Distant or asymmetric temporal coupling | cochange |
 | **Temporal decomposition** | Structure follows the order things happen rather than what each part knows | Coupled files named after phases (`parse`/`validate`/`save`) that always change together | cochange (heuristic) |
 | **Overexposure** | Callers must know about rarely used features to use common ones | Exported symbols with no outside consumers; many optional parameters | locality, complexity |
-| **Pass-through method** | A method that only forwards its arguments to another with a similar signature | Body is a single call or return of a call, with the parameters forwarded unchanged | locality |
+| **Pass-through method** | A method that only forwards its arguments to another with a similar signature | Body is a single call or return of a call, with the parameters forwarded unchanged | complexity, locality |
 | **Repetition** | The same nontrivial code appears in several places | Out of scope for detection; noted when seen. The third instance is when to *consider* removing it, judged on whether the copies share a reason to change (co-change). It is not a mandate. | — |
-| **Special-general mixture** | Special-purpose code mixed into a general-purpose mechanism | Utility with many callers containing caller-specific branches (flags, mode parameters, type switches on caller types) | locality (heuristic), complexity |
-| **Conjoined methods** | Two pieces of code cannot be understood independently | High co-change between two functions or files plus cross-references in both directions | cochange |
+| **Special-general mixture** | Special-purpose code mixed into a general-purpose mechanism | Utility with many callers containing caller-specific branches (flags, mode parameters, type switches on caller types) | locality (heuristic) |
+| **Conjoined methods** | Two pieces of code cannot be understood independently | High co-change between two files (cochange), with static references in both directions (structure) | cochange, structure |
 | **Comment repeats code** | The comment says what the code already says | None reliable; judgement only | — |
 | **Implementation documentation contaminates interface** | Interface docs describe internals callers do not need | None reliable; judgement only | — |
-| **Vague name** | A name too generic to convey meaning (`data`, `manager`, `util`, `helper`, `handle`) | Identifier matches a configurable list of vague terms; files and folders named `utils`, `helpers`, `common`, `misc` | locality, complexity |
+| **Vague name** | A name too generic to convey meaning (`data`, `manager`, `util`, `helper`, `handle`) | Identifiers (complexity), and files and folders (locality), matching the suite-wide `vagueNames` list: `utils`, `helpers`, `common`, `misc` and the like | locality, complexity |
 | **Hard to pick name** | Difficulty naming suggests the thing lacks a clean design | None; judgement only | — |
 | **Hard to describe** | The documentation has to be long to be complete | Long doc comment relative to function size | complexity (heuristic) |
 | **Nonobvious code** | Behaviour or meaning cannot be understood quickly | High cognitive complexity; deep nesting | complexity |

@@ -1,6 +1,6 @@
 # Code Health Suite — Spec
 
-This spec covers the conventions shared by every plugin in this marketplace. Each plugin spec ([locality](locality.md), [cochange](cochange.md) with its [abandonment](abandonment.md) and [identities](identities.md) skills, [complexity](complexity.md)) assumes this one, and [red-flags.md](red-flags.md) is the shared design vocabulary.
+This spec covers the conventions shared by every plugin in this marketplace. Each plugin spec ([locality](locality.md), [cochange](cochange.md) with its [abandonment](abandonment.md) and [identities](identities.md) skills, [complexity](complexity.md), [structure](structure.md)) assumes this one, and [red-flags.md](red-flags.md) is the shared design vocabulary.
 
 ## Purpose
 
@@ -21,17 +21,17 @@ Monorepos that hold several services sit in between. Each service's package boun
 These apply to every plugin, and a plugin spec that departs from one must say why.
 
 1. **Outcomes over scores.** Every plugin names an outcome measure (change spread, change cost, agent effort) and treats its own static score as a leading indicator only. Any score that is optimised alone gets gamed, so each plugin also names its gaming check.
-2. **Determinism where mechanical, judgement where semantic.** The CLI computes facts and deterministic recommendations, so the same repo, config and history produce byte-identical JSON. The agent supplies judgement and records every override with a reason.
+2. **Determinism where mechanical, judgement where semantic.** The CLI computes facts and deterministic recommendations, so the same inputs (repo, config and history, plus any extras the output declares, see [CLI contract](#cli-contract)) produce byte-identical JSON. The agent supplies judgement and records every override with a reason.
 3. **CLIs report, they do not edit.** Analysis commands never modify code. Mechanical edit commands (such as the locality mover) are separate, default to a dry run, and need `--apply`.
 4. **One refactoring per commit.** Every applied change is a single, revertible step with tests green before and after. A reviewer never evaluates a move and a behaviour change together.
 5. **Evidence beats convention.** Folder conventions, anticipated reuse and metric thresholds are hypotheses. History and consumer evidence decide. The rule of three marks when to *consider* removing duplication or keeping an abstraction. It is never a mechanical rule in either direction.
-6. **Deep over shallow, and inline by default.** Remedies hide decisions behind simple interfaces. Inlining single-use indirection is a first-class remedy (Carmack, Blow). No plugin creates new shared helpers or abstractions, and any extraction stays local (see [red-flags.md](red-flags.md)).
+6. **Deep over shallow, and inline by default.** Remedies hide decisions behind simple interfaces. Inlining single-use indirection is a first-class remedy (Carmack, Blow). No plugin creates new shared helpers or abstractions, and any extraction stays local (see [red-flags.md](red-flags.md)). The one stated exception is dependency breaking in [structure](structure.md#decisions).
 7. **Scrutinise what is widely used.** High fan-in multiplies the cost of every flaw. Utilities with many consumers have earned their location, and they are the first place to check for red flags.
 8. **Built for agents, usable by people.** Output is compact, ranked and limited by default. JSON is the contract, and a human-readable table is the default view in a terminal.
-9. **Local and private.** No network access, no telemetry. Data about people is off by default.
+9. **Local and private.** No network access, no telemetry. Data about people is off by default. The exceptions (identity resolution, successor names) are stated and bounded in their own specs.
 10. **Self-contained plugins, composed by data.** No plugin requires another at runtime. They share code at build time and exchange results through files.
 11. **Patterns emerge from the codebase.** Where a remedy involves a design mechanism (an interface, events, a mediator), skills prefer what the codebase already uses nearby and ask before introducing anything new. No skill defaults to a named pattern. CLIs provide the census of what exists; the agent chooses.
-12. **Language-agnostic first.** As much as possible works from history, indentation and lexical structure, which apply to every language and every historical revision. Language adapters add precision where the agnostic layer cannot answer: import resolution, exact metric definitions, deterministic moves. A repository in a language with no adapter still gets most of the suite.
+12. **Language-agnostic first.** As much as possible works from history, indentation and lexical structure, which apply to every language and every historical revision. Language adapters add precision where the agnostic layer cannot answer: import resolution, exact metric definitions, deterministic moves. The lexical layer is the lowest common denominator, and language support beyond it is best effort: a repository in a language with no adapter still gets the history layer and whatever the lexical layer can measure.
 
 ## Repository layout
 
@@ -74,7 +74,7 @@ Rules:
 
 ### plugin.json
 
-Each plugin's manifest is `name`, `displayName`, `version`, `description`, `author`, `license`, `repository`, `keywords` and `engines.claude-code`. The version is set **in plugin.json only**, never also in the marketplace entry, where plugin.json would win silently. Users of a third-party marketplace get updates only when the version string changes, so CI fails a change under `plugins/<plugin>/` that does not bump that plugin's version.
+Each plugin's manifest is `name`, `displayName`, `version`, `description`, `author`, `license`, `repository`, `keywords` and `engines.claude-code`. The version is set **in plugin.json only**, never also in the marketplace entry: plugin.json would win there, with only a `claude plugin validate` warning to show for it. Users of a third-party marketplace get updates only when the version string changes, so CI fails a change under `plugins/<plugin>/` that does not bump that plugin's version.
 
 ### Skills
 
@@ -88,20 +88,23 @@ Each plugin's manifest is `name`, `displayName`, `version`, `description`, `auth
 
 Hooks are opt-in per repository, because injected context costs tokens. A plugin's hook command reads the repo config and exits silently unless that config enables it. Hook rules:
 
-- Exec form with `${CLAUDE_PLUGIN_ROOT}`, a hard time budget of a few hundred ms, and a read-only cache lookup only. A hook never refreshes caches, never blocks, and never exits 2.
+- Exec form with `${CLAUDE_PLUGIN_ROOT}`, and a hard time budget of a few hundred ms. Every hook run is a fresh process, so the budget covers process start and anything the hook loads.
+- A hook never refreshes the history cache and never writes analysis results. It exits 0 on every path, its own errors included. `PostToolUse` runs after the tool, so it could not block the edit in any case.
+- **Session state.** The one thing a hook writes is its own state for the session, in `.cache/code-health/sessions/<session_id>.json`, keyed by the `session_id` in the hook input: the files edited so far, the files it has already spoken about, and any last measurement. The hook keeps this itself on each edit. It does not read the transcript for it, because the transcript is written asynchronously and can lag.
+- **Staleness.** A hook that reads history tolerates a cache up to a configured number of commits behind HEAD, and is silent beyond that. Requiring an exact match would silence it after every commit or pull.
 - Context goes back through `hookSpecificOutput.additionalContext` as one short factual sentence, at most once per file per session.
 
 ### Configuration
 
-All plugins read one committed file at the repo root, `code-health.json`, with a `$schema` reference. It has a top-level `exclude`, `languages` and `entryPoints` shared by every plugin, and one section per plugin. Each plugin validates its own section and ignores the others. Missing config means defaults. Every CLI has `config explain` to print the effective config and where each value came from, so the skill can explain it. Plugin `userConfig` is not used, because these settings belong to the repository, not the user.
+All plugins read one committed file at the repo root, `code-health.json`, with a `$schema` reference. It has a top-level `exclude`, `languages`, `entryPoints`, `components` and `vagueNames` shared by every plugin, and one section per plugin. Each plugin validates its own section and ignores the others. Missing config means defaults. Every CLI has `config explain` to print the effective config and where each value came from, so the skill can explain it. Plugin `userConfig` is not used, because these settings belong to the repository, not the user.
 
 ## CLI contract
 
 Every plugin's CLI follows the same conventions, implemented once in `packages/cli-kit`.
 
 - **Invocation.** `node <dist>/<plugin>.mjs <command> [options]`. It needs Node ≥ 22.13 for unflagged `node:sqlite`, and the CLI suppresses its experimental warning.
-- **Output.** A table on a TTY, JSON with `--json`, or `--json` piped. Every JSON document has `schemaVersion`, `tool`, `command`, `repo` (HEAD SHA and dirty flag), `config` (hash of effective config), `results` and `truncated`. No wall-clock timestamps appear outside `meta`, so outputs stay diffable.
-- **Determinism.** Results are sorted by score, then by path. Paths are repo-relative POSIX. Floats are rounded to a fixed precision. Golden tests enforce byte-identical output.
+- **Output.** A table on a TTY. JSON with `--json`, or whenever stdout is not a TTY. Every JSON document has `schemaVersion`, `tool`, `command`, `repo` (HEAD SHA and dirty flag), `config` (hash of effective config), `inputs`, `results`, `truncated` and `meta`. Wall-clock timestamps, timings and the git version appear only in `meta`, which golden comparisons ignore, so outputs stay diffable.
+- **Determinism.** Results are sorted by score, then by path. Paths are repo-relative POSIX. Floats are rounded to a fixed precision. Golden tests enforce byte-identical output. Time is anchored to HEAD's committer date, never the wall clock: analysis windows, code age, grace periods and activity windows are all measured back from it. Anything a result depends on beyond the repo, config and history (a sibling plugin's report, local overrides, session transcripts) is named in `inputs` with its stamp or hash, and byte-identical output is promised for identical inputs.
 - **Size discipline.** List commands default to `--limit 20`, take `--fields` to project columns, and report how many results were cut. An agent should never receive a 5,000-row dump by accident.
 - **Exit codes.** 0 success; 1 check failed (findings over threshold or regression); 2 usage or config error; 3 environment error (not a git repo, shallow clone without a window, Node too old). Errors are JSON on stderr when `--json` is set.
 - **Schemas.** Each output has a JSON Schema in `schemas/`. A breaking change bumps `schemaVersion` and the plugin's major version.
@@ -133,10 +136,15 @@ Skills use the grade. With `weak` evidence they rely on static signals, present 
 
 ## Shared caches
 
-- Location: `.cache/code-health/` at the repo root. On first use the CLI writes `.cache/code-health/.gitignore` containing `*`, so nothing needs adding to the repo's own `.gitignore`. Nothing is ever written inside the plugin folder, which is replaced on update.
-- `history.sqlite`: commits, changed paths with numstat, and the rename map. It is maintained by the `history` package and bundled into every plugin that reads history, so any of them can refresh it. Refreshes are incremental from the last processed SHA, and the cache rebuilds when that SHA is no longer an ancestor of HEAD. A schema version number triggers a rebuild on mismatch, and a write lock makes concurrent refreshes safe.
+- Location: `.cache/code-health/` at the repo root. On first use the CLI writes `.cache/code-health/.gitignore` containing `*`, so nothing needs adding to the repo's own `.gitignore`. Nothing is ever written inside the plugin folder, which is replaced on update. Everything in the cache can be regenerated, so clearing it costs time and nothing else.
+- `history.sqlite`: commits keyed by SHA, each with its changed paths, numstat and renames. It is maintained by the `history` package and bundled into every plugin that reads history, so any of them can refresh it. Commits are immutable, so stored rows are never invalidated. A refresh adds the commits reachable from the analysed ref that are not yet stored, and every query selects by reachability from that ref. Switching branches or rewriting history costs only the commits that are new. A schema version number triggers a rebuild on mismatch, and a write lock makes concurrent refreshes safe.
 - `parse/`: parse results keyed by git blob SHA and grammar version. Unchanged files are never re-parsed, and historical revisions can be analysed by blob.
-- `reports/<plugin>.<command>.json`: the latest output of each command, stamped with HEAD. This is the composition seam. A plugin may read another's report when it is present and current, and must work identically without it.
+- `reports/<plugin>.<command>.json`: the complete result of a command's last full run, stamped with the HEAD SHA and config hash it was computed from. A report is written only by a run over the whole repository on a clean tree, and it holds every result: `--limit`, `--fields` and path arguments change what is printed, never what is stored. This is the composition seam. A plugin may read another's report when its stamp matches the current HEAD. It names the report in `inputs`, and it must work without it. Reads run one way only (cochange reads complexity, structure reads locality), so no result depends on the order the plugins were run in.
+- **Worktrees.** `history.sqlite` and `parse/` are content-addressed, so linked worktrees share the main worktree's copies. Reports and hook session state are per worktree.
+
+### Local state
+
+State that cannot be regenerated never goes in the cache. It lives in `.code-health/local/` at the repo root, which the CLI creates with its own `.gitignore` containing `*`: activity overrides, a local-only mailmap and identity decisions, and measurement baselines. Files a team chooses to share, such as committed identity decisions, sit beside it in `.code-health/`.
 
 ## Languages
 
@@ -147,10 +155,14 @@ Every plugin's analysis is built in three layers. Each one works without the lay
 | Layer | Input | Works for | Provides |
 |---|---|---|---|
 | **History** | git log, numstat, blame | Every file, every language | Co-change, hotspots, spread, age, abandonment, identities, change stability, hidden coupling, change magnets |
-| **Lexical** | Indentation plus a tiny per-family lexer profile: comment and string delimiters, block style (braces, indentation, `end` keywords) and a branch-keyword list | Any language with a family profile; any historical blob | Indentation complexity, bumpy road, nesting, approximate function blocks and their length, keyword complexity, append-shaped edits, lexical duplication |
+| **Lexical** | Indentation, plus an optional per-family lexer profile: comment and string delimiters, block style (braces or indentation) and a branch-keyword list | Any text file and any historical blob, at best effort: indentation metrics always, profile metrics where a profile fits | Indentation complexity, bumpy road, nesting, approximate function blocks and their length, keyword complexity, append-shaped edits, lexical duplication |
 | **Structural** | Tree-sitter grammar plus a language adapter | Tier 1 and tier 2 languages | Exact units and metric definitions, import and symbol resolution, dominator units, census, deterministic moves |
 
-Lexer profiles are data, not code. A C-family profile covers C, C++, C#, Java, Kotlin, JavaScript, TypeScript, Go, Rust, Swift, Dart, PHP and Scala. An indentation profile covers Python, YAML-like and F#-like languages, and a keyword-block profile covers Ruby, Lua and Elixir. Adding a language to the lexical layer is a few lines of config.
+The lexical layer is the lowest common denominator. Its indentation metrics (indentation complexity, nesting, length) need no profile and apply to any text file. Lexer profiles are data, not code, and add comment and string stripping, keyword complexity, approximate function blocks and the per-function metrics built on them. A C-family profile covers C++, C#, Java, Kotlin, JavaScript, TypeScript and Rust, and an indentation profile covers Python. Other languages can be mapped to a profile in config, but nothing outside tier 1 and 2 is tested or promised.
+
+Lexical values are approximations, offered at best effort and labelled as such. A language gets whatever the layer can measure for it, and the output says what was skipped.
+
+For tier 1 and 2 languages the structural layer checks the lexical one (see [Testing](#testing)). Per-function lexical metrics are reported for a language only when its measured agreement clears the configured bar, and the agreement rate travels with them. Below the bar, and for files with no profile, the layer reports file-level metrics only. A language mapped to a profile by config has no measurement behind it, so its per-function values are marked `unverified`.
 
 Every output says which layer produced each value (`source: history | lexical | structural`). When the structural layer is available it wins, and the lexical value can be shown alongside for comparison. The lexical layer is also what makes history-wide analysis affordable: trends over hundreds of past revisions run on the lexical layer, without parsing any of them.
 
@@ -162,7 +174,7 @@ Tree-sitter WASM grammars run through `web-tree-sitter`, with no native builds. 
 |---|---|---|
 | **1** | TypeScript/JavaScript, C#, C++ | All three layers, with full adapters for every plugin |
 | **2** | Python, Java, Kotlin, Rust | Next, in roughly that order. Java and Kotlin share one JVM graph, so mixed projects resolve across both. |
-| **0** | Everything else | History and lexical layers. Most findings are available, with no deterministic moves and no import-graph units. |
+| **0** | Everything else | History layer, plus best-effort lexical metrics: indentation metrics always, profile metrics only if the language is mapped to a profile. No deterministic moves and no import-graph units. |
 
 Within tier 1 the build order is TypeScript, then C#, then C++, from easiest to hardest resolution. TypeScript also has a mature codemod (ts-morph) for deterministic moves.
 
@@ -180,7 +192,7 @@ A language adapter turns source into file and symbol dependencies. Languages dif
 | Language | Resolution | Boundaries (fixed points) | Moves | Notes |
 |---|---|---|---|---|
 | TypeScript/JavaScript | tsconfig `paths`, package `exports`, barrels followed through | Workspace packages | ts-morph | Dynamic `import()` and framework file conventions need configured entry points |
-| C# | Symbol-based over `using` and namespaces. Partial classes merge into one unit across files. | Projects (`.csproj` and their references), solutions | File move plus namespace update to match the folder. SDK-style projects glob sources, so no project edit is needed. Confirm with the Roslyn LSP. | Namespace and folder can disagree. Distance uses folders, because agents navigate files. |
+| C# | Symbol-based over `using` and namespaces. Partial classes merge into one unit across files. | Projects (`.csproj` and their references), solutions | File move only. The namespace is left alone, so the move commit changes no names. SDK-style projects glob sources, so no project edit is needed. Confirm with the Roslyn LSP. Updating the namespace to match the folder is a separate, optional commit, because reflection, serialisation, XAML and DI-by-name can all see it, and for a library it is a public API change. | Namespace and folder can disagree. Distance uses folders, because agents navigate files. |
 | C++ | `#include` resolved with include paths from `compile_commands.json`. A header and its source file form one unit. Symbol-based for calls. | Build targets (CMake targets, and other build systems by config) | Move plus rewriting `#include` paths and target source lists. There is no mature codemod, so the agent performs the build-file edits and clangd confirms references. | The preprocessor is not run. Conditional compilation is parsed as written, and macro-generated code is invisible, which is reported per file. |
 | Python | Package roots, `__init__.py` re-exports | Distribution packages (`pyproject.toml`) | rope | Dynamic imports need configured entry points |
 | Java / Kotlin | Packages map to folders; symbol-based within a package | Gradle and Maven modules | LSP rename (jdtls, Kotlin LSP) | One graph across both languages |
@@ -188,7 +200,7 @@ A language adapter turns source into file and symbol dependencies. Languages dif
 
 ### Metric definitions per language
 
-The complexity plugin's conformance fixtures pin down per-language constructs: C# switch expressions, pattern combinators and `??=`; C++ lambdas, `goto` and preprocessor branches (not counted); Kotlin `when` and elvis (not counted, as null-coalescing); Rust `match`, `if let` and `?` (not counted). Each language follows the cognitive complexity specification's rules for its constructs.
+The complexity plugin's conformance fixtures pin down per-language constructs: C# switch expressions, pattern combinators and `??=`; C++ lambdas and `goto`, with preprocessor branches not counted; Kotlin `when`, with elvis not counted (it is null-coalescing); Rust `match` and `if let`, with `?` not counted. Each language follows the cognitive complexity specification's rules for its constructs.
 
 ## Testing
 
@@ -198,7 +210,8 @@ The testing style is classic TDD with sociable tests. Mocks are reserved for pro
 - **Golden outputs.** JSON output per fixture is compared byte for byte. An intentional change updates the golden file in the same commit.
 - **Algorithm properties.** Graph algorithms (dominators, LCA, coupling) are checked against naive reference implementations on generated graphs. For dominators, the reference is the textbook iterative data-flow method: *d* dominates *n* exactly when removing *d* disconnects *n* from the root. SCC condensation is checked by confirming that no unit splits a cycle.
 - **Metric conformance.** Small source fixtures per language with hand-verified expected values for each metric.
-- **Skill evals.** `claude plugin eval` cases in each plugin's `evals/` cover triggering (the skill loads on relevant prompts and not on unrelated ones) and behaviour (it runs the CLI, respects grace periods and commit discipline, and cites red flags). The model and judge model are pinned, and a cost ceiling is set. Evals run on demand and before release, not on every push, because each run is billed.
+- **Lexical agreement.** Tier 1 and 2 languages have both layers, so the structural layer is ground truth for the lexical one. A corpus per language (the conformance fixtures, plus files with the awkward shapes: lambdas, nested classes, expression-bodied functions, C++ macros and templates) runs through both, and lexical function blocks are matched to structural units by start and end line. The result is an agreement rate per profile and language: units found, units with exact boundaries, and spurious blocks. The rates are recorded in the repository and checked in CI, so a profile change cannot make them worse unnoticed. They decide where per-function lexical metrics are reported (see [Analysis layers](#analysis-layers)).
+- **Skill evals.** `claude plugin eval` cases in each plugin's `evals/` cover triggering (the skill loads on relevant prompts and not on unrelated ones) and behaviour (it runs the CLI, respects grace periods and commit discipline, and cites red flags). The model and judge model are pinned explicitly (neither is by default), and a cost ceiling is set. Evals run on demand and before release, not on every push, because each run is billed.
 - **Validation.** `claude plugin validate --strict` runs on the marketplace and every plugin in CI.
 
 ## Release
@@ -211,9 +224,24 @@ The testing style is classic TDD with sociable tests. Mocks are reserved for pro
 
 Each plugin defines its own outcome measure, and the suite shares the instruments:
 
-- **Change spread** (from the history cache): mean pairwise tree distance of files per logical change.
-- **Agent effort** (from Claude Code session transcripts in `~/.claude/projects/`): files read, distinct folders visited, re-reads and tokens per task. Only paths and counts are extracted. Measurement is local by default, and any team aggregation exports counts and repo-relative paths only, never content.
+- **Change spread** (from the history cache): mean pairwise tree distance of files per logical change. Each file is placed at its path as of that change, so a later move never rewrites the spread of earlier changes.
+- **Agent effort** (from Claude Code session transcripts in `~/.claude/projects/`): files read, distinct folders visited, re-reads and tokens per task. A task is one user prompt and the agent turns that follow it, up to the next prompt, and tasks with no edits are left out. The transcript format is internal to Claude Code and can change, so one module reads it, and a version it does not recognise is reported as not measured. Only paths and counts are extracted. Measurement is local by default, and any team aggregation exports counts and repo-relative paths only, never content.
 - **Before and after windows**: baseline before the first change, then compare over a matching window afterwards, with the same filters. Reports state sample sizes, and the skill does not claim an effect the data cannot show.
+- **Comparison group**: findings are acted on because they are extreme, and extreme values drift back towards the average when left alone. Each comparison therefore sets the acted-on files beside candidates of similar rank that were not acted on, and reports the difference between the two groups, not the raw before and after.
+- **The suite's own commits**: refactoring commits made through the skills carry a `Code-Health:` trailer naming the plugin and rule. They are left out of outcome windows, since a move commit is wide by construction.
+- **Independence**: a measure that a tool moves by construction is a leading indicator for that tool, whatever it is elsewhere. Change spread falls whenever files that change together are co-located, so for locality the independent outcome is agent effort (see [locality](locality.md#measurement)).
+
+## Build order
+
+Each plugin spec has its own milestones. Across the suite, the order is set by what the measurements need:
+
+1. The history core and `cochange spread`, because every outcome in the suite is measured with them and a baseline cannot be taken afterwards.
+2. A premise check, before any mover exists: from existing history and session transcripts, test whether tasks that touch more distant files cost more reads and tokens. Locality's priority depends on the answer.
+3. The lexical layer with its agreement test, then the TypeScript adapter.
+4. Analysers and baselines for locality and complexity, then the commands that change code.
+5. Structure, which builds on locality's graph and cochange's coupling.
+6. Identities, then abandonment.
+7. Further languages, in tier order.
 
 ## Roadmap
 
@@ -221,7 +249,6 @@ Candidate plugins, each to get its own spec before work starts:
 
 - **idioms**: replacing thin wrappers and re-implementations with standard-library or platform idioms (out of scope for locality).
 - **duplication**: clone detection, reporting only, built on the lexical layer (normalised token windows) so it works in every language. The remedy is judgement, and creating shared helpers needs consumer evidence first.
-- **structure**: specified in [structure.md](structure.md). Dependency cycles, layer violations and stability, with evidence packs for judgement-led dependency breaking.
 
 ## Decisions
 
@@ -234,3 +261,4 @@ Candidate plugins, each to get its own spec before work starts:
 
 - Whether to also publish the CLIs to npm for CI use outside Claude Code, or have CI call the bundles from a checkout of this repo.
 - Where team-level aggregation of transcript metrics should live, if anywhere.
+- Whether to stop committing `dist/` to the main branch. A marketplace entry's `source` can name a `ref`, so CI could build a release branch instead. That would end the conflicts that committed bundles and mandatory version bumps cause between any two open changes, and would keep the WASM grammars, shipped once per parsing plugin, out of the main history.
