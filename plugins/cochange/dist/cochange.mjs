@@ -2236,6 +2236,12 @@ function findBracedBlocks(lines, profile) {
         continue;
       } else if (ch === "{") {
         header.push({ line: line.number, text: segment });
+        if (parenDepth > 0 && /[(,=:]\s*$/.test(header.map((part) => part.text).join(" "))) {
+          stack.push({ name: void 0, block: void 0, parenDepth, resume: header });
+          header = [];
+          segment = "";
+          continue;
+        }
         const classification = classifyHeader(header, profile);
         const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
         let block;
@@ -2254,6 +2260,12 @@ function findBracedBlocks(lines, profile) {
         continue;
       } else if (ch === "}") {
         const scope = stack.pop();
+        if (scope?.resume !== void 0) {
+          parenDepth = scope.parenDepth;
+          header = scope.resume;
+          segment = "{}";
+          continue;
+        }
         if (scope !== void 0) {
           parenDepth = scope.parenDepth;
           if (scope.block !== void 0) {
@@ -2277,6 +2289,7 @@ function findIndentedBlocks(lines, profile) {
   const stack = [];
   let lastBodyLine = 0;
   let bracketDepth = 0;
+  let backslashContinued = false;
   const close = (scope) => {
     if (scope.block === void 0) return;
     scope.block.endLine = Math.max(lastBodyLine, scope.block.startLine);
@@ -2288,7 +2301,8 @@ function findIndentedBlocks(lines, profile) {
       continue;
     }
     if (line.kind !== "code") continue;
-    const continuation = bracketDepth > 0;
+    const continuation = bracketDepth > 0 || backslashContinued;
+    backslashContinued = line.code.trimEnd().endsWith("\\");
     for (const ch of line.code) {
       if (ch === "(" || ch === "[" || ch === "{") bracketDepth++;
       else if (ch === ")" || ch === "]" || ch === "}") bracketDepth = Math.max(0, bracketDepth - 1);
