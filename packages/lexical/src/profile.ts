@@ -253,7 +253,7 @@ const rust: LexerProfile = {
     charLiteral,
   ],
   branchKeywords: ["if", "for", "while", "loop", "match"],
-  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "(?<=[\\w)\\]])\\s*\\|\\|"],
+  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "(?<!\\bmove)(?<=[\\w)\\]])\\s*\\|\\|"],
   bumpOpeners: ["if", "for", "while", "loop", "match", "else"],
   headerNoise: ["^#!?\\[.*\\]$"],
   controlHeader: "^(?:else\\s+if|else|if|for|while|loop|match|unsafe)\\b",
