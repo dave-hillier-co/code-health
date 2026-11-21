@@ -10,10 +10,11 @@
     "fixtures"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "node scripts/bundle.mjs",
     "test": "vitest run",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p scripts/tsconfig.json",
-    "check:schemas": "node scripts/check-schemas.mjs"
+    "check:schemas": "node scripts/check-schemas.mjs",
+    "check:dist": "node scripts/bundle.mjs --check"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
