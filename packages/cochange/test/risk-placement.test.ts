@@ -5,7 +5,7 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { ledger, placementHistory } from "./support/placement-scenario.ts";
 import { expectGolden } from "./support/golden.ts";
-import { runCochange } from "./support/run.ts";
+import { runCochange, runCochangeOnTerminal } from "./support/run.ts";
 
 let repo: GitFixture;
 beforeAll(() => {
@@ -327,6 +327,78 @@ describe("reviewers", () => {
     const { stdout } = await runCochange(repo.path, ["risk", "reviewers", "main..dave", "--names"]);
     expectGolden("placement", "risk.reviewers", stdout);
   });
+});
+
+describe("a sweep for names", () => {
+  const people = /Alice|Bob|Carol|Dave|@example\.com/;
+  // Every subcommand and every branch, in JSON and in the terminal table. Only `reviewers --names` may name anyone.
+  const commands: string[][] = [
+    ["risk", "main..alice"],
+    ["risk", "main..bob"],
+    ["risk", "main..both"],
+    ["risk", "main..carol"],
+    ["risk", "main..alice-other"],
+    ["risk", "explain"],
+    ["risk", "explain", "owner-distance"],
+    ["risk", "explain", "no-owner"],
+    ["risk", "reviewers", "main..bob"],
+    ["risk", "reviewers", "main..dave"],
+    ["risk", "backtest"],
+  ];
+
+  function filesUnder(directory: string): string[] {
+    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? filesUnder(join(directory, entry.name)) : [join(directory, entry.name)]));
+  }
+
+  test.each(["self", "any"])("with placement %s no risk output names a developer or prints an address", async (placement) => {
+    config({ placement });
+    for (const argv of commands) {
+      for (const run of [await runCochange(repo.path, argv), await runCochange(repo.path, [...argv, "--json"]), await runCochangeOnTerminal(repo.path, argv)]) {
+        expect(`${run.stdout}\n${run.stderr}`, argv.join(" ")).not.toMatch(people);
+      }
+    }
+  }, 180_000);
+
+  test("only --names names anyone, and only the developers who could review", async () => {
+    config({ placement: "any" });
+    const { stdout } = await runCochange(repo.path, ["risk", "reviewers", "main..dave", "--names", "--json"]);
+    expect(stdout).toMatch(/Bob|Alice/);
+    expect(stdout).not.toMatch(/Carol|Dave/);
+  });
+
+  // The history cache holds commit authors by design, to count them. What risk adds to disk is the blame cache and the stored reports.
+  test("the blame cache and the stored reports carry no address or name, whichever commands ran", async () => {
+    config({ placement: "any" });
+    for (const argv of commands) await runCochange(repo.path, argv);
+    await runCochange(repo.path, ["risk", "reviewers", "main..dave", "--names"]);
+    const cache = join(repo.path, ".cache", "code-health");
+    const files = [join(cache, "blame.sqlite"), ...filesUnder(join(cache, "reports"))];
+    expect(files.length).toBeGreaterThan(1);
+    for (const file of files) {
+      expect(readFileSync(file).toString("latin1"), file).not.toMatch(/@example\.com|Alice|Bob|Carol|Dave/);
+    }
+  }, 180_000);
+
+  test.each([["main..alice"], ["main..both"]])("with no git identity every risk table and document withholds placement on %s, rather than falling back to first touch", async (range) => {
+    config({ placement: "self" });
+    repo.git("config", "--unset", "user.email");
+    const keep = { global: process.env.GIT_CONFIG_GLOBAL, system: process.env.GIT_CONFIG_NOSYSTEM, author: process.env.GIT_AUTHOR_EMAIL };
+    process.env.GIT_CONFIG_GLOBAL = "/dev/null";
+    process.env.GIT_CONFIG_NOSYSTEM = "1";
+    delete process.env.GIT_AUTHOR_EMAIL;
+    try {
+      const json = JSON.parse((await runCochange(repo.path, ["risk", range, "--json"])).stdout);
+      expect(json.results.placement).toMatchObject({ status: "withheld", band: null, files: [] });
+      expect(json.results.findings.filter((f: { fromPlacement: boolean }) => f.fromPlacement)).toEqual([]);
+      const table = await runCochangeOnTerminal(repo.path, ["risk", range]);
+      expect(table.stdout).not.toMatch(/first-touch/);
+    } finally {
+      for (const [key, value] of [["GIT_CONFIG_GLOBAL", keep.global], ["GIT_CONFIG_NOSYSTEM", keep.system], ["GIT_AUTHOR_EMAIL", keep.author]] as const) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  }, 60_000);
 });
 
 describe("findings that rest on placement", () => {
