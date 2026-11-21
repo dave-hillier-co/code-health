@@ -35,6 +35,7 @@ export function unitRow(ranked: RankedUnit, selected: readonly MetricId[], setti
     score: ranked.score,
     dominant: ranked.dominant,
     ...pick(unit.values, selected),
+    ...(unit.optionCount === undefined || !selected.includes("parameters") ? {} : { optionCount: unit.optionCount }),
     percentiles: pick(ranked.percentiles, selected),
     labels: unitLabels(unit, settings),
   };

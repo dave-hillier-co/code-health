@@ -41,6 +41,7 @@
       "labels": [],
       "length": 11,
       "nesting": 2,
+      "optionCount": 0,
       "parameters": 1,
       "path": "src/pricing.ts",
       "percentiles": {
@@ -66,6 +67,7 @@
       "labels": [],
       "length": 3,
       "nesting": 0,
+      "optionCount": 0,
       "parameters": 1,
       "path": "src/label.ts",
       "percentiles": {
@@ -91,6 +93,7 @@
       "labels": [],
       "length": 1,
       "nesting": 0,
+      "optionCount": 0,
       "parameters": 1,
       "path": "src/pricing.ts",
       "percentiles": {
@@ -116,6 +119,7 @@
       "labels": [],
       "length": 5,
       "nesting": 1,
+      "optionCount": 0,
       "parameters": 0,
       "path": "test/pricing.test.ts",
       "percentiles": {
@@ -135,8 +139,6 @@
   "schemaVersion": 1,
   "skipped": {
     "comment and string stripping: no lexer profile": 1,
-    "function blocks: no lexer profile": 1,
-    "keywordComplexity: no lexer profile": 1,
     "per-function metrics: no agreement measured for go": 1,
     "per-function metrics: no agreement measured for python": 1,
     "per-function metrics: no lexer profile": 1

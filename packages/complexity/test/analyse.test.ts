@@ -43,6 +43,7 @@ describe("analyse", () => {
     const price = rows.find((row) => row.unit === "price")!;
     expect([price.cognitive, price.cyclomatic, price.nesting, price.parameters]).toEqual([8, 5, 2, 1]);
     expect(price.source).toBe("structural");
+    expect((price as Row & { optionCount: number }).optionCount).toBe(0);
     expect(price.dominant).not.toBeNull();
   });
 

@@ -190,6 +190,11 @@
           "labels": {
             "$ref": "common.schema.json#/$defs/labels"
           },
+          "optionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Properties destructured out of object parameters, which count as one parameter. Structural units, with the parameters metric."
+          },
           "cognitive": {
             "type": "integer",
             "minimum": 0

@@ -97,8 +97,6 @@
   "schemaVersion": 1,
   "skipped": {
     "comment and string stripping: no lexer profile": 1,
-    "function blocks: no lexer profile": 1,
-    "keywordComplexity: no lexer profile": 1,
     "per-function metrics: no agreement measured for go": 1,
     "per-function metrics: no agreement measured for python": 1,
     "per-function metrics: no lexer profile": 1

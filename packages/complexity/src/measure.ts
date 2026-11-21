@@ -155,7 +155,8 @@ function fileRecord(
   options: MeasureOptions,
 ): FileRecord {
   const test = isTestPath(path);
-  const skipped = [...lexical.skipped];
+  // The lexical layer lists three things it skipped for a file with no profile; the per-function reason below covers two of them.
+  const skipped = lexical.skipped.filter((reason) => reason.startsWith("comment and string stripping"));
   let units: UnitRecord[] = [];
   let source: FileRecord["source"] = null;
   let agreement: FileRecord["agreement"];
