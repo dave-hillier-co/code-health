@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
@@ -265,6 +265,44 @@ describe("measure compare, where the moves did not go through the skill", () => 
     expect(run.code).toBe(ExitCode.Usage);
     expect(run.stderr).toMatch(/not an ancestor/);
   }, 60_000);
+});
+
+describe("what was said in a session never leaves it", () => {
+  const SENTINEL = "SENTINEL-prompt-text-7f3a91";
+
+  function filesUnder(directory: string): string[] {
+    if (!existsSync(directory)) return [];
+    return readdirSync(directory).flatMap((entry) => {
+      const path = join(directory, entry);
+      return statSync(path).isDirectory() ? filesUnder(path) : [path];
+    });
+  }
+
+  test("neither the baseline's nor the comparison's output, stderr or files carry prompt text, including from sessions outside the window and ones that cannot be read", async () => {
+    const { repo, sessions } = fresh();
+    sessionsBefore(sessions);
+    // A session whose prompts hold the sentinel inside the window, one far outside it, and one that is not a transcript.
+    sessions.featureTasks(1, { start: "2023-03-01T09:00:00Z", tasks: 2, helper: "src/shared/utils/h1.ts", rereads: false, tokens: 100, prompt: SENTINEL });
+    sessions.featureTasks(1, { start: "2019-03-01T09:00:00Z", tasks: 2, helper: "src/shared/utils/h1.ts", rereads: false, tokens: 100, prompt: SENTINEL });
+    sessions.corrupt(SENTINEL);
+    const runs = [await measure(repo, sessions, ["baseline"])];
+    tidyUp(repo, [1, 2]);
+    sessionsAfter(sessions, [1, 2]);
+    sessions.featureTasks(1, { start: "2024-02-01T09:00:00Z", tasks: 2, helper: "src/f1/h1.ts", rereads: false, tokens: 100, prompt: SENTINEL });
+    runs.push(await measure(repo, sessions, ["compare"]));
+    // The terminal table, not only the JSON.
+    const table = await runLocality(repo.path, ["measure", "compare", "--projects-dir", sessions.directory]);
+    for (const { run } of runs) expect(run.code).toBe(ExitCode.Success);
+    const everything = [
+      ...runs.flatMap(({ run }) => [run.stdout, run.stderr]),
+      table.stdout,
+      table.stderr,
+      ...filesUnder(join(repo.path, ".code-health")).map((file) => readFileSync(file, "utf8")),
+      ...filesUnder(join(repo.path, ".cache")).map((file) => readFileSync(file, "utf8")),
+    ];
+    for (const text of everything) expect(text).not.toContain(SENTINEL);
+    expect(filesUnder(join(repo.path, ".code-health")).some((file) => readFileSync(file, "utf8").includes("tasks"))).toBe(true);
+  }, 90_000);
 });
 
 test("measure needs a subcommand", async () => {

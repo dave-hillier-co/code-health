@@ -140,6 +140,11 @@ export class Sessions {
     mkdirSync(this.project, { recursive: true });
   }
 
+  /** A session file that is not a transcript at all, with `text` inside it. */
+  corrupt(text: string): void {
+    writeFileSync(join(this.project, `corrupt-${++this.count}.jsonl`), `{"type":"user","message":{"content":"${text}"\n${text} not json at all\n`);
+  }
+
   dispose(): void {
     rmSync(this.directory, { recursive: true, force: true });
   }
@@ -148,11 +153,11 @@ export class Sessions {
    * One session of `tasks` tasks on a feature, starting at `start`: each reads the helper, reads both consumers
    * (twice when `rereads`), and edits one, spending `tokens` in all.
    */
-  featureTasks(feature: Feature, options: { start: string; tasks: number; helper: string; rereads: boolean; tokens: number }): void {
+  featureTasks(feature: Feature, options: { start: string; tasks: number; helper: string; rereads: boolean; tokens: number; prompt?: string }): void {
     const session = new SyntheticSession({ cwd: this.root, sessionId: `session-${++this.count}`, start: options.start });
     const file = (path: string) => join(this.root, path);
     for (let task = 0; task < options.tasks; task++) {
-      session.prompt(`Change feature ${feature}`);
+      session.prompt(options.prompt ?? `Change feature ${feature}`);
       const calls = [read(file(`src/f${feature}/a.ts`)), read(file(options.helper)), read(file(`src/f${feature}/b.ts`))];
       if (options.rereads) calls.push(read(file(`src/f${feature}/a.ts`)));
       session.assistant(`m${this.count}-${task}`, [...calls, edit(file(`src/f${feature}/a.ts`))], { input: options.tokens });
