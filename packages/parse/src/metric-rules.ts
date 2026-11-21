@@ -21,12 +21,32 @@ export interface ConstructMap {
     alternative: string;
     /** The alternative field holds a clause node (`else_clause`) whose first named child is the branch. Otherwise the field is the branch. */
     alternativeIsClause: boolean;
+    /**
+     * For grammars whose `if` names only its condition (Kotlin): the two branches, found by position. When present
+     * the `consequence` and `alternative` field names are not read.
+     */
+    branches?(node: Node): { consequence: Node | null; alternative: Node | null };
   };
   /** `switch`, and the node that holds one `case` (a `default` is not a case). */
-  switch: { type: string; body: string; caseType: string };
-  /** `try` adds nesting. `catch` is a decision and its `body` field is walked one level deeper. */
+  switch: {
+    type: string;
+    body: string;
+    caseType: string;
+    /** True for a `case` that is a decision. A `default` or `else` entry is not: it shares the node type of the others in some grammars. */
+    isCase?(node: Node): boolean;
+    /**
+     * For a `switch` with no body node (Kotlin `when`): node types that are the head of the switch, such as its
+     * subject. Every other named child is an entry, one level deeper.
+     */
+    headTypes?: ReadonlySet<string>;
+  };
+  /** `try` adds nesting. `catch` is a decision and its body is walked one level deeper. */
   tryType: string;
+  /** Further node types that open a `try` (Java `try` with resources). */
+  alsoTryTypes?: ReadonlySet<string>;
   catchType: string;
+  /** The body of a loop or `catch`, when it is not the node's `body` field. */
+  bodyOf?(node: Node): Node | null;
   /** The ternary, with the fields of its three parts. */
   ternary: { type: string; condition: string; consequence: string; alternative: string };
   /** Binary expressions. `logical` operators are chained (one increment per run of like operators), `decisions` add to cyclomatic only. */
@@ -38,6 +58,11 @@ export interface ConstructMap {
   /** `break` and `continue` node types to their name. One with a `label` field costs a flat 1. */
   labelledJumps: Readonly<Record<string, string>>;
   label: string;
+  /**
+   * For grammars where a jump's label is not a `label` field (Java `break outer;`, Kotlin `break@outer`): the
+   * construct name when the node is a jump to a label, otherwise null. Replaces `labelledJumps` and `label`.
+   */
+  labelledJump?(node: Node): string | null;
   /** Node types that hold comments, which are not code for length and are skipped when reading an `else`. */
   commentTypes: ReadonlySet<string>;
 }

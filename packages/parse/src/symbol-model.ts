@@ -25,7 +25,17 @@ function enclosing(namespace: string): string[] {
   return parts.map((_, index) => parts.slice(0, parts.length - index).join("."));
 }
 
-export function resolveBySymbols(input: ResolveInput): ResolvedDependencies {
+export interface SymbolModelOptions {
+  /**
+   * A name written inside namespace `A.B.C` may resolve in `A.B` and `A` too (C#, where an enclosing namespace is
+   * in scope). False for packages (Java, Kotlin), where only the file's own package and what it imports are.
+   * Defaults to true.
+   */
+  enclosingNamespaces?: boolean;
+}
+
+export function resolveBySymbols(input: ResolveInput, options: SymbolModelOptions = {}): ResolvedDependencies {
+  const enclosingNamespaces = options.enclosingNamespaces ?? true;
   const table = new Map<string, Declared[]>();
   for (const [file, facts] of input.facts) {
     for (const declaration of facts.symbols?.declarations ?? []) {
@@ -53,7 +63,7 @@ export function resolveBySymbols(input: ResolveInput): ResolvedDependencies {
   for (const [file, facts] of input.facts) {
     const symbols = facts.symbols;
     if (symbols === undefined) continue;
-    const scopes = [...symbols.namespaces.flatMap(enclosing), ...symbols.uses, ""];
+    const scopes = [...(enclosingNamespaces ? symbols.namespaces.flatMap(enclosing) : symbols.namespaces), ...symbols.uses, ""];
     const units = unitNames(facts);
     for (const reference of symbols.references) {
       let found: Declared[] | undefined;

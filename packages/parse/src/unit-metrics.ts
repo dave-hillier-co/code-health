@@ -123,18 +123,23 @@ class Measurer {
       this.cyclomaticModified++;
       this.record(node, "cyclomatic", "switch", 1, 0, "modified");
       this.nesting = Math.max(this.nesting, depth + 1);
-      const body = node.childForFieldName(c.switch.body);
+      const body = c.switch.headTypes === undefined ? node.childForFieldName(c.switch.body) : null;
+      if (c.switch.headTypes !== undefined) {
+        const heads = c.switch.headTypes;
+        for (const child of node.namedChildren) this.visit(child, heads.has(child.type) ? level : level + 1, heads.has(child.type) ? depth : depth + 1);
+        return;
+      }
       this.children(node, level, depth, body);
       if (body !== null) this.children(body, level + 1, depth + 1);
       return;
     }
-    if (type === c.switch.caseType) {
+    if (type === c.switch.caseType && (c.switch.isCase === undefined || c.switch.isCase(node))) {
       this.cyclomatic++;
       this.record(node, "cyclomatic", "case", 1, 0, "case");
       this.children(node, level, depth);
       return;
     }
-    if (type === c.tryType) {
+    if (type === c.tryType || c.alsoTryTypes?.has(type)) {
       this.nesting = Math.max(this.nesting, depth + 1);
       this.children(node, level, depth + 1);
       return;
@@ -142,7 +147,7 @@ class Measurer {
     if (type === c.catchType) {
       this.flow(node, "catch", level);
       this.decision(node, "catch");
-      const body = node.childForFieldName("body");
+      const body = this.bodyOf(node);
       this.children(node, level, depth, body);
       if (body !== null) this.visit(body, level + 1, depth);
       return;
@@ -174,13 +179,25 @@ class Measurer {
       this.children(node, level, depth);
       return;
     }
-    const jump = c.labelledJumps[type];
-    if (jump !== undefined) {
-      if (node.childForFieldName(c.label) !== null) this.flat(node, `labelled ${jump}`);
-      return;
+    if (c.labelledJump !== undefined) {
+      const jump = c.labelledJump(node);
+      if (jump !== null) {
+        this.flat(node, `labelled ${jump}`);
+        return;
+      }
+    } else {
+      const jump = c.labelledJumps[type];
+      if (jump !== undefined) {
+        if (node.childForFieldName(c.label) !== null) this.flat(node, `labelled ${jump}`);
+        return;
+      }
     }
     if (type === this.rules.callType) this.recursionCheck(node);
     this.children(node, level, depth);
+  }
+
+  private bodyOf(node: Node): Node | null {
+    return this.c.bodyOf === undefined ? node.childForFieldName("body") : this.c.bodyOf(node);
   }
 
   private operatorOf(node: Node): string | undefined {
@@ -197,10 +214,11 @@ class Measurer {
     this.decision(node, isElseIf ? "else if" : "if");
     const condition = node.childForFieldName(c.condition);
     if (condition !== null) this.visit(condition, level, depth);
-    const consequence = node.childForFieldName(c.consequence);
+    const parts = c.branches?.(node);
+    const consequence = parts === undefined ? node.childForFieldName(c.consequence) : parts.consequence;
     // An else-if sits at its if's depth, so every body in the chain is one level deeper than the chain.
     if (consequence !== null) this.visit(consequence, level + 1, depth + 1);
-    const alternative = node.childForFieldName(c.alternative);
+    const alternative = parts === undefined ? node.childForFieldName(c.alternative) : parts.alternative;
     if (alternative === null) return;
     const inner = c.alternativeIsClause ? (alternative.namedChildren.find((child) => !this.c.commentTypes.has(child.type)) ?? null) : alternative;
     if (inner === null) return;
@@ -218,7 +236,7 @@ class Measurer {
     this.flow(node, construct, level);
     this.decision(node, construct);
     this.nesting = Math.max(this.nesting, depth + 1);
-    const body = node.childForFieldName("body");
+    const body = this.bodyOf(node);
     this.children(node, level, depth, body);
     if (body !== null) this.visit(body, level + 1, depth + 1);
   }
