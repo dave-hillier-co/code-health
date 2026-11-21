@@ -97,7 +97,7 @@ Hooks are opt-in per repository, because injected context costs tokens. A plugin
 
 ### Configuration
 
-All plugins read one committed file at the repo root, `code-health.json`, with a `$schema` reference. It has a top-level `exclude`, `languages`, `entryPoints`, `components` and `vagueNames` shared by every plugin, and one section per plugin. Each plugin validates its own section and ignores the others. Missing config means defaults. Every CLI has `config explain` to print the effective config and where each value came from, so the skill can explain it. Plugin `userConfig` is not used, because these settings belong to the repository, not the user.
+All plugins read one committed file at the repo root, `code-health.json`, with a `$schema` reference. It has a top-level `exclude`, `languages`, `entryPoints`, `components` and `vagueNames` shared by every plugin, and one section per plugin. The JSON Schema it points to is generated from every plugin's config section and checked in CI. Each plugin validates its own section and ignores the others. Missing config means defaults. Every CLI has `config explain` to print the effective config and where each value came from, so the skill can explain it. Plugin `userConfig` is not used, because these settings belong to the repository, not the user.
 
 ## CLI contract
 
@@ -160,7 +160,7 @@ Every plugin's analysis is built in three layers. Each one works without the lay
 | **Lexical** | Indentation, plus an optional per-family lexer profile: comment and string delimiters, block style (braces or indentation) and a branch-keyword list | Any text file and any historical blob, at best effort: indentation metrics always, profile metrics where a profile fits | Indentation complexity, bumpy road, nesting, approximate function blocks and their length, keyword complexity, append-shaped edits, lexical duplication |
 | **Structural** | Tree-sitter grammar plus a language adapter | Tier 1 and tier 2 languages | Exact units and metric definitions, import and symbol resolution, dominator units, census, deterministic moves |
 
-The lexical layer is the lowest common denominator. Its indentation metrics (indentation complexity, nesting, length) need no profile and apply to any text file. Lexer profiles are data, not code, and add comment and string stripping, keyword complexity, approximate function blocks and the per-function metrics built on them. A C-family profile covers C++, C#, Java, Kotlin, JavaScript, TypeScript, Go and Rust, and an indentation profile covers Python. Other languages can be mapped to a profile in config, but nothing outside tier 1 and 2 is tested or promised.
+The lexical layer is the lowest common denominator. Its indentation metrics (indentation complexity, nesting, length) need no profile and apply to any text file. Lexer profiles are data, not code, and add comment and string stripping, keyword complexity, approximate function blocks and the per-function metrics built on them. A C-family profile covers C++, C#, Java, Kotlin, JavaScript, TypeScript, Go and Rust, and an indentation profile covers Python. Other languages can be mapped to a profile in config, through the top-level `languages` key (file extension without its dot, to profile name: `{ "zig": "rust" }`), but nothing outside tier 1 and 2 is tested or promised.
 
 Lexical values are approximations, offered at best effort and labelled as such. A language gets whatever the layer can measure for it, and the output says what was skipped.
 
@@ -250,7 +250,7 @@ Each plugin defines its own outcome measure, and the suite shares the instrument
 Each plugin spec has its own milestones. Across the suite, the order is set by what the measurements need:
 
 1. The history core and `cochange spread`, because every outcome in the suite is measured with them and a baseline cannot be taken afterwards.
-2. A premise check, before any mover exists: from existing history and session transcripts, test whether tasks that touch more distant files cost more reads and tokens. Locality's priority depends on the answer.
+2. A premise check, before any mover exists: from existing history and session transcripts, test whether tasks that touch more distant files cost more reads and tokens. Locality's priority depends on the answer. It is `locality measure premise`, which reports the sample, the evidence and what the data does not show.
 3. The lexical layer with its agreement test, then the TypeScript adapter.
 4. Analysers and baselines for locality and complexity, then the commands that change code.
 5. Structure, which builds on locality's graph and cochange's coupling, then its packaging skill.

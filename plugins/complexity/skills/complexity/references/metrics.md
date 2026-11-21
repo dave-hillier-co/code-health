@@ -24,6 +24,8 @@ For files in other languages, and when `--layer lexical` is given, per-function 
 function blocks by matching headers and counting braces (or indentation), outside strings and comments. Its values are
 approximations and carry `source: "lexical"`.
 
+A file type with no profile can be mapped to one in `code-health.json`, as `"languages": { "zig": "rust" }` (extension without its dot, to a profile name). Its per-function values are reported with `unverified: true`, because no agreement with a structural layer was ever measured for it. State that when quoting them, and do not rank them as firmly as measured ones. The post-edit hook stays silent on such files.
+
 | Metric | Counted as |
 |---|---|
 | `keyword` | Branch keywords and short-circuit operators in the block. An approximation of cyclomatic complexity, without the base 1. |
