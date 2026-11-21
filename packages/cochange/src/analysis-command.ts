@@ -45,7 +45,8 @@ const sharedOptions = { "no-refresh": { type: "boolean" } } satisfies OptionSpec
  * - refuses a shallow clone without a stated window,
  * - reads the history for the analysis window and applies the noise filters,
  * - adds `window`, `filtersApplied` and `evidence` to the output,
- * - stores the full result as a report on a clean tree, for whole-repository runs.
+ * - stores the full result as a report on a clean tree, for whole-repository runs
+ *   that analyse HEAD itself.
  */
 export function analysisCommand(name: string, spec: AnalysisSpec): Command {
   return {
@@ -68,7 +69,7 @@ export function analysisCommand(name: string, spec: AnalysisSpec): Command {
         },
       };
       const wholeRepository = window === undefined && !spec.partial?.(context);
-      if (wholeRepository) await writeReport(context, name, finished);
+      if (wholeRepository) await writeReport(context, name, finished, history.view.headSha);
       return finished;
     },
   };

@@ -57,7 +57,7 @@ function readComplexityReport(root: string, head: string): { document: ReportDoc
 
 /**
  * Complexity for files at the head commit. A complexity report that covers the
- * current head is preferred and named in `inputs`. Without one, the file's
+ * analysed commit is preferred and named in `inputs`. Without one, the file's
  * indentation complexity is computed from its blob at the head commit.
  */
 export async function loadComplexity(
@@ -65,14 +65,14 @@ export async function loadComplexity(
   headSha: string,
   paths: readonly string[],
 ): Promise<FileComplexity> {
-  const report = readComplexityReport(context.repo.root, context.repo.head);
+  const report = readComplexityReport(context.repo.root, headSha);
   if (report) {
     return {
       source: "complexity-report",
       values: new Map(paths.map((path) => [path, report.rows.get(path) ?? null])),
       input: {
         report: `${COMPLEXITY_REPORT.tool}.${COMPLEXITY_REPORT.command}`,
-        head: context.repo.head,
+        head: headSha,
         config: report.document.config as string,
       },
     };

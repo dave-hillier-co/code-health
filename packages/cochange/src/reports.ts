@@ -19,10 +19,17 @@ export function reportPath(root: string, command: string, tool: string = TOOL): 
  * never applied: the report holds every result.
  *
  * Only a run over the whole repository on a clean tree may call this. Returns
- * false, writing nothing, on a dirty tree, so a report always describes a commit.
+ * false, writing nothing, on a dirty tree, or when the analysed commit
+ * (`analysedHead`) is not HEAD, as with a configured `cochange.branch`, so a
+ * report always describes the commit it is stamped with.
  */
-export async function writeReport(context: CommandContext, command: string, output: CommandOutput): Promise<boolean> {
-  if (context.repo.dirty) return false;
+export async function writeReport(
+  context: CommandContext,
+  command: string,
+  output: CommandOutput,
+  analysedHead: string,
+): Promise<boolean> {
+  if (context.repo.dirty || analysedHead !== context.repo.head) return false;
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
   const document = buildDocument({
     schemaVersion: SCHEMA_VERSION,
