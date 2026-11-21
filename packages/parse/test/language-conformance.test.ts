@@ -72,7 +72,20 @@ describe.each(registeredAdapters.map((adapter) => adapter.id))("%s: the adapter 
   });
 
   describe.each(cases)("$name", (fixture) => {
-    const expected = readExpected<AdapterExpected>(fixture);
+    // A malformed expected.json fails this one case: reading it where the suite is collected would abort the whole file.
+    const expected = ((): AdapterExpected | Error => {
+      try {
+        return readExpected<AdapterExpected>(fixture);
+      } catch (error) {
+        return error instanceof Error ? error : new Error(String(error));
+      }
+    })();
+    if (expected instanceof Error) {
+      it("has an expected.json that parses", () => {
+        throw expected;
+      });
+      return;
+    }
     it.each(Object.keys(expected) as (keyof AdapterExpected)[])("%s", async (section) => {
       const actual = render(await analyseTree(await treeFromDirectory(fixture.directory)));
       expect(actual[section]).toEqual(expected[section]);
@@ -149,6 +162,23 @@ describe.each(registeredAdapters.map((adapter) => adapter.id))("%s: the interfac
       const facts = parseWith(language.adapter, language.grammar, readFileSync(`${fixture!.directory}${file}`, "utf8"));
       expect(facts.units.map((unit) => [unit.qualifiedName, unit.shape?.nodes, unit.shape?.interfaceSize, unit.passThrough ?? null]), file).toEqual(expected.files[file]);
       expect(facts.nodes, file).toBe(expected.modules[file]);
+    }
+  });
+});
+
+describe.each(registeredAdapters.map((adapter) => adapter.id))("%s: the fixtures of the areas other plugins run", (id) => {
+  const pins: [string, (expected: Record<string, unknown>) => unknown][] = [
+    ["census", (expected) => expected.occurrences],
+    ["packaging", (expected) => expected.packages],
+    ["moves", (expected) => expected.operations],
+  ];
+
+  it.each(pins)("every %s case that is not the quiet one pins something, so an emptied fixture cannot pass vacuously", (area, pinned) => {
+    for (const fixture of fixtureCases(id, area as "census" | "packaging" | "moves")) {
+      if (area === "census" && fixture.name === "quiet") continue;
+      const value = pinned(readExpected<Record<string, unknown>>(fixture));
+      const size = Array.isArray(value) ? value.length : typeof value === "object" && value !== null ? Object.keys(value).length : 0;
+      expect(size, `${id}/${area}/${fixture.name} pins nothing`).toBeGreaterThan(0);
     }
   });
 });

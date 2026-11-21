@@ -39,6 +39,7 @@ describe.each(ids)("%s: the complexity fixtures", (id) => {
   describe.each(metrics.map((fixture) => [fixture.directory.split("/").slice(-3, -1).join("/"), fixture] as const))("%s", (_label, fixture) => {
     it.each(["case", "modified"] as const)("measures the hand-counted values of every function, with cyclomatic counted per %s", async (mode) => {
       const expected = readExpected<{ columns: string[]; files: Record<string, Row[]> }>(fixture);
+      expect(expected.columns, "the columns the harness reads").toEqual(["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"]);
       const base = readSettings(loadConfig(fixture.directory, complexityConfig));
       const measurement = await measureTree(await treeFromDirectory(fixture.directory), { settings: { ...base, cyclomaticSwitch: mode }, layer: "structural" });
       const column = (name: string) => expected.columns.indexOf(name);
