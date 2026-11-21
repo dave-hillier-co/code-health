@@ -120,13 +120,15 @@ export async function analyseTree(tree: SourceTree, options: AnalyseOptions = {}
     }
   }
 
+  // Sorted here, so output order never depends on the order the tree lists its files in.
+  const sortedPaths = [...tree.files.keys()].sort(compareUtf8);
   const facts = new Map<string, FileFacts>();
-  for (const path of tree.files.keys()) {
+  for (const path of sortedPaths) {
     const fileFacts = loaded.get(path);
     if (fileFacts) facts.set(path, fileFacts);
   }
   const configs = await tree.readMany([...tree.files.keys()].filter(isConfigPath));
-  const graph = new GraphBuilder(facts, new SpecifierResolver(tree.files.keys(), configs), options.isTestPath ?? isTestPath);
+  const graph = new GraphBuilder(facts, new SpecifierResolver(sortedPaths, configs), options.isTestPath ?? isTestPath);
   return { ...graph.build(), stats };
 }
 
