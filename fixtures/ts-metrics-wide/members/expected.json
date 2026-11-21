@@ -1,0 +1,10 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "members.ts": [
+      ["Counter.zero", 1, 1, 0, 0, 1, 1, 0, 0],
+      ["Counter.constructor", 1, 1, 0, 0, 1, 0, 1, 0],
+      ["Counter.bump", 3, 3, 2, 1, 7, 4, 2, 0]
+    ]
+  }
+}

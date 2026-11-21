@@ -1,0 +1,9 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "shapes.ts": [
+      ["pipeline", 3, 3, 3, 0, 5, 3, 2, 0],
+      ["configure", 1, 1, 0, 0, 8, 1, 3, 2]
+    ]
+  }
+}

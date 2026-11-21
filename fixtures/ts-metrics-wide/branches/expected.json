@@ -1,0 +1,11 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "branches.ts": [
+      ["grade", 4, 4, 4, 1, 11, 7, 1, 0],
+      ["scan", 4, 4, 6, 3, 11, 6, 2, 0],
+      ["route", 6, 4, 6, 2, 17, 9, 1, 0],
+      ["validate", 7, 7, 6, 1, 6, 3, 4, 0]
+    ]
+  }
+}
