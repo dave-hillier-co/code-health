@@ -15,6 +15,23 @@ beforeAll(async () => {
       changes: [
         { op: "add", path: "src/a.ts", content: "export function a() { return 1; }\nexport interface Shape { sides: number }\nexport const hidden = 2;\n" },
         { op: "add", path: "src/b.ts", content: "export function b() { return 2; }\nexport default function main() {}\n" },
+        {
+          op: "add",
+          path: "src/types.ts",
+          content: [
+            "export interface Port { open(): void }",
+            "export abstract class Base { abstract run(): void }",
+            "export class Impl extends Base { run() {} }",
+            "export enum Color { Red }",
+            "export type Alias = string;",
+            "export function make() {}",
+            "export const value = 1;",
+            "class Local {}",
+            "interface Hidden {}",
+            "export { Local as Renamed, type Hidden };",
+            "",
+          ].join("\n"),
+        },
         { op: "add", path: "src/inner/c.ts", content: "export function c() {}\nexport function d() {}\n" },
         {
           op: "add",
@@ -73,6 +90,32 @@ describe("exports", () => {
 
   it("leaves out what resolves outside the tree", () => {
     expect(exportsOf("src/uses.ts")).toEqual(["x -> src/uses.ts#x"]);
+  });
+});
+
+describe("what an export is declared as", () => {
+  const kindsOf = () => Object.fromEntries(analysis.exports.filter((e) => e.file === "src/types.ts").map((e) => [e.name, e.defined.kind]));
+
+  it("tells interfaces, abstract classes, classes, enums, type aliases, functions and variables apart", () => {
+    expect(kindsOf()).toMatchObject({
+      Port: "interface",
+      Base: "abstract-class",
+      Impl: "class",
+      Color: "enum",
+      Alias: "type",
+      make: "function",
+      value: "variable",
+    });
+  });
+
+  it("follows a name exported under another name or by a clause to its declaration", () => {
+    expect(kindsOf().Renamed).toBe("class");
+    expect(kindsOf().Hidden).toBe("interface");
+  });
+
+  it("is carried through a re-export to the definition", () => {
+    const viaIndex = analysis.exports.find((e) => e.file === "src/index.ts" && e.name === "Shape");
+    expect(viaIndex?.defined.kind).toBe("interface");
   });
 });
 

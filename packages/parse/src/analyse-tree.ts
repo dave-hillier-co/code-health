@@ -1,6 +1,6 @@
 import type { UnitShape } from "@code-health/lexical/unit";
 import { parseFacts } from "./file-facts.ts";
-import type { FileFacts, ReferenceFact, UnitKind, UnitMetrics } from "./facts.ts";
+import type { DeclarationKind, FileFacts, ReferenceFact, UnitKind, UnitMetrics } from "./facts.ts";
 import { grammarIdForPath, loadGrammar, type GrammarId, type LoadedGrammar, type LoadOptions } from "./grammars.ts";
 import type { ParseCache } from "./parse-cache.ts";
 import { isConfigPath, SpecifierResolver, type Resolution } from "./resolve-specifier.ts";
@@ -76,6 +76,8 @@ export interface ExportedName {
     name: string;
     /** Qualified name of the defining unit, when the definition is a function or class. */
     symbol?: string;
+    /** What the definition is declared as: an interface, an abstract class, a class, a function, and so on. */
+    kind?: DeclarationKind;
   };
 }
 
@@ -298,10 +300,16 @@ class GraphBuilder {
         seen.add(name);
         const result = this.resolveExport(path, name, new Set());
         if (result.status !== "defined") continue;
+        const kind = this.facts.get(result.file)?.exports.find((exported) => exported.exported === result.exportName)?.kind;
         names.push({
           file: path,
           name,
-          defined: { file: result.file, name: result.exportName, ...(result.symbol === undefined ? {} : { symbol: result.symbol }) },
+          defined: {
+            file: result.file,
+            name: result.exportName,
+            ...(result.symbol === undefined ? {} : { symbol: result.symbol }),
+            ...(kind === undefined ? {} : { kind }),
+          },
         });
       }
     }
