@@ -132,6 +132,21 @@ test("an imported first commit does not extend the usable history", async () => 
   expect(evidence.usableHistoryMonths).toBeLessThan(2);
 });
 
+test("a bulk import after a tiny root commit is detected and starts the usable history", async () => {
+  const bulk: Change[] = Array.from({ length: 25 }, (_, i) => ({ op: "add", path: `legacy/f${i}`, content: "x\n" }));
+  const repo = build([
+    { type: "commit", message: "init", date: "2010-01-01T00:00:00Z", changes: [{ op: "add", path: "README", content: "hi\n" }] },
+    { type: "commit", message: "import from svn", date: "2015-01-01T00:00:00Z", changes: bulk },
+    edit("2024-01-01T10:00:00Z", "new1", 1),
+    edit("2024-02-01T10:00:00Z", "new2", 1),
+  ]);
+  await refresh(repo.path);
+  const { evidence } = await analyseHistory(repo.path);
+  expect(evidence.importedHistory).toHaveLength(1);
+  expect(evidence.importedHistory[0]!.committerDate).toBe(Date.parse("2015-01-01T00:00:00Z") / 1000);
+  expect(evidence.usableHistoryMonths).toBeLessThan(2);
+});
+
 test("a shallow clone reports its truncated window", async () => {
   const source = build([
     edit("2024-01-01T10:00:00Z", "a", 1),

@@ -79,7 +79,11 @@ export function computeEvidence(
   const until = view.headDate;
   const since = monthsBefore(until, windowMonths);
 
-  const first = changes.reduce<number | null>((min, c) => (min === null || c.committerDate < min ? c.committerDate : min), null);
+  // Usable history starts after the latest import: what came before it is a stub.
+  const afterImport = imported.reduce((max, i) => Math.max(max, i.committerDate), -Infinity);
+  const first = changes
+    .filter((c) => c.committerDate >= afterImport)
+    .reduce<number | null>((min, c) => (min === null || c.committerDate < min ? c.committerDate : min), null);
   const usableHistoryMonths = first === null ? 0 : Math.round(((until - first) / SECONDS_PER_MONTH) * 10) / 10;
 
   const inWindow = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
