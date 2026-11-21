@@ -13,7 +13,7 @@ export const adapter: LanguageAdapter = {
   id: "kotlin",
   name: "Kotlin",
   tier: 2,
-  support: "experimental",
+  support: "supported",
   lexerProfile: "kotlin",
   grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm" }, extensions: [".kt"] }],
   extractorVersion: 1,

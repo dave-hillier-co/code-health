@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import { describeSupportedCode } from "@code-health/parse/languages";
 import { expectGolden } from "../support/golden.ts";
 import { packages, withPackageSettings } from "./support/run.ts";
 import { manifestsRepository } from "./support/scenarios.ts";
@@ -204,13 +205,13 @@ describe("the balance", () => {
 });
 
 describe("where the structural layer cannot read", () => {
-  test("packages without TypeScript or JavaScript list the findings that are unavailable for them", async () => {
+  test("packages with no code of a supported language list the findings that are unavailable for them", async () => {
     const fixture = manifestsRepository();
     try {
       const { document } = await packages(fixture, "cohesion");
       const unavailable = document.unavailable as { package: string; reason: string; findings: string[] }[];
       expect(unavailable.map((u) => u.package)).toContain("dotnet/Web");
-      expect(unavailable.find((u) => u.package === "dotnet/Web")!.reason).toContain("no TypeScript or JavaScript");
+      expect(unavailable.find((u) => u.package === "dotnet/Web")!.reason).toContain(`no ${describeSupportedCode()}`);
       expect(unavailable[0]!.findings).toContain("partial-use");
       expect(document.balance.find((b: any) => b.id === "dotnet/Web").reuse).toBeNull();
     } finally {

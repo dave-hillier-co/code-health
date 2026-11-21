@@ -13,7 +13,7 @@ export const adapter: LanguageAdapter = {
   id: "java",
   name: "Java",
   tier: 2,
-  support: "experimental",
+  support: "supported",
   lexerProfile: "java",
   grammars: [{ spec: { id: "java", packageName: "tree-sitter-java", file: "tree-sitter-java.wasm" }, extensions: [".java"] }],
   extractorVersion: 1,
