@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { logArgs, parseLog } from "../src/log-parser.ts";
@@ -96,4 +99,38 @@ test("control bytes in paths and messages do not break record splitting", async 
   expect(commits).toHaveLength(1);
   expect(commits[0]!.message).toBe("has\x1erecord\x1fseparators");
   expect(commits[0]!.changes[0]!.path).toBe("rs\x1ename.txt");
+});
+
+test("the user's git config cannot change what is ingested", async () => {
+  const f = build([
+    {
+      type: "commit",
+      message: "root",
+      date: "2024-01-01T10:00:00Z",
+      author: alice,
+      changes: [{ op: "add", path: "a.txt", content: "x\ny\nx\ny\nx\n" }],
+    },
+    {
+      type: "commit",
+      message: "edit",
+      date: "2024-01-02T10:00:00Z",
+      author: alice,
+      changes: [{ op: "modify", path: "a.txt", content: "x\ny\nz\nx\ny\nx\n" }],
+    },
+  ]);
+  const clean = await logOf(f);
+
+  const dir = mkdtempSync(join(tmpdir(), "code-health-gitconfig-"));
+  const hostile = join(dir, "gitconfig");
+  writeFileSync(hostile, "[log]\n\tshowRoot = false\n[diff]\n\talgorithm = histogram\n\trenames = false\n[core]\n\tquotepath = true\n");
+  const previous = process.env.GIT_CONFIG_GLOBAL;
+  process.env.GIT_CONFIG_GLOBAL = hostile;
+  try {
+    expect(await logOf(f)).toEqual(clean);
+  } finally {
+    if (previous === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+    else process.env.GIT_CONFIG_GLOBAL = previous;
+    rmSync(dir, { recursive: true, force: true });
+  }
+  expect(clean[clean.length - 1]!.changes).toHaveLength(1);
 });

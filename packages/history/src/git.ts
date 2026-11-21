@@ -28,7 +28,15 @@ export function runGit(cwd: string, args: string[], options: GitOptions = {}): P
   return new Promise((resolve, reject) => {
     const child = spawn("git", args, {
       cwd,
-      env: { ...process.env, LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0", ...options.env },
+      env: {
+        ...process.env,
+        LC_ALL: "C",
+        GIT_OPTIONAL_LOCKS: "0",
+        // The user's and the system's git config must not change what is read.
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_CONFIG_GLOBAL: "/dev/null",
+        ...options.env,
+      },
       stdio: ["pipe", "pipe", "pipe"],
     });
     const out: Buffer[] = [];
