@@ -5,7 +5,7 @@ import { boundParameterNames, classShape, functionShape, nodeCount, passThroughO
 import { enclosingClass, pythonMetricRules } from "./metric-rules.ts";
 
 /** Bump when the extraction rules change in a way that alters facts for the same source, so cached facts from older rules are not reused. */
-export const extractorVersion = 1;
+export const extractorVersion = 2;
 
 interface Context {
   /** Qualified name of the innermost enclosing unit; names of nested units are built from it. */
@@ -250,10 +250,10 @@ class Extractor {
   /** Every name a module defines or imports at its top level, including inside `if` and `try`: what `from module import name` can reach. */
   private collectExports(root: Node): void {
     const seen = new Set<string>();
-    const add = (exported: string, line: number, kind?: DeclarationKind): void => {
+    const add = (exported: string, line: number, kind?: DeclarationKind, implicit = false): void => {
       if (seen.has(exported) || exported === "__all__") return;
       seen.add(exported);
-      this.exports.push({ exported, local: exported, line, ...(kind === undefined ? {} : { kind }) });
+      this.exports.push({ exported, local: exported, line, ...(kind === undefined ? {} : { kind }), ...(implicit ? { implicit: true } : {}) });
     };
     const walk = (node: Node): void => {
       for (const statement of node.namedChildren) {
@@ -281,7 +281,7 @@ class Extractor {
           }
           case "import_statement":
           case "import_from_statement":
-            for (const binding of importBindings(definition)) if (!binding.local.includes(".")) add(binding.local, line);
+            for (const binding of importBindings(definition)) if (!binding.local.includes(".")) add(binding.local, line, undefined, true);
             break;
           case "if_statement":
           case "try_statement":

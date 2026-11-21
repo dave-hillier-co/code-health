@@ -134,7 +134,8 @@ export class ImportModel {
       else if (target.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
     }
     const unitNames = new Set(file.units.map((unit) => unit.qualifiedName));
-    const exportedLocals = new Set(file.exports.map((exported) => exported.local));
+    const implicitIsReexport = this.resolver.reexportsImplicitly?.(path) === true;
+    const exportedLocals = new Set(file.exports.filter((exported) => exported.implicit !== true || implicitIsReexport).map((exported) => exported.local));
     for (const imported of file.imports) {
       if (imported.kind === "dynamic") {
         this.addUnresolved(path, imported.line, imported.specifier, "dynamic-import");

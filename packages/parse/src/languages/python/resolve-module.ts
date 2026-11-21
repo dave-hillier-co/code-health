@@ -84,6 +84,10 @@ export class PythonResolver implements ModuleResolver {
     return parts.length === 0 ? undefined : parts.join(".");
   }
 
+  reexportsImplicitly(path: string): boolean {
+    return posix.basename(path) === "__init__.py";
+  }
+
   submodule(modulePath: string, name: string): string | undefined {
     if (posix.basename(modulePath) !== "__init__.py") return undefined;
     return this.moduleFile(posix.dirname(modulePath), [name]);

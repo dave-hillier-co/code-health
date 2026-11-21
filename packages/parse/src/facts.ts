@@ -95,6 +95,11 @@ export interface ExportFact {
    * private or `pub(crate)`. Resolution reaches it, the exported names and the units' `exported` do not list it.
    */
   internal?: boolean;
+  /**
+   * Exported only because the language makes every module-level binding reachable, as a Python import is. It is
+   * not a deliberate re-export, so an import with no use still makes its file depend on the module it names.
+   */
+  implicit?: boolean;
   line: number;
 }
 

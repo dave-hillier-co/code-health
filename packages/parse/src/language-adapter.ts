@@ -96,6 +96,11 @@ export interface ModuleResolver {
    * when the module does not export the name. TypeScript has no such rule and leaves it out.
    */
   submodule?(modulePath: string, name: string): string | undefined;
+  /**
+   * True for a file whose implicit exports (`ExportFact.implicit`) are deliberate re-exports: a Python
+   * `__init__.py`, whose imports are the package's public names. Elsewhere an import nothing uses is still a dependency.
+   */
+  reexportsImplicitly?(path: string): boolean;
 }
 
 export interface ResolveInput {
