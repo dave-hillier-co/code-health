@@ -1,5 +1,5 @@
 import type { UnitShape } from "@code-health/lexical/unit";
-import { extractFacts } from "./extract-facts.ts";
+import { parseFacts } from "./file-facts.ts";
 import type { FileFacts, ReferenceFact, UnitKind, UnitMetrics } from "./facts.ts";
 import { grammarIdForPath, loadGrammar, type GrammarId, type LoadedGrammar, type LoadOptions } from "./grammars.ts";
 import type { ParseCache } from "./parse-cache.ts";
@@ -113,9 +113,7 @@ export async function analyseTree(tree: SourceTree, options: AnalyseOptions = {}
     const sources = await tree.readMany(pending.slice(start, start + batchSize));
     for (const [path, source] of sources) {
       const grammar = grammars.get(grammarIdForPath(path) as GrammarId) as LoadedGrammar;
-      const parsed = grammar.parse(source);
-      const fileFacts = extractFacts(parsed.rootNode);
-      parsed.delete();
+      const fileFacts = parseFacts(grammar, source);
       loaded.set(path, fileFacts);
       stats.parsed++;
       await options.cache?.set(tree.files.get(path) as string, grammar.version, fileFacts);
