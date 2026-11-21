@@ -30,6 +30,15 @@ test("defaults follow the spec", () => {
     maxChangesetSize: 30,
     botPatterns: [],
     windowStated: false,
+    hook: { enabled: false, confidence: 80, maxCommitsBehind: 50 },
+  });
+});
+
+test("the hook section is read, and a hook that may be a commit behind at most zero is allowed", () => {
+  expect(settingsFor({ cochange: { hook: { enabled: true, confidence: 60, maxCommitsBehind: 0 } } }).hook).toEqual({
+    enabled: true,
+    confidence: 60,
+    maxCommitsBehind: 0,
   });
 });
 
@@ -58,6 +67,12 @@ test.each([
   [{ cochange: { branch: 3 } }, "branch"],
   [{ cochange: { grouping: "issue-key" } }, "grouping"],
   [{ cochange: { identities: { botPatterns: [1] } } }, "botPatterns"],
+  [{ cochange: { hook: { confidence: 0 } } }, "hook.confidence must be a percentage"],
+  [{ cochange: { hook: { confidence: 101 } } }, "hook.confidence must be a percentage"],
+  [{ cochange: { hook: { maxCommitsBehind: -1 } } }, "hook.maxCommitsBehind must be a non-negative integer"],
+  [{ cochange: { hook: { maxCommitsBehind: 1.5 } } }, "hook.maxCommitsBehind must be a non-negative integer"],
+  [{ cochange: { hook: { enabled: "yes" } } }, "must be a boolean"],
+  [{ cochange: { hook: { nonsense: 1 } } }, "unknown setting"],
   [{ cochange: { nonsense: true } }, "unknown setting"],
 ])("invalid settings %j are config errors", (document, message) => {
   expect(() => settingsFor(document)).toThrowError(message);
