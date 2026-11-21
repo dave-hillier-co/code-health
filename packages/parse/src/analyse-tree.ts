@@ -63,6 +63,30 @@ export interface Unresolved {
   reason: UnresolvedReason;
 }
 
+/** One name a file makes available, with re-exports, renames and star exports followed to where it is defined. */
+export interface ExportedName {
+  /** The file that exports it. */
+  file: string;
+  /** The name it is exported under, `default` included. */
+  name: string;
+  defined: {
+    /** The file that defines it. */
+    file: string;
+    /** The name the defining file exports it under. */
+    name: string;
+    /** Qualified name of the defining unit, when the definition is a function or class. */
+    symbol?: string;
+  };
+}
+
+/** A file importing, or re-exporting from, a package outside the tree. */
+export interface ExternalImport {
+  from: string;
+  /** The package, with any subpath folded into it: `@scope/pkg/sub` is `@scope/pkg`. */
+  packageName: string;
+  typeOnly: boolean;
+}
+
 export interface ProjectAnalysis {
   units: SourceUnit[];
   /** Static import and re-export statements between files of the tree. */
@@ -72,6 +96,10 @@ export interface ProjectAnalysis {
   fileEdges: FileEdge[];
   /** Files that only re-export, each a candidate for removal. */
   barrels: string[];
+  /** Everything each file exports, resolved to its definition. Exports of CommonJS and other opaque files are not listed. */
+  exports: ExportedName[];
+  /** Imports of packages outside the tree. Node's own modules are not among them. */
+  externalImports: ExternalImport[];
   unresolved: Unresolved[];
   /** Files whose parse reported syntax errors, so their facts may be incomplete. */
   filesWithSyntaxErrors: string[];
@@ -168,6 +196,7 @@ class GraphBuilder {
   private readonly consumers = new Map<string, Consumer>();
   private readonly fileEdges = new Map<string, FileEdge>();
   private readonly unresolved = new Map<string, Unresolved>();
+  private readonly externals = new Map<string, ExternalImport>();
 
   constructor(facts: ReadonlyMap<string, FileFacts>, resolver: SpecifierResolver, isTest: (path: string) => boolean) {
     this.facts = facts;
@@ -218,6 +247,10 @@ class GraphBuilder {
       ),
       fileEdges: [...this.fileEdges.values()].sort((a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.to, b.to)),
       barrels,
+      exports: this.exportedNames(),
+      externalImports: [...this.externals.values()].sort(
+        (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.packageName, b.packageName) || Number(a.typeOnly) - Number(b.typeOnly),
+      ),
       unresolved: [...this.unresolved.values()].sort(
         (a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? ""),
       ),
@@ -251,9 +284,51 @@ class GraphBuilder {
     this.importEdges.set(`${from}\0${to}\0${kind}\0${typeOnly}`, { from, to, kind, typeOnly });
   }
 
+  private addExternal(from: string, packageName: string, typeOnly: boolean): void {
+    this.externals.set(`${from}\0${packageName}\0${typeOnly}`, { from, packageName, typeOnly });
+  }
+
+  /** Every name each file exports, followed to its definition. */
+  private exportedNames(): ExportedName[] {
+    const names: ExportedName[] = [];
+    for (const [path] of this.facts) {
+      const seen = new Set<string>();
+      for (const name of this.namesExportedBy(path, new Set())) {
+        if (seen.has(name)) continue;
+        seen.add(name);
+        const result = this.resolveExport(path, name, new Set());
+        if (result.status !== "defined") continue;
+        names.push({
+          file: path,
+          name,
+          defined: { file: result.file, name: result.exportName, ...(result.symbol === undefined ? {} : { symbol: result.symbol }) },
+        });
+      }
+    }
+    return names.sort((a, b) => compareUtf8(a.file, b.file) || compareUtf8(a.name, b.name));
+  }
+
+  /** The names a file exports: its own, its named re-exports, and what its star re-exports pass along (never `default`). */
+  private namesExportedBy(path: string, visiting: Set<string>): string[] {
+    const file = this.facts.get(path);
+    if (!file || visiting.has(path)) return [];
+    visiting.add(path);
+    const names = file.exports.map((exported) => exported.exported);
+    for (const reexport of file.reexports) {
+      if (reexport.exported !== "*") {
+        names.push(reexport.exported);
+        continue;
+      }
+      const target = this.resolve(path, reexport.specifier);
+      if (target.kind === "file") names.push(...this.namesExportedBy(target.path, visiting).filter((name) => name !== "default"));
+    }
+    return names;
+  }
+
   private fileDependencies(path: string, file: FileFacts): void {
     for (const reexport of file.reexports) {
       const target = this.resolve(path, reexport.specifier);
+      if (target.kind === "external") this.addExternal(path, target.packageName, reexport.typeOnly);
       if (target.kind === "file") this.addImportEdge(path, target.path, "reexport", reexport.typeOnly);
       else if (target.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
     }
@@ -266,6 +341,7 @@ class GraphBuilder {
       }
       if (imported.specifier === null) continue;
       const target = this.resolve(path, imported.specifier);
+      if (target.kind === "external") this.addExternal(path, target.packageName, imported.typeOnly);
       if (target.kind === "not-found") this.addUnresolved(path, imported.line, imported.specifier, "not-found");
       if (target.kind !== "file") continue;
       this.addImportEdge(path, target.path, imported.kind === "require" ? "require" : "import", imported.typeOnly);
