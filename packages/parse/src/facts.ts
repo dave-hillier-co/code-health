@@ -22,6 +22,12 @@ export interface UnitMetrics {
   parameters: number;
   /** Properties destructured out of object parameters. */
   optionCount: number;
+  /** Bumps: separate regions of nested control flow directly in the function. See unit-metrics.ts. */
+  bumps: number;
+  /** The deepest level, below the function, reached inside any bump: the nesting plus one, or 0 with no bump. */
+  bumpDepth: number;
+  /** Code lines in the largest bump. */
+  bumpSize: number;
 }
 
 /** Where one part of a metric came from, for `explain`. */

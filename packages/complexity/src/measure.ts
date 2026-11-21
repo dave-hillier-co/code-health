@@ -7,8 +7,9 @@ import type { ParseCache } from "@code-health/parse/parse-cache";
 import type { FileFacts, UnitFact } from "@code-health/parse/facts";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { UnitKind } from "@code-health/lexical/unit";
-import type { ComplexitySettings } from "./config.ts";
-import { structuralValues, type Values } from "./metrics.ts";
+import { thresholdsFor, type ComplexitySettings } from "./config.ts";
+import { isBumpyRoad } from "@code-health/lexical/metrics";
+import { bumpyRoadLimits, structuralValues, type Values } from "./metrics.ts";
 
 export type Layer = "auto" | "lexical" | "structural";
 
@@ -29,8 +30,11 @@ export interface UnitRecord {
   /** Properties destructured from object parameters. Structural only. */
   optionCount?: number;
   statements?: number;
-  /** Lexical blocks only. */
+  /** The unit is a bumpy road at the thresholds that apply to its path. */
   bumpyRoad?: boolean;
+  /** The deepest level reached inside any bump, and the code lines of the largest. */
+  bumpDepth?: number;
+  bumpSize?: number;
 }
 
 /** A function or class as the interface depth signal sees it. Structural only. */
@@ -130,7 +134,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
         skippedFiles.excluded++;
         continue;
       }
-      const lexical = analyseSource(path, text, { agreementBar: settings.agreementBar });
+      const lexical = analyseSource(path, text, { agreementBar: settings.agreementBar, bumpyRoad: bumpyRoadLimits(thresholdsFor(settings, path)) });
       const language = options.layer === "lexical" ? undefined : await grammars.forPath(path);
       let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean } | undefined;
       if (language !== undefined) {
@@ -173,6 +177,7 @@ function interfaceUnits(path: string, facts: FileFacts): NonNullable<FileRecord[
 
 function structuralUnits(path: string, units: UnitFact[], settings: ComplexitySettings): UnitRecord[] {
   const test = isTestPath(path);
+  const thresholds = thresholdsFor(settings, path);
   const records: UnitRecord[] = [];
   for (const unit of units) {
     if (unit.metrics === undefined) continue;
@@ -189,6 +194,9 @@ function structuralUnits(path: string, units: UnitFact[], settings: ComplexitySe
       values: structuralValues(unit.metrics, settings.cyclomaticSwitch),
       optionCount: unit.metrics.optionCount,
       statements: unit.metrics.statements,
+      bumpyRoad: isBumpyRoad(unit.metrics, bumpyRoadLimits(thresholds)),
+      bumpDepth: unit.metrics.bumpDepth,
+      bumpSize: unit.metrics.bumpSize,
     });
   }
   return records;
@@ -236,6 +244,8 @@ function fileRecord(
         bumps: block.metrics.bumps,
       },
       bumpyRoad: block.bumpyRoad,
+      bumpDepth: block.metrics.bumpDepth,
+      bumpSize: block.metrics.bumpSize,
     }));
   }
 

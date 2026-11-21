@@ -42,7 +42,7 @@ interface Decision {
 async function measurementAtHead(root: string, file: string, settings: ComplexitySettings): Promise<FileMeasurement> {
   try {
     const text = await runGit(root, ["show", `HEAD:${file}`]);
-    const measured = measureFile(file, text, settings.agreementBar);
+    const measured = measureFile(file, text, settings.agreementBar, thresholdsFor(settings, file));
     return "measurement" in measured ? measured.measurement : {};
   } catch {
     return {};
@@ -72,7 +72,7 @@ async function consider(
   const text = readFileSync(join(root, file), "utf8");
   if (text.length > MAX_BYTES || text.includes("\0")) return { note: null, outcome: "silent: the file is binary or too large" };
 
-  const measured = measureFile(file, text, settings.agreementBar);
+  const measured = measureFile(file, text, settings.agreementBar, thresholdsFor(settings, file));
   if ("unmeasured" in measured) return { note: null, outcome: `silent: no per-function metrics (${measured.unmeasured})` };
 
   const before = previous ?? (await measurementAtHead(root, file, settings));

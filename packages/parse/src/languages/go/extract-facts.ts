@@ -6,7 +6,7 @@ import { goMetricRules, receiverNameOf } from "./metric-rules.ts";
 import { functionShape, isExported, passThroughOf, typeShape } from "./shape.ts";
 
 /** Bump when the extraction rules change in a way that alters facts for the same source. */
-export const extractorVersion = 2;
+export const extractorVersion = 3;
 
 /**
  * Go facts for the symbol-based dependency model with a resolver of its own (resolve-packages.ts). Imports

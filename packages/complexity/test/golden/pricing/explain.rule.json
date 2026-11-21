@@ -1,13 +1,13 @@
 {
   "command": "explain",
-  "config": "be214049830d245b",
+  "config": "6accc6229925bb42",
   "inputs": {},
   "repo": {
     "dirty": false,
     "head": "b5978f869ab0de6181777e0d9602db0035369ce4"
   },
   "results": {
-    "explanation": "A lexical measure: each bump is a run of lines nested two levels or more below the function, opened by a branch keyword.\nEach bump is a responsibility that has not been named. Simplify each in place first, with guard clauses or by flattening.\nExtract a bump only when it is a distinct responsibility, as a deep, well-named local function.",
+    "explanation": "Each bump is a separate region of nested logic directly in the function: the body of each branch of an if chain, of a loop, or a whole\nswitch or try. Structures inside a bump belong to it, and a body that fits on the line that opens it is not one. The lexical layer\nmeasures the same thing as a run of lines nested two levels or more below the function, opened by a branch keyword.\nA function is a bumpy road at thresholds.bumps bumps (default 3), or thresholds.deepBumps (default 2) when its deepest bump is deeper than thresholds.nesting.\nEach bump is a responsibility that has not been named. Simplify each in place first, with guard clauses or by flattening.\nExtract a bump only when it is a distinct responsibility, as a deep, well-named local function.",
     "rule": "bumpy-road",
     "summary": "Several separate chunks of nested logic in one function"
   },

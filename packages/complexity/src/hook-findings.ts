@@ -1,6 +1,6 @@
 import { analyseSource } from "@code-health/lexical/analyse-source";
 import type { FileMeasurement } from "@code-health/history/session-state";
-import type { Thresholds } from "./metrics.ts";
+import { bumpyRoadLimits, type Thresholds } from "./metrics.ts";
 
 /**
  * The metrics the hook compares, all lexical, in tie-break order. A unit's `bumpy` value is 1 when the
@@ -17,8 +17,8 @@ export type Measured = { measurement: FileMeasurement } | { unmeasured: string }
  * values may not be reported. Blocks with no name are left out, because nothing identifies them from one
  * edit to the next. A name used twice in one file gets `~2`, `~3` in order.
  */
-export function measureFile(path: string, text: string, agreementBar: number): Measured {
-  const analysis = analyseSource(path, text, { agreementBar });
+export function measureFile(path: string, text: string, agreementBar: number, thresholds: Thresholds): Measured {
+  const analysis = analyseSource(path, text, { agreementBar, bumpyRoad: bumpyRoadLimits(thresholds) });
   if (analysis.functions.gated) return { unmeasured: analysis.functions.reason };
   const measurement: FileMeasurement = {};
   const seen = new Map<string, number>();

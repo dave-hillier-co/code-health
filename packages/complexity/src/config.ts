@@ -19,6 +19,10 @@ export const complexityConfig: PluginConfigSpec = {
       cognitive: { ...defaultThresholds.cognitive },
       nesting: defaultThresholds.nesting,
       parameters: defaultThresholds.parameters,
+      /** A function with this many bumps or more is a bumpy road. */
+      bumps: defaultThresholds.bumps,
+      /** The count that makes a bumpy road when the deepest bump is deeper than `nesting`. */
+      deepBumps: defaultThresholds.deepBumps,
     },
     /** `case` counts every case of a switch toward cyclomatic complexity, `modified` counts one per switch. */
     cyclomaticSwitch: "case",
@@ -143,6 +147,8 @@ function readThresholds(value: unknown, where: string, number: NumberReader): Th
     cognitive: level("cognitive"),
     nesting: number(source.nesting, `${where}.nesting`, 0),
     parameters: number(source.parameters, `${where}.parameters`, 0),
+    bumps: number(source.bumps, `${where}.bumps`, 1),
+    deepBumps: number(source.deepBumps, `${where}.deepBumps`, 1),
   };
 }
 
@@ -167,7 +173,7 @@ function readOverrides(value: unknown, where: string, number: NumberReader, glob
 
 function mergeThresholds(base: Thresholds, patch: unknown, where: string, number: NumberReader): Thresholds {
   if (!isRecord(patch)) throw configError(`code-health.json: ${where} must be an object`);
-  const merged: Thresholds = { cyclomatic: { ...base.cyclomatic }, cognitive: { ...base.cognitive }, nesting: base.nesting, parameters: base.parameters };
+  const merged: Thresholds = { cyclomatic: { ...base.cyclomatic }, cognitive: { ...base.cognitive }, nesting: base.nesting, parameters: base.parameters, bumps: base.bumps, deepBumps: base.deepBumps };
   for (const [key, entry] of Object.entries(patch)) {
     if (key === "cyclomatic" || key === "cognitive") {
       if (!isRecord(entry)) throw configError(`code-health.json: ${where}.${key} must be an object with warn and high`);
@@ -177,6 +183,8 @@ function mergeThresholds(base: Thresholds, patch: unknown, where: string, number
       }
     } else if (key === "nesting" || key === "parameters") {
       merged[key] = number(entry, `${where}.${key}`, 0);
+    } else if (key === "bumps" || key === "deepBumps") {
+      merged[key] = number(entry, `${where}.${key}`, 1);
     } else {
       throw configError(`code-health.json: ${where}.${key} is an unknown setting`);
     }

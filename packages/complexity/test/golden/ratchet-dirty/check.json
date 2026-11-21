@@ -1,7 +1,7 @@
 {
   "changedFiles": 2,
   "command": "check",
-  "config": "068321f98481d79b",
+  "config": "871bc18a68c8798e",
   "inputs": {
     "against": "working-tree",
     "base": {

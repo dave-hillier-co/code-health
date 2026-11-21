@@ -1,7 +1,7 @@
 {
   "agreement": {},
   "command": "analyse",
-  "config": "be214049830d245b",
+  "config": "6accc6229925bb42",
   "filesWithSyntaxErrors": [],
   "inputs": {
     "layer": "auto",
@@ -37,6 +37,9 @@
   },
   "results": [
     {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
       "changeWeight": 0.5,
       "cognitive": 0,
       "complexityScore": 0.9375,
@@ -50,8 +53,10 @@
       "nesting": 0,
       "optionCount": 0,
       "parameters": 2,
+      "parent": "A",
       "path": "src/main/kotlin/a/A.kt",
       "percentiles": {
+        "bumps": 0.5,
         "cognitive": 0.5,
         "cyclomatic": 0.5,
         "length": 0.9375,
@@ -62,10 +67,14 @@
       "score": 0.46875,
       "source": "structural",
       "startLine": 4,
+      "statements": 1,
       "test": false,
       "unit": "A.add"
     },
     {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
       "changeWeight": 0.5,
       "cognitive": 0,
       "complexityScore": 0.8125,
@@ -81,6 +90,7 @@
       "parameters": 2,
       "path": "a/a.py",
       "percentiles": {
+        "bumps": 0.5,
         "cognitive": 0.5,
         "cyclomatic": 0.5,
         "length": 0.8125,
@@ -91,10 +101,14 @@
       "score": 0.40625,
       "source": "structural",
       "startLine": 1,
+      "statements": 1,
       "test": false,
       "unit": "add"
     },
     {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
       "changeWeight": 0.5,
       "cognitive": 0,
       "complexityScore": 0.5,
@@ -110,6 +124,7 @@
       "parameters": 2,
       "path": "a/a.go",
       "percentiles": {
+        "bumps": 0.5,
         "cognitive": 0.5,
         "cyclomatic": 0.5,
         "length": 0.375,
@@ -120,10 +135,14 @@
       "score": 0.25,
       "source": "structural",
       "startLine": 3,
+      "statements": 1,
       "test": false,
       "unit": "Add"
     },
     {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
       "changeWeight": 0.5,
       "cognitive": 0,
       "complexityScore": 0.5,
@@ -137,8 +156,10 @@
       "nesting": 0,
       "optionCount": 0,
       "parameters": 2,
+      "parent": "A",
       "path": "src/A.cs",
       "percentiles": {
+        "bumps": 0.5,
         "cognitive": 0.5,
         "cyclomatic": 0.5,
         "length": 0.375,
@@ -149,10 +170,14 @@
       "score": 0.25,
       "source": "structural",
       "startLine": 1,
+      "statements": 1,
       "test": false,
       "unit": "A.Add"
     },
     {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
       "changeWeight": 0.5,
       "cognitive": 0,
       "complexityScore": 0.5,
@@ -168,6 +193,7 @@
       "parameters": 2,
       "path": "src/a.cpp",
       "percentiles": {
+        "bumps": 0.5,
         "cognitive": 0.5,
         "cyclomatic": 0.5,
         "length": 0.375,
@@ -178,10 +204,14 @@
       "score": 0.25,
       "source": "structural",
       "startLine": 1,
+      "statements": 1,
       "test": false,
       "unit": "add"
     },
     {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
       "changeWeight": 0.5,
       "cognitive": 0,
       "complexityScore": 0.5,
@@ -197,6 +227,7 @@
       "parameters": 2,
       "path": "src/a.ts",
       "percentiles": {
+        "bumps": 0.5,
         "cognitive": 0.5,
         "cyclomatic": 0.5,
         "length": 0.375,
@@ -207,10 +238,14 @@
       "score": 0.25,
       "source": "structural",
       "startLine": 1,
+      "statements": 1,
       "test": false,
       "unit": "add"
     },
     {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
       "changeWeight": 0.5,
       "cognitive": 0,
       "complexityScore": 0.5,
@@ -226,6 +261,7 @@
       "parameters": 2,
       "path": "src/lib.rs",
       "percentiles": {
+        "bumps": 0.5,
         "cognitive": 0.5,
         "cyclomatic": 0.5,
         "length": 0.375,
@@ -236,10 +272,14 @@
       "score": 0.25,
       "source": "structural",
       "startLine": 1,
+      "statements": 1,
       "test": false,
       "unit": "add"
     },
     {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
       "changeWeight": 0.5,
       "cognitive": 0,
       "complexityScore": 0.5,
@@ -253,8 +293,10 @@
       "nesting": 0,
       "optionCount": 0,
       "parameters": 2,
+      "parent": "A",
       "path": "src/main/java/a/A.java",
       "percentiles": {
+        "bumps": 0.5,
         "cognitive": 0.5,
         "cyclomatic": 0.5,
         "length": 0.375,
@@ -265,6 +307,7 @@
       "score": 0.25,
       "source": "structural",
       "startLine": 3,
+      "statements": 1,
       "test": false,
       "unit": "A.add"
     }

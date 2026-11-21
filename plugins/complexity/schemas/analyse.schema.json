@@ -224,6 +224,25 @@
           "labels": {
             "$ref": "common.schema.json#/$defs/labels"
           },
+          "parent": {
+            "type": "string",
+            "description": "Qualified name of the function this one is nested in, for a nested function or lambda. Absent for a function that is not nested. A nested function also adds to its parent's score."
+          },
+          "statements": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Statements in the function, nested functions' included. Reported with the length metric, which counts lines. Structural units."
+          },
+          "bumpDepth": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The deepest level reached inside any bump, 0 with none. Reported with the bumps metric."
+          },
+          "bumpSize": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Code lines in the largest bump. Reported with the bumps metric."
+          },
           "optionCount": {
             "type": "integer",
             "minimum": 0,

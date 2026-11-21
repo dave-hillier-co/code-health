@@ -2,7 +2,7 @@ import type { UnitMetrics } from "@code-health/parse/facts";
 
 /**
  * The metrics, in tie-break order: when a unit ranks equally on two, the earlier one is named as dominant.
- * The structural layer provides the first five and the lexical layer `keyword`, `bumps`, `length` and
+ * The structural layer provides every metric but `keyword`, and the lexical layer `keyword`, `bumps`, `length` and
  * `nesting`, so a unit has the metrics of the layer that measured it.
  */
 export const metricIds = ["cognitive", "cyclomatic", "nesting", "parameters", "length", "keyword", "bumps"] as const;
@@ -16,7 +16,7 @@ export const metricSummaries: Record<MetricId, string> = {
   parameters: "Declared parameters, a destructured options parameter counting once",
   length: "Lines of code, blank and comment lines excluded. Reported and ranked, never gated",
   keyword: "Branch keywords and short-circuit operators, a lexical approximation of cyclomatic complexity",
-  bumps: "Separate chunks of nested logic, a lexical measure of a bumpy road",
+  bumps: "Separate chunks of nested logic, the count behind the bumpy road label",
 };
 
 export interface CyclomaticSwitchMode {
@@ -35,6 +35,7 @@ export function structuralValues(metrics: UnitMetrics, switchMode: CyclomaticSwi
     nesting: metrics.nesting,
     length: metrics.length,
     parameters: metrics.parameters,
+    bumps: metrics.bumps,
   };
 }
 
@@ -43,6 +44,10 @@ export interface Thresholds {
   cognitive: { warn: number; high: number };
   nesting: number;
   parameters: number;
+  /** A function with this many bumps or more is a bumpy road. */
+  bumps: number;
+  /** A function with this many bumps or more is a bumpy road when its deepest bump is deeper than `nesting`. */
+  deepBumps: number;
 }
 
 export const defaultThresholds: Thresholds = {
@@ -50,6 +55,8 @@ export const defaultThresholds: Thresholds = {
   cognitive: { warn: 15, high: 25 },
   nesting: 4,
   parameters: 5,
+  bumps: 3,
+  deepBumps: 2,
 };
 
 /** Metrics a threshold applies to. Length has none, and the lexical metrics are labelled by the bumpy road rule. */
@@ -70,7 +77,7 @@ export function exceeded(values: Values, thresholds: Thresholds): GatedMetric[] 
   });
 }
 
-/** Labels such as `cognitive-high` or `nesting-warn`, in metric order, plus `bumpy-road` for lexical units. */
+/** Labels such as `cognitive-high` or `nesting-warn`, in metric order, plus `bumpy-road` for a unit whose bumps cross the threshold. */
 export function labelsFor(values: Values, thresholds: Thresholds, bumpyRoad = false): string[] {
   const labels: string[] = [];
   for (const metric of gatedMetrics) {
@@ -84,4 +91,9 @@ export function labelsFor(values: Values, thresholds: Thresholds, bumpyRoad = fa
   }
   if (bumpyRoad) labels.push("bumpy-road");
   return labels;
+}
+
+/** The deepest-bump and count limits of the bumpy road rule, as the lexical rule reads them. */
+export function bumpyRoadLimits(thresholds: Thresholds): { bumps: number; deepBumps: number; nesting: number } {
+  return { bumps: thresholds.bumps, deepBumps: thresholds.deepBumps, nesting: thresholds.nesting };
 }

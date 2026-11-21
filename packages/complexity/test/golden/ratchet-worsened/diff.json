@@ -1,7 +1,7 @@
 {
   "changedFiles": 1,
   "command": "diff",
-  "config": "068321f98481d79b",
+  "config": "871bc18a68c8798e",
   "inputs": {
     "against": "revision",
     "base": {
@@ -20,6 +20,7 @@
   "results": [
     {
       "after": {
+        "bumps": 1,
         "cognitive": 9,
         "cyclomatic": 6,
         "length": 12,
@@ -27,6 +28,7 @@
         "parameters": 1
       },
       "before": {
+        "bumps": 1,
         "cognitive": 8,
         "cyclomatic": 5,
         "length": 11,
@@ -35,6 +37,7 @@
       },
       "change": "changed",
       "delta": {
+        "bumps": 0,
         "cognitive": 1,
         "cyclomatic": 1,
         "length": 1,

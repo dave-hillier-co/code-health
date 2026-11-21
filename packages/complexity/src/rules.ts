@@ -51,7 +51,10 @@ export const ruleDescriptions: Record<string, Rule> = {
   "bumpy-road": {
     summary: "Several separate chunks of nested logic in one function",
     explanation: [
-      "A lexical measure: each bump is a run of lines nested two levels or more below the function, opened by a branch keyword.",
+      "Each bump is a separate region of nested logic directly in the function: the body of each branch of an if chain, of a loop, or a whole",
+      "switch or try. Structures inside a bump belong to it, and a body that fits on the line that opens it is not one. The lexical layer",
+      "measures the same thing as a run of lines nested two levels or more below the function, opened by a branch keyword.",
+      "A function is a bumpy road at thresholds.bumps bumps (default 3), or thresholds.deepBumps (default 2) when its deepest bump is deeper than thresholds.nesting.",
       "Each bump is a responsibility that has not been named. Simplify each in place first, with guard clauses or by flattening.",
       "Extract a bump only when it is a distinct responsibility, as a deep, well-named local function.",
     ].join("\n"),
