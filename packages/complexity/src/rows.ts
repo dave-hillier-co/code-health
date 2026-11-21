@@ -32,6 +32,7 @@ export function unitRow(ranked: RankedUnit, selected: readonly MetricId[], setti
     startLine: unit.startLine,
     endLine: unit.endLine,
     source: unit.source,
+    ...(unit.unverified === true ? { unverified: true } : {}),
     test: unit.test,
     score: ranked.score,
     complexityScore: ranked.complexityScore,

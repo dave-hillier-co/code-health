@@ -143,6 +143,10 @@
           "source": {
             "$ref": "common.schema.json#/$defs/source"
           },
+          "unverified": {
+            "const": true,
+            "description": "Present when the file's lexer profile came from config (`languages`), so nothing measures the accuracy of the per-function values."
+          },
           "test": {
             "type": "boolean"
           },

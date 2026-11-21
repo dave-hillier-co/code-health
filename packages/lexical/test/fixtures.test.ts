@@ -132,7 +132,7 @@ test("per-function metrics are released for TypeScript, whose recorded agreement
   expect(source).toBe("lexical");
   expect(functions.gate).toBe("agreement");
   expect(functions.gated).toBe(false);
-  if (!functions.gated) {
+  if (!functions.gated && functions.gate === "agreement") {
     expect(functions.agreement.bar).toBe(0.9);
     expect(functions.agreement.exactRate).toBeGreaterThanOrEqual(0.9);
   }
@@ -206,19 +206,24 @@ test("per-function metrics are released for a profile whose recorded agreement c
   const agreement = { typescript: { units: 10, found: 10, exact: 9, blocks: 10, spurious: 1 } };
   const { functions } = analyseSource("sample.ts", read("sample.ts"), { agreement, agreementBar: 0.9 });
   expect(functions.gated).toBe(false);
-  if (!functions.gated) expect(functions.agreement).toEqual({ exactRate: 0.9, spuriousRate: 0.1, bar: 0.9 });
+  if (!functions.gated && functions.gate === "agreement") expect(functions.agreement).toEqual({ exactRate: 0.9, spuriousRate: 0.1, bar: 0.9 });
 });
 
-test("per-function metrics stay gated below the bar, without a measurement, for mapped profiles and without a profile", () => {
+test("per-function metrics of a config-mapped profile are released without an agreement, and marked unverified", () => {
+  const mapped = analyseSource("a.foo", read("sample.ts"), { mappings: { foo: "typescript" } });
+  expect(mapped.unverified).toBe(true);
+  expect(mapped.functions.gated).toBe(false);
+  if (!mapped.functions.gated) {
+    expect(mapped.functions.gate).toBe("config");
+    expect(mapped.functions.blocks.length).toBeGreaterThan(0);
+    expect("agreement" in mapped.functions).toBe(false);
+  }
+});
+
+test("per-function metrics stay gated below the bar, without a measurement and without a profile", () => {
   const agreement = { typescript: { units: 10, found: 10, exact: 8, blocks: 10, spurious: 1 } };
   expect(analyseSource("sample.ts", read("sample.ts"), { agreement, agreementBar: 0.9 }).functions.gated).toBe(true);
   expect(analyseSource("sample.ts", read("sample.ts"), { agreement: {} }).functions.gated).toBe(true);
-  const mapped = analyseSource("a.foo", read("sample.ts"), {
-    agreement: { typescript: { units: 10, found: 10, exact: 10, blocks: 10, spurious: 0 } },
-    mappings: { foo: "typescript" },
-  });
-  expect(mapped.unverified).toBe(true);
-  expect(mapped.functions.gated).toBe(true);
   expect(analyseSource("notes.txt", "a\n").functions.gated).toBe(true);
 });
 

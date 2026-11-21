@@ -1,6 +1,7 @@
 import { configError } from "@code-health/cli-kit/errors";
 import type { LoadedConfig, PluginConfigSpec } from "@code-health/cli-kit/config";
 import { compileGlobs } from "@code-health/history/glob";
+import { profiles } from "@code-health/lexical/profile";
 import { defaultThresholds, isMetricId, metricIds, type MetricId, type Thresholds } from "./metrics.ts";
 import { TOOL } from "./tool.ts";
 
@@ -71,6 +72,8 @@ export interface ComplexitySettings {
   shallowDepth: number;
   /** The suite's shared `exclude` globs. */
   isExcluded: (path: string) => boolean;
+  /** The suite's shared `languages`: file extension to lexer profile name. Per-function values from them are unverified. */
+  languageProfiles: Record<string, string>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -125,7 +128,17 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     hook: { enabled: (section.hook as { enabled: boolean }).enabled === true },
     shallowDepth: number((section.interfaceDepth as { shallow: unknown }).shallow, at("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
+    languageProfiles: readLanguageProfiles(config.effective.languages),
   };
+}
+
+function readLanguageProfiles(languages: Record<string, string>): Record<string, string> {
+  for (const [extension, name] of Object.entries(languages)) {
+    if (!(name in profiles)) {
+      throw configError(`code-health.json: languages.${extension} names the lexer profile "${name}", which does not exist: use one of ${Object.keys(profiles).join(", ")}`);
+    }
+  }
+  return languages;
 }
 
 type NumberReader = (value: unknown, key: string, min: number, max?: number) => number;

@@ -8,7 +8,8 @@ export const CONFIG_FILE = "code-health.json";
 
 export interface SharedConfig {
   exclude: string[];
-  languages: string[];
+  /** File extension (no dot, lower case) to lexer profile name: file types the suite has no profile for. */
+  languages: Record<string, string>;
   entryPoints: string[];
   components: Record<string, unknown>;
   vagueNames: string[];
@@ -45,13 +46,13 @@ export interface ConfigRow {
 
 const sharedDefaults: SharedConfig = {
   exclude: [],
-  languages: [],
+  languages: {},
   entryPoints: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"],
 };
 
-const stringLists = ["exclude", "languages", "entryPoints", "vagueNames"];
+const stringLists = ["exclude", "entryPoints", "vagueNames"];
 
 /** Reads code-health.json at the repo root: shared keys plus the named plugin's section. */
 export function loadConfig(root: string, spec: PluginConfigSpec): LoadedConfig {
@@ -65,6 +66,8 @@ export function loadConfig(root: string, spec: PluginConfigSpec): LoadedConfig {
     }
   }
 
+  if (document !== undefined && document.languages !== undefined) document.languages = readLanguages(document.languages);
+
   const defaults: Record<string, unknown> = { ...sharedDefaults, [spec.plugin]: spec.section };
   const rows = new Map<string, ConfigRow>();
   const effective: Record<string, unknown> = {};
@@ -76,6 +79,20 @@ export function loadConfig(root: string, spec: PluginConfigSpec): LoadedConfig {
   for (const row of rows.values()) sources[row.path] = row.source;
   const hash = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective: effective as EffectiveConfig, hash, sources };
+}
+
+/** `languages` maps extensions to lexer profile names. Whether a profile exists is the analysing plugin's to say. */
+function readLanguages(value: unknown): Record<string, string> {
+  if (!isPlainObject(value)) throw configError(`${CONFIG_FILE}: languages must be an object mapping file extensions to lexer profile names`);
+  const mapped: Record<string, string> = {};
+  for (const [extension, profile] of Object.entries(value)) {
+    if (extension === "" || extension.startsWith(".")) {
+      throw configError(`${CONFIG_FILE}: languages.${extension} must name an extension without its dot, such as "zig"`);
+    }
+    if (typeof profile !== "string" || profile === "") throw configError(`${CONFIG_FILE}: languages.${extension} must be a lexer profile name`);
+    mapped[extension.toLowerCase()] = profile;
+  }
+  return mapped;
 }
 
 /** Flat provenance report: each effective value with the path it lives at and where it came from. */

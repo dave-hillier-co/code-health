@@ -44,6 +44,12 @@ export type FunctionRelease =
       gate: "agreement";
       agreement: { exactRate: number; spuriousRate: number; bar: number };
       blocks: MeasuredBlock[];
+    }
+  | {
+      /** A language mapped to a profile by config: nothing measures its agreement, so the values are unverified. */
+      gated: false;
+      gate: "config";
+      blocks: MeasuredBlock[];
     };
 
 export interface FileAnalysis {
@@ -113,7 +119,7 @@ function releaseFunctions(
 ): FunctionRelease {
   const gated = (reason: string): FunctionRelease => ({ gated: true, gate: "agreement", reason, blocks });
   if (profileName === undefined) return gated("no lexer profile");
-  if (mapped) return gated("profile mapped by config, so no agreement is measured for this language");
+  if (mapped) return { gated: false, gate: "config", blocks };
   const counts = (options.agreement ?? recordedAgreement)[profileName];
   if (counts === undefined) return gated(`no agreement measured for ${profileName}`);
   const bar = options.agreementBar ?? DEFAULT_AGREEMENT_BAR;

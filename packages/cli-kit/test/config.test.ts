@@ -39,7 +39,7 @@ test("missing file gives defaults for shared keys and the plugin section", () =>
   expect(config.file).toBeNull();
   expect(config.effective).toEqual({
     exclude: [],
-    languages: [],
+    languages: {},
     entryPoints: [],
     components: {},
     vagueNames: ["utils", "helpers", "common", "misc"],
@@ -90,12 +90,23 @@ test("components and open-ended sections accept any keys", () => {
   expect((effective.cochange as typeof section).ignored).toEqual({ a: 1 });
 });
 
+test("languages maps file extensions to lexer profile names", () => {
+  writeConfig({ languages: { zig: "rust", Nim: "python" } });
+  expect(load().effective.languages).toEqual({ zig: "rust", nim: "python" });
+  writeConfig({ languages: { ".zig": "rust" } });
+  expectConfigError(/languages\.\.zig.*extension without its dot/);
+  writeConfig({ languages: ["zig"] });
+  expectConfigError(/languages.*object/);
+  writeConfig({ languages: { zig: 1 } });
+  expectConfigError(/languages\.zig.*profile name/);
+});
+
 test("explain reports the source of each value", () => {
   writeConfig({ exclude: ["dist/**"], cochange: { windowMonths: 6 }, components: { billing: ["b/**"] } });
   const rows = explainConfig(load());
   const byPath = Object.fromEntries(rows.map((row) => [row.path, row]));
   expect(byPath["exclude"]).toEqual({ path: "exclude", value: ["dist/**"], source: "file" });
-  expect(byPath["languages"]).toEqual({ path: "languages", value: [], source: "default" });
+  expect(byPath["languages"]).toEqual({ path: "languages", value: {}, source: "default" });
   expect(byPath["cochange.windowMonths"]).toEqual({ path: "cochange.windowMonths", value: 6, source: "file" });
   expect(byPath["cochange.firstParent"]?.source).toBe("default");
   expect(byPath["cochange.bots.patterns"]?.source).toBe("default");

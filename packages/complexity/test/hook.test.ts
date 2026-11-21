@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
@@ -166,6 +166,15 @@ describe("when it stays silent", () => {
     write("tool.rb", "def run(a)\n  if a\n    if a\n      if a\n        a\n      end\n    end\n  end\nend\n");
     expect(await edit("tool.rb")).toBe("");
     expect(state().lastRun?.outcome).toMatch(/^silent: no per-function metrics/);
+  });
+
+  test("a file type mapped to a lexer profile by config, whose values are unverified", async () => {
+    enable({}, {});
+    const config = JSON.parse(readFileSync(join(repo.path, "code-health.json"), "utf8"));
+    write("code-health.json", JSON.stringify({ ...config, languages: { zig: "rust" } }));
+    write("tool.zig", "pub fn run(a: i32) -> i32 {\n  if a > 1 {\n    if a > 2 {\n      if a > 3 {\n        return a;\n      }\n    }\n  }\n  0\n}\n");
+    expect(await edit("tool.zig")).toBe("");
+    expect(state().lastRun?.outcome).toMatch(/^silent: no per-function metrics \(.*unverified/);
   });
 
   test("an excluded file", async () => {

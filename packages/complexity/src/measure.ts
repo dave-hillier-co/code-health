@@ -31,6 +31,8 @@ export interface UnitRecord {
   statements?: number;
   /** Lexical blocks only. */
   bumpyRoad?: boolean;
+  /** Lexical blocks only: the profile was mapped by config, so nothing measures the values' accuracy. */
+  unverified?: true;
 }
 
 /** A function or class as the interface depth signal sees it. Structural only. */
@@ -130,7 +132,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
         skippedFiles.excluded++;
         continue;
       }
-      const lexical = analyseSource(path, text, { agreementBar: settings.agreementBar });
+      const lexical = analyseSource(path, text, { agreementBar: settings.agreementBar, mappings: settings.languageProfiles });
       const language = options.layer === "lexical" ? undefined : await grammars.forPath(path);
       let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean } | undefined;
       if (language !== undefined) {
@@ -219,7 +221,7 @@ function fileRecord(
     skipped.push(`per-function metrics: ${lexical.functions.reason}`);
   } else {
     source = "lexical";
-    agreement = lexical.functions.agreement;
+    if (lexical.functions.gate === "agreement") agreement = lexical.functions.agreement;
     units = lexical.functions.blocks.map((block) => ({
       path,
       id: `${path}#${block.qualifiedName ?? `<anonymous@${block.startLine}>`}`,
@@ -236,6 +238,7 @@ function fileRecord(
         bumps: block.metrics.bumps,
       },
       bumpyRoad: block.bumpyRoad,
+      ...(lexical.unverified ? { unverified: true as const } : {}),
     }));
   }
 

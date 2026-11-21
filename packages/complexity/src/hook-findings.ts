@@ -17,9 +17,11 @@ export type Measured = { measurement: FileMeasurement } | { unmeasured: string }
  * values may not be reported. Blocks with no name are left out, because nothing identifies them from one
  * edit to the next. A name used twice in one file gets `~2`, `~3` in order.
  */
-export function measureFile(path: string, text: string, agreementBar: number): Measured {
-  const analysis = analyseSource(path, text, { agreementBar });
+export function measureFile(path: string, text: string, options: { agreementBar: number; languageProfiles: Record<string, string> }): Measured {
+  const analysis = analyseSource(path, text, { agreementBar: options.agreementBar, mappings: options.languageProfiles });
   if (analysis.functions.gated) return { unmeasured: analysis.functions.reason };
+  // The hook states a threshold as fact, so it stays silent where nothing measures how accurate the values are.
+  if (analysis.unverified) return { unmeasured: "the profile was mapped by config, so its per-function values are unverified" };
   const measurement: FileMeasurement = {};
   const seen = new Map<string, number>();
   for (const block of analysis.functions.blocks) {
