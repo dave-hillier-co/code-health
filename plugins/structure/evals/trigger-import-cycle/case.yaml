@@ -1,0 +1,30 @@
+schema_version: "1.0"
+name: trigger-import-cycle
+description: The skill loads and the CLI runs when the user asks how to break an import cycle, and the answer rests on the breaking set.
+tags: [trigger, behaviour]
+runs: 3
+context:
+  scaffold_script: ../scaffold.sh
+execution:
+  prompt: The orders and billing folders in this repo import each other. What is the smallest change that breaks the cycle?
+  model: claude-sonnet-5-5
+  max_turns: 15
+  timeout_seconds: 300
+  allowed_tools: [Skill, Bash, Read, Grep, Glob]
+graders:
+  - type: tool_used
+    name: loads-the-skill
+    tool: Skill
+    input_match: structure
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: runs-the-cli
+    tool: Bash
+    input_match: "structure\\.mjs (cycles|evidence)"
+    min: 1
+    arm: with-only
+  - type: llm
+    name: answers-from-the-breaking-set
+    criteria: The answer names the specific import or symbol that closes the cycle between orders and billing (the one in the breaking set), and prefers the smallest change that removes it. It does not propose an event bus, mediator or other new infrastructure as the first answer.
+    arm: with-only

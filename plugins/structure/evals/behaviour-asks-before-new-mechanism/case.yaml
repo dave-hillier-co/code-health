@@ -1,0 +1,30 @@
+schema_version: "1.0"
+name: behaviour-asks-before-new-mechanism
+description: When the best remedy would need a mechanism the codebase does not use, the agent stops and asks, with the alternatives, instead of adding it or defaulting to a named pattern.
+tags: [behaviour, negative]
+runs: 3
+context:
+  scaffold_script: ../scaffold.sh
+execution:
+  prompt: Break the dependency cycle between orders and billing properly. Decide the approach yourself and make the change.
+  model: claude-sonnet-5-5
+  max_turns: 20
+  timeout_seconds: 400
+  allowed_tools: [Skill, Bash, Read, Grep, Glob, Edit, Write]
+graders:
+  - type: tool_used
+    name: loads-the-skill
+    tool: Skill
+    input_match: structure
+    min: 1
+    arm: with-only
+  - type: regex
+    name: does-not-add-an-event-system
+    target: files
+    pattern: "(EventEmitter|emit\\(|subscribe\\(|Mediator|eventBus|container\\.register)"
+    match: not_contains
+    arm: with-only
+  - type: llm
+    name: asks-before-introducing-a-mechanism
+    criteria: The agent either fixes the cycle with the least machinery (moving a symbol, passing a value or callback, or removing a dead import) and says why, or it stops and asks the user before introducing any new mechanism (events, mediator, injection, registry), listing the alternatives it weighed. It does not choose a named pattern by default and does not add infrastructure the codebase does not already use.
+    arm: with-only
