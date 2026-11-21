@@ -28,9 +28,13 @@ const refresh = () => runCochange(repo.path, ["refresh"]);
 const registry = "src/app/registry.ts";
 const invoice = "src/billing/invoice.ts";
 
+// What the hook says must not depend on how loaded the machine is, so its tests give it a budget it cannot spend. The budget itself is tested below.
+const PLENTY = 60_000;
+
 const edit = (file: string, session = "session-1", tool = "Edit") =>
   runHook({
     cwd: repo.path,
+    budgetMs: PLENTY,
     stdin: JSON.stringify({
       session_id: session,
       cwd: repo.path,
@@ -224,6 +228,7 @@ describe("history as the commands see it", () => {
   const editIn = (file: string) =>
     runHook({
       cwd: split.path,
+      budgetMs: PLENTY,
       stdin: JSON.stringify({ session_id: "grouped", cwd: split.path, tool_name: "Edit", tool_input: { file_path: join(split.path, file) } }),
     });
 

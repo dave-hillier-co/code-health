@@ -106,7 +106,7 @@ test("hooks running at once in one session each keep their edit in the session s
         }),
     ),
   );
-  const state = JSON.parse(readFileSync(join(repo.path, ".cache", "code-health", "sessions", "parallel.json"), "utf8")) as { edited: string[] };
+  const state = JSON.parse(readFileSync(join(repo.path, ".cache", "code-health", "sessions", "parallel.cochange.json"), "utf8")) as { edited: string[] };
   expect([...state.edited].sort()).toEqual(files);
 });
 

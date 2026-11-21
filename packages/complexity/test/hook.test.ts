@@ -51,10 +51,10 @@ beforeEach(() => {
 
 const write = (file: string, content: string) => writeFileSync(join(repo.path, file), content);
 
-const edit = (file: string, session = "session-1", tool = "Edit", budgetMs?: number) =>
+const edit = (file: string, session = "session-1", tool = "Edit", budgetMs = 60_000) =>
   runHook({
     cwd: repo.path,
-    ...(budgetMs === undefined ? {} : { budgetMs }),
+    budgetMs,
     stdin: JSON.stringify({
       session_id: session,
       cwd: repo.path,
