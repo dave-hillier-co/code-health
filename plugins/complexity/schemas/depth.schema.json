@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "depth.schema.json",
+  "title": "complexity depth --json",
+  "description": "The interface depth signal for the shallow module and pass-through red flags: exported functions, classes and modules, and every pass-through. A whole-repository run on a clean tree is also stored as the complexity.depth report.",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "depth"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "tree": {
+          "$ref": "common.schema.json#/$defs/tree"
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "shallow": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Nodes per interface element below which an exported unit is shallow."
+        }
+      },
+      "required": [
+        "tree",
+        "paths",
+        "shallow"
+      ],
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Files with a structural adapter."
+        },
+        "filesWithoutAdapter": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Text files in the selection that cannot be measured for depth."
+        },
+        "rows": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "shallow": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "passThrough": {
+          "$ref": "common.schema.json#/$defs/count"
+        }
+      },
+      "required": [
+        "files",
+        "filesWithoutAdapter",
+        "rows",
+        "shallow",
+        "passThrough"
+      ],
+      "additionalProperties": false
+    },
+    "skippedFiles": {
+      "$ref": "common.schema.json#/$defs/skippedFiles"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string",
+            "description": "The qualified name, or the path for a module."
+          },
+          "id": {
+            "type": "string",
+            "description": "path#Qualified.name, or the path for a module."
+          },
+          "kind": {
+            "enum": [
+              "function",
+              "arrow",
+              "method",
+              "class",
+              "module"
+            ]
+          },
+          "exported": {
+            "type": "boolean",
+            "description": "Exported by its file, or a method of an exported class."
+          },
+          "startLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "endLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "nodes": {
+            "$ref": "common.schema.json#/$defs/count",
+            "description": "Implementation size in syntax nodes."
+          },
+          "interface": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Interface size: parameters, or constructor parameters plus reachable members, or exported names."
+          },
+          "depth": {
+            "type": "number",
+            "minimum": 0,
+            "description": "nodes divided by interface, to two places."
+          },
+          "passThrough": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "The call the function's whole body forwards to."
+          },
+          "test": {
+            "type": "boolean"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "pass-through",
+                "shallow"
+              ]
+            }
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "description": "The sort key: 1 for a pass-through plus the reciprocal of its depth."
+          }
+        },
+        "required": [
+          "path",
+          "unit",
+          "id",
+          "kind",
+          "exported",
+          "startLine",
+          "endLine",
+          "nodes",
+          "interface",
+          "depth",
+          "passThrough",
+          "test",
+          "labels",
+          "score"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "skippedFiles"
+  ],
+  "unevaluatedProperties": false
+}

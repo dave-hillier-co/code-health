@@ -1,4 +1,5 @@
 import { thresholdsFor, type ComplexitySettings } from "./config.ts";
+import { meanDepth, passThroughCount } from "./interface-depth.ts";
 import type { FileRecord, UnitRecord } from "./measure.ts";
 import { exceeded, labelsFor, metricIds, type MetricId, type Values } from "./metrics.ts";
 import type { RankedUnit } from "./ranking.ts";
@@ -87,5 +88,7 @@ export function fileRow(file: FileRecord, settings: ComplexitySettings) {
     functions: file.units.length,
     aggregates: file.units.length === 0 ? null : aggregates,
     overThreshold: file.units.filter((unit) => exceeded(unit.values, thresholds).length > 0).length,
+    interfaceDepth: meanDepth(file),
+    passThroughs: passThroughCount(file),
   };
 }

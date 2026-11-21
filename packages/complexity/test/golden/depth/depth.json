@@ -1,0 +1,362 @@
+{
+  "command": "depth",
+  "config": "be214049830d245b",
+  "inputs": {
+    "paths": [],
+    "shallow": 10,
+    "tree": "head"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "698018692cde848e2fe61b0ed52c7ab93b517ed7"
+  },
+  "results": [
+    {
+      "depth": 8,
+      "endLine": 13,
+      "exported": true,
+      "id": "src/forwarding.ts#bare",
+      "interface": 1,
+      "kind": "function",
+      "labels": [
+        "pass-through",
+        "shallow"
+      ],
+      "nodes": 8,
+      "passThrough": "target",
+      "path": "src/forwarding.ts",
+      "score": 1.125,
+      "startLine": 11,
+      "test": false,
+      "unit": "bare"
+    },
+    {
+      "depth": 12.5,
+      "endLine": 7,
+      "exported": true,
+      "id": "src/shapes.ts#save",
+      "interface": 2,
+      "kind": "function",
+      "labels": [
+        "pass-through"
+      ],
+      "nodes": 25,
+      "passThrough": "store.save",
+      "path": "src/shapes.ts",
+      "score": 1.08,
+      "startLine": 5,
+      "test": false,
+      "unit": "save"
+    },
+    {
+      "depth": 13,
+      "endLine": 9,
+      "exported": true,
+      "id": "src/shapes.ts#load",
+      "interface": 1,
+      "kind": "arrow",
+      "labels": [
+        "pass-through"
+      ],
+      "nodes": 13,
+      "passThrough": "store.load",
+      "path": "src/shapes.ts",
+      "score": 1.0769,
+      "startLine": 9,
+      "test": false,
+      "unit": "load"
+    },
+    {
+      "depth": 13,
+      "endLine": 22,
+      "exported": false,
+      "id": "src/shapes.ts#hidden",
+      "interface": 1,
+      "kind": "function",
+      "labels": [
+        "pass-through"
+      ],
+      "nodes": 13,
+      "passThrough": "other",
+      "path": "src/shapes.ts",
+      "score": 1.0769,
+      "startLine": 20,
+      "test": false,
+      "unit": "hidden"
+    },
+    {
+      "depth": 16,
+      "endLine": 5,
+      "exported": true,
+      "id": "src/forwarding.ts#relay",
+      "interface": 1,
+      "kind": "function",
+      "labels": [
+        "pass-through"
+      ],
+      "nodes": 16,
+      "passThrough": "target",
+      "path": "src/forwarding.ts",
+      "score": 1.0625,
+      "startLine": 3,
+      "test": false,
+      "unit": "relay"
+    },
+    {
+      "depth": 17,
+      "endLine": 9,
+      "exported": true,
+      "id": "src/forwarding.ts#fixed",
+      "interface": 1,
+      "kind": "function",
+      "labels": [
+        "pass-through"
+      ],
+      "nodes": 17,
+      "passThrough": "target",
+      "path": "src/forwarding.ts",
+      "score": 1.0588,
+      "startLine": 7,
+      "test": false,
+      "unit": "fixed"
+    },
+    {
+      "depth": 17,
+      "endLine": 17,
+      "exported": true,
+      "id": "src/forwarding.ts#wrapped",
+      "interface": 1,
+      "kind": "function",
+      "labels": [
+        "pass-through"
+      ],
+      "nodes": 17,
+      "passThrough": "target",
+      "path": "src/forwarding.ts",
+      "score": 1.0588,
+      "startLine": 15,
+      "test": false,
+      "unit": "wrapped"
+    },
+    {
+      "depth": 17,
+      "endLine": 28,
+      "exported": true,
+      "id": "src/shapes.ts#Repo.find",
+      "interface": 1,
+      "kind": "method",
+      "labels": [
+        "pass-through"
+      ],
+      "nodes": 17,
+      "passThrough": "this.store.find",
+      "path": "src/shapes.ts",
+      "score": 1.0588,
+      "startLine": 26,
+      "test": false,
+      "unit": "Repo.find"
+    },
+    {
+      "depth": 5,
+      "endLine": 41,
+      "exported": true,
+      "id": "src/shapes.ts#default",
+      "interface": 1,
+      "kind": "function",
+      "labels": [
+        "shallow"
+      ],
+      "nodes": 5,
+      "passThrough": null,
+      "path": "src/shapes.ts",
+      "score": 0.2,
+      "startLine": 39,
+      "test": false,
+      "unit": "default"
+    },
+    {
+      "depth": 8.5,
+      "endLine": 37,
+      "exported": true,
+      "id": "src/forwarding.ts#Shape",
+      "interface": 2,
+      "kind": "class",
+      "labels": [
+        "shallow"
+      ],
+      "nodes": 17,
+      "passThrough": null,
+      "path": "src/forwarding.ts",
+      "score": 0.1176,
+      "startLine": 32,
+      "test": false,
+      "unit": "Shape"
+    },
+    {
+      "depth": 9,
+      "endLine": 3,
+      "exported": true,
+      "id": "src/shapes.ts#add",
+      "interface": 2,
+      "kind": "function",
+      "labels": [
+        "shallow"
+      ],
+      "nodes": 18,
+      "passThrough": null,
+      "path": "src/shapes.ts",
+      "score": 0.1111,
+      "startLine": 1,
+      "test": false,
+      "unit": "add"
+    },
+    {
+      "depth": 11.6,
+      "endLine": 37,
+      "exported": true,
+      "id": "src/shapes.ts#Repo",
+      "interface": 5,
+      "kind": "class",
+      "labels": [],
+      "nodes": 58,
+      "passThrough": null,
+      "path": "src/shapes.ts",
+      "score": 0.0862,
+      "startLine": 24,
+      "test": false,
+      "unit": "Repo"
+    },
+    {
+      "depth": 13,
+      "endLine": 25,
+      "exported": true,
+      "id": "src/forwarding.ts#creates",
+      "interface": 1,
+      "kind": "function",
+      "labels": [],
+      "nodes": 13,
+      "passThrough": null,
+      "path": "src/forwarding.ts",
+      "score": 0.0769,
+      "startLine": 23,
+      "test": false,
+      "unit": "creates"
+    },
+    {
+      "depth": 14,
+      "endLine": 21,
+      "exported": true,
+      "id": "src/forwarding.ts#computed",
+      "interface": 1,
+      "kind": "function",
+      "labels": [],
+      "nodes": 14,
+      "passThrough": null,
+      "path": "src/forwarding.ts",
+      "score": 0.0714,
+      "startLine": 19,
+      "test": false,
+      "unit": "computed"
+    },
+    {
+      "depth": 16,
+      "endLine": 37,
+      "exported": true,
+      "id": "src/forwarding.ts",
+      "interface": 8,
+      "kind": "module",
+      "labels": [],
+      "nodes": 128,
+      "passThrough": null,
+      "path": "src/forwarding.ts",
+      "score": 0.0625,
+      "startLine": 1,
+      "test": false,
+      "unit": "src/forwarding.ts"
+    },
+    {
+      "depth": 18,
+      "endLine": 30,
+      "exported": true,
+      "id": "src/forwarding.ts#early",
+      "interface": 1,
+      "kind": "function",
+      "labels": [],
+      "nodes": 18,
+      "passThrough": null,
+      "path": "src/forwarding.ts",
+      "score": 0.0556,
+      "startLine": 27,
+      "test": false,
+      "unit": "early"
+    },
+    {
+      "depth": 19,
+      "endLine": 18,
+      "exported": true,
+      "id": "src/shapes.ts#tagged",
+      "interface": 1,
+      "kind": "function",
+      "labels": [],
+      "nodes": 19,
+      "passThrough": null,
+      "path": "src/shapes.ts",
+      "score": 0.0526,
+      "startLine": 16,
+      "test": false,
+      "unit": "tagged"
+    },
+    {
+      "depth": 22,
+      "endLine": 14,
+      "exported": true,
+      "id": "src/shapes.ts#audit",
+      "interface": 1,
+      "kind": "function",
+      "labels": [],
+      "nodes": 22,
+      "passThrough": null,
+      "path": "src/shapes.ts",
+      "score": 0.0455,
+      "startLine": 11,
+      "test": false,
+      "unit": "audit"
+    },
+    {
+      "depth": 26.14,
+      "endLine": 41,
+      "exported": true,
+      "id": "src/shapes.ts",
+      "interface": 7,
+      "kind": "module",
+      "labels": [],
+      "nodes": 183,
+      "passThrough": null,
+      "path": "src/shapes.ts",
+      "score": 0.0383,
+      "startLine": 1,
+      "test": false,
+      "unit": "src/shapes.ts"
+    }
+  ],
+  "schemaVersion": 1,
+  "skippedFiles": {
+    "binary": 0,
+    "excluded": 0,
+    "large": 0,
+    "tests": 0
+  },
+  "summary": {
+    "files": 2,
+    "filesWithoutAdapter": 1,
+    "passThrough": 8,
+    "rows": 19,
+    "shallow": 4
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 19
+  }
+}

@@ -42,6 +42,8 @@ export const complexityConfig: PluginConfigSpec = {
     overrides: [],
     /** The post-edit hook, off unless a repository turns it on. It uses `thresholds`, `delta`, `analyseTests` and `agreementBar`. */
     hook: { enabled: false },
+    /** `shallow`: an exported function, class or module with fewer syntax nodes than this per element of its interface is labelled shallow. */
+    interfaceDepth: { shallow: 10 },
   },
 };
 
@@ -65,6 +67,8 @@ export interface ComplexitySettings {
   windowMonths: number;
   /** The opt-in post-edit hook. */
   hook: { enabled: boolean };
+  /** Nodes per interface element below which an exported unit is labelled shallow. */
+  shallowDepth: number;
   /** The suite's shared `exclude` globs. */
   isExcluded: (path: string) => boolean;
 }
@@ -119,6 +123,7 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     changeWeighting: section.changeWeighting === true,
     windowMonths: number(section.windowMonths, at("windowMonths"), 1),
     hook: { enabled: (section.hook as { enabled: boolean }).enabled === true },
+    shallowDepth: number((section.interfaceDepth as { shallow: unknown }).shallow, at("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
   };
 }

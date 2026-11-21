@@ -4,7 +4,7 @@ import { isTestPath } from "@code-health/parse/analyse-tree";
 import { factsForBlob } from "@code-health/parse/file-facts";
 import { grammarIdForPath, loadGrammar, type GrammarId, type LoadedGrammar } from "@code-health/parse/grammars";
 import type { ParseCache } from "@code-health/parse/parse-cache";
-import type { UnitFact } from "@code-health/parse/facts";
+import type { FileFacts, UnitFact } from "@code-health/parse/facts";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { UnitKind } from "@code-health/lexical/unit";
 import type { ComplexitySettings } from "./config.ts";
@@ -33,6 +33,26 @@ export interface UnitRecord {
   bumpyRoad?: boolean;
 }
 
+/** A function or class as the interface depth signal sees it. Structural only. */
+export interface InterfaceUnit {
+  /** `path#Qualified.name`. */
+  id: string;
+  name: string;
+  kind: UnitKind;
+  startLine: number;
+  endLine: number;
+  /** Qualified name of the enclosing unit, when nested. */
+  parent?: string;
+  /** Exported by the file under its own name. Whether a member of a class is reachable is the class's. */
+  exported: boolean;
+  /** Implementation size in syntax nodes. */
+  nodes: number;
+  /** Parameters, or for a class its constructor parameters and reachable members; at least 1. */
+  interfaceSize: number;
+  /** The call the function's whole body forwards to, when it does nothing else. */
+  passThrough?: string;
+}
+
 export interface FileRecord {
   path: string;
   test: boolean;
@@ -45,6 +65,8 @@ export interface FileRecord {
   indentationComplexity: number;
   keywordComplexity?: number;
   units: UnitRecord[];
+  /** Structural only: the file's functions and classes with their depth shape, and the module itself. */
+  interfaces?: { units: InterfaceUnit[]; module: { nodes: number; exports: number } };
   hasSyntaxErrors: boolean;
   /** What could not be measured, and why. */
   skipped: string[];
@@ -106,7 +128,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
       }
       const lexical = analyseSource(path, text, { agreementBar: settings.agreementBar });
       const grammarId = grammarIdForPath(path);
-      let structural: { units: UnitRecord[]; syntaxErrors: boolean } | undefined;
+      let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean } | undefined;
       if (grammarId !== undefined && options.layer !== "lexical") {
         let grammar = grammars.get(grammarId);
         if (grammar === undefined) {
@@ -116,12 +138,38 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
         const { facts, cached } = await factsForBlob(grammar, tree.files.get(path)!, text, options.cache);
         if (cached) stats.cached++;
         else stats.parsed++;
-        structural = { units: structuralUnits(path, facts.units, settings), syntaxErrors: facts.hasSyntaxErrors };
+        structural = {
+          units: structuralUnits(path, facts.units, settings),
+          interfaces: interfaceUnits(path, facts),
+          syntaxErrors: facts.hasSyntaxErrors,
+        };
       }
       files.push(fileRecord(path, text, lexical, structural, options));
     }
   }
   return { files, skippedFiles, stats };
+}
+
+/** The units of a file for the interface depth signal, and its module. */
+function interfaceUnits(path: string, facts: FileFacts): NonNullable<FileRecord["interfaces"]> {
+  const exported = new Set(facts.exports.flatMap((fact) => (fact.local === undefined ? [] : [fact.local])));
+  const units: InterfaceUnit[] = [];
+  for (const unit of facts.units) {
+    if (unit.shape === undefined) continue;
+    units.push({
+      id: `${path}#${unit.qualifiedName}`,
+      name: unit.qualifiedName,
+      kind: unit.kind,
+      startLine: unit.startLine,
+      endLine: unit.endLine,
+      ...(unit.parent === undefined ? {} : { parent: unit.parent }),
+      exported: unit.parent === undefined && exported.has(unit.qualifiedName),
+      nodes: unit.shape.nodes,
+      interfaceSize: unit.shape.interfaceSize,
+      ...(unit.passThrough === undefined ? {} : { passThrough: unit.passThrough }),
+    });
+  }
+  return { units, module: { nodes: facts.nodes, exports: facts.exports.length + facts.reexports.length } };
 }
 
 function structuralUnits(path: string, units: UnitFact[], settings: ComplexitySettings): UnitRecord[] {
@@ -151,7 +199,7 @@ function fileRecord(
   path: string,
   text: string,
   lexical: FileAnalysis,
-  structural: { units: UnitRecord[]; syntaxErrors: boolean } | undefined,
+  structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean } | undefined,
   options: MeasureOptions,
 ): FileRecord {
   const test = isTestPath(path);
@@ -202,6 +250,7 @@ function fileRecord(
     indentationComplexity: lexical.file.indentationComplexity,
     ...(lexical.file.keywordComplexity === undefined ? {} : { keywordComplexity: lexical.file.keywordComplexity }),
     units,
+    ...(structural === undefined ? {} : { interfaces: structural.interfaces }),
     hasSyntaxErrors: structural?.syntaxErrors ?? false,
     skipped,
     ...(agreement === undefined ? {} : { agreement }),

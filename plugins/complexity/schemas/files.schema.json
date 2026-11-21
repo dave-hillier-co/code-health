@@ -245,6 +245,22 @@
           "overThreshold": {
             "$ref": "common.schema.json#/$defs/count",
             "description": "Functions over a warn threshold."
+          },
+          "interfaceDepth": {
+            "description": "Mean interface depth, in syntax nodes per interface element, over the file's exported top-level functions and classes. null when it exports none or has no structural adapter.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ]
+          },
+          "passThroughs": {
+            "$ref": "common.schema.json#/$defs/count",
+            "description": "Functions whose whole body forwards to one call."
           }
         },
         "required": [
@@ -260,7 +276,9 @@
           "keywordComplexity",
           "functions",
           "aggregates",
-          "overThreshold"
+          "overThreshold",
+          "interfaceDepth",
+          "passThroughs"
         ],
         "additionalProperties": false
       }

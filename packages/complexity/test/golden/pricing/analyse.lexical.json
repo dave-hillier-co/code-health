@@ -7,7 +7,7 @@
     }
   },
   "command": "analyse",
-  "config": "79e062f25d26c0aa",
+  "config": "be214049830d245b",
   "filesWithSyntaxErrors": [],
   "inputs": {
     "layer": "lexical",

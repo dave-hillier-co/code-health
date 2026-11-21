@@ -72,4 +72,25 @@ export const ruleDescriptions: Record<string, Rule> = {
       "thresholds never fails, and neither does one that is over a threshold and did not get worse.",
     ].join("\n"),
   },
+  shallow: {
+    summary: "Shallow module: an exported unit whose interface is large for what it hides",
+    explanation: [
+      "Depth is the unit's implementation size in syntax nodes divided by its interface size. For a function the interface is",
+      "its parameters (at least 1), for a class its constructor parameters plus the members a user can reach (private and # members",
+      "excluded), for a module the names it exports. A unit is labelled shallow when it is exported, is not a method, and has fewer",
+      "than interfaceDepth.shallow nodes (default 10) per interface element.",
+      "A shallow unit is a candidate for review, not a defect: a small helper with one use is often right. Prefer deepening, by moving the",
+      "decision it should hide inside it, over merging for the number. Never gate on it.",
+    ].join("\n"),
+  },
+  "pass-through": {
+    summary: "Pass-through: a function whose whole body forwards to one call",
+    explanation: [
+      "The body is one statement that is a call (a return, an await and a type assertion do not count as work), and every argument is a",
+      "parameter of the function, a spread of one, or a literal. The function adds nothing between its caller and the callee, so the",
+      "two interfaces repeat each other. A call with a computed argument, a new, or several statements is the function doing work.",
+      "Remedies: let callers use the callee, or move the behaviour that justified the layer into it. A function that exists to satisfy a",
+      "dependency boundary, or to give a stable name to a changing callee, may be right to keep. Judge it before removing it.",
+    ].join("\n"),
+  },
 };
