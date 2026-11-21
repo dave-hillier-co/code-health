@@ -122,7 +122,7 @@ Code-Health: locality two-consumers
 
 ## Report honestly
 
-State sample sizes and say what the evidence does not show. The analyser's gain is a leading indicator, not an outcome: a unit that moved closer has not yet made anything cheaper to change. Agent effort over later tasks is the outcome. Take a baseline before the first move and compare afterwards with `measure`: see `references/measure.md`. Do not claim an improvement the data cannot show.
+State sample sizes and say what the evidence does not show. The analyser's gain is a leading indicator, not an outcome: a unit that moved closer has not yet made anything cheaper to change. Agent effort over later tasks is the outcome. Take a baseline before the first move and compare afterwards with `measure`: see `references/measure.md`. Read `structure.gaming` in the compare result as well: a gain that came with more single-file folders or a deeper tree is buried code, not a tidy-up. Do not claim an improvement the data cannot show.
 
 Do not move code to make the score better. If a target would bury code deeper than the configured `locality.maxDepth`, the analyser clamps it, and you should not work around that.
 

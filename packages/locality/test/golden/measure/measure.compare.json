@@ -288,6 +288,22 @@
     },
     "spreadReproduced": true,
     "status": "compared",
+    "structure": {
+      "after": {
+        "maxDepth": 3,
+        "singleFileFolders": 1,
+        "totalWeightedDistance": 120
+      },
+      "before": {
+        "maxDepth": 3,
+        "singleFileFolders": 1,
+        "totalWeightedDistance": 210
+      },
+      "gaming": {
+        "flagged": false,
+        "reasons": []
+      }
+    },
     "suite": {
       "actedOn": 2,
       "commits": 2,

@@ -80,6 +80,17 @@
       "required": ["actedOn", "comparison", "difference", "smallestSample", "conclusion"]
     },
     "closedDifference": { "type": "object", "allOf": [{ "$ref": "#/$defs/difference" }], "unevaluatedProperties": false },
+    "structureMetrics": {
+      "type": "object",
+      "description": "The leading indicator and the gaming check's figures: total weighted import distance, folders holding a single production file, and the deepest folder holding one.",
+      "properties": {
+        "totalWeightedDistance": { "type": "number", "minimum": 0 },
+        "singleFileFolders": { "$ref": "common.schema.json#/$defs/count" },
+        "maxDepth": { "$ref": "common.schema.json#/$defs/count" }
+      },
+      "required": ["totalWeightedDistance", "singleFileFolders", "maxDepth"],
+      "additionalProperties": false
+    },
     "baselineResults": {
       "type": "object",
       "properties": {
@@ -113,9 +124,10 @@
           "required": ["recorded", "ranked"],
           "additionalProperties": false
         },
+        "structure": { "$ref": "#/$defs/structureMetrics" },
         "priorSuiteCommits": { "$ref": "common.schema.json#/$defs/count", "description": "Commits already carrying this tool's Code-Health trailer: above 0, the baseline was taken after the first tidy-up." }
       },
-      "required": ["name", "file", "head", "window", "spread", "effort", "candidates", "priorSuiteCommits"],
+      "required": ["name", "file", "head", "window", "spread", "structure", "effort", "candidates", "priorSuiteCommits"],
       "additionalProperties": false
     },
     "nothingActedOn": {
@@ -156,6 +168,25 @@
           "additionalProperties": false
         },
         "spreadReproduced": { "type": "boolean", "description": "The history, read now, still gives the spread the baseline recorded over its window. False after history was rewritten." },
+        "structure": {
+          "type": "object",
+          "description": "The leading indicator before and after, with the gaming check: a fall in weighted import distance that came with more single-file folders or a deeper tree is distance buried, not removed.",
+          "properties": {
+            "before": { "oneOf": [{ "$ref": "#/$defs/structureMetrics" }, { "type": "null" }], "description": "Null when the baseline was written before these figures were recorded." },
+            "after": { "$ref": "#/$defs/structureMetrics" },
+            "gaming": {
+              "type": "object",
+              "properties": {
+                "flagged": { "type": "boolean" },
+                "reasons": { "type": "array", "items": { "type": "string" } }
+              },
+              "required": ["flagged", "reasons"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["before", "after", "gaming"],
+          "additionalProperties": false
+        },
         "after": {
           "type": "object",
           "description": "The window that matches the baseline's: the same number of days, cut short where HEAD ends it.",
@@ -223,7 +254,7 @@
         },
         "claim": { "enum": ["cheaper", "costlier", "spread-without-effort", "no-effect-shown", "unproven"], "description": "All the data supports saying. `spread-without-effort` is unproven: spread falls by construction." }
       },
-      "required": ["name", "status", "baseline", "spreadReproduced", "after", "suite", "pairs", "actedOn", "comparison", "spread", "effort", "claim"],
+      "required": ["name", "status", "baseline", "spreadReproduced", "structure", "after", "suite", "pairs", "actedOn", "comparison", "spread", "effort", "claim"],
       "additionalProperties": false
     }
   },

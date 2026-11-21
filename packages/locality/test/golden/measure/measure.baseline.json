@@ -62,6 +62,11 @@
       "median": 2,
       "oversized": 0
     },
+    "structure": {
+      "maxDepth": 3,
+      "singleFileFolders": 1,
+      "totalWeightedDistance": 210
+    },
     "window": {
       "from": "2023-01-01",
       "to": "2024-01-02"

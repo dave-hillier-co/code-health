@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden, withoutMeta } from "./support/golden.ts";
-import { relocationApp, Sessions, sessionsAfter, sessionsBefore, tidyUp } from "./support/measure-scenarios.ts";
+import { bury, relocationApp, Sessions, sessionsAfter, sessionsBefore, tidyUp } from "./support/measure-scenarios.ts";
 import { runLocality } from "./support/run.ts";
 
 const disposables: Array<{ dispose(): void }> = [];
@@ -52,6 +52,11 @@ describe("measure baseline", () => {
     expect(stored.candidates.map((c: { rank: number }) => c.rank)).toEqual(Array.from({ length: 18 }, (_, index) => index + 1));
     expect(stored.candidates[0]).toMatchObject({ files: ["src/shared/utils/h1.ts"], consumers: ["src/f1/a.ts", "src/f1/b.ts"] });
     expect(stored.head).toBe(repo.git("rev-parse", "HEAD"));
+  });
+
+  test("records the leading indicator and the gaming check's figures as the structure stood", () => {
+    expect(first.document.results.structure).toEqual({ totalWeightedDistance: expect.any(Number), singleFileFolders: 1, maxDepth: 3 });
+    expect(first.document.results.structure.totalWeightedDistance).toBeGreaterThan(0);
   });
 
   test("keeps the tasks as paths and counts, never what was said", () => {
@@ -169,6 +174,13 @@ describe("measure compare", () => {
       expect(document.results.claim).toBe("cheaper");
     });
 
+    test("reports the leading indicator before and after, and finds nothing buried when code moved next to its consumers", async () => {
+      const { document } = await measure(repo, sessions, ["compare"]);
+      const { structure } = document.results;
+      expect(structure.after.totalWeightedDistance).toBeLessThan(structure.before.totalWeightedDistance);
+      expect(structure.gaming).toEqual({ flagged: false, reasons: [] });
+    });
+
     test("is byte for byte reproducible, and matches its golden", async () => {
       const first = await measure(repo, sessions, ["compare"]);
       const second = await measure(repo, sessions, ["compare"]);
@@ -206,6 +218,24 @@ describe("measure compare", () => {
       expect(document.results.after).toMatchObject({ from: "2024-12-01", to: "2025-01-21", complete: false, days: 51, matchingDays: 366 });
     });
   });
+});
+
+describe("measure compare, where the move buried code", () => {
+  test("the distance falls, but the single-file folders and depth that rose are flagged as gaming", async () => {
+    const { repo, sessions } = fresh();
+    sessionsBefore(sessions);
+    expect((await measure(repo, sessions, ["baseline"])).run.code).toBe(ExitCode.Success);
+    bury(repo, 1);
+    sessionsAfter(sessions, [1]);
+    const { document } = await measure(repo, sessions, ["compare"]);
+    const { structure } = document.results;
+    expect(structure.after.totalWeightedDistance).toBeLessThan(structure.before.totalWeightedDistance);
+    expect(structure.after.singleFileFolders).toBeGreaterThan(structure.before.singleFileFolders);
+    expect(structure.after.maxDepth).toBeGreaterThan(structure.before.maxDepth);
+    expect(structure.gaming.flagged).toBe(true);
+    expect(structure.gaming.reasons.join(" ")).toMatch(/single-file folders/);
+    expect(structure.gaming.reasons.join(" ")).toMatch(/depth/);
+  }, 60_000);
 });
 
 describe("measure compare, where the moves did not go through the skill", () => {

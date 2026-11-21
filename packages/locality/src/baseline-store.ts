@@ -8,6 +8,7 @@ import type { EffortSummary, NotMeasuredSession } from "@code-health/transcripts
 import type { DayWindow } from "./measure-window.ts";
 import type { Heat } from "./measure-effort.ts";
 import type { SpreadSummary } from "./measure-spread.ts";
+import type { StructureMetrics } from "./structure-metrics.ts";
 import { SCHEMA_VERSION, TOOL } from "./tool.ts";
 
 /** A candidate as it stood before anything moved: where it ranked, and the files whose changes and reads are its neighbourhood. */
@@ -48,6 +49,8 @@ export interface Baseline {
     stamp: string;
   };
   readHeat: Heat[];
+  /** Total weighted import distance, single-file folders and maximum depth at the baseline. Absent in baselines written before they were recorded. */
+  structure?: StructureMetrics;
   /** The ranked candidates, from which the comparison group is later drawn. */
   candidates: BaselineCandidate[];
   /** All candidates the analysis ranked, of which `candidates` holds the first ones. */

@@ -18,6 +18,7 @@ import { changesBetween, changesTouching, summariseSpread, type SpreadSummary } 
 import { addDays, dayOf, matchingWindow, windowEndingAt, windowLength, windowSeconds, type DayWindow } from "../measure-window.ts";
 import { loadProject } from "../project.ts";
 import { actionsSince, countSuiteCommits } from "../suite-commits.ts";
+import { gamingCheck, type StructureMetrics } from "../structure-metrics.ts";
 import { claimOf, differenceOf, effortConclusion, type Arm } from "../verdict.ts";
 
 export const name = "measure";
@@ -83,7 +84,8 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
 
   const project = await loadProject(root, "HEAD", settings);
   const history = settings.useHistory ? await readHistory(context, settings) : undefined;
-  const ranked = analyseProject(project, buildModel(project, settings, history), settings, history).candidates;
+  const analysed = analyseProject(project, buildModel(project, settings, history), settings, history);
+  const ranked = analysed.candidates;
   const candidates = ranked.slice(0, keep).map(
     (candidate, index): BaselineCandidate => ({
       rank: index + 1,
@@ -115,6 +117,7 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
     spread,
     effort: { sessions: effort.sessions, summary: effort.summary, tasks: effort.tasks, stamp: stampOf(effort.tasks) },
     readHeat: readHeat(effort.tasks, HEAT_FILES),
+    structure: analysed.metrics,
     candidates,
     candidateCount: ranked.length,
     priorSuiteCommits: prior,
@@ -130,6 +133,7 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
       head: record.head,
       window,
       spread,
+      structure: analysed.metrics,
       effort: { sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length }, ...effort.summary },
       candidates: { recorded: candidates.length, ranked: ranked.length },
       priorSuiteCommits: prior,
@@ -156,6 +160,13 @@ const mean = (value: { mean: number } | null): number | null => (value === null 
 function reproduced(now: SpreadSummary, recorded: SpreadSummary): boolean {
   const same = now.mean === null || recorded.mean === null ? now.mean === recorded.mean : roundFloat(now.mean) === roundFloat(recorded.mean);
   return now.measured === recorded.measured && now.changes === recorded.changes && same;
+}
+
+/** The structure of HEAD, measured as the baseline measured it. */
+async function structureNow(context: CommandContext, settings: LocalitySettings): Promise<StructureMetrics> {
+  const project = await loadProject(context.repo.root, "HEAD", settings);
+  const history = settings.useHistory ? await readHistory(context, settings) : undefined;
+  return analyseProject(project, buildModel(project, settings, history), settings, history).metrics;
 }
 
 const EFFORT_FIGURES = ["filesRead", "foldersVisited", "reReads", "tokens"] as const;
@@ -188,6 +199,8 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
     };
   }
 
+  const now = await structureNow(context, settings);
+  const structure = { before: before.structure ?? null, after: now, gaming: gamingCheck(before.structure ?? null, now) };
   const comparison = chooseComparison(before.candidates, actedOn);
   const ends = addDays(dayOf(view.headDate), 1);
   const requested = stringOption(context, "since");
@@ -251,6 +264,7 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
       status: "compared",
       baseline: { head: before.head, window: before.window, spread: before.spread, effort: before.effort.summary },
       spreadReproduced: reproduced(recomputed, before.spread),
+      structure,
       after: { ...after, days: windowLength(after), matchingDays: windowLength(before.window) },
       suite: { commits: done.commits, actedOn: actedOn.length, comparison: comparison.group.length, overlapping: comparison.overlapping },
       pairs: comparison.pairs,

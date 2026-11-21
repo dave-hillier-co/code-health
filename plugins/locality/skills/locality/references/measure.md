@@ -14,6 +14,7 @@ It records, over the twelve months (`locality.windowMonths`) back from HEAD's co
 
 - **Change spread**: the mean pairwise tree distance of the files of each logical change, each file at its path as of that change. The suite's own commits are left out.
 - **Agent effort**: per task, from Claude Code session transcripts in `~/.claude/projects/` (`--projects-dir` names another), for this checkout and its worktrees: files read, folders visited, re-reads, edits and tokens. Only paths and counts are kept. Tasks with no edits are left out. Sessions in a transcript format the tool does not recognise are counted as `notMeasured`.
+- **Structure**: total weighted import distance (the leading indicator), the number of folders holding a single production file, and the maximum folder depth (the gaming check), as `structure`.
 - **The ranked candidates** of `analyse`, each with its files and its consumers, so the comparison group can be drawn later (`--candidates` limits how many are kept, 200 by default).
 - **Read heat**: the files most tasks read, for deciding where to start.
 
@@ -35,6 +36,7 @@ Reading the result:
 - `spread.conclusion` is an outcome by construction, since the target minimises the distances spread measures. It shows that changes now land closer together.
 - Every difference carries `smallestSample`. Below `locality.measureMinSamples` the conclusion is `insufficient-sample`, and a difference within `locality.measureNoisePercent` of the starting figure is `no-change`.
 - `claim` is all the data supports saying. `cheaper` needs effort to have fallen. `spread-without-effort` is unproven: say that spread fell and that no fall in effort has shown it mattered. `unproven` and `no-effect-shown` are not improvements.
+- `structure` sets the leading indicator before and after. Read `structure.gaming` every time: `flagged` true means weighted import distance fell while the number of single-file folders or the maximum depth rose, so the distance was buried in nesting and not removed. Report that as gaming and do not count the gain; move the file back or flatten it. A `before` of null means the baseline predates these figures, so no check was possible.
 - `spreadReproduced` false means history was rewritten since the baseline, so its spread no longer reproduces.
 
 Moves that carried no `Code-Health:` trailer are not recognised as acted on. Spread from history alone cannot be the outcome for moves made from `analyse --source history`, because the target minimised the same distances. Agent effort is.

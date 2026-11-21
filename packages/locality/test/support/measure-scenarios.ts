@@ -103,6 +103,28 @@ export function tidyUp(fixture: GitFixture, moved: readonly Feature[], options: 
   fixture.apply(steps);
 }
 
+/**
+ * A tidy-up that games the leading indicator: the helper of `feature` is moved under its consumers' folder, but
+ * into a folder nested three deep that holds nothing else, which closes the distance by burying the file.
+ */
+export function bury(fixture: GitFixture, feature: Feature): void {
+  const buried = `src/f${feature}/impl/core/inner/h${feature}.ts`;
+  fixture.apply([
+    {
+      type: "commit",
+      message: `Bury h${feature} under its consumers\n\nCode-Health: locality two-consumers`,
+      date: day(1, 10, 2024),
+      author: ada,
+      changes: [
+        { op: "rename", from: helperPath(feature, none), path: buried },
+        modify(`src/f${feature}/a.ts`, consumerSource(feature, "a", 8 - feature, none).replace(helperImport(feature, none), `./impl/core/inner/h${feature}.ts`)),
+        modify(`src/f${feature}/b.ts`, consumerSource(feature, "b", 8 - feature, none).replace(helperImport(feature, none), `./impl/core/inner/h${feature}.ts`)),
+      ],
+    },
+    { type: "commit", message: "Add more notes", date: day(1, 20, 2025), author: grace, changes: [add("NOTES2.md", "Notes.\n")] },
+  ]);
+}
+
 /** A directory of Claude Code sessions for a repository, as the transcripts package reads them. */
 export class Sessions {
   readonly directory: string;
