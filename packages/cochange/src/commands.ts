@@ -1,4 +1,5 @@
 import type { Command, Rule } from "@code-health/cli-kit/run-cli";
+import * as coupling from "./commands/coupling.ts";
 import * as refresh from "./commands/refresh.ts";
 
 /** What a module in `commands/` exports. */
@@ -16,6 +17,7 @@ export interface CommandModule {
  * and add it to this list, one line each, in alphabetical order.
  */
 export const commandModules: CommandModule[] = [
+  coupling,
   refresh,
 ];
 

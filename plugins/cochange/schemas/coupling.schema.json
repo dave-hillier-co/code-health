@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coupling.schema.json",
+  "title": "cochange coupling --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "coupling" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "file": { "type": ["string", "null"], "description": "The file the listing is limited to, resolved through renames to its current path." },
+        "minDegree": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Percentage." },
+        "minSupport": { "type": "integer", "minimum": 1 },
+        "asymmetry": {
+          "type": "object",
+          "description": "Confidence percentages for asymmetric-coupling: one direction at least `high`, the other at most `low`.",
+          "properties": {
+            "high": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "low": { "type": "integer", "minimum": 0, "maximum": 100 }
+          },
+          "required": ["high", "low"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["file", "minDegree", "minSupport", "asymmetry"],
+      "additionalProperties": false
+    },
+    "population": {
+      "description": "The logical changes coupling was counted over.",
+      "type": "object",
+      "properties": {
+        "eligibleChanges": { "$ref": "common.schema.json#/$defs/count", "description": "Changes at or below the maximum changeset size: the one population behind every count." },
+        "oversizedExcluded": { "$ref": "common.schema.json#/$defs/count", "description": "Changes above the maximum, left out on both sides of every ratio." }
+      },
+      "required": ["eligibleChanges", "oversizedExcluded"],
+      "additionalProperties": false
+    },
+    "note": { "type": ["string", "null"], "description": "Set when no pair reaches the thresholds. The thresholds are never lowered." },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "The first file of the pair. With --file, the named file." },
+          "with": { "type": "string", "description": "The other file." },
+          "score": { "type": "number", "description": "The degree, for ordering." },
+          "degree": { "type": "number", "minimum": 0, "maximum": 100, "description": "Symmetric strength in percent: support over the mean of the two files' change counts." },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of changes to `path` that also touch `with`." },
+          "reverseConfidence": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of changes to `with` that also touch `path`." },
+          "support": { "type": "integer", "minimum": 1, "description": "Eligible logical changes touching both files." },
+          "distance": { "type": "integer", "minimum": 0, "description": "Folder-tree distance between the two files, as they are now." },
+          "findings": {
+            "type": "array",
+            "items": { "enum": ["distant-coupling", "asymmetric-coupling"] },
+            "uniqueItems": true
+          },
+          "dependent": {
+            "type": ["string", "null"],
+            "description": "With asymmetric-coupling, the file whose changes usually include the other. Otherwise null."
+          },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "support": { "type": "integer", "minimum": 1 },
+              "changesPath": { "type": "integer", "minimum": 1, "description": "Eligible changes touching `path`." },
+              "changesWith": { "type": "integer", "minimum": 1, "description": "Eligible changes touching `with`." },
+              "clearsMinimum": { "type": "boolean", "description": "Support reaches the configured cochange.minSupport, whatever --min-support listed." }
+            },
+            "required": ["support", "changesPath", "changesWith", "clearsMinimum"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["path", "with", "score", "degree", "confidence", "reverseConfidence", "support", "distance", "findings", "dependent", "evidence"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["population", "note"],
+  "unevaluatedProperties": false
+}
