@@ -1,14 +1,15 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { integerOption } from "../coupled-pairs.ts";
-import { readComponents } from "../components.ts";
+import { UNASSIGNED, readComponents } from "../components.ts";
 import { estimateTurnover, type Turnover } from "./activity.ts";
 import { round4 } from "./current.ts";
 import { goneLinesOf, reachesThreshold } from "./knowledge-model.ts";
 import { commonExtra, commonInputs, prepare, type Prepared } from "./prepare.ts";
+import { fileFindings, hotspotWeights, rankScore } from "./ranking.ts";
 import { reportLoss } from "./report.ts";
 import { chooseSelection, readSimulationSettings } from "./selection.ts";
-import { requireKnowledge } from "./settings.ts";
+import { readRank, requireKnowledge } from "./settings.ts";
 import { simulate } from "./simulate.ts";
 
 const isoDay = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);
@@ -72,30 +73,46 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
     components,
   });
 
+  const weights = await hotspotWeights(context, p.history);
+  const rank = readRank(context, settings);
   const byPath = new Map(model.files.map((f) => [f.path, f]));
   const fileRows = result.fileRisks
     .filter((f) => f.probability > 0)
     .map((f) => {
       const file = byPath.get(f.path)!;
       const former = file.holders.filter((h) => !model.developers[h.dev]!.active).length;
+      const abandoned = reachesThreshold(goneLinesOf(file, model.developers), file.people, settings.abandonmentThreshold);
+      const weight = weights.get(f.path);
       return {
         path: f.path,
-        score: round4(f.probability),
+        score: rankScore(rank, f.probability, weight),
         probability: round4(f.probability),
         tailShare: round4(f.tailShare),
-        abandoned: reachesThreshold(goneLinesOf(file, model.developers), file.people, settings.abandonmentThreshold),
+        abandoned,
+        hotspot: weight?.hot ?? false,
+        hotspotPercentile: round4(weight?.percentile ?? 0),
         peopleLines: file.people,
         activeAuthors: file.holders.length - former,
         formerAuthors: former,
+        findings: fileFindings({ abandoned, probability: f.probability, hot: weight?.hot ?? false, noSuccessor: false }, settings.atRiskProbability),
       };
     })
-    .sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)))
+    .sort((a, b) => b.score - a.score || b.probability - a.probability || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)))
     .slice(0, top);
 
   const componentRows = result.componentRisks
     .map((c) => {
       const loss = reportLoss(c.lines, c.baselineLines, c.peopleLines);
-      return { path: c.name, peopleLines: c.peopleLines, abandonedLines: c.baselineLines, expectedLoss: loss.increment.expected, atRisk: loss.increment.atRisk };
+      const tailRatio = loss.increment.atRisk[0]!.tailRatio;
+      const concentrated = c.name !== UNASSIGNED && tailRatio !== null && tailRatio >= settings.concentratedTailRatio;
+      return {
+        path: c.name,
+        peopleLines: c.peopleLines,
+        abandonedLines: c.baselineLines,
+        expectedLoss: loss.increment.expected,
+        atRisk: loss.increment.atRisk,
+        findings: concentrated ? ["concentrated-component"] : [],
+      };
     })
     .sort((a, b) => b.expectedLoss - a.expectedLoss || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)))
     .slice(0, top);
@@ -109,6 +126,7 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
       horizonPeriods: sim.horizonPeriods,
       seed: sim.seed,
       alphas: settings.alphas,
+      rank,
       turnoverRate: settings.turnoverRate === null ? null : round4(settings.turnoverRate),
     }),
     extra: commonExtra(p, { turnover: turnoverSummary(turnover) }),

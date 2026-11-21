@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "./support/golden.ts";
-import { knowledgeHistory } from "./support/knowledge-scenario.ts";
+import { auth, deps, engine, knowledgeHistory, lexer, log, parser, routes, view } from "./support/knowledge-scenario.ts";
 import { runCochange } from "./support/run.ts";
 import { steadyHistory } from "./support/scenarios.ts";
 
@@ -147,6 +147,64 @@ test("the loss never falls as the turnover rate rises", async () => {
   expect(expected).toEqual([...expected].sort((a, b) => a - b));
   expect(expected[0]).toBe(0);
   expect(expected[6]).toBe(43);
+});
+
+interface FileRow {
+  path: string;
+  findings: string[];
+  [key: string]: unknown;
+}
+const byPath = (document: { results: { files: FileRow[] } }): Record<string, FileRow> =>
+  Object.fromEntries(document.results.files.map((f) => [f.path, f]));
+
+test("findings follow the table: abandoned, at risk where it changes, at risk where it is cold", async () => {
+  const document = await json("simulate", "--trials", "3000", "--seed", "8", "--top", "20");
+  const files = byPath(document);
+  expect(files[engine]!.findings).toEqual(["abandoned"]);
+  expect(files[parser]!.findings).toEqual(["abandoned"]);
+  expect(files[deps]!.findings).toEqual(["abandoned"]);
+  // Auth and routes change together every ten days, so they are hotspots.
+  expect(files[auth]).toMatchObject({ hotspot: true, hotspotPercentile: 0.6667, findings: ["at-risk-hot"] });
+  expect(files[routes]).toMatchObject({ hotspot: true, findings: ["at-risk-hot"] });
+  // The view changed once in the window: it is scored, low, and not a hotspot. The lexer and the log never changed in it.
+  expect(files[view]).toMatchObject({ hotspot: false, hotspotPercentile: 0.1667, findings: ["at-risk-cold"] });
+  for (const cold of [lexer, log]) expect(files[cold]).toMatchObject({ hotspot: false, hotspotPercentile: 0, findings: ["at-risk-cold"] });
+});
+
+test("the at-risk line is configurable: routes, with two holders, falls under a higher one", async () => {
+  configure({ atRiskProbability: 25 });
+  const files = byPath(await json("simulate", "--trials", "3000", "--seed", "8"));
+  expect(files[routes]!.findings).toEqual([]);
+  expect(files[auth]!.findings).toEqual(["at-risk-hot"]);
+});
+
+test("files are ranked by probability weighted by the hotspot percentile, so what changes comes first", async () => {
+  const document = await json("simulate", "--trials", "3000", "--seed", "8");
+  const order = document.results.files.map((f: { path: string }) => f.path);
+  expect(order.slice(0, 2)).toEqual([auth, routes]);
+  // The view has a small weight. Files that never changed carry none: they keep the order of their probability, abandoned files first.
+  expect(order.slice(2, 6)).toEqual([view, engine, parser, deps]);
+  expect(document.results.files[0].score).toBeCloseTo(document.results.files[0].probability * 0.6667, 3);
+});
+
+test("--rank abandonment is the raw view, by probability alone", async () => {
+  const document = await json("simulate", "--trials", "3000", "--seed", "8", "--rank", "abandonment");
+  const order = document.results.files.map((f: { path: string }) => f.path);
+  expect(order.slice(0, 3)).toEqual([engine, parser, deps]);
+  expect(order[order.length - 1]).toBe(routes);
+  expect(document.inputs.rank).toBe("abandonment");
+  expect(document.results.files[0].score).toBe(1);
+});
+
+test("a component whose tail ratio reaches the configured one is concentrated, and the unassigned group never is", async () => {
+  configure({ concentratedTailRatio: 1 }, { components: { api: "src/api/**", core: "src/core/**" } });
+  const flagged = async () => {
+    const document = await json("simulate", "--trials", "2000", "--seed", "8");
+    return document.results.components.filter((c: { findings: string[] }) => c.findings.length > 0).map((c: { path: string }) => c.path).sort();
+  };
+  expect(await flagged()).toEqual(["api", "core"]);
+  configure({ concentratedTailRatio: 100 }, { components: { api: "src/api/**", core: "src/core/**" } });
+  expect(await flagged()).toEqual([]);
 });
 
 test("the options of each subcommand stay with it", async () => {

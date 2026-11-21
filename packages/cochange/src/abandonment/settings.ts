@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { configError, CliError, ExitCode } from "@code-health/cli-kit/errors";
+import { configError, usageError, CliError, ExitCode } from "@code-health/cli-kit/errors";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import { identityFiles } from "@code-health/history/identity-decisions";
 
@@ -162,4 +162,12 @@ export function readOverrides(root: string): KnowledgeOverrides {
   const both = [...active].filter((k) => inactive.has(k));
   if (both.length > 0) fail("an identity cannot be both active and inactive");
   return { active, inactive, stamp: createHash("sha256").update(text).digest("hex").slice(0, 16) };
+}
+
+/** The `--rank` option over the configured ranking. */
+export function readRank(context: CommandContext, settings: KnowledgeSettings): RankMode {
+  const value = context.values.rank;
+  if (value === undefined) return settings.rank;
+  if (!RANK_MODES.includes(value as RankMode)) throw usageError(`--rank must be "hotspot" or "abandonment", not "${String(value)}"`);
+  return value as RankMode;
 }

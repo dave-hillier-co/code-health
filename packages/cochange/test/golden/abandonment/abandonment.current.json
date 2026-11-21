@@ -85,6 +85,7 @@
       "inactive": 0
     },
     "periodMonths": 3,
+    "rank": "hotspot",
     "subcommand": "current"
   },
   "repo": {
@@ -96,31 +97,46 @@
       "abandonedLines": 10,
       "abandonedShare": 1,
       "activeAuthors": 0,
+      "findings": [
+        "abandoned"
+      ],
       "formerAuthors": 1,
+      "hotspot": false,
+      "hotspotPercentile": 0,
       "nonPersonLines": 0,
       "path": "src/core/engine.ts",
       "peopleLines": 10,
-      "score": 10
+      "score": 0
     },
     {
       "abandonedLines": 9,
       "abandonedShare": 0.9,
       "activeAuthors": 1,
+      "findings": [
+        "abandoned"
+      ],
       "formerAuthors": 1,
+      "hotspot": false,
+      "hotspotPercentile": 0,
       "nonPersonLines": 0,
       "path": "src/core/parser.ts",
       "peopleLines": 10,
-      "score": 9
+      "score": 0
     },
     {
       "abandonedLines": 5,
       "abandonedShare": 1,
       "activeAuthors": 0,
+      "findings": [
+        "abandoned"
+      ],
       "formerAuthors": 1,
+      "hotspot": false,
+      "hotspotPercentile": 0,
       "nonPersonLines": 5,
       "path": "src/gen/deps.ts",
       "peopleLines": 5,
-      "score": 5
+      "score": 0
     }
   ],
   "schemaVersion": 1,

@@ -1,14 +1,18 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { Command, CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { backtestCommand } from "../abandonment/backtest.ts";
-import { groupByComponent, measureCurrent, summariseCurrent } from "../abandonment/current.ts";
+import { groupByComponent, measureCurrent, round4, summariseCurrent } from "../abandonment/current.ts";
 import { commonExtra, commonInputs, prepare } from "../abandonment/prepare.ts";
+import { fileFindings, hotspotWeights, rankScore, rules as abandonmentRules } from "../abandonment/ranking.ts";
+import { readRank } from "../abandonment/settings.ts";
 import { simulationOptions } from "../abandonment/selection.ts";
 import { simulateCommand, turnoverCommand } from "../abandonment/simulate-run.ts";
 import { readComponents } from "../components.ts";
 import { byOption, readBy } from "../units.ts";
 
 export const name = "abandonment";
+
+export const rules = abandonmentRules;
 
 const SUBCOMMANDS = ["backtest", "current", "simulate", "turnover"] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
@@ -20,7 +24,7 @@ type Subcommand = (typeof SUBCOMMANDS)[number];
  */
 export const command: Command = {
   summary: "Knowledge lost when people leave: files already abandoned, simulated turnover, and a backtest of the model",
-  options: { ...byOption, ...simulationOptions, top: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
+  options: { ...byOption, ...simulationOptions, top: { type: "string" }, rank: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
     const [sub, ...rest] = context.positionals;
     if (!SUBCOMMANDS.includes(sub as Subcommand) || rest.length > 0) throw usageError(`usage: abandonment <${SUBCOMMANDS.join("|")}>`);
@@ -43,6 +47,7 @@ function rejectOptionsOutsideTheirCommand(sub: Subcommand, context: CommandConte
   const only: Record<string, Subcommand[]> = {
     by: ["current"],
     at: ["backtest"],
+    rank: ["current", "simulate"],
     mode: ["simulate"],
     k: ["simulate"],
     trials: ["backtest", "simulate"],
@@ -62,13 +67,19 @@ async function current(context: CommandContext): Promise<CommandOutput> {
   const files = measureCurrent(model, p.settings.abandonmentThreshold);
   const unattributed = model.files.reduce((sum, f) => sum + f.unattributed, 0);
 
+  const rank = readRank(context, p.settings);
+  const weights = by === "file" ? await hotspotWeights(context, p.history) : new Map();
   const rows =
     by === "file"
       ? files
           .filter((f) => f.abandoned)
           .map((f) => ({
             path: f.path,
-            score: f.abandonedLines,
+            // Ranked by the hotspot percentile weighting the abandoned share, or by the lines lost under --rank abandonment.
+            score: rank === "hotspot" ? rankScore(rank, f.abandonedShare, weights.get(f.path)) : f.abandonedLines,
+            hotspot: weights.get(f.path)?.hot ?? false,
+            hotspotPercentile: round4(weights.get(f.path)?.percentile ?? 0),
+            findings: fileFindings({ abandoned: true, probability: 1, hot: weights.get(f.path)?.hot ?? false, noSuccessor: false }, p.settings.atRiskProbability),
             abandonedShare: f.abandonedShare,
             abandonedLines: f.abandonedLines,
             peopleLines: f.peopleLines,
@@ -81,12 +92,12 @@ async function current(context: CommandContext): Promise<CommandOutput> {
           .map((g) => ({ ...g, score: g.abandonedShare }));
 
   return {
-    inputs: commonInputs(p, "current", { by }),
+    inputs: commonInputs(p, "current", { by, rank }),
     extra: commonExtra(p, { summary: summariseCurrent(files, unattributed) }),
     results: rows,
     columns:
       by === "file"
-        ? ["path", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines"]
+        ? ["path", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines", "hotspot", "findings"]
         : ["path", "files", "abandonedFiles", "abandonedShare", "abandonedLines", "peopleLines"],
   };
 }

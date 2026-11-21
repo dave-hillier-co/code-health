@@ -91,6 +91,7 @@
       "inactive": 0
     },
     "periodMonths": 3,
+    "rank": "hotspot",
     "seed": 42,
     "subcommand": "simulate",
     "trials": 2000,
@@ -121,89 +122,130 @@
           }
         ],
         "expectedLoss": 14.528,
+        "findings": [],
         "path": "(unassigned)",
         "peopleLines": 75
       }
     ],
     "files": [
       {
-        "abandoned": true,
-        "activeAuthors": 0,
-        "formerAuthors": 1,
-        "path": "src/core/engine.ts",
-        "peopleLines": 10,
-        "probability": 1,
-        "score": 1,
-        "tailShare": 0
-      },
-      {
-        "abandoned": true,
-        "activeAuthors": 1,
-        "formerAuthors": 1,
-        "path": "src/core/parser.ts",
-        "peopleLines": 10,
-        "probability": 1,
-        "score": 1,
-        "tailShare": 0
-      },
-      {
-        "abandoned": true,
-        "activeAuthors": 0,
-        "formerAuthors": 1,
-        "path": "src/gen/deps.ts",
-        "peopleLines": 5,
-        "probability": 1,
-        "score": 1,
-        "tailShare": 0
-      },
-      {
         "abandoned": false,
         "activeAuthors": 1,
+        "findings": [
+          "at-risk-hot"
+        ],
         "formerAuthors": 0,
+        "hotspot": true,
+        "hotspotPercentile": 0.6667,
         "path": "src/api/auth.ts",
         "peopleLines": 10,
         "probability": 0.34,
-        "score": 0.34,
-        "tailShare": 1
-      },
-      {
-        "abandoned": false,
-        "activeAuthors": 1,
-        "formerAuthors": 1,
-        "path": "src/core/lexer.ts",
-        "peopleLines": 10,
-        "probability": 0.339,
-        "score": 0.339,
-        "tailShare": 1
-      },
-      {
-        "abandoned": false,
-        "activeAuthors": 1,
-        "formerAuthors": 0,
-        "path": "src/util/log.ts",
-        "peopleLines": 10,
-        "probability": 0.339,
-        "score": 0.339,
-        "tailShare": 1
-      },
-      {
-        "abandoned": false,
-        "activeAuthors": 1,
-        "formerAuthors": 0,
-        "path": "src/ui/view.ts",
-        "peopleLines": 10,
-        "probability": 0.3325,
-        "score": 0.3325,
+        "score": 0.2267,
         "tailShare": 1
       },
       {
         "abandoned": false,
         "activeAuthors": 2,
+        "findings": [
+          "at-risk-hot"
+        ],
         "formerAuthors": 0,
+        "hotspot": true,
+        "hotspotPercentile": 0.6667,
         "path": "src/api/routes.ts",
         "peopleLines": 10,
         "probability": 0.157,
-        "score": 0.157,
+        "score": 0.1047,
+        "tailShare": 1
+      },
+      {
+        "abandoned": false,
+        "activeAuthors": 1,
+        "findings": [
+          "at-risk-cold"
+        ],
+        "formerAuthors": 0,
+        "hotspot": false,
+        "hotspotPercentile": 0.1667,
+        "path": "src/ui/view.ts",
+        "peopleLines": 10,
+        "probability": 0.3325,
+        "score": 0.0554,
+        "tailShare": 1
+      },
+      {
+        "abandoned": true,
+        "activeAuthors": 0,
+        "findings": [
+          "abandoned"
+        ],
+        "formerAuthors": 1,
+        "hotspot": false,
+        "hotspotPercentile": 0,
+        "path": "src/core/engine.ts",
+        "peopleLines": 10,
+        "probability": 1,
+        "score": 0,
+        "tailShare": 0
+      },
+      {
+        "abandoned": true,
+        "activeAuthors": 1,
+        "findings": [
+          "abandoned"
+        ],
+        "formerAuthors": 1,
+        "hotspot": false,
+        "hotspotPercentile": 0,
+        "path": "src/core/parser.ts",
+        "peopleLines": 10,
+        "probability": 1,
+        "score": 0,
+        "tailShare": 0
+      },
+      {
+        "abandoned": true,
+        "activeAuthors": 0,
+        "findings": [
+          "abandoned"
+        ],
+        "formerAuthors": 1,
+        "hotspot": false,
+        "hotspotPercentile": 0,
+        "path": "src/gen/deps.ts",
+        "peopleLines": 5,
+        "probability": 1,
+        "score": 0,
+        "tailShare": 0
+      },
+      {
+        "abandoned": false,
+        "activeAuthors": 1,
+        "findings": [
+          "at-risk-cold"
+        ],
+        "formerAuthors": 1,
+        "hotspot": false,
+        "hotspotPercentile": 0,
+        "path": "src/core/lexer.ts",
+        "peopleLines": 10,
+        "probability": 0.339,
+        "score": 0,
+        "tailShare": 1
+      },
+      {
+        "abandoned": false,
+        "activeAuthors": 1,
+        "findings": [
+          "at-risk-cold"
+        ],
+        "formerAuthors": 0,
+        "hotspot": false,
+        "hotspotPercentile": 0,
+        "path": "src/util/log.ts",
+        "peopleLines": 10,
+        "probability": 0.339,
+        "score": 0,
         "tailShare": 1
       }
     ],

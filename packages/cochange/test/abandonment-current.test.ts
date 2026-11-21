@@ -5,7 +5,7 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "./support/golden.ts";
 import { runCochange } from "./support/run.ts";
-import { deps, engine, knowledgeHistory, lexer, log, parser } from "./support/knowledge-scenario.ts";
+import { auth, deps, engine, knowledgeHistory, lexer, log, parser } from "./support/knowledge-scenario.ts";
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -66,7 +66,7 @@ test("the threshold is configurable and decides on exact arithmetic", async () =
   configure({ abandonmentThreshold: 91 });
   expect(paths(await json("current", "--limit", "all"))).toEqual([engine, deps]);
   configure({ abandonmentThreshold: 80 });
-  expect(paths(await json("current", "--limit", "all"))).toEqual([engine, parser, lexer, deps]);
+  expect(paths(await json("current", "--limit", "all"))).toEqual([engine, lexer, parser, deps]);
 });
 
 test("components group files, lines and the abandoned share", async () => {
@@ -88,10 +88,50 @@ test("an activity override corrects who counts as active, and stays local", asyn
   );
   const document = await json("current", "--limit", "all");
   // Cy's lines are no longer abandoned. Bob's now are: the lexer is all Di and Bob, and the log is all Bob.
-  expect(paths(document)).toEqual([lexer, log, deps]);
+  expect(paths(document)).toEqual([lexer, deps, log]);
   expect(document.inputs.overrides).toMatchObject({ active: 1, inactive: 1 });
   expect(document.inputs.overrides.hash).toMatch(/^[0-9a-f]{16}$/);
   expect(document.developers).toEqual({ active: 3, inactive: 2 });
+});
+
+function annHasLeft(): void {
+  const dir = join(repo.path, ".code-health", "local");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "knowledge-overrides.json"), JSON.stringify({ schemaVersion: 1, inactive: ["Ann Active <ann@example.com>"] }));
+}
+
+test("abandoned files are ranked by the hotspot percentile weighting the abandoned share, so code that changes comes first", async () => {
+  annHasLeft();
+  const document = await json("current", "--limit", "all");
+  // Auth is all Ann's and changes every ten days; the others are cold. Cold files tie at 0 and keep path order.
+  expect(paths(document)).toEqual([auth, engine, parser, deps]);
+  expect(document.results[0]).toMatchObject({ hotspot: true, hotspotPercentile: 0.6667, score: 0.6667, findings: ["abandoned"] });
+  expect(document.results[1]).toMatchObject({ hotspot: false, hotspotPercentile: 0, score: 0 });
+});
+
+test("--rank abandonment is the raw view: by the lines lost, whatever changes", async () => {
+  annHasLeft();
+  const document = await json("current", "--rank", "abandonment", "--limit", "all");
+  expect(document.inputs.rank).toBe("abandonment");
+  // Auth, engine and parser each lose 10 lines and tie, in path order; the bot file loses 5.
+  expect(paths(document)).toEqual([auth, engine, parser, deps]);
+  expect(document.results.map((r: { score: number }) => r.score)).toEqual([10, 10, 10, 5]);
+  configure({ rank: "abandonment" });
+  expect((await json("current")).inputs.rank).toBe("abandonment");
+});
+
+test("the ranking mode must be a known one, and belongs to current and simulate", async () => {
+  expect((await abandonment("current", "--rank", "people")).code).toBe(ExitCode.Usage);
+  expect((await abandonment("turnover", "--rank", "hotspot")).code).toBe(ExitCode.Usage);
+});
+
+test("every finding is explained, with the mitigation it suggests", async () => {
+  for (const rule of ["abandoned", "at-risk-hot", "at-risk-cold", "concentrated-component", "no-successor"]) {
+    const { code, stdout } = await runCochange(repo.path, ["explain", rule]);
+    expect(code).toBe(ExitCode.Success);
+    expect(stdout).toMatch(/^[a-z-]+: /);
+    expect(stdout).toMatch(/Suggested mitigation/);
+  }
 });
 
 test("without a refresh, files the cache holds nothing for are unknown, not abandoned", async () => {

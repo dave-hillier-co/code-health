@@ -11,6 +11,7 @@
         "at": { "type": "string", "format": "date", "description": "Backtest: the date the model is built at." },
         "atRiskProbability": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Backtest: the percentage at which a file is predicted to be abandoned." },
         "by": { "enum": ["file", "component"] },
+        "rank": { "enum": ["hotspot", "abandonment"], "description": "How files are ranked: the probability weighted by the hotspot percentile, or the raw measure." },
         "mode": { "enum": ["rate", "historical", "k-leavers"] },
         "k": { "type": ["integer", "null"], "minimum": 1 },
         "trials": { "type": "integer", "minimum": 1 },
@@ -39,6 +40,11 @@
       "additionalProperties": false
     },
     "share": { "type": "number", "minimum": 0 },
+    "findings": {
+      "description": "Rules raised, described by `cochange explain <rule>`.",
+      "type": "array",
+      "items": { "enum": ["abandoned", "at-risk-hot", "at-risk-cold", "concentrated-component", "no-successor"] }
+    },
     "distribution": {
       "description": "One loss across the trials: its mean and share of the whole, and knowledge at risk (the alpha percentile) with the tail ratio and the mean of the losses at or beyond it.",
       "type": "object",
@@ -108,11 +114,14 @@
         "probability": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fraction of trials in which the file ends up abandoned. 1 for a file already abandoned." },
         "tailShare": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fraction of the worst trials (by files lost, at the lowest alpha) in which the file is lost." },
         "abandoned": { "type": "boolean", "description": "Already abandoned at the analysed commit." },
+        "hotspot": { "type": "boolean" },
+        "hotspotPercentile": { "$ref": "#/$defs/share" },
+        "findings": { "$ref": "#/$defs/findings" },
         "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
         "activeAuthors": { "$ref": "common.schema.json#/$defs/count" },
         "formerAuthors": { "$ref": "common.schema.json#/$defs/count" }
       },
-      "required": ["path", "score", "probability", "tailShare", "abandoned", "peopleLines", "activeAuthors", "formerAuthors"],
+      "required": ["path", "score", "probability", "tailShare", "abandoned", "hotspot", "hotspotPercentile", "findings", "peopleLines", "activeAuthors", "formerAuthors"],
       "additionalProperties": false
     },
     "simulationComponent": {
@@ -122,9 +131,10 @@
         "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
         "abandonedLines": { "$ref": "common.schema.json#/$defs/count", "description": "Already abandoned." },
         "expectedLoss": { "type": "number", "minimum": 0, "description": "Expected increment in abandoned lines." },
-        "atRisk": { "$ref": "#/$defs/distribution/properties/atRisk", "description": "Knowledge at risk of the increment, in lines." }
+        "atRisk": { "$ref": "#/$defs/distribution/properties/atRisk", "description": "Knowledge at risk of the increment, in lines." },
+        "findings": { "$ref": "#/$defs/findings" }
       },
-      "required": ["path", "peopleLines", "abandonedLines", "expectedLoss", "atRisk"],
+      "required": ["path", "peopleLines", "abandonedLines", "expectedLoss", "atRisk", "findings"],
       "additionalProperties": false
     },
     "simulation": {
@@ -274,7 +284,10 @@
       "type": "object",
       "properties": {
         "path": { "type": "string" },
-        "score": { "$ref": "common.schema.json#/$defs/count", "description": "The abandoned lines: what the list is ranked by." },
+        "score": { "type": "number", "minimum": 0, "description": "What the list is ranked by: the abandoned share weighted by the hotspot percentile, or with --rank abandonment the abandoned lines." },
+        "hotspot": { "type": "boolean" },
+        "hotspotPercentile": { "$ref": "#/$defs/share", "description": "Rank percentile of the file's hotspot score, 0 when the analysis window saw no change to it." },
+        "findings": { "$ref": "#/$defs/findings" },
         "abandonedShare": { "type": "number", "minimum": 0, "maximum": 1 },
         "abandonedLines": { "$ref": "common.schema.json#/$defs/count" },
         "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
@@ -282,7 +295,7 @@
         "formerAuthors": { "$ref": "common.schema.json#/$defs/count" },
         "nonPersonLines": { "$ref": "common.schema.json#/$defs/count" }
       },
-      "required": ["path", "score", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines"],
+      "required": ["path", "score", "hotspot", "hotspotPercentile", "findings", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines"],
       "additionalProperties": false
     },
     "currentComponent": {
@@ -331,8 +344,8 @@
       "properties": {
         "inputs": {
           "type": "object",
-          "properties": { "subcommand": { "const": "current" }, "by": true, "overrides": true },
-          "required": ["subcommand", "by", "overrides"]
+          "properties": { "subcommand": { "const": "current" }, "by": true, "rank": true, "overrides": true },
+          "required": ["subcommand", "by", "rank", "overrides"]
         },
         "results": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/currentFile" }, { "$ref": "#/$defs/currentComponent" }] } },
         "summary": true,
@@ -359,8 +372,8 @@
       "properties": {
         "inputs": {
           "type": "object",
-          "properties": { "subcommand": { "const": "simulate" }, "overrides": true, "mode": true, "k": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
-          "required": ["subcommand", "overrides", "mode", "k", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
+          "properties": { "subcommand": { "const": "simulate" }, "overrides": true, "rank": true, "mode": true, "k": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
+          "required": ["subcommand", "overrides", "rank", "mode", "k", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
         },
         "results": { "$ref": "#/$defs/simulation" },
         "turnover": true,
