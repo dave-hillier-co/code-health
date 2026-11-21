@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { GitFixture, type Step } from "@code-health/fixtures/git-fixture";
 import { NoCacheError, readHistory } from "../src/read.ts";
@@ -167,6 +169,17 @@ test("the mailmap is applied at read time from the tree at the ref, so editing i
   expect(unmapped.commits[0]).toMatchObject({ mappedName: "Al", mappedEmail: "al@old.example", authorEmail: "al@old.example" });
   expect(mapped.commits[0]).toMatchObject({ mappedName: "Alice", mappedEmail: "alice@example.com", authorEmail: "al@old.example" });
   expect(mapped.commits[1]).toMatchObject({ mappedName: "Alice", mappedEmail: "alice@example.com" });
+});
+
+test("a local mailmap file maps authors too, without being in the tree", async () => {
+  const repo = build([
+    { type: "commit", message: "by al", date: "2024-02-01T00:00:00Z", author: { name: "Al", email: "al@old.example" }, changes: [{ op: "add", path: "a", content: "1\n" }] },
+  ]);
+  await refresh(repo.path);
+  const file = join(repo.path, "local-mailmap");
+  writeFileSync(file, "Alice <alice@example.com> <al@old.example>\n");
+  const view = await readHistory(repo.path, { mailmapFile: file });
+  expect(view.commits[0]).toMatchObject({ mappedName: "Alice", mappedEmail: "alice@example.com", authorEmail: "al@old.example" });
 });
 
 test("a rename below the similarity threshold is a delete and an add with a new identity", async () => {

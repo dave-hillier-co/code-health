@@ -1,0 +1,161 @@
+{
+  "command": "identities",
+  "config": "c7edf037a678f2bc",
+  "inputs": {
+    "subcommand": "check"
+  },
+  "measurement": {
+    "headLines": {
+      "mappedShare": 23.6,
+      "nonPerson": 6,
+      "people": 89,
+      "total": 95,
+      "unattributed": 0,
+      "unmapped": 68
+    },
+    "needsIdentityReview": true,
+    "unmappedShareThreshold": 5,
+    "windowCommits": {
+      "mappedShare": 20.6,
+      "nonPerson": 6,
+      "people": 102,
+      "total": 108,
+      "unmapped": 81
+    }
+  },
+  "repo": {
+    "dirty": false,
+    "head": "54ad752f450b950e3e86d6a8093fcc33d5a640b8"
+  },
+  "results": [
+    {
+      "commits": null,
+      "detail": "P3 is proposed but both active in 9 of the same weeks, never in the same area",
+      "identities": [
+        "Alex Kim <akim@b.com>",
+        "Alex Kim <alex@a.com>"
+      ],
+      "kind": "counter-evidence",
+      "lines": null,
+      "linesShare": null,
+      "score": 100
+    },
+    {
+      "commits": 11,
+      "detail": "proposed to be the same person as J Park <Jo@X.com>, last active 2024-05-20",
+      "identities": [
+        "Jo Park <jo+git@x.com>"
+      ],
+      "kind": "unmapped",
+      "lines": 11,
+      "linesShare": 12.4,
+      "score": 11
+    },
+    {
+      "commits": 10,
+      "detail": "proposed to be the same person as Jo Park <jo+git@x.com>, last active 2024-03-04",
+      "identities": [
+        "J Park <Jo@X.com>"
+      ],
+      "kind": "unmapped",
+      "lines": 10,
+      "linesShare": 11.2,
+      "score": 10
+    },
+    {
+      "commits": 9,
+      "detail": "proposed to be the same person as Alex Kim <alex@a.com>, last active 2024-03-11",
+      "identities": [
+        "Alex Kim <akim@b.com>"
+      ],
+      "kind": "unmapped",
+      "lines": 9,
+      "linesShare": 10.1,
+      "score": 9
+    },
+    {
+      "commits": 9,
+      "detail": "proposed to be the same person as Alex Kim <akim@b.com>, last active 2024-03-11",
+      "identities": [
+        "Alex Kim <alex@a.com>"
+      ],
+      "kind": "unmapped",
+      "lines": 9,
+      "linesShare": 10.1,
+      "score": 9
+    },
+    {
+      "commits": 8,
+      "detail": "proposed to be the same person as jsmith <1234+jsmith@users.noreply.github.com>, last active 2024-04-08",
+      "identities": [
+        "John Smith <jsmith@users.noreply.github.com>"
+      ],
+      "kind": "unmapped",
+      "lines": 8,
+      "linesShare": 9,
+      "score": 8
+    },
+    {
+      "commits": 8,
+      "detail": "proposed to be the same person as Maria Lopez <maria@corp.com>, last active 2024-05-20",
+      "identities": [
+        "María López <mlopez@gmail.com>"
+      ],
+      "kind": "unmapped",
+      "lines": 8,
+      "linesShare": 9,
+      "score": 8
+    },
+    {
+      "commits": 7,
+      "detail": "proposed to be the same person as John Smith <jsmith@users.noreply.github.com>, last active 2024-02-12",
+      "identities": [
+        "jsmith <1234+jsmith@users.noreply.github.com>"
+      ],
+      "kind": "unmapped",
+      "lines": 7,
+      "linesShare": 7.9,
+      "score": 7
+    },
+    {
+      "commits": 4,
+      "detail": "proposed to be the same person as Sam Ro <sam@corp.com>, last active 2024-03-04",
+      "identities": [
+        "Sam Ro <sam@home.net>"
+      ],
+      "kind": "unmapped",
+      "lines": 4,
+      "linesShare": 4.5,
+      "score": 4
+    },
+    {
+      "commits": 2,
+      "detail": "proposed to be the same person as Sam Ro <sam@home.net>, last active 2024-04-01",
+      "identities": [
+        "Sam Ro <sam@corp.com>"
+      ],
+      "kind": "unmapped",
+      "lines": 2,
+      "linesShare": 2.2,
+      "score": 2
+    },
+    {
+      "commits": 13,
+      "detail": "proposed to be the same person as María López <mlopez@gmail.com>, last active 2024-03-25",
+      "identities": [
+        "Maria Lopez <maria@corp.com>"
+      ],
+      "kind": "unmapped",
+      "lines": 0,
+      "linesShare": 0,
+      "score": 0
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 11
+  }
+}

@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020Module from "ajv/dist/2020.js";
@@ -25,6 +25,7 @@ ajv.addSchema(load("spread.schema.json"));
 ajv.addSchema(load("hotspots.schema.json"));
 ajv.addSchema(load("age.schema.json"));
 ajv.addSchema(load("coupling.schema.json"));
+ajv.addSchema(load("identities.schema.json"));
 // How a command schema for an analysis command is composed. The probe stands in for a real one.
 ajv.addSchema({
   $id: "probe.schema.json",
@@ -109,5 +110,42 @@ test("coupling output, as printed with meta, matches its schema, and stray field
     expect(validates("coupling.schema.json", JSON.stringify(inEvidence))).not.toEqual([]);
   } finally {
     coupled.dispose();
+  }
+});
+
+test("an analysis output that names identity inputs still matches its schema", async () => {
+  const repoWithIdentities = steadyHistory();
+  try {
+    mkdirSync(join(repoWithIdentities.path, ".code-health", "local"), { recursive: true });
+    writeFileSync(join(repoWithIdentities.path, ".code-health", "local", "mailmap"), "Alice <alice@example.com> Bob <bob@example.com>\n");
+    for (const command of ["hotspots", "age", "coupling", "spread"]) {
+      const { stdout } = await runCochange(repoWithIdentities.path, [command]);
+      expect(JSON.parse(stdout).inputs.identityInputs.localMailmap).toMatch(/^[0-9a-f]{16}$/);
+      expect(validates(`${command}.schema.json`, stdout)).toEqual([]);
+    }
+  } finally {
+    repoWithIdentities.dispose();
+  }
+});
+
+test("identities output matches its schema for every subcommand, and stray fields do not", async () => {
+  const identities = steadyHistory();
+  try {
+    const decisions = join(identities.path, "..", "decisions-input.json");
+    writeFileSync(decisions, JSON.stringify({ classifications: [{ identity: "Alice <alice@example.com>", kind: "person" }] }));
+    for (const args of [["list"], ["list", "--unmapped"], ["propose"], ["classify"], ["check"], ["apply", "--from", decisions, "--location", "local"]]) {
+      const { stdout, stderr } = await runCochange(identities.path, ["identities", ...args]);
+      expect(stderr).toBe("");
+      expect(validates("identities.schema.json", stdout)).toEqual([]);
+    }
+    const { stdout } = await runCochange(identities.path, ["identities", "check"]);
+    const stray = JSON.parse(stdout);
+    stray.measurement.headLines.surprise = 1;
+    expect(validates("identities.schema.json", JSON.stringify(stray))).not.toEqual([]);
+    const wrongShape = JSON.parse(stdout);
+    wrongShape.inputs.subcommand = "apply";
+    expect(validates("identities.schema.json", JSON.stringify(wrongShape))).not.toEqual([]);
+  } finally {
+    identities.dispose();
   }
 });

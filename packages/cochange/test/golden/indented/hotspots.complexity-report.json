@@ -1,7 +1,7 @@
 {
   "command": "hotspots",
   "complexitySource": "complexity-report",
-  "config": "2a7b17129e6a2723",
+  "config": "c7edf037a678f2bc",
   "evidence": {
     "activeContributors": 2,
     "commitSize": {

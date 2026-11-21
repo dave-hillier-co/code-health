@@ -1,0 +1,29 @@
+schema_version: "1.0"
+name: identities-strong-links
+description: Every duplicate is a strong link. The skill must accept them without asking, apply them after the dry run, and list them in its summary.
+tags: [identities, behaviour]
+plugins: [cochange]
+context:
+  scaffold_script: scaffold.sh
+runs: 3
+execution:
+  prompt: Some authors in this repository appear under more than one name or email. Please fix the mapping with the identities skill. Commit the mapping to the repository (use the committed location). I will not be around to answer questions, so make the decisions the skill says you can make yourself.
+  model: claude-sonnet-5-5
+  max_turns: 30
+  timeout_seconds: 600
+graders:
+  - type: tool_used
+    name: runs-the-dry-run-and-the-write
+    tool: Bash
+    input_match: "identities apply"
+    min: 2
+  - type: file_exists
+    name: mailmap-written
+    path: .mailmap
+  - type: regex
+    name: both-strong-pairs-mapped
+    target: { source: file, path: .mailmap }
+    pattern: "(?s)(?=.*Jo@Corp\\.example)(?=.*1234\\+jsmith@users\\.noreply\\.github\\.com)"
+  - type: llm
+    name: does-not-ask-about-strong-links
+    criteria: The agent does not ask the user whether the strong-link pairs (the same address apart from case and +tag, and the same GitHub noreply username) are the same person, and its final message lists the merges it made.

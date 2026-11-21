@@ -1,0 +1,270 @@
+{
+  "command": "identities",
+  "config": "c7edf037a678f2bc",
+  "inputs": {
+    "subcommand": "propose"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "54ad752f450b950e3e86d6a8093fcc33d5a640b8"
+  },
+  "results": [
+    {
+      "counterEvidence": false,
+      "id": "P1",
+      "kind": "cluster",
+      "links": [
+        {
+          "a": "J Park <Jo@X.com>",
+          "b": "Jo Park <jo+git@x.com>",
+          "counterEvidence": false,
+          "signals": [
+            {
+              "detail": "jo@x.com",
+              "signal": "exact-email",
+              "strength": "strong"
+            }
+          ],
+          "strength": "strong"
+        }
+      ],
+      "members": [
+        {
+          "aliases": [],
+          "commits": 10,
+          "firstSeen": "2024-01-01",
+          "identity": "J Park <Jo@X.com>",
+          "lastSeen": "2024-03-04",
+          "topAreas": [
+            "src/api"
+          ]
+        },
+        {
+          "aliases": [],
+          "commits": 11,
+          "firstSeen": "2024-03-11",
+          "identity": "Jo Park <jo+git@x.com>",
+          "lastSeen": "2024-05-20",
+          "topAreas": [
+            "src/api"
+          ]
+        }
+      ],
+      "strength": "strong",
+      "suggestedCanonical": "Jo Park <jo+git@x.com>"
+    },
+    {
+      "counterEvidence": false,
+      "id": "P2",
+      "kind": "cluster",
+      "links": [
+        {
+          "a": "John Smith <jsmith@users.noreply.github.com>",
+          "b": "jsmith <1234+jsmith@users.noreply.github.com>",
+          "counterEvidence": false,
+          "signals": [
+            {
+              "detail": "user:jsmith",
+              "signal": "noreply-same-user",
+              "strength": "strong"
+            }
+          ],
+          "strength": "strong"
+        }
+      ],
+      "members": [
+        {
+          "aliases": [],
+          "commits": 8,
+          "firstSeen": "2024-02-19",
+          "identity": "John Smith <jsmith@users.noreply.github.com>",
+          "lastSeen": "2024-04-08",
+          "topAreas": [
+            "src/ui"
+          ]
+        },
+        {
+          "aliases": [],
+          "commits": 7,
+          "firstSeen": "2024-01-01",
+          "identity": "jsmith <1234+jsmith@users.noreply.github.com>",
+          "lastSeen": "2024-02-12",
+          "topAreas": [
+            "src/ui"
+          ]
+        }
+      ],
+      "strength": "strong",
+      "suggestedCanonical": "John Smith <jsmith@users.noreply.github.com>"
+    },
+    {
+      "counterEvidence": true,
+      "id": "P3",
+      "kind": "cluster",
+      "links": [
+        {
+          "a": "Alex Kim <akim@b.com>",
+          "b": "Alex Kim <alex@a.com>",
+          "counterEvidence": true,
+          "signals": [
+            {
+              "detail": "akim",
+              "signal": "name-from-email",
+              "strength": "medium"
+            },
+            {
+              "detail": "alex kim",
+              "signal": "same-name",
+              "strength": "medium"
+            },
+            {
+              "detail": "both active in 9 of the same weeks, never in the same area",
+              "signal": "simultaneous-disjoint-areas",
+              "strength": "counter"
+            }
+          ],
+          "strength": "medium"
+        }
+      ],
+      "members": [
+        {
+          "aliases": [],
+          "commits": 9,
+          "firstSeen": "2024-01-15",
+          "identity": "Alex Kim <akim@b.com>",
+          "lastSeen": "2024-03-11",
+          "topAreas": [
+            "infra/db"
+          ]
+        },
+        {
+          "aliases": [],
+          "commits": 9,
+          "firstSeen": "2024-01-15",
+          "identity": "Alex Kim <alex@a.com>",
+          "lastSeen": "2024-03-11",
+          "topAreas": [
+            "app/web"
+          ]
+        }
+      ],
+      "strength": "medium",
+      "suggestedCanonical": "Alex Kim <akim@b.com>"
+    },
+    {
+      "counterEvidence": false,
+      "id": "P4",
+      "kind": "cluster",
+      "links": [
+        {
+          "a": "Maria Lopez <maria@corp.com>",
+          "b": "María López <mlopez@gmail.com>",
+          "counterEvidence": false,
+          "signals": [
+            {
+              "detail": "mlopez",
+              "signal": "name-from-email",
+              "strength": "medium"
+            },
+            {
+              "detail": "maria lopez",
+              "signal": "same-name",
+              "strength": "medium"
+            },
+            {
+              "detail": "maria@corp.com stops 2024-03-25, mlopez@gmail.com starts 2024-04-01, 1 shared files",
+              "signal": "handover",
+              "strength": "supporting"
+            }
+          ],
+          "strength": "medium"
+        }
+      ],
+      "members": [
+        {
+          "aliases": [],
+          "commits": 13,
+          "firstSeen": "2024-01-01",
+          "identity": "Maria Lopez <maria@corp.com>",
+          "lastSeen": "2024-03-25",
+          "topAreas": [
+            "src/billing"
+          ]
+        },
+        {
+          "aliases": [],
+          "commits": 8,
+          "firstSeen": "2024-04-01",
+          "identity": "María López <mlopez@gmail.com>",
+          "lastSeen": "2024-05-20",
+          "topAreas": [
+            "src/billing"
+          ]
+        }
+      ],
+      "strength": "medium",
+      "suggestedCanonical": "María López <mlopez@gmail.com>"
+    },
+    {
+      "counterEvidence": false,
+      "id": "P5",
+      "kind": "cluster",
+      "links": [
+        {
+          "a": "Sam Ro <sam@corp.com>",
+          "b": "Sam Ro <sam@home.net>",
+          "counterEvidence": false,
+          "signals": [
+            {
+              "detail": "sam",
+              "signal": "same-local-part",
+              "strength": "medium"
+            },
+            {
+              "detail": "sam ro",
+              "signal": "same-name",
+              "strength": "medium"
+            },
+            {
+              "detail": "sam@home.net authored 4 commits, all committed by sam@corp.com",
+              "signal": "exclusive-pairing",
+              "strength": "supporting"
+            }
+          ],
+          "strength": "medium"
+        }
+      ],
+      "members": [
+        {
+          "aliases": [],
+          "commits": 2,
+          "firstSeen": "2024-03-25",
+          "identity": "Sam Ro <sam@corp.com>",
+          "lastSeen": "2024-04-01",
+          "topAreas": [
+            "src/sam"
+          ]
+        },
+        {
+          "aliases": [],
+          "commits": 4,
+          "firstSeen": "2024-01-22",
+          "identity": "Sam Ro <sam@home.net>",
+          "lastSeen": "2024-03-04",
+          "topAreas": [
+            "src/sam"
+          ]
+        }
+      ],
+      "strength": "medium",
+      "suggestedCanonical": "Sam Ro <sam@corp.com>"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 5
+  }
+}

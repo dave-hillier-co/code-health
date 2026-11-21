@@ -1,0 +1,216 @@
+{
+  "command": "identities",
+  "config": "c7edf037a678f2bc",
+  "inputs": {
+    "subcommand": "list",
+    "unmapped": false
+  },
+  "repo": {
+    "dirty": false,
+    "head": "54ad752f450b950e3e86d6a8093fcc33d5a640b8"
+  },
+  "results": [
+    {
+      "commits": 21,
+      "email": "chris@corp.com",
+      "firstSeen": "2024-01-01",
+      "identity": "Chris Dee <chris@corp.com>",
+      "kind": "person",
+      "lastSeen": "2024-05-20",
+      "mappedTo": null,
+      "name": "Chris Dee",
+      "score": 21,
+      "topAreas": [
+        "src/core"
+      ],
+      "unmapped": false
+    },
+    {
+      "commits": 13,
+      "email": "maria@corp.com",
+      "firstSeen": "2024-01-01",
+      "identity": "Maria Lopez <maria@corp.com>",
+      "kind": "person",
+      "lastSeen": "2024-03-25",
+      "mappedTo": null,
+      "name": "Maria Lopez",
+      "score": 13,
+      "topAreas": [
+        "src/billing"
+      ],
+      "unmapped": true
+    },
+    {
+      "commits": 11,
+      "email": "jo+git@x.com",
+      "firstSeen": "2024-03-11",
+      "identity": "Jo Park <jo+git@x.com>",
+      "kind": "person",
+      "lastSeen": "2024-05-20",
+      "mappedTo": null,
+      "name": "Jo Park",
+      "score": 11,
+      "topAreas": [
+        "src/api"
+      ],
+      "unmapped": true
+    },
+    {
+      "commits": 10,
+      "email": "Jo@X.com",
+      "firstSeen": "2024-01-01",
+      "identity": "J Park <Jo@X.com>",
+      "kind": "person",
+      "lastSeen": "2024-03-04",
+      "mappedTo": null,
+      "name": "J Park",
+      "score": 10,
+      "topAreas": [
+        "src/api"
+      ],
+      "unmapped": true
+    },
+    {
+      "commits": 9,
+      "email": "akim@b.com",
+      "firstSeen": "2024-01-15",
+      "identity": "Alex Kim <akim@b.com>",
+      "kind": "person",
+      "lastSeen": "2024-03-11",
+      "mappedTo": null,
+      "name": "Alex Kim",
+      "score": 9,
+      "topAreas": [
+        "infra/db"
+      ],
+      "unmapped": true
+    },
+    {
+      "commits": 9,
+      "email": "alex@a.com",
+      "firstSeen": "2024-01-15",
+      "identity": "Alex Kim <alex@a.com>",
+      "kind": "person",
+      "lastSeen": "2024-03-11",
+      "mappedTo": null,
+      "name": "Alex Kim",
+      "score": 9,
+      "topAreas": [
+        "app/web"
+      ],
+      "unmapped": true
+    },
+    {
+      "commits": 8,
+      "email": "jsmith@users.noreply.github.com",
+      "firstSeen": "2024-02-19",
+      "identity": "John Smith <jsmith@users.noreply.github.com>",
+      "kind": "person",
+      "lastSeen": "2024-04-08",
+      "mappedTo": null,
+      "name": "John Smith",
+      "score": 8,
+      "topAreas": [
+        "src/ui"
+      ],
+      "unmapped": true
+    },
+    {
+      "commits": 8,
+      "email": "mlopez@gmail.com",
+      "firstSeen": "2024-04-01",
+      "identity": "María López <mlopez@gmail.com>",
+      "kind": "person",
+      "lastSeen": "2024-05-20",
+      "mappedTo": null,
+      "name": "María López",
+      "score": 8,
+      "topAreas": [
+        "src/billing"
+      ],
+      "unmapped": true
+    },
+    {
+      "commits": 7,
+      "email": "1234+jsmith@users.noreply.github.com",
+      "firstSeen": "2024-01-01",
+      "identity": "jsmith <1234+jsmith@users.noreply.github.com>",
+      "kind": "person",
+      "lastSeen": "2024-02-12",
+      "mappedTo": null,
+      "name": "jsmith",
+      "score": 7,
+      "topAreas": [
+        "src/ui"
+      ],
+      "unmapped": true
+    },
+    {
+      "commits": 4,
+      "email": "sam@home.net",
+      "firstSeen": "2024-01-22",
+      "identity": "Sam Ro <sam@home.net>",
+      "kind": "person",
+      "lastSeen": "2024-03-04",
+      "mappedTo": null,
+      "name": "Sam Ro",
+      "score": 4,
+      "topAreas": [
+        "src/sam"
+      ],
+      "unmapped": true
+    },
+    {
+      "commits": 3,
+      "email": "jenkins@corp.com",
+      "firstSeen": "2024-02-05",
+      "identity": "Jenkins <jenkins@corp.com>",
+      "kind": "service",
+      "lastSeen": "2024-04-01",
+      "mappedTo": null,
+      "name": "Jenkins",
+      "score": 3,
+      "topAreas": [
+        "."
+      ],
+      "unmapped": false
+    },
+    {
+      "commits": 3,
+      "email": "49699333+dependabot[bot]@users.noreply.github.com",
+      "firstSeen": "2024-01-29",
+      "identity": "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+      "kind": "bot",
+      "lastSeen": "2024-03-25",
+      "mappedTo": null,
+      "name": "dependabot[bot]",
+      "score": 3,
+      "topAreas": [
+        "."
+      ],
+      "unmapped": false
+    },
+    {
+      "commits": 2,
+      "email": "sam@corp.com",
+      "firstSeen": "2024-03-25",
+      "identity": "Sam Ro <sam@corp.com>",
+      "kind": "person",
+      "lastSeen": "2024-04-01",
+      "mappedTo": null,
+      "name": "Sam Ro",
+      "score": 2,
+      "topAreas": [
+        "src/sam"
+      ],
+      "unmapped": true
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 13
+  }
+}

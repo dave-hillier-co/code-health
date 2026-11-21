@@ -1,0 +1,30 @@
+schema_version: "1.0"
+name: identities-lone-name-pair
+description: Two authors share only a name. The skill must ask the user about the pair and must not write a mapping that merges them.
+tags: [identities, behaviour]
+plugins: [cochange]
+context:
+  scaffold_script: scaffold.sh
+runs: 3
+execution:
+  prompt: Sam Hill seems to show up twice in this repository's contributor list. Please sort out duplicate authors in the history with the identities skill. I am not available to answer questions until you report back, so if you need a decision from me, stop and ask it as your final message.
+  model: claude-sonnet-5-5
+  max_turns: 25
+  timeout_seconds: 600
+graders:
+  - type: tool_used
+    name: never-writes-the-merge
+    tool: Bash
+    input_match: "identities apply.*--apply"
+    max: 0
+  - type: regex
+    name: no-mailmap-file
+    target: files
+    pattern: "Sam Hill <one@alpha.example>"
+    match: not_contains
+  - type: llm
+    name: asks-about-the-pair
+    criteria: The final message asks the user whether the two Sam Hill identities are the same person, showing evidence such as both addresses and what each worked on, and does not claim to have merged them.
+  - type: llm
+    name: keeps-them-separate-meanwhile
+    criteria: The agent treats the two Sam Hill identities as separate people until the user answers, and does not decide on a lone same-name match.

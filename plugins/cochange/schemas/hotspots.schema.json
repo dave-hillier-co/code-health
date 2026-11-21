@@ -8,7 +8,7 @@
     "command": { "const": "hotspots" },
     "inputs": {
       "type": "object",
-      "properties": {
+      "properties": { "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" },
         "by": { "enum": ["file", "component"] },
         "complexityReport": {
           "description": "The complexity plugin's report that supplied the complexity column, or null when the indentation proxy was used.",

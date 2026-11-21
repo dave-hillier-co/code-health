@@ -106,6 +106,20 @@ test("authors matching bot patterns are dropped", async () => {
   expect(result.filtersApplied.dropped.botCommits).toBe(1);
 });
 
+test("authors the identity classification calls non-person are dropped, by raw or mapped address", async () => {
+  const sync = { name: "Sync Robot", email: "sync@corp.com" };
+  const repo = build([
+    commit("human", 1, [file("a")]),
+    commit("sync", 2, [file("b")], sync),
+    commit("mapped", 3, [file("c")], { name: "Al", email: "al@old.example" }),
+    { type: "commit", message: "map", date: "2024-03-04T10:00:00Z", changes: [{ op: "add", path: ".mailmap", content: "Mapped Bot <bot@corp.com> <al@old.example>\n" }] },
+  ]);
+  const nonPerson = { isNonPerson: (_name: string, email: string) => email === "sync@corp.com" || email === "bot@corp.com" };
+  const result = await filtered(repo, { nonPerson });
+  expect(paths(result)).toEqual([["a"], [".mailmap"]]);
+  expect(result.filtersApplied.dropped.botCommits).toBe(2);
+});
+
 test("pure renames are neither revisions nor coupling, renames with edits stay", async () => {
   const body = "1\n2\n3\n4\n5\n6\n7\n8\n";
   const repo = build([

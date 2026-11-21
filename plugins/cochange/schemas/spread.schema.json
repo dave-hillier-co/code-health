@@ -8,7 +8,7 @@
     "command": { "const": "spread" },
     "inputs": {
       "type": "object",
-      "properties": {
+      "properties": { "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" },
         "bucket": { "enum": ["week", "month"] },
         "trailerExcluded": { "const": "Code-Health", "description": "The trailer key whose commits are left out." }
       },

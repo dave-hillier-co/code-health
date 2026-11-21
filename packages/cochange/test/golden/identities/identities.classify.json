@@ -1,0 +1,44 @@
+{
+  "command": "identities",
+  "config": "c7edf037a678f2bc",
+  "inputs": {
+    "subcommand": "classify"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "54ad752f450b950e3e86d6a8093fcc33d5a640b8"
+  },
+  "results": [
+    {
+      "commits": 3,
+      "decided": false,
+      "identity": "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+      "kind": "bot",
+      "pattern": "\\[bot\\]",
+      "source": "builtin"
+    },
+    {
+      "commits": 3,
+      "decided": false,
+      "identity": "Jenkins <jenkins@corp.com>",
+      "kind": "service",
+      "pattern": "jenkins",
+      "source": "builtin"
+    },
+    {
+      "commits": 1,
+      "decided": false,
+      "identity": "Claude Opus 5.5 <noreply@anthropic.com>",
+      "kind": "agent",
+      "pattern": "\\bclaude\\b",
+      "source": "trailer"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 3
+  }
+}

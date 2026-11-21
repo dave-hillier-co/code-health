@@ -80,6 +80,12 @@ export interface NoiseOptions {
   blameIgnoreRevs?: string | false;
   /** Regular expression sources matched (case-insensitively) against `Name <email>` of the mapped author. */
   botPatterns?: readonly string[];
+  /**
+   * Classification of identities as bots, services or agents from the identities
+   * configuration and decisions. It is asked about the mapped author and the
+   * author as written, and drops the commit when either is a non-person.
+   */
+  nonPerson?: { isNonPerson(name: string, email: string): boolean };
   /** Logical changes with more files than this are flagged oversized. Default 30. */
   maxChangesetSize?: number;
   /** Drop the root commit of an imported history. Default true. */
@@ -221,6 +227,12 @@ export async function filterHistory(
     if (ignoredRevs.some((rev) => commit.sha.startsWith(rev))) return countOut("blameIgnoredCommits");
     const author = `${commit.mappedName} <${commit.mappedEmail}>`;
     if (bots.some((re) => re.test(author))) return countOut("botCommits");
+    if (
+      options.nonPerson?.isNonPerson(commit.mappedName, commit.mappedEmail) ||
+      options.nonPerson?.isNonPerson(commit.authorName, commit.authorEmail)
+    ) {
+      return countOut("botCommits");
+    }
     if (excludeSuiteCommits && hasCodeHealthTrailer(commit.message)) return countOut("suiteCommits");
     return false;
   };
