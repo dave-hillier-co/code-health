@@ -1,3 +1,4 @@
+import { emailOf } from "../active-developers.ts";
 import { coupledPairs } from "../coupled-pairs.ts";
 import { degreeOf } from "../coupling.ts";
 import type { LoadedHistory } from "../history-access.ts";
@@ -38,8 +39,6 @@ export interface SuccessorIndex {
   /** Eligible logical changes per file per author email (lower case). */
   changesBy: Map<string, Map<string, number>>;
 }
-
-const emailOf = (identity: string): string => (/<([^>]*)>$/.exec(identity)?.[1] ?? "").toLowerCase();
 
 /**
  * Coordination requirements (Cataldo et al.): who works on the files that change with a file.

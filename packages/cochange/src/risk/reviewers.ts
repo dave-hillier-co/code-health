@@ -1,9 +1,10 @@
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
-import { folderOf } from "@code-health/graph/tree-distance";
 import { monthsBefore } from "@code-health/history/evidence";
+import { folderOf } from "@code-health/graph/tree-distance";
 import { commitsInSnapshot, lineShares, resolveOwners } from "@code-health/history/blame-owners";
 import { readBlame } from "@code-health/history/blame-read";
 import { refreshBlame } from "@code-health/history/blame-refresh";
+import { readActiveDevelopers } from "../active-developers.ts";
 import type { Assessed } from "./assess.ts";
 import { componentOf } from "../components.ts";
 import { invokingUser } from "./identity.ts";
@@ -40,7 +41,9 @@ export async function reviewersFor(context: CommandContext, assessed: Assessed, 
   const { change, history, state, risk } = assessed;
   const root = context.repo.root;
   const time = assessed.facts.time;
-  const activeSince = monthsBefore(time, history.settings.windowMonths);
+  const developers = await readActiveDevelopers(context, history, time);
+  // The history window the coupled changes are counted in. It is not the activity window, which decides who may be asked.
+  const windowSince = monthsBefore(time, history.settings.windowMonths);
   const authors = new Set(assessed.facts.authors);
   // Uncommitted edits are the invoking user's own, so they are not suggested to review them.
   if (change.worktree) {
@@ -74,15 +77,6 @@ export async function reviewersFor(context: CommandContext, assessed: Assessed, 
     }
   }
 
-  const isActivePerson = (email: string): boolean => {
-    const seen = state.identity(email);
-    if (seen === null || seen.last < activeSince) return false;
-    // A bot or agent is never a reviewer.
-    const classified = history.identities.matcher.classify(names.get(email) ?? "", email);
-    return classified === null;
-  };
-
-  const windowSince = activeSince;
   const byArea = new Map<string, typeof change.files>();
   for (const file of change.files) {
     const area = assessed.context.components.length > 0 ? componentOf(assessed.context.components, file.path) : folderOf(file.path) || ".";
@@ -118,7 +112,7 @@ export async function reviewersFor(context: CommandContext, assessed: Assessed, 
         }
       }
       const candidates = [...scores.values()]
-        .filter((c) => isActivePerson(c.email) && !authors.has(c.email.toLowerCase()))
+        .filter((c) => developers.has(c.email) && !authors.has(c.email.toLowerCase()))
         .map((c) => ({ ...c, authorship: round(c.authorship) }))
         .sort((a, b) => b.authorship - a.authorship || b.coupledChanges - a.coupledChanges || (a.email < b.email ? -1 : 1));
       return { area, files: files.length, candidates };

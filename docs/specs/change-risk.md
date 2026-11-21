@@ -48,6 +48,8 @@ Out of scope:
 
 **Factor.** One heuristic's result: a value, the evidence behind it, a band (`low`, `moderate`, `high`) and the layer that produced it. A factor that cannot be computed (no adapter, no sibling report, weak history) is reported as `unavailable`, never as `low`.
 
+**Active developer.** As [abandonment](abandonment.md) defines it, and by the same code: a commit in the activity window (`cochange.knowledge.activityWindowMonths`, default 6) ending at the analysed commit's date, corrected by the local overrides. Reviewer suggestions, `no-owner` and the owner to ask all use it, whether or not `cochange.knowledge.enabled` is set. It is not the history window (`windowMonths`), which sets what co-change is counted over.
+
 **Baseline population.** Past changes as they were merged, so that a branch is compared with like. A past change is the set of commits a merge commit brought in, taken together, or a squash commit, or a single commit on the main line where the repository merges neither way. The merge style is read from the main branch's first-parent history. Comparing a branch with individual commits would make every multi-commit branch look large and scattered.
 
 **Band.** A factor's value placed against the baseline population. A value above the 75th percentile is `moderate`, and above the 90th is `high`. The comparison is strict and a value of zero is always `low`: many factors are zero for most changes, and a percentile of zero would otherwise mark every change. Bands are relative, so a large change in a repository of large changes is ordinary. A few factors are counts of specific events (a new cycle, a missing coupled file) and band on the count instead. A two-sided factor such as `age` is banded on each side and takes the higher.

@@ -125,7 +125,7 @@ describe("labels from hand-computed blame", () => {
 
   test("no one holds a meaningful share when the owners are no longer active", async () => {
     // Bob and Alice last changed anything in February. With the window at one month, nobody is active at the branch's tip.
-    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { windowMonths: 1, risk: { newIdentityChanges: 2, placement: "any" } } }));
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { activityWindowMonths: 1 }, risk: { newIdentityChanges: 2, placement: "any" } } }));
     const { placement } = await place("main..dave");
     expect(factor(placement, "no-owner")).toMatchObject({ value: { files: 1 }, evidence: [{ file: ledger }] });
   });
@@ -306,7 +306,7 @@ describe("reviewers", () => {
   });
 
   test("a developer who has left the recent window is not active, so not suggested", async () => {
-    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { windowMonths: 1, risk: { newIdentityChanges: 2 } } }));
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { activityWindowMonths: 1 }, risk: { newIdentityChanges: 2 } } }));
     const { areas } = await reviewers("main..dave", "--names");
     expect(areas[0]).toMatchObject({ candidates: 0, suggested: [] });
   });
@@ -420,7 +420,7 @@ describe("findings that rest on placement", () => {
   });
 
   test("files nobody active holds a share of call for characterisation tests", async () => {
-    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { windowMonths: 1, risk: { newIdentityChanges: 2, placement: "any" } } }));
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { activityWindowMonths: 1 }, risk: { newIdentityChanges: 2, placement: "any" } } }));
     const found = (await findings("main..dave")).find((f) => f.id === "no-owner")!;
     expect(found.response).toBe("Characterisation tests before the change, and a short note capturing what was learned.");
   });

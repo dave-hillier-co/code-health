@@ -1,6 +1,7 @@
 import type { BlameSnapshot } from "@code-health/history/blame-read";
 import { lineShares, type Owner } from "@code-health/history/blame-owners";
-import { activeAt, type Activity } from "./activity.ts";
+import { isActiveDeveloper } from "../active-developers.ts";
+import type { Activity } from "./activity.ts";
 import type { KnowledgeOverrides } from "./settings.ts";
 
 export interface Developer {
@@ -55,13 +56,13 @@ const compareBytes = (a: string, b: string): number => Buffer.compare(Buffer.fro
 
 export function buildKnowledgeModel(input: ModelInput): KnowledgeModel {
   const { snapshot, owners, activity, asOf, windowSeconds, overrides } = input;
+  const rule = { windowSeconds, overrides: overrides ?? { active: new Set<string>(), inactive: new Set<string>() } };
   const keys = new Set(activity.commits.keys());
   for (const owner of owners.values()) if (owner.kind === "person") keys.add(owner.key);
   const sorted = [...keys].sort(compareBytes);
   const index = new Map(sorted.map((key, i) => [key, i]));
   const developers = sorted.map((key): Developer => {
-    const forced = overrides?.inactive.has(key) ? false : overrides?.active.has(key) ? true : undefined;
-    return { key, active: forced ?? activeAt(activity.commits.get(key) ?? [], asOf, windowSeconds) };
+    return { key, active: isActiveDeveloper(key, activity.commits.get(key) ?? [], asOf, rule) };
   });
 
   const files: FileKnowledge[] = [];
