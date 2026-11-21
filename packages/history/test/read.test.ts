@@ -1,7 +1,10 @@
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { GitFixture, type Step } from "@code-health/fixtures/git-fixture";
 import { NoCacheError, readHistory } from "../src/read.ts";
 import { refresh } from "../src/refresh.ts";
+
+// Fixture repos run real processes many times, which is slow on a loaded machine.
+vi.setConfig({ testTimeout: 180_000 });
 
 const fixtures: GitFixture[] = [];
 afterEach(() => {

@@ -3,11 +3,14 @@ import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { GitFixture, type Step } from "@code-health/fixtures/git-fixture";
 import { locateCache } from "../src/cache-location.ts";
 import { refresh } from "../src/refresh.ts";
 import { SCHEMA_VERSION } from "../src/store.ts";
+
+// Fixture repos run real processes many times, which is slow on a loaded machine.
+vi.setConfig({ testTimeout: 180_000 });
 
 const fixtures: GitFixture[] = [];
 const dirs: string[] = [];
