@@ -19,7 +19,7 @@ export interface Project {
   imports: ReadonlyMap<string, readonly ImportEdge[]>;
   /** Uses of what a file defines, by `edgeKey(consumer, defining file)`, tests left out. */
   consumers: ReadonlyMap<string, readonly Consumer[]>;
-  /** Directory of the nearest package.json at or above the file, "." when there is none. */
+  /** Directory of the nearest package boundary (a manifest of any supported language) at or above the file, "." when there is none. */
   packageOf(path: string): string;
 }
 

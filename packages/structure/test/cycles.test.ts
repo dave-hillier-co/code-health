@@ -94,7 +94,7 @@ describe("folder level", () => {
 });
 
 describe("package level", () => {
-  test("groups files under the nearest package.json", async () => {
+  test("groups files under the nearest package boundary", async () => {
     const { document } = await cycles(repo, "--level", "package");
     expect(document.results.map((r) => r.nodes)).toEqual([["packages/p1", "packages/p2"]]);
   });

@@ -58,7 +58,7 @@
       "additionalProperties": false
     },
     "filesRead": {
-      "description": "Production TypeScript and JavaScript files the census read.",
+      "description": "Production files, of every supported language, that the census read.",
       "$ref": "common.schema.json#/$defs/count"
     },
     "results": {

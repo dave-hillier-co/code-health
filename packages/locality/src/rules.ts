@@ -141,7 +141,7 @@ export const ruleDescriptions: Record<string, Rule> = {
   "package-entry": {
     summary: "Guard: the unit is exported from a published package entry point",
     explanation: lines(
-      "A non-private package.json names the file as its main, module, types, bin or exports, so consumers outside the",
+      "A non-private package manifest (package.json, pyproject.toml, Cargo.toml and the like) names the file as an entry point, so consumers outside the",
       "repository may exist. An inline or move becomes a review.",
     ),
   },

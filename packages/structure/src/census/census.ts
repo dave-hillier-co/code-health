@@ -35,7 +35,7 @@ export interface Occurrence {
 }
 
 export interface Census {
-  /** Production TypeScript and JavaScript files read. */
+  /** Production files of every supported language that the census read. */
   files: number;
   occurrences: Occurrence[];
 }

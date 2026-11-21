@@ -13,8 +13,9 @@ export const rules: Record<string, Rule> = {
     summary: "Modules that import each other, directly or through others",
     explanation: [
       "Raised for every strongly connected component of the import graph at the chosen level (file,",
-      "folder or package). Folders and packages are the files grouped by their folder or nearest",
-      "package.json, so a cycle there can exist with no file cycle behind it.",
+      "folder or package). Folders and packages are the files grouped by their folder or by the nearest",
+      "package boundary (the folder of a package.json, go.mod, Cargo.toml, pom.xml, .csproj or the like), so a",
+      "cycle there can exist with no file cycle behind it.",
       "",
       "The breaking set is the smallest set of edges whose removal makes the component acyclic. Small",
       "components (structure.exactLimit nodes or fewer) are solved exactly. Larger ones use the",
