@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-K3GL2KZS.mjs";
+} from "./chunk-KZJRK7W4.mjs";
 import {
   GitError,
   gitVersion,
@@ -29,14 +29,14 @@ import {
 } from "./chunk-Z55QIW6L.mjs";
 import {
   analyseTree
-} from "./chunk-7NVFBBI4.mjs";
-import "./chunk-KV56MSHG.mjs";
+} from "./chunk-R46TUXOE.mjs";
+import "./chunk-EUZU5IVE.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isTestPath
-} from "./chunk-LPGP6MCF.mjs";
+} from "./chunk-T5M6AR2G.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -504,12 +504,14 @@ function helpText(cli2) {
   ].join("\n");
 }
 function commandHelp(cli2, name8, command8) {
-  const own = Object.entries(command8.options ?? {}).map(([option, spec]) => {
-    const argument = spec.type === "string" ? ` <${option}>` : "";
-    return `  --${option}${argument}`;
-  });
+  const flags = Object.entries(command8.options ?? {}).map(([option, spec]) => [
+    `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
+    command8.optionHelp?.[option] ?? ""
+  ]);
+  const width = Math.max(0, ...flags.map(([flag]) => flag.length));
+  const own = flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`);
   return [
-    `Usage: ${cli2.tool} ${name8} [options]`,
+    `Usage: ${cli2.tool} ${name8}${command8.usage === void 0 ? "" : ` ${command8.usage}`} [options]`,
     "",
     command8.summary,
     "",
@@ -1967,6 +1969,9 @@ function singleConsumer(input) {
 function guard(input, decision) {
   if (decision.recommendation !== "inline" && decision.recommendation !== "move") return decision;
   if (input.age !== null && input.age < input.graceDays) return { recommendation: "review", rule: "within-grace-period" };
+  if (input.notHelper === "interface") return { recommendation: "review", rule: "interface-unit" };
+  if (input.notHelper === "override") return { recommendation: "review", rule: "overrides-inherited-method" };
+  if (input.notHelper === "recursion") return { recommendation: "review", rule: "recursive-unit" };
   if (input.otherRefs > 0) return { recommendation: "review", rule: "other-references" };
   if (input.packageEntry) return { recommendation: "review", rule: "package-entry" };
   if (input.scattered) return { recommendation: "review", rule: "scattered-unit" };
@@ -2171,6 +2176,21 @@ function analyseProject(project, model, settings, history) {
     }
     return { owned, external };
   }
+  const interfaces = /* @__PURE__ */ new Set();
+  for (const exported of analysis.exports) {
+    if (exported.defined.kind === "interface" || exported.defined.kind === "abstract-class") {
+      interfaces.add(`${exported.defined.file}#${exported.defined.symbol ?? exported.defined.name}`);
+      interfaces.add(exported.defined.file);
+    }
+  }
+  function notHelperOf(paths, symbols) {
+    const within = (name8) => symbols === void 0 || [...symbols].some((symbol) => name8 === symbol || name8.startsWith(`${symbol}.`));
+    if (paths.some((path) => symbols === void 0 ? interfaces.has(path) : [...symbols].some((symbol) => interfaces.has(`${path}#${symbol}`)))) return "interface";
+    const units = paths.flatMap((path) => unitsByFile.get(path) ?? []).filter((unit) => within(unit.qualifiedName));
+    if (units.some((unit) => unit.override === true)) return "override";
+    if (units.some((unit) => unit.recursive === true)) return "recursion";
+    return null;
+  }
   function exportedUnits(path) {
     return (unitsByFile.get(path) ?? []).filter((unit) => unit.exported && unit.parent === void 0);
   }
@@ -2236,6 +2256,7 @@ function analyseProject(project, model, settings, history) {
       age: null,
       consumerCoChange: null,
       createsCycle: false,
+      notHelper: notHelperOf([path], symbols),
       ...thresholds
     });
     return {
@@ -2324,6 +2345,7 @@ function analyseProject(project, model, settings, history) {
       age: history === void 0 ? null : ageDays(history, unit.root),
       consumerCoChange: coChange?.amongConsumers ?? null,
       createsCycle,
+      notHelper: notHelperOf(files),
       ...thresholds
     };
     const decision = recommend(input);
@@ -3103,6 +3125,29 @@ var ruleDescriptions = {
       "right: move or inline them first (leaves before roots), then re-analyse."
     )
   },
+  "interface-unit": {
+    summary: "Guard: the unit declares an interface or abstract type, which is not a free-standing helper",
+    explanation: lines(
+      "A file of the unit exports an interface or an abstract class. Its implementations and callers elsewhere give it a",
+      "reason to sit where it is, so inlining it or moving it is for review, not a default. Read the implementers before",
+      "deciding, and keep the unit beside the code that owns the contract."
+    )
+  },
+  "overrides-inherited-method": {
+    summary: "Guard: the unit holds a method that overrides or implements an inherited one",
+    explanation: lines(
+      "A unit of the files has a method the language marks as overriding (an override modifier or annotation, a trait",
+      "implementation, a decorator). Such a method is called through the type it overrides, not by name, so callsite",
+      "counts understate its use and it cannot be inlined into a single consumer. Review before inlining or moving."
+    )
+  },
+  "recursive-unit": {
+    summary: "Guard: the unit holds a function that calls itself",
+    explanation: lines(
+      "A function in the unit calls itself directly. Inlining a recursive function into its one consumer is not possible",
+      "as written, and moving it changes nothing about the recursion. Review before inlining or moving."
+    )
+  },
   "fixed-point": {
     summary: "Guard: the unit is a fixed point (locality.fixedPoints) and stays where it is",
     explanation: lines(
@@ -3126,7 +3171,12 @@ var sources = ["structural", "history", "both"];
 var recommendations = ["inline", "move", "split", "blocked", "keep", "scrutinise", "review"];
 var command = {
   summary: "Rank the code that lives far from its consumers, with a default remedy for each unit",
+  usage: "[<path>...]",
   options: { recommendation: { type: "string" }, source: { type: "string" } },
+  optionHelp: {
+    recommendation: "only units with this recommendation: inline, move, split, blocked, keep, scrutinise or review",
+    source: "where candidates come from: structural (default), history or both"
+  },
   async run(context) {
     const settings = readSettings(context.config);
     const wanted = context.values.recommendation;
@@ -3228,6 +3278,7 @@ __export(history_exports, {
 var name2 = "history";
 var command2 = {
   summary: "Update the shared history cache (history refresh), so a repository without cochange installed has one",
+  usage: "refresh",
   async run(context) {
     const [subcommand] = context.positionals;
     if (subcommand !== "refresh") throw usageError("history takes one subcommand: refresh");
@@ -3996,6 +4047,15 @@ var HEAT_FILES = 50;
 var TOOL_PLUGIN = "locality";
 var command3 = {
   summary: "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare); or test from existing history and sessions whether distant files cost more (measure premise)",
+  usage: "baseline | compare | premise",
+  optionHelp: {
+    name: "the name of the baseline to record or compare against (default: default)",
+    "projects-dir": "the folder of Claude Code session transcripts read for agent effort (default: ~/.claude/projects)",
+    candidates: "how many top candidates the baseline records (default 200)",
+    since: "baseline and compare: start the after window on this date, YYYY-MM-DD (default: the day after the last suite commit); premise: start of the window read",
+    until: "premise: end of the window read, YYYY-MM-DD, exclusive",
+    force: "replace a baseline of the same name"
+  },
   options: {
     name: { type: "string" },
     "projects-dir": { type: "string" },
@@ -4456,6 +4516,13 @@ async function analyseRevision(context, settings, ref) {
 var name4 = "move";
 var command4 = {
   summary: "Plan, or with --apply make, the move of one unit: file moves and import rewrites, as one move-only commit",
+  usage: "<unit path>",
+  optionHelp: {
+    to: "the folder to move to (default: the analyser's target)",
+    apply: "make the move as one commit instead of only planning it",
+    reason: "why this differs from the recommendation, recorded in the commit message",
+    "no-commit": "with --apply, leave the move in the working tree"
+  },
   options: {
     to: { type: "string" },
     apply: { type: "boolean" },
@@ -4485,7 +4552,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-HOH5DAUQ.mjs");
+    const { performMove } = await import("./chunk-X7J2NRYN.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -4522,6 +4589,7 @@ __export(scrutinise_exports, {
 });
 var name5 = "scrutinise";
 var command5 = {
+  usage: "[<path>...]",
   summary: "Review the widely used units: the red flags their interfaces and call sites show, with the counts behind each",
   async run(context) {
     const settings = readSettings(context.config);
@@ -4535,7 +4603,7 @@ var command5 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-OK6F6SNR.mjs");
+      const { buildProject } = await import("./chunk-M5GZFAGF.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -4671,6 +4739,7 @@ async function renamedFiles(root, parent, ref) {
 var command6 = {
   summary: "After a C# move commit, plan or with --apply make the optional second commit that makes namespaces follow the folders",
   options: { commit: { type: "string" }, apply: { type: "boolean" }, "no-commit": { type: "boolean" } },
+  optionHelp: { commit: "the move commit to follow (default HEAD)", apply: "make the namespace commit instead of only planning it", "no-commit": "with --apply, leave the change in the working tree" },
   async run(context) {
     const ref = context.values.commit ?? "HEAD";
     if (context.positionals.length !== 0 || typeof ref !== "string") throw usageError("usage: update-namespaces [--commit <ref>] [--apply [--no-commit]]");
@@ -4728,7 +4797,9 @@ __export(verify_move_exports, {
 var name7 = "verify-move";
 var command7 = {
   summary: "Check that a commit made by hand reproduces the planned move of one unit, and changes nothing else",
+  usage: "<unit path>",
   options: { commit: { type: "string" }, to: { type: "string" } },
+  optionHelp: { commit: "the commit to check (default HEAD)", to: "the folder the unit was moved to (default: the analyser's target)" },
   async run(context) {
     const settings = readSettings(context.config);
     if (context.positionals.length !== 1) throw usageError("usage: verify-move <unit path> [--commit <ref>] [--to <folder>]");
@@ -4752,7 +4823,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-TORVJ6RC.mjs");
+    const { verifyMove } = await import("./chunk-YDRUBPZJ.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

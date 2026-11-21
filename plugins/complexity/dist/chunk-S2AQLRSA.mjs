@@ -257,12 +257,14 @@ function helpText(cli) {
   ].join("\n");
 }
 function commandHelp(cli, name, command) {
-  const own = Object.entries(command.options ?? {}).map(([option, spec]) => {
-    const argument = spec.type === "string" ? ` <${option}>` : "";
-    return `  --${option}${argument}`;
-  });
+  const flags = Object.entries(command.options ?? {}).map(([option, spec]) => [
+    `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
+    command.optionHelp?.[option] ?? ""
+  ]);
+  const width = Math.max(0, ...flags.map(([flag]) => flag.length));
+  const own = flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`);
   return [
-    `Usage: ${cli.tool} ${name} [options]`,
+    `Usage: ${cli.tool} ${name}${command.usage === void 0 ? "" : ` ${command.usage}`} [options]`,
     "",
     command.summary,
     "",

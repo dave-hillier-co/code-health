@@ -5,7 +5,7 @@ import {
   adapterForPath,
   bindingForPath,
   isTestPath
-} from "./chunk-QBN5VLMM.mjs";
+} from "./chunk-3GUJDKVK.mjs";
 import {
   GitError,
   SCHEMA_VERSION,

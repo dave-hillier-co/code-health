@@ -1683,12 +1683,12 @@ function measureFunction(fn, options, rules) {
     bumpDepth: measurer.bumps > 0 ? measurer.nesting + 1 : 0,
     bumpSize: measurer.bumpSize
   };
-  if (!options.explain) return { metrics };
+  if (!options.explain) return { metrics, recursive: measurer.recursion };
   const increments = [
     { line: options.startLine, metric: "cyclomatic", construct: "function", amount: 1, nesting: 0 },
     ...measurer.increments
   ];
-  return { metrics, increments };
+  return { metrics, recursive: measurer.recursion, increments };
 }
 
 // packages/parse/src/languages/go/extract-facts.ts
@@ -1939,6 +1939,7 @@ var Extractor = class {
     unit.shape = functionShape2(fn);
     const forwarded = passThroughOf2(fn);
     if (forwarded !== void 0) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const locals = /* @__PURE__ */ new Set([...context.locals, ...declaredIn(fn)]);
@@ -2712,6 +2713,8 @@ var Extractor2 = class {
       unit.shape = functionShape3(fn, measured.metrics.parameters);
       const forwarded = passThroughOf3(fn, new Set(parameterNames2(fn)));
       if (forwarded !== void 0) unit.passThrough = forwarded;
+      if (measured.recursive) unit.recursive = true;
+      if (memberOf !== void 0 && context.implementsTrait === true) unit.override = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
     this.units.push(unit);
@@ -2764,7 +2767,7 @@ var Extractor2 = class {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body = node.childForFieldName("body");
         this.visitChildrenExcept(node, body, { ...context, owner: void 0 });
-        if (body !== null) this.visitScope(body, { ...context, owner });
+        if (body !== null) this.visitScope(body, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
         return;
       }
       case "type_item":
@@ -3194,6 +3197,10 @@ function modifiersOf(node) {
   for (const child of modifiers?.children ?? []) if (!child.isNamed) words.add(child.type);
   return words;
 }
+function overridesMethod(node) {
+  const modifiers = node.namedChildren.find((child) => child.type === "modifiers");
+  return (modifiers?.namedChildren ?? []).some((child) => child.type === "marker_annotation" && child.childForFieldName("name")?.text === "Override");
+}
 function startRow(node) {
   for (const child of node.children) {
     if (child.type === "modifiers") {
@@ -3434,6 +3441,8 @@ var Extractor3 = class {
     unit.shape = { nodes: nodeCount(node, isComment2), interfaceSize: Math.max(1, measured.metrics.parameters) };
     const forwarded = passThroughOf4(node, parameterNames3(node));
     if (forwarded !== void 0) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if (overridesMethod(node)) unit.override = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const inside = { ...context, unit: qualifiedName };
@@ -4015,6 +4024,8 @@ var Extractor4 = class {
     unit.shape = { nodes: nodeCount(node, isComment3), interfaceSize: Math.max(1, measured.metrics.parameters) };
     const forwarded = passThroughOf5(node, parameterNames4(node));
     if (forwarded !== void 0) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if (modifierWords(node).has("override")) unit.override = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     if (context.topLevel && !isConstructor2) {
@@ -4842,6 +4853,8 @@ var Extractor5 = class {
       parameterNames5(fn.childForFieldName("parameters") ?? fn.childForFieldName("parameter"), names);
       const forwarded = passThroughOf(fn, new Set(names));
       if (forwarded !== void 0) unit.passThrough = forwarded;
+      if (measured.recursive) unit.recursive = true;
+      if (node.children.some((child) => child.type === "override_modifier")) unit.override = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
     this.units.push(unit);
@@ -6144,6 +6157,8 @@ var Extractor6 = class {
     if (parent !== void 0) unit.parent = parent;
     const forwarded = passThroughOf6(fn, new Set(parameterInfo(fn).map((parameter) => parameter.name)));
     if (forwarded !== void 0) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if (modifiersOf2(fn).includes("override")) unit.override = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     return { ...context, unit: qualifiedName };
@@ -7482,6 +7497,8 @@ var Extractor7 = class {
     const parameters = new Set(this.parameterNames(functionDeclarator(fn) ?? fn.childForFieldName("declarator")));
     const forwarded = passThroughOf7(fn, parameters);
     if (forwarded !== void 0) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if ((functionDeclarator(fn)?.namedChildren ?? []).some((child) => child.type === "virtual_specifier" && child.text === "override")) unit.override = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     return unit;
   }
@@ -8595,6 +8612,8 @@ var Extractor8 = class {
       unit.shape = functionShape6(fn, measured.metrics.parameters);
       const forwarded = passThroughOf8(fn);
       if (forwarded !== void 0) unit.passThrough = forwarded;
+      if (measured.recursive) unit.recursive = true;
+      if (fn.parent?.type === "decorated_definition" && fn.parent.namedChildren.some((child) => child.type === "decorator" && /^@\s*(typing(_extensions)?\.)?override\b/.test(child.text))) unit.override = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
     this.units.push(unit);

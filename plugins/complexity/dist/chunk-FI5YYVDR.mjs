@@ -283,7 +283,7 @@ async function measurementAtHead(root, file, settings) {
   }
 }
 async function isTestPath(file) {
-  return (await import("./chunk-HCR744ZT.mjs")).isTestPath(file);
+  return (await import("./chunk-TKI6SYUV.mjs")).isTestPath(file);
 }
 function explainCommand(file) {
   if (!hasSupportedExtension(file)) return void 0;

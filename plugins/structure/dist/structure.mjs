@@ -469,12 +469,14 @@ function helpText(cli2) {
   ].join("\n");
 }
 function commandHelp(cli2, name13, command12) {
-  const own = Object.entries(command12.options ?? {}).map(([option, spec]) => {
-    const argument = spec.type === "string" ? ` <${option}>` : "";
-    return `  --${option}${argument}`;
-  });
+  const flags2 = Object.entries(command12.options ?? {}).map(([option, spec]) => [
+    `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
+    command12.optionHelp?.[option] ?? ""
+  ]);
+  const width = Math.max(0, ...flags2.map(([flag]) => flag.length));
+  const own = flags2.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`);
   return [
-    `Usage: ${cli2.tool} ${name13} [options]`,
+    `Usage: ${cli2.tool} ${name13}${command12.usage === void 0 ? "" : ` ${command12.usage}`} [options]`,
     "",
     command12.summary,
     "",
@@ -6331,12 +6333,12 @@ function measureFunction(fn, options2, rules11) {
     bumpDepth: measurer.bumps > 0 ? measurer.nesting + 1 : 0,
     bumpSize: measurer.bumpSize
   };
-  if (!options2.explain) return { metrics };
+  if (!options2.explain) return { metrics, recursive: measurer.recursion };
   const increments = [
     { line: options2.startLine, metric: "cyclomatic", construct: "function", amount: 1, nesting: 0 },
     ...measurer.increments
   ];
-  return { metrics, increments };
+  return { metrics, recursive: measurer.recursion, increments };
 }
 
 // packages/parse/src/languages/typescript/metric-rules.ts
@@ -6645,6 +6647,10 @@ function modifiersOf(node) {
   for (const child2 of modifiers?.children ?? []) if (!child2.isNamed) words.add(child2.type);
   return words;
 }
+function overridesMethod(node) {
+  const modifiers = node.namedChildren.find((child2) => child2.type === "modifiers");
+  return (modifiers?.namedChildren ?? []).some((child2) => child2.type === "marker_annotation" && child2.childForFieldName("name")?.text === "Override");
+}
 function startRow(node) {
   for (const child2 of node.children) {
     if (child2.type === "modifiers") {
@@ -6885,6 +6891,8 @@ var Extractor = class {
     unit.shape = { nodes: nodeCount(node, isComment), interfaceSize: Math.max(1, measured.metrics.parameters) };
     const forwarded = passThroughOf2(node, parameterNames(node));
     if (forwarded !== void 0) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if (overridesMethod(node)) unit.override = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const inside = { ...context, unit: qualifiedName };
@@ -7466,6 +7474,8 @@ var Extractor2 = class {
     unit.shape = { nodes: nodeCount(node, isComment2), interfaceSize: Math.max(1, measured.metrics.parameters) };
     const forwarded = passThroughOf3(node, parameterNames2(node));
     if (forwarded !== void 0) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if (modifierWords(node).has("override")) unit.override = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     if (context.topLevel && !isConstructor2) {
@@ -8293,6 +8303,8 @@ var Extractor3 = class {
       parameterNames3(fn.childForFieldName("parameters") ?? fn.childForFieldName("parameter"), names);
       const forwarded = passThroughOf(fn, new Set(names));
       if (forwarded !== void 0) unit.passThrough = forwarded;
+      if (measured.recursive) unit.recursive = true;
+      if (node.children.some((child2) => child2.type === "override_modifier")) unit.override = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
     this.units.push(unit);
@@ -9595,6 +9607,8 @@ var Extractor4 = class {
     if (parent !== void 0) unit.parent = parent;
     const forwarded = passThroughOf4(fn, new Set(parameterInfo(fn).map((parameter) => parameter.name)));
     if (forwarded !== void 0) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if (modifiersOf2(fn).includes("override")) unit.override = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     return { ...context, unit: qualifiedName };
@@ -11059,6 +11073,8 @@ var Extractor5 = class {
     const parameters = new Set(this.parameterNames(functionDeclarator(fn) ?? fn.childForFieldName("declarator")));
     const forwarded = passThroughOf5(fn, parameters);
     if (forwarded !== void 0) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if ((functionDeclarator(fn)?.namedChildren ?? []).some((child2) => child2.type === "virtual_specifier" && child2.text === "override")) unit.override = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     return unit;
   }
@@ -12442,6 +12458,8 @@ var Extractor6 = class {
       unit.shape = functionShape4(fn, measured.metrics.parameters);
       const forwarded = passThroughOf6(fn);
       if (forwarded !== void 0) unit.passThrough = forwarded;
+      if (measured.recursive) unit.recursive = true;
+      if (fn.parent?.type === "decorated_definition" && fn.parent.namedChildren.some((child2) => child2.type === "decorator" && /^@\s*(typing(_extensions)?\.)?override\b/.test(child2.text))) unit.override = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
     this.units.push(unit);
@@ -13640,6 +13658,7 @@ var Extractor7 = class {
     unit.shape = functionShape5(fn);
     const forwarded = passThroughOf7(fn);
     if (forwarded !== void 0) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const locals = /* @__PURE__ */ new Set([...context.locals, ...declaredIn(fn)]);
@@ -14641,6 +14660,8 @@ var Extractor8 = class {
       unit.shape = functionShape6(fn, measured.metrics.parameters);
       const forwarded = passThroughOf8(fn, new Set(parameterNames5(fn)));
       if (forwarded !== void 0) unit.passThrough = forwarded;
+      if (measured.recursive) unit.recursive = true;
+      if (memberOf !== void 0 && context.implementsTrait === true) unit.override = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
     this.units.push(unit);
@@ -14693,7 +14714,7 @@ var Extractor8 = class {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body2 = node.childForFieldName("body");
         this.visitChildrenExcept(node, body2, { ...context, owner: void 0 });
-        if (body2 !== null) this.visitScope(body2, { ...context, owner });
+        if (body2 !== null) this.visitScope(body2, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
         return;
       }
       case "type_item":
@@ -15753,6 +15774,8 @@ function assemble(facts, resolved) {
         source: unit.source,
         ...unit.parent === void 0 ? {} : { parent: unit.parent },
         ...unit.metrics === void 0 ? {} : { metrics: unit.metrics },
+        ...unit.recursive === true ? { recursive: true } : {},
+        ...unit.override === true ? { override: true } : {},
         exported: unit.parent === void 0 && exportedLocals.has(unit.qualifiedName)
       });
     }
@@ -16325,11 +16348,11 @@ var DEFAULT_WINDOW_MONTHS = 12;
 var SECONDS_PER_MONTH = 30.4375 * 86400;
 function monthsBefore(anchor, months) {
   const date = new Date(anchor * 1e3);
-  const day2 = date.getUTCDate();
+  const day3 = date.getUTCDate();
   date.setUTCDate(1);
   date.setUTCMonth(date.getUTCMonth() - months);
   const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-  date.setUTCDate(Math.min(day2, lastDay));
+  date.setUTCDate(Math.min(day3, lastDay));
   return Math.floor(date.getTime() / 1e3);
 }
 function median(values) {
@@ -17245,6 +17268,7 @@ var name3 = "check";
 var command2 = {
   summary: "Exit 1 on import cycles or layer violations that are new since a base revision, for CI",
   options: { base: { type: "string" }, level: { type: "string" } },
+  optionHelp: { base: "the revision to compare against (default: the configured base, else the merge base with the main branch)", level: "check one level only: file, folder or package (default all three)" },
   async run(context) {
     const settings = readSettings(context.config);
     const { root } = context.repo;
@@ -17323,11 +17347,11 @@ function folderOf2(path) {
 
 // packages/cochange/src/spread-measure.ts
 function parseDate(text2) {
-  const day2 = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text2);
-  if (!day2) return null;
-  const midnight = Date.UTC(Number(day2[1]), Number(day2[2]) - 1, Number(day2[3]));
+  const day3 = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text2);
+  if (!day3) return null;
+  const midnight = Date.UTC(Number(day3[1]), Number(day3[2]) - 1, Number(day3[3]));
   if (new Date(midnight).toISOString().slice(0, 10) !== text2.slice(0, 10)) return null;
-  if (day2[4] === void 0) return midnight / 1e3;
+  if (day3[4] === void 0) return midnight / 1e3;
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text2)) return null;
   const ms = Date.parse(text2);
   return Number.isNaN(ms) ? null : Math.floor(ms / 1e3);
@@ -17358,10 +17382,20 @@ var sharedOptions = { "no-refresh": { type: "boolean" } };
 function ownsWindow(spec) {
   return spec.window !== void 0 || spec.wholeHistory === true || spec.options?.since !== void 0 || spec.options?.until !== void 0;
 }
+var windowOptionHelp = {
+  since: "analyse changes from this date, YYYY-MM-DD, inclusive (needed in a shallow clone)",
+  until: "analyse changes before this date, YYYY-MM-DD, exclusive"
+};
 function analysisCommand(name13, spec) {
   return {
     summary: spec.summary,
+    ...spec.usage === void 0 ? {} : { usage: spec.usage },
     options: { ...ownsWindow(spec) ? {} : windowOptions, ...spec.options, ...sharedOptions },
+    optionHelp: {
+      ...ownsWindow(spec) ? {} : windowOptionHelp,
+      ...spec.optionHelp,
+      "no-refresh": "use the cached history as it is, without updating it first"
+    },
     async run(context) {
       const window2 = ownsWindow(spec) ? spec.window?.(context) : statedWindow(context, readSettings(context.config).windowMonths);
       const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, window: window2, wholeHistory: spec.wholeHistory });
@@ -17383,6 +17417,484 @@ function analysisCommand(name13, spec) {
       return finished;
     }
   };
+}
+
+// packages/structure/src/incidental.ts
+import { existsSync as existsSync8 } from "node:fs";
+
+// packages/transcripts/src/measure-repo.ts
+import { existsSync as existsSync7, readFileSync as readFileSync6, readdirSync as readdirSync2 } from "node:fs";
+import { join as join10 } from "node:path";
+
+// packages/transcripts/src/repo-path.ts
+import { posix as posix16 } from "node:path";
+function normalise4(path) {
+  const converted = path.replaceAll("\\", "/");
+  const drive = /^[A-Za-z]:\//.exec(converted);
+  if (drive === null) return posix16.normalize(converted);
+  return drive[0] + posix16.normalize(converted.slice(drive[0].length));
+}
+function isAbsolute(path) {
+  return path.startsWith("/") || /^[A-Za-z]:\//.test(path);
+}
+function stripTrailingSlash(path) {
+  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+}
+var EXCLUDED_SEGMENTS = /* @__PURE__ */ new Set([".git", "node_modules"]);
+function isExcluded(relative) {
+  return relative.split("/").some((part) => EXCLUDED_SEGMENTS.has(part));
+}
+function comparable(path) {
+  return /^[A-Za-z]:\//.test(path) ? path.toLowerCase() : path;
+}
+function relativeToRoots(path, roots) {
+  const ordered = roots.map((root) => stripTrailingSlash(normalise4(root))).sort((a, b) => b.length - a.length);
+  for (const root of ordered) {
+    if (comparable(path) === comparable(root)) return "";
+    const prefix = root.endsWith("/") ? root : `${root}/`;
+    if (comparable(path).startsWith(comparable(prefix))) return stripTrailingSlash(path.slice(prefix.length));
+  }
+  return null;
+}
+function isWithinRepo(path, roots) {
+  if (path === null || path === "") return true;
+  if (path.startsWith("~")) return false;
+  const normalised = normalise4(path);
+  if (!isAbsolute(normalised)) return !(normalised === ".." || normalised.startsWith("../"));
+  return relativeToRoots(normalised, roots) !== null;
+}
+function toRepoPath(path, roots) {
+  if (path === null || path === "" || path.startsWith("~")) return null;
+  const normalised = normalise4(path);
+  let relative;
+  if (isAbsolute(normalised)) {
+    relative = relativeToRoots(normalised, roots);
+  } else {
+    relative = normalised === "." || normalised === ".." || normalised.startsWith("../") ? null : normalised;
+  }
+  if (relative === null || relative === "" || isExcluded(relative)) return null;
+  return relative;
+}
+
+// packages/transcripts/src/transcript-format.ts
+var RECOGNISED_VERSION = /^2\.1\.\d+$/;
+var READ_TOOLS = /* @__PURE__ */ new Set(["Read"]);
+var SEARCH_TOOLS = /* @__PURE__ */ new Set(["Grep", "Glob"]);
+var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
+function isObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function asString(value) {
+  return typeof value === "string" ? value : null;
+}
+function count(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+function pathOf(input) {
+  return asString(input["file_path"]) ?? asString(input["notebook_path"]) ?? asString(input["path"]);
+}
+function actionOf(block) {
+  const name13 = asString(block["name"]);
+  if (name13 === null) return null;
+  const input = isObject(block["input"]) ? block["input"] : {};
+  if (READ_TOOLS.has(name13)) return { kind: "read", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name13)) return { kind: "search", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name13)) return { kind: "edit", path: pathOf(input) };
+  return null;
+}
+var INTERRUPT_MARKER = "[Request interrupted by user";
+function isHumanText(text2) {
+  return typeof text2 === "string" && !text2.startsWith(INTERRUPT_MARKER);
+}
+function isHumanPrompt(line, message) {
+  if (line["isMeta"] === true || line["toolUseResult"] !== void 0) return false;
+  if (line["isCompactSummary"] === true || line["isVisibleInTranscriptOnly"] === true) return false;
+  const origin = line["origin"];
+  if (isObject(origin) && origin["kind"] !== "human") return false;
+  const content = message["content"];
+  if (typeof content === "string") return isHumanText(content);
+  return Array.isArray(content) && content.some((block) => isObject(block) && block["type"] === "text" && isHumanText(block["text"]));
+}
+function compareVersions(a, b) {
+  const left = a.split(".");
+  const right = b.split(".");
+  for (let i2 = 0; i2 < Math.max(left.length, right.length); i2++) {
+    const x = left[i2] ?? "0";
+    const y = right[i2] ?? "0";
+    const numeric = /^\d+$/.test(x) && /^\d+$/.test(y);
+    const order = numeric ? Number(x) - Number(y) : x < y ? -1 : x > y ? 1 : 0;
+    if (order !== 0) return order;
+  }
+  return 0;
+}
+function earliest(lines) {
+  let best = null;
+  let bestMs = Number.POSITIVE_INFINITY;
+  for (const line of lines) {
+    const timestamp = asString(line["timestamp"]);
+    const ms = timestamp === null ? Number.NaN : Date.parse(timestamp);
+    if (timestamp !== null && ms < bestMs) {
+      best = timestamp;
+      bestMs = ms;
+    }
+  }
+  return best;
+}
+function parseTranscript(text2) {
+  const lines = [];
+  let skippedLines = 0;
+  const body2 = text2.charCodeAt(0) === 65279 ? text2.slice(1) : text2;
+  for (const raw of body2.split(/\r?\n/)) {
+    if (raw === "") continue;
+    try {
+      const parsed = JSON.parse(raw);
+      if (isObject(parsed)) lines.push(parsed);
+    } catch {
+      skippedLines++;
+    }
+  }
+  const messageLines = lines.filter((line) => line["type"] === "user" || line["type"] === "assistant");
+  const cwds = [...new Set(messageLines.flatMap((line) => typeof line["cwd"] === "string" ? [line["cwd"]] : []))].sort();
+  const notMeasured = (version, reason) => ({
+    status: "not-measured",
+    version,
+    reason,
+    startedAt: earliest(messageLines),
+    cwds
+  });
+  const versions = /* @__PURE__ */ new Set();
+  for (const line of messageLines) {
+    const version = asString(line["version"]);
+    if (version !== null) versions.add(version);
+  }
+  if (versions.size === 0) return notMeasured(null, "no versioned messages");
+  const sorted = [...versions].sort(compareVersions);
+  const unrecognised = sorted.find((version) => !RECOGNISED_VERSION.test(version));
+  if (unrecognised !== void 0) return notMeasured(unrecognised, "unrecognised transcript version");
+  const events = [];
+  const turnsById = /* @__PURE__ */ new Map();
+  for (const line of messageLines) {
+    if (line["isSidechain"] === true) continue;
+    const message = line["message"];
+    const timestamp = asString(line["timestamp"]);
+    if (line["type"] === "user") {
+      if (isObject(message) && timestamp !== null && isHumanPrompt(line, message)) {
+        events.push({ kind: "prompt", timestamp });
+      }
+      continue;
+    }
+    const id = isObject(message) ? asString(message["id"]) : null;
+    if (!isObject(message) || id === null || timestamp === null || !Array.isArray(message["content"])) {
+      skippedLines++;
+      continue;
+    }
+    let turn = turnsById.get(id);
+    if (turn === void 0) {
+      turn = {
+        kind: "agent-turn",
+        timestamp,
+        messageId: id,
+        tokens: { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 },
+        actions: []
+      };
+      turnsById.set(id, turn);
+      events.push(turn);
+    }
+    if (isObject(message["usage"])) {
+      const usage7 = message["usage"];
+      turn.tokens = {
+        input: count(usage7["input_tokens"]),
+        output: count(usage7["output_tokens"]),
+        cacheRead: count(usage7["cache_read_input_tokens"]),
+        cacheCreation: count(usage7["cache_creation_input_tokens"])
+      };
+    }
+    for (const block of message["content"]) {
+      if (!isObject(block) || block["type"] !== "tool_use") continue;
+      const action = actionOf(block);
+      if (action !== null) turn.actions.push(action);
+    }
+  }
+  return { status: "recognised", version: sorted[sorted.length - 1] ?? "", events, skippedLines, cwds };
+}
+
+// packages/transcripts/src/agent-effort.ts
+function compareBytes(a, b) {
+  return Buffer.compare(Buffer.from(a), Buffer.from(b));
+}
+function sortedBytes(values) {
+  return [...values].sort(compareBytes);
+}
+function segment(events) {
+  const tasks = [];
+  for (const event of events) {
+    if (event.kind === "prompt") tasks.push({ startedAt: event.timestamp, turns: [] });
+    else tasks.at(-1)?.turns.push(event);
+  }
+  return tasks;
+}
+function measureTask(sessionId, taskIndex, startedAt, turns, roots) {
+  const readCounts = /* @__PURE__ */ new Map();
+  const edited = /* @__PURE__ */ new Set();
+  let searches = 0;
+  let edits = 0;
+  const tokens2 = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
+  for (const turn of turns) {
+    tokens2.input += turn.tokens.input;
+    tokens2.output += turn.tokens.output;
+    tokens2.cacheRead += turn.tokens.cacheRead;
+    tokens2.cacheCreation += turn.tokens.cacheCreation;
+    for (const action of turn.actions) {
+      const path = toRepoPath(action.path, roots);
+      if (action.kind === "search") {
+        if (isWithinRepo(action.path, roots)) searches++;
+      } else if (path === null) {
+        continue;
+      } else if (action.kind === "read") {
+        readCounts.set(path, (readCounts.get(path) ?? 0) + 1);
+      } else {
+        edits++;
+        edited.add(path);
+      }
+    }
+  }
+  const reads = [...readCounts.values()].reduce((sum, n) => sum + n, 0);
+  const folders = /* @__PURE__ */ new Set();
+  for (const path of [...readCounts.keys(), ...edited]) folders.add(folderOf2(path));
+  return {
+    sessionId,
+    taskIndex,
+    startedAt,
+    reads,
+    filesRead: readCounts.size,
+    reReads: reads - readCounts.size,
+    searches,
+    foldersVisited: folders.size,
+    edits,
+    filesEdited: edited.size,
+    tokens: {
+      ...tokens2,
+      total: tokens2.input + tokens2.output + tokens2.cacheRead + tokens2.cacheCreation
+    },
+    readPaths: sortedBytes(readCounts.keys()),
+    editedPaths: sortedBytes(edited),
+    folders: sortedBytes(folders)
+  };
+}
+function measureSession(text2, sessionId, roots) {
+  const parsed = parseTranscript(text2);
+  if (parsed.status === "not-measured") {
+    return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
+  }
+  const tasks = segment(parsed.events).map((task, index) => measureTask(sessionId, index, task.startedAt, task.turns, roots)).filter((task) => task.edits > 0);
+  return { status: "measured", sessionId, version: parsed.version, tasks, cwds: parsed.cwds };
+}
+
+// packages/transcripts/src/time-window.ts
+function dateToMs(value, label) {
+  const ms = /^\d{4}-\d{2}-\d{2}$/.test(value) ? Date.parse(`${value}T00:00:00.000Z`) : Number.NaN;
+  if (Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== value) {
+    throw new Error(`${label} must be a calendar date in YYYY-MM-DD form, got "${value}"`);
+  }
+  return ms;
+}
+function parseWindow(from, to) {
+  const fromMs = dateToMs(from, "window start");
+  const toMs = dateToMs(to, "window end");
+  if (toMs <= fromMs) throw new Error(`window end ${to} must be after window start ${from}`);
+  return { from, to, fromMs, toMs };
+}
+function inWindow(window2, timestamp) {
+  const ms = Date.parse(timestamp);
+  return !Number.isNaN(ms) && ms >= window2.fromMs && ms < window2.toMs;
+}
+
+// packages/transcripts/src/measure-repo.ts
+function encodeProjectDir(cwd) {
+  return cwd.replaceAll(/[^A-Za-z0-9]/g, "-");
+}
+function compareBytes2(a, b) {
+  return Buffer.compare(Buffer.from(a), Buffer.from(b));
+}
+function round(value) {
+  return Number(value.toFixed(2));
+}
+function distribution(values) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  const median3 = sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  const mean2 = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
+  return { mean: round(mean2), median: round(median3) };
+}
+function summariseTasks(tasks) {
+  return {
+    tasks: tasks.length,
+    filesRead: distribution(tasks.map((t) => t.filesRead)),
+    foldersVisited: distribution(tasks.map((t) => t.foldersVisited)),
+    reReads: distribution(tasks.map((t) => t.reReads)),
+    edits: distribution(tasks.map((t) => t.edits)),
+    tokens: distribution(tasks.map((t) => t.tokens.total))
+  };
+}
+function sessionFiles(projectsDir, root) {
+  const dir = join10(projectsDir, encodeProjectDir(root));
+  if (!existsSync7(dir)) return [];
+  return readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join10(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
+}
+function measureRepo(options2) {
+  const { projectsDir, repoRoots, window: window2 } = options2;
+  const seen = /* @__PURE__ */ new Set();
+  const tasks = [];
+  const notMeasured = [];
+  let measured = 0;
+  for (const root of repoRoots) {
+    for (const file of sessionFiles(projectsDir, root)) {
+      if (seen.has(file.path)) continue;
+      seen.add(file.path);
+      let text2;
+      try {
+        text2 = readFileSync6(file.path, "utf8");
+      } catch {
+        continue;
+      }
+      const result = measureSession(text2, file.sessionId, repoRoots);
+      if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;
+      if (result.status === "not-measured") {
+        if (result.startedAt !== null && inWindow(window2, result.startedAt)) {
+          notMeasured.push({ sessionId: result.sessionId, version: result.version, reason: result.reason });
+        }
+        continue;
+      }
+      const inside = result.tasks.filter((task) => inWindow(window2, task.startedAt));
+      if (inside.length > 0) measured++;
+      tasks.push(...inside);
+    }
+  }
+  tasks.sort(
+    (a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt) || compareBytes2(a.sessionId, b.sessionId) || a.taskIndex - b.taskIndex
+  );
+  notMeasured.sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
+  return {
+    window: { from: window2.from, to: window2.to },
+    sessions: { measured, notMeasured },
+    tasks,
+    summary: summariseTasks(tasks)
+  };
+}
+
+// packages/structure/src/cycles.ts
+var SYMBOLS_SHOWN = 10;
+var cycleId = (level, firstNode) => `cycle:${level}:${firstNode}`;
+function unblocksOf(model, from, to) {
+  if (!model.locality) return [];
+  const members2 = model.graph.members.get(edgeKey(from, to)) ?? [];
+  return members2.flatMap((edge) => model.locality.byFileEdge.get(edgeKey(edge.from, edge.to)) ?? []);
+}
+function breakingEdge(model, from, to, limit = SYMBOLS_SHOWN) {
+  const detail = describeEdge(model.project, model.graph, from, to);
+  return {
+    from,
+    to,
+    coChange: model.activity.shared(from, to),
+    fileEdges: detail.fileEdges,
+    importStatements: detail.importStatements,
+    typeOnly: detail.typeOnly,
+    symbolsTotal: detail.symbols.length,
+    symbols: detail.symbols.slice(0, limit).map(({ symbol, sites, kind }) => ({ symbol, sites, kind })),
+    unblocks: unblocksOf(model, from, to)
+  };
+}
+function findCycles(model, settings) {
+  const sets = breakingSets(model.graph.graph, {
+    exactLimit: settings.exactLimit,
+    weight: (edge) => model.activity.shared(edge.from, edge.to)
+  });
+  const rows = sets.map((cycle) => {
+    const inCycle = new Set(cycle.nodes);
+    let coChangeAcross = 0;
+    for (const from of cycle.nodes) {
+      for (const to of model.graph.graph.get(from) ?? []) {
+        if (inCycle.has(to) && (compareIds(from, to) < 0 || !model.graph.graph.get(to)?.includes(from))) {
+          coChangeAcross += model.activity.shared(from, to);
+        }
+      }
+    }
+    const breakingSet = cycle.edges.map((edge) => breakingEdge(model, edge.from, edge.to));
+    return {
+      id: cycleId(model.graph.level, cycle.nodes[0]),
+      level: model.graph.level,
+      size: cycle.nodes.length,
+      nodes: [...cycle.nodes],
+      method: cycle.method,
+      breakingSet,
+      coChangeAcross,
+      unblockedGain: model.locality ? breakingSet.reduce((sum, edge) => sum + edge.unblocks.reduce((s, u) => s + u.unblockedGain, 0), 0) : null
+    };
+  });
+  return rows.sort(
+    (a, b) => (b.unblockedGain ?? 0) - (a.unblockedGain ?? 0) || b.size - a.size || b.coChangeAcross - a.coChangeAcross || compareIds(a.id, b.id)
+  );
+}
+
+// packages/structure/src/layer-rule.ts
+var violationsByProject = /* @__PURE__ */ new WeakMap();
+function layerRuleOf(model, from, to, settings) {
+  if (settings.layers.length === 0) return null;
+  let violations = violationsByProject.get(model.project);
+  if (violations === void 0) {
+    violations = findLayerViolations(model.project, settings.layers);
+    violationsByProject.set(model.project, violations);
+  }
+  const members2 = new Set((model.graph.members.get(edgeKey(from, to)) ?? []).map((e) => edgeKey(e.from, e.to)));
+  const breaches = /* @__PURE__ */ new Map();
+  for (const violation of violations) {
+    if (!members2.has(edgeKey(violation.from, violation.to))) continue;
+    const key = `${violation.fromLayer}\0${violation.toLayer}`;
+    const breach = breaches.get(key) ?? { fromLayer: violation.fromLayer, toLayer: violation.toLayer, allowed: violation.allowed, fileEdges: [] };
+    breach.fileEdges.push({ from: violation.from, to: violation.to });
+    breaches.set(key, breach);
+  }
+  return breaches.size === 0 ? null : [...breaches.values()];
+}
+
+// packages/structure/src/incidental.ts
+var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+function readAgentTasks(root, projectsDir, window2) {
+  if (!existsSync8(projectsDir)) throw environmentError("no-projects-dir", `${projectsDir} does not exist`);
+  const parsed = parseWindow(day(window2.since), day(window2.until + 86400));
+  return measureRepo({ projectsDir, repoRoots: [root], window: parsed }).tasks;
+}
+function agentReadsAcross(tasks, from, to) {
+  const sideFrom = new Set(from);
+  const sideTo = new Set(to);
+  const touches = (paths, side) => paths.some((path) => side.has(path));
+  return tasks.filter((task) => {
+    const editsFrom = touches(task.editedPaths, sideFrom);
+    const editsTo = touches(task.editedPaths, sideTo);
+    return editsFrom && !editsTo && touches(task.readPaths, sideTo) || editsTo && !editsFrom && touches(task.readPaths, sideFrom);
+  }).length;
+}
+function rankIncidental(rows, model, settings, tasks) {
+  const cycles = rows.some((row) => row.quadrant === "incidental") ? findCycles(model, settings) : [];
+  const ranked = rows.map((row) => {
+    if (row.quadrant !== "incidental") return row;
+    const reasons = [];
+    if (unblocksOf(model, row.from, row.to).length + unblocksOf(model, row.to, row.from).length > 0) reasons.push("blocks-locality-move");
+    if (cycles.some((cycle) => cycle.nodes.includes(row.from) && cycle.nodes.includes(row.to))) reasons.push("in-cycle");
+    if (layerRuleOf(model, row.from, row.to, settings) !== null || layerRuleOf(model, row.to, row.from, settings) !== null) reasons.push("layer-violation");
+    const agentReads = tasks === void 0 ? null : agentReadsAcross(tasks, model.graph.filesOf.get(row.from) ?? [], model.graph.filesOf.get(row.to) ?? []);
+    if (agentReads !== null && agentReads >= settings.minSupport) reasons.push("agent-reads");
+    return { ...row, incidental: { rank: reasons.length > 0 ? "high" : "low", reasons, agentReads } };
+  });
+  const start2 = ranked.findIndex((row) => row.quadrant === "incidental");
+  if (start2 < 0) return ranked;
+  const length = ranked.slice(start2).findIndex((row) => row.quadrant !== "incidental");
+  const stop2 = length < 0 ? ranked.length : start2 + length;
+  const incidental = ranked.slice(start2, stop2).sort(
+    (a, b) => Number(b.incidental.rank === "high") - Number(a.incidental.rank === "high") || b.incidental.reasons.length - a.incidental.reasons.length || b.staticCoupling.sites - a.staticCoupling.sites || compareIds(a.id, b.id)
+  );
+  return [...ranked.slice(0, start2), ...incidental, ...ranked.slice(stop2)];
 }
 
 // packages/structure/src/significance.ts
@@ -17576,14 +18088,14 @@ function connectedPairs(graph) {
 }
 
 // packages/structure/src/locality-report.ts
-import { existsSync as existsSync7, readFileSync as readFileSync6 } from "node:fs";
+import { existsSync as existsSync9, readFileSync as readFileSync7 } from "node:fs";
 var LOCALITY_REPORT = { tool: "locality", command: "analyse" };
 function readLocalityUnblocks(context, head) {
   const file = reportPath2(context.repo.root, LOCALITY_REPORT.command, LOCALITY_REPORT.tool);
-  if (!existsSync7(file)) return void 0;
+  if (!existsSync9(file)) return void 0;
   let document;
   try {
-    document = JSON.parse(readFileSync6(file, "utf8"));
+    document = JSON.parse(readFileSync7(file, "utf8"));
   } catch {
     return void 0;
   }
@@ -17642,12 +18154,37 @@ var rules2 = {
       "real: high static coupling and high co-change. The sides share a design decision: co-locate them",
       "or put the decision in one place, and do not hide it behind indirection.",
       "incidental: high static coupling, both sides active, low co-change. Entangled but changing",
-      "independently, so cheap and low-risk to break.",
+      "independently, so cheap and low-risk to break. See incidental-coupling for how it ranks.",
       "stable: high static coupling and the depended-on side rarely changes. Healthy, keep it.",
       "hidden: high co-change with low static coupling (often no import at all). Make the dependency",
       "explicit, or co-locate.",
       "independent: low static coupling, both sides active, low co-change. Nothing to do.",
       "insufficient-evidence: too little activity to tell. Placed in no quadrant."
+    ].join("\n")
+  },
+  "incidental-coupling": {
+    summary: "An entangled pair whose sides change independently: cheap to break, but it ranks low unless something else is wrong",
+    explanation: [
+      "Raised for a pair in the incidental quadrant (see coupling-quadrant). It does not cost change effort",
+      "directly, so on its own it ranks low (`incidental.rank` is low). It ranks high when it also:",
+      "",
+      "blocks-locality-move: a locality report for this commit names a move that this dependency holds back.",
+      "in-cycle: both sides are in one import cycle at the same level.",
+      "layer-violation: an import between the sides breaks a configured layer rule.",
+      "agent-reads: with --projects-dir, at least structure.minSupport tasks in the window edited one side and",
+      "opened a file of the other without editing it, so agents read it only to follow the dependency.",
+      "Only repo-relative paths and counts are taken from the transcripts.",
+      "",
+      "High pairs come first within the quadrant, then those with more reasons, then the larger entanglements."
+    ].join("\n")
+  },
+  "hidden-coupling": {
+    summary: "Code that changes together with little or no import between it: the dependency is implicit",
+    explanation: [
+      "Raised for a pair in the hidden quadrant (see coupling-quadrant): low static coupling and high co-change.",
+      "The sides share a decision that no import states, often because earlier indirection (events, a mediator,",
+      "string-keyed registries) hid it. Make the dependency explicit, or co-locate the sides, rather than add more",
+      "indirection."
     ].join("\n")
   }
 };
@@ -17659,7 +18196,9 @@ function parseQuadrant(value) {
 }
 async function analyseCoupling({ context, history }, level, quadrant) {
   const model = await buildModel(context, history, level, void 0, { everyPair: true });
-  const all = findCoupling(model, history.settings);
+  const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : void 0;
+  const tasks = projectsDir === void 0 ? void 0 : readAgentTasks(context.repo.root, projectsDir, history.window);
+  const all = rankIncidental(findCoupling(model, history.settings), model, history.settings, tasks);
   const rows = quadrant === void 0 ? all : all.filter((row) => row.quadrant === quadrant);
   return {
     inputs: {
@@ -17668,7 +18207,8 @@ async function analyseCoupling({ context, history }, level, quadrant) {
       minStaticCoupling: history.settings.minStaticCoupling,
       minSupport: history.settings.minSupport,
       minRevisions: history.settings.minRevisions,
-      significanceLevel: history.settings.significanceLevel
+      significanceLevel: history.settings.significanceLevel,
+      transcripts: tasks !== void 0
     },
     results: rows,
     columns: ["id", "quadrant", "staticCoupling", "coChange", "bothActive"],
@@ -17680,8 +18220,14 @@ async function analyseCoupling({ context, history }, level, quadrant) {
 }
 var command3 = analysisCommand(name4, {
   summary: "Module pairs placed in the coupling quadrants (real, incidental, stable, hidden, independent), ranked within each",
-  options: { quadrant: { type: "string" }, by: { type: "string" } },
-  partial: ({ values }) => values.quadrant !== void 0 || values.by !== void 0 && values.by !== "folder",
+  options: { quadrant: { type: "string" }, by: { type: "string" }, "projects-dir": { type: "string" } },
+  optionHelp: {
+    quadrant: "only this quadrant: real, incidental, stable, hidden or independent",
+    by: "what a module is: file, folder or component (default folder)",
+    "projects-dir": "read Claude Code session transcripts here (usually ~/.claude/projects) to rank incidental pairs by agent reads"
+  },
+  // A run that reads local transcripts depends on more than the repository, so it is never stored as a report.
+  partial: ({ values }) => values.quadrant !== void 0 || values["projects-dir"] !== void 0 || values.by !== void 0 && values.by !== "folder",
   analyse(input) {
     const level = readLevel("by", input.context.values.by, views, "folder");
     return analyseCoupling(input, level, parseQuadrant(input.context.values.quadrant));
@@ -17695,62 +18241,6 @@ __export(cycles_exports, {
   name: () => name5,
   rules: () => rules3
 });
-
-// packages/structure/src/cycles.ts
-var SYMBOLS_SHOWN = 10;
-var cycleId = (level, firstNode) => `cycle:${level}:${firstNode}`;
-function unblocksOf(model, from, to) {
-  if (!model.locality) return [];
-  const members2 = model.graph.members.get(edgeKey(from, to)) ?? [];
-  return members2.flatMap((edge) => model.locality.byFileEdge.get(edgeKey(edge.from, edge.to)) ?? []);
-}
-function breakingEdge(model, from, to, limit = SYMBOLS_SHOWN) {
-  const detail = describeEdge(model.project, model.graph, from, to);
-  return {
-    from,
-    to,
-    coChange: model.activity.shared(from, to),
-    fileEdges: detail.fileEdges,
-    importStatements: detail.importStatements,
-    typeOnly: detail.typeOnly,
-    symbolsTotal: detail.symbols.length,
-    symbols: detail.symbols.slice(0, limit).map(({ symbol, sites, kind }) => ({ symbol, sites, kind })),
-    unblocks: unblocksOf(model, from, to)
-  };
-}
-function findCycles(model, settings) {
-  const sets = breakingSets(model.graph.graph, {
-    exactLimit: settings.exactLimit,
-    weight: (edge) => model.activity.shared(edge.from, edge.to)
-  });
-  const rows = sets.map((cycle) => {
-    const inCycle = new Set(cycle.nodes);
-    let coChangeAcross = 0;
-    for (const from of cycle.nodes) {
-      for (const to of model.graph.graph.get(from) ?? []) {
-        if (inCycle.has(to) && (compareIds(from, to) < 0 || !model.graph.graph.get(to)?.includes(from))) {
-          coChangeAcross += model.activity.shared(from, to);
-        }
-      }
-    }
-    const breakingSet = cycle.edges.map((edge) => breakingEdge(model, edge.from, edge.to));
-    return {
-      id: cycleId(model.graph.level, cycle.nodes[0]),
-      level: model.graph.level,
-      size: cycle.nodes.length,
-      nodes: [...cycle.nodes],
-      method: cycle.method,
-      breakingSet,
-      coChangeAcross,
-      unblockedGain: model.locality ? breakingSet.reduce((sum, edge) => sum + edge.unblocks.reduce((s, u) => s + u.unblockedGain, 0), 0) : null
-    };
-  });
-  return rows.sort(
-    (a, b) => (b.unblockedGain ?? 0) - (a.unblockedGain ?? 0) || b.size - a.size || b.coChangeAcross - a.coChangeAcross || compareIds(a.id, b.id)
-  );
-}
-
-// packages/structure/src/commands/cycles.ts
 var name5 = "cycles";
 var levels = ["file", "folder", "package"];
 var rules3 = {
@@ -17776,6 +18266,7 @@ var rules3 = {
 var command4 = analysisCommand(name5, {
   summary: "Import cycles with their smallest breaking sets, ranked by size and co-change",
   options: { level: { type: "string" } },
+  optionHelp: { level: "what a node is: file, folder or package (default file)" },
   partial: ({ values }) => values.level !== void 0 && values.level !== "file",
   async analyse({ context, history }) {
     const level = readLevel("level", context.values.level, levels, "file");
@@ -17866,25 +18357,6 @@ function unitStabilities(model) {
 
 // packages/structure/src/evidence-pack.ts
 var round1 = (value) => Math.round(value * 10) / 10;
-var violationsByProject = /* @__PURE__ */ new WeakMap();
-function layerRule(model, from, to, settings) {
-  if (settings.layers.length === 0) return null;
-  let violations = violationsByProject.get(model.project);
-  if (violations === void 0) {
-    violations = findLayerViolations(model.project, settings.layers);
-    violationsByProject.set(model.project, violations);
-  }
-  const members2 = new Set((model.graph.members.get(edgeKey(from, to)) ?? []).map((e) => edgeKey(e.from, e.to)));
-  const breaches = /* @__PURE__ */ new Map();
-  for (const violation of violations) {
-    if (!members2.has(edgeKey(violation.from, violation.to))) continue;
-    const key = `${violation.fromLayer}\0${violation.toLayer}`;
-    const breach = breaches.get(key) ?? { fromLayer: violation.fromLayer, toLayer: violation.toLayer, allowed: violation.allowed, fileEdges: [] };
-    breach.fileEdges.push({ from: violation.from, to: violation.to });
-    breaches.set(key, breach);
-  }
-  return breaches.size === 0 ? null : [...breaches.values()];
-}
 function coChangeFigures(model, from, to) {
   const { activity } = model;
   const fromChanges = activity.eligibleRevisions(from);
@@ -17946,7 +18418,7 @@ function evidencePack(model, from, to, settings, census) {
     kinds2.push("cycle");
     findings.push(cycle.id);
   }
-  const rule2 = layerRule(model, from, to, settings);
+  const rule2 = layerRuleOf(model, from, to, settings);
   if (rule2) {
     kinds2.push("layer-violation");
     for (const breach of rule2) for (const edge of breach.fileEdges) findings.push(layerViolationId(edge.from, edge.to));
@@ -18305,7 +18777,9 @@ function parseEdge(edge) {
 }
 var command5 = analysisCommand(name6, {
   summary: "The evidence pack for one dependency or one finding: symbols across it, stability, co-change, misplacement",
+  usage: "<from>-><to> | <finding id>",
   options: { level: { type: "string" } },
+  optionHelp: { level: "what a node is: file, folder, package or component (default: inferred from the arguments, else file)" },
   // A query about one dependency, never the whole-repository answer a report stores.
   partial: () => true,
   async analyse({ context, history }) {
@@ -18367,6 +18841,7 @@ var views2 = ["file", "folder", "component"];
 var command6 = analysisCommand(name7, {
   summary: "Pairs with high co-change and low static coupling, often the result of earlier indirection (coupling --quadrant hidden)",
   options: { by: { type: "string" } },
+  optionHelp: { by: "what a module is: file, folder or component (default folder)" },
   partial: ({ values }) => values.by !== void 0 && values.by !== "folder",
   analyse(input) {
     return analyseCoupling(input, readLevel("by", input.context.values.by, views2, "folder"), "hidden");
@@ -18415,6 +18890,7 @@ var rules4 = {
 var command7 = analysisCommand(name8, {
   summary: "Registration hubs: files every feature edits by appending an entry, with the signals that fired",
   options: { by: { type: "string" } },
+  optionHelp: { by: "what a module is: folder or component (default folder)" },
   partial: ({ values }) => values.by !== void 0 && values.by !== "folder",
   async analyse({ context, history }) {
     const by = readLevel("by", context.values.by, views3, "folder");
@@ -18549,6 +19025,12 @@ function measureOutcome(inputs, from, to) {
     });
   }
   hiddenCreated.sort((x, y) => y.sharedAfter - x.sharedAfter || compareIds(x.id, y.id));
+  const cycleCount = (graph) => stronglyConnectedComponents(graph.graph).filter((component) => component.length > 1).length;
+  const violations = (project) => findLayerViolations(project, settings.layers).length;
+  const leading = {
+    cycles: { before: cycleCount(graphBefore), after: cycleCount(inputs.graphAfter) },
+    layerViolations: settings.layers.length === 0 ? null : { before: violations(inputs.projectBefore), after: violations(inputs.projectAfter) }
+  };
   return {
     outcome: {
       id: `outcome:${level}:${from}->${to}`,
@@ -18563,7 +19045,9 @@ function measureOutcome(inputs, from, to) {
       },
       before,
       after,
-      verdict: verdictOf(before, after)
+      verdict: verdictOf(before, after),
+      leading,
+      agentEffort: agentEffortOf(inputs, graphBefore, from, to, seconds)
     },
     hiddenCreated
   };
@@ -18582,6 +19066,17 @@ function droppedPairs(before, after) {
     }
   }
   return pairs.sort((a, b) => compareIds(a[0], b[0]) || compareIds(a[1], b[1]));
+}
+function agentEffortOf(inputs, graphBefore, from, to, seconds) {
+  if ("reason" in inputs.tasks) return { status: "not-measured", reason: inputs.tasks.reason };
+  const { point } = inputs;
+  const sides = new Set([from, to].flatMap((side) => [...graphBefore.filesOf.get(side) ?? [], ...inputs.graphAfter.filesOf.get(side) ?? []]));
+  const touching = inputs.tasks.tasks.filter((task) => task.editedPaths.some((path) => sides.has(path)));
+  const within = (since, until) => touching.filter((task) => Date.parse(task.startedAt) >= since * 1e3 && Date.parse(task.startedAt) < until * 1e3);
+  const before = within(point.date - seconds, point.date);
+  const after = within(point.date, point.date + seconds);
+  if (before.length === 0 && after.length === 0) return { status: "not-measured", reason: "no session in the windows edited either side" };
+  return { status: "measured", before: summariseTasks(before), after: summariseTasks(after) };
 }
 
 // packages/structure/src/commands/outcome.ts
@@ -18612,7 +19107,13 @@ var rules6 = {
 };
 var command9 = analysisCommand(name10, {
   summary: "Whether a break reduced coupling or only hid it: co-change before and after over matching windows",
-  options: { at: { type: "string" }, level: { type: "string" } },
+  usage: "<from>-><to>",
+  options: { at: { type: "string" }, level: { type: "string" }, "projects-dir": { type: "string" } },
+  optionHelp: {
+    at: "the revision that made the break (required)",
+    level: "what a node is: file, folder, package or component (default: inferred from the arguments)",
+    "projects-dir": "read Claude Code session transcripts here (usually ~/.claude/projects) to measure agent effort on tasks touching either side"
+  },
   // A query about one pair and one break, never the whole-repository answer a report stores.
   partial: () => true,
   wholeHistory: true,
@@ -18641,6 +19142,9 @@ var command9 = analysisCommand(name10, {
       if (!model.graph.filesOf.has(side)) throw usageError(`"${side}" is not a ${level} of the analysed commit`);
     }
     const projectBefore = await loadProject(root, parent, settings.exclude);
+    const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : void 0;
+    const seconds = Math.min(date - monthsBefore(date, settings.windowMonths), history.window.until - date);
+    const tasks = projectsDir === void 0 ? { reason: "no --projects-dir was given" } : { tasks: readAgentTasks(root, projectsDir, { since: date - seconds, until: date + seconds }) };
     const measured = measureOutcome(
       {
         level,
@@ -18649,7 +19153,8 @@ var command9 = analysisCommand(name10, {
         projectBefore,
         changes: history.filtered.changes,
         point: { rev: at, sha, parent, date, until: history.window.until },
-        settings
+        settings,
+        tasks
       },
       from,
       to
@@ -18665,7 +19170,8 @@ var command9 = analysisCommand(name10, {
         minStaticCoupling: settings.minStaticCoupling,
         minSupport: settings.minSupport,
         minRevisions: settings.minRevisions,
-        significanceLevel: settings.significanceLevel
+        significanceLevel: settings.significanceLevel,
+        transcripts: projectsDir !== void 0
       },
       results: [measured.outcome],
       columns: ["id", "verdict", "before", "after"],
@@ -19787,7 +20293,7 @@ async function manifestChecks4(context, reuse) {
 var language13 = { id: "cpp", readEntries: readEntries4, manifestChecks: manifestChecks4 };
 
 // packages/structure/src/packaging/languages/python.ts
-var normalise4 = (name13) => name13.toLowerCase().replace(/[-_.]+/g, "_");
+var normalise5 = (name13) => name13.toLowerCase().replace(/[-_.]+/g, "_");
 var importNames = {
   pyyaml: ["yaml"],
   pillow: ["PIL"],
@@ -19812,11 +20318,11 @@ var importNames = {
   typing_extensions: ["typing_extensions"]
 };
 function provides(requirement, importName) {
-  const name13 = normalise4(requirement);
-  const imported = normalise4(importName);
+  const name13 = normalise5(requirement);
+  const imported = normalise5(importName);
   if (name13 === imported || name13 === `python_${imported}` || name13 === `${imported}_python` || name13 === `py${imported}` || name13 === `${imported}py`) return true;
   if (name13.startsWith(`${imported}_`) || name13 === `types_${imported}`) return true;
-  return (importNames[name13] ?? []).some((candidate) => normalise4(candidate) === imported);
+  return (importNames[name13] ?? []).some((candidate) => normalise5(candidate) === imported);
 }
 var record3 = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
 function allOf(text2) {
@@ -19863,7 +20369,7 @@ async function declaredAtRoot(model) {
   const project = record3(toml.project);
   const names = /* @__PURE__ */ new Set();
   const add = (requirement) => {
-    if (typeof requirement === "string") names.add(normalise4(/^[A-Za-z0-9][A-Za-z0-9._-]*/.exec(requirement.trim())?.[0] ?? requirement));
+    if (typeof requirement === "string") names.add(normalise5(/^[A-Za-z0-9][A-Za-z0-9._-]*/.exec(requirement.trim())?.[0] ?? requirement));
   };
   if (Array.isArray(project.dependencies)) project.dependencies.forEach(add);
   for (const group of Object.values(record3(project["optional-dependencies"]))) if (Array.isArray(group)) group.forEach(add);
@@ -19892,8 +20398,8 @@ async function manifestChecks5(context, reuse) {
       if (edge.from !== pkg.id) continue;
       const target2 = model.byId.get(edge.to);
       if (target2.ecosystem !== "python") continue;
-      const entry = pkg.dependencies.find((d) => normalise4(d.name) === normalise4(target2.name));
-      if (edge.productionImports > 0 && !declaredRuntime.some((d) => normalise4(d.name) === normalise4(target2.name))) {
+      const entry = pkg.dependencies.find((d) => normalise5(d.name) === normalise5(target2.name));
+      if (edge.productionImports > 0 && !declaredRuntime.some((d) => normalise5(d.name) === normalise5(target2.name))) {
         undeclared.push({ name: target2.name, internal: true, via: "production", declaredAs: entry?.scope ?? null, atRoot: false });
       } else if (edge.productionImports === 0 && edge.testImports > 0 && entry === void 0) {
         undeclared.push({ name: target2.name, internal: true, via: "tests", declaredAs: null, atRoot: false });
@@ -19928,7 +20434,7 @@ async function manifestChecks5(context, reuse) {
       );
     }
     const used = [...outside.production, ...outside.tests];
-    const unused = pkg.dependencies.filter((d) => d.scope === "runtime" && !d.optional && !normalise4(d.name).startsWith("types_")).filter((d) => {
+    const unused = pkg.dependencies.filter((d) => d.scope === "runtime" && !d.optional && !normalise5(d.name).startsWith("types_")).filter((d) => {
       if (d.target !== null) {
         const edge = model.edges.get(edgeKey(pkg.id, d.target));
         return (edge?.productionImports ?? 0) + (edge?.testImports ?? 0) === 0;
@@ -19943,7 +20449,7 @@ async function manifestChecks5(context, reuse) {
           "boundary",
           [pkg.id],
           `${pkg.id} declares ${unused.join(", ")} and its code never uses ${unused.length === 1 ? "it" : "them"}: coupling with no purpose, and build weight`,
-          { dependencies: unused, internal: unused.filter((name13) => model.packages.some((p) => p.ecosystem === "python" && normalise4(p.name) === normalise4(name13))) }
+          { dependencies: unused, internal: unused.filter((name13) => model.packages.some((p) => p.ecosystem === "python" && normalise5(p.name) === normalise5(name13))) }
         )
       );
     }
@@ -21835,370 +22341,7 @@ var list2 = {
 };
 
 // packages/structure/src/packaging/outcome.ts
-import { existsSync as existsSync9 } from "node:fs";
-
-// packages/transcripts/src/measure-repo.ts
-import { existsSync as existsSync8, readFileSync as readFileSync7, readdirSync as readdirSync2 } from "node:fs";
-import { join as join10 } from "node:path";
-
-// packages/transcripts/src/repo-path.ts
-import { posix as posix16 } from "node:path";
-function normalise5(path) {
-  const converted = path.replaceAll("\\", "/");
-  const drive = /^[A-Za-z]:\//.exec(converted);
-  if (drive === null) return posix16.normalize(converted);
-  return drive[0] + posix16.normalize(converted.slice(drive[0].length));
-}
-function isAbsolute(path) {
-  return path.startsWith("/") || /^[A-Za-z]:\//.test(path);
-}
-function stripTrailingSlash(path) {
-  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
-}
-var EXCLUDED_SEGMENTS = /* @__PURE__ */ new Set([".git", "node_modules"]);
-function isExcluded(relative) {
-  return relative.split("/").some((part) => EXCLUDED_SEGMENTS.has(part));
-}
-function comparable(path) {
-  return /^[A-Za-z]:\//.test(path) ? path.toLowerCase() : path;
-}
-function relativeToRoots(path, roots) {
-  const ordered = roots.map((root) => stripTrailingSlash(normalise5(root))).sort((a, b) => b.length - a.length);
-  for (const root of ordered) {
-    if (comparable(path) === comparable(root)) return "";
-    const prefix = root.endsWith("/") ? root : `${root}/`;
-    if (comparable(path).startsWith(comparable(prefix))) return stripTrailingSlash(path.slice(prefix.length));
-  }
-  return null;
-}
-function isWithinRepo(path, roots) {
-  if (path === null || path === "") return true;
-  if (path.startsWith("~")) return false;
-  const normalised = normalise5(path);
-  if (!isAbsolute(normalised)) return !(normalised === ".." || normalised.startsWith("../"));
-  return relativeToRoots(normalised, roots) !== null;
-}
-function toRepoPath(path, roots) {
-  if (path === null || path === "" || path.startsWith("~")) return null;
-  const normalised = normalise5(path);
-  let relative;
-  if (isAbsolute(normalised)) {
-    relative = relativeToRoots(normalised, roots);
-  } else {
-    relative = normalised === "." || normalised === ".." || normalised.startsWith("../") ? null : normalised;
-  }
-  if (relative === null || relative === "" || isExcluded(relative)) return null;
-  return relative;
-}
-
-// packages/transcripts/src/transcript-format.ts
-var RECOGNISED_VERSION = /^2\.1\.\d+$/;
-var READ_TOOLS = /* @__PURE__ */ new Set(["Read"]);
-var SEARCH_TOOLS = /* @__PURE__ */ new Set(["Grep", "Glob"]);
-var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
-function isObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function asString(value) {
-  return typeof value === "string" ? value : null;
-}
-function count(value) {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
-}
-function pathOf(input) {
-  return asString(input["file_path"]) ?? asString(input["notebook_path"]) ?? asString(input["path"]);
-}
-function actionOf(block) {
-  const name13 = asString(block["name"]);
-  if (name13 === null) return null;
-  const input = isObject(block["input"]) ? block["input"] : {};
-  if (READ_TOOLS.has(name13)) return { kind: "read", path: pathOf(input) };
-  if (SEARCH_TOOLS.has(name13)) return { kind: "search", path: pathOf(input) };
-  if (EDIT_TOOLS.has(name13)) return { kind: "edit", path: pathOf(input) };
-  return null;
-}
-var INTERRUPT_MARKER = "[Request interrupted by user";
-function isHumanText(text2) {
-  return typeof text2 === "string" && !text2.startsWith(INTERRUPT_MARKER);
-}
-function isHumanPrompt(line, message) {
-  if (line["isMeta"] === true || line["toolUseResult"] !== void 0) return false;
-  if (line["isCompactSummary"] === true || line["isVisibleInTranscriptOnly"] === true) return false;
-  const origin = line["origin"];
-  if (isObject(origin) && origin["kind"] !== "human") return false;
-  const content = message["content"];
-  if (typeof content === "string") return isHumanText(content);
-  return Array.isArray(content) && content.some((block) => isObject(block) && block["type"] === "text" && isHumanText(block["text"]));
-}
-function compareVersions(a, b) {
-  const left = a.split(".");
-  const right = b.split(".");
-  for (let i2 = 0; i2 < Math.max(left.length, right.length); i2++) {
-    const x = left[i2] ?? "0";
-    const y = right[i2] ?? "0";
-    const numeric = /^\d+$/.test(x) && /^\d+$/.test(y);
-    const order = numeric ? Number(x) - Number(y) : x < y ? -1 : x > y ? 1 : 0;
-    if (order !== 0) return order;
-  }
-  return 0;
-}
-function earliest(lines) {
-  let best = null;
-  let bestMs = Number.POSITIVE_INFINITY;
-  for (const line of lines) {
-    const timestamp = asString(line["timestamp"]);
-    const ms = timestamp === null ? Number.NaN : Date.parse(timestamp);
-    if (timestamp !== null && ms < bestMs) {
-      best = timestamp;
-      bestMs = ms;
-    }
-  }
-  return best;
-}
-function parseTranscript(text2) {
-  const lines = [];
-  let skippedLines = 0;
-  const body2 = text2.charCodeAt(0) === 65279 ? text2.slice(1) : text2;
-  for (const raw of body2.split(/\r?\n/)) {
-    if (raw === "") continue;
-    try {
-      const parsed = JSON.parse(raw);
-      if (isObject(parsed)) lines.push(parsed);
-    } catch {
-      skippedLines++;
-    }
-  }
-  const messageLines = lines.filter((line) => line["type"] === "user" || line["type"] === "assistant");
-  const cwds = [...new Set(messageLines.flatMap((line) => typeof line["cwd"] === "string" ? [line["cwd"]] : []))].sort();
-  const notMeasured = (version, reason) => ({
-    status: "not-measured",
-    version,
-    reason,
-    startedAt: earliest(messageLines),
-    cwds
-  });
-  const versions = /* @__PURE__ */ new Set();
-  for (const line of messageLines) {
-    const version = asString(line["version"]);
-    if (version !== null) versions.add(version);
-  }
-  if (versions.size === 0) return notMeasured(null, "no versioned messages");
-  const sorted = [...versions].sort(compareVersions);
-  const unrecognised = sorted.find((version) => !RECOGNISED_VERSION.test(version));
-  if (unrecognised !== void 0) return notMeasured(unrecognised, "unrecognised transcript version");
-  const events = [];
-  const turnsById = /* @__PURE__ */ new Map();
-  for (const line of messageLines) {
-    if (line["isSidechain"] === true) continue;
-    const message = line["message"];
-    const timestamp = asString(line["timestamp"]);
-    if (line["type"] === "user") {
-      if (isObject(message) && timestamp !== null && isHumanPrompt(line, message)) {
-        events.push({ kind: "prompt", timestamp });
-      }
-      continue;
-    }
-    const id = isObject(message) ? asString(message["id"]) : null;
-    if (!isObject(message) || id === null || timestamp === null || !Array.isArray(message["content"])) {
-      skippedLines++;
-      continue;
-    }
-    let turn = turnsById.get(id);
-    if (turn === void 0) {
-      turn = {
-        kind: "agent-turn",
-        timestamp,
-        messageId: id,
-        tokens: { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 },
-        actions: []
-      };
-      turnsById.set(id, turn);
-      events.push(turn);
-    }
-    if (isObject(message["usage"])) {
-      const usage7 = message["usage"];
-      turn.tokens = {
-        input: count(usage7["input_tokens"]),
-        output: count(usage7["output_tokens"]),
-        cacheRead: count(usage7["cache_read_input_tokens"]),
-        cacheCreation: count(usage7["cache_creation_input_tokens"])
-      };
-    }
-    for (const block of message["content"]) {
-      if (!isObject(block) || block["type"] !== "tool_use") continue;
-      const action = actionOf(block);
-      if (action !== null) turn.actions.push(action);
-    }
-  }
-  return { status: "recognised", version: sorted[sorted.length - 1] ?? "", events, skippedLines, cwds };
-}
-
-// packages/transcripts/src/agent-effort.ts
-function compareBytes(a, b) {
-  return Buffer.compare(Buffer.from(a), Buffer.from(b));
-}
-function sortedBytes(values) {
-  return [...values].sort(compareBytes);
-}
-function segment(events) {
-  const tasks = [];
-  for (const event of events) {
-    if (event.kind === "prompt") tasks.push({ startedAt: event.timestamp, turns: [] });
-    else tasks.at(-1)?.turns.push(event);
-  }
-  return tasks;
-}
-function measureTask(sessionId, taskIndex, startedAt, turns, roots) {
-  const readCounts = /* @__PURE__ */ new Map();
-  const edited = /* @__PURE__ */ new Set();
-  let searches = 0;
-  let edits = 0;
-  const tokens2 = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
-  for (const turn of turns) {
-    tokens2.input += turn.tokens.input;
-    tokens2.output += turn.tokens.output;
-    tokens2.cacheRead += turn.tokens.cacheRead;
-    tokens2.cacheCreation += turn.tokens.cacheCreation;
-    for (const action of turn.actions) {
-      const path = toRepoPath(action.path, roots);
-      if (action.kind === "search") {
-        if (isWithinRepo(action.path, roots)) searches++;
-      } else if (path === null) {
-        continue;
-      } else if (action.kind === "read") {
-        readCounts.set(path, (readCounts.get(path) ?? 0) + 1);
-      } else {
-        edits++;
-        edited.add(path);
-      }
-    }
-  }
-  const reads = [...readCounts.values()].reduce((sum, n) => sum + n, 0);
-  const folders = /* @__PURE__ */ new Set();
-  for (const path of [...readCounts.keys(), ...edited]) folders.add(folderOf2(path));
-  return {
-    sessionId,
-    taskIndex,
-    startedAt,
-    reads,
-    filesRead: readCounts.size,
-    reReads: reads - readCounts.size,
-    searches,
-    foldersVisited: folders.size,
-    edits,
-    filesEdited: edited.size,
-    tokens: {
-      ...tokens2,
-      total: tokens2.input + tokens2.output + tokens2.cacheRead + tokens2.cacheCreation
-    },
-    readPaths: sortedBytes(readCounts.keys()),
-    editedPaths: sortedBytes(edited),
-    folders: sortedBytes(folders)
-  };
-}
-function measureSession(text2, sessionId, roots) {
-  const parsed = parseTranscript(text2);
-  if (parsed.status === "not-measured") {
-    return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
-  }
-  const tasks = segment(parsed.events).map((task, index) => measureTask(sessionId, index, task.startedAt, task.turns, roots)).filter((task) => task.edits > 0);
-  return { status: "measured", sessionId, version: parsed.version, tasks, cwds: parsed.cwds };
-}
-
-// packages/transcripts/src/time-window.ts
-function dateToMs(value, label) {
-  const ms = /^\d{4}-\d{2}-\d{2}$/.test(value) ? Date.parse(`${value}T00:00:00.000Z`) : Number.NaN;
-  if (Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== value) {
-    throw new Error(`${label} must be a calendar date in YYYY-MM-DD form, got "${value}"`);
-  }
-  return ms;
-}
-function parseWindow(from, to) {
-  const fromMs = dateToMs(from, "window start");
-  const toMs = dateToMs(to, "window end");
-  if (toMs <= fromMs) throw new Error(`window end ${to} must be after window start ${from}`);
-  return { from, to, fromMs, toMs };
-}
-function inWindow(window2, timestamp) {
-  const ms = Date.parse(timestamp);
-  return !Number.isNaN(ms) && ms >= window2.fromMs && ms < window2.toMs;
-}
-
-// packages/transcripts/src/measure-repo.ts
-function encodeProjectDir(cwd) {
-  return cwd.replaceAll(/[^A-Za-z0-9]/g, "-");
-}
-function compareBytes2(a, b) {
-  return Buffer.compare(Buffer.from(a), Buffer.from(b));
-}
-function round(value) {
-  return Number(value.toFixed(2));
-}
-function distribution(values) {
-  if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  const median3 = sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-  const mean2 = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
-  return { mean: round(mean2), median: round(median3) };
-}
-function summariseTasks(tasks) {
-  return {
-    tasks: tasks.length,
-    filesRead: distribution(tasks.map((t) => t.filesRead)),
-    foldersVisited: distribution(tasks.map((t) => t.foldersVisited)),
-    reReads: distribution(tasks.map((t) => t.reReads)),
-    edits: distribution(tasks.map((t) => t.edits)),
-    tokens: distribution(tasks.map((t) => t.tokens.total))
-  };
-}
-function sessionFiles(projectsDir, root) {
-  const dir = join10(projectsDir, encodeProjectDir(root));
-  if (!existsSync8(dir)) return [];
-  return readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join10(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
-}
-function measureRepo(options2) {
-  const { projectsDir, repoRoots, window: window2 } = options2;
-  const seen = /* @__PURE__ */ new Set();
-  const tasks = [];
-  const notMeasured = [];
-  let measured = 0;
-  for (const root of repoRoots) {
-    for (const file of sessionFiles(projectsDir, root)) {
-      if (seen.has(file.path)) continue;
-      seen.add(file.path);
-      let text2;
-      try {
-        text2 = readFileSync7(file.path, "utf8");
-      } catch {
-        continue;
-      }
-      const result = measureSession(text2, file.sessionId, repoRoots);
-      if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;
-      if (result.status === "not-measured") {
-        if (result.startedAt !== null && inWindow(window2, result.startedAt)) {
-          notMeasured.push({ sessionId: result.sessionId, version: result.version, reason: result.reason });
-        }
-        continue;
-      }
-      const inside = result.tasks.filter((task) => inWindow(window2, task.startedAt));
-      if (inside.length > 0) measured++;
-      tasks.push(...inside);
-    }
-  }
-  tasks.sort(
-    (a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt) || compareBytes2(a.sessionId, b.sessionId) || a.taskIndex - b.taskIndex
-  );
-  notMeasured.sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
-  return {
-    window: { from: window2.from, to: window2.to },
-    sessions: { measured, notMeasured },
-    tasks,
-    summary: summariseTasks(tasks)
-  };
-}
-
-// packages/structure/src/packaging/outcome.ts
+import { existsSync as existsSync10 } from "node:fs";
 var median2 = (values) => {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -22265,7 +22408,7 @@ function medianDistance(model, reuse) {
   const middle = median2(distances);
   return middle === null ? null : round3(middle);
 }
-var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+var day2 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 async function measureOutcome2(root, settings, changes, anchor, options2) {
   const resolve = async (rev) => {
     try {
@@ -22330,10 +22473,10 @@ async function measureOutcome2(root, settings, changes, anchor, options2) {
   const dirsOf = (model, ids) => model.packages.filter((p) => ids.has(p.id) && p.dir !== null).map((p) => p.dir === "." ? "" : p.dir);
   const effort = () => {
     const projectsDir = options2.projectsDir;
-    if (projectsDir === void 0 || !existsSync9(projectsDir)) {
+    if (projectsDir === void 0 || !existsSync10(projectsDir)) {
       return { status: "not-measured", reason: projectsDir === void 0 ? "no --projects-dir was given" : `${projectsDir} does not exist` };
     }
-    const windowOf = (from, to) => parseWindow(day(from), day(to));
+    const windowOf = (from, to) => parseWindow(day2(from), day2(to));
     const touching = (tasks, dirs) => tasks.filter((t) => t.editedPaths.some((p) => dirs.some((d) => d === "" || p === d || p.startsWith(`${d}/`))));
     const measure = (from, to) => measureRepo({ projectsDir, repoRoots: [root], window: windowOf(from, to) }).tasks;
     const beforeTasks = measure(monthsBefore(date, settings.windowMonths), date);
@@ -22590,6 +22733,7 @@ var rules9 = {
 var command11 = analysisCommand(name12, {
   summary: "Structural and change stability of folders or components, and dependencies pointing against stability",
   options: { by: { type: "string" } },
+  optionHelp: { by: "what a module is: folder or component (default folder)" },
   partial: ({ values }) => values.by !== void 0 && values.by !== "folder",
   async analyse({ context, history }) {
     const by = readLevel("by", context.values.by, levels2, "folder");

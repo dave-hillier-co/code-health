@@ -469,12 +469,14 @@ function helpText(cli2) {
   ].join("\n");
 }
 function commandHelp(cli2, name14, command14) {
-  const own = Object.entries(command14.options ?? {}).map(([option, spec]) => {
-    const argument = spec.type === "string" ? ` <${option}>` : "";
-    return `  --${option}${argument}`;
-  });
+  const flags = Object.entries(command14.options ?? {}).map(([option, spec]) => [
+    `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
+    command14.optionHelp?.[option] ?? ""
+  ]);
+  const width = Math.max(0, ...flags.map(([flag]) => flag.length));
+  const own = flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`);
   return [
-    `Usage: ${cli2.tool} ${name14} [options]`,
+    `Usage: ${cli2.tool} ${name14}${command14.usage === void 0 ? "" : ` ${command14.usage}`} [options]`,
     "",
     command14.summary,
     "",

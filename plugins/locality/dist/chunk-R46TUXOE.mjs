@@ -4,13 +4,13 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   GrammarSet,
   cacheKeyOf
-} from "./chunk-KV56MSHG.mjs";
+} from "./chunk-EUZU5IVE.mjs";
 import {
   isConfigPath,
   isTestPath,
   resolveBySymbols,
   supportedAdapters
-} from "./chunk-LPGP6MCF.mjs";
+} from "./chunk-T5M6AR2G.mjs";
 
 // packages/parse/src/file-facts.ts
 function parseWith(adapter, grammar, source, options = {}) {
@@ -376,6 +376,8 @@ function assemble(facts, resolved) {
         source: unit.source,
         ...unit.parent === void 0 ? {} : { parent: unit.parent },
         ...unit.metrics === void 0 ? {} : { metrics: unit.metrics },
+        ...unit.recursive === true ? { recursive: true } : {},
+        ...unit.override === true ? { override: true } : {},
         exported: unit.parent === void 0 && exportedLocals.has(unit.qualifiedName)
       });
     }
