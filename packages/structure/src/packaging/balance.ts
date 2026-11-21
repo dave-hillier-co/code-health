@@ -4,7 +4,7 @@ import { measureClosure } from "./closure.ts";
 import type { Finding, Principle } from "./findings.ts";
 import { consumerPackages, isPublished, isYoung, type PackageModel } from "./model.ts";
 import { deployablesOf, versionChanges } from "./release.ts";
-import type { ReuseAnalysis } from "./reuse.ts";
+import type { ReuseAnalysis } from "./reuse-profile.ts";
 
 /** Which of the three cohesion forces a package's situation makes matter most. */
 export type Force = "closure" | "reuse" | "release" | "tentative" | "mixed";

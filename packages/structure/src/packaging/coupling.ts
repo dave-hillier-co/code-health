@@ -6,7 +6,7 @@ import { edgeKey } from "../project.ts";
 import { round3 } from "../stability.ts";
 import { measureAbstractness, type Abstractness } from "./abstractness.ts";
 import { percent, raise, type Finding, type FindingContext } from "./findings.ts";
-import type { ReuseAnalysis } from "./reuse.ts";
+import type { ReuseAnalysis } from "./reuse-profile.ts";
 
 const edgeList = (edges: readonly { from: string; to: string }[]): string[] => edges.map((e) => `${e.from}->${e.to}`);
 

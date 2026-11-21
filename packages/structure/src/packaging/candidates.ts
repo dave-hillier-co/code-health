@@ -6,7 +6,7 @@ import { independenceTail } from "./changes.ts";
 import type { Finding } from "./findings.ts";
 import { consumerPackages, isPublished, isYoung, purposeOf, type PackageModel } from "./model.ts";
 import { deployablesOf } from "./release.ts";
-import type { ExportComponent, ReuseAnalysis } from "./reuse.ts";
+import type { ExportComponent, ReuseAnalysis } from "./reuse-profile.ts";
 
 export type CandidateKind = "merge" | "split" | "move-unit" | "narrow-interface" | "fix-manifest" | "break-dependency";
 

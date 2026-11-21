@@ -5,7 +5,8 @@ import { externalNeeds } from "./externals.ts";
 import { findingContext, rankFindings, type Finding, type FindingContext } from "./findings.ts";
 import type { PackageModel } from "./model.ts";
 import { releaseFindings } from "./release.ts";
-import { analyseReuse, type ReuseAnalysis } from "./reuse.ts";
+import { analyseReuse } from "./reuse.ts";
+import type { ReuseAnalysis } from "./reuse-profile.ts";
 import { reuseFindings } from "./reuse-findings.ts";
 
 /** Every finding of every family for one commit, with what the structural layer read to make them. */

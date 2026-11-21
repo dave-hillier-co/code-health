@@ -1,7 +1,7 @@
 import { compareIds } from "@code-health/graph/graph";
 import { round3 } from "../stability.ts";
 import { percent, raise, type Finding, type FindingContext } from "./findings.ts";
-import type { ReuseAnalysis, ReuseProfile } from "./reuse.ts";
+import type { ReuseAnalysis, ReuseProfile } from "./reuse-profile.ts";
 
 const shortName = (key: string): string => key.slice(key.lastIndexOf("#") + 1);
 

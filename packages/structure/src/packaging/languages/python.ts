@@ -5,9 +5,9 @@ import { edgeKey } from "../../project.ts";
 import type { DeclaredDependency } from "../discovery.ts";
 import type { PackageEntries } from "../entries.ts";
 import { raise, type Finding, type FindingContext } from "../findings.ts";
-import type { PackagingLanguage } from "../language.ts";
+import type { PackagingLanguage } from "../packaging-language.ts";
 import type { PackageModel } from "../model.ts";
-import type { ReuseAnalysis } from "../reuse.ts";
+import type { ReuseAnalysis } from "../reuse-profile.ts";
 
 /** How a requirement is compared with an import: case, `-`, `_` and `.` do not matter. */
 const normalise = (name: string): string => name.toLowerCase().replace(/[-_.]+/g, "_");

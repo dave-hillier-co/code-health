@@ -1,6 +1,3 @@
-import type { PackageModel } from "./model.ts";
-import { packagingLanguages } from "./language.ts";
-
 /** The files through which a package is meant to be used. */
 export interface PackageEntries {
   id: string;
@@ -15,16 +12,4 @@ export interface PackageEntries {
    * surface: a leading underscore, or a name left out of `__all__`. Absent when the language marks whole files only.
    */
   hidden?: ReadonlySet<string>;
-}
-
-/**
- * Reads the entry files of the packages the structural layer can read, each through the packaging language
- * of its ecosystem. A package no language reads has no entry.
- */
-export async function readEntries(model: PackageModel): Promise<Map<string, PackageEntries>> {
-  const entries = new Map<string, PackageEntries>();
-  for (const language of packagingLanguages) {
-    for (const [id, found] of await language.readEntries(model)) entries.set(id, found);
-  }
-  return entries;
 }

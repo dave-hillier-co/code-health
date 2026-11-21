@@ -3,9 +3,9 @@ import { parseGoMod, parseGoWork } from "@code-health/parse/languages/go/go-mod"
 import { edgeKey } from "../../project.ts";
 import type { PackageEntries } from "../entries.ts";
 import { raise, type Finding, type FindingContext } from "../findings.ts";
-import type { PackagingLanguage } from "../language.ts";
+import type { PackagingLanguage } from "../packaging-language.ts";
 import type { PackageModel } from "../model.ts";
-import type { ReuseAnalysis } from "../reuse.ts";
+import type { ReuseAnalysis } from "../reuse-profile.ts";
 
 /**
  * The internals marker of Go (packaging.md, Languages): what a module exposes is what another module can

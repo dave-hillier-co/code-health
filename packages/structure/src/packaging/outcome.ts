@@ -13,7 +13,8 @@ import { measureAbstractness } from "./abstractness.ts";
 import { structuralModel } from "./check.ts";
 import type { PackageIndex } from "./discovery.ts";
 import type { PackageModel } from "./model.ts";
-import { analyseReuse, type ReuseAnalysis } from "./reuse.ts";
+import { analyseReuse } from "./reuse.ts";
+import type { ReuseAnalysis } from "./reuse-profile.ts";
 
 /** One window's figures for the reshaped unit, and for the packages left alone. */
 export interface WindowFigures {

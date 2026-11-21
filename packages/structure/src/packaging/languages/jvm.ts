@@ -3,7 +3,7 @@ import { edgeKey } from "../../project.ts";
 import type { PackageEntries } from "../entries.ts";
 import { raise, type Finding, type FindingContext } from "../findings.ts";
 import type { PackageModel } from "../model.ts";
-import type { ReuseAnalysis } from "../reuse.ts";
+import type { ReuseAnalysis } from "../reuse-profile.ts";
 
 /**
  * What Java and Kotlin share in packaging: Gradle and Maven modules are the packages, and what a module exposes

@@ -4,9 +4,9 @@ import { isHeader } from "@code-health/parse/languages/cpp/extensions";
 import { edgeKey } from "../../project.ts";
 import type { PackageEntries } from "../entries.ts";
 import { raise, type Finding, type FindingContext } from "../findings.ts";
-import type { PackagingLanguage } from "../language.ts";
+import type { PackagingLanguage } from "../packaging-language.ts";
 import type { PackageModel } from "../model.ts";
-import type { ReuseAnalysis } from "../reuse.ts";
+import type { ReuseAnalysis } from "../reuse-profile.ts";
 
 /**
  * The entry files of CMake targets that have C++ code. The internals marker of a C++ package is its public

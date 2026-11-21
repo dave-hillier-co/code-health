@@ -3,9 +3,9 @@ import { isConfigPath, SpecifierResolver } from "@code-health/parse/languages/ty
 import { edgeKey } from "../../project.ts";
 import type { PackageEntries } from "../entries.ts";
 import { raise, type Finding, type FindingContext } from "../findings.ts";
-import type { PackagingLanguage } from "../language.ts";
+import type { PackagingLanguage } from "../packaging-language.ts";
 import type { PackageModel } from "../model.ts";
-import type { ReuseAnalysis } from "../reuse.ts";
+import type { ReuseAnalysis } from "../reuse-profile.ts";
 
 /** The name `@types/...` gives to the declarations of a package. */
 const typesName = (name: string): string => `@types/${name.startsWith("@") ? name.slice(1).replace("/", "__") : name}`;

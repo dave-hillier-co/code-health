@@ -5,7 +5,7 @@ import { edgeKey } from "../project.ts";
 import { raise, type Finding, type FindingContext } from "./findings.ts";
 import { packagingLanguages } from "./language.ts";
 import { consumerPackages, purposeOf } from "./model.ts";
-import type { ReuseAnalysis } from "./reuse.ts";
+import type { ReuseAnalysis } from "./reuse-profile.ts";
 
 interface Imports {
   files: Set<string>;

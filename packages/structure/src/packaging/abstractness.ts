@@ -1,6 +1,6 @@
 import { adapterForPath } from "@code-health/parse/languages";
 import { round3 } from "../stability.ts";
-import type { ReuseAnalysis } from "./reuse.ts";
+import type { ReuseAnalysis } from "./reuse-profile.ts";
 
 /** Martin's `A`, from the exported types of a package. */
 export interface Abstractness {

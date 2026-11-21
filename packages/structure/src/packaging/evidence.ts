@@ -5,7 +5,7 @@ import type { Finding } from "./findings.ts";
 import { packageRows, type PackageRow } from "./list.ts";
 import { consumerPackages, type PackageEdge, type PackageModel } from "./model.ts";
 import { balances, type Balance } from "./balance.ts";
-import type { ReuseProfile } from "./reuse.ts";
+import type { ReuseProfile } from "./reuse-profile.ts";
 import { edgeKey } from "../project.ts";
 import { describeEdge, type SymbolUse } from "../modules.ts";
 

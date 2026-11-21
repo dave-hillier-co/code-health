@@ -4,7 +4,7 @@ import { round3 } from "../stability.ts";
 import { percent, raise, type Finding, type FindingContext } from "./findings.ts";
 import { consumerPackages, isPublished, isYoung, overrideOf, purposeOf, type PackageModel } from "./model.ts";
 import type { DiscoveredPackage } from "./discovery.ts";
-import type { ReuseAnalysis } from "./reuse.ts";
+import type { ReuseAnalysis } from "./reuse-profile.ts";
 
 /** The deployables a package ships in: what config says, otherwise every entry point that reaches it. */
 export function deployablesOf(model: PackageModel, id: string): string[] {
