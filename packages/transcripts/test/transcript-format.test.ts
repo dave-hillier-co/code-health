@@ -76,7 +76,12 @@ test("tool calls are classified as read, search or edit by name, and unknown too
 
 test("an unrecognised version is not measured, and names the version", () => {
   const parsed = parseTranscript(new SyntheticSession({ version: "3.0.1" }).prompt().toJsonl());
-  expect(parsed).toEqual({ status: "not-measured", version: "3.0.1", reason: "unrecognised transcript version" });
+  expect(parsed).toEqual({
+    status: "not-measured",
+    version: "3.0.1",
+    reason: "unrecognised transcript version",
+    startedAt: "2026-03-01T09:00:01.000Z",
+  });
 });
 
 test("a transcript with no version stamps is not measured", () => {

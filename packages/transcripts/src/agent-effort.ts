@@ -31,7 +31,7 @@ export interface TaskEffort {
 
 export type SessionMeasurement =
   | { status: "measured"; sessionId: string; version: string; tasks: TaskEffort[] }
-  | { status: "not-measured"; sessionId: string; version: string | null; reason: string };
+  | { status: "not-measured"; sessionId: string; version: string | null; reason: string; startedAt: string | null };
 
 function compareBytes(a: string, b: string): number {
   return Buffer.compare(Buffer.from(a), Buffer.from(b));
@@ -115,7 +115,7 @@ function measureTask(
 export function measureSession(text: string, sessionId: string, roots: readonly string[]): SessionMeasurement {
   const parsed = parseTranscript(text);
   if (parsed.status === "not-measured") {
-    return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason };
+    return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt };
   }
   const tasks = segment(parsed.events)
     .map((task, index) => measureTask(sessionId, index, task.startedAt, task.turns, roots))

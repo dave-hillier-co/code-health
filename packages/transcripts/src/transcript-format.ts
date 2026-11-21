@@ -36,7 +36,7 @@ export type SessionEvent =
 
 export type ParsedTranscript =
   | { status: "recognised"; version: string; events: SessionEvent[] }
-  | { status: "not-measured"; version: string | null; reason: string };
+  | { status: "not-measured"; version: string | null; reason: string; startedAt: string | null };
 
 const RECOGNISED_VERSION = /^2\.1\.\d+$/;
 
@@ -81,8 +81,19 @@ function isHumanPrompt(line: Json, message: Json): boolean {
   return Array.isArray(content) && content.some((block) => isObject(block) && block["type"] === "text");
 }
 
-function notMeasured(version: string | null, reason: string): ParsedTranscript {
-  return { status: "not-measured", version, reason };
+/** Earliest timestamp among message lines, so a session not measured can still be placed in a time window. */
+function earliest(lines: readonly Json[]): string | null {
+  let best: string | null = null;
+  let bestMs = Number.POSITIVE_INFINITY;
+  for (const line of lines) {
+    const timestamp = asString(line["timestamp"]);
+    const ms = timestamp === null ? Number.NaN : Date.parse(timestamp);
+    if (timestamp !== null && ms < bestMs) {
+      best = timestamp;
+      bestMs = ms;
+    }
+  }
+  return best;
 }
 
 export function parseTranscript(text: string): ParsedTranscript {
@@ -98,6 +109,12 @@ export function parseTranscript(text: string): ParsedTranscript {
   }
 
   const messageLines = lines.filter((line) => line["type"] === "user" || line["type"] === "assistant");
+  const notMeasured = (version: string | null, reason: string): ParsedTranscript => ({
+    status: "not-measured",
+    version,
+    reason,
+    startedAt: earliest(messageLines),
+  });
   const versions = new Set<string>();
   for (const line of messageLines) {
     const version = asString(line["version"]);
