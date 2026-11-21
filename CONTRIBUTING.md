@@ -92,6 +92,7 @@ Skill evals run with `claude plugin eval`, which bills tokens, so they run on de
 
 - Format: `schema_version: "1.0"`, `name` (equal to the folder name), `execution.prompt`, `execution.model`, optional `runs`, `max_turns`, `timeout_seconds`, `tags`, and at least one grader (`regex`, `tool_used`, `tool_order`, `file_exists`, `llm`, `baseline`) with unique names. `scripts/eval-case.schema.json` is the schema `claude plugin eval` loads against. `plugins/cochange/evals/smoke/case.yaml` is a minimal example.
 - Use `case.yaml`, not the `prompt.md` form, because only `case.yaml` can pin the model.
+- A case that needs a repository sets `context.scaffold_script`, which runs only when `--scaffold` is passed. List the tools a case needs in `execution.allowed_tools`, and grant them with `--allow-tools`: `npm run evals -- <plugin> -- --scaffold --allow-tools Bash,Read,Edit,Write,Grep,Glob`.
 - `shared/evals.json` pins `model`, `judgeModel` and `maxCostUsd`. Every case sets `execution.model` to the pinned model, and `npm run check:evals` (part of `npm run check` and CI) validates every case without running it.
 - Cover triggering (the skill loads on relevant prompts and not on unrelated ones) and behaviour (it runs the CLI, respects commit discipline, cites red flags).
 

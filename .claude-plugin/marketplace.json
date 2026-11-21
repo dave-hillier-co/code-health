@@ -11,7 +11,7 @@
     {
       "name": "complexity",
       "source": "./plugins/complexity",
-      "description": "Finds the functions that are hard to understand in code that changes, ranks them by cognitive and cyclomatic complexity, and guards CI against regressions"
+      "description": "Finds the functions that are hard to understand, guides simplifications that avoid shallow helpers, and guards CI against regressions."
     }
   ]
 }
