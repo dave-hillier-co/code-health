@@ -1,0 +1,17 @@
+schema_version: "1.0"
+name: trigger-who-reviews
+description: "The change-risk skill loads when someone asks what a reviewer should look at, or who should review a pull request."
+tags: [trigger, positive, risk]
+runs: 3
+execution:
+  prompt: "This pull request touches billing and a couple of auth files. What should the reviewer look at, and who should review it?"
+  model: claude-sonnet-5-5
+  max_turns: 6
+  timeout_seconds: 180
+graders:
+  - type: "tool_used"
+    name: "loads-the-change-risk-skill"
+    tool: "Skill"
+    input_match: "change-risk"
+    min: 1
+    arm: "with-only"

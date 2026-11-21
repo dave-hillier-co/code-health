@@ -1,0 +1,17 @@
+schema_version: "1.0"
+name: no-trigger-risk-cochange-question
+description: "The change-risk skill stays unloaded on a question about one file's history, which the cochange skill answers, and on a task that has no branch to assess."
+tags: [trigger, negative, risk]
+runs: 3
+execution:
+  prompt: "Which files usually change together with src/billing/invoice.ts? I just want to understand the codebase, there is no branch yet."
+  model: claude-sonnet-5-5
+  max_turns: 6
+  timeout_seconds: 180
+graders:
+  - type: "tool_used"
+    name: "does-not-load-the-change-risk-skill"
+    tool: "Skill"
+    input_match: "change-risk"
+    max: 0
+    arm: "with-only"
