@@ -1,0 +1,135 @@
+{
+  "barrels": [
+    "src/billing/index.ts"
+  ],
+  "command": "analyse",
+  "config": "59e9516fe0a1f9ff",
+  "filesWithSyntaxErrors": [],
+  "history": {
+    "activeContributors": 1,
+    "grade": "weak",
+    "logicalChangesInWindow": 34,
+    "usableHistoryMonths": 12,
+    "window": {
+      "months": 12,
+      "since": 1704099600,
+      "until": 1735722000
+    }
+  },
+  "inputs": {
+    "entries": [
+      "src/main.ts"
+    ],
+    "entrySource": "config",
+    "paths": [],
+    "recommendation": "review"
+  },
+  "metrics": {
+    "maxDepth": 3,
+    "singleFileFolders": 4,
+    "totalWeightedDistance": 60
+  },
+  "repo": {
+    "dirty": false,
+    "head": "78ddadd4de155734ef2b56a253b72b25b5f87053"
+  },
+  "results": [
+    {
+      "age": 365,
+      "blockers": [],
+      "churn": 23,
+      "coChange": {
+        "amongConsumers": null,
+        "consumers": [
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/main.ts",
+            "support": 0
+          }
+        ]
+      },
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/main.ts"
+        }
+      ],
+      "distance": 1,
+      "fanIn": 1,
+      "gain": 2,
+      "lastChanged": "2024-01-01",
+      "location": "src",
+      "netDistance": {
+        "atTarget": 7,
+        "current": 9
+      },
+      "otherRefs": [],
+      "ownDeps": [
+        "src/shared/helpers/mixed.ts",
+        "src/shared/log.ts",
+        "src/shared/utils/money.ts"
+      ],
+      "path": "src/orders/place.ts",
+      "recommendation": "review",
+      "rule": "scattered-unit",
+      "score": 2,
+      "signals": [],
+      "size": {
+        "files": 5,
+        "lines": 23,
+        "units": 5
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/shared",
+      "testRefs": {
+        "external": [],
+        "owned": [
+          "src/shared/utils/slug.test.ts"
+        ]
+      },
+      "unblockedGain": 2,
+      "unit": {
+        "cycle": true,
+        "entries": [],
+        "files": [
+          "src/orders/audit.ts",
+          "src/orders/place.ts",
+          "src/shared/cycle/a.ts",
+          "src/shared/cycle/b.ts",
+          "src/shared/utils/slug.ts"
+        ],
+        "kind": "branch",
+        "root": "src/orders/place.ts",
+        "tests": [
+          "src/shared/utils/slug.test.ts"
+        ]
+      },
+      "visibility": "exported"
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "byRecommendation": {
+      "blocked": 3,
+      "inline": 3,
+      "move": 5,
+      "review": 1,
+      "scrutinise": 1,
+      "split": 1
+    },
+    "files": 31,
+    "units": 30
+  },
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 1
+  },
+  "unreachable": [
+    "src/legacy/dead.ts"
+  ],
+  "unresolved": {}
+}

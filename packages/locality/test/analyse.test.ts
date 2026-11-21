@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { reportPath } from "../src/reports.ts";
+import { ruleDescriptions } from "../src/rules.ts";
 import { expectGolden, withoutMeta } from "./support/golden.ts";
 import { runLocality } from "./support/run.ts";
 import { distantHelpers } from "./support/scenarios.ts";
@@ -196,4 +197,16 @@ test("explain describes every rule the analyser can name", async () => {
   }
   const { stdout: one } = await runLocality(repo.path, ["explain", "pass-through"]);
   expect(one).toMatch(/^pass-through: /);
+});
+
+test.each(["inline", "move", "split", "blocked", "scrutinise", "review"])("the %s candidates match their golden", async (recommendation) => {
+  const { stdout, rows } = await analyse("--recommendation", recommendation);
+  expect(rows.length).toBeGreaterThan(0);
+  expectGolden("distant-helpers", `analyse.${recommendation}`, stdout);
+});
+
+test.each(Object.keys(ruleDescriptions))("explain %s prints the rule's summary and its explanation", async (rule) => {
+  const run = await runLocality(repo.path, ["explain", rule]);
+  expect(run.code).toBe(ExitCode.Success);
+  expect(run.stdout).toBe(`${rule}: ${ruleDescriptions[rule]!.summary}\n\n${ruleDescriptions[rule]!.explanation}\n`);
 });

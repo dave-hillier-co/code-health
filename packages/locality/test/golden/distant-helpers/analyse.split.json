@@ -1,0 +1,181 @@
+{
+  "barrels": [
+    "src/billing/index.ts"
+  ],
+  "command": "analyse",
+  "config": "59e9516fe0a1f9ff",
+  "filesWithSyntaxErrors": [],
+  "history": {
+    "activeContributors": 1,
+    "grade": "weak",
+    "logicalChangesInWindow": 34,
+    "usableHistoryMonths": 12,
+    "window": {
+      "months": 12,
+      "since": 1704099600,
+      "until": 1735722000
+    }
+  },
+  "inputs": {
+    "entries": [
+      "src/main.ts"
+    ],
+    "entrySource": "config",
+    "paths": [],
+    "recommendation": "split"
+  },
+  "metrics": {
+    "maxDepth": 3,
+    "singleFileFolders": 4,
+    "totalWeightedDistance": 60
+  },
+  "repo": {
+    "dirty": false,
+    "head": "78ddadd4de155734ef2b56a253b72b25b5f87053"
+  },
+  "results": [
+    {
+      "age": 365,
+      "blockers": [],
+      "churn": 6,
+      "coChange": {
+        "amongConsumers": null,
+        "consumers": [
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/billing/charge.ts",
+            "support": 0
+          },
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/orders/place.ts",
+            "support": 0
+          }
+        ]
+      },
+      "cohesion": {
+        "components": [
+          {
+            "consumerFolders": [
+              "src/billing"
+            ],
+            "consumers": [
+              "src/billing/charge.ts"
+            ],
+            "distance": 3,
+            "fanIn": 1,
+            "gain": 3,
+            "lines": 3,
+            "location": "src/shared/helpers",
+            "recommendation": "inline",
+            "rule": "single-consumer-tiny",
+            "symbols": [
+              "invoiceLabel"
+            ],
+            "target": "src/billing"
+          },
+          {
+            "consumerFolders": [
+              "src/orders"
+            ],
+            "consumers": [
+              "src/orders/place.ts"
+            ],
+            "distance": 3,
+            "fanIn": 1,
+            "gain": 3,
+            "lines": 3,
+            "location": "src/shared/helpers",
+            "recommendation": "inline",
+            "rule": "single-consumer-tiny",
+            "symbols": [
+              "orderLabel"
+            ],
+            "target": "src/orders"
+          }
+        ],
+        "mixed": true
+      },
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/billing/charge.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/orders/place.ts"
+        }
+      ],
+      "distance": 2,
+      "fanIn": 2,
+      "gain": 4,
+      "lastChanged": "2024-01-01",
+      "location": "src/shared/helpers",
+      "netDistance": {
+        "atTarget": 2,
+        "current": 6
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/helpers/mixed.ts",
+      "recommendation": "split",
+      "rule": "mixed-exports",
+      "score": 6,
+      "signals": [
+        {
+          "detail": "helpers",
+          "name": "vague-name"
+        }
+      ],
+      "size": {
+        "files": 1,
+        "lines": 6,
+        "units": 2
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 4,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/helpers/mixed.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/helpers/mixed.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "byRecommendation": {
+      "blocked": 3,
+      "inline": 3,
+      "move": 5,
+      "review": 1,
+      "scrutinise": 1,
+      "split": 1
+    },
+    "files": 31,
+    "units": 30
+  },
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 1
+  },
+  "unreachable": [
+    "src/legacy/dead.ts"
+  ],
+  "unresolved": {}
+}
