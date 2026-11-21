@@ -3,6 +3,7 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "../support/golden.ts";
 import { runStructure } from "../support/run.ts";
+import { add, commit } from "./support/scenarios.ts";
 import { violationsRepository } from "./support/violations.ts";
 
 let repo: GitFixture;
@@ -48,10 +49,34 @@ describe("against a base revision", () => {
     expect(run.stderr).toContain("is not a revision");
   });
 
-  test("with no base and no main branch to compare with, it says to pass one", async () => {
+  test("on the main branch with nothing ahead of it, nothing is new and it exits 0", async () => {
     const run = await check();
-    expect(run.code).toBe(ExitCode.Usage);
-    expect(run.stderr).toContain("pass --base");
+    expect(run.code).toBe(ExitCode.Success);
+    expect(JSON.parse(run.stdout)).toMatchObject({ results: [], summary: { added: 0 } });
+  });
+
+  test("structure.base is the base when --base is not given", async () => {
+    const { fixture, base: first } = violationsRepository();
+    try {
+      fixture.apply([commit("Configure the base", "2024-01-03T09:00:00Z", [add("code-health.json", JSON.stringify({ structure: { base: first } }))])]);
+      const run = await runStructure(fixture.path, ["packages", "check", "--json"]);
+      expect(run.code).toBe(ExitCode.CheckFailed);
+      expect(JSON.parse(run.stdout).results).toHaveLength(3);
+    } finally {
+      fixture.dispose();
+    }
+  });
+
+  test("structure.mainBranch names the branch to compare with, and without one it says to pass a base", async () => {
+    const { fixture } = violationsRepository();
+    try {
+      fixture.apply([commit("Name a trunk that does not exist", "2024-01-03T09:00:00Z", [add("code-health.json", JSON.stringify({ structure: { mainBranch: "trunk" } }))])]);
+      const run = await runStructure(fixture.path, ["packages", "check", "--json"]);
+      expect(run.code).toBe(ExitCode.Environment);
+      expect(run.stderr).toContain("--base");
+    } finally {
+      fixture.dispose();
+    }
   });
 });
 

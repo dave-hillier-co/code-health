@@ -1,10 +1,10 @@
-import { usageError } from "@code-health/cli-kit/errors";
 import { readComponents } from "@code-health/cochange/components";
 import { runGit } from "@code-health/history/git";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import type { FilteredHistory } from "@code-health/history/noise";
 import type { StructureSettings } from "../config.ts";
 import { loadProject } from "../project.ts";
+import { resolveBase } from "../regressions.ts";
 import { deepImports, manifestChecks } from "./boundaries.ts";
 import { packageCycles } from "./coupling.ts";
 import { discoverPackages } from "./discovery.ts";
@@ -56,27 +56,9 @@ export async function structuralModel(root: string, sha: string, settings: Struc
 }
 
 /**
- * The revision to compare with: the one named, or the merge base of HEAD and the main branch. The main
- * branch is the configured `branch`, else the first of origin/main, origin/master, main and master that exists.
+ * The revision to compare with: the one named, else `structure.base`, else the merge base of the analysed
+ * commit with `structure.mainBranch` (or its `origin/` counterpart), as `structure check` does.
  */
-export async function baseRevision(root: string, requested: string | undefined, settings: StructureSettings): Promise<string> {
-  if (requested !== undefined) {
-    try {
-      return (await runGit(root, ["rev-parse", "--verify", `${requested}^{commit}`])).trim();
-    } catch {
-      throw usageError(`--base "${requested}" is not a revision of this repository`);
-    }
-  }
-  const candidates = [settings.ref === "HEAD" ? undefined : settings.ref, "origin/main", "origin/master", "main", "master"].filter((c): c is string => c !== undefined);
-  for (const candidate of candidates) {
-    try {
-      const head = (await runGit(root, ["rev-parse", "--verify", "HEAD"])).trim();
-      const other = (await runGit(root, ["rev-parse", "--verify", `${candidate}^{commit}`])).trim();
-      if (other === head) continue;
-      return (await runGit(root, ["merge-base", "HEAD", candidate])).trim();
-    } catch {
-      // not a branch here, or no common ancestor
-    }
-  }
-  throw usageError("no base revision: pass --base <rev>, or configure structure.branch to the main branch");
+export async function baseRevision(root: string, headSha: string, requested: string | undefined, settings: StructureSettings): Promise<string> {
+  return (await resolveBase(root, headSha, settings, requested)).sha;
 }

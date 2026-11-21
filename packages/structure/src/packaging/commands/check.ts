@@ -7,7 +7,7 @@ export const check: Subcommand = {
   async analyse({ context, history, model }) {
     const { root } = context.repo;
     const requested = typeof context.values.base === "string" ? context.values.base : undefined;
-    const base = await baseRevision(root, requested, history.settings);
+    const base = await baseRevision(root, model.headSha, requested, history.settings);
     const before = new Set((await violationsAt(root, base, history.settings)).map((v) => v.key));
     const now = await violationsAt(root, model.headSha, history.settings, model);
     const added = now.filter((v) => !before.has(v.key));
