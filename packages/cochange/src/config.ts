@@ -5,6 +5,7 @@ import { DEFAULT_EVIDENCE_THRESHOLDS, type EvidenceThresholds } from "@code-heal
 import type { MappingLocation } from "@code-health/history/identity-decisions";
 import { DEFAULT_MAX_CHANGESET_SIZE } from "@code-health/history/noise";
 import { DEFAULT_RENAME_LIMIT, DEFAULT_SIMILARITY } from "@code-health/history/refresh";
+import { KNOWLEDGE_DEFAULTS } from "./abandonment/settings.ts";
 import { TOOL } from "./tool.ts";
 
 /**
@@ -55,6 +56,8 @@ export const cochangeConfig: PluginConfigSpec = {
       /** Commits in the analysis window that make an unmapped identity significant, whether or not it holds lines. */
       significantCommits: 3,
     },
+    /** The abandonment analysis. Off until `enabled` is true. */
+    knowledge: { ...KNOWLEDGE_DEFAULTS, alphas: [...KNOWLEDGE_DEFAULTS.alphas] },
     evidence: {
       strong: { ...DEFAULT_EVIDENCE_THRESHOLDS.strong },
       moderate: { ...DEFAULT_EVIDENCE_THRESHOLDS.moderate },
