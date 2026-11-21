@@ -581,6 +581,9 @@ class Extractor {
     declaredNames(declaration, names);
     const name = declaration.childForFieldName("name");
     if (names.length === 0 && name) names.push(name.text);
+    // `export import X = N;` names X with its first identifier child rather than a name field.
+    const alias = declaration.type === "import_alias" ? declaration.namedChildren.find((c) => c.type === "identifier") : undefined;
+    if (names.length === 0 && alias) names.push(alias.text);
     if (isDefault) {
       const anonymous = functionTypes.has(declaration.type) || classTypes.has(declaration.type);
       const unitName = name?.text ?? "default";
