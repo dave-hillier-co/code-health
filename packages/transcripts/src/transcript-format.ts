@@ -9,7 +9,17 @@
  * `message`. An assistant message is written as one line per content block, all
  * sharing `message.id` and repeating the same `message.usage`. A human prompt is
  * a `user` line with no `toolUseResult` whose `origin.kind` is absent or
- * `human`. Every other line type is metadata and ignored.
+ * `human`, and which is not synthetic: compaction summaries (`isCompactSummary`), lines shown only
+ * in the transcript, and `[Request interrupted by user...]` markers are not prompts. Every other line
+ * type is metadata and ignored.
+ *
+ * Choices that shape the numbers:
+ * - Token usage is taken from the last line seen for a `message.id`, since the final line is the one
+ *   that can carry the completed usage.
+ * - Sidechain lines (subagent turns) are left out. Effort is the main agent's: reads, edits and tokens
+ *   spent inside delegated subagents are not counted, so a task that delegates looks cheaper than it was.
+ * - An assistant line with no id, timestamp or content array (a synthetic API error, say) is skipped and
+ *   counted in `skippedLines` rather than failing the session, as are lines that are not JSON.
  *
  * Only paths and counts leave this module. Message text, tool output and tool
  * inputs other than path fields are never copied.
@@ -35,8 +45,16 @@ export type SessionEvent =
   | { kind: "agent-turn"; timestamp: string; messageId: string; tokens: TokenCounts; actions: ToolAction[] };
 
 export type ParsedTranscript =
-  | { status: "recognised"; version: string; events: SessionEvent[] }
-  | { status: "not-measured"; version: string | null; reason: string; startedAt: string | null };
+  | {
+      status: "recognised";
+      version: string;
+      events: SessionEvent[];
+      /** Lines skipped as malformed: not JSON, or an assistant line of an unexpected shape. */
+      skippedLines: number;
+      /** Working directories recorded in the transcript, sorted. */
+      cwds: string[];
+    }
+  | { status: "not-measured"; version: string | null; reason: string; startedAt: string | null; cwds: string[] };
 
 const RECOGNISED_VERSION = /^2\.1\.\d+$/;
 
@@ -72,13 +90,34 @@ function actionOf(block: Json): ToolAction | null {
   return null;
 }
 
+const INTERRUPT_MARKER = "[Request interrupted by user";
+
+function isHumanText(text: unknown): boolean {
+  return typeof text === "string" && !text.startsWith(INTERRUPT_MARKER);
+}
+
 function isHumanPrompt(line: Json, message: Json): boolean {
   if (line["isMeta"] === true || line["toolUseResult"] !== undefined) return false;
+  if (line["isCompactSummary"] === true || line["isVisibleInTranscriptOnly"] === true) return false;
   const origin = line["origin"];
   if (isObject(origin) && origin["kind"] !== "human") return false;
   const content = message["content"];
-  if (typeof content === "string") return true;
-  return Array.isArray(content) && content.some((block) => isObject(block) && block["type"] === "text");
+  if (typeof content === "string") return isHumanText(content);
+  return Array.isArray(content) && content.some((block) => isObject(block) && block["type"] === "text" && isHumanText(block["text"]));
+}
+
+/** Compares dotted numeric versions part by part, so 2.1.10 sorts after 2.1.9. Other text compares as a string. */
+function compareVersions(a: string, b: string): number {
+  const left = a.split(".");
+  const right = b.split(".");
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    const x = left[i] ?? "0";
+    const y = right[i] ?? "0";
+    const numeric = /^\d+$/.test(x) && /^\d+$/.test(y);
+    const order = numeric ? Number(x) - Number(y) : x < y ? -1 : x > y ? 1 : 0;
+    if (order !== 0) return order;
+  }
+  return 0;
 }
 
 /** Earliest timestamp among message lines, so a session not measured can still be placed in a time window. */
@@ -98,22 +137,26 @@ function earliest(lines: readonly Json[]): string | null {
 
 export function parseTranscript(text: string): ParsedTranscript {
   const lines: Json[] = [];
-  for (const raw of text.split("\n")) {
+  let skippedLines = 0;
+  const body = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  for (const raw of body.split(/\r?\n/)) {
     if (raw === "") continue;
     try {
       const parsed: unknown = JSON.parse(raw);
       if (isObject(parsed)) lines.push(parsed);
     } catch {
-      continue;
+      skippedLines++;
     }
   }
 
   const messageLines = lines.filter((line) => line["type"] === "user" || line["type"] === "assistant");
+  const cwds = [...new Set(messageLines.flatMap((line) => (typeof line["cwd"] === "string" ? [line["cwd"] as string] : [])))].sort();
   const notMeasured = (version: string | null, reason: string): ParsedTranscript => ({
     status: "not-measured",
     version,
     reason,
     startedAt: earliest(messageLines),
+    cwds,
   });
   const versions = new Set<string>();
   for (const line of messageLines) {
@@ -121,7 +164,7 @@ export function parseTranscript(text: string): ParsedTranscript {
     if (version !== null) versions.add(version);
   }
   if (versions.size === 0) return notMeasured(null, "no versioned messages");
-  const sorted = [...versions].sort();
+  const sorted = [...versions].sort(compareVersions);
   const unrecognised = sorted.find((version) => !RECOGNISED_VERSION.test(version));
   if (unrecognised !== undefined) return notMeasured(unrecognised, "unrecognised transcript version");
 
@@ -141,25 +184,29 @@ export function parseTranscript(text: string): ParsedTranscript {
 
     const id = isObject(message) ? asString(message["id"]) : null;
     if (!isObject(message) || id === null || timestamp === null || !Array.isArray(message["content"])) {
-      return notMeasured(sorted[0] ?? null, "unexpected assistant message shape");
+      skippedLines++;
+      continue;
     }
     let turn = turnsById.get(id);
     if (turn === undefined) {
-      const usage = isObject(message["usage"]) ? message["usage"] : {};
       turn = {
         kind: "agent-turn",
         timestamp,
         messageId: id,
-        tokens: {
-          input: count(usage["input_tokens"]),
-          output: count(usage["output_tokens"]),
-          cacheRead: count(usage["cache_read_input_tokens"]),
-          cacheCreation: count(usage["cache_creation_input_tokens"]),
-        },
+        tokens: { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 },
         actions: [],
       };
       turnsById.set(id, turn);
       events.push(turn);
+    }
+    if (isObject(message["usage"])) {
+      const usage = message["usage"];
+      turn.tokens = {
+        input: count(usage["input_tokens"]),
+        output: count(usage["output_tokens"]),
+        cacheRead: count(usage["cache_read_input_tokens"]),
+        cacheCreation: count(usage["cache_creation_input_tokens"]),
+      };
     }
     for (const block of message["content"]) {
       if (!isObject(block) || block["type"] !== "tool_use") continue;
@@ -168,5 +215,5 @@ export function parseTranscript(text: string): ParsedTranscript {
     }
   }
 
-  return { status: "recognised", version: sorted[sorted.length - 1] ?? "", events };
+  return { status: "recognised", version: sorted[sorted.length - 1] ?? "", events, skippedLines, cwds };
 }
