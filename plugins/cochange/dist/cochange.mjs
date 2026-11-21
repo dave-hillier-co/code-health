@@ -1677,7 +1677,7 @@ async function loadHistory(context, options = {}) {
   const refreshed = options.noRefresh ? null : await refreshHistory(context, settings);
   const anchor = Number((await runGit(root, ["log", "-1", "--format=%ct", settings.ref])).trim());
   const since = options.wholeHistory ? void 0 : options.window?.since ?? monthsBefore(anchor, settings.windowMonths);
-  const until = options.window?.until;
+  const until = options.window?.until ?? anchor + 1;
   const analysis = await analyseHistory(root, {
     ref: settings.ref,
     firstParent: settings.firstParent,
@@ -1691,7 +1691,7 @@ async function loadHistory(context, options = {}) {
     evidence: { windowMonths: settings.windowMonths, thresholds: settings.evidenceThresholds }
   });
   const earliest = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
-  return { ...analysis, settings, window: { since: since ?? earliest, until: until ?? anchor }, refreshed };
+  return { ...analysis, settings, window: { since: since ?? earliest, until: options.window?.until ?? anchor }, refreshed };
 }
 
 // packages/cochange/src/reports.ts
@@ -1700,8 +1700,8 @@ import { join as join4 } from "node:path";
 function reportPath(root, command6, tool = TOOL) {
   return join4(root, ".cache", "code-health", "reports", `${tool}.${command6}.json`);
 }
-async function writeReport(context, command6, output) {
-  if (context.repo.dirty) return false;
+async function writeReport(context, command6, output, analysedHead) {
+  if (context.repo.dirty || analysedHead !== context.repo.head) return false;
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
   const document = buildDocument({
     schemaVersion: SCHEMA_VERSION2,
@@ -1747,7 +1747,7 @@ function analysisCommand(name6, spec) {
         }
       };
       const wholeRepository = window === void 0 && !spec.partial?.(context);
-      if (wholeRepository) await writeReport(context, name6, finished);
+      if (wholeRepository) await writeReport(context, name6, finished, history.view.headSha);
       return finished;
     }
   };
@@ -2032,7 +2032,7 @@ var command2 = analysisCommand(name2, {
     "min-support": { type: "string" }
   },
   partial: ({ values }) => values.file !== void 0 || values["min-degree"] !== void 0 || values["min-support"] !== void 0,
-  analyse({ context, history }) {
+  async analyse({ context, history }) {
     const { settings } = history;
     const minDegree = integerOption(context, "min-degree", settings.minDegree, 0, 100);
     const minSupport = integerOption(context, "min-support", settings.minSupport, 1, Number.MAX_SAFE_INTEGER);
@@ -2048,7 +2048,7 @@ var command2 = analysisCommand(name2, {
       { minSupport, minDegree }
     );
     const requested = context.values.file;
-    const focus = typeof requested === "string" ? history.view.renames.resolve(requested, -1) : void 0;
+    const focus = typeof requested !== "string" ? void 0 : (await listTree(context.repo.root, history.view.headSha)).includes(requested) ? requested : history.view.renames.resolve(requested, -1);
     const rows = counts.pairs.filter((pair) => lastStatus.get(pair.a) !== "D" && lastStatus.get(pair.b) !== "D").filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings)).sort((x, y) => y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
     return {
       inputs: { file: focus ?? null, minDegree, minSupport, asymmetry: ASYMMETRY },
@@ -2169,14 +2169,14 @@ function readComplexityReport(root, head) {
   return { document, rows };
 }
 async function loadComplexity(context, headSha, paths) {
-  const report = readComplexityReport(context.repo.root, context.repo.head);
+  const report = readComplexityReport(context.repo.root, headSha);
   if (report) {
     return {
       source: "complexity-report",
       values: new Map(paths.map((path) => [path, report.rows.get(path) ?? null])),
       input: {
         report: `${COMPLEXITY_REPORT.tool}.${COMPLEXITY_REPORT.command}`,
-        head: context.repo.head,
+        head: headSha,
         config: report.document.config
       }
     };
@@ -2356,11 +2356,11 @@ function hasCodeHealthTrailer(message) {
   return paragraphs[paragraphs.length - 1].split("\n").some((line) => /^code-health[ \t]*:/i.test(line));
 }
 function parseDate(text) {
-  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
-  if (day) {
-    const ms2 = Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
-    return new Date(ms2).toISOString().slice(0, 10) === text ? ms2 / 1e3 : null;
-  }
+  const day = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text);
+  if (!day) return null;
+  const midnight = Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
+  if (new Date(midnight).toISOString().slice(0, 10) !== text.slice(0, 10)) return null;
+  if (day[4] === void 0) return midnight / 1e3;
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text)) return null;
   const ms = Date.parse(text);
   return Number.isNaN(ms) ? null : Math.floor(ms / 1e3);
