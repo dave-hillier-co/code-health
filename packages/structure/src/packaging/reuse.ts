@@ -1,5 +1,6 @@
 import { compareIds } from "@code-health/graph/graph";
 import type { DeclarationKind } from "@code-health/parse/facts";
+import { describeSupportedCode } from "@code-health/parse/languages";
 import { edgeKey } from "../project.ts";
 import { round3 } from "../stability.ts";
 import { readEntries, type PackageEntries } from "./entries.ts";
@@ -90,7 +91,7 @@ export async function analyseReuse(model: PackageModel): Promise<ReuseAnalysis> 
     if (!own) {
       unavailable.push({
         package: pkg.id,
-        reason: (model.codeFiles.get(pkg.id)?.length ?? 0) === 0 ? "no TypeScript or JavaScript for the structural layer to read" : `no adapter for ${pkg.ecosystem} packages`,
+        reason: (model.codeFiles.get(pkg.id)?.length ?? 0) === 0 ? `no ${describeSupportedCode()} for the structural layer to read` : `no adapter for ${pkg.ecosystem} packages`,
       });
       continue;
     }

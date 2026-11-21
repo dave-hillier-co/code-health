@@ -1,8 +1,8 @@
 import { analyseSource, type FileAnalysis } from "@code-health/lexical/analyse-source";
 import type { LengthMetrics } from "@code-health/lexical/indentation";
-import { isTestPath } from "@code-health/parse/analyse-tree";
+import { isTestPath } from "@code-health/parse/languages";
 import { factsForBlob } from "@code-health/parse/file-facts";
-import { grammarIdForPath, loadGrammar, type GrammarId, type LoadedGrammar } from "@code-health/parse/grammars";
+import { GrammarSet } from "@code-health/parse/grammars";
 import type { ParseCache } from "@code-health/parse/parse-cache";
 import type { FileFacts, UnitFact } from "@code-health/parse/facts";
 import type { SourceTree } from "@code-health/parse/source-tree";
@@ -109,7 +109,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
     else paths.push(path);
   }
 
-  const grammars = new Map<GrammarId, LoadedGrammar>();
+  const grammars = new GrammarSet();
   const stats = { parsed: 0, cached: 0 };
   const files: FileRecord[] = [];
 
@@ -127,15 +127,10 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
         continue;
       }
       const lexical = analyseSource(path, text, { agreementBar: settings.agreementBar });
-      const grammarId = grammarIdForPath(path);
+      const language = options.layer === "lexical" ? undefined : await grammars.forPath(path);
       let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean } | undefined;
-      if (grammarId !== undefined && options.layer !== "lexical") {
-        let grammar = grammars.get(grammarId);
-        if (grammar === undefined) {
-          grammar = await loadGrammar(grammarId);
-          grammars.set(grammarId, grammar);
-        }
-        const { facts, cached } = await factsForBlob(grammar, tree.files.get(path)!, text, options.cache);
+      if (language !== undefined) {
+        const { facts, cached } = await factsForBlob(language, tree.files.get(path)!, text, options.cache);
         if (cached) stats.cached++;
         else stats.parsed++;
         structural = {

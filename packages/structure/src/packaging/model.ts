@@ -4,7 +4,7 @@ import { compareIds, normalise, type Graph } from "@code-health/graph/graph";
 import { groupGraph } from "@code-health/graph/group";
 import { compileGlobs } from "@code-health/history/glob";
 import { monthsBefore } from "@code-health/history/evidence";
-import { isTestPath } from "@code-health/parse/analyse-tree";
+import { isTestPath } from "@code-health/parse/languages";
 import { treeFromRef, type SourceTree } from "@code-health/parse/source-tree";
 import { measureActivity } from "../activity.ts";
 import type { StructureSettings } from "../config.ts";
@@ -56,7 +56,7 @@ export interface PackageModel {
   activity: PackageActivity;
   /** When each package first appeared in the whole usable history, unix seconds. */
   firstSeen: ReadonlyMap<string, number>;
-  /** TypeScript or JavaScript production files of each package: where the structural layer has something to say. */
+  /** Production files of each package that a language adapter reads: where the structural layer has something to say. */
   codeFiles: ReadonlyMap<string, readonly string[]>;
 }
 
@@ -79,8 +79,6 @@ export function isYoung(model: PackageModel, id: string): boolean {
   const first = model.firstSeen.get(id);
   return first === undefined ? true : model.anchor - first < model.settings.packages.graceDays * DAY;
 }
-
-const productionCode = /\.(?:[cm]?[jt]sx?)$/;
 
 export async function buildPackageModel(context: CommandContext, history: LoadedHistory): Promise<PackageModel> {
   const { settings } = history;
@@ -120,7 +118,7 @@ export function assemblePackageModel(
   const codeFiles = new Map<string, string[]>(packages.map((p) => [p.id, []]));
   for (const path of project.files) {
     const owner = index.owner(path);
-    if (owner !== undefined && productionCode.test(path)) codeFiles.get(owner)!.push(path);
+    if (owner !== undefined) codeFiles.get(owner)!.push(path);
   }
 
   // edges: manifests first, then imports
@@ -225,7 +223,7 @@ export function packageStability(graph: Graph): Map<string, StructuralStability>
 
 /**
  * Packages that really use `id`: those importing it from production code, and, for packages with no
- * TypeScript or JavaScript for the structural layer to read, those declaring a runtime dependency on it.
+ * code for the structural layer to read, those declaring a runtime dependency on it.
  * A dependency that is declared and never used does not make a consumer.
  */
 export function consumerPackages(model: PackageModel, id: string): string[] {

@@ -1,6 +1,7 @@
 import type { Node } from "web-tree-sitter";
 import { classShape, functionShape, nodeCount, passThroughOf } from "./interface-shape.ts";
-import { codeRowsOf, measureFunction } from "./unit-metrics.ts";
+import { codeRowsOf, measureFunction } from "../../unit-metrics.ts";
+import { typescriptMetricRules } from "./metric-rules.ts";
 import type {
   BindingFact,
   DeclarationKind,
@@ -11,7 +12,7 @@ import type {
   ReferenceFact,
   UnitFact,
   UnitKind,
-} from "./facts.ts";
+} from "../../facts.ts";
 
 /**
  * Bump when the extraction rules change in a way that alters facts for the
@@ -428,14 +429,14 @@ class Extractor {
     if (context.unit !== undefined) unit.parent = context.unit;
     if (kind === "class") unit.shape = classShape(node);
     if (fn !== undefined && kind !== "class") {
-      this.codeRows ??= codeRowsOf(this.root!);
+      this.codeRows ??= codeRowsOf(this.root!, typescriptMetricRules);
       const measured = measureFunction(fn, {
         name,
         startLine: unit.startLine,
         endLine: unit.endLine,
         codeRows: this.codeRows,
         explain: this.explain,
-      });
+      }, typescriptMetricRules);
       unit.metrics = measured.metrics;
       unit.shape = functionShape(fn, measured.metrics.parameters);
       const names: string[] = [];

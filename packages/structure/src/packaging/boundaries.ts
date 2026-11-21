@@ -1,13 +1,11 @@
 import { compareIds } from "@code-health/graph/graph";
 import { compileGlobs } from "@code-health/history/glob";
-import { isTestPath } from "@code-health/parse/analyse-tree";
+import { isTestPath } from "@code-health/parse/languages";
 import { edgeKey } from "../project.ts";
 import { raise, type Finding, type FindingContext } from "./findings.ts";
+import { packagingLanguages } from "./language.ts";
 import { consumerPackages, purposeOf } from "./model.ts";
 import type { ReuseAnalysis } from "./reuse.ts";
-
-/** The name `@types/...` gives to the declarations of a package. */
-const typesName = (name: string): string => `@types/${name.startsWith("@") ? name.slice(1).replace("/", "__") : name}`;
 
 interface Imports {
   files: Set<string>;
@@ -50,85 +48,13 @@ export function deepImports(context: FindingContext, reuse: ReuseAnalysis): Find
 }
 
 /**
- * Compares what each package's manifest declares with what its code uses. Only npm packages are
- * read: the other ecosystems have no adapter that sees what their code imports.
+ * Compares what each package's manifest declares with what its code uses, through the packaging language of
+ * each package's ecosystem. A language whose packages declare no dependencies the structural layer sees
+ * has no such check.
  */
 export async function manifestChecks(context: FindingContext, reuse: ReuseAnalysis): Promise<Finding[]> {
-  const { model } = context;
-  const root = JSON.parse((await model.tree.read("package.json")) ?? "{}") as Record<string, Record<string, unknown> | undefined>;
-  const declaredAtRoot = new Set([...Object.keys(root.dependencies ?? {}), ...Object.keys(root.devDependencies ?? {})]);
-  const production = new Set(model.project.files);
-  const externalsOf = new Map<string, { production: Set<string>; tests: Set<string> }>();
-  for (const external of model.project.analysis.externalImports) {
-    const owner = model.index.owner(external.from);
-    if (owner === undefined) continue;
-    const entry = externalsOf.get(owner) ?? { production: new Set<string>(), tests: new Set<string>() };
-    (production.has(external.from) ? entry.production : entry.tests).add(external.packageName);
-    externalsOf.set(owner, entry);
-  }
-
   const findings: Finding[] = [];
-  for (const pkg of model.packages) {
-    if (!reuse.profiles.has(pkg.id) || pkg.ecosystem !== "npm") continue;
-    const declared = new Map(pkg.dependencies.map((d) => [d.name, d]));
-    const productionDeclared = new Set(pkg.dependencies.filter((d) => d.scope === "runtime").map((d) => d.name));
-    const outside = externalsOf.get(pkg.id) ?? { production: new Set<string>(), tests: new Set<string>() };
-
-    const undeclared: { name: string; internal: boolean; via: "production" | "tests"; declaredAs: string | null; atRoot: boolean }[] = [];
-    for (const edge of model.edges.values()) {
-      if (edge.from !== pkg.id) continue;
-      const target = model.byId.get(edge.to)!;
-      const entry = declared.get(target.name);
-      if (edge.productionImports > 0 && !productionDeclared.has(target.name)) {
-        undeclared.push({ name: target.name, internal: true, via: "production", declaredAs: entry?.scope ?? null, atRoot: false });
-      } else if (edge.productionImports === 0 && edge.testImports > 0 && entry === undefined) {
-        undeclared.push({ name: target.name, internal: true, via: "tests", declaredAs: null, atRoot: false });
-      }
-    }
-    const usesOf = (name: string): boolean => outside.production.has(name) || outside.tests.has(name);
-    for (const [names, via] of [[outside.production, "production"], [outside.tests, "tests"]] as const) {
-      for (const name of [...names].sort(compareIds)) {
-        if (name === pkg.name || model.packages.some((p) => p.name === name)) continue;
-        if (via === "tests" && outside.production.has(name)) continue;
-        const entry = declared.get(name) ?? declared.get(typesName(name));
-        if (via === "production" ? entry !== undefined && entry.scope === "runtime" : entry !== undefined) continue;
-        undeclared.push({ name, internal: false, via, declaredAs: entry?.scope ?? null, atRoot: declaredAtRoot.has(name) });
-      }
-    }
-    if (undeclared.length > 0) {
-      const sorted = undeclared.sort((a, b) => compareIds(a.name, b.name));
-      findings.push(
-        raise(context, "undeclared-dependency", "boundary", [pkg.id],
-          `${pkg.id} uses ${sorted.map((u) => u.name).join(", ")} without declaring ${sorted.length === 1 ? "it" : "them"}: the dependency graph the build sees is not the real one`,
-          {
-            dependencies: sorted.map((u) => u.name),
-            internal: sorted.filter((u) => u.internal).map((u) => u.name),
-            testsOnly: sorted.filter((u) => u.via === "tests").map((u) => u.name),
-            declaredOnlyForDevelopment: sorted.filter((u) => u.declaredAs === "dev").map((u) => u.name),
-            declaredAtRoot: sorted.filter((u) => u.atRoot).map((u) => u.name),
-          }),
-      );
-    }
-
-    const unused = pkg.dependencies
-      .filter((d) => d.scope === "runtime" && !d.optional && !d.name.startsWith("@types/"))
-      .filter((d) => {
-        if (d.target !== null) {
-          const edge = model.edges.get(edgeKey(pkg.id, d.target));
-          return (edge?.productionImports ?? 0) + (edge?.testImports ?? 0) === 0;
-        }
-        return !usesOf(d.name);
-      })
-      .map((d) => d.name)
-      .sort(compareIds);
-    if (unused.length > 0) {
-      findings.push(
-        raise(context, "unused-dependency", "boundary", [pkg.id],
-          `${pkg.id} declares ${unused.join(", ")} and its code never uses ${unused.length === 1 ? "it" : "them"}: coupling with no purpose, and build weight`,
-          { dependencies: unused, internal: unused.filter((name) => model.packages.some((p) => p.name === name)) }),
-      );
-    }
-  }
+  for (const language of packagingLanguages) findings.push(...(await language.manifestChecks(context, reuse)));
   return findings;
 }
 

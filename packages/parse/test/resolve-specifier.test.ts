@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseJsonc } from "../src/jsonc.ts";
-import { SpecifierResolver } from "../src/resolve-specifier.ts";
+import { parseJsonc } from "../src/languages/typescript/jsonc.ts";
+import { SpecifierResolver } from "../src/languages/typescript/resolve-specifier.ts";
 
 const resolver = (files: string[], configs: Record<string, string> = {}) =>
   new SpecifierResolver(files, new Map(Object.entries(configs)));

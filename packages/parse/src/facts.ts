@@ -1,5 +1,5 @@
 /**
- * What the TypeScript/JavaScript adapter extracts from one file. Facts depend
+ * What a language adapter extracts from one file. Facts depend
  * only on the file's content, never on its path, so they are cached by blob
  * SHA and reused wherever the same content appears.
  */
@@ -104,12 +104,45 @@ export interface ReferenceFact {
   inUnit?: string;
 }
 
+/** A name a file declares, for the symbol-based dependency model. */
+export interface SymbolDeclaration {
+  /** Fully qualified, as other files write it once the scopes are applied: `Acme.Billing.Invoice`. */
+  name: string;
+  kind: DeclarationKind;
+  /** Qualified name within the file of the unit that is the declaration, when it is one. Partial declarations in several files each name their own. */
+  unit?: string;
+  /** Part of the file's public surface (public or exported, or visible outside its package). */
+  exported: boolean;
+  line: number;
+}
+
+export interface SymbolReference {
+  /** The name as written, which may be qualified: `Invoice`, `Billing.Invoice`. */
+  name: string;
+  kind: "call" | "reference";
+  line: number;
+  /** Qualified name of the innermost enclosing unit. */
+  inUnit?: string;
+}
+
+/** The declarations, scopes and references of a file in a language that names no file in its dependency statements. */
+export interface SymbolFacts {
+  /** Namespaces or packages the file declares into. Names resolve through them and their parents. */
+  namespaces: string[];
+  /** Namespaces the file brings into scope (`using`, imports), and same-package names a language makes visible. */
+  uses: string[];
+  declarations: SymbolDeclaration[];
+  references: SymbolReference[];
+}
+
 export interface FileFacts {
   units: UnitFact[];
   imports: ImportFact[];
   reexports: ReexportFact[];
   exports: ExportFact[];
   references: ReferenceFact[];
+  /** Symbol-based languages only. Import-based languages leave it out. */
+  symbols?: SymbolFacts;
   /** Named syntax nodes of the whole file, import statements and comments left out. */
   nodes: number;
   /** True when the grammar reported syntax errors, so facts may be incomplete. */

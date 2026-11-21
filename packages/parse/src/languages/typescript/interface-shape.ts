@@ -1,5 +1,5 @@
 import type { Node } from "web-tree-sitter";
-import { parameterCounts } from "./unit-metrics.ts";
+import { parameterCounts } from "./metric-rules.ts";
 
 /**
  * What the interface depth signal needs of a unit (complexity.md, Interface depth): the size of its

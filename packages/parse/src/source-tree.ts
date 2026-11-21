@@ -189,3 +189,14 @@ export async function treeFromRef(repoPath: string, ref: string): Promise<Source
     },
   };
 }
+
+/** A tree held in memory, from path to text. Paths are listed in UTF-8 order, and blob SHAs are the ones git would give. */
+export function treeFromTexts(texts: Readonly<Record<string, string>>): SourceTree {
+  const contents = new Map(Object.entries(texts));
+  const files = sortedMap([...contents].map(([path, text]): [string, string] => [path, gitBlobSha(Buffer.from(text))]));
+  return {
+    files,
+    read: async (path) => contents.get(path),
+    readMany: async (paths) => new Map(paths.filter((path) => contents.has(path)).map((path) => [path, contents.get(path)!])),
+  };
+}

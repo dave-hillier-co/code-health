@@ -4,8 +4,7 @@ import { loadConfig } from "@code-health/cli-kit/config";
 import { readEditEvent, within } from "@code-health/history/hook-event";
 import { runGit } from "@code-health/history/git";
 import { updateSession, type FileMeasurement } from "@code-health/history/session-state";
-import { isTestPath } from "@code-health/parse/analyse-tree";
-import { grammarIdForPath } from "@code-health/parse/grammars";
+import { hasAdapter, isTestPath } from "@code-health/parse/languages";
 import { complexityConfig, readSettings, thresholdsFor, type ComplexitySettings } from "./config.ts";
 import { describeFindings, findingsFor, measureFile } from "./hook-findings.ts";
 
@@ -56,7 +55,7 @@ async function measurementAtHead(root: string, file: string, settings: Complexit
 
 /** The command that breaks a unit down, for the files `explain` can read. It names the plugin's bundle when the host says where it is. */
 function explainCommand(file: string): string | undefined {
-  if (grammarIdForPath(file) === undefined) return undefined;
+  if (!hasAdapter(file)) return undefined;
   const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
   return pluginRoot === undefined || pluginRoot === "" ? "complexity explain" : `node ${pluginRoot}/dist/complexity.mjs explain`;
 }

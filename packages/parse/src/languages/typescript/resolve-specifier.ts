@@ -1,12 +1,9 @@
 import { builtinModules } from "node:module";
 import { posix } from "node:path";
+import type { ModuleResolver, Resolution } from "../../language-adapter.ts";
 import { parseJsonc } from "./jsonc.ts";
 
-export type Resolution =
-  | { kind: "file"; path: string }
-  | { kind: "builtin" }
-  | { kind: "external"; packageName: string }
-  | { kind: "not-found" };
+export type { Resolution } from "../../language-adapter.ts";
 
 /** Config files the resolver reads, which callers must supply by path. */
 export function isConfigPath(path: string): boolean {
@@ -72,7 +69,7 @@ function splitPackageSpecifier(specifier: string): { name: string; subpath: stri
  * `paths` and `baseUrl`, and workspace packages by `exports`, `main` or
  * subpath. Everything else is an external package.
  */
-export class SpecifierResolver {
+export class SpecifierResolver implements ModuleResolver {
   private readonly files: ReadonlySet<string>;
   private readonly tsconfigTexts = new Map<string, string>();
   private readonly tsOptionsCache = new Map<string, TsOptions | undefined>();

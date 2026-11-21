@@ -4,41 +4,28 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Language, Parser, type Tree } from "web-tree-sitter";
+import type { GrammarSpec, LanguageAdapter } from "./language-adapter.ts";
+import { bindingForPath, grammarSpecById, supportedAdapters } from "./languages.ts";
 
-export type GrammarId = "typescript" | "tsx" | "javascript";
+export type { GrammarSpec } from "./language-adapter.ts";
+export type GrammarId = string;
 
-export interface GrammarSpec {
-  id: GrammarId;
-  /** npm package that ships the grammar's .wasm file. */
-  packageName: string;
-  /** File name of the .wasm, both inside the npm package and in `dist/grammars`. */
-  file: string;
+/**
+ * The grammars a parsing plugin ships: those of every supported adapter, once each, in id order. A plugin
+ * ships all of them and loads only the ones the analysed repository has files for (see `GrammarSet`).
+ */
+export function shippedGrammarSpecs(): GrammarSpec[] {
+  const specs = new Map<string, GrammarSpec>();
+  for (const adapter of supportedAdapters()) for (const binding of adapter.grammars) specs.set(binding.spec.id, binding.spec);
+  return [...specs.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
-
-export const grammarSpecs: readonly GrammarSpec[] = [
-  { id: "typescript", packageName: "tree-sitter-typescript", file: "tree-sitter-typescript.wasm" },
-  { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm" },
-  { id: "javascript", packageName: "tree-sitter-javascript", file: "tree-sitter-javascript.wasm" },
-];
 
 /** The tree-sitter runtime itself, shipped beside the grammars. */
 export const runtimeSpec = { packageName: "web-tree-sitter", file: "web-tree-sitter.wasm" } as const;
 
-const extensionGrammars: Record<string, GrammarId> = {
-  ".ts": "typescript",
-  ".mts": "typescript",
-  ".cts": "typescript",
-  ".tsx": "tsx",
-  ".js": "javascript",
-  ".mjs": "javascript",
-  ".cjs": "javascript",
-  ".jsx": "javascript",
-};
-
+/** The grammar that parses a path, when a supported adapter claims its extension. */
 export function grammarIdForPath(path: string): GrammarId | undefined {
-  const dot = path.lastIndexOf(".");
-  if (dot < 0) return undefined;
-  return extensionGrammars[path.slice(dot)];
+  return bindingForPath(path)?.binding.spec.id;
 }
 
 export interface LoadedGrammar {
@@ -99,19 +86,25 @@ function initRuntime(path: string): Promise<void> {
   return runtimeInit;
 }
 
+/** Loads a grammar by id from any registered adapter, supported or not. */
 export function loadGrammar(id: GrammarId, options: LoadOptions = {}): Promise<LoadedGrammar> {
-  const key = `${options.grammarDir ?? ""}\0${id}`;
+  const spec = grammarSpecById(id);
+  if (!spec) return Promise.reject(new Error(`Unknown grammar: ${id}`));
+  return loadSpec(spec, options);
+}
+
+export function loadSpec(spec: GrammarSpec, options: LoadOptions = {}): Promise<LoadedGrammar> {
+  const key = `${options.grammarDir ?? ""}\0${spec.id}`;
   let grammar = loaded.get(key);
   if (!grammar) {
-    grammar = load(id, options.grammarDir);
+    grammar = load(spec, options.grammarDir);
     loaded.set(key, grammar);
   }
   return grammar;
 }
 
-async function load(id: GrammarId, grammarDir: string | undefined): Promise<LoadedGrammar> {
-  const spec = grammarSpecs.find((candidate) => candidate.id === id);
-  if (!spec) throw new Error(`Unknown grammar: ${id}`);
+async function load(spec: GrammarSpec, grammarDir: string | undefined): Promise<LoadedGrammar> {
+  const id = spec.id;
   const path = locate(spec.file, spec.packageName, grammarDir);
   const runtimePath = locate(runtimeSpec.file, runtimeSpec.packageName, grammarDir);
   const bytes = readFileSync(path);
@@ -128,4 +121,42 @@ async function load(id: GrammarId, grammarDir: string | undefined): Promise<Load
       return tree;
     },
   };
+}
+
+/** The parse cache key of facts an adapter extracted from a tree of this grammar: changed extraction never reads old facts. */
+export function cacheKeyOf(adapter: Pick<LanguageAdapter, "id" | "extractorVersion">, grammar: Pick<LoadedGrammar, "version">): string {
+  return `${grammar.version}.${adapter.id}-extract-${adapter.extractorVersion}`;
+}
+
+/**
+ * The grammars of one analysis, loaded when a file needs them. A repository with no Python never loads the
+ * Python grammar, however many grammars the plugin ships.
+ */
+export class GrammarSet {
+  private readonly options: LoadOptions;
+  private readonly adapters: readonly LanguageAdapter[] | undefined;
+  private readonly grammars = new Map<GrammarId, LoadedGrammar>();
+
+  /** `adapters` defaults to the supported ones; conformance tests pass the adapter under test. */
+  constructor(options: LoadOptions & { adapters?: readonly LanguageAdapter[] } = {}) {
+    this.options = options.grammarDir === undefined ? {} : { grammarDir: options.grammarDir };
+    this.adapters = options.adapters;
+  }
+
+  /** The adapter and loaded grammar for a path, or undefined when no adapter claims its extension. */
+  async forPath(path: string): Promise<{ adapter: LanguageAdapter; grammar: LoadedGrammar } | undefined> {
+    const found = bindingForPath(path, this.adapters);
+    if (found === undefined) return undefined;
+    let grammar = this.grammars.get(found.binding.spec.id);
+    if (grammar === undefined) {
+      grammar = await loadSpec(found.binding.spec, this.options);
+      this.grammars.set(found.binding.spec.id, grammar);
+    }
+    return { adapter: found.adapter, grammar };
+  }
+
+  /** Ids of the grammars loaded so far, sorted. */
+  loaded(): string[] {
+    return [...this.grammars.keys()].sort();
+  }
 }

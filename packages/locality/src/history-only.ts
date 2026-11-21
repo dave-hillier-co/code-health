@@ -2,7 +2,7 @@ import type { Rule } from "@code-health/cli-kit/run-cli";
 import { compareIds } from "@code-health/graph/graph";
 import { folderDistance, folderOf } from "@code-health/graph/tree-distance";
 import { compileGlobs } from "@code-health/history/glob";
-import { isTestPath } from "@code-health/parse/analyse-tree";
+import { isTestPath } from "@code-health/parse/languages";
 import type { LocalitySettings } from "./config.ts";
 import { bestTarget, type BoundaryEdge } from "./footprint.ts";
 import { ageDays, isoDate, pairing, type History } from "./history-evidence.ts";

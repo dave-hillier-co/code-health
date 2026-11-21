@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseJsonc } from "../src/jsonc.ts";
+import { parseJsonc } from "../src/languages/typescript/jsonc.ts";
 
 describe("parseJsonc", () => {
   it("parses plain JSON", () => {

@@ -1,5 +1,6 @@
 import type { Node } from "web-tree-sitter";
 import type { Increment, UnitMetrics } from "./facts.ts";
+import type { ConstructMap, MetricRules, RecursionScope } from "./metric-rules.ts";
 
 /**
  * Structural metrics of one function, computed from its syntax tree. Each metric is one decision in one
@@ -40,38 +41,6 @@ export interface Measured {
   increments?: Increment[];
 }
 
-const functionLike = new Set([
-  "arrow_function",
-  "function_expression",
-  "function",
-  "generator_function",
-  "function_declaration",
-  "generator_function_declaration",
-  "method_definition",
-]);
-
-const loopNames: Record<string, string> = {
-  for_statement: "for",
-  for_in_statement: "for-in",
-  while_statement: "while",
-  do_statement: "do-while",
-};
-
-const logicalOperators = new Set(["&&", "||"]);
-const cyclomaticOperators = new Set(["&&", "||", "??"]);
-const cyclomaticAssignments = new Set(["&&=", "||=", "??="]);
-
-/** Statement nodes that are not `*_statement`. Blocks, clauses and labels are not statements of their own. */
-const declarationStatements = new Set([
-  "lexical_declaration",
-  "variable_declaration",
-  "function_declaration",
-  "generator_function_declaration",
-  "class_declaration",
-  "abstract_class_declaration",
-]);
-const notStatements = new Set(["empty_statement", "labeled_statement"]);
-
 class Measurer {
   cyclomatic = 1;
   cyclomaticModified = 1;
@@ -82,18 +51,15 @@ class Measurer {
   readonly increments: Increment[] = [];
 
   private readonly options: MeasureOptions;
-  /** Names a bare call `name()` recurses through: only a function that its own name is in scope inside. */
-  private readonly bareNames: ReadonlySet<string>;
-  /** Names `this.name()` recurses through. */
-  private readonly memberNames: ReadonlySet<string>;
-  /** For a method, the class name, so `Class.method()` is recursion too. */
-  private readonly owner: string | undefined;
+  private readonly rules: MetricRules;
+  private readonly c: ConstructMap;
+  private readonly scope: RecursionScope;
 
-  constructor(options: MeasureOptions, scope: { bare: ReadonlySet<string>; member: ReadonlySet<string>; owner?: string }) {
+  constructor(options: MeasureOptions, rules: MetricRules, scope: RecursionScope) {
     this.options = options;
-    this.bareNames = scope.bare;
-    this.memberNames = scope.member;
-    this.owner = scope.owner;
+    this.rules = rules;
+    this.c = rules.constructs;
+    this.scope = scope;
   }
 
   private record(node: Node, metric: Increment["metric"], construct: string, amount: number, nesting: number, switchMode?: Increment["switchMode"]): void {
@@ -125,8 +91,7 @@ class Measurer {
   }
 
   private statementsOfExpressionBody(fn: Node): void {
-    const body = fn.childForFieldName("body");
-    if (body !== null && fn.type === "arrow_function" && body.type !== "statement_block") this.statements++;
+    if (this.rules.hasExpressionBody(fn)) this.statements++;
   }
 
   private children(node: Node, level: number, depth: number, skip?: Node | null): void {
@@ -138,119 +103,108 @@ class Measurer {
 
   private visit(node: Node, level: number, depth: number): void {
     const type = node.type;
-    if (this.isStatement(node)) this.statements++;
-    if (functionLike.has(type)) {
+    const c = this.c;
+    if (this.rules.isStatement(node)) this.statements++;
+    if (c.functionLike.has(type)) {
       this.statementsOfExpressionBody(node);
       this.children(node, level + 1, depth);
       return;
     }
-
-    switch (type) {
-      case "if_statement":
-        this.ifStatement(node, level, depth, false);
-        return;
-      case "for_statement":
-      case "for_in_statement":
-      case "while_statement":
-      case "do_statement":
-        this.loop(node, level, depth);
-        return;
-      case "switch_statement": {
-        this.flow(node, "switch", level);
-        this.cyclomaticModified++;
-        this.record(node, "cyclomatic", "switch", 1, 0, "modified");
-        this.nesting = Math.max(this.nesting, depth + 1);
-        const body = node.childForFieldName("body");
-        this.children(node, level, depth, body);
-        if (body !== null) this.children(body, level + 1, depth + 1);
-        return;
-      }
-      case "switch_case":
-        this.cyclomatic++;
-        this.record(node, "cyclomatic", "case", 1, 0, "case");
-        this.children(node, level, depth);
-        return;
-      case "try_statement":
-        this.nesting = Math.max(this.nesting, depth + 1);
-        this.children(node, level, depth + 1);
-        return;
-      case "catch_clause": {
-        this.flow(node, "catch", level);
-        this.decision(node, "catch");
-        const body = node.childForFieldName("body");
-        this.children(node, level, depth, body);
-        if (body !== null) this.visit(body, level + 1, depth);
-        return;
-      }
-      case "ternary_expression": {
-        this.flow(node, "ternary", level);
-        this.decision(node, "ternary");
-        const condition = node.childForFieldName("condition");
-        if (condition !== null) this.visit(condition, level, depth);
-        for (const name of ["consequence", "alternative"]) {
-          const branch = node.childForFieldName(name);
-          if (branch !== null) this.visit(branch, level + 1, depth);
-        }
-        return;
-      }
-      case "binary_expression": {
-        const operator = this.operatorOf(node);
-        if (operator !== undefined && logicalOperators.has(operator)) {
-          this.logicalChain(node, level, depth);
-          return;
-        }
-        if (operator === "??") this.decision(node, "??");
-        this.children(node, level, depth);
-        return;
-      }
-      case "augmented_assignment_expression": {
-        const operator = node.childForFieldName("operator")?.type;
-        if (operator !== undefined && cyclomaticAssignments.has(operator)) this.decision(node, operator);
-        this.children(node, level, depth);
-        return;
-      }
-      case "break_statement":
-      case "continue_statement":
-        if (node.childForFieldName("label") !== null) this.flat(node, `labelled ${type.slice(0, -10)}`);
-        return;
-      case "call_expression":
-        this.recursionCheck(node);
-        this.children(node, level, depth);
-        return;
-      default:
-        this.children(node, level, depth);
+    if (type === c.conditional.type) {
+      this.ifStatement(node, level, depth, false);
+      return;
     }
-  }
-
-  /** A statement node, except the initialiser and condition of a `for`, which the grammar also types as statements. */
-  private isStatement(node: Node): boolean {
-    const type = node.type;
-    if (!(type.endsWith("_statement") ? !notStatements.has(type) : declarationStatements.has(type))) return false;
-    const parent = node.parent;
-    return !(parent?.type === "for_statement" && parent.childForFieldName("body")?.id !== node.id);
+    if (c.loops[type] !== undefined) {
+      this.loop(node, level, depth);
+      return;
+    }
+    if (type === c.switch.type) {
+      this.flow(node, "switch", level);
+      this.cyclomaticModified++;
+      this.record(node, "cyclomatic", "switch", 1, 0, "modified");
+      this.nesting = Math.max(this.nesting, depth + 1);
+      const body = node.childForFieldName(c.switch.body);
+      this.children(node, level, depth, body);
+      if (body !== null) this.children(body, level + 1, depth + 1);
+      return;
+    }
+    if (type === c.switch.caseType) {
+      this.cyclomatic++;
+      this.record(node, "cyclomatic", "case", 1, 0, "case");
+      this.children(node, level, depth);
+      return;
+    }
+    if (type === c.tryType) {
+      this.nesting = Math.max(this.nesting, depth + 1);
+      this.children(node, level, depth + 1);
+      return;
+    }
+    if (type === c.catchType) {
+      this.flow(node, "catch", level);
+      this.decision(node, "catch");
+      const body = node.childForFieldName("body");
+      this.children(node, level, depth, body);
+      if (body !== null) this.visit(body, level + 1, depth);
+      return;
+    }
+    if (type === c.ternary.type) {
+      this.flow(node, "ternary", level);
+      this.decision(node, "ternary");
+      const condition = node.childForFieldName(c.ternary.condition);
+      if (condition !== null) this.visit(condition, level, depth);
+      for (const name of [c.ternary.consequence, c.ternary.alternative]) {
+        const branch = node.childForFieldName(name);
+        if (branch !== null) this.visit(branch, level + 1, depth);
+      }
+      return;
+    }
+    if (type === c.binary.type) {
+      const operator = this.operatorOf(node);
+      if (operator !== undefined && c.binary.logical.has(operator)) {
+        this.logicalChain(node, level, depth);
+        return;
+      }
+      if (operator !== undefined && c.binary.decisions.has(operator)) this.decision(node, operator);
+      this.children(node, level, depth);
+      return;
+    }
+    if (type === c.compoundAssignment.type) {
+      const operator = node.childForFieldName(c.compoundAssignment.operator)?.type;
+      if (operator !== undefined && c.compoundAssignment.decisions.has(operator)) this.decision(node, operator);
+      this.children(node, level, depth);
+      return;
+    }
+    const jump = c.labelledJumps[type];
+    if (jump !== undefined) {
+      if (node.childForFieldName(c.label) !== null) this.flat(node, `labelled ${jump}`);
+      return;
+    }
+    if (type === this.rules.callType) this.recursionCheck(node);
+    this.children(node, level, depth);
   }
 
   private operatorOf(node: Node): string | undefined {
-    return node.childForFieldName("operator")?.type;
+    return node.childForFieldName(this.c.binary.operator)?.type;
   }
 
   private ifStatement(node: Node, level: number, depth: number, isElseIf: boolean): void {
+    const c = this.c.conditional;
     if (isElseIf) this.flat(node, "else if");
     else {
       this.flow(node, "if", level);
       this.nesting = Math.max(this.nesting, depth + 1);
     }
     this.decision(node, isElseIf ? "else if" : "if");
-    const condition = node.childForFieldName("condition");
+    const condition = node.childForFieldName(c.condition);
     if (condition !== null) this.visit(condition, level, depth);
-    const consequence = node.childForFieldName("consequence");
+    const consequence = node.childForFieldName(c.consequence);
     // An else-if sits at its if's depth, so every body in the chain is one level deeper than the chain.
     if (consequence !== null) this.visit(consequence, level + 1, depth + 1);
-    const alternative = node.childForFieldName("alternative");
+    const alternative = node.childForFieldName(c.alternative);
     if (alternative === null) return;
-    const inner = alternative.namedChildren.find((child) => child.type !== "comment") ?? null;
+    const inner = c.alternativeIsClause ? (alternative.namedChildren.find((child) => !this.c.commentTypes.has(child.type)) ?? null) : alternative;
     if (inner === null) return;
-    if (inner.type === "if_statement") {
+    if (inner.type === c.type) {
       this.statements++;
       this.ifStatement(inner, level, depth, true);
     } else {
@@ -260,7 +214,7 @@ class Measurer {
   }
 
   private loop(node: Node, level: number, depth: number): void {
-    const construct = loopNames[node.type] ?? node.type;
+    const construct = this.c.loops[node.type] ?? node.type;
     this.flow(node, construct, level);
     this.decision(node, construct);
     this.nesting = Math.max(this.nesting, depth + 1);
@@ -274,16 +228,17 @@ class Measurer {
    * are walked as ordinary nodes, so a chain inside a `!` or a call argument is counted on its own.
    */
   private logicalChain(node: Node, level: number, depth: number): void {
+    const binary = this.c.binary;
     const operators: { type: string; node: Node }[] = [];
     const operands: Node[] = [];
     const collect = (candidate: Node): void => {
       let inner = candidate;
-      while (inner.type === "parenthesized_expression" && inner.namedChildCount === 1) inner = inner.namedChild(0)!;
-      const operator = inner.type === "binary_expression" ? this.operatorOf(inner) : undefined;
-      if (operator !== undefined && logicalOperators.has(operator)) {
-        collect(inner.childForFieldName("left")!);
-        operators.push({ type: operator, node: inner.childForFieldName("operator")! });
-        collect(inner.childForFieldName("right")!);
+      while (inner.type === this.c.parenthesized && inner.namedChildCount === 1) inner = inner.namedChild(0)!;
+      const operator = inner.type === binary.type ? this.operatorOf(inner) : undefined;
+      if (operator !== undefined && binary.logical.has(operator)) {
+        collect(inner.childForFieldName(binary.left)!);
+        operators.push({ type: operator, node: inner.childForFieldName(binary.operator)! });
+        collect(inner.childForFieldName(binary.right)!);
       } else operands.push(candidate);
     };
     collect(node);
@@ -300,77 +255,19 @@ class Measurer {
 
   private recursionCheck(call: Node): void {
     if (this.recursion) return;
-    const callee = call.childForFieldName("function");
-    if (callee === null) return;
-    let recursive = callee.type === "identifier" && this.bareNames.has(callee.text);
-    if (callee.type === "member_expression") {
-      const object = callee.childForFieldName("object");
-      const property = callee.childForFieldName("property")?.text ?? "";
-      recursive =
-        this.memberNames.has(property) &&
-        (object?.type === "this" || (this.owner !== undefined && object?.type === "identifier" && object.text === this.owner));
-    }
-    if (recursive) {
+    if (this.rules.isRecursiveCall(call, this.scope)) {
       this.recursion = true;
       this.flat(call, "recursion");
     }
   }
 }
 
-/** True when `name` is bound again inside `fn`, by a parameter, a variable or a nested function, so a bare `name()` may not mean `fn`. */
-function rebinds(fn: Node, name: string): boolean {
-  const binders = fn.descendantsOfType(["required_parameter", "optional_parameter", "variable_declarator", "function_declaration", "rest_pattern"]);
-  const own = fn.childForFieldName("name");
-  return binders.some((binder) => {
-    if (binder.id === fn.id) return false;
-    if (binder.type === "function_declaration") return binder.childForFieldName("name")?.text === name;
-    const target = binder.childForFieldName("pattern") ?? binder.childForFieldName("name") ?? binder;
-    return target.descendantsOfType("identifier").some((identifier) => identifier.text === name && identifier.id !== own?.id);
-  });
-}
-
-/** Parameters that are bare identifiers, as in a JS arrow function or function, are not wrapped in `required_parameter`. */
-function rebindsBareParameter(fn: Node, name: string): boolean {
-  const parameters = fn.descendantsOfType(["formal_parameters"]);
-  return parameters.some((list) => list.namedChildren.some((child) => child.type === "identifier" && child.text === name));
-}
-
-function enclosingClassName(fn: Node): string | undefined {
-  for (let parent = fn.parent; parent !== null; parent = parent.parent) {
-    if (parent.type === "class_declaration" || parent.type === "class" || parent.type === "abstract_class_declaration") {
-      return parent.childForFieldName("name")?.text;
-    }
-    if (parent.type === "program") return undefined;
-  }
-  return undefined;
-}
-
-export function parameterCounts(fn: Node): { parameters: number; optionCount: number } {
-  let parameters = 0;
-  let optionCount = 0;
-  const single = fn.childForFieldName("parameter");
-  const list = fn.childForFieldName("parameters");
-  const entries = list === null ? (single === null ? [] : [single]) : list.namedChildren;
-  for (const entry of entries) {
-    if (entry.type === "comment") continue;
-    let pattern: Node | null = entry;
-    if (entry.type === "required_parameter" || entry.type === "optional_parameter") pattern = entry.childForFieldName("pattern");
-    while (pattern !== null && pattern.type === "assignment_pattern") pattern = pattern.childForFieldName("left");
-    if (pattern === null) continue;
-    if (pattern.type === "this") continue;
-    parameters++;
-    if (pattern.type === "object_pattern") {
-      optionCount += pattern.namedChildren.filter((property) => property.type !== "comment").length;
-    }
-  }
-  return { parameters, optionCount };
-}
-
 /** Rows (0-based) of a file that hold code: any row a non-comment token touches. */
-export function codeRowsOf(root: Node): boolean[] {
+export function codeRowsOf(root: Node, rules: MetricRules): boolean[] {
+  const comments = rules.constructs.commentTypes;
   const rows: boolean[] = new Array<boolean>(root.endPosition.row + 1).fill(false);
   const walk = (node: Node): void => {
-    if (node.type === "comment") return;
+    if (comments.has(node.type)) return;
     if (node.childCount === 0) {
       for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows[row] = true;
       return;
@@ -381,27 +278,14 @@ export function codeRowsOf(root: Node): boolean[] {
   return rows;
 }
 
-/** Measures one function-like node. `fn` is the function itself, not the declaration that names it. */
-export function measureFunction(fn: Node, options: MeasureOptions): Measured {
-  const member = new Set<string>();
-  if (options.name !== undefined) member.add(options.name);
-  const own = fn.childForFieldName("name");
-  if (own !== null) member.add(own.text);
-  // A method's name is not in scope inside it: only `this.name()` or `Class.name()` reach it.
-  const isMethod = fn.type === "method_definition";
-  const bare = new Set<string>();
-  if (!isMethod) {
-    for (const name of own !== null && options.name === undefined ? [own.text] : [...(options.name !== undefined ? [options.name] : []), ...(own !== null ? [own.text] : [])]) {
-      if (!rebinds(fn, name) && !rebindsBareParameter(fn, name)) bare.add(name);
-    }
-  }
-  const owner = isMethod ? enclosingClassName(fn) : undefined;
-  const measurer = new Measurer(options, { bare, member, ...(owner === undefined ? {} : { owner }) });
+/** Measures one function-like node under a language's rules. `fn` is the function itself, not the declaration that names it. */
+export function measureFunction(fn: Node, options: MeasureOptions, rules: MetricRules): Measured {
+  const measurer = new Measurer(options, rules, rules.recursionScope(fn, options.name));
   measurer.function(fn);
 
   let length = 0;
   for (let line = options.startLine; line <= options.endLine; line++) if (options.codeRows[line - 1] === true) length++;
-  const { parameters, optionCount } = parameterCounts(fn);
+  const { parameters, optionCount } = rules.parameterCounts(fn);
   const metrics: UnitMetrics = {
     cyclomatic: measurer.cyclomatic,
     cyclomaticModified: measurer.cyclomaticModified,

@@ -29,7 +29,7 @@ describe("interface shape fixtures", () => {
   });
 
   it.each(files)("%s matches the hand-counted shape of every unit and of the module", async (file) => {
-    const facts = parseFacts(await loadGrammar(grammarIdForPath(file)!), readFileSync(`${root}${file}`, "utf8"));
+    const facts = parseFacts(file, await loadGrammar(grammarIdForPath(file)!), readFileSync(`${root}${file}`, "utf8"));
     const actual = facts.units.map((unit) => [unit.qualifiedName, unit.shape?.nodes, unit.shape?.interfaceSize, unit.passThrough ?? null]);
     expect(actual).toEqual(expected.files[file]);
     expect(facts.nodes).toBe(expected.modules[file]);

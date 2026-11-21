@@ -1,7 +1,7 @@
 import { compareUtf8 } from "@code-health/parse/analyse-tree";
-import { grammarIdForPath, loadGrammar, type GrammarId, type LoadedGrammar } from "@code-health/parse/grammars";
+import type { FileCensus, TypeDeclaration } from "@code-health/parse/census-facts";
+import { GrammarSet } from "@code-health/parse/grammars";
 import type { SourceTree } from "@code-health/parse/source-tree";
-import { extractFileCensus, type FileCensus, type TypeDeclaration } from "./file-census.ts";
 import { folderOf, type Project } from "../project.ts";
 
 export const MECHANISMS = ["callbacks", "interfaces", "dependency-injection", "events", "handlers", "registries", "ports-and-adapters"] as const;
@@ -100,20 +100,15 @@ class Reader {
 /** Reads every production file of the project and finds the decoupling mechanisms already in use. */
 export async function buildCensus(tree: SourceTree, project: Project, settings: CensusSettings): Promise<Census> {
   const files = new Map<string, FileCensus>();
-  const grammars = new Map<GrammarId, LoadedGrammar>();
+  const grammars = new GrammarSet();
   const sources = await tree.readMany(project.files);
   for (const path of project.files) {
     const source = sources.get(path);
-    const id = grammarIdForPath(path);
-    if (source === undefined || id === undefined) continue;
-    let grammar = grammars.get(id);
-    if (!grammar) {
-      grammar = await loadGrammar(id);
-      grammars.set(id, grammar);
-    }
-    const parsed = grammar.parse(source);
+    const language = await grammars.forPath(path);
+    if (source === undefined || language === undefined) continue;
+    const parsed = language.grammar.parse(source);
     try {
-      files.set(path, extractFileCensus(parsed.rootNode));
+      files.set(path, language.adapter.census.extract(parsed.rootNode));
     } finally {
       parsed.delete();
     }

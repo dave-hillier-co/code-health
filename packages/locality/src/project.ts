@@ -1,7 +1,7 @@
 import { posix } from "node:path";
 import { compileGlobs } from "@code-health/history/glob";
-import { analyseTree, isTestPath, type ProjectAnalysis } from "@code-health/parse/analyse-tree";
-import { grammarIdForPath } from "@code-health/parse/grammars";
+import { analyseTree, type ProjectAnalysis } from "@code-health/parse/analyse-tree";
+import { hasAdapter, isTestPath } from "@code-health/parse/languages";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { treeFromRef, type SourceTree } from "@code-health/parse/source-tree";
 import type { LocalitySettings } from "./config.ts";
@@ -40,7 +40,7 @@ export function countLines(text: string): number {
 export async function loadProject(root: string, ref: string, settings: LocalitySettings): Promise<Project> {
   const tree = withoutExcluded(await treeFromRef(root, ref), settings.exclude);
   const analysis = await analyseTree(tree, { cache: await ParseCache.forRepository(root) });
-  const production = [...tree.files.keys()].filter((path) => grammarIdForPath(path) !== undefined && !isTestPath(path));
+  const production = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path));
   const texts = await tree.readMany(production);
   const packageEntries = await readPackageEntries(tree);
   return { analysis, production, isTest: isTestPath, texts, packageEntries };

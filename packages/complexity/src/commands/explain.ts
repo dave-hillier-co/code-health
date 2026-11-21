@@ -1,7 +1,7 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { Command } from "@code-health/cli-kit/run-cli";
-import { parseFacts } from "@code-health/parse/file-facts";
-import { grammarIdForPath, loadGrammar } from "@code-health/parse/grammars";
+import { parseWith } from "@code-health/parse/file-facts";
+import { GrammarSet } from "@code-health/parse/grammars";
 import { readSettings, thresholdsFor } from "../config.ts";
 import { currentTree } from "../current-tree.ts";
 import { labelsFor, structuralValues } from "../metrics.ts";
@@ -37,10 +37,10 @@ export const command: Command = {
     const current = await currentTree(context);
     const text = await current.tree.read(path);
     if (text === undefined) throw usageError(`${path} is not in the ${current.kind === "head" ? "commit at HEAD" : "working tree"}`);
-    const grammarId = grammarIdForPath(path);
-    if (grammarId === undefined) throw usageError(`${path} has no structural adapter, so its functions cannot be broken down`);
+    const language = await new GrammarSet().forPath(path);
+    if (language === undefined) throw usageError(`${path} has no structural adapter, so its functions cannot be broken down`);
 
-    const facts = parseFacts(await loadGrammar(grammarId), text, { explain: true });
+    const facts = parseWith(language.adapter, language.grammar, text, { explain: true });
     const functions = facts.units.filter((unit) => unit.metrics !== undefined);
     const unit = functions.find((candidate) => candidate.qualifiedName === wanted);
     if (unit === undefined || unit.metrics === undefined || unit.increments === undefined) {

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
-import { analyseTree, compareUtf8, isTestPath } from "../src/analyse-tree.ts";
+import { analyseTree, compareUtf8 } from "../src/analyse-tree.ts";
+import { isTestPath } from "../src/languages.ts";
 import { ParseCache } from "../src/parse-cache.ts";
 import { treeFromRef } from "../src/source-tree.ts";
 

@@ -1,7 +1,7 @@
 import { normalise, type Graph } from "@code-health/graph/graph";
 import { compileGlobs } from "@code-health/history/glob";
-import { analyseTree, compareUtf8, isTestPath, type Consumer, type ImportEdge, type ProjectAnalysis } from "@code-health/parse/analyse-tree";
-import { grammarIdForPath } from "@code-health/parse/grammars";
+import { analyseTree, compareUtf8, type Consumer, type ImportEdge, type ProjectAnalysis } from "@code-health/parse/analyse-tree";
+import { hasAdapter, isTestPath } from "@code-health/parse/languages";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { treeFromRef } from "@code-health/parse/source-tree";
 
@@ -36,7 +36,7 @@ export async function loadProject(root: string, headSha: string, exclude: readon
   const excluded = compileGlobs(exclude);
 
   const files = [...tree.files.keys()]
-    .filter((path) => grammarIdForPath(path) !== undefined && !isTestPath(path) && !excluded(path))
+    .filter((path) => hasAdapter(path) && !isTestPath(path) && !excluded(path))
     .sort(compareUtf8);
   const inProject = new Set(files);
 
