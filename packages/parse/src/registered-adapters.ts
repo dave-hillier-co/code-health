@@ -7,3 +7,4 @@ export { adapter as csharp } from "./languages/csharp/adapter.ts";
 export { adapter as cpp } from "./languages/cpp/adapter.ts";
 export { adapter as python } from "./languages/python/adapter.ts";
 export { adapter as go } from "./languages/go/adapter.ts";
+export { adapter as rust } from "./languages/rust/adapter.ts";

@@ -1,0 +1,24 @@
+{
+  "units": {
+    "src/lib.rs": [
+      ["Point", "class", 1, 1],
+      ["Shape", "class", 3, 3],
+      ["Area", "class", 5, 10],
+      ["Area.describe", "method", 7, 9],
+      ["Point.new", "method", 13, 15],
+      ["Shape.area", "method", 19, 24],
+      ["Point.fmt", "method", 28, 30],
+      ["Point.fmt~2", "method", 34, 36],
+      ["geometry.origin", "function", 40, 42],
+      ["geometry.Line", "class", 43, 43],
+      ["geometry.Line.length", "method", 45, 48],
+      ["geometry.Line.length.double", "arrow", 46, 46],
+      ["outer", "function", 52, 55],
+      ["outer.inner", "function", 53, 53],
+      ["dup", "function", 57, 57],
+      ["a.dup", "function", 58, 58]
+    ]
+  },
+  "unresolved": [],
+  "syntaxErrors": []
+}

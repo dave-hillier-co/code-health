@@ -6,3 +6,4 @@ export { language as csharp } from "./languages/csharp.ts";
 export { language as cpp } from "./languages/cpp.ts";
 export { language as python } from "./languages/python.ts";
 export { language as go } from "./languages/go.ts";
+export { language as rust } from "./languages/rust.ts";

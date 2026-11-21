@@ -1,0 +1,12 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "flow.rs": [
+      ["classify", 3, 3, 3, 1, 9, 5, 1, 0],
+      ["tally", 6, 4, 4, 2, 14, 6, 2, 0],
+      ["lookup", 5, 5, 4, 1, 9, 5, 3, 0],
+      ["search", 7, 7, 11, 3, 14, 9, 2, 0],
+      ["search.check", 1, 1, 0, 0, 1, 1, 1, 0]
+    ]
+  }
+}

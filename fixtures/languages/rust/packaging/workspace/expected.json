@@ -1,0 +1,10 @@
+{
+  "packages": {
+    "crates/app": { "ecosystem": "cargo", "exportedTypes": 0, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
+    "crates/core": { "ecosystem": "cargo", "exportedTypes": 4, "abstractness": 0.25, "abstractnessWeak": false, "consumers": ["crates/app"] }
+  },
+  "findings": [
+    "undeclared-dependency crates/app | crates/app uses serde_json without declaring it: the dependency graph the build sees is not the real one",
+    "unused-dependency crates/core | crates/core declares unused-helper and its code never uses it: coupling with no purpose, and build weight"
+  ]
+}

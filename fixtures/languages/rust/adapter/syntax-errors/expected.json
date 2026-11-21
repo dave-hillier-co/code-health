@@ -1,0 +1,14 @@
+{
+  "units": {
+    "src/broken.rs": [
+      ["ok", "function", 1, 3],
+      ["broken", "function", 5, 8]
+    ],
+    "src/lib.rs": [["run", "function", 4, 6]]
+  },
+  "importEdges": ["src/lib.rs -> src/broken.rs import"],
+  "fileEdges": ["src/lib.rs -> src/broken.rs call call=1 reference=0"],
+  "consumers": ["src/lib.rs#run -> src/broken.rs#ok call x1"],
+  "unresolved": [],
+  "syntaxErrors": ["src/broken.rs"]
+}

@@ -1,0 +1,18 @@
+{
+  "operations": [{ "from": "src/billing/money.rs", "to": "src/pricing/money.rs" }],
+  "rewrites": [
+    { "path": "src/billing/mod.rs", "line": 1, "from": "pub mod money", "to": "" },
+    { "path": "src/invoice.rs", "line": 1, "from": "crate::billing::money::Money", "to": "crate::pricing::money::Money" },
+    { "path": "src/lib.rs", "line": 5, "from": "billing::money::Money", "to": "pricing::money::Money" },
+    { "path": "src/pricing.rs", "line": 1, "from": "", "to": "pub mod money" },
+    { "path": "src/pricing/money.rs", "line": 1, "from": "super::tax::rate", "to": "crate::billing::tax::rate" }
+  ],
+  "texts": {
+    "src/billing/mod.rs": "pub mod tax;\n",
+    "src/invoice.rs": "use crate::pricing::money::Money;\n\npub fn show(m: Money) -> i64 {\n    m.0\n}\n",
+    "src/lib.rs": "pub mod billing;\npub mod invoice;\npub mod pricing;\n\nuse pricing::money::Money;\n\npub fn total() -> Money {\n    Money::zero()\n}\n",
+    "src/pricing.rs": "pub mod money;\n\npub fn round(x: i64) -> i64 {\n    x\n}\n",
+    "src/pricing/money.rs": "use crate::billing::tax::rate;\nuse crate::pricing::round;\n\npub struct Money(pub i64);\n\nimpl Money {\n    pub fn zero() -> Money {\n        Money(round(rate()))\n    }\n}\n"
+  },
+  "warnings": []
+}

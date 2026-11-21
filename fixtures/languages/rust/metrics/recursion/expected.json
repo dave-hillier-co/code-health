@@ -1,0 +1,12 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "recursion.rs": [
+      ["fact", 2, 2, 3, 1, 3, 3, 1, 0],
+      ["Tree.depth", 3, 2, 1, 1, 6, 1, 0, 0],
+      ["Tree.height", 1, 1, 0, 0, 3, 1, 0, 0],
+      ["Tree.measure", 2, 2, 3, 1, 3, 3, 1, 0],
+      ["Tree.count", 1, 1, 1, 0, 3, 1, 0, 0]
+    ]
+  }
+}

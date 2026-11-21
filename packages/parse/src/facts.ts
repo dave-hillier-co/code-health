@@ -90,6 +90,11 @@ export interface ExportFact {
   kind?: DeclarationKind;
   /** The local binding or unit that is exported, when the export names one. */
   local?: string;
+  /**
+   * Nameable from other files of the project but not part of the file's public surface: a Rust item that is
+   * private or `pub(crate)`. Resolution reaches it, the exported names and the units' `exported` do not list it.
+   */
+  internal?: boolean;
   line: number;
 }
 

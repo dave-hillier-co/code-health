@@ -1,0 +1,27 @@
+{
+  "columns": ["unit", "nodes", "interfaceSize", "passThrough"],
+  "files": {
+    "forwarding.rs": [
+      ["relay", 13, 1, "target"],
+      ["fixed", 17, 1, "target"],
+      ["borrowed", 17, 1, "target"],
+      ["computed", 15, 1, null],
+      ["early", 22, 1, null],
+      ["Shape", 15, 2, null],
+      ["Area", 21, 2, null],
+      ["Area.name", 11, 1, "forward"]
+    ],
+    "shapes.rs": [
+      ["Level", 10, 2, null],
+      ["Repo", 11, 1, null],
+      ["Repo.find", 23, 1, "self.store.find"],
+      ["Repo.size", 17, 1, null],
+      ["add", 15, 2, null],
+      ["audit", 19, 1, "map.len"]
+    ]
+  },
+  "modules": {
+    "forwarding.rs": 120,
+    "shapes.rs": 98
+  }
+}

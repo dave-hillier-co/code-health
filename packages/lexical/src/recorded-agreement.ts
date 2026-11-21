@@ -7,3 +7,4 @@ export { recorded as python } from "./agreement-rates/python.ts";
 export { recorded as go } from "./agreement-rates/go.ts";
 export { recorded as java } from "./agreement-rates/java.ts";
 export { recorded as kotlin } from "./agreement-rates/kotlin.ts";
+export { recorded as rust } from "./agreement-rates/rust.ts";

@@ -1,0 +1,34 @@
+{
+  "units": {
+    "crates/app/src/main.rs": [
+      ["System", "class", 5, 5],
+      ["System.now", "method", 8, 10],
+      ["main", "function", 13, 15]
+    ],
+    "crates/app/tests/smoke.rs": [["opens", "function", 4, 6]],
+    "crates/core/src/lib.rs": [["Clock", "class", 3, 5]],
+    "crates/core/src/store.rs": [
+      ["Store", "class", 1, 1],
+      ["Store.open", "method", 4, 6]
+    ]
+  },
+  "importEdges": [
+    "crates/app/src/main.rs -> crates/core/src/lib.rs import",
+    "crates/app/src/main.rs -> crates/core/src/store.rs import",
+    "crates/app/tests/smoke.rs -> crates/core/src/store.rs import",
+    "crates/core/src/lib.rs -> crates/core/src/store.rs import"
+  ],
+  "fileEdges": [
+    "crates/app/src/main.rs -> crates/core/src/lib.rs reference call=0 reference=1",
+    "crates/app/src/main.rs -> crates/core/src/store.rs reference call=0 reference=1",
+    "crates/app/tests/smoke.rs -> crates/core/src/store.rs test call=0 reference=1"
+  ],
+  "consumers": [
+    "crates/app/src/main.rs -> crates/core/src/lib.rs#Clock reference x1",
+    "crates/app/src/main.rs#main -> crates/core/src/store.rs#Store reference x1",
+    "crates/app/tests/smoke.rs#opens -> crates/core/src/store.rs#Store test x1"
+  ],
+  "unresolved": [],
+  "barrels": [],
+  "syntaxErrors": []
+}

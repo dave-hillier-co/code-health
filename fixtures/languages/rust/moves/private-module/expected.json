@@ -1,0 +1,16 @@
+{
+  "operations": [{ "from": "src/a/inner.rs", "to": "src/b/inner.rs" }],
+  "rewrites": [
+    { "path": "src/a/mod.rs", "line": 1, "from": "pub mod inner", "to": "" },
+    { "path": "src/b/inner.rs", "line": 1, "from": "super::helper::f", "to": "crate::a::helper::f" },
+    { "path": "src/b/mod.rs", "line": 1, "from": "", "to": "pub mod inner" }
+  ],
+  "texts": {
+    "src/a/mod.rs": "mod helper;\n",
+    "src/b/inner.rs": "use crate::a::helper::f;\n\npub fn g() {\n    f();\n}\n",
+    "src/b/mod.rs": "pub mod inner;\n\npub fn h() {}\n"
+  },
+  "warnings": [
+    "src/b/inner.rs:1 \"crate::a::helper::f\" goes through the private module crate::a::helper, which only crate::a can reach: it needs pub(crate) or pub(super)"
+  ]
+}
