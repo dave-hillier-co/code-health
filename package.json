@@ -21,7 +21,8 @@
     "check:red-flags": "node scripts/sync-red-flags.mjs --check",
     "check:skills": "node scripts/check-skills.mjs",
     "check:evals": "node scripts/check-evals.mjs",
-    "evals": "node scripts/run-evals.mjs"
+    "evals": "node scripts/run-evals.mjs",
+    "new-plugin": "node scripts/new-plugin.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
