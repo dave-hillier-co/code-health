@@ -1,0 +1,38 @@
+{
+  "operations": [
+    {
+      "from": "src/acme/tax.py",
+      "to": "src/acme/rates/tax.py"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "src/acme/billing.py",
+      "line": 1,
+      "from": "acme.tax",
+      "to": "acme.rates.tax"
+    },
+    {
+      "path": "src/acme/billing.py",
+      "line": 2,
+      "from": "acme.tax",
+      "to": "acme.rates.tax"
+    },
+    {
+      "path": "src/acme/billing.py",
+      "line": 3,
+      "from": "acme.tax",
+      "to": "acme.rates.tax"
+    },
+    {
+      "path": "src/acme/billing.py",
+      "line": 4,
+      "from": "acme.tax",
+      "to": "acme.rates.tax"
+    }
+  ],
+  "texts": {
+    "src/acme/billing.py": "import acme.rates.tax\nimport acme.rates.tax as levy\nfrom acme.rates.tax import compute\nfrom acme.rates import tax as tax_module\n\n\ndef bill(value):\n    return acme.rates.tax.compute(value) + levy.compute(value) + compute(value) + tax_module.compute(value)\n"
+  },
+  "warnings": []
+}

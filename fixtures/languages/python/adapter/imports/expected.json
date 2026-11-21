@@ -1,0 +1,18 @@
+{
+  "importEdges": [
+    "src/acme/core.py -> src/acme/__init__.py import",
+    "src/acme/core.py -> src/acme/models/user.py import",
+    "src/acme/core.py -> src/acme/util.py import"
+  ],
+  "fileEdges": [
+    "src/acme/core.py -> src/acme/models/user.py call call=2 reference=0",
+    "src/acme/core.py -> src/acme/util.py call call=1 reference=0"
+  ],
+  "consumers": [
+    "src/acme/core.py#go -> src/acme/models/user.py#save call x2",
+    "src/acme/core.py#go -> src/acme/util.py#clean call x1"
+  ],
+  "unresolved": [
+    "src/acme/core.py:7 acme.missing not-found"
+  ]
+}

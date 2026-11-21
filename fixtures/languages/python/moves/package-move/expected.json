@@ -1,0 +1,34 @@
+{
+  "operations": [
+    {
+      "from": "app/billing/__init__.py",
+      "to": "app/finance/__init__.py"
+    },
+    {
+      "from": "app/billing/invoice.py",
+      "to": "app/finance/invoice.py"
+    },
+    {
+      "from": "app/billing/total.py",
+      "to": "app/finance/total.py"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "app/main.py",
+      "line": 1,
+      "from": "app.billing",
+      "to": "app.finance"
+    },
+    {
+      "path": "app/main.py",
+      "line": 2,
+      "from": "app.billing",
+      "to": "app.finance"
+    }
+  ],
+  "texts": {
+    "app/main.py": "from app.finance import Invoice, total\nfrom app import finance as billing\n\n\ndef run():\n    return total(Invoice()) + billing.total(None)\n"
+  },
+  "warnings": []
+}

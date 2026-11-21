@@ -1,0 +1,22 @@
+{
+  "files": {
+    "forwarding.py": [
+      ["forward", 14, 2, "store.save"],
+      ["compute", 14, 1, null]
+    ],
+    "shapes.py": [
+      ["Account", 76, 6, null],
+      ["Account.__init__", 21, 2, null],
+      ["Account.deposit", 8, 1, null],
+      ["Account._audit", 7, 1, null],
+      ["Account.__repr__", 10, 1, null],
+      ["Account.label", 9, 1, null],
+      ["make", 19, 2, "Account"],
+      ["Empty", 4, 1, null]
+    ]
+  },
+  "modules": {
+    "forwarding.py": 28,
+    "shapes.py": 99
+  }
+}

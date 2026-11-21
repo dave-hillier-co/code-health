@@ -25,7 +25,7 @@ describe("grammarIdForPath", () => {
   });
 
   it("returns undefined for files without a grammar", () => {
-    expect(grammarIdForPath("a.py")).toBeUndefined();
+    expect(grammarIdForPath("a.rb")).toBeUndefined();
     expect(grammarIdForPath("Makefile")).toBeUndefined();
     expect(grammarIdForPath("a.d.ts.map")).toBeUndefined();
   });

@@ -88,6 +88,12 @@ export type Resolution =
 
 export interface ModuleResolver {
   resolve(from: string, specifier: string): Resolution;
+  /**
+   * For a language where a name imported from a module may itself be a module (Python `from package import
+   * module`): the file of the module `name` inside the module file `modulePath`, when there is one. Asked only
+   * when the module does not export the name. TypeScript has no such rule and leaves it out.
+   */
+  submodule?(modulePath: string, name: string): string | undefined;
 }
 
 export interface ResolveInput {

@@ -127,9 +127,9 @@ test("per-function metrics are released for TypeScript, whose recorded agreement
 });
 
 test("per-function metrics stay gated for a profile with no structural adapter to measure it against", () => {
-  const { functions } = analyseSource("sample.py", read("sample.py"));
+  const { functions } = analyseSource("sample.go", read("sample.go"));
   expect(functions.gated).toBe(true);
-  if (functions.gated) expect(functions.reason).toBe("no agreement measured for python");
+  if (functions.gated) expect(functions.reason).toBe("no agreement measured for go");
 });
 
 test("a file with no profile gets indentation metrics and says what was skipped", () => {
@@ -163,8 +163,8 @@ test("an unknown profile in config is an error", () => {
 });
 
 test("the same content gives identical results", () => {
-  const first = analyseSource("sample.py", read("sample.py"));
-  expect(analyseSource("sample.py", read("sample.py"))).toEqual(first);
+  const first = analyseSource("sample.go", read("sample.go"));
+  expect(analyseSource("sample.go", read("sample.go"))).toEqual(first);
 });
 
 const fixtures: GitFixture[] = [];

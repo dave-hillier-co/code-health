@@ -67,11 +67,32 @@
       "unverified": false
     },
     {
-      "aggregates": null,
+      "aggregates": {
+        "cognitive": {
+          "max": 3,
+          "sum": 3
+        },
+        "cyclomatic": {
+          "max": 3,
+          "sum": 3
+        },
+        "length": {
+          "max": 6,
+          "sum": 6
+        },
+        "nesting": {
+          "max": 2,
+          "sum": 2
+        },
+        "parameters": {
+          "max": 1,
+          "sum": 1
+        }
+      },
       "codeLines": 6,
       "complexity": 8,
-      "functions": 0,
-      "interfaceDepth": null,
+      "functions": 1,
+      "interfaceDepth": 24,
       "keywordComplexity": 2,
       "lineCount": 6,
       "overThreshold": 0,
@@ -79,7 +100,7 @@
       "path": "tools/total.py",
       "profile": "python",
       "score": 8,
-      "source": null,
+      "source": "structural",
       "test": false,
       "unverified": false
     },

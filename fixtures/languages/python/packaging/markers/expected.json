@@ -1,0 +1,19 @@
+{
+  "packages": {
+    "packages/listed": {
+      "ecosystem": "python",
+      "exportedTypes": 2,
+      "abstractness": 0.5,
+      "abstractnessWeak": true,
+      "consumers": []
+    },
+    "packages/open": {
+      "ecosystem": "python",
+      "exportedTypes": 2,
+      "abstractness": 0.5,
+      "abstractnessWeak": true,
+      "consumers": []
+    }
+  },
+  "findings": []
+}

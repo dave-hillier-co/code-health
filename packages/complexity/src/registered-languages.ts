@@ -2,3 +2,4 @@
 export { language as typescript } from "./languages/typescript.ts";
 export { language as csharp } from "./languages/csharp.ts";
 export { language as cpp } from "./languages/cpp.ts";
+export { language as python } from "./languages/python.ts";

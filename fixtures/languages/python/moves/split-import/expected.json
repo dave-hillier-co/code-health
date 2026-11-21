@@ -1,0 +1,20 @@
+{
+  "operations": [
+    {
+      "from": "shop/tax.py",
+      "to": "shop/rates/tax.py"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "app.py",
+      "line": 1,
+      "from": "shop.tax",
+      "to": "shop.rates.tax"
+    }
+  ],
+  "texts": {
+    "app.py": "from shop import rounding\nfrom shop.rates import tax\n\n\ndef run():\n    return tax.tax(rounding.up(1))\n"
+  },
+  "warnings": []
+}

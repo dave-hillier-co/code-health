@@ -1,0 +1,23 @@
+{
+  "importEdges": [
+    "app.py -> lib.py import",
+    "app.py -> lib.py import type",
+    "test_lib.py -> lib.py import",
+    "tests/helper.py -> lib.py import"
+  ],
+  "fileEdges": [
+    "app.py -> lib.py call call=2 reference=4",
+    "test_lib.py -> lib.py test call=1 reference=0",
+    "tests/helper.py -> lib.py test call=0 reference=1"
+  ],
+  "consumers": [
+    "app.py -> lib.py#deco reference x1",
+    "app.py#run -> lib.py:K reference x1",
+    "app.py#run -> lib.py#Shape reference x1",
+    "app.py#run -> lib.py#f call x2",
+    "app.py#run -> lib.py#g reference x1",
+    "test_lib.py#test_f -> lib.py#f test x1",
+    "tests/helper.py#make -> lib.py#g test x1"
+  ],
+  "unresolved": []
+}

@@ -1,0 +1,26 @@
+{
+  "packages": {
+    "packages/app": {
+      "ecosystem": "python",
+      "exportedTypes": 0,
+      "abstractness": 0,
+      "abstractnessWeak": true,
+      "consumers": []
+    },
+    "packages/core": {
+      "ecosystem": "python",
+      "exportedTypes": 4,
+      "abstractness": 0.5,
+      "abstractnessWeak": false,
+      "consumers": [
+        "packages/app"
+      ]
+    }
+  },
+  "findings": [
+    "deep-import packages/core packages/app | packages/app imports 1 file of packages/core past its entry points: packages/core/src/acme_core/_internal.py",
+    "undeclared-dependency packages/app | packages/app uses numpy without declaring it: the dependency graph the build sees is not the real one",
+    "unused-dependency packages/app | packages/app declares attrs and its code never uses it: coupling with no purpose, and build weight",
+    "unused-dependency packages/core | packages/core declares requests and its code never uses it: coupling with no purpose, and build weight"
+  ]
+}

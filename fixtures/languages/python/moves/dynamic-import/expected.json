@@ -1,0 +1,13 @@
+{
+  "operations": [
+    {
+      "from": "shop/tax.py",
+      "to": "shop/rates/tax.py"
+    }
+  ],
+  "rewrites": [],
+  "texts": {},
+  "warnings": [
+    "shop/plugins.py:5 \"shop.tax\" is imported dynamically and names a moved module: update it by hand"
+  ]
+}

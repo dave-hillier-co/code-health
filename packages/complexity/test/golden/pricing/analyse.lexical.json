@@ -1,5 +1,10 @@
 {
   "agreement": {
+    "python": {
+      "bar": 0.9,
+      "exactRate": 0.9545,
+      "spuriousRate": 0
+    },
     "typescript": {
       "bar": 0.9,
       "exactRate": 0.9806,
@@ -26,8 +31,8 @@
     "tree": "head"
   },
   "layers": {
-    "lexical": 3,
-    "none": 3,
+    "lexical": 4,
+    "none": 2,
     "structural": 0
   },
   "ranking": {
@@ -47,8 +52,8 @@
     {
       "bumps": 1,
       "changeWeight": 0.5,
-      "complexityScore": 0.833333,
-      "dominant": "nesting",
+      "complexityScore": 0.875,
+      "dominant": "length",
       "endLine": 11,
       "id": "src/pricing.ts#price",
       "keyword": 3,
@@ -58,13 +63,13 @@
       "nesting": 2,
       "path": "src/pricing.ts",
       "percentiles": {
-        "bumps": 0.833333,
-        "keyword": 0.833333,
-        "length": 0.833333,
-        "nesting": 0.833333
+        "bumps": 0.75,
+        "keyword": 0.875,
+        "length": 0.875,
+        "nesting": 0.75
       },
       "revisions": 1,
-      "score": 0.416667,
+      "score": 0.4375,
       "source": "lexical",
       "startLine": 1,
       "test": false,
@@ -73,7 +78,7 @@
     {
       "bumps": 0,
       "changeWeight": 0.5,
-      "complexityScore": 0.333333,
+      "complexityScore": 0.25,
       "dominant": "nesting",
       "endLine": 13,
       "id": "src/pricing.ts#double",
@@ -84,13 +89,13 @@
       "nesting": 0,
       "path": "src/pricing.ts",
       "percentiles": {
-        "bumps": 0.333333,
-        "keyword": 0.333333,
-        "length": 0.166667,
-        "nesting": 0.333333
+        "bumps": 0.25,
+        "keyword": 0.25,
+        "length": 0.125,
+        "nesting": 0.25
       },
       "revisions": 1,
-      "score": 0.166667,
+      "score": 0.125,
       "source": "lexical",
       "startLine": 13,
       "test": false,
@@ -101,7 +106,6 @@
   "skipped": {
     "comment and string stripping: no lexer profile": 1,
     "per-function metrics: no agreement measured for go": 1,
-    "per-function metrics: no agreement measured for python": 1,
     "per-function metrics: no lexer profile": 1
   },
   "skippedFiles": {

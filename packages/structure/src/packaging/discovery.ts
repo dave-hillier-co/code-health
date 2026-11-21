@@ -1,7 +1,7 @@
 import { compareIds } from "@code-health/graph/graph";
 import { compileGlobs } from "@code-health/history/glob";
 import type { SourceTree } from "@code-health/parse/source-tree";
-import { parseToml, type TomlTable, type TomlValue } from "./toml.ts";
+import { parseToml, type TomlTable, type TomlValue } from "@code-health/parse/toml";
 
 /** The build system or package manager that makes a unit a package. `component` is a configured stand-in. */
 export type Ecosystem = "npm" | "dotnet" | "cmake" | "gradle" | "maven" | "python" | "cargo" | "go" | "component";
