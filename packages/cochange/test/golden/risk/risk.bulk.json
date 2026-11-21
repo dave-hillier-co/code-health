@@ -67,6 +67,7 @@
     "oversizedChanges": 0
   },
   "inputs": {
+    "backtest": null,
     "baseline": {
       "direct": 14,
       "mergedChanges": 16,
@@ -445,6 +446,30 @@
         }
       }
     ],
+    "findings": [
+      {
+        "band": "high",
+        "evidence": [],
+        "factor": "size",
+        "fromPlacement": false,
+        "id": "size",
+        "redFlag": null,
+        "response": "Split along the components touched, when they can merge independently.",
+        "step": "split",
+        "summary": "360 lines in 12 files, above the 90th percentile of merged changes"
+      },
+      {
+        "band": "high",
+        "evidence": [],
+        "factor": "spread",
+        "fromPlacement": false,
+        "id": "spread",
+        "redFlag": null,
+        "response": "Split along the components touched, when they can merge independently.",
+        "step": "split",
+        "summary": "spread 1.818182 across 6 folders, above the 90th percentile of merged changes"
+      }
+    ],
     "impact": {
       "band": "moderate",
       "baseline": {
@@ -458,6 +483,14 @@
       "unavailable": []
     },
     "kind": "assessment",
+    "level": {
+      "backtest": null,
+      "impact": "moderate",
+      "placement": "unknown",
+      "reason": "no stored backtest for this configuration: run cochange risk backtest, and a level is shown if the levels separate past changes",
+      "status": "unavailable",
+      "value": null
+    },
     "placement": {
       "band": null,
       "basis": null,

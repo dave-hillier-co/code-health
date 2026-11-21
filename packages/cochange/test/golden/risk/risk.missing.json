@@ -67,6 +67,7 @@
     "oversizedChanges": 0
   },
   "inputs": {
+    "backtest": null,
     "baseline": {
       "direct": 14,
       "mergedChanges": 16,
@@ -422,6 +423,51 @@
         }
       }
     ],
+    "findings": [
+      {
+        "band": "moderate",
+        "evidence": [
+          {
+            "confidence": 85.7,
+            "file": "src/billing/invoice.test.ts",
+            "support": 6,
+            "towards": "src/billing/invoice.ts"
+          },
+          {
+            "confidence": 85.7,
+            "file": "src/billing/tax.ts",
+            "support": 6,
+            "towards": "src/billing/invoice.ts"
+          }
+        ],
+        "factor": "missing-co-change",
+        "fromPlacement": false,
+        "id": "missing-co-change",
+        "redFlag": "Information leakage",
+        "response": "Open the named files and decide, for each, whether it needs changing. Record the ones deliberately left alone.",
+        "step": "complete",
+        "summary": "2 files that usually change with the touched files are not in the change"
+      },
+      {
+        "band": "moderate",
+        "evidence": [
+          {
+            "file": "src/billing/invoice.ts",
+            "kind": "not-updated",
+            "revisions": 7,
+            "test": "src/billing/invoice.test.ts",
+            "together": 6
+          }
+        ],
+        "factor": "test-evidence",
+        "fromPlacement": false,
+        "id": "test-evidence",
+        "redFlag": null,
+        "response": "Add or update the tests that usually change with these files, or say why not.",
+        "step": "test",
+        "summary": "1 source file changed without the tests that usually change with it, or tests deleted"
+      }
+    ],
     "impact": {
       "band": "moderate",
       "baseline": {
@@ -437,6 +483,14 @@
       ]
     },
     "kind": "assessment",
+    "level": {
+      "backtest": null,
+      "impact": "moderate",
+      "placement": "unknown",
+      "reason": "no stored backtest for this configuration: run cochange risk backtest, and a level is shown if the levels separate past changes",
+      "status": "unavailable",
+      "value": null
+    },
     "placement": {
       "band": "unknown",
       "basis": "blame",

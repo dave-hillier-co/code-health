@@ -248,3 +248,97 @@ test("the same branch as a colleague's, with placement withheld, byte for byte",
   const { stdout } = await runCochange(repo.path, ["risk", "main..bob"]);
   expectGolden("placement", "risk.withheld", stdout);
 });
+
+describe("reviewers", () => {
+  interface Area {
+    area: string;
+    files: number;
+    candidates: number;
+    suggested: { name: string; email: string; authorship: number; coupledChanges: number }[] | null;
+  }
+  async function reviewers(...args: string[]): Promise<{ code: number; stdout: string; stderr: string; areas: Area[]; basis: string }> {
+    const { code, stdout, stderr } = await runCochange(repo.path, ["risk", "reviewers", ...args, "--json"]);
+    const results = stdout === "" ? undefined : JSON.parse(stdout).results;
+    return { code, stdout, stderr, areas: results?.areas, basis: results?.basis };
+  }
+
+  test("without --names the areas are listed with counts of who could review them, and no one is named", async () => {
+    const { areas, stdout, basis } = await reviewers("main..dave");
+    expect(basis).toBe("blame");
+    expect(areas).toEqual([{ area: "src/ledger", files: 1, candidates: 2, suggested: null }]);
+    expect(stdout).not.toMatch(/Bob|Alice|@example\.com/);
+  });
+
+  test("with --names they are the active developers who last wrote the touched files, most lines first", async () => {
+    const { areas } = await reviewers("main..dave", "--names");
+    expect(areas[0]!.suggested).toEqual([
+      { name: "Bob", email: "bob@example.com", authorship: 0.6, coupledChanges: 0 },
+      { name: "Alice", email: "alice@example.com", authorship: 0.4, coupledChanges: 0 },
+    ]);
+  });
+
+  test("the change's own authors are not suggested to review it", async () => {
+    const { areas } = await reviewers("main..alice", "--names");
+    expect(areas[0]!.suggested!.map((c) => c.name)).toEqual(["Bob"]);
+  });
+
+  test("a bot is never suggested, and its lines belong to nobody", async () => {
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { risk: { newIdentityChanges: 2 }, identities: { botPatterns: ["^Bob "] } } }));
+    const { areas } = await reviewers("main..dave", "--names");
+    expect(areas[0]!.suggested!.map((c) => c.name)).toEqual(["Alice"]);
+  });
+
+  test("a developer who has left the recent window is not active, so not suggested", async () => {
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { windowMonths: 1, risk: { newIdentityChanges: 2 } } }));
+    const { areas } = await reviewers("main..dave", "--names");
+    expect(areas[0]).toMatchObject({ candidates: 0, suggested: [] });
+  });
+
+  test("reviewers are suggested for a colleague's branch whatever the placement setting, since they describe code", async () => {
+    config({ placement: "self" });
+    repo.git("config", "user.email", "carol@example.com");
+    const { code, areas } = await reviewers("main..bob");
+    expect(code).toBe(ExitCode.Success);
+    expect(areas[0]!.candidates).toBe(1);
+  });
+
+  test("--evidence is not taken", async () => {
+    expect((await reviewers("main..dave", "--evidence", "x.json")).code).toBe(ExitCode.Usage);
+  });
+
+  test("the suggestions, byte for byte", async () => {
+    const { stdout } = await runCochange(repo.path, ["risk", "reviewers", "main..dave", "--names"]);
+    expectGolden("placement", "risk.reviewers", stdout);
+  });
+});
+
+describe("findings that rest on placement", () => {
+  async function findings(...args: string[]): Promise<{ id: string; fromPlacement: boolean; response: string; evidence: Record<string, unknown>[] }[]> {
+    const { stdout } = await runCochange(repo.path, ["risk", ...args, "--json"]);
+    return JSON.parse(stdout).results.findings;
+  }
+
+  test("an owner who did not write the change is to be added as a reviewer", async () => {
+    const found = (await findings("main..dave")).find((f) => f.id === "owner-distance")!;
+    expect(found).toMatchObject({ fromPlacement: true, response: "Add the owner as a reviewer.", evidence: [{ file: ledger, share: 0.6 }] });
+  });
+
+  test("a first touch of a hotspot is to be reviewed by an owner, with a pre-change briefing for the author", async () => {
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { hotspotPercentile: 50, recentMonths: 6, risk: { newIdentityChanges: 2, placement: "any" } } }));
+    const found = (await findings("main..dave")).find((f) => f.id === "distant-placement")!;
+    expect(found.response).toBe("Review by an owner of those files, and a pre-change briefing (`cochange brief`) for the author.");
+    expect(found.evidence).toEqual([{ file: ledger }]);
+  });
+
+  test("files nobody active holds a share of call for characterisation tests", async () => {
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { windowMonths: 1, risk: { newIdentityChanges: 2, placement: "any" } } }));
+    const found = (await findings("main..dave")).find((f) => f.id === "no-owner")!;
+    expect(found.response).toBe("Characterisation tests before the change, and a short note capturing what was learned.");
+  });
+
+  test("none of them exists when placement is withheld", async () => {
+    config({ placement: "self" });
+    const found = await findings("main..bob");
+    expect(found.some((f) => f.fromPlacement)).toBe(false);
+  });
+});

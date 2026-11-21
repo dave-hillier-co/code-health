@@ -67,6 +67,7 @@
     "oversizedChanges": 0
   },
   "inputs": {
+    "backtest": null,
     "baseline": {
       "direct": 7,
       "mergedChanges": 7,
@@ -349,6 +350,7 @@
         }
       }
     ],
+    "findings": [],
     "impact": {
       "band": "unavailable",
       "baseline": {
@@ -365,6 +367,14 @@
       ]
     },
     "kind": "assessment",
+    "level": {
+      "backtest": null,
+      "impact": "unavailable",
+      "placement": "unknown",
+      "reason": "no stored backtest for this configuration: run cochange risk backtest, and a level is shown if the levels separate past changes",
+      "status": "unavailable",
+      "value": null
+    },
     "placement": {
       "band": null,
       "basis": null,

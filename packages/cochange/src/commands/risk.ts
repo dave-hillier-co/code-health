@@ -5,12 +5,13 @@ import { readRiskSettings } from "../risk/settings.ts";
 import { resolveRange } from "../risk/change.ts";
 import { explainFactor, explainRules } from "../risk/explain.ts";
 import { runBacktest } from "../risk/run-backtest.ts";
-import { runRisk } from "../risk/run-risk.ts";
+import { runReviewers, runRisk } from "../risk/run-risk.ts";
+import { findingRules } from "../risk/findings.ts";
 import { assessBranch } from "../risk/assess.ts";
 
 export const name = "risk";
 
-export const rules: Record<string, Rule> = {};
+export const rules: Record<string, Rule> = findingRules;
 
 const SUBCOMMANDS = ["explain", "reviewers", "backtest"] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
@@ -61,6 +62,7 @@ export const command = analysisCommand(name, {
       };
     }
     if (sub === "backtest") return runBacktest(context, history);
+    if (sub === "reviewers") return runReviewers(context, history, rangeOf(rest));
     if (sub !== null) throw usageError(`risk ${sub} is not available yet`);
     return runRisk(context, history, rangeOf(rest));
   },

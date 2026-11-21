@@ -67,6 +67,7 @@
     "oversizedChanges": 0
   },
   "inputs": {
+    "backtest": null,
     "baseline": {
       "direct": 7,
       "mergedChanges": 7,
@@ -349,6 +350,24 @@
         }
       }
     ],
+    "findings": [
+      {
+        "band": null,
+        "evidence": [
+          {
+            "file": "src/ledger/ledger.ts",
+            "share": 0.6
+          }
+        ],
+        "factor": "owner-distance",
+        "fromPlacement": true,
+        "id": "owner-distance",
+        "redFlag": null,
+        "response": "Add the owner as a reviewer.",
+        "step": "review",
+        "summary": "1 touched file has a clear owner who is not an author of the change"
+      }
+    ],
     "impact": {
       "band": "unavailable",
       "baseline": {
@@ -365,6 +384,14 @@
       ]
     },
     "kind": "assessment",
+    "level": {
+      "backtest": null,
+      "impact": "unavailable",
+      "placement": "close",
+      "reason": "no stored backtest for this configuration: run cochange risk backtest, and a level is shown if the levels separate past changes",
+      "status": "unavailable",
+      "value": null
+    },
     "placement": {
       "band": "close",
       "basis": "blame",

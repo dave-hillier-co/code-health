@@ -60,7 +60,7 @@ function mainHistory(): { steps: Step[]; versions: Map<string, number> } {
 }
 
 /**
- * Sixteen merged changes on `main`, then five branches that each start at its tip:
+ * Sixteen merged changes on `main`, then six branches that each start at its tip:
  *
  * | branch     | author | touches                                                         |
  * |------------|--------|-----------------------------------------------------------------|
@@ -69,6 +69,7 @@ function mainHistory(): { steps: Step[]; versions: Map<string, number> } {
  * | `mixed`    | Alice  | moves the summary and edits the readme                          |
  * | `bulk`     | Carol  | twelve new files in six folders                                 |
  * | `auth`     | Bob    | the login module under src/auth                                 |
+ * | `novel`    | Alice  | the summary and login, which never changed together             |
  *
  * The invoice changed seven times, six of them with tax and with the test, so with the default
  * support of 5 and a confidence of 80 % each is expected whenever the invoice changes.
@@ -97,6 +98,7 @@ export function riskHistory(): GitFixture {
     ]),
     ...on("bulk", carol, "09", "Add a lot of modules", bulk),
     ...on("auth", bob, "10", "Change login", [edit(login)]),
+    ...on("novel", alice, "11", "Touch two distant modules", [edit(summary), edit(login)]),
     { type: "checkout", name: "main" },
   ]);
 }

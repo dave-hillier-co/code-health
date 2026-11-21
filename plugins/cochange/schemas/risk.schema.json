@@ -26,6 +26,9 @@
         },
         {
           "$ref": "#/$defs/backtest"
+        },
+        {
+          "$ref": "#/$defs/reviewers"
         }
       ]
     }
@@ -242,6 +245,15 @@
         },
         "placement": {
           "$ref": "#/$defs/placement"
+        },
+        "level": {
+          "$ref": "#/$defs/level"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
         }
       },
       "required": [
@@ -249,7 +261,9 @@
         "change",
         "impact",
         "placement",
-        "factors"
+        "factors",
+        "level",
+        "findings"
       ],
       "additionalProperties": false
     },
@@ -908,6 +922,285 @@
         "files",
         "blame",
         "factors"
+      ],
+      "additionalProperties": false
+    },
+    "level": {
+      "description": "The review level from impact and placement. Shown only when a stored backtest of this configuration says the levels separate past changes, and then stated beside that backtest. Never stored: placement could be read back from it.",
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "shown",
+            "withheld",
+            "unavailable"
+          ]
+        },
+        "value": {
+          "enum": [
+            "routine",
+            "attention",
+            "elevated",
+            null
+          ]
+        },
+        "impact": {
+          "enum": [
+            "low",
+            "moderate",
+            "high",
+            "unavailable"
+          ]
+        },
+        "placement": {
+          "enum": [
+            "close",
+            "mixed",
+            "distant",
+            "unknown"
+          ],
+          "description": "The placement band the level used: unknown when placement was withheld or off."
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "backtest": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "head": {
+                  "$ref": "common.schema.json#/$defs/sha"
+                },
+                "commitsAgo": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "description": "Commits between the backtest's commit and this change's tip, or null when it is not an ancestor."
+                },
+                "separation": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "separates",
+                        "does-not-separate",
+                        "insufficient"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                },
+                "elevatedShare": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "levels": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/bandRow"
+                  }
+                }
+              },
+              "required": [
+                "head",
+                "commitsAgo",
+                "separation",
+                "elevatedShare",
+                "levels"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "value",
+        "impact",
+        "placement",
+        "reason",
+        "backtest"
+      ],
+      "additionalProperties": false
+    },
+    "finding": {
+      "description": "One thing the change shows, with what to do about it. `cochange explain risk-<id>` describes the rule.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "factor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "band": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "step": {
+          "enum": [
+            "complete",
+            "split",
+            "test",
+            "simplify",
+            "check",
+            "review"
+          ],
+          "description": "Cheapest first: complete the change, split it, add tests, then route review."
+        },
+        "summary": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "response": {
+          "type": "string"
+        },
+        "redFlag": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The shared red flag it usually is."
+        },
+        "fromPlacement": {
+          "type": "boolean",
+          "description": "It rests on placement, so it exists only when placement was computed."
+        }
+      },
+      "required": [
+        "id",
+        "factor",
+        "band",
+        "step",
+        "summary",
+        "evidence",
+        "response",
+        "redFlag",
+        "fromPlacement"
+      ],
+      "additionalProperties": false
+    },
+    "reviewers": {
+      "description": "`risk reviewers`: active developers who could review each touched area. Names only with --names.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "reviewers"
+        },
+        "names": {
+          "type": "boolean"
+        },
+        "basis": {
+          "enum": [
+            "blame",
+            "history",
+            "mixed"
+          ]
+        },
+        "perArea": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "areas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "area": {
+                "type": "string",
+                "description": "A configured component, or else a folder."
+              },
+              "files": {
+                "$ref": "#/$defs/count"
+              },
+              "candidates": {
+                "$ref": "#/$defs/count",
+                "description": "Active developers who could review it, not counting the change's authors."
+              },
+              "suggested": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "authorship": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "coupledChanges": {
+                          "$ref": "#/$defs/count"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "email",
+                        "authorship",
+                        "coupledChanges"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                ]
+              }
+            },
+            "required": [
+              "area",
+              "files",
+              "candidates",
+              "suggested"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "names",
+        "basis",
+        "perArea",
+        "areas",
+        "note"
       ],
       "additionalProperties": false
     }
