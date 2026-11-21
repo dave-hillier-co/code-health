@@ -3681,10 +3681,17 @@ function spuriousRate(counts) {
   return counts.blocks === 0 ? 0 : Math.round(counts.spurious / counts.blocks * 1e4) / 1e4;
 }
 
+// packages/lexical/src/recorded-agreement.ts
+var recorded_agreement_exports = {};
+__export(recorded_agreement_exports, {
+  typescript: () => recorded
+});
+
+// packages/lexical/src/agreement-rates/typescript.ts
+var recorded = { units: 103, found: 101, exact: 101, blocks: 111, spurious: 6 };
+
 // packages/lexical/src/agreement-rates.ts
-var recordedAgreement = {
-  typescript: { units: 103, found: 101, exact: 101, blocks: 111, spurious: 6 }
-};
+var recordedAgreement = { ...recorded_agreement_exports };
 
 // packages/lexical/src/indentation.ts
 var DEFAULT_UNIT = 4;
