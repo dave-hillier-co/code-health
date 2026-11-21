@@ -45,9 +45,14 @@ test("lists every text file with file-level metrics and function aggregates, and
   expect(pricing.aggregates!.cyclomatic).toEqual({ sum: 6, max: 5 });
 
   // No structural adapter and no measured agreement: file-level metrics only, with what was skipped.
+  const python = byPath.get("tools/total.py")!;
+  expect(python).toMatchObject({ source: null, profile: "python", functions: 0, aggregates: null });
+  expect(python.keywordComplexity).toBe(2);
+  // Go has an adapter: its functions are measured structurally, `for` and `if` counted as in any language.
   const go = byPath.get("src/total.go")!;
-  expect(go).toMatchObject({ source: null, profile: "go", functions: 0, aggregates: null });
-  expect(go.keywordComplexity).toBe(2);
+  expect(go).toMatchObject({ source: "structural", functions: 1 });
+  expect(go.aggregates!.cognitive).toEqual({ sum: 3, max: 3 });
+  expect(go.aggregates!.cyclomatic).toEqual({ sum: 3, max: 3 });
   const notes = byPath.get("notes.md")!;
   expect(notes).toMatchObject({ source: null, profile: null, keywordComplexity: null });
   expect(notes.complexity).toBe(1);

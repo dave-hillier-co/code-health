@@ -33,6 +33,11 @@ export interface ConstructMap {
    * a `caseType` node holds when that is not one (a C# section of `case 1: case 2:` holds two, and one of
    * `default:` none). A grammar that types `default:` as a case node too says which of them are real cases with
    * `isCase`.
+   *
+   * A language with several switch statements lists the others in `moreTypes` and their case nodes in
+   * `moreCaseTypes` (Go's type switch and `select`). When the cases are direct children of the switch with no
+   * body node, `body` is empty and `clauseTypes` names the nodes that hold a clause's statements (the cases
+   * and the default), which are one level deeper.
    */
   switch: {
     type: string;
@@ -40,6 +45,9 @@ export interface ConstructMap {
     caseType: string;
     caseCount?: (node: Node) => number;
     isCase?: (node: Node) => boolean;
+    moreTypes?: ReadonlySet<string>;
+    moreCaseTypes?: ReadonlySet<string>;
+    clauseTypes?: ReadonlySet<string>;
   };
   /**
    * A switch that is an expression (C# `x switch { ... }`, Rust `match`). It costs like a `switch` and
@@ -79,6 +87,8 @@ export interface ConstructMap {
   label: string;
   /** Node types that add one to cyclomatic only, to the construct name reported (comprehension clauses). They add no cognitive increment and no nesting. */
   cyclomaticOnly?: Readonly<Record<string, string>>;
+  /** For a grammar whose label is an unnamed-field child: the node type of the label, which makes a jump labelled when it has one. */
+  labelType?: string;
   /** Node types that hold comments, which are not code for length and are skipped when reading an `else`. */
   commentTypes: ReadonlySet<string>;
 }

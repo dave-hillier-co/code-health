@@ -1,0 +1,11 @@
+{
+  "operations": [
+    { "from": "lib/store/store.go", "to": "pkg/store/store.go" },
+    { "from": "lib/store/store_test.go", "to": "pkg/store/store_test.go" }
+  ],
+  "rewrites": [{ "path": "cmd/app/main.go", "line": 3, "from": "example.com/m/lib/store", "to": "example.com/m/pkg/store" }],
+  "texts": {
+    "cmd/app/main.go": "package main\n\nimport \"example.com/m/pkg/store\"\n\nfunc main() {\n\tstore.Open(\"db\")\n}\n"
+  },
+  "warnings": []
+}

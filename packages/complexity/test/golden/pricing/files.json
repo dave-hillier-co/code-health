@@ -50,10 +50,31 @@
       "unverified": false
     },
     {
-      "aggregates": null,
+      "aggregates": {
+        "cognitive": {
+          "max": 3,
+          "sum": 3
+        },
+        "cyclomatic": {
+          "max": 3,
+          "sum": 3
+        },
+        "length": {
+          "max": 9,
+          "sum": 9
+        },
+        "nesting": {
+          "max": 2,
+          "sum": 2
+        },
+        "parameters": {
+          "max": 1,
+          "sum": 1
+        }
+      },
       "codeLines": 10,
       "complexity": 11,
-      "functions": 0,
+      "functions": 1,
       "interfaceDepth": null,
       "keywordComplexity": 2,
       "lineCount": 11,
@@ -62,7 +83,7 @@
       "path": "src/total.go",
       "profile": "go",
       "score": 11,
-      "source": null,
+      "source": "structural",
       "test": false,
       "unverified": false
     },

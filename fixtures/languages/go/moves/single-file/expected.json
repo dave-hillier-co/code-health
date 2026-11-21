@@ -1,0 +1,12 @@
+{
+  "operations": [{ "from": "billing/total.go", "to": "report/total.go" }],
+  "rewrites": [
+    { "path": "cmd/app/main.go", "line": 7, "from": "", "to": "example.com/m/report" },
+    { "path": "report/total.go", "line": 1, "from": "", "to": "example.com/m/billing" }
+  ],
+  "texts": {
+    "cmd/app/main.go": "package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/m/billing\"\n\t\"example.com/m/report\"\n)\n\nfunc main() {\n\tfmt.Println(report.Total([]billing.Invoice{billing.NewInvoice(5)}))\n}\n",
+    "report/total.go": "package report\n\nimport \"example.com/m/billing\"\n\nfunc Total(invoices []billing.Invoice) int {\n\tsum := 0\n\tfor _, invoice := range invoices {\n\t\tsum += invoice.Amount\n\t}\n\treturn sum\n}\n"
+  },
+  "warnings": []
+}

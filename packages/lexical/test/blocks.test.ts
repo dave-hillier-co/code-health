@@ -321,3 +321,37 @@ test("a function whose return type is a function type is one block", () => {
   const source = "export function make(): () => number {\n  return () => 1;\n}\n";
   expect(blocks(source, "typescript")).toEqual([["make", 1, 3]]);
 });
+
+test("Go: a declaration without a semicolon does not run into the header of the function after it", () => {
+  const source = [
+    "package shop", // 1
+    "", // 2
+    'import "fmt"', // 3
+    "import (", // 4
+    '\t"os"', // 5
+    ")", // 6
+    "", // 7
+    'const Version = "1"', // 8
+    "var (", // 9
+    "\ta = 1", // 10
+    ")", // 11
+    "type ID int", // 12
+    "", // 13
+    "func first() {", // 14
+    "\tx := 1", // 15
+    "\tf := func() {", // 16
+    "\t\tfmt.Println(x, os.Args)", // 17
+    "\t}", // 18
+    "\tf()", // 19
+    "}", // 20
+  ].join("\n");
+  expect(blocks(source, "go")).toEqual([
+    ["first", 14, 20],
+    [undefined, 16, 18],
+  ]);
+});
+
+test("Go: a struct or interface literal in a parameter list does not end the header", () => {
+  const source = "func wait(done chan struct{}, v interface{}) int {\n\treturn 0\n}\n";
+  expect(blocks(source, "go")).toEqual([["wait", 1, 3]]);
+});

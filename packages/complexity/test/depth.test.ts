@@ -38,7 +38,7 @@ beforeAll(() => {
       changes: [
         { op: "add", path: "src/shapes.ts", content: source("shapes.ts") },
         { op: "add", path: "src/forwarding.ts", content: source("forwarding.ts") },
-        { op: "add", path: "src/plain.go", content: "package plain\n" },
+        { op: "add", path: "src/plain.rb", content: "puts 1\n" },
       ],
     },
   ]);
@@ -126,7 +126,7 @@ test("pass-throughs come first, then the shallowest", async () => {
 test("files with no structural adapter are counted, not listed", async () => {
   const run = JSON.parse((await depth()).stdout);
   expect(run.summary.filesWithoutAdapter).toBe(1);
-  expect((run.results as Row[]).some((row) => row.path === "src/plain.go")).toBe(false);
+  expect((run.results as Row[]).some((row) => row.path === "src/plain.rb")).toBe(false);
 });
 
 test("paths narrow the rows", async () => {
@@ -159,5 +159,5 @@ test("the depth of a file's exports and its pass-throughs sit on its row in `fil
   const files = JSON.parse(run.stdout).results as { path: string; interfaceDepth: number | null; passThroughs: number }[];
   // Mean over exported top-level functions and classes: add 9, save 12.5, load 13, audit 22, tagged 19, Repo 11.6, default 5.
   expect(files.find((file) => file.path === "src/shapes.ts")).toMatchObject({ interfaceDepth: 13.16, passThroughs: 4 });
-  expect(files.find((file) => file.path === "src/plain.go")).toMatchObject({ interfaceDepth: null, passThroughs: 0 });
+  expect(files.find((file) => file.path === "src/plain.rb")).toMatchObject({ interfaceDepth: null, passThroughs: 0 });
 });

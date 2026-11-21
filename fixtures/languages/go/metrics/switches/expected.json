@@ -1,0 +1,10 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "switches.go": [
+      ["Kind", 3, 2, 1, 1, 11, 5, 1, 0],
+      ["Pick", 4, 3, 2, 1, 14, 6, 1, 0],
+      ["Wait", 5, 3, 3, 2, 13, 5, 3, 0]
+    ]
+  }
+}

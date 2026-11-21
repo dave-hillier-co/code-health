@@ -120,21 +120,15 @@ class Measurer {
       this.loop(node, level, depth);
       return;
     }
-    if (type === c.switch.type) {
-      this.flow(node, "switch", level);
-      this.cyclomaticModified++;
-      this.record(node, "cyclomatic", "switch", 1, 0, "modified");
-      this.nesting = Math.max(this.nesting, depth + 1);
-      const body = node.childForFieldName(c.switch.body);
-      this.children(node, level, depth, body);
-      if (body !== null) this.children(body, level + 1, depth + 1);
+    if (type === c.switch.type || c.switch.moreTypes?.has(type) === true) {
+      this.switchStatement(node, level, depth);
       return;
     }
     if (c.switchExpression !== undefined && type === c.switchExpression.type) {
       this.switchExpression(node, level, depth);
       return;
     }
-    if (type === c.switch.caseType) {
+    if (type === c.switch.caseType || c.switch.moreCaseTypes?.has(type) === true) {
       const cases = c.switch.isCase?.(node) === false || this.rules.isDefaultCase?.(node) === true ? 0 : (c.switch.caseCount?.(node) ?? 1);
       for (let i = 0; i < cases; i++) {
         this.cyclomatic++;
@@ -188,7 +182,7 @@ class Measurer {
     }
     const jump = c.labelledJumps[type];
     if (jump !== undefined) {
-      if (node.childForFieldName(c.label) !== null) this.flat(node, `labelled ${jump}`);
+      if (this.isLabelled(node)) this.flat(node, `labelled ${jump}`);
       return;
     }
     if (type === this.rules.callType) this.recursionCheck(node);
@@ -201,6 +195,32 @@ class Measurer {
     if (t.positional !== true) return [node.childForFieldName(t.condition), node.childForFieldName(t.consequence), node.childForFieldName(t.alternative)];
     const parts = node.namedChildren.filter((child) => !this.c.commentTypes.has(child.type));
     return [parts[1] ?? null, parts[0] ?? null, parts[2] ?? null];
+  }
+
+  private isLabelled(jump: Node): boolean {
+    const labelType = this.c.labelType;
+    if (labelType !== undefined) return jump.namedChildren.some((child) => child.type === labelType);
+    return jump.childForFieldName(this.c.label) !== null;
+  }
+
+  private switchStatement(node: Node, level: number, depth: number): void {
+    const c = this.c.switch;
+    this.flow(node, "switch", level);
+    this.cyclomaticModified++;
+    this.record(node, "cyclomatic", "switch", 1, 0, "modified");
+    this.nesting = Math.max(this.nesting, depth + 1);
+    const body = c.body === "" ? null : node.childForFieldName(c.body);
+    if (body === null && c.clauseTypes !== undefined) {
+      for (let i = 0; i < node.childCount; i++) {
+        const child = node.child(i);
+        if (child === null || !child.isNamed) continue;
+        if (c.clauseTypes.has(child.type)) this.visit(child, level + 1, depth + 1);
+        else this.visit(child, level, depth);
+      }
+      return;
+    }
+    this.children(node, level, depth, body);
+    if (body !== null) this.children(body, level + 1, depth + 1);
   }
 
   private operatorOf(node: Node): string | undefined {
@@ -247,15 +267,21 @@ class Measurer {
     }
     this.decision(node, isElseIf ? "else if" : "if");
     const condition = node.childForFieldName(c.condition);
-    if (condition !== null) this.visit(condition, level, depth);
     const consequence = node.childForFieldName(c.consequence);
+    const alternative = node.childForFieldName(c.alternative);
+    // Whatever else the statement holds (Go's `if x := f(); x > 0`) is walked where the `if` sits.
+    for (const child of node.namedChildren) {
+      if (child.id === condition?.id || child.id === consequence?.id || child.id === alternative?.id) continue;
+      if (c.clauses !== undefined && (child.type === c.clauses.elif || child.type === c.clauses.else)) continue;
+      this.visit(child, level, depth);
+    }
+    if (condition !== null) this.visit(condition, level, depth);
     // An else-if sits at its if's depth, so every body in the chain is one level deeper than the chain.
     if (consequence !== null) this.visit(consequence, level + 1, depth + 1);
     if (c.clauses !== undefined) {
       this.clauseChain(node, level, depth);
       return;
     }
-    const alternative = node.childForFieldName(c.alternative);
     if (alternative === null) return;
     const inner = c.alternativeIsClause ? (alternative.namedChildren.find((child) => !this.c.commentTypes.has(child.type)) ?? null) : alternative;
     if (inner === null) return;

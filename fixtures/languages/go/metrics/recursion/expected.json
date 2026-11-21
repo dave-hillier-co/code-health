@@ -1,0 +1,12 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "recursion.go": [
+      ["Tree.Sum", 2, 2, 1, 1, 6, 3, 0, 0],
+      ["Tree.Retry", 2, 2, 2, 1, 6, 3, 1, 0],
+      ["Fact", 2, 2, 2, 1, 6, 3, 1, 0],
+      ["Variadic", 1, 1, 0, 0, 3, 1, 2, 0],
+      ["Unnamed", 1, 1, 0, 0, 1, 0, 2, 0]
+    ]
+  }
+}

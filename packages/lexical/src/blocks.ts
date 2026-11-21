@@ -20,6 +20,7 @@ interface Compiled {
   types: RegExp[];
   functions: RegExp[];
   members: RegExp[] | undefined;
+  statementEnd: RegExp | undefined;
 }
 
 const compiledProfiles = new WeakMap<LexerProfile, Compiled>();
@@ -33,6 +34,7 @@ function compile(profile: LexerProfile): Compiled {
       types: profile.typeHeaders.map((source) => new RegExp(source)),
       functions: profile.functionHeaders.map((source) => new RegExp(source)),
       members: profile.expressionMembers?.map((source) => new RegExp(source)),
+      statementEnd: profile.statementEnd === undefined ? undefined : new RegExp(profile.statementEnd),
     };
     compiledProfiles.set(profile, compiled);
   }
@@ -138,6 +140,15 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
   let arrow: OpenArrow | undefined;
   /** Between the declarators of one `const a = 1, b = 2;`, so `b` is bound like `a`. */
   let inDeclaration = false;
+
+  const { statementEnd } = compile(profile);
+  /** A line break ends a statement in a profile with automatic semicolons, when the line is complete. */
+  const endsStatement = (line: SourceLine): boolean => {
+    const code = line.code.trimEnd();
+    if (statementEnd === undefined || code === "") return false;
+    // Strings are blanked in `code`, so a line that ends in one is told by the text after its last code character.
+    return /^["'`]/.test(line.text.slice(code.length).trimStart()) || statementEnd.test(code);
+  };
 
   const headerText = (extra: string) =>
     [...header.map((part) => part.text), extra].join(" ").replace(/\s+/g, " ").trim();
@@ -246,7 +257,7 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
         continue;
       } else if (ch === "{") {
         header.push({ line: line.number, text: segment });
-        if (parenDepth > 0 && /[(,=:]\s*$/.test(header.map((part) => part.text).join(" "))) {
+        if (parenDepth > 0 && /(?:[(,=:]|\b(?:struct|interface))\s*$/.test(header.map((part) => part.text).join(" "))) {
           // A destructuring pattern, default value, type literal or object argument, not a body.
           stack.push({ name: undefined, block: undefined, parenDepth, resume: header });
           header = [];
@@ -292,6 +303,7 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
       segment += ch;
     }
     header.push({ line: line.number, text: segment });
+    if (parenDepth === 0 && arrow === undefined && endsStatement(line)) header = [];
     if (arrow !== undefined && parenDepth === 0 && stack.length === arrow.scopes) {
       const text = code.trimEnd();
       const following = codeLines[index + 1]?.code.trim() ?? "";

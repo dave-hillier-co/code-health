@@ -61,9 +61,9 @@ test("names the functions a file has when the unit is not found", async () => {
 
 test("rejects a missing file, a file with no adapter, and no argument", async () => {
   expect((await runComplexity(repo.path, ["explain", "src/missing.ts#a"])).code).toBe(ExitCode.Usage);
-  const go = await runComplexity(repo.path, ["explain", "src/total.go#Total"]);
-  expect(go.code).toBe(ExitCode.Usage);
-  expect(go.stderr).toContain("no structural adapter");
+  const python = await runComplexity(repo.path, ["explain", "tools/total.py#total"]);
+  expect(python.code).toBe(ExitCode.Usage);
+  expect(python.stderr).toContain("no structural adapter");
   expect((await runComplexity(repo.path, ["explain"])).code).toBe(ExitCode.Usage);
 });
 

@@ -1,0 +1,25 @@
+{
+  "columns": ["unit", "nodes", "interfaceSize", "passThrough"],
+  "files": {
+    "forwarding.go": [
+      ["Save", 21, 2, "store.Save"],
+      ["Total", 17, 2, null],
+      ["Spread", 20, 2, "logger.Log"],
+      ["Fixed", 20, 1, "store.Delete"],
+      ["Created", 20, 1, null],
+      ["Counter", 11, 2, null],
+      ["Counter.Inc", 14, 1, null]
+    ],
+    "shapes.go": [
+      ["Store", 24, 3, null],
+      ["Options", 13, 3, null],
+      ["Options.Wait", 15, 1, null],
+      ["Options.hidden", 15, 1, null],
+      ["Empty", 4, 1, null]
+    ]
+  },
+  "modules": {
+    "forwarding.go": 125,
+    "shapes.go": 73
+  }
+}

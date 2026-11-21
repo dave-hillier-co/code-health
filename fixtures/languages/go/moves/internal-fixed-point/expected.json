@@ -1,0 +1,8 @@
+{
+  "operations": [{ "from": "a/use.go", "to": "b/use.go" }],
+  "rewrites": [],
+  "texts": {
+    "b/use.go": "package b\n\nimport \"example.com/m/a/internal/secret\"\n\nfunc Key() string {\n\treturn secret.Key()\n}\n"
+  },
+  "warnings": ["b/use.go imports example.com/m/a/internal/secret, which only code under example.com/m/a may import: internal/ is a fixed point"]
+}

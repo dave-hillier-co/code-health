@@ -74,10 +74,11 @@ describe("analyse", () => {
     writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ complexity: { agreementBar: 1 } }));
     try {
       const document = JSON.parse((await analyse("--layer", "lexical")).stdout);
-      expect(document.results).toEqual([]);
-      expect(document.agreement).toEqual({});
+      // TypeScript's recorded rate is below a bar of 1, so none of its functions are measured lexically. Another language may clear it.
+      expect((document.results as Row[]).some((row) => row.path.endsWith(".ts"))).toBe(false);
+      expect(document.agreement.typescript).toBeUndefined();
       expect(Object.keys(document.skipped)).toEqual(
-        expect.arrayContaining([expect.stringMatching(/^per-function metrics: typescript agreement 0\.\d+ is below the bar 1$/), "per-function metrics: no agreement measured for go"]),
+        expect.arrayContaining([expect.stringMatching(/^per-function metrics: typescript agreement 0\.\d+ is below the bar 1$/), "per-function metrics: no agreement measured for python"]),
       );
     } finally {
       rmSync(join(repo.path, "code-health.json"), { force: true });

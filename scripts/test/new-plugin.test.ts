@@ -111,6 +111,7 @@ test("a plugin that parses ships grammars beside its bundle, which loads them re
   await buildAll(root);
   const dist = join(root, "plugins", "sample-parser", "dist");
   // The grammars of every supported adapter and the runtime: nothing is listed here by language.
+  // The grammar of every supported adapter and the runtime, whichever languages are supported.
   expect(readdirSync(join(dist, "grammars")).sort()).toEqual([...new Set([...shippedGrammarSpecs().map((spec) => spec.file), runtimeSpec.file])].sort());
 
   // Run a copy of dist from a directory that has no node_modules and is not the build tree: the grammars must come from beside the bundle.

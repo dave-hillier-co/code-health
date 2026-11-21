@@ -4,3 +4,4 @@ export { recorded as typescript } from "./agreement-rates/typescript.ts";
 export { recorded as csharp } from "./agreement-rates/csharp.ts";
 export { recorded as cpp } from "./agreement-rates/cpp.ts";
 export { recorded as python } from "./agreement-rates/python.ts";
+export { recorded as go } from "./agreement-rates/go.ts";

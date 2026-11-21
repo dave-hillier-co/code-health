@@ -1,0 +1,6 @@
+{
+  "operations": [{ "from": "util/a.go", "to": "util/doubling.go" }],
+  "rewrites": [],
+  "texts": {},
+  "warnings": []
+}

@@ -4,3 +4,4 @@ export { adapter as typescript } from "./languages/typescript/adapter.ts";
 export { adapter as csharp } from "./languages/csharp/adapter.ts";
 export { adapter as cpp } from "./languages/cpp/adapter.ts";
 export { adapter as python } from "./languages/python/adapter.ts";
+export { adapter as go } from "./languages/go/adapter.ts";
