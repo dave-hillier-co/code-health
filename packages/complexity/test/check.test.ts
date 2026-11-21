@@ -227,3 +227,13 @@ test("without config the thresholds are the defaults (cognitive 15, cyclomatic 1
   const repo = repoWith([{ op: "add", path: "src/risky.ts", content: riskyFunction }], "{}");
   expect((await check(repo)).code).toBe(ExitCode.Success);
 });
+
+test.each([
+  ["high below warn", { cognitive: { warn: 40, high: 3 } }],
+  ["only warn raised above the configured high", { cognitive: { warn: 40 } }],
+])("an override with %s is a config error, as the global thresholds are", async (_name, thresholds) => {
+  const repo = repoWith([{ op: "add", path: "src/risky.ts", content: riskyFunction }], JSON.stringify({ complexity: { overrides: [{ paths: ["src/**"], thresholds }] } }));
+  const run = await check(repo);
+  expect(run.code).toBe(ExitCode.Usage);
+  expect(run.stderr).toContain("high must not be below warn");
+});

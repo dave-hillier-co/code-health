@@ -93,7 +93,7 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
   }
 
   const thresholds = readThresholds(section.thresholds, at("thresholds"), number);
-  const overrides = readOverrides(section.overrides, at("overrides"), number);
+  const overrides = readOverrides(section.overrides, at("overrides"), number, thresholds);
 
   return {
     metrics,
@@ -128,7 +128,7 @@ function readThresholds(value: unknown, where: string, number: NumberReader): Th
   };
 }
 
-function readOverrides(value: unknown, where: string, number: NumberReader): ThresholdOverride[] {
+function readOverrides(value: unknown, where: string, number: NumberReader, global: Thresholds): ThresholdOverride[] {
   if (!Array.isArray(value)) throw configError(`code-health.json: ${where} must be an array`);
   return value.map((entry, index) => {
     const here = `${where}[${index}]`;
@@ -136,8 +136,13 @@ function readOverrides(value: unknown, where: string, number: NumberReader): Thr
       throw configError(`code-health.json: ${here} needs "paths", an array of globs, and "thresholds"`);
     }
     if (!isRecord(entry.thresholds)) throw configError(`code-health.json: ${here}.thresholds must be an object`);
-    // Validate the shape now by merging over the defaults, so a typo fails at load time and not mid-run.
-    mergeThresholds(defaultThresholds, entry.thresholds, `${here}.thresholds`, number);
+    // Validate the shape now by merging over the global thresholds, so a typo or a high below warn fails at load time and not mid-run.
+    const merged = mergeThresholds(global, entry.thresholds, `${here}.thresholds`, number);
+    for (const name of ["cyclomatic", "cognitive"] as const) {
+      if (merged[name].high < merged[name].warn) {
+        throw configError(`code-health.json: ${here}.thresholds.${name}.high must not be below warn (${merged[name].warn}); set both when raising warn`);
+      }
+    }
     return { matches: compileGlobs(entry.paths as string[]), thresholds: entry.thresholds };
   });
 }

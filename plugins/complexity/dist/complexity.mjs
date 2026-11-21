@@ -1951,7 +1951,7 @@ function readSettings(config) {
     throw configError(`code-health.json: ${at("cyclomaticSwitch")} must be "case" or "modified"`);
   }
   const thresholds = readThresholds(section.thresholds, at("thresholds"), number);
-  const overrides = readOverrides(section.overrides, at("overrides"), number);
+  const overrides = readOverrides(section.overrides, at("overrides"), number, thresholds);
   return {
     metrics,
     thresholds,
@@ -1981,7 +1981,7 @@ function readThresholds(value, where, number) {
     parameters: number(source.parameters, `${where}.parameters`, 0)
   };
 }
-function readOverrides(value, where, number) {
+function readOverrides(value, where, number, global) {
   if (!Array.isArray(value)) throw configError(`code-health.json: ${where} must be an array`);
   return value.map((entry, index) => {
     const here = `${where}[${index}]`;
@@ -1989,7 +1989,12 @@ function readOverrides(value, where, number) {
       throw configError(`code-health.json: ${here} needs "paths", an array of globs, and "thresholds"`);
     }
     if (!isRecord(entry.thresholds)) throw configError(`code-health.json: ${here}.thresholds must be an object`);
-    mergeThresholds(defaultThresholds, entry.thresholds, `${here}.thresholds`, number);
+    const merged = mergeThresholds(global, entry.thresholds, `${here}.thresholds`, number);
+    for (const name7 of ["cyclomatic", "cognitive"]) {
+      if (merged[name7].high < merged[name7].warn) {
+        throw configError(`code-health.json: ${here}.thresholds.${name7}.high must not be below warn (${merged[name7].warn}); set both when raising warn`);
+      }
+    }
     return { matches: compileGlobs(entry.paths), thresholds: entry.thresholds };
   });
 }
