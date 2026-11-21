@@ -1,13 +1,17 @@
 import { compareIds } from "@code-health/graph/graph";
+import { stronglyConnectedComponents } from "@code-health/graph/scc";
 import { monthsBefore } from "@code-health/history/evidence";
 import type { LogicalChange } from "@code-health/history/noise";
+import type { TaskEffort } from "@code-health/transcripts/agent-effort";
+import { summariseTasks, type EffortSummary } from "@code-health/transcripts/measure-repo";
 import { measureActivity, type Activity } from "./activity.ts";
 import type { StructureSettings } from "./config.ts";
 import { couplingId, judgePair, type CoChangeJudgement, type Quadrant, type QuadrantJudgement, type StaticCoupling } from "./coupling.ts";
+import { findLayerViolations } from "./layers.ts";
 import { buildModuleGraph, type Level, type ModuleGraph } from "./modules.ts";
 import type { Project } from "./project.ts";
 
-type OutcomeSettings = Pick<StructureSettings, "minStaticCoupling" | "minSupport" | "minRevisions" | "significanceLevel" | "windowMonths" | "components">;
+type OutcomeSettings = Pick<StructureSettings, "minStaticCoupling" | "minSupport" | "minRevisions" | "significanceLevel" | "windowMonths" | "components" | "layers">;
 
 /**
  * What became of the pair:
@@ -50,6 +54,18 @@ export interface Outcome {
   before: OutcomeSide;
   after: OutcomeSide;
   verdict: Verdict;
+  /** Leading indicators only: structure is cleaner, which says nothing about whether change got cheaper. */
+  leading: {
+    /** Import cycles between modules of the outcome's level, at the break's parent and at the analysed commit. */
+    cycles: { before: number; after: number };
+    /** Imports that break a configured layer rule. Null when no layers are configured. */
+    layerViolations: { before: number; after: number } | null;
+  };
+  /**
+   * Navigation did not get worse through indirection: agent effort on tasks that edited either side, over the
+   * same two windows. Measured only when session transcripts were given.
+   */
+  agentEffort: { status: "measured"; before: EffortSummary; after: EffortSummary } | { status: "not-measured"; reason: string };
 }
 
 /** A pair that dropped its static dependency across the break and kept its co-change. */
@@ -84,6 +100,8 @@ export interface OutcomeInputs {
   changes: readonly LogicalChange[];
   point: BreakPoint;
   settings: OutcomeSettings;
+  /** The agent tasks of both windows, from session transcripts, or why there are none. */
+  tasks: { tasks: readonly TaskEffort[] } | { reason: string };
 }
 
 const iso = (seconds: number): string => new Date(seconds * 1000).toISOString();
@@ -155,6 +173,13 @@ export function measureOutcome(inputs: OutcomeInputs, from: string, to: string):
   }
   hiddenCreated.sort((x, y) => y.sharedAfter - x.sharedAfter || compareIds(x.id, y.id));
 
+  const cycleCount = (graph: ModuleGraph): number => stronglyConnectedComponents(graph.graph).filter((component) => component.length > 1).length;
+  const violations = (project: Project): number => findLayerViolations(project, settings.layers).length;
+  const leading: Outcome["leading"] = {
+    cycles: { before: cycleCount(graphBefore), after: cycleCount(inputs.graphAfter) },
+    layerViolations: settings.layers.length === 0 ? null : { before: violations(inputs.projectBefore), after: violations(inputs.projectAfter) },
+  };
+
   return {
     outcome: {
       id: `outcome:${level}:${from}->${to}`,
@@ -170,6 +195,8 @@ export function measureOutcome(inputs: OutcomeInputs, from: string, to: string):
       before,
       after,
       verdict: verdictOf(before, after),
+      leading,
+      agentEffort: agentEffortOf(inputs, graphBefore, from, to, seconds),
     },
     hiddenCreated,
   };
@@ -193,4 +220,17 @@ function droppedPairs(before: ModuleGraph, after: ModuleGraph): [string, string]
     }
   }
   return pairs.sort((a, b) => compareIds(a[0], b[0]) || compareIds(a[1], b[1]));
+}
+
+/** Agent effort on the tasks that edited a file of either side, in the window before the break and the window after it. */
+function agentEffortOf(inputs: OutcomeInputs, graphBefore: ModuleGraph, from: string, to: string, seconds: number): Outcome["agentEffort"] {
+  if ("reason" in inputs.tasks) return { status: "not-measured", reason: inputs.tasks.reason };
+  const { point } = inputs;
+  const sides = new Set([from, to].flatMap((side) => [...(graphBefore.filesOf.get(side) ?? []), ...(inputs.graphAfter.filesOf.get(side) ?? [])]));
+  const touching = inputs.tasks.tasks.filter((task) => task.editedPaths.some((path) => sides.has(path)));
+  const within = (since: number, until: number) => touching.filter((task) => Date.parse(task.startedAt) >= since * 1000 && Date.parse(task.startedAt) < until * 1000);
+  const before = within(point.date - seconds, point.date);
+  const after = within(point.date, point.date + seconds);
+  if (before.length === 0 && after.length === 0) return { status: "not-measured", reason: "no session in the windows edited either side" };
+  return { status: "measured", before: summariseTasks(before), after: summariseTasks(after) };
 }

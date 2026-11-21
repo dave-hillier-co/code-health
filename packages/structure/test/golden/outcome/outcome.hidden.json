@@ -85,7 +85,8 @@
     "minStaticCoupling": 3,
     "minSupport": 3,
     "significanceLevel": 0.01,
-    "target": "src/p->src/q"
+    "target": "src/p->src/q",
+    "transcripts": false
   },
   "repo": {
     "dirty": false,
@@ -113,6 +114,10 @@
           "symbols": 0,
           "toFrom": 0
         }
+      },
+      "agentEffort": {
+        "reason": "no --projects-dir was given",
+        "status": "not-measured"
       },
       "before": {
         "bothActive": true,
@@ -143,6 +148,13 @@
       },
       "from": "src/p",
       "id": "outcome:folder:src/p->src/q",
+      "leading": {
+        "cycles": {
+          "after": 0,
+          "before": 0
+        },
+        "layerViolations": null
+      },
       "level": "folder",
       "to": "src/q",
       "verdict": "hidden-not-broken",

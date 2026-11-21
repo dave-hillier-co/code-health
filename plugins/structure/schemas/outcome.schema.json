@@ -37,6 +37,10 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "exclusiveMaximum": 1
+        },
+        "transcripts": {
+          "type": "boolean",
+          "description": "Session transcripts were read (--projects-dir), so agentEffort is measured when any task touched either side."
         }
       },
       "required": [
@@ -46,7 +50,8 @@
         "minStaticCoupling",
         "minSupport",
         "minRevisions",
-        "significanceLevel"
+        "significanceLevel",
+        "transcripts"
       ],
       "additionalProperties": false
     },
@@ -403,6 +408,360 @@
               "no-baseline",
               "insufficient-evidence"
             ]
+          },
+          "leading": {
+            "type": "object",
+            "description": "Leading indicators only: structure is cleaner, which says nothing about whether change got cheaper.",
+            "properties": {
+              "cycles": {
+                "type": "object",
+                "properties": {
+                  "before": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "after": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  }
+                },
+                "required": [
+                  "before",
+                  "after"
+                ],
+                "additionalProperties": false,
+                "description": "Import cycles between modules of the level, at the break's parent and at the analysed commit."
+              },
+              "layerViolations": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "before": {
+                        "$ref": "common.schema.json#/$defs/count"
+                      },
+                      "after": {
+                        "$ref": "common.schema.json#/$defs/count"
+                      }
+                    },
+                    "required": [
+                      "before",
+                      "after"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Imports that break a configured layer rule."
+                  }
+                ],
+                "description": "Null when no layers are configured."
+              }
+            },
+            "required": [
+              "cycles",
+              "layerViolations"
+            ],
+            "additionalProperties": false
+          },
+          "agentEffort": {
+            "description": "Agent outcome: navigation did not get worse through indirection. Effort on tasks that edited either side, over the same two windows as the co-change.",
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "measured"
+                  },
+                  "before": {
+                    "type": "object",
+                    "description": "Per-task figures for the tasks (one user prompt and the agent turns after it) that edited a file of either side. Only counts are kept.",
+                    "properties": {
+                      "tasks": {
+                        "$ref": "common.schema.json#/$defs/count"
+                      },
+                      "filesRead": {
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mean": {
+                                "type": "number"
+                              },
+                              "median": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "mean",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "foldersVisited": {
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mean": {
+                                "type": "number"
+                              },
+                              "median": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "mean",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "reReads": {
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mean": {
+                                "type": "number"
+                              },
+                              "median": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "mean",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "edits": {
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mean": {
+                                "type": "number"
+                              },
+                              "median": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "mean",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "tokens": {
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mean": {
+                                "type": "number"
+                              },
+                              "median": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "mean",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "tasks",
+                      "filesRead",
+                      "foldersVisited",
+                      "reReads",
+                      "edits",
+                      "tokens"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "after": {
+                    "type": "object",
+                    "description": "Per-task figures for the tasks (one user prompt and the agent turns after it) that edited a file of either side. Only counts are kept.",
+                    "properties": {
+                      "tasks": {
+                        "$ref": "common.schema.json#/$defs/count"
+                      },
+                      "filesRead": {
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mean": {
+                                "type": "number"
+                              },
+                              "median": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "mean",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "foldersVisited": {
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mean": {
+                                "type": "number"
+                              },
+                              "median": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "mean",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "reReads": {
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mean": {
+                                "type": "number"
+                              },
+                              "median": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "mean",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "edits": {
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mean": {
+                                "type": "number"
+                              },
+                              "median": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "mean",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "tokens": {
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mean": {
+                                "type": "number"
+                              },
+                              "median": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "mean",
+                              "median"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "tasks",
+                      "filesRead",
+                      "foldersVisited",
+                      "reReads",
+                      "edits",
+                      "tokens"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "status",
+                  "before",
+                  "after"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "not-measured"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            ]
           }
         },
         "required": [
@@ -414,7 +773,9 @@
           "window",
           "before",
           "after",
-          "verdict"
+          "verdict",
+          "leading",
+          "agentEffort"
         ],
         "additionalProperties": false
       },
