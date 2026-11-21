@@ -1,0 +1,14 @@
+{
+  "files": 12,
+  "occurrences": [
+    "callbacks function-parameter src/jobs/retry.rs:1 | retry(task) is called from src/app",
+    "interfaces interface src/ports/store.rs:1 | Store is implemented in src/adapters",
+    "dependency-injection constructor-injection src/app/service.rs:4 | Service takes Store from src/ports",
+    "events base-type src/events.rs:3 | Bus extends EventEmitter",
+    "events call src/events.rs:7 | self.emit",
+    "handlers handler-type src/jobs/handler.rs:7 | Ping implements CommandHandler",
+    "registries keyed-map src/registry.rs:4 | handlers",
+    "ports-and-adapters folder src/adapters | adapters",
+    "ports-and-adapters folder src/ports | ports"
+  ]
+}
