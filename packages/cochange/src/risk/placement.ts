@@ -1,3 +1,4 @@
+import { componentOf } from "../components.ts";
 import { folderOf } from "@code-health/graph/tree-distance";
 import { monthsBefore } from "@code-health/history/evidence";
 import type { HistoryState } from "./history-state.ts";
@@ -31,8 +32,8 @@ export interface FilePlacement {
   recentChanges: number;
   /** Earlier changes weighted by recency: each counts 1 and halves every `recencyHalfLifeMonths`. */
   familiarity: number;
-  /** The authors' earlier changes to files that change with this one, and to files in its folder. */
-  neighbourhood: { coupled: number; folder: number };
+  /** The authors' earlier changes to files that change with this one, to files in its folder, and to files in its configured component (null when none are configured). */
+  neighbourhood: { coupled: number; folder: number; component: number | null };
   /** The authors' share of the file's lines, from the blame cache, or null without it. */
   authorship: number | null;
 }
@@ -126,6 +127,14 @@ export function placeChange(
     for (const other of state.filesInFolder(folderOf(file.fileId))) {
       if (other !== file.fileId) nearby += state.revisionsOf(other).filter(by).length;
     }
+    let sameComponent: number | null = null;
+    if (context.components.length > 0) {
+      sameComponent = 0;
+      const mine = componentOf(context.components, file.fileId);
+      for (const other of state.knownFiles()) {
+        if (other !== file.fileId && componentOf(context.components, other) === mine) sameComponent += state.revisionsOf(other).filter(by).length;
+      }
+    }
     return {
       file: file.fileId,
       label,
@@ -133,7 +142,7 @@ export function placeChange(
       earlierChanges: stats.earlier,
       recentChanges: stats.recent,
       familiarity: round(mine.reduce((sum, revision) => sum + 0.5 ** ((facts.time - revision.time) / halfLife), 0), 2),
-      neighbourhood: { coupled, folder: nearby },
+      neighbourhood: { coupled, folder: nearby, component: sameComponent },
       authorship: blame?.authorShare === undefined || blame?.authorShare === null ? null : round(blame.authorShare),
     };
   });

@@ -323,13 +323,15 @@
         "name": "blast-radius",
         "reason": null,
         "scored": true,
-        "source": "co-change",
+        "source": "co-change and parse",
         "status": "ok",
         "thresholds": {
           "files": null
         },
         "value": {
-          "files": 0
+          "files": 0,
+          "signatureChanges": 0,
+          "symbolFanIn": 0
         }
       },
       {
@@ -499,6 +501,7 @@
           "band": null,
           "evidence": [
             {
+              "component": null,
               "coupled": 0,
               "file": "src/ledger/ledger.ts",
               "folder": 0
@@ -513,6 +516,7 @@
           "status": "ok",
           "thresholds": {},
           "value": {
+            "component": null,
             "coupled": 0,
             "folder": 0
           }

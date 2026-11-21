@@ -112,7 +112,7 @@ export async function placementFor(context: CommandContext, assessed: Assessed, 
   };
 }
 
-const row = (name: string, value: Record<string, number>, evidence: Record<string, unknown>[], unavailable: string | null = null): Factor => ({
+const row = (name: string, value: Record<string, number | null>, evidence: Record<string, unknown>[], unavailable: string | null = null): Factor => ({
   name,
   family: "placement",
   layer: "placement",
@@ -145,8 +145,12 @@ export function placementFactors(placement: Placement, withBlame: boolean): Fact
     ),
     row(
       "neighbourhood",
-      { coupled: placement.files.reduce((s, f) => s + f.neighbourhood.coupled, 0), folder: placement.files.reduce((s, f) => s + f.neighbourhood.folder, 0) },
-      placement.files.map((f) => ({ file: f.file, coupled: f.neighbourhood.coupled, folder: f.neighbourhood.folder })),
+      {
+        coupled: placement.files.reduce((s, f) => s + f.neighbourhood.coupled, 0),
+        folder: placement.files.reduce((s, f) => s + f.neighbourhood.folder, 0),
+        component: placement.files.some((f) => f.neighbourhood.component === null) ? null : placement.files.reduce((s, f) => s + (f.neighbourhood.component ?? 0), 0),
+      },
+      placement.files.map((f) => ({ file: f.file, coupled: f.neighbourhood.coupled, folder: f.neighbourhood.folder, component: f.neighbourhood.component })),
     ),
     row("first-touch-share", { share: placement.firstTouchShare }, placement.files.filter((f) => f.label === "first-touch").map((f) => ({ file: f.file, churn: f.churn }))),
     row("owner-distance", { files: placement.distantOwners.length }, placement.distantOwners.map((o) => ({ file: o.file, share: o.share })), withBlame ? null : noBlame),

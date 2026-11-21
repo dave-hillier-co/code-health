@@ -148,6 +148,11 @@ export class HistoryState {
     return this.folders.get(folder) ?? new Set();
   }
 
+  /** Every file with a recorded revision, whether or not it still exists. */
+  knownFiles(): Iterable<string> {
+    return this.files.keys();
+  }
+
   /** True when the file has any recorded revision. */
   known(id: string): boolean {
     return this.files.has(id);
