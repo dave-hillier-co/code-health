@@ -66,6 +66,7 @@ export const command: Command = {
         rewrites: moved?.rewrites ?? [],
         mentions,
         warnings: moved?.warnings ?? [],
+        confirmations: moved?.confirmations ?? [],
       },
       results: plan.operations,
       columns: ["from", "to", "role"],

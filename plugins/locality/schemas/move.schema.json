@@ -94,8 +94,23 @@
       }
     },
     "warnings": { "type": "array", "items": { "type": "string" } },
+    "confirmations": {
+      "type": "array",
+      "description": "What the tool that confirms references said about the move, one entry per language whose files moved and that has such a tool. `not confirmed` is reported, never a failure: the tool may not be installed. Empty when no moved language has one.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "language": { "type": "string", "description": "The id of the language adapter." },
+          "tool": { "type": "string", "description": "The confirming tool, such as `rope` or `roslyn-lsp`." },
+          "status": { "enum": ["confirmed", "not confirmed"] },
+          "detail": { "type": "string" }
+        },
+        "required": ["language", "tool", "status", "detail"],
+        "additionalProperties": false
+      }
+    },
     "results": { "type": "array", "items": { "$ref": "#/$defs/operation" }, "description": "The exact file operations." }
   },
-  "required": ["unit", "mode", "applied", "commit", "refusals", "rewrites", "mentions", "warnings"],
+  "required": ["unit", "mode", "applied", "commit", "refusals", "rewrites", "mentions", "warnings", "confirmations"],
   "unevaluatedProperties": false
 }
