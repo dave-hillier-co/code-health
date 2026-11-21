@@ -12,21 +12,23 @@ Packages are easy to create and hard to remove. They tend to be created early, f
 
 ## Basis
 
-The frame is Robert C. Martin's six package principles (*Agile Software Development: Principles, Patterns, and Practices*, 2002, restated as component principles in *Clean Architecture*, 2017).
+The frame is Robert C. Martin's six package principles, as he summarises them in [The Principles of OOD](http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod). The one-line statements quoted below are his. The fuller treatment, with the metrics, is in *Agile Software Development: Principles, Patterns, and Practices* (2002), restated for components in *Clean Architecture* (2017).
 
-Three are about **cohesion**, what belongs inside a package:
+Martin means a specific thing by a package: "a binary deliverable like a .jar file, or a dll as opposed to a namespace like a java package or a C++ namespace". This spec follows him. A package here is a unit the build system delivers, not a folder.
 
-- **REP, the reuse/release equivalence principle.** The unit of reuse is the unit of release. Code that is reused together should be released together, and something that is not reused has no reason to be a release unit.
-- **CCP, the common closure principle.** Code that changes together, for the same reasons, belongs together. A change should land in one package.
-- **CRP, the common reuse principle.** Code that is used together belongs together, and a consumer should not be made to depend on things it does not use.
+Three are about **cohesion**. In his words, "they tell us what to put inside packages":
 
-Three are about **coupling**, the relations between packages:
+- **REP, the Release Reuse Equivalency Principle.** "The granule of reuse is the granule of release." Code that is reused together should be released together, and something that is not reused has no reason to be a release unit.
+- **CCP, the Common Closure Principle.** "Classes that change together are packaged together." A change should land in one package.
+- **CRP, the Common Reuse Principle.** "Classes that are used together are packaged together." The books draw out the converse, which is where the cost lies: a consumer should not be made to depend on things it does not use.
 
-- **ADP, the acyclic dependencies principle.** The package dependency graph has no cycles.
-- **SDP, the stable dependencies principle.** Dependencies point towards more stable packages.
-- **SAP, the stable abstractions principle.** A package should be as abstract as it is stable.
+Three are about **coupling**: "the couplings between packages", with "metrics that evaluate the package structure of a system":
 
-The cohesion principles pull against each other. REP and CCP make packages larger. CRP makes them smaller. Martin's point is that no package satisfies all three, and that the right balance moves as a project matures: early on, ease of change (CCP) matters most, and reuse (REP, CRP) earns its weight later. So the skill does not score a package against all three. It shows which force a package is serving, which it is neglecting, and what that neglect is costing.
+- **ADP, the Acyclic Dependencies Principle.** "The dependency graph of packages must have no cycles."
+- **SDP, the Stable Dependencies Principle.** "Depend in the direction of stability."
+- **SAP, the Stable Abstractions Principle.** "Abstractness increases with stability."
+
+The cohesion principles pull against each other, a tension Martin sets out in *Clean Architecture*. REP and CCP make packages larger. CRP makes them smaller. His point is that no package satisfies all three, and that the right balance moves as a project matures: early on, ease of change (CCP) matters most, and reuse (REP, CRP) earns its weight later. So the skill does not score a package against all three. It shows which force a package is serving, which it is neglecting, and what that neglect is costing.
 
 The principles were stated without the evidence to test them. The suite has it: co-change is a direct measure of common closure, and consumer analysis is a direct measure of common reuse.
 
@@ -52,19 +54,19 @@ Out of scope:
 
 **Package.** The unit a build system or package manager treats as one: a workspace package, a C# project, a CMake target, a Gradle or Maven module, a Python distribution, a Rust crate. These are the *fixed points* in [suite.md](suite.md#language-notes), discovered from manifests. Where a repository has no such units, configured `components` stand in, and the same analysis applies.
 
-**Internal and published.** A package is *published* when consumers outside the repository can depend on it (a public registry, or config says so). Otherwise it is *internal*. Internal packages can be reshaped freely. Published ones cannot.
+**Internal and published.** A package is *published* when consumers outside the repository can depend on it. It is *internal* when its manifest says so (for example `private: true` in a workspace manifest) or config does. Where neither settles it, the package is treated as published, which is the safe mistake. Internal packages can be reshaped freely. Published ones cannot.
 
 **Declared purpose.** Why a package exists, recorded in config: `reuse`, `deploy`, `ownership`, `build` (build time or caching), or `enforcement` (the boundary exists to stop a dependency). Evidence can show that a package is not reused. It cannot show that the package was never meant to be. A package with a declared purpose is judged against that purpose, and one without is judged as if its purpose were reuse.
 
-**Closure.** For a package, the share of the logical changes touching it that touch no other package. High closure means changes stay inside. It is the direct measure of CCP.
+**Closure.** For a package, the share of the logical changes touching it that touch no other package. High closure means changes stay inside. It is the direct measure of CCP. Closure rises with size for no other reason than size: a package holding half the repository keeps most changes inside it. So closure is always reported beside the package's share of the repository's changes, and judged against packages of comparable share, never against a fixed threshold.
 
-**Package co-change.** Temporal coupling computed between packages, using cochange's definitions with packages as the units: degree, confidence in each direction, support, and the significance test from [structure](structure.md#concepts).
+**Package co-change.** Temporal coupling computed between packages, using cochange's definitions with packages as the units: degree, confidence in each direction, support, and the significance test from [structure](structure.md#concepts). A large package changes in most commits, so confidence towards it is high whatever the relation. Package confidence is therefore read as lift over the other package's base rate of change.
 
 **Reuse profile.** For each consumer of a package, the share of the package's exported surface it uses. A package whose consumers each use most of it is reused as a whole. A package whose consumers use small, disjoint parts is several packages sharing a name.
 
 **Export components.** Locality's file-cohesion graph, applied to a package's exported surface: link two exports when they share consumers or reference each other, and count the connected components.
 
-**Instability.** `I = Ce / (Ca + Ce)`, over package dependencies, with change stability beside it, as in [structure](structure.md#concepts).
+**Instability.** Martin's metric from the books, `I = Ce / (Ca + Ce)`, over package dependencies, with change stability beside it, as in [structure](structure.md#concepts).
 
 **Abstractness.** `A`, the share of a package's exported types that are abstract: interfaces, abstract classes, traits, protocols, pure-virtual classes and type-only declarations. It is a structural-layer metric with per-language definitions.
 
@@ -78,8 +80,8 @@ Each row is a deterministic finding. As elsewhere in the suite, a finding raises
 
 | Finding | Signal | Reading |
 |---|---|---|
-| `low-closure` | Closure below the configured share, with enough changes to judge | Changes to this package usually need another package too. The boundary is in the wrong place, or there are too many. |
-| `always-together` | Two packages with high co-change in both directions | They are one unit of change, split in two. A candidate to merge. |
+| `low-closure` | Closure in the lowest quartile among packages with a comparable share of changes, with enough changes to judge. Where fewer than five comparable packages exist, the finding is not raised and the count of crossing changes is reported instead. | Changes to this package usually need another package too. The boundary is in the wrong place, or there are too many. |
+| `always-together` | Two packages with significant co-change and high lift in both directions | They are one unit of change, split in two. A candidate to merge. |
 | `follower` | High confidence A→B and low B→A, where A depends on B | Changing A usually means changing B's interface. B's interface is not hiding what it should, or part of B belongs in A. |
 | `crossing-unit` | A file or folder whose co-change partners are mostly in another package | A unit on the wrong side of the boundary. A candidate to move across. |
 | `wide-change` | Share of logical changes touching three or more packages, as a repository trend | The packages cut across the features. This is layering by kind (`ui`, `domain`, `data`) at package level. |
@@ -98,10 +100,10 @@ Each row is a deterministic finding. As elsewhere in the suite, a finding raises
 
 | Finding | Signal | Reading |
 |---|---|---|
-| `single-consumer` | An internal package with one consuming package, past the grace period | Nothing is being reused. Unless its declared purpose says otherwise, a candidate to merge into its consumer. |
+| `single-consumer` | An internal package with one consuming package, past the grace period. Test-support packages and application entry points are excluded. | Nothing is being reused. Unless its declared purpose says otherwise, a candidate to merge into its consumer. |
 | `no-consumer` | A package nothing depends on, that is not an entry point or a deployable | Dead, or an entry point missing from config |
-| `lockstep` | Packages whose versions always change in the same commits | They are released as one unit already. Separate versions are ceremony. |
-| `one-deployable` | A package that ships in only one deployable | It has no release life of its own |
+| `lockstep` | Packages whose versions always change in the same commits, where that is a choice. Not raised where tooling or policy fixes it: one version for the whole repository, fixed or linked version groups, or internal packages with no real versions. | They are released as one unit already. Separate versions are ceremony. |
+| `one-deployable` | A package that ships in only one deployable, in a repository with more than one | It has no release life of its own |
 | `pass-through-package` | A package whose exports are mostly re-exports of another package's | A shallow module at package level. A candidate to remove. |
 | `tiny` | Size in the lowest percentile of packages, with fixed overhead (manifest, build config, entry point) comparable to its content | The package costs more to have than it contains |
 
@@ -110,7 +112,7 @@ Each row is a deterministic finding. As elsewhere in the suite, a finding raises
 | Finding | Signal | Reading |
 |---|---|---|
 | `package-cycle` | A cycle in the package graph, with its breaking set, from `structure cycles --level package` | Neither package can be built, tested or released without the other |
-| `hidden-cycle` | No cycle in the manifests, but a cycle through development dependencies, test code, or co-change in both directions with no static edge | The build system forbids the cycle, so it has gone somewhere the build cannot see |
+| `hidden-cycle` | No cycle in the manifests, but a cycle through development dependencies or test-only imports | The build system forbids the cycle, so it has gone somewhere the build cannot see. Cycles through test code alone are reported at low priority. |
 
 ### Stable dependencies and stable abstractions (SDP, SAP)
 
@@ -127,7 +129,7 @@ Each row is a deterministic finding. As elsewhere in the suite, a finding raises
 
 | Finding | Signal | Reading |
 |---|---|---|
-| `deep-import` | Consumers importing a package's internals, past its entry point: deep import paths, private headers, `InternalsVisibleTo`, reflection on internal names | The boundary is not real. The declared interface is not the one in use. |
+| `deep-import` | Consumers importing a package's internals, past its entry point: deep import paths, private headers, `InternalsVisibleTo`, reflection on internal names. A package's own tests are excluded. | The boundary is not real. The declared interface is not the one in use. |
 | `undeclared-dependency` | A package uses another that its manifest does not declare (resolved through hoisting or a transitive path) | The dependency graph the build sees is not the real one |
 | `unused-dependency` | A declared dependency with no use in the package's code | Declared coupling with no purpose, and build weight |
 | `purpose-mismatch` | The evidence contradicts the declared purpose: `reuse` with one consumer, `enforcement` with deep imports through it | The reason the package exists is not being served |
@@ -175,7 +177,7 @@ Subcommands of the structure CLI. Every one supports `--json` with a versioned s
 | `structure packages boundaries [PACKAGE]` | Deep imports, undeclared and unused dependencies, and purpose mismatches |
 | `structure packages candidates` | Ranked merge, split, move, narrow and fix candidates, each with the findings behind it and the evidence against |
 | `structure packages evidence PACKAGE\|PAIR` | The full evidence for one package or one pair: co-change in both directions, shared changes, reuse profile, export components |
-| `structure packages check` | Exits 1 on new package cycles, deep imports or undeclared dependencies against a base revision. For CI. |
+| `structure packages check` | Exits 1 on new package cycles, deep imports or undeclared dependencies against a base revision, as `structure check` does. For CI. |
 
 Candidates are ranked by the change cost they address: the number of logical changes in the window that crossed the boundary in question, weighted by recency.
 
@@ -185,15 +187,15 @@ Skill name `packaging`, in `plugins/structure/skills/packaging/`. It triggers on
 
 Workflow:
 
-1. Run `list` and check the package inventory with the user: which are published, and what each one's purpose is. Record the answers in config. Evidence cannot supply a purpose, and the rest of the analysis depends on it.
-2. Run `candidates`. Present the few that address the most change cost, each with the principle it serves and the principle it costs.
+1. Run `list` and `candidates`. Do not ask about every package: a large repository has too many.
+2. For the packages in the leading candidates, confirm with the user whether each is published and what its purpose is, and record the answers in config. Evidence cannot supply a purpose, and a candidate cannot be judged without it. Then present the few candidates that address the most change cost, each with the principle it serves and the principle it costs.
 3. For each candidate the user wants to pursue, run `evidence` and reason through it:
    - **Is the boundary earning anything?** Reuse, a declared purpose that the evidence supports, or independent change.
    - **What would the result look like?** A merge that produces a package with disjoint consumers trades a CCP problem for a CRP problem.
    - **Which force matters here?** By the package's change rate, consumer count and age.
    - **Is there a cheaper fix?** Moving one crossing unit, or narrowing an interface, often removes most of the cross-boundary change without repackaging anything.
 4. Propose the smallest step. In order of preference: fix manifests, move a unit, narrow an interface, merge, split.
-5. Apply in single-refactoring commits, with the build and tests green after each: a merge is file moves, then import rewrites, then manifest removal. Published packages are never changed.
+5. Apply in single-refactoring commits, with the build and tests green after each. A merge is one commit that moves the files and rewrites the imports together, since the build is broken between the two, then a second that removes the emptied package's manifest. Published packages are never changed.
 6. Baseline the measures below before the first step.
 
 When asked whether to **add** a package, the skill applies the same tests in advance: who the second consumer is, whether the code changes independently of its current home, and what purpose would be declared. Without an answer to one of them, the default is a folder, which costs nothing to promote later.
@@ -204,11 +206,13 @@ The skill uses the [red-flags](red-flags.md) vocabulary at package level: a `pas
 
 | Measure | What it shows | Role |
 |---|---|---|
-| Packages touched per logical change, before and after, against comparable packages left alone | Changes land in fewer packages | Primary outcome |
-| Closure of the reshaped packages | Changes stay inside the new boundaries | Primary outcome |
-| Agent effort on tasks touching the reshaped packages | Navigation and build context got cheaper | Agent outcome |
+| Agent effort on tasks touching the reshaped packages | Navigation and build context got cheaper | Primary outcome |
+| Packages touched per logical change, before and after, against comparable packages left alone | Changes land in fewer packages | Outcome, by construction for a merge |
+| Closure of the reshaped packages | Changes stay inside the new boundaries | Outcome, by construction for a merge |
 | Reuse profile and export components of merged packages | Merging did not create a dumping ground | Gaming check |
 | Package count, and median distance `D` | Structure moved in the expected direction | Leading indicator only |
+
+Merging two packages lowers packages-per-change and raises closure whatever else happens, so for a merge those two show only that the merge took place. Agent effort is the independent test ([suite.md](suite.md#measurement-across-the-suite)). For a split or a moved unit they are real outcomes, because nothing guarantees them. In the earlier window, the packages a reshaping replaced are counted as one unit, so before and after compare like with like.
 
 Closure can be gamed by merging everything into one package, which has perfect closure. The gaming check is the opposing force: a merge that raises closure while the result's consumers use a falling share of it has traded one cost for another, and the skill reports it as such.
 
@@ -218,7 +222,7 @@ Package discovery reads manifests, so it works in any language the suite has a m
 
 | Language | Package | Internals marker | Abstract types |
 |---|---|---|---|
-| TypeScript/JavaScript | Workspace package (`package.json`) | Anything outside `exports` or the entry point | Interfaces, type aliases, abstract classes |
+| TypeScript/JavaScript | Workspace package (`package.json`) | Anything outside `exports` or the entry point | Interfaces and abstract classes. Type aliases are not counted, since they would make any types-heavy package look fully abstract. |
 | C# | Project (`.csproj`) | `internal`, with `InternalsVisibleTo` as the bypass | Interfaces, abstract classes |
 | C++ | Build target | Headers outside the target's public include directory | Classes with pure virtual members |
 | Python | Distribution (`pyproject.toml`) | Leading-underscore modules and names; anything outside `__all__` | `Protocol` and `ABC` classes |
@@ -231,7 +235,7 @@ In `structure.packages`:
 
 - Package discovery overrides, and components to treat as packages where no manifests exist.
 - Per package: `published`, declared `purpose`, and the deployables it ships in where that cannot be read from manifests.
-- Thresholds: closure, co-change for `always-together`, the reuse share for `partial-use`, and the size percentile for `tiny`.
+- Thresholds: the comparable-share band for closure, significance and lift for `always-together`, the reuse share for `partial-use`, and the size percentile for `tiny`.
 - The grace period for new packages (default 180 days).
 - Names that prompt the `dumping-ground` check.
 

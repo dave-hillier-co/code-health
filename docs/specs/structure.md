@@ -142,7 +142,7 @@ The skill does not default to any named pattern. Patterns such as mediator, obse
 | `structure evidence EDGE\|FINDING` | The full evidence pack for one problem dependency |
 | `structure coupling [--quadrant incidental\|real\|stable\|hidden] [--by file\|folder\|component]` | Module pairs placed in the coupling quadrants, ranked within each |
 | `structure hidden` | Pairs with high co-change and no static dependency, the result of earlier indirection. Shorthand for `coupling --quadrant hidden`. |
-| `structure check` | Exits 1 on new cycles or layer violations against a baseline. For CI. |
+| `structure check [--base REV]` | Exits 1 on cycles or layer violations that are new since a base revision (default: the merge base with the configured main branch). For CI. |
 | `structure packages …` | Package inventory, cohesion, coupling, boundaries and repackaging candidates. See [packaging.md](packaging.md#cli). |
 
 ## Measurement
@@ -166,7 +166,7 @@ In the `structure` section of the suite config:
 - Component boundaries, shared with the suite-wide `components`.
 - Additional census patterns (custom event or handler conventions).
 - Thresholds for static coupling, minimum support and the significance level for high co-change, minimum revisions for "active", and hidden coupling.
-- Baseline path for `check`.
+- Base revision for `check`.
 - Package settings under `structure.packages` ([packaging.md](packaging.md#configuration)).
 
 ## Decisions
