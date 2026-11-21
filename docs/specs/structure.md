@@ -1,6 +1,6 @@
 # Structure Tool — Spec
 
-Part of the code-health suite. Read [suite.md](suite.md) for shared conventions and [red-flags.md](red-flags.md) for the design vocabulary. The plugin shares the `graph` package with [locality](locality.md) and reads co-change from the shared history cache.
+Part of the code-health suite. Read [suite.md](suite.md) for shared conventions and [red-flags.md](../../shared/red-flags.md) for the design vocabulary. The plugin shares the `graph` package with [locality](locality.md) and reads co-change from the shared history cache.
 
 ## Purpose
 

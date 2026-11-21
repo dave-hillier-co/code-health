@@ -6,6 +6,7 @@ A suite of Claude Code plugins that measure code health from git history and sou
 
 - `plugins/` what users install: one self-contained folder per plugin, with its manifest, schemas and committed `dist/` bundle
 - `packages/` shared TypeScript source, bundled into each plugin's CLI
+- `shared/` single-source files copied into plugins at build time (`red-flags.md`)
 - `fixtures/` helpers that build deterministic git repositories for tests
 - `docs/specs/` design specs
 
@@ -32,6 +33,7 @@ npm run typecheck
 `npm run build` bundles every plugin's CLI into `plugins/<plugin>/dist/`, which is committed. Other checks that CI runs:
 
 - `npm run check:dist` fails when a committed bundle differs from a fresh build
+- `npm run check:red-flags` fails when a skill's `references/red-flags.md` differs from `shared/red-flags.md`; `npm run build` refreshes the copies
 - `npm run check:schemas` validates every golden output against its JSON Schema in `plugins/<plugin>/schemas/`
 - `npm run check:version-bump -- --base <ref>` fails when a change under `plugins/<plugin>/` since the merge base does not bump that plugin's `version`
 - `npm run check:plugins` runs `claude plugin validate --strict` when the `claude` CLI is installed

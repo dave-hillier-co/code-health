@@ -124,7 +124,7 @@ The tool classifies findings, and the skill turns the classifications into actio
 
 This plugin has no parser, so it cannot tell whether a coupled pair also has a static dependency. *Hidden coupling* (co-change with no static dependency) is therefore classified by [structure](structure.md#concepts), from this plugin's coupling data.
 
-These are prompts for investigation, not verdicts. The skill reviews each finding against the suite's design red flags ([red-flags.md](red-flags.md)). Co-change is the strongest evidence the suite has for *information leakage* and *conjoined methods*, two red flags that static analysis cannot see. The skill records why a finding was acted on or dismissed.
+These are prompts for investigation, not verdicts. The skill reviews each finding against the suite's design red flags ([red-flags.md](../../shared/red-flags.md)). Co-change is the strongest evidence the suite has for *information leakage* and *conjoined methods*, two red flags that static analysis cannot see. The skill records why a finding was acted on or dismissed.
 
 ## Agent integration
 

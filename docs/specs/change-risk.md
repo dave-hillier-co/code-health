@@ -198,7 +198,7 @@ Workflow:
 5. For review routing, run `reviewers`, and say what each suggested reviewer is being asked to look at.
 6. State the limits: which factors were `unavailable`, the evidence grade, and what the backtest says about how well the levels have separated changes in this repository.
 
-When the author is the user, the skill's stance is a pre-flight check: what to fix before asking for review. When the user is the reviewer, it is a reading guide: where to spend attention. The skill uses the [red-flags](red-flags.md) vocabulary where a finding matches one. A missing co-change is usually *information leakage*, and a novel coupling may be the start of it.
+When the author is the user, the skill's stance is a pre-flight check: what to fix before asking for review. When the user is the reviewer, it is a reading guide: where to spend attention. The skill uses the [red-flags](../../shared/red-flags.md) vocabulary where a finding matches one. A missing co-change is usually *information leakage*, and a novel coupling may be the start of it.
 
 ## Composition
 

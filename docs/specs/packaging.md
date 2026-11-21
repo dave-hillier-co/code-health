@@ -200,7 +200,7 @@ Workflow:
 
 When asked whether to **add** a package, the skill applies the same tests in advance: who the second consumer is, whether the code changes independently of its current home, and what purpose would be declared. Without an answer to one of them, the default is a folder, which costs nothing to promote later.
 
-The skill uses the [red-flags](red-flags.md) vocabulary at package level: a `pass-through-package` is a *shallow module*, a `follower` relation is *information leakage*, `overexposed` is *overexposure*, and layer-shaped packages that always change together are *temporal decomposition*'s structural cousin.
+The skill uses the [red-flags](../../shared/red-flags.md) vocabulary at package level: a `pass-through-package` is a *shallow module*, a `follower` relation is *information leakage*, `overexposed` is *overexposure*, and layer-shaped packages that always change together are *temporal decomposition*'s structural cousin.
 
 ## Measurement
 

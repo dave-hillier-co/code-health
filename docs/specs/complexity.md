@@ -1,6 +1,6 @@
 # Complexity Tool — Spec
 
-Part of the code-health suite. Read [suite.md](suite.md) for shared conventions and [red-flags.md](red-flags.md) for the design vocabulary the skill uses.
+Part of the code-health suite. Read [suite.md](suite.md) for shared conventions and [red-flags.md](../../shared/red-flags.md) for the design vocabulary the skill uses.
 
 ## Purpose
 
@@ -80,7 +80,7 @@ The maximum nesting of control structures within the function.
 
 ### Length
 
-Lines of code, excluding blank lines and comments, plus a statement count. Length is reported and ranked but **never gated alone**. A long, linear function is often clearer than five shallow fragments (see [red-flags.md](red-flags.md)).
+Lines of code, excluding blank lines and comments, plus a statement count. Length is reported and ranked but **never gated alone**. A long, linear function is often clearer than five shallow fragments (see [red-flags.md](../../shared/red-flags.md)).
 
 ### Parameter count
 

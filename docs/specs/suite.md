@@ -1,6 +1,6 @@
 # Code Health Suite — Spec
 
-This spec covers the conventions shared by every plugin in this marketplace. Each plugin spec ([locality](locality.md), [cochange](cochange.md) with its [abandonment](abandonment.md), [identities](identities.md) and [change-risk](change-risk.md) skills, [complexity](complexity.md), [structure](structure.md) with its [packaging](packaging.md) skill) assumes this one, and [red-flags.md](red-flags.md) is the shared design vocabulary.
+This spec covers the conventions shared by every plugin in this marketplace. Each plugin spec ([locality](locality.md), [cochange](cochange.md) with its [abandonment](abandonment.md), [identities](identities.md) and [change-risk](change-risk.md) skills, [complexity](complexity.md), [structure](structure.md) with its [packaging](packaging.md) skill) assumes this one, and [red-flags.md](../../shared/red-flags.md) is the shared design vocabulary.
 
 ## Purpose
 
@@ -25,7 +25,7 @@ These apply to every plugin, and a plugin spec that departs from one must say wh
 3. **CLIs report, they do not edit.** Analysis commands never modify code. Mechanical edit commands (such as the locality mover) are separate, default to a dry run, and need `--apply`.
 4. **One refactoring per commit.** Every applied change is a single, revertible step with tests green before and after. A reviewer never evaluates a move and a behaviour change together.
 5. **Evidence beats convention.** Folder conventions, anticipated reuse and metric thresholds are hypotheses. History and consumer evidence decide. The rule of three marks when to *consider* removing duplication or keeping an abstraction. It is never a mechanical rule in either direction.
-6. **Deep over shallow, and inline by default.** Remedies hide decisions behind simple interfaces. Inlining single-use indirection is a first-class remedy (Carmack, Blow). No plugin creates new shared helpers or abstractions, and any extraction stays local (see [red-flags.md](red-flags.md)). The one stated exception is dependency breaking in [structure](structure.md#decisions).
+6. **Deep over shallow, and inline by default.** Remedies hide decisions behind simple interfaces. Inlining single-use indirection is a first-class remedy (Carmack, Blow). No plugin creates new shared helpers or abstractions, and any extraction stays local (see [red-flags.md](../../shared/red-flags.md)). The one stated exception is dependency breaking in [structure](structure.md#decisions).
 7. **Scrutinise what is widely used.** High fan-in multiplies the cost of every flaw. Utilities with many consumers have earned their location, and they are the first place to check for red flags.
 8. **Built for agents, usable by people.** Output is compact, ranked and limited by default. JSON is the contract, and a human-readable table is the default view in a terminal.
 9. **Local and private.** No network access, no telemetry. Data about people is off by default. The exceptions (identity resolution, successor names, an author's placement to their own change) are stated and bounded in their own specs.

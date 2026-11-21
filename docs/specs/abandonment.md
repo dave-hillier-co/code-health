@@ -131,7 +131,7 @@ Workflow:
 5. Note interactions with the rest of the suite. Simplifying an at-risk complex file (complexity plugin) reduces the knowledge needed to adopt it. Co-locating scattered code (locality plugin) reduces how much someone must know to change it safely.
 6. Report the limits: inactivity is a proxy, blame measures authorship rather than understanding, and the 90 % threshold is a convention.
 
-The skill's references include the paper's definitions and the [red-flags](red-flags.md) shared reference. *Nonobvious code* and *hard to describe* in at-risk files increase the case for capture before adoption.
+The skill's references include the paper's definitions and the [red-flags](../../shared/red-flags.md) shared reference. *Nonobvious code* and *hard to describe* in at-risk files increase the case for capture before adoption.
 
 ## Measurement
 

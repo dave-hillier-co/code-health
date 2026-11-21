@@ -1,6 +1,6 @@
 # Locality Refactoring Tool — Spec
 
-Part of the code-health suite. Read [suite.md](suite.md) for packaging, the CLI contract, config, caches and testing, and [red-flags.md](red-flags.md) for the design vocabulary the skill uses.
+Part of the code-health suite. Read [suite.md](suite.md) for packaging, the CLI contract, config, caches and testing, and [red-flags.md](../../shared/red-flags.md) for the design vocabulary the skill uses.
 
 ## Purpose
 
@@ -202,7 +202,7 @@ When a blocker is resolved, the work lands in order: the split or break first as
 
 High fan-in units are where defects and awkward interfaces cost most, because every consumer inherits them. A `scrutinise` recommendation sends the unit to the skill's review checklist:
 
-- **Red flags** from [red-flags.md](red-flags.md), especially *shallow module*, *special-general mixture* (caller-specific flags or branches), *overexposure* (options most callers never pass), *pass-through method* and *vague name*.
+- **Red flags** from [red-flags.md](../../shared/red-flags.md), especially *shallow module*, *special-general mixture* (caller-specific flags or branches), *overexposure* (options most callers never pass), *pass-through method* and *vague name*.
 - **Correctness under all callers.** Edge cases one caller relies on and another violates: null and empty inputs, time zones, locale, error handling, mutation of arguments.
 - **Divergent use.** Consumers that wrap, post-process or partly re-implement the utility suggest it does the wrong thing for them.
 - **Standard-library overlap.** Noted for the idioms plugin, not fixed here.
