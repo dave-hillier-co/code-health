@@ -1,0 +1,12 @@
+{
+  "name": "@code-health/graph",
+  "version": "0.0.0",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  }
+}
