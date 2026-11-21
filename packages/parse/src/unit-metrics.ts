@@ -81,10 +81,13 @@ class Measurer {
   private recursion = false;
   readonly increments: Increment[] = [];
 
-  constructor(
-    private readonly options: MeasureOptions,
-    private readonly names: ReadonlySet<string>,
-  ) {}
+  private readonly options: MeasureOptions;
+  private readonly names: ReadonlySet<string>;
+
+  constructor(options: MeasureOptions, names: ReadonlySet<string>) {
+    this.options = options;
+    this.names = names;
+  }
 
   private record(node: Node, metric: Increment["metric"], construct: string, amount: number, nesting: number): void {
     if (this.options.explain) {

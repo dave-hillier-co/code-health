@@ -136,7 +136,11 @@ class Extractor {
   private codeRows: boolean[] | undefined;
   private root: Node | undefined;
 
-  constructor(private readonly explain: boolean) {}
+  private readonly explain: boolean;
+
+  constructor(explain: boolean) {
+    this.explain = explain;
+  }
 
   extract(root: Node): FileFacts {
     this.root = root;
