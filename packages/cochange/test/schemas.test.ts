@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020Module from "ajv/dist/2020.js";
@@ -109,5 +109,20 @@ test("coupling output, as printed with meta, matches its schema, and stray field
     expect(validates("coupling.schema.json", JSON.stringify(inEvidence))).not.toEqual([]);
   } finally {
     coupled.dispose();
+  }
+});
+
+test("an analysis output that names identity inputs still matches its schema", async () => {
+  const repoWithIdentities = steadyHistory();
+  try {
+    mkdirSync(join(repoWithIdentities.path, ".code-health", "local"), { recursive: true });
+    writeFileSync(join(repoWithIdentities.path, ".code-health", "local", "mailmap"), "Alice <alice@example.com> Bob <bob@example.com>\n");
+    for (const command of ["hotspots", "age", "coupling", "spread"]) {
+      const { stdout } = await runCochange(repoWithIdentities.path, [command]);
+      expect(JSON.parse(stdout).inputs.identityInputs.localMailmap).toMatch(/^[0-9a-f]{16}$/);
+      expect(validates(`${command}.schema.json`, stdout)).toEqual([]);
+    }
+  } finally {
+    repoWithIdentities.dispose();
   }
 });

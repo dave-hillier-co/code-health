@@ -1,6 +1,7 @@
 import { configError } from "@code-health/cli-kit/errors";
 import type { LoadedConfig, PluginConfigSpec } from "@code-health/cli-kit/config";
 import { DEFAULT_EVIDENCE_THRESHOLDS, type EvidenceThresholds } from "@code-health/history/evidence";
+import type { MappingLocation } from "@code-health/history/identity-decisions";
 import { DEFAULT_MAX_CHANGESET_SIZE } from "@code-health/history/noise";
 import { DEFAULT_RENAME_LIMIT, DEFAULT_SIMILARITY } from "@code-health/history/refresh";
 import { TOOL } from "./tool.ts";
@@ -33,13 +34,34 @@ export const cochangeConfig: PluginConfigSpec = {
     minDegree: 30,
     minDistance: 2,
     hook: { enabled: false, confidence: 80, maxCommitsBehind: 50 },
-    identities: { botPatterns: [] },
+    identities: {
+      /** Where the mapping lives: "committed" or "local". null decides from the files present, and the identities skill asks when there are none. */
+      location: null,
+      /** The one place bot and service patterns are configured. Regular expressions matched against `Name <email>`. */
+      botPatterns: [],
+      servicePatterns: [],
+      /** Extra patterns for a Co-Authored-By trailer naming an AI agent, beside the built-in ones. */
+      agentTrailerPatterns: [],
+      /** Unmapped identities holding more than this percentage of lines at HEAD make the abandonment skill run the identities skill. */
+      unmappedShareThreshold: 5,
+      /** Commits in the analysis window that make an unmapped identity significant, whether or not it holds lines. */
+      significantCommits: 3,
+    },
     evidence: {
       strong: { ...DEFAULT_EVIDENCE_THRESHOLDS.strong },
       moderate: { ...DEFAULT_EVIDENCE_THRESHOLDS.moderate },
     },
   },
 };
+
+export interface IdentitySettings {
+  location: MappingLocation | null;
+  botPatterns: string[];
+  servicePatterns: string[];
+  agentTrailerPatterns: string[];
+  unmappedShareThreshold: number;
+  significantCommits: number;
+}
 
 export interface CochangeSettings {
   /** The ref analysed: the configured branch, or HEAD. */
@@ -58,6 +80,7 @@ export interface CochangeSettings {
   /** The suite's shared `exclude` globs. */
   exclude: string[];
   botPatterns: string[];
+  identities: IdentitySettings;
   evidenceThresholds: EvidenceThresholds;
   /** True when the config file states the analysis window, which a shallow clone requires. */
   windowStated: boolean;
@@ -89,10 +112,7 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
   if (section.grouping !== "off") {
     throw configError(`code-health.json: ${at("grouping")} supports only "off"`);
   }
-  const botPatterns = (section.identities as { botPatterns: unknown }).botPatterns;
-  if (!Array.isArray(botPatterns) || botPatterns.some((p) => typeof p !== "string")) {
-    throw configError(`code-health.json: ${at("identities.botPatterns")} must be an array of strings`);
-  }
+  const identities = readIdentities(section.identities as Record<string, unknown>, at);
   const minDegree = positive("minDegree");
   if (minDegree > 100) throw configError(`code-health.json: ${at("minDegree")} is a percentage, at most 100`);
   const evidence = section.evidence as EvidenceThresholds;
@@ -111,8 +131,38 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
     minDegree,
     minDistance: positive("minDistance"),
     exclude: config.effective.exclude,
-    botPatterns: botPatterns as string[],
+    botPatterns: identities.botPatterns,
+    identities,
     evidenceThresholds: evidence,
     windowStated: config.sources[at("windowMonths")] === "file",
+  };
+}
+
+function readIdentities(section: Record<string, unknown>, at: (key: string) => string): IdentitySettings {
+  const strings = (key: string): string[] => {
+    const value = section[key];
+    if (!Array.isArray(value) || value.some((p) => typeof p !== "string")) {
+      throw configError(`code-health.json: ${at(`identities.${key}`)} must be an array of strings`);
+    }
+    return value as string[];
+  };
+  const location = section.location;
+  if (location !== null && location !== "committed" && location !== "local") {
+    throw configError(`code-health.json: ${at("identities.location")} must be "committed", "local" or null`);
+  }
+  const count = (key: string, max: number): number => {
+    const value = section[key];
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > max) {
+      throw configError(`code-health.json: ${at(`identities.${key}`)} must be a whole number from 0 to ${max}`);
+    }
+    return value;
+  };
+  return {
+    location,
+    botPatterns: strings("botPatterns"),
+    servicePatterns: strings("servicePatterns"),
+    agentTrailerPatterns: strings("agentTrailerPatterns"),
+    unmappedShareThreshold: count("unmappedShareThreshold", 100),
+    significantCommits: count("significantCommits", 1_000_000),
   };
 }

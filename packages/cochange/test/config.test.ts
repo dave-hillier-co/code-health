@@ -58,9 +58,28 @@ test.each([
   [{ cochange: { branch: 3 } }, "branch"],
   [{ cochange: { grouping: "issue-key" } }, "grouping"],
   [{ cochange: { identities: { botPatterns: [1] } } }, "botPatterns"],
+  [{ cochange: { identities: { location: "cloud" } } }, "identities.location"],
+  [{ cochange: { identities: { servicePatterns: "ci" } } }, "servicePatterns"],
+  [{ cochange: { identities: { unmappedShareThreshold: 101 } } }, "unmappedShareThreshold"],
+  [{ cochange: { identities: { significantCommits: -1 } } }, "significantCommits"],
   [{ cochange: { nonsense: true } }, "unknown setting"],
 ])("invalid settings %j are config errors", (document, message) => {
   expect(() => settingsFor(document)).toThrowError(message);
+});
+
+test("identity settings default to an undecided location and a 5 percent unmapped threshold", () => {
+  expect(settingsFor({}).identities).toEqual({
+    location: null,
+    botPatterns: [],
+    servicePatterns: [],
+    agentTrailerPatterns: [],
+    unmappedShareThreshold: 5,
+    significantCommits: 3,
+  });
+  expect(settingsFor({ cochange: { identities: { location: "local", servicePatterns: ["deploy"] } } }).identities).toMatchObject({
+    location: "local",
+    servicePatterns: ["deploy"],
+  });
 });
 
 test("config explain shows the cochange defaults and where values came from", async () => {

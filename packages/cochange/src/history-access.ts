@@ -3,6 +3,7 @@ import { analyseHistory, monthsBefore, type HistoryAnalysis } from "@code-health
 import { requireWindowWhenShallow } from "@code-health/history/cli-errors";
 import { runGit } from "@code-health/history/git";
 import { refresh, readShallowInfo, type RefreshResult } from "@code-health/history/refresh";
+import { loadIdentityState, type IdentityState } from "./identity-access.ts";
 import { readSettings, type CochangeSettings } from "./config.ts";
 
 /** Brings the shared history cache up to date for the configured ref. */
@@ -38,6 +39,8 @@ export interface LoadedHistory extends HistoryAnalysis {
   window: { since: number; until: number };
   /** The refresh that ran first, or null when `noRefresh` was given. */
   refreshed: RefreshResult | null;
+  /** The identity mapping and classification the history was read with. */
+  identities: IdentityState;
 }
 
 /**
@@ -69,12 +72,15 @@ export async function loadHistory(context: CommandContext, options: HistoryOptio
   // (clock skew, a rebase) is outside it. `until` is exclusive, so the anchor itself stays in.
   const until = options.window?.until ?? anchor + 1;
 
+  const identities = loadIdentityState(root, settings);
   const analysis = await analyseHistory(root, {
     ref: settings.ref,
     firstParent: settings.firstParent,
+    mailmapFile: identities.localMailmap,
     noise: {
       exclude: settings.exclude,
       botPatterns: settings.botPatterns,
+      nonPerson: identities.matcher,
       maxChangesetSize: settings.maxChangesetSize,
       since,
       until,
@@ -82,5 +88,5 @@ export async function loadHistory(context: CommandContext, options: HistoryOptio
     evidence: { windowMonths: settings.windowMonths, thresholds: settings.evidenceThresholds },
   });
   const earliest = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
-  return { ...analysis, settings, window: { since: since ?? earliest, until: options.window?.until ?? anchor }, refreshed };
+  return { ...analysis, settings, window: { since: since ?? earliest, until: options.window?.until ?? anchor }, refreshed, identities };
 }

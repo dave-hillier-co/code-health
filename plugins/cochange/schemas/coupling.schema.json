@@ -8,7 +8,7 @@
     "command": { "const": "coupling" },
     "inputs": {
       "type": "object",
-      "properties": {
+      "properties": { "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" },
         "file": { "type": ["string", "null"], "description": "The file the listing is limited to, resolved through renames to its current path." },
         "minDegree": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Percentage." },
         "minSupport": { "type": "integer", "minimum": 1 },

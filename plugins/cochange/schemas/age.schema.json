@@ -8,7 +8,7 @@
     "command": { "const": "age" },
     "inputs": {
       "type": "object",
-      "properties": { "by": { "enum": ["file", "component"] } },
+      "properties": { "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }, "by": { "enum": ["file", "component"] } },
       "required": ["by"],
       "additionalProperties": false
     },

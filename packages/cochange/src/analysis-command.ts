@@ -56,8 +56,10 @@ export function analysisCommand(name: string, spec: AnalysisSpec): Command {
       const window = spec.window?.(context);
       const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, window, wholeHistory: spec.wholeHistory });
       const output = await spec.analyse({ context, history });
+      const identityStamps = Object.keys(history.identities.stamps).length > 0 ? { identityInputs: history.identities.stamps } : {};
       const finished: CommandOutput = {
         ...output,
+        inputs: { ...output.inputs, ...identityStamps },
         extra: {
           window: {
             since: new Date(history.window.since * 1000).toISOString(),

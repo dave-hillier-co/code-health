@@ -195,6 +195,15 @@
       ],
       "additionalProperties": false
     },
+    "identityInputs": {
+      "description": "Present when identity decisions or a local-only mailmap shaped the results: a short hash of each file, since results depend on them beyond the repository, config and history.",
+      "type": "object",
+      "properties": {
+        "decisions": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+        "localMailmap": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+      },
+      "additionalProperties": false
+    },
     "analysisEnvelope": {
       "description": "The envelope plus the sections every command that reads history adds. A command schema allOf-references this and closes the document with unevaluatedProperties.",
       "allOf": [{ "$ref": "#/$defs/envelope" }],
