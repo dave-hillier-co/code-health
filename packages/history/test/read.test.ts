@@ -146,6 +146,29 @@ test("a deleted file and a later file reusing its path are different identities 
   expect(ids).toEqual(["p.txt", "p.txt", "p.txt", "q.txt", "q.txt"]);
 });
 
+test("the mailmap is applied at read time from the tree at the ref, so editing it needs no re-ingest", async () => {
+  const old = { name: "Al", email: "al@old.example" };
+  const repo = build([
+    { type: "commit", message: "by al", date: "2024-02-01T00:00:00Z", author: old, changes: [{ op: "add", path: "a", content: "1\n" }] },
+    { type: "branch", name: "mapped" },
+    {
+      type: "commit",
+      message: "add mailmap",
+      date: "2024-02-02T00:00:00Z",
+      author: old,
+      changes: [{ op: "add", path: ".mailmap", content: "Alice <alice@example.com> <al@old.example>\n" }],
+    },
+    { type: "checkout", name: "main" },
+  ]);
+  await refresh(repo.path, { ref: "main" });
+  await refresh(repo.path, { ref: "mapped" });
+  const unmapped = await readHistory(repo.path, { ref: "main" });
+  const mapped = await readHistory(repo.path, { ref: "mapped" });
+  expect(unmapped.commits[0]).toMatchObject({ mappedName: "Al", mappedEmail: "al@old.example", authorEmail: "al@old.example" });
+  expect(mapped.commits[0]).toMatchObject({ mappedName: "Alice", mappedEmail: "alice@example.com", authorEmail: "al@old.example" });
+  expect(mapped.commits[1]).toMatchObject({ mappedName: "Alice", mappedEmail: "alice@example.com" });
+});
+
 test("binary changes have no line counts", async () => {
   const repo = build([add("bin", 1, "x.bin", "\u0000\u0001\u0002\u0003")]);
   await refresh(repo.path);

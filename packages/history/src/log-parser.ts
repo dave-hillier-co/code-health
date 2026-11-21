@@ -21,9 +21,6 @@ export interface ParsedCommit {
   /** Author as written in the commit. */
   authorName: string;
   authorEmail: string;
-  /** Author after .mailmap. */
-  mappedName: string;
-  mappedEmail: string;
   /** Unix seconds. */
   authorDate: number;
   committerDate: number;
@@ -41,7 +38,7 @@ export interface LogSettings {
 /** Starts every record. Long and unlikely enough that no path or message contains it. */
 const RS = "\x1e@@code-health:record:8c1f6e2a-5b7d-4a90-b3e1@@\x1e";
 const US = "\x1f";
-const FORMAT = ["%H", "%P", "%an", "%ae", "%aN", "%aE", "%at", "%ct", "%B"].join("%x1f");
+const FORMAT = ["%H", "%P", "%an", "%ae", "%at", "%ct", "%B"].join("%x1f");
 
 /**
  * Arguments for reading specific commits (given on stdin, with --no-walk) with
@@ -63,10 +60,6 @@ export function logArgs(settings: LogSettings): string[] {
     "diff.context=3",
     "-c",
     "diff.noprefix=false",
-    "-c",
-    "mailmap.file=",
-    "-c",
-    "mailmap.blob=",
     "log",
     "--stdin",
     "--no-walk=unsorted",
@@ -102,8 +95,8 @@ function parseRecord(record: string): ParsedCommit {
   const tokens = record.split("\0");
   const header = tokens.shift() ?? "";
   const fields = header.split(US);
-  const [sha, parents, authorName, authorEmail, mappedName, mappedEmail, authorDate, committerDate] = fields;
-  const message = fields.slice(8).join(US).replace(/\n+$/, "");
+  const [sha, parents, authorName, authorEmail, authorDate, committerDate] = fields;
+  const message = fields.slice(6).join(US).replace(/\n+$/, "");
   if (sha === undefined || parents === undefined || authorDate === undefined || committerDate === undefined) {
     throw new Error(`Malformed git log record: ${JSON.stringify(header)}`);
   }
@@ -155,8 +148,6 @@ function parseRecord(record: string): ParsedCommit {
     parents: parents === "" ? [] : parents.split(" "),
     authorName: authorName ?? "",
     authorEmail: authorEmail ?? "",
-    mappedName: mappedName ?? "",
-    mappedEmail: mappedEmail ?? "",
     authorDate: Number(authorDate),
     committerDate: Number(committerDate),
     message,

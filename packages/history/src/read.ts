@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { locateCache } from "./cache-location.ts";
 import type { ChangeStatus } from "./log-parser.ts";
 import { resolveRef } from "./refresh.ts";
+import { runGit } from "./git.ts";
 import { RenameMap } from "./renames.ts";
 import { openForRead } from "./store.ts";
 
@@ -32,6 +33,7 @@ export interface HistoryCommit {
   position: number;
   authorName: string;
   authorEmail: string;
+  /** Author after the .mailmap in the tree at the ref, applied at read time. */
   mappedName: string;
   mappedEmail: string;
   authorDate: number;
@@ -65,8 +67,6 @@ interface CommitRow {
   sha: string;
   author_name: string;
   author_email: string;
-  mapped_name: string;
-  mapped_email: string;
   author_date: number;
   committer_date: number;
   message: string;
@@ -105,9 +105,40 @@ export async function readHistory(repoPath: string, options: ReadOptions = {}): 
   const db = openForRead(location.dbPath);
   if (!db) throw new NoCacheError("No history cache. Run refresh first.");
   try {
-    return select(db, ref, headSha, firstParent);
+    const view = select(db, ref, headSha, firstParent);
+    await applyMailmap(location.repoRoot, view);
+    return view;
   } finally {
     db.close();
+  }
+}
+
+/**
+ * Maps authors through the `.mailmap` in the tree at the ref. It is applied
+ * here and not at ingest because commits are immutable in the cache while the
+ * mailmap is not, and the user's own mailmap settings must not leak in.
+ */
+async function applyMailmap(repoRoot: string, view: HistoryView): Promise<void> {
+  try {
+    await runGit(repoRoot, ["cat-file", "-e", `${view.headSha}:.mailmap`]);
+  } catch {
+    return; // no mailmap at this ref: authors are as written
+  }
+  const identities = [...new Set(view.commits.map((c) => `${c.authorName} <${c.authorEmail}>`))].sort();
+  if (identities.length === 0) return;
+  const out = await runGit(
+    repoRoot,
+    ["-c", "mailmap.file=", "-c", `mailmap.blob=${view.headSha}:.mailmap`, "check-mailmap", "--stdin"],
+    { input: identities.join("\n") + "\n" },
+  );
+  const lines = out.split("\n");
+  const mapped = new Map(identities.map((identity, i) => [identity, lines[i] ?? identity]));
+  for (const commit of view.commits) {
+    const line = mapped.get(`${commit.authorName} <${commit.authorEmail}>`) ?? "";
+    const open = line.lastIndexOf("<");
+    if (open === -1) continue;
+    commit.mappedName = line.slice(0, open).trim();
+    commit.mappedEmail = line.slice(open + 1, line.lastIndexOf(">"));
   }
 }
 
@@ -164,8 +195,8 @@ function select(db: DatabaseSync, ref: string, headSha: string, firstParent: boo
       position,
       authorName: row.author_name,
       authorEmail: row.author_email,
-      mappedName: row.mapped_name,
-      mappedEmail: row.mapped_email,
+      mappedName: row.author_name,
+      mappedEmail: row.author_email,
       authorDate: row.author_date,
       committerDate: row.committer_date,
       message: row.message,

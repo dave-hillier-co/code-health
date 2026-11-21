@@ -4,7 +4,7 @@ import { createDatabase, loadSqlite } from "./sqlite.ts";
 import type { ParsedCommit } from "./log-parser.ts";
 
 /** Bump when the table layout changes. A mismatch rebuilds the cache. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export interface IngestSettings {
   similarity: number;
@@ -17,8 +17,6 @@ CREATE TABLE commits (
   sha TEXT PRIMARY KEY,
   author_name TEXT NOT NULL,
   author_email TEXT NOT NULL,
-  mapped_name TEXT NOT NULL,
-  mapped_email TEXT NOT NULL,
   author_date INTEGER NOT NULL,
   committer_date INTEGER NOT NULL,
   message TEXT NOT NULL,
@@ -159,8 +157,8 @@ export function deleteCommits(db: DatabaseSync, shas: string[]): void {
 export function insertCommits(db: DatabaseSync, commits: ParsedCommit[], boundary: ReadonlySet<string>): void {
   const insertCommit = db.prepare(
     `INSERT OR IGNORE INTO commits
-     (sha, author_name, author_email, mapped_name, mapped_email, author_date, committer_date, message, parent_count, boundary)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     (sha, author_name, author_email, author_date, committer_date, message, parent_count, boundary)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const insertParent = db.prepare("INSERT OR IGNORE INTO commit_parents (sha, ord, parent) VALUES (?, ?, ?)");
   const insertChange = db.prepare(
@@ -175,8 +173,6 @@ export function insertCommits(db: DatabaseSync, commits: ParsedCommit[], boundar
         c.sha,
         c.authorName,
         c.authorEmail,
-        c.mappedName,
-        c.mappedEmail,
         c.authorDate,
         c.committerDate,
         c.message,
