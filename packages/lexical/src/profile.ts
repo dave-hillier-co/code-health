@@ -112,7 +112,7 @@ const regexLiteral: WholeLiteral = {
   kind: "whole",
   triggers: "/",
   pattern: "/(?![*/])(?:\\\\.|\\[(?:\\\\.|[^\\]\\\\\\n])*\\]|[^/\\\\\\[\\n])+/[a-z]*",
-  after: "(?:^|[(,=:\\[!&|?{};<>~^%*]|\\b(?:return|typeof|case|in|of|delete|void|throw|new|else|do|yield|await))\\s*$",
+  after: "(?:[(,=:\\[!&|?{};<>~^%]|\\b(?:return|typeof|case|in|of|delete|void|throw|new|else|do|yield|await))\\s*$",
 };
 
 const typescript: LexerProfile = {
