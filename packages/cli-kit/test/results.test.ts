@@ -62,3 +62,15 @@ test("an empty result list accepts any fields, since no columns are known", () =
   const { results } = shapeResults([], { limit: 5, fields: ["path"], columns: [] });
   expect(results).toEqual([]);
 });
+
+test("equal scores tie-break on path by byte order, as git sorts paths", () => {
+  // U+FFFF is above U+10000 in UTF-16 code units (surrogates) but below it in UTF-8 bytes
+  const { results } = shapeResults(
+    [
+      { path: "\u{10000}", score: 1 },
+      { path: "\uffff", score: 1 },
+    ],
+    { limit: 5 },
+  );
+  expect(results).toEqual([{ path: "\uffff", score: 1 }, { path: "\u{10000}", score: 1 }]);
+});

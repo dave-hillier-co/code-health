@@ -46,7 +46,6 @@ function byScoreThenPath(a: Row, b: Row): number {
   const scoreA = typeof a.score === "number" ? a.score : 0;
   const scoreB = typeof b.score === "number" ? b.score : 0;
   if (scoreA !== scoreB) return scoreB - scoreA;
-  const pathA = String(a.path ?? "");
-  const pathB = String(b.path ?? "");
-  return pathA < pathB ? -1 : pathA > pathB ? 1 : 0;
+  // UTF-8 byte order, which is how git orders paths; UTF-16 code unit order differs above the BMP.
+  return Buffer.compare(Buffer.from(String(a.path ?? "")), Buffer.from(String(b.path ?? "")));
 }
