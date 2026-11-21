@@ -1,4 +1,6 @@
 import type { Command, Rule } from "@code-health/cli-kit/run-cli";
+import * as age from "./commands/age.ts";
+import * as hotspots from "./commands/hotspots.ts";
 import * as refresh from "./commands/refresh.ts";
 
 /** What a module in `commands/` exports. */
@@ -16,6 +18,8 @@ export interface CommandModule {
  * and add it to this list, one line each, in alphabetical order.
  */
 export const commandModules: CommandModule[] = [
+  age,
+  hotspots,
   refresh,
 ];
 

@@ -8,8 +8,8 @@ import { ensureCacheDir, locateCache } from "@code-health/history/cache-location
 import { SCHEMA_VERSION, TOOL } from "./tool.ts";
 
 /** Where a command's report lives. Reports are per worktree, unlike the history cache. */
-export function reportPath(root: string, command: string): string {
-  return join(root, ".cache", "code-health", "reports", `${TOOL}.${command}.json`);
+export function reportPath(root: string, command: string, tool: string = TOOL): string {
+  return join(root, ".cache", "code-health", "reports", `${tool}.${command}.json`);
 }
 
 /**

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hotspots.schema.json",
+  "title": "cochange hotspots --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "hotspots" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "by": { "enum": ["file", "component"] },
+        "complexityReport": {
+          "description": "The complexity plugin's report that supplied the complexity column, or null when the indentation proxy was used.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "report": { "type": "string" },
+                "head": { "$ref": "common.schema.json#/$defs/sha" },
+                "config": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+              },
+              "required": ["report", "head", "config"],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": ["by", "complexityReport"],
+      "additionalProperties": false
+    },
+    "complexitySource": {
+      "description": "Where the complexity column came from: the complexity plugin's file report, or indentation complexity computed from the files at the analysed commit.",
+      "enum": ["complexity-report", "indentation"]
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "The file's path, or the component's name with --by component." },
+          "score": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Rank percentile of frequency times rank percentile of complexity. null when complexity is unknown."
+          },
+          "files": { "type": "integer", "minimum": 1, "description": "Files in the component. Only with --by component." },
+          "frequency": { "$ref": "common.schema.json#/$defs/count", "description": "Revisions in the window. For a component, logical changes that touched it." },
+          "churn": { "$ref": "common.schema.json#/$defs/count", "description": "Lines added plus lines deleted in the window." },
+          "complexity": { "type": ["number", "null"], "minimum": 0, "description": "Summed over a component's files." },
+          "ageDays": { "$ref": "common.schema.json#/$defs/count", "description": "Whole days from the last revision to the analysed commit." },
+          "lastChanged": { "type": "string", "format": "date-time" },
+          "recommendation": { "enum": ["hotspot", null] }
+        },
+        "required": ["path", "score", "frequency", "churn", "complexity", "ageDays", "lastChanged", "recommendation"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["complexitySource"],
+  "unevaluatedProperties": false
+}

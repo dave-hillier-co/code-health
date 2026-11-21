@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "age.schema.json",
+  "title": "cochange age --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "age" },
+    "inputs": {
+      "type": "object",
+      "properties": { "by": { "enum": ["file", "component"] } },
+      "required": ["by"],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "The file's path, or the component's name with --by component." },
+          "score": { "$ref": "common.schema.json#/$defs/count", "description": "The age in days, so the list runs from the longest unchanged." },
+          "files": { "type": "integer", "minimum": 1, "description": "Files in the component. Only with --by component." },
+          "ageDays": { "$ref": "common.schema.json#/$defs/count", "description": "Whole days from the last revision to the analysed commit." },
+          "firstSeen": { "type": "string", "format": "date-time", "description": "The earliest revision in all usable history." },
+          "lastChanged": { "type": "string", "format": "date-time" },
+          "revisions": { "$ref": "common.schema.json#/$defs/count", "description": "Revisions in all usable history. For a component, logical changes that touched it." },
+          "recommendation": { "enum": ["cold", null] }
+        },
+        "required": ["path", "score", "ageDays", "firstSeen", "lastChanged", "revisions", "recommendation"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}
