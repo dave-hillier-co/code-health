@@ -282,6 +282,23 @@ describe("reviewers", () => {
     expect(areas[0]!.suggested!.map((c) => c.name)).toEqual(["Bob"]);
   });
 
+  test("with --worktree the invoking user wrote the uncommitted edits, so they are not suggested to review them", async () => {
+    repo.git("config", "user.email", "bob@example.com");
+    repo.git("config", "user.name", "Bob");
+    const file = join(repo.path, "src/ledger/ledger.ts");
+    const before = readFileSync(file, "utf8");
+    writeFileSync(file, `${before}// an uncommitted edit\n`);
+    try {
+      const named = await reviewers("main", "--worktree", "--names");
+      expect(named.code).toBe(ExitCode.Success);
+      expect(named.areas[0]!.suggested!.map((c) => c.name)).toEqual(["Alice"]);
+      const counted = await reviewers("main", "--worktree");
+      expect(counted.areas[0]!.candidates).toBe(1);
+    } finally {
+      writeFileSync(file, before);
+    }
+  });
+
   test("a bot is never suggested, and its lines belong to nobody", async () => {
     writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { risk: { newIdentityChanges: 2 }, identities: { botPatterns: ["^Bob "] } } }));
     const { areas } = await reviewers("main..dave", "--names");

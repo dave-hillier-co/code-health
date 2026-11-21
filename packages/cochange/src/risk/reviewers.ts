@@ -6,6 +6,7 @@ import { readBlame } from "@code-health/history/blame-read";
 import { refreshBlame } from "@code-health/history/blame-refresh";
 import type { Assessed } from "./assess.ts";
 import { componentOf } from "../components.ts";
+import { invokingUser } from "./identity.ts";
 
 /** The most reviewers suggested for one area. */
 export const REVIEWERS_PER_AREA = 3;
@@ -41,6 +42,11 @@ export async function reviewersFor(context: CommandContext, assessed: Assessed, 
   const time = assessed.facts.time;
   const activeSince = monthsBefore(time, history.settings.windowMonths);
   const authors = new Set(assessed.facts.authors);
+  // Uncommitted edits are the invoking user's own, so they are not suggested to review them.
+  if (change.worktree) {
+    const user = await invokingUser(root, history.identities.localMailmap);
+    if (user !== null) authors.add(user.email.toLowerCase());
+  }
 
   const names = new Map<string, string>();
   for (const commit of history.view.commits) names.set(commit.mappedEmail.toLowerCase(), commit.mappedName);
