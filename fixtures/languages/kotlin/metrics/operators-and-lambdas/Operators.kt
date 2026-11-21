@@ -6,7 +6,7 @@ class Operators {
 
     fun same(a: Boolean, b: Boolean, c: Boolean): Boolean = a && b && c
 
-    // The elvis operator and safe calls are free: they are null-coalescing, not decisions.
+    // The elvis operator is a cyclomatic decision, as ?? is, and free in cognitive complexity. Safe calls are free in both.
     fun elvis(a: Int?, b: Int?): Int {
         val x = a ?: b ?: 0
         return x

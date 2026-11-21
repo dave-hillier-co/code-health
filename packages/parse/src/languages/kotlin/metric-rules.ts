@@ -3,9 +3,9 @@ import type { ConstructMap, MetricRules, RecursionScope } from "../../metric-rul
 
 /**
  * The Kotlin mapping onto the metric engine. Decisions are `if`, loops, each `when` entry with a condition (the
- * `else` entry is not one), `catch`, and `&&` and `||`. The elvis operator `?:` is null-coalescing, like `??` in
- * TypeScript, and is not counted in cognitive complexity but, unlike `??`, is not a cyclomatic decision either:
- * the specification pins it as free in both. Safe calls `?.` and `!!` are free. `if` is an expression, so Kotlin
+ * `else` entry is not one), `catch`, `&&` and `||`. The elvis operator `?:` is null-coalescing, like `??` in
+ * TypeScript: a cyclomatic decision as `??` is (complexity.md lists short-circuit null-coalescing) and free in
+ * cognitive complexity. Safe calls `?.` and `!!` are free. `if` is an expression, so Kotlin
  * has no ternary. A lambda, an anonymous function and a local function are nested functions: one level deeper,
  * counted in the enclosing function. `break@label` and `continue@label` cost a flat 1.
  */
@@ -42,7 +42,7 @@ const constructs: ConstructMap = {
   catchType: "catch_block",
   bodyOf,
   ternary: { type: "(none)", condition: "", consequence: "", alternative: "" },
-  binary: { type: "binary_expression", operator: "operator", left: "left", right: "right", logical: new Set(["&&", "||"]), decisions: new Set() },
+  binary: { type: "binary_expression", operator: "operator", left: "left", right: "right", logical: new Set(["&&", "||"]), decisions: new Set(["?:"]) },
   compoundAssignment: { type: "assignment", operator: "operator", decisions: new Set() },
   parenthesized: "parenthesized_expression",
   labelledJumps: {},
