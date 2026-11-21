@@ -1,0 +1,25 @@
+{
+  "importEdges": [
+    "src/consumer.cpp -> src/util.cpp import",
+    "src/consumer.cpp -> src/util.h import",
+    "src/consumer.h -> src/consumer.cpp import",
+    "src/consumer.h -> src/util.h import",
+    "src/util.h -> src/util.cpp import"
+  ],
+  "fileEdges": [
+    "src/consumer.cpp -> src/util.cpp call call=1 reference=0",
+    "src/consumer.cpp -> src/util.h call call=2 reference=0",
+    "src/consumer.h -> src/util.h call call=1 reference=2"
+  ],
+  "consumers": [
+    "src/consumer.cpp#Consumer.run -> src/util.cpp#Util.scale call x1",
+    "src/consumer.cpp#Consumer.run -> src/util.h#clamp call x1",
+    "src/consumer.cpp#Consumer.run -> src/util.h#convert call x1",
+    "src/consumer.h#Consumer -> src/util.h#Util reference x1",
+    "src/consumer.h#Consumer.Consumer -> src/util.h#Util reference x1",
+    "src/consumer.h#Consumer.twice -> src/util.h#Util call x1"
+  ],
+  "unresolved": [],
+  "barrels": [],
+  "syntaxErrors": []
+}

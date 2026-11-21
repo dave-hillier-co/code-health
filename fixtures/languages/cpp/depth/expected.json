@@ -1,0 +1,20 @@
+{
+  "files": {
+    "forwarding.cpp": [
+      ["forward", 18, 2, "add"],
+      ["log", 19, 1, "sink.write"],
+      ["twice", 17, 1, null]
+    ],
+    "shapes.cpp": [
+      ["Counter", 42, 3, null],
+      ["Counter.Counter", 14, 1, null],
+      ["Counter.reset", 10, 1, null],
+      ["Point", 9, 2, null],
+      ["answer", 8, 1, null]
+    ]
+  },
+  "modules": {
+    "forwarding.cpp": 54,
+    "shapes.cpp": 59
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "operations": [{ "from": "include/core/api.h", "to": "third/api.h" }],
+  "rewrites": [{ "path": "src/main.cpp", "line": 1, "from": "<core/api.h>", "to": "../third/api.h" }],
+  "texts": {
+    "src/main.cpp": "#include \"../third/api.h\"\n\nint main() {\n  return api();\n}\n"
+  },
+  "warnings": [
+    "src/main.cpp:1 \"<core/api.h>\" is no longer under an include directory that finds it, so it is now the quoted relative \"../third/api.h\": check whether a directory should be added to the build"
+  ]
+}

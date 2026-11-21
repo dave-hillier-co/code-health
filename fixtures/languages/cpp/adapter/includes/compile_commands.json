@@ -1,0 +1,7 @@
+[
+  {
+    "directory": "/work/build",
+    "file": "/work/src/app/main.cpp",
+    "command": "/usr/bin/c++ -DNDEBUG -I/work/include -isystem /work/third_party -std=c++17 -c /work/src/app/main.cpp -o main.o"
+  }
+]

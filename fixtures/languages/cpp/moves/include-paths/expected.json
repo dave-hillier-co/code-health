@@ -1,0 +1,17 @@
+{
+  "operations": [
+    { "from": "src/geometry/shape.h", "to": "src/shapes/shape.h" },
+    { "from": "src/geometry/shape.cpp", "to": "src/shapes/shape.cpp" }
+  ],
+  "rewrites": [
+    { "path": "CMakeLists.txt", "line": 1, "from": "src/geometry/shape.cpp", "to": "src/shapes/shape.cpp" },
+    { "path": "src/app/draw.cpp", "line": 1, "from": "<geometry/shape.h>", "to": "<shapes/shape.h>" },
+    { "path": "src/app/main.cpp", "line": 1, "from": "../geometry/shape.h", "to": "../shapes/shape.h" }
+  ],
+  "texts": {
+    "CMakeLists.txt": "add_executable(app src/app/main.cpp src/app/draw.cpp src/shapes/shape.cpp)\n",
+    "src/app/draw.cpp": "#include <shapes/shape.h>\n\nint draw() {\n  return area(1, 1);\n}\n",
+    "src/app/main.cpp": "#include \"../shapes/shape.h\"\n#include <util/math.h>\n\nint main() {\n  return area(2, 3) + mul(1, 1);\n}\n"
+  },
+  "warnings": []
+}

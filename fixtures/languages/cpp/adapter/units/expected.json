@@ -1,0 +1,18 @@
+{
+  "units": {
+    "shapes.cpp": [
+      ["plain", "function", 3, 5],
+      ["plain~2", "function", 7, 9],
+      ["Widget", "class", 11, 22],
+      ["Widget.Widget", "method", 13, 13],
+      ["Widget.draw", "method", 14, 14],
+      ["Widget.Part", "class", 18, 21],
+      ["Widget.Part.size", "method", 20, 20],
+      ["Widget.~Widget", "method", 24, 24],
+      ["Widget.make", "method", 26, 29],
+      ["Widget.make.helper", "arrow", 27, 27],
+      ["identity", "function", 31, 34]
+    ]
+  },
+  "syntaxErrors": []
+}
