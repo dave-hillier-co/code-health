@@ -1,5 +1,6 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { CommandContext, Rule } from "@code-health/cli-kit/run-cli";
+import { listTree } from "@code-health/history/tree";
 import { treeDistance } from "@code-health/graph/tree-distance";
 import { analysisCommand } from "../analysis-command.ts";
 import { readSettings } from "../config.ts";
@@ -63,7 +64,7 @@ export const command = analysisCommand(name, {
   },
   partial: ({ values }) =>
     values.file !== undefined || values["min-degree"] !== undefined || values["min-support"] !== undefined,
-  analyse({ context, history }) {
+  async analyse({ context, history }) {
     const { settings } = history;
     const minDegree = integerOption(context, "min-degree", settings.minDegree, 0, 100);
     const minSupport = integerOption(context, "min-support", settings.minSupport, 1, Number.MAX_SAFE_INTEGER);
@@ -83,8 +84,14 @@ export const command = analysisCommand(name, {
     );
 
     const requested = context.values.file;
+    // A path that exists at the analysed commit names the file there, even if an older file of
+    // that name was renamed away. Only a path that is gone is followed forward through renames.
     const focus =
-      typeof requested === "string" ? history.view.renames.resolve(requested, -1) : undefined;
+      typeof requested !== "string"
+        ? undefined
+        : (await listTree(context.repo.root, history.view.headSha)).includes(requested)
+          ? requested
+          : history.view.renames.resolve(requested, -1);
 
     const rows = counts.pairs
       .filter((pair) => lastStatus.get(pair.a) !== "D" && lastStatus.get(pair.b) !== "D")

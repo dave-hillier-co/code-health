@@ -5,7 +5,7 @@ import Ajv2020Module from "ajv/dist/2020.js";
 import addFormatsModule from "ajv-formats";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
-import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden, withoutMeta } from "./support/golden.ts";
 import { couplingHistory } from "./support/coupling-scenarios.ts";
 import { runCochange } from "./support/run.ts";
@@ -161,5 +161,41 @@ test("the printed output, with meta, matches the coupling schema", async () => {
   for (const args of [[], ["--file", "src/billing/invoice.ts"]]) {
     const ok = validate(JSON.parse((await coupling(...args)).stdout));
     expect(ok ? [] : validate.errors).toEqual([]);
+  }
+});
+
+test("--file names the file now at that path when the path was reused after a rename", async () => {
+  const content = (name: string, version: number) =>
+    [...Array.from({ length: 9 }, (_, i) => `export const ${name}Step${i} = ${i};`), `export const ${name} = ${version};`, ""].join("\n");
+  const history = GitFixture.build([
+    { type: "commit", message: "old a", date: "2024-01-01T09:00:00Z", changes: [
+      { op: "add", path: "src/a.ts", content: content("a", 1) },
+      { op: "add", path: "lib/x.ts", content: content("x", 1) },
+    ] },
+    { type: "commit", message: "a and x", date: "2024-01-02T09:00:00Z", changes: [
+      { op: "modify", path: "src/a.ts", content: content("a", 2) },
+      { op: "modify", path: "lib/x.ts", content: content("x", 2) },
+    ] },
+    { type: "commit", message: "rename a to b", date: "2024-01-03T09:00:00Z", changes: [{ op: "rename", from: "src/a.ts", path: "src/b.ts" }] },
+    { type: "commit", message: "b and x", date: "2024-01-04T09:00:00Z", changes: [
+      { op: "modify", path: "src/b.ts", content: content("a", 3) },
+      { op: "modify", path: "lib/x.ts", content: content("x", 3) },
+    ] },
+    { type: "commit", message: "new a", date: "2024-01-05T09:00:00Z", changes: [
+      { op: "add", path: "src/a.ts", content: content("newA", 1) },
+      { op: "add", path: "app/y.ts", content: content("y", 1) },
+    ] },
+    { type: "commit", message: "new a and y", date: "2024-01-06T09:00:00Z", changes: [
+      { op: "modify", path: "src/a.ts", content: content("newA", 2) },
+      { op: "modify", path: "app/y.ts", content: content("y", 2) },
+    ] },
+  ]);
+  try {
+    const { stdout } = await runCochange(history.path, ["coupling", "--file", "src/a.ts", "--min-support", "1", "--min-degree", "0", "--json"]);
+    const document = JSON.parse(stdout);
+    expect(document.inputs.file).toBe("src/a.ts");
+    expect(rowsOf(stdout).map((row) => row.with)).toEqual(["app/y.ts"]);
+  } finally {
+    history.dispose();
   }
 });
