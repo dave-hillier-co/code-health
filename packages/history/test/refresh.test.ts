@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -139,12 +139,10 @@ test("refreshes from separate processes serialise on the lock", async () => {
   const script = join(import.meta.dirname, "support", "refresh-process.ts");
   const run = () =>
     new Promise<number>((resolve, reject) => {
-      import("node:child_process").then(({ execFile }) =>
-        execFile(process.execPath, [script, repo.path], (error, stdout) => {
-          if (error) reject(error);
-          else resolve(Number(stdout.trim()));
-        }),
-      );
+      execFile(process.execPath, ["--experimental-strip-types", "--no-warnings", script, repo.path], (error, stdout, stderr) => {
+        if (error) reject(new Error(`child failed (${error.code}): ${stderr}`));
+        else resolve(Number(stdout.trim()));
+      });
     });
   const added = await Promise.all([run(), run()]);
   expect(added.reduce((a, b) => a + b, 0)).toBe(8);
