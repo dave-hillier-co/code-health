@@ -27,7 +27,7 @@ interface Row {
   fanIn: number;
   unit: { kind: string; files: string[]; tests: string[]; cycle: boolean };
   signals: { name: string; detail: string }[];
-  blockers: { path: string; kind: string; unblockedGain: number }[];
+  blockers: { path: string; from: string[]; kind: string; unblockedGain: number }[];
   cohesion?: { mixed: boolean; components: { symbols: string[]; target: string; recommendation: string }[] };
   testRefs: { owned: string[]; external: string[] };
 }
@@ -115,7 +115,7 @@ test("a unit held in place by its own dependency is blocked, with the gain it wo
   const { row } = await analyse();
   const tool = row("src/lib/kernel/tool.ts");
   expect(tool).toMatchObject({ recommendation: "blocked", rule: "blocked-by-dependency", gain: 0 });
-  expect(tool.blockers).toEqual([expect.objectContaining({ path: "src/lib/kernel/core.ts", kind: "stray", unblockedGain: 4 })]);
+  expect(tool.blockers).toEqual([expect.objectContaining({ path: "src/lib/kernel/core.ts", from: ["src/lib/kernel/tool.ts"], kind: "stray", unblockedGain: 4 })]);
 });
 
 test("sibling files that share internals form a multi-entry unit, named by its folder", async () => {

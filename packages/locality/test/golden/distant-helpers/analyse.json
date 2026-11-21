@@ -278,6 +278,9 @@
       "blockers": [
         {
           "coChange": null,
+          "from": [
+            "src/lib/kernel/tool.ts"
+          ],
           "kind": "stray",
           "otherConsumers": 1,
           "path": "src/lib/kernel/core.ts",
@@ -491,6 +494,9 @@
       "blockers": [
         {
           "coChange": null,
+          "from": [
+            "src/shared/pair/a.ts"
+          ],
           "kind": "stray",
           "otherConsumers": 1,
           "path": "src/shared/pair/core.ts",
@@ -556,6 +562,9 @@
       "blockers": [
         {
           "coChange": null,
+          "from": [
+            "src/shared/pair/b.ts"
+          ],
           "kind": "stray",
           "otherConsumers": 1,
           "path": "src/shared/pair/core.ts",

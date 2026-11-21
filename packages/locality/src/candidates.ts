@@ -21,7 +21,10 @@ export interface Signal {
 }
 
 export interface Blocker {
+  /** The file the unit depends on and that stays behind. */
   path: string;
+  /** The unit's files whose imports of `path` form the blocking edges, sorted. */
+  from: string[];
   /** A stray is a dependency inside the unit's own neighbourhood that stays behind. */
   kind: "dependency" | "stray";
   /** References from the unit to the blocker. */
@@ -277,6 +280,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
         const others = new Set((model.incoming.get(target) ?? []).filter((edge) => !fileSet.has(edge.from) && model.reachable.has(edge.from)).map((edge) => edge.from));
         blockers.push({
           path: target,
+          from: [...new Set(outgoing.filter((edge) => edge.to === target).map((edge) => edge.from))].sort(compareIds),
           kind: base !== "" && under(folderOf(target), base) ? "stray" : "dependency",
           weight,
           otherConsumers: others.size,

@@ -27,14 +27,15 @@ export interface LocalityUnblocks {
 
 interface Blocker {
   from?: unknown;
-  to?: unknown;
+  path?: unknown;
   unblockedGain?: unknown;
 }
 
 /**
  * Reads locality's report, which this plugin may do only when it is whole: from locality,
  * stamped with the current head, taken on a clean tree. Rows carry `path` (or `id`) and
- * `blockers`, each naming the dependency (`from`, `to`, both files) and its `unblockedGain`.
+ * `blockers`, each naming the dependency (`from`, the unit's files that import it, and `path`, the file they
+ * depend on) and its `unblockedGain`.
  * Anything else, or no report, gives undefined, and the caller works without it.
  */
 export function readLocalityUnblocks(context: CommandContext, head: string): LocalityUnblocks | undefined {
@@ -55,9 +56,12 @@ export function readLocalityUnblocks(context: CommandContext, head: string): Loc
     const unit = typeof row.path === "string" ? row.path : typeof row.id === "string" ? row.id : undefined;
     if (unit === undefined || !Array.isArray(row.blockers)) continue;
     for (const blocker of row.blockers as Blocker[]) {
-      if (typeof blocker.from !== "string" || typeof blocker.to !== "string" || typeof blocker.unblockedGain !== "number") continue;
-      const key = edgeKey(blocker.from, blocker.to);
-      byFileEdge.set(key, [...(byFileEdge.get(key) ?? []), { unit, unblockedGain: blocker.unblockedGain }]);
+      if (!Array.isArray(blocker.from) || typeof blocker.path !== "string" || typeof blocker.unblockedGain !== "number") continue;
+      for (const from of blocker.from) {
+        if (typeof from !== "string") continue;
+        const key = edgeKey(from, blocker.path);
+        byFileEdge.set(key, [...(byFileEdge.get(key) ?? []), { unit, unblockedGain: blocker.unblockedGain }]);
+      }
     }
   }
   for (const list of byFileEdge.values()) list.sort((a, b) => b.unblockedGain - a.unblockedGain || (a.unit < b.unit ? -1 : a.unit > b.unit ? 1 : 0));

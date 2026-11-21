@@ -155,13 +155,14 @@
               "type": "object",
               "properties": {
                 "path": { "type": "string" },
+                "from": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
                 "kind": { "enum": ["dependency", "stray"] },
                 "weight": { "$ref": "common.schema.json#/$defs/count" },
                 "otherConsumers": { "$ref": "common.schema.json#/$defs/count" },
                 "coChange": { "type": "null" },
                 "unblockedGain": { "$ref": "common.schema.json#/$defs/count" }
               },
-              "required": ["path", "kind", "weight", "otherConsumers", "coChange", "unblockedGain"],
+              "required": ["path", "from", "kind", "weight", "otherConsumers", "coChange", "unblockedGain"],
               "additionalProperties": false
             }
           },

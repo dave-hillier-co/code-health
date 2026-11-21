@@ -8185,9 +8185,12 @@ function readLocalityUnblocks(context, head) {
     const unit = typeof row.path === "string" ? row.path : typeof row.id === "string" ? row.id : void 0;
     if (unit === void 0 || !Array.isArray(row.blockers)) continue;
     for (const blocker of row.blockers) {
-      if (typeof blocker.from !== "string" || typeof blocker.to !== "string" || typeof blocker.unblockedGain !== "number") continue;
-      const key = edgeKey(blocker.from, blocker.to);
-      byFileEdge.set(key, [...byFileEdge.get(key) ?? [], { unit, unblockedGain: blocker.unblockedGain }]);
+      if (!Array.isArray(blocker.from) || typeof blocker.path !== "string" || typeof blocker.unblockedGain !== "number") continue;
+      for (const from of blocker.from) {
+        if (typeof from !== "string") continue;
+        const key = edgeKey(from, blocker.path);
+        byFileEdge.set(key, [...byFileEdge.get(key) ?? [], { unit, unblockedGain: blocker.unblockedGain }]);
+      }
     }
   }
   for (const list of byFileEdge.values()) list.sort((a, b) => b.unblockedGain - a.unblockedGain || (a.unit < b.unit ? -1 : a.unit > b.unit ? 1 : 0));

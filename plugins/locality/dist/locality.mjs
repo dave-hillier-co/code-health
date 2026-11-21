@@ -6931,6 +6931,7 @@ function analyseProject(project, model, settings) {
         const others = new Set((model.incoming.get(target) ?? []).filter((edge) => !fileSet.has(edge.from) && model.reachable.has(edge.from)).map((edge) => edge.from));
         blockers.push({
           path: target,
+          from: [...new Set(outgoing.filter((edge) => edge.to === target).map((edge) => edge.from))].sort(compareIds),
           kind: base !== "" && under(folderOf(target), base) ? "stray" : "dependency",
           weight,
           otherConsumers: others.size,

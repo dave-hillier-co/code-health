@@ -157,7 +157,7 @@ describe("a locality report", () => {
         command: "analyse",
         repo: { head, dirty },
         config: "0123456789abcdef",
-        results: [{ path: "src/leaf.ts", blockers: [{ kind: "cycle", from: edge.from, to: edge.to, unblockedGain: 7 }] }],
+        results: [{ path: "src/leaf.ts", blockers: [{ path: edge.to, from: [edge.from], kind: "dependency", weight: 1, otherConsumers: 0, coChange: null, unblockedGain: 7 }] }],
       }),
     );
   }
