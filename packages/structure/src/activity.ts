@@ -15,6 +15,8 @@ export interface Activity {
   shared(a: string, b: string): number;
   /** Lines added plus deleted in the module. */
   churn(module: string): number;
+  /** Every counted pair with the eligible changes that touched both, sorted by pair. */
+  sharedPairs(): [string, string, number][];
 }
 
 /**
@@ -22,10 +24,11 @@ export interface Activity {
  * stable identity, so a moved file keeps its history, and only files still in the module graph count.
  * `wanted` lists the module pairs whose co-change will be asked for (the graph's edges), which
  * keeps the counting proportional to the graph and not to every pair a large change touches.
+ * `"all"` counts every pair that ever changed together, for the questions that look for pairs with no edge.
  */
-export function measureActivity(changes: readonly LogicalChange[], graph: ModuleGraph, wanted: Iterable<[string, string]>): Activity {
+export function measureActivity(changes: readonly LogicalChange[], graph: ModuleGraph, wanted: Iterable<[string, string]> | "all"): Activity {
   const wantedPairs = new Set<string>();
-  for (const [a, b] of wanted) wantedPairs.add(pairKey(a, b));
+  if (wanted !== "all") for (const [a, b] of wanted) wantedPairs.add(pairKey(a, b));
 
   const revisions = new Map<string, number>();
   const eligibleRevisions = new Map<string, number>();
@@ -51,7 +54,7 @@ export function measureActivity(changes: readonly LogicalChange[], graph: Module
     for (let i = 0; i < modules.length; i++) {
       for (let j = i + 1; j < modules.length; j++) {
         const key = pairKey(modules[i]!, modules[j]!);
-        if (wantedPairs.has(key)) shared.set(key, (shared.get(key) ?? 0) + 1);
+        if (wanted === "all" || wantedPairs.has(key)) shared.set(key, (shared.get(key) ?? 0) + 1);
       }
     }
   }
@@ -62,6 +65,13 @@ export function measureActivity(changes: readonly LogicalChange[], graph: Module
     eligibleRevisions: (module) => eligibleRevisions.get(module) ?? 0,
     shared: (a, b) => shared.get(pairKey(a, b)) ?? 0,
     churn: (module) => churn.get(module) ?? 0,
+    sharedPairs: () =>
+      [...shared]
+        .map(([key, count]): [string, string, number] => {
+          const [a, b] = key.split("\u0000");
+          return [a!, b!, count];
+        })
+        .sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0)),
   };
 }
 

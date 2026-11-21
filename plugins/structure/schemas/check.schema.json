@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "check.schema.json",
+  "title": "structure check --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "check"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "baseSha": {
+          "$ref": "common.schema.json#/$defs/sha"
+        },
+        "analysed": {
+          "$ref": "common.schema.json#/$defs/sha"
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "file",
+              "folder",
+              "package"
+            ]
+          }
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "base",
+        "baseSha",
+        "analysed",
+        "levels",
+        "layers"
+      ],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "cycle"
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^cycle:(file|folder|package):.+"
+              },
+              "level": {
+                "enum": [
+                  "file",
+                  "folder",
+                  "package"
+                ]
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "breakingSet": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string"
+                    },
+                    "to": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "to"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "kind",
+              "id",
+              "level",
+              "nodes",
+              "breakingSet"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "layer-violation"
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^layer:.+->.+$"
+              },
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "fromLayer": {
+                "type": "string"
+              },
+              "toLayer": {
+                "type": "string"
+              },
+              "allowed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "The layers the rule lets fromLayer depend on, itself included."
+              },
+              "importStatements": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "typeOnly": {
+                "type": "boolean"
+              },
+              "symbols": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "symbol": {
+                      "type": "string"
+                    },
+                    "sites": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    },
+                    "kind": {
+                      "enum": [
+                        "call",
+                        "reference"
+                      ]
+                    },
+                    "usedBy": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "symbol",
+                    "sites",
+                    "kind",
+                    "usedBy"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "id",
+              "from",
+              "to",
+              "fromLayer",
+              "toLayer",
+              "allowed",
+              "importStatements",
+              "typeOnly",
+              "symbols"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

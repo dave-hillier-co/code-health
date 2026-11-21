@@ -30,7 +30,7 @@ interface Pack {
   level: string;
   from: string;
   to: string;
-  quadrant: null;
+  quadrant: { name: string };
   inBreakingSet: boolean | null;
   breakingSet: { symbol: string; sites: number; usedBy: string[] }[];
   stabilityVerdict: { basis: string; violates: boolean };
@@ -38,7 +38,7 @@ interface Pack {
   misplacement: { symbol: string; mostlyOn: string; moveMayRemoveDependency: boolean; onFromSide: number; onToSide: number; elsewhere: number }[];
   unblocks: { unit: string; unblockedGain: number }[];
   nearbyMechanisms: unknown[];
-  layerRule: null;
+  layerRule: unknown;
 }
 
 async function evidence(fixture: GitFixture, ...args: string[]) {
@@ -75,9 +75,9 @@ describe("an edge in a cycle", () => {
     expect(coChange.expected).toBe(3);
   });
 
-  test("the quadrant and layer rule wait for their milestones, and a codebase with no mechanisms has none nearby", async () => {
+  test("the mechanisms are listed nearby, and with no layers configured there is no layer rule", async () => {
     const { document } = await evidence(cycles, "src/e.ts->src/c.ts");
-    expect(document.results[0]).toMatchObject({ quadrant: null, nearbyMechanisms: [], layerRule: null });
+    expect(document.results[0]).toMatchObject({ nearbyMechanisms: [], layerRule: null });
   });
 
   test("the pack recommends nothing", async () => {

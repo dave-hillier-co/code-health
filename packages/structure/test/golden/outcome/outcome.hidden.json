@@ -1,0 +1,173 @@
+{
+  "command": "outcome",
+  "config": "de54fddef97363ad",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": true
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 44,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 4.2,
+    "window": {
+      "months": 12,
+      "since": 1683968400,
+      "until": 1715590800
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "hiddenCreated": [
+    {
+      "from": "src/p",
+      "id": "coupling:folder:src/p->src/q",
+      "pValueAfter": 0.000007,
+      "sharedAfter": 6,
+      "sharedBefore": 7,
+      "sitesAfter": 0,
+      "sitesBefore": 3,
+      "to": "src/q"
+    }
+  ],
+  "inputs": {
+    "at": "894c55c6187fa5fdca87218a2f5daf25bdb9cad1",
+    "level": "folder",
+    "minRevisions": 3,
+    "minStaticCoupling": 3,
+    "minSupport": 3,
+    "significanceLevel": 0.01,
+    "target": "src/p->src/q"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3b2f02b42bbef458a63b02b8aba2efb71f1764c3"
+  },
+  "results": [
+    {
+      "after": {
+        "bothActive": true,
+        "coChange": {
+          "confidenceFromTo": 100,
+          "confidenceToFrom": 100,
+          "expected": 1.5,
+          "fromChanges": 6,
+          "high": true,
+          "pValue": 0.000007,
+          "shared": 6,
+          "toChanges": 6
+        },
+        "quadrant": "hidden",
+        "staticCoupling": {
+          "fromTo": 0,
+          "high": false,
+          "sites": 0,
+          "symbols": 0,
+          "toFrom": 0
+        }
+      },
+      "before": {
+        "bothActive": true,
+        "coChange": {
+          "confidenceFromTo": 100,
+          "confidenceToFrom": 100,
+          "expected": 2.579,
+          "fromChanges": 7,
+          "high": true,
+          "pValue": 0.00002,
+          "shared": 7,
+          "toChanges": 7
+        },
+        "quadrant": "real",
+        "staticCoupling": {
+          "fromTo": 3,
+          "high": true,
+          "sites": 3,
+          "symbols": 3,
+          "toFrom": 0
+        }
+      },
+      "break": {
+        "date": "2024-03-01T09:00:00.000Z",
+        "parent": "ccf13f63be0ed942d6901beaae92007f358af3cf",
+        "rev": "894c55c6187fa5fdca87218a2f5daf25bdb9cad1",
+        "sha": "894c55c6187fa5fdca87218a2f5daf25bdb9cad1"
+      },
+      "from": "src/p",
+      "id": "outcome:folder:src/p->src/q",
+      "level": "folder",
+      "to": "src/q",
+      "verdict": "hidden-not-broken",
+      "window": {
+        "after": {
+          "since": "2024-03-01T09:00:00.000Z",
+          "until": "2024-05-13T09:00:00.000Z"
+        },
+        "before": {
+          "since": "2023-12-19T09:00:00.000Z",
+          "until": "2024-03-01T09:00:00.000Z"
+        },
+        "seconds": 6307200
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "window": {
+    "since": "2024-01-05T09:00:00.000Z",
+    "until": "2024-05-13T09:00:00.000Z"
+  }
+}

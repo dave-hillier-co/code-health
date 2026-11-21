@@ -5,14 +5,14 @@ import { analysisCommand } from "../analysis-command.ts";
 import { findCycles } from "../cycles.ts";
 import { evidencePack } from "../evidence-pack.ts";
 import { buildModel, type Model } from "../model.ts";
-import { readLevel, type Level } from "../modules.ts";
-import { folderOf, loadProject, type Project } from "../project.ts";
+import { inferLevel, readLevel, type Level } from "../modules.ts";
+import { loadProject } from "../project.ts";
 
 export const name = "evidence";
 
 const allLevels: readonly Level[] = ["file", "folder", "package", "component"];
 
-const usage = "usage: evidence <from>-><to> [--level file|folder|package|component], or evidence <finding id> (cycle:<level>:<node> or unstable:<level>:<from>-><to>)";
+const usage = "usage: evidence <from>-><to> [--level file|folder|package|component], or evidence <finding id> (cycle:<level>:<node>, layer:<from>-><to> or unstable:<level>:<from>-><to>)";
 
 type Target =
   | { kind: "cycle"; level: Level; id: string }
@@ -21,27 +21,17 @@ type Target =
 function parseTarget(text: string, requested: Level | undefined): Target {
   const cycle = /^cycle:(file|folder|package):(.+)$/.exec(text);
   if (cycle) return { kind: "cycle", level: cycle[1] as Level, id: text };
+  const layer = /^layer:(.+)$/.exec(text);
+  if (layer) return { ...parseEdge(layer[1]!), level: "file" };
   const unstable = /^unstable:(folder|component):(.+)$/.exec(text);
   const edge = unstable ? unstable[2]! : text;
-  const arrow = edge.indexOf("->");
-  if (arrow <= 0 || arrow + 2 >= edge.length) throw usageError(usage);
-  return {
-    kind: "edge",
-    level: unstable ? (unstable[1] as Level) : requested,
-    from: edge.slice(0, arrow),
-    to: edge.slice(arrow + 2),
-  };
+  return { ...parseEdge(edge), level: unstable ? (unstable[1] as Level) : requested };
 }
 
-/** The finest level at which both names are modules: a file, then a folder, then a package. */
-function inferLevel(project: Project, from: string, to: string): Level {
-  const files = new Set(project.files);
-  if (files.has(from) && files.has(to)) return "file";
-  const folders = new Set(project.files.map(folderOf));
-  if (folders.has(from) && folders.has(to)) return "folder";
-  const packages = new Set(project.files.map((f) => project.packageOf(f)));
-  if (packages.has(from) && packages.has(to)) return "package";
-  throw usageError(`cannot tell what "${from}" and "${to}" are: they are not both files, both folders or both packages of the analysed commit; name the level with --level`);
+function parseEdge(edge: string): { kind: "edge"; from: string; to: string } {
+  const arrow = edge.indexOf("->");
+  if (arrow <= 0 || arrow + 2 >= edge.length) throw usageError(usage);
+  return { kind: "edge", from: edge.slice(0, arrow), to: edge.slice(arrow + 2) };
 }
 
 export const command = analysisCommand(name, {
@@ -77,11 +67,9 @@ export const command = analysisCommand(name, {
     return {
       inputs: { target: text, level: model.graph.level, locality: model.locality?.input ?? null },
       results: edges.map(([from, to]) => evidencePack(model, from, to, settings, census)),
-      columns: ["id", "kind", "findings", "inBreakingSet", "breakingSet", "stability", "coChange", "misplacement", "unblocks"],
+      columns: ["id", "kind", "findings", "quadrant", "inBreakingSet", "breakingSet", "stability", "coChange", "misplacement", "unblocks"],
       extra: {
         deferred: [
-          { field: "quadrant", milestone: 6 },
-          { field: "layerRule", milestone: 5 },
         ],
       },
     };

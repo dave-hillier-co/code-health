@@ -143,6 +143,7 @@ The skill does not default to any named pattern. Patterns such as mediator, obse
 | `structure coupling [--quadrant incidental\|real\|stable\|hidden] [--by file\|folder\|component]` | Module pairs placed in the coupling quadrants, ranked within each |
 | `structure hidden` | Pairs with high co-change and no static dependency, the result of earlier indirection. Shorthand for `coupling --quadrant hidden`. |
 | `structure check [--base REV]` | Exits 1 on cycles or layer violations that are new since a base revision (default: the merge base with the configured main branch). For CI. |
+| `structure outcome FROM->TO --at REV` | Whether the break made at `REV` reduced the coupling of a pair or only hid it: co-change over matching windows before and after, static coupling before and after, and a verdict (`broken`, `hidden-not-broken`, `unchanged`, `co-change-reduced`, `no-baseline`, `insufficient-evidence`). It also lists every other pair that dropped its static dependency across the break and kept its co-change. |
 | `structure packages …` | Package inventory, cohesion, coupling, boundaries and repackaging candidates. See [packaging.md](packaging.md#cli). |
 
 ## Measurement
@@ -162,11 +163,11 @@ A broken cycle with unchanged co-change is reported as **hidden, not broken**. T
 
 In the `structure` section of the suite config:
 
-- Layer rules: ordered layers as globs, and allowed directions.
+- Layer rules (`layers`): ordered layers, each with a `name`, `paths` globs and an optional `allow` list. A file belongs to the first layer matching it and files in none are unconstrained. By default a layer may depend on itself and the layers listed after it, and `allow` replaces that with exactly the layers named.
 - Component boundaries, shared with the suite-wide `components`.
 - Additional census patterns (custom event or handler conventions).
-- Thresholds for static coupling, minimum support and the significance level for high co-change, minimum revisions for "active", and hidden coupling.
-- Base revision for `check`.
+- Thresholds for static coupling (`minStaticCoupling`, reference sites both ways), minimum support and the significance level for high co-change, minimum revisions for "active", and for registration hubs (`hubMinFeatures`, `hubMinConfidence`, `hubMaxFeatureCoupling`, `hubMinOutward`, `hubMinAppendShare`, `hubContentionDays`, `hubMinAuthors`). Hidden coupling is the low-static-coupling, high-co-change quadrant and uses the same thresholds.
+- Base revision for `check`: `base`, or the merge base with `mainBranch`. `check` counts a cycle as new unless all its nodes sat in one cycle of the base, and a layer violation as new unless the same import violated at the base.
 - Package settings under `structure.packages` ([packaging.md](packaging.md#configuration)).
 
 ## Decisions

@@ -1,0 +1,47 @@
+{
+  "command": "layers",
+  "config": "52149fab544d352e",
+  "inputs": {
+    "analysed": "51a5f1032c0810b7395bd96c11ad7ee585455b0a",
+    "layers": [
+      "ui",
+      "domain",
+      "data"
+    ]
+  },
+  "repo": {
+    "dirty": false,
+    "head": "51a5f1032c0810b7395bd96c11ad7ee585455b0a"
+  },
+  "results": [
+    {
+      "allowed": [
+        "data"
+      ],
+      "from": "src/data/store.ts",
+      "fromLayer": "data",
+      "id": "layer:src/data/store.ts->src/domain/rules.ts",
+      "importStatements": 1,
+      "symbols": [
+        {
+          "kind": "call",
+          "sites": 1,
+          "symbol": "src/domain/rules.ts#rules",
+          "usedBy": [
+            "src/data/store.ts"
+          ]
+        }
+      ],
+      "to": "src/domain/rules.ts",
+      "toLayer": "domain",
+      "typeOnly": false
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  }
+}

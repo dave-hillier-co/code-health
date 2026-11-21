@@ -34,6 +34,17 @@ export function moduleOfFile(level: Level, project: Project, componentsConfig: R
   }
 }
 
+/** The finest level at which both names are modules: a file, then a folder, then a package. */
+export function inferLevel(project: Project, from: string, to: string): Level {
+  const files = new Set(project.files);
+  if (files.has(from) && files.has(to)) return "file";
+  const folders = new Set(project.files.map(folderOf));
+  if (folders.has(from) && folders.has(to)) return "folder";
+  const packages = new Set(project.files.map((f) => project.packageOf(f)));
+  if (packages.has(from) && packages.has(to)) return "package";
+  throw usageError(`cannot tell what "${from}" and "${to}" are: they are not both files, both folders or both packages of the analysed commit; name the level with --level`);
+}
+
 export interface ModuleGraph extends GroupedGraph {
   level: Level;
   moduleOf(path: string): string | undefined;

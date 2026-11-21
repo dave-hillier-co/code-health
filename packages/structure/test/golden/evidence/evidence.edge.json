@@ -1,16 +1,7 @@
 {
   "command": "evidence",
-  "config": "a5f57b8f692394b7",
-  "deferred": [
-    {
-      "field": "quadrant",
-      "milestone": 6
-    },
-    {
-      "field": "layerRule",
-      "milestone": 5
-    }
-  ],
+  "config": "de54fddef97363ad",
+  "deferred": [],
   "evidence": {
     "activeContributors": 2,
     "commitSize": {
@@ -141,7 +132,25 @@
         }
       ],
       "nearbyMechanisms": [],
-      "quadrant": null,
+      "quadrant": {
+        "bothActive": true,
+        "coChange": {
+          "expected": 1.5,
+          "fromChanges": 3,
+          "high": false,
+          "pValue": 0.928571,
+          "shared": 1,
+          "toChanges": 4
+        },
+        "name": "independent",
+        "staticCoupling": {
+          "fromTo": 1,
+          "high": false,
+          "sites": 1,
+          "symbols": 1,
+          "toFrom": 0
+        }
+      },
       "stability": {
         "from": {
           "change": {

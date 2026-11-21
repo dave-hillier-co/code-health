@@ -1,0 +1,426 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "outcome.schema.json",
+  "title": "structure outcome --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/analysisEnvelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "outcome"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string"
+        },
+        "level": {
+          "$ref": "common.schema.json#/$defs/level"
+        },
+        "at": {
+          "type": "string"
+        },
+        "minStaticCoupling": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "minSupport": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "minRevisions": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "significanceLevel": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        }
+      },
+      "required": [
+        "target",
+        "level",
+        "at",
+        "minStaticCoupling",
+        "minSupport",
+        "minRevisions",
+        "significanceLevel"
+      ],
+      "additionalProperties": false
+    },
+    "hiddenCreated": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A pair that dropped its static dependency across the break and kept its co-change.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^coupling:.+->.+"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "sitesBefore": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "sitesAfter": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "sharedBefore": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "sharedAfter": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "pValueAfter": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "id",
+          "from",
+          "to",
+          "sitesBefore",
+          "sitesAfter",
+          "sharedBefore",
+          "sharedAfter",
+          "pValueAfter"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^outcome:(file|folder|package|component):.+->.+"
+          },
+          "level": {
+            "$ref": "common.schema.json#/$defs/level"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "break": {
+            "type": "object",
+            "properties": {
+              "rev": {
+                "type": "string"
+              },
+              "sha": {
+                "$ref": "common.schema.json#/$defs/sha"
+              },
+              "parent": {
+                "$ref": "common.schema.json#/$defs/sha"
+              },
+              "date": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "rev",
+              "sha",
+              "parent",
+              "date"
+            ],
+            "additionalProperties": false
+          },
+          "window": {
+            "type": "object",
+            "description": "Two windows of the same length either side of the break. The break's own change is in neither.",
+            "properties": {
+              "before": {
+                "type": "object",
+                "properties": {
+                  "since": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "until": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "since",
+                  "until"
+                ],
+                "additionalProperties": false
+              },
+              "after": {
+                "type": "object",
+                "properties": {
+                  "since": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "until": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "since",
+                  "until"
+                ],
+                "additionalProperties": false
+              },
+              "seconds": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "before",
+              "after",
+              "seconds"
+            ],
+            "additionalProperties": false
+          },
+          "before": {
+            "type": "object",
+            "properties": {
+              "quadrant": {
+                "enum": [
+                  "real",
+                  "incidental",
+                  "hidden",
+                  "stable",
+                  "independent",
+                  "insufficient-evidence"
+                ]
+              },
+              "staticCoupling": {
+                "type": "object",
+                "properties": {
+                  "sites": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "symbols": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "fromTo": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "toFrom": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "high": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "sites",
+                  "symbols",
+                  "fromTo",
+                  "toFrom",
+                  "high"
+                ],
+                "additionalProperties": false
+              },
+              "coChange": {
+                "type": "object",
+                "properties": {
+                  "shared": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "fromChanges": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "toChanges": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "expected": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "pValue": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Rounded to six places, so a very small value reads 0."
+                  },
+                  "high": {
+                    "type": "boolean"
+                  },
+                  "confidenceFromTo": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "confidenceToFrom": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "shared",
+                  "fromChanges",
+                  "toChanges",
+                  "expected",
+                  "pValue",
+                  "high",
+                  "confidenceFromTo",
+                  "confidenceToFrom"
+                ],
+                "additionalProperties": false
+              },
+              "bothActive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "quadrant",
+              "staticCoupling",
+              "coChange",
+              "bothActive"
+            ],
+            "additionalProperties": false
+          },
+          "after": {
+            "type": "object",
+            "properties": {
+              "quadrant": {
+                "enum": [
+                  "real",
+                  "incidental",
+                  "hidden",
+                  "stable",
+                  "independent",
+                  "insufficient-evidence"
+                ]
+              },
+              "staticCoupling": {
+                "type": "object",
+                "properties": {
+                  "sites": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "symbols": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "fromTo": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "toFrom": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "high": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "sites",
+                  "symbols",
+                  "fromTo",
+                  "toFrom",
+                  "high"
+                ],
+                "additionalProperties": false
+              },
+              "coChange": {
+                "type": "object",
+                "properties": {
+                  "shared": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "fromChanges": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "toChanges": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "expected": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "pValue": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Rounded to six places, so a very small value reads 0."
+                  },
+                  "high": {
+                    "type": "boolean"
+                  },
+                  "confidenceFromTo": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "confidenceToFrom": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "shared",
+                  "fromChanges",
+                  "toChanges",
+                  "expected",
+                  "pValue",
+                  "high",
+                  "confidenceFromTo",
+                  "confidenceToFrom"
+                ],
+                "additionalProperties": false
+              },
+              "bothActive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "quadrant",
+              "staticCoupling",
+              "coChange",
+              "bothActive"
+            ],
+            "additionalProperties": false
+          },
+          "verdict": {
+            "enum": [
+              "broken",
+              "hidden-not-broken",
+              "unchanged",
+              "co-change-reduced",
+              "no-baseline",
+              "insufficient-evidence"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "from",
+          "to",
+          "break",
+          "window",
+          "before",
+          "after",
+          "verdict"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 1
+    }
+  },
+  "unevaluatedProperties": false
+}

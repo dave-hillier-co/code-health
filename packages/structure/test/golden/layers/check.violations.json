@@ -1,0 +1,91 @@
+{
+  "command": "check",
+  "config": "52149fab544d352e",
+  "inputs": {
+    "analysed": "eba7376679c2c9ade857784feb6ba86edab13225",
+    "base": "main",
+    "baseSha": "51a5f1032c0810b7395bd96c11ad7ee585455b0a",
+    "layers": [
+      "ui",
+      "domain",
+      "data"
+    ],
+    "levels": [
+      "file",
+      "folder",
+      "package"
+    ]
+  },
+  "repo": {
+    "dirty": false,
+    "head": "eba7376679c2c9ade857784feb6ba86edab13225"
+  },
+  "results": [
+    {
+      "breakingSet": [
+        {
+          "from": "src/domain/order.ts",
+          "to": "src/ui/view.ts"
+        }
+      ],
+      "id": "cycle:file:src/domain/order.ts",
+      "kind": "cycle",
+      "level": "file",
+      "nodes": [
+        "src/domain/order.ts",
+        "src/ui/view.ts"
+      ]
+    },
+    {
+      "breakingSet": [
+        {
+          "from": "src/data",
+          "to": "src/domain"
+        },
+        {
+          "from": "src/domain",
+          "to": "src/ui"
+        }
+      ],
+      "id": "cycle:folder:src/data",
+      "kind": "cycle",
+      "level": "folder",
+      "nodes": [
+        "src/data",
+        "src/domain",
+        "src/ui"
+      ]
+    },
+    {
+      "allowed": [
+        "domain",
+        "data"
+      ],
+      "from": "src/domain/order.ts",
+      "fromLayer": "domain",
+      "id": "layer:src/domain/order.ts->src/ui/view.ts",
+      "importStatements": 1,
+      "kind": "layer-violation",
+      "symbols": [
+        {
+          "kind": "call",
+          "sites": 1,
+          "symbol": "src/ui/view.ts#view",
+          "usedBy": [
+            "src/domain/order.ts"
+          ]
+        }
+      ],
+      "to": "src/ui/view.ts",
+      "toLayer": "ui",
+      "typeOnly": false
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 3
+  }
+}

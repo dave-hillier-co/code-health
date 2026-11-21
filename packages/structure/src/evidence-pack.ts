@@ -3,6 +3,8 @@ import type { Census } from "./census/census.ts";
 import { nearbyMechanisms, type NearbyMechanism } from "./census/nearby.ts";
 import type { Unblock } from "./locality-report.ts";
 import { findCycles, unblocksOf } from "./cycles.ts";
+import { judgePair, type QuadrantJudgement } from "./coupling.ts";
+import { findLayerViolations, layerViolationId, type LayerViolation } from "./layers.ts";
 import type { StructureSettings } from "./config.ts";
 import type { Model } from "./model.ts";
 import { describeEdge, type SymbolUse } from "./modules.ts";
@@ -12,7 +14,7 @@ import { judgeEdge, unstableId } from "./unstable.ts";
 
 const round1 = (value: number): number => Math.round(value * 10) / 10;
 
-export type ProblemKind = "cycle" | "unstable-dependency";
+export type ProblemKind = "cycle" | "layer-violation" | "unstable-dependency";
 
 export interface CoChangeFigures {
   /** Eligible logical changes that touched both sides. */
@@ -52,8 +54,8 @@ export interface EvidencePack {
   level: string;
   from: string;
   to: string;
-  /** Deferred to the coupling-quadrant milestone. The figures it will rest on are in `coChange` and `breakingSet`. */
-  quadrant: null;
+  /** Where the pair sits in the coupling quadrants, with the static coupling, co-change and expected co-change behind it. */
+  quadrant: QuadrantJudgement;
   /** The cycle's minimum breaking set contains this edge. Null when the edge is in no cycle. */
   inBreakingSet: boolean | null;
   /** The symbols used across the boundary, most used first. */
@@ -66,8 +68,38 @@ export interface EvidencePack {
   unblocks: Unblock[];
   /** Census entries in or next to the two modules, nearest first. See `structure census` for the whole inventory. */
   nearbyMechanisms: NearbyMechanism[];
-  /** Deferred to the layer rules milestone. */
-  layerRule: null;
+  /** The layer rules the edge's imports break, one entry per pair of layers, or null when it breaks none. */
+  layerRule: LayerRuleBreach[] | null;
+}
+
+export interface LayerRuleBreach {
+  fromLayer: string;
+  toLayer: string;
+  /** What the rule lets `fromLayer` depend on. */
+  allowed: string[];
+  /** The file imports of the edge that break it. */
+  fileEdges: { from: string; to: string }[];
+}
+
+const violationsByProject = new WeakMap<object, LayerViolation[]>();
+
+function layerRule(model: Model, from: string, to: string, settings: Pick<StructureSettings, "layers">): LayerRuleBreach[] | null {
+  if (settings.layers.length === 0) return null;
+  let violations = violationsByProject.get(model.project);
+  if (violations === undefined) {
+    violations = findLayerViolations(model.project, settings.layers);
+    violationsByProject.set(model.project, violations);
+  }
+  const members = new Set((model.graph.members.get(edgeKey(from, to)) ?? []).map((e) => edgeKey(e.from, e.to)));
+  const breaches = new Map<string, LayerRuleBreach>();
+  for (const violation of violations) {
+    if (!members.has(edgeKey(violation.from, violation.to))) continue;
+    const key = `${violation.fromLayer}\u0000${violation.toLayer}`;
+    const breach = breaches.get(key) ?? { fromLayer: violation.fromLayer, toLayer: violation.toLayer, allowed: violation.allowed, fileEdges: [] };
+    breach.fileEdges.push({ from: violation.from, to: violation.to });
+    breaches.set(key, breach);
+  }
+  return breaches.size === 0 ? null : [...breaches.values()];
 }
 
 function coChangeFigures(model: Model, from: string, to: string): CoChangeFigures {
@@ -126,7 +158,10 @@ export function evidencePack(
   model: Model,
   from: string,
   to: string,
-  settings: Pick<StructureSettings, "exactLimit" | "minVolatilityRatio" | "minInstabilityGap">,
+  settings: Pick<
+    StructureSettings,
+    "exactLimit" | "minVolatilityRatio" | "minInstabilityGap" | "layers" | "minStaticCoupling" | "minSupport" | "minRevisions" | "significanceLevel"
+  >,
   census: Census,
 ): EvidencePack {
   const level = model.graph.level;
@@ -142,6 +177,11 @@ export function evidencePack(
     kinds.push("cycle");
     findings.push(cycle.id);
   }
+  const rule = layerRule(model, from, to, settings);
+  if (rule) {
+    kinds.push("layer-violation");
+    for (const breach of rule) for (const edge of breach.fileEdges) findings.push(layerViolationId(edge.from, edge.to));
+  }
   if (verdict.violates) {
     kinds.push("unstable-dependency");
     findings.push(unstableId(level, from, to));
@@ -155,7 +195,7 @@ export function evidencePack(
     level,
     from,
     to,
-    quadrant: null,
+    quadrant: judgePair(model.project, model.graph, model.activity, from, to, settings),
     inBreakingSet: cycle ? cycle.inBreakingSet : null,
     breakingSet: detail.symbols,
     imports: {
@@ -174,6 +214,6 @@ export function evidencePack(
       (model.graph.filesOf.get(from) ?? []).map(folderOf),
       (model.graph.filesOf.get(to) ?? []).map(folderOf),
     ),
-    layerRule: null,
+    layerRule: rule,
   };
 }
