@@ -2,7 +2,7 @@ import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
-import { GitFixture } from "@code-health/fixtures/git-fixture";
+import { GitFixture, type Step } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "./support/golden.ts";
 import { model, splitFeatures, view } from "./support/grouping-scenarios.ts";
 import { runCochange } from "./support/run.ts";
@@ -78,9 +78,13 @@ test("an invalid issue pattern is a config error", async () => {
 });
 
 describe("keys that are not issues, and keys reused over years", () => {
-  const commit = (message: string, date: string, path: string) =>
-    ({ type: "commit", message, date, changes: [{ op: "add", path, content: `export const file = "${path}";\n` }] }) as const;
-  const grouped = async (steps: ReturnType<typeof commit>[]) => {
+  const commit = (message: string, date: string, path: string): Step => ({
+    type: "commit",
+    message,
+    date,
+    changes: [{ op: "add", path, content: `export const file = "${path}";\n` }],
+  });
+  const grouped = async (steps: Step[]) => {
     const fixture = GitFixture.build(steps);
     try {
       writeFileSync(join(fixture.path, "code-health.json"), JSON.stringify({ cochange: { grouping: "issue-key" } }));
