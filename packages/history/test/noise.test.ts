@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { GitFixture, type Change, type Step } from "@code-health/fixtures/git-fixture";
-import { filterHistory, type NoiseOptions } from "../src/noise.ts";
+import { filterHistory, InvalidPatternError, type NoiseOptions } from "../src/noise.ts";
 import { parseBlameIgnoreRevs } from "../src/tree.ts";
 import { readHistory } from "../src/read.ts";
 import { refresh } from "../src/refresh.ts";
@@ -158,4 +158,10 @@ test("small repositories are never treated as imports", async () => {
   const result = await filtered(repo);
   expect(result.imported).toEqual([]);
   expect(result.changes).toHaveLength(2);
+});
+
+test("an invalid bot pattern is reported as such, naming the pattern", async () => {
+  const repo = build([commit("one", 1, [file("a")])]);
+  await expect(filtered(repo, { botPatterns: ["[bot"] })).rejects.toBeInstanceOf(InvalidPatternError);
+  await expect(filtered(repo, { botPatterns: ["[bot"] })).rejects.toThrow("[bot");
 });

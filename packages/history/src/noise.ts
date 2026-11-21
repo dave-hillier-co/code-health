@@ -25,6 +25,25 @@ export const DEFAULT_LOCKFILES: readonly string[] = [
   "flake.lock",
 ];
 
+/** A configured pattern is not a valid regular expression. */
+export class InvalidPatternError extends Error {
+  readonly pattern: string;
+
+  constructor(pattern: string, reason: string) {
+    super(`invalid bot pattern "${pattern}": ${reason}`);
+    this.name = "InvalidPatternError";
+    this.pattern = pattern;
+  }
+}
+
+function compileBotPattern(pattern: string): RegExp {
+  try {
+    return new RegExp(pattern, "i");
+  } catch (error) {
+    throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error));
+  }
+}
+
 export const DEFAULT_MAX_CHANGESET_SIZE = 30;
 
 export interface NoiseOptions {
@@ -118,7 +137,7 @@ export async function filterHistory(
   const botPatterns = options.botPatterns ?? [];
   const excludeImported = options.excludeImported ?? true;
   const excluded = compileGlobs(options.exclude ?? []);
-  const bots = botPatterns.map((p) => new RegExp(p, "i"));
+  const bots = botPatterns.map(compileBotPattern);
 
   const treeFiles = await listTree(repoPath, view.headSha);
   const imported = detectImportedHistory(view, treeFiles, options.importDetection);
