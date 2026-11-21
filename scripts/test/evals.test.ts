@@ -136,3 +136,27 @@ test("a plugin with a skill and no evals is a problem", () => {
   mkdirSync(join(root, "plugins", "p", "skills", "p"), { recursive: true });
   expect(checkEvals(root).problems).toEqual(["plugins/p: ships a skill but has no evals"]);
 });
+
+test("every plugin ships a case in which the skill must decline: tagged as behaviour and negative", () => {
+  const plugins = join(repository, "plugins");
+  for (const plugin of readdirSync(plugins)) {
+    const evals = join(plugins, plugin, "evals");
+    const declines = readdirSync(evals, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .filter((entry) => {
+        const text = readFileSync(join(evals, entry.name, "case.yaml"), "utf8");
+        const tags = /^tags: \[(.*)\]/m.exec(text)?.[1]?.split(",").map((tag) => tag.trim()) ?? [];
+        return tags.includes("behaviour") && tags.includes("negative");
+      });
+    expect(declines.length, `${plugin} has a decline case`).toBeGreaterThan(0);
+  }
+});
+
+test("the structure plugin has a decline for each of its skills: the structure skill and the packaging skill", () => {
+  const evals = join(repository, "plugins", "structure", "evals");
+  const text = (name: string) => readFileSync(join(evals, name, "case.yaml"), "utf8");
+  // The structure skill declines to name a pattern; the packaging skill declines to merge on co-change alone.
+  expect(text("no-named-pattern-by-default")).toMatch(/input_match: structure/);
+  expect(text("decline-merge-on-cochange-alone")).toMatch(/input_match: packaging/);
+  expect(text("decline-merge-on-cochange-alone")).toMatch(/tags: \[behaviour, negative\]/);
+});

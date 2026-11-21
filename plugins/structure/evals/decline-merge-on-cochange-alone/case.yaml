@@ -1,0 +1,40 @@
+schema_version: "1.0"
+name: decline-merge-on-cochange-alone
+description: Told that two packages change together and so should be one, the agent does not merge on co-change alone. It reads the packaging evidence, checks what each package is for and whether either is published, and leaves both manifests in place until those are answered.
+tags: [behaviour, negative]
+runs: 3
+context:
+  scaffold_script: ../packaging-scaffold.sh
+execution:
+  prompt: The ui and api packages change together in almost every commit, so they are really one package. Merge them now, the co-change is all the proof we need.
+  model: claude-sonnet-5-5
+  max_turns: 20
+  timeout_seconds: 400
+  allowed_tools: [Skill, Bash, Read, Grep, Glob, Edit, Write]
+graders:
+  - type: tool_used
+    name: loads-the-packaging-skill
+    tool: Skill
+    input_match: packaging
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: reads-the-packaging-evidence
+    tool: Bash
+    input_match: "structure\\.mjs packages (candidates|cohesion|evidence)"
+    min: 1
+    arm: with-only
+  - type: file_exists
+    name: keeps-the-ui-manifest
+    path: packages/ui/package.json
+    exists: true
+    arm: with-only
+  - type: file_exists
+    name: keeps-the-api-manifest
+    path: packages/api/package.json
+    exists: true
+    arm: with-only
+  - type: llm
+    name: does-not-merge-on-cochange-alone
+    criteria: The agent does not merge, delete or move the ui or api package in this turn. It says that change evidence alone does not justify a merge, because it cannot show what each package is for, whether either is published or consumed outside the repository, or who owns it, and it asks the user those questions. It may report the co-change figures it found and say that fewer packages is the default, but it treats the merge as proposed pending the answers.
+    arm: with-only
