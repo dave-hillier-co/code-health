@@ -64,8 +64,11 @@ test("a scaffolded plugin has a manifest, a marketplace entry, schemas and a pac
   expect(manifest).toMatchObject({ author: existing.author, license: existing.license, repository: existing.repository, engines: existing.engines });
 
   const marketplace = readJson(join(root, ".claude-plugin", "marketplace.json"));
-  expect(marketplace.plugins.map((p: { name: string }) => p.name)).toEqual(["cochange", "sample-tool"]);
-  expect(marketplace.plugins[1]).toEqual({ name: "sample-tool", source: "./plugins/sample-tool", description: "Does a sample thing." });
+  const names = marketplace.plugins.map((p: { name: string }) => p.name);
+  // The new entry goes last, after whatever plugins the repository already lists.
+  expect(names).toContain("cochange");
+  expect(names.at(-1)).toBe("sample-tool");
+  expect(marketplace.plugins.at(-1)).toEqual({ name: "sample-tool", source: "./plugins/sample-tool", description: "Does a sample thing." });
   expect(marketplace.plugins.every((p: object) => !("version" in p))).toBe(true);
 
   expect(readdirSync(join(root, "plugins", "sample-tool", "schemas")).sort()).toEqual(["common.schema.json", "describe.schema.json"]);
