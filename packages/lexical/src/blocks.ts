@@ -92,23 +92,145 @@ interface BraceScope {
   parenDepth: number;
   /** For a brace inside a parameter list or argument list: the header to resume once it closes. */
   resume?: Segment[];
+  /** An interface or type alias body, where `name: (a) => b` is a type, not a function. */
+  typeOnly?: boolean;
+}
+
+/** An arrow function whose body is an expression, open until the expression ends. */
+interface OpenArrow {
+  block: FunctionBlock;
+  /** Depth of `stack` where it started: the expression ends when it would be left. */
+  scopes: number;
+  /** Last line holding part of the expression. */
+  lastLine: number;
+  /** Part of a `const` declaration, whose next declarator is bound the same way. */
+  declaration: boolean;
+}
+
+const modifiers = "(?:(?:public|private|protected|static|readonly|override|declare|export)\\s+)*";
+const boundArrow = [
+  // `const f = (a) =>`, `export const f: Fn = async (a) =>`, and a class field `handler = (a) =>`.
+  new RegExp(
+    `^${modifiers}(?:(?:const|let|var)\\s+)?(?<name>[#\\w$]+)\\s*(?::(?:[^=]|=>)*?)?=(?!>)\\s*(?:async\\s+)?(?:<[^>]*>\\s*)?(?:\\([^]*\\)|[\\w$]+)\\s*(?::\\s*[^=]+)?$`,
+  ),
+  // An object literal property `key: (a) =>`.
+  /^(?<name>[#\w$]+|\[[^\]]+\])\s*:\s*(?:async\s+)?(?:<[^>]*>\s*)?(?:\([^]*\)|[\w$]+)\s*(?::\s*[^=]+)?$/,
+  // `export default (a) =>`, which has no name.
+  /^export\s+default\s+(?:async\s+)?(?:<[^>]*>\s*)?(?:\([^]*\)|[\w$]+)\s*(?::\s*[^=]+)?$/,
+];
+const keywordAssignment = /^(?:export\s+)?(?:const|let|var)\b/;
+const continuesExpression = /[-+*/%&|^?:=<>.,([!~]$/;
+const continuesFromStart = /^[-+*/%&|^?:=<>.)\]]/;
+
+function angleBalanced(text: string): boolean {
+  const flat = text.replace(/=>|->/g, "");
+  return (flat.match(/</g)?.length ?? 0) <= (flat.match(/>/g)?.length ?? 0);
 }
 
 function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionBlock[] {
   const closed: FunctionBlock[] = [];
   const stack: BraceScope[] = [];
+  const codeLines = lines.filter((line) => line.kind === "code");
   let header: Segment[] = [];
   let parenDepth = 0;
+  let arrow: OpenArrow | undefined;
+  /** Between the declarators of one `const a = 1, b = 2;`, so `b` is bound like `a`. */
+  let inDeclaration = false;
 
-  for (const line of lines) {
-    if (line.kind !== "code") continue;
+  const headerText = (extra: string) =>
+    [...header.map((part) => part.text), extra].join(" ").replace(/\s+/g, " ").trim();
+
+  const closeArrow = (): void => {
+    if (arrow === undefined) return;
+    arrow.block.endLine = arrow.lastLine;
+    closed.push(arrow.block);
+    arrow = undefined;
+  };
+
+  /** Called at an `=>`: opens a block when it is bound to a name and its body is an expression. */
+  const openArrow = (before: string, line: SourceLine, column: number, index: number): boolean => {
+    const rest = line.code.slice(column + 1).trim();
+    const nextLine = codeLines[index + 1]?.code.trim();
+    if (rest.startsWith("{") || (rest === "" && nextLine?.startsWith("{"))) return false;
+    const top = stack[stack.length - 1];
+    if (top?.typeOnly === true || parenDepth > 0) return false;
+    const kept = [...header, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
+    if (kept.length === 0) return false;
+    const text = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
+    let name: string | undefined;
+    let matched = false;
+    for (const [i, pattern] of boundArrow.entries()) {
+      const match = pattern.exec(text);
+      if (match === null) continue;
+      // `handler = () =>` without a keyword is a field only inside a class; `key: () =>` only in an object literal.
+      if (i === 0 && !inDeclaration && !keywordAssignment.test(text) && top?.name === undefined) continue;
+      if (i === 1 && (top === undefined || top.name !== undefined)) continue;
+      name = match.groups?.name;
+      matched = true;
+      break;
+    }
+    if (!matched) return false;
+    const names = stack.flatMap((scope) => (scope.name === undefined ? [] : [scope.name]));
+    const block: FunctionBlock = { startLine: kept[0]!.line, endLine: -1, source: "lexical" };
+    if (name !== undefined) {
+      block.name = cleanName(name);
+      block.qualifiedName = qualify(names, block.name)!;
+    }
+    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text) };
+    return true;
+  };
+
+  for (const [index, line] of codeLines.entries()) {
     let segment = "";
     const code = line.code;
+    // A declaration without a semicolon ends where the next one begins.
+    if (profile.expressionArrows === true && arrow === undefined && parenDepth === 0 && keywordAssignment.test(code.trim())) {
+      header = [];
+      inDeclaration = false;
+    }
     for (let i = 0; i < code.length; i++) {
       const ch = code[i]!;
+      if (arrow !== undefined && ch.trim() !== "") arrow.lastLine = line.number;
+      if (arrow !== undefined && parenDepth === 0 && stack.length === arrow.scopes) {
+        if (ch === ";" || ch === ",") {
+          inDeclaration = ch === "," && arrow.declaration;
+          closeArrow();
+          header = [];
+          segment = "";
+          continue;
+        }
+        if (ch === "}") {
+          arrow.lastLine = Math.max(arrow.block.startLine, arrow.lastLine === line.number && segment.trim() === "" ? previousCodeLine(codeLines, index) : line.number);
+          closeArrow();
+        }
+      }
       if (ch === "(" || ch === "[") parenDepth++;
-      else if (ch === ")" || ch === "]") parenDepth = Math.max(0, parenDepth - 1);
-      else if (ch === ";" && parenDepth === 0) {
+      else if (ch === ")" || ch === "]") {
+        if (arrow !== undefined && parenDepth === 0 && stack.length === arrow.scopes) {
+          arrow.lastLine = segment.trim() === "" ? previousCodeLine(codeLines, index) : line.number;
+          closeArrow();
+        }
+        parenDepth = Math.max(0, parenDepth - 1);
+      } else if (ch === "=" && code[i + 1] === ">" && profile.expressionArrows === true && arrow === undefined) {
+        if (openArrow(segment, line, i + 1, index)) {
+          segment += "=>";
+          i++;
+          continue;
+        }
+      } else if (ch === ";" && parenDepth === 0) {
+        inDeclaration = false;
+        header = [];
+        segment = "";
+        continue;
+      } else if (
+        ch === "," &&
+        parenDepth === 0 &&
+        profile.expressionArrows === true &&
+        arrow === undefined &&
+        !/\b(?:class|interface|implements|extends|enum|namespace|type)\b/.test(headerText(segment)) &&
+        angleBalanced(headerText(segment))
+      ) {
+        inDeclaration = inDeclaration || keywordAssignment.test(headerText(segment));
         header = [];
         segment = "";
         continue;
@@ -133,7 +255,8 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
             block.qualifiedName = qualify(names, name)!;
           }
         } else if (classification.kind === "type") name = classification.name;
-        stack.push({ name, block, parenDepth });
+        const typeOnly = /^(?:export\s+)?(?:declare\s+)?(?:interface|type)\b/.test(headerText(""));
+        stack.push({ name, block, parenDepth, ...(typeOnly ? { typeOnly } : {}) });
         header = [];
         segment = "";
         continue;
@@ -159,8 +282,21 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
       segment += ch;
     }
     header.push({ line: line.number, text: segment });
+    if (arrow !== undefined && parenDepth === 0 && stack.length === arrow.scopes) {
+      const text = code.trimEnd();
+      const following = codeLines[index + 1]?.code.trim() ?? "";
+      if (text !== "" && !continuesExpression.test(text) && !continuesFromStart.test(following)) {
+        closeArrow();
+        header = [];
+      }
+    }
   }
+  if (arrow !== undefined) closeArrow();
   return closed;
+}
+
+function previousCodeLine(codeLines: SourceLine[], index: number): number {
+  return codeLines[Math.max(0, index - 1)]!.number;
 }
 
 interface IndentScope {

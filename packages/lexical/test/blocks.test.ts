@@ -225,3 +225,69 @@ test("a Python backslash continuation line does not close the enclosing def", ()
     ["g", 6, 7],
   ]);
 });
+
+test("a named arrow function with an expression body is a block that ends with the expression", () => {
+  const source = [
+    "export const arrow = (a: number) => a + 1;", // 1
+    "const multi = (a: number) =>", // 2
+    "  a > 0", // 3
+    "    ? a", // 4
+    "    : -a;", // 5
+    "const first = () => 1,", // 6
+    "  second = () => 2;", // 7
+    "const asi = (x) => x * 2", // 8
+    "const next = 1", // 9
+    "const chained = (xs) =>", // 10
+    "  xs", // 11
+    "    .map((x) => x)", // 12
+    "    .filter(Boolean);", // 13
+    "const call = (f) => f(1, [2, 3]);", // 14
+    "export default (a) => a;", // 15
+  ].join("\n");
+  expect(blocks(source, "typescript")).toEqual([
+    ["arrow", 1, 1],
+    ["multi", 2, 5],
+    ["first", 6, 6],
+    ["second", 7, 7],
+    ["asi", 8, 8],
+    ["chained", 10, 13],
+    ["call", 14, 14],
+    [undefined, 15, 15],
+  ]);
+});
+
+test("arrow callbacks passed inline and arrow types are not blocks", () => {
+  const source = [
+    "const doubled = items.map((x) => x * 2);", // 1
+    "interface Handlers {", // 2
+    "  on: (event: string) => void;", // 3
+    "}", // 4
+    "type Fn = (a: number) => number;", // 5
+    "const typed: (a: number) => number = (a) => a;", // 6
+  ].join("\n");
+  expect(blocks(source, "typescript")).toEqual([["typed", 6, 6]]);
+});
+
+test("arrow properties of object literals and class fields are blocks, and so are computed method names", () => {
+  const source = [
+    "const registry = {", // 1
+    "  lookup: (key: string) => key,", // 2
+    "  build: function () {},", // 3
+    "};", // 4
+    "class Box {", // 5
+    "  size = () => 1;", // 6
+    "  [Symbol.iterator]() {}", // 7
+    "}", // 8
+  ].join("\n");
+  expect(blocks(source, "typescript")).toEqual([
+    ["lookup", 2, 2],
+    [undefined, 3, 3],
+    ["Box.size", 6, 6],
+    ["Box.[Symbol.iterator]", 7, 7],
+  ]);
+});
+
+test("a function whose return type is a function type is one block", () => {
+  const source = "export function make(): () => number {\n  return () => 1;\n}\n";
+  expect(blocks(source, "typescript")).toEqual([["make", 1, 3]]);
+});

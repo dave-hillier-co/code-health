@@ -64,6 +64,11 @@ export interface LexerProfile {
   typeHeaders: string[];
   /** Headers that open a function. Group `name` is optional. Tested against collapsed header text. */
   functionHeaders: string[];
+  /**
+   * Functions written `name = (args) => expression`, which have no braces to close. The block ends with the
+   * expression. Only arrows bound to a name are blocks, as callbacks passed inline are not units.
+   */
+  expressionArrows?: boolean;
 }
 
 const doubleQuote: DelimitedString = {
@@ -141,10 +146,11 @@ const typescript: LexerProfile = {
   controlHeader,
   typeHeaders: cTypeHeaders,
   functionHeaders: [
-    "\\bfunction\\b\\s*\\*?\\s*(?<name>[\\w$]+)?\\s*(?:<[^>]*>)?\\s*\\([^]*\\)[^;{}=]*$",
+    "\\bfunction\\b\\s*\\*?\\s*(?<name>[\\w$]+)?\\s*(?:<[^>]*>)?\\s*\\([^]*\\)(?:[^;{}=]|=>)*$",
     "^(?:export\\s+(?:default\\s+)?)?(?:(?:const|let|var)\\s+(?<name>[\\w$]+)\\s*(?::[^=]+)?=\\s*)?[^]*=>\\s*(?::[^{;]+)?$",
-    "^(?:(?:public|private|protected|static|async|readonly|get|set|override|abstract|declare)\\s+)*\\*?\\s*(?<name>[#\\w$]+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?::\\s*[^{;]+)?$",
+    "^(?:(?:public|private|protected|static|async|readonly|get|set|override|abstract|declare)\\s+)*\\*?\\s*(?<name>[#\\w$]+|\\[[^\\]]+\\])\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?::\\s*[^{;]+)?$",
   ],
+  expressionArrows: true,
 };
 
 const csharp: LexerProfile = {

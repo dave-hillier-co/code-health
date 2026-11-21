@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import { addAgreement, compareUnits, exactRate, noAgreement, spuriousRate, type AgreementCounts } from "@code-health/lexical/agreement";
 import { recordedAgreement } from "@code-health/lexical/agreement-rates";
-import { analyseSource } from "@code-health/lexical/analyse-source";
+import { analyseSource, DEFAULT_AGREEMENT_BAR } from "@code-health/lexical/analyse-source";
 import { analyseTree } from "../src/analyse-tree.ts";
 import { treeFromDirectory } from "../src/source-tree.ts";
 
@@ -81,4 +81,10 @@ test("the corpus is big enough for the rates to mean something", async () => {
   const counts = await measure(corpora.typescript!);
   expect(counts.units).toBeGreaterThanOrEqual(40);
   expect(counts.found).toBeLessThanOrEqual(counts.units);
+});
+
+test("TypeScript's recorded agreement clears the configured bar, so its per-function metrics are released", () => {
+  // The bar is not lowered to fit a profile. If a change drops the rate below it, fix the profile.
+  expect(DEFAULT_AGREEMENT_BAR).toBe(0.9);
+  expect(exactRate(recordedAgreement.typescript!)).toBeGreaterThanOrEqual(DEFAULT_AGREEMENT_BAR);
 });

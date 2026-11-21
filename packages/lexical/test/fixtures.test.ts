@@ -113,12 +113,22 @@ for (const [name, expected] of Object.entries(expectations)) {
   });
 }
 
-test("per-function metrics are flagged as gated on the agreement test", () => {
+test("per-function metrics are released for TypeScript, whose recorded agreement clears the bar, and carry the rate", () => {
   const { functions, source } = analyseSource("sample.ts", read("sample.ts"));
   expect(source).toBe("lexical");
-  expect(functions.gated).toBe(true);
   expect(functions.gate).toBe("agreement");
+  expect(functions.gated).toBe(false);
+  if (!functions.gated) {
+    expect(functions.agreement.bar).toBe(0.9);
+    expect(functions.agreement.exactRate).toBeGreaterThanOrEqual(0.9);
+  }
   expect(functions.blocks.every((b) => b.source === "lexical")).toBe(true);
+});
+
+test("per-function metrics stay gated for a profile with no structural adapter to measure it against", () => {
+  const { functions } = analyseSource("sample.py", read("sample.py"));
+  expect(functions.gated).toBe(true);
+  if (functions.gated) expect(functions.reason).toBe("no agreement measured for python");
 });
 
 test("a file with no profile gets indentation metrics and says what was skipped", () => {

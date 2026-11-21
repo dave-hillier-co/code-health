@@ -7,5 +7,5 @@ import type { AgreementCounts } from "./agreement.ts";
  * Only profiles with a structural adapter appear here.
  */
 export const recordedAgreement: Record<string, AgreementCounts> = {
-  typescript: { units: 75, found: 63, exact: 59, blocks: 68, spurious: 6 },
+  typescript: { units: 75, found: 74, exact: 74, blocks: 83, spurious: 6 },
 };
