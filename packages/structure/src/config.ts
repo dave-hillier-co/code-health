@@ -6,6 +6,7 @@ import { DEFAULT_RENAME_LIMIT, DEFAULT_SIMILARITY } from "@code-health/history/r
 import { DEFAULT_EXACT_LIMIT } from "@code-health/graph/feedback-arc-set";
 import type { CensusSettings } from "./census/census.ts";
 import { readLayerRules, type LayerRule } from "./layers.ts";
+import { packagesDefaults, readPackageSettings, type PackageSettings } from "./packaging/settings.ts";
 import { TOOL } from "./tool.ts";
 
 /**
@@ -83,6 +84,8 @@ export const structureConfig: PluginConfigSpec = {
       strong: { ...DEFAULT_EVIDENCE_THRESHOLDS.strong },
       moderate: { ...DEFAULT_EVIDENCE_THRESHOLDS.moderate },
     },
+    /** The packaging skill's settings; see docs/specs/packaging.md. */
+    packages: packagesDefaults,
   },
 };
 
@@ -124,6 +127,7 @@ export interface StructureSettings {
   components: Record<string, unknown>;
   census: CensusSettings;
   evidenceThresholds: EvidenceThresholds;
+  packages: PackageSettings;
   /** True when the config file states the analysis window, which a shallow clone requires. */
   windowStated: boolean;
 }
@@ -207,6 +211,7 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     components: config.effective.components,
     census: { folderNames: names("folderNames"), eventCalls: names("eventCalls"), handlerCalls: names("handlerCalls"), registerCalls: names("registerCalls") },
     evidenceThresholds: section.evidence as EvidenceThresholds,
+    packages: readPackageSettings(section.packages as Record<string, unknown>, at("packages")),
     windowStated: config.sources[at("windowMonths")] === "file",
   };
 }

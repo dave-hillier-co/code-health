@@ -81,8 +81,13 @@ export interface ReexportFact {
   exported: string;
 }
 
+/** What a top-level declaration declares, for the exports that name it. Type-only declarations are `interface` and `type`. */
+export type DeclarationKind = "interface" | "abstract-class" | "class" | "enum" | "type" | "function" | "variable" | "namespace";
+
 export interface ExportFact {
   exported: string;
+  /** What the exported name is declared as in this file, when it is declared here. Absent for re-exports and names the file does not declare. */
+  kind?: DeclarationKind;
   /** The local binding or unit that is exported, when the export names one. */
   local?: string;
   line: number;

@@ -73,6 +73,38 @@ describe("locality", () => {
   });
 });
 
+describe("structure's packaging scaffold", () => {
+  const packagingScaffold = (): string => {
+    const dir = mkdtempSync(join(tmpdir(), "packaging-eval-"));
+    made.push(dir);
+    execFileSync("sh", [join(plugins, "structure", "evals", "packaging-scaffold.sh")], { cwd: dir, stdio: "pipe", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" } });
+    return dir;
+  };
+
+  test("builds the same repository every time and leaves a clean working tree", () => {
+    const dir = packagingScaffold();
+    expect(head(dir)).toBe(head(packagingScaffold()));
+    expect(execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" })).toBe("");
+  });
+
+  test("holds the shapes the cases ask about: ui and api change together, nothing uses the date helpers but ui, and ui and api merge without a cross-check against it", async () => {
+    const dir = packagingScaffold();
+    const cohesion = await json(structure, dir, "packages", "cohesion");
+    const together = cohesion.results.find((f: { id: string }) => f.id === "always-together:packages/api->packages/ui");
+    expect(together.evidence).toMatchObject({ shared: 15, fromChanges: 17, toChanges: 17, confidenceFromTo: 0.882 });
+    const candidates = await json(structure, dir, "packages", "candidates", "--kind", "merge");
+    const merge = candidates.results.find((c: { findings: string[] }) => c.findings.includes("always-together:packages/api->packages/ui"));
+    expect(merge).toMatchObject({ status: "proposed", against: [] });
+    const list = await json(structure, dir, "packages", "list");
+    expect(list.results.map((r: { id: string; kind: string }) => [r.id, r.kind])).toEqual([
+      ["packages/api", "internal"],
+      ["packages/app", "internal"],
+      ["packages/shared", "internal"],
+      ["packages/ui", "internal"],
+    ]);
+  });
+});
+
 describe("structure", () => {
   test("its scaffold holds an import cycle between orders and billing, with a breaking set of one edge", async () => {
     const { results } = await json(structure, scaffold("structure"), "cycles");

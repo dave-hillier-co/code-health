@@ -1,0 +1,39 @@
+schema_version: "1.0"
+name: trigger-too-many-packages
+description: The packaging skill loads and the CLI runs when the user asks whether there are too many packages, and the answer rests on the co-change of ui and api, asks what the packages are for, and does not propose another package.
+tags: [trigger, behaviour]
+runs: 3
+context:
+  scaffold_script: ../packaging-scaffold.sh
+execution:
+  prompt: Every change we make seems to touch both the ui and api packages. Do we have too many packages?
+  model: claude-sonnet-5-5
+  max_turns: 20
+  timeout_seconds: 400
+  allowed_tools: [Skill, Bash, Read, Grep, Glob, Edit, Write]
+graders:
+  - type: tool_used
+    name: loads-the-packaging-skill
+    tool: Skill
+    input_match: packaging
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: runs-the-packages-cli
+    tool: Bash
+    input_match: "structure\\.mjs packages (list|candidates|cohesion|evidence)"
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: does-not-edit-anything
+    tool: Edit
+    max: 0
+    arm: with-only
+  - type: llm
+    name: answers-from-the-evidence
+    criteria: The answer says that ui and api change together (it gives the number of shared changes or a confidence figure, not only that they do), and names merging them as the candidate. It says what a merge would cost or what would argue against it, such as a declared purpose, whether either is published, or whether their consumers use different parts. It does not propose adding packages.
+    arm: with-only
+  - type: llm
+    name: asks-what-the-packages-are-for
+    criteria: Before recommending that anything be merged, the agent asks the user whether ui and api are published (used by anything outside this repository) and what each package is for, or says that it needs those answers to judge the candidate. It does not merge or edit anything.
+    arm: with-only

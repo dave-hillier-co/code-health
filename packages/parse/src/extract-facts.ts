@@ -3,6 +3,7 @@ import { classShape, functionShape, nodeCount, passThroughOf } from "./interface
 import { codeRowsOf, measureFunction } from "./unit-metrics.ts";
 import type {
   BindingFact,
+  DeclarationKind,
   ExportFact,
   FileFacts,
   ImportFact,
@@ -16,7 +17,7 @@ import type {
  * Bump when the extraction rules change in a way that alters facts for the
  * same source, so cached facts from older rules are not reused.
  */
-export const extractorVersion = 5;
+export const extractorVersion = 6;
 
 interface Context {
   /** Qualified name of the innermost enclosing unit; names of nested units are built from it. */
@@ -103,6 +104,56 @@ function parameterNames(parameters: Node | null, out: string[]): void {
   }
 }
 
+/** What each name declared at the top of a file is declared as, whether or not it is exported. */
+function declarationKinds(root: Node): Map<string, DeclarationKind> {
+  const kinds = new Map<string, DeclarationKind>();
+  const note = (node: Node | null): void => {
+    if (!node) return;
+    const name = node.childForFieldName("name")?.text;
+    switch (node.type) {
+      case "export_statement":
+        note(node.childForFieldName("declaration"));
+        return;
+      case "ambient_declaration":
+        note(node.namedChildren.find((child) => child.type !== "comment") ?? null);
+        return;
+      case "interface_declaration":
+        if (name) kinds.set(name, "interface");
+        return;
+      case "abstract_class_declaration":
+        if (name) kinds.set(name, "abstract-class");
+        return;
+      case "class_declaration":
+        if (name) kinds.set(name, "class");
+        return;
+      case "enum_declaration":
+        if (name) kinds.set(name, "enum");
+        return;
+      case "type_alias_declaration":
+        if (name) kinds.set(name, "type");
+        return;
+      case "function_declaration":
+      case "generator_function_declaration":
+        if (name) kinds.set(name, "function");
+        return;
+      case "internal_module":
+      case "module":
+        if (name) kinds.set(name, "namespace");
+        return;
+      case "lexical_declaration":
+      case "variable_declaration": {
+        const names: string[] = [];
+        declaredNames(node, names);
+        for (const declared of names) kinds.set(declared, "variable");
+        return;
+      }
+      default:
+    }
+  };
+  for (const child of root.namedChildren) note(child);
+  return kinds;
+}
+
 function declaredNames(statement: Node, out: string[]): void {
   switch (statement.type) {
     case "lexical_declaration":
@@ -147,6 +198,11 @@ class Extractor {
     this.root = root;
     const context: Context = { unit: undefined, shadow: new Set() };
     this.visitChildren(root, context);
+    const kinds = declarationKinds(root);
+    for (const exported of this.exports) {
+      const kind = kinds.get(exported.local ?? exported.exported);
+      if (kind !== undefined) exported.kind = kind;
+    }
     const locals = new Set<string>();
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
     return {

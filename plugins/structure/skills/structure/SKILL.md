@@ -16,6 +16,7 @@ The evidence outranks convention. Change evidence (what actually changed togethe
 node ${CLAUDE_PLUGIN_ROOT}/dist/structure.mjs cycles --json
 node ${CLAUDE_PLUGIN_ROOT}/dist/structure.mjs stability --json
 node ${CLAUDE_PLUGIN_ROOT}/dist/structure.mjs census --json
+node ${CLAUDE_PLUGIN_ROOT}/dist/structure.mjs coupling --json
 node ${CLAUDE_PLUGIN_ROOT}/dist/structure.mjs evidence "src/a.ts->src/b.ts" --json
 ```
 
@@ -24,12 +25,18 @@ Run them from the repository root. They analyse `HEAD`. Useful options:
 - `cycles --level file|folder|package` chooses what a cycle is made of. Start with `file`, then `folder`.
 - `stability --by folder|component` lists dependencies that point against stability.
 - `census` lists the decoupling mechanisms the codebase already uses, with counts, folders and examples. It reads no history. Run it before choosing a remedy: it is how you know what is already here and what would be new.
-- `evidence EDGE|FINDING` takes an edge as `from->to` (files, folders or components) or a finding id from `cycles` or `stability`, and prints the full evidence pack.
+- `layers` lists imports that break the layer rules in `code-health.json` (`layers`), with the symbols that cross. `check [--base REV]` exits 1 on cycles or layer violations new since the base and reads no history, so it suits CI.
+- `coupling [--quadrant Q] [--by file|folder|component]` places each pair as real, incidental, stable, hidden, independent or insufficient-evidence from static coupling and co-change. `hidden` lists only the hidden pairs, where code changes together with no import between it.
+- `hubs` lists registration hubs: files that many features append to. Read `references/registration-hubs.md` before proposing an inversion.
+- `outcome FROM->TO --at REV` compares co-change before and after a break, and says whether it was broken or only hidden.
+- `evidence EDGE|FINDING` takes an edge as `from->to` (files, folders or components) or a finding id from `cycles`, `stability` or `layers`, and prints the full evidence pack.
 - `--limit <n|all>` and `--fields` keep output small. `explain <rule>` describes a rule, and `config explain` shows the effective settings.
 
 Read the envelope before the rows. The top-level `evidence.grade` is how far to trust history: with `weak`, rely on the static signals and present co-change as tentative. `inputs.locality` names the locality report that ranked the cycles, and is null when none was usable, in which case cycles are ranked by size and co-change alone.
 
-What this CLI does not do yet: layer rules, coupling quadrants, hidden coupling, registration hubs and `check` are not commands, and the evidence pack's `quadrant` and `layerRule` are empty. Where a question below needs them, find the facts by reading the code and the git log, and say that you did. The census covers TypeScript and JavaScript only: for any other language, search the code for the mechanisms listed in `references/mechanisms.md` and say that you did.
+Questions about whether the packages themselves are the right ones (too many, a boundary in the wrong place, whether to add a package) belong to the packaging skill, which reads the same graph at package level and adds cohesion evidence. `cycles --level package` here groups files by their nearest `package.json`. The packaging skill's `packages coupling` reads packages from every manifest and adds hidden cycles.
+
+The census covers TypeScript and JavaScript only: for any other language, search the code for the mechanisms listed in `references/mechanisms.md` and say that you did.
 
 ## Read the evidence pack
 

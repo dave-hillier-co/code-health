@@ -2308,6 +2308,54 @@ function parameterNames(parameters, out2) {
     }
   }
 }
+function declarationKinds(root) {
+  const kinds = /* @__PURE__ */ new Map();
+  const note = (node) => {
+    if (!node) return;
+    const name8 = node.childForFieldName("name")?.text;
+    switch (node.type) {
+      case "export_statement":
+        note(node.childForFieldName("declaration"));
+        return;
+      case "ambient_declaration":
+        note(node.namedChildren.find((child) => child.type !== "comment") ?? null);
+        return;
+      case "interface_declaration":
+        if (name8) kinds.set(name8, "interface");
+        return;
+      case "abstract_class_declaration":
+        if (name8) kinds.set(name8, "abstract-class");
+        return;
+      case "class_declaration":
+        if (name8) kinds.set(name8, "class");
+        return;
+      case "enum_declaration":
+        if (name8) kinds.set(name8, "enum");
+        return;
+      case "type_alias_declaration":
+        if (name8) kinds.set(name8, "type");
+        return;
+      case "function_declaration":
+      case "generator_function_declaration":
+        if (name8) kinds.set(name8, "function");
+        return;
+      case "internal_module":
+      case "module":
+        if (name8) kinds.set(name8, "namespace");
+        return;
+      case "lexical_declaration":
+      case "variable_declaration": {
+        const names = [];
+        declaredNames(node, names);
+        for (const declared of names) kinds.set(declared, "variable");
+        return;
+      }
+      default:
+    }
+  };
+  for (const child of root.namedChildren) note(child);
+  return kinds;
+}
 function declaredNames(statement, out2) {
   switch (statement.type) {
     case "lexical_declaration":
@@ -2347,6 +2395,11 @@ var Extractor = class {
     this.root = root;
     const context = { unit: void 0, shadow: /* @__PURE__ */ new Set() };
     this.visitChildren(root, context);
+    const kinds = declarationKinds(root);
+    for (const exported of this.exports) {
+      const kind = kinds.get(exported.local ?? exported.exported);
+      if (kind !== void 0) exported.kind = kind;
+    }
     const locals = /* @__PURE__ */ new Set();
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
     return {

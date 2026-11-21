@@ -8,6 +8,7 @@ import * as hidden from "./commands/hidden.ts";
 import * as hubs from "./commands/hubs.ts";
 import * as layers from "./commands/layers.ts";
 import * as outcome from "./commands/outcome.ts";
+import * as packages from "./commands/packages.ts";
 import * as stability from "./commands/stability.ts";
 
 /** What a module in `commands/` exports. */
@@ -34,6 +35,7 @@ export const commandModules: CommandModule[] = [
   hubs,
   layers,
   outcome,
+  packages,
   stability,
 ];
 

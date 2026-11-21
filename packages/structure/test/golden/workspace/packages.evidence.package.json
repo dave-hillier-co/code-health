@@ -1,0 +1,518 @@
+{
+  "command": "packages",
+  "config": "da1dbc19049f2be5",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": true
+    },
+    "grade": "moderate",
+    "importedHistory": [],
+    "logicalChangesInWindow": 97,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 12.7,
+    "window": {
+      "months": 12,
+      "since": 1687251600,
+      "until": 1718874000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "subcommand": "evidence",
+    "target": "packages/lib"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "d3939fbaccd21c7ccf9d72fb86bbfa9eaad7e7de"
+  },
+  "results": {
+    "balance": {
+      "closure": {
+        "changesWith": [
+          "packages/lib-extra"
+        ],
+        "crossing": 3,
+        "share": 0.062,
+        "value": 0.5
+      },
+      "cost": 6.417,
+      "id": "packages/lib",
+      "matters": "reuse",
+      "neglected": [
+        "CRP",
+        "REP"
+      ],
+      "reading": "it rarely changes and 3 packages use it: it has earned its boundary, so reuse matters most and the question is whether consumers carry parts they do not need",
+      "release": {
+        "consumers": [
+          "packages/app",
+          "packages/testkit",
+          "packages/ui"
+        ],
+        "deployables": [
+          "packages/app"
+        ],
+        "published": true,
+        "versionChanges": 3,
+        "young": false
+      },
+      "reuse": {
+        "components": 5,
+        "consumers": 3,
+        "medianShare": 0.2,
+        "surface": 5,
+        "unused": 3
+      }
+    },
+    "closure": {
+      "changes": 6,
+      "closure": 0.5,
+      "comparable": 5,
+      "crossing": 3,
+      "share": 0.062,
+      "standing": 1
+    },
+    "coChange": [
+      {
+        "confidenceFromTo": 0.5,
+        "confidenceToFrom": 1,
+        "cost": 2.139344,
+        "fromChanges": 6,
+        "lift": 16.167,
+        "package": "packages/lib-extra",
+        "shared": 3,
+        "tail": 0,
+        "toChanges": 3
+      }
+    ],
+    "findings": [
+      {
+        "changeCost": 2.139,
+        "evidence": {
+          "components": 2,
+          "componentsTotal": 5,
+          "groups": [
+            "parse:packages/app+packages/testkit",
+            "render:packages/ui"
+          ],
+          "overlap": 0
+        },
+        "id": "disjoint-reuse:packages/lib",
+        "kind": "disjoint-reuse",
+        "packages": [
+          "packages/lib"
+        ],
+        "principle": "CRP",
+        "priority": "normal",
+        "summary": "packages/lib exports 2 groups of names that different consumers use: {parse} for packages/app, packages/testkit; {render} for packages/ui",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "changeCost": 2.139,
+        "evidence": {
+          "ratio": 1,
+          "versionChanges": 3
+        },
+        "id": "lockstep:packages/lib->packages/lib-extra",
+        "kind": "lockstep",
+        "packages": [
+          "packages/lib",
+          "packages/lib-extra"
+        ],
+        "principle": "REP",
+        "priority": "normal",
+        "summary": "packages/lib and packages/lib-extra changed version in the same 3 commits, with no policy fixing their versions together: separate versions are ceremony",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "changeCost": 2.139,
+        "evidence": {
+          "consumers": 3,
+          "medianShare": 0.2,
+          "shares": [
+            "packages/app:0.2",
+            "packages/testkit:0.2",
+            "packages/ui:0.2"
+          ],
+          "smallUsers": 3,
+          "surface": 5
+        },
+        "id": "partial-use:packages/lib",
+        "kind": "partial-use",
+        "packages": [
+          "packages/lib"
+        ],
+        "principle": "CRP",
+        "priority": "normal",
+        "summary": "3 of 3 consumers of packages/lib use under 25% of its 5 exports, so they depend on what they do not use",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "changeCost": 0,
+        "evidence": {
+          "basis": "change",
+          "dependantInstability": 1,
+          "dependantRevisionsPerFile": 0.25,
+          "dependencyInstability": 0,
+          "dependencyRevisionsPerFile": 0.75,
+          "disagree": true,
+          "volatilityRatio": 3
+        },
+        "id": "against-stability:packages/testkit->packages/lib",
+        "kind": "against-stability",
+        "packages": [
+          "packages/testkit",
+          "packages/lib"
+        ],
+        "principle": "SDP",
+        "priority": "normal",
+        "summary": "packages/testkit depends on packages/lib, which changes 3 times as often per file",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "changeCost": 0,
+        "evidence": {
+          "size": 2,
+          "testOnly": false,
+          "via": [
+            "packages/lib->packages/testkit:development-dependency"
+          ]
+        },
+        "id": "hidden-cycle:packages/lib",
+        "kind": "hidden-cycle",
+        "packages": [
+          "packages/lib",
+          "packages/testkit"
+        ],
+        "principle": "ADP",
+        "priority": "normal",
+        "summary": "packages/lib, packages/testkit form a cycle that only exists through packages/lib->packages/testkit (development-dependency)",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "changeCost": 0,
+        "evidence": {
+          "acquired": 3,
+          "excess": [
+            "ajv",
+            "jsdiff",
+            "yaml"
+          ],
+          "needed": 0,
+          "surface": 5,
+          "used": 1
+        },
+        "id": "inherited-weight:packages/lib->packages/app",
+        "kind": "inherited-weight",
+        "packages": [
+          "packages/lib",
+          "packages/app"
+        ],
+        "principle": "CRP",
+        "priority": "normal",
+        "summary": "packages/app uses 1 of 5 exports of packages/lib and acquires 3 outside packages it does not need: ajv, jsdiff, yaml",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "changeCost": 0,
+        "evidence": {
+          "acquired": 3,
+          "excess": [
+            "ajv",
+            "jsdiff",
+            "yaml"
+          ],
+          "needed": 0,
+          "surface": 5,
+          "used": 1
+        },
+        "id": "inherited-weight:packages/lib->packages/testkit",
+        "kind": "inherited-weight",
+        "packages": [
+          "packages/lib",
+          "packages/testkit"
+        ],
+        "principle": "CRP",
+        "priority": "normal",
+        "summary": "packages/testkit uses 1 of 5 exports of packages/lib and acquires 3 outside packages it does not need: ajv, jsdiff, yaml",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "changeCost": 0,
+        "evidence": {
+          "acquired": 3,
+          "excess": [
+            "ajv",
+            "jsdiff",
+            "yaml"
+          ],
+          "needed": 0,
+          "surface": 5,
+          "used": 1
+        },
+        "id": "inherited-weight:packages/lib->packages/ui",
+        "kind": "inherited-weight",
+        "packages": [
+          "packages/lib",
+          "packages/ui"
+        ],
+        "principle": "CRP",
+        "priority": "normal",
+        "summary": "packages/ui uses 1 of 5 exports of packages/lib and acquires 3 outside packages it does not need: ajv, jsdiff, yaml",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "changeCost": 0,
+        "evidence": {
+          "names": [
+            "diff",
+            "serialize",
+            "validate"
+          ],
+          "share": 0.6,
+          "surface": 5,
+          "unused": 3
+        },
+        "id": "overexposed:packages/lib",
+        "kind": "overexposed",
+        "packages": [
+          "packages/lib"
+        ],
+        "principle": "CRP",
+        "priority": "normal",
+        "summary": "3 of the 5 exports of packages/lib are used by no other package: diff, serialize, validate",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "changeCost": 0,
+        "evidence": {
+          "dependencies": [
+            "left-pad"
+          ],
+          "internal": []
+        },
+        "id": "unused-dependency:packages/lib",
+        "kind": "unused-dependency",
+        "packages": [
+          "packages/lib"
+        ],
+        "principle": "boundary",
+        "priority": "normal",
+        "summary": "packages/lib declares left-pad and its code never uses it: coupling with no purpose, and build weight",
+        "tentative": false,
+        "unit": null
+      }
+    ],
+    "id": "packages/lib",
+    "kind": "package",
+    "reuse": {
+      "components": [
+        {
+          "consumers": [],
+          "exports": [
+            "packages/lib/src/diff.ts#diff"
+          ]
+        },
+        {
+          "consumers": [
+            "packages/app",
+            "packages/testkit"
+          ],
+          "exports": [
+            "packages/lib/src/parse.ts#parse"
+          ]
+        },
+        {
+          "consumers": [
+            "packages/ui"
+          ],
+          "exports": [
+            "packages/lib/src/render.ts#render"
+          ]
+        },
+        {
+          "consumers": [],
+          "exports": [
+            "packages/lib/src/serialize.ts#serialize"
+          ]
+        },
+        {
+          "consumers": [],
+          "exports": [
+            "packages/lib/src/validate.ts#validate"
+          ]
+        }
+      ],
+      "consumers": [
+        {
+          "package": "packages/app",
+          "share": 0.2,
+          "used": [
+            "packages/lib/src/parse.ts#parse"
+          ]
+        },
+        {
+          "package": "packages/testkit",
+          "share": 0.2,
+          "used": [
+            "packages/lib/src/parse.ts#parse"
+          ]
+        },
+        {
+          "package": "packages/ui",
+          "share": 0.2,
+          "used": [
+            "packages/lib/src/render.ts#render"
+          ]
+        }
+      ],
+      "deepUses": [],
+      "entries": [
+        "packages/lib/src/index.ts"
+      ],
+      "hasExportsMap": true,
+      "passThroughShare": 0,
+      "surface": [
+        {
+          "exportedAs": [
+            "diff"
+          ],
+          "key": "packages/lib/src/diff.ts#diff",
+          "kind": "function"
+        },
+        {
+          "exportedAs": [
+            "parse"
+          ],
+          "key": "packages/lib/src/parse.ts#parse",
+          "kind": "function"
+        },
+        {
+          "exportedAs": [
+            "render"
+          ],
+          "key": "packages/lib/src/render.ts#render",
+          "kind": "function"
+        },
+        {
+          "exportedAs": [
+            "serialize"
+          ],
+          "key": "packages/lib/src/serialize.ts#serialize",
+          "kind": "function"
+        },
+        {
+          "exportedAs": [
+            "validate"
+          ],
+          "key": "packages/lib/src/validate.ts#validate",
+          "kind": "function"
+        }
+      ],
+      "unused": [
+        "packages/lib/src/diff.ts#diff",
+        "packages/lib/src/serialize.ts#serialize",
+        "packages/lib/src/validate.ts#validate"
+      ],
+      "wildcardExports": false
+    },
+    "row": {
+      "abstractness": null,
+      "abstractnessWeak": false,
+      "ca": 3,
+      "ce": 0,
+      "closure": 0.5,
+      "consumers": [
+        "packages/app",
+        "packages/testkit",
+        "packages/ui"
+      ],
+      "crossing": 3,
+      "dependencies": [],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "exportedTypes": null,
+      "files": 8,
+      "firstSeen": "2023-06-02",
+      "id": "packages/lib",
+      "instability": 0,
+      "kind": "published",
+      "name": "@acme/lib",
+      "purpose": null,
+      "revisions": 6,
+      "share": 0.062,
+      "testSupport": false,
+      "young": false
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2023-06-20T09:00:00.000Z",
+    "until": "2024-06-20T09:00:00.000Z"
+  }
+}

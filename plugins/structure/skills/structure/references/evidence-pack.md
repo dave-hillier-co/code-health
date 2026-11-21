@@ -11,6 +11,7 @@
 | `misplacement` | For each breaking-set symbol: `consumerFiles`, how many sit `onFromSide`, `onToSide` and `elsewhere`, where most are (`mostlyOn`: from, to or split) and whether `moveMayRemoveDependency`. A symbol mostly consumed on the other side is a candidate to move. |
 | `unblocks` | Locality moves this dependency is blocking, with their unblocked gain, read from the locality report. Empty when there is no report for this commit. |
 | `nearbyMechanisms` | At most ten census entries, nearest first: the `mechanism`, its `variant`, where it is (`path`, `line`), what was found (`detail`), its `distance` through the folder tree (0 is inside one of the two modules) and `near`: `from`, `to` or `both`. An empty list means no mechanism is in use anywhere. A short or distant list does not: run `census`. See `mechanisms.md`. |
-| `quadrant`, `layerRule` | Not produced yet: null. |
+| `quadrant` | The pair's place from `coupling`: its quadrant with the static, co-change, expected and p-value figures. |
+| `layerRule` | The layer rules the edge's imports break, one entry per pair of layers, or null when none is broken or no layers are configured. |
 
 The pack is `results[0]` of the output. The top-level `evidence.grade` and the window say how much history stands behind `stability` and `coChange`. Support below the minimum is shown as such and is not a finding.

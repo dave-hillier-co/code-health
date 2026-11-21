@@ -1211,6 +1211,54 @@ function parameterNames(parameters, out2) {
     }
   }
 }
+function declarationKinds(root) {
+  const kinds = /* @__PURE__ */ new Map();
+  const note = (node) => {
+    if (!node) return;
+    const name4 = node.childForFieldName("name")?.text;
+    switch (node.type) {
+      case "export_statement":
+        note(node.childForFieldName("declaration"));
+        return;
+      case "ambient_declaration":
+        note(node.namedChildren.find((child) => child.type !== "comment") ?? null);
+        return;
+      case "interface_declaration":
+        if (name4) kinds.set(name4, "interface");
+        return;
+      case "abstract_class_declaration":
+        if (name4) kinds.set(name4, "abstract-class");
+        return;
+      case "class_declaration":
+        if (name4) kinds.set(name4, "class");
+        return;
+      case "enum_declaration":
+        if (name4) kinds.set(name4, "enum");
+        return;
+      case "type_alias_declaration":
+        if (name4) kinds.set(name4, "type");
+        return;
+      case "function_declaration":
+      case "generator_function_declaration":
+        if (name4) kinds.set(name4, "function");
+        return;
+      case "internal_module":
+      case "module":
+        if (name4) kinds.set(name4, "namespace");
+        return;
+      case "lexical_declaration":
+      case "variable_declaration": {
+        const names = [];
+        declaredNames(node, names);
+        for (const declared of names) kinds.set(declared, "variable");
+        return;
+      }
+      default:
+    }
+  };
+  for (const child of root.namedChildren) note(child);
+  return kinds;
+}
 function declaredNames(statement, out2) {
   switch (statement.type) {
     case "lexical_declaration":
@@ -1250,6 +1298,11 @@ var Extractor = class {
     this.root = root;
     const context = { unit: void 0, shadow: /* @__PURE__ */ new Set() };
     this.visitChildren(root, context);
+    const kinds = declarationKinds(root);
+    for (const exported of this.exports) {
+      const kind = kinds.get(exported.local ?? exported.exported);
+      if (kind !== void 0) exported.kind = kind;
+    }
     const locals = /* @__PURE__ */ new Set();
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
     return {
@@ -6298,6 +6351,7 @@ var GraphBuilder = class {
   consumers = /* @__PURE__ */ new Map();
   fileEdges = /* @__PURE__ */ new Map();
   unresolved = /* @__PURE__ */ new Map();
+  externals = /* @__PURE__ */ new Map();
   constructor(facts, resolver, isTest) {
     this.facts = facts;
     this.resolver = resolver;
@@ -6337,6 +6391,10 @@ var GraphBuilder = class {
       ),
       fileEdges: [...this.fileEdges.values()].sort((a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.to, b.to)),
       barrels,
+      exports: this.exportedNames(),
+      externalImports: [...this.externals.values()].sort(
+        (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.packageName, b.packageName) || Number(a.typeOnly) - Number(b.typeOnly)
+      ),
       unresolved: [...this.unresolved.values()].sort(
         (a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")
       ),
@@ -6365,9 +6423,54 @@ var GraphBuilder = class {
   addImportEdge(from, to, kind, typeOnly) {
     this.importEdges.set(`${from}\0${to}\0${kind}\0${typeOnly}`, { from, to, kind, typeOnly });
   }
+  addExternal(from, packageName, typeOnly) {
+    this.externals.set(`${from}\0${packageName}\0${typeOnly}`, { from, packageName, typeOnly });
+  }
+  /** Every name each file exports, followed to its definition. */
+  exportedNames() {
+    const names = [];
+    for (const [path] of this.facts) {
+      const seen = /* @__PURE__ */ new Set();
+      for (const name4 of this.namesExportedBy(path, /* @__PURE__ */ new Set())) {
+        if (seen.has(name4)) continue;
+        seen.add(name4);
+        const result = this.resolveExport(path, name4, /* @__PURE__ */ new Set());
+        if (result.status !== "defined") continue;
+        const kind = this.facts.get(result.file)?.exports.find((exported) => exported.exported === result.exportName)?.kind;
+        names.push({
+          file: path,
+          name: name4,
+          defined: {
+            file: result.file,
+            name: result.exportName,
+            ...result.symbol === void 0 ? {} : { symbol: result.symbol },
+            ...kind === void 0 ? {} : { kind }
+          }
+        });
+      }
+    }
+    return names.sort((a, b) => compareUtf8(a.file, b.file) || compareUtf8(a.name, b.name));
+  }
+  /** The names a file exports: its own, its named re-exports, and what its star re-exports pass along (never `default`). */
+  namesExportedBy(path, visiting) {
+    const file = this.facts.get(path);
+    if (!file || visiting.has(path)) return [];
+    visiting.add(path);
+    const names = file.exports.map((exported) => exported.exported);
+    for (const reexport of file.reexports) {
+      if (reexport.exported !== "*") {
+        names.push(reexport.exported);
+        continue;
+      }
+      const target = this.resolve(path, reexport.specifier);
+      if (target.kind === "file") names.push(...this.namesExportedBy(target.path, visiting).filter((name4) => name4 !== "default"));
+    }
+    return names;
+  }
   fileDependencies(path, file) {
     for (const reexport of file.reexports) {
       const target = this.resolve(path, reexport.specifier);
+      if (target.kind === "external") this.addExternal(path, target.packageName, reexport.typeOnly);
       if (target.kind === "file") this.addImportEdge(path, target.path, "reexport", reexport.typeOnly);
       else if (target.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
     }
@@ -6380,6 +6483,7 @@ var GraphBuilder = class {
       }
       if (imported.specifier === null) continue;
       const target = this.resolve(path, imported.specifier);
+      if (target.kind === "external") this.addExternal(path, target.packageName, imported.typeOnly);
       if (target.kind === "not-found") this.addUnresolved(path, imported.line, imported.specifier, "not-found");
       if (target.kind !== "file") continue;
       this.addImportEdge(path, target.path, imported.kind === "require" ? "require" : "import", imported.typeOnly);

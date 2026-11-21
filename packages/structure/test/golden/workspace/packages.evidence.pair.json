@@ -1,0 +1,284 @@
+{
+  "command": "packages",
+  "config": "da1dbc19049f2be5",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": true
+    },
+    "grade": "moderate",
+    "importedHistory": [],
+    "logicalChangesInWindow": 97,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 12.7,
+    "window": {
+      "months": 12,
+      "since": 1687251600,
+      "until": 1718874000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "subcommand": "evidence",
+    "target": "packages/ui->packages/api"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "d3939fbaccd21c7ccf9d72fb86bbfa9eaad7e7de"
+  },
+  "results": {
+    "coChange": {
+      "confidenceFromTo": 0.8,
+      "confidenceToFrom": 0.8,
+      "cost": 8.483607,
+      "fromChanges": 15,
+      "lift": 5.173,
+      "shared": 12,
+      "tail": 0,
+      "toChanges": 15
+    },
+    "commonConsumers": [],
+    "dependencies": {
+      "fromTo": null,
+      "toFrom": null
+    },
+    "findings": [
+      {
+        "changeCost": 8.484,
+        "evidence": {
+          "confidenceFromTo": 0.8,
+          "confidenceToFrom": 0.8,
+          "fromChanges": 15,
+          "lift": 5.173,
+          "shared": 12,
+          "tail": 0,
+          "toChanges": 15
+        },
+        "id": "always-together:packages/api->packages/ui",
+        "kind": "always-together",
+        "packages": [
+          "packages/api",
+          "packages/ui"
+        ],
+        "principle": "CCP",
+        "priority": "normal",
+        "summary": "packages/api and packages/ui changed together in 12 changes, 80% of those to packages/api and 80% of those to packages/ui: one unit of change split in two",
+        "tentative": false,
+        "unit": null
+      }
+    ],
+    "from": "packages/ui",
+    "kind": "pair",
+    "sharedChanges": [
+      {
+        "date": "2024-04-02T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "8bca343100d16f87897290e2a27cc871a8bcd67c",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2024-03-09T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "9e9c1bcda9d5b3afe1c4d921bb173b1d31e6252c",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2024-02-08T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "71a4c4e865ee1e68ceb01d94dceb8f0a7443a1c9",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2024-01-21T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "659c1ccc56a7dbc271057f8d605d06ee31943636",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2023-12-28T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "31d54b370a515455032dff23105ae9e47b7885da",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2023-12-13T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "e7fe23f0b336b8d72c4210be81819e5dc5578500",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2023-10-26T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "3dfc49de811fe259eaa42c102d7c727350de3ccb",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2023-10-08T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "a794f53e3d46186f8e5fe71fd46061d557f242da",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2023-09-17T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "b4b68f629fe8f014d4fbaee9d893f2ad9e3c98b3",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2023-08-30T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "1bf5cff5e62c9d8c7bc45ac98da070990f7417a5",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2023-07-28T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "a04cdd2d6f3267d4fc3009d6fc36da2a7b69680b",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      },
+      {
+        "date": "2023-07-07T09:00:00.000Z",
+        "files": [
+          "packages/api/src/work.ts",
+          "packages/ui/src/work.ts"
+        ],
+        "id": "725126884209538db7b0b5499a5202d44e99d19a",
+        "touched": [
+          "packages/api",
+          "packages/ui"
+        ]
+      }
+    ],
+    "sharedChangesTotal": 12,
+    "symbols": {
+      "fromTo": [],
+      "toFrom": []
+    },
+    "to": "packages/api"
+  },
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2023-06-20T09:00:00.000Z",
+    "until": "2024-06-20T09:00:00.000Z"
+  }
+}
