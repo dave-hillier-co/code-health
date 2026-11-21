@@ -1,0 +1,1096 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/dave-hillier-co/code-health/main/code-health.schema.json",
+  "title": "code-health.json",
+  "description": "Settings of the code-health plugins: keys every plugin shares, and one section per plugin.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "The JSON Schema of this file, for editors."
+    },
+    "exclude": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Globs of files no plugin analyses."
+    },
+    "languages": {
+      "type": "object",
+      "description": "File types the suite has no lexer profile for: file extension (no dot) to the name of a lexer profile. Per-function values of a mapped type are marked unverified.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "entryPoints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Globs of files that are entry points: code nothing in the repository imports and nothing may move."
+    },
+    "components": {
+      "type": "object",
+      "description": "Named groups of paths: component name to globs."
+    },
+    "vagueNames": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Folder and file names that say nothing about their content."
+    },
+    "cochange": {
+      "type": "object",
+      "properties": {
+        "branch": {
+          "default": null
+        },
+        "firstParent": {
+          "type": "boolean",
+          "default": false
+        },
+        "renameSimilarity": {
+          "type": "number",
+          "default": 50
+        },
+        "renameLimit": {
+          "type": "number",
+          "default": 1000
+        },
+        "windowMonths": {
+          "type": "number",
+          "default": 12
+        },
+        "recentMonths": {
+          "type": "number",
+          "default": 3
+        },
+        "staleMonths": {
+          "type": "number",
+          "default": 12
+        },
+        "hotspotPercentile": {
+          "type": "number",
+          "default": 90
+        },
+        "grouping": {
+          "type": "string",
+          "default": "off"
+        },
+        "issuePattern": {
+          "type": "string",
+          "default": "[A-Z][A-Z0-9]+-\\d+"
+        },
+        "groupingWindowHours": {
+          "type": "number",
+          "default": 4
+        },
+        "maxChangesetSize": {
+          "type": "number",
+          "default": 30
+        },
+        "minSupport": {
+          "type": "number",
+          "default": 5
+        },
+        "minDegree": {
+          "type": "number",
+          "default": 30
+        },
+        "minDistance": {
+          "type": "number",
+          "default": 2
+        },
+        "hook": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "confidence": {
+              "type": "number",
+              "default": 80
+            },
+            "maxCommitsBehind": {
+              "type": "number",
+              "default": 50
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "enabled": false,
+            "confidence": 80,
+            "maxCommitsBehind": 50
+          }
+        },
+        "risk": {
+          "type": "object",
+          "properties": {
+            "mainBranch": {
+              "default": null
+            },
+            "moderatePercentile": {
+              "type": "number",
+              "default": 75
+            },
+            "highPercentile": {
+              "type": "number",
+              "default": 90
+            },
+            "baselineChanges": {
+              "type": "number",
+              "default": 200
+            },
+            "minBaseline": {
+              "type": "number",
+              "default": 10
+            },
+            "countModerate": {
+              "type": "number",
+              "default": 1
+            },
+            "countHigh": {
+              "type": "number",
+              "default": 3
+            },
+            "missingConfidence": {
+              "type": "number",
+              "default": 80
+            },
+            "novelDistance": {
+              "type": "number",
+              "default": 4
+            },
+            "settlingDays": {
+              "type": "number",
+              "default": 7
+            },
+            "testShare": {
+              "type": "number",
+              "default": 50
+            },
+            "complexityRise": {
+              "type": "number",
+              "default": 10
+            },
+            "ownerShare": {
+              "type": "number",
+              "default": 50
+            },
+            "regularShare": {
+              "type": "number",
+              "default": 10
+            },
+            "regularChanges": {
+              "type": "number",
+              "default": 3
+            },
+            "recentChangesToFile": {
+              "type": "number",
+              "default": 3
+            },
+            "recencyHalfLifeMonths": {
+              "type": "number",
+              "default": 12
+            },
+            "newIdentityDays": {
+              "type": "number",
+              "default": 90
+            },
+            "newIdentityChanges": {
+              "type": "number",
+              "default": 10
+            },
+            "sensitivePaths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "**/migrations/**",
+                "**/auth/**",
+                "**/authentication/**",
+                ".github/workflows/**",
+                "Dockerfile",
+                "**/Dockerfile",
+                "package.json",
+                "**/package.json",
+                "*.csproj",
+                "**/*.csproj",
+                "go.mod",
+                "Cargo.toml",
+                "pom.xml",
+                "build.gradle",
+                "pyproject.toml",
+                "requirements.txt"
+              ]
+            },
+            "fixPatterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "^fix(es|ed)?\\b",
+                "^bugfix",
+                "^hotfix",
+                "\\bfix(es|ed)?\\b.*#\\d+",
+                "^merge .*\\b(fix|hotfix|bugfix)[/-]"
+              ]
+            },
+            "revertPatterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "^revert\\b"
+              ]
+            },
+            "followUpDays": {
+              "type": "number",
+              "default": 30
+            },
+            "placement": {
+              "type": "string",
+              "default": "self"
+            },
+            "disable": {
+              "type": "array",
+              "default": []
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "mainBranch": null,
+            "moderatePercentile": 75,
+            "highPercentile": 90,
+            "baselineChanges": 200,
+            "minBaseline": 10,
+            "countModerate": 1,
+            "countHigh": 3,
+            "missingConfidence": 80,
+            "novelDistance": 4,
+            "settlingDays": 7,
+            "testShare": 50,
+            "complexityRise": 10,
+            "ownerShare": 50,
+            "regularShare": 10,
+            "regularChanges": 3,
+            "recentChangesToFile": 3,
+            "recencyHalfLifeMonths": 12,
+            "newIdentityDays": 90,
+            "newIdentityChanges": 10,
+            "sensitivePaths": [
+              "**/migrations/**",
+              "**/auth/**",
+              "**/authentication/**",
+              ".github/workflows/**",
+              "Dockerfile",
+              "**/Dockerfile",
+              "package.json",
+              "**/package.json",
+              "*.csproj",
+              "**/*.csproj",
+              "go.mod",
+              "Cargo.toml",
+              "pom.xml",
+              "build.gradle",
+              "pyproject.toml",
+              "requirements.txt"
+            ],
+            "fixPatterns": [
+              "^fix(es|ed)?\\b",
+              "^bugfix",
+              "^hotfix",
+              "\\bfix(es|ed)?\\b.*#\\d+",
+              "^merge .*\\b(fix|hotfix|bugfix)[/-]"
+            ],
+            "revertPatterns": [
+              "^revert\\b"
+            ],
+            "followUpDays": 30,
+            "placement": "self",
+            "disable": []
+          }
+        },
+        "identities": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "default": null
+            },
+            "botPatterns": {
+              "type": "array",
+              "default": []
+            },
+            "servicePatterns": {
+              "type": "array",
+              "default": []
+            },
+            "agentTrailerPatterns": {
+              "type": "array",
+              "default": []
+            },
+            "unmappedShareThreshold": {
+              "type": "number",
+              "default": 5
+            },
+            "significantCommits": {
+              "type": "number",
+              "default": 3
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "location": null,
+            "botPatterns": [],
+            "servicePatterns": [],
+            "agentTrailerPatterns": [],
+            "unmappedShareThreshold": 5,
+            "significantCommits": 3
+          }
+        },
+        "knowledge": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "activityWindowMonths": {
+              "type": "number",
+              "default": 6
+            },
+            "periodMonths": {
+              "type": "number",
+              "default": 3
+            },
+            "horizonPeriods": {
+              "type": "number",
+              "default": 4
+            },
+            "abandonmentThreshold": {
+              "type": "number",
+              "default": 90
+            },
+            "turnoverRate": {
+              "default": null
+            },
+            "trials": {
+              "type": "number",
+              "default": 10000
+            },
+            "alphas": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "default": [
+                95,
+                99
+              ]
+            },
+            "seed": {
+              "type": "number",
+              "default": 1
+            },
+            "rank": {
+              "type": "string",
+              "default": "hotspot"
+            },
+            "copyDetection": {
+              "type": "boolean",
+              "default": true
+            },
+            "atRiskProbability": {
+              "type": "number",
+              "default": 10
+            },
+            "concentratedTailRatio": {
+              "type": "number",
+              "default": 3
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "enabled": false,
+            "activityWindowMonths": 6,
+            "periodMonths": 3,
+            "horizonPeriods": 4,
+            "abandonmentThreshold": 90,
+            "turnoverRate": null,
+            "trials": 10000,
+            "alphas": [
+              95,
+              99
+            ],
+            "seed": 1,
+            "rank": "hotspot",
+            "copyDetection": true,
+            "atRiskProbability": 10,
+            "concentratedTailRatio": 3
+          }
+        },
+        "evidence": {
+          "type": "object",
+          "properties": {
+            "strong": {
+              "type": "object",
+              "properties": {
+                "months": {
+                  "type": "number",
+                  "default": 24
+                },
+                "logicalChanges": {
+                  "type": "number",
+                  "default": 300
+                },
+                "contributors": {
+                  "type": "number",
+                  "default": 5
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "months": 24,
+                "logicalChanges": 300,
+                "contributors": 5
+              }
+            },
+            "moderate": {
+              "type": "object",
+              "properties": {
+                "months": {
+                  "type": "number",
+                  "default": 6
+                },
+                "logicalChanges": {
+                  "type": "number",
+                  "default": 50
+                },
+                "contributors": {
+                  "type": "number",
+                  "default": 2
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "months": 6,
+                "logicalChanges": 50,
+                "contributors": 2
+              }
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "strong": {
+              "months": 24,
+              "logicalChanges": 300,
+              "contributors": 5
+            },
+            "moderate": {
+              "months": 6,
+              "logicalChanges": 50,
+              "contributors": 2
+            }
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Settings of the cochange plugin."
+    },
+    "complexity": {
+      "type": "object",
+      "properties": {
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "cognitive",
+            "cyclomatic",
+            "nesting",
+            "parameters",
+            "length",
+            "keyword",
+            "bumps"
+          ]
+        },
+        "thresholds": {
+          "type": "object",
+          "properties": {
+            "cyclomatic": {
+              "type": "object",
+              "properties": {
+                "warn": {
+                  "type": "number",
+                  "default": 10
+                },
+                "high": {
+                  "type": "number",
+                  "default": 20
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "warn": 10,
+                "high": 20
+              }
+            },
+            "cognitive": {
+              "type": "object",
+              "properties": {
+                "warn": {
+                  "type": "number",
+                  "default": 15
+                },
+                "high": {
+                  "type": "number",
+                  "default": 25
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "warn": 15,
+                "high": 25
+              }
+            },
+            "nesting": {
+              "type": "number",
+              "default": 4
+            },
+            "parameters": {
+              "type": "number",
+              "default": 5
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "cyclomatic": {
+              "warn": 10,
+              "high": 20
+            },
+            "cognitive": {
+              "warn": 15,
+              "high": 25
+            },
+            "nesting": 4,
+            "parameters": 5
+          }
+        },
+        "cyclomaticSwitch": {
+          "type": "string",
+          "default": "case"
+        },
+        "base": {
+          "default": null
+        },
+        "mainBranch": {
+          "default": null
+        },
+        "delta": {
+          "type": "number",
+          "default": 0
+        },
+        "agreementBar": {
+          "type": "number",
+          "default": 0.9
+        },
+        "moveSimilarity": {
+          "type": "number",
+          "default": 0.8
+        },
+        "analyseTests": {
+          "type": "boolean",
+          "default": true
+        },
+        "changeWeighting": {
+          "type": "boolean",
+          "default": true
+        },
+        "windowMonths": {
+          "type": "number",
+          "default": 12
+        },
+        "overrides": {
+          "type": "array",
+          "default": []
+        },
+        "hook": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "enabled": false
+          }
+        },
+        "interfaceDepth": {
+          "type": "object",
+          "properties": {
+            "shallow": {
+              "type": "number",
+              "default": 10
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "shallow": 10
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Settings of the complexity plugin."
+    },
+    "locality": {
+      "type": "object",
+      "properties": {
+        "minDistance": {
+          "type": "number",
+          "default": 2
+        },
+        "tinyLines": {
+          "type": "number",
+          "default": 15
+        },
+        "largeLines": {
+          "type": "number",
+          "default": 150
+        },
+        "inlineHostLines": {
+          "type": "number",
+          "default": 300
+        },
+        "highFanIn": {
+          "type": "number",
+          "default": 8
+        },
+        "maxDepth": {
+          "type": "number",
+          "default": 6
+        },
+        "useHistory": {
+          "type": "boolean",
+          "default": true
+        },
+        "graceDays": {
+          "type": "number",
+          "default": 90
+        },
+        "windowMonths": {
+          "type": "number",
+          "default": 12
+        },
+        "lowCoChange": {
+          "type": "number",
+          "default": 10
+        },
+        "highCoChange": {
+          "type": "number",
+          "default": 40
+        },
+        "minCoChangeChanges": {
+          "type": "number",
+          "default": 6
+        },
+        "historyMinSupport": {
+          "type": "number",
+          "default": 4
+        },
+        "historyMinConfidence": {
+          "type": "number",
+          "default": 30
+        },
+        "measureMinSamples": {
+          "type": "number",
+          "default": 10
+        },
+        "measureNoisePercent": {
+          "type": "number",
+          "default": 10
+        },
+        "fixedPoints": {
+          "type": "array",
+          "default": []
+        }
+      },
+      "additionalProperties": false,
+      "description": "Settings of the locality plugin."
+    },
+    "structure": {
+      "type": "object",
+      "properties": {
+        "branch": {
+          "default": null
+        },
+        "firstParent": {
+          "type": "boolean",
+          "default": false
+        },
+        "renameSimilarity": {
+          "type": "number",
+          "default": 50
+        },
+        "renameLimit": {
+          "type": "number",
+          "default": 1000
+        },
+        "windowMonths": {
+          "type": "number",
+          "default": 12
+        },
+        "maxChangesetSize": {
+          "type": "number",
+          "default": 30
+        },
+        "botPatterns": {
+          "type": "array",
+          "default": []
+        },
+        "exactLimit": {
+          "type": "number",
+          "default": 16
+        },
+        "minRevisions": {
+          "type": "number",
+          "default": 3
+        },
+        "minVolatilityRatio": {
+          "type": "number",
+          "default": 2
+        },
+        "minInstabilityGap": {
+          "type": "number",
+          "default": 20
+        },
+        "census": {
+          "type": "object",
+          "properties": {
+            "folderNames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "ports",
+                "adapters",
+                "infrastructure"
+              ]
+            },
+            "eventCalls": {
+              "type": "array",
+              "default": []
+            },
+            "handlerCalls": {
+              "type": "array",
+              "default": []
+            },
+            "registerCalls": {
+              "type": "array",
+              "default": []
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "folderNames": [
+              "ports",
+              "adapters",
+              "infrastructure"
+            ],
+            "eventCalls": [],
+            "handlerCalls": [],
+            "registerCalls": []
+          }
+        },
+        "minStaticCoupling": {
+          "type": "number",
+          "default": 3
+        },
+        "minSupport": {
+          "type": "number",
+          "default": 3
+        },
+        "significanceLevel": {
+          "type": "number",
+          "default": 0.01
+        },
+        "hubMinFeatures": {
+          "type": "number",
+          "default": 3
+        },
+        "hubMinConfidence": {
+          "type": "number",
+          "default": 50
+        },
+        "hubMaxFeatureCoupling": {
+          "type": "number",
+          "default": 20
+        },
+        "hubMinOutward": {
+          "type": "number",
+          "default": 50
+        },
+        "hubMinAppendShare": {
+          "type": "number",
+          "default": 60
+        },
+        "hubContentionDays": {
+          "type": "number",
+          "default": 14
+        },
+        "hubMinAuthors": {
+          "type": "number",
+          "default": 3
+        },
+        "layers": {
+          "type": "array",
+          "default": []
+        },
+        "mainBranch": {
+          "type": "string",
+          "default": "main"
+        },
+        "base": {
+          "default": null
+        },
+        "evidence": {
+          "type": "object",
+          "properties": {
+            "strong": {
+              "type": "object",
+              "properties": {
+                "months": {
+                  "type": "number",
+                  "default": 24
+                },
+                "logicalChanges": {
+                  "type": "number",
+                  "default": 300
+                },
+                "contributors": {
+                  "type": "number",
+                  "default": 5
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "months": 24,
+                "logicalChanges": 300,
+                "contributors": 5
+              }
+            },
+            "moderate": {
+              "type": "object",
+              "properties": {
+                "months": {
+                  "type": "number",
+                  "default": 6
+                },
+                "logicalChanges": {
+                  "type": "number",
+                  "default": 50
+                },
+                "contributors": {
+                  "type": "number",
+                  "default": 2
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "months": 6,
+                "logicalChanges": 50,
+                "contributors": 2
+              }
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "strong": {
+              "months": 24,
+              "logicalChanges": 300,
+              "contributors": 5
+            },
+            "moderate": {
+              "months": 6,
+              "logicalChanges": 50,
+              "contributors": 2
+            }
+          }
+        },
+        "packages": {
+          "type": "object",
+          "properties": {
+            "ignore": {
+              "type": "array",
+              "default": []
+            },
+            "extra": {
+              "type": "array",
+              "default": []
+            },
+            "byPackage": {
+              "type": "object",
+              "default": {}
+            },
+            "closureBand": {
+              "type": "number",
+              "default": 2
+            },
+            "minComparable": {
+              "type": "number",
+              "default": 5
+            },
+            "significance": {
+              "type": "number",
+              "default": 0.01
+            },
+            "minSupport": {
+              "type": "number",
+              "default": 3
+            },
+            "minConfidence": {
+              "type": "number",
+              "default": 0.6
+            },
+            "minLift": {
+              "type": "number",
+              "default": 2
+            },
+            "followerReverseConfidence": {
+              "type": "number",
+              "default": 0.2
+            },
+            "wideChangePackages": {
+              "type": "number",
+              "default": 3
+            },
+            "wideChangeShare": {
+              "type": "number",
+              "default": 0.25
+            },
+            "crossingUnitShare": {
+              "type": "number",
+              "default": 0.5
+            },
+            "crossingUnitMargin": {
+              "type": "number",
+              "default": 0.25
+            },
+            "partialUseShare": {
+              "type": "number",
+              "default": 0.25
+            },
+            "partialUseMinSurface": {
+              "type": "number",
+              "default": 3
+            },
+            "overexposedShare": {
+              "type": "number",
+              "default": 0.5
+            },
+            "inheritedWeightPackages": {
+              "type": "number",
+              "default": 3
+            },
+            "passThroughShare": {
+              "type": "number",
+              "default": 0.5
+            },
+            "disjointOverlap": {
+              "type": "number",
+              "default": 0.2
+            },
+            "dumpingNames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "shared",
+                "common",
+                "core",
+                "utils"
+              ]
+            },
+            "dumpingMinConsumers": {
+              "type": "number",
+              "default": 3
+            },
+            "dumpingMinComponents": {
+              "type": "number",
+              "default": 3
+            },
+            "dumpingMinContributors": {
+              "type": "number",
+              "default": 3
+            },
+            "tinyPercentile": {
+              "type": "number",
+              "default": 10
+            },
+            "graceDays": {
+              "type": "number",
+              "default": 180
+            },
+            "volatileInterfaceShare": {
+              "type": "number",
+              "default": 0.3
+            },
+            "zoneDistance": {
+              "type": "number",
+              "default": 0.5
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "ignore": [],
+            "extra": [],
+            "byPackage": {},
+            "closureBand": 2,
+            "minComparable": 5,
+            "significance": 0.01,
+            "minSupport": 3,
+            "minConfidence": 0.6,
+            "minLift": 2,
+            "followerReverseConfidence": 0.2,
+            "wideChangePackages": 3,
+            "wideChangeShare": 0.25,
+            "crossingUnitShare": 0.5,
+            "crossingUnitMargin": 0.25,
+            "partialUseShare": 0.25,
+            "partialUseMinSurface": 3,
+            "overexposedShare": 0.5,
+            "inheritedWeightPackages": 3,
+            "passThroughShare": 0.5,
+            "disjointOverlap": 0.2,
+            "dumpingNames": [
+              "shared",
+              "common",
+              "core",
+              "utils"
+            ],
+            "dumpingMinConsumers": 3,
+            "dumpingMinComponents": 3,
+            "dumpingMinContributors": 3,
+            "tinyPercentile": 10,
+            "graceDays": 180,
+            "volatileInterfaceShare": 0.3,
+            "zoneDistance": 0.5
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Settings of the structure plugin."
+    }
+  },
+  "additionalProperties": false
+}

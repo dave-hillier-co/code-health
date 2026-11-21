@@ -68,6 +68,9 @@ jobs:
       - name: Golden outputs match their JSON Schemas
         run: npm run check:schemas
 
+      - name: The committed code-health.json schema matches the plugins' config sections
+        run: npm run check:config-schema
+
       - name: Install the claude CLI
         # Required: the validation step fails in CI when the CLI is missing.
         # Installed into the job's temp directory, not globally, so the
