@@ -25,6 +25,7 @@ const facts: FileFacts = {
   reexports: [],
   exports: [],
   references: [],
+  nodes: 0,
   hasSyntaxErrors: false,
 };
 const blob = "ce013625030ba8dba906f756967f9e9ca394464a";

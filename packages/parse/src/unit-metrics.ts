@@ -345,7 +345,7 @@ function enclosingClassName(fn: Node): string | undefined {
   return undefined;
 }
 
-function parameterCounts(fn: Node): { parameters: number; optionCount: number } {
+export function parameterCounts(fn: Node): { parameters: number; optionCount: number } {
   let parameters = 0;
   let optionCount = 0;
   const single = fn.childForFieldName("parameter");

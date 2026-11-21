@@ -1,4 +1,5 @@
 import type { Node } from "web-tree-sitter";
+import { classShape, functionShape, nodeCount, passThroughOf } from "./interface-shape.ts";
 import { codeRowsOf, measureFunction } from "./unit-metrics.ts";
 import type {
   BindingFact,
@@ -15,7 +16,7 @@ import type {
  * Bump when the extraction rules change in a way that alters facts for the
  * same source, so cached facts from older rules are not reused.
  */
-export const extractorVersion = 4;
+export const extractorVersion = 5;
 
 interface Context {
   /** Qualified name of the innermost enclosing unit; names of nested units are built from it. */
@@ -154,6 +155,7 @@ class Extractor {
       reexports: this.reexports,
       exports: this.exports,
       references: this.references.filter((reference) => locals.has(reference.local)),
+      nodes: nodeCount(root, (node) => node.type === "import_statement") - 1,
       hasSyntaxErrors: root.hasError,
     };
   }
@@ -368,6 +370,7 @@ class Extractor {
       source: "structural",
     };
     if (context.unit !== undefined) unit.parent = context.unit;
+    if (kind === "class") unit.shape = classShape(node);
     if (fn !== undefined && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root!);
       const measured = measureFunction(fn, {
@@ -378,6 +381,11 @@ class Extractor {
         explain: this.explain,
       });
       unit.metrics = measured.metrics;
+      unit.shape = functionShape(fn, measured.metrics.parameters);
+      const names: string[] = [];
+      parameterNames(fn.childForFieldName("parameters") ?? fn.childForFieldName("parameter"), names);
+      const forwarded = passThroughOf(fn, new Set(names));
+      if (forwarded !== undefined) unit.passThrough = forwarded;
       if (measured.increments !== undefined) unit.increments = measured.increments;
     }
     this.units.push(unit);

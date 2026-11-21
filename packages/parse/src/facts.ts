@@ -48,6 +48,10 @@ export interface UnitFact extends UnitShape {
   metrics?: UnitMetrics;
   /** Only when the facts were extracted to explain a unit, never cached. */
   increments?: Increment[];
+  /** Implementation size in syntax nodes and interface size, for the interface depth signal. */
+  shape?: { nodes: number; interfaceSize: number };
+  /** The call the function's whole body forwards to, as written, when it does nothing else. */
+  passThrough?: string;
 }
 
 export interface BindingFact {
@@ -101,6 +105,8 @@ export interface FileFacts {
   reexports: ReexportFact[];
   exports: ExportFact[];
   references: ReferenceFact[];
+  /** Named syntax nodes of the whole file, import statements and comments left out. */
+  nodes: number;
   /** True when the grammar reported syntax errors, so facts may be incomplete. */
   hasSyntaxErrors: boolean;
 }
