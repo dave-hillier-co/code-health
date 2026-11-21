@@ -1,5 +1,5 @@
 import type { Command, Rule } from "@code-health/cli-kit/run-cli";
-import * as parse from "./commands/parse.ts";
+import * as cycles from "./commands/cycles.ts";
 
 /** What a module in `commands/` exports. */
 export interface CommandModule {
@@ -16,7 +16,7 @@ export interface CommandModule {
  * and add it to this list, one line each, in alphabetical order.
  */
 export const commandModules: CommandModule[] = [
-  parse,
+  cycles,
 ];
 
 export const commands: Record<string, Command> = Object.fromEntries(commandModules.map((m) => [m.name, m.command]));

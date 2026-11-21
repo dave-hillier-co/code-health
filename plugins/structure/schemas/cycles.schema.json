@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cycles.schema.json",
+  "title": "structure cycles --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/analysisEnvelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "cycles"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "enum": [
+            "file",
+            "folder",
+            "package"
+          ]
+        },
+        "exactLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "locality": {
+          "$ref": "common.schema.json#/$defs/localityInput"
+        }
+      },
+      "required": [
+        "level",
+        "exactLimit",
+        "locality"
+      ],
+      "additionalProperties": false
+    },
+    "population": {
+      "type": "object",
+      "properties": {
+        "modules": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "eligibleChanges": {
+          "$ref": "common.schema.json#/$defs/count"
+        }
+      },
+      "required": [
+        "modules",
+        "eligibleChanges"
+      ],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^cycle:(file|folder|package):.+"
+          },
+          "level": {
+            "enum": [
+              "file",
+              "folder",
+              "package"
+            ]
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "method": {
+            "enum": [
+              "exact",
+              "heuristic"
+            ],
+            "description": "`exact` is a minimum feedback arc set. `heuristic` is Eades-Lin-Smyth, pruned to a minimal set."
+          },
+          "breakingSet": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/breakingEdge"
+            },
+            "minItems": 1
+          },
+          "coChangeAcross": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "unblockedGain": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Null without a matching locality report."
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "size",
+          "nodes",
+          "method",
+          "breakingSet",
+          "coChangeAcross",
+          "unblockedGain"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

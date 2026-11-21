@@ -1,0 +1,120 @@
+{
+  "command": "cycles",
+  "config": "d4c2f7445b2b2f00",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 8,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 4.3,
+    "window": {
+      "months": 12,
+      "since": 1684573200,
+      "until": 1716195600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "exactLimit": 16,
+    "level": "package",
+    "locality": null
+  },
+  "population": {
+    "eligibleChanges": 8,
+    "modules": 3
+  },
+  "repo": {
+    "dirty": false,
+    "head": "a2e133c801e505ea35ecf47afa6692f2c18f2b92"
+  },
+  "results": [
+    {
+      "breakingSet": [
+        {
+          "coChange": 1,
+          "fileEdges": 1,
+          "from": "packages/p1",
+          "importStatements": 1,
+          "symbols": [
+            {
+              "kind": "call",
+              "sites": 1,
+              "symbol": "packages/p2/src/y.ts#py"
+            }
+          ],
+          "symbolsTotal": 1,
+          "to": "packages/p2",
+          "typeOnly": false,
+          "unblocks": []
+        }
+      ],
+      "coChangeAcross": 1,
+      "id": "cycle:package:packages/p1",
+      "level": "package",
+      "method": "exact",
+      "nodes": [
+        "packages/p1",
+        "packages/p2"
+      ],
+      "size": 2,
+      "unblockedGain": null
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "window": {
+    "since": "2023-05-20T09:00:00.000Z",
+    "until": "2024-05-20T09:00:00.000Z"
+  }
+}
