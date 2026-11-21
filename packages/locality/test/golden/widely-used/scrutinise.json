@@ -1,6 +1,6 @@
 {
   "command": "scrutinise",
-  "config": "6518cbda11730a42",
+  "config": "4e3a7f6e53ae570b",
   "inputs": {
     "highFanIn": 6,
     "paths": []
