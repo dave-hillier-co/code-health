@@ -1,5 +1,6 @@
-import { execFile } from "node:child_process";
-import { dirname, join, resolve } from "node:path";
+import { execFile, execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { dirname, join, matchesGlob, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -31,13 +32,32 @@ function run(bundle, command, cwd) {
 }
 
 /**
+ * The tracked TypeScript and script files under `packages/` and `scripts/` that the repository's
+ * `exclude` globs hide from the analysis. Fixtures, goldens and bundles may be excluded; the
+ * suite's own source and tests must not be, or a widened glob would drop them from the gate.
+ */
+export function excludedSource({ root }) {
+  let globs;
+  try {
+    globs = JSON.parse(readFileSync(join(root, "code-health.json"), "utf8")).exclude ?? [];
+  } catch {
+    return [];
+  }
+  const tracked = execFileSync("git", ["ls-files", "-z", "--", "packages", "scripts"], { cwd: root, maxBuffer: 64 * 1024 * 1024 })
+    .toString()
+    .split("\0")
+    .filter((path) => /\.(ts|tsx|mjs)$/.test(path));
+  return tracked.filter((path) => globs.some((glob) => matchesGlob(path, glob)));
+}
+
+/**
  * Runs the bundled CLIs on `root` and says what is wrong: a command that exits non-zero, a source
  * file the parser reports syntax errors in, or an import cycle. Excluded paths never reach the
  * results, because the CLIs apply the repository's own `code-health.json`.
  */
 export async function checkSelf({ root, plugins = join(here, "..", "plugins") }) {
   const commands = [];
-  const failures = [];
+  const failures = excludedSource({ root }).map((path) => `excluded source ${path}`);
   for (const { plugin, command } of selfCommands) {
     const label = `${plugin} ${command}`;
     const { exitCode, stdout, stderr } = await run(join(plugins, plugin, "dist", `${plugin}.mjs`), command, root);

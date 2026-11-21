@@ -2,7 +2,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
-import { checkSelf } from "../check-self.mjs";
+import { checkSelf, excludedSource } from "../check-self.mjs";
 
 const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -76,6 +76,26 @@ describe("check:self", () => {
     expect(report.failures).toContain("syntax errors in src/broken.ts (complexity analyse)");
     expect(report.failures).toContain("syntax errors in src/broken.ts (locality analyse)");
   }, 120_000);
+
+  it("fails when an exclude glob hides source under packages or scripts", async () => {
+    const report = await check(
+      repoWith({
+        ...clean,
+        "code-health.json": JSON.stringify({ exclude: ["**/test/**", "scripts/**"] }),
+        "packages/x/test/a.test.ts": "export const t = 1;\n",
+        "scripts/tool.mjs": "export const s = 1;\n",
+        "packages/x/src/kept.ts": "export const k = 1;\n",
+      }),
+    );
+    expect(report.failures).toEqual([
+      "excluded source packages/x/test/a.test.ts",
+      "excluded source scripts/tool.mjs",
+    ]);
+  }, 120_000);
+
+  it("passes this repository's own exclusions", () => {
+    expect(excludedSource({ root: repositoryRoot })).toEqual([]);
+  });
 
   it("fails when a command exits non-zero", async () => {
     const report = await check(repoWith({ ...clean, "code-health.json": "{ not json" }));
