@@ -120,12 +120,12 @@ function normalise(value) {
 var CONFIG_FILE = "code-health.json";
 var sharedDefaults = {
   exclude: [],
-  languages: [],
+  languages: {},
   entryPoints: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"]
 };
-var stringLists = ["exclude", "languages", "entryPoints", "vagueNames"];
+var stringLists = ["exclude", "entryPoints", "vagueNames"];
 function loadConfig(root, spec) {
   const file = join(root, CONFIG_FILE);
   const document = existsSync(file) ? parseDocument(file) : void 0;
@@ -135,6 +135,7 @@ function loadConfig(root, spec) {
       throw configError(`${CONFIG_FILE}: ${key} must be an array of strings`);
     }
   }
+  if (document !== void 0 && document.languages !== void 0) document.languages = readLanguages(document.languages);
   const defaults = { ...sharedDefaults, [spec.plugin]: spec.section };
   const rows = /* @__PURE__ */ new Map();
   const effective = {};
@@ -145,6 +146,18 @@ function loadConfig(root, spec) {
   for (const row of rows.values()) sources[row.path] = row.source;
   const hash2 = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash: hash2, sources };
+}
+function readLanguages(value) {
+  if (!isPlainObject(value)) throw configError(`${CONFIG_FILE}: languages must be an object mapping file extensions to lexer profile names`);
+  const mapped = {};
+  for (const [extension, profile] of Object.entries(value)) {
+    if (extension === "" || extension.startsWith(".")) {
+      throw configError(`${CONFIG_FILE}: languages.${extension} must name an extension without its dot, such as "zig"`);
+    }
+    if (typeof profile !== "string" || profile === "") throw configError(`${CONFIG_FILE}: languages.${extension} must be a lexer profile name`);
+    mapped[extension.toLowerCase()] = profile;
+  }
+  return mapped;
 }
 function explainConfig(config) {
   const rows = [];
@@ -2010,6 +2023,320 @@ function pathSelector(selected) {
   return (path) => selected.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
+// packages/lexical/src/profile.ts
+var doubleQuote = {
+  kind: "delimited",
+  triggers: '"',
+  open: '"',
+  close: '"',
+  escape: "\\",
+  multiline: false
+};
+var singleQuote = {
+  kind: "delimited",
+  triggers: "'",
+  open: "'",
+  close: "'",
+  escape: "\\",
+  multiline: false
+};
+var charLiteral = {
+  kind: "whole",
+  triggers: "'",
+  pattern: "'(?:\\\\[^'\\n]*|[^\\\\'\\n])'"
+};
+var cBranchKeywords = ["if", "for", "while", "case", "catch"];
+var cBumpOpeners = [...cBranchKeywords, "else", "do", "default", "switch", "try", "finally"];
+var controlHeader = "^(?:else\\s+if|else|if|for|foreach|while|do|switch|catch|try|finally|with|using|lock|synchronized|unsafe|checked|fixed|match|loop|unless)\\b";
+var typeHeader = "\\b(?:class|struct|interface|enum|namespace|trait|object|record|union)\\s+(?<name>[\\w.:$]+)";
+var cTypeHeaders = [typeHeader];
+var annotationNoise = ["^\\[.*\\]$", "^@\\w[\\w.]*(?:\\(.*\\))?$", "^#.*$"];
+var cMethodHeader = "(?<![\\w.])(?<name>~?[\\w:.$<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:(?:const|noexcept|override|final|volatile|mutable|throws\\s+[\\w.,\\s]+|where\\s+[^{;]+|&&|&)\\s*)*(?:->\\s*[^{;]+)?(?::\\s*[^{;]*)?$";
+var regexLiteral = {
+  kind: "whole",
+  triggers: "/",
+  pattern: "/(?![*/])(?:\\\\.|\\[(?:\\\\.|[^\\]\\\\\\n])*\\]|[^/\\\\\\[\\n])+/[a-z]*",
+  after: "(?:[(,=:\\[!&|?{};<>~^%]|\\b(?:return|typeof|case|in|of|delete|void|throw|new|else|do|yield|await))\\s*$"
+};
+var typescript = {
+  name: "typescript",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    doubleQuote,
+    singleQuote,
+    {
+      kind: "delimited",
+      triggers: "`",
+      open: "`",
+      close: "`",
+      escape: "\\",
+      multiline: true,
+      interpolation: { open: "${", close: "}" }
+    },
+    regexLiteral
+  ],
+  branchKeywords: cBranchKeywords,
+  shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],
+  bumpOpeners: cBumpOpeners,
+  headerNoise: ["^@\\w[\\w.]*(?:\\(.*\\))?$"],
+  controlHeader,
+  typeHeaders: cTypeHeaders,
+  functionHeaders: [
+    "\\bfunction\\b\\s*\\*?\\s*(?<name>[\\w$]+)?\\s*(?:<[^>]*>)?\\s*\\([^]*\\)(?:[^;{}=]|=>)*$",
+    "^(?:export\\s+(?:default\\s+)?)?(?:(?:const|let|var)\\s+(?<name>[\\w$]+)\\s*(?::[^=]+)?=\\s*)?[^]*=>\\s*(?::[^{;]+)?$",
+    "^(?:(?:public|private|protected|static|async|readonly|get|set|override|abstract|declare)\\s+)*\\*?\\s*(?<name>[#\\w$]+|\\[[^\\]]+\\])\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?::\\s*[^{;]+)?$"
+  ],
+  expressionArrows: true
+};
+var csharp = {
+  name: "csharp",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    // Raw string literals first, they start with three or more quotes.
+    {
+      kind: "delimited",
+      triggers: '$"',
+      open: '\\$*("{3,})',
+      close: "$1",
+      multiline: true
+    },
+    {
+      kind: "delimited",
+      triggers: '@$"',
+      open: '(?:@\\$?|\\$@)"',
+      close: '"',
+      doubledCloseEscapes: true,
+      multiline: true
+    },
+    { ...doubleQuote, triggers: '$"', open: '\\$?"' },
+    charLiteral
+  ],
+  branchKeywords: [...cBranchKeywords, "foreach"],
+  shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],
+  bumpOpeners: [...cBumpOpeners, "foreach"],
+  headerNoise: annotationNoise,
+  controlHeader,
+  // `object` and `record` are not declarations here: `object o` is a parameter.
+  typeHeaders: ["(?:^|\\s)(?:class|struct|interface|enum|namespace|record(?:\\s+(?:class|struct))?)\\s+(?<name>[\\w.]+)"],
+  functionHeaders: [
+    // A method, constructor or operator, with an optional constraint clause and constructor initialiser.
+    "(?:[^]*\\s)?(?<name>(?!(?:base|this)\\b)[\\w.<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    // An accessor with a block body.
+    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$",
+    "=>\\s*$"
+  ],
+  expressionMembers: [
+    // A method or operator: `public int Twice(int x)`, `static bool operator ==(A a, B b)`.
+    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|async|extern|unsafe|new|partial|readonly)\\s+)*[\\w.<>\\[\\]?,()]+\\s+(?<name>[\\w.]+|operator\\s*[^\\s(]+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:where\\s+[^=]+)?$",
+    // A conversion operator, which has no return type of its own: `public static implicit operator int(Money m)`.
+    "^(?:(?:public|static)\\s+)*(?:implicit|explicit)\\s+(?<name>operator\\s+[\\w.<>\\[\\]?]+)\\s*\\([^]*\\)$",
+    // A constructor or finaliser, which has modifiers and no return type: `public Money(decimal amount)`.
+    "^(?:(?:public|private|protected|internal|static)\\s+)+(?<name>~?\\w+)\\s*\\([^]*\\)\\s*(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    // A property or indexer: `public int Count`, `public int this[int i]`.
+    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|new|readonly)\\s+)+[\\w.<>\\[\\]?,()]+\\s+(?<name>\\w+|this\\s*\\[[^\\]]*\\])$",
+    // An accessor: `set => value = x;`.
+    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$"
+  ]
+};
+var cpp = {
+  name: "cpp",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    {
+      kind: "delimited",
+      triggers: "R",
+      open: '(?:u8|u|U|L)?R"([^()\\s\\\\]{0,16})\\(',
+      close: ')$1"',
+      multiline: true
+    },
+    { ...doubleQuote },
+    charLiteral
+  ],
+  branchKeywords: cBranchKeywords,
+  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "\\|\\|"],
+  bumpOpeners: cBumpOpeners,
+  // Access specifiers and Qt's `signals:` end in a colon and are not part of the member that follows them.
+  headerNoise: ["^#.*$", "^\\[\\[.*\\]\\]$", "^(?:public|private|protected)(?:\\s+(?:slots|Q_SLOTS))?\\s*:$", "^(?:signals|Q_SIGNALS)\\s*:$"],
+  controlHeader,
+  typeHeaders: [typeHeader],
+  functionHeaders: [cMethodHeader, "\\]\\s*(?:\\([^]*\\))?\\s*(?:mutable|noexcept|->\\s*[^{;]+)*\\s*$"]
+};
+var java = {
+  name: "java",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    { kind: "delimited", triggers: '"', open: '"""', close: '"""', escape: "\\", multiline: true },
+    doubleQuote,
+    charLiteral
+  ],
+  branchKeywords: cBranchKeywords,
+  shortCircuitOperators: ["&&", "\\|\\|"],
+  bumpOpeners: cBumpOpeners,
+  headerNoise: annotationNoise,
+  controlHeader,
+  typeHeaders: [typeHeader],
+  functionHeaders: [cMethodHeader, "->\\s*$"]
+};
+var kotlin = {
+  name: "kotlin",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/", nested: true }],
+  strings: [
+    { kind: "delimited", triggers: '"', open: '"""', close: '"""', multiline: true },
+    doubleQuote,
+    charLiteral
+  ],
+  branchKeywords: [...cBranchKeywords, "when"],
+  // The elvis operator is null-coalescing, not a decision (suite.md, Metric definitions per language).
+  shortCircuitOperators: ["&&", "\\|\\|"],
+  bumpOpeners: [...cBumpOpeners, "when"],
+  headerNoise: annotationNoise,
+  controlHeader,
+  typeHeaders: [typeHeader],
+  functionHeaders: [
+    "\\bfun\\b\\s*(?:<[^>]*>\\s*)?(?:[\\w.<>?]+\\.)?(?<name>[\\w$]+)\\s*\\([^]*\\)\\s*(?::\\s*[^{=]+)?$",
+    "^(?:(?:public|private|protected|internal)\\s+)?constructor\\s*\\([^]*\\)(?:\\s*:\\s*(?:this|super)\\s*\\([^]*\\))?$",
+    "->\\s*$"
+  ],
+  newlineEndsStatements: true,
+  expressionBodies: true
+};
+var rust = {
+  name: "rust",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/", nested: true }],
+  strings: [
+    {
+      kind: "delimited",
+      triggers: "rb",
+      open: '(?<![\\w])b?r(#*)"',
+      close: '"$1',
+      multiline: true
+    },
+    { ...doubleQuote, multiline: true },
+    charLiteral
+  ],
+  branchKeywords: ["if", "for", "while", "loop", "match"],
+  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "(?<!\\bmove)(?<=[\\w)\\]])\\s*\\|\\|"],
+  bumpOpeners: ["if", "for", "while", "loop", "match", "else"],
+  headerNoise: ["^#!?\\[.*\\]$"],
+  controlHeader: "^(?:else\\s+if|else|if|for|while|loop|match|unsafe)\\b",
+  typeHeaders: [
+    "\\b(?:struct|enum|trait|mod|union)\\s+(?<name>\\w+)",
+    "\\bimpl\\b(?:\\s*<[^>]*>)?\\s+(?:[\\w:<>,\\s]+?\\s+for\\s+)?(?<name>\\w+)"
+  ],
+  functionHeaders: [
+    "\\bfn\\s+(?<name>\\w+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:->\\s*[^{;]+)?(?:where\\s+[^{;]+)?$",
+    "\\|[^|]*\\|\\s*(?:->\\s*[^{;]+)?$"
+  ]
+};
+var go = {
+  name: "go",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    // Raw strings take no escapes and can span lines.
+    { kind: "delimited", triggers: "`", open: "`", close: "`", multiline: true },
+    doubleQuote,
+    charLiteral
+  ],
+  // `if err != nil` is an ordinary `if`. `case` covers expression, type and select cases. `defer` and `go` do not branch.
+  branchKeywords: ["if", "for", "case"],
+  shortCircuitOperators: ["&&", "\\|\\|"],
+  bumpOpeners: ["if", "else", "for", "switch", "select", "case", "default"],
+  headerNoise: ["^//go:.*$"],
+  // `package`, `import`, `const`, `var` and `type` declarations end at the line break, and so does any statement.
+  statementEnd: "(?:[\\w)\\]}]|\\+\\+|--)$|^\\s*(?:case\\b.*|default|\\w+):$",
+  controlHeader: "^(?:else\\s+if|else|if|for|switch|select)\\b",
+  typeHeaders: ["\\btype\\s+(?<name>\\w+)(?:\\s*\\[[^\\]]*\\])?\\s+(?:struct|interface)\\b"],
+  functionHeaders: [
+    // A declaration, with an optional receiver and type parameters.
+    "^func\\s+(?:\\([^)]*\\)\\s*)?(?<name>\\w+)\\s*(?:\\[[^\\]]*\\]\\s*)?\\([^]*\\)[^;{}]*$",
+    // A function literal, alone or as an argument, a value or the operand of `go` and `defer`.
+    "\\bfunc\\s*\\([^]*\\)[^;{}]*$"
+  ]
+};
+var python = {
+  name: "python",
+  blocks: "indentation",
+  lineComments: ["#"],
+  blockComments: [],
+  strings: [
+    { kind: "delimited", triggers: '"', open: '"""', close: '"""', escape: "\\", multiline: true },
+    { kind: "delimited", triggers: "'", open: "'''", close: "'''", escape: "\\", multiline: true },
+    doubleQuote,
+    singleQuote
+  ],
+  branchKeywords: ["if", "elif", "for", "while", "except", "case"],
+  shortCircuitOperators: ["\\band\\b", "\\bor\\b"],
+  bumpOpeners: ["if", "elif", "else", "for", "while", "try", "except", "finally", "with", "match", "case"],
+  headerNoise: ["^@.*$"],
+  controlHeader: "^(?:if|elif|else|for|while|try|except|finally|with|match|case)\\b",
+  typeHeaders: ["^class\\s+(?<name>\\w+)"],
+  functionHeaders: ["^(?:async\\s+)?def\\s+(?<name>\\w+)"]
+};
+var profiles = {
+  typescript,
+  csharp,
+  cpp,
+  java,
+  kotlin,
+  rust,
+  go,
+  python
+};
+var extensionProfiles = {
+  ts: "typescript",
+  tsx: "typescript",
+  mts: "typescript",
+  cts: "typescript",
+  js: "typescript",
+  jsx: "typescript",
+  mjs: "typescript",
+  cjs: "typescript",
+  cs: "csharp",
+  c: "cpp",
+  h: "cpp",
+  cc: "cpp",
+  cpp: "cpp",
+  cxx: "cpp",
+  hh: "cpp",
+  hpp: "cpp",
+  hxx: "cpp",
+  java: "java",
+  kt: "kotlin",
+  kts: "kotlin",
+  rs: "rust",
+  go: "go",
+  py: "python"
+};
+function selectProfile(path, mappings = {}) {
+  const name8 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name8.lastIndexOf(".");
+  if (dot <= 0) return void 0;
+  const extension = name8.slice(dot + 1).toLowerCase();
+  const mappedName = mappings[extension];
+  if (mappedName !== void 0) {
+    const profile2 = profiles[mappedName];
+    if (profile2 === void 0) throw new Error(`unknown lexer profile "${mappedName}"`);
+    return { profile: profile2, mapped: true };
+  }
+  const builtIn = extensionProfiles[extension];
+  const profile = builtIn === void 0 ? void 0 : profiles[builtIn];
+  return profile === void 0 ? void 0 : { profile, mapped: false };
+}
+
 // packages/complexity/src/metrics.ts
 var metricIds = ["cognitive", "cyclomatic", "nesting", "parameters", "length", "keyword", "bumps"];
 function isMetricId(value) {
@@ -2143,8 +2470,17 @@ function readSettings(config) {
     windowMonths: number(section.windowMonths, at("windowMonths"), 1),
     hook: { enabled: section.hook.enabled === true },
     shallowDepth: number(section.interfaceDepth.shallow, at("interfaceDepth.shallow"), 0),
-    isExcluded: compileGlobs(config.effective.exclude)
+    isExcluded: compileGlobs(config.effective.exclude),
+    languageProfiles: readLanguageProfiles(config.effective.languages)
   };
+}
+function readLanguageProfiles(languages) {
+  for (const [extension, name8] of Object.entries(languages)) {
+    if (!(name8 in profiles)) {
+      throw configError(`code-health.json: languages.${extension} names the lexer profile "${name8}", which does not exist: use one of ${Object.keys(profiles).join(", ")}`);
+    }
+  }
+  return languages;
 }
 function readThresholds(value, where, number) {
   const source = value;
@@ -2729,320 +3065,6 @@ function isBumpyRoad(metrics, thresholds = {}) {
   return metrics.bumps >= deepBumps && metrics.bumpDepth > nesting;
 }
 
-// packages/lexical/src/profile.ts
-var doubleQuote = {
-  kind: "delimited",
-  triggers: '"',
-  open: '"',
-  close: '"',
-  escape: "\\",
-  multiline: false
-};
-var singleQuote = {
-  kind: "delimited",
-  triggers: "'",
-  open: "'",
-  close: "'",
-  escape: "\\",
-  multiline: false
-};
-var charLiteral = {
-  kind: "whole",
-  triggers: "'",
-  pattern: "'(?:\\\\[^'\\n]*|[^\\\\'\\n])'"
-};
-var cBranchKeywords = ["if", "for", "while", "case", "catch"];
-var cBumpOpeners = [...cBranchKeywords, "else", "do", "default", "switch", "try", "finally"];
-var controlHeader = "^(?:else\\s+if|else|if|for|foreach|while|do|switch|catch|try|finally|with|using|lock|synchronized|unsafe|checked|fixed|match|loop|unless)\\b";
-var typeHeader = "\\b(?:class|struct|interface|enum|namespace|trait|object|record|union)\\s+(?<name>[\\w.:$]+)";
-var cTypeHeaders = [typeHeader];
-var annotationNoise = ["^\\[.*\\]$", "^@\\w[\\w.]*(?:\\(.*\\))?$", "^#.*$"];
-var cMethodHeader = "(?<![\\w.])(?<name>~?[\\w:.$<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:(?:const|noexcept|override|final|volatile|mutable|throws\\s+[\\w.,\\s]+|where\\s+[^{;]+|&&|&)\\s*)*(?:->\\s*[^{;]+)?(?::\\s*[^{;]*)?$";
-var regexLiteral = {
-  kind: "whole",
-  triggers: "/",
-  pattern: "/(?![*/])(?:\\\\.|\\[(?:\\\\.|[^\\]\\\\\\n])*\\]|[^/\\\\\\[\\n])+/[a-z]*",
-  after: "(?:[(,=:\\[!&|?{};<>~^%]|\\b(?:return|typeof|case|in|of|delete|void|throw|new|else|do|yield|await))\\s*$"
-};
-var typescript = {
-  name: "typescript",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/" }],
-  strings: [
-    doubleQuote,
-    singleQuote,
-    {
-      kind: "delimited",
-      triggers: "`",
-      open: "`",
-      close: "`",
-      escape: "\\",
-      multiline: true,
-      interpolation: { open: "${", close: "}" }
-    },
-    regexLiteral
-  ],
-  branchKeywords: cBranchKeywords,
-  shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],
-  bumpOpeners: cBumpOpeners,
-  headerNoise: ["^@\\w[\\w.]*(?:\\(.*\\))?$"],
-  controlHeader,
-  typeHeaders: cTypeHeaders,
-  functionHeaders: [
-    "\\bfunction\\b\\s*\\*?\\s*(?<name>[\\w$]+)?\\s*(?:<[^>]*>)?\\s*\\([^]*\\)(?:[^;{}=]|=>)*$",
-    "^(?:export\\s+(?:default\\s+)?)?(?:(?:const|let|var)\\s+(?<name>[\\w$]+)\\s*(?::[^=]+)?=\\s*)?[^]*=>\\s*(?::[^{;]+)?$",
-    "^(?:(?:public|private|protected|static|async|readonly|get|set|override|abstract|declare)\\s+)*\\*?\\s*(?<name>[#\\w$]+|\\[[^\\]]+\\])\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?::\\s*[^{;]+)?$"
-  ],
-  expressionArrows: true
-};
-var csharp = {
-  name: "csharp",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/" }],
-  strings: [
-    // Raw string literals first, they start with three or more quotes.
-    {
-      kind: "delimited",
-      triggers: '$"',
-      open: '\\$*("{3,})',
-      close: "$1",
-      multiline: true
-    },
-    {
-      kind: "delimited",
-      triggers: '@$"',
-      open: '(?:@\\$?|\\$@)"',
-      close: '"',
-      doubledCloseEscapes: true,
-      multiline: true
-    },
-    { ...doubleQuote, triggers: '$"', open: '\\$?"' },
-    charLiteral
-  ],
-  branchKeywords: [...cBranchKeywords, "foreach"],
-  shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],
-  bumpOpeners: [...cBumpOpeners, "foreach"],
-  headerNoise: annotationNoise,
-  controlHeader,
-  // `object` and `record` are not declarations here: `object o` is a parameter.
-  typeHeaders: ["(?:^|\\s)(?:class|struct|interface|enum|namespace|record(?:\\s+(?:class|struct))?)\\s+(?<name>[\\w.]+)"],
-  functionHeaders: [
-    // A method, constructor or operator, with an optional constraint clause and constructor initialiser.
-    "(?:[^]*\\s)?(?<name>(?!(?:base|this)\\b)[\\w.<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
-    // An accessor with a block body.
-    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$",
-    "=>\\s*$"
-  ],
-  expressionMembers: [
-    // A method or operator: `public int Twice(int x)`, `static bool operator ==(A a, B b)`.
-    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|async|extern|unsafe|new|partial|readonly)\\s+)*[\\w.<>\\[\\]?,()]+\\s+(?<name>[\\w.]+|operator\\s*[^\\s(]+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:where\\s+[^=]+)?$",
-    // A conversion operator, which has no return type of its own: `public static implicit operator int(Money m)`.
-    "^(?:(?:public|static)\\s+)*(?:implicit|explicit)\\s+(?<name>operator\\s+[\\w.<>\\[\\]?]+)\\s*\\([^]*\\)$",
-    // A constructor or finaliser, which has modifiers and no return type: `public Money(decimal amount)`.
-    "^(?:(?:public|private|protected|internal|static)\\s+)+(?<name>~?\\w+)\\s*\\([^]*\\)\\s*(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
-    // A property or indexer: `public int Count`, `public int this[int i]`.
-    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|new|readonly)\\s+)+[\\w.<>\\[\\]?,()]+\\s+(?<name>\\w+|this\\s*\\[[^\\]]*\\])$",
-    // An accessor: `set => value = x;`.
-    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$"
-  ]
-};
-var cpp = {
-  name: "cpp",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/" }],
-  strings: [
-    {
-      kind: "delimited",
-      triggers: "R",
-      open: '(?:u8|u|U|L)?R"([^()\\s\\\\]{0,16})\\(',
-      close: ')$1"',
-      multiline: true
-    },
-    { ...doubleQuote },
-    charLiteral
-  ],
-  branchKeywords: cBranchKeywords,
-  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "\\|\\|"],
-  bumpOpeners: cBumpOpeners,
-  // Access specifiers and Qt's `signals:` end in a colon and are not part of the member that follows them.
-  headerNoise: ["^#.*$", "^\\[\\[.*\\]\\]$", "^(?:public|private|protected)(?:\\s+(?:slots|Q_SLOTS))?\\s*:$", "^(?:signals|Q_SIGNALS)\\s*:$"],
-  controlHeader,
-  typeHeaders: [typeHeader],
-  functionHeaders: [cMethodHeader, "\\]\\s*(?:\\([^]*\\))?\\s*(?:mutable|noexcept|->\\s*[^{;]+)*\\s*$"]
-};
-var java = {
-  name: "java",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/" }],
-  strings: [
-    { kind: "delimited", triggers: '"', open: '"""', close: '"""', escape: "\\", multiline: true },
-    doubleQuote,
-    charLiteral
-  ],
-  branchKeywords: cBranchKeywords,
-  shortCircuitOperators: ["&&", "\\|\\|"],
-  bumpOpeners: cBumpOpeners,
-  headerNoise: annotationNoise,
-  controlHeader,
-  typeHeaders: [typeHeader],
-  functionHeaders: [cMethodHeader, "->\\s*$"]
-};
-var kotlin = {
-  name: "kotlin",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/", nested: true }],
-  strings: [
-    { kind: "delimited", triggers: '"', open: '"""', close: '"""', multiline: true },
-    doubleQuote,
-    charLiteral
-  ],
-  branchKeywords: [...cBranchKeywords, "when"],
-  // The elvis operator is null-coalescing, not a decision (suite.md, Metric definitions per language).
-  shortCircuitOperators: ["&&", "\\|\\|"],
-  bumpOpeners: [...cBumpOpeners, "when"],
-  headerNoise: annotationNoise,
-  controlHeader,
-  typeHeaders: [typeHeader],
-  functionHeaders: [
-    "\\bfun\\b\\s*(?:<[^>]*>\\s*)?(?:[\\w.<>?]+\\.)?(?<name>[\\w$]+)\\s*\\([^]*\\)\\s*(?::\\s*[^{=]+)?$",
-    "^(?:(?:public|private|protected|internal)\\s+)?constructor\\s*\\([^]*\\)(?:\\s*:\\s*(?:this|super)\\s*\\([^]*\\))?$",
-    "->\\s*$"
-  ],
-  newlineEndsStatements: true,
-  expressionBodies: true
-};
-var rust = {
-  name: "rust",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/", nested: true }],
-  strings: [
-    {
-      kind: "delimited",
-      triggers: "rb",
-      open: '(?<![\\w])b?r(#*)"',
-      close: '"$1',
-      multiline: true
-    },
-    { ...doubleQuote, multiline: true },
-    charLiteral
-  ],
-  branchKeywords: ["if", "for", "while", "loop", "match"],
-  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "(?<!\\bmove)(?<=[\\w)\\]])\\s*\\|\\|"],
-  bumpOpeners: ["if", "for", "while", "loop", "match", "else"],
-  headerNoise: ["^#!?\\[.*\\]$"],
-  controlHeader: "^(?:else\\s+if|else|if|for|while|loop|match|unsafe)\\b",
-  typeHeaders: [
-    "\\b(?:struct|enum|trait|mod|union)\\s+(?<name>\\w+)",
-    "\\bimpl\\b(?:\\s*<[^>]*>)?\\s+(?:[\\w:<>,\\s]+?\\s+for\\s+)?(?<name>\\w+)"
-  ],
-  functionHeaders: [
-    "\\bfn\\s+(?<name>\\w+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:->\\s*[^{;]+)?(?:where\\s+[^{;]+)?$",
-    "\\|[^|]*\\|\\s*(?:->\\s*[^{;]+)?$"
-  ]
-};
-var go = {
-  name: "go",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/" }],
-  strings: [
-    // Raw strings take no escapes and can span lines.
-    { kind: "delimited", triggers: "`", open: "`", close: "`", multiline: true },
-    doubleQuote,
-    charLiteral
-  ],
-  // `if err != nil` is an ordinary `if`. `case` covers expression, type and select cases. `defer` and `go` do not branch.
-  branchKeywords: ["if", "for", "case"],
-  shortCircuitOperators: ["&&", "\\|\\|"],
-  bumpOpeners: ["if", "else", "for", "switch", "select", "case", "default"],
-  headerNoise: ["^//go:.*$"],
-  // `package`, `import`, `const`, `var` and `type` declarations end at the line break, and so does any statement.
-  statementEnd: "(?:[\\w)\\]}]|\\+\\+|--)$|^\\s*(?:case\\b.*|default|\\w+):$",
-  controlHeader: "^(?:else\\s+if|else|if|for|switch|select)\\b",
-  typeHeaders: ["\\btype\\s+(?<name>\\w+)(?:\\s*\\[[^\\]]*\\])?\\s+(?:struct|interface)\\b"],
-  functionHeaders: [
-    // A declaration, with an optional receiver and type parameters.
-    "^func\\s+(?:\\([^)]*\\)\\s*)?(?<name>\\w+)\\s*(?:\\[[^\\]]*\\]\\s*)?\\([^]*\\)[^;{}]*$",
-    // A function literal, alone or as an argument, a value or the operand of `go` and `defer`.
-    "\\bfunc\\s*\\([^]*\\)[^;{}]*$"
-  ]
-};
-var python = {
-  name: "python",
-  blocks: "indentation",
-  lineComments: ["#"],
-  blockComments: [],
-  strings: [
-    { kind: "delimited", triggers: '"', open: '"""', close: '"""', escape: "\\", multiline: true },
-    { kind: "delimited", triggers: "'", open: "'''", close: "'''", escape: "\\", multiline: true },
-    doubleQuote,
-    singleQuote
-  ],
-  branchKeywords: ["if", "elif", "for", "while", "except", "case"],
-  shortCircuitOperators: ["\\band\\b", "\\bor\\b"],
-  bumpOpeners: ["if", "elif", "else", "for", "while", "try", "except", "finally", "with", "match", "case"],
-  headerNoise: ["^@.*$"],
-  controlHeader: "^(?:if|elif|else|for|while|try|except|finally|with|match|case)\\b",
-  typeHeaders: ["^class\\s+(?<name>\\w+)"],
-  functionHeaders: ["^(?:async\\s+)?def\\s+(?<name>\\w+)"]
-};
-var profiles = {
-  typescript,
-  csharp,
-  cpp,
-  java,
-  kotlin,
-  rust,
-  go,
-  python
-};
-var extensionProfiles = {
-  ts: "typescript",
-  tsx: "typescript",
-  mts: "typescript",
-  cts: "typescript",
-  js: "typescript",
-  jsx: "typescript",
-  mjs: "typescript",
-  cjs: "typescript",
-  cs: "csharp",
-  c: "cpp",
-  h: "cpp",
-  cc: "cpp",
-  cpp: "cpp",
-  cxx: "cpp",
-  hh: "cpp",
-  hpp: "cpp",
-  hxx: "cpp",
-  java: "java",
-  kt: "kotlin",
-  kts: "kotlin",
-  rs: "rust",
-  go: "go",
-  py: "python"
-};
-function selectProfile(path, mappings = {}) {
-  const name8 = path.slice(path.lastIndexOf("/") + 1);
-  const dot = name8.lastIndexOf(".");
-  if (dot <= 0) return void 0;
-  const extension = name8.slice(dot + 1).toLowerCase();
-  const mappedName = mappings[extension];
-  if (mappedName !== void 0) {
-    const profile2 = profiles[mappedName];
-    if (profile2 === void 0) throw new Error(`unknown lexer profile "${mappedName}"`);
-    return { profile: profile2, mapped: true };
-  }
-  const builtIn = extensionProfiles[extension];
-  const profile = builtIn === void 0 ? void 0 : profiles[builtIn];
-  return profile === void 0 ? void 0 : { profile, mapped: false };
-}
-
 // packages/lexical/src/strip.ts
 function normaliseNewlines(content) {
   const withoutBom = content.charCodeAt(0) === 65279 ? content.slice(1) : content;
@@ -3239,7 +3261,7 @@ function analyseSource(path, content, options = {}) {
 function releaseFunctions(profileName, mapped, blocks, options) {
   const gated = (reason) => ({ gated: true, gate: "agreement", reason, blocks });
   if (profileName === void 0) return gated("no lexer profile");
-  if (mapped) return gated("profile mapped by config, so no agreement is measured for this language");
+  if (mapped) return { gated: false, gate: "config", blocks };
   const counts = (options.agreement ?? recordedAgreement)[profileName];
   if (counts === void 0) return gated(`no agreement measured for ${profileName}`);
   const bar = options.agreementBar ?? DEFAULT_AGREEMENT_BAR;
@@ -16911,7 +16933,7 @@ async function measureTree(tree, options) {
         skippedFiles.excluded++;
         continue;
       }
-      const lexical = analyseSource(path, text2, { agreementBar: settings.agreementBar });
+      const lexical = analyseSource(path, text2, { agreementBar: settings.agreementBar, mappings: settings.languageProfiles });
       const language9 = options.layer === "lexical" ? void 0 : await grammars.forPath(path);
       let structural;
       if (language9 !== void 0) {
@@ -16988,7 +17010,7 @@ function fileRecord(path, text2, lexical, structural, options) {
     skipped.push(`per-function metrics: ${lexical.functions.reason}`);
   } else {
     source = "lexical";
-    agreement = lexical.functions.agreement;
+    if (lexical.functions.gate === "agreement") agreement = lexical.functions.agreement;
     units = lexical.functions.blocks.map((block) => ({
       path,
       id: `${path}#${block.qualifiedName ?? `<anonymous@${block.startLine}>`}`,
@@ -17004,7 +17026,8 @@ function fileRecord(path, text2, lexical, structural, options) {
         keyword: block.metrics.keywordComplexity,
         bumps: block.metrics.bumps
       },
-      bumpyRoad: block.bumpyRoad
+      bumpyRoad: block.bumpyRoad,
+      ...lexical.unverified ? { unverified: true } : {}
     }));
   }
   return {
@@ -17283,6 +17306,7 @@ function unitRow(ranked, selected, settings) {
     startLine: unit.startLine,
     endLine: unit.endLine,
     source: unit.source,
+    ...unit.unverified === true ? { unverified: true } : {},
     test: unit.test,
     score: ranked.score,
     complexityScore: ranked.complexityScore,
@@ -18118,9 +18142,10 @@ function updateSession(root, sessionId, hook, change) {
 
 // packages/complexity/src/hook-findings.ts
 var hookMetrics = ["nesting", "keyword", "bumps"];
-function measureFile(path, text2, agreementBar) {
-  const analysis = analyseSource(path, text2, { agreementBar });
+function measureFile(path, text2, options) {
+  const analysis = analyseSource(path, text2, { agreementBar: options.agreementBar, mappings: options.languageProfiles });
   if (analysis.functions.gated) return { unmeasured: analysis.functions.reason };
+  if (analysis.unverified) return { unmeasured: "the profile was mapped by config, so its per-function values are unverified" };
   const measurement = {};
   const seen = /* @__PURE__ */ new Map();
   for (const block of analysis.functions.blocks) {
@@ -18185,7 +18210,7 @@ var MAX_BYTES2 = 1e6;
 async function measurementAtHead(root, file, settings) {
   try {
     const text2 = await runGit(root, ["show", `HEAD:${file}`]);
-    const measured = measureFile(file, text2, settings.agreementBar);
+    const measured = measureFile(file, text2, settings);
     return "measurement" in measured ? measured.measurement : {};
   } catch {
     return {};
@@ -18201,7 +18226,7 @@ async function consider(root, file, settings, previous) {
   if (!settings.analyseTests && isTestPath(file)) return { note: null, outcome: "silent: tests are not analysed" };
   const text2 = readFileSync7(join13(root, file), "utf8");
   if (text2.length > MAX_BYTES2 || text2.includes("\0")) return { note: null, outcome: "silent: the file is binary or too large" };
-  const measured = measureFile(file, text2, settings.agreementBar);
+  const measured = measureFile(file, text2, settings);
   if ("unmeasured" in measured) return { note: null, outcome: `silent: no per-function metrics (${measured.unmeasured})` };
   const before = previous ?? await measurementAtHead(root, file, settings);
   const findings = findingsFor(before, measured.measurement, thresholdsFor(settings, file), settings.delta);

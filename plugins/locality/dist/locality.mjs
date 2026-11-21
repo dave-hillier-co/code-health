@@ -155,12 +155,12 @@ function normalise2(value) {
 var CONFIG_FILE = "code-health.json";
 var sharedDefaults = {
   exclude: [],
-  languages: [],
+  languages: {},
   entryPoints: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"]
 };
-var stringLists = ["exclude", "languages", "entryPoints", "vagueNames"];
+var stringLists = ["exclude", "entryPoints", "vagueNames"];
 function loadConfig(root, spec) {
   const file = join(root, CONFIG_FILE);
   const document = existsSync(file) ? parseDocument(file) : void 0;
@@ -170,6 +170,7 @@ function loadConfig(root, spec) {
       throw configError(`${CONFIG_FILE}: ${key} must be an array of strings`);
     }
   }
+  if (document !== void 0 && document.languages !== void 0) document.languages = readLanguages(document.languages);
   const defaults = { ...sharedDefaults, [spec.plugin]: spec.section };
   const rows = /* @__PURE__ */ new Map();
   const effective = {};
@@ -180,6 +181,18 @@ function loadConfig(root, spec) {
   for (const row of rows.values()) sources2[row.path] = row.source;
   const hash = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash, sources: sources2 };
+}
+function readLanguages(value) {
+  if (!isPlainObject(value)) throw configError(`${CONFIG_FILE}: languages must be an object mapping file extensions to lexer profile names`);
+  const mapped = {};
+  for (const [extension, profile] of Object.entries(value)) {
+    if (extension === "" || extension.startsWith(".")) {
+      throw configError(`${CONFIG_FILE}: languages.${extension} must name an extension without its dot, such as "zig"`);
+    }
+    if (typeof profile !== "string" || profile === "") throw configError(`${CONFIG_FILE}: languages.${extension} must be a lexer profile name`);
+    mapped[extension.toLowerCase()] = profile;
+  }
+  return mapped;
 }
 function explainConfig(config) {
   const rows = [];
@@ -3542,8 +3555,8 @@ function distribution(values) {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
   const median4 = sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-  const mean2 = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
-  return { mean: round(mean2), median: round(median4) };
+  const mean3 = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
+  return { mean: round(mean3), median: round(median4) };
 }
 function summariseTasks(tasks) {
   return {
@@ -3845,6 +3858,102 @@ function gamingCheck(before, after) {
   return { flagged: reasons.length > 0, reasons };
 }
 
+// packages/locality/src/premise.ts
+var PREMISE_FIGURES = ["filesRead", "reReads", "tokens"];
+var Z_CRITICAL = 1.96;
+var mean = (values) => values.length === 0 ? null : values.reduce((sum, v) => sum + v, 0) / values.length;
+function ranks(values) {
+  const order = values.map((value, index) => ({ value, index })).sort((a, b) => a.value - b.value || a.index - b.index);
+  const result = new Array(values.length);
+  let start = 0;
+  while (start < order.length) {
+    let end = start;
+    while (end + 1 < order.length && order[end + 1].value === order[start].value) end++;
+    const rank = (start + end) / 2 + 1;
+    for (let i = start; i <= end; i++) result[order[i].index] = rank;
+    start = end + 1;
+  }
+  return result;
+}
+function pearson(x, y) {
+  const mx = mean(x);
+  const my = mean(y);
+  if (mx === null || my === null) return null;
+  let sxy = 0;
+  let sxx = 0;
+  let syy = 0;
+  for (let i = 0; i < x.length; i++) {
+    sxy += (x[i] - mx) * (y[i] - my);
+    sxx += (x[i] - mx) ** 2;
+    syy += (y[i] - my) ** 2;
+  }
+  return sxx === 0 || syy === 0 ? null : sxy / Math.sqrt(sxx * syy);
+}
+function spearman(x, y) {
+  return pearson(ranks(x), ranks(y));
+}
+function partialSpearman(x, y, z) {
+  const xy = spearman(x, y);
+  if (xy === null) return null;
+  const xz = spearman(x, z);
+  const yz = spearman(y, z);
+  if (xz === null || yz === null) return xy;
+  const denominator = Math.sqrt((1 - xz * xz) * (1 - yz * yz));
+  if (denominator === 0) return null;
+  return (xy - xz * yz) / denominator;
+}
+function fisherZ(r, n) {
+  if (n < 5) return null;
+  const clamped = Math.max(-0.999999, Math.min(0.999999, r));
+  return Math.atanh(clamped) * Math.sqrt(n - 4);
+}
+var costOf = (task, figure) => figure === "tokens" ? task.tokens.total : task[figure];
+function conclude(n, minSamples, partial, z) {
+  if (n < minSamples) return "insufficient-sample";
+  if (partial === null || z === null) return "not-measured";
+  if (Math.abs(z) < Z_CRITICAL) return "no-relationship-shown";
+  return partial > 0 ? "costlier-when-distant" : "cheaper-when-distant";
+}
+function verdictOf(conclusions) {
+  if (conclusions.every((c) => c === "insufficient-sample")) return "insufficient-sample";
+  const costlier = conclusions.filter((c) => c === "costlier-when-distant").length;
+  const cheaper = conclusions.filter((c) => c === "cheaper-when-distant").length;
+  if (costlier > 0 && cheaper > 0) return "mixed";
+  if (cheaper > 0) return "contradicted";
+  if (costlier >= 2) return "supported";
+  if (costlier === 1) return "partly-supported";
+  return "not-shown";
+}
+function testPremise(tasks, minSamples) {
+  const measured = tasks.filter((task) => task.editedPaths.length >= 2);
+  const distances = measured.map((task) => changeSpread(task.editedPaths));
+  const median4 = percentile(distances, 0.5);
+  const sizes = measured.map((task) => task.filesEdited);
+  const figures = {};
+  for (const figure of PREMISE_FIGURES) {
+    const costs = measured.map((task) => costOf(task, figure));
+    const partial = partialSpearman(distances, costs, sizes);
+    const z = partial === null ? null : fisherZ(partial, measured.length);
+    const near = costs.filter((_, i) => distances[i] <= median4);
+    const far = costs.filter((_, i) => distances[i] > median4);
+    figures[figure] = {
+      n: measured.length,
+      spearman: spearman(distances, costs),
+      partialSpearman: partial,
+      z,
+      near: { tasks: near.length, mean: mean(near) },
+      far: { tasks: far.length, mean: mean(far) },
+      conclusion: conclude(measured.length, minSamples, partial, z)
+    };
+  }
+  return {
+    tasks: { inWindow: tasks.length, measured: measured.length, singleFile: tasks.length - measured.length },
+    distance: { mean: mean(distances), median: median4, max: distances.length === 0 ? null : Math.max(...distances) },
+    figures,
+    verdict: verdictOf(PREMISE_FIGURES.map((figure) => figures[figure].conclusion))
+  };
+}
+
 // packages/locality/src/verdict.ts
 var change = (arm) => arm.before.mean === null || arm.after.mean === null ? null : arm.after.mean - arm.before.mean;
 function differenceOf(actedOn, comparison, minSamples, noisePercent) {
@@ -3886,18 +3995,22 @@ var DEFAULT_CANDIDATES = 200;
 var HEAT_FILES = 50;
 var TOOL_PLUGIN = "locality";
 var command3 = {
-  summary: "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare)",
+  summary: "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare); or test from existing history and sessions whether distant files cost more (measure premise)",
   options: {
     name: { type: "string" },
     "projects-dir": { type: "string" },
     candidates: { type: "string" },
     since: { type: "string" },
+    until: { type: "string" },
     force: { type: "boolean" }
   },
   async run(context) {
     const [subcommand] = context.positionals;
-    if (subcommand !== "baseline" && subcommand !== "compare") throw usageError("measure takes one subcommand: baseline or compare");
+    if (subcommand !== "baseline" && subcommand !== "compare" && subcommand !== "premise") {
+      throw usageError("measure takes one subcommand: baseline, compare or premise");
+    }
     const settings = readSettings(context.config);
+    if (subcommand === "premise") return premise(context, settings);
     return subcommand === "baseline" ? baseline(context, settings) : compare(context, settings);
   }
 };
@@ -3990,7 +4103,7 @@ async function baseline(context, settings) {
 function describeArm(spread, tasks) {
   return { spread, effort: summariseTasks(tasks) };
 }
-var mean = (value) => value === null ? null : value.mean;
+var mean2 = (value) => value === null ? null : value.mean;
 function reproduced(now, recorded) {
   const same = now.mean === null || recorded.mean === null ? now.mean === recorded.mean : roundFloat(now.mean) === roundFloat(recorded.mean);
   return now.measured === recorded.measured && now.changes === recorded.changes && same;
@@ -4065,8 +4178,8 @@ async function compare(context, settings) {
     after: { mean: a.after.spread.mean, n: a.after.spread.measured }
   });
   const effortArm = (a, figure) => ({
-    before: { mean: mean(a.before.effort[figure]), n: a.before.effort.tasks },
-    after: { mean: mean(a.after.effort[figure]), n: a.after.effort.tasks }
+    before: { mean: mean2(a.before.effort[figure]), n: a.before.effort.tasks },
+    after: { mean: mean2(a.after.effort[figure]), n: a.after.effort.tasks }
   });
   const { minSamples, noise } = { minSamples: settings.measureMinSamples, noise: settings.measureNoisePercent };
   const spreadDifference = differenceOf(spreadArm(actedArms), spreadArm(aloneArms), minSamples, noise);
@@ -4095,6 +4208,66 @@ async function compare(context, settings) {
       spread: { role: "outcome, partly by construction", ...spreadDifference },
       effort: { role: "primary outcome", conclusion: effort, ...effortDifferences },
       claim: claimOf(effort, spreadDifference.conclusion)
+    }
+  };
+}
+var PREMISE_LIMITS = [
+  "Observational: tasks were not assigned to near or far files, so what the task was is a confounder the data cannot remove.",
+  "Distance is that of the files a task edited. Tasks editing a single file have none and are left out.",
+  "Effort is the main agent's reads and tokens. Work delegated to subagents is not counted.",
+  "A correlation here is not a measure of what a move would save."
+];
+var PREMISE_VERDICTS = {
+  supported: "tasks touching more distant files cost more, beyond what the number of files edited explains",
+  "partly-supported": "one cost figure rises with distance beyond what the number of files edited explains, and the others show nothing",
+  contradicted: "tasks touching more distant files cost less",
+  mixed: "the cost figures disagree",
+  "not-shown": "no relationship between distance and cost was shown. That is not evidence there is none",
+  "insufficient-sample": "too few tasks to conclude anything"
+};
+function premiseWindow(context, settings, headDate) {
+  const day = (option) => {
+    const value = stringOption(context, option);
+    if (value !== void 0 && !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw usageError(`--${option} must be a date such as 2024-03-01`);
+    return value;
+  };
+  const fallback = windowEndingAt(headDate, settings.windowMonths);
+  const window = { from: day("since") ?? fallback.from, to: day("until") ?? fallback.to };
+  if (window.from >= window.to) throw usageError("--since must be before --until");
+  return window;
+}
+async function premise(context, settings) {
+  const analysis = await readMeasureHistory(context.repo.root, settings);
+  const { view } = analysis;
+  const window = premiseWindow(context, settings, view.headDate);
+  const seconds = windowSeconds(window);
+  const spread = summariseSpread(changesBetween(analysis.filtered.changes, seconds.since, seconds.until));
+  const effort = readEffort(projectsDirectory(context), await checkouts(context.repo.root), window);
+  const result = testPremise(effort.tasks, settings.measureMinSamples);
+  return {
+    inputs: {
+      transcripts: { tasks: effort.tasks.length, stamp: stampOf(effort.tasks) },
+      since: stringOption(context, "since") ?? null,
+      until: stringOption(context, "until") ?? null
+    },
+    extra: {
+      evidence: {
+        grade: analysis.evidence.grade,
+        logicalChangesInWindow: analysis.evidence.logicalChangesInWindow,
+        usableHistoryMonths: analysis.evidence.usableHistoryMonths,
+        activeContributors: analysis.evidence.activeContributors,
+        shallow: analysis.evidence.truncated.shallow
+      }
+    },
+    results: {
+      status: "premise",
+      window,
+      sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length },
+      minSamples: settings.measureMinSamples,
+      history: { spread },
+      ...result,
+      meaning: PREMISE_VERDICTS[result.verdict],
+      limits: PREMISE_LIMITS
     }
   };
 }

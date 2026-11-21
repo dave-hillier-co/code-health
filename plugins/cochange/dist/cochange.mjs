@@ -120,12 +120,12 @@ function normalise(value) {
 var CONFIG_FILE = "code-health.json";
 var sharedDefaults = {
   exclude: [],
-  languages: [],
+  languages: {},
   entryPoints: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"]
 };
-var stringLists = ["exclude", "languages", "entryPoints", "vagueNames"];
+var stringLists = ["exclude", "entryPoints", "vagueNames"];
 function loadConfig(root, spec) {
   const file = join(root, CONFIG_FILE);
   const document = existsSync(file) ? parseDocument(file) : void 0;
@@ -135,6 +135,7 @@ function loadConfig(root, spec) {
       throw configError(`${CONFIG_FILE}: ${key} must be an array of strings`);
     }
   }
+  if (document !== void 0 && document.languages !== void 0) document.languages = readLanguages(document.languages);
   const defaults = { ...sharedDefaults, [spec.plugin]: spec.section };
   const rows = /* @__PURE__ */ new Map();
   const effective = {};
@@ -145,6 +146,18 @@ function loadConfig(root, spec) {
   for (const row2 of rows.values()) sources[row2.path] = row2.source;
   const hash = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash, sources };
+}
+function readLanguages(value) {
+  if (!isPlainObject(value)) throw configError(`${CONFIG_FILE}: languages must be an object mapping file extensions to lexer profile names`);
+  const mapped = {};
+  for (const [extension, profile] of Object.entries(value)) {
+    if (extension === "" || extension.startsWith(".")) {
+      throw configError(`${CONFIG_FILE}: languages.${extension} must name an extension without its dot, such as "zig"`);
+    }
+    if (typeof profile !== "string" || profile === "") throw configError(`${CONFIG_FILE}: languages.${extension} must be a lexer profile name`);
+    mapped[extension.toLowerCase()] = profile;
+  }
+  return mapped;
 }
 function explainConfig(config) {
   const rows = [];
@@ -2529,6 +2542,102 @@ function writeReport2(context, command14, output, analysedHead) {
   return writeReport(context, { tool: TOOL2, schemaVersion: SCHEMA_VERSION2 }, command14, output, analysedHead);
 }
 
+// packages/graph/src/tree-distance.ts
+function assertPath(path) {
+  if (path === "" || path.startsWith("/") || path.endsWith("/") || path.includes("//")) {
+    throw new Error(`not a repo-relative POSIX path: "${path}"`);
+  }
+}
+function folderOf(path) {
+  assertPath(path);
+  const slash = path.lastIndexOf("/");
+  return slash === -1 ? "" : path.slice(0, slash);
+}
+function depthOf(folder) {
+  return folder === "" ? 0 : folder.split("/").length;
+}
+function commonDepth(a, b) {
+  if (a === "" || b === "") return 0;
+  const left = a.split("/");
+  const right = b.split("/");
+  let shared = 0;
+  while (shared < left.length && shared < right.length && left[shared] === right[shared]) shared++;
+  return shared;
+}
+function folderDistance(a, b) {
+  return depthOf(a) + depthOf(b) - 2 * commonDepth(a, b);
+}
+function treeDistance(a, b) {
+  return folderDistance(folderOf(a), folderOf(b));
+}
+
+// packages/cochange/src/spread-measure.ts
+function changeSpread(paths) {
+  const distinct = [...new Set(paths)];
+  const n = distinct.length;
+  if (n < 2) return 0;
+  let total = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) total += treeDistance(distinct[i], distinct[j]);
+  }
+  return total / (n * (n - 1) / 2);
+}
+function percentile(values, p) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const rank2 = (sorted.length - 1) * p;
+  const low = Math.floor(rank2);
+  const high = Math.ceil(rank2);
+  return sorted[low] + (sorted[high] - sorted[low]) * (rank2 - low);
+}
+var DAY = 86400;
+function bucketStart(time, bucket) {
+  const date = new Date(time * 1e3);
+  if (bucket === "month") return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) / 1e3;
+  const midnight = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 1e3;
+  const sinceMonday = (date.getUTCDay() + 6) % 7;
+  return midnight - sinceMonday * DAY;
+}
+function nextBucketStart(start, bucket) {
+  if (bucket === "week") return start + 7 * DAY;
+  const date = new Date(start * 1e3);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) / 1e3;
+}
+function bucketLabel(start, bucket) {
+  const iso = new Date(start * 1e3).toISOString();
+  return bucket === "month" ? iso.slice(0, 7) : iso.slice(0, 10);
+}
+function parseDate(text) {
+  const day = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text);
+  if (!day) return null;
+  const midnight = Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
+  if (new Date(midnight).toISOString().slice(0, 10) !== text.slice(0, 10)) return null;
+  if (day[4] === void 0) return midnight / 1e3;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text)) return null;
+  const ms = Date.parse(text);
+  return Number.isNaN(ms) ? null : Math.floor(ms / 1e3);
+}
+
+// packages/cochange/src/window-options.ts
+var windowOptions = { since: { type: "string" }, until: { type: "string" } };
+function dateOption(context, option) {
+  const value = context.values[option];
+  if (value === void 0) return void 0;
+  const parsed = typeof value === "string" ? parseDate(value) : null;
+  if (parsed === null) {
+    throw usageError(`--${option} must be an ISO 8601 date such as 2024-03-01, not "${String(value)}"`);
+  }
+  return parsed;
+}
+function statedWindow(context, windowMonths) {
+  const since = dateOption(context, "since");
+  const until = dateOption(context, "until");
+  if (since === void 0 && until === void 0) return void 0;
+  const effectiveSince = since ?? monthsBefore(until, windowMonths);
+  if (until !== void 0 && effectiveSince >= until) throw usageError("--since must be before --until");
+  return { since: effectiveSince, until };
+}
+
 // packages/cochange/src/analysis-command.ts
 function historySections(history) {
   return {
@@ -2544,12 +2653,15 @@ function identityStamps(history) {
   return Object.keys(history.identities.stamps).length > 0 ? { identityInputs: history.identities.stamps } : {};
 }
 var sharedOptions = { "no-refresh": { type: "boolean" } };
+function ownsWindow(spec) {
+  return spec.window !== void 0 || spec.wholeHistory === true || spec.options?.since !== void 0 || spec.options?.until !== void 0;
+}
 function analysisCommand(name14, spec) {
   return {
     summary: spec.summary,
-    options: { ...spec.options, ...sharedOptions },
+    options: { ...ownsWindow(spec) ? {} : windowOptions, ...spec.options, ...sharedOptions },
     async run(context) {
-      const window = spec.window?.(context);
+      const window = ownsWindow(spec) ? spec.window?.(context) : statedWindow(context, readSettings(context.config).windowMonths);
       const history = await loadHistory(context, {
         noRefresh: context.values["no-refresh"] === true,
         window,
@@ -4726,7 +4838,7 @@ function analyseSource(path, content, options = {}) {
 function releaseFunctions(profileName, mapped, blocks, options) {
   const gated = (reason) => ({ gated: true, gate: "agreement", reason, blocks });
   if (profileName === void 0) return gated("no lexer profile");
-  if (mapped) return gated("profile mapped by config, so no agreement is measured for this language");
+  if (mapped) return { gated: false, gate: "config", blocks };
   const counts = (options.agreement ?? recordedAgreement)[profileName];
   if (counts === void 0) return gated(`no agreement measured for ${profileName}`);
   const bar = options.agreementBar ?? DEFAULT_AGREEMENT_BAR;
@@ -5413,35 +5525,6 @@ __export(brief_exports, {
   name: () => name4
 });
 
-// packages/graph/src/tree-distance.ts
-function assertPath(path) {
-  if (path === "" || path.startsWith("/") || path.endsWith("/") || path.includes("//")) {
-    throw new Error(`not a repo-relative POSIX path: "${path}"`);
-  }
-}
-function folderOf(path) {
-  assertPath(path);
-  const slash = path.lastIndexOf("/");
-  return slash === -1 ? "" : path.slice(0, slash);
-}
-function depthOf(folder) {
-  return folder === "" ? 0 : folder.split("/").length;
-}
-function commonDepth(a, b) {
-  if (a === "" || b === "") return 0;
-  const left = a.split("/");
-  const right = b.split("/");
-  let shared = 0;
-  while (shared < left.length && shared < right.length && left[shared] === right[shared]) shared++;
-  return shared;
-}
-function folderDistance(a, b) {
-  return depthOf(a) + depthOf(b) - 2 * commonDepth(a, b);
-}
-function treeDistance(a, b) {
-  return folderDistance(folderOf(a), folderOf(b));
-}
-
 // packages/history/src/repo-paths.ts
 import { realpathSync } from "node:fs";
 import { basename as basename2, dirname as dirname2, isAbsolute, join as join9, relative, sep } from "node:path";
@@ -5556,55 +5639,6 @@ __export(clusters_exports, {
   name: () => name5,
   rules: () => rules4
 });
-
-// packages/cochange/src/spread-measure.ts
-function changeSpread(paths) {
-  const distinct = [...new Set(paths)];
-  const n = distinct.length;
-  if (n < 2) return 0;
-  let total = 0;
-  for (let i = 0; i < n; i++) {
-    for (let j = i + 1; j < n; j++) total += treeDistance(distinct[i], distinct[j]);
-  }
-  return total / (n * (n - 1) / 2);
-}
-function percentile(values, p) {
-  if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const rank2 = (sorted.length - 1) * p;
-  const low = Math.floor(rank2);
-  const high = Math.ceil(rank2);
-  return sorted[low] + (sorted[high] - sorted[low]) * (rank2 - low);
-}
-var DAY = 86400;
-function bucketStart(time, bucket) {
-  const date = new Date(time * 1e3);
-  if (bucket === "month") return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) / 1e3;
-  const midnight = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 1e3;
-  const sinceMonday = (date.getUTCDay() + 6) % 7;
-  return midnight - sinceMonday * DAY;
-}
-function nextBucketStart(start, bucket) {
-  if (bucket === "week") return start + 7 * DAY;
-  const date = new Date(start * 1e3);
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) / 1e3;
-}
-function bucketLabel(start, bucket) {
-  const iso = new Date(start * 1e3).toISOString();
-  return bucket === "month" ? iso.slice(0, 7) : iso.slice(0, 10);
-}
-function parseDate(text) {
-  const day = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text);
-  if (!day) return null;
-  const midnight = Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
-  if (new Date(midnight).toISOString().slice(0, 10) !== text.slice(0, 10)) return null;
-  if (day[4] === void 0) return midnight / 1e3;
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text)) return null;
-  const ms = Date.parse(text);
-  return Number.isNaN(ms) ? null : Math.floor(ms / 1e3);
-}
-
-// packages/cochange/src/commands/clusters.ts
 var name5 = "clusters";
 var CLUSTER_MIN_FOLDERS = 3;
 var MAGNET = { folders: 3, neighbourCoupling: 25 };
@@ -9321,27 +9355,10 @@ function bucketOption(context) {
   if (value === "week" || value === "month") return value;
   throw usageError(`--bucket must be "week" or "month", not "${String(value)}"`);
 }
-function dateOption(context, option) {
-  const value = context.values[option];
-  if (value === void 0) return void 0;
-  const parsed = typeof value === "string" ? parseDate(value) : null;
-  if (parsed === null) {
-    throw usageError(`--${option} must be an ISO 8601 date such as 2024-03-01, not "${String(value)}"`);
-  }
-  return parsed;
-}
-function statedWindow(context) {
-  const since = dateOption(context, "since");
-  const until = dateOption(context, "until");
-  if (since === void 0 && until === void 0) return void 0;
-  const effectiveSince = since ?? monthsBefore(until, readSettings(context.config).windowMonths);
-  if (until !== void 0 && effectiveSince >= until) throw usageError("--since must be before --until");
-  return { since: effectiveSince, until };
-}
 var command11 = analysisCommand(name11, {
   summary: "Change-spread distribution (mean pairwise tree distance per logical change) per week or month",
   options: { since: { type: "string" }, until: { type: "string" }, bucket: { type: "string" } },
-  window: statedWindow,
+  window: (context) => statedWindow(context, readSettings(context.config).windowMonths),
   partial: (context) => bucketOption(context) !== "month",
   analyse({ context, history }) {
     const bucket = bucketOption(context);

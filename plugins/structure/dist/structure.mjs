@@ -120,12 +120,12 @@ function normalise(value) {
 var CONFIG_FILE = "code-health.json";
 var sharedDefaults = {
   exclude: [],
-  languages: [],
+  languages: {},
   entryPoints: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"]
 };
-var stringLists = ["exclude", "languages", "entryPoints", "vagueNames"];
+var stringLists = ["exclude", "entryPoints", "vagueNames"];
 function loadConfig(root, spec) {
   const file = join(root, CONFIG_FILE);
   const document = existsSync(file) ? parseDocument(file) : void 0;
@@ -135,6 +135,7 @@ function loadConfig(root, spec) {
       throw configError(`${CONFIG_FILE}: ${key} must be an array of strings`);
     }
   }
+  if (document !== void 0 && document.languages !== void 0) document.languages = readLanguages(document.languages);
   const defaults = { ...sharedDefaults, [spec.plugin]: spec.section };
   const rows = /* @__PURE__ */ new Map();
   const effective = {};
@@ -145,6 +146,18 @@ function loadConfig(root, spec) {
   for (const row of rows.values()) sources[row.path] = row.source;
   const hash2 = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash: hash2, sources };
+}
+function readLanguages(value) {
+  if (!isPlainObject(value)) throw configError(`${CONFIG_FILE}: languages must be an object mapping file extensions to lexer profile names`);
+  const mapped = {};
+  for (const [extension, profile] of Object.entries(value)) {
+    if (extension === "" || extension.startsWith(".")) {
+      throw configError(`${CONFIG_FILE}: languages.${extension} must name an extension without its dot, such as "zig"`);
+    }
+    if (typeof profile !== "string" || profile === "") throw configError(`${CONFIG_FILE}: languages.${extension} must be a lexer profile name`);
+    mapped[extension.toLowerCase()] = profile;
+  }
+  return mapped;
 }
 function explainConfig(config) {
   const rows = [];
@@ -17043,12 +17056,16 @@ function readSettings(config) {
     mainBranch,
     base,
     exclude: config.effective.exclude,
+    entryPoints: config.effective.entryPoints,
     components: config.effective.components,
     census: { folderNames: names("folderNames"), eventCalls: names("eventCalls"), handlerCalls: names("handlerCalls"), registerCalls: names("registerCalls") },
     evidenceThresholds: section.evidence,
-    packages: readPackageSettings(section.packages, at("packages")),
+    packages: withVagueNames(readPackageSettings(section.packages, at("packages")), config.effective.vagueNames),
     windowStated: config.sources[at("windowMonths")] === "file"
   };
+}
+function withVagueNames(packages, vagueNames) {
+  return { ...packages, dumpingNames: [.../* @__PURE__ */ new Set([...packages.dumpingNames, ...vagueNames])] };
 }
 
 // packages/history/src/reports.ts
@@ -17267,14 +17284,61 @@ async function loadHistory(context, options2 = {}) {
   return { ...analysis, settings, window: { since: since ?? earliest2, until: options2.window?.until ?? anchor }, refreshed };
 }
 
+// packages/graph/src/tree-distance.ts
+function assertPath(path) {
+  if (path === "" || path.startsWith("/") || path.endsWith("/") || path.includes("//")) {
+    throw new Error(`not a repo-relative POSIX path: "${path}"`);
+  }
+}
+function folderOf2(path) {
+  assertPath(path);
+  const slash = path.lastIndexOf("/");
+  return slash === -1 ? "" : path.slice(0, slash);
+}
+
+// packages/cochange/src/spread-measure.ts
+function parseDate(text2) {
+  const day2 = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text2);
+  if (!day2) return null;
+  const midnight = Date.UTC(Number(day2[1]), Number(day2[2]) - 1, Number(day2[3]));
+  if (new Date(midnight).toISOString().slice(0, 10) !== text2.slice(0, 10)) return null;
+  if (day2[4] === void 0) return midnight / 1e3;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text2)) return null;
+  const ms = Date.parse(text2);
+  return Number.isNaN(ms) ? null : Math.floor(ms / 1e3);
+}
+
+// packages/cochange/src/window-options.ts
+var windowOptions = { since: { type: "string" }, until: { type: "string" } };
+function dateOption(context, option) {
+  const value = context.values[option];
+  if (value === void 0) return void 0;
+  const parsed = typeof value === "string" ? parseDate(value) : null;
+  if (parsed === null) {
+    throw usageError(`--${option} must be an ISO 8601 date such as 2024-03-01, not "${String(value)}"`);
+  }
+  return parsed;
+}
+function statedWindow(context, windowMonths) {
+  const since = dateOption(context, "since");
+  const until = dateOption(context, "until");
+  if (since === void 0 && until === void 0) return void 0;
+  const effectiveSince = since ?? monthsBefore(until, windowMonths);
+  if (until !== void 0 && effectiveSince >= until) throw usageError("--since must be before --until");
+  return { since: effectiveSince, until };
+}
+
 // packages/structure/src/analysis-command.ts
 var sharedOptions = { "no-refresh": { type: "boolean" } };
+function ownsWindow(spec) {
+  return spec.window !== void 0 || spec.wholeHistory === true || spec.options?.since !== void 0 || spec.options?.until !== void 0;
+}
 function analysisCommand(name13, spec) {
   return {
     summary: spec.summary,
-    options: { ...spec.options, ...sharedOptions },
+    options: { ...ownsWindow(spec) ? {} : windowOptions, ...spec.options, ...sharedOptions },
     async run(context) {
-      const window2 = spec.window?.(context);
+      const window2 = ownsWindow(spec) ? spec.window?.(context) : statedWindow(context, readSettings(context.config).windowMonths);
       const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, window: window2, wholeHistory: spec.wholeHistory });
       const output = await spec.analyse({ context, history });
       const finished = {
@@ -19128,6 +19192,7 @@ async function discoverPackages(tree, options2) {
       dependencies
     };
   });
+  markConfiguredEntries(packages, paths, options2.entryPoints ?? []);
   if (packages.length === 0) {
     return options2.components.map((component) => ({
       id: component.name,
@@ -19144,6 +19209,13 @@ async function discoverPackages(tree, options2) {
     })).sort((a, b) => compareIds(a.id, b.id));
   }
   return packages.sort((a, b) => compareIds(a.id, b.id));
+}
+function markConfiguredEntries(packages, paths, entryPoints) {
+  if (entryPoints.length === 0 || packages.length === 0) return;
+  const isEntryFile = compileGlobs([...entryPoints]);
+  const index = indexPackages(packages);
+  const owners = new Set(paths.filter(isEntryFile).map((path) => index.owner(path)));
+  for (const pkg of packages) if (owners.has(pkg.id)) pkg.entry = true;
 }
 function indexPackages(packages, components = []) {
   const owners = /* @__PURE__ */ new Map();
@@ -19192,7 +19264,8 @@ async function buildPackageModel(context, history) {
     ignore: settings.packages.ignore,
     extra: settings.packages.extra,
     components,
-    exclude: settings.exclude
+    exclude: settings.exclude,
+    entryPoints: settings.entryPoints
   });
   return assemblePackageModel(headSha, history, tree, packages, components, await loadProject(root, headSha, settings.exclude));
 }
@@ -21550,7 +21623,7 @@ async function violationsAt(root, sha, settings, model) {
 async function structuralModel(root, sha, settings) {
   const tree = await treeFromRef(root, sha);
   const components = readComponents(settings.components);
-  const packages = await discoverPackages(tree, { ignore: settings.packages.ignore, extra: settings.packages.extra, components, exclude: settings.exclude });
+  const packages = await discoverPackages(tree, { ignore: settings.packages.ignore, extra: settings.packages.extra, components, exclude: settings.exclude, entryPoints: settings.entryPoints });
   const date = Number((await runGit(root, ["log", "-1", "--format=%ct", sha])).trim());
   const nothing = { changes: [], imported: [] };
   return assemblePackageModel(sha, { settings, filtered: nothing, window: { since: date, until: date } }, tree, packages, components, await loadProject(root, sha, settings.exclude));
@@ -21791,18 +21864,6 @@ function toRepoPath(path, roots) {
   }
   if (relative === null || relative === "" || isExcluded(relative)) return null;
   return relative;
-}
-
-// packages/graph/src/tree-distance.ts
-function assertPath(path) {
-  if (path === "" || path.startsWith("/") || path.endsWith("/") || path.includes("//")) {
-    throw new Error(`not a repo-relative POSIX path: "${path}"`);
-  }
-}
-function folderOf2(path) {
-  assertPath(path);
-  const slash = path.lastIndexOf("/");
-  return slash === -1 ? "" : path.slice(0, slash);
 }
 
 // packages/transcripts/src/transcript-format.ts
