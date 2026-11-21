@@ -57,6 +57,16 @@ const expectations: Record<string, Expected> = {
       [undefined, 7, 9, 3, 1, 0, 0, 0, 0, 0],
     ],
   },
+  "sample.go": {
+    profile: "go",
+    file: { lineCount: 35, nonBlankLines: 31, codeLines: 29, indentUnit: 4, indentationComplexity: 32, maxIndent: 3, keywordComplexity: 5 },
+    blocks: [
+      ["Total", 8, 23, 15, 18, 2, 4, 2, 3, 3],
+      ["Double", 25, 25, 1, 0, 0, 0, 0, 0, 0],
+      ["Run", 27, 35, 9, 13, 2, 1, 0, 0, 0],
+      [undefined, 28, 34, 7, 6, 1, 1, 1, 2, 1],
+    ],
+  },
   "sample.py": {
     profile: "python",
     file: { lineCount: 21, nonBlankLines: 16, codeLines: 16, indentUnit: 4, indentationComplexity: 25, maxIndent: 4, keywordComplexity: 5 },
