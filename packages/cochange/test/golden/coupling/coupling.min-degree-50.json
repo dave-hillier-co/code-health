@@ -1,0 +1,110 @@
+{
+  "command": "coupling",
+  "config": "18353697bd40d72e",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 3,
+      "laterMedian": 3,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 33,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 11.6,
+    "window": {
+      "months": 12,
+      "since": 1702976400,
+      "until": 1734598800
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "gitattributes": true,
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 1
+  },
+  "inputs": {
+    "asymmetry": {
+      "high": 80,
+      "low": 30
+    },
+    "file": null,
+    "minDegree": 50,
+    "minSupport": 5
+  },
+  "note": null,
+  "population": {
+    "eligibleChanges": 32,
+    "oversizedExcluded": 1
+  },
+  "repo": {
+    "dirty": false,
+    "head": "dec0218cf5609471948337025b0ecf87b0a771c6"
+  },
+  "results": [
+    {
+      "confidence": 100,
+      "degree": 54.1,
+      "dependent": null,
+      "distance": 0,
+      "evidence": {
+        "changesPath": 10,
+        "changesWith": 27,
+        "clearsMinimum": true,
+        "support": 10
+      },
+      "findings": [],
+      "path": "src/billing/invoice.test.ts",
+      "reverseConfidence": 37,
+      "score": 54.1,
+      "support": 10,
+      "with": "src/billing/invoice.ts"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "window": {
+    "since": "2023-12-19T09:00:00.000Z",
+    "until": "2024-12-19T09:00:00.000Z"
+  }
+}

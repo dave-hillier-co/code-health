@@ -5,6 +5,7 @@ import Ajv2020Module from "ajv/dist/2020.js";
 import addFormatsModule from "ajv-formats";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import { couplingHistory } from "./support/coupling-scenarios.ts";
 import { probeCli } from "./support/probe-cli.ts";
 import { runCochange } from "./support/run.ts";
 import { indentedHistory, steadyHistory } from "./support/scenarios.ts";
@@ -23,6 +24,7 @@ ajv.addSchema(load("refresh.schema.json"));
 ajv.addSchema(load("spread.schema.json"));
 ajv.addSchema(load("hotspots.schema.json"));
 ajv.addSchema(load("age.schema.json"));
+ajv.addSchema(load("coupling.schema.json"));
 // How a command schema for an analysis command is composed. The probe stands in for a real one.
 ajv.addSchema({
   $id: "probe.schema.json",
@@ -85,5 +87,27 @@ test("hotspots and age output, as printed with meta, matches its schema in both 
     }
   } finally {
     indented.dispose();
+  }
+});
+
+test("coupling output, as printed with meta, matches its schema, and stray fields do not", async () => {
+  const coupled = couplingHistory();
+  try {
+    for (const args of [[], ["--file", "src/billing/invoice.ts"], ["--min-support", "1", "--min-degree", "0"]]) {
+      const { code, stdout } = await runCochange(coupled.path, ["coupling", ...args, "--limit", "all"]);
+      expect(code).toBe(0);
+      expect(validates("coupling.schema.json", stdout)).toEqual([]);
+    }
+    const { stdout } = await runCochange(coupled.path, ["coupling"]);
+    const topLevel = { ...JSON.parse(stdout), surprise: true };
+    expect(validates("coupling.schema.json", JSON.stringify(topLevel))).not.toEqual([]);
+    const inRow = JSON.parse(stdout);
+    inRow.results[0].surprise = 1;
+    expect(validates("coupling.schema.json", JSON.stringify(inRow))).not.toEqual([]);
+    const inEvidence = JSON.parse(stdout);
+    inEvidence.results[0].evidence.surprise = 1;
+    expect(validates("coupling.schema.json", JSON.stringify(inEvidence))).not.toEqual([]);
+  } finally {
+    coupled.dispose();
   }
 });

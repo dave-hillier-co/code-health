@@ -1,9 +1,6 @@
-import { readFileSync, rmSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import Ajv2020Module from "ajv/dist/2020.js";
-import addFormatsModule from "ajv-formats";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { afterAll, afterEach, beforeAll, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden, withoutMeta } from "./support/golden.ts";
@@ -16,6 +13,8 @@ beforeAll(() => {
   repo = couplingHistory();
 });
 afterAll(() => repo.dispose());
+// Whatever a test wrote or left behind, the next one starts from the fixture as it was built.
+afterEach(() => rmSync(join(repo.path, "code-health.json"), { force: true }));
 
 const coupling = (...args: string[]) => runCochange(repo.path, ["coupling", ...args, "--json"]);
 const rowsOf = (stdout: string) => JSON.parse(stdout).results as Record<string, any>[];
@@ -82,24 +81,31 @@ test("a file deleted by the end of history is never reported, though its pair ha
 test("lowering --min-support lists weaker pairs without turning them into findings", async () => {
   const rows = rowsOf((await coupling("--min-support", "3", "--limit", "all")).stdout);
   const flags = rows.find((row) => row.path === "lib/flags/off.ts")!;
+  expectGolden("coupling", "coupling.min-support-3", (await coupling("--min-support", "3", "--limit", "all")).stdout);
   expect(flags).toMatchObject({ support: 3, distance: 4, findings: [], evidence: { clearsMinimum: false } });
   expect(rowsOf((await coupling()).stdout).some((row) => row.path === "lib/flags/off.ts")).toBe(false);
 });
 
 test("--min-degree removes pairs below it", async () => {
-  const rows = rowsOf((await coupling("--min-degree", "50")).stdout);
+  const { stdout } = await coupling("--min-degree", "50");
+  expectGolden("coupling", "coupling.min-degree-50", stdout);
+  const rows = rowsOf(stdout);
   expect(rows.map((row) => row.path)).toEqual(["src/billing/invoice.test.ts"]);
 });
 
 test("a configured minimum distance changes what is distant", async () => {
-  const { writeFileSync } = await import("node:fs");
   writeFileSync(join(repo.path, "code-health.json"), '{"cochange":{"minDistance":3}}\n');
-  try {
-    const rows = rowsOf((await coupling()).stdout);
-    expect(rows.some((row) => row.findings.includes("distant-coupling"))).toBe(false);
-  } finally {
-    rmSync(join(repo.path, "code-health.json"));
-  }
+  const { stdout } = await coupling();
+  expect(rowsOf(stdout).some((row) => row.findings.includes("distant-coupling"))).toBe(false);
+  expectGolden("coupling", "coupling.min-distance-3", stdout);
+});
+
+test("--limit keeps the strongest rows and says the list was cut", async () => {
+  const { stdout } = await coupling("--limit", "2");
+  const document = JSON.parse(stdout);
+  expect(document.results).toHaveLength(2);
+  expect(document.truncated).toBeTruthy();
+  expectGolden("coupling", "coupling.limit-2", stdout);
 });
 
 test("rows are ordered by degree, then path", async () => {
@@ -150,18 +156,6 @@ test("explain describes both rules", async () => {
     expect(stdout).toContain(`${rule}:`);
   }
   expect((await runCochange(repo.path, ["explain", "nonsense"])).code).toBe(ExitCode.Usage);
-});
-
-test("the printed output, with meta, matches the coupling schema", async () => {
-  const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "plugins", "cochange", "schemas");
-  const ajv = new Ajv2020Module.default({ strict: true, allErrors: true });
-  addFormatsModule.default(ajv);
-  for (const name of ["common", "coupling"]) ajv.addSchema(JSON.parse(readFileSync(join(dir, `${name}.schema.json`), "utf8")));
-  const validate = ajv.getSchema("coupling.schema.json")!;
-  for (const args of [[], ["--file", "src/billing/invoice.ts"]]) {
-    const ok = validate(JSON.parse((await coupling(...args)).stdout));
-    expect(ok ? [] : validate.errors).toEqual([]);
-  }
 });
 
 test("--file names the file now at that path when the path was reused after a rename", async () => {

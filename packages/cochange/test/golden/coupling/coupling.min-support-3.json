@@ -1,0 +1,170 @@
+{
+  "command": "coupling",
+  "config": "18353697bd40d72e",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 3,
+      "laterMedian": 3,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 33,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 11.6,
+    "window": {
+      "months": 12,
+      "since": 1702976400,
+      "until": 1734598800
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "gitattributes": true,
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 1
+  },
+  "inputs": {
+    "asymmetry": {
+      "high": 80,
+      "low": 30
+    },
+    "file": null,
+    "minDegree": 30,
+    "minSupport": 3
+  },
+  "note": null,
+  "population": {
+    "eligibleChanges": 32,
+    "oversizedExcluded": 1
+  },
+  "repo": {
+    "dirty": false,
+    "head": "dec0218cf5609471948337025b0ecf87b0a771c6"
+  },
+  "results": [
+    {
+      "confidence": 100,
+      "degree": 100,
+      "dependent": null,
+      "distance": 4,
+      "evidence": {
+        "changesPath": 3,
+        "changesWith": 3,
+        "clearsMinimum": false,
+        "support": 3
+      },
+      "findings": [],
+      "path": "lib/flags/off.ts",
+      "reverseConfidence": 100,
+      "score": 100,
+      "support": 3,
+      "with": "src/flags/on.ts"
+    },
+    {
+      "confidence": 100,
+      "degree": 54.1,
+      "dependent": null,
+      "distance": 0,
+      "evidence": {
+        "changesPath": 10,
+        "changesWith": 27,
+        "clearsMinimum": true,
+        "support": 10
+      },
+      "findings": [],
+      "path": "src/billing/invoice.test.ts",
+      "reverseConfidence": 37,
+      "score": 54.1,
+      "support": 10,
+      "with": "src/billing/invoice.ts"
+    },
+    {
+      "confidence": 100,
+      "degree": 31.3,
+      "dependent": "src/app/registry.ts",
+      "distance": 2,
+      "evidence": {
+        "changesPath": 5,
+        "changesWith": 27,
+        "clearsMinimum": true,
+        "support": 5
+      },
+      "findings": [
+        "distant-coupling",
+        "asymmetric-coupling"
+      ],
+      "path": "src/app/registry.ts",
+      "reverseConfidence": 18.5,
+      "score": 31.3,
+      "support": 5,
+      "with": "src/billing/invoice.ts"
+    },
+    {
+      "confidence": 18.5,
+      "degree": 30.3,
+      "dependent": "src/reporting/summary.ts",
+      "distance": 2,
+      "evidence": {
+        "changesPath": 27,
+        "changesWith": 6,
+        "clearsMinimum": true,
+        "support": 5
+      },
+      "findings": [
+        "distant-coupling",
+        "asymmetric-coupling"
+      ],
+      "path": "src/billing/invoice.ts",
+      "reverseConfidence": 83.3,
+      "score": 30.3,
+      "support": 5,
+      "with": "src/reporting/summary.ts"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 4
+  },
+  "window": {
+    "since": "2023-12-19T09:00:00.000Z",
+    "until": "2024-12-19T09:00:00.000Z"
+  }
+}
