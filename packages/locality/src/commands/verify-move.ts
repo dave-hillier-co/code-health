@@ -31,7 +31,7 @@ export const command: Command = {
 
     // The plan is made from the code as it stood before the commit, so it cannot depend on what the commit did.
     const { analysis } = await analyseRevision(context, settings, parent);
-    const candidate = analysis.candidates.find((entry) => entry.path === unitPath);
+    const candidate = [...analysis.candidates, ...analysis.placed].find((entry) => entry.path === unitPath);
     if (candidate === undefined) throw usageError(`"${unitPath}" is not a unit the analyser reports for ${parent.slice(0, 10)}, the parent of ${ref}`);
 
     const parentTree = await treeFromRef(root, parent);

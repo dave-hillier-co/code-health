@@ -1,8 +1,8 @@
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
-import { monthsBefore } from "@code-health/history/evidence";
 import { commitsInSnapshot, lineShares, resolveOwners, shareHeldBy, type Owner } from "@code-health/history/blame-owners";
 import { readBlame } from "@code-health/history/blame-read";
 import { refreshBlame } from "@code-health/history/blame-refresh";
+import { readActiveDevelopers } from "../active-developers.ts";
 import type { Assessed, Factor } from "./assess.ts";
 import { invokingUser } from "./identity.ts";
 import { placeChange, type BlameFacts, type Placement } from "./placement.ts";
@@ -34,7 +34,7 @@ async function blameFacts(
   authorKeys: ReadonlySet<string>,
   noRefresh: boolean,
 ): Promise<{ facts: Map<string, BlameFacts>; missing: number; refreshed: boolean }> {
-  const { change, history, risk, state } = assessed;
+  const { change, history, risk } = assessed;
   const root = context.repo.root;
   const paths = [...new Set(change.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
   const facts = new Map<string, BlameFacts>();
@@ -47,11 +47,8 @@ async function blameFacts(
     localMailmap: history.identities.localMailmap,
     matcher: history.identities.matcher,
   });
-  const activeSince = monthsBefore(assessed.facts.time, history.settings.windowMonths);
-  const active = (owner: Owner): boolean => {
-    const seen = state.identity(owner.email);
-    return seen !== null && seen.last >= activeSince;
-  };
+  const developers = await readActiveDevelopers(context, history, assessed.facts.time);
+  const active = (owner: Owner): boolean => developers.has(owner.email);
   const byKey = new Map<string, Owner>([...owners.values()].map((o) => [o.key, o]));
 
   for (const file of change.files) {

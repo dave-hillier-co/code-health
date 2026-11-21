@@ -67,6 +67,7 @@
     "oversizedChanges": 0
   },
   "inputs": {
+    "abandonment": null,
     "backtest": null,
     "baseline": {
       "direct": 7,

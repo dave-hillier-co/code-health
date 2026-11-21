@@ -3,7 +3,8 @@ import { commitsInSnapshot, resolveOwners } from "@code-health/history/blame-own
 import { readBlame } from "@code-health/history/blame-read";
 import { refreshBlame, type BlameRefreshResult } from "@code-health/history/blame-refresh";
 import type { LoadedHistory } from "../history-access.ts";
-import { SECONDS_PER_MONTH, readActivity, type Activity } from "./activity.ts";
+import { SECONDS_PER_MONTH, windowSecondsOf } from "../active-developers.ts";
+import { readActivity, type Activity } from "./activity.ts";
 import { buildKnowledgeModel, type KnowledgeModel } from "./knowledge-model.ts";
 import { readOverrides, type KnowledgeOverrides, type KnowledgeSettings } from "./settings.ts";
 
@@ -24,7 +25,6 @@ export interface LoadedKnowledge {
   periodSeconds: number;
 }
 
-export const windowSecondsOf = (settings: KnowledgeSettings): number => settings.activityWindowMonths * SECONDS_PER_MONTH;
 export const periodSecondsOf = (settings: KnowledgeSettings): number => settings.periodMonths * SECONDS_PER_MONTH;
 
 /** The options a blame is made and read with, so the refresh and the read agree. */

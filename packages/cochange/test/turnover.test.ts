@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
-import { SECONDS_PER_MONTH, activeAt, estimateTurnover, tenuresOf, type Activity } from "../src/abandonment/activity.ts";
+import { estimateTurnover, tenuresOf, type Activity } from "../src/abandonment/activity.ts";
+import { SECONDS_PER_MONTH, activeAt } from "../src/active-developers.ts";
 
 const month = SECONDS_PER_MONTH;
 const WINDOW = 6 * month;

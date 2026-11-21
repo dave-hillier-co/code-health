@@ -378,9 +378,9 @@ test("aliases, extension-less and .js specifiers and a dynamic import still reso
     const original = repo.git("rev-parse", "HEAD");
     expect((await move(repo, "src/lib/shared.ts", "--to", "src/right", "--reason", "test", "--apply")).code).toBe(ExitCode.Success);
     expect(check()).toBe("");
-    // A second run on the same unit changes nothing.
+    // A second run on the same unit changes nothing: it is beside its consumers now, so moving it again is an override that needs a reason.
     const head = repo.git("rev-parse", "HEAD");
-    expect((await runLocality(repo.path, ["move", "src/right/shared.ts", "--to", "src/lib", "--apply", "--json"])).code).toBe(ExitCode.Usage);
+    expect((await runLocality(repo.path, ["move", "src/right/shared.ts", "--to", "src/lib", "--apply", "--json"])).code).toBe(ExitCode.CheckFailed);
     expect(repo.git("rev-parse", "HEAD")).toBe(head);
     expect(repo.git("status", "--porcelain")).toBe("");
     expect(repo.git("diff", "--name-status", "-M", original, "HEAD").split("\n").sort()).toEqual([
@@ -392,3 +392,34 @@ test("aliases, extension-less and .js specifiers and a dynamic import still reso
     repo.dispose();
   }
 }, 120_000);
+
+test("a unit that was moved can be moved back with --to and a reason, which restores every path and import", async () => {
+  const repo = distantHelpers();
+  try {
+    repo.git("config", "user.name", "Dev");
+    repo.git("config", "user.email", "dev@example.com");
+    const original = repo.git("rev-parse", "HEAD^{tree}");
+    expect((await move(repo, "src/shared/utils/money.ts", "--apply")).document.applied).toBe(true);
+    expect(repo.git("rev-parse", "HEAD^{tree}")).not.toBe(original);
+
+    // The unit now sits beside its consumers, so the analyser has nothing to say about it and recommends keeping it: the way back is an override.
+    const refused = await move(repo, "src/money.ts", "--to", "src/shared/utils");
+    expect(refused.code).toBe(ExitCode.CheckFailed);
+    expect(refused.document.unit).toMatchObject({ path: "src/money.ts", recommendation: "keep", rule: "near-consumers" });
+    expect(refused.document.refusals.map((refusal) => refusal.code)).toEqual(["needs-reason"]);
+
+    const back = await move(repo, "src/money.ts", "--to", "src/shared/utils", "--reason", "the move was a mistake", "--apply");
+    expect(back.code, back.stdout).toBe(ExitCode.Success);
+    expect(back.document.refusals).toEqual([]);
+    expect(back.document.results).toEqual([{ from: "src/money.ts", to: "src/shared/utils/money.ts", role: "unit" }]);
+    expect(repo.git("rev-parse", "HEAD^{tree}")).toBe(original);
+    expect(repo.git("status", "--porcelain")).toBe("");
+  } finally {
+    repo.dispose();
+  }
+});
+
+test("a unit the analyser does not report and a move it has no reason for are told apart: only a unit that is not in the code is an unknown unit", async () => {
+  const { code } = await move(shared, "src/shared/utils/nothing-here.ts", "--to", "src/other", "--reason", "x");
+  expect(code).toBe(ExitCode.Usage);
+});

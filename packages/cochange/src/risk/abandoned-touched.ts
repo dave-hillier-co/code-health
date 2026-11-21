@@ -4,9 +4,11 @@ import { readBlame } from "@code-health/history/blame-read";
 import { refreshBlame } from "@code-health/history/blame-refresh";
 import { estimateTurnover, readActivity } from "../abandonment/activity.ts";
 import { round4 } from "../abandonment/current.ts";
-import { blameOptions, periodSecondsOf, windowSecondsOf } from "../abandonment/load.ts";
+import { windowSecondsOf } from "../active-developers.ts";
+import { blameOptions, periodSecondsOf } from "../abandonment/load.ts";
 import { buildKnowledgeModel, goneLinesOf, reachesThreshold } from "../abandonment/knowledge-model.ts";
 import { readKnowledgeSettings, readOverrides } from "../abandonment/settings.ts";
+import { readAbandonmentReport, type AbandonmentReport } from "./abandonment-report.ts";
 import { simulate } from "../abandonment/simulate.ts";
 import type { LoadedHistory } from "../history-access.ts";
 import { TOOL } from "../tool.ts";
@@ -14,6 +16,12 @@ import type { BranchChange } from "./change.ts";
 import type { Measurement } from "./measure.ts";
 
 const SOURCE = "knowledge analysis";
+
+export interface AbandonedTouched {
+  measurement: Measurement;
+  /** The stored report the measurement was read from, when it was. */
+  report: AbandonmentReport["input"] | null;
+}
 
 const unavailable = (reason: string): Measurement => ({
   name: "abandoned-touched",
@@ -36,10 +44,39 @@ const unavailable = (reason: string): Measurement => ({
  * Developers enter as counts only: the evidence names files, never people. A file's probability needs a
  * turnover rate, the configured one or the one history shows; without either, only files already abandoned count.
  */
-export async function abandonedTouched(context: CommandContext, history: LoadedHistory, change: BranchChange): Promise<Measurement> {
+export async function abandonedTouched(context: CommandContext, history: LoadedHistory, change: BranchChange): Promise<AbandonedTouched> {
   const section = (context.config.effective[TOOL] as { knowledge?: { enabled?: unknown } }).knowledge;
-  if (section?.enabled !== true) return unavailable("knowledge analysis is not enabled (cochange.knowledge.enabled)");
+  if (section?.enabled !== true) return { measurement: unavailable("knowledge analysis is not enabled (cochange.knowledge.enabled)"), report: null };
   const settings = readKnowledgeSettings(context.config.effective);
+  const root = context.repo.root;
+
+  // The report is the composition seam: when `abandonment simulate` has already run for this tip, its files are read, not computed again.
+  const report = change.worktree ? null : readAbandonmentReport(root, change.head, context.config.hash, readOverrides(root).stamp);
+  if (report !== null) return { measurement: fromReport(report, change, settings.atRiskProbability), report: report.input };
+  return { measurement: await fromBlame(context, history, change, settings), report: null };
+}
+
+/**
+ * The report describes the tip, so a line the change itself wrote counts for the file's authors at the
+ * tip, where the blame cache at the base would count the file as it was before the change.
+ */
+function fromReport(report: AbandonmentReport, change: BranchChange, atRiskProbability: number): Measurement {
+  const touched = [...new Set(change.files.filter((f) => f.status !== "A" && f.status !== "D").map((f) => f.path))].sort();
+  const rows = touched.flatMap((file) => {
+    const row = report.files.get(file);
+    if (row === undefined) return [];
+    const abandoned = row.abandoned;
+    return abandoned || (row.probability > 0 && row.probability * 100 >= atRiskProbability) ? [{ file, abandoned, probability: round4(abandoned ? 1 : row.probability) }] : [];
+  });
+  return { ...measurement(rows, touched.length, 0), source: "abandonment report" };
+}
+
+async function fromBlame(
+  context: CommandContext,
+  history: LoadedHistory,
+  change: BranchChange,
+  settings: ReturnType<typeof readKnowledgeSettings>,
+): Promise<Measurement> {
   const root = context.repo.root;
 
   const paths = [...new Set(change.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();

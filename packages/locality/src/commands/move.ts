@@ -31,7 +31,7 @@ export const command: Command = {
     if (!apply && context.values["no-commit"] === true) throw usageError("--no-commit only applies with --apply");
 
     const { analysis } = await analyseRevision(context, settings, "HEAD");
-    const candidate = analysis.candidates.find((entry) => entry.path === unitPath);
+    const candidate = [...analysis.candidates, ...analysis.placed].find((entry) => entry.path === unitPath);
     if (candidate === undefined) {
       throw usageError(`"${unitPath}" is not a unit the analyser reports: run \`locality analyse\` and name one of its paths`);
     }

@@ -1,6 +1,7 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { integerOption } from "../coupled-pairs.ts";
+import { writeReport } from "../reports.ts";
 import { UNASSIGNED, readComponents } from "../components.ts";
 import { estimateTurnover, type Turnover } from "./activity.ts";
 import { round4 } from "./current.ts";
@@ -99,8 +100,7 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
         findings: fileFindings({ abandoned, probability: f.probability, hot: weight?.hot ?? false, noSuccessor: () => noSuccessor(f.path) }, settings.atRiskProbability),
       };
     })
-    .sort((a, b) => b.score - a.score || b.probability - a.probability || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)))
-    .slice(0, top);
+    .sort((a, b) => b.score - a.score || b.probability - a.probability || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
 
   const componentRows = result.componentRisks
     .map((c) => {
@@ -116,11 +116,10 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
         findings: concentrated ? ["concentrated-component"] : [],
       };
     })
-    .sort((a, b) => b.expectedLoss - a.expectedLoss || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)))
-    .slice(0, top);
+    .sort((a, b) => b.expectedLoss - a.expectedLoss || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
 
   const leaverProbability = round4(result.meanLeaverProbability);
-  return {
+  const output: CommandOutput = {
     inputs: commonInputs(p, "simulate", {
       mode: sim.mode,
       k: sim.k,
@@ -152,4 +151,19 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
       components: componentRows,
     },
   };
+  // The report holds every file and component. `--top` only cuts what is printed.
+  if (isConfiguredRun(context, sim.mode)) await writeReport(context, REPORT, output, p.history.view.headSha);
+  const results = output.results as { files: unknown[]; components: unknown[] };
+  return { ...output, results: { ...results, files: results.files.slice(0, top), components: results.components.slice(0, top) } };
+}
+
+/** The command a report is stored for. Risk's `abandoned-touched` reads it. */
+export const REPORT = "abandonment.simulate";
+
+/**
+ * A report describes the configured analysis, so only a run that takes everything from the config and the
+ * commit may store one. A run with its own mode, size, horizon or seed is printed and never stored.
+ */
+function isConfiguredRun(context: CommandContext, mode: string): boolean {
+  return mode === "rate" && ["mode", "k", "trials", "horizon", "seed"].every((option) => context.values[option] === undefined);
 }

@@ -67,6 +67,7 @@
     "oversizedChanges": 0
   },
   "inputs": {
+    "abandonment": null,
     "backtest": null,
     "baseline": {
       "direct": 3,
@@ -78,7 +79,7 @@
     "evidence": [
       {
         "command": "check",
-        "hash": "ee62748e744bc030",
+        "hash": "7fb76dde3cbf8fef",
         "tool": "structure"
       }
     ],

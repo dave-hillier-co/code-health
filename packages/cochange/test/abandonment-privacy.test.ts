@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
@@ -64,13 +64,14 @@ test("no output names or addresses anyone unless successors is asked for names",
   expect(named.stdout).toMatch(/Ann Active/);
 });
 
-test("the results are never stored as reports for another plugin to read", async () => {
+test("only the configured simulation is stored as a report, and it holds files and counts and no one's name", async () => {
   configure({});
   for (const argv of everyCommand) await runCochange(repo.path, argv);
-  for (const command of ["abandonment", "successors", "blame"]) expect(existsSync(reportPath(repo.path, command)), command).toBe(false);
+  for (const command of ["abandonment", "abandonment.current", "successors", "blame"]) expect(existsSync(reportPath(repo.path, command)), command).toBe(false);
   const reports = join(repo.path, ".cache", "code-health", "reports");
   const stored = existsSync(reports) ? readdirSync(reports) : [];
-  expect(stored.filter((file) => /abandon|successor|blame|knowledge/.test(file))).toEqual([]);
+  expect(stored.filter((file) => /abandon|successor|blame|knowledge/.test(file))).toEqual(["cochange.abandonment.simulate.json"]);
+  expect(readFileSync(join(reports, "cochange.abandonment.simulate.json"), "utf8")).not.toMatch(identities);
 });
 
 test("a stated rate and the seed are all that decide the numbers, so nothing about a person can", async () => {

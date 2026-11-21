@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
@@ -39,6 +39,17 @@ export async function bundle(plugin, root = defaultRoot) {
 }
 
 /**
+ * Everything a plugin installs beside its bundle besides grammars: the `chunk-<hash>.mjs` files that
+ * `bundle` imports on demand, by file name. A plugin whose commands `import()` a module lazily gets the
+ * module, and whatever only it needs, in a chunk, so that a command that never loads it never reads it.
+ * Empty for a plugin with no lazily loaded module. Chunks are named for their content, so a rebuild is
+ * byte identical and a changed chunk is a new file.
+ */
+export async function bundleChunks(plugin, root = defaultRoot) {
+  return (await bundleWithInputs(plugin, root)).chunks;
+}
+
+/**
  * A plugin parses when its bundle includes the parse package's grammar loader,
  * directly or through another package. Such a plugin ships the tree-sitter
  * .wasm files in `dist/grammars/`, where that loader finds them relative to
@@ -61,8 +72,14 @@ async function bundleWithInputs(plugin, root) {
   const run = (banner) =>
     build({
       absWorkingDir: root,
-      entryPoints: [join("packages", plugin, "src", "main.ts")],
-      outfile: relative(root, bundlePath(plugin, root)),
+      entryPoints: { [plugin]: join("packages", plugin, "src", "main.ts") },
+      outdir: relative(root, dirname(bundlePath(plugin, root))),
+      outExtension: { ".js": ".mjs" },
+      // A module a command loads with `import()` goes in its own file, with the modules only it uses, and
+      // is read when the command runs. Without this a rarely needed dependency is parsed on every start.
+      splitting: true,
+      entryNames: "[name]",
+      chunkNames: "chunk-[hash]",
       write: false,
       bundle: true,
       platform: "node",
@@ -76,11 +93,17 @@ async function bundleWithInputs(plugin, root) {
       banner: { js: banner },
     });
   let result = await run(generated);
-  if (result.outputFiles[0]?.text.includes("Dynamic require of")) result = await run(`${generated}\n${REQUIRE_SHIM}`);
-  const [output] = result.outputFiles;
-  if (!output || result.outputFiles.length !== 1) throw new Error(`expected one output file for ${plugin}`);
+  if (result.outputFiles.some((file) => file.text.includes("Dynamic require of"))) result = await run(`${generated}\n${REQUIRE_SHIM}`);
+  const main = result.outputFiles.find((file) => basename(file.path) === `${plugin}.mjs`);
+  if (!main) throw new Error(`expected ${plugin}.mjs among the output files for ${plugin}`);
+  const chunks = new Map(
+    result.outputFiles
+      .filter((file) => file !== main)
+      .map((file) => [basename(file.path), file.text])
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  );
   const parses = Object.keys(result.metafile.inputs).some((input) => input.endsWith(GRAMMARS_MODULE));
-  return { text: output.text, parses };
+  return { text: main.text, chunks, parses };
 }
 
 /**
@@ -118,12 +141,19 @@ export async function buildAll(root = defaultRoot) {
   for (const plugin of plugins) {
     const file = bundlePath(plugin, root);
     mkdirSync(dirname(file), { recursive: true });
-    const { text, parses } = await bundleWithInputs(plugin, root);
+    const { text, chunks, parses } = await bundleWithInputs(plugin, root);
     writeFileSync(file, text);
+    for (const stale of chunkFilesIn(dirname(file))) if (!chunks.has(stale)) rmSync(join(dirname(file), stale));
+    for (const [name, chunk] of chunks) writeFileSync(join(dirname(file), name), chunk);
     if (parses) await copyGrammarFiles(grammarsPath(plugin, root), root);
     else rmSync(grammarsPath(plugin, root), { recursive: true, force: true });
   }
   return plugins;
+}
+
+/** The names of the chunk files in a plugin's `dist`, sorted. */
+function chunkFilesIn(directory) {
+  return existsSync(directory) ? readdirSync(directory).filter((name) => /^chunk-.+\.mjs$/.test(name)).sort() : [];
 }
 
 /** The files under `directory` with their bytes, by relative name. Empty when there is no such directory. */
@@ -137,8 +167,10 @@ export async function staleBundles(root = defaultRoot) {
   const stale = [];
   for (const plugin of bundledPlugins(root)) {
     const file = bundlePath(plugin, root);
-    const { text, parses } = await bundleWithInputs(plugin, root);
-    if (!existsSync(file) || readFileSync(file, "utf8") !== text) {
+    const { text, chunks, parses } = await bundleWithInputs(plugin, root);
+    const committedChunks = chunkFilesIn(dirname(file));
+    const sameChunks = committedChunks.length === chunks.size && committedChunks.every((name) => chunks.get(name) === readFileSync(join(dirname(file), name), "utf8"));
+    if (!existsSync(file) || readFileSync(file, "utf8") !== text || !sameChunks) {
       stale.push(plugin);
       continue;
     }

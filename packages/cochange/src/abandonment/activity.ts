@@ -3,13 +3,6 @@ import type { NonPersonMatcher } from "@code-health/history/identity-classify";
 import { mapThroughMailmap } from "@code-health/history/identity-mapping";
 import { identityKey } from "@code-health/history/identity-names";
 
-/**
- * A month as the abandonment analysis measures it: 30.4375 days. Windows and
- * periods are fixed lengths of time, so a date is active or not by exact
- * arithmetic and never by the calendar.
- */
-export const SECONDS_PER_MONTH = 2_629_800;
-
 /** Commit times, in unix seconds, of each person by mapped identity (`Name <email>`), oldest first. Bots and services are not in it. */
 export interface Activity {
   commits: Map<string, number[]>;
@@ -44,16 +37,6 @@ export async function readActivity(
   }
   for (const times of byPerson.values()) times.sort((a, b) => a - b);
   return { commits: new Map([...byPerson].sort(([a], [b]) => Buffer.compare(Buffer.from(a), Buffer.from(b)))) };
-}
-
-/** Whether someone with these commit times is active at `asOf`: a commit in the window ending there, and none is known after it. */
-export function activeAt(times: readonly number[], asOf: number, windowSeconds: number): boolean {
-  let last: number | undefined;
-  for (const t of times) {
-    if (t > asOf) break;
-    last = t;
-  }
-  return last !== undefined && last > asOf - windowSeconds;
 }
 
 export interface Tenure {
