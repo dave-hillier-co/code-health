@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial. Third-party licences: THIRD_PARTY_NOTICES.md.
 var __defProp = Object.defineProperty;
 var __export = (target, all) => {
-  for (var name14 in all)
-    __defProp(target, name14, { get: all[name14], enumerable: true });
+  for (var name15 in all)
+    __defProp(target, name15, { get: all[name15], enumerable: true });
 };
 
 // packages/cli-kit/src/args.ts
@@ -61,9 +61,9 @@ function parseArguments(argv2, commandOptions = {}) {
     throw usageError(error instanceof Error ? error.message : String(error));
   }
   const { json, help, limit, fields, ...values } = parsed.values;
-  const [command14, ...positionals] = parsed.positionals;
+  const [command15, ...positionals] = parsed.positionals;
   return {
-    command: command14,
+    command: command15,
     positionals,
     json: json === true,
     help: help === true,
@@ -367,8 +367,8 @@ async function runCli(cli2, io) {
 }
 async function execute(cli2, io) {
   const started = Date.now();
-  const name14 = discoverCommand(io.argv);
-  if (name14 === void 0) {
+  const name15 = discoverCommand(io.argv);
+  if (name15 === void 0) {
     if (io.argv.includes("--help")) {
       io.stdout.write(helpText(cli2));
       return ExitCode.Success;
@@ -376,22 +376,22 @@ async function execute(cli2, io) {
     io.stderr.write(helpText(cli2));
     return ExitCode.Usage;
   }
-  if (name14 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
-  const command14 = name14 === "config" ? configExplain : cli2.commands[name14];
-  if (!command14) throw usageError(`unknown command "${name14}"; run with --help to list commands`);
-  const args = parseArguments(io.argv, command14.options);
+  if (name15 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
+  const command15 = name15 === "config" ? configExplain : cli2.commands[name15];
+  if (!command15) throw usageError(`unknown command "${name15}"; run with --help to list commands`);
+  const args = parseArguments(io.argv, command15.options);
   if (args.help) {
-    io.stdout.write(commandHelp(cli2, name14, command14));
+    io.stdout.write(commandHelp(cli2, name15, command15, args.positionals[0]));
     return ExitCode.Success;
   }
-  let commandName = name14;
-  if (name14 === "config") {
+  let commandName = name15;
+  if (name15 === "config") {
     if (args.positionals[0] !== "explain") throw usageError("usage: config explain");
     commandName = "config explain";
   }
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli2.config);
-  const output = await command14.run({ repo, config, positionals: args.positionals, values: args.values });
+  const output = await command15.run({ repo, config, positionals: args.positionals, values: args.values });
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
   if (args.json || !io.stdout.isTTY) {
@@ -452,36 +452,56 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands2 = [
-    ...Object.entries(cli2.commands).map(([name14, command14]) => [name14, command14.summary]),
+    ...Object.entries(cli2.commands).map(([name15, command15]) => [name15, command15.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
-  const width = Math.max(...commands2.map(([name14]) => name14.length));
+  const width = Math.max(...commands2.map(([name15]) => name15.length));
   return [
     `Usage: ${cli2.tool} <command> [options]`,
     "",
     "Commands:",
-    ...commands2.map(([name14, summary]) => `  ${name14.padEnd(width)}  ${summary}`),
+    ...commands2.map(([name15, summary]) => `  ${name15.padEnd(width)}  ${summary}`),
     "",
     "Options:",
     ...commonOptionHelp,
     ""
   ].join("\n");
 }
-function commandHelp(cli2, name14, command14) {
-  const flags = Object.entries(command14.options ?? {}).map(([option, spec]) => [
-    `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
-    command14.optionHelp?.[option] ?? ""
-  ]);
-  const width = Math.max(0, ...flags.map(([flag]) => flag.length));
-  const own = flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`);
+function commandHelp(cli2, name15, command15, requested) {
+  const sub = requested === void 0 ? void 0 : command15.subcommands?.[requested];
+  const optionLines = (entries) => {
+    const flags = entries.map(([option, spec]) => [
+      `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
+      command15.optionHelp?.[option] ?? ""
+    ]);
+    const width2 = Math.max(0, ...flags.map(([flag]) => flag.length));
+    return flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
+  };
+  const all = Object.entries(command15.options ?? {});
+  if (sub !== void 0) {
+    const taken = new Set(sub.options ?? []);
+    return [
+      `Usage: ${cli2.tool} ${name15} ${requested}${command15.usage === void 0 ? "" : ` ${command15.usage}`} [options]`,
+      "",
+      sub.summary,
+      "",
+      "Options:",
+      ...optionLines(all.filter(([option]) => taken.has(option))),
+      ...commonOptionHelp,
+      ""
+    ].join("\n");
+  }
+  const subcommands = Object.entries(command15.subcommands ?? {});
+  const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli2.tool} ${name14}${command14.usage === void 0 ? "" : ` ${command14.usage}`} [options]`,
+    `Usage: ${cli2.tool} ${name15}${command15.usage === void 0 ? "" : ` ${command15.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
-    command14.summary,
+    command15.summary,
     "",
+    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name15} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
-    ...own,
+    ...optionLines(all),
     ...commonOptionHelp,
     ""
   ].join("\n");
@@ -986,19 +1006,19 @@ async function filterHistory(repoPath, view, options = {}) {
   for (const commit of view.commits) {
     if (commitDropped(commit)) continue;
     const files = [];
-    for (const change of commit.changes) {
-      if (isPureRename(change)) {
+    for (const change2 of commit.changes) {
+      if (isPureRename(change2)) {
         dropped.pureRenames++;
-      } else if (excluded(change.path)) {
+      } else if (excluded(change2.path)) {
         dropped.excludedByGlob++;
-      } else if (lockfileSet.has(change.path.slice(change.path.lastIndexOf("/") + 1))) {
+      } else if (lockfileSet.has(change2.path.slice(change2.path.lastIndexOf("/") + 1))) {
         dropped.lockfiles++;
-      } else if (attributes.generated.has(change.path)) {
+      } else if (attributes.generated.has(change2.path)) {
         dropped.generated++;
-      } else if (attributes.vendored.has(change.path)) {
+      } else if (attributes.vendored.has(change2.path)) {
         dropped.vendored++;
       } else {
-        files.push(change);
+        files.push(change2);
       }
     }
     if (files.length === 0) {
@@ -1669,11 +1689,11 @@ var DEFAULT_WINDOW_MONTHS = 12;
 var SECONDS_PER_MONTH = 30.4375 * 86400;
 function monthsBefore(anchor, months) {
   const date = new Date(anchor * 1e3);
-  const day = date.getUTCDate();
+  const day2 = date.getUTCDate();
   date.setUTCDate(1);
   date.setUTCMonth(date.getUTCMonth() - months);
   const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-  date.setUTCDate(Math.min(day, lastDay));
+  date.setUTCDate(Math.min(day2, lastDay));
   return Math.floor(date.getTime() / 1e3);
 }
 function median(values) {
@@ -1701,16 +1721,16 @@ function computeEvidence(view, changes, shallow, imported, options = {}) {
   const afterImport = imported.reduce((max, i) => Math.max(max, i.committerDate), -Infinity);
   const first = changes.filter((c) => c.committerDate >= afterImport).reduce((min, c) => min === null || c.committerDate < min ? c.committerDate : min, null);
   const usableHistoryMonths = first === null ? 0 : Math.round((until - first) / SECONDS_PER_MONTH * 10) / 10;
-  const inWindow = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
-  const contributors = new Set(inWindow.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
-  const grade = meets(thresholds.strong, usableHistoryMonths, inWindow.length, contributors.size) ? "strong" : meets(thresholds.moderate, usableHistoryMonths, inWindow.length, contributors.size) ? "moderate" : "weak";
+  const inWindow2 = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
+  const contributors = new Set(inWindow2.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
+  const grade = meets(thresholds.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(thresholds.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
   const available = view.commits.reduce(
     (min, c) => min === null || c.committerDate < min ? c.committerDate : min,
     null
   );
   return {
     usableHistoryMonths,
-    logicalChangesInWindow: inWindow.length,
+    logicalChangesInWindow: inWindow2.length,
     activeContributors: contributors.size,
     grade,
     window: { months: windowMonths, since, until },
@@ -1754,17 +1774,17 @@ function emailLocalPart(email) {
   const at = normalised.lastIndexOf("@");
   return at === -1 ? normalised : normalised.slice(0, at);
 }
-function normaliseName(name14) {
-  let text = name14.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase();
+function normaliseName(name15) {
+  let text = name15.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase();
   const comma = text.indexOf(",");
   if (comma !== -1 && text.indexOf(",", comma + 1) === -1) text = `${text.slice(comma + 1)} ${text.slice(0, comma)}`;
   return text.replace(/[.,]/g, " ").split(/\s+/).filter((t) => t !== "").join(" ");
 }
-function nameTokens(name14) {
-  return normaliseName(name14).split(" ").filter((t) => t !== "");
+function nameTokens(name15) {
+  return normaliseName(name15).split(" ").filter((t) => t !== "");
 }
-function derivedLocalParts(name14) {
-  const tokens = nameTokens(name14);
+function derivedLocalParts(name15) {
+  const tokens = nameTokens(name15);
   if (tokens.length < 2) return [];
   const first = tokens[0];
   const last = tokens[tokens.length - 1];
@@ -1777,8 +1797,8 @@ function derivedLocalParts(name14) {
     `${first[0]}${last}`
   ];
 }
-function flattenedNames(name14) {
-  const tokens = nameTokens(name14);
+function flattenedNames(name15) {
+  const tokens = nameTokens(name15);
   if (tokens.length < 2) return [];
   return ["", "-", ".", "_"].map((glue) => tokens.join(glue));
 }
@@ -1846,21 +1866,21 @@ function createNonPersonMatcher(rules9) {
   ];
   const builtin = BUILTIN_BOT_PATTERNS.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) }));
   const serviceNames = new Set(BUILTIN_SERVICE_NAMES);
-  const classify = (name14, email) => {
+  const classify = (name15, email) => {
     const decision = decisions.get(email.trim().toLowerCase());
     if (decision) {
       return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity };
     }
-    const text = `${name14} <${email}>`;
+    const text = `${name15} <${email}>`;
     const fromConfig = config.find((c) => c.re.test(text));
     if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
     const bot = builtin.find((c) => c.re.test(text));
     if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
-    const normalised = normaliseName(name14);
+    const normalised = normaliseName(name15);
     if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
     return null;
   };
-  return { classify, isNonPerson: (name14, email) => classify(name14, email) !== null };
+  return { classify, isNonPerson: (name15, email) => classify(name15, email) !== null };
 }
 function findAgentTrailers(message, extraPatterns) {
   const patterns = [...BUILTIN_AGENT_PATTERNS, ...extraPatterns].map((p) => ({ pattern: p, re: compilePattern(p) }));
@@ -2272,9 +2292,9 @@ function readRiskSettings(config) {
     throw configError(`code-health.json: ${at("placement")} must be "self", "any" or "off"`);
   }
   const disable = strings2("disable");
-  for (const name14 of disable) {
-    if (!FACTOR_NAMES.includes(name14)) {
-      throw configError(`code-health.json: ${at("disable")} names unknown factor "${name14}"; factors: ${FACTOR_NAMES.join(", ")}`);
+  for (const name15 of disable) {
+    if (!FACTOR_NAMES.includes(name15)) {
+      throw configError(`code-health.json: ${at("disable")} names unknown factor "${name15}"; factors: ${FACTOR_NAMES.join(", ")}`);
     }
   }
   const ownerShare = whole("ownerShare", 1, 100);
@@ -2452,7 +2472,7 @@ function readIdentities(section, at) {
   if (location !== null && location !== "committed" && location !== "local") {
     throw configError(`code-health.json: ${at("identities.location")} must be "committed", "local" or null`);
   }
-  const count = (key, max) => {
+  const count2 = (key, max) => {
     const value = section[key];
     if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > max) {
       throw configError(`code-health.json: ${at(`identities.${key}`)} must be a whole number from 0 to ${max}`);
@@ -2464,8 +2484,8 @@ function readIdentities(section, at) {
     botPatterns: strings2("botPatterns"),
     servicePatterns: strings2("servicePatterns"),
     agentTrailerPatterns: strings2("agentTrailerPatterns"),
-    unmappedShareThreshold: count("unmappedShareThreshold", 100),
-    significantCommits: count("significantCommits", 1e6)
+    unmappedShareThreshold: count2("unmappedShareThreshold", 100),
+    significantCommits: count2("significantCommits", 1e6)
   };
 }
 
@@ -2502,23 +2522,23 @@ async function loadHistory(context, options = {}) {
     },
     evidence: { windowMonths: settings.windowMonths, thresholds: settings.evidenceThresholds }
   });
-  const earliest = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
-  return { ...analysis, settings, window: { since: since ?? earliest, until: options.window?.until ?? anchor }, refreshed, identities };
+  const earliest2 = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
+  return { ...analysis, settings, window: { since: since ?? earliest2, until: options.window?.until ?? anchor }, refreshed, identities };
 }
 
 // packages/history/src/reports.ts
 import { mkdirSync as mkdirSync3, renameSync as renameSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join6 } from "node:path";
-function reportPath(root, tool, command14) {
-  return join6(root, ".cache", "code-health", "reports", `${tool}.${command14}.json`);
+function reportPath(root, tool, command15) {
+  return join6(root, ".cache", "code-health", "reports", `${tool}.${command15}.json`);
 }
-async function writeReport(context, identity, command14, output, analysedHead) {
+async function writeReport(context, identity, command15, output, analysedHead) {
   if (context.repo.dirty || analysedHead !== context.repo.head) return false;
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
     tool: identity.tool,
-    command: command14,
+    command: command15,
     repo: { head: context.repo.head, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
@@ -2526,7 +2546,7 @@ async function writeReport(context, identity, command14, output, analysedHead) {
     results,
     truncated
   });
-  const file = reportPath(context.repo.root, identity.tool, command14);
+  const file = reportPath(context.repo.root, identity.tool, command15);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join6(context.repo.root, ".cache", "code-health") });
   mkdirSync3(join6(file, ".."), { recursive: true });
@@ -2537,11 +2557,11 @@ async function writeReport(context, identity, command14, output, analysedHead) {
 }
 
 // packages/cochange/src/reports.ts
-function reportPath2(root, command14, tool = TOOL2) {
-  return reportPath(root, tool, command14);
+function reportPath2(root, command15, tool = TOOL2) {
+  return reportPath(root, tool, command15);
 }
-function writeReport2(context, command14, output, analysedHead) {
-  return writeReport(context, { tool: TOOL2, schemaVersion: SCHEMA_VERSION2 }, command14, output, analysedHead);
+function writeReport2(context, command15, output, analysedHead) {
+  return writeReport(context, { tool: TOOL2, schemaVersion: SCHEMA_VERSION2 }, command15, output, analysedHead);
 }
 
 // packages/graph/src/tree-distance.ts
@@ -2610,11 +2630,11 @@ function bucketLabel(start, bucket) {
   return bucket === "month" ? iso.slice(0, 7) : iso.slice(0, 10);
 }
 function parseDate(text) {
-  const day = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text);
-  if (!day) return null;
-  const midnight = Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
+  const day2 = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text);
+  if (!day2) return null;
+  const midnight = Date.UTC(Number(day2[1]), Number(day2[2]) - 1, Number(day2[3]));
   if (new Date(midnight).toISOString().slice(0, 10) !== text.slice(0, 10)) return null;
-  if (day[4] === void 0) return midnight / 1e3;
+  if (day2[4] === void 0) return midnight / 1e3;
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text)) return null;
   const ms = Date.parse(text);
   return Number.isNaN(ms) ? null : Math.floor(ms / 1e3);
@@ -2658,7 +2678,7 @@ var sharedOptions = { "no-refresh": { type: "boolean" } };
 function ownsWindow(spec) {
   return spec.window !== void 0 || spec.wholeHistory === true || spec.options?.since !== void 0 || spec.options?.until !== void 0;
 }
-function analysisCommand(name14, spec) {
+function analysisCommand(name15, spec) {
   return {
     summary: spec.summary,
     options: { ...ownsWindow(spec) ? {} : windowOptions, ...spec.options, ...sharedOptions },
@@ -2677,7 +2697,7 @@ function analysisCommand(name14, spec) {
         extra: { ...historySections(history), ...output.extra }
       };
       const wholeRepository = window === void 0 && !spec.partial?.(context);
-      if (wholeRepository) await writeReport2(context, name14, finished, history.view.headSha);
+      if (wholeRepository) await writeReport2(context, name15, finished, history.view.headSha);
       return finished;
     }
   };
@@ -2706,13 +2726,13 @@ function countCoupling(changes, thresholds) {
   const together = /* @__PURE__ */ new Map();
   let eligibleChanges = 0;
   let oversizedChanges = 0;
-  for (const change of changes) {
-    if (change.oversized) {
+  for (const change2 of changes) {
+    if (change2.oversized) {
       oversizedChanges++;
       continue;
     }
     eligibleChanges++;
-    const files = [...new Set(change.files)].sort(compareBytes);
+    const files = [...new Set(change2.files)].sort(compareBytes);
     for (const [i, a] of files.entries()) {
       perFile.set(a, (perFile.get(a) ?? 0) + 1);
       let row2 = together.get(a);
@@ -2734,9 +2754,9 @@ function partnersOf(changes, focus) {
   const perFile = /* @__PURE__ */ new Map();
   const together = /* @__PURE__ */ new Map();
   let changesFocus = 0;
-  for (const change of changes) {
-    if (change.oversized) continue;
-    const files = new Set(change.files);
+  for (const change2 of changes) {
+    if (change2.oversized) continue;
+    const files = new Set(change2.files);
     for (const file of files) perFile.set(file, (perFile.get(file) ?? 0) + 1);
     if (!files.has(focus)) continue;
     changesFocus++;
@@ -2757,11 +2777,11 @@ function integerOption(context, option, fallback, min, max) {
 }
 function coupledPairs(history, thresholds) {
   const lastStatus = /* @__PURE__ */ new Map();
-  for (const change of history.filtered.changes) {
-    for (const file of change.files) lastStatus.set(file.fileId, file.status);
+  for (const change2 of history.filtered.changes) {
+    for (const file of change2.files) lastStatus.set(file.fileId, file.status);
   }
   const counts = countCoupling(
-    history.filtered.changes.map((change) => ({ files: change.files.map((file) => file.fileId), oversized: change.oversized })),
+    history.filtered.changes.map((change2) => ({ files: change2.files.map((file) => file.fileId), oversized: change2.oversized })),
     thresholds
   );
   const gone = (id) => lastStatus.get(id) === "D";
@@ -2772,15 +2792,15 @@ function coupledPairs(history, thresholds) {
 var UNASSIGNED = "(unassigned)";
 function readComponents(value) {
   const names = Object.keys(value).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
-  return names.map((name14) => {
-    if (name14 === UNASSIGNED) throw configError(`code-health.json: components.${name14} is a reserved name`);
-    const raw = value[name14];
+  return names.map((name15) => {
+    if (name15 === UNASSIGNED) throw configError(`code-health.json: components.${name15} is a reserved name`);
+    const raw = value[name15];
     const globs = typeof raw === "string" ? [raw] : raw;
     if (!Array.isArray(globs) || globs.some((g) => typeof g !== "string")) {
-      throw configError(`code-health.json: components.${name14} must be a glob or an array of globs`);
+      throw configError(`code-health.json: components.${name15} must be a glob or an array of globs`);
     }
-    if (globs.length === 0) throw configError(`code-health.json: components.${name14} must list at least one glob`);
-    return { name: name14, matches: compileGlobs(globs) };
+    if (globs.length === 0) throw configError(`code-health.json: components.${name15} must list at least one glob`);
+    return { name: name15, matches: compileGlobs(globs) };
   });
 }
 function componentOf(components2, path) {
@@ -2852,12 +2872,12 @@ function tenuresOf(times, asOf, windowSeconds) {
 function estimateTurnover(activity, asOf, options) {
   const { windowSeconds, periodSeconds } = options;
   const tenures = [...activity.commits.values()].flatMap((times) => tenuresOf(times, asOf, windowSeconds));
-  const earliest = tenures.reduce((least, t) => Math.min(least, t.start), Infinity);
+  const earliest2 = tenures.reduce((least, t) => Math.min(least, t.start), Infinity);
   const periods = [];
   const firstUsable = Math.ceil(windowSeconds / periodSeconds);
   for (let k = firstUsable; ; k++) {
     const end = asOf - k * periodSeconds;
-    if (end <= earliest) break;
+    if (end <= earliest2) break;
     const start = end - periodSeconds;
     const present = tenures.filter((t) => t.start <= start && t.end >= start);
     if (present.length === 0) continue;
@@ -2878,8 +2898,8 @@ async function resolveOwners(root, shas, options = {}) {
   const out = await runGit(root, ["log", "--no-walk=unsorted", "--stdin", "--format=%H%x1f%an%x1f%ae"], { input: unique.join("\n") + "\n" });
   const authors = /* @__PURE__ */ new Map();
   for (const line of out.split("\n")) {
-    const [sha, name14, email] = line.split("");
-    if (sha !== void 0 && name14 !== void 0 && email !== void 0) authors.set(sha, { name: name14, email });
+    const [sha, name15, email] = line.split("");
+    if (sha !== void 0 && name15 !== void 0 && email !== void 0) authors.set(sha, { name: name15, email });
   }
   const mapped = await mapThroughMailmap(root, [...authors.values()], options.localMailmap);
   for (const [sha, author] of authors) {
@@ -2891,14 +2911,14 @@ async function resolveOwners(root, shas, options = {}) {
 }
 function lineShares(ranges, owners) {
   const shares = { total: 0, people: 0, nonPerson: 0, unattributed: 0, byOwner: /* @__PURE__ */ new Map() };
-  for (const { sha, count } of ranges) {
-    shares.total += count;
+  for (const { sha, count: count2 } of ranges) {
+    shares.total += count2;
     const owner = owners.get(sha);
-    if (!owner) shares.unattributed += count;
-    else if (owner.kind !== "person") shares.nonPerson += count;
+    if (!owner) shares.unattributed += count2;
+    else if (owner.kind !== "person") shares.nonPerson += count2;
     else {
-      shares.people += count;
-      shares.byOwner.set(owner.key, (shares.byOwner.get(owner.key) ?? 0) + count);
+      shares.people += count2;
+      shares.byOwner.set(owner.key, (shares.byOwner.get(owner.key) ?? 0) + count2);
     }
   }
   return shares;
@@ -2992,13 +3012,13 @@ function measureCurrent(model, thresholdPercent) {
 function groupByComponent(files, components2) {
   const groups = /* @__PURE__ */ new Map();
   for (const f of files) {
-    const name14 = componentOf(components2, f.path);
-    const g = groups.get(name14) ?? { path: name14, files: 0, abandonedFiles: 0, peopleLines: 0, abandonedLines: 0, abandonedShare: 0 };
+    const name15 = componentOf(components2, f.path);
+    const g = groups.get(name15) ?? { path: name15, files: 0, abandonedFiles: 0, peopleLines: 0, abandonedLines: 0, abandonedShare: 0 };
     g.files++;
     if (f.abandoned) g.abandonedFiles++;
     g.peopleLines += f.peopleLines;
     g.abandonedLines += f.abandonedLines;
-    groups.set(name14, g);
+    groups.set(name15, g);
   }
   return [...groups.values()].map((g) => ({ ...g, abandonedShare: round4(g.abandonedLines / g.peopleLines) }));
 }
@@ -3622,8 +3642,8 @@ function simulate(model, options) {
     lines: linesDistribution,
     tailAlpha,
     fileRisks,
-    componentRisks: compiled.componentNames.map((name14, c) => ({
-      name: name14,
+    componentRisks: compiled.componentNames.map((name15, c) => ({
+      name: name15,
       peopleLines: compiled.componentPeopleLines[c],
       baselineLines: compiled.componentBaselineLines[c],
       lines: distributionOf(componentLines[c], alphas)
@@ -3791,12 +3811,12 @@ function commonExtra(p, more = {}) {
 function midRankPercentiles(values) {
   const sorted = [...values].sort((a, b) => a - b);
   const first = /* @__PURE__ */ new Map();
-  const count = /* @__PURE__ */ new Map();
+  const count2 = /* @__PURE__ */ new Map();
   sorted.forEach((value, index2) => {
     if (!first.has(value)) first.set(value, index2);
-    count.set(value, (count.get(value) ?? 0) + 1);
+    count2.set(value, (count2.get(value) ?? 0) + 1);
   });
-  return values.map((value) => (first.get(value) + count.get(value) / 2) / values.length);
+  return values.map((value) => (first.get(value) + count2.get(value) / 2) / values.length);
 }
 function shareStrictlyAbove(values, value) {
   return values.filter((other) => other > value).length / values.length;
@@ -3875,10 +3895,10 @@ function detectIndentUnit(lines) {
   }
   let best = DEFAULT_UNIT;
   let bestVotes = 0;
-  for (const [unit, count] of [...votes].sort((a, b) => a[0] - b[0])) {
-    if (count > bestVotes) {
+  for (const [unit, count2] of [...votes].sort((a, b) => a[0] - b[0])) {
+    if (count2 > bestVotes) {
       best = unit;
-      bestVotes = count;
+      bestVotes = count2;
     }
   }
   return best;
@@ -3951,21 +3971,21 @@ function classifyHeader(segments, profile) {
   for (const pattern of functions) {
     const match = pattern.exec(text);
     if (match !== null) {
-      const name14 = match.groups?.name;
-      return { kind: "function", name: name14 === void 0 ? void 0 : cleanName(name14), line };
+      const name15 = match.groups?.name;
+      return { kind: "function", name: name15 === void 0 ? void 0 : cleanName(name15), line };
     }
   }
   return { kind: "other" };
 }
-function cleanName(name14) {
-  return name14.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
+function cleanName(name15) {
+  return name15.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
 }
 function findFunctionBlocks(lines, profile) {
   const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines, profile) : findBracedBlocks(lines, profile);
   return blocks.sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
 }
-function qualify(scopes, name14) {
-  return name14 === void 0 ? void 0 : [...scopes, name14].join(".");
+function qualify(scopes, name15) {
+  return name15 === void 0 ? void 0 : [...scopes, name15].join(".");
 }
 var modifiers = "(?:(?:public|private|protected|static|readonly|override|declare|export)\\s+)*";
 var boundArrow = [
@@ -4038,13 +4058,13 @@ function findBracedBlocks(lines, profile) {
     const kept = [...header, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
     if (kept.length === 0) return false;
     const text = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
-    let name14;
+    let name15;
     let matched = false;
     const members = compile2(profile).members;
     if (members !== void 0) {
       const found = members.map((pattern) => pattern.exec(text)).find((match) => match !== null);
       if (found === void 0) return false;
-      name14 = found?.groups?.name;
+      name15 = found?.groups?.name;
       matched = true;
     }
     for (const [i, pattern] of members === void 0 ? [...boundArrow.entries()] : []) {
@@ -4052,15 +4072,15 @@ function findBracedBlocks(lines, profile) {
       if (match === null) continue;
       if (i === 0 && !inDeclaration && !keywordAssignment.test(text) && top?.name === void 0) continue;
       if (i === 1 && (top === void 0 || top.name !== void 0)) continue;
-      name14 = match.groups?.name;
+      name15 = match.groups?.name;
       matched = true;
       break;
     }
     if (!matched) return false;
     const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
     const block = { startLine: kept[0].line, endLine: -1, source: "lexical" };
-    if (name14 !== void 0) {
-      block.name = cleanName(name14);
+    if (name15 !== void 0) {
+      block.name = cleanName(name15);
       block.qualifiedName = qualify(names, block.name);
     }
     arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text) };
@@ -4128,17 +4148,17 @@ function findBracedBlocks(lines, profile) {
         const classification = classifyHeader(header, profile);
         const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
         let block;
-        let name14;
+        let name15;
         if (classification.kind === "function") {
-          name14 = classification.name;
+          name15 = classification.name;
           block = { startLine: classification.line, endLine: -1, source: "lexical" };
-          if (name14 !== void 0) {
-            block.name = name14;
-            block.qualifiedName = qualify(names, name14);
+          if (name15 !== void 0) {
+            block.name = name15;
+            block.qualifiedName = qualify(names, name15);
           }
-        } else if (classification.kind === "type") name14 = classification.name;
+        } else if (classification.kind === "type") name15 = classification.name;
         const typeOnly = /^(?:export\s+)?(?:declare\s+)?(?:interface|type)\b/.test(headerText(""));
-        stack.push({ name: name14, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
+        stack.push({ name: name15, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
         header = [];
         segment = "";
         continue;
@@ -4253,13 +4273,13 @@ function openerPattern(profile) {
 }
 function keywordComplexity(lines, profile, from = 1, to = lines.length) {
   const pattern = keywordPattern(profile);
-  let count = 0;
+  let count2 = 0;
   for (let n = from; n <= to; n++) {
     const line = lines[n - 1];
     if (line === void 0 || line.kind !== "code") continue;
-    count += line.code.match(pattern)?.length ?? 0;
+    count2 += line.code.match(pattern)?.length ?? 0;
   }
-  return count;
+  return count2;
 }
 function blockMetrics(lines, block, profile, options = {}) {
   const unit = options.indentUnit ?? detectIndentUnit(lines);
@@ -4629,10 +4649,10 @@ var extensionProfiles = {
   py: "python"
 };
 function selectProfile(path, mappings = {}) {
-  const name14 = path.slice(path.lastIndexOf("/") + 1);
-  const dot = name14.lastIndexOf(".");
+  const name15 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name15.lastIndexOf(".");
   if (dot <= 0) return void 0;
-  const extension = name14.slice(dot + 1).toLowerCase();
+  const extension = name15.slice(dot + 1).toLowerCase();
   const mappedName = mappings[extension];
   if (mappedName !== void 0) {
     const profile2 = profiles[mappedName];
@@ -4926,16 +4946,16 @@ function siblingTestOf(path, tree) {
     `${stem}Test${ext}`,
     `${stem}Tests${ext}`
   ];
-  const candidates = [...names.map((name14) => `${folder}${name14}`), ...[...names, `${stem}${ext}`].map((name14) => `${folder}__tests__/${name14}`)];
+  const candidates = [...names.map((name15) => `${folder}${name15}`), ...[...names, `${stem}${ext}`].map((name15) => `${folder}__tests__/${name15}`)];
   return candidates.find((candidate) => tree.has(candidate)) ?? null;
 }
 
 // packages/cochange/src/file-statistics.ts
 function fileUnits(changes, present) {
   const units = /* @__PURE__ */ new Map();
-  for (const change of changes) {
+  for (const change2 of changes) {
     const seen = /* @__PURE__ */ new Set();
-    for (const file of change.files) {
+    for (const file of change2.files) {
       if (!present.has(file.fileId)) continue;
       const churn = (file.added ?? 0) + (file.deleted ?? 0);
       const unit = units.get(file.fileId);
@@ -4945,8 +4965,8 @@ function fileUnits(changes, present) {
           files: 1,
           revisions: 1,
           churn,
-          firstSeen: change.committerDate,
-          lastChanged: change.committerDate,
+          firstSeen: change2.committerDate,
+          lastChanged: change2.committerDate,
           members: /* @__PURE__ */ new Set([file.fileId])
         });
         seen.add(file.fileId);
@@ -4954,8 +4974,8 @@ function fileUnits(changes, present) {
         if (!seen.has(file.fileId)) unit.revisions++;
         seen.add(file.fileId);
         unit.churn += churn;
-        unit.firstSeen = Math.min(unit.firstSeen, change.committerDate);
-        unit.lastChanged = Math.max(unit.lastChanged, change.committerDate);
+        unit.firstSeen = Math.min(unit.firstSeen, change2.committerDate);
+        unit.lastChanged = Math.max(unit.lastChanged, change2.committerDate);
       }
     }
   }
@@ -4966,34 +4986,34 @@ function componentUnits(changes, present, components2) {
     throw configError('code-health.json: --by component needs "components" to be configured');
   }
   const groups = /* @__PURE__ */ new Map();
-  for (const change of changes) {
+  for (const change2 of changes) {
     const counted = /* @__PURE__ */ new Set();
-    for (const file of change.files) {
+    for (const file of change2.files) {
       if (!present.has(file.fileId)) continue;
-      const name14 = componentOf(components2, file.fileId);
+      const name15 = componentOf(components2, file.fileId);
       const churn = (file.added ?? 0) + (file.deleted ?? 0);
-      let unit = groups.get(name14);
+      let unit = groups.get(name15);
       if (!unit) {
         unit = {
-          name: name14,
+          name: name15,
           files: 0,
           revisions: 0,
           churn: 0,
-          firstSeen: change.committerDate,
-          lastChanged: change.committerDate,
+          firstSeen: change2.committerDate,
+          lastChanged: change2.committerDate,
           members: /* @__PURE__ */ new Set()
         };
-        groups.set(name14, unit);
+        groups.set(name15, unit);
       }
       unit.members.add(file.fileId);
       unit.files = unit.members.size;
-      if (!counted.has(name14)) {
-        counted.add(name14);
+      if (!counted.has(name15)) {
+        counted.add(name15);
         unit.revisions++;
       }
       unit.churn += churn;
-      unit.firstSeen = Math.min(unit.firstSeen, change.committerDate);
-      unit.lastChanged = Math.max(unit.lastChanged, change.committerDate);
+      unit.firstSeen = Math.min(unit.firstSeen, change2.committerDate);
+      unit.lastChanged = Math.max(unit.lastChanged, change2.committerDate);
     }
   }
   return [...groups.values()];
@@ -5062,9 +5082,9 @@ async function testDrift(root, history, paths) {
     return test === null ? [] : [[path, test]];
   }));
   const together = /* @__PURE__ */ new Map();
-  for (const change of history.filtered.changes) {
-    if (change.oversized) continue;
-    const touched = new Map(change.files.map((file) => [file.fileId, file.status]));
+  for (const change2 of history.filtered.changes) {
+    if (change2.oversized) continue;
+    const touched = new Map(change2.files.map((file) => [file.fileId, file.status]));
     for (const [path, test] of siblings) {
       if (touched.has(path) && touched.has(test) && touched.get(test) !== "A") together.set(path, (together.get(path) ?? 0) + 1);
     }
@@ -5164,10 +5184,10 @@ function buildSuccessorIndex(history) {
     add(pair.b, pair.a, degree, pair.support);
   }
   const changesBy = /* @__PURE__ */ new Map();
-  for (const change of history.filtered.changes) {
-    if (change.oversized) continue;
-    const emails = new Set(change.authors.map((a) => a.toLowerCase()));
-    for (const file of new Set(change.files.map((f) => f.fileId))) {
+  for (const change2 of history.filtered.changes) {
+    if (change2.oversized) continue;
+    const emails = new Set(change2.authors.map((a) => a.toLowerCase()));
+    for (const file of new Set(change2.files.map((f) => f.fileId))) {
       const byEmail = changesBy.get(file) ?? /* @__PURE__ */ new Map();
       for (const email of emails) byEmail.set(email, (byEmail.get(email) ?? 0) + 1);
       changesBy.set(file, byEmail);
@@ -5203,6 +5223,62 @@ function noSuccessorCheck(history, model) {
   return (path) => hasNoSuccessor(successorsOf(path, index2, model));
 }
 
+// packages/cochange/src/abandonment/adoption.ts
+function measureAdoption(input) {
+  const { before, after, activity, abandoned, changes, index: index2, recommended } = input;
+  const activeAfter = new Set(after.developers.filter((d) => d.active).map((d) => emailOf2(d.key)));
+  const startDate = before.asOf;
+  const firstCommit = /* @__PURE__ */ new Map();
+  for (const [key, times] of activity.commits) firstCommit.set(emailOf2(key), Math.min(...times));
+  const isNewcomer = (email) => (firstCommit.get(email) ?? Number.POSITIVE_INFINITY) > startDate;
+  return abandoned.map((path) => {
+    const touching2 = changes.filter((c) => c.files.includes(path));
+    const adopters = new Set(touching2.flatMap((c) => c.authors.map((a) => a.toLowerCase())).filter((email) => activeAfter.has(email)));
+    const top = new Set(successorsOf(path, index2, before).slice(0, recommended).map((s) => emailOf2(s.developer)));
+    const adopted = adopters.size > 0;
+    return {
+      path,
+      changed: touching2.length > 0,
+      adopted,
+      byRecommended: [...adopters].some((email) => top.has(email)),
+      byNewcomer: adopted && [...adopters].every(isNewcomer)
+    };
+  });
+}
+function summariseAdoption(files) {
+  const count2 = (pick) => files.filter(pick).length;
+  const adopted = count2((f) => f.adopted);
+  const byRecommended = count2((f) => f.byRecommended);
+  return {
+    abandoned: files.length,
+    changed: count2((f) => f.changed),
+    adopted,
+    byRecommended,
+    byNewcomer: count2((f) => f.byNewcomer),
+    adoptionRate: files.length === 0 ? null : round4(adopted / files.length),
+    recommendationHitRate: adopted === 0 ? null : round4(byRecommended / adopted)
+  };
+}
+
+// packages/cochange/src/abandonment/redundancy.ts
+function measureRedundancy(model, hot, rule) {
+  return model.files.filter((file) => hot.has(file.path)).map((file) => {
+    const active = file.holders.filter((h) => model.developers[h.dev].active);
+    const qualifying = active.filter((h) => 100 * h.lines >= rule.minSharePercent * file.people).length;
+    return {
+      path: file.path,
+      peopleLines: file.people,
+      qualifyingAuthors: qualifying,
+      activeAuthors: active.length,
+      redundant: qualifying >= rule.minAuthors
+    };
+  });
+}
+function summariseRedundancy(files) {
+  const redundant = files.filter((f) => f.redundant).length;
+  return { hotspotFiles: files.length, redundant, share: files.length === 0 ? null : round4(redundant / files.length) };
+}
+
 // packages/cochange/src/abandonment/report.ts
 var share = (value, whole) => whole === 0 ? 0 : round4(value / whole);
 function reportLoss(distribution2, baseline, population) {
@@ -5224,8 +5300,161 @@ function reportLoss(distribution2, baseline, population) {
   return { baseline, population, increment: shifted(0), total: shifted(baseline) };
 }
 
-// packages/cochange/src/abandonment/simulate-run.ts
+// packages/cochange/src/abandonment/outcome-run.ts
 var isoDay2 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+var byBytes = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
+async function redundancyCommand(context) {
+  const minAuthors = integerOption(context, "min-authors", 2, 1, 1e3);
+  const minShare = integerOption(context, "min-share", 10, 1, 100);
+  const p = await prepare(context);
+  const weights = await hotspotWeights(context, p.history);
+  const hot = new Set([...weights].filter(([, w]) => w.hot).map(([path]) => path));
+  const files = measureRedundancy(p.knowledge.model, hot, { minAuthors, minSharePercent: minShare });
+  const percentile2 = (path) => weights.get(path)?.percentile ?? 0;
+  const rows = [...files].sort((a, b) => Number(a.redundant) - Number(b.redundant) || percentile2(b.path) - percentile2(a.path) || byBytes(a.path, b.path)).map((f) => ({ ...f, hotspotPercentile: round4(percentile2(f.path)) }));
+  return {
+    inputs: commonInputs(p, "redundancy", { minAuthors, minSharePercent: minShare }),
+    extra: commonExtra(p, { summary: summariseRedundancy(files) }),
+    results: rows,
+    columns: ["path", "redundant", "qualifyingAuthors", "activeAuthors", "peopleLines", "hotspotPercentile"]
+  };
+}
+async function trendCommand(context) {
+  const settings = requireKnowledge(context);
+  const sim = readSimulationSettings(context, settings);
+  if (sim.mode !== "rate") throw usageError("trend uses the rate model so that every point has the same settings; --mode is not available");
+  const points = integerOption(context, "points", 4, 2, 60);
+  const noRefresh = context.values["no-refresh"] === true;
+  const history = await loadHistory(context, { noRefresh });
+  const periodSeconds = periodSecondsOf(settings);
+  const windowSeconds = windowSecondsOf(settings);
+  const anchor = history.view.headDate;
+  const identity = { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher };
+  const activity = await readActivity(context.repo.root, history.view.commits, identity);
+  const observed = estimateTurnover(activity, anchor, { windowSeconds, periodSeconds });
+  const rate = settings.turnoverRate ?? observed.rate;
+  if (rate === null) {
+    throw usageError("the history is too short to estimate turnover; set cochange.knowledge.turnoverRate so every point shares one rate");
+  }
+  const components2 = readComponents(context.config.effective.components);
+  const rows = [];
+  let skipped = 0;
+  for (let i = 0; i < points; i++) {
+    const at = anchor - i * periodSeconds;
+    const sha = i === 0 ? history.view.headSha : commitAt(history, at);
+    if (sha === null) {
+      skipped++;
+      continue;
+    }
+    const knowledge = await loadKnowledge(context, history, settings, { noRefresh, activity, ...i === 0 ? {} : { target: { sha, asOf: at } } });
+    const result = simulate(knowledge.model, {
+      selection: { mode: "rate", rate, periods: sim.horizonPeriods },
+      trials: sim.trials,
+      seed: sim.seed,
+      alphas: settings.alphas,
+      thresholdPercent: settings.abandonmentThreshold,
+      components: components2
+    });
+    const abandoned = measureCurrent(knowledge.model, settings.abandonmentThreshold).filter((f) => f.abandoned).length;
+    rows.push({
+      date: isoDay2(at),
+      commit: sha,
+      activeDevelopers: result.activeDevelopers,
+      files: result.population.files,
+      abandonedFiles: abandoned,
+      lines: reportLoss(result.lines, result.baseline.lines, result.population.peopleLines)
+    });
+  }
+  rows.reverse();
+  const first = rows[0]?.lines.total.expectedShare;
+  const last = rows.at(-1)?.lines.total.expectedShare;
+  const direction = rows.length < 2 || first === void 0 || last === void 0 ? null : last < first ? "falling" : last > first ? "rising" : "flat";
+  return {
+    inputs: {
+      subcommand: "trend",
+      points,
+      trials: sim.trials,
+      horizonPeriods: sim.horizonPeriods,
+      seed: sim.seed,
+      alphas: settings.alphas,
+      abandonmentThreshold: settings.abandonmentThreshold,
+      activityWindowMonths: settings.activityWindowMonths,
+      periodMonths: settings.periodMonths,
+      copyDetection: settings.copyDetection,
+      turnoverRate: settings.turnoverRate === null ? null : round4(settings.turnoverRate),
+      ...identityStamps(history)
+    },
+    extra: historySections(history),
+    results: {
+      ratePerPeriod: round4(rate),
+      rateSource: settings.turnoverRate === null ? "history" : "configured",
+      skippedPoints: skipped,
+      direction,
+      points: rows
+    }
+  };
+}
+async function adoptionCommand(context) {
+  const settings = requireKnowledge(context);
+  const sim = readSimulationSettings(context, settings);
+  const recommended = integerOption(context, "successors", 3, 1, 100);
+  const noRefresh = context.values["no-refresh"] === true;
+  const history = await loadHistory(context, { noRefresh });
+  const periodSeconds = periodSecondsOf(settings);
+  const horizonSeconds = sim.horizonPeriods * periodSeconds;
+  const anchor = history.view.headDate;
+  const latest = anchor - horizonSeconds;
+  const at = context.values.at === void 0 ? latest : parseAt(String(context.values.at));
+  if (at > latest) {
+    throw usageError(`adoption needs a whole horizon of ${sim.horizonPeriods} period(s) after the date; the latest date is ${isoDay2(latest - 86400 + 1)}`);
+  }
+  const outcomeAt = at + horizonSeconds;
+  const startSha = commitAt(history, at);
+  const outcomeSha = commitAt(history, outcomeAt);
+  if (startSha === null || outcomeSha === null) throw usageError(`the history has no commit at or before ${isoDay2(at)}`);
+  const identity = { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher };
+  const activity = await readActivity(context.repo.root, history.view.commits, identity);
+  const before = await loadKnowledge(context, history, settings, { noRefresh, target: { sha: startSha, asOf: at }, activity });
+  const after = await loadKnowledge(context, history, settings, { noRefresh, target: { sha: outcomeSha, asOf: outcomeAt }, activity });
+  const eligible = history.filtered.changes.filter((c) => !c.oversized);
+  const known = eligible.filter((c) => c.committerDate <= at);
+  const index2 = buildSuccessorIndex({ ...history, filtered: { ...history.filtered, changes: known } });
+  const abandoned = measureCurrent(before.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => f.path);
+  const files = measureAdoption({
+    before: before.model,
+    after: after.model,
+    activity,
+    abandoned,
+    changes: eligible.filter((c) => c.committerDate > at && c.committerDate <= outcomeAt).map((c) => ({ committerDate: c.committerDate, authors: c.authors, files: c.files.map((f) => f.fileId) })),
+    index: index2,
+    recommended
+  });
+  const summary = summariseAdoption(files);
+  return {
+    inputs: {
+      subcommand: "adoption",
+      at: isoDay2(at),
+      successors: recommended,
+      horizonPeriods: sim.horizonPeriods,
+      abandonmentThreshold: settings.abandonmentThreshold,
+      activityWindowMonths: settings.activityWindowMonths,
+      periodMonths: settings.periodMonths,
+      copyDetection: settings.copyDetection,
+      ...identityStamps(history)
+    },
+    extra: historySections(history),
+    results: {
+      at: isoDay2(at),
+      outcomeAt: isoDay2(outcomeAt),
+      commits: { at: startSha, outcome: outcomeSha },
+      ...summary,
+      files: files.map((f) => ({ path: f.path, changed: f.changed, adopted: f.adopted, byRecommended: f.byRecommended, byNewcomer: f.byNewcomer })).sort((a, b) => byBytes(a.path, b.path))
+    }
+  };
+}
+
+// packages/cochange/src/abandonment/simulate-run.ts
+var isoDay3 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 function observedTurnover(p) {
   return estimateTurnover(p.knowledge.activity, p.knowledge.model.asOf, {
     windowSeconds: p.knowledge.windowSeconds,
@@ -5247,8 +5476,8 @@ async function turnoverCommand(context) {
       turnover: { ...turnoverSummary(turnover), configuredRate: p.settings.turnoverRate === null ? null : round4(p.settings.turnoverRate) }
     }),
     results: turnover.periods.map((period) => ({
-      start: isoDay2(period.start),
-      end: isoDay2(period.end),
+      start: isoDay3(period.start),
+      end: isoDay3(period.end),
       developers: period.atRisk,
       departed: period.departed,
       rate: round4(period.rate)
@@ -5358,22 +5587,37 @@ function isConfiguredRun(context, mode) {
 // packages/cochange/src/commands/abandonment.ts
 var name = "abandonment";
 var rules2 = rules;
-var SUBCOMMANDS = ["backtest", "current", "simulate", "turnover"];
+var SUBCOMMANDS = ["adoption", "backtest", "current", "redundancy", "simulate", "trend", "turnover"];
 var command = {
+  subcommands: {
+    adoption: { summary: "Files abandoned at a past date and whether an active developer, or a recommended successor, picked them up", options: ["at", "successors", "horizon", "no-refresh"] },
+    backtest: { summary: "At a past date, the predicted at-risk files against the files actually abandoned one horizon later", options: ["at", "trials", "horizon", "seed", "top", "no-refresh"] },
+    current: { summary: "Files already abandoned, ranked", options: ["by", "rank", "no-refresh"] },
+    redundancy: { summary: "Share of hotspot files with enough active authors holding enough of the lines", options: ["min-authors", "min-share", "no-refresh"] },
+    simulate: { summary: "Loss distribution of simulated turnover, with the files and components it concentrates in", options: ["mode", "k", "trials", "horizon", "seed", "top", "rank", "no-refresh"] },
+    trend: { summary: "Expected loss and knowledge at risk over time, at the same settings and rate", options: ["points", "trials", "horizon", "seed", "no-refresh"] },
+    turnover: { summary: "Observed turnover rate per period, with the developer counts behind it", options: ["no-refresh"] }
+  },
   summary: "Knowledge lost when people leave: files already abandoned, simulated turnover, and a backtest of the model",
-  options: { ...byOption, ...simulationOptions, top: { type: "string" }, rank: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
+  options: { ...byOption, ...simulationOptions, top: { type: "string" }, points: { type: "string" }, successors: { type: "string" }, "min-authors": { type: "string" }, "min-share": { type: "string" }, rank: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
     const [sub, ...rest] = context.positionals;
     if (!SUBCOMMANDS.includes(sub) || rest.length > 0) throw usageError(`usage: abandonment <${SUBCOMMANDS.join("|")}>`);
     const subcommand = sub;
     rejectOptionsOutsideTheirCommand(subcommand, context);
     switch (subcommand) {
+      case "adoption":
+        return adoptionCommand(context);
       case "backtest":
         return backtestCommand(context);
       case "current":
         return current(context);
+      case "redundancy":
+        return redundancyCommand(context);
       case "simulate":
         return simulateCommand(context);
+      case "trend":
+        return trendCommand(context);
       case "turnover":
         return turnoverCommand(context);
     }
@@ -5382,13 +5626,17 @@ var command = {
 function rejectOptionsOutsideTheirCommand(sub, context) {
   const only = {
     by: ["current"],
-    at: ["backtest"],
+    at: ["adoption", "backtest"],
+    points: ["trend"],
+    successors: ["adoption"],
+    "min-authors": ["redundancy"],
+    "min-share": ["redundancy"],
     rank: ["current", "simulate"],
     mode: ["simulate"],
     k: ["simulate"],
-    trials: ["backtest", "simulate"],
-    horizon: ["backtest", "simulate"],
-    seed: ["backtest", "simulate"],
+    trials: ["backtest", "simulate", "trend"],
+    horizon: ["adoption", "backtest", "simulate", "trend"],
+    seed: ["backtest", "simulate", "trend"],
     top: ["backtest", "simulate"]
   };
   for (const [option, owners] of Object.entries(only)) {
@@ -5583,18 +5831,18 @@ var command4 = analysisCommand(name4, {
     const rankedBy = new Map(ranked.map((row2) => [row2.path, row2]));
     const anchor = history.view.headDate;
     const recentSince = monthsBefore(anchor, settings.recentMonths);
-    const couplingChanges = history.filtered.changes.map((change) => ({
-      files: change.files.map((file) => file.fileId),
-      oversized: change.oversized
+    const couplingChanges = history.filtered.changes.map((change2) => ({
+      files: change2.files.map((file) => file.fileId),
+      oversized: change2.oversized
     }));
     const lastStatus = /* @__PURE__ */ new Map();
-    for (const change of history.filtered.changes) {
-      for (const file of change.files) lastStatus.set(file.fileId, file.status);
+    for (const change2 of history.filtered.changes) {
+      for (const file of change2.files) lastStatus.set(file.fileId, file.status);
     }
     const rows = [...new Set(requested.map((raw) => repoRelative(root, raw)))].map((asked) => {
       const path = present.has(asked) ? asked : history.view.renames.resolve(asked, -1);
       const exists2 = present.has(path);
-      const dates = history.filtered.changes.filter((change) => change.files.some((file) => file.fileId === path)).map((change) => change.committerDate);
+      const dates = history.filtered.changes.filter((change2) => change2.files.some((file) => file.fileId === path)).map((change2) => change2.committerDate);
       const lastChanged = dates.length === 0 ? null : Math.max(...dates);
       const hotspot = rankedBy.get(path);
       const { partners } = partnersOf(couplingChanges, path);
@@ -6012,7 +6260,7 @@ function buildNodes(raws) {
       node.weeks.set(week, into);
     }
     for (const signingKey of raw.signingKeys ?? []) node.signingKeys.add(signingKey);
-    for (const [area, count] of raw.areaCounts) node.areaCounts.set(area, (node.areaCounts.get(area) ?? 0) + count);
+    for (const [area, count2] of raw.areaCounts) node.areaCounts.set(area, (node.areaCounts.get(area) ?? 0) + count2);
   }
   const sorted = [...nodes.values()].sort((x, y) => x.key < y.key ? -1 : x.key > y.key ? 1 : 0);
   for (const node of sorted) node.aliases.sort((x, y) => compare2(identityKey(x), identityKey(y)));
@@ -6028,7 +6276,7 @@ function factsOf(node) {
   const names = /* @__PURE__ */ new Set();
   const derived = /* @__PURE__ */ new Set();
   const flattened = /* @__PURE__ */ new Set();
-  for (const { name: name14, email } of addresses) {
+  for (const { name: name15, email } of addresses) {
     const noreply = parseNoreply(email);
     if (noreply) noreplies.set(`${noreply.id ?? ""}+${noreply.username}`, noreply);
     const local = emailLocalPart(email);
@@ -6036,10 +6284,10 @@ function factsOf(node) {
       emails.add(normaliseEmail(email));
       locals.add(local);
     }
-    if (nameTokens(name14).length >= 2) {
-      names.add(normaliseName(name14));
-      for (const d of derivedLocalParts(name14)) derived.add(d);
-      for (const f of flattenedNames(name14)) flattened.add(f);
+    if (nameTokens(name15).length >= 2) {
+      names.add(normaliseName(name15));
+      for (const d of derivedLocalParts(name15)) derived.add(d);
+      for (const f of flattenedNames(name15)) flattened.add(f);
     }
   }
   return {
@@ -6096,7 +6344,7 @@ function findLinks(nodes, raws, pairing, rejections = []) {
   );
   eachPair(
     index(facts, (f) => f.names),
-    (name14, x, y) => addSignal(candidates, x, y, { signal: "same-name", strength: "medium", detail: name14 })
+    (name15, x, y) => addSignal(candidates, x, y, { signal: "same-name", strength: "medium", detail: name15 })
   );
   eachPair(index(facts, (f) => f.locals), (local, x, y) => {
     if (x.emails.some((e) => y.emails.includes(e))) return;
@@ -6125,8 +6373,8 @@ function findLinks(nodes, raws, pairing, rejections = []) {
   const factsByKey = new Map(facts.map((f) => [f.node.key, f]));
   for (const [author, committers] of [...pairing.committersOfAuthor].sort(([p], [q]) => compare2(p, q))) {
     if (committers.size !== 1) continue;
-    const [[committer, count]] = [...committers];
-    if (count < PAIRING_MIN_COMMITS || committer === author) continue;
+    const [[committer, count2]] = [...committers];
+    if (count2 < PAIRING_MIN_COMMITS || committer === author) continue;
     const authorsOfCommitter = pairing.authorsOfCommitter.get(committer);
     if (!authorsOfCommitter || [...authorsOfCommitter].some((a) => a !== author && a !== committer)) continue;
     const x = nodeOfEmail.get(author);
@@ -6135,7 +6383,7 @@ function findLinks(nodes, raws, pairing, rejections = []) {
     addSignal(candidates, factsByKey.get(x), factsByKey.get(y), {
       signal: "exclusive-pairing",
       strength: "supporting",
-      detail: `${author} authored ${count} commits, all committed by ${committer}`
+      detail: `${author} authored ${count2} commits, all committed by ${committer}`
     });
   }
   const rejected = new Set(
@@ -6174,7 +6422,7 @@ function handoverSignal(x, y) {
   return {
     signal: "handover",
     strength: "supporting",
-    detail: `${earlier.email} stops ${isoDay3(earlier.last)}, ${later.email} starts ${isoDay3(later.first)}, ${shared} shared files`
+    detail: `${earlier.email} stops ${isoDay4(earlier.last)}, ${later.email} starts ${isoDay4(later.first)}, ${shared} shared files`
   };
 }
 function counterSignal(x, y) {
@@ -6189,7 +6437,7 @@ function counterSignal(x, y) {
     detail: `both active in ${weeks.length} of the same weeks, never in the same area`
   };
 }
-function isoDay3(seconds) {
+function isoDay4(seconds) {
   return new Date(seconds * 1e3).toISOString().slice(0, 10);
 }
 var Groups = class {
@@ -6380,14 +6628,14 @@ function signaturesIn(raw) {
 
 // packages/history/src/identity-log.ts
 var MAX_PATHS_FOR_EVIDENCE = 100;
-var isPlatform = (name14, email) => email.toLowerCase() === "noreply@github.com" || name14.toLowerCase() === "github" || name14.toLowerCase() === "github enterprise";
+var isPlatform = (name15, email) => email.toLowerCase() === "noreply@github.com" || name15.toLowerCase() === "github" || name15.toLowerCase() === "github enterprise";
 async function readCommitters(root, ref) {
   const out = await runGit(root, ["log", "--format=%H%x1f%cn%x1f%ce", "--no-abbrev", ref]);
   const committers = /* @__PURE__ */ new Map();
   for (const line of out.split("\n")) {
     if (line === "") continue;
-    const [sha, name14, email] = line.split("");
-    if (sha !== void 0) committers.set(sha, { name: name14 ?? "", email: email ?? "" });
+    const [sha, name15, email] = line.split("");
+    if (sha !== void 0) committers.set(sha, { name: name15 ?? "", email: email ?? "" });
   }
   return committers;
 }
@@ -6433,9 +6681,9 @@ async function gatherIdentityFacts(root, view, options) {
     if (commit.changes.length <= MAX_PATHS_FOR_EVIDENCE) {
       const week = weekOf(commit.authorDate);
       const areas = raw.weeks.get(week) ?? /* @__PURE__ */ new Set();
-      for (const change of commit.changes) {
-        raw.files.add(change.path);
-        const area = areaOf(change.path);
+      for (const change2 of commit.changes) {
+        raw.files.add(change2.path);
+        const area = areaOf(change2.path);
         areas.add(area);
         raw.areaCounts.set(area, (raw.areaCounts.get(area) ?? 0) + 1);
       }
@@ -6504,7 +6752,7 @@ async function analyseIdentities(context, options) {
   const unresolved = new Set(proposals.flatMap((p) => p.members));
   return { history, facts, raws, nodes, nodeOfRaw, nonPerson, links, proposals, unresolved, windowSince };
 }
-var isoDay4 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+var isoDay5 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 function topAreas(node, limit = 3) {
   return [...node.areaCounts.entries()].sort(([p, x], [q, y]) => y - x || (p < q ? -1 : p > q ? 1 : 0)).slice(0, limit).map(([area]) => area);
 }
@@ -6545,14 +6793,14 @@ function addMailmapMappings(existing, mappings) {
       (e) => same(e.commitEmail, mapping.alias.email) && (e.commitName === void 0 || same(e.commitName, mapping.alias.name))
     );
     if (current2) {
-      const name14 = current2.properName ?? mapping.alias.name;
+      const name15 = current2.properName ?? mapping.alias.name;
       const email = current2.properEmail ?? mapping.alias.email;
-      if (same(name14, mapping.canonical.name) && same(email, mapping.canonical.email)) {
+      if (same(name15, mapping.canonical.name) && same(email, mapping.canonical.email)) {
         present.push(line);
         continue;
       }
       throw usageError(
-        `${identityKey(mapping.alias)} is already mapped to ${identityKey({ name: name14, email })} in the mailmap; edit the file to change it`
+        `${identityKey(mapping.alias)} is already mapped to ${identityKey({ name: name15, email })} in the mailmap; edit the file to change it`
       );
     }
     if (added.includes(line)) continue;
@@ -6587,8 +6835,8 @@ function listRows(analysis, onlyUnmapped) {
       name: raw.name,
       email: raw.email,
       commits: raw.commits,
-      firstSeen: isoDay4(raw.first),
-      lastSeen: isoDay4(raw.last),
+      firstSeen: isoDay5(raw.first),
+      lastSeen: isoDay5(raw.last),
       topAreas: topAreas({ ...node, areaCounts: raw.areaCounts }),
       mappedTo: nodeKey === key ? null : nodeKey,
       kind: nonPerson?.kind ?? "person",
@@ -6612,8 +6860,8 @@ function proposeRows(analysis) {
         identity: m.key,
         aliases: m.aliases.map(identityKey).filter((a) => a !== m.key),
         commits: m.commits,
-        firstSeen: isoDay4(m.first),
-        lastSeen: isoDay4(m.last),
+        firstSeen: isoDay5(m.first),
+        lastSeen: isoDay5(m.last),
         topAreas: topAreas(m)
       })),
       links: proposal.links.map((l) => ({
@@ -6852,7 +7100,7 @@ function checkMapping(analysis, detail) {
       score: lines,
       kind: "unmapped",
       identities: [node.key],
-      detail: `proposed to be the same person as ${[...new Set(related)].sort(compare5).join("; ")}, last active ${isoDay4(node.last)}`,
+      detail: `proposed to be the same person as ${[...new Set(related)].sort(compare5).join("; ")}, last active ${isoDay5(node.last)}`,
       commits,
       lines,
       linesShare: peopleLines === 0 ? 0 : Math.round(lines / peopleLines * 1e3) / 10
@@ -6868,10 +7116,10 @@ function share2(byNode, analysis) {
   let total = 0;
   let nonPerson = 0;
   let unmapped = 0;
-  for (const [node, count] of byNode) {
-    total += count;
-    if (analysis.nonPerson.has(node)) nonPerson += count;
-    else if (analysis.unresolved.has(node)) unmapped += count;
+  for (const [node, count2] of byNode) {
+    total += count2;
+    if (analysis.nonPerson.has(node)) nonPerson += count2;
+    else if (analysis.unresolved.has(node)) unmapped += count2;
   }
   const people = total - nonPerson;
   return { total, nonPerson, people, unmapped, mappedShare: people === 0 ? 100 : Math.round((100 - percent(unmapped, people)) * 10) / 10 };
@@ -6888,9 +7136,9 @@ async function measureMapping(context, analysis) {
     else linesByNode.set(node, (linesByNode.get(node) ?? 0) + lines);
   }
   const windowCommitsByNode = /* @__PURE__ */ new Map();
-  for (const [raw, count] of facts.windowCommits) {
+  for (const [raw, count2] of facts.windowCommits) {
     const node = nodeOfRaw.get(raw);
-    if (node) windowCommitsByNode.set(node, (windowCommitsByNode.get(node) ?? 0) + count);
+    if (node) windowCommitsByNode.set(node, (windowCommitsByNode.get(node) ?? 0) + count2);
   }
   const headLines = { ...share2(linesByNode, analysis), unattributed };
   const threshold = history.settings.identities.unmappedShareThreshold;
@@ -6910,6 +7158,13 @@ async function measureMapping(context, analysis) {
 var name8 = "identities";
 var SUBCOMMANDS2 = ["list", "propose", "classify", "apply", "check"];
 var command8 = {
+  subcommands: {
+    list: { summary: "Every identity in the history with its commits, dates, areas and mapping", options: ["unmapped", "no-refresh"] },
+    propose: { summary: "Clusters of identities that look like one person, with the evidence", options: ["no-refresh"] },
+    classify: { summary: "Identities classified as bots, services or agents, and how", options: ["no-refresh"] },
+    apply: { summary: "Write approved decisions to the mapping (a dry run unless --apply is given)", options: ["from", "apply", "location", "no-refresh"] },
+    check: { summary: "Findings about the mapping as it stands", options: ["no-refresh"] }
+  },
   summary: "Resolve who is who: list, propose, classify, apply and check the identity mapping",
   options: {
     "no-refresh": { type: "boolean" },
@@ -6973,14 +7228,787 @@ function rejectOptionsOutsideTheirCommand2(sub, context) {
   }
 }
 
-// packages/cochange/src/commands/refresh.ts
-var refresh_exports = {};
-__export(refresh_exports, {
+// packages/cochange/src/commands/outcome.ts
+var outcome_exports = {};
+__export(outcome_exports, {
   command: () => command9,
   name: () => name9
 });
-var name9 = "refresh";
+import { existsSync as existsSync17 } from "node:fs";
+
+// packages/history/src/checkouts.ts
+async function checkouts(root) {
+  const listing = await runGit(root, ["worktree", "list", "--porcelain"]);
+  const others = listing.split("\n").filter((line) => line.startsWith("worktree ")).map((line) => line.slice("worktree ".length)).filter((path) => path !== root);
+  return [root, ...others.sort()];
+}
+
+// packages/history/src/session-state.ts
+import { createHash as createHash7 } from "node:crypto";
+import { closeSync as closeSync2, mkdirSync as mkdirSync5, openSync as openSync2, readFileSync as readFileSync9, renameSync as renameSync5, rmSync as rmSync5, statSync as statSync2, writeFileSync as writeFileSync6 } from "node:fs";
+import { join as join10 } from "node:path";
+var emptySession = () => ({ edited: [], spokenAbout: [], lastRun: null, measurements: {} });
+function sessionDirectory(root) {
+  return join10(root, ".cache", "code-health", "sessions");
+}
+function sessionFile(root, sessionId, hook) {
+  const safe = /^[A-Za-z0-9_-]{1,128}$/.test(sessionId) ? sessionId : `h-${createHash7("sha256").update(sessionId).digest("hex").slice(0, 32)}`;
+  return join10(sessionDirectory(root), `${safe}.${hook}.json`);
+}
+var strings = (value) => Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
+function readSession(root, sessionId, hook) {
+  try {
+    const parsed = JSON.parse(readFileSync9(sessionFile(root, sessionId, hook), "utf8"));
+    const last = parsed.lastRun;
+    return {
+      edited: strings(parsed.edited),
+      spokenAbout: strings(parsed.spokenAbout),
+      lastRun: last && typeof last.outcome === "string" && typeof last.durationMs === "number" ? { outcome: last.outcome, durationMs: last.durationMs } : null,
+      measurements: typeof parsed.measurements === "object" && parsed.measurements !== null && !Array.isArray(parsed.measurements) ? parsed.measurements : {}
+    };
+  } catch {
+    return emptySession();
+  }
+}
+function writeSession(root, sessionId, hook, state) {
+  const file = sessionFile(root, sessionId, hook);
+  ensureSelfIgnoring(join10(root, ".cache", "code-health"));
+  mkdirSync5(sessionDirectory(root), { recursive: true });
+  const temporary = `${file}.${process.pid}.tmp`;
+  writeFileSync6(temporary, JSON.stringify(state) + "\n");
+  renameSync5(temporary, file);
+}
+var STALE_LOCK_MS = 2e3;
+var LOCK_WAIT_MS = 300;
+var sleep2 = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+function withLock2(file, work) {
+  const lock = `${file}.lock`;
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  let held = false;
+  for (; ; ) {
+    try {
+      closeSync2(openSync2(lock, "wx"));
+      held = true;
+      break;
+    } catch {
+      try {
+        if (Date.now() - statSync2(lock).mtimeMs > STALE_LOCK_MS) rmSync5(lock, { force: true });
+      } catch {
+      }
+      if (Date.now() >= deadline) break;
+      sleep2(5);
+    }
+  }
+  try {
+    return work();
+  } finally {
+    if (held) rmSync5(lock, { force: true });
+  }
+}
+function updateSession(root, sessionId, hook, change2) {
+  const file = sessionFile(root, sessionId, hook);
+  ensureSelfIgnoring(join10(root, ".cache", "code-health"));
+  mkdirSync5(sessionDirectory(root), { recursive: true });
+  return withLock2(file, () => {
+    const state = readSession(root, sessionId, hook);
+    change2(state);
+    writeSession(root, sessionId, hook, state);
+    return state;
+  });
+}
+
+// packages/transcripts/src/projects-dir.ts
+import { homedir } from "node:os";
+import { join as join11 } from "node:path";
+var defaultProjectsDirectory = () => join11(homedir(), ".claude", "projects");
+
+// packages/transcripts/src/difference.ts
+var change = (arm) => arm.before.mean === null || arm.after.mean === null ? null : arm.after.mean - arm.before.mean;
+function differenceOf(actedOn, comparison, minSamples, noisePercent) {
+  const actedChange = change(actedOn);
+  const comparisonChange = change(comparison);
+  const smallestSample = Math.min(actedOn.before.n, actedOn.after.n, comparison.before.n, comparison.after.n);
+  const difference = actedChange === null || comparisonChange === null ? null : actedChange - comparisonChange;
+  let conclusion;
+  if (difference === null) conclusion = "not-measured";
+  else if (smallestSample < minSamples) conclusion = "insufficient-sample";
+  else {
+    const noise = Math.abs(actedOn.before.mean ?? 0) * noisePercent / 100;
+    conclusion = Math.abs(difference) <= noise ? "no-change" : difference < 0 ? "lower" : "higher";
+  }
+  return { actedOn: { change: actedChange }, comparison: { change: comparisonChange }, difference, smallestSample, conclusion };
+}
+
+// packages/transcripts/src/session-edits.ts
+import { existsSync as existsSync14, readFileSync as readFileSync11 } from "node:fs";
+
+// packages/transcripts/src/repo-path.ts
+import { posix } from "node:path";
+function normalise2(path) {
+  const converted = path.replaceAll("\\", "/");
+  const drive = /^[A-Za-z]:\//.exec(converted);
+  if (drive === null) return posix.normalize(converted);
+  return drive[0] + posix.normalize(converted.slice(drive[0].length));
+}
+function isAbsolute3(path) {
+  return path.startsWith("/") || /^[A-Za-z]:\//.test(path);
+}
+function stripTrailingSlash(path) {
+  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+}
+var EXCLUDED_SEGMENTS = /* @__PURE__ */ new Set([".git", "node_modules"]);
+function isExcluded(relative3) {
+  return relative3.split("/").some((part) => EXCLUDED_SEGMENTS.has(part));
+}
+function comparable(path) {
+  return /^[A-Za-z]:\//.test(path) ? path.toLowerCase() : path;
+}
+function relativeToRoots(path, roots) {
+  const ordered = roots.map((root) => stripTrailingSlash(normalise2(root))).sort((a, b) => b.length - a.length);
+  for (const root of ordered) {
+    if (comparable(path) === comparable(root)) return "";
+    const prefix = root.endsWith("/") ? root : `${root}/`;
+    if (comparable(path).startsWith(comparable(prefix))) return stripTrailingSlash(path.slice(prefix.length));
+  }
+  return null;
+}
+function isWithinRepo(path, roots) {
+  if (path === null || path === "") return true;
+  if (path.startsWith("~")) return false;
+  const normalised = normalise2(path);
+  if (!isAbsolute3(normalised)) return !(normalised === ".." || normalised.startsWith("../"));
+  return relativeToRoots(normalised, roots) !== null;
+}
+function toRepoPath(path, roots) {
+  if (path === null || path === "" || path.startsWith("~")) return null;
+  const normalised = normalise2(path);
+  let relative3;
+  if (isAbsolute3(normalised)) {
+    relative3 = relativeToRoots(normalised, roots);
+  } else {
+    relative3 = normalised === "." || normalised === ".." || normalised.startsWith("../") ? null : normalised;
+  }
+  if (relative3 === null || relative3 === "" || isExcluded(relative3)) return null;
+  return relative3;
+}
+
+// packages/transcripts/src/measure-repo.ts
+import { existsSync as existsSync13, readFileSync as readFileSync10, readdirSync } from "node:fs";
+import { join as join12 } from "node:path";
+
+// packages/transcripts/src/transcript-format.ts
+var RECOGNISED_VERSION = /^2\.1\.\d+$/;
+var READ_TOOLS = /* @__PURE__ */ new Set(["Read"]);
+var SEARCH_TOOLS = /* @__PURE__ */ new Set(["Grep", "Glob"]);
+var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
+function isObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function asString(value) {
+  return typeof value === "string" ? value : null;
+}
+function count(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+function pathOf(input) {
+  return asString(input["file_path"]) ?? asString(input["notebook_path"]) ?? asString(input["path"]);
+}
+function actionOf(block) {
+  const name15 = asString(block["name"]);
+  if (name15 === null) return null;
+  const input = isObject(block["input"]) ? block["input"] : {};
+  if (READ_TOOLS.has(name15)) return { kind: "read", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name15)) return { kind: "search", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name15)) return { kind: "edit", path: pathOf(input) };
+  return null;
+}
+var INTERRUPT_MARKER = "[Request interrupted by user";
+function isHumanText(text) {
+  return typeof text === "string" && !text.startsWith(INTERRUPT_MARKER);
+}
+function isHumanPrompt(line, message) {
+  if (line["isMeta"] === true || line["toolUseResult"] !== void 0) return false;
+  if (line["isCompactSummary"] === true || line["isVisibleInTranscriptOnly"] === true) return false;
+  const origin = line["origin"];
+  if (isObject(origin) && origin["kind"] !== "human") return false;
+  const content = message["content"];
+  if (typeof content === "string") return isHumanText(content);
+  return Array.isArray(content) && content.some((block) => isObject(block) && block["type"] === "text" && isHumanText(block["text"]));
+}
+function compareVersions(a, b) {
+  const left = a.split(".");
+  const right = b.split(".");
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    const x = left[i] ?? "0";
+    const y = right[i] ?? "0";
+    const numeric = /^\d+$/.test(x) && /^\d+$/.test(y);
+    const order = numeric ? Number(x) - Number(y) : x < y ? -1 : x > y ? 1 : 0;
+    if (order !== 0) return order;
+  }
+  return 0;
+}
+function earliest(lines) {
+  let best = null;
+  let bestMs = Number.POSITIVE_INFINITY;
+  for (const line of lines) {
+    const timestamp = asString(line["timestamp"]);
+    const ms = timestamp === null ? Number.NaN : Date.parse(timestamp);
+    if (timestamp !== null && ms < bestMs) {
+      best = timestamp;
+      bestMs = ms;
+    }
+  }
+  return best;
+}
+function parseTranscript(text) {
+  const lines = [];
+  let skippedLines = 0;
+  const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+  for (const raw of body.split(/\r?\n/)) {
+    if (raw === "") continue;
+    try {
+      const parsed = JSON.parse(raw);
+      if (isObject(parsed)) lines.push(parsed);
+    } catch {
+      skippedLines++;
+    }
+  }
+  const messageLines = lines.filter((line) => line["type"] === "user" || line["type"] === "assistant");
+  const cwds = [...new Set(messageLines.flatMap((line) => typeof line["cwd"] === "string" ? [line["cwd"]] : []))].sort();
+  const notMeasured = (version, reason) => ({
+    status: "not-measured",
+    version,
+    reason,
+    startedAt: earliest(messageLines),
+    cwds
+  });
+  const versions = /* @__PURE__ */ new Set();
+  for (const line of messageLines) {
+    const version = asString(line["version"]);
+    if (version !== null) versions.add(version);
+  }
+  if (versions.size === 0) return notMeasured(null, "no versioned messages");
+  const sorted = [...versions].sort(compareVersions);
+  const unrecognised = sorted.find((version) => !RECOGNISED_VERSION.test(version));
+  if (unrecognised !== void 0) return notMeasured(unrecognised, "unrecognised transcript version");
+  const events = [];
+  const turnsById = /* @__PURE__ */ new Map();
+  for (const line of messageLines) {
+    if (line["isSidechain"] === true) continue;
+    const message = line["message"];
+    const timestamp = asString(line["timestamp"]);
+    if (line["type"] === "user") {
+      if (isObject(message) && timestamp !== null && isHumanPrompt(line, message)) {
+        events.push({ kind: "prompt", timestamp });
+      }
+      continue;
+    }
+    const id = isObject(message) ? asString(message["id"]) : null;
+    if (!isObject(message) || id === null || timestamp === null || !Array.isArray(message["content"])) {
+      skippedLines++;
+      continue;
+    }
+    let turn = turnsById.get(id);
+    if (turn === void 0) {
+      turn = {
+        kind: "agent-turn",
+        timestamp,
+        messageId: id,
+        tokens: { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 },
+        actions: []
+      };
+      turnsById.set(id, turn);
+      events.push(turn);
+    }
+    if (isObject(message["usage"])) {
+      const usage = message["usage"];
+      turn.tokens = {
+        input: count(usage["input_tokens"]),
+        output: count(usage["output_tokens"]),
+        cacheRead: count(usage["cache_read_input_tokens"]),
+        cacheCreation: count(usage["cache_creation_input_tokens"])
+      };
+    }
+    for (const block of message["content"]) {
+      if (!isObject(block) || block["type"] !== "tool_use") continue;
+      const action = actionOf(block);
+      if (action !== null) turn.actions.push(action);
+    }
+  }
+  return { status: "recognised", version: sorted[sorted.length - 1] ?? "", events, skippedLines, cwds };
+}
+
+// packages/transcripts/src/time-window.ts
+function dateToMs(value, label) {
+  const ms = /^\d{4}-\d{2}-\d{2}$/.test(value) ? Date.parse(`${value}T00:00:00.000Z`) : Number.NaN;
+  if (Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== value) {
+    throw new Error(`${label} must be a calendar date in YYYY-MM-DD form, got "${value}"`);
+  }
+  return ms;
+}
+function parseWindow(from, to) {
+  const fromMs = dateToMs(from, "window start");
+  const toMs = dateToMs(to, "window end");
+  if (toMs <= fromMs) throw new Error(`window end ${to} must be after window start ${from}`);
+  return { from, to, fromMs, toMs };
+}
+function inWindow(window, timestamp) {
+  const ms = Date.parse(timestamp);
+  return !Number.isNaN(ms) && ms >= window.fromMs && ms < window.toMs;
+}
+
+// packages/transcripts/src/measure-repo.ts
+function encodeProjectDir(cwd) {
+  return cwd.replaceAll(/[^A-Za-z0-9]/g, "-");
+}
+function compareBytes3(a, b) {
+  return Buffer.compare(Buffer.from(a), Buffer.from(b));
+}
+function sessionFiles(projectsDir, root) {
+  const dir = join12(projectsDir, encodeProjectDir(root));
+  if (!existsSync13(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join12(dir, entry.name) })).sort((a, b) => compareBytes3(a.sessionId, b.sessionId));
+}
+
+// packages/transcripts/src/session-edits.ts
+function readSessionEdits(text, sessionId, roots) {
+  const parsed = parseTranscript(text);
+  if (parsed.status !== "recognised") return null;
+  const edits = [];
+  for (const event of parsed.events) {
+    if (event.kind !== "agent-turn") continue;
+    for (const action of event.actions) {
+      if (action.kind !== "edit") continue;
+      const path = toRepoPath(action.path, roots);
+      if (path !== null) edits.push(path);
+    }
+  }
+  const first = parsed.events[0];
+  if (edits.length === 0 || first === void 0) return null;
+  return { sessionId, startedAt: first.timestamp, edits };
+}
+function readRepoSessionEdits(options) {
+  const { projectsDir, repoRoots, window } = options;
+  const seen = /* @__PURE__ */ new Set();
+  const sessions = [];
+  for (const root of repoRoots) {
+    for (const file of sessionFiles(projectsDir, root)) {
+      if (seen.has(file.path) || !existsSync14(file.path)) continue;
+      seen.add(file.path);
+      let text;
+      try {
+        text = readFileSync11(file.path, "utf8");
+      } catch {
+        continue;
+      }
+      const parsed = parseTranscript(text);
+      if (parsed.cwds.length > 0 && !parsed.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;
+      const result = readSessionEdits(text, file.sessionId, repoRoots);
+      if (result !== null && inWindow(window, result.startedAt)) sessions.push(result);
+    }
+  }
+  return sessions.sort((a, b) => compareBytes3(a.sessionId, b.sessionId));
+}
+
+// packages/cochange/src/outcome/completeness.ts
+function findOpportunities(sessions, partnersOf2) {
+  const found = [];
+  for (const session of sessions) {
+    const firstEdit = /* @__PURE__ */ new Map();
+    session.edits.forEach((file, position) => {
+      if (!firstEdit.has(file)) firstEdit.set(file, position);
+    });
+    for (const [file, position] of firstEdit) {
+      const unedited = partnersOf2(file).filter((partner) => {
+        const at = firstEdit.get(partner);
+        return at === void 0 || at > position;
+      });
+      if (unedited.length === 0) continue;
+      found.push({
+        sessionId: session.sessionId,
+        file,
+        followed: unedited.some((partner) => firstEdit.has(partner)),
+        briefed: session.spokenAbout.has(file)
+      });
+    }
+  }
+  return found;
+}
+var rateOf = (items) => {
+  const followed = items.filter((o) => o.followed).length;
+  return { opportunities: items.length, followed, rate: items.length === 0 ? null : followed / items.length };
+};
+function compareArms(hook, noHook, minSamples, noisePercent) {
+  if (hook.rate === null || noHook.rate === null) return { difference: null, conclusion: "not-measured" };
+  const difference = hook.rate - noHook.rate;
+  if (Math.min(hook.opportunities, noHook.opportunities) < minSamples) return { difference, conclusion: "insufficient-sample" };
+  const noise = noHook.rate * noisePercent / 100;
+  return { difference, conclusion: Math.abs(difference) <= noise ? "no-change" : difference > 0 ? "higher" : "lower" };
+}
+
+// packages/cochange/src/outcome/spread-outcome.ts
+var byBytes2 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
+var inSpan = (changes, span) => changes.filter((c) => !c.suiteCommit && c.committerDate >= span.since && c.committerDate < span.until);
+var touching = (changes, ids) => changes.filter((c) => c.files.some((f) => ids.has(f.fileId)));
+function figuresOf(changes, ids) {
+  const own = touching(changes, ids);
+  const spreads = own.filter((c) => !c.oversized).map((c) => changeSpread(c.files.map((f) => f.path)));
+  return {
+    spread: { measured: spreads.length, mean: spreads.length === 0 ? null : spreads.reduce((a, b) => a + b, 0) / spreads.length },
+    revisions: { changes: own.length, files: ids.size, perFile: ids.size === 0 ? null : own.length / ids.size }
+  };
+}
+function chooseControls(revisions, actedOn, overlap) {
+  const acted = new Set(actedOn);
+  const left = [...revisions.keys()].filter((path) => !acted.has(path));
+  const pool = left.filter((path) => !overlap.has(path)).sort(byBytes2);
+  const available = [...pool];
+  const group = [];
+  const pairs = [];
+  const own = (path) => revisions.get(path) ?? 0;
+  for (const target of [...actedOn].sort((a, b) => own(b) - own(a) || byBytes2(a, b))) {
+    let best = -1;
+    for (const [index2, candidate] of available.entries()) {
+      if (best === -1 || Math.abs(own(candidate) - own(target)) < Math.abs(own(available[best]) - own(target))) best = index2;
+    }
+    if (best === -1) {
+      pairs.push({ actedOn: { path: target, revisions: own(target) }, comparison: null });
+      continue;
+    }
+    const [chosen] = available.splice(best, 1);
+    group.push(chosen);
+    pairs.push({ actedOn: { path: target, revisions: own(target) }, comparison: { path: chosen, revisions: own(chosen) } });
+  }
+  return { group, pairs, overlapping: left.length - pool.length };
+}
+function sharingChanges(changes, files) {
+  const shared = /* @__PURE__ */ new Set();
+  for (const change2 of touching(changes, files)) for (const f of change2.files) if (!files.has(f.fileId)) shared.add(f.fileId);
+  return shared;
+}
+function revisionsOf(changes) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const change2 of changes) for (const id of new Set(change2.files.map((f) => f.fileId))) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return counts;
+}
+
+// packages/cochange/src/hook.ts
+import { existsSync as existsSync16 } from "node:fs";
+import { join as join14 } from "node:path";
+
+// packages/history/src/hook-event.ts
+import { existsSync as existsSync15 } from "node:fs";
+import { dirname as dirname4, join as join13 } from "node:path";
+var WATCHED_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit"]);
+function findRepoRoot(start) {
+  let directory = start;
+  for (; ; ) {
+    if (existsSync15(join13(directory, ".git"))) return directory;
+    const parent = dirname4(directory);
+    if (parent === directory) return void 0;
+    directory = parent;
+  }
+}
+function readEditEvent(stdin, fallbackCwd) {
+  const input = JSON.parse(stdin);
+  const path = input.tool_input?.file_path;
+  if (typeof input.session_id !== "string" || input.session_id === "" || typeof path !== "string") return void 0;
+  if (typeof input.tool_name === "string" && !WATCHED_TOOLS.has(input.tool_name)) return void 0;
+  const cwd = typeof input.cwd === "string" && input.cwd !== "" ? input.cwd : fallbackCwd;
+  const root = findRepoRoot(cwd);
+  if (root === void 0) return void 0;
+  const file = repoRelative(root, path);
+  if (file.startsWith("..") || file.startsWith("/") || file === "") return void 0;
+  return { sessionId: input.session_id, root, file };
+}
+function within(budgetMs2, started, work, silence) {
+  const remaining = Math.max(0, budgetMs2 - (performance.now() - started));
+  return new Promise((resolve2, reject) => {
+    const timer = setTimeout(() => resolve2(silence), remaining);
+    work.then(
+      (answer) => {
+        clearTimeout(timer);
+        resolve2(answer);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+// packages/cochange/src/hook.ts
+var HOOK_NAME = "cochange";
+var MAX_PARTNERS_NAMED = 3;
+var DEFAULT_BUDGET_MS = 250;
+async function commitsBehind(root, dbPath, ref, limit) {
+  const recent = (await runGit(root, ["rev-list", `--max-count=${limit + 1}`, ref])).split("\n").filter((sha) => sha !== "");
+  if (recent.length === 0) return void 0;
+  const db = openForRead(dbPath);
+  if (!db) return void 0;
+  try {
+    const find = db.prepare("SELECT 1 AS found FROM commits WHERE sha = ?");
+    const index2 = recent.findIndex((sha) => find.get(sha) !== void 0);
+    return index2 === -1 ? void 0 : { behind: index2, sha: recent[index2] };
+  } finally {
+    db.close();
+  }
+}
+function describeNote(file, partners) {
+  const named = partners.map((p) => `\`${p.path}\` (confidence ${Math.round(p.confidence)} %, ${p.support} ${p.support === 1 ? "change" : "changes"})`);
+  const list = named.length <= 1 ? named.join("") : `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}`;
+  return `\`${file}\` usually changes with ${list}. Not yet edited in this session.`;
+}
+async function consider(root, file, settings, state) {
+  const location = await locateCache(root);
+  const found = await commitsBehind(root, location.dbPath, settings.ref, settings.hook.maxCommitsBehind);
+  if (!found) return { note: null, outcome: "silent: no cache within tolerance" };
+  const identities = loadIdentityState(root, settings);
+  const view = await readHistory(root, { ref: found.sha, firstParent: settings.firstParent, mailmapFile: identities.localMailmap });
+  const filtered = await filterHistory(root, view, {
+    exclude: settings.exclude,
+    botPatterns: settings.botPatterns,
+    nonPerson: identities.matcher,
+    maxChangesetSize: settings.maxChangesetSize,
+    grouping: settings.grouping,
+    since: monthsBefore(view.headDate, settings.windowMonths),
+    until: view.headDate + 1
+  });
+  const exists2 = await runGit(root, ["cat-file", "-e", `${found.sha}:${file}`]).then(
+    () => true,
+    () => false
+  );
+  const identity = exists2 ? file : view.renames.resolve(file, -1);
+  const { changesFocus, partners } = partnersOf(
+    filtered.changes.map((change2) => ({ files: change2.files.map((f) => f.fileId), oversized: change2.oversized })),
+    identity
+  );
+  const edited = new Set(state.edited);
+  const named = partners.map((partner) => ({ path: partner.path, support: partner.support, confidence: confidenceOf(partner.support, changesFocus) })).filter(
+    (partner) => partner.support >= settings.minSupport && partner.confidence >= settings.hook.confidence && !edited.has(partner.path) && existsSync16(join14(root, partner.path))
+  ).sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)).slice(0, MAX_PARTNERS_NAMED);
+  if (named.length === 0) return { note: null, outcome: "silent: no unedited partner above the threshold" };
+  return { note: describeNote(file, named), outcome: "spoke" };
+}
+async function runHook(request) {
+  const started = request.startedAt ?? performance.now();
+  try {
+    const event = readEditEvent(request.stdin, request.cwd);
+    if (event === void 0) return "";
+    const { root, file, sessionId } = event;
+    const settings = readSettings(loadConfig(root, cochangeConfig));
+    if (!settings.hook.enabled) return "";
+    const state = updateSession(root, sessionId, HOOK_NAME, (current2) => {
+      if (!current2.edited.includes(file)) current2.edited.push(file);
+    });
+    const decision = state.spokenAbout.includes(file) ? { note: null, outcome: "silent: already spoke about this file" } : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state), {
+      note: null,
+      outcome: "silent: over the time budget"
+    });
+    updateSession(root, sessionId, HOOK_NAME, (current2) => {
+      if (decision.note !== null && !current2.spokenAbout.includes(file)) current2.spokenAbout.push(file);
+      current2.lastRun = { outcome: decision.outcome, durationMs: Math.round(performance.now() - started) };
+    });
+    return decision.note === null ? "" : JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: decision.note } });
+  } catch {
+    return "";
+  }
+}
+
+// packages/cochange/src/commands/outcome.ts
+var name9 = "outcome";
+var SUBCOMMANDS3 = ["completeness", "spread"];
+var isoDay6 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 var command9 = {
+  subcommands: {
+    spread: { summary: "Change spread and revisions of the files acted on, against similarly ranked files left alone, either side of a date", options: ["at", "months", "min-samples", "noise", "no-refresh"] },
+    completeness: { summary: "How often an agent's edit is followed by an edit to a coupled file in the same session, with and without the hook", options: ["since", "until", "projects-dir", "min-samples", "noise", "no-refresh"] }
+  },
+  summary: "Measure whether acting on findings worked: change spread against untouched files, and agent completeness with and without the hook",
+  options: {
+    at: { type: "string" },
+    months: { type: "string" },
+    since: { type: "string" },
+    until: { type: "string" },
+    "projects-dir": { type: "string" },
+    "min-samples": { type: "string" },
+    noise: { type: "string" },
+    "no-refresh": { type: "boolean" }
+  },
+  async run(context) {
+    const [sub, ...rest] = context.positionals;
+    if (!SUBCOMMANDS3.includes(sub)) throw usageError(`usage: outcome <${SUBCOMMANDS3.join("|")}> ...`);
+    rejectOptionsOutsideTheirCommand3(sub, context);
+    if (sub === "spread") return spreadOutcome(context, rest);
+    if (rest.length > 0) throw usageError("outcome completeness takes no paths");
+    return completeness(context);
+  }
+};
+function rejectOptionsOutsideTheirCommand3(sub, context) {
+  const only = {
+    at: ["spread"],
+    months: ["spread"],
+    since: ["completeness"],
+    until: ["completeness"],
+    "projects-dir": ["completeness"]
+  };
+  for (const [option, owners] of Object.entries(only)) {
+    if (context.values[option] !== void 0 && !owners.includes(sub)) throw usageError(`--${option} belongs to outcome ${owners.join(", ")}`);
+  }
+}
+function day(context, option) {
+  const value = context.values[option];
+  if (typeof value !== "string" || parseDate(value) === null || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw usageError(`--${option} is required and must be a date as YYYY-MM-DD`);
+  }
+  return value;
+}
+function monthsAfter(seconds, months) {
+  const date = new Date(seconds * 1e3);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return Math.floor(date.getTime() / 1e3);
+}
+var byBytes3 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
+async function spreadOutcome(context, requested) {
+  if (requested.length === 0) throw usageError("usage: outcome spread --at DATE PATH...: name the files the findings were acted on");
+  const at = parseDate(day(context, "at"));
+  const months = integerOption(context, "months", 3, 1, 60);
+  const minSamples = integerOption(context, "min-samples", 10, 1, 1e6);
+  const noise = integerOption(context, "noise", 10, 0, 100);
+  const before = { since: monthsBefore(at, months), until: at };
+  const wanted = { since: at, until: monthsAfter(at, months) };
+  const history = await loadHistory(context, {
+    noRefresh: context.values["no-refresh"] === true,
+    window: { since: before.since, until: wanted.until }
+  });
+  const after = { since: at, until: Math.min(wanted.until, history.view.headDate + 1) };
+  if (at > history.view.headDate) throw usageError(`--at ${isoDay6(at)} is after the analysed commit`);
+  const present = new Set(await listTree(context.repo.root, history.view.headSha));
+  const acted = /* @__PURE__ */ new Set();
+  for (const path of requested) {
+    const resolved = await focusPath(context, history, path);
+    if (!present.has(resolved)) throw usageError(`${path} is not a file at the analysed commit`);
+    acted.add(resolved);
+  }
+  const all = history.filtered.changes;
+  const beforeChanges = inSpan(all, before);
+  const afterChanges = inSpan(all, after);
+  const revisions = new Map([...revisionsOf(beforeChanges)].filter(([path]) => present.has(path)));
+  for (const path of acted) if (!revisions.has(path)) revisions.set(path, 0);
+  const overlap = sharingChanges([...beforeChanges, ...afterChanges], acted);
+  const controls = chooseControls(revisions, [...acted], overlap);
+  const control = new Set(controls.group);
+  const arms = (ids) => ({ before: figuresOf(beforeChanges, ids), after: figuresOf(afterChanges, ids) });
+  const actedArms = arms(acted);
+  const controlArms = arms(control);
+  const spreadArm = (a) => ({
+    before: { mean: a.before.spread.mean, n: a.before.spread.measured },
+    after: { mean: a.after.spread.mean, n: a.after.spread.measured }
+  });
+  const revisionsArm = (a) => ({
+    before: { mean: a.before.revisions.perFile, n: a.before.revisions.files },
+    after: { mean: a.after.revisions.perFile, n: a.after.revisions.files }
+  });
+  return {
+    inputs: { subcommand: "spread", at: isoDay6(at), months, minSamples, noisePercent: noise, files: [...acted].sort(byBytes3), ...identityStamps(history) },
+    extra: historySections(history),
+    results: {
+      at: isoDay6(at),
+      windows: {
+        before: { since: isoDay6(before.since), until: isoDay6(before.until) },
+        after: { since: isoDay6(after.since), until: isoDay6(after.until), complete: after.until === wanted.until }
+      },
+      actedOn: { files: [...acted].sort(byBytes3), ...actedArms },
+      comparison: { files: [...control].sort(byBytes3), pairs: controls.pairs, overlapping: controls.overlapping, ...controlArms },
+      spread: { role: "primary outcome", ...differenceOf(spreadArm(actedArms), spreadArm(controlArms), minSamples, noise) },
+      revisions: { role: "secondary outcome", ...differenceOf(revisionsArm(actedArms), revisionsArm(controlArms), minSamples, noise) }
+    }
+  };
+}
+async function completeness(context) {
+  const since = day(context, "since");
+  const until = day(context, "until");
+  const window = (() => {
+    try {
+      return parseWindow(since, until);
+    } catch (error) {
+      throw usageError(error instanceof Error ? error.message : String(error));
+    }
+  })();
+  const minSamples = integerOption(context, "min-samples", 10, 1, 1e6);
+  const noise = integerOption(context, "noise", 10, 0, 100);
+  const projects = context.values["projects-dir"];
+  if (projects !== void 0 && (typeof projects !== "string" || projects === "")) throw usageError("--projects-dir needs a value");
+  const projectsDir = typeof projects === "string" ? projects : defaultProjectsDirectory();
+  const { root } = context.repo;
+  const roots = await checkouts(root);
+  const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true });
+  const { settings } = history;
+  const present = new Set(await listTree(root, history.view.headSha));
+  const identityOf = (path) => present.has(path) ? path : history.view.renames.resolve(path, -1);
+  const couplingChanges = history.filtered.changes.map((c) => ({ files: c.files.map((f) => f.fileId), oversized: c.oversized }));
+  const cache = /* @__PURE__ */ new Map();
+  const partnersNamed = (file) => {
+    const known = cache.get(file);
+    if (known !== void 0) return known;
+    const { changesFocus, partners } = partnersOf(couplingChanges, file);
+    const named = partners.filter((p) => p.support >= settings.minSupport && confidenceOf(p.support, changesFocus) >= settings.hook.confidence && present.has(p.path)).map((p) => p.path);
+    cache.set(file, named);
+    return named;
+  };
+  const found = readRepoSessionEdits({ projectsDir, repoRoots: roots, window });
+  const records = found.map((session) => {
+    const holder = roots.find((r) => existsSync17(sessionFile(r, session.sessionId, HOOK_NAME)));
+    const state = holder === void 0 ? null : readSession(holder, session.sessionId, HOOK_NAME);
+    return {
+      sessionId: session.sessionId,
+      edits: session.edits.map(identityOf),
+      hook: state !== null,
+      spokenAbout: new Set((state?.spokenAbout ?? []).map(identityOf))
+    };
+  });
+  const opportunities = findOpportunities(records, partnersNamed);
+  const hookSessions = new Set(records.filter((r) => r.hook).map((r) => r.sessionId));
+  const inHook = opportunities.filter((o) => hookSessions.has(o.sessionId));
+  const noHook = opportunities.filter((o) => !hookSessions.has(o.sessionId));
+  const hookRate = rateOf(inHook);
+  const noHookRate = rateOf(noHook);
+  const comparison = compareArms(hookRate, noHookRate, minSamples, noise);
+  return {
+    inputs: {
+      subcommand: "completeness",
+      since,
+      until,
+      minSamples,
+      noisePercent: noise,
+      minSupport: settings.minSupport,
+      confidence: settings.hook.confidence,
+      ...identityStamps(history)
+    },
+    extra: historySections(history),
+    results: {
+      window: { since, until },
+      sessions: { measured: records.length, withHook: hookSessions.size, withoutHook: records.length - hookSessions.size },
+      withHook: { sessions: hookSessions.size, ...hookRate, briefed: rateOf(inHook.filter((o) => o.briefed)), notBriefed: rateOf(inHook.filter((o) => !o.briefed)) },
+      withoutHook: { sessions: records.length - hookSessions.size, ...noHookRate },
+      role: "agent outcome",
+      difference: comparison.difference,
+      smallestSample: Math.min(inHook.length, noHook.length),
+      conclusion: comparison.conclusion,
+      caveat: "Sessions were not assigned to the hook at random: a difference may come from the work, the period or the people, so read it as an association."
+    }
+  };
+}
+
+// packages/cochange/src/commands/refresh.ts
+var refresh_exports = {};
+__export(refresh_exports, {
+  command: () => command10,
+  name: () => name10
+});
+var name10 = "refresh";
+var command10 = {
   summary: "Update the shared history cache and report the commits added",
   async run(context) {
     const settings = readSettings(context.config);
@@ -7001,8 +8029,8 @@ var command9 = {
 // packages/cochange/src/commands/risk.ts
 var risk_exports = {};
 __export(risk_exports, {
-  command: () => command10,
-  name: () => name10,
+  command: () => command11,
+  name: () => name11,
   rules: () => rules7
 });
 
@@ -7330,7 +8358,7 @@ var FACTOR_DOCS = [
     why: "Neither the author nor any reviewer has first-hand knowledge."
   }
 ];
-var factorDoc = (name14) => FACTOR_DOCS.find((doc) => doc.name === name14);
+var factorDoc = (name15) => FACTOR_DOCS.find((doc) => doc.name === name15);
 var LEVEL_RULES = [
   {
     id: "baseline",
@@ -7385,27 +8413,27 @@ function explainRules(risk) {
       countHigh: risk.countHigh,
       disabled: [...risk.disabled].sort()
     },
-    factors: FACTOR_DOCS.map(({ name: name14, family, layer, banding, signal }) => ({ name: name14, family, layer, banding, signal }))
+    factors: FACTOR_DOCS.map(({ name: name15, family, layer, banding, signal }) => ({ name: name15, family, layer, banding, signal }))
   };
 }
-async function explainFactor(name14, assess) {
-  const doc = factorDoc(name14);
-  if (!doc) throw usageError(`unknown factor "${name14}"; factors: ${FACTOR_DOCS.map((d) => d.name).join(", ")}`);
+async function explainFactor(name15, assess) {
+  const doc = factorDoc(name15);
+  if (!doc) throw usageError(`unknown factor "${name15}"; factors: ${FACTOR_DOCS.map((d) => d.name).join(", ")}`);
   let driven = null;
   if (doc.family !== "placement") {
     const assessed = await assess();
-    driven = assessed.factors.find((factor) => factor.name === name14) ?? null;
+    driven = assessed.factors.find((factor) => factor.name === name15) ?? null;
   }
-  return { kind: "explain", topic: name14, doc: { ...doc }, branch: driven };
+  return { kind: "explain", topic: name15, doc: { ...doc }, branch: driven };
 }
 
 // packages/cochange/src/risk/abandonment-report.ts
-import { existsSync as existsSync13, readFileSync as readFileSync9 } from "node:fs";
+import { existsSync as existsSync18, readFileSync as readFileSync12 } from "node:fs";
 function readAbandonmentReport(root, head, config, overridesStamp) {
   const file = reportPath2(root, REPORT);
-  if (!existsSync13(file)) return null;
+  if (!existsSync18(file)) return null;
   try {
-    const document = JSON.parse(readFileSync9(file, "utf8"));
+    const document = JSON.parse(readFileSync12(file, "utf8"));
     if (document.tool !== "cochange" || document.command !== REPORT) return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false || document.config !== config) return null;
     if (document.inputs?.mode !== "rate" || (document.inputs.overrides?.hash ?? null) !== overridesStamp) return null;
@@ -7434,17 +8462,17 @@ var unavailable = (reason) => ({
   value: {},
   evidence: []
 });
-async function abandonedTouched(context, history, change) {
+async function abandonedTouched(context, history, change2) {
   const section = context.config.effective[TOOL2].knowledge;
   if (section?.enabled !== true) return { measurement: unavailable("knowledge analysis is not enabled (cochange.knowledge.enabled)"), report: null };
   const settings = readKnowledgeSettings(context.config.effective);
   const root = context.repo.root;
-  const report = change.worktree ? null : readAbandonmentReport(root, change.head, context.config.hash, readOverrides(root).stamp);
-  if (report !== null) return { measurement: fromReport(report, change, settings.atRiskProbability), report: report.input };
-  return { measurement: await fromBlame(context, history, change, settings), report: null };
+  const report = change2.worktree ? null : readAbandonmentReport(root, change2.head, context.config.hash, readOverrides(root).stamp);
+  if (report !== null) return { measurement: fromReport(report, change2, settings.atRiskProbability), report: report.input };
+  return { measurement: await fromBlame(context, history, change2, settings), report: null };
 }
-function fromReport(report, change, atRiskProbability) {
-  const touched = [...new Set(change.files.filter((f) => f.status !== "A" && f.status !== "D").map((f) => f.path))].sort();
+function fromReport(report, change2, atRiskProbability) {
+  const touched = [...new Set(change2.files.filter((f) => f.status !== "A" && f.status !== "D").map((f) => f.path))].sort();
   const rows = touched.flatMap((file) => {
     const row2 = report.files.get(file);
     if (row2 === void 0) return [];
@@ -7453,11 +8481,11 @@ function fromReport(report, change, atRiskProbability) {
   });
   return { ...measurement(rows, touched.length, 0), source: "abandonment report" };
 }
-async function fromBlame(context, history, change, settings) {
+async function fromBlame(context, history, change2, settings) {
   const root = context.repo.root;
-  const paths = [...new Set(change.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
+  const paths = [...new Set(change2.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
   if (paths.length === 0) return measurement([], 0, 0);
-  const options = { ref: change.base, ...blameOptions(history, settings), paths };
+  const options = { ref: change2.base, ...blameOptions(history, settings), paths };
   if (context.values["no-refresh"] !== true) await refreshBlame(root, options);
   const snapshot = await readBlame(root, options);
   const identity = { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher };
@@ -7483,7 +8511,7 @@ async function fromBlame(context, history, change, settings) {
     const probability = abandoned ? 1 : probabilities.get(file.path) ?? 0;
     return { path: file.path, abandoned, probability, share: round4(goneLinesOf(file, model.developers) / file.people) };
   }).filter((row2) => row2.abandoned || row2.probability > 0 && row2.probability * 100 >= settings.atRiskProbability);
-  const nowPath = new Map(change.files.map((f) => [f.oldPath ?? f.path, f.path]));
+  const nowPath = new Map(change2.files.map((f) => [f.oldPath ?? f.path, f.path]));
   return measurement(
     rows.map((row2) => ({ file: nowPath.get(row2.path) ?? row2.path, abandoned: row2.abandoned, probability: round4(row2.probability), abandonedShare: row2.share })),
     snapshot.files.size,
@@ -7506,8 +8534,8 @@ function measurement(evidence, files, unknown) {
 }
 
 // packages/cochange/src/risk/composition.ts
-import { existsSync as existsSync14, readFileSync as readFileSync11 } from "node:fs";
-import { join as join11 } from "node:path";
+import { existsSync as existsSync19, readFileSync as readFileSync14 } from "node:fs";
+import { join as join16 } from "node:path";
 
 // packages/cochange/src/risk/bands.ts
 var BAND_RANK = { low: 0, moderate: 1, high: 2 };
@@ -7530,26 +8558,26 @@ function bandAgainst(value, cutoffs) {
   if (value > cutoffs.moderate) return "moderate";
   return "low";
 }
-function bandCount(count, thresholds) {
-  if (count >= thresholds.high) return "high";
-  if (count >= thresholds.moderate) return "moderate";
+function bandCount(count2, thresholds) {
+  if (count2 >= thresholds.high) return "high";
+  if (count2 >= thresholds.moderate) return "moderate";
   return "low";
 }
 
 // packages/cochange/src/risk/evidence-inputs.ts
-import { createHash as createHash7 } from "node:crypto";
-import { readFileSync as readFileSync10 } from "node:fs";
-import { isAbsolute as isAbsolute3, join as join10 } from "node:path";
+import { createHash as createHash8 } from "node:crypto";
+import { readFileSync as readFileSync13 } from "node:fs";
+import { isAbsolute as isAbsolute4, join as join15 } from "node:path";
 var NO_EVIDENCE = { complexity: null, structure: null, stamps: [] };
-function readEvidence(root, files, change) {
+function readEvidence(root, files, change2) {
   let complexity = null;
   let structure = null;
   const stamps = [];
   for (const file of files) {
-    const path = isAbsolute3(file) ? file : join10(root, file);
+    const path = isAbsolute4(file) ? file : join15(root, file);
     let text;
     try {
-      text = readFileSync10(path, "utf8");
+      text = readFileSync13(path, "utf8");
     } catch {
       throw usageError(`--evidence ${file}: cannot read it (a relative path is taken from the repository root)`);
     }
@@ -7560,11 +8588,11 @@ function readEvidence(root, files, change) {
       throw usageError(`--evidence ${file}: not JSON; pass the output of \`complexity diff --json\` or \`structure check --json\``);
     }
     const tool = String(document.tool ?? "");
-    const command14 = String(document.command ?? "");
-    const stamp2 = { tool, command: command14, hash: createHash7("sha256").update(text).digest("hex").slice(0, 16) };
+    const command15 = String(document.command ?? "");
+    const stamp2 = { tool, command: command15, hash: createHash8("sha256").update(text).digest("hex").slice(0, 16) };
     if (!Array.isArray(document.results)) throw usageError(`--evidence ${file}: no results list`);
-    checkAgainst(file, document, change);
-    if (tool === "complexity" && command14 === "diff") {
+    checkAgainst(file, document, change2);
+    if (tool === "complexity" && command15 === "diff") {
       if (complexity) throw usageError("--evidence names complexity diff twice");
       const raw = document;
       complexity = {
@@ -7579,14 +8607,14 @@ function readEvidence(root, files, change) {
           labels: Array.isArray(row2.labels) ? row2.labels.map(String) : []
         }))
       };
-    } else if (tool === "structure" && command14 === "check") {
+    } else if (tool === "structure" && command15 === "check") {
       if (structure) throw usageError("--evidence names structure check twice");
       structure = {
         stamp: stamp2,
         findings: document.results.filter((row2) => row2.kind === "cycle" || row2.kind === "layer-violation").map((row2) => ({ kind: String(row2.kind), id: String(row2.id ?? row2.edge ?? row2.path ?? "") }))
       };
     } else {
-      throw usageError(`--evidence ${file}: ${tool}/${command14} is not evidence this command reads; pass \`complexity diff --json\` or \`structure check --json\``);
+      throw usageError(`--evidence ${file}: ${tool}/${command15} is not evidence this command reads; pass \`complexity diff --json\` or \`structure check --json\``);
     }
     stamps.push(stamp2);
   }
@@ -7596,14 +8624,14 @@ function numberAt(value, key) {
   const found = typeof value === "object" && value !== null ? value[key] : void 0;
   return typeof found === "number" ? found : null;
 }
-function checkAgainst(file, document, change) {
+function checkAgainst(file, document, change2) {
   const base = document.inputs?.base?.sha ?? document.inputs?.baseSha;
-  if (typeof base === "string" && base !== change.base) {
-    throw usageError(`--evidence ${file}: made against ${base.slice(0, 10)}, but this change starts at ${change.base.slice(0, 10)}; run it for the same base`);
+  if (typeof base === "string" && base !== change2.base) {
+    throw usageError(`--evidence ${file}: made against ${base.slice(0, 10)}, but this change starts at ${change2.base.slice(0, 10)}; run it for the same base`);
   }
   const head = document.inputs?.head?.sha ?? document.inputs?.analysed;
-  if (!change.worktree && typeof head === "string" && head !== change.head) {
-    throw usageError(`--evidence ${file}: made up to ${head.slice(0, 10)}, but this change ends at ${change.head.slice(0, 10)}`);
+  if (!change2.worktree && typeof head === "string" && head !== change2.head) {
+    throw usageError(`--evidence ${file}: made up to ${head.slice(0, 10)}, but this change ends at ${change2.head.slice(0, 10)}`);
   }
 }
 function overThreshold(evidence) {
@@ -7614,8 +8642,8 @@ function overThreshold(evidence) {
 }
 
 // packages/cochange/src/risk/composition.ts
-async function liveMeasurements(root, change, risk, evidence, abandoned) {
-  return [await complexityDelta(root, change, risk, evidence), structureDelta(evidence), abandoned];
+async function liveMeasurements(root, change2, risk, evidence, abandoned) {
+  return [await complexityDelta(root, change2, risk, evidence), structureDelta(evidence), abandoned];
 }
 function structureDelta(evidence) {
   const base = { name: "structure-delta", family: "structure-and-content", layer: "structural", kind: "count", source: "structure check" };
@@ -7631,7 +8659,7 @@ function structureDelta(evidence) {
     evidence: findings.slice(0, 5).map((finding) => ({ kind: finding.kind, id: finding.id }))
   };
 }
-async function complexityDelta(root, change, risk, evidence) {
+async function complexityDelta(root, change2, risk, evidence) {
   const base = { name: "complexity-delta", family: "structure-and-content", kind: "count" };
   if (evidence.complexity !== null) {
     const units = overThreshold(evidence.complexity);
@@ -7647,10 +8675,10 @@ async function complexityDelta(root, change, risk, evidence) {
   }
   const rows = [];
   let examined = 0;
-  for (const file of change.files) {
+  for (const file of change2.files) {
     if (file.status === "D" || file.binary) continue;
-    const before = file.status === "A" ? "" : await readBlobAt(root, change.base, file.oldPath ?? file.path);
-    const after = change.worktree ? readWorktree(root, file.path) : await readBlobAt(root, change.head, file.path);
+    const before = file.status === "A" ? "" : await readBlobAt(root, change2.base, file.oldPath ?? file.path);
+    const after = change2.worktree ? readWorktree(root, file.path) : await readBlobAt(root, change2.head, file.path);
     if (after === void 0 || before === void 0 || after.includes("\0") || before.includes("\0")) continue;
     examined++;
     const was = before === "" ? 0 : indentationComplexity(before, file.path);
@@ -7671,16 +8699,16 @@ async function complexityDelta(root, change, risk, evidence) {
 }
 function readWorktree(root, path) {
   try {
-    return readFileSync11(join11(root, path), "utf8");
+    return readFileSync14(join16(root, path), "utf8");
   } catch {
     return void 0;
   }
 }
 function readLocalityFanIn(root, head) {
   const file = reportPath2(root, "analyse", "locality");
-  if (!existsSync14(file)) return null;
+  if (!existsSync19(file)) return null;
   try {
-    const document = JSON.parse(readFileSync11(file, "utf8"));
+    const document = JSON.parse(readFileSync14(file, "utf8"));
     if (document.tool !== "locality" || document.command !== "analyse") return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false) return null;
     if (!Array.isArray(document.results) || typeof document.config !== "string") return null;
@@ -7742,24 +8770,24 @@ var HistoryState = class {
     }
   }
   /** Adds a change. Call `advance(change.time)` first, and add changes oldest first. */
-  add(change, fix) {
-    const ids = change.files.map((file) => file.fileId);
+  add(change2, fix) {
+    const ids = change2.files.map((file) => file.fileId);
     const eligible = ids.length <= this.options.maxChangesetSize;
     const ordinal = this.ordinal++;
-    for (const file of change.files) {
+    for (const file of change2.files) {
       const record = this.record(file.fileId);
-      record.revisions.push({ time: change.time, authors: change.authors, fix });
+      record.revisions.push({ time: change2.time, authors: change2.authors, fix });
       record.present = file.status !== "D";
       if (eligible) record.eligibleChanges.add(ordinal);
     }
-    for (const author of change.authors) {
+    for (const author of change2.authors) {
       const key = author.toLowerCase();
       const seen = this.identities.get(key);
       if (seen) {
-        seen.last = change.time;
+        seen.last = change2.time;
         seen.changes++;
       } else {
-        this.identities.set(key, { first: change.time, last: change.time, changes: 1 });
+        this.identities.set(key, { first: change2.time, last: change2.time, changes: 1 });
       }
     }
     for (const id of ids) {
@@ -7768,7 +8796,7 @@ var HistoryState = class {
       if (inFolder) inFolder.add(id);
       else this.folders.set(folder, /* @__PURE__ */ new Set([id]));
     }
-    const entry = { time: change.time, files: ids, eligible, fix };
+    const entry = { time: change2.time, files: ids, eligible, fix };
     this.queue.push(entry);
     this.apply(entry, 1);
   }
@@ -7876,9 +8904,9 @@ var HistoryState = class {
     const total = counts.reduce((sum, [, files]) => sum + files, 0);
     let above = 0;
     let line = Infinity;
-    for (const [count, files] of counts) {
+    for (const [count2, files] of counts) {
       if (above / total >= topShare) break;
-      line = count;
+      line = count2;
       above += files;
     }
     return line;
@@ -7893,10 +8921,10 @@ var HistoryState = class {
 var round = (value, places = 6) => Math.round(value * 10 ** places) / 10 ** places;
 var churnOf = (file) => (file.added ?? 0) + (file.deleted ?? 0);
 var FIRST_ROWS = 5;
-function measurement2(name14, family, layer, kind, source, parts) {
-  return { name: name14, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts };
+function measurement2(name15, family, layer, kind, source, parts) {
+  return { name: name15, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts };
 }
-var unavailable2 = (name14, family, layer, kind, source, reason) => measurement2(name14, family, layer, kind, source, { unavailable: reason });
+var unavailable2 = (name15, family, layer, kind, source, reason) => measurement2(name15, family, layer, kind, source, { unavailable: reason });
 function measureHistoryLayer(facts, state, context) {
   return [
     size(facts),
@@ -7945,9 +8973,9 @@ function mixedPurpose(facts) {
   const edited = facts.files.filter((file) => churnOf(file) > 0 && file.status !== "R").length;
   const editedWhileMoved = facts.files.filter((file) => file.status === "R" && churnOf(file) > 0).length;
   const mixed = moved > 0 && (edited > 0 || editedWhileMoved > 0);
-  const count = mixed ? moved : 0;
+  const count2 = mixed ? moved : 0;
   return measurement2("mixed-purpose", "size-and-diffusion", "history", "count", "history", {
-    series: { count },
+    series: { count: count2 },
     value: { moved, edited, editedWhileMoved },
     evidence: mixed ? facts.files.filter((file) => file.status === "R").slice(0, FIRST_ROWS).map((file) => ({ file: file.path, from: file.oldPath })) : []
   });
@@ -8138,14 +9166,14 @@ function placeChange(facts, state, context, options = {}) {
   const files = facts.files.map((file) => {
     const revisions = state.revisionsOf(file.fileId);
     const mine = revisions.filter(by);
-    const inWindow = revisions.filter((revision) => revision.time >= windowSince);
-    const windowMine = inWindow.filter(by);
+    const inWindow2 = revisions.filter((revision) => revision.time >= windowSince);
+    const windowMine = inWindow2.filter(by);
     const blame = options.blame?.get(file.fileId);
     const stats = {
       earlier: mine.length,
       recent: mine.filter((revision) => revision.time >= recentSince).length,
       windowEarlier: windowMine.length,
-      windowShare: inWindow.length === 0 ? 0 : windowMine.length / inWindow.length
+      windowShare: inWindow2.length === 0 ? 0 : windowMine.length / inWindow2.length
     };
     const brandNew = file.status === "A" || revisions.length === 0;
     const label = unplaced || brandNew ? "unknown" : labelOf(stats, blame, context);
@@ -8202,29 +9230,29 @@ function placeChange(facts, state, context, options = {}) {
 
 // packages/cochange/src/risk/history-pass.ts
 var SECONDS_PER_MONTH4 = 30.4375 * 86400;
-function factsOf2(change) {
+function factsOf2(change2) {
   return {
-    time: change.time,
-    authors: change.authors.map((author) => author.toLowerCase()),
-    files: change.files,
-    moved: change.files.filter((file) => file.status === "R").length
+    time: change2.time,
+    authors: change2.authors.map((author) => author.toLowerCase()),
+    files: change2.files,
+    moved: change2.files.filter((file) => file.status === "R").length
   };
 }
-var isFix = (change, patterns) => change.subjects.some((subject) => patterns.some((pattern) => pattern.test(subject)));
+var isFix = (change2, patterns) => change2.subjects.some((subject) => patterns.some((pattern) => pattern.test(subject)));
 function chronologicalPass(changes, context, options) {
   const state = new HistoryState({ windowSeconds: Math.round(options.windowMonths * SECONDS_PER_MONTH4), maxChangesetSize: options.maxChangesetSize });
   const past = [];
-  for (const [index2, change] of changes.entries()) {
-    state.advance(change.time);
-    if (options.measureWhen?.(change, index2) ?? true) {
-      const facts = factsOf2(change);
+  for (const [index2, change2] of changes.entries()) {
+    state.advance(change2.time);
+    if (options.measureWhen?.(change2, index2) ?? true) {
+      const facts = factsOf2(change2);
       past.push({
-        change,
+        change: change2,
         measurements: measureHistoryLayer(facts, state, context),
         placement: options.placement ? placeChange(facts, state, context) : null
       });
     }
-    state.add(change, isFix(change, options.fixPatterns));
+    state.add(change2, isFix(change2, options.fixPatterns));
   }
   return { state, past };
 }
@@ -8249,7 +9277,7 @@ async function mergedChanges(root, view, changes, tip) {
   line.reverse();
   const commits = new Map(view.commits.map((c) => [c.sha, c]));
   const logicalOf = /* @__PURE__ */ new Map();
-  for (const change of changes) for (const sha of change.shas) logicalOf.set(sha, change);
+  for (const change2 of changes) for (const sha of change2.shas) logicalOf.set(sha, change2);
   const assigned = new Set(line.map((c) => c.sha));
   const result = [];
   let merges = 0;
@@ -8286,8 +9314,8 @@ async function mergedChanges(root, view, changes, tip) {
     const distinct = [...new Set(members.flatMap((sha) => logicalOf.has(sha) ? [logicalOf.get(sha)] : []))];
     if (distinct.length === 0) continue;
     const perFile = /* @__PURE__ */ new Map();
-    for (const change of distinct) {
-      for (const file of change.files) {
+    for (const change2 of distinct) {
+      for (const file of change2.files) {
         const list = perFile.get(file.fileId);
         if (list) list.push(file);
         else perFile.set(file.fileId, [file]);
@@ -8324,11 +9352,11 @@ var SCORED_FACTORS = /* @__PURE__ */ new Set([
 ]);
 function makeBander(baseline, settings) {
   const cache = /* @__PURE__ */ new Map();
-  const cutoffs = (name14, series) => {
-    const key = `${name14}\0${series}`;
+  const cutoffs = (name15, series) => {
+    const key = `${name15}\0${series}`;
     if (!cache.has(key)) {
       const population = baseline.flatMap((measures) => {
-        const found = measures.find((m) => m.name === name14);
+        const found = measures.find((m) => m.name === name15);
         return found && found.unavailable === null && found.series[series] !== void 0 ? [found.series[series]] : [];
       });
       cache.set(key, population.length < settings.minBaseline ? null : cutoffsOf(population, settings.moderatePercentile, settings.highPercentile));
@@ -8339,8 +9367,8 @@ function makeBander(baseline, settings) {
     if (measurement3.unavailable !== null) return { band: "unavailable", reason: measurement3.unavailable, thresholds: {} };
     if (measurement3.kind === "count") {
       const thresholds2 = { moderate: settings.countModerate, high: settings.countHigh };
-      const count = Object.values(measurement3.series)[0] ?? 0;
-      return { band: bandCount(count, thresholds2), reason: null, thresholds: { count: thresholds2 } };
+      const count2 = Object.values(measurement3.series)[0] ?? 0;
+      return { band: bandCount(count2, thresholds2), reason: null, thresholds: { count: thresholds2 } };
     }
     let band = "low";
     let reason = null;
@@ -8422,13 +9450,13 @@ async function assessBranch(context, history, request) {
   const risk = readRiskSettings(context.config);
   const range = await resolveRange(root, { range: request.range, mainBranch: risk.mainBranch, worktree: request.worktree });
   const measure = measureContext(context, history, risk);
-  const change = await extractChange(root, history.view, range, request.worktree, {
+  const change2 = await extractChange(root, history.view, range, request.worktree, {
     similarity: history.settings.renameSimilarity,
     exclude: history.settings.exclude,
     owner: { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher },
     agentPatterns: history.settings.identities.agentTrailerPatterns
   });
-  const evidence = request.evidence === void 0 || request.evidence.length === 0 ? NO_EVIDENCE : readEvidence(root, request.evidence, { base: change.base, head: change.head, worktree: request.worktree });
+  const evidence = request.evidence === void 0 || request.evidence.length === 0 ? NO_EVIDENCE : readEvidence(root, request.evidence, { base: change2.base, head: change2.head, worktree: request.worktree });
   const mainline = await mergedChanges(root, history.view, history.filtered.changes, range.base);
   const time = history.view.headDate;
   const since = monthsBefore(time, history.settings.windowMonths);
@@ -8441,21 +9469,21 @@ async function assessBranch(context, history, request) {
   });
   const facts = {
     time,
-    authors: authorEmails(change),
-    files: change.files,
-    moved: change.moved
+    authors: authorEmails(change2),
+    files: change2.files,
+    moved: change2.moved
   };
   state.advance(time);
-  const abandoned = await abandonedTouched(context, history, change);
+  const abandoned = await abandonedTouched(context, history, change2);
   const measurements = [
     ...measureHistoryLayer(facts, state, measure),
-    ...await liveMeasurements(root, change, risk, evidence, abandoned.measurement)
+    ...await liveMeasurements(root, change2, risk, evidence, abandoned.measurement)
   ];
   const baselineMeasures = past.map((p) => p.measurements);
   const bander = makeBander(baselineMeasures, risk);
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
-  const locality = readLocalityFanIn(root, change.head);
-  const touched = change.files.filter((file) => file.status !== "D").map((file) => file.fileId);
+  const locality = readLocalityFanIn(root, change2.head);
+  const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
   const factors = banded.map(({ m, result }) => {
     const factor = toFactor(m, result, risk);
     return locality !== null && factor.name === "blast-radius" && factor.status !== "disabled" ? withFanIn(factor, touched, locality, risk) : factor;
@@ -8467,7 +9495,7 @@ async function assessBranch(context, history, request) {
     risk
   );
   return {
-    change,
+    change: change2,
     measurements,
     factors,
     impact,
@@ -8489,12 +9517,12 @@ async function assessBranch(context, history, request) {
     abandonment: abandoned.report
   };
 }
-function authorEmails(change) {
-  return [...new Set([...change.owners.values()].filter((o) => o.kind === "person").map((o) => o.email.toLowerCase()))].sort();
+function authorEmails(change2) {
+  return [...new Set([...change2.owners.values()].filter((o) => o.kind === "person").map((o) => o.email.toLowerCase()))].sort();
 }
 function eventsOf(factors) {
   const events = [];
-  const get = (name14) => factors.find((f) => f.name === name14 && f.status === "ok");
+  const get = (name15) => factors.find((f) => f.name === name15 && f.status === "ok");
   if (get("missing-co-change")?.band === "high") events.push("missing-co-change");
   const structure = get("structure-delta");
   if (structure && Number(structure.value.count ?? 0) > 0) events.push("structure-delta");
@@ -8570,9 +9598,9 @@ async function revertedShas(root, tip) {
 async function outcomesOf(root, tip, changes, risk, headTime) {
   const reverts = await revertedShas(root, tip);
   const unitOfCommit = /* @__PURE__ */ new Map();
-  for (const [index2, change] of changes.entries()) {
-    unitOfCommit.set(change.id, index2);
-    for (const sha of change.shas) unitOfCommit.set(sha, index2);
+  for (const [index2, change2] of changes.entries()) {
+    unitOfCommit.set(change2.id, index2);
+    for (const sha of change2.shas) unitOfCommit.set(sha, index2);
   }
   const reverted = /* @__PURE__ */ new Set();
   for (const [sha, by] of reverts) {
@@ -8580,28 +9608,28 @@ async function outcomesOf(root, tip, changes, risk, headTime) {
     if (target === void 0) continue;
     if (by.some((revert) => (unitOfCommit.get(revert) ?? -1) > target)) reverted.add(target);
   }
-  const touching = /* @__PURE__ */ new Map();
-  for (const [index2, change] of changes.entries()) {
-    for (const file of change.files) {
-      const list = touching.get(file.fileId);
+  const touching2 = /* @__PURE__ */ new Map();
+  for (const [index2, change2] of changes.entries()) {
+    for (const file of change2.files) {
+      const list = touching2.get(file.fileId);
       if (list) list.push(index2);
-      else touching.set(file.fileId, [index2]);
+      else touching2.set(file.fileId, [index2]);
     }
   }
   const window = risk.followUpDays * SECONDS_PER_DAY2;
-  const fix = changes.map((change) => isFix(change, risk.fixPatterns));
+  const fix = changes.map((change2) => isFix(change2, risk.fixPatterns));
   const outcomes = /* @__PURE__ */ new Map();
-  for (const [index2, change] of changes.entries()) {
+  for (const [index2, change2] of changes.entries()) {
     let fixed = false;
-    for (const file of change.files) {
-      for (const later of touching.get(file.fileId) ?? []) {
+    for (const file of change2.files) {
+      for (const later of touching2.get(file.fileId) ?? []) {
         if (later <= index2) continue;
-        if (changes[later].time > change.time + window) break;
+        if (changes[later].time > change2.time + window) break;
         if (fix[later]) fixed = true;
       }
       if (fixed) break;
     }
-    outcomes.set(change.id, { reverted: reverted.has(index2), fixed, censored: change.time + window > headTime });
+    outcomes.set(change2.id, { reverted: reverted.has(index2), fixed, censored: change2.time + window > headTime });
   }
   return outcomes;
 }
@@ -8629,11 +9657,11 @@ function summarise(scored, all, outcomes, risk) {
     return o.reverted || o.fixed;
   };
   const perFile = /* @__PURE__ */ new Map();
-  for (const change of all) {
-    const outcome = outcomes.get(change.id);
+  for (const change2 of all) {
+    const outcome = outcomes.get(change2.id);
     if (!outcome || outcome.censored) continue;
     const trouble = outcome.reverted || outcome.fixed;
-    for (const file of change.files) {
+    for (const file of change2.files) {
       const row2 = perFile.get(file.fileId) ?? { changes: 0, troubled: 0 };
       row2.changes++;
       if (trouble) row2.troubled++;
@@ -8665,13 +9693,13 @@ function summarise(scored, all, outcomes, risk) {
     };
   });
   const levels = rows(LEVELS, (s) => s.level);
-  const factors = [...SCORED_FACTORS].map((name14) => ({
-    name: name14,
+  const factors = [...SCORED_FACTORS].map((name15) => ({
+    name: name15,
     bands: rows(["low", "moderate", "high"], (s) => {
-      const band = s.bands.get(name14);
+      const band = s.bands.get(name15);
       return band === void 0 || band === "unavailable" ? null : band;
     }),
-    unavailable: known.filter((s) => (s.bands.get(name14) ?? "unavailable") === "unavailable").length
+    unavailable: known.filter((s) => (s.bands.get(name15) ?? "unavailable") === "unavailable").length
   }));
   const outcomeList = [...outcomes.values()];
   const troubled = known.filter(troubledOf).length;
@@ -8695,7 +9723,7 @@ function summarise(scored, all, outcomes, risk) {
     },
     outcome: {
       followUpDays: risk.followUpDays,
-      fixConvention: all.some((change) => isFix(change, risk.fixPatterns)),
+      fixConvention: all.some((change2) => isFix(change2, risk.fixPatterns)),
       reverts: outcomeList.filter((o) => o.reverted).length,
       troubled,
       rate: known.length === 0 ? null : round3(troubled / known.length)
@@ -8711,13 +9739,13 @@ function summarise(scored, all, outcomes, risk) {
 }
 
 // packages/cochange/src/risk/stored-backtest.ts
-import { existsSync as existsSync15, readFileSync as readFileSync12 } from "node:fs";
+import { existsSync as existsSync20, readFileSync as readFileSync15 } from "node:fs";
 var BACKTEST_REPORT = "risk-backtest";
 function readStoredBacktest(root, configHash) {
   const file = reportPath2(root, BACKTEST_REPORT);
-  if (!existsSync15(file)) return null;
+  if (!existsSync20(file)) return null;
   try {
-    const document = JSON.parse(readFileSync12(file, "utf8"));
+    const document = JSON.parse(readFileSync15(file, "utf8"));
     const results = document.results;
     if (document.tool !== TOOL2 || document.command !== BACKTEST_REPORT || document.config !== configHash) return null;
     if (typeof document.repo?.head !== "string" || results?.kind !== "backtest" || !results.separation) return null;
@@ -8899,37 +9927,37 @@ function make(id, factor, summary, evidence, fromPlacement = false) {
   };
 }
 function findingsOf(assessed, placement) {
-  const get = (name14) => assessed.factors.find((f) => f.name === name14);
+  const get = (name15) => assessed.factors.find((f) => f.name === name15);
   const found = [];
-  const count = (factor) => Number(factor.value.count ?? factor.value.files ?? 0);
+  const count2 = (factor) => Number(factor.value.count ?? factor.value.files ?? 0);
   const missing = get("missing-co-change");
   if (atLeastModerate(missing)) {
-    found.push(make("missing-co-change", missing, `${count(missing)} file${count(missing) === 1 ? "" : "s"} that usually change with the touched files ${count(missing) === 1 ? "is" : "are"} not in the change`, missing.evidence));
+    found.push(make("missing-co-change", missing, `${count2(missing)} file${count2(missing) === 1 ? "" : "s"} that usually change with the touched files ${count2(missing) === 1 ? "is" : "are"} not in the change`, missing.evidence));
   }
   const mixed = get("mixed-purpose");
-  if (atLeastModerate(mixed)) found.push(make("mixed-purpose", mixed, `${count(mixed)} moved or renamed file${count(mixed) === 1 ? "" : "s"} in a change that also edits content`, mixed.evidence));
-  for (const name14 of ["size", "spread"]) {
-    const factor = get(name14);
+  if (atLeastModerate(mixed)) found.push(make("mixed-purpose", mixed, `${count2(mixed)} moved or renamed file${count2(mixed) === 1 ? "" : "s"} in a change that also edits content`, mixed.evidence));
+  for (const name15 of ["size", "spread"]) {
+    const factor = get(name15);
     if (factor?.status === "ok" && factor.band === "high") {
-      found.push(make(name14, factor, name14 === "size" ? `${String(factor.value.lines)} lines in ${String(factor.value.files)} files, above the 90th percentile of merged changes` : `spread ${String(factor.value.spread)} across ${String(factor.value.folders)} folders, above the 90th percentile of merged changes`, []));
+      found.push(make(name15, factor, name15 === "size" ? `${String(factor.value.lines)} lines in ${String(factor.value.files)} files, above the 90th percentile of merged changes` : `spread ${String(factor.value.spread)} across ${String(factor.value.folders)} folders, above the 90th percentile of merged changes`, []));
     }
   }
   const tests = get("test-evidence");
-  if (atLeastModerate(tests)) found.push(make("test-evidence", tests, `${count(tests)} source file${count(tests) === 1 ? "" : "s"} changed without the tests that usually change with ${count(tests) === 1 ? "it" : "them"}, or tests deleted`, tests.evidence));
+  if (atLeastModerate(tests)) found.push(make("test-evidence", tests, `${count2(tests)} source file${count2(tests) === 1 ? "" : "s"} changed without the tests that usually change with ${count2(tests) === 1 ? "it" : "them"}, or tests deleted`, tests.evidence));
   const abandoned = get("abandoned-touched");
-  if (atLeastModerate(abandoned)) found.push(make("abandoned-touched", abandoned, `${count(abandoned)} touched file${count(abandoned) === 1 ? " is" : "s are"} abandoned or likely to be: nobody active holds most of ${count(abandoned) === 1 ? "its" : "their"} lines`, abandoned.evidence));
+  if (atLeastModerate(abandoned)) found.push(make("abandoned-touched", abandoned, `${count2(abandoned)} touched file${count2(abandoned) === 1 ? " is" : "s are"} abandoned or likely to be: nobody active holds most of ${count2(abandoned) === 1 ? "its" : "their"} lines`, abandoned.evidence));
   const complexity = get("complexity-delta");
-  if (atLeastModerate(complexity)) found.push(make("complexity-delta", complexity, `${count(complexity)} unit${count(complexity) === 1 ? "" : "s"} or file${count(complexity) === 1 ? "" : "s"} gained complexity`, complexity.evidence));
+  if (atLeastModerate(complexity)) found.push(make("complexity-delta", complexity, `${count2(complexity)} unit${count2(complexity) === 1 ? "" : "s"} or file${count2(complexity) === 1 ? "" : "s"} gained complexity`, complexity.evidence));
   const novel = get("novel-coupling");
-  if (atLeastModerate(novel)) found.push(make("novel-coupling", novel, `${count(novel)} pair${count(novel) === 1 ? "" : "s"} of distant files that have never changed together`, novel.evidence));
+  if (atLeastModerate(novel)) found.push(make("novel-coupling", novel, `${count2(novel)} pair${count2(novel) === 1 ? "" : "s"} of distant files that have never changed together`, novel.evidence));
   const structure = get("structure-delta");
-  if (structure?.status === "ok" && count(structure) > 0) found.push(make("structure-delta", structure, `${count(structure)} new cycle${count(structure) === 1 ? "" : "s"} or layer violation${count(structure) === 1 ? "" : "s"}`, structure.evidence));
+  if (structure?.status === "ok" && count2(structure) > 0) found.push(make("structure-delta", structure, `${count2(structure)} new cycle${count2(structure) === 1 ? "" : "s"} or layer violation${count2(structure) === 1 ? "" : "s"}`, structure.evidence));
   const sensitive = get("sensitive-paths");
-  if (sensitive?.status === "ok" && count(sensitive) > 0) found.push(make("sensitive-paths", sensitive, `${count(sensitive)} touched file${count(sensitive) === 1 ? "" : "s"} on a sensitive path`, sensitive.evidence));
+  if (sensitive?.status === "ok" && count2(sensitive) > 0) found.push(make("sensitive-paths", sensitive, `${count2(sensitive)} touched file${count2(sensitive) === 1 ? "" : "s"} on a sensitive path`, sensitive.evidence));
   if (placement?.status === "computed" && placement.placement) {
-    const place = (name14) => placement.factors.find((f) => f.name === name14);
+    const place = (name15) => placement.factors.find((f) => f.name === name15);
     const noOwner = place("no-owner");
-    if (noOwner?.status === "ok" && count(noOwner) > 0) found.push(make("no-owner", noOwner, `${count(noOwner)} touched file${count(noOwner) === 1 ? " has" : "s have"} no active developer holding a meaningful share`, noOwner.evidence, true));
+    if (noOwner?.status === "ok" && count2(noOwner) > 0) found.push(make("no-owner", noOwner, `${count2(noOwner)} touched file${count2(noOwner) === 1 ? " has" : "s have"} no active developer holding a meaningful share`, noOwner.evidence, true));
     const hot = get("hotspots-touched");
     const blast = get("blast-radius");
     const reach = hot !== void 0 && hot.status !== "disabled" && Number(hot.value.hotFiles ?? 0) > 0 || atLeastModerate(blast);
@@ -8938,7 +9966,7 @@ function findingsOf(assessed, placement) {
       found.push(make("distant-placement", null, "The author has no history in files that are hotspots or have wide co-change reach", distant, true));
     }
     const distance = place("owner-distance");
-    if (distance?.status === "ok" && count(distance) > 0) found.push(make("owner-distance", distance, `${count(distance)} touched file${count(distance) === 1 ? " has" : "s have"} a clear owner who is not an author of the change`, distance.evidence, true));
+    if (distance?.status === "ok" && count2(distance) > 0) found.push(make("owner-distance", distance, `${count2(distance)} touched file${count2(distance) === 1 ? " has" : "s have"} a clear owner who is not an author of the change`, distance.evidence, true));
   }
   return found.sort((a, b) => STEPS.indexOf(a.step) - STEPS.indexOf(b.step) || (a.id < b.id ? -1 : 1));
 }
@@ -8971,9 +9999,9 @@ function configValue(root, key) {
 async function invokingUser(root, localMailmap) {
   const email = process.env.GIT_AUTHOR_EMAIL?.trim() || await configValue(root, "user.email");
   if (email === "") return null;
-  const name14 = process.env.GIT_AUTHOR_NAME?.trim() || await configValue(root, "user.name");
-  const mapped = (await mapThroughMailmap(root, [{ name: name14, email }], localMailmap)).get(`${name14} <${email}>`);
-  return mapped ?? { name: name14, email };
+  const name15 = process.env.GIT_AUTHOR_NAME?.trim() || await configValue(root, "user.name");
+  const mapped = (await mapThroughMailmap(root, [{ name: name15, email }], localMailmap)).get(`${name15} <${email}>`);
+  return mapped ?? { name: name15, email };
 }
 
 // packages/cochange/src/risk/placement-result.ts
@@ -8986,12 +10014,12 @@ var none = (mode, status, reason) => ({
   blame: { used: false, missing: 0, refreshed: false }
 });
 async function blameFacts(context, assessed, authorKeys, noRefresh) {
-  const { change, history, risk } = assessed;
+  const { change: change2, history, risk } = assessed;
   const root = context.repo.root;
-  const paths = [...new Set(change.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
+  const paths = [...new Set(change2.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
   const facts = /* @__PURE__ */ new Map();
   if (paths.length === 0) return { facts, missing: 0, refreshed: false };
-  const options = { ref: change.base, exclude: history.settings.exclude, paths };
+  const options = { ref: change2.base, exclude: history.settings.exclude, paths };
   if (!noRefresh) await refreshBlame(root, options);
   const snapshot = await readBlame(root, options);
   const owners = await resolveOwners(root, commitsInSnapshot(snapshot), {
@@ -9001,7 +10029,7 @@ async function blameFacts(context, assessed, authorKeys, noRefresh) {
   const developers = await readActiveDevelopers(context, history, assessed.facts.time);
   const active = (owner) => developers.has(owner.email);
   const byKey = new Map([...owners.values()].map((o) => [o.key, o]));
-  for (const file of change.files) {
+  for (const file of change2.files) {
     const blame = snapshot.files.get(file.oldPath ?? file.path);
     if (!blame) continue;
     const shares = lineShares(blame.ranges, owners);
@@ -9022,11 +10050,11 @@ async function blameFacts(context, assessed, authorKeys, noRefresh) {
   return { facts, missing: snapshot.missing.length, refreshed: !noRefresh };
 }
 async function placementFor(context, assessed, noRefresh) {
-  const { risk, change, history } = assessed;
+  const { risk, change: change2, history } = assessed;
   if (risk.placement === "off") return none("off", "off", "cochange.risk.placement is off");
   const authors = [...assessed.facts.authors];
   const user = await invokingUser(context.repo.root, history.identities.localMailmap);
-  if (change.worktree && user !== null && !authors.includes(user.email.toLowerCase())) authors.push(user.email.toLowerCase());
+  if (change2.worktree && user !== null && !authors.includes(user.email.toLowerCase())) authors.push(user.email.toLowerCase());
   if (risk.placement === "self") {
     if (user === null) return none("self", "withheld", "no git identity is configured (user.email), so the change cannot be shown to be yours");
     const mine = user.email.toLowerCase();
@@ -9034,8 +10062,8 @@ async function placementFor(context, assessed, noRefresh) {
       return none("self", "withheld", "the change was not written only by the invoking git identity; cochange.risk.placement: any computes placement for someone else's branch");
     }
   }
-  const authorKeys = new Set([...change.owners.values()].filter((o) => o.kind === "person").map((o) => o.key));
-  if (change.worktree && user !== null) authorKeys.add(`${user.name} <${user.email}>`);
+  const authorKeys = new Set([...change2.owners.values()].filter((o) => o.kind === "person").map((o) => o.key));
+  if (change2.worktree && user !== null) authorKeys.add(`${user.name} <${user.email}>`);
   const blame = await blameFacts(context, assessed, authorKeys, noRefresh);
   const placement = placeChange({ ...assessed.facts, authors }, assessed.state, assessed.context, { blame: blame.facts });
   return {
@@ -9047,8 +10075,8 @@ async function placementFor(context, assessed, noRefresh) {
     blame: { used: blame.facts.size > 0, missing: blame.missing, refreshed: blame.refreshed }
   };
 }
-var row = (name14, value, evidence, unavailable3 = null) => ({
-  name: name14,
+var row = (name15, value, evidence, unavailable3 = null) => ({
+  name: name15,
   family: "placement",
   layer: "placement",
   status: unavailable3 === null ? "ok" : "unavailable",
@@ -9057,7 +10085,7 @@ var row = (name14, value, evidence, unavailable3 = null) => ({
   value: unavailable3 === null ? value : {},
   thresholds: {},
   evidence: unavailable3 === null ? evidence : [],
-  source: name14 === "authorship" || name14 === "owner-distance" || name14 === "no-owner" ? "blame" : "history",
+  source: name15 === "authorship" || name15 === "owner-distance" || name15 === "no-owner" ? "blame" : "history",
   reason: unavailable3
 });
 function placementFactors(placement, withBlame) {
@@ -9113,29 +10141,29 @@ function describePlacement(outcome) {
 // packages/cochange/src/risk/result.ts
 var FILES_SHOWN = 50;
 function describeChange(assessed) {
-  const { change } = assessed;
-  const added = change.files.reduce((sum, file) => sum + (file.added ?? 0), 0);
-  const deleted = change.files.reduce((sum, file) => sum + (file.deleted ?? 0), 0);
+  const { change: change2 } = assessed;
+  const added = change2.files.reduce((sum, file) => sum + (file.added ?? 0), 0);
+  const deleted = change2.files.reduce((sum, file) => sum + (file.deleted ?? 0), 0);
   return {
-    base: change.base,
-    head: change.head,
-    against: change.against,
-    worktree: change.worktree,
-    commits: change.commits.length,
-    files: change.files.length,
+    base: change2.base,
+    head: change2.head,
+    against: change2.against,
+    worktree: change2.worktree,
+    commits: change2.commits.length,
+    files: change2.files.length,
     added,
     deleted,
-    moved: change.moved,
-    filteredPaths: change.filtered,
-    agentCommits: change.agentCommits,
-    authors: new Set([...change.owners.values()].filter((o) => o.kind === "person").map((o) => o.key)).size,
-    paths: change.files.slice(0, FILES_SHOWN).map((file) => ({
+    moved: change2.moved,
+    filteredPaths: change2.filtered,
+    agentCommits: change2.agentCommits,
+    authors: new Set([...change2.owners.values()].filter((o) => o.kind === "person").map((o) => o.key)).size,
+    paths: change2.files.slice(0, FILES_SHOWN).map((file) => ({
       path: file.path,
       status: file.status,
       added: file.added,
       deleted: file.deleted
     })),
-    pathsNotShown: Math.max(0, change.files.length - FILES_SHOWN)
+    pathsNotShown: Math.max(0, change2.files.length - FILES_SHOWN)
   };
 }
 
@@ -9143,26 +10171,26 @@ function describeChange(assessed) {
 var REVIEWERS_PER_AREA = 3;
 var round5 = (value) => Math.round(value * 100) / 100;
 async function reviewersFor(context, assessed, noRefresh) {
-  const { change, history, state, risk } = assessed;
+  const { change: change2, history, state, risk } = assessed;
   const root = context.repo.root;
   const time = assessed.facts.time;
   const developers = await readActiveDevelopers(context, history, time);
   const windowSince = monthsBefore(time, history.settings.windowMonths);
   const authors = new Set(assessed.facts.authors);
-  if (change.worktree) {
+  if (change2.worktree) {
     const user = await invokingUser(root, history.identities.localMailmap);
     if (user !== null) authors.add(user.email.toLowerCase());
   }
   const names = /* @__PURE__ */ new Map();
   for (const commit of history.view.commits) names.set(commit.mappedEmail.toLowerCase(), commit.mappedName);
-  const paths = [...new Set(change.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
-  const options = { ref: change.base, exclude: history.settings.exclude, paths };
+  const paths = [...new Set(change2.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
+  const options = { ref: change2.base, exclude: history.settings.exclude, paths };
   const shares = /* @__PURE__ */ new Map();
   if (paths.length > 0) {
     if (!noRefresh) await refreshBlame(root, options);
     const snapshot = await readBlame(root, options);
     const owners = await resolveOwners(root, commitsInSnapshot(snapshot), { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher });
-    for (const file of change.files) {
+    for (const file of change2.files) {
       const blame = snapshot.files.get(file.oldPath ?? file.path);
       if (!blame) continue;
       const counted = lineShares(blame.ranges, owners);
@@ -9178,16 +10206,16 @@ async function reviewersFor(context, assessed, noRefresh) {
     }
   }
   const byArea = /* @__PURE__ */ new Map();
-  for (const file of change.files) {
+  for (const file of change2.files) {
     const area = assessed.context.components.length > 0 ? componentOf(assessed.context.components, file.path) : folderOf(file.path) || ".";
     byArea.set(area, [...byArea.get(area) ?? [], file]);
   }
   let withBlame = 0;
   const areas = [...byArea].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([area, files]) => {
     const scores = /* @__PURE__ */ new Map();
-    const credit = (email, name14, patch) => {
+    const credit = (email, name15, patch) => {
       const key = email.toLowerCase();
-      const row2 = scores.get(key) ?? { name: name14, email, authorship: 0, coupledChanges: 0 };
+      const row2 = scores.get(key) ?? { name: name15, email, authorship: 0, coupledChanges: 0 };
       scores.set(key, { ...row2, authorship: row2.authorship + (patch.authorship ?? 0), coupledChanges: row2.coupledChanges + (patch.coupledChanges ?? 0) });
     };
     for (const file of files) {
@@ -9210,7 +10238,7 @@ async function reviewersFor(context, assessed, noRefresh) {
     const candidates = [...scores.values()].filter((c) => developers.has(c.email) && !authors.has(c.email.toLowerCase())).map((c) => ({ ...c, authorship: round5(c.authorship) })).sort((a, b) => b.authorship - a.authorship || b.coupledChanges - a.coupledChanges || (a.email < b.email ? -1 : 1));
     return { area, files: files.length, candidates };
   });
-  const total = change.files.length;
+  const total = change2.files.length;
   return { areas, basis: withBlame === 0 ? "history" : withBlame === total ? "blame" : "mixed" };
 }
 
@@ -9281,18 +10309,18 @@ async function runReviewers(context, history, range) {
 }
 
 // packages/cochange/src/commands/risk.ts
-var name10 = "risk";
+var name11 = "risk";
 var rules7 = findingRules;
-var SUBCOMMANDS3 = ["explain", "reviewers", "backtest"];
+var SUBCOMMANDS4 = ["explain", "reviewers", "backtest"];
 function parse2(positionals) {
   const [first, ...rest] = positionals;
-  return SUBCOMMANDS3.includes(first) ? { sub: first, rest } : { sub: null, rest: [...positionals] };
+  return SUBCOMMANDS4.includes(first) ? { sub: first, rest } : { sub: null, rest: [...positionals] };
 }
 function rangeOf(rest) {
   if (rest.length > 1) throw usageError("usage: risk [BASE[..HEAD]] [--worktree]");
   return rest[0];
 }
-var command10 = analysisCommand(name10, {
+var command11 = analysisCommand(name11, {
   summary: "How much a branch puts at risk before it is merged, and how to review it: risk [BASE[..HEAD]] | explain | reviewers | backtest",
   options: { worktree: { type: "boolean" }, evidence: { type: "string", multiple: true }, names: { type: "boolean" }, since: { type: "string" } },
   wholeHistory: true,
@@ -9330,10 +10358,10 @@ var command10 = analysisCommand(name10, {
 // packages/cochange/src/commands/spread.ts
 var spread_exports = {};
 __export(spread_exports, {
-  command: () => command11,
-  name: () => name11
+  command: () => command12,
+  name: () => name12
 });
-var name11 = "spread";
+var name12 = "spread";
 function distribution(changes, excludedByTrailer) {
   const measured = changes.filter((c) => !c.oversized).map((c) => changeSpread(c.files.map((f) => f.path)));
   const oversized = changes.length - measured.length;
@@ -9357,7 +10385,7 @@ function bucketOption(context) {
   if (value === "week" || value === "month") return value;
   throw usageError(`--bucket must be "week" or "month", not "${String(value)}"`);
 }
-var command11 = analysisCommand(name11, {
+var command12 = analysisCommand(name12, {
   summary: "Change-spread distribution (mean pairwise tree distance per logical change) per week or month",
   options: { since: { type: "string" }, until: { type: "string" }, bucket: { type: "string" } },
   window: (context) => statedWindow(context, readSettings(context.config).windowMonths),
@@ -9366,8 +10394,8 @@ var command11 = analysisCommand(name11, {
     const bucket = bucketOption(context);
     const measuredChanges = [];
     let excluded = [];
-    for (const change of history.filtered.changes) {
-      (change.suiteCommit ? excluded : measuredChanges).push(change);
+    for (const change2 of history.filtered.changes) {
+      (change2.suiteCommit ? excluded : measuredChanges).push(change2);
     }
     const byBucket = /* @__PURE__ */ new Map();
     const slot = (time) => {
@@ -9376,8 +10404,8 @@ var command11 = analysisCommand(name11, {
       if (!entry) byBucket.set(start, entry = { changes: [], excluded: 0 });
       return entry;
     };
-    for (const change of measuredChanges) slot(change.committerDate).changes.push(change);
-    for (const change of excluded) slot(change.committerDate).excluded++;
+    for (const change2 of measuredChanges) slot(change2.committerDate).changes.push(change2);
+    for (const change2 of excluded) slot(change2.committerDate).excluded++;
     const rows = [];
     if (byBucket.size > 0) {
       const first = Math.min(...byBucket.keys());
@@ -9401,11 +10429,11 @@ var command11 = analysisCommand(name11, {
 // packages/cochange/src/commands/successors.ts
 var successors_exports = {};
 __export(successors_exports, {
-  command: () => command12,
-  name: () => name12
+  command: () => command13,
+  name: () => name13
 });
-var name12 = "successors";
-var command12 = {
+var name13 = "successors";
+var command13 = {
   summary: "Ranked successors for files at risk, from the files that change with them",
   options: { names: { type: "boolean" }, top: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
@@ -9459,24 +10487,24 @@ __export(trend_exports, {
   DEFAULT_SAMPLES: () => DEFAULT_SAMPLES,
   MAX_SAMPLES: () => MAX_SAMPLES,
   TREND_THRESHOLD: () => TREND_THRESHOLD,
-  command: () => command13,
-  name: () => name13,
+  command: () => command14,
+  name: () => name14,
   pickSamples: () => pickSamples
 });
-var name13 = "trend";
+var name14 = "trend";
 var DEFAULT_SAMPLES = 10;
 var MAX_SAMPLES = 500;
 var TREND_THRESHOLD = 0.2;
-function pickSamples(revisions, count) {
-  if (revisions.length <= count) return [...revisions];
+function pickSamples(revisions, count2) {
+  if (revisions.length <= count2) return [...revisions];
   const last = revisions.length - 1;
-  return Array.from({ length: count }, (_, i) => revisions[Math.round(i * last / (count - 1))]);
+  return Array.from({ length: count2 }, (_, i) => revisions[Math.round(i * last / (count2 - 1))]);
 }
 function directionOf(first, last, samples) {
   if (samples < 2 || first === null || last === null) return "insufficient";
-  const change = first === 0 ? last === 0 ? 0 : 1 : (last - first) / first;
-  if (change >= TREND_THRESHOLD) return "worsening";
-  if (change <= -TREND_THRESHOLD) return "improving";
+  const change2 = first === 0 ? last === 0 ? 0 : 1 : (last - first) / first;
+  if (change2 >= TREND_THRESHOLD) return "worsening";
+  if (change2 <= -TREND_THRESHOLD) return "improving";
   return "stable";
 }
 var delta = (first, last) => ({
@@ -9484,7 +10512,7 @@ var delta = (first, last) => ({
   last,
   change: first === null || last === null ? null : last - first
 });
-var command13 = analysisCommand(name13, {
+var command14 = analysisCommand(name14, {
   summary: "Indentation complexity and size of one file sampled across its history, from blobs",
   options: { samples: { type: "string" } },
   wholeHistory: true,
@@ -9495,10 +10523,10 @@ var command13 = analysisCommand(name13, {
     const samples = integerOption(context, "samples", DEFAULT_SAMPLES, 2, MAX_SAMPLES);
     const file = await focusPath(context, history, requested);
     const revisions = [];
-    for (const change of history.filtered.changes) {
-      const touched = change.files.find((f) => f.fileId === file && f.blob !== null);
+    for (const change2 of history.filtered.changes) {
+      const touched = change2.files.find((f) => f.fileId === file && f.blob !== null);
       if (touched) {
-        revisions.push({ commit: change.shas.at(-1), committerDate: change.committerDate, path: touched.path, blob: touched.blob });
+        revisions.push({ commit: change2.shas.at(-1), committerDate: change2.committerDate, path: touched.path, blob: touched.blob });
       }
     }
     if (revisions.length === 0) throw usageError(`no revisions of "${requested}" in the analysed history`);
@@ -9545,6 +10573,7 @@ var commandModules = [
   coupling_exports,
   hotspots_exports,
   identities_exports,
+  outcome_exports,
   refresh_exports,
   risk_exports,
   spread_exports,
@@ -9629,204 +10658,6 @@ async function runHookProcess(hook) {
     if (output === "") exit();
     process.stdout.write(output + "\n", exit);
   });
-}
-
-// packages/cochange/src/hook.ts
-import { existsSync as existsSync17 } from "node:fs";
-import { join as join14 } from "node:path";
-
-// packages/history/src/hook-event.ts
-import { existsSync as existsSync16 } from "node:fs";
-import { dirname as dirname4, join as join12 } from "node:path";
-var WATCHED_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit"]);
-function findRepoRoot(start) {
-  let directory = start;
-  for (; ; ) {
-    if (existsSync16(join12(directory, ".git"))) return directory;
-    const parent = dirname4(directory);
-    if (parent === directory) return void 0;
-    directory = parent;
-  }
-}
-function readEditEvent(stdin, fallbackCwd) {
-  const input = JSON.parse(stdin);
-  const path = input.tool_input?.file_path;
-  if (typeof input.session_id !== "string" || input.session_id === "" || typeof path !== "string") return void 0;
-  if (typeof input.tool_name === "string" && !WATCHED_TOOLS.has(input.tool_name)) return void 0;
-  const cwd = typeof input.cwd === "string" && input.cwd !== "" ? input.cwd : fallbackCwd;
-  const root = findRepoRoot(cwd);
-  if (root === void 0) return void 0;
-  const file = repoRelative(root, path);
-  if (file.startsWith("..") || file.startsWith("/") || file === "") return void 0;
-  return { sessionId: input.session_id, root, file };
-}
-function within(budgetMs2, started, work, silence) {
-  const remaining = Math.max(0, budgetMs2 - (performance.now() - started));
-  return new Promise((resolve2, reject) => {
-    const timer = setTimeout(() => resolve2(silence), remaining);
-    work.then(
-      (answer) => {
-        clearTimeout(timer);
-        resolve2(answer);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
-}
-
-// packages/history/src/session-state.ts
-import { createHash as createHash8 } from "node:crypto";
-import { closeSync as closeSync2, mkdirSync as mkdirSync5, openSync as openSync2, readFileSync as readFileSync13, renameSync as renameSync5, rmSync as rmSync5, statSync as statSync2, writeFileSync as writeFileSync6 } from "node:fs";
-import { join as join13 } from "node:path";
-var emptySession = () => ({ edited: [], spokenAbout: [], lastRun: null, measurements: {} });
-function sessionDirectory(root) {
-  return join13(root, ".cache", "code-health", "sessions");
-}
-function sessionFile(root, sessionId, hook) {
-  const safe = /^[A-Za-z0-9_-]{1,128}$/.test(sessionId) ? sessionId : `h-${createHash8("sha256").update(sessionId).digest("hex").slice(0, 32)}`;
-  return join13(sessionDirectory(root), `${safe}.${hook}.json`);
-}
-var strings = (value) => Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
-function readSession(root, sessionId, hook) {
-  try {
-    const parsed = JSON.parse(readFileSync13(sessionFile(root, sessionId, hook), "utf8"));
-    const last = parsed.lastRun;
-    return {
-      edited: strings(parsed.edited),
-      spokenAbout: strings(parsed.spokenAbout),
-      lastRun: last && typeof last.outcome === "string" && typeof last.durationMs === "number" ? { outcome: last.outcome, durationMs: last.durationMs } : null,
-      measurements: typeof parsed.measurements === "object" && parsed.measurements !== null && !Array.isArray(parsed.measurements) ? parsed.measurements : {}
-    };
-  } catch {
-    return emptySession();
-  }
-}
-function writeSession(root, sessionId, hook, state) {
-  const file = sessionFile(root, sessionId, hook);
-  ensureSelfIgnoring(join13(root, ".cache", "code-health"));
-  mkdirSync5(sessionDirectory(root), { recursive: true });
-  const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync6(temporary, JSON.stringify(state) + "\n");
-  renameSync5(temporary, file);
-}
-var STALE_LOCK_MS = 2e3;
-var LOCK_WAIT_MS = 300;
-var sleep2 = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-function withLock2(file, work) {
-  const lock = `${file}.lock`;
-  const deadline = Date.now() + LOCK_WAIT_MS;
-  let held = false;
-  for (; ; ) {
-    try {
-      closeSync2(openSync2(lock, "wx"));
-      held = true;
-      break;
-    } catch {
-      try {
-        if (Date.now() - statSync2(lock).mtimeMs > STALE_LOCK_MS) rmSync5(lock, { force: true });
-      } catch {
-      }
-      if (Date.now() >= deadline) break;
-      sleep2(5);
-    }
-  }
-  try {
-    return work();
-  } finally {
-    if (held) rmSync5(lock, { force: true });
-  }
-}
-function updateSession(root, sessionId, hook, change) {
-  const file = sessionFile(root, sessionId, hook);
-  ensureSelfIgnoring(join13(root, ".cache", "code-health"));
-  mkdirSync5(sessionDirectory(root), { recursive: true });
-  return withLock2(file, () => {
-    const state = readSession(root, sessionId, hook);
-    change(state);
-    writeSession(root, sessionId, hook, state);
-    return state;
-  });
-}
-
-// packages/cochange/src/hook.ts
-var HOOK_NAME = "cochange";
-var MAX_PARTNERS_NAMED = 3;
-var DEFAULT_BUDGET_MS = 250;
-async function commitsBehind(root, dbPath, ref, limit) {
-  const recent = (await runGit(root, ["rev-list", `--max-count=${limit + 1}`, ref])).split("\n").filter((sha) => sha !== "");
-  if (recent.length === 0) return void 0;
-  const db = openForRead(dbPath);
-  if (!db) return void 0;
-  try {
-    const find = db.prepare("SELECT 1 AS found FROM commits WHERE sha = ?");
-    const index2 = recent.findIndex((sha) => find.get(sha) !== void 0);
-    return index2 === -1 ? void 0 : { behind: index2, sha: recent[index2] };
-  } finally {
-    db.close();
-  }
-}
-function describeNote(file, partners) {
-  const named = partners.map((p) => `\`${p.path}\` (confidence ${Math.round(p.confidence)} %, ${p.support} ${p.support === 1 ? "change" : "changes"})`);
-  const list = named.length <= 1 ? named.join("") : `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}`;
-  return `\`${file}\` usually changes with ${list}. Not yet edited in this session.`;
-}
-async function consider(root, file, settings, state) {
-  const location = await locateCache(root);
-  const found = await commitsBehind(root, location.dbPath, settings.ref, settings.hook.maxCommitsBehind);
-  if (!found) return { note: null, outcome: "silent: no cache within tolerance" };
-  const identities = loadIdentityState(root, settings);
-  const view = await readHistory(root, { ref: found.sha, firstParent: settings.firstParent, mailmapFile: identities.localMailmap });
-  const filtered = await filterHistory(root, view, {
-    exclude: settings.exclude,
-    botPatterns: settings.botPatterns,
-    nonPerson: identities.matcher,
-    maxChangesetSize: settings.maxChangesetSize,
-    grouping: settings.grouping,
-    since: monthsBefore(view.headDate, settings.windowMonths),
-    until: view.headDate + 1
-  });
-  const exists2 = await runGit(root, ["cat-file", "-e", `${found.sha}:${file}`]).then(
-    () => true,
-    () => false
-  );
-  const identity = exists2 ? file : view.renames.resolve(file, -1);
-  const { changesFocus, partners } = partnersOf(
-    filtered.changes.map((change) => ({ files: change.files.map((f) => f.fileId), oversized: change.oversized })),
-    identity
-  );
-  const edited = new Set(state.edited);
-  const named = partners.map((partner) => ({ path: partner.path, support: partner.support, confidence: confidenceOf(partner.support, changesFocus) })).filter(
-    (partner) => partner.support >= settings.minSupport && partner.confidence >= settings.hook.confidence && !edited.has(partner.path) && existsSync17(join14(root, partner.path))
-  ).sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)).slice(0, MAX_PARTNERS_NAMED);
-  if (named.length === 0) return { note: null, outcome: "silent: no unedited partner above the threshold" };
-  return { note: describeNote(file, named), outcome: "spoke" };
-}
-async function runHook(request) {
-  const started = request.startedAt ?? performance.now();
-  try {
-    const event = readEditEvent(request.stdin, request.cwd);
-    if (event === void 0) return "";
-    const { root, file, sessionId } = event;
-    const settings = readSettings(loadConfig(root, cochangeConfig));
-    if (!settings.hook.enabled) return "";
-    const state = updateSession(root, sessionId, HOOK_NAME, (current2) => {
-      if (!current2.edited.includes(file)) current2.edited.push(file);
-    });
-    const decision = state.spokenAbout.includes(file) ? { note: null, outcome: "silent: already spoke about this file" } : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state), {
-      note: null,
-      outcome: "silent: over the time budget"
-    });
-    updateSession(root, sessionId, HOOK_NAME, (current2) => {
-      if (decision.note !== null && !current2.spokenAbout.includes(file)) current2.spokenAbout.push(file);
-      current2.lastRun = { outcome: decision.outcome, durationMs: Math.round(performance.now() - started) };
-    });
-    return decision.note === null ? "" : JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: decision.note } });
-  } catch {
-    return "";
-  }
 }
 
 // packages/cochange/src/hook-definition.ts

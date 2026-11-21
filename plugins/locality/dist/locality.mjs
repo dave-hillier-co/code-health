@@ -416,7 +416,7 @@ async function execute(cli2, io) {
   if (!command8) throw usageError(`unknown command "${name8}"; run with --help to list commands`);
   const args = parseArguments(io.argv, command8.options);
   if (args.help) {
-    io.stdout.write(commandHelp(cli2, name8, command8));
+    io.stdout.write(commandHelp(cli2, name8, command8, args.positionals[0]));
     return ExitCode.Success;
   }
   let commandName = name8;
@@ -503,20 +503,40 @@ function helpText(cli2) {
     ""
   ].join("\n");
 }
-function commandHelp(cli2, name8, command8) {
-  const flags = Object.entries(command8.options ?? {}).map(([option, spec]) => [
-    `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
-    command8.optionHelp?.[option] ?? ""
-  ]);
-  const width = Math.max(0, ...flags.map(([flag]) => flag.length));
-  const own = flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`);
+function commandHelp(cli2, name8, command8, requested) {
+  const sub = requested === void 0 ? void 0 : command8.subcommands?.[requested];
+  const optionLines = (entries) => {
+    const flags = entries.map(([option, spec]) => [
+      `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
+      command8.optionHelp?.[option] ?? ""
+    ]);
+    const width2 = Math.max(0, ...flags.map(([flag]) => flag.length));
+    return flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
+  };
+  const all = Object.entries(command8.options ?? {});
+  if (sub !== void 0) {
+    const taken = new Set(sub.options ?? []);
+    return [
+      `Usage: ${cli2.tool} ${name8} ${requested}${command8.usage === void 0 ? "" : ` ${command8.usage}`} [options]`,
+      "",
+      sub.summary,
+      "",
+      "Options:",
+      ...optionLines(all.filter(([option]) => taken.has(option))),
+      ...commonOptionHelp,
+      ""
+    ].join("\n");
+  }
+  const subcommands = Object.entries(command8.subcommands ?? {});
+  const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli2.tool} ${name8}${command8.usage === void 0 ? "" : ` ${command8.usage}`} [options]`,
+    `Usage: ${cli2.tool} ${name8}${command8.usage === void 0 ? "" : ` ${command8.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
     command8.summary,
     "",
+    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name8} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
-    ...own,
+    ...optionLines(all),
     ...commonOptionHelp,
     ""
   ].join("\n");
@@ -3754,14 +3774,20 @@ function chooseComparison(candidates, actedOn) {
 
 // packages/locality/src/measure-effort.ts
 import { createHash as createHash2 } from "node:crypto";
-import { homedir } from "node:os";
-import { join as join9 } from "node:path";
-var defaultProjectsDirectory = () => join9(homedir(), ".claude", "projects");
+
+// packages/history/src/checkouts.ts
 async function checkouts(root) {
   const listing = await runGit(root, ["worktree", "list", "--porcelain"]);
   const others = listing.split("\n").filter((line) => line.startsWith("worktree ")).map((line) => line.slice("worktree ".length)).filter((path) => path !== root);
   return [root, ...others.sort()];
 }
+
+// packages/transcripts/src/projects-dir.ts
+import { homedir } from "node:os";
+import { join as join9 } from "node:path";
+var defaultProjectsDirectory = () => join9(homedir(), ".claude", "projects");
+
+// packages/locality/src/measure-effort.ts
 function readEffort(projectsDir, repoRoots, window) {
   return measureRepo({ projectsDir, repoRoots, window: parseWindow(window.from, window.to) });
 }
@@ -4005,7 +4031,7 @@ function testPremise(tasks, minSamples) {
   };
 }
 
-// packages/locality/src/verdict.ts
+// packages/transcripts/src/difference.ts
 var change = (arm) => arm.before.mean === null || arm.after.mean === null ? null : arm.after.mean - arm.before.mean;
 function differenceOf(actedOn, comparison, minSamples, noisePercent) {
   const actedChange = change(actedOn);
@@ -4021,6 +4047,8 @@ function differenceOf(actedOn, comparison, minSamples, noisePercent) {
   }
   return { actedOn: { change: actedChange }, comparison: { change: comparisonChange }, difference, smallestSample, conclusion };
 }
+
+// packages/locality/src/verdict.ts
 function effortConclusion(parts) {
   if (parts.every((part) => part === "not-measured")) return "not-measured";
   if (parts.some((part) => part === "insufficient-sample" || part === "not-measured")) return "insufficient-sample";

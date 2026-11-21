@@ -86,7 +86,7 @@ if (inHookWorker(complexityHook.kind)) {
   await runHookWorker(complexityHook);
 } else {
   if (argv[0] === "hook") await runHookProcess(complexityHook);
-  const [{ runCli }, { cli }] = await Promise.all([import("./chunk-S2AQLRSA.mjs"), import("./chunk-WRIJ7MEC.mjs")]);
+  const [{ runCli }, { cli }] = await Promise.all([import("./chunk-LGRZTALM.mjs"), import("./chunk-WRIJ7MEC.mjs")]);
   process.exitCode = await runCli(cli, {
     argv,
     cwd: process.cwd(),

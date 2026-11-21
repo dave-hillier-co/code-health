@@ -169,7 +169,7 @@ async function execute(cli, io) {
   if (!command) throw usageError(`unknown command "${name}"; run with --help to list commands`);
   const args = parseArguments(io.argv, command.options);
   if (args.help) {
-    io.stdout.write(commandHelp(cli, name, command));
+    io.stdout.write(commandHelp(cli, name, command, args.positionals[0]));
     return ExitCode.Success;
   }
   let commandName = name;
@@ -256,20 +256,40 @@ function helpText(cli) {
     ""
   ].join("\n");
 }
-function commandHelp(cli, name, command) {
-  const flags = Object.entries(command.options ?? {}).map(([option, spec]) => [
-    `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
-    command.optionHelp?.[option] ?? ""
-  ]);
-  const width = Math.max(0, ...flags.map(([flag]) => flag.length));
-  const own = flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`);
+function commandHelp(cli, name, command, requested) {
+  const sub = requested === void 0 ? void 0 : command.subcommands?.[requested];
+  const optionLines = (entries) => {
+    const flags = entries.map(([option, spec]) => [
+      `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
+      command.optionHelp?.[option] ?? ""
+    ]);
+    const width2 = Math.max(0, ...flags.map(([flag]) => flag.length));
+    return flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
+  };
+  const all = Object.entries(command.options ?? {});
+  if (sub !== void 0) {
+    const taken = new Set(sub.options ?? []);
+    return [
+      `Usage: ${cli.tool} ${name} ${requested}${command.usage === void 0 ? "" : ` ${command.usage}`} [options]`,
+      "",
+      sub.summary,
+      "",
+      "Options:",
+      ...optionLines(all.filter(([option]) => taken.has(option))),
+      ...commonOptionHelp,
+      ""
+    ].join("\n");
+  }
+  const subcommands = Object.entries(command.subcommands ?? {});
+  const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli.tool} ${name}${command.usage === void 0 ? "" : ` ${command.usage}`} [options]`,
+    `Usage: ${cli.tool} ${name}${command.usage === void 0 ? "" : ` ${command.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
     command.summary,
     "",
+    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli.tool} ${name} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
-    ...own,
+    ...optionLines(all),
     ...commonOptionHelp,
     ""
   ].join("\n");

@@ -381,7 +381,7 @@ async function execute(cli2, io) {
   if (!command12) throw usageError(`unknown command "${name13}"; run with --help to list commands`);
   const args2 = parseArguments(io.argv, command12.options);
   if (args2.help) {
-    io.stdout.write(commandHelp(cli2, name13, command12));
+    io.stdout.write(commandHelp(cli2, name13, command12, args2.positionals[0]));
     return ExitCode.Success;
   }
   let commandName = name13;
@@ -468,20 +468,40 @@ function helpText(cli2) {
     ""
   ].join("\n");
 }
-function commandHelp(cli2, name13, command12) {
-  const flags2 = Object.entries(command12.options ?? {}).map(([option, spec]) => [
-    `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
-    command12.optionHelp?.[option] ?? ""
-  ]);
-  const width = Math.max(0, ...flags2.map(([flag]) => flag.length));
-  const own = flags2.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`);
+function commandHelp(cli2, name13, command12, requested) {
+  const sub = requested === void 0 ? void 0 : command12.subcommands?.[requested];
+  const optionLines = (entries) => {
+    const flags2 = entries.map(([option, spec]) => [
+      `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
+      command12.optionHelp?.[option] ?? ""
+    ]);
+    const width2 = Math.max(0, ...flags2.map(([flag]) => flag.length));
+    return flags2.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
+  };
+  const all = Object.entries(command12.options ?? {});
+  if (sub !== void 0) {
+    const taken = new Set(sub.options ?? []);
+    return [
+      `Usage: ${cli2.tool} ${name13} ${requested}${command12.usage === void 0 ? "" : ` ${command12.usage}`} [options]`,
+      "",
+      sub.summary,
+      "",
+      "Options:",
+      ...optionLines(all.filter(([option]) => taken.has(option))),
+      ...commonOptionHelp,
+      ""
+    ].join("\n");
+  }
+  const subcommands2 = Object.entries(command12.subcommands ?? {});
+  const width = Math.max(0, ...subcommands2.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli2.tool} ${name13}${command12.usage === void 0 ? "" : ` ${command12.usage}`} [options]`,
+    `Usage: ${cli2.tool} ${name13}${command12.usage === void 0 ? "" : ` ${command12.usage}`}${subcommands2.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
     command12.summary,
     "",
+    ...subcommands2.length > 0 ? ["Subcommands:", ...subcommands2.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name13} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
-    ...own,
+    ...optionLines(all),
     ...commonOptionHelp,
     ""
   ].join("\n");
@@ -16095,8 +16115,9 @@ async function loadProject(root, headSha, exclude) {
   return projectFromTree(tree, headSha, exclude, await ParseCache.forRepository(root));
 }
 async function projectFromTree(tree, headSha, exclude, cache) {
-  const analysis = await analyseTree(tree, cache === void 0 ? {} : { cache });
   const excluded = compileGlobs(exclude);
+  const analysed = await analyseTree(tree, cache === void 0 ? {} : { cache });
+  const analysis = { ...analysed, externalImports: analysed.externalImports.filter((external) => !excluded(external.from)) };
   const generated = new Set(analysis.generatedFiles);
   const files = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !excluded(path) && !generated.has(path)).sort(compareUtf8);
   const inProject = new Set(files);
@@ -21450,6 +21471,37 @@ function versionsAreFixed(model) {
   const versions = model.packages.filter((p) => p.version !== null && p.private !== true).map((p) => p.version);
   return new Set(versions).size <= 1;
 }
+var matcher = (pattern) => new RegExp(`^${pattern.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
+async function readVersionPolicy(model) {
+  const read = async (path) => {
+    const text2 = await model.tree.read(path);
+    if (text2 === null || text2 === void 0) return null;
+    try {
+      return JSON.parse(text2);
+    } catch {
+      return null;
+    }
+  };
+  const policy = { everything: false, groups: [] };
+  const changesets = await read(".changeset/config.json");
+  for (const key of ["fixed", "linked"]) {
+    for (const group of Array.isArray(changesets?.[key]) ? changesets[key] : []) {
+      if (Array.isArray(group)) policy.groups.push(group.filter((name13) => typeof name13 === "string"));
+    }
+  }
+  const lerna = await read("lerna.json");
+  if (lerna !== null && typeof lerna.version === "string" && lerna.version !== "independent") policy.everything = true;
+  const nx = await read("nx.json");
+  if (nx?.release?.projectsRelationship === "fixed") policy.everything = true;
+  return policy;
+}
+function versionsFixedTogether(policy, a, b) {
+  if (policy.everything) return true;
+  return policy.groups.some((group) => {
+    const patterns = group.map(matcher);
+    return patterns.some((p) => p.test(a.name)) && patterns.some((p) => p.test(b.name));
+  });
+}
 var contentFiles = (model, pkg) => {
   const files = model.files.get(pkg.id) ?? [];
   return files.filter((path) => path !== pkg.manifest).length;
@@ -21551,7 +21603,9 @@ async function releaseFindings(context, reuse, root) {
 async function lockstep(context, root) {
   const { model } = context;
   if (versionsAreFixed(model)) return [];
-  const versioned = model.packages.filter((p) => p.version !== null && p.private !== true && p.version !== "0.0.0");
+  const policy = await readVersionPolicy(model);
+  if (policy.everything) return [];
+  const versioned = model.packages.filter((p) => p.version !== null && p.private !== true && !/^0\.0\.0(?![.\d])/.test(p.version));
   const changes = /* @__PURE__ */ new Map();
   for (const pkg of versioned) {
     const set = await versionChanges(model, root, pkg);
@@ -21564,6 +21618,7 @@ async function lockstep(context, root) {
       const a = changes.get(ids[i2]);
       const b = changes.get(ids[j]);
       if (a.size < model.settings.packages.minSupport || a.size !== b.size || [...a].some((sha) => !b.has(sha))) continue;
+      if (versionsFixedTogether(policy, model.byId.get(ids[i2]), model.byId.get(ids[j]))) continue;
       findings.push(
         raise(
           context,
