@@ -1,0 +1,251 @@
+{
+  "command": "packages",
+  "config": "50804ef111cee2ed",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": true
+    },
+    "grade": "moderate",
+    "importedHistory": [],
+    "logicalChangesInWindow": 97,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 12.7,
+    "window": {
+      "months": 12,
+      "since": 1687251600,
+      "until": 1718874000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "package": null,
+    "subcommand": "boundaries"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "ddea495c3d30d1029ace8a99c9eb3255a4782829"
+  },
+  "results": [
+    {
+      "changeCost": 0,
+      "evidence": {
+        "entries": [
+          "packages/helper/src/index.ts"
+        ],
+        "fileCount": 1,
+        "files": [
+          "packages/helper/src/secret.ts"
+        ],
+        "fromTests": 0,
+        "importers": 1
+      },
+      "id": "deep-import:packages/api->packages/helper",
+      "kind": "deep-import",
+      "packages": [
+        "packages/helper",
+        "packages/api"
+      ],
+      "principle": "boundary",
+      "priority": "normal",
+      "summary": "packages/api imports 1 file of packages/helper past its entry points: packages/helper/src/secret.ts",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "declaredAtRoot": [
+          "html-escaper"
+        ],
+        "declaredOnlyForDevelopment": [],
+        "dependencies": [
+          "html-escaper"
+        ],
+        "internal": [],
+        "testsOnly": []
+      },
+      "id": "undeclared-dependency:packages/api",
+      "kind": "undeclared-dependency",
+      "packages": [
+        "packages/api"
+      ],
+      "principle": "boundary",
+      "priority": "normal",
+      "summary": "packages/api uses html-escaper without declaring it: the dependency graph the build sees is not the real one",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "declaredAtRoot": [],
+        "declaredOnlyForDevelopment": [],
+        "dependencies": [
+          "@acme/api"
+        ],
+        "internal": [
+          "@acme/api"
+        ],
+        "testsOnly": [
+          "@acme/api"
+        ]
+      },
+      "id": "undeclared-dependency:packages/helper",
+      "kind": "undeclared-dependency",
+      "packages": [
+        "packages/helper"
+      ],
+      "principle": "boundary",
+      "priority": "normal",
+      "summary": "packages/helper uses @acme/api without declaring it: the dependency graph the build sees is not the real one",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "declaredAtRoot": [],
+        "declaredOnlyForDevelopment": [],
+        "dependencies": [
+          "@acme/shared"
+        ],
+        "internal": [
+          "@acme/shared"
+        ],
+        "testsOnly": []
+      },
+      "id": "undeclared-dependency:packages/orphan",
+      "kind": "undeclared-dependency",
+      "packages": [
+        "packages/orphan"
+      ],
+      "principle": "boundary",
+      "priority": "normal",
+      "summary": "packages/orphan uses @acme/shared without declaring it: the dependency graph the build sees is not the real one",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "dependencies": [
+          "@acme/ui"
+        ],
+        "internal": [
+          "@acme/ui"
+        ]
+      },
+      "id": "unused-dependency:packages/app",
+      "kind": "unused-dependency",
+      "packages": [
+        "packages/app"
+      ],
+      "principle": "boundary",
+      "priority": "normal",
+      "summary": "packages/app declares @acme/ui and its code never uses it: coupling with no purpose, and build weight",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "dependencies": [
+          "left-pad"
+        ],
+        "internal": []
+      },
+      "id": "unused-dependency:packages/lib",
+      "kind": "unused-dependency",
+      "packages": [
+        "packages/lib"
+      ],
+      "principle": "boundary",
+      "priority": "normal",
+      "summary": "packages/lib declares left-pad and its code never uses it: coupling with no purpose, and build weight",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
+        "dependencies": [
+          "@acme/orphan"
+        ],
+        "internal": [
+          "@acme/orphan"
+        ]
+      },
+      "id": "unused-dependency:packages/ui",
+      "kind": "unused-dependency",
+      "packages": [
+        "packages/ui"
+      ],
+      "principle": "boundary",
+      "priority": "normal",
+      "summary": "packages/ui declares @acme/orphan and its code never uses it: coupling with no purpose, and build weight",
+      "tentative": false,
+      "unit": null
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 7
+  },
+  "unavailable": [],
+  "window": {
+    "since": "2023-06-20T09:00:00.000Z",
+    "until": "2024-06-20T09:00:00.000Z"
+  }
+}

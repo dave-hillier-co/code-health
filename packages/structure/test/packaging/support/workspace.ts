@@ -48,11 +48,11 @@ const reexports = (names: string[]): string => `${names.map((n) => `export { ${n
  * - `lib` is published, with five exports of which its consumers use one each, and three of which need
  *   outside packages that the others do not. It declares a fourth outside package it never imports.
  * - `lib-extra` is published and versioned beside `lib`: both change version in the same three commits.
- * - `helper` has one consumer, `api`, which also reaches into its internals.
+ * - `helper` has one consumer, `api`, which also reaches into its internals: helper names only a `main`.
  * - `wrap` only re-exports `ui`.
  * - `p1` and `p2` import each other.
  * - `orphan` has no consumer and uses `shared` without declaring it.
- * - `ui` declares `orphan` without using it.
+ * - `ui` declares `orphan` without using it, and `api` imports an outside package that only the workspace root declares.
  * - `lib` and `testkit` form a cycle that only exists through a development dependency, and the
  *   tests of `helper` import `api`, which imports `helper`: a cycle through test code alone.
  */
@@ -98,6 +98,7 @@ export const workspace: PackageSpec[] = [
   },
   {
     name: "helper",
+    exports: false,
     tests: { "helper.test.ts": fn("helperTest", [["@acme/api", "handle"]]) },
     files: {
       "index.ts": fn("help"),
@@ -125,6 +126,8 @@ export const workspace: PackageSpec[] = [
         ["@acme/helper/src/secret.ts", "secret"],
       ]),
       "work.ts": fn("apiWork"),
+      // resolved through the workspace root, which declares it, and not through api's own manifest
+      "internal.ts": fn("apiInternal", [["html-escaper", "escape"]]),
     },
   },
   {
@@ -172,7 +175,7 @@ export const workspace: PackageSpec[] = [
 
 // Most packages hold three files, so the two that hold two are the small ones.
 for (const spec of workspace) {
-  if (Object.keys(spec.files).length < 3 && spec.name !== "wrap" && spec.name !== "lib-extra") spec.files["internal.ts"] = fn(`${spec.name}Internal`);
+  if (Object.keys(spec.files).length < 3 && spec.name !== "wrap" && spec.name !== "lib-extra") spec.files["internal.ts"] ??= fn(`${spec.name}Internal`);
 }
 
 const young: PackageSpec = { name: "young", files: { "index.ts": fn("young"), "work.ts": fn("youngWork") } };
@@ -215,7 +218,7 @@ export function workspaceRepository(): GitFixture {
   const revision = new Map<string, number>();
   const steps: Step[] = [
     commit("Configure the suite", "2023-05-31T09:00:00Z", [
-      add("package.json", json({ name: "acme", private: true, workspaces: ["packages/*"] })),
+      add("package.json", json({ name: "acme", private: true, workspaces: ["packages/*"], devDependencies: { "html-escaper": "^3.0.0" } })),
       add("code-health.json", json({ structure: { packages: { followerReverseConfidence: 0.4, minLift: 1.4, wideChangeShare: 0.05 } } })),
     ]),
   ];

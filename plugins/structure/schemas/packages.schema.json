@@ -132,6 +132,64 @@
             "type": "object",
             "properties": {
               "subcommand": {
+                "const": "boundaries"
+              }
+            },
+            "required": [
+              "subcommand"
+            ]
+          }
+        },
+        "required": [
+          "inputs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
+                "const": "boundaries"
+              },
+              "package": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "subcommand",
+              "package"
+            ],
+            "additionalProperties": false
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/finding"
+            }
+          },
+          "unavailable": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/unavailable"
+            }
+          }
+        },
+        "required": [
+          "unavailable"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
                 "const": "coupling"
               }
             },
@@ -197,6 +255,7 @@
           "enum": [
             "list",
             "cohesion",
+            "boundaries",
             "coupling"
           ]
         }

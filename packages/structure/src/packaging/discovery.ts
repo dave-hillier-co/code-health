@@ -14,6 +14,8 @@ export interface DeclaredDependency {
   scope: DependencyScope;
   /** Id of the package in this repository it refers to, or null for an outside dependency. */
   target: string | null;
+  /** A peer or optional dependency, which a package need not import to depend on. */
+  optional: boolean;
 }
 
 /** A unit the build system delivers, read from its manifest. */
@@ -63,7 +65,7 @@ interface Raw {
   entry: boolean;
   testSupport: boolean;
   aliases: string[];
-  dependencies: { name: string; scope: DependencyScope; dir?: string }[];
+  dependencies: { name: string; scope: DependencyScope; dir?: string; optional?: boolean }[];
 }
 
 type Read = (path: string) => Promise<string | undefined>;
@@ -136,7 +138,7 @@ async function npmPackages(paths: string[], read: Read, ignored: (dir: string) =
     const name = typeof json.name === "string" ? json.name : baseOf(dir === "." ? "root" : dir);
     const dependencies: Raw["dependencies"] = [];
     for (const key of ["dependencies", "optionalDependencies", "peerDependencies"]) {
-      for (const dependency of Object.keys(record(json[key]))) dependencies.push({ name: dependency, scope: "runtime" });
+      for (const dependency of Object.keys(record(json[key]))) dependencies.push({ name: dependency, scope: "runtime", optional: key !== "dependencies" });
     }
     for (const dependency of Object.keys(record(json.devDependencies))) dependencies.push({ name: dependency, scope: "dev" });
     result.push({
@@ -546,7 +548,7 @@ export async function discoverPackages(tree: SourceTree, options: DiscoveryOptio
       const key = `${dependency.name}\0${dependency.scope}`;
       if (seenTargets.has(key)) continue;
       seenTargets.add(key);
-      dependencies.push({ name: dependency.name, scope: dependency.scope, target: target === id ? null : target });
+      dependencies.push({ name: dependency.name, scope: dependency.scope, target: target === id ? null : target, optional: dependency.optional === true });
     }
     dependencies.sort((a, b) => compareIds(a.name, b.name) || compareIds(a.scope, b.scope));
     return {
