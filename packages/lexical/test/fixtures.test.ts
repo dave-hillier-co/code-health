@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, expect, test } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { runGit } from "@code-health/history/git";
+import { recordedAgreement } from "../src/agreement-rates.ts";
 import { analyseSource } from "../src/analyse-source.ts";
 
 const read = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -58,6 +59,13 @@ const expectations: Record<string, Expected> = {
       [undefined, 7, 9, 3, 1, 0, 0, 0, 0, 0],
     ],
   },
+  // The same shape as Sample.java, so the values are the Java ones: the lambda passed to forEach is no function block
+  // of the lexer, which is the one miss its recorded agreement allows, and the raw string holds code that must not count.
+  "Sample.kt": {
+    profile: "kotlin",
+    file: { lineCount: 21, nonBlankLines: 20, codeLines: 20, indentUnit: 4, indentationComplexity: 33, maxIndent: 4, keywordComplexity: 3 },
+    blocks: [["Report.render", 5, 20, 16, 18, 2, 3, 1, 3, 4]],
+  },
   "sample.go": {
     profile: "go",
     file: { lineCount: 35, nonBlankLines: 31, codeLines: 29, indentUnit: 4, indentationComplexity: 32, maxIndent: 3, keywordComplexity: 5 },
@@ -86,6 +94,11 @@ const expectations: Record<string, Expected> = {
     ],
   },
 };
+
+test("every lexer profile that an adapter's agreement is recorded for has a hand-counted sample here", () => {
+  const sampled = new Set(Object.values(expectations).map((expected) => expected.profile));
+  expect(Object.keys(recordedAgreement).filter((profile) => !sampled.has(profile))).toEqual([]);
+});
 
 for (const [name, expected] of Object.entries(expectations)) {
   test(`${name}: file metrics`, () => {
