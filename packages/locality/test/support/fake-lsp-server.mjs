@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // A language server that speaks just enough LSP over stdio to be driven by the mover's confirmation:
 // it answers initialize and shutdown, and publishes diagnostics for each file that is opened.
-// FAKE_LSP_MODE: "clean" (no diagnostics), "broken" (one unresolved-name error per file), "silent" (publishes nothing).
-const mode = process.env.FAKE_LSP_MODE ?? "clean";
+// The mode is the argument `--mode=<mode>`: "clean" (no diagnostics), "broken" (one unresolved-name error per file),
+// "silent" (publishes nothing) or "mute" (never answers initialize, so the client's own time limit is what ends the wait).
+const mode = /^--mode=(.*)$/.exec(process.argv.find((argument) => argument.startsWith("--mode=")) ?? "")?.[1] ?? "clean";
 let buffer = Buffer.alloc(0);
 
 function send(message) {
@@ -11,8 +12,9 @@ function send(message) {
 }
 
 function handle(message) {
-  if (message.method === "initialize") send({ id: message.id, result: { capabilities: {} } });
-  else if (message.method === "shutdown") send({ id: message.id, result: null });
+  if (message.method === "initialize") {
+    if (mode !== "mute") send({ id: message.id, result: { capabilities: {} } });
+  } else if (message.method === "shutdown") send({ id: message.id, result: null });
   else if (message.method === "exit") process.exit(0);
   else if (message.method === "textDocument/didOpen" && mode !== "silent") {
     const diagnostics = mode === "broken" ? [{ severity: 1, message: "Ledger cannot be resolved to a type", range: { start: { line: 2, character: 0 }, end: { line: 2, character: 6 } } }] : [];

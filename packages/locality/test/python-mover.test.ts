@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { fixtureCases, readExpected, toolInstalled } from "@code-health/fixtures/language-conformance";
 import { adapterById, overrideSupportedAdapters } from "@code-health/parse/languages";
@@ -18,7 +17,7 @@ interface MovesExpected {
 beforeAll(() => overrideSupportedAdapters([adapterById("python")!]));
 afterAll(() => overrideSupportedAdapters(undefined));
 
-const ropeInstalled = toolInstalled("python3") && spawnSync("python3", ["-I", "-c", "import rope"], { stdio: "ignore" }).status === 0;
+const ropeInstalled = toolInstalled("python3", { args: ["-I", "-c", "import rope"] });
 if (!ropeInstalled) console.warn('SKIPPED "rope confirms the Python moves": rope is not importable by python3. Install it (pip install rope) to run these checks; the rest of the suite does not need it.');
 
 describe("a Python move without rope", () => {

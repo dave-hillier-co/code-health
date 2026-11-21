@@ -88,13 +88,15 @@ export function importPathToDirectory(modules: readonly GoModule[], importPath: 
     if (module.path !== null) consider(module.path, module.dir, module);
     for (const replaced of module.replaces) consider(replaced.from, replaced.dir, module);
   }
-  if (best === undefined) return undefined;
-  const rest = importPath.slice(best.prefix.length + 1);
-  const dir = rest === "" ? best.dir : posix.normalize(best.dir === "." ? rest : posix.join(best.dir, rest));
+  const found = best as { prefix: string; dir: string; module: GoModule } | undefined;
+  if (found === undefined) return undefined;
+  const rest = importPath.slice(found.prefix.length + 1);
+  const dir = rest === "" ? found.dir : posix.normalize(found.dir === "." ? rest : posix.join(found.dir, rest));
   // A directory with a go.mod of its own is another module: the parent module's path does not reach into it.
   const owner = moduleOwning(modules, `${dir}/_`);
-  if (owner !== undefined && owner.dir !== best.dir && owner.path !== best.prefix && !best.module.replaces.some((replaced) => replaced.from === best.prefix)) return undefined;
-  return { dir, module: best.module };
+  const replaced = found.module.replaces.some((replace) => replace.from === found.prefix);
+  if (owner !== undefined && owner.dir !== found.dir && !replaced) return undefined;
+  return { dir, module: found.module };
 }
 
 /** The import path of a directory of the repository, from the module that contains it. */

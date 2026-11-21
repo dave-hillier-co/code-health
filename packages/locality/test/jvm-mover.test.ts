@@ -122,13 +122,10 @@ const operations = [{ from: "src/main/java/acme/model/Price.java", to: "src/main
 
 describe("confirming a move with a language server", () => {
   beforeAll(() => chmodSync(server, 0o755));
-  const confirm = (mode: string, timeoutMs = 5000) => {
-    process.env.FAKE_LSP_MODE = mode;
-    return confirmWithLanguageServer(mixed, operations, changed, { name: "fake-lsp", path: server }, { timeoutMs });
-  };
-  afterAll(() => {
-    delete process.env.FAKE_LSP_MODE;
-  });
+  // The mode goes to the server as an argument, so no process-wide state is shared. A server that must answer gets the
+  // default minute: a process that is slow to start under load is not a failure. Only a server that never answers is cut short.
+  const confirm = (mode: string, timeoutMs?: number) =>
+    confirmWithLanguageServer(mixed, operations, changed, { name: "fake-lsp", path: server }, { arguments: [`--mode=${mode}`], ...(timeoutMs === undefined ? {} : { timeoutMs }) });
 
   it("is confirmed when the server finds nothing unresolved in the files that changed", async () => {
     expect(await confirm("clean")).toEqual({ status: "confirmed", detail: "fake-lsp resolved every reference in the 1 changed file" });
@@ -140,9 +137,15 @@ describe("confirming a move with a language server", () => {
     expect(result.detail).toBe("fake-lsp reports 1 unresolved reference: src/main/java/acme/cart/Price.java:3 Ledger cannot be resolved to a type");
   });
 
-  it("is not confirmed, and not a failure, when the server does not answer in time", async () => {
-    const result = await confirm("silent", 500);
-    expect(result).toEqual({ status: "not confirmed", detail: "fake-lsp checked 0 of 1 changed files before the time was up" });
+  it("is not confirmed, and not a failure, when the server never answers", async () => {
+    const result = await confirm("mute", 500);
+    expect(result).toEqual({ status: "not confirmed", detail: "fake-lsp did not start in time" });
+  });
+
+  it("is not confirmed when the server starts but publishes nothing for a file", async () => {
+    const result = await confirm("silent", 3000);
+    expect(result.status).toBe("not confirmed");
+    expect(result.detail).toMatch(/^fake-lsp (checked \d+ of 1 changed files before the time was up|did not start in time)$/);
   });
 
   it("is not confirmed when the server cannot be started", async () => {
@@ -153,19 +156,17 @@ describe("confirming a move with a language server", () => {
 
 // The real servers are optional. These run only where one is installed, and say so when they are skipped.
 describeWithTool("jdtls", "jdtls checks a Java move", () => {
-  it("answers, with a status and what it found", async () => {
+  it("confirms a correct move", async () => {
     const result = await performMove(mixed, operations);
     const entry = result.confirmations.find((candidate) => candidate.tool === "jdtls");
-    expect(["confirmed", "not confirmed"]).toContain(entry?.status);
-    expect(entry?.detail).not.toBe("");
-  }, 120_000);
-});
+    expect(entry).toMatchObject({ status: "confirmed", detail: expect.stringContaining("resolved every reference") });
+  }, 600_000);
+}, { executable: "java", args: ["-version"] });
 
 describeWithTool("kotlin-lsp", "the Kotlin language server checks a Kotlin move", () => {
-  it("answers, with a status and what it found", async () => {
+  it("confirms a correct move", async () => {
     const result = await performMove(mixed, [{ from: "src/main/kotlin/acme/model/Cart.kt", to: "src/main/kotlin/acme/cart/Cart.kt", role: "unit" }]);
     const entry = result.confirmations.find((candidate) => candidate.tool === "kotlin-lsp");
-    expect(["confirmed", "not confirmed"]).toContain(entry?.status);
-    expect(entry?.detail).not.toBe("");
-  }, 120_000);
-});
+    expect(entry).toMatchObject({ status: "confirmed", detail: expect.stringContaining("resolved every reference") });
+  }, 600_000);
+}, { executable: "java", args: ["-version"] });

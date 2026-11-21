@@ -1,7 +1,7 @@
-import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe } from "vitest";
+import { executableWorks, findExecutable } from "@code-health/cli-kit/executables";
 
 /**
  * The shared conformance harness. Every language keeps hand-verified fixtures in `fixtures/languages/<id>/`,
@@ -108,17 +108,29 @@ export function languageFolders(): string[] {
   return folders(languagesRoot);
 }
 
-/** True when an executable is on the PATH. External tools (Roslyn LSP, clangd, rope, gopls, jdtls, Kotlin LSP, rust-analyzer) are optional. */
-export function toolInstalled(executable: string): boolean {
-  return spawnSync(process.platform === "win32" ? "where" : "which", [executable], { stdio: "ignore" }).status === 0;
+/**
+ * True when an executable is installed, as the product finds one (an executable file on the PATH), and, when
+ * `probe` is given, runs: a shim of a tool that is not installed is on the PATH and fails its version command.
+ * External tools (Roslyn LSP, clangd, rope, gopls, jdtls, Kotlin LSP, rust-analyzer) are optional.
+ */
+export function toolInstalled(executable: string, probe?: ToolProbe): boolean {
+  if (findExecutable(executable) === undefined) return false;
+  return probe === undefined || executableWorks(probe.executable ?? executable, probe.args);
+}
+
+/** What to run to see that a tool works: its version command, or the runtime it needs (`java -version`). */
+export interface ToolProbe {
+  /** Defaults to the tool itself. */
+  executable?: string;
+  args: readonly string[];
 }
 
 /**
- * A `describe` that runs only when the external tool is installed. When it is not, the suite is skipped
- * and the notice says which tool would run it, so a skipped confirmation is never mistaken for a pass.
+ * A `describe` that runs only when the external tool is installed and works. When it is not, the suite is skipped
+ * and its title says why, so a skipped confirmation is never mistaken for a pass, and the notice names the tool.
  */
-export function describeWithTool(executable: string, name: string, body: () => void): void {
-  const installed = toolInstalled(executable);
-  if (!installed) console.warn(`SKIPPED "${name}": ${executable} is not installed. Install it to run these checks; the rest of the suite does not need it.`);
-  describe.skipIf(!installed)(`${name} (needs ${executable})`, body);
+export function describeWithTool(executable: string, name: string, body: () => void, probe?: ToolProbe): void {
+  const installed = toolInstalled(executable, probe);
+  if (!installed) console.warn(`SKIPPED "${name}": ${probe?.executable ?? executable} is not installed or does not run. Install it to run these checks; the rest of the suite does not need it.`);
+  describe.skipIf(!installed)(installed ? `${name} (needs ${executable})` : `${name} (SKIPPED: ${executable} is not installed or does not run)`, body);
 }

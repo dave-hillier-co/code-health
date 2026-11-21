@@ -66,5 +66,5 @@ describe("confirmation by clangd", () => {
       expect(result.confirmations[0]!.detail).toContain("src/app/main.cpp:1");
       expect(result.confirmations[0]!.detail).toContain("gone.h");
     });
-  });
+  }, { args: ["--version"] });
 });

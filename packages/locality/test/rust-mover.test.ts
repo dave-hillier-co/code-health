@@ -1,8 +1,8 @@
-import { spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { describeWithTool } from "@code-health/fixtures/language-conformance";
 import { adapterById, overrideSupportedAdapters } from "@code-health/parse/languages";
 import { treeFromTexts } from "@code-health/parse/source-tree";
 import { performMove } from "../src/move-engine.ts";
@@ -75,18 +75,13 @@ describe("confirming a Rust move with rust-analyzer", () => {
   });
 });
 
-/** True when rust-analyzer runs. The rustup shim named `rust-analyzer` is on the PATH of machines that have not installed the component, and fails when run. */
-const works = spawnSync("rust-analyzer", ["--version"], { stdio: "ignore" }).status === 0;
-if (!works) console.warn('SKIPPED "the Rust mover with a real rust-analyzer": rust-analyzer is not installed or does not run. Install it to run this check; the rest of the suite does not need it.');
-
-describe.skipIf(!works)("the Rust mover with a real rust-analyzer (needs rust-analyzer)", () => {
-  it("answers, with a status and a detail, for a small workspace", async () => {
+// The rustup shim named `rust-analyzer` is on the PATH of machines that have not installed the component, and fails when run, so the tool must answer `--version`.
+describeWithTool("rust-analyzer", "the Rust mover with a real rust-analyzer", () => {
+  it("confirms a correct move of a small workspace", async () => {
     const result = await performMove(tree, operations);
-    expect(result.confirmations).toHaveLength(1);
-    expect(["confirmed", "not confirmed"]).toContain(result.confirmations[0]!.status);
-    expect(result.confirmations[0]!.detail).not.toBe("");
-  });
-});
+    expect(result.confirmations).toMatchObject([{ language: "rust", tool: "rust-analyzer", status: "confirmed" }]);
+  }, 300_000);
+}, { args: ["--version"] });
 
 describe("verifying a Rust move somebody else made", () => {
   const moved = {

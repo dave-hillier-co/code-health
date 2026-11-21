@@ -22,4 +22,4 @@ describeWithTool(tool.executable, "the C# move fixtures confirmed by Roslyn", ()
       overrideSupportedAdapters(undefined);
     }
   }, 300_000);
-});
+}, { executable: "dotnet", args: ["--version"] });

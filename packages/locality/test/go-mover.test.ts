@@ -54,4 +54,4 @@ describeWithTool("gopls", "the Go mover confirmed by gopls", () => {
     const result = await performMove(tree, [{ from: "b/do.go", to: "a/do.go", role: "unit" }]);
     expect(result.confirmations).toEqual([{ language: "go", tool: "gopls", status: "confirmed", detail: expect.stringContaining("no problem") }]);
   });
-});
+}, { args: ["version"] });
