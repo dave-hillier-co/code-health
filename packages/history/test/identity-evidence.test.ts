@@ -120,6 +120,33 @@ test("a handover in time on shared files supports a link but never makes one", (
   expect(alone.links).toEqual([]);
 });
 
+test("the handover window is inclusive at its edges: a gap of 90 days and an overlap of 14 days count, one day more does not", () => {
+  const handover = (lastDay: number, firstDay: number, filesLater = ["src/a.ts"]) =>
+    signalsOf(
+      analyse([
+        { name: "Ann Lee", email: "ann@home.net", firstDay: 0, lastDay, files: ["src/a.ts"] },
+        { name: "Ann Lee", email: "ann@corp.com", firstDay, lastDay: firstDay + 60, files: filesLater },
+      ]).links,
+    );
+  expect(HANDOVER_MAX_GAP_DAYS).toBe(90);
+  expect(HANDOVER_MAX_OVERLAP_DAYS).toBe(14);
+  expect(handover(50, 50 + HANDOVER_MAX_GAP_DAYS)).toContain("handover");
+  expect(handover(50, 50 + HANDOVER_MAX_GAP_DAYS + 1)).not.toContain("handover");
+  expect(handover(50, 50 - HANDOVER_MAX_OVERLAP_DAYS)).toContain("handover");
+  expect(handover(50, 50 - HANDOVER_MAX_OVERLAP_DAYS - 1)).not.toContain("handover");
+});
+
+test("a handover needs a shared file", () => {
+  const signals = signalsOf(
+    analyse([
+      { name: "Ann Lee", email: "ann@home.net", firstDay: 0, lastDay: 50, files: ["src/a.ts"] },
+      { name: "Ann Lee", email: "ann@corp.com", firstDay: 52, lastDay: 120, files: ["src/other.ts"] },
+    ]).links,
+  );
+  expect(signals).toContain("same-name");
+  expect(signals).not.toContain("handover");
+});
+
 test("exclusive pairing as author and committer supports a link", () => {
   const pairing: Pairing = {
     committersOfAuthor: new Map([["jo@home", new Map([["jo@corp", 4]])]]),
