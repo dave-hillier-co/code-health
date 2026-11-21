@@ -1,0 +1,529 @@
+{
+  "command": "risk",
+  "config": "f27097642e6c5c69",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 8,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 4.8,
+    "window": {
+      "months": 12,
+      "since": 1685610000,
+      "until": 1717232400
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "baseline": {
+      "direct": 7,
+      "mergedChanges": 7,
+      "merges": 0,
+      "population": 7,
+      "since": "2023-06-01T09:00:00.000Z"
+    },
+    "range": "main..alice",
+    "worktree": false
+  },
+  "repo": {
+    "dirty": false,
+    "head": "d7983636855a817b03dc2da235e3aa5418f3e989"
+  },
+  "results": {
+    "change": {
+      "added": 6,
+      "against": "main",
+      "agentCommits": 0,
+      "authors": 1,
+      "base": "d7983636855a817b03dc2da235e3aa5418f3e989",
+      "commits": 1,
+      "deleted": 6,
+      "files": 1,
+      "filteredPaths": 0,
+      "head": "c4b74c62217bdfa23a84d96f36d69194c5bf78fc",
+      "moved": 0,
+      "paths": [
+        {
+          "added": 6,
+          "deleted": 6,
+          "path": "src/ledger/ledger.ts",
+          "status": "M"
+        }
+      ],
+      "pathsNotShown": 0,
+      "worktree": false
+    },
+    "factors": [
+      {
+        "band": null,
+        "evidence": [],
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "size",
+        "reason": "fewer than 10 merged changes in the baseline, so a value of 12 cannot be placed",
+        "scored": true,
+        "source": "history",
+        "status": "unavailable",
+        "thresholds": {
+          "lines": null
+        },
+        "value": {
+          "files": 1,
+          "lines": 12
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "spread",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "spread": null
+        },
+        "value": {
+          "components": null,
+          "folders": 1,
+          "spread": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "entropy",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "entropy": null
+        },
+        "value": {
+          "entropy": 0,
+          "files": 1
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "mixed-purpose",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "edited": 1,
+          "editedWhileMoved": 0,
+          "moved": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "history",
+        "layer": "history",
+        "name": "hotspots-touched",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "share": null
+        },
+        "value": {
+          "hotFiles": 0,
+          "share": 0
+        }
+      },
+      {
+        "band": null,
+        "evidence": [],
+        "family": "history",
+        "layer": "history",
+        "name": "defect-history",
+        "reason": "no change in the window matches a fix or revert pattern, so the commit messages cannot say which revisions were fixes",
+        "scored": true,
+        "source": "history",
+        "status": "unavailable",
+        "thresholds": {},
+        "value": {}
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "history",
+        "layer": "history",
+        "name": "contention",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "authors": null
+        },
+        "value": {
+          "authors": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "history",
+        "layer": "history",
+        "name": "age",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "settling": null,
+          "stale": null
+        },
+        "value": {
+          "known": 1,
+          "settling": 0,
+          "stale": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "completeness",
+        "layer": "history",
+        "name": "missing-co-change",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "count": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "completeness",
+        "layer": "history",
+        "name": "novel-coupling",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "count": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "completeness",
+        "layer": "history",
+        "name": "test-evidence",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "count": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "structure-and-content",
+        "layer": "history",
+        "name": "blast-radius",
+        "reason": null,
+        "scored": true,
+        "source": "co-change",
+        "status": "ok",
+        "thresholds": {
+          "files": null
+        },
+        "value": {
+          "files": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "structure-and-content",
+        "layer": "history",
+        "name": "sensitive-paths",
+        "reason": null,
+        "scored": false,
+        "source": "configured globs",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "count": 0
+        }
+      }
+    ],
+    "impact": {
+      "band": "unavailable",
+      "baseline": {
+        "high": null,
+        "moderate": null,
+        "population": 7
+      },
+      "events": [],
+      "score": 0,
+      "scoreBand": "unavailable",
+      "unavailable": [
+        "defect-history",
+        "size"
+      ]
+    },
+    "kind": "assessment",
+    "placement": {
+      "band": "close",
+      "basis": "blame",
+      "blame": {
+        "missing": 0,
+        "refreshed": true,
+        "used": true
+      },
+      "factors": [
+        {
+          "band": null,
+          "evidence": [
+            {
+              "file": "src/ledger/ledger.ts",
+              "share": 0.4
+            }
+          ],
+          "family": "placement",
+          "layer": "placement",
+          "name": "authorship",
+          "reason": null,
+          "scored": false,
+          "source": "blame",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "files": 1,
+            "meanShare": 0.4
+          }
+        },
+        {
+          "band": null,
+          "evidence": [
+            {
+              "earlierChanges": 1,
+              "familiarity": 0.78,
+              "file": "src/ledger/ledger.ts",
+              "recentChanges": 0
+            }
+          ],
+          "family": "placement",
+          "layer": "placement",
+          "name": "change-familiarity",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "familiarity": 0.78,
+            "files": 1
+          }
+        },
+        {
+          "band": null,
+          "evidence": [
+            {
+              "coupled": 0,
+              "file": "src/ledger/ledger.ts",
+              "folder": 0
+            }
+          ],
+          "family": "placement",
+          "layer": "placement",
+          "name": "neighbourhood",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "coupled": 0,
+            "folder": 0
+          }
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "layer": "placement",
+          "name": "first-touch-share",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "share": 0
+          }
+        },
+        {
+          "band": null,
+          "evidence": [
+            {
+              "file": "src/ledger/ledger.ts",
+              "share": 0.6
+            }
+          ],
+          "family": "placement",
+          "layer": "placement",
+          "name": "owner-distance",
+          "reason": null,
+          "scored": false,
+          "source": "blame",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "files": 1
+          }
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "layer": "placement",
+          "name": "no-owner",
+          "reason": null,
+          "scored": false,
+          "source": "blame",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "files": 0
+          }
+        }
+      ],
+      "files": [
+        {
+          "authorship": 0.4,
+          "churn": 12,
+          "earlierChanges": 1,
+          "familiarity": 0.78,
+          "file": "src/ledger/ledger.ts",
+          "label": "regular",
+          "recentChanges": 0
+        }
+      ],
+      "mode": "any",
+      "newIdentity": false,
+      "reason": null,
+      "shares": {
+        "first-touch": 0,
+        "occasional": 0,
+        "owner": 0,
+        "regular": 1,
+        "unknown": 0
+      },
+      "status": "computed"
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2024-01-08T09:00:00.000Z",
+    "until": "2024-06-01T09:00:00.000Z"
+  }
+}

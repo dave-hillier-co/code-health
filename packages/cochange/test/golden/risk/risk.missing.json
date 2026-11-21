@@ -86,6 +86,7 @@
       "added": 20,
       "against": "main",
       "agentCommits": 0,
+      "authors": 1,
       "base": "a8315ddcd7fd55944a8c26867938cd8591afee71",
       "commits": 1,
       "deleted": 20,
@@ -435,7 +436,151 @@
         "defect-history"
       ]
     },
-    "kind": "assessment"
+    "kind": "assessment",
+    "placement": {
+      "band": "unknown",
+      "basis": "blame",
+      "blame": {
+        "missing": 0,
+        "refreshed": true,
+        "used": true
+      },
+      "factors": [
+        {
+          "band": null,
+          "evidence": [
+            {
+              "file": "src/billing/invoice.ts",
+              "share": 1
+            }
+          ],
+          "family": "placement",
+          "layer": "placement",
+          "name": "authorship",
+          "reason": null,
+          "scored": false,
+          "source": "blame",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "files": 1,
+            "meanShare": 1
+          }
+        },
+        {
+          "band": null,
+          "evidence": [
+            {
+              "earlierChanges": 7,
+              "familiarity": 5.82,
+              "file": "src/billing/invoice.ts",
+              "recentChanges": 3
+            }
+          ],
+          "family": "placement",
+          "layer": "placement",
+          "name": "change-familiarity",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "familiarity": 5.82,
+            "files": 1
+          }
+        },
+        {
+          "band": null,
+          "evidence": [
+            {
+              "coupled": 12,
+              "file": "src/billing/invoice.ts",
+              "folder": 12
+            }
+          ],
+          "family": "placement",
+          "layer": "placement",
+          "name": "neighbourhood",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "coupled": 12,
+            "folder": 12
+          }
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "layer": "placement",
+          "name": "first-touch-share",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "share": 0
+          }
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "layer": "placement",
+          "name": "owner-distance",
+          "reason": null,
+          "scored": false,
+          "source": "blame",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "files": 0
+          }
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "layer": "placement",
+          "name": "no-owner",
+          "reason": null,
+          "scored": false,
+          "source": "blame",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "files": 0
+          }
+        }
+      ],
+      "files": [
+        {
+          "authorship": 1,
+          "churn": 40,
+          "earlierChanges": 7,
+          "familiarity": 5.82,
+          "file": "src/billing/invoice.ts",
+          "label": "unknown",
+          "recentChanges": 3
+        }
+      ],
+      "mode": "self",
+      "newIdentity": true,
+      "reason": null,
+      "shares": {
+        "first-touch": 0,
+        "occasional": 0,
+        "owner": 0,
+        "regular": 0,
+        "unknown": 1
+      },
+      "status": "computed"
+    }
   },
   "schemaVersion": 1,
   "tool": "cochange",

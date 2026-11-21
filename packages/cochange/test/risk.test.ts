@@ -10,6 +10,9 @@ import { runCochange } from "./support/run.ts";
 let repo: GitFixture;
 beforeAll(() => {
   repo = riskHistory();
+  // The invoking identity decides whose placement is computed, so the goldens must not depend on the machine's own git config.
+  repo.git("config", "user.email", "alice@example.com");
+  repo.git("config", "user.name", "Alice");
 }, 60_000);
 afterAll(() => repo.dispose());
 beforeEach(() => {

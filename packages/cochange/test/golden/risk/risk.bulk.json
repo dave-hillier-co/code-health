@@ -86,6 +86,7 @@
       "added": 360,
       "against": "main",
       "agentCommits": 0,
+      "authors": 1,
       "base": "a8315ddcd7fd55944a8c26867938cd8591afee71",
       "commits": 1,
       "deleted": 0,
@@ -456,7 +457,23 @@
       "scoreBand": "moderate",
       "unavailable": []
     },
-    "kind": "assessment"
+    "kind": "assessment",
+    "placement": {
+      "band": null,
+      "basis": null,
+      "blame": {
+        "missing": 0,
+        "refreshed": false,
+        "used": false
+      },
+      "factors": [],
+      "files": [],
+      "mode": "self",
+      "newIdentity": false,
+      "reason": "the change was not written only by the invoking git identity; cochange.risk.placement: any computes placement for someone else's branch",
+      "shares": null,
+      "status": "withheld"
+    }
   },
   "schemaVersion": 1,
   "tool": "cochange",

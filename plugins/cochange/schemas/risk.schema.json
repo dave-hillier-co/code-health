@@ -137,6 +137,10 @@
             },
             "pathsNotShown": {
               "$ref": "#/$defs/count"
+            },
+            "authors": {
+              "$ref": "#/$defs/count",
+              "description": "People among the commits' authors, after the mailmap. Never named."
             }
           },
           "required": [
@@ -151,6 +155,7 @@
             "moved",
             "filteredPaths",
             "agentCommits",
+            "authors",
             "paths",
             "pathsNotShown"
           ],
@@ -234,12 +239,16 @@
           "items": {
             "$ref": "#/$defs/factor"
           }
+        },
+        "placement": {
+          "$ref": "#/$defs/placement"
         }
       },
       "required": [
         "kind",
         "change",
         "impact",
+        "placement",
         "factors"
       ],
       "additionalProperties": false
@@ -710,6 +719,195 @@
         "separation",
         "limits",
         "stored"
+      ],
+      "additionalProperties": false
+    },
+    "placement": {
+      "description": "How the change's authors stand to the code it touches. Computed for the invoking git identity's own change, or for anyone's when cochange.risk.placement is any. Never stored, and no one is named.",
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "computed",
+            "withheld",
+            "off"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "self",
+            "any",
+            "off"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why it was withheld or off."
+        },
+        "band": {
+          "enum": [
+            "close",
+            "mixed",
+            "distant",
+            "unknown",
+            null
+          ]
+        },
+        "basis": {
+          "enum": [
+            "blame",
+            "history",
+            "mixed",
+            null
+          ],
+          "description": "blame when the cache supplied authorship, history when the labels came from change familiarity alone."
+        },
+        "newIdentity": {
+          "type": "boolean",
+          "description": "Every person among the authors is a new identity, so no file is placed: unknown, not first-touch."
+        },
+        "shares": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "description": "Share of the change's churn in files of each label.",
+              "properties": {
+                "owner": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "regular": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "occasional": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "first-touch": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "unknown": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "owner",
+                "regular",
+                "occasional",
+                "first-touch",
+                "unknown"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "label": {
+                "enum": [
+                  "owner",
+                  "regular",
+                  "occasional",
+                  "first-touch",
+                  "unknown"
+                ]
+              },
+              "churn": {
+                "$ref": "#/$defs/count"
+              },
+              "earlierChanges": {
+                "$ref": "#/$defs/count"
+              },
+              "recentChanges": {
+                "$ref": "#/$defs/count"
+              },
+              "familiarity": {
+                "type": "number",
+                "minimum": 0
+              },
+              "authorship": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "file",
+              "label",
+              "churn",
+              "earlierChanges",
+              "recentChanges",
+              "familiarity",
+              "authorship"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "blame": {
+          "type": "object",
+          "properties": {
+            "used": {
+              "type": "boolean"
+            },
+            "missing": {
+              "$ref": "#/$defs/count"
+            },
+            "refreshed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "used",
+            "missing",
+            "refreshed"
+          ],
+          "additionalProperties": false
+        },
+        "factors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/factor"
+          }
+        }
+      },
+      "required": [
+        "status",
+        "mode",
+        "reason",
+        "band",
+        "basis",
+        "newIdentity",
+        "shares",
+        "files",
+        "blame",
+        "factors"
       ],
       "additionalProperties": false
     }

@@ -1,12 +1,12 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { analysisCommand } from "../analysis-command.ts";
-import { assessBranch } from "../risk/assess.ts";
 import { readRiskSettings } from "../risk/settings.ts";
 import { resolveRange } from "../risk/change.ts";
-import { describeChange } from "../risk/result.ts";
 import { explainFactor, explainRules } from "../risk/explain.ts";
 import { runBacktest } from "../risk/run-backtest.ts";
+import { runRisk } from "../risk/run-risk.ts";
+import { assessBranch } from "../risk/assess.ts";
 
 export const name = "risk";
 
@@ -62,15 +62,6 @@ export const command = analysisCommand(name, {
     }
     if (sub === "backtest") return runBacktest(context, history);
     if (sub !== null) throw usageError(`risk ${sub} is not available yet`);
-    const assessed = await assessBranch(context, history, { range: rangeOf(rest), worktree: context.values.worktree === true });
-    return {
-      inputs: { range: rangeOf(rest) ?? null, worktree: context.values.worktree === true, baseline: assessed.baseline },
-      results: {
-        kind: "assessment",
-        change: describeChange(assessed),
-        impact: assessed.impact,
-        factors: assessed.factors,
-      },
-    };
+    return runRisk(context, history, rangeOf(rest));
   },
 });

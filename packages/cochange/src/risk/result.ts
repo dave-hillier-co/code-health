@@ -19,6 +19,7 @@ export function describeChange(assessed: Assessed) {
     moved: change.moved,
     filteredPaths: change.filtered,
     agentCommits: change.agentCommits,
+    authors: new Set([...change.owners.values()].filter((o) => o.kind === "person").map((o) => o.key)).size,
     paths: change.files.slice(0, FILES_SHOWN).map((file) => ({
       path: file.path,
       status: file.status,
