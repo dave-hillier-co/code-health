@@ -1,0 +1,419 @@
+{
+  "command": "packages",
+  "config": "fab20fbe38119c11",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": true
+    },
+    "grade": "moderate",
+    "importedHistory": [],
+    "logicalChangesInWindow": 94,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 12.7,
+    "window": {
+      "months": 12,
+      "since": 1687251600,
+      "until": 1718874000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "graceDays": 180,
+    "subcommand": "list"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "846eb337b94f2b7b8c5142554bfd3aa4a22adac8"
+  },
+  "repository": {
+    "ecosystems": {
+      "npm": 12
+    },
+    "eligibleChanges": 94,
+    "packages": 12
+  },
+  "results": [
+    {
+      "abstractness": null,
+      "ca": 1,
+      "ce": 2,
+      "closure": 0.2,
+      "consumers": [
+        "packages/app"
+      ],
+      "crossing": 12,
+      "dependencies": [
+        "packages/helper",
+        "packages/shared"
+      ],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 3,
+      "firstSeen": "2023-06-05",
+      "id": "packages/api",
+      "instability": 0.667,
+      "kind": "internal",
+      "name": "@acme/api",
+      "purpose": null,
+      "revisions": 15,
+      "share": 0.16,
+      "testSupport": false,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 0,
+      "ce": 7,
+      "closure": 0.13,
+      "consumers": [],
+      "crossing": 20,
+      "dependencies": [
+        "packages/api",
+        "packages/lib",
+        "packages/p1",
+        "packages/shared",
+        "packages/ui",
+        "packages/wrap",
+        "packages/young"
+      ],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": true,
+      "files": 4,
+      "firstSeen": "2023-06-11",
+      "id": "packages/app",
+      "instability": 1,
+      "kind": "internal",
+      "name": "@acme/app",
+      "purpose": null,
+      "revisions": 23,
+      "share": 0.245,
+      "testSupport": false,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 1,
+      "ce": 0,
+      "closure": 0.231,
+      "consumers": [
+        "packages/api"
+      ],
+      "crossing": 10,
+      "dependencies": [],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 5,
+      "firstSeen": "2023-06-03",
+      "id": "packages/helper",
+      "instability": 0,
+      "kind": "internal",
+      "name": "@acme/helper",
+      "purpose": null,
+      "revisions": 13,
+      "share": 0.138,
+      "testSupport": false,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 2,
+      "ce": 0,
+      "closure": 1,
+      "consumers": [
+        "packages/app",
+        "packages/ui"
+      ],
+      "crossing": 0,
+      "dependencies": [],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 8,
+      "firstSeen": "2023-06-02",
+      "id": "packages/lib",
+      "instability": 0,
+      "kind": "published",
+      "name": "@acme/lib",
+      "purpose": null,
+      "revisions": 3,
+      "share": 0.032,
+      "testSupport": false,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 1,
+      "ce": 1,
+      "closure": 0.167,
+      "consumers": [],
+      "crossing": 5,
+      "dependencies": [
+        "packages/shared"
+      ],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 3,
+      "firstSeen": "2023-06-07",
+      "id": "packages/orphan",
+      "instability": 0.5,
+      "kind": "internal",
+      "name": "@acme/orphan",
+      "purpose": null,
+      "revisions": 6,
+      "share": 0.064,
+      "testSupport": false,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 2,
+      "ce": 1,
+      "closure": 0,
+      "consumers": [
+        "packages/app",
+        "packages/p2"
+      ],
+      "crossing": 4,
+      "dependencies": [
+        "packages/p2"
+      ],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 3,
+      "firstSeen": "2023-06-08",
+      "id": "packages/p1",
+      "instability": 0.333,
+      "kind": "internal",
+      "name": "@acme/p1",
+      "purpose": null,
+      "revisions": 4,
+      "share": 0.043,
+      "testSupport": false,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 1,
+      "ce": 1,
+      "closure": 0,
+      "consumers": [
+        "packages/p1"
+      ],
+      "crossing": 4,
+      "dependencies": [
+        "packages/p1"
+      ],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 3,
+      "firstSeen": "2023-06-09",
+      "id": "packages/p2",
+      "instability": 0.5,
+      "kind": "internal",
+      "name": "@acme/p2",
+      "purpose": null,
+      "revisions": 4,
+      "share": 0.043,
+      "testSupport": false,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 4,
+      "ce": 0,
+      "closure": 0.648,
+      "consumers": [
+        "packages/api",
+        "packages/app",
+        "packages/orphan",
+        "packages/ui"
+      ],
+      "crossing": 19,
+      "dependencies": [],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 7,
+      "firstSeen": "2023-06-01",
+      "id": "packages/shared",
+      "instability": 0,
+      "kind": "internal",
+      "name": "@acme/shared",
+      "purpose": null,
+      "revisions": 54,
+      "share": 0.574,
+      "testSupport": false,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 0,
+      "ce": 0,
+      "closure": 1,
+      "consumers": [],
+      "crossing": 0,
+      "dependencies": [],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 3,
+      "firstSeen": "2023-06-10",
+      "id": "packages/testkit",
+      "instability": null,
+      "kind": "internal",
+      "name": "@acme/testkit",
+      "purpose": null,
+      "revisions": 1,
+      "share": 0.011,
+      "testSupport": true,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 2,
+      "ce": 3,
+      "closure": 0.2,
+      "consumers": [
+        "packages/wrap"
+      ],
+      "crossing": 12,
+      "dependencies": [
+        "packages/lib",
+        "packages/orphan",
+        "packages/shared"
+      ],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 3,
+      "firstSeen": "2023-06-04",
+      "id": "packages/ui",
+      "instability": 0.6,
+      "kind": "internal",
+      "name": "@acme/ui",
+      "purpose": null,
+      "revisions": 15,
+      "share": 0.16,
+      "testSupport": false,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 1,
+      "ce": 1,
+      "closure": 1,
+      "consumers": [
+        "packages/app"
+      ],
+      "crossing": 0,
+      "dependencies": [
+        "packages/ui"
+      ],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 3,
+      "firstSeen": "2023-06-06",
+      "id": "packages/wrap",
+      "instability": 0.5,
+      "kind": "internal",
+      "name": "@acme/wrap",
+      "purpose": null,
+      "revisions": 1,
+      "share": 0.011,
+      "testSupport": false,
+      "young": false
+    },
+    {
+      "abstractness": null,
+      "ca": 1,
+      "ce": 0,
+      "closure": 0,
+      "consumers": [
+        "packages/app"
+      ],
+      "crossing": 1,
+      "dependencies": [],
+      "distance": null,
+      "ecosystem": "npm",
+      "entry": false,
+      "files": 3,
+      "firstSeen": "2024-05-20",
+      "id": "packages/young",
+      "instability": 0,
+      "kind": "internal",
+      "name": "@acme/young",
+      "purpose": null,
+      "revisions": 1,
+      "share": 0.011,
+      "testSupport": false,
+      "young": true
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 12
+  },
+  "window": {
+    "since": "2023-06-20T09:00:00.000Z",
+    "until": "2024-06-20T09:00:00.000Z"
+  }
+}

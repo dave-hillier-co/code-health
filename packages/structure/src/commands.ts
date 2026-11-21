@@ -1,6 +1,7 @@
 import type { Command, Rule } from "@code-health/cli-kit/run-cli";
 import * as cycles from "./commands/cycles.ts";
 import * as evidence from "./commands/evidence.ts";
+import * as packages from "./commands/packages.ts";
 import * as stability from "./commands/stability.ts";
 
 /** What a module in `commands/` exports. */
@@ -20,6 +21,7 @@ export interface CommandModule {
 export const commandModules: CommandModule[] = [
   cycles,
   evidence,
+  packages,
   stability,
 ];
 

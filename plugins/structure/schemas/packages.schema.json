@@ -1,0 +1,385 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "packages.schema.json",
+  "title": "structure packages --json",
+  "description": "One schema for every `structure packages` subcommand. `inputs.subcommand` says which, and selects the shape of `results`.",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/analysisEnvelope"
+    },
+    {
+      "if": {
+        "properties": {
+          "inputs": {
+            "properties": {
+              "subcommand": {
+                "const": "list"
+              }
+            },
+            "required": [
+              "subcommand"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "inputs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "$ref": "#/$defs/listInputs"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/packageRow"
+            }
+          },
+          "repository": {
+            "$ref": "#/$defs/repository"
+          }
+        },
+        "required": [
+          "repository"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "inputs": {
+            "properties": {
+              "subcommand": {
+                "const": "cohesion"
+              }
+            },
+            "required": [
+              "subcommand"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "inputs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "$ref": "#/$defs/cohesionInputs"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/finding"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "packages"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "subcommand": {
+          "enum": [
+            "list",
+            "cohesion"
+          ]
+        }
+      },
+      "required": [
+        "subcommand"
+      ]
+    },
+    "repository": true
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "listInputs": {
+      "type": "object",
+      "properties": {
+        "subcommand": {
+          "const": "list"
+        },
+        "graceDays": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "subcommand",
+        "graceDays"
+      ],
+      "additionalProperties": false
+    },
+    "cohesionInputs": {
+      "type": "object",
+      "properties": {
+        "subcommand": {
+          "const": "cohesion"
+        },
+        "package": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "subcommand",
+        "package"
+      ],
+      "additionalProperties": false
+    },
+    "repository": {
+      "type": "object",
+      "properties": {
+        "packages": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "ecosystems": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/count"
+          }
+        },
+        "eligibleChanges": {
+          "$ref": "common.schema.json#/$defs/count"
+        }
+      },
+      "required": [
+        "packages",
+        "ecosystems",
+        "eligibleChanges"
+      ],
+      "additionalProperties": false
+    },
+    "packageRow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "ecosystem": {
+          "enum": [
+            "npm",
+            "dotnet",
+            "cmake",
+            "gradle",
+            "maven",
+            "python",
+            "cargo",
+            "go",
+            "component"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "internal",
+            "published"
+          ]
+        },
+        "purpose": {
+          "enum": [
+            "reuse",
+            "deploy",
+            "ownership",
+            "build",
+            "enforcement",
+            null
+          ]
+        },
+        "entry": {
+          "type": "boolean"
+        },
+        "testSupport": {
+          "type": "boolean"
+        },
+        "files": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "consumers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ca": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "ce": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "instability": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "abstractness": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "distance": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "closure": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "share": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "crossing": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "revisions": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "firstSeen": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "young": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "ecosystem",
+        "kind",
+        "purpose",
+        "entry",
+        "testSupport",
+        "files",
+        "consumers",
+        "dependencies",
+        "ca",
+        "ce",
+        "instability",
+        "abstractness",
+        "distance",
+        "closure",
+        "share",
+        "crossing",
+        "revisions",
+        "firstSeen",
+        "young"
+      ],
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "principle": {
+          "enum": [
+            "CCP",
+            "CRP",
+            "REP",
+            "ADP",
+            "SDP",
+            "SAP",
+            "boundary"
+          ]
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              { "type": "number" },
+              { "type": "string" },
+              { "type": "boolean" },
+              { "type": "null" },
+              { "type": "array", "items": { "type": "string" } }
+            ]
+          }
+        },
+        "changeCost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tentative": {
+          "type": "boolean"
+        },
+        "priority": {
+          "enum": [
+            "normal",
+            "low"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "principle",
+        "packages",
+        "unit",
+        "summary",
+        "evidence",
+        "changeCost",
+        "tentative",
+        "priority"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

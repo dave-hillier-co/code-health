@@ -4,6 +4,7 @@ import { DEFAULT_EVIDENCE_THRESHOLDS, type EvidenceThresholds } from "@code-heal
 import { DEFAULT_MAX_CHANGESET_SIZE } from "@code-health/history/noise";
 import { DEFAULT_RENAME_LIMIT, DEFAULT_SIMILARITY } from "@code-health/history/refresh";
 import { DEFAULT_EXACT_LIMIT } from "@code-health/graph/feedback-arc-set";
+import { packagesDefaults, readPackageSettings, type PackageSettings } from "./packaging/settings.ts";
 import { TOOL } from "./tool.ts";
 
 /**
@@ -36,6 +37,8 @@ export const structureConfig: PluginConfigSpec = {
       strong: { ...DEFAULT_EVIDENCE_THRESHOLDS.strong },
       moderate: { ...DEFAULT_EVIDENCE_THRESHOLDS.moderate },
     },
+    /** The packaging skill's settings; see docs/specs/packaging.md. */
+    packages: packagesDefaults,
   },
 };
 
@@ -58,6 +61,7 @@ export interface StructureSettings {
   /** The suite's shared `components` config, as written. */
   components: Record<string, unknown>;
   evidenceThresholds: EvidenceThresholds;
+  packages: PackageSettings;
   /** True when the config file states the analysis window, which a shallow clone requires. */
   windowStated: boolean;
 }
@@ -103,6 +107,7 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     exclude: config.effective.exclude,
     components: config.effective.components,
     evidenceThresholds: section.evidence as EvidenceThresholds,
+    packages: readPackageSettings(section.packages as Record<string, unknown>, at("packages")),
     windowStated: config.sources[at("windowMonths")] === "file",
   };
 }
