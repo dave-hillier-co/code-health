@@ -2105,6 +2105,19 @@ __export(hotspots_exports, {
 // packages/cochange/src/complexity-source.ts
 import { existsSync as existsSync5, readFileSync as readFileSync4 } from "node:fs";
 
+// packages/lexical/src/agreement.ts
+function exactRate(counts) {
+  return counts.units === 0 ? 0 : Math.round(counts.exact / counts.units * 1e4) / 1e4;
+}
+function spuriousRate(counts) {
+  return counts.blocks === 0 ? 0 : Math.round(counts.spurious / counts.blocks * 1e4) / 1e4;
+}
+
+// packages/lexical/src/agreement-rates.ts
+var recordedAgreement = {
+  typescript: { units: 75, found: 63, exact: 59, blocks: 68, spurious: 6 }
+};
+
 // packages/lexical/src/indentation.ts
 var DEFAULT_UNIT = 4;
 var MAX_UNIT = 8;
@@ -2465,7 +2478,7 @@ var regexLiteral = {
   kind: "whole",
   triggers: "/",
   pattern: "/(?![*/])(?:\\\\.|\\[(?:\\\\.|[^\\]\\\\\\n])*\\]|[^/\\\\\\[\\n])+/[a-z]*",
-  after: "(?:^|[(,=:\\[!&|?{};<>~^%*]|\\b(?:return|typeof|case|in|of|delete|void|throw|new|else|do|yield|await))\\s*$"
+  after: "(?:[(,=:\\[!&|?{};<>~^%]|\\b(?:return|typeof|case|in|of|delete|void|throw|new|else|do|yield|await))\\s*$"
 };
 var typescript = {
   name: "typescript",
@@ -2855,6 +2868,7 @@ function maskLiterals(content, profile) {
 }
 
 // packages/lexical/src/analyse-source.ts
+var DEFAULT_AGREEMENT_BAR = 0.9;
 function analyseSource(path, content, options = {}) {
   const selection = selectProfile(path, options.mappings);
   const profile = selection?.profile;
@@ -2883,9 +2897,20 @@ function analyseSource(path, content, options = {}) {
     profile: profile?.name ?? null,
     unverified: selection?.mapped ?? false,
     file,
-    functions: { gated: true, gate: "agreement", blocks },
+    functions: releaseFunctions(profile?.name, selection?.mapped ?? false, blocks, options),
     skipped
   };
+}
+function releaseFunctions(profileName, mapped, blocks, options) {
+  const gated = (reason) => ({ gated: true, gate: "agreement", reason, blocks });
+  if (profileName === void 0) return gated("no lexer profile");
+  if (mapped) return gated("profile mapped by config, so no agreement is measured for this language");
+  const counts = (options.agreement ?? recordedAgreement)[profileName];
+  if (counts === void 0) return gated(`no agreement measured for ${profileName}`);
+  const bar = options.agreementBar ?? DEFAULT_AGREEMENT_BAR;
+  const rate = exactRate(counts);
+  if (rate < bar) return gated(`${profileName} agreement ${rate} is below the bar ${bar}`);
+  return { gated: false, gate: "agreement", agreement: { exactRate: rate, spuriousRate: spuriousRate(counts), bar }, blocks };
 }
 
 // packages/lexical/src/indentation-complexity.ts
