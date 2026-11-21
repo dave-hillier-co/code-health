@@ -1,0 +1,18 @@
+{
+  "importEdges": [
+    "include/core/api.h -> include/core/detail.h import",
+    "src/app/main.cpp -> include/core/api.h import",
+    "src/app/main.cpp -> src/app/util.h import",
+    "src/app/main.cpp -> third_party/fmt/format.h import"
+  ],
+  "fileEdges": [
+    "include/core/api.h -> include/core/detail.h reference call=0 reference=0",
+    "src/app/main.cpp -> include/core/api.h reference call=0 reference=0",
+    "src/app/main.cpp -> src/app/util.h reference call=0 reference=0",
+    "src/app/main.cpp -> third_party/fmt/format.h reference call=0 reference=0"
+  ],
+  "consumers": [],
+  "unresolved": ["src/app/main.cpp:6 missing.h not-found"],
+  "barrels": [],
+  "syntaxErrors": []
+}

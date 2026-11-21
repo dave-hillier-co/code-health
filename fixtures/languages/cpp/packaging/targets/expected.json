@@ -1,0 +1,11 @@
+{
+  "packages": {
+    "app": { "ecosystem": "cmake", "exportedTypes": 0, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
+    "base": { "ecosystem": "cmake", "exportedTypes": 0, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
+    "core": { "ecosystem": "cmake", "exportedTypes": 4, "abstractness": 0.5, "abstractnessWeak": false, "consumers": ["app"] }
+  },
+  "findings": [
+    "deep-import core app | app imports 1 file of core past its entry points: core/src/detail.h",
+    "unused-dependency core | core declares base and its code never uses it: coupling with no purpose, and build weight"
+  ]
+}

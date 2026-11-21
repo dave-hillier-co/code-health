@@ -1,0 +1,15 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "members.cpp": [
+      ["fact", 2, 2, 2, 1, 4, 3, 1, 0],
+      ["Tree.depth", 2, 2, 2, 0, 3, 1, 1, 0],
+      ["Widget.Widget", 2, 2, 1, 0, 1, 0, 1, 0],
+      ["Widget.~Widget", 1, 1, 0, 0, 1, 0, 0, 0],
+      ["Widget.operator==", 1, 1, 0, 0, 3, 1, 1, 0],
+      ["Widget.grow", 2, 2, 2, 1, 7, 4, 1, 0],
+      ["noop", 1, 1, 0, 0, 1, 0, 0, 0],
+      ["many", 1, 1, 0, 0, 2, 0, 4, 0]
+    ]
+  }
+}

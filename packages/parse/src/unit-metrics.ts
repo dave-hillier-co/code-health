@@ -135,7 +135,7 @@ class Measurer {
       return;
     }
     if (type === c.switch.caseType) {
-      const cases = c.switch.caseCount?.(node) ?? 1;
+      const cases = c.switch.isCase?.(node) === false ? 0 : (c.switch.caseCount?.(node) ?? 1);
       for (let i = 0; i < cases; i++) {
         this.cyclomatic++;
         this.record(node, "cyclomatic", "case", 1, 0, "case");

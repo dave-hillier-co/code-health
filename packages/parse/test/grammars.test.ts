@@ -59,8 +59,8 @@ describe("loadGrammar", () => {
     const dist = mkdtempSync(join(tmpdir(), "code-health-grammars-"));
     scratch.push(dist);
     const copied = copyGrammars(join(dist, "grammars"));
-    // The grammar of every supported adapter, in id order, and the runtime.
-    expect(copied).toEqual([...shippedGrammarSpecs().map((spec) => spec.file), runtimeSpec.file]);
+    // The grammar of every supported adapter and the runtime, sorted by file name.
+    expect(copied).toEqual([...shippedGrammarSpecs().map((spec) => spec.file), runtimeSpec.file].sort());
     expect(copied).toContain("tree-sitter-typescript.wasm");
     const grammar = await loadGrammar("typescript", { grammarDir: join(dist, "grammars") });
     const tree = grammar.parse("class A {}");

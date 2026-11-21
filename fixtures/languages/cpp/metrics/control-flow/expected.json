@@ -1,0 +1,13 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "flow.cpp": [
+      ["plain", 1, 1, 0, 0, 3, 1, 2, 0],
+      ["branches", 3, 3, 3, 1, 9, 5, 1, 0],
+      ["loops", 5, 5, 4, 1, 16, 10, 1, 0],
+      ["pick", 4, 2, 1, 1, 11, 4, 1, 0],
+      ["nested", 5, 5, 7, 3, 10, 5, 2, 0],
+      ["guarded", 3, 3, 2, 1, 9, 4, 1, 0]
+    ]
+  }
+}

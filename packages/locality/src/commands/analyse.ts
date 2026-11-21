@@ -69,6 +69,8 @@ export const command: Command = {
         unresolved,
         history: history === undefined ? null : { window: history.window, ...history.evidence },
         filesWithSyntaxErrors: project.analysis.filesWithSyntaxErrors,
+        // Only languages with a preprocessor have any, so the key is absent for the rest.
+        ...(project.analysis.filesWithMacroCode.length === 0 ? {} : { filesWithMacroCode: project.analysis.filesWithMacroCode }),
         ...(source === "both" ? await crossCheck(context.repo.root, history, settings, model, analysis.candidates) : {}),
       },
       results: rows,

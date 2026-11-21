@@ -1,0 +1,9 @@
+{
+  "operations": [{ "from": "src/geometry/shape.cpp", "to": "src/shapes/shape.cpp" }],
+  "rewrites": [],
+  "texts": {},
+  "warnings": [
+    "CMakeLists.txt collects sources with file(GLOB src/geometry/*.cpp): src/shapes/shape.cpp is no longer matched, so the target would lose it",
+    "src/shapes/shape.cpp:1 the include path SHAPE_HEADER is built by a macro and was not rewritten: check it still reaches its file"
+  ]
+}

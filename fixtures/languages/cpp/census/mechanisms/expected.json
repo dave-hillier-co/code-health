@@ -1,0 +1,13 @@
+{
+  "files": 9,
+  "occurrences": [
+    "callbacks function-parameter src/app/retry.h:4 | retry(task) is called from src/jobs",
+    "interfaces interface src/ports/store.h:3 | Store is implemented in src/adapters",
+    "dependency-injection constructor-injection src/app/service.h:5 | Service takes Store from src/ports",
+    "events base-type src/events/bus.h:3 | Bus extends QObject",
+    "events call src/events/wire.cpp:4 | connect",
+    "registries keyed-map src/registry/handlers.h:5 | handlers",
+    "ports-and-adapters folder src/adapters | adapters",
+    "ports-and-adapters folder src/ports | ports"
+  ]
+}

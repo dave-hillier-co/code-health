@@ -2,3 +2,4 @@
 // A language track adds its line here and nothing else in packages/parse/src. See CONTRIBUTING.md, "Adding a language".
 export { adapter as typescript } from "./languages/typescript/adapter.ts";
 export { adapter as csharp } from "./languages/csharp/adapter.ts";
+export { adapter as cpp } from "./languages/cpp/adapter.ts";

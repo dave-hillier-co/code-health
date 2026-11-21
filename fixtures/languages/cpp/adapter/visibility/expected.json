@@ -1,0 +1,21 @@
+{
+  "importEdges": [
+    "c.h -> a.h import",
+    "direct.cpp -> a.h import",
+    "indirect.cpp -> a.h import",
+    "indirect.cpp -> c.h import"
+  ],
+  "fileEdges": [
+    "c.h -> a.h reference call=0 reference=0",
+    "direct.cpp -> a.h call call=1 reference=0",
+    "indirect.cpp -> a.h call call=1 reference=0",
+    "indirect.cpp -> c.h reference call=0 reference=0"
+  ],
+  "consumers": [
+    "direct.cpp#direct -> a.h#shared call x1",
+    "indirect.cpp#indirect -> a.h#shared call x1"
+  ],
+  "unresolved": [],
+  "barrels": [],
+  "syntaxErrors": []
+}

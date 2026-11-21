@@ -25,9 +25,16 @@ export interface ConstructMap {
   /**
    * `switch`, and the node that holds one `case` (a `default` is not a case). `caseCount` says how many cases
    * a `caseType` node holds when that is not one (a C# section of `case 1: case 2:` holds two, and one of
-   * `default:` none).
+   * `default:` none). A grammar that types `default:` as a case node too says which of them are real cases with
+   * `isCase`.
    */
-  switch: { type: string; body: string; caseType: string; caseCount?: (node: Node) => number };
+  switch: {
+    type: string;
+    body: string;
+    caseType: string;
+    caseCount?: (node: Node) => number;
+    isCase?: (node: Node) => boolean;
+  };
   /**
    * A switch that is an expression (C# `x switch { ... }`, Rust `match`). It costs like a `switch` and
    * every arm but the default one is a case. Its arms are children of the node itself, one level deeper.

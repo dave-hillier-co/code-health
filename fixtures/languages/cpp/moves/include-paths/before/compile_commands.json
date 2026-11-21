@@ -1,0 +1,5 @@
+[
+  {"directory": ".", "file": "src/app/main.cpp", "arguments": ["c++", "-Isrc", "-c", "src/app/main.cpp"]},
+  {"directory": ".", "file": "src/app/draw.cpp", "arguments": ["c++", "-Isrc", "-c", "src/app/draw.cpp"]},
+  {"directory": ".", "file": "src/geometry/shape.cpp", "arguments": ["c++", "-Isrc", "-c", "src/geometry/shape.cpp"]}
+]

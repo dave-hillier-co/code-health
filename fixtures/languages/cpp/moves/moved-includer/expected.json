@@ -1,0 +1,12 @@
+{
+  "operations": [{ "from": "src/app/main.cpp", "to": "src/app/cmd/main.cpp" }],
+  "rewrites": [
+    { "path": "CMakeLists.txt", "line": 1, "from": "src/app/main.cpp", "to": "src/app/cmd/main.cpp" },
+    { "path": "src/app/cmd/main.cpp", "line": 1, "from": "../geometry/shape.h", "to": "../../geometry/shape.h" }
+  ],
+  "texts": {
+    "CMakeLists.txt": "add_executable(app src/app/cmd/main.cpp src/app/draw.cpp src/geometry/shape.cpp)\n",
+    "src/app/cmd/main.cpp": "#include \"../../geometry/shape.h\"\n#include <util/math.h>\n\nint main() {\n  return area(2, 3) + mul(1, 1);\n}\n"
+  },
+  "warnings": []
+}
