@@ -41,7 +41,7 @@ A function with no name (an anonymous block the lexer cannot tell apart from one
 - **Read-only.** It never refreshes the cache and never writes analysis results.
 - **Silent when it cannot help.** Not enabled, a file outside the repository or gone, excluded, a test file when `analyseTests` is false, binary or over 1 MB, no per-function metrics for the language, an invalid config, nothing crossed or worsened.
 - **Once per file per session.** A second edit of a file it has spoken about stays quiet, however much worse. A file it was silent about is compared with its last measurement, so the next edit is judged on what that one changed.
-- **Always exits 0** and never blocks an edit. It abandons its work at its time budget (200 ms, process start included) and stays silent.
+- **Always exits 0** and never blocks an edit. It abandons its work at its time budget (150 ms, process start included) and stays silent.
 - **Session state** is its own record in `.cache/code-health/sessions/<session_id>.complexity.json`: files edited, files spoken about, the last measurement of each file, and the last run's outcome and duration. It does not read the transcript. The cache folder ignores itself. Delete the file to reset a session.
 
 ## When the user asks why it is silent or noisy

@@ -1,6 +1,6 @@
 import { analyseSource } from "@code-health/lexical/analyse-source";
 import type { FileMeasurement } from "@code-health/history/session-state";
-import type { Thresholds } from "./metrics.ts";
+import { bumpyRoadLimits, type Thresholds } from "./metrics.ts";
 
 /**
  * The metrics the hook compares, all lexical, in tie-break order. A unit's `bumpy` value is 1 when the
@@ -17,8 +17,16 @@ export type Measured = { measurement: FileMeasurement } | { unmeasured: string }
  * values may not be reported. Blocks with no name are left out, because nothing identifies them from one
  * edit to the next. A name used twice in one file gets `~2`, `~3` in order.
  */
-export function measureFile(path: string, text: string, options: { agreementBar: number; languageProfiles: Record<string, string> }): Measured {
-  const analysis = analyseSource(path, text, { agreementBar: options.agreementBar, mappings: options.languageProfiles });
+export function measureFile(
+  path: string,
+  text: string,
+  options: { agreementBar: number; languageProfiles: Record<string, string>; thresholds: Thresholds },
+): Measured {
+  const analysis = analyseSource(path, text, {
+    agreementBar: options.agreementBar,
+    mappings: options.languageProfiles,
+    bumpyRoad: bumpyRoadLimits(options.thresholds),
+  });
   if (analysis.functions.gated) return { unmeasured: analysis.functions.reason };
   // The hook states a threshold as fact, so it stays silent where nothing measures how accurate the values are.
   if (analysis.unverified) return { unmeasured: "the profile was mapped by config, so its per-function values are unverified" };

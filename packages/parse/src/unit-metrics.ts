@@ -22,6 +22,13 @@ import type { ConstructMap, MetricRules, RecursionScope } from "./metric-rules.t
  *   combinator (C# `and`, `or`) is a logical operator. Which node types those are is the language's, in `ConstructMap`.
  * - Length: lines of the unit holding code, so blank and comment-only lines are left out.
  * - Statements: statement nodes, nested functions' included. An expression body counts as one.
+ * - Bumps: the bumpy road measure. A bump is a region of nested control flow that sits directly in the
+ *   function: the body of each branch of an `if` chain (the `then`, each `else if`, the `else`) and of a loop,
+ *   and a whole `switch` or `try`, which count once however many clauses they have. Anything inside a bump,
+ *   deeper structures and nested functions' own, belongs to it. A body that ends on the line that opens it is
+ *   not a bump, as a one-line body is not an indented run. `bumpSize` counts the code lines of the largest,
+ *   leaving out the opening line and a closing brace line, and `bumpDepth` is the nesting plus one when
+ *   there is any bump. The lexical layer measures the same thing from indentation.
  * - Parameters: declared parameters, `this` excluded. A destructured object parameter counts once, and
  *   its properties add to `optionCount`.
  */
@@ -49,6 +56,8 @@ class Measurer {
   cognitive = 0;
   nesting = 0;
   statements = 0;
+  bumps = 0;
+  bumpSize = 0;
   private recursion = false;
   readonly increments: Increment[] = [];
 
@@ -84,6 +93,26 @@ class Measurer {
   private flat(node: Node, construct: string): void {
     this.cognitive += 1;
     this.record(node, "cognitive", construct, 1, 0);
+  }
+
+  /**
+   * Walks the body of a control structure one level and one nesting depth deeper, and counts it as a bump when
+   * the structure sits directly in the function (`depth` 0). `header` is the node whose line opens the body.
+   */
+  private body(region: Node, header: Node, level: number, depth: number): void {
+    if (depth === 0) this.bump(region, header.startPosition.row);
+    this.visit(region, level + 1, depth + 1);
+  }
+
+  private bump(region: Node, headerRow: number): void {
+    const last = region.endPosition.row;
+    if (last <= headerRow) return;
+    let size = 0;
+    for (let row = Math.max(region.startPosition.row, headerRow + 1); row <= last; row++) if (this.options.codeRows[row] === true) size++;
+    // The line that only closes a braced region is not part of the run.
+    if (region.text.includes("\n") && region.text.split("\n").at(-1)!.trim() === "}") size--;
+    this.bumps++;
+    this.bumpSize = Math.max(this.bumpSize, size);
   }
 
   /** Walks the function's own parameters and body, at level 0. */
@@ -145,6 +174,7 @@ class Measurer {
     }
     if (type === c.tryType || c.alsoTryTypes?.has(type)) {
       this.nesting = Math.max(this.nesting, depth + 1);
+      if (depth === 0) this.bump(node, node.startPosition.row);
       this.children(node, level, depth + 1);
       return;
     }
@@ -222,6 +252,7 @@ class Measurer {
     this.cyclomaticModified++;
     this.record(node, "cyclomatic", "switch", 1, 0, "modified");
     this.nesting = Math.max(this.nesting, depth + 1);
+    if (depth === 0) this.bump(node, node.startPosition.row);
     if (c.headTypes !== undefined) {
       const heads = c.headTypes;
       for (const child of node.namedChildren) this.visit(child, heads.has(child.type) ? level : level + 1, heads.has(child.type) ? depth : depth + 1);
@@ -269,6 +300,7 @@ class Measurer {
     this.cyclomaticModified++;
     this.record(node, "cyclomatic", "switch", 1, 0, "modified");
     this.nesting = Math.max(this.nesting, depth + 1);
+    if (depth === 0) this.bump(node, node.startPosition.row);
     for (let i = 0; i < node.childCount; i++) {
       const child = node.child(i);
       if (child === null || !child.isNamed) continue;
@@ -304,7 +336,7 @@ class Measurer {
     }
     if (condition !== null) this.visit(condition, level, depth);
     // An else-if sits at its if's depth, so every body in the chain is one level deeper than the chain.
-    if (consequence !== null) this.visit(consequence, level + 1, depth + 1);
+    if (consequence !== null) this.body(consequence, node, level, depth);
     if (c.clauses !== undefined) {
       this.clauseChain(node, level, depth);
       return;
@@ -317,7 +349,7 @@ class Measurer {
       this.ifStatement(inner, level, depth, true);
     } else {
       this.flat(alternative, "else");
-      this.visit(inner, level + 1, depth + 1);
+      this.body(inner, alternative, level, depth);
     }
   }
 
@@ -331,11 +363,11 @@ class Measurer {
         const condition = clause.childForFieldName(c.condition);
         if (condition !== null) this.visit(condition, level, depth);
         const consequence = clause.childForFieldName(c.consequence);
-        if (consequence !== null) this.visit(consequence, level + 1, depth + 1);
+        if (consequence !== null) this.body(consequence, clause, level, depth);
       } else if (clause.type === c.clauses!.else) {
         this.flat(clause, "else");
         const body = clause.childForFieldName("body");
-        if (body !== null) this.visit(body, level + 1, depth + 1);
+        if (body !== null) this.body(body, clause, level, depth);
       }
     }
   }
@@ -347,7 +379,7 @@ class Measurer {
     this.nesting = Math.max(this.nesting, depth + 1);
     const body = this.bodyOf(node);
     this.children(node, level, depth, body);
-    if (body !== null) this.visit(body, level + 1, depth + 1);
+    if (body !== null) this.body(body, node, level, depth);
   }
 
   /**
@@ -443,6 +475,9 @@ export function measureFunction(fn: Node, options: MeasureOptions, rules: Metric
     statements: measurer.statements,
     parameters,
     optionCount,
+    bumps: measurer.bumps,
+    bumpDepth: measurer.bumps > 0 ? measurer.nesting + 1 : 0,
+    bumpSize: measurer.bumpSize,
   };
   if (!options.explain) return { metrics };
   const increments = [

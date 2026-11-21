@@ -1,0 +1,477 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "outcome.schema.json",
+  "title": "complexity outcome --json",
+  "description": "Whether a simplification made the code cheaper to change: the acted-on files' change cost, fix-commit rate, weighted rank, function count and mean interface depth (the gaming check) and agent effort, before and after, beside similarly ranked files that were left alone.",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "outcome"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "$ref": "common.schema.json#/$defs/sha",
+          "description": "The last commit of the simplification."
+        },
+        "before": {
+          "$ref": "common.schema.json#/$defs/sha",
+          "description": "The commit before the first of the simplification."
+        },
+        "transcripts": {
+          "type": "boolean",
+          "description": "A projects directory was given, so agent effort was looked for."
+        }
+      },
+      "required": [
+        "at",
+        "before",
+        "transcripts"
+      ],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "object",
+      "properties": {
+        "actedOn": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "$ref": "common.schema.json#/$defs/sha"
+            },
+            "before": {
+              "$ref": "common.schema.json#/$defs/sha"
+            },
+            "files": {
+              "type": "array",
+              "description": "Files with functions that the simplification changed and that exist before and after, by their name after and their name before.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "earlierPath": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "path",
+                  "earlierPath"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "at",
+            "before",
+            "files"
+          ],
+          "additionalProperties": false
+        },
+        "comparison": {
+          "type": "object",
+          "properties": {
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "basis": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "files",
+            "basis"
+          ],
+          "additionalProperties": false
+        },
+        "windows": {
+          "type": "object",
+          "properties": {
+            "before": {
+              "$ref": "#/$defs/window"
+            },
+            "after": {
+              "$ref": "#/$defs/window"
+            }
+          },
+          "required": [
+            "before",
+            "after"
+          ],
+          "additionalProperties": false
+        },
+        "changeCost": {
+          "type": "object",
+          "description": "The primary outcome, with the fix-commit rate beside it as the secondary one. The simplification's own commits and every commit with a Code-Health trailer are left out of both windows.",
+          "properties": {
+            "actedOn": {
+              "$ref": "#/$defs/changeGroup"
+            },
+            "comparison": {
+              "$ref": "#/$defs/changeGroup"
+            }
+          },
+          "required": [
+            "actedOn",
+            "comparison"
+          ],
+          "additionalProperties": false
+        },
+        "rank": {
+          "type": "object",
+          "description": "A leading indicator only: the weighted rank is what the tool moves by construction.",
+          "properties": {
+            "actedOn": {
+              "$ref": "#/$defs/rankGroup"
+            },
+            "comparison": {
+              "$ref": "#/$defs/rankGroup"
+            }
+          },
+          "required": [
+            "actedOn",
+            "comparison"
+          ],
+          "additionalProperties": false
+        },
+        "gamingCheck": {
+          "type": "object",
+          "properties": {
+            "actedOn": {
+              "type": "object",
+              "properties": {
+                "before": {
+                  "$ref": "#/$defs/shape"
+                },
+                "after": {
+                  "$ref": "#/$defs/shape"
+                }
+              },
+              "required": [
+                "before",
+                "after"
+              ],
+              "additionalProperties": false
+            },
+            "suspected": {
+              "type": "boolean",
+              "description": "The function count rose while the mean interface depth fell: the code may have been split into shallow pieces rather than simplified."
+            }
+          },
+          "required": [
+            "actedOn",
+            "suspected"
+          ],
+          "additionalProperties": false
+        },
+        "difference": {
+          "type": "object",
+          "description": "The acted-on files' movement from before to after minus the comparison group's, so drift back to the average cancels. Null where a figure is missing in a window.",
+          "properties": {
+            "linesChurnedPerChange": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "fixCommitRate": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "changes": {
+              "type": "integer"
+            },
+            "meanScore": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "linesChurnedPerChange",
+            "fixCommitRate",
+            "changes",
+            "meanScore"
+          ],
+          "additionalProperties": false
+        },
+        "agentEffort": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "const": "measured"
+                },
+                "actedOn": {
+                  "$ref": "#/$defs/effortGroup"
+                },
+                "comparison": {
+                  "$ref": "#/$defs/effortGroup"
+                }
+              },
+              "required": [
+                "status",
+                "actedOn",
+                "comparison"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "const": "not-measured"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "status",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "actedOn",
+        "comparison",
+        "windows",
+        "changeCost",
+        "rank",
+        "gamingCheck",
+        "difference",
+        "agentEffort"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "command",
+    "inputs",
+    "results"
+  ],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "window": {
+      "type": "object",
+      "properties": {
+        "since": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "until": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "since",
+        "until"
+      ],
+      "additionalProperties": false
+    },
+    "changeFigures": {
+      "type": "object",
+      "properties": {
+        "changes": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Logical changes that touched the files: the sample every other figure rests on."
+        },
+        "linesChurnedPerChange": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "fixCommitRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Share of those changes with a commit whose subject starts with fix, bugfix or hotfix."
+        }
+      },
+      "required": [
+        "changes",
+        "linesChurnedPerChange",
+        "fixCommitRate"
+      ],
+      "additionalProperties": false
+    },
+    "changeGroup": {
+      "type": "object",
+      "properties": {
+        "before": {
+          "$ref": "#/$defs/changeFigures"
+        },
+        "after": {
+          "$ref": "#/$defs/changeFigures"
+        }
+      },
+      "required": [
+        "before",
+        "after"
+      ],
+      "additionalProperties": false
+    },
+    "rankFigures": {
+      "type": "object",
+      "properties": {
+        "functions": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "meanScore": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "meanComplexityScore": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "functions",
+        "meanScore",
+        "meanComplexityScore"
+      ],
+      "additionalProperties": false
+    },
+    "rankGroup": {
+      "type": "object",
+      "properties": {
+        "before": {
+          "$ref": "#/$defs/rankFigures"
+        },
+        "after": {
+          "$ref": "#/$defs/rankFigures"
+        }
+      },
+      "required": [
+        "before",
+        "after"
+      ],
+      "additionalProperties": false
+    },
+    "shape": {
+      "type": "object",
+      "properties": {
+        "functions": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "meanInterfaceDepth": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "functions",
+        "meanInterfaceDepth"
+      ],
+      "additionalProperties": false
+    },
+    "distribution": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mean": {
+              "type": "number"
+            },
+            "median": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "mean",
+            "median"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "effortSummary": {
+      "type": "object",
+      "properties": {
+        "tasks": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "The sample size every figure rests on."
+        },
+        "filesRead": {
+          "$ref": "#/$defs/distribution"
+        },
+        "foldersVisited": {
+          "$ref": "#/$defs/distribution"
+        },
+        "reReads": {
+          "$ref": "#/$defs/distribution"
+        },
+        "edits": {
+          "$ref": "#/$defs/distribution"
+        },
+        "tokens": {
+          "$ref": "#/$defs/distribution"
+        }
+      },
+      "required": [
+        "tasks",
+        "filesRead",
+        "foldersVisited",
+        "reReads",
+        "edits",
+        "tokens"
+      ],
+      "additionalProperties": false
+    },
+    "effortGroup": {
+      "type": "object",
+      "properties": {
+        "before": {
+          "$ref": "#/$defs/effortSummary"
+        },
+        "after": {
+          "$ref": "#/$defs/effortSummary"
+        }
+      },
+      "required": [
+        "before",
+        "after"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

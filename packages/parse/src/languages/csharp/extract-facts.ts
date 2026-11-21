@@ -6,7 +6,7 @@ import { functionShape, modifiersOf, nodeCount, passThroughOf, typeShape } from 
 import { bodyOf, csharpMetricRules, parameterInfo } from "./metric-rules.ts";
 
 /** Bump when the extraction rules change in a way that alters facts for the same source, so cached facts are not reused. */
-export const extractorVersion = 2;
+export const extractorVersion = 3;
 
 const typeDeclarations = new Set([
   "class_declaration",

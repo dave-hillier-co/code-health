@@ -16,7 +16,7 @@ export const adapter: LanguageAdapter = {
   support: "supported",
   lexerProfile: "java",
   grammars: [{ spec: { id: "java", packageName: "tree-sitter-java", file: "tree-sitter-java.wasm" }, extensions: [".java"] }],
-  extractorVersion: 1,
+  extractorVersion: 2,
   extract: extractFacts,
   isTestPath: (path) => isJvmTestPath(path, /\.java$/),
   metrics: javaMetricRules,

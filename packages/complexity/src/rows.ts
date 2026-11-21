@@ -31,6 +31,7 @@ export function unitRow(ranked: RankedUnit, selected: readonly MetricId[], setti
     kind: unit.kind,
     startLine: unit.startLine,
     endLine: unit.endLine,
+    ...(unit.parent === undefined ? {} : { parent: unit.parent }),
     source: unit.source,
     ...(unit.unverified === true ? { unverified: true } : {}),
     test: unit.test,
@@ -40,7 +41,9 @@ export function unitRow(ranked: RankedUnit, selected: readonly MetricId[], setti
     changeWeight: ranked.changeWeight === null ? null : Math.round(ranked.changeWeight * 10000) / 10000,
     dominant: ranked.dominant,
     ...pick(unit.values, selected),
+    ...(unit.statements === undefined || !selected.includes("length") ? {} : { statements: unit.statements }),
     ...(unit.optionCount === undefined || !selected.includes("parameters") ? {} : { optionCount: unit.optionCount }),
+    ...(unit.bumpDepth === undefined || !selected.includes("bumps") ? {} : { bumpDepth: unit.bumpDepth, bumpSize: unit.bumpSize }),
     percentiles: pick(ranked.percentiles, selected),
     labels: unitLabels(unit, settings),
   };

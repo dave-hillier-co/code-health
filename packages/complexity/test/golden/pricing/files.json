@@ -1,6 +1,6 @@
 {
   "command": "files",
-  "config": "e2cf9097e78618dc",
+  "config": "6accc6229925bb42",
   "inputs": {
     "layer": "auto",
     "paths": [],
@@ -13,6 +13,10 @@
   "results": [
     {
       "aggregates": {
+        "bumps": {
+          "max": 1,
+          "sum": 1
+        },
         "cognitive": {
           "max": 8,
           "sum": 8
@@ -51,6 +55,10 @@
     },
     {
       "aggregates": {
+        "bumps": {
+          "max": 1,
+          "sum": 1
+        },
         "cognitive": {
           "max": 3,
           "sum": 3
@@ -106,6 +114,10 @@
     },
     {
       "aggregates": {
+        "bumps": {
+          "max": 1,
+          "sum": 1
+        },
         "cognitive": {
           "max": 1,
           "sum": 1
@@ -161,6 +173,10 @@
     },
     {
       "aggregates": {
+        "bumps": {
+          "max": 0,
+          "sum": 0
+        },
         "cognitive": {
           "max": 0,
           "sum": 0

@@ -1,7 +1,7 @@
 {
   "agreement": {},
   "command": "analyse",
-  "config": "e2cf9097e78618dc",
+  "config": "6accc6229925bb42",
   "filesWithSyntaxErrors": [],
   "inputs": {
     "layer": "auto",
@@ -37,6 +37,9 @@
   },
   "results": [
     {
+      "bumpDepth": 3,
+      "bumpSize": 5,
+      "bumps": 1,
       "changeWeight": 0.5,
       "cognitive": 8,
       "complexityScore": 0.875,
@@ -52,6 +55,7 @@
       "parameters": 1,
       "path": "src/pricing.ts",
       "percentiles": {
+        "bumps": 0.75,
         "cognitive": 0.875,
         "cyclomatic": 0.875,
         "length": 0.875,
@@ -62,10 +66,14 @@
       "score": 0.4375,
       "source": "structural",
       "startLine": 1,
+      "statements": 6,
       "test": false,
       "unit": "price"
     },
     {
+      "bumpDepth": 3,
+      "bumpSize": 3,
+      "bumps": 1,
       "changeWeight": 0.5,
       "cognitive": 3,
       "complexityScore": 0.75,
@@ -81,6 +89,7 @@
       "parameters": 1,
       "path": "src/total.go",
       "percentiles": {
+        "bumps": 0.75,
         "cognitive": 0.625,
         "cyclomatic": 0.625,
         "length": 0.625,
@@ -91,10 +100,14 @@
       "score": 0.375,
       "source": "structural",
       "startLine": 3,
+      "statements": 5,
       "test": false,
       "unit": "Total"
     },
     {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
       "changeWeight": 0.5,
       "cognitive": 0,
       "complexityScore": 0.5,
@@ -110,6 +123,7 @@
       "parameters": 1,
       "path": "src/label.ts",
       "percentiles": {
+        "bumps": 0.25,
         "cognitive": 0.25,
         "cyclomatic": 0.25,
         "length": 0.375,
@@ -120,10 +134,14 @@
       "score": 0.25,
       "source": "structural",
       "startLine": 1,
+      "statements": 1,
       "test": false,
       "unit": "label"
     },
     {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
       "changeWeight": 0.5,
       "cognitive": 0,
       "complexityScore": 0.5,
@@ -139,6 +157,7 @@
       "parameters": 1,
       "path": "src/pricing.ts",
       "percentiles": {
+        "bumps": 0.25,
         "cognitive": 0.25,
         "cyclomatic": 0.25,
         "length": 0.125,
@@ -149,10 +168,14 @@
       "score": 0.25,
       "source": "structural",
       "startLine": 13,
+      "statements": 1,
       "test": false,
       "unit": "double"
     },
     {
+      "bumpDepth": 2,
+      "bumpSize": 1,
+      "bumps": 1,
       "changeWeight": 0.5,
       "cognitive": 1,
       "complexityScore": 0.5,
@@ -168,6 +191,7 @@
       "parameters": 0,
       "path": "test/pricing.test.ts",
       "percentiles": {
+        "bumps": 0.5,
         "cognitive": 0.5,
         "cyclomatic": 0.5,
         "length": 0.5,
@@ -178,6 +202,7 @@
       "score": 0.25,
       "source": "structural",
       "startLine": 3,
+      "statements": 2,
       "test": true,
       "unit": "checksPrice"
     }

@@ -5,7 +5,7 @@ import { boundParameterNames, classShape, functionShape, nodeCount, passThroughO
 import { enclosingClass, pythonMetricRules } from "./metric-rules.ts";
 
 /** Bump when the extraction rules change in a way that alters facts for the same source, so cached facts from older rules are not reused. */
-export const extractorVersion = 2;
+export const extractorVersion = 3;
 
 interface Context {
   /** Qualified name of the innermost enclosing unit; names of nested units are built from it. */

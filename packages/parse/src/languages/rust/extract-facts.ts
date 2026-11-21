@@ -9,7 +9,7 @@ import { rustMetricRules, typeName } from "./metric-rules.ts";
  * Bump when the extraction rules change in a way that alters facts for the same source, so cached facts from
  * older rules are not reused.
  */
-export const extractorVersion = 1;
+export const extractorVersion = 2;
 
 /**
  * How a Rust file is read, in terms the import model understands (see resolve-path.ts for the specifiers).

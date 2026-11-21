@@ -17,7 +17,7 @@ export const adapter: LanguageAdapter = {
   support: "supported",
   lexerProfile: "kotlin",
   grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm", repairs: kotlinRepairs }, extensions: [".kt"] }],
-  extractorVersion: 2,
+  extractorVersion: 3,
   extract: extractFacts,
   isTestPath: (path) => isJvmTestPath(path, /\.kt$/),
   metrics: kotlinMetricRules,

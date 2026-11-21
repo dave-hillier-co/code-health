@@ -1,0 +1,123 @@
+{
+  "command": "outcome",
+  "config": "6accc6229925bb42",
+  "inputs": {
+    "at": "51b7845ccf02aae5d2e1fb5c3321548016b71345",
+    "before": "5bd6d7ca10520b8edbae44e12d2128c511f67255",
+    "transcripts": false
+  },
+  "repo": {
+    "dirty": false,
+    "head": "7143fdb2837d8aa755c67a42b6066f33df520e60"
+  },
+  "results": {
+    "actedOn": {
+      "at": "51b7845ccf02aae5d2e1fb5c3321548016b71345",
+      "before": "5bd6d7ca10520b8edbae44e12d2128c511f67255",
+      "files": [
+        {
+          "earlierPath": "src/hot.ts",
+          "path": "src/hot.ts"
+        }
+      ]
+    },
+    "agentEffort": {
+      "reason": "no --projects-dir was given",
+      "status": "not-measured"
+    },
+    "changeCost": {
+      "actedOn": {
+        "after": {
+          "changes": 1,
+          "fixCommitRate": 0,
+          "linesChurnedPerChange": 4
+        },
+        "before": {
+          "changes": 4,
+          "fixCommitRate": 0.25,
+          "linesChurnedPerChange": 7
+        }
+      },
+      "comparison": {
+        "after": {
+          "changes": 4,
+          "fixCommitRate": 0.5,
+          "linesChurnedPerChange": 4
+        },
+        "before": {
+          "changes": 4,
+          "fixCommitRate": 0.25,
+          "linesChurnedPerChange": 7
+        }
+      }
+    },
+    "comparison": {
+      "basis": "unchanged files with functions, matched one to one to the acted-on files by the highest metric percentile of their functions before the change",
+      "files": [
+        "src/warm.ts"
+      ]
+    },
+    "difference": {
+      "changes": -3,
+      "fixCommitRate": -0.5,
+      "linesChurnedPerChange": 0,
+      "meanScore": -0.312
+    },
+    "gamingCheck": {
+      "actedOn": {
+        "after": {
+          "functions": 1,
+          "meanInterfaceDepth": 20.33
+        },
+        "before": {
+          "functions": 1,
+          "meanInterfaceDepth": 22.33
+        }
+      },
+      "suspected": false
+    },
+    "rank": {
+      "actedOn": {
+        "after": {
+          "functions": 1,
+          "meanComplexityScore": 0.667,
+          "meanScore": 0.417
+        },
+        "before": {
+          "functions": 1,
+          "meanComplexityScore": 0.667,
+          "meanScore": 0.5
+        }
+      },
+      "comparison": {
+        "after": {
+          "functions": 1,
+          "meanComplexityScore": 0.833,
+          "meanScore": 0.729
+        },
+        "before": {
+          "functions": 1,
+          "meanComplexityScore": 0.667,
+          "meanScore": 0.5
+        }
+      }
+    },
+    "windows": {
+      "after": {
+        "since": "2024-06-01T09:00:00.000Z",
+        "until": "2024-09-01T09:00:00.000Z"
+      },
+      "before": {
+        "since": "2023-06-01T09:00:00.000Z",
+        "until": "2024-06-01T09:00:00.000Z"
+      }
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}

@@ -4,8 +4,9 @@ import { loadConfig } from "@code-health/cli-kit/config";
 import { readEditEvent, within } from "@code-health/history/hook-event";
 import { runGit } from "@code-health/history/git";
 import { updateSession, type FileMeasurement } from "@code-health/history/session-state";
-import { hasAdapter, isTestPath } from "@code-health/parse/languages";
+import { hasSupportedExtension } from "@code-health/parse/supported-extensions";
 import { complexityConfig, readSettings, thresholdsFor, type ComplexitySettings } from "./config.ts";
+import { DEFAULT_BUDGET_MS } from "./hook-budget.ts";
 import { describeFindings, findingsFor, measureFile } from "./hook-findings.ts";
 
 export interface HookRequest {
@@ -22,12 +23,7 @@ export interface HookRequest {
   startedAt?: number;
 }
 
-/**
- * The default time budget in milliseconds, which covers process start, the worker, reading the file and
- * the file at HEAD. Claude Code waits for the hook, so a run that has not finished by then goes silent.
- * The lexical layer is used because loading the WASM runtime and a grammar alone takes about as long.
- */
-export const DEFAULT_BUDGET_MS = 200;
+export { DEFAULT_BUDGET_MS };
 
 /** Names the hook in its session state, apart from other plugins' hooks. */
 const HOOK_NAME = "complexity";
@@ -46,16 +42,21 @@ interface Decision {
 async function measurementAtHead(root: string, file: string, settings: ComplexitySettings): Promise<FileMeasurement> {
   try {
     const text = await runGit(root, ["show", `HEAD:${file}`]);
-    const measured = measureFile(file, text, settings);
+    const measured = measureFile(file, text, { ...settings, thresholds: thresholdsFor(settings, file) });
     return "measurement" in measured ? measured.measurement : {};
   } catch {
     return {};
   }
 }
 
+/** Whether the file is a test. The adapters that decide it are loaded here, and only when tests are not analysed, so a hook that never asks never parses them. */
+async function isTestPath(file: string): Promise<boolean> {
+  return (await import("@code-health/parse/languages")).isTestPath(file);
+}
+
 /** The command that breaks a unit down, for the files `explain` can read. It names the plugin's bundle when the host says where it is. */
 function explainCommand(file: string): string | undefined {
-  if (!hasAdapter(file)) return undefined;
+  if (!hasSupportedExtension(file)) return undefined;
   const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
   return pluginRoot === undefined || pluginRoot === "" ? "complexity explain" : `node ${pluginRoot}/dist/complexity.mjs explain`;
 }
@@ -67,11 +68,11 @@ async function consider(
   previous: FileMeasurement | undefined,
 ): Promise<Decision> {
   if (settings.isExcluded(file)) return { note: null, outcome: "silent: the file is excluded" };
-  if (!settings.analyseTests && isTestPath(file)) return { note: null, outcome: "silent: tests are not analysed" };
+  if (!settings.analyseTests && (await isTestPath(file))) return { note: null, outcome: "silent: tests are not analysed" };
   const text = readFileSync(join(root, file), "utf8");
   if (text.length > MAX_BYTES || text.includes("\0")) return { note: null, outcome: "silent: the file is binary or too large" };
 
-  const measured = measureFile(file, text, settings);
+    const measured = measureFile(file, text, { ...settings, thresholds: thresholdsFor(settings, file) });
   if ("unmeasured" in measured) return { note: null, outcome: `silent: no per-function metrics (${measured.unmeasured})` };
 
   const before = previous ?? (await measurementAtHead(root, file, settings));
