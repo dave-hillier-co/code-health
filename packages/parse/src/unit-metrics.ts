@@ -82,16 +82,23 @@ class Measurer {
   readonly increments: Increment[] = [];
 
   private readonly options: MeasureOptions;
-  private readonly names: ReadonlySet<string>;
+  /** Names a bare call `name()` recurses through: only a function that its own name is in scope inside. */
+  private readonly bareNames: ReadonlySet<string>;
+  /** Names `this.name()` recurses through. */
+  private readonly memberNames: ReadonlySet<string>;
+  /** For a method, the class name, so `Class.method()` is recursion too. */
+  private readonly owner: string | undefined;
 
-  constructor(options: MeasureOptions, names: ReadonlySet<string>) {
+  constructor(options: MeasureOptions, scope: { bare: ReadonlySet<string>; member: ReadonlySet<string>; owner?: string }) {
     this.options = options;
-    this.names = names;
+    this.bareNames = scope.bare;
+    this.memberNames = scope.member;
+    this.owner = scope.owner;
   }
 
-  private record(node: Node, metric: Increment["metric"], construct: string, amount: number, nesting: number): void {
+  private record(node: Node, metric: Increment["metric"], construct: string, amount: number, nesting: number, switchMode?: Increment["switchMode"]): void {
     if (this.options.explain) {
-      this.increments.push({ line: node.startPosition.row + 1, metric, construct, amount, nesting });
+      this.increments.push({ line: node.startPosition.row + 1, metric, construct, amount, nesting, ...(switchMode === undefined ? {} : { switchMode }) });
     }
   }
 
@@ -151,6 +158,7 @@ class Measurer {
       case "switch_statement": {
         this.flow(node, "switch", level);
         this.cyclomaticModified++;
+        this.record(node, "cyclomatic", "switch", 1, 0, "modified");
         this.nesting = Math.max(this.nesting, depth + 1);
         const body = node.childForFieldName("body");
         this.children(node, level, depth, body);
@@ -159,7 +167,7 @@ class Measurer {
       }
       case "switch_case":
         this.cyclomatic++;
-        this.record(node, "cyclomatic", "case", 1, 0);
+        this.record(node, "cyclomatic", "case", 1, 0, "case");
         this.children(node, level, depth);
         return;
       case "try_statement":
@@ -291,19 +299,50 @@ class Measurer {
   }
 
   private recursionCheck(call: Node): void {
-    if (this.recursion || this.names.size === 0) return;
+    if (this.recursion) return;
     const callee = call.childForFieldName("function");
     if (callee === null) return;
-    const direct = callee.type === "identifier" && this.names.has(callee.text);
-    const viaThis =
-      callee.type === "member_expression" &&
-      callee.childForFieldName("object")?.type === "this" &&
-      this.names.has(callee.childForFieldName("property")?.text ?? "");
-    if (direct || viaThis) {
+    let recursive = callee.type === "identifier" && this.bareNames.has(callee.text);
+    if (callee.type === "member_expression") {
+      const object = callee.childForFieldName("object");
+      const property = callee.childForFieldName("property")?.text ?? "";
+      recursive =
+        this.memberNames.has(property) &&
+        (object?.type === "this" || (this.owner !== undefined && object?.type === "identifier" && object.text === this.owner));
+    }
+    if (recursive) {
       this.recursion = true;
       this.flat(call, "recursion");
     }
   }
+}
+
+/** True when `name` is bound again inside `fn`, by a parameter, a variable or a nested function, so a bare `name()` may not mean `fn`. */
+function rebinds(fn: Node, name: string): boolean {
+  const binders = fn.descendantsOfType(["required_parameter", "optional_parameter", "variable_declarator", "function_declaration", "rest_pattern"]);
+  const own = fn.childForFieldName("name");
+  return binders.some((binder) => {
+    if (binder.id === fn.id) return false;
+    if (binder.type === "function_declaration") return binder.childForFieldName("name")?.text === name;
+    const target = binder.childForFieldName("pattern") ?? binder.childForFieldName("name") ?? binder;
+    return target.descendantsOfType("identifier").some((identifier) => identifier.text === name && identifier.id !== own?.id);
+  });
+}
+
+/** Parameters that are bare identifiers, as in a JS arrow function or function, are not wrapped in `required_parameter`. */
+function rebindsBareParameter(fn: Node, name: string): boolean {
+  const parameters = fn.descendantsOfType(["formal_parameters"]);
+  return parameters.some((list) => list.namedChildren.some((child) => child.type === "identifier" && child.text === name));
+}
+
+function enclosingClassName(fn: Node): string | undefined {
+  for (let parent = fn.parent; parent !== null; parent = parent.parent) {
+    if (parent.type === "class_declaration" || parent.type === "class" || parent.type === "abstract_class_declaration") {
+      return parent.childForFieldName("name")?.text;
+    }
+    if (parent.type === "program") return undefined;
+  }
+  return undefined;
 }
 
 function parameterCounts(fn: Node): { parameters: number; optionCount: number } {
@@ -344,11 +383,20 @@ export function codeRowsOf(root: Node): boolean[] {
 
 /** Measures one function-like node. `fn` is the function itself, not the declaration that names it. */
 export function measureFunction(fn: Node, options: MeasureOptions): Measured {
-  const names = new Set<string>();
-  if (options.name !== undefined) names.add(options.name);
+  const member = new Set<string>();
+  if (options.name !== undefined) member.add(options.name);
   const own = fn.childForFieldName("name");
-  if (own !== null && fn.type !== "method_definition") names.add(own.text);
-  const measurer = new Measurer(options, names);
+  if (own !== null) member.add(own.text);
+  // A method's name is not in scope inside it: only `this.name()` or `Class.name()` reach it.
+  const isMethod = fn.type === "method_definition";
+  const bare = new Set<string>();
+  if (!isMethod) {
+    for (const name of own !== null && options.name === undefined ? [own.text] : [...(options.name !== undefined ? [options.name] : []), ...(own !== null ? [own.text] : [])]) {
+      if (!rebinds(fn, name) && !rebindsBareParameter(fn, name)) bare.add(name);
+    }
+  }
+  const owner = isMethod ? enclosingClassName(fn) : undefined;
+  const measurer = new Measurer(options, { bare, member, ...(owner === undefined ? {} : { owner }) });
   measurer.function(fn);
 
   let length = 0;

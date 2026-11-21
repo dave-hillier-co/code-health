@@ -121,7 +121,7 @@
             "case",
             "modified"
           ],
-          "description": "The increments always list each case. In modified mode the cyclomatic total counts one per switch."
+          "description": "The cyclomatic increments add up to the unit's cyclomatic value in this mode: each case in case mode, one row per switch in modified mode."
         }
       },
       "required": [

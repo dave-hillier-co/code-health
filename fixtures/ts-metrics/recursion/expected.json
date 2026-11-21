@@ -1,0 +1,13 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "recursion.ts": [
+      ["Report.format", 1, 1, 0, 0, 3, 1, 1, 0],
+      ["Report.run", 2, 2, 2, 1, 6, 3, 1, 0],
+      ["Report.walk", 2, 2, 2, 0, 3, 1, 1, 0],
+      ["shadow", 1, 1, 0, 0, 4, 4, 1, 0],
+      ["shadow.f", 1, 1, 0, 0, 1, 1, 1, 0],
+      ["countdown", 2, 2, 2, 1, 6, 3, 1, 0]
+    ]
+  }
+}

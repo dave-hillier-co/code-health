@@ -1,0 +1,16 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "flow.ts": [
+      ["load", 4, 4, 6, 3, 16, 9, 1, 0],
+      ["pairs", 5, 5, 7, 3, 8, 5, 1, 0],
+      ["depth", 2, 2, 2, 0, 2, 1, 1, 0],
+      ["kind", 4, 2, 1, 1, 11, 4, 1, 0],
+      ["Box.size", 2, 2, 1, 0, 3, 1, 0, 0],
+      ["Box.size~2", 3, 3, 2, 1, 6, 3, 1, 0]
+    ],
+    "list.tsx": [
+      ["List", 2, 2, 1, 0, 3, 2, 1, 2]
+    ]
+  }
+}

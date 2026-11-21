@@ -33,6 +33,8 @@ export interface Increment {
   amount: number;
   /** The nesting level that added to a cognitive increment. */
   nesting: number;
+  /** Set on the cyclomatic increments that only one `cyclomaticSwitch` mode counts: a `case`, or a whole `switch`. */
+  switchMode?: "case" | "modified";
 }
 
 /** A source unit: the shared `UnitShape`, structural, minus the path. */

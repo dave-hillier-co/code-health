@@ -50,6 +50,8 @@ export const command: Command = {
 
     const source = text.split("\n");
     const rows = unit.increments
+      // A switch is one increment in modified mode and one per case otherwise, so the rows add up to the metric.
+      .filter((increment) => increment.switchMode === undefined || increment.switchMode === settings.cyclomaticSwitch)
       .map((increment, index) => ({ increment, index }))
       .sort(
         (a, b) =>

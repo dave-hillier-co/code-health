@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
@@ -62,4 +64,30 @@ test("rejects a missing file, a file with no adapter, and no argument", async ()
   expect(go.code).toBe(ExitCode.Usage);
   expect(go.stderr).toContain("no structural adapter");
   expect((await runComplexity(repo.path, ["explain"])).code).toBe(ExitCode.Usage);
+});
+
+test("with cyclomaticSwitch modified the cyclomatic rows add up to the unit's value, one row for the switch and none for its cases", async () => {
+  const modified = buildRepo();
+  try {
+    modified.commit({
+      message: "Add a switch",
+      date: "2024-02-01T00:00:00+00:00",
+      changes: [
+        { op: "add", path: "src/sw.ts", content: "export function sw(s: string): number {\n  switch (s) {\n    case 'a':\n      return 1;\n    case 'b':\n      return 2;\n    case 'c':\n      return 3;\n    default:\n      return 0;\n  }\n}\n" },
+        { op: "add", path: "code-health.json", content: JSON.stringify({ complexity: { cyclomaticSwitch: "modified" } }) },
+      ],
+    });
+    for (const [mode, expected] of [["modified", 2], ["case", 4]] as const) {
+      writeFileSync(join(modified.path, "code-health.json"), JSON.stringify({ complexity: { cyclomaticSwitch: mode } }));
+      const run = await runComplexity(modified.path, ["explain", "src/sw.ts#sw", "--json", "--limit", "all"]);
+      const document = JSON.parse(run.stdout);
+      const rows = document.results as Increment[];
+      const total = rows.filter((row) => row.metric === "cyclomatic").reduce((sum, row) => sum + row.amount, 0);
+      expect(document.unit.metrics.cyclomatic).toBe(expected);
+      expect(total).toBe(expected);
+      expect(rows.some((row) => row.construct === "case")).toBe(mode === "case");
+    }
+  } finally {
+    modified.dispose();
+  }
 });

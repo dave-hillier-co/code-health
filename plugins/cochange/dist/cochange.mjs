@@ -2510,7 +2510,7 @@ function spuriousRate(counts) {
 
 // packages/lexical/src/agreement-rates.ts
 var recordedAgreement = {
-  typescript: { units: 90, found: 89, exact: 89, blocks: 99, spurious: 6 }
+  typescript: { units: 103, found: 101, exact: 101, blocks: 111, spurious: 6 }
 };
 
 // packages/lexical/src/indentation.ts

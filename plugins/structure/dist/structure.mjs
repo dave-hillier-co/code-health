@@ -2209,14 +2209,21 @@ var Measurer = class {
   recursion = false;
   increments = [];
   options;
-  names;
-  constructor(options, names) {
+  /** Names a bare call `name()` recurses through: only a function that its own name is in scope inside. */
+  bareNames;
+  /** Names `this.name()` recurses through. */
+  memberNames;
+  /** For a method, the class name, so `Class.method()` is recursion too. */
+  owner;
+  constructor(options, scope) {
     this.options = options;
-    this.names = names;
+    this.bareNames = scope.bare;
+    this.memberNames = scope.member;
+    this.owner = scope.owner;
   }
-  record(node, metric, construct, amount, nesting) {
+  record(node, metric, construct, amount, nesting, switchMode) {
     if (this.options.explain) {
-      this.increments.push({ line: node.startPosition.row + 1, metric, construct, amount, nesting });
+      this.increments.push({ line: node.startPosition.row + 1, metric, construct, amount, nesting, ...switchMode === void 0 ? {} : { switchMode } });
     }
   }
   decision(node, construct) {
@@ -2268,6 +2275,7 @@ var Measurer = class {
       case "switch_statement": {
         this.flow(node, "switch", level);
         this.cyclomaticModified++;
+        this.record(node, "cyclomatic", "switch", 1, 0, "modified");
         this.nesting = Math.max(this.nesting, depth + 1);
         const body2 = node.childForFieldName("body");
         this.children(node, level, depth, body2);
@@ -2276,7 +2284,7 @@ var Measurer = class {
       }
       case "switch_case":
         this.cyclomatic++;
-        this.record(node, "cyclomatic", "case", 1, 0);
+        this.record(node, "cyclomatic", "case", 1, 0, "case");
         this.children(node, level, depth);
         return;
       case "try_statement":
@@ -2401,17 +2409,44 @@ var Measurer = class {
     for (const operand of operands) this.visit(operand, level, depth);
   }
   recursionCheck(call) {
-    if (this.recursion || this.names.size === 0) return;
+    if (this.recursion) return;
     const callee = call.childForFieldName("function");
     if (callee === null) return;
-    const direct = callee.type === "identifier" && this.names.has(callee.text);
-    const viaThis = callee.type === "member_expression" && callee.childForFieldName("object")?.type === "this" && this.names.has(callee.childForFieldName("property")?.text ?? "");
-    if (direct || viaThis) {
+    let recursive = callee.type === "identifier" && this.bareNames.has(callee.text);
+    if (callee.type === "member_expression") {
+      const object = callee.childForFieldName("object");
+      const property = callee.childForFieldName("property")?.text ?? "";
+      recursive = this.memberNames.has(property) && (object?.type === "this" || this.owner !== void 0 && object?.type === "identifier" && object.text === this.owner);
+    }
+    if (recursive) {
       this.recursion = true;
       this.flat(call, "recursion");
     }
   }
 };
+function rebinds(fn, name5) {
+  const binders = fn.descendantsOfType(["required_parameter", "optional_parameter", "variable_declarator", "function_declaration", "rest_pattern"]);
+  const own = fn.childForFieldName("name");
+  return binders.some((binder) => {
+    if (binder.id === fn.id) return false;
+    if (binder.type === "function_declaration") return binder.childForFieldName("name")?.text === name5;
+    const target = binder.childForFieldName("pattern") ?? binder.childForFieldName("name") ?? binder;
+    return target.descendantsOfType("identifier").some((identifier) => identifier.text === name5 && identifier.id !== own?.id);
+  });
+}
+function rebindsBareParameter(fn, name5) {
+  const parameters = fn.descendantsOfType(["formal_parameters"]);
+  return parameters.some((list) => list.namedChildren.some((child) => child.type === "identifier" && child.text === name5));
+}
+function enclosingClassName(fn) {
+  for (let parent = fn.parent; parent !== null; parent = parent.parent) {
+    if (parent.type === "class_declaration" || parent.type === "class" || parent.type === "abstract_class_declaration") {
+      return parent.childForFieldName("name")?.text;
+    }
+    if (parent.type === "program") return void 0;
+  }
+  return void 0;
+}
 function parameterCounts(fn) {
   let parameters = 0;
   let optionCount = 0;
@@ -2446,11 +2481,19 @@ function codeRowsOf(root) {
   return rows;
 }
 function measureFunction(fn, options) {
-  const names = /* @__PURE__ */ new Set();
-  if (options.name !== void 0) names.add(options.name);
+  const member = /* @__PURE__ */ new Set();
+  if (options.name !== void 0) member.add(options.name);
   const own = fn.childForFieldName("name");
-  if (own !== null && fn.type !== "method_definition") names.add(own.text);
-  const measurer = new Measurer(options, names);
+  if (own !== null) member.add(own.text);
+  const isMethod = fn.type === "method_definition";
+  const bare = /* @__PURE__ */ new Set();
+  if (!isMethod) {
+    for (const name5 of own !== null && options.name === void 0 ? [own.text] : [...options.name !== void 0 ? [options.name] : [], ...own !== null ? [own.text] : []]) {
+      if (!rebinds(fn, name5) && !rebindsBareParameter(fn, name5)) bare.add(name5);
+    }
+  }
+  const owner = isMethod ? enclosingClassName(fn) : void 0;
+  const measurer = new Measurer(options, { bare, member, ...owner === void 0 ? {} : { owner } });
   measurer.function(fn);
   let length = 0;
   for (let line = options.startLine; line <= options.endLine; line++) if (options.codeRows[line - 1] === true) length++;

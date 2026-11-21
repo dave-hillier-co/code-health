@@ -2,8 +2,8 @@
   "agreement": {
     "typescript": {
       "bar": 0.9,
-      "exactRate": 0.9889,
-      "spuriousRate": 0.0606
+      "exactRate": 0.9806,
+      "spuriousRate": 0.0541
     }
   },
   "command": "analyse",
