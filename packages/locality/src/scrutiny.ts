@@ -190,7 +190,7 @@ const hintPatterns: { kind: HintKind; pattern: RegExp }[] = [
 function hintsOf(fn: FunctionLike, subject: string): Hint[] {
   const hints: Hint[] = [];
   const parameters = fn.getParameters().map((parameter) => parameter.getName()).filter((name) => /^[\w$]+$/.test(name));
-  const text = fn.getBody()?.getFullText() ?? "";
+  const text = fn.getBody()?.getText() ?? "";
   const first = fn.getBody()?.getStartLineNumber() ?? fn.getStartLineNumber();
   text.split("\n").forEach((line, offset) => {
     const lineNumber = first + offset;

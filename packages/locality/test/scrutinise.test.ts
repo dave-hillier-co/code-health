@@ -84,6 +84,7 @@ test("lines whose correctness depends on the caller are hinted, by kind and line
     { kind: "mutates-argument", subject: "ordered", line: 12 },
     { kind: "locale", subject: "stamp", line: 17 },
     { kind: "time-zone", subject: "stamp", line: 17 },
+    { kind: "nondeterministic", subject: "roll", line: 21 },
   ]);
 });
 

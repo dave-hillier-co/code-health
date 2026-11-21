@@ -7,7 +7,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "6f99733724738983921d396bc6aba32ebd160942"
+    "head": "9ae8d55324f2a0db4875f61e4bc7ce183ac8890f"
   },
   "results": [
     {
@@ -193,6 +193,24 @@
           "valueReferences": 0
         },
         {
+          "callSites": 0,
+          "consumers": [],
+          "lines": 2,
+          "name": "roll",
+          "parameters": [
+            {
+              "mode": false,
+              "name": "sides",
+              "optional": false,
+              "passedBy": 0,
+              "values": []
+            }
+          ],
+          "postProcessed": [],
+          "testCallSites": 0,
+          "valueReferences": 0
+        },
+        {
           "callSites": 1,
           "consumers": [
             "src/reports/stamp.ts"
@@ -293,6 +311,12 @@
           "kind": "time-zone",
           "line": 17,
           "subject": "stamp"
+        },
+        {
+          "evidence": "Math.random() * sides",
+          "kind": "nondeterministic",
+          "line": 21,
+          "subject": "roll"
         }
       ],
       "location": "src/shared",
