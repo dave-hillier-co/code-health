@@ -93,6 +93,8 @@ interface BraceScope {
   name: string | undefined;
   block: FunctionBlock | undefined;
   parenDepth: number;
+  /** For a brace inside a parameter list or argument list: the header to resume once it closes. */
+  resume?: Segment[];
 }
 
 function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionBlock[] {
@@ -115,6 +117,13 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
         continue;
       } else if (ch === "{") {
         header.push({ line: line.number, text: segment });
+        if (parenDepth > 0 && /[(,=:]\s*$/.test(header.map((part) => part.text).join(" "))) {
+          // A destructuring pattern, default value, type literal or object argument, not a body.
+          stack.push({ name: undefined, block: undefined, parenDepth, resume: header });
+          header = [];
+          segment = "";
+          continue;
+        }
         const classification = classifyHeader(header, profile);
         const names = stack.flatMap((scope) => (scope.name === undefined ? [] : [scope.name]));
         let block: FunctionBlock | undefined;
@@ -133,6 +142,12 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
         continue;
       } else if (ch === "}") {
         const scope = stack.pop();
+        if (scope?.resume !== undefined) {
+          parenDepth = scope.parenDepth;
+          header = scope.resume;
+          segment = "{}";
+          continue;
+        }
         if (scope !== undefined) {
           parenDepth = scope.parenDepth;
           if (scope.block !== undefined) {

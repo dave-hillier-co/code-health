@@ -183,3 +183,37 @@ test("Python functions end where indentation returns, with nesting and decorator
 test("an unclosed brace block is dropped rather than guessed", () => {
   expect(blocks("function a() {\n  x();\n", "typescript")).toEqual([]);
 });
+
+test("braces inside a parameter list do not lose the function header or its name", () => {
+  const source = [
+    "function f({ a, b }: P) {", // 1
+    "  return a;", // 2
+    "}", // 3
+    "function g(a = { x: 1 }) {", // 4
+    "  return a;", // 5
+    "}", // 6
+    "const C = ({ a }: P) => {", // 7
+    "  return a;", // 8
+    "};", // 9
+    "class K {", // 10
+    "  m({ a }: P) {", // 11
+    "    return a;", // 12
+    "  }", // 13
+    "}", // 14
+    "function h(x: { a: number; b: { c: string } }) {", // 15
+    "  return x;", // 16
+    "}", // 17
+  ].join("\n");
+  expect(blocks(source, "typescript")).toEqual([
+    ["f", 1, 3],
+    ["g", 4, 6],
+    ["C", 7, 9],
+    ["K.m", 11, 13],
+    ["h", 15, 17],
+  ]);
+});
+
+test("functions inside an object literal argument are still found", () => {
+  const source = ["register({", "  run() {", "    return 1;", "  },", "});"].join("\n");
+  expect(blocks(source, "typescript")).toEqual([["run", 2, 4]]);
+});
