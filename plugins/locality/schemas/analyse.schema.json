@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "analyse.schema.json",
+  "title": "locality analyse --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "type": "object",
+  "$defs": {
+    "recommendation": { "enum": ["inline", "move", "split", "blocked", "keep", "scrutinise", "review"] },
+    "paths": { "type": "array", "items": { "type": "string" } },
+    "pathCounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "count": { "$ref": "common.schema.json#/$defs/count" }
+        },
+        "required": ["path", "count"],
+        "additionalProperties": false
+      }
+    },
+    "component": {
+      "type": "object",
+      "properties": {
+        "symbols": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Qualified names of the exported units, sorted." },
+        "consumers": { "$ref": "#/$defs/paths", "description": "Production files that use any of the symbols." },
+        "consumerFolders": { "$ref": "#/$defs/paths" },
+        "location": { "type": "string", "description": "The folder of the file the component is in." },
+        "target": { "type": "string" },
+        "distance": { "$ref": "common.schema.json#/$defs/count" },
+        "gain": { "$ref": "common.schema.json#/$defs/count" },
+        "fanIn": { "$ref": "common.schema.json#/$defs/count" },
+        "lines": { "$ref": "common.schema.json#/$defs/count" },
+        "recommendation": { "$ref": "#/$defs/recommendation" },
+        "rule": { "type": "string" }
+      },
+      "required": ["symbols", "consumers", "consumerFolders"],
+      "additionalProperties": false,
+      "description": "The scoring fields are present when the file is mixed: each component is then scored and recommended on its own."
+    }
+  },
+  "properties": {
+    "command": { "const": "analyse" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "entrySource": { "enum": ["config", "detected"], "description": "Where the entry points came from: the suite config's entryPoints, or the files nothing imports." },
+        "entries": { "$ref": "#/$defs/paths" },
+        "paths": { "$ref": "#/$defs/paths", "description": "Path prefixes the run was limited to." },
+        "recommendation": { "anyOf": [{ "$ref": "#/$defs/recommendation" }, { "type": "null" }] }
+      },
+      "required": ["entrySource", "entries", "paths", "recommendation"],
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "files": { "$ref": "common.schema.json#/$defs/count", "description": "Production source files analysed." },
+        "units": { "$ref": "common.schema.json#/$defs/count", "description": "Units found, before units already near their consumers are dropped." },
+        "byRecommendation": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" } }
+      },
+      "required": ["files", "units", "byRecommendation"],
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Leading indicators and the gaming check, not outcomes.",
+      "properties": {
+        "totalWeightedDistance": { "$ref": "common.schema.json#/$defs/count", "description": "Reference-weighted tree distance over every production dependency." },
+        "singleFileFolders": { "$ref": "common.schema.json#/$defs/count" },
+        "maxDepth": { "$ref": "common.schema.json#/$defs/count" }
+      },
+      "required": ["totalWeightedDistance", "singleFileFolders", "maxDepth"],
+      "additionalProperties": false
+    },
+    "unreachable": { "$ref": "#/$defs/paths", "description": "Production files the virtual root cannot reach: dead code, or an entry point missing from config." },
+    "barrels": { "$ref": "#/$defs/paths" },
+    "unresolved": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Imports the resolver could not follow, by reason." },
+    "filesWithSyntaxErrors": { "$ref": "#/$defs/paths" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "The unit's entry file, or for a sibling-set unit its folder." },
+          "score": { "$ref": "common.schema.json#/$defs/count", "description": "The gain; the unblocked gain for blocked units, the sum of the components' gains for splits, the fan-in for scrutinise." },
+          "recommendation": { "$ref": "#/$defs/recommendation" },
+          "rule": { "type": "string", "description": "The rule that fired, described by `locality explain <rule>`." },
+          "source": { "const": "structural" },
+          "unit": {
+            "type": "object",
+            "properties": {
+              "kind": { "enum": ["file", "branch", "sibling-set", "barrel"] },
+              "root": { "type": "string" },
+              "entries": { "$ref": "#/$defs/paths", "description": "Entry files of a sibling set." },
+              "files": { "$ref": "#/$defs/paths", "description": "Every file that moves with the unit." },
+              "tests": { "$ref": "#/$defs/paths", "description": "Tests that import only files of the unit and move with it." },
+              "cycle": { "type": "boolean", "description": "The unit contains an import cycle, so it can only move whole." }
+            },
+            "required": ["kind", "root", "entries", "files", "tests", "cycle"],
+            "additionalProperties": false
+          },
+          "location": { "type": "string", "description": "The folder the unit lives in: the deepest folder holding all its files." },
+          "target": { "type": "string", "description": "The folder that minimises the unit's net distance." },
+          "distance": { "$ref": "common.schema.json#/$defs/count", "description": "Folder hops from location to target." },
+          "gain": { "$ref": "common.schema.json#/$defs/count", "description": "Net distance saved by moving to the target as things stand." },
+          "unblockedGain": { "$ref": "common.schema.json#/$defs/count", "description": "The gain if every blocker were resolved." },
+          "netDistance": {
+            "type": "object",
+            "properties": { "current": { "$ref": "common.schema.json#/$defs/count" }, "atTarget": { "$ref": "common.schema.json#/$defs/count" } },
+            "required": ["current", "atTarget"],
+            "additionalProperties": false
+          },
+          "directCalls": { "$ref": "#/$defs/pathCounts" },
+          "otherRefs": { "$ref": "#/$defs/pathCounts" },
+          "testRefs": {
+            "type": "object",
+            "properties": { "owned": { "$ref": "#/$defs/paths" }, "external": { "$ref": "#/$defs/paths" } },
+            "required": ["owned", "external"],
+            "additionalProperties": false
+          },
+          "fanIn": { "$ref": "common.schema.json#/$defs/count", "description": "Distinct production consumer files." },
+          "size": {
+            "type": "object",
+            "properties": {
+              "lines": { "$ref": "common.schema.json#/$defs/count" },
+              "files": { "$ref": "common.schema.json#/$defs/count" },
+              "units": { "$ref": "common.schema.json#/$defs/count", "description": "Functions, methods and classes." }
+            },
+            "required": ["lines", "files", "units"],
+            "additionalProperties": false
+          },
+          "ownDeps": { "$ref": "#/$defs/paths", "description": "Production files the unit imports from outside itself." },
+          "visibility": { "enum": ["exported", "package-entry"] },
+          "age": { "type": "null", "description": "Reserved for history enrichment." },
+          "lastChanged": { "type": "null" },
+          "churn": { "type": "null" },
+          "coChange": { "type": "null" },
+          "signals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "enum": ["barrel", "overexposure", "pass-through", "special-general-mixture", "vague-name"] },
+                "detail": { "type": "string" }
+              },
+              "required": ["name", "detail"],
+              "additionalProperties": false
+            }
+          },
+          "strays": { "$ref": "#/$defs/paths", "description": "Files in the unit's neighbourhood that it depends on and that stay behind." },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string" },
+                "kind": { "enum": ["dependency", "stray"] },
+                "weight": { "$ref": "common.schema.json#/$defs/count" },
+                "otherConsumers": { "$ref": "common.schema.json#/$defs/count" },
+                "coChange": { "type": "null" },
+                "unblockedGain": { "$ref": "common.schema.json#/$defs/count" }
+              },
+              "required": ["path", "kind", "weight", "otherConsumers", "coChange", "unblockedGain"],
+              "additionalProperties": false
+            }
+          },
+          "cohesion": {
+            "type": "object",
+            "properties": {
+              "components": { "type": "array", "items": { "$ref": "#/$defs/component" }, "minItems": 2 },
+              "mixed": { "type": "boolean" }
+            },
+            "required": ["components", "mixed"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "path", "score", "recommendation", "rule", "source", "unit", "location", "target", "distance", "gain", "unblockedGain",
+          "netDistance", "directCalls", "otherRefs", "testRefs", "fanIn", "size", "ownDeps", "visibility", "age", "lastChanged",
+          "churn", "coChange", "signals", "strays", "blockers"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

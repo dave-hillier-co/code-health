@@ -1,0 +1,12 @@
+import type { CliDefinition } from "@code-health/cli-kit/run-cli";
+import { commands, rules } from "./commands.ts";
+import { localityConfig } from "./config.ts";
+import { SCHEMA_VERSION, TOOL } from "./tool.ts";
+
+export const cli: CliDefinition = {
+  tool: TOOL,
+  schemaVersion: SCHEMA_VERSION,
+  config: localityConfig,
+  commands,
+  rules: Object.keys(rules).length > 0 ? rules : undefined,
+};

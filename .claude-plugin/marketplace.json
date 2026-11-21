@@ -17,6 +17,11 @@
       "name": "structure",
       "source": "./plugins/structure",
       "description": "Finds dependencies that make change expensive: import cycles with minimal breaking sets, and dependencies pointing from stable towards volatile code, with an evidence pack for each."
+    },
+    {
+      "name": "locality",
+      "source": "./plugins/locality",
+      "description": "Finds code that lives far from the code that uses it and recommends moving, inlining or splitting it."
     }
   ]
 }

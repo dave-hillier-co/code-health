@@ -1,0 +1,17 @@
+{
+  "name": "locality",
+  "displayName": "Locality",
+  "version": "0.1.0",
+  "description": "Finds code that lives far from the code that uses it and recommends moving, inlining or splitting it.",
+  "author": {
+    "name": "Dave Hillier"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/dave-hillier-co/code-health",
+  "engines": {
+    "claude-code": ">=2.1.0"
+  },
+  "keywords": [
+    "code-health"
+  ]
+}

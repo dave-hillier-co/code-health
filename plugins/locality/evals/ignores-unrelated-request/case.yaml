@@ -1,0 +1,24 @@
+schema_version: "1.0"
+name: ignores-unrelated-request
+description: The skill stays unloaded for a request that has nothing to do with where code lives.
+tags: [trigger]
+runs: 1
+context:
+  scaffold_script: ../scaffold.sh
+execution:
+  prompt: Add a README.md with one sentence saying this is a small order and billing demo app.
+  model: claude-sonnet-5-5
+  max_turns: 8
+  timeout_seconds: 180
+  allowed_tools: [Skill, Bash, Read, Write]
+graders:
+  - type: tool_used
+    name: does-not-load-the-skill
+    tool: Skill
+    input_match: locality
+    max: 0
+  - type: tool_used
+    name: does-not-run-the-analyser
+    tool: Bash
+    input_match: locality\.mjs
+    max: 0

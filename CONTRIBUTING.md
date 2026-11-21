@@ -107,6 +107,8 @@ npm run evals -- <plugin> -- --case <glob> --runs 1   # options after the second
 npm run evals -- <plugin> -- --scaffold --allow-tools Bash Edit Write   # behaviour cases: build their repositories and grant their tools
 ```
 
+A case that needs a repository sets `context.scaffold_script` (a script that builds it in the working directory), and a case that edits files or runs commands lists those tools in `execution.allowed_tools`. Claude Code runs neither unless the operator opts in: `npm run evals -- <plugin> -- --scaffold --allow-tools Bash Write Edit`.
+
 Results and the HTML report are written to `.cache/evals/<plugin>/`, outside the plugin folder. The runner refuses to run when `CI` is set.
 
 ## Checks
