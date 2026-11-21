@@ -1,0 +1,12 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "Flow.kt": [
+      ["Flow.plain", 1, 1, 0, 0, 3, 1, 1, 0],
+      ["Flow.sign", 3, 3, 3, 1, 9, 5, 1, 0],
+      ["Flow.sumOfPrimes", 4, 4, 7, 3, 12, 7, 1, 0],
+      ["Flow.describe", 4, 3, 4, 2, 7, 4, 2, 0],
+      ["Flow.fact", 5, 5, 7, 2, 11, 6, 1, 0]
+    ]
+  }
+}

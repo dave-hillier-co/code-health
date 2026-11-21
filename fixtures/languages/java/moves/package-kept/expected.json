@@ -1,0 +1,13 @@
+{
+  "operations": [
+    {
+      "from": "src/legacy/Old.java",
+      "to": "src/archive/Old.java"
+    }
+  ],
+  "rewrites": [],
+  "texts": {},
+  "warnings": [
+    "src/legacy/Old.java: its package acme.old does not match its folder, so the package was kept"
+  ]
+}

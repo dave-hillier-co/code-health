@@ -1,0 +1,7 @@
+{
+  "expectedMisses": [
+    "adapter/syntax-errors/Broken.java#Broken.m",
+    "adapter/units/src/main/java/acme/Shapes.java#Shapes.Point.Point",
+    "agreement/Awkward.java#Awkward.Pair.Pair"
+  ]
+}

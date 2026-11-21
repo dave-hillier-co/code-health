@@ -1,5 +1,5 @@
 import type { LanguageAdapter } from "@code-health/parse/language-adapter";
-import { supportedAdapters } from "@code-health/parse/languages";
+import { adapterForPath, supportedAdapters } from "@code-health/parse/languages";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import { findExecutable, notConfirmed } from "./external-tools.ts";
 import { moverFor, type MoveResult, type MoverLanguage } from "./movers/language.ts";
@@ -38,11 +38,19 @@ export async function performMove(tree: SourceTree, operations: readonly FileOpe
     for (const [path, text] of part.texts) result.texts.set(path, text);
     result.warnings.push(...part.warnings);
 
-    const tool = adapters.find((adapter) => adapter.id === language.id)?.mover.confirmation ?? null;
-    if (tool === null) continue;
-    const found = await findExecutable(tool.executable, options.searchPath);
-    const outcome = found === undefined || backend.confirm === undefined ? notConfirmed(tool) : await backend.confirm(tree, own, { name: tool.name, path: found });
-    result.confirmations.push({ language: language.id, tool: tool.name, ...outcome });
+    // Each adapter whose files moved is confirmed by its own tool: Java by jdtls and Kotlin by its language server.
+    const byAdapter = new Map<LanguageAdapter, FileOperation[]>();
+    for (const operation of own) {
+      const adapter = adapterForPath(operation.from, adapters);
+      if (adapter !== undefined) byAdapter.set(adapter, [...(byAdapter.get(adapter) ?? []), operation]);
+    }
+    for (const [adapter, moved] of [...byAdapter].sort(([a], [b]) => (a.id < b.id ? -1 : 1))) {
+      const tool = adapter.mover.confirmation;
+      if (tool === null) continue;
+      const found = await findExecutable(tool.executable, options.searchPath);
+      const outcome = found === undefined || backend.confirm === undefined ? notConfirmed(tool) : await backend.confirm(tree, moved, { name: tool.name, path: found });
+      result.confirmations.push({ language: adapter.id, tool: tool.name, ...outcome });
+    }
   }
   result.rewrites.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : a.line - b.line));
   return result;

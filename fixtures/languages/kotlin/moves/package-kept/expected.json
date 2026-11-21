@@ -1,0 +1,13 @@
+{
+  "operations": [
+    {
+      "from": "src/legacy/Old.kt",
+      "to": "src/archive/Old.kt"
+    }
+  ],
+  "rewrites": [],
+  "texts": {},
+  "warnings": [
+    "src/legacy/Old.kt: its package acme.old does not match its folder, so the package was kept"
+  ]
+}

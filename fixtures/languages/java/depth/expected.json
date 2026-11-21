@@ -1,0 +1,28 @@
+{
+  "columns": ["unit", "nodes", "interfaceSize", "passThrough"],
+  "files": {
+    "Forwarding.java": [
+      ["Forwarding", 102, 7, null],
+      ["Forwarding.relay", 13, 1, "target"],
+      ["Forwarding.fixed", 14, 1, "target"],
+      ["Forwarding.bare", 9, 1, "target"],
+      ["Forwarding.statement", 14, 1, "store.put"],
+      ["Forwarding.computed", 15, 1, null],
+      ["Forwarding.creates", 13, 1, null],
+      ["Forwarding.early", 21, 1, null]
+    ],
+    "Shapes.java": [
+      ["Shapes", 97, 8, null],
+      ["Shapes.Shapes", 26, 2, null],
+      ["Shapes.first", 12, 1, "names.get"],
+      ["Shapes.secret", 6, 1, null],
+      ["Shapes.size", 11, 1, "names.size"],
+      ["Shapes.save", 19, 2, "store.save"],
+      ["Store", 20, 2, null]
+    ]
+  },
+  "modules": {
+    "Forwarding.java": 102,
+    "Shapes.java": 119
+  }
+}

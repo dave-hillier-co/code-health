@@ -1,6 +1,7 @@
 import { compareUtf8 } from "@code-health/parse/analyse-tree";
 import type { FileCensus, TypeDeclaration } from "@code-health/parse/census-facts";
 import { GrammarSet } from "@code-health/parse/grammars";
+import { registeredAdapters } from "@code-health/parse/languages";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import { censusDetectorsOf, type CensusDetectors } from "./language.ts";
 import { folderOf, type Project } from "../project.ts";
@@ -126,6 +127,7 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
     const key = `${consumer.to}#${consumer.toSymbol}`;
     callers.set(key, (callers.get(key) ?? new Set()).add(folderOf(consumer.from)));
   }
+  const symbolBased = new Set(registeredAdapters.filter((adapter) => adapter.dependencies.model === "symbol-based").map((adapter) => adapter.id));
   const callbackAliases = (path: string, names: readonly string[], detectors: CensusDetectors): boolean =>
     names.some((name) => detectors.callbackTypeNames.has(name) || reader.declaringFile(path, name, ["function-type"]) !== undefined);
 
@@ -195,7 +197,9 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
     for (const fn of file.functions) {
       const parameter = fn.parameters.find((p) => p.type.callback || callbackAliases(path, p.type.names, detectors));
       if (!parameter) continue;
-      const callerFolders = [...(callers.get(`${path}#${fn.name}`) ?? [])].sort(compareUtf8);
+      // A symbol-based graph resolves a use to the type that declares it, so a method is reached through its class.
+      const owner = symbolBased.has(adapterId) && fn.name.includes(".") ? fn.name.slice(0, fn.name.lastIndexOf(".")) : undefined;
+      const callerFolders = [...(callers.get(`${path}#${fn.name}`) ?? (owner === undefined ? undefined : callers.get(`${path}#${owner}`)) ?? [])].sort(compareUtf8);
       if (callerFolders.length === 0) continue;
       add({
         mechanism: "callbacks",

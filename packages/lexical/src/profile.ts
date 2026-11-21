@@ -82,6 +82,16 @@ export interface LexerProfile {
    * on the next line (an open parenthesis, a trailing operator or comma) is not ended.
    */
   statementEnd?: string;
+  /**
+   * Statements end at a line break unless the line obviously continues (Kotlin, which has no semicolons), so
+   * a declaration's header is not joined with the lines before it.
+   */
+  newlineEndsStatements?: boolean;
+  /**
+   * `fun name(args): T = expression` is a function whose body is an expression with no braces: the block ends
+   * with the expression. Used with `newlineEndsStatements`.
+   */
+  expressionBodies?: boolean;
 }
 
 const doubleQuote: DelimitedString = {
@@ -275,15 +285,19 @@ const kotlin: LexerProfile = {
     charLiteral,
   ],
   branchKeywords: [...cBranchKeywords, "when"],
-  shortCircuitOperators: ["&&", "\\|\\|", "\\?:"],
+  // The elvis operator is null-coalescing, not a decision (suite.md, Metric definitions per language).
+  shortCircuitOperators: ["&&", "\\|\\|"],
   bumpOpeners: [...cBumpOpeners, "when"],
   headerNoise: annotationNoise,
   controlHeader,
   typeHeaders: [typeHeader],
   functionHeaders: [
     "\\bfun\\b\\s*(?:<[^>]*>\\s*)?(?:[\\w.<>?]+\\.)?(?<name>[\\w$]+)\\s*\\([^]*\\)\\s*(?::\\s*[^{=]+)?$",
+    "^(?:(?:public|private|protected|internal)\\s+)?constructor\\s*\\([^]*\\)(?:\\s*:\\s*(?:this|super)\\s*\\([^]*\\))?$",
     "->\\s*$",
   ],
+  newlineEndsStatements: true,
+  expressionBodies: true,
 };
 
 const rust: LexerProfile = {

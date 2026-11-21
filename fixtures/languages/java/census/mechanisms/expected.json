@@ -1,0 +1,14 @@
+{
+  "files": 7,
+  "occurrences": [
+    "callbacks function-parameter app/Retry.java:4 | Retry.retry(task) is called from jobs",
+    "interfaces interface ports/Store.java:3 | Store is implemented in adapters",
+    "dependency-injection constructor-injection app/Service.java:5 | Service takes Store from ports",
+    "dependency-injection decorator app/Service.java:5 | @Service",
+    "events base-type events/Bus.java:5 | Bus extends Observable",
+    "events call events/Bus.java:7 | bus.emit",
+    "registries keyed-map registry/Handlers.java:7 | handlers",
+    "ports-and-adapters folder adapters | adapters",
+    "ports-and-adapters folder ports | ports"
+  ]
+}

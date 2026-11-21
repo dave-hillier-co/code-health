@@ -5,3 +5,5 @@ export { recorded as csharp } from "./agreement-rates/csharp.ts";
 export { recorded as cpp } from "./agreement-rates/cpp.ts";
 export { recorded as python } from "./agreement-rates/python.ts";
 export { recorded as go } from "./agreement-rates/go.ts";
+export { recorded as java } from "./agreement-rates/java.ts";
+export { recorded as kotlin } from "./agreement-rates/kotlin.ts";

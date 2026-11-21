@@ -143,7 +143,7 @@ class Measurer {
       this.children(node, level, depth);
       return;
     }
-    if (type === c.tryType) {
+    if (type === c.tryType || c.alsoTryTypes?.has(type)) {
       this.nesting = Math.max(this.nesting, depth + 1);
       this.children(node, level, depth + 1);
       return;
@@ -151,7 +151,7 @@ class Measurer {
     if (type === c.catchType) {
       this.flow(node, "catch", level);
       this.decision(node, "catch");
-      const body = c.catchBodyType === undefined ? node.childForFieldName("body") : (node.namedChildren.find((child) => child.type === c.catchBodyType) ?? null);
+      const body = this.bodyOf(node);
       this.children(node, level, depth, body);
       if (body !== null) this.visit(body, level + 1, depth);
       return;
@@ -180,10 +180,18 @@ class Measurer {
       this.children(node, level, depth);
       return;
     }
-    const jump = c.labelledJumps[type];
-    if (jump !== undefined) {
-      if (this.isLabelled(node)) this.flat(node, `labelled ${jump}`);
-      return;
+    if (c.labelledJump !== undefined) {
+      const jump = c.labelledJump(node);
+      if (jump !== null) {
+        this.flat(node, `labelled ${jump}`);
+        return;
+      }
+    } else {
+      const jump = c.labelledJumps[type];
+      if (jump !== undefined) {
+        if (this.isLabelled(node)) this.flat(node, `labelled ${jump}`);
+        return;
+      }
     }
     if (type === this.rules.callType) this.recursionCheck(node);
     this.children(node, level, depth);
@@ -209,6 +217,11 @@ class Measurer {
     this.cyclomaticModified++;
     this.record(node, "cyclomatic", "switch", 1, 0, "modified");
     this.nesting = Math.max(this.nesting, depth + 1);
+    if (c.headTypes !== undefined) {
+      const heads = c.headTypes;
+      for (const child of node.namedChildren) this.visit(child, heads.has(child.type) ? level : level + 1, heads.has(child.type) ? depth : depth + 1);
+      return;
+    }
     const body = c.body === "" ? null : node.childForFieldName(c.body);
     if (body === null && c.clauseTypes !== undefined) {
       for (let i = 0; i < node.childCount; i++) {
@@ -221,6 +234,14 @@ class Measurer {
     }
     this.children(node, level, depth, body);
     if (body !== null) this.children(body, level + 1, depth + 1);
+  }
+
+  /** The body of a loop or a `catch`: the grammar's own rule, else the node of type `catchBodyType` for a `catch`, else its `body` field. */
+  private bodyOf(node: Node): Node | null {
+    if (this.c.bodyOf !== undefined) return this.c.bodyOf(node);
+    const catchBody = this.c.catchBodyType;
+    if (catchBody !== undefined && node.type === this.c.catchType) return node.namedChildren.find((child) => child.type === catchBody) ?? null;
+    return node.childForFieldName("body");
   }
 
   private operatorOf(node: Node): string | undefined {
@@ -267,8 +288,9 @@ class Measurer {
     }
     this.decision(node, isElseIf ? "else if" : "if");
     const condition = node.childForFieldName(c.condition);
-    const consequence = node.childForFieldName(c.consequence);
-    const alternative = node.childForFieldName(c.alternative);
+    const parts = c.branches?.(node);
+    const consequence = parts === undefined ? node.childForFieldName(c.consequence) : parts.consequence;
+    const alternative = parts === undefined ? node.childForFieldName(c.alternative) : parts.alternative;
     // Whatever else the statement holds (Go's `if x := f(); x > 0`) is walked where the `if` sits.
     for (const child of node.namedChildren) {
       if (child.id === condition?.id || child.id === consequence?.id || child.id === alternative?.id) continue;
@@ -318,7 +340,7 @@ class Measurer {
     this.flow(node, construct, level);
     this.decision(node, construct);
     this.nesting = Math.max(this.nesting, depth + 1);
-    const body = node.childForFieldName("body");
+    const body = this.bodyOf(node);
     this.children(node, level, depth, body);
     if (body !== null) this.visit(body, level + 1, depth + 1);
   }

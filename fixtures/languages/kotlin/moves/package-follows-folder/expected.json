@@ -1,0 +1,22 @@
+{
+  "operations": [
+    {
+      "from": "src/main/kotlin/acme/model/Ledger.kt",
+      "to": "src/main/kotlin/acme/ledger/Ledger.kt"
+    }
+  ],
+  "rewrites": [
+    { "path": "src/main/kotlin/acme/ledger/Ledger.kt", "line": 1, "from": "acme.model", "to": "acme.ledger" },
+    { "path": "src/main/kotlin/acme/ledger/Ledger.kt", "line": 3, "from": "", "to": "acme.model.Account" },
+    { "path": "src/main/kotlin/acme/model/Audit.kt", "line": 3, "from": "", "to": "acme.ledger.Ledger" },
+    { "path": "src/main/kotlin/acme/service/Billing.kt", "line": 4, "from": "acme.model.openLedger", "to": "acme.ledger.openLedger" },
+    { "path": "src/main/kotlin/acme/service/Reports.kt", "line": 4, "from": "", "to": "acme.ledger.openLedger" }
+  ],
+  "texts": {
+    "src/main/kotlin/acme/ledger/Ledger.kt": "package acme.ledger\n\nimport acme.model.Account\n\nclass Ledger {\n    private val account = Account()\n}\n\nfun openLedger(): Ledger = Ledger()\n",
+    "src/main/kotlin/acme/model/Audit.kt": "package acme.model\n\nimport acme.ledger.Ledger\n\nclass Audit(val ledger: Ledger)\n",
+    "src/main/kotlin/acme/service/Billing.kt": "package acme.service\n\nimport acme.model.Account\nimport acme.ledger.openLedger as open\n\nfun charge(account: Account): Int = open().hashCode()\n",
+    "src/main/kotlin/acme/service/Reports.kt": "package acme.service\n\nimport acme.model.*\nimport acme.ledger.openLedger\n\nfun total(): Int = openLedger().hashCode()\n"
+  },
+  "warnings": []
+}

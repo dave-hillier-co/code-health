@@ -1,0 +1,35 @@
+{
+  "importEdges": [
+    "src/main/kotlin/acme/Main.kt -> src/main/kotlin/acme/service/Billing.kt import",
+    "src/main/kotlin/acme/model/Ledger.kt -> src/main/kotlin/acme/model/Account.kt import",
+    "src/main/kotlin/acme/service/Billing.kt -> src/main/kotlin/acme/model/Account.kt import",
+    "src/main/kotlin/acme/service/Billing.kt -> src/main/kotlin/acme/model/Ledger.kt import",
+    "src/main/kotlin/acme/service/Reports.kt -> src/main/kotlin/acme/model/Ledger.kt import",
+    "src/test/kotlin/acme/service/BillingTest.kt -> src/main/kotlin/acme/model/Account.kt import",
+    "src/test/kotlin/acme/service/BillingTest.kt -> src/main/kotlin/acme/service/Billing.kt import"
+  ],
+  "fileEdges": [
+    "src/main/kotlin/acme/Main.kt -> src/main/kotlin/acme/service/Billing.kt call call=1 reference=1",
+    "src/main/kotlin/acme/model/Ledger.kt -> src/main/kotlin/acme/model/Account.kt call call=1 reference=0",
+    "src/main/kotlin/acme/service/Billing.kt -> src/main/kotlin/acme/model/Account.kt reference call=0 reference=2",
+    "src/main/kotlin/acme/service/Billing.kt -> src/main/kotlin/acme/model/Ledger.kt call call=1 reference=1",
+    "src/main/kotlin/acme/service/Reports.kt -> src/main/kotlin/acme/model/Ledger.kt call call=1 reference=0",
+    "src/test/kotlin/acme/service/BillingTest.kt -> src/main/kotlin/acme/model/Account.kt test call=0 reference=2",
+    "src/test/kotlin/acme/service/BillingTest.kt -> src/main/kotlin/acme/service/Billing.kt test call=1 reference=0"
+  ],
+  "consumers": [
+    "src/main/kotlin/acme/Main.kt -> src/main/kotlin/acme/service/Billing.kt#charge reference x1",
+    "src/main/kotlin/acme/Main.kt#main -> src/main/kotlin/acme/service/Billing.kt#charge call x1",
+    "src/main/kotlin/acme/model/Ledger.kt#Ledger -> src/main/kotlin/acme/model/Account.kt#Account call x1",
+    "src/main/kotlin/acme/service/Billing.kt -> src/main/kotlin/acme/model/Account.kt#Account reference x1",
+    "src/main/kotlin/acme/service/Billing.kt -> src/main/kotlin/acme/model/Ledger.kt#openLedger reference x1",
+    "src/main/kotlin/acme/service/Billing.kt#charge -> src/main/kotlin/acme/model/Account.kt#Account reference x1",
+    "src/main/kotlin/acme/service/Billing.kt#charge -> src/main/kotlin/acme/model/Ledger.kt#openLedger call x1",
+    "src/main/kotlin/acme/service/Reports.kt#Reports.run -> src/main/kotlin/acme/model/Ledger.kt#openLedger call x1",
+    "src/test/kotlin/acme/service/BillingTest.kt -> src/main/kotlin/acme/model/Account.kt#Account test x1",
+    "src/test/kotlin/acme/service/BillingTest.kt#BillingTest.run -> src/main/kotlin/acme/model/Account.kt#Account test x1",
+    "src/test/kotlin/acme/service/BillingTest.kt#BillingTest.run -> src/main/kotlin/acme/service/Billing.kt#charge test x1"
+  ],
+  "unresolved": [],
+  "barrels": []
+}

@@ -61,7 +61,7 @@ describe("loadGrammar", () => {
     const copied = copyGrammars(join(dist, "grammars"));
     // The grammar of every supported adapter and the runtime, whichever languages are supported.
     expect(copied).toEqual([...new Set([...shippedGrammarSpecs().map((spec) => spec.file), runtimeSpec.file])].sort());
-    expect(copied).toEqual(expect.arrayContaining(["tree-sitter-typescript.wasm", "web-tree-sitter.wasm"]));
+    expect(copied).toEqual(expect.arrayContaining(["tree-sitter-typescript.wasm", "tree-sitter-java.wasm", "tree-sitter-kotlin.wasm", "web-tree-sitter.wasm"]));
     const grammar = await loadGrammar("typescript", { grammarDir: join(dist, "grammars") });
     const tree = grammar.parse("class A {}");
     expect(tree.rootNode.child(0)?.type).toBe("class_declaration");

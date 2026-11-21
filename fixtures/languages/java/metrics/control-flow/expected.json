@@ -1,0 +1,12 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "Flow.java": [
+      ["Flow.plain", 1, 1, 0, 0, 3, 1, 1, 0],
+      ["Flow.sign", 3, 3, 3, 1, 9, 5, 1, 0],
+      ["Flow.sumOfPrimes", 4, 4, 7, 3, 13, 7, 1, 0],
+      ["Flow.describe", 5, 3, 3, 1, 11, 4, 2, 0],
+      ["Flow.fact", 5, 5, 6, 2, 10, 5, 1, 0]
+    ]
+  }
+}

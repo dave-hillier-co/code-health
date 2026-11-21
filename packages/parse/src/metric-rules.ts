@@ -27,6 +27,11 @@ export interface ConstructMap {
      * is a statement of its own, so an `elif` adds no statement.
      */
     clauses?: { elif: string; else: string };
+    /**
+     * For grammars whose `if` names only its condition (Kotlin): the two branches, found by position. When present
+     * the `consequence` and `alternative` field names are not read.
+     */
+    branches?(node: Node): { consequence: Node | null; alternative: Node | null };
   };
   /**
    * `switch`, and the node that holds one `case` (a `default` is not a case). `caseCount` says how many cases
@@ -48,17 +53,26 @@ export interface ConstructMap {
     moreTypes?: ReadonlySet<string>;
     moreCaseTypes?: ReadonlySet<string>;
     clauseTypes?: ReadonlySet<string>;
+    /**
+     * For a `switch` with no body node (Kotlin `when`): node types that are the head of the switch, such as its
+     * subject. Every other named child is an entry, one level deeper.
+     */
+    headTypes?: ReadonlySet<string>;
   };
   /**
    * A switch that is an expression (C# `x switch { ... }`, Rust `match`). It costs like a `switch` and
    * every arm but the default one is a case. Its arms are children of the node itself, one level deeper.
    */
   switchExpression?: { type: string; arm: string; isDefaultArm(arm: Node): boolean };
-  /** `try` adds nesting. `catch` is a decision and its `body` field is walked one level deeper. */
+  /** `try` adds nesting. `catch` is a decision and its body is walked one level deeper. */
   tryType: string;
+  /** Further node types that open a `try` (Java `try` with resources). */
+  alsoTryTypes?: ReadonlySet<string>;
   catchType: string;
   /** The clause has no `body` field: its body is its first named child of this node type (Python `except`). */
   catchBodyType?: string;
+  /** The body of a loop or `catch`, when it is not the node's `body` field. */
+  bodyOf?(node: Node): Node | null;
   /** The ternary, with the fields of its three parts. */
   ternary: {
     type: string;
@@ -89,6 +103,11 @@ export interface ConstructMap {
   cyclomaticOnly?: Readonly<Record<string, string>>;
   /** For a grammar whose label is an unnamed-field child: the node type of the label, which makes a jump labelled when it has one. */
   labelType?: string;
+  /**
+   * For grammars where a jump's label is not a `label` field (Java `break outer;`, Kotlin `break@outer`): the
+   * construct name when the node is a jump to a label, otherwise null. Replaces `labelledJumps` and `label`.
+   */
+  labelledJump?(node: Node): string | null;
   /** Node types that hold comments, which are not code for length and are skipped when reading an `else`. */
   commentTypes: ReadonlySet<string>;
 }

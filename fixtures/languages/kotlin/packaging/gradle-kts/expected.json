@@ -1,0 +1,9 @@
+{
+  "packages": {
+    "app": { "ecosystem": "gradle", "exportedTypes": 1, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
+    "core": { "ecosystem": "gradle", "exportedTypes": 3, "abstractness": 0.667, "abstractnessWeak": false, "consumers": ["app"] }
+  },
+  "findings": [
+    "undeclared-dependency app | app uses :core without declaring it: the dependency graph the build sees is not the real one"
+  ]
+}

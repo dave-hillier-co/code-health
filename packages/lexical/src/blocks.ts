@@ -126,6 +126,21 @@ const keywordAssignment = /^(?:export\s+)?(?:const|let|var)\b/;
 const continuesExpression = /[-+*/%&|^?:=<>.,([!~]$/;
 const continuesFromStart = /^[-+*/%&|^?:=<>.)\]]/;
 
+/** An `=` that assigns: not part of `==`, `!=`, `<=`, `>=`, `=>` or a compound assignment. */
+function isPlainEquals(code: string, index: number): boolean {
+  return code[index + 1] !== "=" && code[index + 1] !== ">" && !/[-+*/%&|^!<>=]/.test(code[index - 1] ?? "");
+}
+
+/**
+ * Whether a line ends a statement in a language with no semicolons: it does unless it ends in an operator,
+ * a comma or an opening bracket, or the next line starts by continuing it, or opens a brace for a header.
+ */
+function endsStatement(code: string, following: string): boolean {
+  const text = code.trimEnd();
+  if (text === "" || /[-+*/%&|^?:=<.,([!~]$/.test(text) || /(?:^|\s)>$/.test(text) || text.endsWith("->")) return false;
+  return !continuesFromStart.test(following) && !following.startsWith("{") && !/^else\b/.test(following);
+}
+
 function angleBalanced(text: string): boolean {
   const flat = text.replace(/=>|->/g, "");
   return (flat.match(/</g)?.length ?? 0) <= (flat.match(/>/g)?.length ?? 0);
@@ -143,7 +158,7 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
 
   const { statementEnd } = compile(profile);
   /** A line break ends a statement in a profile with automatic semicolons, when the line is complete. */
-  const endsStatement = (line: SourceLine): boolean => {
+  const endsLineWithoutSemicolon = (line: SourceLine): boolean => {
     const code = line.code.trimEnd();
     if (statementEnd === undefined || code === "") return false;
     // Strings are blanked in `code`, so a line that ends in one is told by the text after its last code character.
@@ -158,6 +173,23 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
     arrow.block.endLine = arrow.lastLine;
     closed.push(arrow.block);
     arrow = undefined;
+  };
+
+  /** Called at the `=` of `fun name(args) = expression`: opens a block when what precedes it is a function header. */
+  const openExpressionBody = (before: string, line: SourceLine): boolean => {
+    const top = stack[stack.length - 1];
+    if (top?.typeOnly === true) return false;
+    const kept = [...header, { line: line.number, text: before }];
+    const classification = classifyHeader(kept, profile);
+    if (classification.kind !== "function") return false;
+    const names = stack.flatMap((scope) => (scope.name === undefined ? [] : [scope.name]));
+    const block: FunctionBlock = { startLine: classification.line, endLine: -1, source: "lexical" };
+    if (classification.name !== undefined) {
+      block.name = classification.name;
+      block.qualifiedName = qualify(names, classification.name)!;
+    }
+    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: false };
+    return true;
   };
 
   /** Called at an `=>`: opens a block when it is bound to a name and its body is an expression. */
@@ -238,6 +270,11 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
           i++;
           continue;
         }
+      } else if (ch === "=" && profile.expressionBodies === true && arrow === undefined && parenDepth === 0 && isPlainEquals(code, i)) {
+        if (openExpressionBody(segment, line)) {
+          segment += "=";
+          continue;
+        }
       } else if (ch === ";" && parenDepth === 0) {
         inDeclaration = false;
         header = [];
@@ -303,11 +340,12 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
       segment += ch;
     }
     header.push({ line: line.number, text: segment });
-    if (parenDepth === 0 && arrow === undefined && endsStatement(line)) header = [];
+    if (parenDepth === 0 && arrow === undefined && endsLineWithoutSemicolon(line)) header = [];
+    if (profile.newlineEndsStatements === true && arrow === undefined && parenDepth === 0 && endsStatement(code, codeLines[index + 1]?.code.trim() ?? "")) header = [];
     if (arrow !== undefined && parenDepth === 0 && stack.length === arrow.scopes) {
       const text = code.trimEnd();
       const following = codeLines[index + 1]?.code.trim() ?? "";
-      if (text !== "" && !continuesExpression.test(text) && !continuesFromStart.test(following)) {
+      if (text !== "" && !continuesExpression.test(text) && !continuesFromStart.test(following) && !(profile.expressionBodies === true && /^else\b/.test(following))) {
         closeArrow();
         header = [];
       }
