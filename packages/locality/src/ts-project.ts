@@ -1,6 +1,6 @@
 import { InMemoryFileSystemHost, Project, type CompilerOptions, ts } from "ts-morph";
 import type { SourceTree } from "@code-health/parse/source-tree";
-import { sourceFilesOf } from "./movers/language.ts";
+import { sourceFilesOf } from "./movers/mover-language.ts";
 
 
 const isSource = sourceFilesOf("typescript");

@@ -7,7 +7,7 @@ import { GrammarSet, type LoadedGrammar } from "@code-health/parse/grammars";
 import { pathSegments } from "@code-health/parse/languages/rust/extract-facts";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
-import type { MoveResult, MoverBackend, Skeleton } from "./language.ts";
+import type { MoveResult, MoverBackend, Skeleton } from "./mover-language.ts";
 import { readConfigs, RustMove } from "./rust-moves.ts";
 
 let grammar: LoadedGrammar | undefined;

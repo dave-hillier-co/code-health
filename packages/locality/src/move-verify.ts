@@ -1,7 +1,8 @@
 import { hasCodeHealthTrailer } from "@code-health/history/trailers";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import { performMove } from "./move-engine.ts";
-import { isSourceFile, moverFor, type Skeleton } from "./movers/language.ts";
+import { isSourceFile, moverFor } from "./movers/language.ts";
+import type { Skeleton } from "./movers/mover-language.ts";
 import type { FileOperation } from "./move-plan.ts";
 
 export interface SpecifierDifference {

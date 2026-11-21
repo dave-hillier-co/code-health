@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
-import type { MoveResult } from "./language.ts";
+import type { MoveResult } from "./mover-language.ts";
 
 /**
  * Confirms a C# move with the Roslyn language server (`Microsoft.CodeAnalysis.LanguageServer`), when it is

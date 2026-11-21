@@ -7,7 +7,7 @@ import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
 import { confirmWithLanguageServer } from "./jvm-confirm.ts";
 import { packageUnder, readHead, sourceRootOf, withImport, withPackage, type SourceHead } from "./jvm-source.ts";
-import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./language.ts";
+import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
 
 /**
  * Moves Java and Kotlin files. A package follows its folder, so moving a file to another folder changes its

@@ -10,8 +10,8 @@ import { includePathsOf } from "@code-health/parse/languages/cpp/include-paths";
 import { locateInclude } from "@code-health/parse/languages/cpp/resolve";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
-import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./language.ts";
-import { sourceFilesOf } from "./language.ts";
+import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
+import { sourceFilesOf } from "./mover-language.ts";
 
 const execFileAsync = promisify(execFile);
 const isSource = sourceFilesOf("cpp");

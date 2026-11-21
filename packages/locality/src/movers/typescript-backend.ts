@@ -3,8 +3,8 @@ import { Project, ts, type SourceFile } from "ts-morph";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
 import { buildProject } from "../ts-project.ts";
-import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./language.ts";
-import { sourceFilesOf } from "./language.ts";
+import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
+import { sourceFilesOf } from "./mover-language.ts";
 
 const isSource = sourceFilesOf("typescript");
 const KNOWN_EXTENSION = /\.(?:[cm]?[jt]sx?|json)$/;

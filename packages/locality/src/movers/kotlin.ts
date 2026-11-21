@@ -1,4 +1,4 @@
-import type { MoverLanguage } from "./language.ts";
+import type { MoverLanguage } from "./mover-language.ts";
 
 /**
  * Kotlin moves are made by the same mover as Java, because the two share one graph and a move rewrites

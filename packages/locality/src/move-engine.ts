@@ -2,10 +2,11 @@ import type { LanguageAdapter } from "@code-health/parse/language-adapter";
 import { adapterForPath, supportedAdapters } from "@code-health/parse/languages";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import { findExecutable, notConfirmed } from "./external-tools.ts";
-import { moverFor, type MoveResult, type MoverLanguage } from "./movers/language.ts";
+import { moverFor } from "./movers/language.ts";
+import type { MoveResult, MoverLanguage } from "./movers/mover-language.ts";
 import type { FileOperation } from "./move-plan.ts";
 
-export type { MoveResult, Rewrite } from "./movers/language.ts";
+export type { MoveResult, Rewrite } from "./movers/mover-language.ts";
 
 /** What a move runs with. The defaults are the supported adapters, the registered movers and the PATH. */
 export interface MoveOptions {

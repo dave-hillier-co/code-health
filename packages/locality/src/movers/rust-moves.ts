@@ -5,7 +5,7 @@ import { leavesOf, pathSegments, type Leaf } from "@code-health/parse/languages/
 import type { LoadedGrammar } from "@code-health/parse/grammars";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
-import type { Rewrite } from "./language.ts";
+import type { Rewrite } from "./mover-language.ts";
 
 /**
  * Moves Rust files and keeps the module tree and the paths that name them true. A file's module is its place

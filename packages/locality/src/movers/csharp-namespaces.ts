@@ -1,7 +1,7 @@
 import { posix } from "node:path";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
-import type { MoveResult, Rewrite } from "./language.ts";
+import type { MoveResult, Rewrite } from "./mover-language.ts";
 
 /**
  * The optional second step of a C# move: making namespaces follow the folders the files moved to. It is a

@@ -6,7 +6,7 @@ import type { LanguageAdapter } from "@code-health/parse/language-adapter";
 import { adapterById } from "@code-health/parse/languages";
 import { treeFromTexts } from "@code-health/parse/source-tree";
 import { performMove } from "../src/move-engine.ts";
-import type { MoverBackend, MoverLanguage } from "../src/movers/language.ts";
+import type { MoverBackend, MoverLanguage } from "../src/movers/mover-language.ts";
 
 const scratch: string[] = [];
 afterEach(() => {

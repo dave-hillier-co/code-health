@@ -1,4 +1,4 @@
-import type { MoverLanguage } from "./language.ts";
+import type { MoverLanguage } from "./mover-language.ts";
 
 /**
  * C++ has no codemod. The backend works out the `#include` respellings and the CMake source-list edits a move

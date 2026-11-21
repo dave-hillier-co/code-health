@@ -1,4 +1,4 @@
-import type { MoverLanguage } from "./language.ts";
+import type { MoverLanguage } from "./mover-language.ts";
 
 /**
  * Java moves are made by the mover of the shared Java and Kotlin graph, which rewrites the package clause and

@@ -11,8 +11,8 @@ import { PackageGraph } from "@code-health/parse/languages/go/resolve-packages";
 import { isExported } from "@code-health/parse/languages/go/shape";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
-import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./language.ts";
-import { sourceFilesOf } from "./language.ts";
+import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
+import { sourceFilesOf } from "./mover-language.ts";
 
 /**
  * The Go mover (suite.md, Language notes). Moving a file within its directory changes nothing. Moving one to

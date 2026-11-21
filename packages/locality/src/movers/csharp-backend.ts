@@ -2,8 +2,8 @@ import { posix } from "node:path";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
 import { confirmWithRoslyn } from "./csharp-roslyn.ts";
-import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./language.ts";
-import { sourceFilesOf } from "./language.ts";
+import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
+import { sourceFilesOf } from "./mover-language.ts";
 
 const isSource = sourceFilesOf("csharp");
 

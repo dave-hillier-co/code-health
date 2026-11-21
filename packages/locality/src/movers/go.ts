@@ -1,4 +1,4 @@
-import type { MoverLanguage } from "./language.ts";
+import type { MoverLanguage } from "./mover-language.ts";
 
 /**
  * Go moves rewrite package clauses, qualified references and import paths in memory (go-backend.ts), and

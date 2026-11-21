@@ -6,8 +6,8 @@ import { adapterById } from "@code-health/parse/languages";
 import { PythonResolver } from "@code-health/parse/languages/python/resolve-module";
 import { treeFromTexts, type SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
-import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./language.ts";
-import { sourceFilesOf } from "./language.ts";
+import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
+import { sourceFilesOf } from "./mover-language.ts";
 import { hasRope, moveWithRope } from "./python-rope.ts";
 
 const isSource = sourceFilesOf("python");

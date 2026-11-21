@@ -1,4 +1,4 @@
-import type { MoverLanguage } from "./language.ts";
+import type { MoverLanguage } from "./mover-language.ts";
 
 /**
  * Rust moves keep the module tree true: the `mod` declaration moves with the file, and every `use` and path
