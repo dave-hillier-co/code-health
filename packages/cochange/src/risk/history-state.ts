@@ -1,3 +1,4 @@
+import { folderOf } from "@code-health/graph/tree-distance";
 import type { MergedChange } from "./merged-changes.ts";
 
 /** One revision of a file by a merged change. */
@@ -39,6 +40,8 @@ export class HistoryState {
   private readonly eligibleRevisions = new Map<string, number>();
   private readonly pairs = new Map<string, Map<string, number>>();
   private readonly histogram = new Map<number, number>();
+  private readonly identities = new Map<string, { first: number; last: number; changes: number }>();
+  private readonly folders = new Map<string, Set<string>>();
   private ordinal = 0;
   private fixesInWindow = 0;
   private changesInWindow = 0;
@@ -69,6 +72,22 @@ export class HistoryState {
       record.revisions.push({ time: change.time, authors: change.authors, fix });
       record.present = file.status !== "D";
       if (eligible) record.eligibleChanges.add(ordinal);
+    }
+    for (const author of change.authors) {
+      const key = author.toLowerCase();
+      const seen = this.identities.get(key);
+      if (seen) {
+        seen.last = change.time;
+        seen.changes++;
+      } else {
+        this.identities.set(key, { first: change.time, last: change.time, changes: 1 });
+      }
+    }
+    for (const id of ids) {
+      const folder = folderOf(id);
+      const inFolder = this.folders.get(folder);
+      if (inFolder) inFolder.add(id);
+      else this.folders.set(folder, new Set([id]));
     }
     const entry: Windowed = { time: change.time, files: ids, eligible, fix };
     this.queue.push(entry);
@@ -117,6 +136,16 @@ export class HistoryState {
     const after = (row.get(b) ?? 0) + sign;
     if (after === 0) row.delete(b);
     else row.set(b, after);
+  }
+
+  /** When an identity (a lower-case mapped email) first and last changed anything, and in how many merged changes. Null if never. */
+  identity(email: string): { first: number; last: number; changes: number } | null {
+    return this.identities.get(email.toLowerCase()) ?? null;
+  }
+
+  /** Every file that has had a revision in the given folder (`""` is the root), whether or not it still exists. */
+  filesInFolder(folder: string): ReadonlySet<string> {
+    return this.folders.get(folder) ?? new Set();
   }
 
   /** True when the file has any recorded revision. */

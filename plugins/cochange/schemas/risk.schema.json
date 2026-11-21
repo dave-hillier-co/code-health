@@ -23,6 +23,9 @@
         },
         {
           "$ref": "#/$defs/explain"
+        },
+        {
+          "$ref": "#/$defs/backtest"
         }
       ]
     }
@@ -207,6 +210,13 @@
                 "high"
               ],
               "additionalProperties": false
+            },
+            "unavailable": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Scored factors that could not be computed or placed. They add nothing to the score."
             }
           },
           "required": [
@@ -214,6 +224,7 @@
             "scoreBand",
             "band",
             "events",
+            "unavailable",
             "baseline"
           ],
           "additionalProperties": false
@@ -462,6 +473,243 @@
       "required": [
         "kind",
         "topic"
+      ],
+      "additionalProperties": false
+    },
+    "bandRow": {
+      "description": "Past changes at one band or level: how many met trouble, and the rate of the same files for comparison.",
+      "type": "object",
+      "properties": {
+        "band": {
+          "type": "string"
+        },
+        "changes": {
+          "$ref": "#/$defs/count"
+        },
+        "troubled": {
+          "$ref": "#/$defs/count"
+        },
+        "rate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "baseRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "The same rate over the files these changes touched. The rate to beat."
+        }
+      },
+      "required": [
+        "band",
+        "changes",
+        "troubled",
+        "rate",
+        "baseRate"
+      ],
+      "additionalProperties": false
+    },
+    "backtest": {
+      "description": "`risk backtest`: every merged change on the main line scored as of itself, against whether it was later reverted or fixed. Per level and per factor band, never per person.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "backtest"
+        },
+        "population": {
+          "type": "object",
+          "properties": {
+            "mergedChanges": {
+              "$ref": "#/$defs/count"
+            },
+            "scored": {
+              "$ref": "#/$defs/count"
+            },
+            "withLevel": {
+              "$ref": "#/$defs/count"
+            },
+            "censored": {
+              "$ref": "#/$defs/count",
+              "description": "Changes whose follow-up window runs past the analysed commit. They are left out of every rate."
+            },
+            "unscored": {
+              "$ref": "#/$defs/count"
+            }
+          },
+          "required": [
+            "mergedChanges",
+            "scored",
+            "withLevel",
+            "censored",
+            "unscored"
+          ],
+          "additionalProperties": false
+        },
+        "outcome": {
+          "type": "object",
+          "properties": {
+            "followUpDays": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "fixConvention": {
+              "type": "boolean",
+              "description": "Some change matches a fix pattern. Without one, only reverts count."
+            },
+            "reverts": {
+              "$ref": "#/$defs/count"
+            },
+            "troubled": {
+              "$ref": "#/$defs/count"
+            },
+            "rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "followUpDays",
+            "fixConvention",
+            "reverts",
+            "troubled",
+            "rate"
+          ],
+          "additionalProperties": false
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bandRow"
+          }
+        },
+        "impact": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bandRow"
+          }
+        },
+        "placement": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bandRow"
+          }
+        },
+        "factors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "bands": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/bandRow"
+                }
+              },
+              "unavailable": {
+                "$ref": "#/$defs/count"
+              }
+            },
+            "required": [
+              "name",
+              "bands",
+              "unavailable"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "completeness": {
+          "type": "object",
+          "properties": {
+            "findings": {
+              "$ref": "#/$defs/count"
+            },
+            "followed": {
+              "$ref": "#/$defs/count",
+              "description": "Changes with a missing-co-change finding whose named file was edited by a later change within the follow-up window."
+            },
+            "share": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "findings",
+            "followed",
+            "share"
+          ],
+          "additionalProperties": false
+        },
+        "elevatedShare": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "The share of scored changes at the elevated level: the gaming check."
+        },
+        "separation": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "separates",
+                "does-not-separate",
+                "insufficient"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stored": {
+          "type": "boolean",
+          "description": "A whole run on a clean tree is stored, and risk shows a level only when the stored result separates."
+        }
+      },
+      "required": [
+        "kind",
+        "population",
+        "outcome",
+        "levels",
+        "impact",
+        "placement",
+        "factors",
+        "completeness",
+        "elevatedShare",
+        "separation",
+        "limits",
+        "stored"
       ],
       "additionalProperties": false
     }

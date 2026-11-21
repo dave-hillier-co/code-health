@@ -147,8 +147,8 @@ test("events raise the impact band by one step, once, and not beyond high", () =
   expect(impactOf(high, scores, ["structure-delta"], settings).band).toBe("high");
 });
 
-test("with too few changes to compare, the impact band is unavailable unless the score is zero", () => {
+test("with too few changes to compare, the impact band is unavailable, even for a score of zero", () => {
   const few = [0, 1, 2];
-  expect(impactOf([], few, [], settings).band).toBe("low");
+  expect(impactOf([], few, [], settings).band).toBe("unavailable");
   expect(impactOf([{ name: "size", family: "size-and-diffusion", band: "high" }], few, ["sensitive-paths"], settings).band).toBe("unavailable");
 });

@@ -1,0 +1,541 @@
+{
+  "command": "risk",
+  "config": "0dc1c3d15ef8420f",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 40,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 9,
+    "window": {
+      "months": 12,
+      "since": 1696064400,
+      "until": 1727686800
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "baselineChanges": 200,
+    "fixPatterns": [
+      "^fix(es|ed)?\\b",
+      "^bugfix",
+      "^hotfix",
+      "\\bfix(es|ed)?\\b.*#\\d+",
+      "^merge .*\\b(fix|hotfix|bugfix)[/-]"
+    ],
+    "followUpDays": 30,
+    "mergeStyle": {
+      "direct": 40,
+      "merges": 0
+    },
+    "revertPatterns": [
+      "^revert\\b"
+    ],
+    "since": null
+  },
+  "repo": {
+    "dirty": false,
+    "head": "de5cad0d0e31e4eac1f4447dcbffb23daad44d02"
+  },
+  "results": {
+    "completeness": {
+      "findings": 0,
+      "followed": 0,
+      "share": null
+    },
+    "elevatedShare": 0.0667,
+    "factors": [
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.1167,
+            "changes": 20,
+            "rate": 0.05,
+            "troubled": 1
+          },
+          {
+            "band": "moderate",
+            "baseRate": 0.6786,
+            "changes": 2,
+            "rate": 0.5,
+            "troubled": 1
+          },
+          {
+            "band": "high",
+            "baseRate": 0.8571,
+            "changes": 3,
+            "rate": 1,
+            "troubled": 3
+          }
+        ],
+        "name": "size",
+        "unavailable": 10
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.2224,
+            "changes": 35,
+            "rate": 0.1714,
+            "troubled": 6
+          },
+          {
+            "band": "moderate",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          },
+          {
+            "band": "high",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          }
+        ],
+        "name": "spread",
+        "unavailable": 0
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.0893,
+            "changes": 28,
+            "rate": 0.0357,
+            "troubled": 1
+          },
+          {
+            "band": "moderate",
+            "baseRate": 0.7679,
+            "changes": 4,
+            "rate": 0.75,
+            "troubled": 3
+          },
+          {
+            "band": "high",
+            "baseRate": 0.8571,
+            "changes": 1,
+            "rate": 1,
+            "troubled": 1
+          }
+        ],
+        "name": "entropy",
+        "unavailable": 2
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.2224,
+            "changes": 35,
+            "rate": 0.1714,
+            "troubled": 6
+          },
+          {
+            "band": "moderate",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          },
+          {
+            "band": "high",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          }
+        ],
+        "name": "mixed-purpose",
+        "unavailable": 0
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.0714,
+            "changes": 26,
+            "rate": 0.0769,
+            "troubled": 2
+          },
+          {
+            "band": "moderate",
+            "baseRate": 0.6786,
+            "changes": 6,
+            "rate": 0.5,
+            "troubled": 3
+          },
+          {
+            "band": "high",
+            "baseRate": 0.6786,
+            "changes": 2,
+            "rate": 0.5,
+            "troubled": 1
+          }
+        ],
+        "name": "hotspots-touched",
+        "unavailable": 1
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.0762,
+            "changes": 20,
+            "rate": 0.1,
+            "troubled": 2
+          },
+          {
+            "band": "moderate",
+            "baseRate": 0.627,
+            "changes": 3,
+            "rate": 0.6667,
+            "troubled": 2
+          },
+          {
+            "band": "high",
+            "baseRate": 0.5,
+            "changes": 3,
+            "rate": 0,
+            "troubled": 0
+          }
+        ],
+        "name": "defect-history",
+        "unavailable": 9
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.235,
+            "changes": 31,
+            "rate": 0.1935,
+            "troubled": 6
+          },
+          {
+            "band": "moderate",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          },
+          {
+            "band": "high",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          }
+        ],
+        "name": "contention",
+        "unavailable": 4
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.1762,
+            "changes": 30,
+            "rate": 0.2,
+            "troubled": 6
+          },
+          {
+            "band": "moderate",
+            "baseRate": 0.5,
+            "changes": 3,
+            "rate": 0,
+            "troubled": 0
+          },
+          {
+            "band": "high",
+            "baseRate": 0.5,
+            "changes": 1,
+            "rate": 0,
+            "troubled": 0
+          }
+        ],
+        "name": "age",
+        "unavailable": 1
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.2224,
+            "changes": 35,
+            "rate": 0.1714,
+            "troubled": 6
+          },
+          {
+            "band": "moderate",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          },
+          {
+            "band": "high",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          }
+        ],
+        "name": "missing-co-change",
+        "unavailable": 0
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.2224,
+            "changes": 35,
+            "rate": 0.1714,
+            "troubled": 6
+          },
+          {
+            "band": "moderate",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          },
+          {
+            "band": "high",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          }
+        ],
+        "name": "novel-coupling",
+        "unavailable": 0
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.2224,
+            "changes": 35,
+            "rate": 0.1714,
+            "troubled": 6
+          },
+          {
+            "band": "moderate",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          },
+          {
+            "band": "high",
+            "baseRate": null,
+            "changes": 0,
+            "rate": null,
+            "troubled": 0
+          }
+        ],
+        "name": "test-evidence",
+        "unavailable": 0
+      },
+      {
+        "bands": [
+          {
+            "band": "low",
+            "baseRate": 0.1524,
+            "changes": 30,
+            "rate": 0.1333,
+            "troubled": 4
+          },
+          {
+            "band": "moderate",
+            "baseRate": 0.6786,
+            "changes": 2,
+            "rate": 0.5,
+            "troubled": 1
+          },
+          {
+            "band": "high",
+            "baseRate": 0.619,
+            "changes": 3,
+            "rate": 0.3333,
+            "troubled": 1
+          }
+        ],
+        "name": "blast-radius",
+        "unavailable": 0
+      }
+    ],
+    "impact": [
+      {
+        "band": "low",
+        "baseRate": 0.049,
+        "changes": 17,
+        "rate": 0.0588,
+        "troubled": 1
+      },
+      {
+        "band": "moderate",
+        "baseRate": 0.7381,
+        "changes": 3,
+        "rate": 0.6667,
+        "troubled": 2
+      },
+      {
+        "band": "high",
+        "baseRate": 0.6429,
+        "changes": 5,
+        "rate": 0.4,
+        "troubled": 2
+      }
+    ],
+    "kind": "backtest",
+    "levels": [
+      {
+        "band": "routine",
+        "baseRate": 0.0939,
+        "changes": 18,
+        "rate": 0.1111,
+        "troubled": 2
+      },
+      {
+        "band": "attention",
+        "baseRate": 0.6429,
+        "changes": 5,
+        "rate": 0.4,
+        "troubled": 2
+      },
+      {
+        "band": "elevated",
+        "baseRate": 0.6786,
+        "changes": 2,
+        "rate": 0.5,
+        "troubled": 1
+      }
+    ],
+    "limits": [
+      "History layer only: complexity-delta, structure-delta and abandoned-touched would need a parse of every past change, so they are left out of the bands and the level.",
+      "Placement is by change-familiarity and neighbourhood from history alone, not from blame, which is not affordable at every past commit.",
+      "Pure moves are filtered from history, so mixed-purpose sees only moves that also edit the file.",
+      "Hotspots are ranked by change frequency, because complexity cannot be measured at every past commit.",
+      "A change counts as followed by trouble when it was reverted or a fix touched its files within the follow-up window. The file-level test over-counts in busy files, so each rate is shown beside the rate of the same files.",
+      "Results are per factor band and per level, never per person."
+    ],
+    "outcome": {
+      "fixConvention": true,
+      "followUpDays": 30,
+      "rate": 0.1714,
+      "reverts": 1,
+      "troubled": 6
+    },
+    "placement": [
+      {
+        "band": "close",
+        "baseRate": 0.3386,
+        "changes": 9,
+        "rate": 0.3333,
+        "troubled": 3
+      },
+      {
+        "band": "mixed",
+        "baseRate": 0.0278,
+        "changes": 6,
+        "rate": 0,
+        "troubled": 0
+      },
+      {
+        "band": "distant",
+        "baseRate": null,
+        "changes": 0,
+        "rate": null,
+        "troubled": 0
+      },
+      {
+        "band": "unknown",
+        "baseRate": 0.2286,
+        "changes": 20,
+        "rate": 0.15,
+        "troubled": 3
+      }
+    ],
+    "population": {
+      "censored": 5,
+      "mergedChanges": 40,
+      "scored": 40,
+      "unscored": 0,
+      "withLevel": 30
+    },
+    "separation": {
+      "reason": "the trouble rate does not rise with the level (routine 0.1111, attention 0.4) or does not beat the rate of the same files",
+      "status": "does-not-separate"
+    },
+    "stored": true
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2024-01-01T09:00:00.000Z",
+    "until": "2024-09-30T09:00:00.000Z"
+  }
+}

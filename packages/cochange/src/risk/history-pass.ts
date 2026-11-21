@@ -1,11 +1,14 @@
 import { HistoryState } from "./history-state.ts";
 import { measureHistoryLayer, type ChangeFacts, type Measurement, type MeasureContext } from "./measure.ts";
 import type { MergedChange } from "./merged-changes.ts";
+import { placeChange, type Placement } from "./placement.ts";
 
 export interface PastChange {
   change: MergedChange;
   /** The change's history-layer factors, measured from the history before it and nothing else. */
   measurements: Measurement[];
+  /** Where the change's authors stood in the code it touched, from history alone. Only when asked for. */
+  placement: Placement | null;
 }
 
 export const SECONDS_PER_MONTH = 30.4375 * 86_400;
@@ -30,6 +33,8 @@ export interface PassOptions {
   fixPatterns: readonly RegExp[];
   /** Only changes for which this is true are measured. Every change is still added to the state. */
   measureWhen?: (change: MergedChange, index: number) => boolean;
+  /** Also place each change's authors, by change familiarity and neighbourhood (the backtest does). */
+  placement?: boolean;
 }
 
 /**
@@ -46,7 +51,12 @@ export function chronologicalPass(
   for (const [index, change] of changes.entries()) {
     state.advance(change.time);
     if (options.measureWhen?.(change, index) ?? true) {
-      past.push({ change, measurements: measureHistoryLayer(factsOf(change), state, context) });
+      const facts = factsOf(change);
+      past.push({
+        change,
+        measurements: measureHistoryLayer(facts, state, context),
+        placement: options.placement ? placeChange(facts, state, context) : null,
+      });
     }
     state.add(change, isFix(change, options.fixPatterns));
   }

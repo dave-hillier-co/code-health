@@ -53,6 +53,8 @@ export const riskDefaults = {
   /** Placement: share of a file's lines (percentage) for `owner` and for `regular`. */
   ownerShare: 50,
   regularShare: 10,
+  /** Placement: changes to a file within `recentMonths` of this many make an author a regular of it. */
+  regularChanges: 3,
   /** Placement: changes to a file within this many months count as recent. */
   recentChangesToFile: 3,
   /** Placement: an earlier change counts for half after this many months. */
@@ -105,6 +107,7 @@ export interface RiskSettings {
   complexityRise: number;
   ownerShare: number;
   regularShare: number;
+  regularChanges: number;
   recentChangesToFile: number;
   recencyHalfLifeMonths: number;
   newIdentityDays: number;
@@ -188,6 +191,7 @@ export function readRiskSettings(config: LoadedConfig): RiskSettings {
     complexityRise: whole("complexityRise", 1),
     ownerShare,
     regularShare,
+    regularChanges: whole("regularChanges", 1),
     recentChangesToFile: whole("recentChangesToFile", 1),
     recencyHalfLifeMonths: whole("recencyHalfLifeMonths", 1),
     newIdentityDays: whole("newIdentityDays", 0),

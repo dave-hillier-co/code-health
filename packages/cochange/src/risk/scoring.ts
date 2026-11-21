@@ -99,6 +99,8 @@ export interface ImpactResult {
   /** After events raised it, once. */
   band: FactorBand;
   events: string[];
+  /** Scored factors that could not be computed or placed. They add nothing, and the reader should know. */
+  unavailable: string[];
   baseline: { population: number; moderate: number | null; high: number | null };
 }
 
@@ -111,7 +113,8 @@ export function impactOf(
 ): ImpactResult {
   const score = impactScore(factors);
   const cutoffs = scores.length < settings.minBaseline ? null : cutoffsOf(scores, settings.moderatePercentile, settings.highPercentile);
-  const scoreBand: FactorBand = cutoffs === null ? (score <= 0 ? "low" : "unavailable") : bandAgainst(score, cutoffs);
+  // With too few changes to compare, even a score of zero cannot be called low: nothing says what ordinary is.
+  const scoreBand: FactorBand = cutoffs === null ? "unavailable" : bandAgainst(score, cutoffs);
   // Events raise a band that exists. With no baseline to place the score in, they are listed and nothing is invented.
   const band: FactorBand = scoreBand !== "unavailable" && events.length > 0 ? raiseBand(scoreBand) : scoreBand;
   return {
@@ -119,6 +122,7 @@ export function impactOf(
     scoreBand,
     band,
     events: [...events],
+    unavailable: factors.filter((f) => SCORED_FACTORS.has(f.name) && !f.disabled && f.band === "unavailable").map((f) => f.name).sort(),
     baseline: { population: scores.length, moderate: cutoffs?.moderate ?? null, high: cutoffs?.high ?? null },
   };
 }
