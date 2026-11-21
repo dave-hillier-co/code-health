@@ -1,0 +1,91 @@
+{
+  "command": "coupling",
+  "config": "2fc89d53ab233ee2",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 6,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 4.7,
+    "window": {
+      "months": 12,
+      "since": 1685610000,
+      "until": 1717232400
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "gitattributes": true,
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "asymmetry": {
+      "high": 80,
+      "low": 30
+    },
+    "file": null,
+    "minDegree": 30,
+    "minSupport": 5
+  },
+  "note": "No pair reaches support 5 and degree 30 %. The thresholds were not lowered; a young or sparse history has little coupling evidence.",
+  "population": {
+    "eligibleChanges": 6,
+    "oversizedExcluded": 0
+  },
+  "repo": {
+    "dirty": false,
+    "head": "9f65c10e2680360c26e94d73aa12fc4b81bdd0dc"
+  },
+  "results": [],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 0
+  },
+  "window": {
+    "since": "2023-06-01T09:00:00.000Z",
+    "until": "2024-06-01T09:00:00.000Z"
+  }
+}
