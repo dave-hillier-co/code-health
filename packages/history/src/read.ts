@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import type { DatabaseSync } from "node:sqlite";
 import { locateCache } from "./cache-location.ts";
 import type { ChangeStatus } from "./log-parser.ts";
@@ -59,6 +60,12 @@ export interface HistoryView {
 
 export interface ReadOptions {
   ref?: string;
+  /**
+   * A mailmap kept outside the tree (the local-only mapping, which is never
+   * committed). Passed to git as `mailmap.file`, and read together with the
+   * `.mailmap` in the tree at the ref.
+   */
+  mailmapFile?: string;
   /** Follow only first parents, as `git log --first-parent`. */
   firstParent?: boolean;
 }
@@ -106,7 +113,7 @@ export async function readHistory(repoPath: string, options: ReadOptions = {}): 
   if (!db) throw new NoCacheError("No history cache. Run refresh first.");
   try {
     const view = select(db, ref, headSha, firstParent);
-    await applyMailmap(location.repoRoot, view);
+    await applyMailmap(location.repoRoot, view, options.mailmapFile);
     return view;
   } finally {
     db.close();
@@ -118,17 +125,21 @@ export async function readHistory(repoPath: string, options: ReadOptions = {}): 
  * here and not at ingest because commits are immutable in the cache while the
  * mailmap is not, and the user's own mailmap settings must not leak in.
  */
-async function applyMailmap(repoRoot: string, view: HistoryView): Promise<void> {
+async function applyMailmap(repoRoot: string, view: HistoryView, mailmapFile: string | undefined): Promise<void> {
+  const file = mailmapFile !== undefined && existsSync(mailmapFile) ? mailmapFile : "";
+  let blob = "";
   try {
     await runGit(repoRoot, ["cat-file", "-e", `${view.headSha}:.mailmap`]);
+    blob = `${view.headSha}:.mailmap`;
   } catch {
-    return; // no mailmap at this ref: authors are as written
+    // no mailmap in the tree at this ref
   }
+  if (file === "" && blob === "") return; // authors are as written
   const identities = [...new Set(view.commits.map((c) => `${c.authorName} <${c.authorEmail}>`))].sort();
   if (identities.length === 0) return;
   const out = await runGit(
     repoRoot,
-    ["-c", "mailmap.file=", "-c", `mailmap.blob=${view.headSha}:.mailmap`, "check-mailmap", "--stdin"],
+    ["-c", `mailmap.file=${file}`, "-c", `mailmap.blob=${blob}`, "check-mailmap", "--stdin"],
     { input: identities.join("\n") + "\n" },
   );
   const lines = out.split("\n");
