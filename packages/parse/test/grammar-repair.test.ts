@@ -32,11 +32,35 @@ describe("the TypeScript grammar's repairs of valid files", () => {
   });
 
   it.each([
-    "packages/structure/src/packaging/abstractness.ts",
-    "packages/structure/test/packaging/support/scenarios.ts",
+    "packages/structure/src/packaging/abstractness.ts",    "packages/structure/test/packaging/support/scenarios.ts",
     "packages/structure/test/support/layer-scenarios.ts",
     "packages/structure/test/support/scenarios.ts",
   ])("parses this repository's %s", async (path) => {
     expect((await parse(readFileSync(path, "utf8"))).hasError).toBe(false);
+  });
+});
+
+describe("the Kotlin grammar's repair of bodies that end on the line of their last member", () => {
+  async function kotlin(source: string) {
+    const tree = (await loadGrammar("kotlin")).parse(source);
+    const result = { hasError: tree.rootNode.hasError, text: tree.rootNode.text };
+    tree.delete();
+    return result;
+  }
+
+  it.each([
+    "class Tiny { val x = 1 }\nfun after() {}\n",
+    "class A {\n  companion object { val unit = A() }\n  interface V { fun visit(a: A): Int }\n  fun accept(v: V): Int = v.visit(this)\n}\n",
+  ])("parses without errors: %s", async (source) => {
+    expect((await kotlin(source)).hasError).toBe(false);
+  });
+
+  it("leaves strings and comments as written and keeps every position", async () => {
+    const source = 'class A { val s = "a }" }\n// b }\nclass B { val c = \'}\' }\n';
+    const { hasError, text } = await kotlin(source);
+    expect(hasError).toBe(false);
+    expect(text.length).toBe(source.length);
+    expect(text).toContain('"a }"');
+    expect(text).toContain("// b }");
   });
 });

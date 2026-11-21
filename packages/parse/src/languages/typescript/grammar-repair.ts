@@ -1,4 +1,5 @@
 import type { Node } from "web-tree-sitter";
+import type { SourceRepair } from "../../language-adapter.ts";
 
 /**
  * The TypeScript grammar rejects two valid constructs, because it reserves words the language only treats
@@ -7,7 +8,7 @@ import type { Node } from "web-tree-sitter";
  * - a tuple member labelled with a type keyword or a reserved word: `[specifier: string, symbol: string]`;
  * - a statement that starts with the identifier `abstract`, `as` or `satisfies`: `abstract++;`.
  *
- * `typescriptRepairOffsets` finds them from the error nodes of a tree. Each offset is the first character of
+ * `typescriptRepairs` finds them from the error nodes of a tree. Each offset is the first character of
  * such a word; the grammar loader overwrites it with `_` (same length, so every position stays the same) and
  * parses again. Only error nodes are inspected, so a string or comment is never touched, and a file with a
  * real syntax error keeps its error.
@@ -19,7 +20,7 @@ const labelWords = new Set([
 const statementWords = new Set(["abstract", "as", "satisfies"]);
 const afterStatementWord = /^\s*(\+\+|--|[-+*/%&|^]?=|\*\*=|\.|\(|\[|,|;|\)|$)/;
 
-export function typescriptRepairOffsets(root: Node, source: string): number[] {
+export function typescriptRepairs(root: Node, source: string): SourceRepair[] {
   const offsets = new Set<number>();
   const visit = (node: Node): void => {
     if (!node.hasError) return;
@@ -36,5 +37,5 @@ export function typescriptRepairOffsets(root: Node, source: string): number[] {
     for (const child of node.children) visit(child);
   };
   visit(root);
-  return [...offsets].sort((a, b) => a - b);
+  return [...offsets].sort((a, b) => a - b).map((offset) => ({ offset, character: "_" }));
 }

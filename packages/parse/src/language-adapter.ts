@@ -65,11 +65,16 @@ export interface GrammarSpec {
   /** File name of the .wasm, both inside the npm package and in `dist/grammars`. */
   file: string;
   /**
-   * For a grammar that rejects some valid constructs: given the tree of a file with errors, the offsets of
-   * the characters to overwrite with `_` so the file parses (same length, so positions never move). The
+   * For a grammar that rejects some valid constructs: given the tree of a file with errors, single characters
+   * to overwrite so the file parses. Each replaces one character with one, so positions never move. The
    * loader repairs, parses again and keeps the repaired tree only when it has fewer errors.
    */
-  repairOffsets?: (root: Node, source: string) => number[];
+  repairs?: (root: Node, source: string) => SourceRepair[];
+}
+
+export interface SourceRepair {
+  offset: number;
+  character: string;
 }
 
 export interface GrammarBinding {

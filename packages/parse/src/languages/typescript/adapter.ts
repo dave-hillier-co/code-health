@@ -2,7 +2,7 @@ import type { LanguageAdapter } from "../../language-adapter.ts";
 import { typescriptBoundaries } from "./boundaries.ts";
 import { extractFileCensus } from "./census.ts";
 import { extractFacts } from "./extract-facts.ts";
-import { typescriptRepairOffsets } from "./grammar-repair.ts";
+import { typescriptRepairs } from "./grammar-repair.ts";
 import { typescriptMetricRules } from "./metric-rules.ts";
 import { isConfigPath, SpecifierResolver } from "./resolve-specifier.ts";
 
@@ -14,8 +14,8 @@ export const adapter: LanguageAdapter = {
   support: "supported",
   lexerProfile: "typescript",
   grammars: [
-    { spec: { id: "typescript", packageName: "tree-sitter-typescript", file: "tree-sitter-typescript.wasm", repairOffsets: typescriptRepairOffsets }, extensions: [".ts", ".mts", ".cts"] },
-    { spec: { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm", repairOffsets: typescriptRepairOffsets }, extensions: [".tsx"] },
+    { spec: { id: "typescript", packageName: "tree-sitter-typescript", file: "tree-sitter-typescript.wasm", repairs: typescriptRepairs }, extensions: [".ts", ".mts", ".cts"] },
+    { spec: { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm", repairs: typescriptRepairs }, extensions: [".tsx"] },
     { spec: { id: "javascript", packageName: "tree-sitter-javascript", file: "tree-sitter-javascript.wasm" }, extensions: [".js", ".mjs", ".cjs", ".jsx"] },
   ],
   extractorVersion: 7,

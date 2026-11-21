@@ -118,8 +118,8 @@ async function load(spec: GrammarSpec, grammarDir: string | undefined): Promise<
     parse(source) {
       const tree = parser.parse(source);
       if (!tree) throw new Error(`Parsing failed for grammar ${id}`);
-      if (spec.repairOffsets === undefined || !tree.rootNode.hasError) return tree;
-      return repaired(parser, tree, source, spec.repairOffsets);
+      if (spec.repairs === undefined || !tree.rootNode.hasError) return tree;
+      return repaired(parser, tree, source, spec.repairs);
     },
   };
 }
@@ -127,22 +127,27 @@ async function load(spec: GrammarSpec, grammarDir: string | undefined): Promise<
 /** How many times a tree is repaired and parsed again: each pass removes the errors it found, nested ones surface on the next. */
 const repairPasses = 4;
 
+/**
+ * Error and missing nodes in a tree. A missing node that is hidden (an external token the grammar does not
+ * list among a node's children) is seen only as `hasError` on its parent, so a node that has an error and no
+ * child with one counts once.
+ */
 function errorCount(node: Node): number {
+  if (node.isMissing || node.type === "ERROR") return 1;
   if (!node.hasError) return 0;
-  if (node.type === "ERROR" || node.isMissing) return 1;
   let count = 0;
   for (const child of node.children) count += errorCount(child);
-  return count;
+  return Math.max(count, 1);
 }
 
 /** The tree of the repaired text when it has fewer errors than the original, otherwise the original. Caller owns the result. */
-function repaired(parser: Parser, original: Tree, source: string, repairOffsets: NonNullable<GrammarSpec["repairOffsets"]>): Tree {
+function repaired(parser: Parser, original: Tree, source: string, repairs: NonNullable<GrammarSpec["repairs"]>): Tree {
   let best = original;
   let text = source;
   for (let pass = 0; pass < repairPasses && best.rootNode.hasError; pass++) {
-    const offsets = repairOffsets(best.rootNode, text);
-    if (offsets.length === 0) break;
-    for (const offset of offsets) text = `${text.slice(0, offset)}_${text.slice(offset + 1)}`;
+    const edits = repairs(best.rootNode, text);
+    if (edits.length === 0) break;
+    for (const { offset, character } of edits) text = `${text.slice(0, offset)}${character}${text.slice(offset + 1)}`;
     const next = parser.parse(text);
     if (!next) break;
     if (errorCount(next.rootNode) < errorCount(best.rootNode)) {

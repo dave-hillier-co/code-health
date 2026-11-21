@@ -1,0 +1,17 @@
+{
+  "units": {
+    "src/Shapes.kt": [
+      ["Circle", "class", 3, 9],
+      ["Circle.Companion", "class", 4, 4],
+      ["Circle.Visitor", "class", 6, 6],
+      ["Circle.accept", "method", 8, 8],
+      ["Square", "class", 11, 14],
+      ["Square.Factory", "class", 12, 12],
+      ["Square.Factory.make", "method", 12, 12],
+      ["Square.Listener", "class", 13, 13],
+      ["Tiny", "class", 16, 16],
+      ["after", "function", 18, 18]
+    ]
+  },
+  "syntaxErrors": []
+}
