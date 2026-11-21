@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import { GitFixture, type Change } from "@code-health/fixtures/git-fixture";
+import { expectGolden } from "./support/golden.ts";
 import { runLocality } from "./support/run.ts";
 
 /** The optional second commit of a C# move: namespaces follow the folders, in a commit of its own. */
@@ -50,12 +51,13 @@ afterEach(() => repo.dispose());
 
 async function run(...args: string[]) {
   const result = await runLocality(repo.path, ["update-namespaces", "--json", ...args]);
-  return { code: result.code, stderr: result.stderr, document: JSON.parse(result.stdout || "{}") as Document };
+  return { code: result.code, stderr: result.stderr, stdout: result.stdout, document: JSON.parse(result.stdout || "{}") as Document };
 }
 
 test("plans the namespace of a moved file and the usings that name it, changing nothing", async () => {
-  const { code, document } = await run();
+  const { code, document, stdout } = await run();
   expect(code).toBe(ExitCode.Success);
+  expectGolden("csharp-namespaces", "update-namespaces", stdout);
   expect(document.applied).toBe(false);
   expect(document.renamed).toEqual({ "Acme.Billing": "Acme.Payments" });
   expect(document.rewrites.map((rewrite) => `${rewrite.path}:${rewrite.line}`)).toEqual(["src/App/Payments/Money.cs:1", "src/App/Shop/Cart.cs:1"]);

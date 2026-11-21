@@ -1,3 +1,5 @@
+import type { Change } from "./git-fixture.ts";
+
 /**
  * One small file of each language, with a function in it, for the checks that only ask whether a shipped grammar
  * loads and parses: the grammar of each id, and a bundle run per language. The semantics are pinned by the fixtures
@@ -9,6 +11,19 @@ export interface LanguageSample {
   source: string;
   /** The qualified name of the function the file declares, as the structural layer names it. */
   unit: string;
+}
+
+/** A repository holding one file of every supported language, as the changes of one commit. */
+export function polyglotChanges(): Change[] {
+  return Object.values(adapterSamples).map((sample) => ({ op: "add", path: sample.path, content: sample.source }));
+}
+
+/** A Java class and a Kotlin class that use each other, which the one JVM graph sees as a cycle. */
+export function jvmCycleChanges(): Change[] {
+  return [
+    { op: "add", path: "src/main/java/acme/Order.java", content: "package acme;\n\npublic class Order {\n    public int total() {\n        return new Pricing().price(this);\n    }\n}\n" },
+    { op: "add", path: "src/main/kotlin/acme/Pricing.kt", content: "package acme\n\nclass Pricing {\n    fun price(order: Order): Int {\n        return order.total() + 1\n    }\n}\n" },
+  ];
 }
 
 /** By adapter id. */

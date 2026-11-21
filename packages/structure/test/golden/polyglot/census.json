@@ -1,0 +1,93 @@
+{
+  "command": "census",
+  "config": "57b63e557a0488de",
+  "filesRead": 8,
+  "inputs": {
+    "census": {
+      "eventCalls": [],
+      "folderNames": [
+        "ports",
+        "adapters",
+        "infrastructure"
+      ],
+      "handlerCalls": [],
+      "registerCalls": []
+    }
+  },
+  "repo": {
+    "dirty": false,
+    "head": "22d02d60aa1488d55c695c9237c1ff331d477827"
+  },
+  "results": [
+    {
+      "count": 0,
+      "examples": [],
+      "files": 0,
+      "folders": [],
+      "id": "census:callbacks",
+      "mechanism": "callbacks",
+      "variants": []
+    },
+    {
+      "count": 0,
+      "examples": [],
+      "files": 0,
+      "folders": [],
+      "id": "census:interfaces",
+      "mechanism": "interfaces",
+      "variants": []
+    },
+    {
+      "count": 0,
+      "examples": [],
+      "files": 0,
+      "folders": [],
+      "id": "census:dependency-injection",
+      "mechanism": "dependency-injection",
+      "variants": []
+    },
+    {
+      "count": 0,
+      "examples": [],
+      "files": 0,
+      "folders": [],
+      "id": "census:events",
+      "mechanism": "events",
+      "variants": []
+    },
+    {
+      "count": 0,
+      "examples": [],
+      "files": 0,
+      "folders": [],
+      "id": "census:handlers",
+      "mechanism": "handlers",
+      "variants": []
+    },
+    {
+      "count": 0,
+      "examples": [],
+      "files": 0,
+      "folders": [],
+      "id": "census:registries",
+      "mechanism": "registries",
+      "variants": []
+    },
+    {
+      "count": 0,
+      "examples": [],
+      "files": 0,
+      "folders": [],
+      "id": "census:ports-and-adapters",
+      "mechanism": "ports-and-adapters",
+      "variants": []
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 7
+  }
+}

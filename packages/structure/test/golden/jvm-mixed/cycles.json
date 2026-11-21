@@ -1,0 +1,126 @@
+{
+  "command": "cycles",
+  "config": "57b63e557a0488de",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 0,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 1,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 0,
+    "window": {
+      "months": 12,
+      "since": 1672531200,
+      "until": 1704067200
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "exactLimit": 16,
+    "level": "file",
+    "locality": null
+  },
+  "population": {
+    "eligibleChanges": 1,
+    "modules": 2
+  },
+  "repo": {
+    "dirty": false,
+    "head": "6445177f0993bbd99b589d7c1d596e1e4eb47023"
+  },
+  "results": [
+    {
+      "breakingSet": [
+        {
+          "coChange": 1,
+          "fileEdges": 1,
+          "from": "src/main/java/acme/Order.java",
+          "importStatements": 1,
+          "symbols": [
+            {
+              "kind": "call",
+              "sites": 1,
+              "symbol": "src/main/kotlin/acme/Pricing.kt#Pricing"
+            }
+          ],
+          "symbolsTotal": 1,
+          "to": "src/main/kotlin/acme/Pricing.kt",
+          "typeOnly": false,
+          "unblocks": []
+        }
+      ],
+      "coChangeAcross": 1,
+      "id": "cycle:file:src/main/java/acme/Order.java",
+      "level": "file",
+      "method": "exact",
+      "nodes": [
+        "src/main/java/acme/Order.java",
+        "src/main/kotlin/acme/Pricing.kt"
+      ],
+      "size": 2,
+      "unblockedGain": null
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 1
+  },
+  "window": {
+    "since": "2023-01-01T00:00:00.000Z",
+    "until": "2024-01-01T00:00:00.000Z"
+  }
+}

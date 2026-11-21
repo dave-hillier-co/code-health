@@ -1,0 +1,57 @@
+{
+  "barrels": [],
+  "command": "analyse",
+  "config": "ac1566f25affd53a",
+  "filesWithSyntaxErrors": [],
+  "history": {
+    "activeContributors": 1,
+    "grade": "weak",
+    "logicalChangesInWindow": 1,
+    "usableHistoryMonths": 0,
+    "window": {
+      "months": 12,
+      "since": 1672531200,
+      "until": 1704067200
+    }
+  },
+  "inputs": {
+    "entries": [
+      "a/a.go",
+      "a/a.py",
+      "src/A.cs",
+      "src/a.cpp",
+      "src/a.ts",
+      "src/lib.rs",
+      "src/main/java/a/A.java",
+      "src/main/kotlin/a/A.kt"
+    ],
+    "entrySource": "detected",
+    "paths": [],
+    "recommendation": null,
+    "source": "structural"
+  },
+  "metrics": {
+    "maxDepth": 4,
+    "singleFileFolders": 2,
+    "totalWeightedDistance": 0
+  },
+  "repo": {
+    "dirty": false,
+    "head": "58b3280d7a5ca2c14190434e0f82abb8031bf75e"
+  },
+  "results": [],
+  "schemaVersion": 1,
+  "summary": {
+    "byRecommendation": {},
+    "files": 8,
+    "units": 0
+  },
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 0
+  },
+  "unreachable": [],
+  "unresolved": {}
+}

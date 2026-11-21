@@ -1,0 +1,54 @@
+{
+  "applied": false,
+  "command": "update-namespaces",
+  "commit": null,
+  "config": "ac1566f25affd53a",
+  "inputs": {
+    "apply": false,
+    "commit": "843fa41da931aee1159af9d2b6df06a7a7bf7a8d",
+    "noCommit": null
+  },
+  "renamed": {
+    "Acme.Billing": "Acme.Payments"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "843fa41da931aee1159af9d2b6df06a7a7bf7a8d"
+  },
+  "results": [
+    {
+      "from": "Acme.Billing",
+      "line": 1,
+      "path": "src/App/Payments/Money.cs",
+      "to": "Acme.Payments"
+    },
+    {
+      "from": "Acme.Billing",
+      "line": 1,
+      "path": "src/App/Shop/Cart.cs",
+      "to": "Acme.Payments"
+    }
+  ],
+  "rewrites": [
+    {
+      "from": "Acme.Billing",
+      "line": 1,
+      "path": "src/App/Payments/Money.cs",
+      "to": "Acme.Payments"
+    },
+    {
+      "from": "Acme.Billing",
+      "line": 1,
+      "path": "src/App/Shop/Cart.cs",
+      "to": "Acme.Payments"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 2
+  },
+  "warnings": []
+}
