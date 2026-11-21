@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest"
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { body } from "./support/risk-scenario.ts";
-import { backtestHistory, dateOf, prepare, type Prepared } from "./support/backtest-scenario.ts";
+import { backtestHistory, bob, dateOf, prepare, type Prepared } from "./support/backtest-scenario.ts";
 import { expectGolden } from "./support/golden.ts";
 import { runCochange } from "./support/run.ts";
 import { outcomesOf, scoreMainline, separationOf, type BandRow, type ScoredChange } from "../src/risk/backtest.ts";
@@ -151,6 +151,24 @@ describe("outcomes", () => {
     expect(censored).toEqual([35, 36, 37, 38, 39]);
   });
 
+  test("a fix that comes after the follow-up window does not make a change troubled, and later history leaves every earlier outcome alone", async () => {
+    const { repo: later } = backtestHistory();
+    try {
+      // Change 1 touched src/mod1/a.ts. A fix to it forty weeks on is far outside any 30 day follow-up window.
+      later.commit({ message: "Fix the tweak much later", date: dateOf(80), author: bob, changes: [{ op: "modify", path: "src/mod1/a.ts", content: body("src/mod1/a.ts", 10, 99) }] });
+      const lateRun = await prepare(later.path);
+      const lateOutcomes = await outcomesOf(later.path, lateRun.headSha, lateRun.mainline.changes, lateRun.risk, lateRun.headDate);
+      const outcomes = await outcomesOf(repo.path, prepared.headSha, prepared.mainline.changes, prepared.risk, prepared.headDate);
+      expect(lateOutcomes.get(lateRun.mainline.changes[1]!.id)).toMatchObject({ fixed: false, reverted: false, censored: false });
+      // Changes 0 to 34 had their window closed before either head, so their outcomes are the same in both histories.
+      for (let i = 0; i < 35; i++) {
+        expect(lateOutcomes.get(lateRun.mainline.changes[i]!.id), `change ${i}`).toEqual(outcomes.get(prepared.mainline.changes[i]!.id));
+      }
+    } finally {
+      later.dispose();
+    }
+  }, 60_000);
+
   test("a revert inside the change itself is not trouble for it", async () => {
     const outcomes = await outcomesOf(repo.path, prepared.headSha, prepared.mainline.changes, prepared.risk, prepared.headDate);
     expect(outcomes.get(prepared.mainline.changes[22]!.id)).toMatchObject({ reverted: false });
@@ -226,6 +244,26 @@ describe("the command", () => {
     // A different configuration is a different model, so its verdict is not reused.
     expect(readStoredBacktest(repo.path, "0000000000000000")).toBeNull();
   });
+
+  test("a later commit and a later risk run do not alter the verdict that was stored", async () => {
+    const stored = (await backtest()).document;
+    expect(stored.results.stored).toBe(true);
+    const file = reportPath(repo.path, "risk-backtest");
+    const config = JSON.parse(readFileSync(file, "utf8")).config;
+    const first = readStoredBacktest(repo.path, config);
+    const bytes = readFileSync(file, "utf8");
+    repo.commit({ message: "Tweak much later", date: dateOf(90), author: bob, changes: [{ op: "modify", path: "src/mod2/a.ts", content: body("src/mod2/a.ts", 10, 77) }] });
+    try {
+      const run = await runCochange(repo.path, ["risk", "--json"]);
+      expect(run.code).toBe(ExitCode.Success);
+      // The new commit is after what the backtest scored. The stored verdict is the same, and the run says how far behind it is.
+      expect(readFileSync(file, "utf8")).toBe(bytes);
+      expect(readStoredBacktest(repo.path, config)).toEqual(first);
+      expect(JSON.stringify(JSON.parse(run.stdout).results.level)).toContain(first!.head.slice(0, 7));
+    } finally {
+      repo.git("reset", "--quiet", "--hard", "HEAD~1");
+    }
+  }, 60_000);
 
   test("a run from a date is printed and not stored", async () => {
     const { document } = await backtest("--since", "2024-07-01");
