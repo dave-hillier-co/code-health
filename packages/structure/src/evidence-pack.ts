@@ -3,18 +3,19 @@ import type { Census } from "./census/census.ts";
 import { nearbyMechanisms, type NearbyMechanism } from "./census/nearby.ts";
 import type { Unblock } from "./locality-report.ts";
 import { findCycles, unblocksOf } from "./cycles.ts";
-import { judgePair, type QuadrantJudgement } from "./coupling.ts";
+import { couplingId, judgePair, orientPair, type QuadrantJudgement } from "./coupling.ts";
 import { findLayerViolations, layerViolationId, type LayerViolation } from "./layers.ts";
 import type { StructureSettings } from "./config.ts";
 import type { Model } from "./model.ts";
 import { describeEdge, type SymbolUse } from "./modules.ts";
 import { edgeKey, folderOf } from "./project.ts";
 import { round3, type AgainstStability, type Stability } from "./stability.ts";
-import { judgeEdge, unstableId } from "./unstable.ts";
+import { judgeEdge, stabilityOfModule, unstableId } from "./unstable.ts";
+import type { Hub, HubFeature } from "./hubs.ts";
 
 const round1 = (value: number): number => Math.round(value * 10) / 10;
 
-export type ProblemKind = "cycle" | "layer-violation" | "unstable-dependency";
+export type ProblemKind = "cycle" | "layer-violation" | "unstable-dependency" | "incidental-coupling" | "hidden-coupling" | "registration-hub";
 
 export interface CoChangeFigures {
   /** Eligible logical changes that touched both sides. */
@@ -187,6 +188,13 @@ export function evidencePack(
     findings.push(unstableId(level, from, to));
   }
 
+  const quadrant = judgePair(model.project, model.graph, model.activity, from, to, settings);
+  if (quadrant.name === "incidental" || quadrant.name === "hidden") {
+    kinds.push(quadrant.name === "incidental" ? "incidental-coupling" : "hidden-coupling");
+    const [a, b] = orientPair(model.project, model.graph, from, to);
+    findings.push(couplingId(level, a, b));
+  }
+
   return {
     id: `edge:${level}:${from}->${to}`,
     kind: kinds[0] ?? null,
@@ -195,7 +203,7 @@ export function evidencePack(
     level,
     from,
     to,
-    quadrant: judgePair(model.project, model.graph, model.activity, from, to, settings),
+    quadrant,
     inBreakingSet: cycle ? cycle.inBreakingSet : null,
     breakingSet: detail.symbols,
     imports: {
@@ -215,5 +223,64 @@ export function evidencePack(
       (model.graph.filesOf.get(to) ?? []).map(folderOf),
     ),
     layerRule: rule,
+  };
+}
+
+export interface HubFeaturePack extends HubFeature {
+  /** The symbols the hub uses from the feature, most used first. Empty when the hub only names the feature in a path string. */
+  breakingSet: SymbolUse[];
+  misplacement: Misplacement[];
+}
+
+/** The evidence for a registration hub: the file every feature edits, with what it uses from each feature. It recommends nothing. */
+export interface HubEvidencePack {
+  id: string;
+  kind: "registration-hub";
+  kinds: ["registration-hub"];
+  findings: string[];
+  level: string;
+  file: string;
+  module: string;
+  featureCount: number;
+  revisions: number;
+  features: HubFeaturePack[];
+  signals: Hub["signals"];
+  /** Structural and change stability of the module the hub sits in. */
+  stability: Stability | null;
+  /** Locality moves blocked by the hub's imports of its features, read from the locality report when present. */
+  unblocks: Unblock[];
+  /** Census entries in or next to the hub's folder and its features, nearest first. */
+  nearbyMechanisms: NearbyMechanism[];
+}
+
+export function hubEvidencePack(model: Model, hub: Hub, census: Census): HubEvidencePack {
+  const features = hub.features.map((feature): HubFeaturePack => {
+    const imported = model.graph.graph.get(hub.module)?.includes(feature.module) === true;
+    const detail = imported ? describeEdge(model.project, model.graph, hub.module, feature.module) : undefined;
+    const symbols = detail?.symbols ?? [];
+    return { ...feature, breakingSet: symbols, misplacement: misplacement(model, hub.module, feature.module, symbols) };
+  });
+  const unblocks = hub.features
+    .flatMap((feature) => (model.graph.graph.get(hub.module)?.includes(feature.module) ? unblocksOf(model, hub.module, feature.module) : []))
+    .sort((a, b) => b.unblockedGain - a.unblockedGain || compareIds(a.unit, b.unit));
+  return {
+    id: hub.id,
+    kind: "registration-hub",
+    kinds: ["registration-hub"],
+    findings: [hub.id],
+    level: hub.level,
+    file: hub.file,
+    module: hub.module,
+    featureCount: hub.featureCount,
+    revisions: hub.revisions,
+    features,
+    signals: hub.signals,
+    stability: stabilityOfModule(model, hub.module) ?? null,
+    unblocks,
+    nearbyMechanisms: nearbyMechanisms(
+      census,
+      [folderOf(hub.file)],
+      hub.features.flatMap((feature) => (model.graph.filesOf.get(feature.module) ?? []).map(folderOf)),
+    ),
   };
 }

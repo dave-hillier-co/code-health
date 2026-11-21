@@ -32,213 +32,447 @@
       ],
       "additionalProperties": false
     },
-    "deferred": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "field": {
-            "type": "string"
-          },
-          "milestone": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "field",
-          "milestone"
-        ],
-        "additionalProperties": false
-      }
-    },
     "results": {
       "type": "array",
       "items": {
-        "type": "object",
-        "description": "Facts that bear on how to break one dependency. It carries no recommended technique.",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^edge:(file|folder|package|component):.+->.+"
+        "oneOf": [
+          {
+            "$ref": "#/$defs/edgePack"
           },
-          "kind": {
+          {
+            "$ref": "#/$defs/hubPack"
+          }
+        ]
+      }
+    }
+  },
+  "required": [],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "symbolUse": {
+      "type": "object",
+      "properties": {
+        "symbol": {
+          "type": "string"
+        },
+        "sites": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "kind": {
+          "enum": [
+            "call",
+            "reference"
+          ]
+        },
+        "usedBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "symbol",
+        "sites",
+        "kind",
+        "usedBy"
+      ],
+      "additionalProperties": false
+    },
+    "misplacement": {
+      "type": "object",
+      "properties": {
+        "symbol": {
+          "type": "string"
+        },
+        "consumerFiles": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "onFromSide": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "onToSide": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "elsewhere": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "mostlyOn": {
+          "enum": [
+            "from",
+            "to",
+            "split"
+          ]
+        },
+        "moveMayRemoveDependency": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "symbol",
+        "consumerFiles",
+        "onFromSide",
+        "onToSide",
+        "elsewhere",
+        "mostlyOn",
+        "moveMayRemoveDependency"
+      ],
+      "additionalProperties": false
+    },
+    "nearbyMechanism": {
+      "type": "object",
+      "properties": {
+        "mechanism": {
+          "enum": [
+            "callbacks",
+            "interfaces",
+            "dependency-injection",
+            "events",
+            "handlers",
+            "registries",
+            "ports-and-adapters"
+          ]
+        },
+        "variant": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Null for a folder."
+        },
+        "detail": {
+          "type": "string"
+        },
+        "distance": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Steps through the folder tree to the nearest of the two modules. Zero is inside one of them."
+        },
+        "near": {
+          "enum": [
+            "from",
+            "to",
+            "both"
+          ]
+        }
+      },
+      "required": [
+        "mechanism",
+        "variant",
+        "path",
+        "line",
+        "detail",
+        "distance",
+        "near"
+      ],
+      "additionalProperties": false
+    },
+    "edgePack": {
+      "type": "object",
+      "description": "Facts that bear on how to break one dependency. It carries no recommended technique.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^edge:(file|folder|package|component):.+->.+"
+        },
+        "kind": {
+          "enum": [
+            "cycle",
+            "layer-violation",
+            "unstable-dependency",
+            "incidental-coupling",
+            "hidden-coupling",
+            null
+          ],
+          "description": "The first problem the edge is part of, null when it is no problem. `incidental-coupling` and `hidden-coupling` follow from the pair's quadrant."
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
             "enum": [
               "cycle",
               "layer-violation",
               "unstable-dependency",
-              null
-            ],
-            "description": "The first problem the edge is part of, null when it is no problem."
+              "incidental-coupling",
+              "hidden-coupling"
+            ]
           },
-          "kinds": {
-            "type": "array",
-            "items": {
+          "uniqueItems": true
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "level": {
+          "$ref": "common.schema.json#/$defs/level"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "quadrant": {
+          "type": "object",
+          "description": "Where the pair sits in the coupling quadrants, with the figures behind it.",
+          "properties": {
+            "name": {
               "enum": [
-                "cycle",
-                "layer-violation",
-                "unstable-dependency"
+                "real",
+                "incidental",
+                "hidden",
+                "stable",
+                "independent",
+                "insufficient-evidence"
               ]
             },
-            "uniqueItems": true
-          },
-          "findings": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "level": {
-            "$ref": "common.schema.json#/$defs/level"
-          },
-          "from": {
-            "type": "string"
-          },
-          "to": {
-            "type": "string"
-          },
-          "quadrant": {
-            "type": "object",
-            "description": "Where the pair sits in the coupling quadrants, with the figures behind it.",
-            "properties": {
-              "name": {
-                "enum": [
-                  "real",
-                  "incidental",
-                  "hidden",
-                  "stable",
-                  "independent",
-                  "insufficient-evidence"
-                ]
-              },
-              "staticCoupling": {
-                "type": "object",
-                "properties": {
-                  "sites": {
-                    "$ref": "common.schema.json#/$defs/count"
-                  },
-                  "symbols": {
-                    "$ref": "common.schema.json#/$defs/count"
-                  },
-                  "fromTo": {
-                    "$ref": "common.schema.json#/$defs/count"
-                  },
-                  "toFrom": {
-                    "$ref": "common.schema.json#/$defs/count"
-                  },
-                  "high": {
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "sites",
-                  "symbols",
-                  "fromTo",
-                  "toFrom",
-                  "high"
-                ],
-                "additionalProperties": false
-              },
-              "coChange": {
-                "type": "object",
-                "properties": {
-                  "shared": {
-                    "$ref": "common.schema.json#/$defs/count"
-                  },
-                  "fromChanges": {
-                    "$ref": "common.schema.json#/$defs/count"
-                  },
-                  "toChanges": {
-                    "$ref": "common.schema.json#/$defs/count"
-                  },
-                  "expected": {
-                    "type": "number",
-                    "minimum": 0
-                  },
-                  "pValue": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1
-                  },
-                  "high": {
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "shared",
-                  "fromChanges",
-                  "toChanges",
-                  "expected",
-                  "pValue",
-                  "high"
-                ],
-                "additionalProperties": false
-              },
-              "bothActive": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "name",
-              "staticCoupling",
-              "coChange",
-              "bothActive"
-            ],
-            "additionalProperties": false
-          },
-          "inBreakingSet": {
-            "type": [
-              "boolean",
-              "null"
-            ],
-            "description": "Null when the edge is in no cycle."
-          },
-          "breakingSet": {
-            "type": "array",
-            "description": "Every symbol used across the boundary, most used first.",
-            "items": {
+            "staticCoupling": {
               "type": "object",
               "properties": {
-                "symbol": {
-                  "type": "string"
-                },
                 "sites": {
                   "$ref": "common.schema.json#/$defs/count"
                 },
-                "kind": {
-                  "enum": [
-                    "call",
-                    "reference"
-                  ]
+                "symbols": {
+                  "$ref": "common.schema.json#/$defs/count"
                 },
-                "usedBy": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
+                "fromTo": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "toFrom": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "high": {
+                  "type": "boolean"
                 }
               },
               "required": [
-                "symbol",
                 "sites",
-                "kind",
-                "usedBy"
+                "symbols",
+                "fromTo",
+                "toFrom",
+                "high"
               ],
               "additionalProperties": false
+            },
+            "coChange": {
+              "type": "object",
+              "properties": {
+                "shared": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "fromChanges": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "toChanges": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "expected": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "pValue": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "high": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "shared",
+                "fromChanges",
+                "toChanges",
+                "expected",
+                "pValue",
+                "high"
+              ],
+              "additionalProperties": false
+            },
+            "bothActive": {
+              "type": "boolean"
             }
           },
-          "imports": {
+          "required": [
+            "name",
+            "staticCoupling",
+            "coChange",
+            "bothActive"
+          ],
+          "additionalProperties": false
+        },
+        "inBreakingSet": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Null when the edge is in no cycle."
+        },
+        "breakingSet": {
+          "type": "array",
+          "description": "Every symbol used across the boundary, most used first.",
+          "items": {
+            "$ref": "#/$defs/symbolUse"
+          }
+        },
+        "imports": {
+          "type": "object",
+          "properties": {
+            "fileEdges": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "importStatements": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "typeOnly": {
+              "type": "boolean"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "fileEdges",
+            "importStatements",
+            "typeOnly",
+            "files"
+          ],
+          "additionalProperties": false
+        },
+        "stability": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "$ref": "common.schema.json#/$defs/stability"
+            },
+            "to": {
+              "$ref": "common.schema.json#/$defs/stability"
+            }
+          },
+          "required": [
+            "from",
+            "to"
+          ],
+          "additionalProperties": false
+        },
+        "stabilityVerdict": {
+          "allOf": [
+            {
+              "$ref": "common.schema.json#/$defs/againstStability"
+            }
+          ],
+          "type": "object",
+          "unevaluatedProperties": false
+        },
+        "coChange": {
+          "type": "object",
+          "properties": {
+            "shared": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "fromChanges": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "toChanges": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "confidenceFromTo": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "confidenceToFrom": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "expected": {
+              "type": "number",
+              "minimum": 0,
+              "description": "fromChanges * toChanges / eligibleChanges: the shared changes independence would predict."
+            },
+            "eligibleChanges": {
+              "$ref": "common.schema.json#/$defs/count"
+            }
+          },
+          "required": [
+            "shared",
+            "fromChanges",
+            "toChanges",
+            "confidenceFromTo",
+            "confidenceToFrom",
+            "expected",
+            "eligibleChanges"
+          ],
+          "additionalProperties": false
+        },
+        "misplacement": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/misplacement"
+          }
+        },
+        "unblocks": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/unblock"
+          }
+        },
+        "nearbyMechanisms": {
+          "type": "array",
+          "maxItems": 10,
+          "description": "Census entries in or next to the two modules, nearest first. `structure census` has the whole inventory.",
+          "items": {
+            "$ref": "#/$defs/nearbyMechanism"
+          }
+        },
+        "layerRule": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "The layer rules the edge's imports break, one entry per pair of layers. Null when it breaks none.",
+          "items": {
             "type": "object",
             "properties": {
+              "fromLayer": {
+                "type": "string"
+              },
+              "toLayer": {
+                "type": "string"
+              },
+              "allowed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
               "fileEdges": {
-                "$ref": "common.schema.json#/$defs/count"
-              },
-              "importStatements": {
-                "$ref": "common.schema.json#/$defs/count"
-              },
-              "typeOnly": {
-                "type": "boolean"
-              },
-              "files": {
                 "type": "array",
                 "items": {
                   "type": "object",
@@ -255,271 +489,324 @@
                     "to"
                   ],
                   "additionalProperties": false
-                }
+                },
+                "minItems": 1
               }
             },
             "required": [
-              "fileEdges",
-              "importStatements",
-              "typeOnly",
-              "files"
+              "fromLayer",
+              "toLayer",
+              "allowed",
+              "fileEdges"
             ],
             "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "kinds",
+        "findings",
+        "level",
+        "from",
+        "to",
+        "quadrant",
+        "inBreakingSet",
+        "breakingSet",
+        "imports",
+        "stability",
+        "stabilityVerdict",
+        "coChange",
+        "misplacement",
+        "unblocks",
+        "nearbyMechanisms",
+        "layerRule"
+      ],
+      "additionalProperties": false
+    },
+    "hubPack": {
+      "type": "object",
+      "description": "Facts that bear on how to break up a registration hub. It carries no recommended technique.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^hub:.+"
+        },
+        "kind": {
+          "const": "registration-hub"
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "const": "registration-hub"
           },
-          "stability": {
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "level": {
+          "enum": [
+            "folder",
+            "component"
+          ]
+        },
+        "file": {
+          "type": "string"
+        },
+        "module": {
+          "type": "string"
+        },
+        "featureCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "revisions": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "features": {
+          "type": "array",
+          "items": {
             "type": "object",
             "properties": {
-              "from": {
-                "$ref": "common.schema.json#/$defs/stability"
+              "module": {
+                "type": "string"
               },
-              "to": {
-                "$ref": "common.schema.json#/$defs/stability"
-              }
-            },
-            "required": [
-              "from",
-              "to"
-            ],
-            "additionalProperties": false
-          },
-          "stabilityVerdict": {
-            "allOf": [
-              {
-                "$ref": "common.schema.json#/$defs/againstStability"
-              }
-            ],
-            "type": "object",
-            "unevaluatedProperties": false
-          },
-          "coChange": {
-            "type": "object",
-            "properties": {
               "shared": {
                 "$ref": "common.schema.json#/$defs/count"
               },
-              "fromChanges": {
+              "featureChanges": {
                 "$ref": "common.schema.json#/$defs/count"
               },
-              "toChanges": {
-                "$ref": "common.schema.json#/$defs/count"
-              },
-              "confidenceFromTo": {
+              "confidenceFeatureToHub": {
                 "type": "number",
                 "minimum": 0,
                 "maximum": 100
               },
-              "confidenceToFrom": {
+              "confidenceHubToFeature": {
                 "type": "number",
                 "minimum": 0,
                 "maximum": 100
               },
-              "expected": {
+              "pValue": {
                 "type": "number",
                 "minimum": 0,
-                "description": "fromChanges * toChanges / eligibleChanges: the shared changes independence would predict."
+                "maximum": 1,
+                "description": "Rounded to six places, so a very small value reads 0."
               },
-              "eligibleChanges": {
-                "$ref": "common.schema.json#/$defs/count"
+              "referencedBy": {
+                "enum": [
+                  "import",
+                  "path-string",
+                  null
+                ],
+                "description": "How the hub names the feature."
+              },
+              "breakingSet": {
+                "type": "array",
+                "description": "The symbols the hub uses from the feature, most used first. Empty when the hub only names the feature in a path string.",
+                "items": {
+                  "$ref": "#/$defs/symbolUse"
+                }
+              },
+              "misplacement": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/misplacement"
+                }
               }
             },
             "required": [
+              "module",
               "shared",
-              "fromChanges",
-              "toChanges",
-              "confidenceFromTo",
-              "confidenceToFrom",
-              "expected",
-              "eligibleChanges"
+              "featureChanges",
+              "confidenceFeatureToHub",
+              "confidenceHubToFeature",
+              "pValue",
+              "referencedBy",
+              "breakingSet",
+              "misplacement"
             ],
             "additionalProperties": false
-          },
-          "misplacement": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "symbol": {
-                  "type": "string"
-                },
-                "consumerFiles": {
-                  "$ref": "common.schema.json#/$defs/count"
-                },
-                "onFromSide": {
-                  "$ref": "common.schema.json#/$defs/count"
-                },
-                "onToSide": {
-                  "$ref": "common.schema.json#/$defs/count"
-                },
-                "elsewhere": {
-                  "$ref": "common.schema.json#/$defs/count"
-                },
-                "mostlyOn": {
-                  "enum": [
-                    "from",
-                    "to",
-                    "split"
-                  ]
-                },
-                "moveMayRemoveDependency": {
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "symbol",
-                "consumerFiles",
-                "onFromSide",
-                "onToSide",
-                "elsewhere",
-                "mostlyOn",
-                "moveMayRemoveDependency"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "unblocks": {
-            "type": "array",
-            "items": {
-              "$ref": "common.schema.json#/$defs/unblock"
-            }
-          },
-          "nearbyMechanisms": {
-            "type": "array",
-            "maxItems": 10,
-            "description": "Census entries in or next to the two modules, nearest first. `structure census` has the whole inventory.",
-            "items": {
-              "type": "object",
-              "properties": {
-                "mechanism": {
-                  "enum": [
-                    "callbacks",
-                    "interfaces",
-                    "dependency-injection",
-                    "events",
-                    "handlers",
-                    "registries",
-                    "ports-and-adapters"
-                  ]
-                },
-                "variant": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                },
-                "line": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "minimum": 1,
-                  "description": "Null for a folder."
-                },
-                "detail": {
-                  "type": "string"
-                },
-                "distance": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "description": "Steps through the folder tree to the nearest of the two modules. Zero is inside one of them."
-                },
-                "near": {
-                  "enum": [
-                    "from",
-                    "to",
-                    "both"
-                  ]
-                }
-              },
-              "required": [
-                "mechanism",
-                "variant",
-                "path",
-                "line",
-                "detail",
-                "distance",
-                "near"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "layerRule": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "description": "The layer rules the edge's imports break, one entry per pair of layers. Null when it breaks none.",
-            "items": {
-              "type": "object",
-              "properties": {
-                "fromLayer": {
-                  "type": "string"
-                },
-                "toLayer": {
-                  "type": "string"
-                },
-                "allowed": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "fileEdges": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "from": {
-                        "type": "string"
-                      },
-                      "to": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "from",
-                      "to"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "minItems": 1
-                }
-              },
-              "required": [
-                "fromLayer",
-                "toLayer",
-                "allowed",
-                "fileEdges"
-              ],
-              "additionalProperties": false
-            }
           }
         },
-        "required": [
-          "id",
-          "kind",
-          "kinds",
-          "findings",
-          "level",
-          "from",
-          "to",
-          "quadrant",
-          "inBreakingSet",
-          "breakingSet",
-          "imports",
-          "stability",
-          "stabilityVerdict",
-          "coChange",
-          "misplacement",
-          "unblocks",
-          "nearbyMechanisms",
-          "layerRule"
-        ],
-        "additionalProperties": false
-      }
+        "signals": {
+          "type": "object",
+          "description": "The four signals, each with the figures that made it fire. A hub is reported only when all four fire.",
+          "properties": {
+            "starCoChange": {
+              "type": "object",
+              "properties": {
+                "features": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "featurePairs": {
+                  "type": "object",
+                  "properties": {
+                    "classified": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    },
+                    "high": {
+                      "$ref": "common.schema.json#/$defs/count"
+                    }
+                  },
+                  "required": [
+                    "classified",
+                    "high"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "features",
+                "featurePairs"
+              ],
+              "additionalProperties": false
+            },
+            "outwardDependencies": {
+              "type": "object",
+              "properties": {
+                "referenced": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "of": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "referenced",
+                "of"
+              ],
+              "additionalProperties": false
+            },
+            "appendShapedEdits": {
+              "type": "object",
+              "properties": {
+                "hunks": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "appendShaped": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "additions": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "removals": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "collection": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "line": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "line",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The line, at the analysed commit, that opens the collection literal being appended to."
+                }
+              },
+              "required": [
+                "hunks",
+                "appendShaped",
+                "additions",
+                "removals",
+                "collection"
+              ],
+              "additionalProperties": false
+            },
+            "contention": {
+              "type": "object",
+              "properties": {
+                "maxAuthors": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "windowDays": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "maxAuthors",
+                "windowDays"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "starCoChange",
+            "outwardDependencies",
+            "appendShapedEdits",
+            "contention"
+          ],
+          "additionalProperties": false
+        },
+        "stability": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/stability"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Structural and change stability of the module the hub sits in."
+        },
+        "unblocks": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/unblock"
+          },
+          "description": "Locality moves blocked by the hub's imports of its features."
+        },
+        "nearbyMechanisms": {
+          "type": "array",
+          "maxItems": 10,
+          "description": "Census entries in or next to the hub's folder and its features, nearest first.",
+          "items": {
+            "$ref": "#/$defs/nearbyMechanism"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "kinds",
+        "findings",
+        "level",
+        "file",
+        "module",
+        "featureCount",
+        "revisions",
+        "features",
+        "signals",
+        "stability",
+        "unblocks",
+        "nearbyMechanisms"
+      ],
+      "additionalProperties": false
     }
-  },
-  "required": [
-    "deferred"
-  ],
-  "unevaluatedProperties": false
+  }
 }

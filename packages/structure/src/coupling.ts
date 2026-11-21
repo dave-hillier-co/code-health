@@ -119,6 +119,13 @@ export const couplingId = (level: string, from: string, to: string): string => `
 
 const pairKey = (a: string, b: string): string => (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
 
+/** The pair as `findCoupling` reports it: `from` is the side that uses more of the other, or the earlier path when they use it equally or not at all. */
+export function orientPair(project: Project, graph: ModuleGraph, x: string, y: string): [string, string] {
+  const forward = usage(project, graph, x, y).sites;
+  const backward = usage(project, graph, y, x).sites;
+  return backward > forward || (backward === forward && compareIds(y, x) < 0) ? [y, x] : [x, y];
+}
+
 /**
  * Every pair of modules with a dependency between them, or with at least the minimum shared changes.
  * The model must count every pair (`everyPair`), or hidden pairs are missed. `from` is the side that
@@ -135,9 +142,7 @@ export function findCoupling(model: Model, settings: CouplingSettings): Coupling
 
   const level = model.graph.level;
   const rows = [...pairs.values()].map(([x, y]): CouplingRow => {
-    const forward = usage(model.project, model.graph, x, y).sites;
-    const backward = usage(model.project, model.graph, y, x).sites;
-    const [from, to] = backward > forward || (backward === forward && compareIds(y, x) < 0) ? [y, x] : [x, y];
+    const [from, to] = orientPair(model.project, model.graph, x, y);
     const { name, staticCoupling, coChange, bothActive } = judgePair(model.project, model.graph, model.activity, from, to, settings);
     return { id: couplingId(level, from, to), level, from, to, quadrant: name, staticCoupling, coChange, bothActive };
   });

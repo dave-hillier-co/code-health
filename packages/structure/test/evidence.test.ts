@@ -6,12 +6,18 @@ import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { withoutMeta } from "@code-health/fixtures/cli-testing";
 import { expectGolden } from "./support/golden.ts";
 import { runStructure } from "./support/run.ts";
+import { couplingRepository } from "./support/coupling-scenarios.ts";
+import { hubRepository } from "./support/hub-scenarios.ts";
 import { cyclesRepository, misplacementRepository, stabilityRepository } from "./support/scenarios.ts";
 
 let cycles: GitFixture;
 let stability: GitFixture;
 let misplacement: GitFixture;
+let quadrants: GitFixture;
+let routeTable: GitFixture;
 beforeAll(() => {
+  quadrants = couplingRepository();
+  routeTable = hubRepository();
   cycles = cyclesRepository();
   stability = stabilityRepository();
   misplacement = misplacementRepository();
@@ -20,6 +26,8 @@ afterAll(() => {
   cycles.dispose();
   stability.dispose();
   misplacement.dispose();
+  quadrants.dispose();
+  routeTable.dispose();
 });
 
 interface Pack {
@@ -105,6 +113,91 @@ describe("a finding", () => {
 
   test("golden", async () => {
     expectGolden("evidence", "evidence.finding", (await evidence(stability, "unstable:folder:src/stable->src/volatile")).stdout);
+  });
+});
+
+describe("a pair that is coupled by what it changes with", () => {
+  test("a hidden pair has no import, and its pack says so and reports the hidden coupling", async () => {
+    const { document } = await evidence(quadrants, "coupling:folder:src/billing->src/orders");
+    const [pack] = document.results;
+    expect(pack).toMatchObject({
+      id: "edge:folder:src/billing->src/orders",
+      kind: "hidden-coupling",
+      kinds: ["hidden-coupling"],
+      findings: ["coupling:folder:src/billing->src/orders"],
+      quadrant: { name: "hidden" },
+      inBreakingSet: null,
+      breakingSet: [],
+      imports: { fileEdges: 0, importStatements: 0 },
+      coChange: { shared: 7 },
+    });
+  });
+
+  test("an incidental pair reports incidental coupling, with its import to read", async () => {
+    const { document } = await evidence(quadrants, "coupling:folder:src/ui->src/format");
+    const [pack] = document.results;
+    expect(pack).toMatchObject({ kind: "incidental-coupling", kinds: ["incidental-coupling"], findings: ["coupling:folder:src/ui->src/format"], quadrant: { name: "incidental" } });
+    expect(pack!.breakingSet.length).toBeGreaterThan(0);
+  });
+
+  test("the pair can be named without the finding id, and either way round it is oriented as the coupling command orients it", async () => {
+    const named = (await evidence(quadrants, "src/orders->src/billing")).document.results[0]!;
+    expect(named).toMatchObject({ id: "edge:folder:src/billing->src/orders", from: "src/billing", to: "src/orders", kind: "hidden-coupling" });
+  });
+
+  test("a real pair is no problem, so it has no kind, whatever its quadrant says", async () => {
+    const { document } = await evidence(quadrants, "src/pricing->src/tax");
+    expect(document.results[0]).toMatchObject({ kind: null, kinds: [], findings: [], quadrant: { name: "real" } });
+  });
+
+  test("a pair with no import and no co-change to speak of is a usage error that says so", async () => {
+    const run = await runStructure(quadrants.path, ["evidence", "--json", "src/tools->src/lonely"]);
+    expect(run.code).toBe(ExitCode.Usage);
+    expect(run.stderr).toContain("no dependency from");
+  });
+
+  test("the cycle and unstable findings are not changed by it", async () => {
+    const { document } = await evidence(cycles, "src/e.ts->src/c.ts");
+    expect(document.results[0]!.kinds).toEqual(["cycle"]);
+  });
+});
+
+describe("a registration hub", () => {
+  test("gives one pack for the hub with its features, the four signals, the symbols it uses from them and what is nearby", async () => {
+    const { document } = await evidence(routeTable, "hub:src/routes.ts");
+    expect(document.results).toHaveLength(1);
+    const [pack] = document.results as unknown as {
+      id: string;
+      kind: string;
+      kinds: string[];
+      findings: string[];
+      level: string;
+      file: string;
+      module: string;
+      features: { module: string; referencedBy: string | null; breakingSet: unknown[]; misplacement: unknown[] }[];
+      signals: { contention: { maxAuthors: number } };
+      stability: Record<string, unknown>;
+      nearbyMechanisms: unknown[];
+      unblocks: unknown[];
+    }[];
+    expect(pack).toMatchObject({ id: "hub:src/routes.ts", kind: "registration-hub", kinds: ["registration-hub"], findings: ["hub:src/routes.ts"], level: "folder", file: "src/routes.ts", module: "src" });
+    expect(pack!.features.map((f) => f.module)).toEqual(["src/features/invoices", "src/features/orders", "src/features/reports", "src/features/users"]);
+    expect(pack!.features.every((f) => f.referencedBy === "import")).toBe(true);
+    expect(pack!.signals.contention.maxAuthors).toBe(3);
+    expect(pack).toHaveProperty("stability");
+    expect(pack!.nearbyMechanisms).toEqual([]);
+    expect(pack!.unblocks).toEqual([]);
+    expect(Object.keys(pack!).filter((k) => /recommend|remedy|technique/i.test(k))).toEqual([]);
+  });
+
+  test("a file that is not a hub is a usage error", async () => {
+    const run = await runStructure(routeTable.path, ["evidence", "--json", "hub:src/features/orders/page.ts"]);
+    expect(run.code).toBe(ExitCode.Usage);
+    expect(run.stderr).toContain("no registration hub");
+  });
+
+  test("golden", async () => {
+    expectGolden("evidence", "evidence.hub", (await evidence(routeTable, "hub:src/routes.ts")).stdout);
   });
 });
 

@@ -29,7 +29,7 @@ Run them from the repository root. They analyse `HEAD`. Useful options:
 - `coupling [--quadrant Q] [--by file|folder|component]` places each pair as real, incidental, stable, hidden, independent or insufficient-evidence from static coupling and co-change. `hidden` lists only the hidden pairs, where code changes together with no import between it.
 - `hubs` lists registration hubs: files that many features append to. Read `references/registration-hubs.md` before proposing an inversion.
 - `outcome FROM->TO --at REV` compares co-change before and after a break, and says whether it was broken or only hidden.
-- `evidence EDGE|FINDING` takes an edge as `from->to` (files, folders or components) or a finding id from `cycles`, `stability` or `layers`, and prints the full evidence pack.
+- `evidence EDGE|FINDING` takes an edge as `from->to` (files, folders or components) or a finding id from `cycles`, `stability`, `layers` or `coupling` (`coupling:<level>:<from>-><to>`, for an incidental or hidden pair, which has no import to name), or a registration hub as `hub:<file>` from `hubs`, and prints the full evidence pack. A pack's `kind` is `cycle`, `layer-violation`, `unstable-dependency`, `incidental-coupling`, `hidden-coupling` or `registration-hub`.
 - `--limit <n|all>` and `--fields` keep output small. `explain <rule>` describes a rule, and `config explain` shows the effective settings.
 
 Read the envelope before the rows. The top-level `evidence.grade` is how far to trust history: with `weak`, rely on the static signals and present co-change as tentative. `inputs.locality` names the locality report that ranked the cycles, and is null when none was usable, in which case cycles are ranked by size and co-change alone.

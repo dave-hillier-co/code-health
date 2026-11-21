@@ -1,7 +1,6 @@
 {
   "command": "evidence",
   "config": "57b63e557a0488de",
-  "deferred": [],
   "evidence": {
     "activeContributors": 0,
     "commitSize": {
