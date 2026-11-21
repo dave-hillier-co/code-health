@@ -14,6 +14,8 @@ export interface RecommendInput {
   /** References that are not calls: callsite counts are unreliable when there are any. */
   otherRefs: number;
   packageEntry: boolean;
+  /** Some file of the unit lives outside its entry file's folder, so moving the unit as one block is coarse. */
+  scattered: boolean;
   fixedPoint: boolean;
   passThrough: boolean;
   barrelWithOneConsumer: boolean;
@@ -68,5 +70,6 @@ function guard(input: RecommendInput, decision: Decision): Decision {
   if (decision.recommendation !== "inline" && decision.recommendation !== "move") return decision;
   if (input.otherRefs > 0) return { recommendation: "review", rule: "other-references" };
   if (input.packageEntry) return { recommendation: "review", rule: "package-entry" };
+  if (input.scattered) return { recommendation: "review", rule: "scattered-unit" };
   return decision;
 }

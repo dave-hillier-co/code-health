@@ -1,0 +1,994 @@
+{
+  "barrels": [
+    "src/billing/index.ts"
+  ],
+  "command": "analyse",
+  "config": "0dad2094b0e065f1",
+  "filesWithSyntaxErrors": [],
+  "inputs": {
+    "entries": [
+      "src/main.ts"
+    ],
+    "entrySource": "config",
+    "paths": [],
+    "recommendation": null
+  },
+  "metrics": {
+    "maxDepth": 3,
+    "singleFileFolders": 4,
+    "totalWeightedDistance": 60
+  },
+  "repo": {
+    "dirty": false,
+    "head": "1bce87ae6f08086d201b50d20423b1e92fc6e7cb"
+  },
+  "results": [
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/features/feature1.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature2.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature3.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature4.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature5.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature6.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature7.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature8.ts"
+        }
+      ],
+      "distance": 2,
+      "fanIn": 8,
+      "gain": 16,
+      "lastChanged": null,
+      "location": "src/shared",
+      "netDistance": {
+        "atTarget": 0,
+        "current": 16
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/format.ts",
+      "recommendation": "scrutinise",
+      "rule": "high-fan-in",
+      "score": 8,
+      "signals": [
+        {
+          "detail": "fmt(compact)",
+          "name": "special-general-mixture"
+        }
+      ],
+      "size": {
+        "files": 1,
+        "lines": 3,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/features",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 16,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/format.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/format.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "cohesion": {
+        "components": [
+          {
+            "consumerFolders": [
+              "src/billing"
+            ],
+            "consumers": [
+              "src/billing/charge.ts"
+            ],
+            "distance": 3,
+            "fanIn": 1,
+            "gain": 3,
+            "lines": 3,
+            "location": "src/shared/helpers",
+            "recommendation": "inline",
+            "rule": "single-consumer-tiny",
+            "symbols": [
+              "invoiceLabel"
+            ],
+            "target": "src/billing"
+          },
+          {
+            "consumerFolders": [
+              "src/orders"
+            ],
+            "consumers": [
+              "src/orders/place.ts"
+            ],
+            "distance": 3,
+            "fanIn": 1,
+            "gain": 3,
+            "lines": 3,
+            "location": "src/shared/helpers",
+            "recommendation": "inline",
+            "rule": "single-consumer-tiny",
+            "symbols": [
+              "orderLabel"
+            ],
+            "target": "src/orders"
+          }
+        ],
+        "mixed": true
+      },
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/billing/charge.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/orders/place.ts"
+        }
+      ],
+      "distance": 2,
+      "fanIn": 2,
+      "gain": 4,
+      "lastChanged": null,
+      "location": "src/shared/helpers",
+      "netDistance": {
+        "atTarget": 2,
+        "current": 6
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/helpers/mixed.ts",
+      "recommendation": "split",
+      "rule": "mixed-exports",
+      "score": 6,
+      "signals": [
+        {
+          "detail": "helpers",
+          "name": "vague-name"
+        }
+      ],
+      "size": {
+        "files": 1,
+        "lines": 6,
+        "units": 2
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 4,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/helpers/mixed.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/helpers/mixed.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/reports/detail.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/reports/summary.ts"
+        }
+      ],
+      "distance": 3,
+      "fanIn": 2,
+      "gain": 6,
+      "lastChanged": null,
+      "location": "src/shared/pair",
+      "netDistance": {
+        "atTarget": 0,
+        "current": 6
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/pair",
+      "recommendation": "move",
+      "rule": "two-consumers",
+      "score": 6,
+      "signals": [],
+      "size": {
+        "files": 3,
+        "lines": 11,
+        "units": 3
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/reports",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 6,
+      "unit": {
+        "cycle": false,
+        "entries": [
+          "src/shared/pair/a.ts",
+          "src/shared/pair/b.ts"
+        ],
+        "files": [
+          "src/shared/pair/a.ts",
+          "src/shared/pair/b.ts",
+          "src/shared/pair/core.ts"
+        ],
+        "kind": "sibling-set",
+        "root": "src/shared/pair/a.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [
+        {
+          "coChange": null,
+          "kind": "stray",
+          "otherConsumers": 1,
+          "path": "src/lib/kernel/core.ts",
+          "unblockedGain": 4,
+          "weight": 5
+        }
+      ],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/app/ui/panel.ts"
+        }
+      ],
+      "distance": 0,
+      "fanIn": 1,
+      "gain": 0,
+      "lastChanged": null,
+      "location": "src/lib/kernel",
+      "netDistance": {
+        "atTarget": 4,
+        "current": 4
+      },
+      "otherRefs": [],
+      "ownDeps": [
+        "src/lib/kernel/core.ts"
+      ],
+      "path": "src/lib/kernel/tool.ts",
+      "recommendation": "blocked",
+      "rule": "blocked-by-dependency",
+      "score": 4,
+      "signals": [],
+      "size": {
+        "files": 1,
+        "lines": 4,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [
+        "src/lib/kernel/core.ts"
+      ],
+      "target": "src/lib/kernel",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 4,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/lib/kernel/tool.ts"
+        ],
+        "kind": "file",
+        "root": "src/lib/kernel/tool.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "cohesion": {
+        "components": [
+          {
+            "consumerFolders": [
+              "src/billing",
+              "src/orders"
+            ],
+            "consumers": [
+              "src/billing/charge.ts",
+              "src/orders/place.ts"
+            ],
+            "symbols": [
+              "formatMoney"
+            ]
+          },
+          {
+            "consumerFolders": [],
+            "consumers": [],
+            "symbols": [
+              "unusedExport"
+            ]
+          }
+        ],
+        "mixed": false
+      },
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/billing/charge.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/orders/place.ts"
+        }
+      ],
+      "distance": 2,
+      "fanIn": 2,
+      "gain": 4,
+      "lastChanged": null,
+      "location": "src/shared/utils",
+      "netDistance": {
+        "atTarget": 2,
+        "current": 6
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/utils/money.ts",
+      "recommendation": "move",
+      "rule": "two-consumers",
+      "score": 4,
+      "signals": [
+        {
+          "detail": "unusedExport",
+          "name": "overexposure"
+        },
+        {
+          "detail": "utils",
+          "name": "vague-name"
+        }
+      ],
+      "size": {
+        "files": 1,
+        "lines": 6,
+        "units": 2
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 4,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/utils/money.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/utils/money.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/orders/place.ts"
+        }
+      ],
+      "distance": 3,
+      "fanIn": 1,
+      "gain": 3,
+      "lastChanged": null,
+      "location": "src/shared/cycle",
+      "netDistance": {
+        "atTarget": 0,
+        "current": 3
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/cycle/a.ts",
+      "recommendation": "move",
+      "rule": "single-consumer-tiny",
+      "score": 3,
+      "signals": [
+        {
+          "detail": "cycleStart",
+          "name": "pass-through"
+        }
+      ],
+      "size": {
+        "files": 2,
+        "lines": 8,
+        "units": 2
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/orders",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 3,
+      "unit": {
+        "cycle": true,
+        "entries": [],
+        "files": [
+          "src/shared/cycle/a.ts",
+          "src/shared/cycle/b.ts"
+        ],
+        "kind": "branch",
+        "root": "src/shared/cycle/a.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [
+        {
+          "coChange": null,
+          "kind": "stray",
+          "otherConsumers": 1,
+          "path": "src/shared/pair/core.ts",
+          "unblockedGain": 3,
+          "weight": 1
+        }
+      ],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/reports/summary.ts"
+        }
+      ],
+      "distance": 0,
+      "fanIn": 1,
+      "gain": 0,
+      "lastChanged": null,
+      "location": "src/shared/pair",
+      "netDistance": {
+        "atTarget": 3,
+        "current": 3
+      },
+      "otherRefs": [],
+      "ownDeps": [
+        "src/shared/pair/core.ts"
+      ],
+      "path": "src/shared/pair/a.ts",
+      "recommendation": "blocked",
+      "rule": "blocked-by-dependency",
+      "score": 3,
+      "signals": [],
+      "size": {
+        "files": 1,
+        "lines": 4,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [
+        "src/shared/pair/core.ts"
+      ],
+      "target": "src/shared/pair",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 3,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/pair/a.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/pair/a.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [
+        {
+          "coChange": null,
+          "kind": "stray",
+          "otherConsumers": 1,
+          "path": "src/shared/pair/core.ts",
+          "unblockedGain": 3,
+          "weight": 1
+        }
+      ],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/reports/detail.ts"
+        }
+      ],
+      "distance": 0,
+      "fanIn": 1,
+      "gain": 0,
+      "lastChanged": null,
+      "location": "src/shared/pair",
+      "netDistance": {
+        "atTarget": 3,
+        "current": 3
+      },
+      "otherRefs": [],
+      "ownDeps": [
+        "src/shared/pair/core.ts"
+      ],
+      "path": "src/shared/pair/b.ts",
+      "recommendation": "blocked",
+      "rule": "blocked-by-dependency",
+      "score": 3,
+      "signals": [],
+      "size": {
+        "files": 1,
+        "lines": 4,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [
+        "src/shared/pair/core.ts"
+      ],
+      "target": "src/shared/pair",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 3,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/pair/b.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/pair/b.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/billing/charge.ts"
+        }
+      ],
+      "distance": 3,
+      "fanIn": 1,
+      "gain": 3,
+      "lastChanged": null,
+      "location": "src/shared/utils",
+      "netDistance": {
+        "atTarget": 0,
+        "current": 3
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/utils/invoice.ts",
+      "recommendation": "move",
+      "rule": "single-consumer-large",
+      "score": 3,
+      "signals": [
+        {
+          "detail": "utils",
+          "name": "vague-name"
+        }
+      ],
+      "size": {
+        "files": 1,
+        "lines": 164,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/billing",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 3,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/utils/invoice.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/utils/invoice.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/orders/place.ts"
+        }
+      ],
+      "distance": 3,
+      "fanIn": 1,
+      "gain": 3,
+      "lastChanged": null,
+      "location": "src/shared/utils",
+      "netDistance": {
+        "atTarget": 0,
+        "current": 3
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/utils/slug.ts",
+      "recommendation": "inline",
+      "rule": "single-consumer-tiny",
+      "score": 3,
+      "signals": [
+        {
+          "detail": "utils",
+          "name": "vague-name"
+        }
+      ],
+      "size": {
+        "files": 1,
+        "lines": 3,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/orders",
+      "testRefs": {
+        "external": [],
+        "owned": [
+          "src/shared/utils/slug.test.ts"
+        ]
+      },
+      "unblockedGain": 3,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/utils/slug.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/utils/slug.ts",
+        "tests": [
+          "src/shared/utils/slug.test.ts"
+        ]
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/main.ts"
+        }
+      ],
+      "distance": 1,
+      "fanIn": 1,
+      "gain": 2,
+      "lastChanged": null,
+      "location": "src",
+      "netDistance": {
+        "atTarget": 7,
+        "current": 9
+      },
+      "otherRefs": [],
+      "ownDeps": [
+        "src/shared/helpers/mixed.ts",
+        "src/shared/log.ts",
+        "src/shared/utils/money.ts"
+      ],
+      "path": "src/orders/place.ts",
+      "recommendation": "review",
+      "rule": "scattered-unit",
+      "score": 2,
+      "signals": [],
+      "size": {
+        "files": 5,
+        "lines": 23,
+        "units": 5
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/shared",
+      "testRefs": {
+        "external": [],
+        "owned": [
+          "src/shared/utils/slug.test.ts"
+        ]
+      },
+      "unblockedGain": 2,
+      "unit": {
+        "cycle": true,
+        "entries": [],
+        "files": [
+          "src/orders/audit.ts",
+          "src/orders/place.ts",
+          "src/shared/cycle/a.ts",
+          "src/shared/cycle/b.ts",
+          "src/shared/utils/slug.ts"
+        ],
+        "kind": "branch",
+        "root": "src/orders/place.ts",
+        "tests": [
+          "src/shared/utils/slug.test.ts"
+        ]
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/billing/charge.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/orders/audit.ts"
+        }
+      ],
+      "distance": 1,
+      "fanIn": 2,
+      "gain": 2,
+      "lastChanged": null,
+      "location": "src/shared",
+      "netDistance": {
+        "atTarget": 2,
+        "current": 4
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/log.ts",
+      "recommendation": "move",
+      "rule": "two-consumers",
+      "score": 2,
+      "signals": [],
+      "size": {
+        "files": 1,
+        "lines": 3,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 2,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/log.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/log.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [],
+      "distance": 0,
+      "fanIn": 1,
+      "gain": 0,
+      "lastChanged": null,
+      "location": "src/billing",
+      "netDistance": {
+        "atTarget": 0,
+        "current": 0
+      },
+      "otherRefs": [],
+      "ownDeps": [
+        "src/billing/charge.ts"
+      ],
+      "path": "src/billing/index.ts",
+      "recommendation": "inline",
+      "rule": "single-consumer-barrel",
+      "score": 0,
+      "signals": [
+        {
+          "detail": "1 importing file",
+          "name": "barrel"
+        }
+      ],
+      "size": {
+        "files": 1,
+        "lines": 1,
+        "units": 0
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/billing",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 0,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/billing/index.ts"
+        ],
+        "kind": "barrel",
+        "root": "src/billing/index.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/orders/place.ts"
+        }
+      ],
+      "distance": 0,
+      "fanIn": 1,
+      "gain": 0,
+      "lastChanged": null,
+      "location": "src/orders",
+      "netDistance": {
+        "atTarget": 2,
+        "current": 2
+      },
+      "otherRefs": [],
+      "ownDeps": [
+        "src/shared/log.ts"
+      ],
+      "path": "src/orders/audit.ts",
+      "recommendation": "inline",
+      "rule": "pass-through",
+      "score": 0,
+      "signals": [
+        {
+          "detail": "audit",
+          "name": "pass-through"
+        }
+      ],
+      "size": {
+        "files": 1,
+        "lines": 4,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/orders",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 0,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/orders/audit.ts"
+        ],
+        "kind": "file",
+        "root": "src/orders/audit.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "byRecommendation": {
+      "blocked": 3,
+      "inline": 3,
+      "move": 5,
+      "review": 1,
+      "scrutinise": 1,
+      "split": 1
+    },
+    "files": 31,
+    "units": 30
+  },
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 14
+  },
+  "unreachable": [
+    "src/legacy/dead.ts"
+  ],
+  "unresolved": {}
+}

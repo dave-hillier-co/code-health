@@ -14,6 +14,7 @@ function input(overrides: Partial<RecommendInput>): RecommendInput {
     consumerLines: 100,
     otherRefs: 0,
     packageEntry: false,
+    scattered: false,
     fixedPoint: false,
     passThrough: false,
     barrelWithOneConsumer: false,
@@ -70,6 +71,7 @@ test("guards turn inline and move into review", () => {
   expect(recommend(input({ otherRefs: 1 }))).toEqual({ recommendation: "review", rule: "other-references" });
   expect(recommend(input({ packageEntry: true, fanIn: 2 }))).toEqual({ recommendation: "review", rule: "package-entry" });
   expect(recommend(input({ otherRefs: 2, passThrough: true }))).toEqual({ recommendation: "review", rule: "other-references" });
+  expect(recommend(input({ scattered: true, files: 4 }))).toEqual({ recommendation: "review", rule: "scattered-unit" });
 });
 
 test("a fixed point is kept where it is", () => {
