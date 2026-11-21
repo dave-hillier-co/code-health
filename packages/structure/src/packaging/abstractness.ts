@@ -26,17 +26,17 @@ export function measureAbstractness(reuse: ReuseAnalysis): Map<string, Abstractn
   const result = new Map<string, Abstractness>();
   for (const [id, profile] of reuse.profiles) {
     let types = 0;
-    let abstract = 0;
+    let abstractCount = 0;
     for (const element of profile.surface) {
       const detection = adapterForPath(element.file)?.abstractTypes;
       if (element.kind === null || detection === undefined || !detection.typeKinds.includes(element.kind)) continue;
       types++;
-      if (detection.abstractKinds.includes(element.kind)) abstract++;
+      if (detection.abstractKinds.includes(element.kind)) abstractCount++;
     }
     result.set(id, {
       exportedTypes: types,
-      abstractTypes: abstract,
-      value: types === 0 ? 0 : round3(abstract / types),
+      abstractTypes: abstractCount,
+      value: types === 0 ? 0 : round3(abstractCount / types),
       weak: types < WEAK_BELOW_TYPES,
     });
   }
