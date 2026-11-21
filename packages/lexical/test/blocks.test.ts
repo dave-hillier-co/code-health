@@ -291,3 +291,37 @@ test("a function whose return type is a function type is one block", () => {
   const source = "export function make(): () => number {\n  return () => 1;\n}\n";
   expect(blocks(source, "typescript")).toEqual([["make", 1, 3]]);
 });
+
+test("Kotlin has no semicolons: a statement ends at its line, and an expression body is a block of its own", () => {
+  const source = [
+    "package demo", // 1
+    "import java.util.List", // 2
+    "interface Shape {", // 3
+    "    fun area(): Double", // 4
+    "    fun describe(): String {", // 5
+    '        return "shape"', // 6
+    "    }", // 7
+    "}", // 8
+    "class Box {", // 9
+    "    val size: Int", // 10
+    "        get() = 1", // 11
+    '    @Suppress("X")', // 12
+    "    fun twice(a: Int): Int = a * 2", // 13
+    "    fun clamp(a: Int): Int =", // 14
+    "        if (a > 1) 1", // 15
+    "        else a", // 16
+    "    constructor(a: Int) : this() {", // 17
+    "        println(a)", // 18
+    "    }", // 19
+    "    fun list(): List<String>", // 20
+    "    fun last(): Int { return 1 }", // 21
+    "}", // 22
+  ].join("\n");
+  expect(blocks(source, "kotlin")).toEqual([
+    ["Shape.describe", 5, 7],
+    ["Box.twice", 13, 13],
+    ["Box.clamp", 14, 16],
+    [undefined, 17, 19],
+    ["Box.last", 21, 21],
+  ]);
+});
