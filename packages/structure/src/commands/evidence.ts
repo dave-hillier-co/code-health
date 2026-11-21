@@ -10,7 +10,7 @@ export const name = "evidence";
 
 const allLevels: readonly Level[] = ["file", "folder", "package", "component"];
 
-const usage = "usage: evidence <from>-><to> [--level file|folder|package|component], or evidence <finding id> (cycle:<level>:<node> or unstable:<level>:<from>-><to>)";
+const usage = "usage: evidence <from>-><to> [--level file|folder|package|component], or evidence <finding id> (cycle:<level>:<node>, layer:<from>-><to> or unstable:<level>:<from>-><to>)";
 
 type Target =
   | { kind: "cycle"; level: Level; id: string }
@@ -19,16 +19,17 @@ type Target =
 function parseTarget(text: string, requested: Level | undefined): Target {
   const cycle = /^cycle:(file|folder|package):(.+)$/.exec(text);
   if (cycle) return { kind: "cycle", level: cycle[1] as Level, id: text };
+  const layer = /^layer:(.+)$/.exec(text);
+  if (layer) return { ...parseEdge(layer[1]!), level: "file" };
   const unstable = /^unstable:(folder|component):(.+)$/.exec(text);
   const edge = unstable ? unstable[2]! : text;
+  return { ...parseEdge(edge), level: unstable ? (unstable[1] as Level) : requested };
+}
+
+function parseEdge(edge: string): { kind: "edge"; from: string; to: string } {
   const arrow = edge.indexOf("->");
   if (arrow <= 0 || arrow + 2 >= edge.length) throw usageError(usage);
-  return {
-    kind: "edge",
-    level: unstable ? (unstable[1] as Level) : requested,
-    from: edge.slice(0, arrow),
-    to: edge.slice(arrow + 2),
-  };
+  return { kind: "edge", from: edge.slice(0, arrow), to: edge.slice(arrow + 2) };
 }
 
 /** The finest level at which both names are modules: a file, then a folder, then a package. */
@@ -79,7 +80,6 @@ export const command = analysisCommand(name, {
         deferred: [
           { field: "quadrant", milestone: 6 },
           { field: "nearbyMechanisms", milestone: 3 },
-          { field: "layerRule", milestone: 5 },
         ],
       },
     };

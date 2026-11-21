@@ -4,6 +4,7 @@ import { DEFAULT_EVIDENCE_THRESHOLDS, type EvidenceThresholds } from "@code-heal
 import { DEFAULT_MAX_CHANGESET_SIZE } from "@code-health/history/noise";
 import { DEFAULT_RENAME_LIMIT, DEFAULT_SIMILARITY } from "@code-health/history/refresh";
 import { DEFAULT_EXACT_LIMIT } from "@code-health/graph/feedback-arc-set";
+import { readLayerRules, type LayerRule } from "./layers.ts";
 import { TOOL } from "./tool.ts";
 
 /**
@@ -32,6 +33,17 @@ export const structureConfig: PluginConfigSpec = {
     minVolatilityRatio: 2,
     /** A dependency points against structural stability when the depended-on side's instability exceeds the dependant's by at least this many percentage points. */
     minInstabilityGap: 20,
+    /**
+     * Ordered layers, top first: `{ "name": "ui", "paths": ["src/ui/**"], "allow": ["domain"] }`.
+     * A file belongs to the first layer whose paths match it, and files in no layer are unconstrained.
+     * Without `allow` a layer may depend on itself and on the layers listed after it; with `allow`,
+     * on itself and exactly the layers named.
+     */
+    layers: [] as unknown[],
+    /** The branch `check` compares against when no base is given: the base is the merge base of the analysed commit with it. */
+    mainBranch: "main",
+    /** The revision `check` compares against, replacing the merge base with mainBranch. null uses the merge base. */
+    base: null,
     evidence: {
       strong: { ...DEFAULT_EVIDENCE_THRESHOLDS.strong },
       moderate: { ...DEFAULT_EVIDENCE_THRESHOLDS.moderate },
@@ -53,6 +65,10 @@ export interface StructureSettings {
   minVolatilityRatio: number;
   /** Percentage points. */
   minInstabilityGap: number;
+  layers: LayerRule[];
+  mainBranch: string;
+  /** Explicit base revision for `check`, or null for the merge base with mainBranch. */
+  base: string | null;
   /** The suite's shared `exclude` globs. */
   exclude: string[];
   /** The suite's shared `components` config, as written. */
@@ -88,6 +104,13 @@ export function readSettings(config: LoadedConfig): StructureSettings {
   const exactLimit = positive("exactLimit");
   if (exactLimit > 30) throw configError(`code-health.json: ${at("exactLimit")} is at most 30, the largest component the exact search supports`);
 
+  const mainBranch = section.mainBranch;
+  if (typeof mainBranch !== "string" || mainBranch === "") throw configError(`code-health.json: ${at("mainBranch")} must be a branch name`);
+  const base = section.base;
+  if (base !== null && (typeof base !== "string" || base === "")) {
+    throw configError(`code-health.json: ${at("base")} must be a revision or null`);
+  }
+
   return {
     ref: branch ?? "HEAD",
     firstParent: section.firstParent === true,
@@ -100,6 +123,9 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     minRevisions: positive("minRevisions"),
     minVolatilityRatio: positive("minVolatilityRatio"),
     minInstabilityGap,
+    layers: readLayerRules(section.layers, at("layers")),
+    mainBranch,
+    base: base as string | null,
     exclude: config.effective.exclude,
     components: config.effective.components,
     evidenceThresholds: section.evidence as EvidenceThresholds,

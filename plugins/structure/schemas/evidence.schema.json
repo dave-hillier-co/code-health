@@ -64,6 +64,7 @@
           "kind": {
             "enum": [
               "cycle",
+              "layer-violation",
               "unstable-dependency",
               null
             ],
@@ -74,6 +75,7 @@
             "items": {
               "enum": [
                 "cycle",
+                "layer-violation",
                 "unstable-dependency"
               ]
             },
@@ -301,8 +303,55 @@
             "description": "Deferred to the mechanism census milestone."
           },
           "layerRule": {
-            "type": "null",
-            "description": "Deferred to the layer rules milestone."
+            "type": [
+              "array",
+              "null"
+            ],
+            "description": "The layer rules the edge's imports break, one entry per pair of layers. Null when it breaks none.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fromLayer": {
+                  "type": "string"
+                },
+                "toLayer": {
+                  "type": "string"
+                },
+                "allowed": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "fileEdges": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string"
+                      },
+                      "to": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "from",
+                      "to"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "fromLayer",
+                "toLayer",
+                "allowed",
+                "fileEdges"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [

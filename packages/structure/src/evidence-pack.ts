@@ -1,6 +1,7 @@
 import { compareIds } from "@code-health/graph/graph";
 import type { Unblock } from "./locality-report.ts";
 import { findCycles, unblocksOf } from "./cycles.ts";
+import { findLayerViolations, layerViolationId, type LayerViolation } from "./layers.ts";
 import type { StructureSettings } from "./config.ts";
 import type { Model } from "./model.ts";
 import { describeEdge, type SymbolUse } from "./modules.ts";
@@ -10,7 +11,7 @@ import { judgeEdge, unstableId } from "./unstable.ts";
 
 const round1 = (value: number): number => Math.round(value * 10) / 10;
 
-export type ProblemKind = "cycle" | "unstable-dependency";
+export type ProblemKind = "cycle" | "layer-violation" | "unstable-dependency";
 
 export interface CoChangeFigures {
   /** Eligible logical changes that touched both sides. */
@@ -64,8 +65,38 @@ export interface EvidencePack {
   unblocks: Unblock[];
   /** Deferred to the mechanism census milestone. */
   nearbyMechanisms: never[];
-  /** Deferred to the layer rules milestone. */
-  layerRule: null;
+  /** The layer rules the edge's imports break, one entry per pair of layers, or null when it breaks none. */
+  layerRule: LayerRuleBreach[] | null;
+}
+
+export interface LayerRuleBreach {
+  fromLayer: string;
+  toLayer: string;
+  /** What the rule lets `fromLayer` depend on. */
+  allowed: string[];
+  /** The file imports of the edge that break it. */
+  fileEdges: { from: string; to: string }[];
+}
+
+const violationsByProject = new WeakMap<object, LayerViolation[]>();
+
+function layerRule(model: Model, from: string, to: string, settings: Pick<StructureSettings, "layers">): LayerRuleBreach[] | null {
+  if (settings.layers.length === 0) return null;
+  let violations = violationsByProject.get(model.project);
+  if (violations === undefined) {
+    violations = findLayerViolations(model.project, settings.layers);
+    violationsByProject.set(model.project, violations);
+  }
+  const members = new Set((model.graph.members.get(edgeKey(from, to)) ?? []).map((e) => edgeKey(e.from, e.to)));
+  const breaches = new Map<string, LayerRuleBreach>();
+  for (const violation of violations) {
+    if (!members.has(edgeKey(violation.from, violation.to))) continue;
+    const key = `${violation.fromLayer}\u0000${violation.toLayer}`;
+    const breach = breaches.get(key) ?? { fromLayer: violation.fromLayer, toLayer: violation.toLayer, allowed: violation.allowed, fileEdges: [] };
+    breach.fileEdges.push({ from: violation.from, to: violation.to });
+    breaches.set(key, breach);
+  }
+  return breaches.size === 0 ? null : [...breaches.values()];
 }
 
 function coChangeFigures(model: Model, from: string, to: string): CoChangeFigures {
@@ -124,7 +155,7 @@ export function evidencePack(
   model: Model,
   from: string,
   to: string,
-  settings: Pick<StructureSettings, "exactLimit" | "minVolatilityRatio" | "minInstabilityGap">,
+  settings: Pick<StructureSettings, "exactLimit" | "minVolatilityRatio" | "minInstabilityGap" | "layers">,
 ): EvidencePack {
   const level = model.graph.level;
   const detail = describeEdge(model.project, model.graph, from, to);
@@ -138,6 +169,11 @@ export function evidencePack(
   if (cycle) {
     kinds.push("cycle");
     findings.push(cycle.id);
+  }
+  const rule = layerRule(model, from, to, settings);
+  if (rule) {
+    kinds.push("layer-violation");
+    for (const breach of rule) for (const edge of breach.fileEdges) findings.push(layerViolationId(edge.from, edge.to));
   }
   if (verdict.violates) {
     kinds.push("unstable-dependency");
@@ -167,6 +203,6 @@ export function evidencePack(
     misplacement: misplacement(model, from, to, detail.symbols),
     unblocks: unblocksOf(model, from, to).sort((a, b) => b.unblockedGain - a.unblockedGain || compareIds(a.unit, b.unit)),
     nearbyMechanisms: [],
-    layerRule: null,
+    layerRule: rule,
   };
 }

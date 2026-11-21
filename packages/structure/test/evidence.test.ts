@@ -38,7 +38,7 @@ interface Pack {
   misplacement: { symbol: string; mostlyOn: string; moveMayRemoveDependency: boolean; onFromSide: number; onToSide: number; elsewhere: number }[];
   unblocks: { unit: string; unblockedGain: number }[];
   nearbyMechanisms: unknown[];
-  layerRule: null;
+  layerRule: unknown;
 }
 
 async function evidence(fixture: GitFixture, ...args: string[]) {
@@ -75,7 +75,7 @@ describe("an edge in a cycle", () => {
     expect(coChange.expected).toBe(3);
   });
 
-  test("the quadrant, mechanisms and layer rule wait for their milestones", async () => {
+  test("the quadrant and mechanisms wait for their milestones, and with no layers configured there is no layer rule", async () => {
     const { document } = await evidence(cycles, "src/e.ts->src/c.ts");
     expect(document.results[0]).toMatchObject({ quadrant: null, nearbyMechanisms: [], layerRule: null });
   });

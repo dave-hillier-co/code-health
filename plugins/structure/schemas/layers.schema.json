@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "layers.schema.json",
+  "title": "structure layers --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "layers"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "analysed": {
+          "$ref": "common.schema.json#/$defs/sha"
+        }
+      },
+      "required": [
+        "layers",
+        "analysed"
+      ],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^layer:.+->.+$"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "fromLayer": {
+            "type": "string"
+          },
+          "toLayer": {
+            "type": "string"
+          },
+          "allowed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The layers the rule lets fromLayer depend on, itself included."
+          },
+          "importStatements": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "typeOnly": {
+            "type": "boolean"
+          },
+          "symbols": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "symbol": {
+                  "type": "string"
+                },
+                "sites": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "kind": {
+                  "enum": [
+                    "call",
+                    "reference"
+                  ]
+                },
+                "usedBy": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "symbol",
+                "sites",
+                "kind",
+                "usedBy"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "from",
+          "to",
+          "fromLayer",
+          "toLayer",
+          "allowed",
+          "importStatements",
+          "typeOnly",
+          "symbols"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}
