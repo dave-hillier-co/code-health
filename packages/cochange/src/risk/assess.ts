@@ -5,30 +5,14 @@ import type { LoadedHistory } from "../history-access.ts";
 import { extractChange, resolveRange, type BranchChange } from "./change.ts";
 import { abandonedTouched } from "./abandoned-touched.ts";
 import { liveMeasurements, readLocalityFanIn, withFanIn, type LocalityFanIn } from "./composition.ts";
+import type { Factor } from "./factor.ts";
 import { NO_EVIDENCE, readEvidence, type EvidenceInputs } from "./evidence-inputs.ts";
 import { chronologicalPass, SECONDS_PER_MONTH, type PastChange } from "./history-pass.ts";
 import type { HistoryState } from "./history-state.ts";
 import { measureHistoryLayer, type ChangeFacts, type MeasureContext, type Measurement } from "./measure.ts";
 import { mergedChanges, type Mainline } from "./merged-changes.ts";
-import { baselineScores, impactOf, makeBander, SCORED_FACTORS, type BandResult, type FactorBand, type ImpactResult } from "./scoring.ts";
+import { baselineScores, impactOf, makeBander, SCORED_FACTORS, type BandResult, type ImpactResult } from "./scoring.ts";
 import { readRiskSettings, type RiskSettings } from "./settings.ts";
-
-/** A factor as it is reported: its value, band, the evidence behind it and the layer that produced it. */
-export interface Factor {
-  name: string;
-  family: string;
-  layer: string;
-  /** `unavailable` when it could not be computed (never `low`), `disabled` when the repository switched it off. */
-  status: "ok" | "unavailable" | "disabled";
-  band: FactorBand | null;
-  /** True when the factor counts towards the impact score. */
-  scored: boolean;
-  value: Record<string, unknown>;
-  thresholds: BandResult["thresholds"];
-  evidence: Record<string, unknown>[];
-  source: string;
-  reason: string | null;
-}
 
 export interface Assessed {
   change: BranchChange;

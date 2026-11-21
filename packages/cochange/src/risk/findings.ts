@@ -1,5 +1,6 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
-import type { Assessed, Factor } from "./assess.ts";
+import type { Assessed } from "./assess.ts";
+import type { Factor } from "./factor.ts";
 import type { PlacementOutcome } from "./placement-result.ts";
 
 export type Step = "complete" | "split" | "test" | "simplify" | "check" | "review";

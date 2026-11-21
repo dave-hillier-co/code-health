@@ -3,7 +3,8 @@ import { commitsInSnapshot, lineShares, resolveOwners, shareHeldBy, type Owner }
 import { readBlame } from "@code-health/history/blame-read";
 import { refreshBlame } from "@code-health/history/blame-refresh";
 import { readActiveDevelopers } from "../active-developers.ts";
-import type { Assessed, Factor } from "./assess.ts";
+import type { Assessed } from "./assess.ts";
+import type { Factor } from "./factor.ts";
 import { invokingUser } from "./identity.ts";
 import { placeChange, type BlameFacts, type Placement } from "./placement.ts";
 

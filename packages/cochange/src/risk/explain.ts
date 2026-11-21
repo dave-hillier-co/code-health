@@ -1,5 +1,6 @@
 import { usageError } from "@code-health/cli-kit/errors";
-import type { Assessed, Factor } from "./assess.ts";
+import type { Assessed } from "./assess.ts";
+import type { Factor } from "./factor.ts";
 import { FACTOR_DOCS, factorDoc, LEVEL_RULES } from "./factor-docs.ts";
 import type { RiskSettings } from "./settings.ts";
 

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { readBlobAt } from "@code-health/history/tree";
 import { indentationComplexity } from "@code-health/lexical/indentation-complexity";
 import { reportPath } from "../reports.ts";
-import type { Factor } from "./assess.ts";
+import type { Factor } from "./factor.ts";
 import { bandAgainst, cutoffsOf, higherBand, type Band } from "./bands.ts";
 import type { BranchChange } from "./change.ts";
 import { overThreshold, type EvidenceInputs } from "./evidence-inputs.ts";
