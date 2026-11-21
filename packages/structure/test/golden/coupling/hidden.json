@@ -72,7 +72,8 @@
     "minStaticCoupling": 3,
     "minSupport": 3,
     "quadrant": "hidden",
-    "significanceLevel": 0.01
+    "significanceLevel": 0.01,
+    "transcripts": false
   },
   "population": {
     "eligibleChanges": 42,

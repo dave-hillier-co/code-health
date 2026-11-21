@@ -72,7 +72,8 @@
     "minStaticCoupling": 3,
     "minSupport": 3,
     "quadrant": null,
-    "significanceLevel": 0.01
+    "significanceLevel": 0.01,
+    "transcripts": false
   },
   "population": {
     "eligibleChanges": 42,
@@ -126,6 +127,11 @@
       },
       "from": "src/ui",
       "id": "coupling:folder:src/ui->src/format",
+      "incidental": {
+        "agentReads": null,
+        "rank": "low",
+        "reasons": []
+      },
       "level": "folder",
       "quadrant": "incidental",
       "staticCoupling": {

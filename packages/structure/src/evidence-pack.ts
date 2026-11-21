@@ -84,7 +84,8 @@ export interface LayerRuleBreach {
 
 const violationsByProject = new WeakMap<object, LayerViolation[]>();
 
-function layerRule(model: Model, from: string, to: string, settings: Pick<StructureSettings, "layers">): LayerRuleBreach[] | null {
+/** The layer rules the imports between two modules break, or null when they break none. */
+export function layerRuleOf(model: Model, from: string, to: string, settings: Pick<StructureSettings, "layers">): LayerRuleBreach[] | null {
   if (settings.layers.length === 0) return null;
   let violations = violationsByProject.get(model.project);
   if (violations === undefined) {
@@ -120,7 +121,11 @@ function coChangeFigures(model: Model, from: string, to: string): CoChangeFigure
   };
 }
 
-/** For each symbol crossing the boundary, which side its consumers sit on. */
+/**
+ * For each symbol crossing the boundary, which side its consumers sit on. The spec words this as "from a locality
+ * score". It is a count of consumer files by side instead, which is the same evidence locality scores a move from,
+ * so the pack answers whether the symbol belongs on the other side without needing a locality report to be present.
+ */
 function misplacement(model: Model, from: string, to: string, symbols: readonly SymbolUse[]): Misplacement[] {
   const wanted = new Set(symbols.map((s) => s.symbol));
   const consumers = new Map<string, Set<string>>();
@@ -178,7 +183,7 @@ export function evidencePack(
     kinds.push("cycle");
     findings.push(cycle.id);
   }
-  const rule = layerRule(model, from, to, settings);
+  const rule = layerRuleOf(model, from, to, settings);
   if (rule) {
     kinds.push("layer-violation");
     for (const breach of rule) for (const edge of breach.fileEdges) findings.push(layerViolationId(edge.from, edge.to));

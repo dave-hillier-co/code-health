@@ -31,7 +31,11 @@ export interface CommandOutput {
 
 export interface Command {
   summary: string;
+  /** The positional arguments, shown in the usage line of the command's help: `<path>...`, `<from>-><to>`. */
+  usage?: string;
   options?: OptionSpec;
+  /** What each of the command's own options means, including the values it accepts, shown in the command's help. */
+  optionHelp?: Record<string, string>;
   run(context: CommandContext): CommandOutput | Promise<CommandOutput>;
 }
 
@@ -202,12 +206,14 @@ function helpText(cli: CliDefinition): string {
 }
 
 function commandHelp(cli: CliDefinition, name: string, command: Command): string {
-  const own = Object.entries(command.options ?? {}).map(([option, spec]) => {
-    const argument = spec.type === "string" ? ` <${option}>` : "";
-    return `  --${option}${argument}`;
-  });
+  const flags = Object.entries(command.options ?? {}).map(([option, spec]): [string, string] => [
+    `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
+    command.optionHelp?.[option] ?? "",
+  ]);
+  const width = Math.max(0, ...flags.map(([flag]) => flag.length));
+  const own = flags.map(([flag, description]) => (description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`));
   return [
-    `Usage: ${cli.tool} ${name} [options]`,
+    `Usage: ${cli.tool} ${name}${command.usage === undefined ? "" : ` ${command.usage}`} [options]`,
     "",
     command.summary,
     "",

@@ -23,6 +23,10 @@ export interface SourceUnit extends UnitShape {
   metrics?: UnitMetrics;
   /** Declared with `export` or listed in an export clause at module level. */
   exported: boolean;
+  /** The function calls itself directly. */
+  recursive?: true;
+  /** The method overrides or implements one its type inherits. */
+  override?: true;
 }
 
 export interface ProjectAnalysis extends ResolvedDependencies {
@@ -138,6 +142,8 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
         source: unit.source,
         ...(unit.parent === undefined ? {} : { parent: unit.parent }),
         ...(unit.metrics === undefined ? {} : { metrics: unit.metrics }),
+        ...(unit.recursive === true ? { recursive: true as const } : {}),
+        ...(unit.override === true ? { override: true as const } : {}),
         exported: unit.parent === undefined && exportedLocals.has(unit.qualifiedName),
       });
     }

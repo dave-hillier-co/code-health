@@ -40,6 +40,8 @@ interface Context {
   exposed: boolean;
   /** Modules declared by the scope the node sits in, whose names start a path. */
   localMods: ReadonlySet<string>;
+  /** The node is a member of an `impl Trait for Type` block, so its functions implement the trait's methods. */
+  implementsTrait?: boolean;
 }
 
 type Visibility = "public" | "restricted" | "private";
@@ -326,6 +328,8 @@ class Extractor {
       unit.shape = functionShape(fn, measured.metrics.parameters);
       const forwarded = passThroughOf(fn, new Set(parameterNames(fn)));
       if (forwarded !== undefined) unit.passThrough = forwarded;
+      if (measured.recursive) unit.recursive = true;
+      if (memberOf !== undefined && context.implementsTrait === true) unit.override = true;
       if (measured.increments !== undefined) unit.increments = measured.increments;
     }
     this.units.push(unit);
@@ -381,7 +385,7 @@ class Extractor {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body = node.childForFieldName("body");
         this.visitChildrenExcept(node, body, { ...context, owner: undefined });
-        if (body !== null) this.visitScope(body, { ...context, owner });
+        if (body !== null) this.visitScope(body, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
         return;
       }
       case "type_item":

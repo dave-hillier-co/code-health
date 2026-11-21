@@ -1,6 +1,8 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { runGit } from "@code-health/history/git";
+import { monthsBefore } from "@code-health/history/evidence";
+import { readAgentTasks } from "../incidental.ts";
 import { analysisCommand } from "../analysis-command.ts";
 import { buildModel } from "../model.ts";
 import { inferLevel, readLevel, type Level } from "../modules.ts";
@@ -39,7 +41,13 @@ export const rules: Record<string, Rule> = {
 
 export const command = analysisCommand(name, {
   summary: "Whether a break reduced coupling or only hid it: co-change before and after over matching windows",
-  options: { at: { type: "string" }, level: { type: "string" } },
+  usage: "<from>-><to>",
+  options: { at: { type: "string" }, level: { type: "string" }, "projects-dir": { type: "string" } },
+  optionHelp: {
+    at: "the revision that made the break (required)",
+    level: "what a node is: file, folder, package or component (default: inferred from the arguments)",
+    "projects-dir": "read Claude Code session transcripts here (usually ~/.claude/projects) to measure agent effort on tasks touching either side",
+  },
   // A query about one pair and one break, never the whole-repository answer a report stores.
   partial: () => true,
   wholeHistory: true,
@@ -71,6 +79,12 @@ export const command = analysisCommand(name, {
     }
 
     const projectBefore = await loadProject(root, parent, settings.exclude);
+    const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : undefined;
+    const seconds = Math.min(date - monthsBefore(date, settings.windowMonths), history.window.until - date);
+    const tasks =
+      projectsDir === undefined
+        ? { reason: "no --projects-dir was given" }
+        : { tasks: readAgentTasks(root, projectsDir, { since: date - seconds, until: date + seconds }) };
     const measured = measureOutcome(
       {
         level,
@@ -80,6 +94,7 @@ export const command = analysisCommand(name, {
         changes: history.filtered.changes,
         point: { rev: at, sha, parent, date, until: history.window.until },
         settings,
+        tasks,
       },
       from,
       to,
@@ -96,6 +111,7 @@ export const command = analysisCommand(name, {
         minSupport: settings.minSupport,
         minRevisions: settings.minRevisions,
         significanceLevel: settings.significanceLevel,
+        transcripts: projectsDir !== undefined,
       },
       results: [measured.outcome],
       columns: ["id", "verdict", "before", "after"],

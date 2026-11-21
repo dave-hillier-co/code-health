@@ -32,6 +32,15 @@ const TOOL_PLUGIN = "locality";
 export const command: Command = {
   summary:
     "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare); or test from existing history and sessions whether distant files cost more (measure premise)",
+  usage: "baseline | compare | premise",
+  optionHelp: {
+    name: "the name of the baseline to record or compare against (default: default)",
+    "projects-dir": "the folder of Claude Code session transcripts read for agent effort (default: ~/.claude/projects)",
+    candidates: "how many top candidates the baseline records (default 200)",
+    since: "baseline and compare: start the after window on this date, YYYY-MM-DD (default: the day after the last suite commit); premise: start of the window read",
+    until: "premise: end of the window read, YYYY-MM-DD, exclusive",
+    force: "replace a baseline of the same name",
+  },
   options: {
     name: { type: "string" },
     "projects-dir": { type: "string" },

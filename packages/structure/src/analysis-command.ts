@@ -14,6 +14,10 @@ export interface AnalysisSpec {
   summary: string;
   /** The command's own options. `no-refresh` is added for every analysis command. */
   options?: OptionSpec;
+  /** The positional arguments, shown in the command's help. */
+  usage?: string;
+  /** What each of the command's own options means, shown in the command's help. */
+  optionHelp?: Record<string, string>;
   /**
    * A window stated by the command's own options (for example `--since`). It
    * counts as a stated window for the shallow-clone guard, and a run that
@@ -55,10 +59,21 @@ function ownsWindow(spec: AnalysisSpec): boolean {
  * - stores the full result as a report on a clean tree, for whole-repository runs
  *   that analyse HEAD itself.
  */
+const windowOptionHelp = {
+  since: "analyse changes from this date, YYYY-MM-DD, inclusive (needed in a shallow clone)",
+  until: "analyse changes before this date, YYYY-MM-DD, exclusive",
+};
+
 export function analysisCommand(name: string, spec: AnalysisSpec): Command {
   return {
     summary: spec.summary,
+    ...(spec.usage === undefined ? {} : { usage: spec.usage }),
     options: { ...(ownsWindow(spec) ? {} : windowOptions), ...spec.options, ...sharedOptions },
+    optionHelp: {
+      ...(ownsWindow(spec) ? {} : windowOptionHelp),
+      ...spec.optionHelp,
+      "no-refresh": "use the cached history as it is, without updating it first",
+    },
     async run(context) {
       const window = ownsWindow(spec) ? spec.window?.(context) : statedWindow(context, readSettings(context.config).windowMonths);
       const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, window, wholeHistory: spec.wholeHistory });

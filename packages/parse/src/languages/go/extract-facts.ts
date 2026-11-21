@@ -257,6 +257,7 @@ class Extractor {
     unit.shape = functionShape(fn);
     const forwarded = passThroughOf(fn);
     if (forwarded !== undefined) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
     if (measured.increments !== undefined) unit.increments = measured.increments;
     this.units.push(unit);
 

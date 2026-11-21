@@ -11,6 +11,13 @@ export const name = "move";
 
 export const command: Command = {
   summary: "Plan, or with --apply make, the move of one unit: file moves and import rewrites, as one move-only commit",
+  usage: "<unit path>",
+  optionHelp: {
+    to: "the folder to move to (default: the analyser's target)",
+    apply: "make the move as one commit instead of only planning it",
+    reason: "why this differs from the recommendation, recorded in the commit message",
+    "no-commit": "with --apply, leave the move in the working tree",
+  },
   options: {
     to: { type: "string" },
     apply: { type: "boolean" },

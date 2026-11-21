@@ -32,6 +32,7 @@ export const rules: Record<string, Rule> = {
 export const command = analysisCommand(name, {
   summary: "Import cycles with their smallest breaking sets, ranked by size and co-change",
   options: { level: { type: "string" } },
+  optionHelp: { level: "what a node is: file, folder or package (default file)" },
   partial: ({ values }) => values.level !== undefined && values.level !== "file",
   async analyse({ context, history }) {
     const level = readLevel("level", context.values.level, levels, "file");

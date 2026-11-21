@@ -34,6 +34,8 @@ export interface RecommendInput {
   highCoChange: number;
   /** Moving the unit to its target would create an import cycle between folders that is not there now. */
   createsCycle: boolean;
+  /** Why the unit is not a free-standing helper, from the language adapters' facts: an interface, a method that overrides or implements one, or a function that calls itself. */
+  notHelper: "interface" | "override" | "recursion" | null;
 }
 
 export interface Decision {
@@ -89,6 +91,9 @@ function guard(input: RecommendInput, decision: Decision): Decision {
   if (decision.recommendation !== "inline" && decision.recommendation !== "move") return decision;
   // One callsite is only evidence once reuse has had time to happen.
   if (input.age !== null && input.age < input.graceDays) return { recommendation: "review", rule: "within-grace-period" };
+  if (input.notHelper === "interface") return { recommendation: "review", rule: "interface-unit" };
+  if (input.notHelper === "override") return { recommendation: "review", rule: "overrides-inherited-method" };
+  if (input.notHelper === "recursion") return { recommendation: "review", rule: "recursive-unit" };
   if (input.otherRefs > 0) return { recommendation: "review", rule: "other-references" };
   if (input.packageEntry) return { recommendation: "review", rule: "package-entry" };
   if (input.scattered) return { recommendation: "review", rule: "scattered-unit" };

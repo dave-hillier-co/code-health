@@ -443,6 +443,8 @@ class Extractor {
       parameterNames(fn.childForFieldName("parameters") ?? fn.childForFieldName("parameter"), names);
       const forwarded = passThroughOf(fn, new Set(names));
       if (forwarded !== undefined) unit.passThrough = forwarded;
+      if (measured.recursive) unit.recursive = true;
+      if (node.children.some((child) => child.type === "override_modifier")) unit.override = true;
       if (measured.increments !== undefined) unit.increments = measured.increments;
     }
     this.units.push(unit);

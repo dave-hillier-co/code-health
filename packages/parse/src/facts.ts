@@ -58,6 +58,10 @@ export interface UnitFact extends UnitShape {
   shape?: { nodes: number; interfaceSize: number };
   /** The call the function's whole body forwards to, as written, when it does nothing else. */
   passThrough?: string;
+  /** The function calls itself directly. Absent when it does not. */
+  recursive?: true;
+  /** The method overrides or implements one its type inherits, so it is not a free-standing helper. Absent otherwise. */
+  override?: true;
 }
 
 export interface BindingFact {

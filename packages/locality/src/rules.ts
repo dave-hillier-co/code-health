@@ -153,6 +153,29 @@ export const ruleDescriptions: Record<string, Rule> = {
       "right: move or inline them first (leaves before roots), then re-analyse.",
     ),
   },
+  "interface-unit": {
+    summary: "Guard: the unit declares an interface or abstract type, which is not a free-standing helper",
+    explanation: lines(
+      "A file of the unit exports an interface or an abstract class. Its implementations and callers elsewhere give it a",
+      "reason to sit where it is, so inlining it or moving it is for review, not a default. Read the implementers before",
+      "deciding, and keep the unit beside the code that owns the contract.",
+    ),
+  },
+  "overrides-inherited-method": {
+    summary: "Guard: the unit holds a method that overrides or implements an inherited one",
+    explanation: lines(
+      "A unit of the files has a method the language marks as overriding (an override modifier or annotation, a trait",
+      "implementation, a decorator). Such a method is called through the type it overrides, not by name, so callsite",
+      "counts understate its use and it cannot be inlined into a single consumer. Review before inlining or moving.",
+    ),
+  },
+  "recursive-unit": {
+    summary: "Guard: the unit holds a function that calls itself",
+    explanation: lines(
+      "A function in the unit calls itself directly. Inlining a recursive function into its one consumer is not possible",
+      "as written, and moving it changes nothing about the recursion. Review before inlining or moving.",
+    ),
+  },
   "fixed-point": {
     summary: "Guard: the unit is a fixed point (locality.fixedPoints) and stays where it is",
     explanation: lines(

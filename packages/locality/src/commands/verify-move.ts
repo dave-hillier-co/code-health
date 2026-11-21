@@ -10,7 +10,9 @@ export const name = "verify-move";
 
 export const command: Command = {
   summary: "Check that a commit made by hand reproduces the planned move of one unit, and changes nothing else",
+  usage: "<unit path>",
   options: { commit: { type: "string" }, to: { type: "string" } },
+  optionHelp: { commit: "the commit to check (default HEAD)", to: "the folder the unit was moved to (default: the analyser's target)" },
   async run(context): Promise<CommandOutput> {
     const settings = readSettings(context.config);
     if (context.positionals.length !== 1) throw usageError("usage: verify-move <unit path> [--commit <ref>] [--to <folder>]");

@@ -30,6 +30,12 @@ export function modifiersOf(node: Node): Set<string> {
   return words;
 }
 
+/** True for a method marked `@Override`. */
+function overridesMethod(node: Node): boolean {
+  const modifiers = node.namedChildren.find((child) => child.type === "modifiers");
+  return (modifiers?.namedChildren ?? []).some((child) => child.type === "marker_annotation" && child.childForFieldName("name")?.text === "Override");
+}
+
 /** Start row of a declaration, ignoring annotations that precede its first keyword. */
 function startRow(node: Node): number {
   for (const child of node.children) {
@@ -296,6 +302,8 @@ class Extractor {
     unit.shape = { nodes: nodeCount(node, isComment), interfaceSize: Math.max(1, measured.metrics.parameters) };
     const forwarded = passThroughOf(node, parameterNames(node));
     if (forwarded !== undefined) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if (overridesMethod(node)) unit.override = true;
     if (measured.increments !== undefined) unit.increments = measured.increments;
     this.units.push(unit);
     const inside: Context = { ...context, unit: qualifiedName };

@@ -1,0 +1,222 @@
+{
+  "command": "outcome",
+  "config": "ed2184e3af7b8aa2",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 18,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 2.7,
+    "window": {
+      "months": 12,
+      "since": 1679821200,
+      "until": 1711443600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "hiddenCreated": [],
+  "inputs": {
+    "at": "52d1ebad5d2565257618b98714df9c58aba0f81d",
+    "level": "folder",
+    "minRevisions": 3,
+    "minStaticCoupling": 3,
+    "minSupport": 3,
+    "significanceLevel": 0.01,
+    "target": "src/data->src/ui",
+    "transcripts": true
+  },
+  "repo": {
+    "dirty": false,
+    "head": "06768b60d1db52417938de0dc809278ea10d712c"
+  },
+  "results": [
+    {
+      "after": {
+        "bothActive": true,
+        "coChange": {
+          "confidenceFromTo": 0,
+          "confidenceToFrom": 0,
+          "expected": 2,
+          "fromChanges": 4,
+          "high": false,
+          "pValue": 1,
+          "shared": 0,
+          "toChanges": 4
+        },
+        "quadrant": "incidental",
+        "staticCoupling": {
+          "fromTo": 0,
+          "high": true,
+          "sites": 3,
+          "symbols": 1,
+          "toFrom": 3
+        }
+      },
+      "agentEffort": {
+        "after": {
+          "edits": {
+            "mean": 1,
+            "median": 1
+          },
+          "filesRead": {
+            "mean": 1,
+            "median": 1
+          },
+          "foldersVisited": {
+            "mean": 1,
+            "median": 1
+          },
+          "reReads": {
+            "mean": 0,
+            "median": 0
+          },
+          "tasks": 2,
+          "tokens": {
+            "mean": 100,
+            "median": 100
+          }
+        },
+        "before": {
+          "edits": {
+            "mean": 1,
+            "median": 1
+          },
+          "filesRead": {
+            "mean": 3,
+            "median": 3
+          },
+          "foldersVisited": {
+            "mean": 2,
+            "median": 2
+          },
+          "reReads": {
+            "mean": 0,
+            "median": 0
+          },
+          "tasks": 2,
+          "tokens": {
+            "mean": 100,
+            "median": 100
+          }
+        },
+        "status": "measured"
+      },
+      "before": {
+        "bothActive": true,
+        "coChange": {
+          "confidenceFromTo": 0,
+          "confidenceToFrom": 0,
+          "expected": 2,
+          "fromChanges": 4,
+          "high": false,
+          "pValue": 1,
+          "shared": 0,
+          "toChanges": 4
+        },
+        "quadrant": "incidental",
+        "staticCoupling": {
+          "fromTo": 3,
+          "high": true,
+          "sites": 6,
+          "symbols": 4,
+          "toFrom": 3
+        }
+      },
+      "break": {
+        "date": "2024-03-01T09:00:00.000Z",
+        "parent": "ff11d43db2834c70e27524c414f8c6d01659becc",
+        "rev": "52d1ebad5d2565257618b98714df9c58aba0f81d",
+        "sha": "52d1ebad5d2565257618b98714df9c58aba0f81d"
+      },
+      "from": "src/data",
+      "id": "outcome:folder:src/data->src/ui",
+      "leading": {
+        "cycles": {
+          "after": 0,
+          "before": 1
+        },
+        "layerViolations": {
+          "after": 0,
+          "before": 1
+        }
+      },
+      "level": "folder",
+      "to": "src/ui",
+      "verdict": "no-baseline",
+      "window": {
+        "after": {
+          "since": "2024-03-01T09:00:00.000Z",
+          "until": "2024-03-26T09:00:00.000Z"
+        },
+        "before": {
+          "since": "2024-02-05T09:00:00.000Z",
+          "until": "2024-03-01T09:00:00.000Z"
+        },
+        "seconds": 2160000
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "window": {
+    "since": "2024-01-05T09:00:00.000Z",
+    "until": "2024-03-26T09:00:00.000Z"
+  }
+}

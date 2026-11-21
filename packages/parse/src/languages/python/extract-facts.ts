@@ -542,6 +542,8 @@ class Extractor {
       unit.shape = functionShape(fn, measured.metrics.parameters);
       const forwarded = passThroughOf(fn);
       if (forwarded !== undefined) unit.passThrough = forwarded;
+      if (measured.recursive) unit.recursive = true;
+      if (fn.parent?.type === "decorated_definition" && fn.parent.namedChildren.some((child) => child.type === "decorator" && /^@\s*(typing(_extensions)?\.)?override\b/.test(child.text))) unit.override = true;
       if (measured.increments !== undefined) unit.increments = measured.increments;
     }
     this.units.push(unit);

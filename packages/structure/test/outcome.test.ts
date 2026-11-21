@@ -60,6 +60,11 @@ describe("structure outcome", () => {
     });
   });
 
+  test("layer violations are not counted when no layers are configured, and cycles are", async () => {
+    const { document } = await outcome("src/p->src/q");
+    expect(document.results[0]).toMatchObject({ leading: { cycles: { before: 0, after: 0 }, layerViolations: null } });
+  });
+
   test("a pair that did not co-change before has nothing to reduce", async () => {
     const { document } = await outcome("src/v->src/w");
     expect(document.results[0]!.verdict).toBe("no-baseline");

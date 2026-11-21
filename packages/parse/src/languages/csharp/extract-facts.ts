@@ -328,6 +328,8 @@ class Extractor {
     if (parent !== undefined) unit.parent = parent;
     const forwarded = passThroughOf(fn, new Set(parameterInfo(fn).map((parameter) => parameter.name)));
     if (forwarded !== undefined) unit.passThrough = forwarded;
+    if (measured.recursive) unit.recursive = true;
+    if (modifiersOf(fn).includes("override")) unit.override = true;
     if (measured.increments !== undefined) unit.increments = measured.increments;
     this.units.push(unit);
     return { ...context, unit: qualifiedName };

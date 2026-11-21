@@ -42,6 +42,7 @@ export const rules: Record<string, Rule> = {
 export const command = analysisCommand(name, {
   summary: "Registration hubs: files every feature edits by appending an entry, with the signals that fired",
   options: { by: { type: "string" } },
+  optionHelp: { by: "what a module is: folder or component (default folder)" },
   partial: ({ values }) => values.by !== undefined && values.by !== "folder",
   async analyse({ context, history }) {
     const by = readLevel("by", context.values.by, views, "folder");

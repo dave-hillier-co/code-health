@@ -22,6 +22,7 @@ function input(overrides: Partial<RecommendInput>): RecommendInput {
     age: null,
     consumerCoChange: null,
     createsCycle: false,
+    notHelper: null,
     ...overrides,
   };
 }
@@ -110,4 +111,16 @@ test("three or more consumers that change together earn the distance: keep", () 
 test("a move that would create a folder cycle is reviewed, but an inline is not", () => {
   expect(recommend(input({ fanIn: 2, createsCycle: true }))).toEqual({ recommendation: "review", rule: "creates-cycle" });
   expect(recommend(input({ lines: 10, createsCycle: true }))).toEqual({ recommendation: "inline", rule: "single-consumer-tiny" });
+});
+
+test("interfaces, overrides and recursive units are not free-standing helpers, so inline and move become review", () => {
+  expect(recommend(input({ lines: 10, notHelper: "interface" }))).toEqual({ recommendation: "review", rule: "interface-unit" });
+  expect(recommend(input({ fanIn: 2, notHelper: "override" }))).toEqual({ recommendation: "review", rule: "overrides-inherited-method" });
+  expect(recommend(input({ lines: 400, notHelper: "recursion" }))).toEqual({ recommendation: "review", rule: "recursive-unit" });
+  expect(recommend(input({ passThrough: true, notHelper: "override" }))).toEqual({ recommendation: "review", rule: "overrides-inherited-method" });
+});
+
+test("the not-a-helper guard leaves recommendations that are not an inline or a move alone", () => {
+  expect(recommend(input({ gain: 1, unblockedGain: 1, notHelper: "interface" }))).toEqual({ recommendation: "keep", rule: "near-consumers" });
+  expect(recommend(input({ fanIn: 3, notHelper: "recursion" }))).toEqual({ recommendation: "review", rule: "three-or-more-consumers" });
 });
