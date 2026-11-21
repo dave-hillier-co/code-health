@@ -2,7 +2,7 @@ import type { Rule } from "@code-health/cli-kit/run-cli";
 import { monthsBefore } from "@code-health/history/evidence";
 import { analysisCommand } from "../analysis-command.ts";
 import { loadComplexity } from "../complexity-source.ts";
-import { midRankPercentiles, shareStrictlyAbove } from "../ranking.ts";
+import { midRankPercentiles, shareStrictlyAbove } from "@code-health/cli-kit/ranking";
 import { SECONDS_PER_DAY, byOption, isGrouped, isoDate, loadUnits, readBy } from "../units.ts";
 
 export const name = "hotspots";
