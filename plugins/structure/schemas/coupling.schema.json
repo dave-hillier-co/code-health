@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coupling.schema.json",
+  "title": "structure coupling --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/analysisEnvelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "coupling"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "$ref": "common.schema.json#/$defs/level"
+        },
+        "quadrant": {
+          "enum": [
+            "real",
+            "incidental",
+            "hidden",
+            "stable",
+            "independent",
+            null
+          ]
+        },
+        "minStaticCoupling": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "minSupport": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "minRevisions": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "significanceLevel": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        }
+      },
+      "required": [
+        "level",
+        "quadrant",
+        "minStaticCoupling",
+        "minSupport",
+        "minRevisions",
+        "significanceLevel"
+      ],
+      "additionalProperties": false
+    },
+    "population": {
+      "type": "object",
+      "properties": {
+        "modules": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "eligibleChanges": {
+          "$ref": "common.schema.json#/$defs/count"
+        }
+      },
+      "required": [
+        "modules",
+        "eligibleChanges"
+      ],
+      "additionalProperties": false
+    },
+    "quadrants": {
+      "type": "object",
+      "description": "Pairs in each quadrant before --quadrant filtered them.",
+      "properties": {
+        "real": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "incidental": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "hidden": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "stable": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "independent": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "insufficient-evidence": {
+          "$ref": "common.schema.json#/$defs/count"
+        }
+      },
+      "required": [
+        "real",
+        "incidental",
+        "hidden",
+        "stable",
+        "independent",
+        "insufficient-evidence"
+      ],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^coupling:(file|folder|component):.+->.+"
+          },
+          "level": {
+            "$ref": "common.schema.json#/$defs/level"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "quadrant": {
+            "enum": [
+              "real",
+              "incidental",
+              "hidden",
+              "stable",
+              "independent",
+              "insufficient-evidence"
+            ]
+          },
+          "staticCoupling": {
+            "type": "object",
+            "description": "Reference sites and distinct symbols of the other side's code across the boundary, both directions together.",
+            "properties": {
+              "sites": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "symbols": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "fromTo": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "toFrom": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "high": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "sites",
+              "symbols",
+              "fromTo",
+              "toFrom",
+              "high"
+            ],
+            "additionalProperties": false
+          },
+          "coChange": {
+            "type": "object",
+            "properties": {
+              "shared": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "fromChanges": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "toChanges": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "expected": {
+                "type": "number",
+                "minimum": 0,
+                "description": "What independence predicts: fromChanges * toChanges / eligible changes."
+              },
+              "pValue": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "One-sided exact test, rounded to six places, so a very small value reads 0."
+              },
+              "high": {
+                "type": "boolean",
+                "description": "Support clears minSupport and the count is significantly above expected."
+              }
+            },
+            "required": [
+              "shared",
+              "fromChanges",
+              "toChanges",
+              "expected",
+              "pValue",
+              "high"
+            ],
+            "additionalProperties": false
+          },
+          "bothActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "from",
+          "to",
+          "quadrant",
+          "staticCoupling",
+          "coChange",
+          "bothActive"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

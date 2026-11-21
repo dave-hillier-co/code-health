@@ -30,7 +30,7 @@ interface Pack {
   level: string;
   from: string;
   to: string;
-  quadrant: null;
+  quadrant: { name: string };
   inBreakingSet: boolean | null;
   breakingSet: { symbol: string; sites: number; usedBy: string[] }[];
   stabilityVerdict: { basis: string; violates: boolean };
@@ -75,9 +75,9 @@ describe("an edge in a cycle", () => {
     expect(coChange.expected).toBe(3);
   });
 
-  test("the quadrant and mechanisms wait for their milestones, and with no layers configured there is no layer rule", async () => {
+  test("the mechanisms wait for their milestone, and with no layers configured there is no layer rule", async () => {
     const { document } = await evidence(cycles, "src/e.ts->src/c.ts");
-    expect(document.results[0]).toMatchObject({ quadrant: null, nearbyMechanisms: [], layerRule: null });
+    expect(document.results[0]).toMatchObject({ nearbyMechanisms: [], layerRule: null });
   });
 
   test("the pack recommends nothing", async () => {

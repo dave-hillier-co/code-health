@@ -1,0 +1,244 @@
+{
+  "command": "coupling",
+  "config": "82a3ffb52c4583f8",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 42,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 2.7,
+    "window": {
+      "months": 12,
+      "since": 1679994000,
+      "until": 1711616400
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "level": "folder",
+    "minRevisions": 3,
+    "minStaticCoupling": 3,
+    "minSupport": 3,
+    "quadrant": null,
+    "significanceLevel": 0.01
+  },
+  "population": {
+    "eligibleChanges": 42,
+    "modules": 12
+  },
+  "quadrants": {
+    "hidden": 1,
+    "incidental": 1,
+    "independent": 1,
+    "insufficient-evidence": 1,
+    "real": 1,
+    "stable": 1
+  },
+  "repo": {
+    "dirty": false,
+    "head": "770cdb5c85bee56774459cc3e546815b53242b9e"
+  },
+  "results": [
+    {
+      "bothActive": true,
+      "coChange": {
+        "expected": 1.167,
+        "fromChanges": 7,
+        "high": true,
+        "pValue": 0,
+        "shared": 7,
+        "toChanges": 7
+      },
+      "from": "src/pricing",
+      "id": "coupling:folder:src/pricing->src/tax",
+      "level": "folder",
+      "quadrant": "real",
+      "staticCoupling": {
+        "fromTo": 3,
+        "high": true,
+        "sites": 3,
+        "symbols": 3,
+        "toFrom": 0
+      },
+      "to": "src/tax"
+    },
+    {
+      "bothActive": true,
+      "coChange": {
+        "expected": 1.167,
+        "fromChanges": 7,
+        "high": false,
+        "pValue": 0.750744,
+        "shared": 1,
+        "toChanges": 7
+      },
+      "from": "src/ui",
+      "id": "coupling:folder:src/ui->src/format",
+      "level": "folder",
+      "quadrant": "incidental",
+      "staticCoupling": {
+        "fromTo": 3,
+        "high": true,
+        "sites": 3,
+        "symbols": 3,
+        "toFrom": 0
+      },
+      "to": "src/format"
+    },
+    {
+      "bothActive": true,
+      "coChange": {
+        "expected": 1.167,
+        "fromChanges": 7,
+        "high": true,
+        "pValue": 0,
+        "shared": 7,
+        "toChanges": 7
+      },
+      "from": "src/billing",
+      "id": "coupling:folder:src/billing->src/orders",
+      "level": "folder",
+      "quadrant": "hidden",
+      "staticCoupling": {
+        "fromTo": 0,
+        "high": false,
+        "sites": 0,
+        "symbols": 0,
+        "toFrom": 0
+      },
+      "to": "src/orders"
+    },
+    {
+      "bothActive": false,
+      "coChange": {
+        "expected": 0.143,
+        "fromChanges": 6,
+        "high": false,
+        "pValue": 0.142857,
+        "shared": 1,
+        "toChanges": 1
+      },
+      "from": "src/app",
+      "id": "coupling:folder:src/app->src/kernel",
+      "level": "folder",
+      "quadrant": "stable",
+      "staticCoupling": {
+        "fromTo": 3,
+        "high": true,
+        "sites": 3,
+        "symbols": 3,
+        "toFrom": 0
+      },
+      "to": "src/kernel"
+    },
+    {
+      "bothActive": true,
+      "coChange": {
+        "expected": 0.595,
+        "fromChanges": 5,
+        "high": false,
+        "pValue": 0.487583,
+        "shared": 1,
+        "toChanges": 5
+      },
+      "from": "src/tools",
+      "id": "coupling:folder:src/tools->src/misc",
+      "level": "folder",
+      "quadrant": "independent",
+      "staticCoupling": {
+        "fromTo": 1,
+        "high": false,
+        "sites": 1,
+        "symbols": 1,
+        "toFrom": 0
+      },
+      "to": "src/misc"
+    },
+    {
+      "bothActive": false,
+      "coChange": {
+        "expected": 0.119,
+        "fromChanges": 1,
+        "high": false,
+        "pValue": 0.119048,
+        "shared": 1,
+        "toChanges": 5
+      },
+      "from": "src/lonely",
+      "id": "coupling:folder:src/lonely->src/shared",
+      "level": "folder",
+      "quadrant": "insufficient-evidence",
+      "staticCoupling": {
+        "fromTo": 3,
+        "high": true,
+        "sites": 3,
+        "symbols": 3,
+        "toFrom": 0
+      },
+      "to": "src/shared"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 6
+  },
+  "window": {
+    "since": "2023-03-28T09:00:00.000Z",
+    "until": "2024-03-28T09:00:00.000Z"
+  }
+}

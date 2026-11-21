@@ -97,8 +97,93 @@
             "type": "string"
           },
           "quadrant": {
-            "type": "null",
-            "description": "Deferred to the coupling-quadrant milestone."
+            "type": "object",
+            "description": "Where the pair sits in the coupling quadrants, with the figures behind it.",
+            "properties": {
+              "name": {
+                "enum": [
+                  "real",
+                  "incidental",
+                  "hidden",
+                  "stable",
+                  "independent",
+                  "insufficient-evidence"
+                ]
+              },
+              "staticCoupling": {
+                "type": "object",
+                "properties": {
+                  "sites": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "symbols": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "fromTo": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "toFrom": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "high": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "sites",
+                  "symbols",
+                  "fromTo",
+                  "toFrom",
+                  "high"
+                ],
+                "additionalProperties": false
+              },
+              "coChange": {
+                "type": "object",
+                "properties": {
+                  "shared": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "fromChanges": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "toChanges": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "expected": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "pValue": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "high": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "shared",
+                  "fromChanges",
+                  "toChanges",
+                  "expected",
+                  "pValue",
+                  "high"
+                ],
+                "additionalProperties": false
+              },
+              "bothActive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "staticCoupling",
+              "coChange",
+              "bothActive"
+            ],
+            "additionalProperties": false
           },
           "inBreakingSet": {
             "type": [

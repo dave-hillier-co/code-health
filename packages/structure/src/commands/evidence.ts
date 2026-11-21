@@ -75,10 +75,9 @@ export const command = analysisCommand(name, {
     return {
       inputs: { target: text, level: model.graph.level, locality: model.locality?.input ?? null },
       results: edges.map(([from, to]) => evidencePack(model, from, to, settings)),
-      columns: ["id", "kind", "findings", "inBreakingSet", "breakingSet", "stability", "coChange", "misplacement", "unblocks"],
+      columns: ["id", "kind", "findings", "quadrant", "inBreakingSet", "breakingSet", "stability", "coChange", "misplacement", "unblocks"],
       extra: {
         deferred: [
-          { field: "quadrant", milestone: 6 },
           { field: "nearbyMechanisms", milestone: 3 },
         ],
       },

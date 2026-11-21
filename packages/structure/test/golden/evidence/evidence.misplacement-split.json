@@ -1,11 +1,7 @@
 {
   "command": "evidence",
-  "config": "3e217932480a1f26",
+  "config": "82a3ffb52c4583f8",
   "deferred": [
-    {
-      "field": "quadrant",
-      "milestone": 6
-    },
     {
       "field": "nearbyMechanisms",
       "milestone": 3
@@ -137,7 +133,25 @@
         }
       ],
       "nearbyMechanisms": [],
-      "quadrant": null,
+      "quadrant": {
+        "bothActive": false,
+        "coChange": {
+          "expected": 0.333,
+          "fromChanges": 2,
+          "high": false,
+          "pValue": 0.333333,
+          "shared": 1,
+          "toChanges": 1
+        },
+        "name": "insufficient-evidence",
+        "staticCoupling": {
+          "fromTo": 1,
+          "high": false,
+          "sites": 1,
+          "symbols": 1,
+          "toFrom": 0
+        }
+      },
       "stability": {
         "from": {
           "change": {

@@ -1,7 +1,9 @@
 import type { Command, Rule } from "@code-health/cli-kit/run-cli";
 import * as check from "./commands/check.ts";
+import * as coupling from "./commands/coupling.ts";
 import * as cycles from "./commands/cycles.ts";
 import * as evidence from "./commands/evidence.ts";
+import * as hidden from "./commands/hidden.ts";
 import * as layers from "./commands/layers.ts";
 import * as stability from "./commands/stability.ts";
 
@@ -21,8 +23,10 @@ export interface CommandModule {
  */
 export const commandModules: CommandModule[] = [
   check,
+  coupling,
   cycles,
   evidence,
+  hidden,
   layers,
   stability,
 ];

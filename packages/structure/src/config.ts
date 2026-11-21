@@ -33,6 +33,12 @@ export const structureConfig: PluginConfigSpec = {
     minVolatilityRatio: 2,
     /** A dependency points against structural stability when the depended-on side's instability exceeds the dependant's by at least this many percentage points. */
     minInstabilityGap: 20,
+    /** Static coupling is "high" when this many reference sites of the other side's symbols sit across the boundary, counted both ways. */
+    minStaticCoupling: 3,
+    /** Co-change is "high" only with at least this many shared changes, and significantly above what independence predicts. */
+    minSupport: 3,
+    /** The level of the one-sided exact test for high co-change, between 0 and 1 exclusive. */
+    significanceLevel: 0.01,
     /**
      * Ordered layers, top first: `{ "name": "ui", "paths": ["src/ui/**"], "allow": ["domain"] }`.
      * A file belongs to the first layer whose paths match it, and files in no layer are unconstrained.
@@ -65,6 +71,9 @@ export interface StructureSettings {
   minVolatilityRatio: number;
   /** Percentage points. */
   minInstabilityGap: number;
+  minStaticCoupling: number;
+  minSupport: number;
+  significanceLevel: number;
   layers: LayerRule[];
   mainBranch: string;
   /** Explicit base revision for `check`, or null for the merge base with mainBranch. */
@@ -104,6 +113,10 @@ export function readSettings(config: LoadedConfig): StructureSettings {
   const exactLimit = positive("exactLimit");
   if (exactLimit > 30) throw configError(`code-health.json: ${at("exactLimit")} is at most 30, the largest component the exact search supports`);
 
+  const significanceLevel = section.significanceLevel;
+  if (typeof significanceLevel !== "number" || !(significanceLevel > 0 && significanceLevel < 1)) {
+    throw configError(`code-health.json: ${at("significanceLevel")} must be a number between 0 and 1, exclusive`);
+  }
   const mainBranch = section.mainBranch;
   if (typeof mainBranch !== "string" || mainBranch === "") throw configError(`code-health.json: ${at("mainBranch")} must be a branch name`);
   const base = section.base;
@@ -123,6 +136,9 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     minRevisions: positive("minRevisions"),
     minVolatilityRatio: positive("minVolatilityRatio"),
     minInstabilityGap,
+    minStaticCoupling: positive("minStaticCoupling"),
+    minSupport: positive("minSupport"),
+    significanceLevel,
     layers: readLayerRules(section.layers, at("layers")),
     mainBranch,
     base: base as string | null,

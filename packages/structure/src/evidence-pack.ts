@@ -1,6 +1,7 @@
 import { compareIds } from "@code-health/graph/graph";
 import type { Unblock } from "./locality-report.ts";
 import { findCycles, unblocksOf } from "./cycles.ts";
+import { judgePair, type QuadrantJudgement } from "./coupling.ts";
 import { findLayerViolations, layerViolationId, type LayerViolation } from "./layers.ts";
 import type { StructureSettings } from "./config.ts";
 import type { Model } from "./model.ts";
@@ -51,8 +52,8 @@ export interface EvidencePack {
   level: string;
   from: string;
   to: string;
-  /** Deferred to the coupling-quadrant milestone. The figures it will rest on are in `coChange` and `breakingSet`. */
-  quadrant: null;
+  /** Where the pair sits in the coupling quadrants, with the static coupling, co-change and expected co-change behind it. */
+  quadrant: QuadrantJudgement;
   /** The cycle's minimum breaking set contains this edge. Null when the edge is in no cycle. */
   inBreakingSet: boolean | null;
   /** The symbols used across the boundary, most used first. */
@@ -155,7 +156,10 @@ export function evidencePack(
   model: Model,
   from: string,
   to: string,
-  settings: Pick<StructureSettings, "exactLimit" | "minVolatilityRatio" | "minInstabilityGap" | "layers">,
+  settings: Pick<
+    StructureSettings,
+    "exactLimit" | "minVolatilityRatio" | "minInstabilityGap" | "layers" | "minStaticCoupling" | "minSupport" | "minRevisions" | "significanceLevel"
+  >,
 ): EvidencePack {
   const level = model.graph.level;
   const detail = describeEdge(model.project, model.graph, from, to);
@@ -188,7 +192,7 @@ export function evidencePack(
     level,
     from,
     to,
-    quadrant: null,
+    quadrant: judgePair(model.project, model.graph, model.activity, from, to, settings),
     inBreakingSet: cycle ? cycle.inBreakingSet : null,
     breakingSet: detail.symbols,
     imports: {
