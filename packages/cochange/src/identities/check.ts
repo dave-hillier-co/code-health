@@ -1,0 +1,101 @@
+import { counterEvidenceWithin } from "@code-health/history/identity-evidence";
+import { identityKey, normaliseEmail } from "@code-health/history/identity-names";
+import { isoDay, type IdentityAnalysis } from "./analysis.ts";
+import type { MeasurementDetail } from "./measure.ts";
+import { proposeRows } from "./views.ts";
+
+export type FindingKind = "email-conflict" | "counter-evidence" | "rejected-merge-applied" | "unmapped";
+
+export interface Finding {
+  /** Conflicts rank above unmapped identities. */
+  score: number;
+  kind: FindingKind;
+  /** Identities the finding is about, as `Name <email>`. */
+  identities: string[];
+  detail: string;
+  /** Unmapped only: commits in the analysis window, lines at HEAD and the share of people's lines. */
+  commits: number | null;
+  lines: number | null;
+  linesShare: number | null;
+}
+
+const CONFLICT_SCORE = 100;
+
+const compare = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0);
+
+function conflict(kind: FindingKind, identities: string[], detail: string): Finding {
+  return { score: CONFLICT_SCORE, kind, identities: [...new Set(identities)].sort(compare), detail, commits: null, lines: null, linesShare: null };
+}
+
+/**
+ * Validates the mapping. Conflicts fail the check: one address belonging to two
+ * identities, identities joined by the mailmap that look like different people,
+ * a merge the decisions say is wrong, and proposals that carry counter-evidence.
+ * Unmapped identities with significant activity are reported but do not fail it.
+ */
+export function checkMapping(analysis: IdentityAnalysis, detail: MeasurementDetail): { findings: Finding[]; failed: boolean } {
+  const findings: Finding[] = [];
+  const { significantCommits } = analysis.history.settings.identities;
+
+  // One address under two mapped identities.
+  const byAddress = new Map<string, Set<string>>();
+  for (const raw of analysis.raws) {
+    const node = analysis.nodeOfRaw.get(identityKey(raw))!;
+    for (const email of [normaliseEmail(raw.email), normaliseEmail(raw.mappedEmail)]) {
+      const set = byAddress.get(email) ?? new Set<string>();
+      set.add(node);
+      byAddress.set(email, set);
+    }
+  }
+  // Only when the mailmap acted on one of them: two unreviewed look-alikes are unmapped, not in conflict.
+  const rewritten = new Set(analysis.nodes.filter((n) => n.aliases.some((a) => identityKey(a) !== n.key)).map((n) => n.key));
+  for (const [email, nodes] of [...byAddress].sort(([p], [q]) => compare(p, q))) {
+    if (nodes.size > 1 && [...nodes].some((n) => rewritten.has(n))) findings.push(conflict("email-conflict", [...nodes], `${email} belongs to ${nodes.size} different mapped identities`));
+  }
+
+  // Identities joined by the mailmap that the evidence or a decision says are different people.
+  const rejected = analysis.history.identities.decisions.rejectedMerges.map((r) => r.identities.map((i) => i.toLowerCase()));
+  const groups = new Map<string, typeof analysis.raws>();
+  for (const raw of analysis.raws) {
+    const node = analysis.nodeOfRaw.get(identityKey(raw))!;
+    groups.set(node, [...(groups.get(node) ?? []), raw]);
+  }
+  for (const [node, group] of [...groups].sort(([p], [q]) => compare(p, q))) {
+    if (group.length < 2) continue;
+    const keys = new Set(group.map((r) => identityKey(r).toLowerCase()));
+    for (const pair of rejected) {
+      if (pair.every((k) => keys.has(k!))) {
+        findings.push(conflict("rejected-merge-applied", group.map(identityKey), `the mailmap maps ${pair.join(" and ")} to ${node}, which a recorded decision says are different people`));
+      }
+    }
+    for (const { a, b, signal } of counterEvidenceWithin(group)) {
+      findings.push(conflict("counter-evidence", [a, b], `joined into ${node} by the mailmap, but ${signal.detail}`));
+    }
+  }
+
+  // Proposals still pending whose evidence points the other way.
+  for (const proposal of proposeRows(analysis).filter((p) => p.counterEvidence)) {
+    findings.push(conflict("counter-evidence", proposal.members.map((m) => m.identity), `${proposal.id} is proposed but ${proposal.links.flatMap((l) => l.signals).find((s) => s.strength === "counter")?.detail ?? "has counter-evidence"}`));
+  }
+
+  // People the mapping has not settled, when they matter.
+  const peopleLines = detail.measurement.headLines.people;
+  for (const node of analysis.nodes.filter((n) => analysis.unresolved.has(n.key))) {
+    const lines = detail.linesByNode.get(node.key) ?? 0;
+    const commits = detail.windowCommitsByNode.get(node.key) ?? 0;
+    if (lines === 0 && commits < significantCommits) continue;
+    const related = analysis.proposals.filter((p) => p.members.includes(node.key)).flatMap((p) => p.members).filter((m) => m !== node.key);
+    findings.push({
+      score: lines,
+      kind: "unmapped",
+      identities: [node.key],
+      detail: `proposed to be the same person as ${[...new Set(related)].sort(compare).join("; ")}, last active ${isoDay(node.last)}`,
+      commits,
+      lines,
+      linesShare: peopleLines === 0 ? 0 : Math.round((lines / peopleLines) * 1000) / 10,
+    });
+  }
+
+  findings.sort((x, y) => y.score - x.score || compare(x.kind, y.kind) || compare(x.identities.join(), y.identities.join()));
+  return { findings, failed: findings.some((f) => f.kind !== "unmapped") };
+}

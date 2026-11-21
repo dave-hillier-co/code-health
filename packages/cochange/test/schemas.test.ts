@@ -25,6 +25,7 @@ ajv.addSchema(load("spread.schema.json"));
 ajv.addSchema(load("hotspots.schema.json"));
 ajv.addSchema(load("age.schema.json"));
 ajv.addSchema(load("coupling.schema.json"));
+ajv.addSchema(load("identities.schema.json"));
 // How a command schema for an analysis command is composed. The probe stands in for a real one.
 ajv.addSchema({
   $id: "probe.schema.json",
@@ -124,5 +125,27 @@ test("an analysis output that names identity inputs still matches its schema", a
     }
   } finally {
     repoWithIdentities.dispose();
+  }
+});
+
+test("identities output matches its schema for every subcommand, and stray fields do not", async () => {
+  const identities = steadyHistory();
+  try {
+    const decisions = join(identities.path, "..", "decisions-input.json");
+    writeFileSync(decisions, JSON.stringify({ classifications: [{ identity: "Alice <alice@example.com>", kind: "person" }] }));
+    for (const args of [["list"], ["list", "--unmapped"], ["propose"], ["classify"], ["check"], ["apply", "--from", decisions, "--location", "local"]]) {
+      const { stdout, stderr } = await runCochange(identities.path, ["identities", ...args]);
+      expect(stderr).toBe("");
+      expect(validates("identities.schema.json", stdout)).toEqual([]);
+    }
+    const { stdout } = await runCochange(identities.path, ["identities", "check"]);
+    const stray = JSON.parse(stdout);
+    stray.measurement.headLines.surprise = 1;
+    expect(validates("identities.schema.json", JSON.stringify(stray))).not.toEqual([]);
+    const wrongShape = JSON.parse(stdout);
+    wrongShape.inputs.subcommand = "apply";
+    expect(validates("identities.schema.json", JSON.stringify(wrongShape))).not.toEqual([]);
+  } finally {
+    identities.dispose();
   }
 });

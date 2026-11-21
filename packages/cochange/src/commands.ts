@@ -2,6 +2,7 @@ import type { Command, Rule } from "@code-health/cli-kit/run-cli";
 import * as age from "./commands/age.ts";
 import * as coupling from "./commands/coupling.ts";
 import * as hotspots from "./commands/hotspots.ts";
+import * as identities from "./commands/identities.ts";
 import * as refresh from "./commands/refresh.ts";
 import * as spread from "./commands/spread.ts";
 
@@ -23,6 +24,7 @@ export const commandModules: CommandModule[] = [
   age,
   coupling,
   hotspots,
+  identities,
   refresh,
   spread,
 ];

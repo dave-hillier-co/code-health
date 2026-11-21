@@ -1,0 +1,652 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "identities.schema.json",
+  "title": "cochange identities <list|propose|classify|apply|check> --json",
+  "description": "The one command whose output names people. It is never stored as a report, so no other plugin can read it. `inputs.subcommand` says which of the five shapes `results` takes.",
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "description": "`Name <email>` as git log shows it."
+    },
+    "day": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "areas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 3,
+      "description": "The areas (first two folders) touched most, as evidence of where someone works."
+    },
+    "share": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "nonPerson": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Held by bots, services and agents, left out of the share."
+        },
+        "people": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "unmapped": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Held by people a proposal still names."
+        },
+        "mappedShare": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of people's share held by identities with nothing left to decide."
+        }
+      },
+      "required": [
+        "total",
+        "nonPerson",
+        "people",
+        "unmapped",
+        "mappedShare"
+      ]
+    },
+    "signal": {
+      "type": "object",
+      "properties": {
+        "signal": {
+          "enum": [
+            "exact-email",
+            "noreply-same-user",
+            "noreply-matches-identity",
+            "same-name",
+            "name-from-email",
+            "same-local-part",
+            "handover",
+            "exclusive-pairing",
+            "simultaneous-disjoint-areas"
+          ]
+        },
+        "strength": {
+          "enum": [
+            "strong",
+            "medium",
+            "supporting",
+            "counter"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "signal",
+        "strength",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    "listRow": {
+      "type": "object",
+      "properties": {
+        "score": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "identity": {
+          "$ref": "#/$defs/identity"
+        },
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "commits": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "firstSeen": {
+          "$ref": "#/$defs/day"
+        },
+        "lastSeen": {
+          "$ref": "#/$defs/day"
+        },
+        "topAreas": {
+          "$ref": "#/$defs/areas"
+        },
+        "mappedTo": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/identity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The identity the mailmap shows this one as, or null when it is shown as itself."
+        },
+        "kind": {
+          "enum": [
+            "person",
+            "bot",
+            "service",
+            "agent"
+          ]
+        },
+        "unmapped": {
+          "type": "boolean",
+          "description": "A proposal still names this identity, so a decision is owed."
+        }
+      },
+      "required": [
+        "score",
+        "identity",
+        "name",
+        "email",
+        "commits",
+        "firstSeen",
+        "lastSeen",
+        "topAreas",
+        "mappedTo",
+        "kind",
+        "unmapped"
+      ],
+      "additionalProperties": false
+    },
+    "proposeRow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^P\\d+$"
+        },
+        "kind": {
+          "enum": [
+            "cluster",
+            "chain"
+          ]
+        },
+        "strength": {
+          "enum": [
+            "strong",
+            "medium",
+            "chain"
+          ],
+          "description": "A chain is medium links in a line, shown for review and never merged as one."
+        },
+        "counterEvidence": {
+          "type": "boolean"
+        },
+        "suggestedCanonical": {
+          "$ref": "#/$defs/identity",
+          "description": "The most recently active member."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identity": {
+                "$ref": "#/$defs/identity"
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/identity"
+                },
+                "description": "Other identities the mailmap already shows as this one."
+              },
+              "commits": {
+                "$ref": "common.schema.json#/$defs/count"
+              },
+              "firstSeen": {
+                "$ref": "#/$defs/day"
+              },
+              "lastSeen": {
+                "$ref": "#/$defs/day"
+              },
+              "topAreas": {
+                "$ref": "#/$defs/areas"
+              }
+            },
+            "required": [
+              "identity",
+              "aliases",
+              "commits",
+              "firstSeen",
+              "lastSeen",
+              "topAreas"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "a": {
+                "$ref": "#/$defs/identity"
+              },
+              "b": {
+                "$ref": "#/$defs/identity"
+              },
+              "strength": {
+                "enum": [
+                  "strong",
+                  "medium"
+                ]
+              },
+              "counterEvidence": {
+                "type": "boolean"
+              },
+              "signals": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/signal"
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "a",
+              "b",
+              "strength",
+              "counterEvidence",
+              "signals"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "strength",
+        "counterEvidence",
+        "suggestedCanonical",
+        "members",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "classifyRow": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "bot",
+            "service",
+            "agent"
+          ]
+        },
+        "identity": {
+          "type": "string",
+          "description": "`Name <email>` of the account, or the `Co-Authored-By` value for an agent."
+        },
+        "commits": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "source": {
+          "enum": [
+            "builtin",
+            "config",
+            "decision",
+            "heuristic",
+            "trailer"
+          ]
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "decided": {
+          "type": "boolean",
+          "description": "A reviewed classification in the decisions file records it."
+        }
+      },
+      "required": [
+        "kind",
+        "identity",
+        "commits",
+        "source",
+        "pattern",
+        "decided"
+      ],
+      "additionalProperties": false
+    },
+    "applyRow": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string",
+          "description": "The file, relative to the repository."
+        },
+        "change": {
+          "enum": [
+            "add",
+            "present"
+          ]
+        },
+        "entry": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "change",
+        "entry"
+      ],
+      "additionalProperties": false
+    },
+    "checkRow": {
+      "type": "object",
+      "properties": {
+        "score": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "kind": {
+          "enum": [
+            "email-conflict",
+            "counter-evidence",
+            "rejected-merge-applied",
+            "unmapped"
+          ]
+        },
+        "identities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identity"
+          },
+          "minItems": 1
+        },
+        "detail": {
+          "type": "string"
+        },
+        "commits": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Unmapped only: commits in the analysis window."
+        },
+        "lines": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Unmapped only: lines at HEAD."
+        },
+        "linesShare": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Unmapped only: percentage of people's lines."
+        }
+      },
+      "required": [
+        "score",
+        "kind",
+        "identities",
+        "detail",
+        "commits",
+        "lines",
+        "linesShare"
+      ],
+      "additionalProperties": false
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "subcommand": {
+          "enum": [
+            "list",
+            "propose",
+            "classify",
+            "apply",
+            "check"
+          ]
+        },
+        "identityInputs": {
+          "$ref": "common.schema.json#/$defs/identityInputs"
+        },
+        "unmapped": {
+          "type": "boolean"
+        },
+        "fromHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$",
+          "description": "Hash of the decisions file applied."
+        },
+        "location": {
+          "enum": [
+            "committed",
+            "local"
+          ]
+        },
+        "apply": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "subcommand"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "identities"
+    },
+    "measurement": {
+      "description": "`check` only. How much of the code the mapping has settled.",
+      "type": "object",
+      "properties": {
+        "headLines": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/share"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "unattributed": {
+                  "$ref": "common.schema.json#/$defs/count",
+                  "description": "Lines whose commit is outside the analysed history."
+                }
+              },
+              "required": [
+                "unattributed"
+              ]
+            }
+          ],
+          "unevaluatedProperties": false,
+          "type": "object"
+        },
+        "windowCommits": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/share"
+            }
+          ],
+          "unevaluatedProperties": false,
+          "type": "object"
+        },
+        "unmappedShareThreshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "needsIdentityReview": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "headLines",
+        "windowCommits",
+        "unmappedShareThreshold",
+        "needsIdentityReview"
+      ],
+      "additionalProperties": false
+    },
+    "dryRun": {
+      "type": "boolean",
+      "description": "`apply` only."
+    },
+    "written": {
+      "type": "boolean",
+      "description": "`apply` only: a file was changed."
+    },
+    "inputs": {
+      "$ref": "#/$defs/inputs"
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "subcommand": {
+              "const": "list"
+            },
+            "unmapped": true
+          },
+          "required": [
+            "subcommand",
+            "unmapped"
+          ]
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/listRow"
+          }
+        }
+      },
+      "required": [
+        "inputs"
+      ]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "subcommand": {
+              "const": "propose"
+            }
+          },
+          "required": [
+            "subcommand"
+          ]
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/proposeRow"
+          }
+        }
+      },
+      "required": [
+        "inputs"
+      ]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "subcommand": {
+              "const": "classify"
+            }
+          },
+          "required": [
+            "subcommand"
+          ]
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/classifyRow"
+          }
+        }
+      },
+      "required": [
+        "inputs"
+      ]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "subcommand": {
+              "const": "check"
+            }
+          },
+          "required": [
+            "subcommand"
+          ]
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/checkRow"
+          }
+        },
+        "measurement": true
+      },
+      "required": [
+        "inputs",
+        "measurement"
+      ]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "subcommand": {
+              "const": "apply"
+            },
+            "fromHash": true,
+            "location": true,
+            "apply": true
+          },
+          "required": [
+            "subcommand",
+            "fromHash",
+            "location",
+            "apply"
+          ]
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/applyRow"
+          }
+        },
+        "dryRun": true,
+        "written": true
+      },
+      "required": [
+        "inputs",
+        "dryRun",
+        "written"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

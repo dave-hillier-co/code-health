@@ -1,0 +1,102 @@
+import { onlyVersionBumpsOrMerges } from "@code-health/history/identity-classify";
+import { identityKey } from "@code-health/history/identity-names";
+import { isoDay, topAreas, type IdentityAnalysis } from "./analysis.ts";
+
+const compare = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0);
+
+/** One row per identity as written in commits. */
+export function listRows(analysis: IdentityAnalysis, onlyUnmapped: boolean) {
+  const nodes = new Map(analysis.nodes.map((n) => [n.key, n]));
+  const rows = analysis.raws.map((raw) => {
+    const key = identityKey(raw);
+    const nodeKey = analysis.nodeOfRaw.get(key)!;
+    const node = nodes.get(nodeKey)!;
+    const nonPerson = analysis.nonPerson.get(nodeKey);
+    return {
+      score: raw.commits,
+      identity: key,
+      name: raw.name,
+      email: raw.email,
+      commits: raw.commits,
+      firstSeen: isoDay(raw.first),
+      lastSeen: isoDay(raw.last),
+      topAreas: topAreas({ ...node, areaCounts: raw.areaCounts }),
+      mappedTo: nodeKey === key ? null : nodeKey,
+      kind: nonPerson?.kind ?? "person",
+      unmapped: analysis.unresolved.has(nodeKey),
+    };
+  });
+  return onlyUnmapped ? rows.filter((r) => r.unmapped) : rows;
+}
+
+/** Clusters and chains, strongest first, with each link's signals. */
+export function proposeRows(analysis: IdentityAnalysis) {
+  const nodes = new Map(analysis.nodes.map((n) => [n.key, n]));
+  return analysis.proposals.map((proposal, i) => {
+    const members = proposal.members.map((key) => nodes.get(key)!);
+    // The most recently active identity is the suggested name: it is the current one.
+    const current = [...members].sort((x, y) => y.last - x.last || y.commits - x.commits || compare(x.key, y.key))[0]!;
+    return {
+      id: `P${i + 1}`,
+      kind: proposal.kind,
+      strength: proposal.strength,
+      counterEvidence: proposal.counterEvidence,
+      suggestedCanonical: current.key,
+      members: members.map((m) => ({
+        identity: m.key,
+        aliases: m.aliases.map(identityKey).filter((a) => a !== m.key),
+        commits: m.commits,
+        firstSeen: isoDay(m.first),
+        lastSeen: isoDay(m.last),
+        topAreas: topAreas(m),
+      })),
+      links: proposal.links.map((l) => ({
+        a: l.a,
+        b: l.b,
+        strength: l.strength,
+        counterEvidence: l.counterEvidence,
+        signals: l.signals,
+      })),
+    };
+  });
+}
+
+const MIN_SERVICE_COMMITS = 3;
+
+/** Proposed bot, service and agent classifications with the pattern that matched, and whether a decision records them. */
+export function classifyRows(analysis: IdentityAnalysis) {
+  const { decisions, matcher } = analysis.history.identities;
+  const decided = new Set(decisions.classifications.map((c) => emailOf(c.identity)));
+  const rows: { kind: "bot" | "service" | "agent"; identity: string; commits: number; source: string; pattern: string; decided: boolean }[] = [];
+
+  for (const raw of analysis.raws) {
+    const key = identityKey(raw);
+    const found = matcher.classify(raw.name, raw.email);
+    if (found) {
+      rows.push({ kind: found.kind, identity: key, commits: raw.commits, source: found.source, pattern: found.pattern, decided: decided.has(raw.email.toLowerCase()) });
+      continue;
+    }
+    if (decided.has(raw.email.toLowerCase())) continue; // decided to be a person
+    const subjects = analysis.facts.subjects.get(key) ?? [];
+    if (subjects.length >= MIN_SERVICE_COMMITS && onlyVersionBumpsOrMerges(subjects)) {
+      rows.push({ kind: "service", identity: key, commits: raw.commits, source: "heuristic", pattern: "only version bumps, releases or merges", decided: false });
+    }
+  }
+  for (const agent of analysis.facts.agents) {
+    rows.push({
+      kind: "agent",
+      identity: agent.value,
+      commits: agent.commits,
+      source: "trailer",
+      pattern: agent.pattern,
+      decided: decided.has(emailOf(agent.value)),
+    });
+  }
+  const order = { bot: 0, service: 1, agent: 2 };
+  return rows.sort((x, y) => order[x.kind] - order[y.kind] || compare(x.identity, y.identity));
+}
+
+export const emailOf = (identity: string): string => {
+  const open = identity.lastIndexOf("<");
+  return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
+};

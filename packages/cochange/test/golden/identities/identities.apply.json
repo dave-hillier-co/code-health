@@ -1,0 +1,50 @@
+{
+  "command": "identities",
+  "config": "1b40ad4a225b07dc",
+  "dryRun": true,
+  "inputs": {
+    "apply": false,
+    "fromHash": "f8c8f4dc9cdc095d",
+    "location": "committed",
+    "subcommand": "apply"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "54ad752f450b950e3e86d6a8093fcc33d5a640b8"
+  },
+  "results": [
+    {
+      "change": "add",
+      "entry": "Jo Park <jo+git@x.com> J Park <Jo@X.com>",
+      "target": ".mailmap"
+    },
+    {
+      "change": "add",
+      "entry": "John Smith <jsmith@users.noreply.github.com> jsmith <1234+jsmith@users.noreply.github.com>",
+      "target": ".mailmap"
+    },
+    {
+      "change": "add",
+      "entry": "María López <mlopez@gmail.com> Maria Lopez <maria@corp.com>",
+      "target": ".mailmap"
+    },
+    {
+      "change": "add",
+      "entry": "Sam Ro <sam@corp.com> Sam Ro <sam@home.net>",
+      "target": ".mailmap"
+    },
+    {
+      "change": "add",
+      "entry": "different people: Alex Kim <alex@a.com> | Alex Kim <akim@b.com> (two people, one name)",
+      "target": ".code-health/identity-decisions.json"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 5
+  },
+  "written": false
+}
