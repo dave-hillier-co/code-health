@@ -1,0 +1,50 @@
+schema_version: "1.0"
+name: coupling-review
+description: "Asked whether two files in different folders are secretly dependent, the agent runs coupling for the file, reads both files, quotes support and both confidences, and names information leakage or says none applies."
+tags: [behaviour, coupling]
+runs: 2
+context:
+  scaffold_script: ./scaffold.sh
+execution:
+  prompt: "src/billing/invoice.ts and src/reports/summary.ts live in different folders. Are they secretly dependent? Do not change any code."
+  model: claude-sonnet-5-5
+  max_turns: 16
+  timeout_seconds: 400
+  allowed_tools: [Bash, Edit, Write]
+graders:
+  - type: "tool_used"
+    name: "loads-the-cochange-skill"
+    tool: "Skill"
+    input_match: "cochange"
+    min: 1
+    arm: "with-only"
+  - type: "tool_used"
+    name: "runs-cochange-coupling"
+    tool: "Bash"
+    input_match: "dist/cochange\\.mjs coupling"
+    min: 1
+  - type: "tool_order"
+    name: "skill-before-cli"
+    before: {"tool": "Skill", "input_match": "cochange"}
+    after: {"tool": "Bash", "input_match": "dist/cochange\\.mjs"}
+    arm: "with-only"
+  - type: "tool_used"
+    name: "reads-both-files"
+    tool: "Read"
+    min: 2
+  - type: "regex"
+    name: "quotes-the-shared-change-count"
+    pattern: "\\b6\\b"
+    target: "last_message"
+  - type: "tool_used"
+    name: "does-not-edit-files"
+    tool: "Edit"
+    max: 0
+  - type: "tool_used"
+    name: "does-not-write-files"
+    tool: "Write"
+    max: 0
+  - type: "llm"
+    name: "evidence-led-and-honest"
+    focus: "last_message"
+    criteria: "The answer says the two files changed together in 6 logical changes and gives the confidence in at least one direction. It reports the direction of the dependence: invoice.ts changed in more changes without summary.ts than the reverse. It names the information leakage red flag, or another from the shared vocabulary, or says none applies after reading the code. It reports what it found in the code honestly: if the files share no visible decision it says the coupling is unexplained and does not invent a reason. It does not edit any file."

@@ -1,0 +1,51 @@
+schema_version: "1.0"
+name: hotspot-review
+description: "Asked where change effort concentrates, the agent runs hotspots, reads the hotspot's code, names a red flag or says none applies, and presents a prompt for investigation rather than a verdict."
+tags: [behaviour, hotspots]
+runs: 2
+context:
+  scaffold_script: ./scaffold.sh
+execution:
+  prompt: "Where in this repository does change effort concentrate? What should we look at first?"
+  model: claude-sonnet-5-5
+  max_turns: 16
+  timeout_seconds: 400
+  allowed_tools: [Bash, Edit, Write]
+graders:
+  - type: "tool_used"
+    name: "loads-the-cochange-skill"
+    tool: "Skill"
+    input_match: "cochange"
+    min: 1
+    arm: "with-only"
+  - type: "tool_used"
+    name: "runs-cochange-hotspots"
+    tool: "Bash"
+    input_match: "dist/cochange\\.mjs hotspots"
+    min: 1
+  - type: "tool_order"
+    name: "skill-before-cli"
+    before: {"tool": "Skill", "input_match": "cochange"}
+    after: {"tool": "Bash", "input_match": "dist/cochange\\.mjs"}
+    arm: "with-only"
+  - type: "tool_used"
+    name: "reads-the-hotspot-code"
+    tool: "Read"
+    input_match: "invoice\\.ts"
+    min: 1
+  - type: "regex"
+    name: "names-the-hotspot"
+    pattern: "src/billing/invoice\\.ts"
+    target: "last_message"
+  - type: "tool_used"
+    name: "does-not-edit-files"
+    tool: "Edit"
+    max: 0
+  - type: "tool_used"
+    name: "does-not-write-files"
+    tool: "Write"
+    max: 0
+  - type: "llm"
+    name: "cites-a-red-flag-and-hedges"
+    focus: "last_message"
+    criteria: "The answer ranks src/billing/invoice.ts first and explains why using change frequency, complexity and recency. It names a design red flag it judges present in the file (for example nonobvious code or a shallow module) or states that none applies. It says complexity is an indentation proxy, or otherwise treats the finding as a prompt for investigation and not a verdict. It does not claim the history proves the code is bad."

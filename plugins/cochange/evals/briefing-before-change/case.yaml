@@ -1,0 +1,50 @@
+schema_version: "1.0"
+name: briefing-before-change
+description: "Before editing a file the agent briefs itself with cochange brief, names the usual partners with their support, and separates the expected sibling test from the distant partners."
+tags: [behaviour, brief]
+runs: 2
+context:
+  scaffold_script: ./scaffold.sh
+execution:
+  prompt: "I need to add a discount field to src/billing/invoice.ts. Before I start, what else usually has to change when this file changes? Do not edit anything yet."
+  model: claude-sonnet-5-5
+  max_turns: 12
+  timeout_seconds: 300
+  allowed_tools: [Bash, Edit, Write]
+graders:
+  - type: "tool_used"
+    name: "loads-the-cochange-skill"
+    tool: "Skill"
+    input_match: "cochange"
+    min: 1
+    arm: "with-only"
+  - type: "tool_used"
+    name: "runs-cochange-brief"
+    tool: "Bash"
+    input_match: "dist/cochange\\.mjs brief"
+    min: 1
+  - type: "tool_order"
+    name: "skill-before-cli"
+    before: {"tool": "Skill", "input_match": "cochange"}
+    after: {"tool": "Bash", "input_match": "dist/cochange\\.mjs"}
+    arm: "with-only"
+  - type: "regex"
+    name: "names-the-registry-partner"
+    pattern: "registry\\.ts"
+    target: "last_message"
+  - type: "regex"
+    name: "names-the-summary-partner"
+    pattern: "summary\\.ts"
+    target: "last_message"
+  - type: "tool_used"
+    name: "does-not-edit-files"
+    tool: "Edit"
+    max: 0
+  - type: "tool_used"
+    name: "does-not-write-files"
+    tool: "Write"
+    max: 0
+  - type: "llm"
+    name: "reports-support-and-separates-test-from-distant-partners"
+    focus: "last_message"
+    criteria: "The answer lists files that usually change with src/billing/invoice.ts: src/billing/invoice.test.ts, src/app/registry.ts and src/reports/summary.ts. It gives the number of shared changes or a confidence figure for them, not only the names. It treats the sibling test as expected and picks out registry.ts and summary.ts as the partners worth opening, because they are in other folders. It says these are usual partners, not requirements. It does not edit any file."

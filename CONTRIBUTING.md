@@ -90,10 +90,12 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<p>.mjs *)
 
 Skill evals run with `claude plugin eval`, which bills tokens, so they run on demand and before a release and never in CI. Cases live at `plugins/<p>/evals/<case>/case.yaml`, one folder per case, and ship with the plugin.
 
-- Format: `schema_version: "1.0"`, `name` (equal to the folder name), `execution.prompt`, `execution.model`, optional `runs`, `max_turns`, `timeout_seconds`, `tags`, and at least one grader (`regex`, `tool_used`, `tool_order`, `file_exists`, `llm`, `baseline`) with unique names. `scripts/eval-case.schema.json` is the schema `claude plugin eval` loads against. `plugins/cochange/evals/smoke/case.yaml` is a minimal example.
+- Format: `schema_version: "1.0"`, `name` (equal to the folder name), `execution.prompt`, `execution.model`, optional `runs`, `max_turns`, `timeout_seconds`, `tags`, and at least one grader (`regex`, `tool_used`, `tool_order`, `file_exists`, `llm`, `baseline`) with unique names. `scripts/eval-case.schema.json` is the schema `claude plugin eval` loads against. `plugins/cochange/evals/trigger-hotspots/case.yaml` is a minimal example, and `briefing-before-change` one with a scaffolded repository.
 - Use `case.yaml`, not the `prompt.md` form, because only `case.yaml` can pin the model.
 - `shared/evals.json` pins `model`, `judgeModel` and `maxCostUsd`. Every case sets `execution.model` to the pinned model, and `npm run check:evals` (part of `npm run check` and CI) validates every case without running it.
 - Cover triggering (the skill loads on relevant prompts and not on unrelated ones) and behaviour (it runs the CLI, respects commit discipline, cites red flags).
+- A behaviour case that needs a repository sets `context.scaffold_script` to a script in its own folder that builds one in the working directory. Claude Code runs it only with `--scaffold`. Give the script a fixed history (explicit dates), and test it: `scripts/test/cochange-evals.test.ts` runs the scripts and checks the CLI's answers against what the graders look for.
+- A grader on `Bash`, `Edit` or `Write` cannot pass unless the case lists the tool in `execution.allowed_tools` and the operator grants it with `--allow-tools`. List `Edit` and `Write` in a case that asserts the agent made no edits, or the assertion proves nothing.
 
 Run them with:
 
@@ -101,6 +103,7 @@ Run them with:
 npm run evals -- <plugin>               # billed; model, judge model and cost ceiling from shared/evals.json
 npm run evals -- <plugin> --validate    # cost ceiling 0: Claude Code loads and validates every case, nothing is billed
 npm run evals -- <plugin> -- --case <glob> --runs 1   # options after the second -- go to claude plugin eval
+npm run evals -- <plugin> -- --scaffold --allow-tools Bash Edit Write   # behaviour cases: build their repositories and grant their tools
 ```
 
 Results and the HTML report are written to `.cache/evals/<plugin>/`, outside the plugin folder. The runner refuses to run when `CI` is set.
