@@ -1,4 +1,7 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
@@ -251,7 +254,7 @@ function stylesApp(): GitFixture {
   const add = (path: string, content: string) => ({ op: "add" as const, path, content });
   const files = [
     add("code-health.json", JSON.stringify({ entryPoints: ["src/main.ts"] })),
-    add("tsconfig.json", JSON.stringify({ compilerOptions: { module: "esnext", moduleResolution: "bundler", baseUrl: ".", paths: { "@lib/*": ["src/lib/*"] } } })),
+    add("tsconfig.json", JSON.stringify({ compilerOptions: { module: "esnext", moduleResolution: "bundler", paths: { "@lib/*": ["./src/lib/*"] } } })),
     add("src/main.ts", 'import { left } from "./left/left.js";\nimport { right } from "./right/right";\nexport const run = () => [left(), right()];\n'),
     add("src/left/left.ts", 'import { shared } from "@lib/shared";\nexport const left = () => shared() + 1;\n'),
     add("src/right/right.ts", 'import { shared } from "../lib/shared.js";\nexport const right = async () => (await import("../lib/shared.js")).shared() + shared();\n'),
@@ -281,3 +284,111 @@ test("imports keep the extension style they were written in, and aliases and dyn
     repo.dispose();
   }
 });
+
+const tsc = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "node_modules", ".bin", "tsc");
+
+/** Type-checks the repository's own tsconfig: the moved tree must still resolve every import, not merely be clean in git. */
+function typeCheck(repo: GitFixture): { ok: boolean; output: string } {
+  try {
+    return { ok: true, output: execFileSync(tsc, ["--noEmit", "-p", "tsconfig.json"], { cwd: repo.path, encoding: "utf8", stdio: "pipe" }) };
+  } catch (error) {
+    const failure = error as { stdout?: string; stderr?: string };
+    return { ok: false, output: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+}
+
+function withTypeScriptConfig(repo: GitFixture): void {
+  const config = JSON.parse(readFileSync(join(repo.path, "code-health.json"), "utf8"));
+  repo.apply([
+    {
+      type: "commit",
+      message: "Type-check the tree",
+      date: "2025-02-01T09:00:00Z",
+      changes: [
+        { op: "add", path: "tsconfig.json", content: JSON.stringify({ compilerOptions: { module: "esnext", target: "es2022", moduleResolution: "bundler", allowImportingTsExtensions: true, noEmit: true, strict: true, skipLibCheck: true }, include: ["src"] }) },
+        { op: "modify", path: "code-health.json", content: JSON.stringify(config) },
+      ],
+    },
+  ]);
+}
+
+test("a moved tree still type-checks, verifies as the mover's own commit, and moving again changes nothing", async () => {
+  const repo = distantHelpers();
+  try {
+    repo.git("config", "user.name", "Dev");
+    repo.git("config", "user.email", "dev@example.com");
+    withTypeScriptConfig(repo);
+    expect(typeCheck(repo), "the fixture type-checks before the move").toMatchObject({ ok: true });
+    // The check is not vacuous: an import that does not resolve fails it.
+    writeFileSync(join(repo.path, "src/broken.ts"), 'import { nothing } from "./nowhere.ts";\nexport const broken = nothing;\n');
+    expect(typeCheck(repo)).toMatchObject({ ok: false });
+    rmSync(join(repo.path, "src/broken.ts"));
+    const original = repo.git("rev-parse", "HEAD");
+
+    const moved = await move(repo, "src/shared/utils/money.ts", "--apply");
+    expect(moved.code).toBe(ExitCode.Success);
+    expect(typeCheck(repo)).toMatchObject({ ok: true });
+
+    // apply then verify-move is one flow: the mover's own commit is what the verifier accepts.
+    const verified = await runLocality(repo.path, ["verify-move", "src/shared/utils/money.ts", "--json"]);
+    expect(verified.code).toBe(ExitCode.Success);
+    expect(JSON.parse(verified.stdout)).toMatchObject({ verified: true, checks: { operations: true, content: true, trailer: true } });
+
+    // Moving the same unit again finds nothing there to move.
+    const again = await runLocality(repo.path, ["move", "src/shared/utils/money.ts", "--json"]);
+    expect(again.code).toBe(ExitCode.Usage);
+
+    // The move is idempotent, and a placed unit is not one the analyser offers: nothing in the tree changed.
+    expect(repo.git("status", "--porcelain")).toBe("");
+    expect(repo.git("rev-parse", "HEAD~1").length).toBeGreaterThan(0);
+    expect(repo.git("diff", "--name-status", "-M", original, "HEAD").split("\n").sort()).toEqual([
+      "M\tsrc/billing/charge.ts",
+      "M\tsrc/legacy/dead.ts",
+      "M\tsrc/orders/place.ts",
+      "R100\tsrc/shared/utils/money.ts\tsrc/money.ts",
+    ]);
+  } finally {
+    repo.dispose();
+  }
+}, 120_000);
+
+test("aliases, extension-less and .js specifiers and a dynamic import still resolve after a move", async () => {
+  const repo = stylesApp();
+  try {
+    repo.git("config", "user.name", "Dev");
+    repo.git("config", "user.email", "dev@example.com");
+    repo.apply([
+      {
+        type: "commit",
+        message: "Type-check the tree",
+        date: "2025-02-01T09:00:00Z",
+        changes: [{ op: "add", path: "tsconfig.check.json", content: JSON.stringify({ extends: "./tsconfig.json", compilerOptions: { noEmit: true, strict: true, target: "es2022", skipLibCheck: true }, include: ["src"] }) }],
+      },
+    ]);
+    const check = () => {
+      try {
+        execFileSync(tsc, ["--noEmit", "-p", "tsconfig.check.json"], { cwd: repo.path, encoding: "utf8", stdio: "pipe" });
+        return "";
+      } catch (error) {
+        const failure = error as { stdout?: string };
+        return failure.stdout ?? "failed";
+      }
+    };
+    expect(check()).toBe("");
+    const original = repo.git("rev-parse", "HEAD");
+    expect((await move(repo, "src/lib/shared.ts", "--to", "src/right", "--reason", "test", "--apply")).code).toBe(ExitCode.Success);
+    expect(check()).toBe("");
+    // A second run on the same unit changes nothing.
+    const head = repo.git("rev-parse", "HEAD");
+    expect((await runLocality(repo.path, ["move", "src/right/shared.ts", "--to", "src/lib", "--apply", "--json"])).code).toBe(ExitCode.Usage);
+    expect(repo.git("rev-parse", "HEAD")).toBe(head);
+    expect(repo.git("status", "--porcelain")).toBe("");
+    expect(repo.git("diff", "--name-status", "-M", original, "HEAD").split("\n").sort()).toEqual([
+      "M\tsrc/left/left.ts",
+      "M\tsrc/right/right.ts",
+      "R100\tsrc/lib/shared.ts\tsrc/right/shared.ts",
+    ]);
+  } finally {
+    repo.dispose();
+  }
+}, 120_000);
