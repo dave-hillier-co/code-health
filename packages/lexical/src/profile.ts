@@ -128,7 +128,7 @@ const typescript: LexerProfile = {
   typeHeaders: cTypeHeaders,
   functionHeaders: [
     "\\bfunction\\b\\s*\\*?\\s*(?<name>[\\w$]+)?\\s*(?:<[^>]*>)?\\s*\\([^]*\\)[^;{}=]*$",
-    "(?:(?:const|let|var)\\s+(?<name>[\\w$]+)\\s*(?::[^=]+)?=\\s*)?[^]*=>\\s*(?::[^{;]+)?$",
+    "^(?:export\\s+(?:default\\s+)?)?(?:(?:const|let|var)\\s+(?<name>[\\w$]+)\\s*(?::[^=]+)?=\\s*)?[^]*=>\\s*(?::[^{;]+)?$",
     "^(?:(?:public|private|protected|static|async|readonly|get|set|override|abstract|declare)\\s+)*\\*?\\s*(?<name>[#\\w$]+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?::\\s*[^{;]+)?$",
   ],
 };
@@ -165,7 +165,7 @@ const csharp: LexerProfile = {
   controlHeader,
   typeHeaders: cTypeHeaders,
   functionHeaders: [
-    "(?:[^]*\\s)?(?<name>[\\w.<>]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    "(?:[^]*\\s)?(?<name>(?!(?:base|this)\\b)[\\w.<>]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
     "=>\\s*$",
   ],
 };
