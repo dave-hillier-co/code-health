@@ -22,8 +22,22 @@ export interface ConstructMap {
     /** The alternative field holds a clause node (`else_clause`) whose first named child is the branch. Otherwise the field is the branch. */
     alternativeIsClause: boolean;
   };
-  /** `switch`, and the node that holds one `case` (a `default` is not a case). */
-  switch: { type: string; body: string; caseType: string };
+  /**
+   * `switch`, and the node that holds one `case` (a `default` is not a case).
+   *
+   * A language with several switch statements lists the others in `moreTypes` and their case nodes in
+   * `moreCaseTypes` (Go's type switch and `select`). When the cases are direct children of the switch with no
+   * body node, `body` is empty and `clauseTypes` names the nodes that hold a clause's statements (the cases
+   * and the default), which are one level deeper.
+   */
+  switch: {
+    type: string;
+    body: string;
+    caseType: string;
+    moreTypes?: ReadonlySet<string>;
+    moreCaseTypes?: ReadonlySet<string>;
+    clauseTypes?: ReadonlySet<string>;
+  };
   /** `try` adds nesting. `catch` is a decision and its `body` field is walked one level deeper. */
   tryType: string;
   catchType: string;
@@ -38,6 +52,8 @@ export interface ConstructMap {
   /** `break` and `continue` node types to their name. One with a `label` field costs a flat 1. */
   labelledJumps: Readonly<Record<string, string>>;
   label: string;
+  /** For a grammar whose label is an unnamed-field child: the node type of the label, which makes a jump labelled when it has one. */
+  labelType?: string;
   /** Node types that hold comments, which are not code for length and are skipped when reading an `else`. */
   commentTypes: ReadonlySet<string>;
 }
