@@ -15,6 +15,8 @@ export interface SourceLine {
   /** The line with comments and string literals replaced by spaces. */
   code: string;
   kind: LineKind;
+  /** The line begins inside a multi-line string, so its leading whitespace is string content. */
+  startsInLiteral: boolean;
 }
 
 export function normaliseNewlines(content: string): string {
@@ -83,7 +85,7 @@ export function stripSource(rawContent: string, profile?: LexerProfile): SourceL
     else if (startsInString && code.trim() === "") kind = "literal";
     else if (code.trim() !== "") kind = "code";
     else kind = sawComment || (start > 0 && mask[start - 1] === COMMENT) ? "comment" : "code";
-    lines.push({ number, text, code, kind });
+    lines.push({ number, text, code, kind, startsInLiteral: startsInString });
     number++;
     start = end + 1;
   }

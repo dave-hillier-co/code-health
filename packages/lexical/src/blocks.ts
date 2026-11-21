@@ -181,7 +181,7 @@ function findIndentedBlocks(lines: SourceLine[], profile: LexerProfile): Functio
       if (ch === "(" || ch === "[" || ch === "{") bracketDepth++;
       else if (ch === ")" || ch === "]" || ch === "}") bracketDepth = Math.max(0, bracketDepth - 1);
     }
-    if (continuation) {
+    if (continuation || line.startsInLiteral) {
       lastBodyLine = line.number;
       continue;
     }

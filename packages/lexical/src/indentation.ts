@@ -4,12 +4,12 @@ const DEFAULT_UNIT = 4;
 const MAX_UNIT = 8;
 
 /**
- * Lines whose indentation is meaningful: code only. Comment lines and the
- * continuation of multi-line strings are left out. Without a profile every
+ * Lines whose indentation is meaningful: code only. Comment lines and lines that
+ * begin inside a multi-line string are left out. Without a profile every
  * non-blank line is code, because comments cannot be told apart.
  */
 export function isIndentLine(line: SourceLine): boolean {
-  return line.kind === "code";
+  return line.kind === "code" && !line.startsInLiteral;
 }
 
 /**

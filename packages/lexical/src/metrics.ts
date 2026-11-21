@@ -89,7 +89,7 @@ export function blockMetrics(
   for (let n = block.startLine; n <= block.endLine; n++) {
     const line = lines[n - 1]!;
     if (line.kind === "code" || line.kind === "literal") length++;
-    if (line.kind !== "code") continue;
+    if (line.kind !== "code" || line.startsInLiteral) continue;
     const relative = Math.max(0, levelOf(line.text, unit) - base);
     indentationComplexity += relative;
     if (n > block.startLine && relative > maxRelative) maxRelative = relative;
