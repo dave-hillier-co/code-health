@@ -58,6 +58,15 @@ A plugin parses when its bundle includes `packages/parse/src/grammars.ts`, direc
 - The `dist/grammars/` files are committed, and `npm run check:dist` fails when they differ from a fresh build or exist for a plugin that does not parse.
 - `scripts/test/new-plugin.test.ts` shows the check to copy for a new parsing plugin: build, copy `dist/` to a directory with no `node_modules`, run the bundled CLI there to parse a file.
 
+### Plugins with a hook
+
+The hook rules are in `docs/specs/suite.md`. A plugin's hook is the `hook` argument of its own bundle, and the machinery is shared, so a hook is only its decision. `cochange` and `complexity` are the two to copy:
+
+- `@code-health/history/hook-process` runs the process: it reads stdin, starts the plugin's entry point on a worker thread so the time budget is enforced, and exits 0 on every path. A plugin describes itself with a `HookDefinition` in `src/hook-definition.ts`, and its `main.ts` calls `inHookWorker`, `runHookWorker` and `runHookProcess` before it starts the CLI.
+- `@code-health/history/hook-event` parses the event (`readEditEvent`) and gives the time budget (`within`).
+- `@code-health/history/session-state` keeps the hook's own state for the session, one file per hook, including the last measurement of each file.
+- `hooks/hooks.json` is exec form with `${CLAUDE_PLUGIN_ROOT}`, and a plugin tests it. Hook tests call the plugin's `runHook` in process, and the process tests run both `src/main.ts` and the committed bundle.
+
 ### Bundles
 
 Bundles import only Node builtins and install without `npm install`. Do not add runtime dependencies that cannot be bundled, and do not read files by repository-relative path at run time: anything a bundle needs ships in `dist/` and is found through `import.meta.url`.
