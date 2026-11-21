@@ -5,6 +5,7 @@ import * as cycles from "./commands/cycles.ts";
 import * as evidence from "./commands/evidence.ts";
 import * as hidden from "./commands/hidden.ts";
 import * as layers from "./commands/layers.ts";
+import * as outcome from "./commands/outcome.ts";
 import * as stability from "./commands/stability.ts";
 
 /** What a module in `commands/` exports. */
@@ -28,6 +29,7 @@ export const commandModules: CommandModule[] = [
   evidence,
   hidden,
   layers,
+  outcome,
   stability,
 ];
 

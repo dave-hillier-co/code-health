@@ -3,8 +3,8 @@ import { analysisCommand } from "../analysis-command.ts";
 import { findCycles } from "../cycles.ts";
 import { evidencePack } from "../evidence-pack.ts";
 import { buildModel, type Model } from "../model.ts";
-import { readLevel, type Level } from "../modules.ts";
-import { folderOf, loadProject, type Project } from "../project.ts";
+import { inferLevel, readLevel, type Level } from "../modules.ts";
+import { loadProject } from "../project.ts";
 
 export const name = "evidence";
 
@@ -30,17 +30,6 @@ function parseEdge(edge: string): { kind: "edge"; from: string; to: string } {
   const arrow = edge.indexOf("->");
   if (arrow <= 0 || arrow + 2 >= edge.length) throw usageError(usage);
   return { kind: "edge", from: edge.slice(0, arrow), to: edge.slice(arrow + 2) };
-}
-
-/** The finest level at which both names are modules: a file, then a folder, then a package. */
-function inferLevel(project: Project, from: string, to: string): Level {
-  const files = new Set(project.files);
-  if (files.has(from) && files.has(to)) return "file";
-  const folders = new Set(project.files.map(folderOf));
-  if (folders.has(from) && folders.has(to)) return "folder";
-  const packages = new Set(project.files.map((f) => project.packageOf(f)));
-  if (packages.has(from) && packages.has(to)) return "package";
-  throw usageError(`cannot tell what "${from}" and "${to}" are: they are not both files, both folders or both packages of the analysed commit; name the level with --level`);
 }
 
 export const command = analysisCommand(name, {
