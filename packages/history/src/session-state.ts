@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { closeSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ensureSelfIgnoring } from "@code-health/history/cache-location";
+import { ensureSelfIgnoring } from "./cache-location.ts";
 
 /**
  * What a hook remembers about one session. It is the hook's own record,

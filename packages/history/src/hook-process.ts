@@ -1,5 +1,4 @@
 import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
-import { DEFAULT_BUDGET_MS, runHook } from "./hook.ts";
 
 /** Reads stdin to its end, or gives up with what it has when `limitMs` of the process's life is spent. */
 function readStdin(limitMs: number): Promise<string> {
@@ -19,20 +18,38 @@ function readStdin(limitMs: number): Promise<string> {
 
 /** What the worker is started with. */
 interface HookJob {
-  kind: "cochange-hook";
+  /** Names the plugin's hook, so a worker started for another job is not mistaken for this one. */
+  kind: string;
   stdin: string;
   cwd: string;
 }
 
-/** The file the worker runs: the bundle itself, or `main.ts` when running from source. */
-const entry = import.meta.url.endsWith("/hook-process.ts") ? new URL("./main.ts", import.meta.url) : new URL(import.meta.url);
+/** What a plugin gives the shared hook process. */
+export interface HookDefinition {
+  /** Names the worker's job, for example `complexity-hook`. */
+  kind: string;
+  /** The hook's work: the raw stdin and the working directory in, the stdout to print (empty for silence) out. It never throws. */
+  run: (request: { stdin: string; cwd: string; budgetMs: number }) => Promise<string>;
+  /** The time budget in milliseconds, counted from process start. */
+  defaultBudgetMs: number;
+  /**
+   * The file the worker runs. It must be the plugin's entry point, which calls
+   * `inHookWorker` first: the bundle itself, or the plugin's `main.ts` from source.
+   */
+  entry: URL;
+}
+
+/** A plugin's worker entry: its `main.ts` when `moduleUrl` is the source module `sourceModule`, otherwise the bundle that `moduleUrl` is. */
+export function workerEntry(moduleUrl: string, sourceModule: string): URL {
+  return moduleUrl.endsWith(`/${sourceModule}`) ? new URL("./main.ts", moduleUrl) : new URL(moduleUrl);
+}
 
 /**
  * Does the hook's work on a worker thread, so this thread's timer can end the process at the
  * budget even while the worker is in a long synchronous stretch of history work. Resolves with
  * the worker's answer, or with silence when the budget is spent first or the worker fails.
  */
-function runInWorker(job: HookJob, budgetMs: number): Promise<string> {
+function runInWorker(entry: URL, job: HookJob, budgetMs: number): Promise<string> {
   return new Promise((resolve) => {
     let worker: Worker;
     try {
@@ -57,23 +74,23 @@ function runInWorker(job: HookJob, budgetMs: number): Promise<string> {
 }
 
 /** The worker side: runs the hook for the job and posts what it would print. */
-export async function runHookWorker(): Promise<void> {
+export async function runHookWorker(hook: HookDefinition): Promise<void> {
   const job = workerData as HookJob;
   // The parent enforces the budget, so the hook's own timer is set well beyond it.
-  const output = await runHook({ stdin: job.stdin, cwd: job.cwd, budgetMs: 60_000 });
+  const output = await hook.run({ stdin: job.stdin, cwd: job.cwd, budgetMs: 60_000 });
   parentPort?.postMessage(output);
 }
 
 /** True in the worker thread this module starts. */
-export const inHookWorker = (): boolean => !isMainThread && (workerData as HookJob | null)?.kind === "cochange-hook";
+export const inHookWorker = (kind: string): boolean => !isMainThread && (workerData as HookJob | null)?.kind === kind;
 
 /**
  * The process's time budget. `CODE_HEALTH_HOOK_BUDGET_MS` overrides it so that tests of what the
  * hook says do not depend on how loaded the machine is. Claude Code never sets it.
  */
-function budgetMs(): number {
+function budgetMs(fallback: number): number {
   const override = Number(process.env.CODE_HEALTH_HOOK_BUDGET_MS);
-  return Number.isInteger(override) && override > 0 ? override : DEFAULT_BUDGET_MS;
+  return Number.isInteger(override) && override > 0 ? override : fallback;
 }
 
 /**
@@ -81,12 +98,12 @@ function budgetMs(): number {
  * the exit code is 0 on every path. The process exits as soon as the answer
  * is written, so abandoned work cannot hold it open past the time budget.
  */
-export async function runHookProcess(): Promise<never> {
+export async function runHookProcess(hook: HookDefinition): Promise<never> {
   let output = "";
   try {
-    const budget = budgetMs();
+    const budget = budgetMs(hook.defaultBudgetMs);
     const stdin = await readStdin(budget);
-    output = await runInWorker({ kind: "cochange-hook", stdin, cwd: process.cwd() }, budget);
+    output = await runInWorker(hook.entry, { kind: hook.kind, stdin, cwd: process.cwd() }, budget);
   } catch {
     // runInWorker does not reject; this keeps the exit code 0 even so.
   }

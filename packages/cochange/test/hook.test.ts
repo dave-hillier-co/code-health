@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { runHook } from "../src/hook.ts";
-import { sessionFile, readSession } from "../src/session-state.ts";
+import { sessionFile, readSession } from "@code-health/history/session-state";
 import { couplingHistory } from "./support/coupling-scenarios.ts";
 import { model, splitFeatures, view } from "./support/grouping-scenarios.ts";
 import { runCochange } from "./support/run.ts";

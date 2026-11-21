@@ -6,12 +6,12 @@ import { locateCache } from "@code-health/history/cache-location";
 import { runGit } from "@code-health/history/git";
 import { filterHistory } from "@code-health/history/noise";
 import { readHistory } from "@code-health/history/read";
+import { updateSession, type SessionState } from "@code-health/history/session-state";
 import { openForRead } from "@code-health/history/store";
 import { cochangeConfig, readSettings, type CochangeSettings } from "./config.ts";
 import { confidenceOf, partnersOf } from "./coupling.ts";
 import { repoRelative } from "./repo-paths.ts";
 import { loadIdentityState } from "./identity-access.ts";
-import { updateSession, type SessionState } from "./session-state.ts";
 
 /** What Claude Code sends a hook on stdin. Only the fields the hook uses are read. */
 interface HookInput {
