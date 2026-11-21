@@ -267,8 +267,8 @@ function readRepoState(cwd) {
     throw environmentError("no-commits", "the repository has no commits");
   }
   const dirty = git(root, "status", "--porcelain", "--untracked-files=no") !== "";
-  const gitVersion = git(root, "--version").replace(/^git version /, "");
-  return { root, head, dirty, headCommitDate, gitVersion };
+  const gitVersion2 = git(root, "--version").replace(/^git version /, "");
+  return { root, head, dirty, headCommitDate, gitVersion: gitVersion2 };
 }
 function git(cwd, ...args2) {
   return execFileSync("git", args2, {
@@ -479,13 +479,180 @@ __export(analyse_exports, {
   rules: () => rules
 });
 
-// packages/history/src/reports.ts
-import { mkdirSync as mkdirSync2, renameSync, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join3 } from "node:path";
+// packages/cli-kit/src/ranking.ts
+function midRankPercentiles(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const first = /* @__PURE__ */ new Map();
+  const count = /* @__PURE__ */ new Map();
+  sorted.forEach((value, index) => {
+    if (!first.has(value)) first.set(value, index);
+    count.set(value, (count.get(value) ?? 0) + 1);
+  });
+  return values.map((value) => (first.get(value) + count.get(value) / 2) / values.length);
+}
 
-// packages/history/src/cache-location.ts
-import { existsSync as existsSync2, mkdirSync, writeFileSync } from "node:fs";
-import { basename, dirname, join as join2 } from "node:path";
+// packages/history/src/glob.ts
+function escape(ch) {
+  return /[.+^${}()|[\]\\]/.test(ch) ? `\\${ch}` : ch;
+}
+function hasClosingBrace(pattern, start2) {
+  let depth = 0;
+  for (let i2 = start2; i2 < pattern.length; i2++) {
+    if (pattern[i2] === "{") depth++;
+    else if (pattern[i2] === "}" && --depth === 0) return true;
+  }
+  return false;
+}
+function toRegExp(pattern) {
+  let out2 = "";
+  let braces = 0;
+  for (let i2 = 0; i2 < pattern.length; i2++) {
+    const ch = pattern[i2];
+    if (ch === "*") {
+      if (pattern[i2 + 1] === "*") {
+        i2++;
+        if (pattern[i2 + 1] === "/") {
+          i2++;
+          out2 += "(?:.*/)?";
+        } else {
+          out2 += ".*";
+        }
+      } else {
+        out2 += "[^/]*";
+      }
+    } else if (ch === "?") {
+      out2 += "[^/]";
+    } else if (ch === "{" && hasClosingBrace(pattern, i2)) {
+      braces++;
+      out2 += "(?:";
+    } else if (ch === "}" && braces > 0) {
+      braces--;
+      out2 += ")";
+    } else if (ch === "," && braces > 0) {
+      out2 += "|";
+    } else if (ch === "[") {
+      const end = pattern.indexOf("]", i2 + 1);
+      if (end === -1) {
+        out2 += "\\[";
+      } else {
+        const body2 = pattern.slice(i2 + 1, end).replace(/^!/, "^").replace(/\\/g, "\\\\");
+        out2 += `[${body2}]`;
+        i2 = end;
+      }
+    } else {
+      out2 += escape(ch);
+    }
+  }
+  return new RegExp(`^${out2}$`);
+}
+function compileGlobs(patterns) {
+  const compiled = patterns.map((p) => p.trim()).filter((p) => p !== "" && !p.startsWith("#")).map((raw) => {
+    const pattern = raw.replace(/\/+$/, "");
+    const anchored = pattern.includes("/");
+    return { anchored, regex: toRegExp(anchored ? pattern.replace(/^\//, "") : pattern) };
+  });
+  return (path) => {
+    const segments = path.split("/");
+    for (const { anchored, regex } of compiled) {
+      if (anchored) {
+        for (let n = 1; n <= segments.length; n++) {
+          if (regex.test(segments.slice(0, n).join("/"))) return true;
+        }
+      } else if (segments.some((s) => regex.test(s))) {
+        return true;
+      }
+    }
+    return false;
+  };
+}
+
+// packages/history/src/grouping.ts
+var DEFAULT_ISSUE_PATTERN = "[A-Z][A-Z0-9]+-\\d+";
+var NOT_ISSUE_PREFIXES = /* @__PURE__ */ new Set(["UTF", "SHA", "MD", "ISO", "RFC", "TLS", "SSL", "AES", "RSA", "CVE", "PEP", "WCAG", "IPV", "ES", "HTTP", "TCP", "UDP"]);
+var ISSUE_KEY_WINDOW_SECONDS = 90 * 86400;
+function groupCommits(items, grouping, compilePattern) {
+  if (grouping.mode === "off") return items.map((_, index) => [index]);
+  const groups = [];
+  if (grouping.mode === "issue-key") {
+    const pattern = compilePattern(grouping.pattern);
+    const open = /* @__PURE__ */ new Map();
+    items.forEach((item, index) => {
+      const match = pattern.exec(item.message);
+      let key = match === null ? void 0 : match[1] ?? match[0];
+      if (key !== void 0 && grouping.pattern === DEFAULT_ISSUE_PATTERN && NOT_ISSUE_PREFIXES.has(key.slice(0, key.lastIndexOf("-")))) key = void 0;
+      if (key === void 0 || key === "") return void groups.push([index]);
+      let group = open.get(key);
+      if (group === void 0 || item.date - items[group.at(-1)].date > ISSUE_KEY_WINDOW_SECONDS) {
+        group = [];
+        open.set(key, group);
+        groups.push(group);
+      }
+      group.push(index);
+    });
+  } else {
+    const open = /* @__PURE__ */ new Map();
+    items.forEach((item, index) => {
+      const group = open.get(item.author);
+      const last = group === void 0 ? void 0 : items[group.at(-1)].date;
+      if (group !== void 0 && Math.abs(item.date - last) <= grouping.windowSeconds) {
+        group.push(index);
+      } else {
+        const fresh = [index];
+        open.set(item.author, fresh);
+        groups.push(fresh);
+      }
+    });
+  }
+  return groups.sort((a, b) => a.at(-1) - b.at(-1));
+}
+function mergeFileChanges(changes) {
+  const first = changes[0];
+  const last = changes.at(-1);
+  if (changes.length === 1) return first;
+  const total = (pick2) => {
+    const counted = changes.map(pick2).filter((n) => n !== null);
+    return counted.length === 0 ? null : counted.reduce((a, b) => a + b, 0);
+  };
+  return {
+    ...last,
+    // A file created inside the group is an addition of the change, however often it was edited after.
+    status: first.status === "A" && last.status !== "D" ? "A" : last.status,
+    oldPath: first.oldPath,
+    similarity: first.similarity,
+    added: total((c) => c.added),
+    deleted: total((c) => c.deleted),
+    binary: changes.some((c) => c.binary)
+  };
+}
+
+// packages/history/src/imported.ts
+function detectImportedHistory(view, treeFiles, options = {}) {
+  const { share = 0.5, minFiles = 20 } = options;
+  if (treeFiles.length < minFiles) return [];
+  const current = new Set(treeFiles);
+  const found = [];
+  let addedBefore = 0;
+  for (const commit of view.commits) {
+    const atStart = commit.parentCount === 0 || addedBefore < minFiles;
+    addedBefore += commit.changes.filter((c) => c.status === "A").length;
+    if (!atStart || commit.boundary) continue;
+    const kept = new Set(
+      commit.changes.filter((c) => c.status === "A" && current.has(c.fileId)).map((c) => c.fileId)
+    );
+    const ratio = kept.size / treeFiles.length;
+    if (ratio >= share) {
+      found.push({ sha: commit.sha, files: kept.size, share: ratio, committerDate: commit.committerDate });
+    }
+  }
+  return found;
+}
+
+// packages/history/src/trailers.ts
+function hasCodeHealthTrailer(message) {
+  const paragraphs = message.replace(/\r\n/g, "\n").trim().split(/\n[ \t]*\n/);
+  if (paragraphs.length < 2) return false;
+  return paragraphs[paragraphs.length - 1].split("\n").some((line) => /^code-health[ \t]*:/i.test(line));
+}
 
 // packages/history/src/git.ts
 import { spawn } from "node:child_process";
@@ -530,8 +697,244 @@ function runGit(cwd, args2, options = {}) {
     child.stdin.end(options.input ?? "");
   });
 }
+async function gitVersion(cwd) {
+  const out2 = await runGit(cwd, ["--version"]);
+  return out2.trim().replace(/^git version /, "");
+}
+
+// packages/history/src/tree.ts
+async function listTree(repoPath, ref) {
+  const out2 = await runGit(repoPath, ["ls-tree", "-r", "--name-only", "-z", "--full-tree", ref]);
+  return out2.split("\0").filter((p) => p !== "").sort();
+}
+async function readBlobAt(repoPath, ref, path) {
+  try {
+    return await runGit(repoPath, ["cat-file", "blob", `${ref}:${path}`]);
+  } catch {
+    return void 0;
+  }
+}
+function parseBlameIgnoreRevs(text) {
+  const revs = [];
+  for (const line of text.split("\n")) {
+    const token = line.replace(/#.*/, "").trim().split(/\s+/)[0] ?? "";
+    if (/^[0-9a-f]{7,40}$/i.test(token)) revs.push(token.toLowerCase());
+  }
+  return revs;
+}
+async function readBlameIgnoreRevs(repoPath, ref, file) {
+  const text = await readBlobAt(repoPath, ref, file);
+  return text === void 0 ? [] : parseBlameIgnoreRevs(text);
+}
+var isSet = (value) => value === "set" || value === "true";
+async function readPathAttributes(repoPath, ref, paths, treeFiles) {
+  const result = { generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set() };
+  const hasAttributes = treeFiles.some((p) => p === ".gitattributes" || p.endsWith("/.gitattributes"));
+  if (!hasAttributes || paths.length === 0) return result;
+  const input = paths.join("\0") + "\0";
+  const base = ["check-attr", "-z", "--stdin"];
+  const names = ["linguist-generated", "linguist-vendored"];
+  let out2;
+  try {
+    out2 = await runGit(repoPath, [...base, `--source=${ref}`, ...names], { input });
+  } catch {
+    out2 = await runGit(repoPath, [...base, ...names], { input });
+  }
+  const tokens = out2.split("\0");
+  for (let i2 = 0; i2 + 2 < tokens.length; i2 += 3) {
+    const [path, attribute, value] = [tokens[i2], tokens[i2 + 1], tokens[i2 + 2]];
+    if (!isSet(value)) continue;
+    if (attribute === "linguist-generated") result.generated.add(path);
+    else if (attribute === "linguist-vendored") result.vendored.add(path);
+  }
+  return result;
+}
+
+// packages/history/src/noise.ts
+var DEFAULT_LOCKFILES = [
+  "package-lock.json",
+  "npm-shrinkwrap.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+  "bun.lock",
+  "bun.lockb",
+  "Cargo.lock",
+  "Gemfile.lock",
+  "Pipfile.lock",
+  "poetry.lock",
+  "uv.lock",
+  "composer.lock",
+  "go.sum",
+  "packages.lock.json",
+  "gradle.lockfile",
+  "Podfile.lock",
+  "pubspec.lock",
+  "mix.lock",
+  "flake.lock"
+];
+var InvalidPatternError = class extends Error {
+  pattern;
+  constructor(pattern, reason, kind = "bot pattern") {
+    super(`invalid ${kind} "${pattern}": ${reason}`);
+    this.name = "InvalidPatternError";
+    this.pattern = pattern;
+  }
+};
+function compileBotPattern(pattern) {
+  try {
+    return new RegExp(pattern, "i");
+  } catch (error) {
+    throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error));
+  }
+}
+function mergeAcrossCommits(perCommit) {
+  const byFile = /* @__PURE__ */ new Map();
+  for (const files of perCommit) {
+    for (const file of files) {
+      const entries = byFile.get(file.fileId);
+      if (entries) entries.push(file);
+      else byFile.set(file.fileId, [file]);
+    }
+  }
+  return [...byFile.values()].map(mergeFileChanges);
+}
+function compileIssuePattern(pattern) {
+  try {
+    return new RegExp(pattern);
+  } catch (error) {
+    throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error), "issue pattern");
+  }
+}
+var DEFAULT_MAX_CHANGESET_SIZE = 30;
+var isPureRename = (c) => c.status === "R" && c.similarity === 100 && (c.added ?? 0) === 0 && (c.deleted ?? 0) === 0;
+async function filterHistory(repoPath, view, options = {}) {
+  const maxChangesetSize = options.maxChangesetSize ?? DEFAULT_MAX_CHANGESET_SIZE;
+  const lockfileNames = options.lockfiles === false ? [] : options.lockfiles ?? DEFAULT_LOCKFILES;
+  const lockfileSet = new Set(lockfileNames);
+  const useAttributes = options.gitattributes ?? true;
+  const blameFile = options.blameIgnoreRevs === void 0 ? ".git-blame-ignore-revs" : options.blameIgnoreRevs;
+  const botPatterns = options.botPatterns ?? [];
+  const excludeImported = options.excludeImported ?? true;
+  const excludeSuiteCommits = options.excludeSuiteCommits ?? false;
+  const grouping = options.grouping ?? { mode: "off" };
+  const excluded = compileGlobs(options.exclude ?? []);
+  const bots = botPatterns.map(compileBotPattern);
+  const treeFiles = await listTree(repoPath, view.headSha);
+  const imported = detectImportedHistory(view, treeFiles, options.importDetection);
+  const importedShas = new Set(excludeImported ? imported.map((i2) => i2.sha) : []);
+  const ignoredRevs = blameFile === false ? [] : await readBlameIgnoreRevs(repoPath, view.headSha, blameFile);
+  const attributes = useAttributes ? await readPathAttributes(
+    repoPath,
+    view.headSha,
+    [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort(),
+    treeFiles
+  ) : { generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set() };
+  const dropped = {
+    outsideWindow: 0,
+    shallowBoundaryCommits: 0,
+    importedCommits: 0,
+    blameIgnoredCommits: 0,
+    botCommits: 0,
+    suiteCommits: 0,
+    pureRenames: 0,
+    excludedByGlob: 0,
+    lockfiles: 0,
+    generated: 0,
+    vendored: 0,
+    emptyAfterFiltering: 0
+  };
+  const changes = [];
+  const commitDropped = (commit) => {
+    if (options.since !== void 0 && commit.committerDate < options.since) return countOut("outsideWindow");
+    if (options.until !== void 0 && commit.committerDate >= options.until) return countOut("outsideWindow");
+    if (commit.boundary) return countOut("shallowBoundaryCommits");
+    if (importedShas.has(commit.sha)) return countOut("importedCommits");
+    if (ignoredRevs.some((rev) => commit.sha.startsWith(rev))) return countOut("blameIgnoredCommits");
+    const author = `${commit.mappedName} <${commit.mappedEmail}>`;
+    if (bots.some((re) => re.test(author))) return countOut("botCommits");
+    if (options.nonPerson?.isNonPerson(commit.mappedName, commit.mappedEmail) || options.nonPerson?.isNonPerson(commit.authorName, commit.authorEmail)) {
+      return countOut("botCommits");
+    }
+    if (excludeSuiteCommits && hasCodeHealthTrailer(commit.message)) return countOut("suiteCommits");
+    return false;
+  };
+  function countOut(key) {
+    dropped[key]++;
+    return true;
+  }
+  const survivors = [];
+  for (const commit of view.commits) {
+    if (commitDropped(commit)) continue;
+    const files = [];
+    for (const change of commit.changes) {
+      if (isPureRename(change)) {
+        dropped.pureRenames++;
+      } else if (excluded(change.path)) {
+        dropped.excludedByGlob++;
+      } else if (lockfileSet.has(change.path.slice(change.path.lastIndexOf("/") + 1))) {
+        dropped.lockfiles++;
+      } else if (attributes.generated.has(change.path)) {
+        dropped.generated++;
+      } else if (attributes.vendored.has(change.path)) {
+        dropped.vendored++;
+      } else {
+        files.push(change);
+      }
+    }
+    if (files.length === 0) {
+      dropped.emptyAfterFiltering++;
+      continue;
+    }
+    survivors.push({ commit, files });
+  }
+  const groups = groupCommits(
+    survivors.map(({ commit }) => ({ message: commit.message, author: commit.mappedEmail, date: commit.committerDate })),
+    grouping,
+    compileIssuePattern
+  );
+  for (const group of groups) {
+    const members = group.map((index) => survivors[index]);
+    const files = members.length === 1 ? members[0].files : mergeAcrossCommits(members.map((m) => m.files));
+    changes.push({
+      id: members[0].commit.sha,
+      shas: members.map(({ commit }) => commit.sha),
+      committerDate: Math.max(...members.map(({ commit }) => commit.committerDate)),
+      authors: [...new Set(members.map(({ commit }) => commit.mappedEmail))],
+      files,
+      oversized: files.length > maxChangesetSize,
+      suiteCommit: members.some(({ commit }) => hasCodeHealthTrailer(commit.message))
+    });
+  }
+  return {
+    changes,
+    imported,
+    filtersApplied: {
+      excludeGlobs: [...options.exclude ?? []],
+      lockfiles: lockfileNames.length > 0,
+      gitattributes: useAttributes,
+      blameIgnoreRevs: blameFile === false ? null : blameFile,
+      botPatterns: [...botPatterns],
+      maxChangesetSize,
+      excludeImported,
+      excludeSuiteCommits,
+      grouping: {
+        mode: grouping.mode,
+        issuePattern: grouping.mode === "issue-key" ? grouping.pattern : null,
+        windowSeconds: grouping.mode === "author-window" ? grouping.windowSeconds : grouping.mode === "issue-key" ? ISSUE_KEY_WINDOW_SECONDS : null,
+        mergedCommits: survivors.length - changes.length
+      },
+      dropped,
+      oversizedChanges: changes.filter((c) => c.oversized).length
+    }
+  };
+}
+
+// packages/history/src/read.ts
+import { existsSync as existsSync5 } from "node:fs";
 
 // packages/history/src/cache-location.ts
+import { existsSync as existsSync2, mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, join as join2 } from "node:path";
 async function locateCache(repoPath) {
   const out2 = await runGit(repoPath, [
     "rev-parse",
@@ -560,9 +963,760 @@ function ensureSelfIgnoring(directory) {
   if (!existsSync2(ignore)) writeFileSync(ignore, "*\n");
 }
 
+// packages/history/src/refresh.ts
+import { existsSync as existsSync4, readFileSync as readFileSync3 } from "node:fs";
+import { join as join3 } from "node:path";
+
+// packages/history/src/lock.ts
+import { randomUUID } from "node:crypto";
+import { closeSync, openSync, readFileSync as readFileSync2, renameSync, rmSync, statSync, utimesSync, writeSync, linkSync } from "node:fs";
+import { hostname } from "node:os";
+import { setTimeout as sleep } from "node:timers/promises";
+var LockTimeoutError = class extends Error {
+  constructor(path) {
+    super(`Timed out waiting for lock ${path}`);
+    this.name = "LockTimeoutError";
+  }
+};
+function readRaw(path) {
+  try {
+    return readFileSync2(path, "utf8");
+  } catch {
+    return void 0;
+  }
+}
+function fileAge(path) {
+  try {
+    return Date.now() - statSync(path).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+function ownerIsGone(path, raw, staleMs, unreadableMs) {
+  let owner;
+  try {
+    owner = JSON.parse(raw);
+    if (typeof owner.pid !== "number" || typeof owner.host !== "string") throw new Error("not a lock");
+  } catch {
+    return fileAge(path) > unreadableMs;
+  }
+  if (owner.host === hostname()) {
+    try {
+      process.kill(owner.pid, 0);
+      return false;
+    } catch (error) {
+      return error.code === "ESRCH";
+    }
+  }
+  return fileAge(path) > staleMs;
+}
+function tryCreate(path, token) {
+  try {
+    const fd = openSync(path, "wx");
+    const owner = { token, pid: process.pid, host: hostname(), time: Date.now() };
+    writeSync(fd, JSON.stringify(owner));
+    closeSync(fd);
+    return true;
+  } catch (error) {
+    if (error.code === "EEXIST") return false;
+    throw error;
+  }
+}
+function steal(path, judged) {
+  const aside = `${path}.stale-${process.pid}-${randomUUID()}`;
+  try {
+    renameSync(path, aside);
+  } catch {
+    return;
+  }
+  if (readRaw(aside) !== judged) {
+    try {
+      linkSync(aside, path);
+    } catch {
+    }
+  }
+  rmSync(aside, { force: true });
+}
+async function withLock(path, fn, options = {}) {
+  const { timeoutMs = 12e4, staleMs = 6e5, unreadableMs = 5e3, pollMs = 25 } = options;
+  const deadline = Date.now() + timeoutMs;
+  const token = randomUUID();
+  while (!tryCreate(path, token)) {
+    const raw = readRaw(path);
+    if (raw !== void 0 && ownerIsGone(path, raw, staleMs, unreadableMs)) {
+      steal(path, raw);
+      continue;
+    }
+    if (Date.now() > deadline) throw new LockTimeoutError(path);
+    await sleep(pollMs);
+  }
+  const heartbeat = setInterval(() => {
+    try {
+      const now = /* @__PURE__ */ new Date();
+      utimesSync(path, now, now);
+    } catch {
+    }
+  }, Math.max(1e3, Math.floor(staleMs / 4)));
+  heartbeat.unref();
+  try {
+    return await fn();
+  } finally {
+    clearInterval(heartbeat);
+    const raw = readRaw(path);
+    if (raw !== void 0 && safeToken(raw) === token) rmSync(path, { force: true });
+  }
+}
+function safeToken(raw) {
+  try {
+    return JSON.parse(raw).token;
+  } catch {
+    return void 0;
+  }
+}
+
+// packages/history/src/log-parser.ts
+var RS = "@@code-health:record:8c1f6e2a-5b7d-4a90-b3e1@@";
+var US = "";
+var FORMAT = ["%H", "%P", "%an", "%ae", "%at", "%ct", "%B"].join("%x1f");
+function logArgs(settings) {
+  return [
+    "-c",
+    `diff.renameLimit=${settings.renameLimit}`,
+    "-c",
+    "core.quotepath=off",
+    "-c",
+    "log.showRoot=true",
+    "-c",
+    "diff.renames=true",
+    "-c",
+    "diff.context=3",
+    "-c",
+    "diff.noprefix=false",
+    "log",
+    "--stdin",
+    "--no-walk=unsorted",
+    `-M${settings.similarity}%`,
+    "--diff-algorithm=myers",
+    "--no-indent-heuristic",
+    "--no-color",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--no-show-signature",
+    "--raw",
+    "--numstat",
+    "--no-abbrev",
+    "-z",
+    `--format=${RS}${FORMAT}`
+  ];
+}
+var RAW = /^:(\d{6}) (\d{6}) ([0-9a-f]+) ([0-9a-f]+) ([A-Z])(\d*)$/;
+var NUMSTAT = /^(\d+|-)\t(\d+|-)\t(.*)$/s;
+var NULL_SHA = /^0+$/;
+function parseLog(output) {
+  const commits = [];
+  for (const record of output.split(RS)) {
+    if (record === "") continue;
+    commits.push(parseRecord(record));
+  }
+  return commits;
+}
+function parseRecord(record) {
+  const tokens = record.split("\0");
+  const header = tokens.shift() ?? "";
+  const fields = header.split(US);
+  const [sha, parents, authorName, authorEmail, authorDate, committerDate] = fields;
+  const message = fields.slice(6).join(US).replace(/\n+$/, "");
+  if (sha === void 0 || parents === void 0 || authorDate === void 0 || committerDate === void 0) {
+    throw new Error(`Malformed git log record: ${JSON.stringify(header)}`);
+  }
+  if (tokens[0]?.startsWith("\n")) tokens[0] = tokens[0].slice(1);
+  while (tokens.length > 0 && tokens[tokens.length - 1] === "") tokens.pop();
+  const raws = [];
+  let i2 = 0;
+  while (i2 < tokens.length) {
+    const match = RAW.exec(tokens[i2]);
+    if (!match) break;
+    const [, , , , newBlob, letter, score] = match;
+    i2++;
+    const status = letter === "R" || letter === "C" ? "R" : letter;
+    let path;
+    let oldPath = null;
+    if (letter === "R" || letter === "C") {
+      oldPath = tokens[i2++];
+      path = tokens[i2++];
+    } else {
+      path = tokens[i2++];
+    }
+    raws.push({
+      status,
+      similarity: status === "R" ? Number(score) : null,
+      path,
+      oldPath,
+      blob: newBlob === void 0 || NULL_SHA.test(newBlob) ? null : newBlob
+    });
+  }
+  const changes = [];
+  for (const raw of raws) {
+    const match = NUMSTAT.exec(tokens[i2] ?? "");
+    if (!match) throw new Error(`Missing numstat for ${raw.path} in commit ${sha}`);
+    i2++;
+    if (match[3] === "") i2 += 2;
+    const binary2 = match[1] === "-";
+    changes.push({
+      ...raw,
+      added: binary2 ? null : Number(match[1]),
+      deleted: binary2 ? null : Number(match[2]),
+      binary: binary2
+    });
+  }
+  return {
+    sha,
+    parents: parents === "" ? [] : parents.split(" "),
+    authorName: authorName ?? "",
+    authorEmail: authorEmail ?? "",
+    authorDate: Number(authorDate),
+    committerDate: Number(committerDate),
+    message,
+    changes
+  };
+}
+
+// packages/history/src/store.ts
+import { existsSync as existsSync3, rmSync as rmSync2 } from "node:fs";
+
+// packages/history/src/sqlite.ts
+var SqliteUnavailableError = class extends Error {
+  constructor() {
+    super(`node:sqlite is not available in Node ${process.versions.node}; Node 22.13 or newer is required`);
+    this.name = "SqliteUnavailableError";
+  }
+};
+var suppressed = false;
+function suppressSqliteWarning() {
+  if (suppressed) return;
+  suppressed = true;
+  const emitWarning = process.emitWarning.bind(process);
+  process.emitWarning = ((warning, ...rest) => {
+    const text = typeof warning === "string" ? warning : warning?.message ?? "";
+    const type = typeof rest[0] === "string" ? rest[0] : warning?.name;
+    if (type === "ExperimentalWarning" && /SQLite/i.test(text)) return;
+    emitWarning(warning, ...rest);
+  });
+}
+var module2;
+function loadSqlite() {
+  if (module2 === void 0) {
+    suppressSqliteWarning();
+    const loaded2 = process.getBuiltinModule?.("node:sqlite");
+    if (loaded2 === void 0) throw new SqliteUnavailableError();
+    module2 = loaded2;
+  }
+  return module2;
+}
+function createDatabase(path, options) {
+  return new (loadSqlite()).DatabaseSync(path, options);
+}
+
+// packages/history/src/store.ts
+var SCHEMA_VERSION = 2;
+var DDL = `
+CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID;
+CREATE TABLE commits (
+  sha TEXT PRIMARY KEY,
+  author_name TEXT NOT NULL,
+  author_email TEXT NOT NULL,
+  author_date INTEGER NOT NULL,
+  committer_date INTEGER NOT NULL,
+  message TEXT NOT NULL,
+  parent_count INTEGER NOT NULL,
+  boundary INTEGER NOT NULL DEFAULT 0
+) WITHOUT ROWID;
+CREATE TABLE commit_parents (
+  sha TEXT NOT NULL,
+  ord INTEGER NOT NULL,
+  parent TEXT NOT NULL,
+  PRIMARY KEY (sha, ord)
+) WITHOUT ROWID;
+CREATE TABLE changes (
+  sha TEXT NOT NULL,
+  idx INTEGER NOT NULL,
+  path TEXT NOT NULL,
+  old_path TEXT,
+  status TEXT NOT NULL,
+  similarity INTEGER,
+  added INTEGER,
+  deleted INTEGER,
+  binary INTEGER NOT NULL,
+  blob TEXT,
+  PRIMARY KEY (sha, idx)
+) WITHOUT ROWID;
+`;
+function removeDatabase(path) {
+  for (const suffix of ["", "-wal", "-shm", "-journal"]) rmSync2(path + suffix, { force: true });
+}
+function configure(db) {
+  db.exec("PRAGMA journal_mode = WAL");
+  db.exec("PRAGMA synchronous = NORMAL");
+}
+function readMeta(db, key) {
+  const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(key);
+  return row?.value;
+}
+function compatible(db, settings) {
+  const version = db.prepare("PRAGMA user_version").get().user_version;
+  if (version !== SCHEMA_VERSION) return false;
+  return readMeta(db, "rename_similarity") === String(settings.similarity) && readMeta(db, "rename_limit") === String(settings.renameLimit);
+}
+function create(path, settings) {
+  const db = createDatabase(path, { timeout: 3e4 });
+  configure(db);
+  db.exec(DDL);
+  db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+  const put = db.prepare("INSERT INTO meta (key, value) VALUES (?, ?)");
+  put.run("rename_similarity", String(settings.similarity));
+  put.run("rename_limit", String(settings.renameLimit));
+  return db;
+}
+function openForWrite(path, settings) {
+  loadSqlite();
+  if (existsSync3(path)) {
+    try {
+      const db = createDatabase(path, { timeout: 3e4 });
+      configure(db);
+      if (compatible(db, settings)) return { db, rebuilt: false };
+      db.close();
+    } catch {
+    }
+    removeDatabase(path);
+    return { db: create(path, settings), rebuilt: true };
+  }
+  return { db: create(path, settings), rebuilt: false };
+}
+function openForRead(path) {
+  loadSqlite();
+  if (!existsSync3(path)) return void 0;
+  try {
+    const db = createDatabase(path, { readOnly: true, timeout: 3e4 });
+    const version = db.prepare("PRAGMA user_version").get().user_version;
+    if (version === SCHEMA_VERSION) return db;
+    db.close();
+  } catch {
+  }
+  return void 0;
+}
+function setMeta(db, key, value) {
+  db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(
+    key,
+    value
+  );
+}
+function storedShas(db) {
+  const rows = db.prepare("SELECT sha FROM commits").all();
+  return new Set(rows.map((r) => r.sha));
+}
+function storedBoundaryShas(db) {
+  const rows = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
+  return rows.map((r) => r.sha);
+}
+function deleteCommits(db, shas) {
+  const statements = ["commits", "commit_parents", "changes"].map((t) => db.prepare(`DELETE FROM ${t} WHERE sha = ?`));
+  db.exec("BEGIN");
+  try {
+    for (const sha of shas) for (const s of statements) s.run(sha);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+function insertCommits(db, commits, boundary) {
+  const insertCommit = db.prepare(
+    `INSERT OR IGNORE INTO commits
+     (sha, author_name, author_email, author_date, committer_date, message, parent_count, boundary)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const insertParent = db.prepare("INSERT OR IGNORE INTO commit_parents (sha, ord, parent) VALUES (?, ?, ?)");
+  const insertChange = db.prepare(
+    `INSERT OR IGNORE INTO changes
+     (sha, idx, path, old_path, status, similarity, added, deleted, binary, blob)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  db.exec("BEGIN");
+  try {
+    for (const c of commits) {
+      insertCommit.run(
+        c.sha,
+        c.authorName,
+        c.authorEmail,
+        c.authorDate,
+        c.committerDate,
+        c.message,
+        c.parents.length,
+        boundary.has(c.sha) ? 1 : 0
+      );
+      c.parents.forEach((parent, ord) => insertParent.run(c.sha, ord, parent));
+      c.changes.forEach(
+        (ch, idx) => insertChange.run(c.sha, idx, ch.path, ch.oldPath, ch.status, ch.similarity, ch.added, ch.deleted, ch.binary ? 1 : 0, ch.blob)
+      );
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+// packages/history/src/refresh.ts
+var DEFAULT_SIMILARITY = 50;
+var DEFAULT_RENAME_LIMIT = 1e3;
+async function readShallowInfo(repoPath) {
+  const out2 = (await runGit(repoPath, ["rev-parse", "--is-shallow-repository", "--path-format=absolute", "--git-common-dir"])).trim().split("\n");
+  const isShallow = out2[0] === "true";
+  if (!isShallow) return { isShallow: false, boundary: [] };
+  const file = join3(out2[1] ?? "", "shallow");
+  const boundary = existsSync4(file) ? readFileSync3(file, "utf8").split("\n").map((l) => l.trim()).filter((l) => l !== "") : [];
+  return { isShallow, boundary: boundary.sort() };
+}
+var RefNotFoundError = class extends Error {
+  ref;
+  constructor(ref) {
+    super(`"${ref}" does not name a commit in this repository`);
+    this.name = "RefNotFoundError";
+    this.ref = ref;
+  }
+};
+async function resolveRef(repoPath, ref) {
+  try {
+    return (await runGit(repoPath, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`])).trim();
+  } catch (error) {
+    if (error instanceof GitError && error.code === 1) throw new RefNotFoundError(ref);
+    throw error;
+  }
+}
+async function refresh(repoPath, options = {}) {
+  const ref = options.ref ?? "HEAD";
+  const settings = {
+    similarity: options.similarity ?? DEFAULT_SIMILARITY,
+    renameLimit: options.renameLimit ?? DEFAULT_RENAME_LIMIT
+  };
+  const batchSize2 = options.batchSize ?? 2e3;
+  const location = await locateCache(repoPath);
+  const headSha = await resolveRef(location.repoRoot, ref);
+  ensureCacheDir(location);
+  return withLock(
+    location.lockPath,
+    async () => {
+      const shallow = await readShallowInfo(location.repoRoot);
+      const version = await gitVersion(location.repoRoot);
+      const { db, rebuilt } = openForWrite(location.dbPath, settings);
+      try {
+        const boundary = new Set(shallow.boundary);
+        const stale = storedBoundaryShas(db).filter((sha) => !boundary.has(sha));
+        if (stale.length > 0) deleteCommits(db, stale);
+        const listing = await runGit(location.repoRoot, ["rev-list", "--reverse", headSha]);
+        const reachable = listing.split("\n").filter((l) => l !== "");
+        const stored = storedShas(db);
+        const missing = reachable.filter((sha) => !stored.has(sha));
+        for (let i2 = 0; i2 < missing.length; i2 += batchSize2) {
+          const batch = missing.slice(i2, i2 + batchSize2);
+          const out2 = await runGit(location.repoRoot, logArgs(settings), { input: batch.join("\n") + "\n" });
+          insertCommits(db, parseLog(out2), boundary);
+        }
+        setMeta(db, "git_version", version);
+        return { headSha, added: missing.length, reachable: reachable.length, rebuilt, shallow, gitVersion: version };
+      } finally {
+        db.close();
+      }
+    },
+    options.lock
+  );
+}
+
+// packages/history/src/renames.ts
+var RenameMap = class {
+  edges = /* @__PURE__ */ new Map();
+  deletions = /* @__PURE__ */ new Map();
+  /** Records `from` -> `to` made by the commit at `position`. Call in position order. */
+  add(from, to, position) {
+    const list = this.edges.get(from);
+    if (list) list.push({ position, to });
+    else this.edges.set(from, [{ position, to }]);
+  }
+  /** Records that the file at `path` was deleted by the commit at `position`. Call in position order. */
+  delete(path, position) {
+    const list = this.deletions.get(path);
+    if (list) list.push(position);
+    else this.deletions.set(path, [position]);
+  }
+  get size() {
+    return this.edges.size;
+  }
+  /** The stable identity of `path` as touched by the commit at `position`. */
+  resolve(path, position) {
+    let current = path;
+    let at = position;
+    for (; ; ) {
+      const next = this.edges.get(current)?.find((edge) => edge.position > at);
+      if (!next) return current;
+      const deletedAt = this.deletions.get(current)?.find((position2) => position2 >= at);
+      if (deletedAt !== void 0 && deletedAt <= next.position) return current;
+      current = next.to;
+      at = next.position;
+    }
+  }
+};
+
+// packages/history/src/read.ts
+var NoCacheError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "NoCacheError";
+  }
+};
+var REACH = (firstParent) => `
+  WITH RECURSIVE reach(sha) AS (
+    SELECT ?
+    UNION
+    SELECT p.parent FROM reach r JOIN commit_parents p ON p.sha = r.sha ${firstParent ? "AND p.ord = 0" : ""}
+  )`;
+async function readHistory(repoPath, options = {}) {
+  const ref = options.ref ?? "HEAD";
+  const firstParent = options.firstParent ?? false;
+  const location = await locateCache(repoPath);
+  const headSha = await resolveRef(location.repoRoot, ref);
+  const db = openForRead(location.dbPath);
+  if (!db) throw new NoCacheError("No history cache. Run refresh first.");
+  try {
+    const view = select(db, ref, headSha, firstParent);
+    await applyMailmap(location.repoRoot, view, options.mailmapFile);
+    return view;
+  } finally {
+    db.close();
+  }
+}
+async function applyMailmap(repoRoot, view, mailmapFile) {
+  const file = mailmapFile !== void 0 && existsSync5(mailmapFile) ? mailmapFile : "";
+  let blob = "";
+  try {
+    await runGit(repoRoot, ["cat-file", "-e", `${view.headSha}:.mailmap`]);
+    blob = `${view.headSha}:.mailmap`;
+  } catch {
+  }
+  if (file === "" && blob === "") return;
+  const identities = [...new Set(view.commits.map((c) => `${c.authorName} <${c.authorEmail}>`))].sort();
+  if (identities.length === 0) return;
+  const out2 = await runGit(
+    repoRoot,
+    ["-c", `mailmap.file=${file}`, "-c", `mailmap.blob=${blob}`, "check-mailmap", "--stdin"],
+    { input: identities.join("\n") + "\n" }
+  );
+  const lines = out2.split("\n");
+  const mapped = new Map(identities.map((identity, i2) => [identity, lines[i2] ?? identity]));
+  for (const commit of view.commits) {
+    const line = mapped.get(`${commit.authorName} <${commit.authorEmail}>`) ?? "";
+    const open = line.lastIndexOf("<");
+    if (open === -1) continue;
+    commit.mappedName = line.slice(0, open).trim();
+    commit.mappedEmail = line.slice(open + 1, line.lastIndexOf(">"));
+  }
+}
+function select(db, ref, headSha, firstParent) {
+  const head = db.prepare("SELECT committer_date FROM commits WHERE sha = ?").get(headSha);
+  if (!head) throw new NoCacheError(`Commit ${headSha} is not in the history cache. Run refresh first.`);
+  const rows = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
+  const changeRows = db.prepare(
+    `${REACH(firstParent)}
+       SELECT ch.* FROM changes ch JOIN reach ON reach.sha = ch.sha ORDER BY ch.sha, ch.idx`
+  ).all(headSha);
+  const parentRows = db.prepare(
+    `${REACH(firstParent)}
+       SELECT p.sha, p.parent FROM commit_parents p JOIN reach ON reach.sha = p.sha
+       ${firstParent ? "WHERE p.ord = 0" : ""} ORDER BY p.sha, p.ord`
+  ).all(headSha);
+  const parents = /* @__PURE__ */ new Map();
+  for (const { sha, parent } of parentRows) {
+    const list = parents.get(sha);
+    if (list) list.push(parent);
+    else parents.set(sha, [parent]);
+  }
+  const changesBySha = /* @__PURE__ */ new Map();
+  for (const row of changeRows) {
+    const list = changesBySha.get(row.sha);
+    if (list) list.push(row);
+    else changesBySha.set(row.sha, [row]);
+  }
+  const ordered = topologicalOrder(rows, parents);
+  const renames = new RenameMap();
+  const commits = [];
+  for (const row of ordered) {
+    const rawChanges = changesBySha.get(row.sha) ?? [];
+    const isMerge = row.parent_count > 1;
+    if (isMerge) continue;
+    const position = commits.length;
+    for (const ch of rawChanges) {
+      if (ch.status === "R" && ch.old_path) renames.add(ch.old_path, ch.path, position);
+      else if (ch.status === "D") renames.delete(ch.path, position);
+    }
+    commits.push({
+      sha: row.sha,
+      position,
+      authorName: row.author_name,
+      authorEmail: row.author_email,
+      mappedName: row.author_name,
+      mappedEmail: row.author_email,
+      authorDate: row.author_date,
+      committerDate: row.committer_date,
+      message: row.message,
+      parentCount: row.parent_count,
+      boundary: row.boundary === 1,
+      changes: rawChanges.map((ch) => ({
+        path: ch.path,
+        oldPath: ch.old_path,
+        status: ch.status,
+        similarity: ch.similarity,
+        added: ch.added,
+        deleted: ch.deleted,
+        binary: ch.binary === 1,
+        blob: ch.blob,
+        fileId: ""
+      }))
+    });
+  }
+  for (const commit of commits) {
+    for (const ch of commit.changes) ch.fileId = renames.resolve(ch.path, commit.position);
+  }
+  return { ref, headSha, headDate: head.committer_date, firstParent, commits, renames };
+}
+function topologicalOrder(rows, parents) {
+  const bySha = new Map(rows.map((r) => [r.sha, r]));
+  const sorted = [...rows].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
+  const done = /* @__PURE__ */ new Set();
+  const out2 = [];
+  for (const start2 of sorted) {
+    if (done.has(start2.sha)) continue;
+    const stack = [{ row: start2, next: 0 }];
+    done.add(start2.sha);
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1];
+      const ps = parents.get(frame.row.sha) ?? [];
+      let descended = false;
+      while (frame.next < ps.length) {
+        const parent = bySha.get(ps[frame.next++]);
+        if (parent && !done.has(parent.sha)) {
+          done.add(parent.sha);
+          stack.push({ row: parent, next: 0 });
+          descended = true;
+          break;
+        }
+      }
+      if (!descended) {
+        out2.push(frame.row);
+        stack.pop();
+      }
+    }
+  }
+  return out2;
+}
+
+// packages/history/src/evidence.ts
+var DEFAULT_EVIDENCE_THRESHOLDS = {
+  strong: { months: 24, logicalChanges: 300, contributors: 5 },
+  moderate: { months: 6, logicalChanges: 50, contributors: 2 }
+};
+var DEFAULT_WINDOW_MONTHS = 12;
+var SECONDS_PER_MONTH = 30.4375 * 86400;
+function monthsBefore(anchor, months) {
+  const date = new Date(anchor * 1e3);
+  const day = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() - months);
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(day, lastDay));
+  return Math.floor(date.getTime() / 1e3);
+}
+function median(values) {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+function commitSize(changes, minChanges) {
+  const half = changes.length >> 1;
+  const earlier = changes.slice(0, half).map((c) => c.files.length);
+  const later = changes.slice(half).map((c) => c.files.length);
+  const earlierMedian = median(earlier);
+  const laterMedian = median(later);
+  const enough = earlier.length >= minChanges && later.length >= minChanges;
+  const shifted = enough && earlierMedian > 0 && (laterMedian >= earlierMedian * 2 || laterMedian <= earlierMedian / 2);
+  return { earlierMedian, laterMedian, shifted };
+}
+var meets = (t, months, changes, contributors) => months >= t.months && changes >= t.logicalChanges && contributors >= t.contributors;
+function computeEvidence(view, changes, shallow, imported, options = {}) {
+  const windowMonths = options.windowMonths ?? DEFAULT_WINDOW_MONTHS;
+  const thresholds = options.thresholds ?? DEFAULT_EVIDENCE_THRESHOLDS;
+  const until = view.headDate;
+  const since = monthsBefore(until, windowMonths);
+  const afterImport = imported.reduce((max, i2) => Math.max(max, i2.committerDate), -Infinity);
+  const first = changes.filter((c) => c.committerDate >= afterImport).reduce((min, c) => min === null || c.committerDate < min ? c.committerDate : min, null);
+  const usableHistoryMonths = first === null ? 0 : Math.round((until - first) / SECONDS_PER_MONTH * 10) / 10;
+  const inWindow = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
+  const contributors = new Set(inWindow.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
+  const grade = meets(thresholds.strong, usableHistoryMonths, inWindow.length, contributors.size) ? "strong" : meets(thresholds.moderate, usableHistoryMonths, inWindow.length, contributors.size) ? "moderate" : "weak";
+  const available = view.commits.reduce(
+    (min, c) => min === null || c.committerDate < min ? c.committerDate : min,
+    null
+  );
+  return {
+    usableHistoryMonths,
+    logicalChangesInWindow: inWindow.length,
+    activeContributors: contributors.size,
+    grade,
+    window: { months: windowMonths, since, until },
+    truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
+    importedHistory: [...imported],
+    commitSize: commitSize(changes, options.minChangesForShift ?? 20),
+    thresholds
+  };
+}
+async function analyseHistory(repoPath, options = {}) {
+  const view = await readHistory(repoPath, options);
+  const filtered = await filterHistory(repoPath, view, options.noise);
+  const windowed = options.noise?.since !== void 0 || options.noise?.until !== void 0;
+  const whole = windowed ? await filterHistory(repoPath, view, { ...options.noise, since: void 0, until: void 0 }) : filtered;
+  const shallow = await readShallowInfo(repoPath);
+  const evidence = computeEvidence(view, whole.changes, shallow, whole.imported, options.evidence);
+  return { view, filtered, filtersApplied: filtered.filtersApplied, evidence };
+}
+
+// packages/complexity/src/change-weights.ts
+async function readChangeWeights(context, settings) {
+  const { root } = context.repo;
+  try {
+    const shallow = await readShallowInfo(root);
+    if (shallow.isShallow) return void 0;
+    await refresh(root, { ref: "HEAD" });
+    const analysis = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...context.config.effective.exclude] } });
+    const until = analysis.view.headDate;
+    const since = monthsBefore(until, settings.windowMonths);
+    const revisions = /* @__PURE__ */ new Map();
+    for (const change of analysis.filtered.changes) {
+      if (change.committerDate < since || change.committerDate > until) continue;
+      for (const file of change.files) revisions.set(file.fileId, (revisions.get(file.fileId) ?? 0) + 1);
+    }
+    const paths = [...revisions.keys()].sort();
+    const percentiles = midRankPercentiles(paths.map((path) => revisions.get(path)));
+    const weights = new Map(paths.map((path, index) => [path, percentiles[index]]));
+    return { window: { months: settings.windowMonths, since, until }, revisions, weights };
+  } catch {
+    return void 0;
+  }
+}
+
 // packages/history/src/reports.ts
+import { mkdirSync as mkdirSync2, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join4 } from "node:path";
 function reportPath(root, tool, command6) {
-  return join3(root, ".cache", "code-health", "reports", `${tool}.${command6}.json`);
+  return join4(root, ".cache", "code-health", "reports", `${tool}.${command6}.json`);
 }
 async function writeReport(context, identity, command6, output, analysedHead) {
   if (context.repo.dirty || analysedHead !== context.repo.head) return false;
@@ -580,18 +1734,18 @@ async function writeReport(context, identity, command6, output, analysedHead) {
   });
   const file = reportPath(context.repo.root, identity.tool, command6);
   const location = await locateCache(context.repo.root);
-  ensureCacheDir({ ...location, cacheDir: join3(context.repo.root, ".cache", "code-health") });
-  mkdirSync2(join3(file, ".."), { recursive: true });
+  ensureCacheDir({ ...location, cacheDir: join4(context.repo.root, ".cache", "code-health") });
+  mkdirSync2(join4(file, ".."), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
   writeFileSync2(temporary, serialise(document));
-  renameSync(temporary, file);
+  renameSync2(temporary, file);
   return true;
 }
 
 // packages/parse/src/parse-cache.ts
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname as dirname2, join as join4 } from "node:path";
+import { dirname as dirname2, join as join5 } from "node:path";
 
 // packages/parse/src/unit-metrics.ts
 var functionLike = /* @__PURE__ */ new Set([
@@ -1166,10 +2320,10 @@ var Extractor = class {
         this.member(node, context, "reference");
         return;
       case "nested_type_identifier": {
-        const module2 = node.childForFieldName("module");
+        const module3 = node.childForFieldName("module");
         const name7 = node.childForFieldName("name");
-        if (module2?.type === "identifier" && name7) this.reference(module2, context, "reference", name7.text);
-        else if (module2) this.visit(module2, context, node, "module");
+        if (module3?.type === "identifier" && name7) this.reference(module3, context, "reference", name7.text);
+        else if (module3) this.visit(module3, context, node, "module");
         return;
       }
       case "jsx_opening_element":
@@ -1592,7 +2746,7 @@ var ParseCache = class _ParseCache {
   static async forRepository(repoPath) {
     const location = await locateCache(repoPath);
     ensureCacheDir(location);
-    return new _ParseCache(join4(location.cacheDir, "parse"));
+    return new _ParseCache(join5(location.cacheDir, "parse"));
   }
   async get(blobSha, grammarVersion) {
     try {
@@ -1604,7 +2758,7 @@ var ParseCache = class _ParseCache {
   async set(blobSha, grammarVersion, facts) {
     const path = this.entryPath(blobSha, grammarVersion);
     await mkdir(dirname2(path), { recursive: true });
-    const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+    const temporary = `${path}.${process.pid}.${randomUUID2()}.tmp`;
     try {
       await writeFile(temporary, JSON.stringify(facts));
       await rename(temporary, path);
@@ -1615,15 +2769,15 @@ var ParseCache = class _ParseCache {
   }
   /** The extractor version is part of the key, so changed extraction rules never read old facts. */
   entryPath(blobSha, grammarVersion) {
-    return join4(this.directory, `${grammarVersion}.extract-${extractorVersion}`, blobSha.slice(0, 2), `${blobSha}.json`);
+    return join5(this.directory, `${grammarVersion}.extract-${extractorVersion}`, blobSha.slice(0, 2), `${blobSha}.json`);
   }
 };
 
 // packages/parse/src/source-tree.ts
 import { spawn as spawn2 } from "node:child_process";
 import { createHash as createHash2 } from "node:crypto";
-import { lstatSync, readdirSync, readFileSync as readFileSync2 } from "node:fs";
-import { join as join5 } from "node:path";
+import { lstatSync, readdirSync, readFileSync as readFileSync4 } from "node:fs";
+import { join as join6 } from "node:path";
 function gitBlobSha(content) {
   return createHash2("sha1").update(`blob ${content.length}\0`).update(content).digest("hex");
 }
@@ -1638,13 +2792,13 @@ async function treeFromWorkingTree(repoPath) {
     if (path === "" || seen.has(path)) continue;
     seen.add(path);
     try {
-      if (!lstatSync(join5(repoPath, path)).isFile()) continue;
-      entries.push([path, gitBlobSha(readFileSync2(join5(repoPath, path)))]);
+      if (!lstatSync(join6(repoPath, path)).isFile()) continue;
+      entries.push([path, gitBlobSha(readFileSync4(join6(repoPath, path)))]);
     } catch {
     }
   }
   const files = sortedMap(entries);
-  const read = async (path) => files.has(path) ? readFileSync2(join5(repoPath, path), "utf8") : void 0;
+  const read = async (path) => files.has(path) ? readFileSync4(join6(repoPath, path), "utf8") : void 0;
   return {
     files,
     read,
@@ -1767,81 +2921,6 @@ function pathSelector(selected) {
   return (path) => selected.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
-// packages/history/src/glob.ts
-function escape(ch) {
-  return /[.+^${}()|[\]\\]/.test(ch) ? `\\${ch}` : ch;
-}
-function hasClosingBrace(pattern, start2) {
-  let depth = 0;
-  for (let i2 = start2; i2 < pattern.length; i2++) {
-    if (pattern[i2] === "{") depth++;
-    else if (pattern[i2] === "}" && --depth === 0) return true;
-  }
-  return false;
-}
-function toRegExp(pattern) {
-  let out2 = "";
-  let braces = 0;
-  for (let i2 = 0; i2 < pattern.length; i2++) {
-    const ch = pattern[i2];
-    if (ch === "*") {
-      if (pattern[i2 + 1] === "*") {
-        i2++;
-        if (pattern[i2 + 1] === "/") {
-          i2++;
-          out2 += "(?:.*/)?";
-        } else {
-          out2 += ".*";
-        }
-      } else {
-        out2 += "[^/]*";
-      }
-    } else if (ch === "?") {
-      out2 += "[^/]";
-    } else if (ch === "{" && hasClosingBrace(pattern, i2)) {
-      braces++;
-      out2 += "(?:";
-    } else if (ch === "}" && braces > 0) {
-      braces--;
-      out2 += ")";
-    } else if (ch === "," && braces > 0) {
-      out2 += "|";
-    } else if (ch === "[") {
-      const end = pattern.indexOf("]", i2 + 1);
-      if (end === -1) {
-        out2 += "\\[";
-      } else {
-        const body2 = pattern.slice(i2 + 1, end).replace(/^!/, "^").replace(/\\/g, "\\\\");
-        out2 += `[${body2}]`;
-        i2 = end;
-      }
-    } else {
-      out2 += escape(ch);
-    }
-  }
-  return new RegExp(`^${out2}$`);
-}
-function compileGlobs(patterns) {
-  const compiled = patterns.map((p) => p.trim()).filter((p) => p !== "" && !p.startsWith("#")).map((raw) => {
-    const pattern = raw.replace(/\/+$/, "");
-    const anchored = pattern.includes("/");
-    return { anchored, regex: toRegExp(anchored ? pattern.replace(/^\//, "") : pattern) };
-  });
-  return (path) => {
-    const segments = path.split("/");
-    for (const { anchored, regex } of compiled) {
-      if (anchored) {
-        for (let n = 1; n <= segments.length; n++) {
-          if (regex.test(segments.slice(0, n).join("/"))) return true;
-        }
-      } else if (segments.some((s) => regex.test(s))) {
-        return true;
-      }
-    }
-    return false;
-  };
-}
-
 // packages/complexity/src/metrics.ts
 var metricIds = ["cognitive", "cyclomatic", "nesting", "parameters", "length", "keyword", "bumps"];
 function isMetricId(value) {
@@ -1890,7 +2969,7 @@ function labelsFor(values, thresholds, bumpyRoad = false) {
 
 // packages/complexity/src/tool.ts
 var TOOL = "complexity";
-var SCHEMA_VERSION = 1;
+var SCHEMA_VERSION2 = 1;
 
 // packages/complexity/src/config.ts
 var complexityConfig = {
@@ -1919,6 +2998,10 @@ var complexityConfig = {
     moveSimilarity: 0.8,
     /** Analyse test files. They are ranked among themselves. */
     analyseTests: true,
+    /** Weight the ranking by how often each file changed in the window, so code that never changes ranks last. */
+    changeWeighting: true,
+    /** The window for change frequency, back from HEAD's commit date. */
+    windowMonths: 12,
     /** `{ "paths": [globs], "thresholds": { ...partial thresholds } }`, the last matching entry winning per metric. */
     overrides: []
   }
@@ -1963,6 +3046,8 @@ function readSettings(config) {
     agreementBar: number(section.agreementBar, at("agreementBar"), 0, 1),
     moveSimilarity: number(section.moveSimilarity, at("moveSimilarity"), 0, 1),
     analyseTests: section.analyseTests === true,
+    changeWeighting: section.changeWeighting === true,
+    windowMonths: number(section.windowMonths, at("windowMonths"), 1),
     isExcluded: compileGlobs(config.effective.exclude)
   };
 }
@@ -2984,9 +4069,9 @@ async function factsForBlob(grammar, blob, source, cache) {
 
 // packages/parse/src/grammars.ts
 import { createHash as createHash3 } from "node:crypto";
-import { existsSync as existsSync3, readFileSync as readFileSync3 } from "node:fs";
+import { existsSync as existsSync6, readFileSync as readFileSync5 } from "node:fs";
 import { createRequire } from "node:module";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // node_modules/web-tree-sitter/web-tree-sitter.js
@@ -3108,8 +4193,8 @@ function isPoint(point) {
   return !!point && typeof point.row === "number" && typeof point.column === "number";
 }
 __name(isPoint, "isPoint");
-function setModule(module2) {
-  C = module2;
+function setModule(module22) {
+  C = module22;
 }
 __name(setModule, "setModule");
 var C;
@@ -4764,10 +5849,10 @@ async function Module2(moduleArg = {}) {
   }
   __name(getWasmImports, "getWasmImports");
   async function createWasm() {
-    function receiveInstance(instance2, module2) {
+    function receiveInstance(instance2, module22) {
       wasmExports = instance2.exports;
       wasmExports = relocateExports(wasmExports, 1024);
-      var metadata2 = getDylinkMetadata(module2);
+      var metadata2 = getDylinkMetadata(module22);
       if (metadata2.neededDynlibs) {
         dynamicLibraries = metadata2.neededDynlibs.concat(dynamicLibraries);
       }
@@ -5110,8 +6195,8 @@ async function Module2(moduleArg = {}) {
       0,
       0
     );
-    var module2 = new WebAssembly.Module(bytes);
-    var instance2 = new WebAssembly.Instance(module2, {
+    var module22 = new WebAssembly.Module(bytes);
+    var instance2 = new WebAssembly.Instance(module22, {
       "e": {
         "f": func2
       }
@@ -7034,12 +8119,12 @@ var loaded = /* @__PURE__ */ new Map();
 var runtimeInit;
 function locate(file, packageName, grammarDir) {
   if (grammarDir !== void 0) {
-    const explicit = join6(grammarDir, file);
-    if (!existsSync3(explicit)) throw new Error(`Grammar file not found: ${explicit}`);
+    const explicit = join7(grammarDir, file);
+    if (!existsSync6(explicit)) throw new Error(`Grammar file not found: ${explicit}`);
     return explicit;
   }
   const bundled = fileURLToPath(new URL(`./grammars/${file}`, import.meta.url));
-  if (existsSync3(bundled)) return bundled;
+  if (existsSync6(bundled)) return bundled;
   try {
     return require2.resolve(`${packageName}/${file}`);
   } catch {
@@ -7067,14 +8152,14 @@ async function load(id, grammarDir) {
   if (!spec) throw new Error(`Unknown grammar: ${id}`);
   const path = locate(spec.file, spec.packageName, grammarDir);
   const runtimePath = locate(runtimeSpec.file, runtimeSpec.packageName, grammarDir);
-  const bytes = readFileSync3(path);
+  const bytes = readFileSync5(path);
   await initRuntime2(runtimePath);
   const language = await Language.load(new Uint8Array(bytes));
   const parser = new Parser();
   parser.setLanguage(language);
   return {
     id,
-    version: `${id}-${hash(bytes)}+runtime-${hash(readFileSync3(runtimePath))}`,
+    version: `${id}-${hash(bytes)}+runtime-${hash(readFileSync5(runtimePath))}`,
     parse(source) {
       const tree = parser.parse(source);
       if (!tree) throw new Error(`Parsing failed for grammar ${id}`);
@@ -7241,24 +8326,20 @@ async function measureCurrent(context, layer) {
   return { settings, current, measurement };
 }
 function storeReport(context, command6, output) {
-  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION }, command6, output, context.repo.head);
-}
-
-// packages/cli-kit/src/ranking.ts
-function midRankPercentiles(values) {
-  const sorted = [...values].sort((a, b) => a - b);
-  const first = /* @__PURE__ */ new Map();
-  const count = /* @__PURE__ */ new Map();
-  sorted.forEach((value, index) => {
-    if (!first.has(value)) first.set(value, index);
-    count.set(value, (count.get(value) ?? 0) + 1);
-  });
-  return values.map((value) => (first.get(value) + count.get(value) / 2) / values.length);
+  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command6, output, context.repo.head);
 }
 
 // packages/complexity/src/ranking.ts
-function rankUnits(units, selected) {
-  const ranked = units.map((unit) => ({ unit, score: 0, dominant: null, percentiles: {} }));
+function rankUnits(units, selected, changes) {
+  const ranked = units.map((unit) => ({
+    unit,
+    score: 0,
+    complexityScore: 0,
+    revisions: changes === void 0 ? null : changes.revisions.get(unit.path) ?? 0,
+    changeWeight: changes === void 0 ? null : changes.weights.get(unit.path) ?? 0,
+    dominant: null,
+    percentiles: {}
+  }));
   const groups = /* @__PURE__ */ new Map();
   units.forEach((unit, index) => {
     const key = `${unit.source}|${unit.test}`;
@@ -7275,13 +8356,14 @@ function rankUnits(units, selected) {
         const entry = ranked[index];
         const percentile = percentiles[position];
         entry.percentiles[metric] = percentile;
-        if (entry.dominant === null || percentile > entry.score) {
-          entry.score = percentile;
+        if (entry.dominant === null || percentile > entry.complexityScore) {
+          entry.complexityScore = percentile;
           entry.dominant = metric;
         }
       });
     }
   }
+  for (const entry of ranked) entry.score = entry.changeWeight === null ? entry.complexityScore : entry.complexityScore * entry.changeWeight;
   return ranked;
 }
 
@@ -7382,6 +8464,9 @@ function unitRow(ranked, selected, settings) {
     source: unit.source,
     test: unit.test,
     score: ranked.score,
+    complexityScore: ranked.complexityScore,
+    revisions: ranked.revisions,
+    changeWeight: ranked.changeWeight === null ? null : Math.round(ranked.changeWeight * 1e4) / 1e4,
     dominant: ranked.dominant,
     ...pick(unit.values, selected),
     ...unit.optionCount === void 0 || !selected.includes("parameters") ? {} : { optionCount: unit.optionCount },
@@ -7438,7 +8523,8 @@ var command = {
     const selected = parseMetrics(context.values.metrics, settings);
     const paths = normalisePaths(context.positionals);
     const inPaths = pathSelector(paths);
-    const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected);
+    const changes = settings.changeWeighting ? await readChangeWeights(context, settings) : void 0;
+    const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected, changes);
     const rows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
     const layers = { structural: 0, lexical: 0, none: 0 };
     for (const file of measurement.files) layers[file.source ?? "none"]++;
@@ -7456,8 +8542,9 @@ var command = {
       inputs: { tree: current.kind, layer, metrics: selected, paths },
       extra: {
         ranking: {
-          basis: "percentile within the repository, per metric, among units measured the same way",
-          changeWeighted: false
+          basis: changes === void 0 ? "percentile within the repository, per metric, among units measured the same way" : "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
+          changeWeighted: changes !== void 0,
+          window: changes?.window ?? null
         },
         layers,
         agreement,
@@ -7470,6 +8557,7 @@ var command = {
         "path",
         "unit",
         "score",
+        "revisions",
         "dominant",
         ...metricIds.filter((metric) => selected.includes(metric)),
         "labels"
@@ -7850,7 +8938,7 @@ var rules2 = Object.assign({}, ...commandModules.map((m) => m.rules ?? {}));
 // packages/complexity/src/cli.ts
 var cli = {
   tool: TOOL,
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: SCHEMA_VERSION2,
   config: complexityConfig,
   commands,
   rules: Object.keys(rules2).length > 0 ? rules2 : void 0

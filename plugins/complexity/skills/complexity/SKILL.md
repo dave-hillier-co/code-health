@@ -36,10 +36,11 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    and no lexical profile with measured agreement, gets file-level numbers only, and the output says so. Do not
    present a lexical value as exact. The `agreement` section carries the rate that released it.
 
-2. The ranking is by percentile within the repository. It is **not** weighted by how often the code changes
-   (`ranking.changeWeighted` is false). Before spending effort on a function, check that it is in code that moves: look at
-   its history with `git log --oneline -- <path>`, or with the cochange plugin's `hotspots` if it is installed, which reads
-   this plugin's `complexity.files` report. Complex code that has not changed in a year ranks last for effort.
+2. The ranking is by percentile within the repository, weighted by how often the file changed in the window
+   (`ranking.changeWeighted` is true). Each row carries `revisions`, `changeWeight` and `complexityScore`, the percentile
+   before weighting. Complex code that has not changed in the window has weight 0 and ranks last, so the top of the
+   list is code that is both hard to read and edited. When `changeWeighted` is false (change weighting is off, or the
+   clone is shallow), check history yourself with `git log --oneline -- <path>` before spending effort on a function.
 
 3. For files, use `files`. A run over the whole repository on a clean tree stores the report other plugins read.
 

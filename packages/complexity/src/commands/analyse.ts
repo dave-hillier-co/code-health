@@ -1,4 +1,5 @@
 import type { Command, CommandContext, Rule } from "@code-health/cli-kit/run-cli";
+import { readChangeWeights } from "../change-weights.ts";
 import { layerOption, measureCurrent, metricsOption, parseLayer, parseMetrics, storeReport } from "../analysis.ts";
 import { normalisePaths, pathSelector } from "../current-tree.ts";
 import { metricIds } from "../metrics.ts";
@@ -25,7 +26,8 @@ export const command: Command = {
     const paths = normalisePaths(context.positionals);
     const inPaths = pathSelector(paths);
 
-    const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected);
+    const changes = settings.changeWeighting ? await readChangeWeights(context, settings) : undefined;
+    const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected, changes);
     const rows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
 
     const layers = { structural: 0, lexical: 0, none: 0 };
@@ -47,8 +49,12 @@ export const command: Command = {
       inputs: { tree: current.kind, layer, metrics: selected, paths },
       extra: {
         ranking: {
-          basis: "percentile within the repository, per metric, among units measured the same way",
-          changeWeighted: false,
+          basis:
+            changes === undefined
+              ? "percentile within the repository, per metric, among units measured the same way"
+              : "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
+          changeWeighted: changes !== undefined,
+          window: changes?.window ?? null,
         },
         layers,
         agreement,
@@ -61,6 +67,7 @@ export const command: Command = {
         "path",
         "unit",
         "score",
+        "revisions",
         "dominant",
         ...metricIds.filter((metric) => selected.includes(metric)),
         "labels",

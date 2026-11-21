@@ -34,6 +34,10 @@ export const complexityConfig: PluginConfigSpec = {
     moveSimilarity: 0.8,
     /** Analyse test files. They are ranked among themselves. */
     analyseTests: true,
+    /** Weight the ranking by how often each file changed in the window, so code that never changes ranks last. */
+    changeWeighting: true,
+    /** The window for change frequency, back from HEAD's commit date. */
+    windowMonths: 12,
     /** `{ "paths": [globs], "thresholds": { ...partial thresholds } }`, the last matching entry winning per metric. */
     overrides: [],
   },
@@ -55,6 +59,8 @@ export interface ComplexitySettings {
   agreementBar: number;
   moveSimilarity: number;
   analyseTests: boolean;
+  changeWeighting: boolean;
+  windowMonths: number;
   /** The suite's shared `exclude` globs. */
   isExcluded: (path: string) => boolean;
 }
@@ -106,6 +112,8 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     agreementBar: number(section.agreementBar, at("agreementBar"), 0, 1),
     moveSimilarity: number(section.moveSimilarity, at("moveSimilarity"), 0, 1),
     analyseTests: section.analyseTests === true,
+    changeWeighting: section.changeWeighting === true,
+    windowMonths: number(section.windowMonths, at("windowMonths"), 1),
     isExcluded: compileGlobs(config.effective.exclude),
   };
 }

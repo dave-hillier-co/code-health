@@ -49,13 +49,30 @@
           "type": "string"
         },
         "changeWeighted": {
-          "const": false,
-          "description": "Ranking is by percentile alone until history-weighted ranking exists."
+          "type": "boolean",
+          "description": "True when each unit's rank score is its complexity percentile times the change weight of its file. False when change weighting is off or history could not give an honest answer (a shallow clone), and the rank is the percentile alone."
+        },
+        "window": {
+          "description": "The change-frequency window, back from HEAD's commit date, in unix seconds. Null when the ranking is not change-weighted.",
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "months": { "type": "integer", "minimum": 1 },
+                "since": { "type": "integer" },
+                "until": { "type": "integer" }
+              },
+              "required": ["months", "since", "until"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": [
         "basis",
-        "changeWeighted"
+        "changeWeighted",
+        "window"
       ],
       "additionalProperties": false
     },
@@ -133,7 +150,24 @@
             "type": "number",
             "minimum": 0,
             "maximum": 1,
-            "description": "The highest percentile of any selected metric."
+            "description": "The rank score: the highest percentile of any selected metric, times changeWeight when the ranking is change-weighted."
+          },
+          "complexityScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "The highest percentile of any selected metric, before change weighting."
+          },
+          "revisions": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Logical changes to the unit's file in the window. Null when the ranking is not change-weighted."
+          },
+          "changeWeight": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "0 for a file with no change in the window, otherwise the percentile of its revisions among the files that changed. Null when the ranking is not change-weighted."
           },
           "dominant": {
             "description": "The metric that gave the score, null for a unit with no selected metric.",
@@ -234,6 +268,9 @@
           "source",
           "test",
           "score",
+          "complexityScore",
+          "revisions",
+          "changeWeight",
           "dominant",
           "percentiles",
           "labels"
