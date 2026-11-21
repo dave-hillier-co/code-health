@@ -1,0 +1,11 @@
+import type { Command } from "@code-health/cli-kit/run-cli";
+
+export const name = "describe";
+
+/** A placeholder that proves the plugin's wiring end to end. Replace it with the plugin's first real command. */
+export const command: Command = {
+  summary: "Name the plugin and the commit it ran against",
+  run(context) {
+    return { results: { plugin: "{{plugin}}", head: context.repo.head } };
+  },
+};
