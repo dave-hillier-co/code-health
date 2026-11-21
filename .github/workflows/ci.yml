@@ -52,6 +52,9 @@ jobs:
       - name: Skill copies of the red flags match the shared source
         run: npm run check:red-flags
 
+      - name: Skills follow the skill conventions
+        run: npm run check:skills
+
       - name: Version bump
         env:
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}

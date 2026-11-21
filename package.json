@@ -17,8 +17,9 @@
     "check:dist": "node scripts/bundle.mjs --check",
     "check:version-bump": "node scripts/check-version-bump.mjs",
     "check:plugins": "node scripts/validate-plugins.mjs",
-    "check": "npm run typecheck && npm test && npm run check:dist && npm run check:red-flags && npm run check:schemas && npm run check:plugins",
-    "check:red-flags": "node scripts/sync-red-flags.mjs --check"
+    "check": "npm run typecheck && npm test && npm run check:dist && npm run check:red-flags && npm run check:skills && npm run check:schemas && npm run check:plugins",
+    "check:red-flags": "node scripts/sync-red-flags.mjs --check",
+    "check:skills": "node scripts/check-skills.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
@@ -26,6 +27,7 @@
     "ajv-formats": "^3.0.1",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.1",
+    "yaml": "^2.9.1"
   }
 }
