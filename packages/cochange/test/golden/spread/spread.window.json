@@ -1,6 +1,6 @@
 {
   "command": "spread",
-  "config": "ba84c3d30c2d7726",
+  "config": "a6ff237c13dc54c8",
   "evidence": {
     "activeContributors": 1,
     "commitSize": {
@@ -56,6 +56,12 @@
     "excludeImported": true,
     "excludeSuiteCommits": false,
     "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
     "lockfiles": true,
     "maxChangesetSize": 4,
     "oversizedChanges": 1

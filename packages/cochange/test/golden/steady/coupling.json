@@ -1,6 +1,6 @@
 {
   "command": "coupling",
-  "config": "18353697bd40d72e",
+  "config": "2a7b17129e6a2723",
   "evidence": {
     "activeContributors": 2,
     "commitSize": {
@@ -56,6 +56,12 @@
     "excludeImported": true,
     "excludeSuiteCommits": false,
     "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
     "lockfiles": true,
     "maxChangesetSize": 30,
     "oversizedChanges": 0

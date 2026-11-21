@@ -61,6 +61,18 @@
         "maxChangesetSize": { "type": "integer", "minimum": 1 },
         "excludeImported": { "type": "boolean" },
         "excludeSuiteCommits": { "type": "boolean" },
+        "grouping": {
+          "type": "object",
+          "description": "How commits formed logical changes.",
+          "properties": {
+            "mode": { "enum": ["off", "issue-key", "author-window"] },
+            "issuePattern": { "type": ["string", "null"], "description": "The regular expression whose match is the issue key. Only with issue-key." },
+            "windowSeconds": { "type": ["integer", "null"], "minimum": 1, "description": "The longest pause between commits of one change. Only with author-window." },
+            "mergedCommits": { "$ref": "#/$defs/count", "description": "Commits folded into another logical change." }
+          },
+          "required": ["mode", "issuePattern", "windowSeconds", "mergedCommits"],
+          "additionalProperties": false
+        },
         "dropped": {
           "type": "object",
           "properties": {
@@ -104,6 +116,7 @@
         "maxChangesetSize",
         "excludeImported",
         "excludeSuiteCommits",
+        "grouping",
         "dropped",
         "oversizedChanges"
       ],

@@ -46,6 +46,19 @@ function compileBotPattern(pattern: string): RegExp {
   }
 }
 
+/** One entry per file over the commits of a group, in order of first appearance. */
+function mergeAcrossCommits(perCommit: readonly (readonly HistoryChange[])[]): HistoryChange[] {
+  const byFile = new Map<string, HistoryChange[]>();
+  for (const files of perCommit) {
+    for (const file of files) {
+      const entries = byFile.get(file.fileId);
+      if (entries) entries.push(file);
+      else byFile.set(file.fileId, [file]);
+    }
+  }
+  return [...byFile.values()].map(mergeFileChanges);
+}
+
 function compileIssuePattern(pattern: string): RegExp {
   try {
     return new RegExp(pattern);
@@ -249,11 +262,8 @@ export async function filterHistory(
   );
   for (const group of groups) {
     const members = group.map((index) => survivors[index]!);
-    const byFile = new Map<string, HistoryChange[]>();
-    for (const { files } of members) {
-      for (const file of files) byFile.set(file.fileId, [...(byFile.get(file.fileId) ?? []), file]);
-    }
-    const files = [...byFile.values()].map(mergeFileChanges);
+    // A single commit keeps its entries exactly as recorded. Only commits grouped together merge.
+    const files = members.length === 1 ? members[0]!.files : mergeAcrossCommits(members.map((m) => m.files));
     changes.push({
       id: members[0]!.commit.sha,
       shas: members.map(({ commit }) => commit.sha),

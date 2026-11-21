@@ -33,6 +33,14 @@ test("defaults follow the spec", () => {
   });
 });
 
+test("grouping defaults to off, and the other modes carry their own settings", () => {
+  expect(settingsFor({}).grouping).toEqual({ mode: "off" });
+  expect(settingsFor({ cochange: { grouping: "issue-key" } }).grouping).toEqual({ mode: "issue-key", pattern: "[A-Z][A-Z0-9]+-\\d+" });
+  expect(settingsFor({ cochange: { grouping: "issue-key", issuePattern: "#(\\d+)" } }).grouping).toEqual({ mode: "issue-key", pattern: "#(\\d+)" });
+  expect(settingsFor({ cochange: { grouping: "author-window", groupingWindowHours: 2 } }).grouping).toEqual({ mode: "author-window", windowSeconds: 7200 });
+  expect(settingsFor({ cochange: { grouping: "author-window" } }).grouping).toEqual({ mode: "author-window", windowSeconds: 4 * 3600 });
+});
+
 test("the file overrides defaults, and stating the window is remembered", () => {
   const settings = settingsFor({
     exclude: ["dist/**"],
@@ -56,9 +64,12 @@ test.each([
   [{ cochange: { hotspotPercentile: 0 } }, "positive integer"],
   [{ cochange: { branch: "" } }, "branch"],
   [{ cochange: { branch: 3 } }, "branch"],
-  [{ cochange: { grouping: "issue-key" } }, "grouping"],
+  [{ cochange: { grouping: "weekly" } }, "grouping"],
   [{ cochange: { identities: { botPatterns: [1] } } }, "botPatterns"],
   [{ cochange: { nonsense: true } }, "unknown setting"],
+  [{ cochange: { grouping: "issue-key", issuePattern: "(" } }, "issuePattern"],
+  [{ cochange: { grouping: "issue-key", issuePattern: "" } }, "issuePattern"],
+  [{ cochange: { grouping: "author-window", groupingWindowHours: 0 } }, "groupingWindowHours"],
 ])("invalid settings %j are config errors", (document, message) => {
   expect(() => settingsFor(document)).toThrowError(message);
 });

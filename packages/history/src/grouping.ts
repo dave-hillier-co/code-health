@@ -18,8 +18,6 @@ export type Grouping =
 /** The issue keys of common trackers: `ABC-123`. */
 export const DEFAULT_ISSUE_PATTERN = "[A-Z][A-Z0-9]+-\\d+";
 
-export const DEFAULT_WINDOW_SECONDS = 4 * 3600;
-
 export interface Groupable {
   message: string;
   /** The author as the analysis counts them: the mapped email. */

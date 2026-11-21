@@ -76,6 +76,7 @@ export async function loadHistory(context: CommandContext, options: HistoryOptio
       exclude: settings.exclude,
       botPatterns: settings.botPatterns,
       maxChangesetSize: settings.maxChangesetSize,
+      grouping: settings.grouping,
       since,
       until,
     },
