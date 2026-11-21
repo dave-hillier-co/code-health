@@ -135,6 +135,14 @@ export interface SymbolFacts {
   references: SymbolReference[];
 }
 
+/** Code a macro generates, which a grammar that does not run the preprocessor cannot see. */
+export interface MacroFact {
+  line: number;
+  /** The macro invoked where a declaration belongs, or defined with a body that holds declarations or statements. */
+  name: string;
+  kind: "invocation" | "definition";
+}
+
 export interface FileFacts {
   units: UnitFact[];
   imports: ImportFact[];
@@ -143,6 +151,8 @@ export interface FileFacts {
   references: ReferenceFact[];
   /** Symbol-based languages only. Import-based languages leave it out. */
   symbols?: SymbolFacts;
+  /** Languages with a preprocessor only: where macros stand in for code. Left out when there are none. */
+  macroGenerated?: MacroFact[];
   /** Named syntax nodes of the whole file, import statements and comments left out. */
   nodes: number;
   /** True when the grammar reported syntax errors, so facts may be incomplete. */

@@ -128,7 +128,7 @@ class Measurer {
       if (body !== null) this.children(body, level + 1, depth + 1);
       return;
     }
-    if (type === c.switch.caseType) {
+    if (type === c.switch.caseType && (c.switch.isCase?.(node) ?? true)) {
       this.cyclomatic++;
       this.record(node, "cyclomatic", "case", 1, 0, "case");
       this.children(node, level, depth);

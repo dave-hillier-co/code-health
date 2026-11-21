@@ -22,8 +22,11 @@ export interface ConstructMap {
     /** The alternative field holds a clause node (`else_clause`) whose first named child is the branch. Otherwise the field is the branch. */
     alternativeIsClause: boolean;
   };
-  /** `switch`, and the node that holds one `case` (a `default` is not a case). */
-  switch: { type: string; body: string; caseType: string };
+  /**
+   * `switch`, and the node that holds one `case` (a `default` is not a case). A grammar that types `default:`
+   * as a case node too says which of them are real cases with `isCase`.
+   */
+  switch: { type: string; body: string; caseType: string; isCase?: (node: Node) => boolean };
   /** `try` adds nesting. `catch` is a decision and its `body` field is walked one level deeper. */
   tryType: string;
   catchType: string;

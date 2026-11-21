@@ -108,11 +108,13 @@ export interface ProjectAnalysis {
   unresolved: Unresolved[];
   /** Files whose parse reported syntax errors, so their facts may be incomplete. */
   filesWithSyntaxErrors: string[];
+  /** Files where a macro stands in for a declaration or a body of code, which a parser that does not run the preprocessor never sees. Languages with no preprocessor have none. */
+  filesWithMacroCode: string[];
   stats: { parsed: number; cached: number };
 }
 
 /** What a dependency model derives from the facts: everything in a `ProjectAnalysis` that resolution decides. */
-export type ResolvedDependencies = Omit<ProjectAnalysis, "units" | "filesWithSyntaxErrors" | "stats">;
+export type ResolvedDependencies = Omit<ProjectAnalysis, "units" | "filesWithSyntaxErrors" | "filesWithMacroCode" | "stats">;
 
 export interface AnalyseOptions extends LoadOptions {
   cache?: ParseCache;
@@ -195,8 +197,10 @@ export async function analyseTree(tree: SourceTree, options: AnalyseOptions = {}
 function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly ResolvedDependencies[]): Omit<ProjectAnalysis, "stats"> {
   const units: SourceUnit[] = [];
   const filesWithSyntaxErrors: string[] = [];
+  const filesWithMacroCode: string[] = [];
   for (const [path, fileFacts] of facts) {
     if (fileFacts.hasSyntaxErrors) filesWithSyntaxErrors.push(path);
+    if (fileFacts.macroGenerated !== undefined) filesWithMacroCode.push(path);
     const exportedLocals = new Set([
       ...fileFacts.exports.map((exported) => exported.local),
       ...(fileFacts.symbols?.declarations ?? []).filter((declaration) => declaration.exported).map((declaration) => declaration.unit),
@@ -242,6 +246,7 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
     ),
     unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
     filesWithSyntaxErrors,
+    filesWithMacroCode,
   };
 }
 

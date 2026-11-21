@@ -112,6 +112,7 @@
         "barrels": { "$ref": "#/$defs/paths" },
         "unresolved": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Imports the resolver could not follow, by reason." },
         "filesWithSyntaxErrors": { "$ref": "#/$defs/paths" },
+        "filesWithMacroCode": { "$ref": "#/$defs/paths", "description": "Files where a macro stands in for declarations or code, which the parser does not run the preprocessor to see. Present only when there are some." },
         "results": {
           "type": "array",
           "items": {

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { copyGrammars } from "../src/copy-grammars.ts";
-import { grammarIdForPath, loadGrammar } from "../src/grammars.ts";
+import { grammarIdForPath, loadGrammar, shippedGrammarSpecs } from "../src/grammars.ts";
 
 const scratch: string[] = [];
 afterEach(() => {
@@ -59,12 +59,8 @@ describe("loadGrammar", () => {
     const dist = mkdtempSync(join(tmpdir(), "code-health-grammars-"));
     scratch.push(dist);
     const copied = copyGrammars(join(dist, "grammars"));
-    expect(copied).toEqual([
-      "tree-sitter-javascript.wasm",
-      "tree-sitter-tsx.wasm",
-      "tree-sitter-typescript.wasm",
-      "web-tree-sitter.wasm",
-    ]);
+    // The grammars of every supported adapter, in id order, and the runtime: nothing is listed here by language.
+    expect(copied).toEqual([...shippedGrammarSpecs().map((spec) => spec.file), "web-tree-sitter.wasm"]);
     const grammar = await loadGrammar("typescript", { grammarDir: join(dist, "grammars") });
     const tree = grammar.parse("class A {}");
     expect(tree.rootNode.child(0)?.type).toBe("class_declaration");
