@@ -1,0 +1,9 @@
+{
+  "packages": {
+    "app": { "ecosystem": "gradle", "exportedTypes": 1, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
+    "core": { "ecosystem": "gradle", "exportedTypes": 3, "abstractness": 0.667, "abstractnessWeak": false, "consumers": ["app"] }
+  },
+  "findings": [
+    "deep-import core app | app imports 1 file of core past its entry points: core/src/main/java/acme/core/internal/Cache.java"
+  ]
+}

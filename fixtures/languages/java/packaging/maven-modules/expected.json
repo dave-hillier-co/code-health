@@ -1,0 +1,9 @@
+{
+  "packages": {
+    "app": { "ecosystem": "maven", "exportedTypes": 1, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
+    "core": { "ecosystem": "maven", "exportedTypes": 1, "abstractness": 1, "abstractnessWeak": true, "consumers": [] }
+  },
+  "findings": [
+    "unused-dependency app | app declares demo-core and its code never uses it: coupling with no purpose, and build weight"
+  ]
+}
