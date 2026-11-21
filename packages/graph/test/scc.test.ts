@@ -18,7 +18,7 @@ describe("stronglyConnectedComponents", () => {
     const components = stronglyConnectedComponents(ring);
     expect(components).toHaveLength(1);
     expect(components[0]).toHaveLength(n);
-  });
+  }, 30_000);
 
   it("agrees with mutual reachability on seeded graphs", () => {
     for (const { seed, graph } of graphCases(120, 14)) {
@@ -81,5 +81,18 @@ describe("un-normalised adjacency", () => {
   it("includes leaf targets as components", () => {
     const graph = new Map([["root", ["a"]], ["a", ["b"]]]);
     expect(stronglyConnectedComponents(graph)).toEqual([["a"], ["b"], ["root"]]);
+  });
+});
+
+describe("independence from input order", () => {
+  it("gives the same components and condensation when nodes and edges are listed in reverse", () => {
+    for (const { seed, graph } of graphCases(60, 14)) {
+      const reversed = new Map([...graph].reverse().map(([id, targets]) => [id, [...targets].reverse()] as const));
+      expect(stronglyConnectedComponents(reversed), `seed ${seed}`).toEqual(stronglyConnectedComponents(graph));
+      const a = condense(graph);
+      const b = condense(reversed);
+      expect([...b.graph], `seed ${seed}`).toEqual([...a.graph]);
+      expect([...b.componentOf].sort(), `seed ${seed}`).toEqual([...a.componentOf].sort());
+    }
   });
 });

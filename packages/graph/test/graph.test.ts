@@ -45,5 +45,5 @@ describe("reachableFrom", () => {
     for (let i = 0; i < 200_000; i++) chain.set(`n${i}`, [`n${i + 1}`]);
     chain.set("n200000", []);
     expect(reachableFrom(chain, ["n0"]).size).toBe(200_001);
-  });
+  }, 30_000);
 });

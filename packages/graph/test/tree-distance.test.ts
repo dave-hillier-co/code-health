@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { seededRandom } from "./support/seeded-graphs.ts";
 import { depthOf, folderDistance, folderOf, treeDistance } from "../src/tree-distance.ts";
 
 test("files are placed at the depth of their folder", () => {
@@ -41,18 +42,6 @@ test("malformed paths are rejected rather than measured", () => {
   expect(() => treeDistance("src//a.ts", "a.ts")).toThrow(/path/);
   expect(() => treeDistance("src/", "a.ts")).toThrow(/path/);
 });
-
-/** Deterministic generator, so a failing property is reproducible from its seed. */
-function random(seed: number): () => number {
-  let state = seed >>> 0;
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 function randomPath(next: () => number): string {
   const names = ["a", "b", "c", "ab", "src", "src2"];
@@ -102,7 +91,7 @@ function naiveDistance(a: string, b: string): number {
 }
 
 test("matches a naive shortest-path implementation on generated paths", () => {
-  const next = random(20240601);
+  const next = seededRandom(20240601);
   for (let i = 0; i < 2000; i++) {
     const a = randomPath(next);
     const b = randomPath(next);
@@ -111,7 +100,7 @@ test("matches a naive shortest-path implementation on generated paths", () => {
 });
 
 test("is a metric: zero on identity, symmetric, and obeys the triangle inequality", () => {
-  const next = random(7);
+  const next = seededRandom(7);
   for (let i = 0; i < 2000; i++) {
     const a = randomPath(next);
     const b = randomPath(next);
@@ -123,7 +112,7 @@ test("is a metric: zero on identity, symmetric, and obeys the triangle inequalit
 });
 
 test("is zero exactly when the files share a folder", () => {
-  const next = random(99);
+  const next = seededRandom(99);
   for (let i = 0; i < 1000; i++) {
     const a = randomPath(next);
     const b = randomPath(next);

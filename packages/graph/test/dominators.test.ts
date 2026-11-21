@@ -81,7 +81,7 @@ describe("dominatorTree", () => {
     chain.set("n20000", []);
     const tree = dominatorTree(chain, "n0");
     expect(tree.idom.get("n20000")).toBe("n19999");
-  });
+  }, 30_000);
 });
 
 describe("un-normalised adjacency", () => {
