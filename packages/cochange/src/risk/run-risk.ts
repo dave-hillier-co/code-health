@@ -11,6 +11,11 @@ import { describeChange } from "./result.ts";
 import { reviewersFor, REVIEWERS_PER_AREA } from "./reviewers.ts";
 import { readStoredBacktest } from "./stored-backtest.ts";
 
+export function evidenceFiles(context: CommandContext): string[] {
+  const value = context.values.evidence;
+  return value === undefined ? [] : (Array.isArray(value) ? value : [value]).map(String);
+}
+
 async function commitsSince(root: string, from: string, to: string): Promise<number | null> {
   try {
     return Number((await runGit(root, ["rev-list", "--count", `${from}..${to}`])).trim());
@@ -22,7 +27,7 @@ async function commitsSince(root: string, from: string, to: string): Promise<num
 /** `risk [BASE[..HEAD]]`: the branch's impact, its placement when the privacy rules allow, the level when it has been earned, and every factor. */
 export async function runRisk(context: CommandContext, history: LoadedHistory, range: string | undefined): Promise<CommandOutput> {
   const worktree = context.values.worktree === true;
-  const assessed = await assessBranch(context, history, { range, worktree });
+  const assessed = await assessBranch(context, history, { range, worktree, evidence: evidenceFiles(context) });
   const placement = await placementFor(context, assessed, context.values["no-refresh"] === true);
 
   const stored = readStoredBacktest(context.repo.root, context.config.hash);
@@ -34,6 +39,8 @@ export async function runRisk(context: CommandContext, history: LoadedHistory, r
     range: range ?? null,
     worktree,
     baseline: assessed.baseline,
+    evidence: assessed.evidence.stamps,
+    locality: assessed.locality?.input ?? null,
     backtest: stored === null ? null : { head: stored.head, config: context.config.hash },
   };
   // The impact factors are about code, and are kept. Placement is about a person, so neither it nor

@@ -5,7 +5,7 @@ import { readRiskSettings } from "../risk/settings.ts";
 import { resolveRange } from "../risk/change.ts";
 import { explainFactor, explainRules } from "../risk/explain.ts";
 import { runBacktest } from "../risk/run-backtest.ts";
-import { runReviewers, runRisk } from "../risk/run-risk.ts";
+import { evidenceFiles, runReviewers, runRisk } from "../risk/run-risk.ts";
 import { findingRules } from "../risk/findings.ts";
 import { assessBranch } from "../risk/assess.ts";
 
@@ -58,7 +58,7 @@ export const command = analysisCommand(name, {
       if (rest[0] === undefined) return { inputs: { topic: "level" }, results: explainRules(risk) };
       return {
         inputs: { topic: rest[0], worktree: context.values.worktree === true },
-        results: await explainFactor(rest[0], () => assessBranch(context, history, { range: undefined, worktree: context.values.worktree === true })),
+        results: await explainFactor(rest[0], () => assessBranch(context, history, { range: undefined, worktree: context.values.worktree === true, evidence: evidenceFiles(context) })),
       };
     }
     if (sub === "backtest") return runBacktest(context, history);

@@ -3,12 +3,15 @@ import { monthsBefore } from "@code-health/history/evidence";
 import { readComponents } from "../components.ts";
 import type { LoadedHistory } from "../history-access.ts";
 import { extractChange, resolveRange, type BranchChange } from "./change.ts";
+import { liveMeasurements, readLocalityFanIn, withFanIn, type LocalityFanIn } from "./composition.ts";
+import { NO_EVIDENCE, readEvidence, type EvidenceInputs } from "./evidence-inputs.ts";
 import { chronologicalPass, SECONDS_PER_MONTH, type PastChange } from "./history-pass.ts";
 import type { HistoryState } from "./history-state.ts";
 import { measureHistoryLayer, type ChangeFacts, type MeasureContext, type Measurement } from "./measure.ts";
 import { mergedChanges, type Mainline } from "./merged-changes.ts";
 import { baselineScores, impactOf, makeBander, SCORED_FACTORS, type BandResult, type FactorBand, type ImpactResult } from "./scoring.ts";
 import { readRiskSettings, type RiskSettings } from "./settings.ts";
+import { TOOL } from "../tool.ts";
 
 /** A factor as it is reported: its value, band, the evidence behind it and the layer that produced it. */
 export interface Factor {
@@ -47,6 +50,9 @@ export interface Assessed {
   mainline: Mainline;
   context: MeasureContext;
   facts: ChangeFacts;
+  /** What the skill passed in with --evidence, and the locality report when one covers this tip. */
+  evidence: EvidenceInputs;
+  locality: LocalityFanIn | null;
 }
 
 export function measureContext(context: CommandContext, history: LoadedHistory, risk: RiskSettings): MeasureContext {
@@ -87,7 +93,7 @@ export function toFactor(measurement: Measurement, banded: BandResult, risk: Ris
 export async function assessBranch(
   context: CommandContext,
   history: LoadedHistory,
-  request: { range: string | undefined; worktree: boolean },
+  request: { range: string | undefined; worktree: boolean; evidence?: readonly string[] },
 ): Promise<Assessed> {
   const root = context.repo.root;
   const risk = readRiskSettings(context.config);
@@ -101,6 +107,9 @@ export async function assessBranch(
     agentPatterns: history.settings.identities.agentTrailerPatterns,
   });
 
+  const evidence = request.evidence === undefined || request.evidence.length === 0
+    ? NO_EVIDENCE
+    : readEvidence(root, request.evidence, { base: change.base, head: change.head, worktree: request.worktree });
   const mainline = await mergedChanges(root, history.view, history.filtered.changes, range.base);
   const time = history.view.headDate;
   const since = monthsBefore(time, history.settings.windowMonths);
@@ -119,11 +128,20 @@ export async function assessBranch(
     moved: change.moved,
   };
   state.advance(time);
-  const measurements = measureHistoryLayer(facts, state, measure);
+  const knowledge = (context.config.effective[TOOL] as { knowledge?: { enabled?: unknown } }).knowledge;
+  const measurements = [
+    ...measureHistoryLayer(facts, state, measure),
+    ...(await liveMeasurements(root, change, risk, evidence, knowledge?.enabled === true)),
+  ];
   const baselineMeasures = past.map((p) => p.measurements);
   const bander = makeBander(baselineMeasures, risk);
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
-  const factors = banded.map(({ m, result }) => toFactor(m, result, risk));
+  const locality = readLocalityFanIn(root, change.head);
+  const touched = change.files.filter((file) => file.status !== "D").map((file) => file.fileId);
+  const factors = banded.map(({ m, result }) => {
+    const factor = toFactor(m, result, risk);
+    return locality !== null && factor.name === "blast-radius" && factor.status !== "disabled" ? withFanIn(factor, touched, locality, risk) : factor;
+  });
   const impact = impactOf(
     factors.map((f) => ({ name: f.name, family: f.family, band: f.band ?? "unavailable", disabled: f.status === "disabled" })),
     baselineScores(baselineMeasures, risk),
@@ -148,6 +166,8 @@ export async function assessBranch(
     mainline,
     context: measure,
     facts,
+    evidence,
+    locality,
   };
 }
 

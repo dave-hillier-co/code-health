@@ -75,6 +75,8 @@
       "population": 7,
       "since": "2023-06-02T09:00:00.000Z"
     },
+    "evidence": [],
+    "locality": null,
     "range": "main..bob",
     "worktree": false
   },
@@ -348,6 +350,53 @@
         "value": {
           "count": 0
         }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "structure-and-content",
+        "layer": "lexical",
+        "name": "complexity-delta",
+        "reason": null,
+        "scored": false,
+        "source": "indentation",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "count": 0,
+          "files": 1
+        }
+      },
+      {
+        "band": null,
+        "evidence": [],
+        "family": "structure-and-content",
+        "layer": "structural",
+        "name": "structure-delta",
+        "reason": "no structure check was passed in: run `structure check --json` for this branch and pass it with --evidence",
+        "scored": false,
+        "source": "structure check",
+        "status": "unavailable",
+        "thresholds": {},
+        "value": {}
+      },
+      {
+        "band": null,
+        "evidence": [],
+        "family": "history",
+        "layer": "history",
+        "name": "abandoned-touched",
+        "reason": "knowledge analysis is not enabled (cochange.knowledge.enabled)",
+        "scored": false,
+        "source": "knowledge analysis",
+        "status": "unavailable",
+        "thresholds": {},
+        "value": {}
       }
     ],
     "findings": [],
