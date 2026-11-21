@@ -1,4 +1,4 @@
-import type { Consumer, ExportedName, FileEdge, ImportEdge, ResolvedDependencies } from "../../analyse-tree.ts";
+import type { Consumer, ExportedName, FileEdge, ImportEdge, ResolvedDependencies } from "../../resolved-dependencies.ts";
 import type { FileFacts } from "../../facts.ts";
 import type { ResolveInput } from "../../language-adapter.ts";
 import { resolveBySymbols } from "../../symbol-model.ts";

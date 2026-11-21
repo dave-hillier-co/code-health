@@ -1,7 +1,8 @@
 import { compareIds, type Graph } from "@code-health/graph/graph";
 import { stronglyConnectedComponents } from "@code-health/graph/scc";
 import { depthOf, folderDistance, folderOf, treeDistance } from "@code-health/graph/tree-distance";
-import type { Consumer, SourceUnit } from "@code-health/parse/analyse-tree";
+import type { SourceUnit } from "@code-health/parse/analyse-tree";
+import type { Consumer } from "@code-health/parse/resolved-dependencies";
 import { compileGlobs } from "@code-health/history/glob";
 import { fileCohesion, type ExportComponent, type FileCohesion } from "./cohesion.ts";
 import type { LocalitySettings } from "./config.ts";

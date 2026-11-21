@@ -1,5 +1,5 @@
 import type { Node } from "web-tree-sitter";
-import type { ResolvedDependencies } from "./analyse-tree.ts";
+import type { ResolvedDependencies } from "./resolved-dependencies.ts";
 import type { FileCensus } from "./census-facts.ts";
 import type { DeclarationKind, FileFacts } from "./facts.ts";
 import type { MetricRules } from "./metric-rules.ts";

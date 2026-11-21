@@ -1,5 +1,5 @@
 import { posix } from "node:path";
-import type { ExternalImport, FileEdge, ImportEdge, ResolvedDependencies, Unresolved } from "../../analyse-tree.ts";
+import type { ExternalImport, FileEdge, ImportEdge, ResolvedDependencies, Unresolved } from "../../resolved-dependencies.ts";
 import type { FileFacts } from "../../facts.ts";
 import type { ResolveInput } from "../../language-adapter.ts";
 import { resolveBySymbols } from "../../symbol-model.ts";

@@ -1,4 +1,4 @@
-import type { ExportedName, Consumer, FileEdge, ImportEdge, ResolvedDependencies, Unresolved, UnresolvedReason, ExternalImport } from "./analyse-tree.ts";
+import type { ExportedName, Consumer, FileEdge, ImportEdge, ResolvedDependencies, Unresolved, UnresolvedReason, ExternalImport } from "./resolved-dependencies.ts";
 import type { FileFacts, ReferenceFact } from "./facts.ts";
 import type { ModuleResolver, Resolution } from "./language-adapter.ts";
 
