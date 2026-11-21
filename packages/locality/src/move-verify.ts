@@ -1,8 +1,8 @@
-import { Project } from "ts-morph";
 import { hasCodeHealthTrailer } from "@code-health/history/trailers";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import { performMove } from "./move-engine.ts";
-import { SOURCE_EXTENSION, type FileOperation } from "./move-plan.ts";
+import { isSourceFile, moverFor, type Skeleton } from "./movers/language.ts";
+import type { FileOperation } from "./move-plan.ts";
 
 export interface SpecifierDifference {
   path: string;
@@ -30,24 +30,6 @@ export interface Verification {
     /** Files that differ in anything else: the commit is not a move-only commit. */
     otherChanges: string[];
   };
-}
-
-interface Skeleton {
-  /** The text with each import specifier blanked, so only what is not an import path remains. */
-  text: string;
-  specifiers: { value: string; line: number }[];
-}
-
-function skeletonOf(path: string, text: string): Skeleton {
-  const project = new Project({ useInMemoryFileSystem: true, skipAddingFilesFromTsConfig: true, compilerOptions: { allowJs: true } });
-  const file = project.createSourceFile(`/${path}`, text);
-  const literals = file.getImportStringLiterals();
-  const specifiers = literals.map((literal) => ({ value: literal.getLiteralValue(), line: literal.getStartLineNumber() }));
-  let blanked = text;
-  for (const literal of [...literals].reverse()) {
-    blanked = `${blanked.slice(0, literal.getStart() + 1)}${blanked.slice(literal.getEnd() - 1)}`;
-  }
-  return { text: blanked, specifiers };
 }
 
 /**
@@ -87,12 +69,14 @@ export async function verifyMove(
       identical++;
       continue;
     }
-    if (!SOURCE_EXTENSION.test(path)) {
+    const language = isSourceFile(path) ? moverFor(path) : undefined;
+    if (language === undefined) {
       otherChanges.push(path);
       continue;
     }
-    const wantedSkeleton = skeletonOf(path, wanted);
-    const actualSkeleton = skeletonOf(path, actual);
+    const backend = await language.load();
+    const wantedSkeleton: Skeleton = backend.skeleton(path, wanted);
+    const actualSkeleton: Skeleton = backend.skeleton(path, actual);
     if (wantedSkeleton.text !== actualSkeleton.text || wantedSkeleton.specifiers.length !== actualSkeleton.specifiers.length) {
       otherChanges.push(path);
       continue;

@@ -1,8 +1,9 @@
 import { InMemoryFileSystemHost, Project, type CompilerOptions, ts } from "ts-morph";
 import type { SourceTree } from "@code-health/parse/source-tree";
-import { SOURCE_EXTENSION } from "./move-plan.ts";
+import { sourceFilesOf } from "./movers/language.ts";
 
 
+const isSource = sourceFilesOf("typescript");
 const manifestName = /(?:^|\/)(?:tsconfig(?:\.[\w.-]+)?|jsconfig)\.json$|(?:^|\/)package\.json$/;
 
 /** What `buildProject` makes of a tree. */
@@ -34,7 +35,7 @@ export const absolutePath = (path: string): string => `/${path}`;
  */
 export async function buildProject(tree: SourceTree): Promise<TreeProject> {
   const host = new InMemoryFileSystemHost();
-  const wanted = [...tree.files.keys()].filter((path) => SOURCE_EXTENSION.test(path) || manifestName.test(path));
+  const wanted = [...tree.files.keys()].filter((path) => isSource(path) || manifestName.test(path));
   for (const [path, text] of await tree.readMany(wanted)) host.writeFileSync(absolutePath(path), text);
 
   const warnings: string[] = [];

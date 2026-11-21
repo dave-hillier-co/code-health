@@ -4,6 +4,7 @@ import { parseWith } from "@code-health/parse/file-facts";
 import { GrammarSet } from "@code-health/parse/grammars";
 import { readSettings, thresholdsFor } from "../config.ts";
 import { currentTree } from "../current-tree.ts";
+import { explainRule } from "../language.ts";
 import { labelsFor, structuralValues } from "../metrics.ts";
 import { ruleDescriptions } from "../rules.ts";
 
@@ -27,7 +28,7 @@ export const command: Command = {
       if (rule === undefined) {
         throw usageError(`unknown rule "${target}"; rules: ${Object.keys(ruleDescriptions).join(", ")}; or give a unit as path#Qualified.name`);
       }
-      return { results: { rule: target, summary: rule.summary, explanation: rule.explanation } };
+      return { results: { rule: target, summary: rule.summary, explanation: explainRule(target, rule.explanation) } };
     }
 
     const hash = target.indexOf("#");

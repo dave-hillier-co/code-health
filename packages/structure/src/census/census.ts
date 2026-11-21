@@ -2,6 +2,7 @@ import { compareUtf8 } from "@code-health/parse/analyse-tree";
 import type { FileCensus, TypeDeclaration } from "@code-health/parse/census-facts";
 import { GrammarSet } from "@code-health/parse/grammars";
 import type { SourceTree } from "@code-health/parse/source-tree";
+import { censusDetectorsOf, type CensusDetectors } from "./language.ts";
 import { folderOf, type Project } from "../project.ts";
 
 export const MECHANISMS = ["callbacks", "interfaces", "dependency-injection", "events", "handlers", "registries", "ports-and-adapters"] as const;
@@ -37,22 +38,6 @@ export interface Census {
   files: number;
   occurrences: Occurrence[];
 }
-
-const eventMethods = new Set(["emit", "on", "once", "off", "subscribe", "unsubscribe", "publish", "dispatch", "addListener", "removeListener", "removeAllListeners", "trigger"]);
-/** Names that mean an event when called on their own, not only on a receiver. */
-const eventFunctions = new Set(["emit", "dispatch", "publish", "subscribe", "mitt", "createNanoEvents"]);
-/** Receivers that are the runtime or the platform, whose `on` is not the codebase's own events. */
-const platformReceivers = new Set(["process", "window", "document", "globalThis", "self", "stdin", "stdout", "stderr"]);
-const eventBaseTypes = new Set(["EventEmitter", "EventEmitter2", "Emittery", "Subject", "BehaviorSubject", "ReplaySubject", "Observable", "TypedEmitter"]);
-
-const containerReceiver = /(container|injector|kernel|ioc)$/i;
-const containerRegistrations = /^(register\w*|bind\w*|provide|addSingleton|addTransient|addScoped|toClass|toConstantValue)$/;
-const injectionDecorators = new Set(["injectable", "inject", "module", "ngmodule", "singleton", "autoinjectable", "service", "autowired", "provides"]);
-
-const handlerReceiver = /(mediator|commands?|commandbus|quer(y|ies)|querybus|requests?|requestbus)$/i;
-const handlerMethods = new Set(["send", "execute", "dispatch", "publish", "query", "command", "request", "handle"]);
-const handlerRegistration = /^(register\w*Handlers?|addHandler|setHandler|useHandler|onCommand|onQuery)$/;
-const handlerType = /Handler$/;
 
 function isNamed(folder: string, names: ReadonlySet<string>): boolean {
   return names.has(folder.slice(folder.lastIndexOf("/") + 1));
@@ -100,6 +85,7 @@ class Reader {
 /** Reads every production file of the project and finds the decoupling mechanisms already in use. */
 export async function buildCensus(tree: SourceTree, project: Project, settings: CensusSettings): Promise<Census> {
   const files = new Map<string, FileCensus>();
+  const adapterOf = new Map<string, string>();
   const grammars = new GrammarSet();
   const sources = await tree.readMany(project.files);
   for (const path of project.files) {
@@ -109,6 +95,7 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
     const parsed = language.grammar.parse(source);
     try {
       files.set(path, language.adapter.census.extract(parsed.rootNode));
+      adapterOf.set(path, language.adapter.id);
     } finally {
       parsed.delete();
     }
@@ -121,9 +108,14 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
     occurrences.push({ ...occurrence, folders: [...new Set([home, ...(occurrence.folders ?? [])])].sort(compareUtf8) });
   };
   const reader = new Reader(files, project);
-  const eventNames = new Set([...eventMethods, ...settings.eventCalls]);
   const handlerNames = new Set(settings.handlerCalls);
   const registerNames = new Set(settings.registerCalls);
+  const eventNamesOf = new Map<string, ReadonlySet<string>>();
+  const eventNames = (id: string, detectors: CensusDetectors): ReadonlySet<string> => {
+    let names = eventNamesOf.get(id);
+    if (names === undefined) eventNamesOf.set(id, (names = new Set([...detectors.eventMethods, ...settings.eventCalls])));
+    return names;
+  };
 
   const implementers = new Map<string, { interfacePath: string; line: number; name: string; folders: Set<string> }>();
   const projectFiles = new Set(project.files);
@@ -134,17 +126,19 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
     const key = `${consumer.to}#${consumer.toSymbol}`;
     callers.set(key, (callers.get(key) ?? new Set()).add(folderOf(consumer.from)));
   }
-  const callbackAliases = (path: string, names: readonly string[]): boolean =>
-    names.some((name) => name === "Function" || reader.declaringFile(path, name, ["function-type"]) !== undefined);
+  const callbackAliases = (path: string, names: readonly string[], detectors: CensusDetectors): boolean =>
+    names.some((name) => detectors.callbackTypeNames.has(name) || reader.declaringFile(path, name, ["function-type"]) !== undefined);
 
   for (const [path, file] of files) {
     const folder = folderOf(path);
+    const adapterId = adapterOf.get(path)!;
+    const detectors = censusDetectorsOf(adapterId);
 
     // Interfaces implemented elsewhere, and constructor injection of them.
     for (const klass of file.classes) {
       for (const name of klass.heritage) {
-        if (eventBaseTypes.has(name)) add({ mechanism: "events", variant: "base-type", path, line: klass.line, detail: `${klass.name} extends ${name}` });
-        else if (handlerType.test(name)) add({ mechanism: "handlers", variant: "handler-type", path, line: klass.line, detail: `${klass.name} implements ${name}` });
+        if (detectors.eventBaseTypes.has(name)) add({ mechanism: "events", variant: "base-type", path, line: klass.line, detail: `${klass.name} extends ${name}` });
+        else if (detectors.handlerType.test(name)) add({ mechanism: "handlers", variant: "handler-type", path, line: klass.line, detail: `${klass.name} implements ${name}` });
         const target = reader.declaringFile(path, name, ["interface", "abstract-class"]);
         if (target && folderOf(target.path) !== folder) {
           const key = `${target.path}#${target.declaration.name}`;
@@ -171,24 +165,24 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
     }
 
     for (const klass of file.news) {
-      if (eventBaseTypes.has(klass.name)) add({ mechanism: "events", variant: "base-type", path, line: klass.line, detail: `new ${klass.name}` });
+      if (detectors.eventBaseTypes.has(klass.name)) add({ mechanism: "events", variant: "base-type", path, line: klass.line, detail: `new ${klass.name}` });
     }
 
     for (const decorator of file.decorators) {
-      if (injectionDecorators.has(decorator.name.toLowerCase())) add({ mechanism: "dependency-injection", variant: "decorator", path, line: decorator.line, detail: `@${decorator.name}` });
-      else if (handlerType.test(decorator.name)) add({ mechanism: "handlers", variant: "handler-decorator", path, line: decorator.line, detail: `@${decorator.name}` });
+      if (detectors.injectionDecorators.has(decorator.name.toLowerCase())) add({ mechanism: "dependency-injection", variant: "decorator", path, line: decorator.line, detail: `@${decorator.name}` });
+      else if (detectors.handlerType.test(decorator.name)) add({ mechanism: "handlers", variant: "handler-decorator", path, line: decorator.line, detail: `@${decorator.name}` });
     }
 
     for (const call of file.calls) {
       const where = call.receiver === null ? call.method : `${call.receiver}.${call.method}`;
       const registers = /^register\w*$/.test(call.method) || registerNames.has(call.method);
-      if (call.receiver !== null && containerReceiver.test(call.receiver) && containerRegistrations.test(call.method)) {
+      if (call.receiver !== null && detectors.containerReceiver.test(call.receiver) && detectors.containerRegistrations.test(call.method)) {
         add({ mechanism: "dependency-injection", variant: "container-registration", path, line: call.line, detail: where });
-      } else if (handlerRegistration.test(call.method) || handlerNames.has(call.method)) {
+      } else if (detectors.handlerRegistration.test(call.method) || handlerNames.has(call.method)) {
         add({ mechanism: "handlers", variant: "handler-registration", path, line: call.line, detail: where });
-      } else if (call.receiver !== null && handlerReceiver.test(call.receiver) && handlerMethods.has(call.method)) {
+      } else if (call.receiver !== null && detectors.handlerReceiver.test(call.receiver) && detectors.handlerMethods.has(call.method)) {
         add({ mechanism: "handlers", variant: "dispatch", path, line: call.line, detail: where });
-      } else if (call.receiver !== null ? eventNames.has(call.method) && !platformReceivers.has(call.receiver) : eventFunctions.has(call.method) || settings.eventCalls.includes(call.method)) {
+      } else if (call.receiver !== null ? eventNames(adapterId, detectors).has(call.method) && !detectors.platformReceivers.has(call.receiver) : detectors.eventFunctions.has(call.method) || settings.eventCalls.includes(call.method)) {
         add({ mechanism: "events", variant: "call", path, line: call.line, detail: where });
       } else if (registers) {
         add({ mechanism: "registries", variant: "register-call", path, line: call.line, detail: where });
@@ -199,7 +193,7 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
 
     // Callbacks: a function with a function-typed parameter that something in another folder calls.
     for (const fn of file.functions) {
-      const parameter = fn.parameters.find((p) => p.type.callback || callbackAliases(path, p.type.names));
+      const parameter = fn.parameters.find((p) => p.type.callback || callbackAliases(path, p.type.names, detectors));
       if (!parameter) continue;
       const callerFolders = [...(callers.get(`${path}#${fn.name}`) ?? [])].sort(compareUtf8);
       if (callerFolders.length === 0) continue;

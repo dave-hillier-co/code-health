@@ -1,7 +1,6 @@
-import { posix } from "node:path";
 import { compileGlobs } from "@code-health/history/glob";
 import { analyseTree, type ProjectAnalysis } from "@code-health/parse/analyse-tree";
-import { hasAdapter, isTestPath } from "@code-health/parse/languages";
+import { discoverBoundaries, hasAdapter, isTestPath } from "@code-health/parse/languages";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { treeFromRef, type SourceTree } from "@code-health/parse/source-tree";
 import type { LocalitySettings } from "./config.ts";
@@ -53,31 +52,12 @@ export function unitText(project: Project, unit: { path: string; startLine: numb
   return text.split("\n").slice(unit.startLine - 1, unit.endLine).join("\n");
 }
 
-function stringLeaves(value: unknown, out: string[]): void {
-  if (typeof value === "string") out.push(value);
-  else if (Array.isArray(value)) for (const item of value) stringLeaves(item, out);
-  else if (typeof value === "object" && value !== null) for (const item of Object.values(value)) stringLeaves(item, out);
-}
-
+/** Files that a non-private boundary publishes as its entry points, whatever language's manifest says so. */
 async function readPackageEntries(tree: SourceTree): Promise<Set<string>> {
-  const manifests = [...tree.files.keys()].filter((path) => path === "package.json" || path.endsWith("/package.json"));
   const entries = new Set<string>();
-  for (const [path, text] of await tree.readMany(manifests)) {
-    let manifest: Record<string, unknown>;
-    try {
-      manifest = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      continue;
-    }
-    if (manifest.private === true) continue;
-    const targets: string[] = [];
-    for (const key of ["main", "module", "types", "typings", "bin", "exports"]) stringLeaves(manifest[key], targets);
-    const directory = posix.dirname(path);
-    for (const target of targets) {
-      if (target.includes("*")) continue;
-      const resolved = posix.normalize(directory === "." ? target : posix.join(directory, target));
-      if (tree.files.has(resolved)) entries.add(resolved);
-    }
+  for (const boundary of await discoverBoundaries(tree)) {
+    if (boundary.private === true) continue;
+    for (const file of boundary.entryFiles) entries.add(file);
   }
   return entries;
 }

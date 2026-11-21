@@ -23,7 +23,7 @@ export async function isClean(root: string): Promise<boolean> {
 }
 
 /** Tracked and untracked files outside the tree's source that mention a path the move vacates (config, docs, scripts). */
-export async function textMentions(root: string, plan: MovePlan, sourceLike: RegExp): Promise<{ path: string; mentions: string }[]> {
+export async function textMentions(root: string, plan: MovePlan, sourceLike: (path: string) => boolean): Promise<{ path: string; mentions: string }[]> {
   const found = new Map<string, Set<string>>();
   for (const operation of plan.operations) {
     let out = "";
@@ -33,7 +33,7 @@ export async function textMentions(root: string, plan: MovePlan, sourceLike: Reg
       continue;
     }
     for (const path of out.split("\n")) {
-      if (path === "" || sourceLike.test(path) || plan.operations.some((other) => other.from === path)) continue;
+      if (path === "" || sourceLike(path) || plan.operations.some((other) => other.from === path)) continue;
       found.set(path, (found.get(path) ?? new Set()).add(operation.from));
     }
   }

@@ -1,4 +1,5 @@
-import type { GrammarBinding, GrammarSpec, LanguageAdapter } from "./language-adapter.ts";
+import type { Boundary, GrammarBinding, GrammarSpec, LanguageAdapter } from "./language-adapter.ts";
+import type { SourceTree } from "./source-tree.ts";
 import * as registered from "./registered-adapters.ts";
 
 /**
@@ -77,4 +78,16 @@ export function isConfigPath(path: string, adapters: readonly LanguageAdapter[] 
 export function describeSupportedCode(): string {
   const names = supportedAdapters().map((adapter) => adapter.packaging.description);
   return names.length <= 1 ? (names[0] ?? "source code") : `${names.slice(0, -1).join(", ")} or ${names.at(-1)}`;
+}
+
+/**
+ * The boundaries (fixed points) the supported adapters discover in a tree from its manifests, sorted by
+ * manifest path. A manifest two adapters both read is reported once.
+ */
+export async function discoverBoundaries(tree: SourceTree, adapters: readonly LanguageAdapter[] = supportedAdapters()): Promise<Boundary[]> {
+  const byManifest = new Map<string, Boundary>();
+  for (const adapter of adapters) {
+    for (const boundary of await adapter.boundaries.discover(tree)) if (!byManifest.has(boundary.manifest)) byManifest.set(boundary.manifest, boundary);
+  }
+  return [...byManifest.values()].sort((a, b) => (a.manifest < b.manifest ? -1 : a.manifest > b.manifest ? 1 : 0));
 }

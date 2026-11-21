@@ -1,7 +1,7 @@
 import { normalise, type Graph } from "@code-health/graph/graph";
 import { compileGlobs } from "@code-health/history/glob";
 import { analyseTree, compareUtf8, type Consumer, type ImportEdge, type ProjectAnalysis } from "@code-health/parse/analyse-tree";
-import { hasAdapter, isTestPath } from "@code-health/parse/languages";
+import { discoverBoundaries, hasAdapter, isTestPath } from "@code-health/parse/languages";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { treeFromRef } from "@code-health/parse/source-tree";
 
@@ -56,9 +56,7 @@ export async function loadProject(root: string, headSha: string, exclude: readon
     consumers.set(key, [...(consumers.get(key) ?? []), consumer]);
   }
 
-  const packageRoots = new Set(
-    [...tree.files.keys()].filter((path) => path === "package.json" || path.endsWith("/package.json")).map((path) => (path === "package.json" ? "." : folderOf(path))),
-  );
+  const packageRoots = new Set((await discoverBoundaries(tree)).map((boundary) => boundary.dir));
   const packageOf = (path: string): string => {
     for (let folder = folderOf(path); ; folder = folderOf(folder)) {
       if (packageRoots.has(folder)) return folder;

@@ -3,7 +3,8 @@ import type { Command, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { readSettings } from "../config.ts";
 import { applyMove, isClean, moveMessage, textMentions } from "../move-apply.ts";
-import { planMove, SOURCE_EXTENSION, type Refusal } from "../move-plan.ts";
+import { planMove, type Refusal } from "../move-plan.ts";
+import { isSourceFile } from "../movers/language.ts";
 import { analyseRevision } from "../unit-analysis.ts";
 
 export const name = "move";
@@ -45,7 +46,7 @@ export const command: Command = {
     // ts-morph is loaded only when a move is planned: it is most of the bundle, and `analyse` has no use for it.
     const { performMove } = await import("../move-engine.ts");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : undefined;
-    const mentions = moved === undefined ? [] : await textMentions(context.repo.root, plan, SOURCE_EXTENSION);
+    const mentions = moved === undefined ? [] : await textMentions(context.repo.root, plan, isSourceFile);
 
     let sha: string | null = null;
     let applied = false;
