@@ -1,0 +1,312 @@
+{
+  "command": "census",
+  "config": "a5f57b8f692394b7",
+  "filesRead": 20,
+  "inputs": {
+    "census": {
+      "eventCalls": [],
+      "folderNames": [
+        "ports",
+        "adapters",
+        "infrastructure"
+      ],
+      "handlerCalls": [],
+      "registerCalls": []
+    }
+  },
+  "repo": {
+    "dirty": false,
+    "head": "410687bcc36645be6a9101b3085f3d6b830ec33c"
+  },
+  "results": [
+    {
+      "count": 1,
+      "examples": [
+        {
+          "detail": "forEachLine(visit) is called from src/orders",
+          "line": 1,
+          "path": "src/billing/lines.ts",
+          "variant": "function-parameter"
+        }
+      ],
+      "files": 1,
+      "folders": [
+        {
+          "count": 1,
+          "folder": "src/billing"
+        },
+        {
+          "count": 1,
+          "folder": "src/orders"
+        }
+      ],
+      "id": "census:callbacks",
+      "mechanism": "callbacks",
+      "variants": [
+        {
+          "count": 1,
+          "variant": "function-parameter"
+        }
+      ]
+    },
+    {
+      "count": 1,
+      "examples": [
+        {
+          "detail": "Storage is implemented in src/adapters",
+          "line": 1,
+          "path": "src/ports/storage.ts",
+          "variant": "interface"
+        }
+      ],
+      "files": 1,
+      "folders": [
+        {
+          "count": 1,
+          "folder": "src/adapters"
+        },
+        {
+          "count": 1,
+          "folder": "src/ports"
+        }
+      ],
+      "id": "census:interfaces",
+      "mechanism": "interfaces",
+      "variants": [
+        {
+          "count": 1,
+          "variant": "interface"
+        }
+      ]
+    },
+    {
+      "count": 3,
+      "examples": [
+        {
+          "detail": "container.register",
+          "line": 4,
+          "path": "src/app/container.ts",
+          "variant": "container-registration"
+        },
+        {
+          "detail": "Service takes Storage from src/ports",
+          "line": 4,
+          "path": "src/app/service.ts",
+          "variant": "constructor-injection"
+        },
+        {
+          "detail": "@Injectable",
+          "line": 3,
+          "path": "src/app/service.ts",
+          "variant": "decorator"
+        }
+      ],
+      "files": 2,
+      "folders": [
+        {
+          "count": 3,
+          "folder": "src/app"
+        },
+        {
+          "count": 1,
+          "folder": "src/ports"
+        }
+      ],
+      "id": "census:dependency-injection",
+      "mechanism": "dependency-injection",
+      "variants": [
+        {
+          "count": 1,
+          "variant": "constructor-injection"
+        },
+        {
+          "count": 1,
+          "variant": "container-registration"
+        },
+        {
+          "count": 1,
+          "variant": "decorator"
+        }
+      ]
+    },
+    {
+      "count": 3,
+      "examples": [
+        {
+          "detail": "bus.on",
+          "line": 2,
+          "path": "src/billing/listen.ts",
+          "variant": "call"
+        },
+        {
+          "detail": "Bus extends EventEmitter",
+          "line": 2,
+          "path": "src/events/bus.ts",
+          "variant": "base-type"
+        },
+        {
+          "detail": "bus.emit",
+          "line": 3,
+          "path": "src/orders/place.ts",
+          "variant": "call"
+        }
+      ],
+      "files": 3,
+      "folders": [
+        {
+          "count": 1,
+          "folder": "src/billing"
+        },
+        {
+          "count": 1,
+          "folder": "src/events"
+        },
+        {
+          "count": 1,
+          "folder": "src/orders"
+        }
+      ],
+      "id": "census:events",
+      "mechanism": "events",
+      "variants": [
+        {
+          "count": 2,
+          "variant": "call"
+        },
+        {
+          "count": 1,
+          "variant": "base-type"
+        }
+      ]
+    },
+    {
+      "count": 2,
+      "examples": [
+        {
+          "detail": "commandBus.execute",
+          "line": 3,
+          "path": "src/app/dispatch.ts",
+          "variant": "dispatch"
+        },
+        {
+          "detail": "@CommandHandler",
+          "line": 3,
+          "path": "src/handlers/place-order.ts",
+          "variant": "handler-decorator"
+        }
+      ],
+      "files": 2,
+      "folders": [
+        {
+          "count": 1,
+          "folder": "src/app"
+        },
+        {
+          "count": 1,
+          "folder": "src/handlers"
+        }
+      ],
+      "id": "census:handlers",
+      "mechanism": "handlers",
+      "variants": [
+        {
+          "count": 1,
+          "variant": "dispatch"
+        },
+        {
+          "count": 1,
+          "variant": "handler-decorator"
+        }
+      ]
+    },
+    {
+      "count": 2,
+      "examples": [
+        {
+          "detail": "registerPlugin",
+          "line": 2,
+          "path": "src/plugins/csv.ts",
+          "variant": "register-call"
+        },
+        {
+          "detail": "registry",
+          "line": 4,
+          "path": "src/plugins/registry.ts",
+          "variant": "keyed-map"
+        }
+      ],
+      "files": 2,
+      "folders": [
+        {
+          "count": 2,
+          "folder": "src/plugins"
+        }
+      ],
+      "id": "census:registries",
+      "mechanism": "registries",
+      "variants": [
+        {
+          "count": 1,
+          "variant": "keyed-map"
+        },
+        {
+          "count": 1,
+          "variant": "register-call"
+        }
+      ]
+    },
+    {
+      "count": 3,
+      "examples": [
+        {
+          "detail": "adapters",
+          "line": null,
+          "path": "src/adapters",
+          "variant": "folder"
+        },
+        {
+          "detail": "infrastructure",
+          "line": null,
+          "path": "src/infrastructure",
+          "variant": "folder"
+        },
+        {
+          "detail": "ports",
+          "line": null,
+          "path": "src/ports",
+          "variant": "folder"
+        }
+      ],
+      "files": 0,
+      "folders": [
+        {
+          "count": 1,
+          "folder": "src/adapters"
+        },
+        {
+          "count": 1,
+          "folder": "src/infrastructure"
+        },
+        {
+          "count": 1,
+          "folder": "src/ports"
+        }
+      ],
+      "id": "census:ports-and-adapters",
+      "mechanism": "ports-and-adapters",
+      "variants": [
+        {
+          "count": 3,
+          "variant": "folder"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 7
+  }
+}

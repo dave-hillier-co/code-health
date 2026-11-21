@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "census.schema.json",
+  "title": "structure census --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "census"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "census": {
+          "type": "object",
+          "properties": {
+            "folderNames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "eventCalls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "handlerCalls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "registerCalls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "folderNames",
+            "eventCalls",
+            "handlerCalls",
+            "registerCalls"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "census"
+      ],
+      "additionalProperties": false
+    },
+    "filesRead": {
+      "description": "Production TypeScript and JavaScript files the census read.",
+      "$ref": "common.schema.json#/$defs/count"
+    },
+    "results": {
+      "description": "One row per mechanism, in a fixed order, including mechanisms with a count of zero.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^census:"
+          },
+          "mechanism": {
+            "enum": [
+              "callbacks",
+              "interfaces",
+              "dependency-injection",
+              "events",
+              "handlers",
+              "registries",
+              "ports-and-adapters"
+            ]
+          },
+          "count": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "files": {
+            "description": "Files holding an occurrence. Folder occurrences have no file.",
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variant": {
+                  "type": "string"
+                },
+                "count": {
+                  "$ref": "common.schema.json#/$defs/count"
+                }
+              },
+              "required": [
+                "variant",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "folders": {
+            "description": "Folders the occurrences involve, most occurrences first.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "folder": {
+                  "type": "string"
+                },
+                "count": {
+                  "$ref": "common.schema.json#/$defs/count"
+                }
+              },
+              "required": [
+                "folder",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "examples": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "properties": {
+                "variant": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "line": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "description": "Null for a folder."
+                },
+                "detail": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "variant",
+                "path",
+                "line",
+                "detail"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "mechanism",
+          "count",
+          "files",
+          "variants",
+          "folders",
+          "examples"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "filesRead"
+  ],
+  "unevaluatedProperties": false
+}

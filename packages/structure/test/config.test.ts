@@ -35,6 +35,15 @@ test("an exact limit above what the subset search supports is a config error", (
   expect(() => settingsFor({ structure: { exactLimit: 31 } })).toThrow(/exactLimit/);
 });
 
+test("the census names default to ports, adapters and infrastructure, and a stated list replaces the folder names", () => {
+  expect(settingsFor({}).census).toEqual({ folderNames: ["ports", "adapters", "infrastructure"], eventCalls: [], handlerCalls: [], registerCalls: [] });
+  expect(settingsFor({ structure: { census: { folderNames: ["gateways"], eventCalls: ["fire"] } } }).census).toMatchObject({ folderNames: ["gateways"], eventCalls: ["fire"] });
+});
+
+test("a census name that is empty is a config error", () => {
+  expect(() => settingsFor({ structure: { census: { eventCalls: [""] } } })).toThrow(/census\.eventCalls/);
+});
+
 test("unknown keys are rejected", () => {
   expect(() => settingsFor({ structure: { exactLimt: 8 } })).toThrow();
 });
