@@ -38,8 +38,10 @@ export async function loadProject(root: string, headSha: string, exclude: readon
 
 /** The same for a tree already read, which the conformance suites build from a fixture directory. */
 export async function projectFromTree(tree: SourceTree, headSha: string, exclude: readonly string[], cache?: ParseCache): Promise<Project> {
-  const analysis = await analyseTree(tree, cache === undefined ? {} : { cache });
   const excluded = compileGlobs(exclude);
+  const analysed = await analyseTree(tree, cache === undefined ? {} : { cache });
+  // what an excluded file imports from outside the repository is not the repository's need
+  const analysis: ProjectAnalysis = { ...analysed, externalImports: analysed.externalImports.filter((external) => !excluded(external.from)) };
 
   const generated = new Set(analysis.generatedFiles);
   const files = [...tree.files.keys()]

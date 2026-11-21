@@ -73,6 +73,49 @@ export function versionsAreFixed(model: PackageModel): boolean {
   return new Set(versions).size <= 1;
 }
 
+const matcher = (pattern: string): RegExp => new RegExp(`^${pattern.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
+
+/** The version policy the repository's release tooling declares, read from its configuration at HEAD. */
+export interface VersionPolicy {
+  /** One version for every package: lerna fixed mode, or nx fixed releases. */
+  everything: boolean;
+  /** Groups of package names (or name patterns) whose versions the tooling keeps together. */
+  groups: string[][];
+}
+
+export async function readVersionPolicy(model: PackageModel): Promise<VersionPolicy> {
+  const read = async (path: string): Promise<Record<string, any> | null> => {
+    const text = await model.tree.read(path);
+    if (text === null || text === undefined) return null;
+    try {
+      return JSON.parse(text) as Record<string, any>;
+    } catch {
+      return null;
+    }
+  };
+  const policy: VersionPolicy = { everything: false, groups: [] };
+  const changesets = await read(".changeset/config.json");
+  for (const key of ["fixed", "linked"]) {
+    for (const group of Array.isArray(changesets?.[key]) ? changesets[key] : []) {
+      if (Array.isArray(group)) policy.groups.push(group.filter((name): name is string => typeof name === "string"));
+    }
+  }
+  const lerna = await read("lerna.json");
+  if (lerna !== null && typeof lerna.version === "string" && lerna.version !== "independent") policy.everything = true;
+  const nx = await read("nx.json");
+  if (nx?.release?.projectsRelationship === "fixed") policy.everything = true;
+  return policy;
+}
+
+/** Whether tooling keeps these two packages on the same version. */
+export function versionsFixedTogether(policy: VersionPolicy, a: DiscoveredPackage, b: DiscoveredPackage): boolean {
+  if (policy.everything) return true;
+  return policy.groups.some((group) => {
+    const patterns = group.map(matcher);
+    return patterns.some((p) => p.test(a.name)) && patterns.some((p) => p.test(b.name));
+  });
+}
+
 const contentFiles = (model: PackageModel, pkg: DiscoveredPackage): number => {
   const files = model.files.get(pkg.id) ?? [];
   return files.filter((path) => path !== pkg.manifest).length;
@@ -161,7 +204,9 @@ export async function releaseFindings(context: FindingContext, reuse: ReuseAnaly
 async function lockstep(context: FindingContext, root: string): Promise<Finding[]> {
   const { model } = context;
   if (versionsAreFixed(model)) return [];
-  const versioned = model.packages.filter((p) => p.version !== null && p.private !== true && p.version !== "0.0.0");
+  const policy = await readVersionPolicy(model);
+  if (policy.everything) return [];
+  const versioned = model.packages.filter((p) => p.version !== null && p.private !== true && !/^0\.0\.0(?![.\d])/.test(p.version));
   const changes = new Map<string, Set<string>>();
   for (const pkg of versioned) {
     const set = await versionChanges(model, root, pkg);
@@ -174,6 +219,7 @@ async function lockstep(context: FindingContext, root: string): Promise<Finding[
       const a = changes.get(ids[i]!)!;
       const b = changes.get(ids[j]!)!;
       if (a.size < model.settings.packages.minSupport || a.size !== b.size || [...a].some((sha) => !b.has(sha))) continue;
+      if (versionsFixedTogether(policy, model.byId.get(ids[i]!)!, model.byId.get(ids[j]!)!)) continue;
       findings.push(
         raise(context, "lockstep", "REP", [ids[i]!, ids[j]!],
           `${ids[i]} and ${ids[j]} changed version in the same ${a.size} commits, with no policy fixing their versions together: separate versions are ceremony`,
