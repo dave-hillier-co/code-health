@@ -53,7 +53,7 @@ test("a dry run reports the exact file operations and every import it would rewr
   ]);
   expect(shared.git("status", "--porcelain")).toBe("");
   expect(existsSync(join(shared.path, "src/shared/utils/money.ts"))).toBe(true);
-  expectGolden("distant-helpers", "move-money", stdout);
+  expectGolden("distant-helpers", "move.money", stdout);
 });
 
 test("a unit of several files keeps its layout, and imports inside the unit are left alone", async () => {

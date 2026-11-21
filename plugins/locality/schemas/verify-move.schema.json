@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "verify-move.schema.json",
+  "title": "locality verify-move --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "type": "object",
+  "$defs": {
+    "operation": {
+      "type": "object",
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "role": { "enum": ["unit", "test"] }
+      },
+      "required": ["from", "to", "role"],
+      "additionalProperties": false
+    },
+    "paths": { "type": "array", "items": { "type": "string" } }
+  },
+  "properties": {
+    "command": { "const": "verify-move" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "unit": { "type": "string" },
+        "commit": { "type": "string", "description": "The commit that was verified." },
+        "parent": { "$ref": "common.schema.json#/$defs/sha", "description": "Its parent, from which the move was planned." },
+        "to": { "type": ["string", "null"] }
+      },
+      "required": ["unit", "commit", "parent", "to"],
+      "additionalProperties": false
+    },
+    "unit": {
+      "type": "object",
+      "properties": { "path": { "type": "string" }, "destination": { "type": "string" } },
+      "required": ["path", "destination"],
+      "additionalProperties": false
+    },
+    "verified": { "type": "boolean", "description": "The commit reproduces the planned move, changes nothing else and carries the trailer." },
+    "checks": {
+      "type": "object",
+      "properties": {
+        "operations": { "type": "boolean", "description": "Every planned file moved and no other file was added or removed." },
+        "content": { "type": "boolean", "description": "Every affected file holds the text the mover would have written." },
+        "trailer": { "type": "boolean", "description": "The message carries a Code-Health trailer in its last paragraph." }
+      },
+      "required": ["operations", "content", "trailer"],
+      "additionalProperties": false
+    },
+    "refusals": {
+      "type": "array",
+      "description": "Guards that refuse the planned move itself, as `locality move` reports them.",
+      "items": {
+        "type": "object",
+        "properties": { "code": { "type": "string" }, "detail": { "type": "string" } },
+        "required": ["code", "detail"],
+        "additionalProperties": false
+      }
+    },
+    "operations": {
+      "type": "object",
+      "properties": {
+        "planned": { "type": "array", "items": { "$ref": "#/$defs/operation" } },
+        "missing": { "type": "array", "items": { "$ref": "#/$defs/operation" }, "description": "Planned moves the commit did not make." },
+        "unexpectedAdded": { "$ref": "#/$defs/paths" },
+        "unexpectedDeleted": { "$ref": "#/$defs/paths" }
+      },
+      "required": ["planned", "missing", "unexpectedAdded", "unexpectedDeleted"],
+      "additionalProperties": false
+    },
+    "content": {
+      "type": "object",
+      "properties": {
+        "identical": { "$ref": "common.schema.json#/$defs/count", "description": "Files whose text is exactly what the mover would have written." },
+        "specifierDifferences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "line": { "type": "integer", "minimum": 1 },
+              "expected": { "type": "string" },
+              "actual": { "type": "string" }
+            },
+            "required": ["path", "line", "expected", "actual"],
+            "additionalProperties": false
+          }
+        },
+        "otherChanges": { "$ref": "#/$defs/paths", "description": "Files that differ in something other than an import path: the commit is not move-only." }
+      },
+      "required": ["identical", "specifierDifferences", "otherChanges"],
+      "additionalProperties": false
+    },
+    "results": { "type": "array", "items": { "$ref": "#/$defs/operation" }, "description": "The planned file operations." }
+  },
+  "required": ["unit", "verified", "checks", "refusals", "operations", "content"],
+  "unevaluatedProperties": false
+}

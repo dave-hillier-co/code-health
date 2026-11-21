@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "move.schema.json",
+  "title": "locality move --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "type": "object",
+  "$defs": {
+    "operation": {
+      "type": "object",
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "role": { "enum": ["unit", "test"], "description": "`unit` files are the unit, `test` files import only the unit and move with it." }
+      },
+      "required": ["from", "to", "role"],
+      "additionalProperties": false
+    },
+    "refusal": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "enum": [
+            "barrel",
+            "collision",
+            "dirty-working-tree",
+            "fixed-point",
+            "fixed-point-destination",
+            "invalid-destination",
+            "needs-reason",
+            "no-change",
+            "package-boundary",
+            "package-entry"
+          ]
+        },
+        "detail": { "type": "string" }
+      },
+      "required": ["code", "detail"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "command": { "const": "move" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "unit": { "type": "string" },
+        "to": { "type": ["string", "null"], "description": "The destination folder asked for, or null for the analyser's target." },
+        "apply": { "type": "boolean" },
+        "commit": { "type": ["boolean", "null"], "description": "Whether --apply commits. Null on a dry run." },
+        "reason": { "type": ["string", "null"], "description": "Why a unit the analyser did not recommend moving moves anyway." }
+      },
+      "required": ["unit", "to", "apply", "commit", "reason"],
+      "additionalProperties": false
+    },
+    "unit": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "recommendation": { "enum": ["inline", "move", "split", "blocked", "keep", "scrutinise", "review"] },
+        "rule": { "type": "string" },
+        "destination": { "type": "string", "description": "The folder the unit's layout is rebuilt under. Empty for the repository root." },
+        "fanIn": { "$ref": "common.schema.json#/$defs/count" }
+      },
+      "required": ["path", "recommendation", "rule", "destination", "fanIn"],
+      "additionalProperties": false
+    },
+    "mode": { "enum": ["dry-run", "apply"] },
+    "applied": { "type": "boolean", "description": "The move was made in the working tree." },
+    "commit": { "anyOf": [{ "$ref": "common.schema.json#/$defs/sha" }, { "type": "null" }], "description": "The move commit, or null on a dry run or with --no-commit." },
+    "refusals": { "type": "array", "items": { "$ref": "#/$defs/refusal" }, "description": "Why the move is not made. Empty when it can be." },
+    "rewrites": {
+      "type": "array",
+      "description": "Every import specifier the move changes, with the path of its file after the move.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 },
+          "from": { "type": "string" },
+          "to": { "type": "string" }
+        },
+        "required": ["path", "line", "from", "to"],
+        "additionalProperties": false
+      }
+    },
+    "mentions": {
+      "type": "array",
+      "description": "Files outside the source that name a path the move vacates. They are not edited.",
+      "items": {
+        "type": "object",
+        "properties": { "path": { "type": "string" }, "mentions": { "type": "string" } },
+        "required": ["path", "mentions"],
+        "additionalProperties": false
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "results": { "type": "array", "items": { "$ref": "#/$defs/operation" }, "description": "The exact file operations." }
+  },
+  "required": ["unit", "mode", "applied", "commit", "refusals", "rewrites", "mentions", "warnings"],
+  "unevaluatedProperties": false
+}

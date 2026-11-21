@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scrutinise.schema.json",
+  "title": "locality scrutinise --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "type": "object",
+  "$defs": {
+    "paths": { "type": "array", "items": { "type": "string" } },
+    "finding": {
+      "type": "object",
+      "properties": {
+        "flag": {
+          "enum": ["divergent-use", "overexposure", "pass-through-method", "shallow-module", "special-general-mixture", "vague-name"],
+          "description": "A design red flag from shared/red-flags.md, or `divergent-use` for consumers that work around the unit."
+        },
+        "subject": { "type": "string", "description": "The exported unit the finding is about, or the file." },
+        "detail": { "type": "string", "description": "The evidence, with the counts it rests on." },
+        "consumers": { "$ref": "#/$defs/paths", "description": "The consumer files the evidence comes from." }
+      },
+      "required": ["flag", "subject", "detail", "consumers"],
+      "additionalProperties": false
+    },
+    "hint": {
+      "type": "object",
+      "properties": {
+        "kind": { "enum": ["locale", "mutates-argument", "nondeterministic", "swallows-errors", "throws", "time-zone"] },
+        "subject": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 },
+        "evidence": { "type": "string", "description": "The line of source that matched. A place to look, not a defect." }
+      },
+      "required": ["kind", "subject", "line", "evidence"],
+      "additionalProperties": false
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "optional": { "type": "boolean" },
+        "mode": { "type": "boolean", "description": "A boolean, or a union of string literals: a switch between behaviours." },
+        "passedBy": { "$ref": "common.schema.json#/$defs/count", "description": "Call sites that pass an argument for it." },
+        "values": {
+          "type": "array",
+          "description": "What call sites pass: each literal with its count, and `(expression)` for anything computed.",
+          "items": {
+            "type": "object",
+            "properties": { "value": { "type": "string" }, "count": { "$ref": "common.schema.json#/$defs/count" } },
+            "required": ["value", "count"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["name", "optional", "mode", "passedBy", "values"],
+      "additionalProperties": false
+    },
+    "export": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "lines": { "$ref": "common.schema.json#/$defs/count" },
+        "parameters": { "type": "array", "items": { "$ref": "#/$defs/parameter" } },
+        "callSites": { "$ref": "common.schema.json#/$defs/count", "description": "Production call sites found." },
+        "valueReferences": { "$ref": "common.schema.json#/$defs/count", "description": "Production references that are not calls: passed as a value." },
+        "consumers": { "$ref": "#/$defs/paths" },
+        "postProcessed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "line": { "type": "integer", "minimum": 1 },
+              "how": { "type": "string" }
+            },
+            "required": ["path", "line", "how"],
+            "additionalProperties": false
+          }
+        },
+        "testCallSites": { "$ref": "common.schema.json#/$defs/count", "description": "Calls from tests, which do not count as consumers." }
+      },
+      "required": ["name", "lines", "parameters", "callSites", "valueReferences", "consumers", "postProcessed", "testCallSites"],
+      "additionalProperties": false
+    },
+    "scrutiny": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "reason": { "enum": ["high-fan-in", "requested"], "description": "The analyser sent the unit here, or the caller named it." },
+        "fanIn": { "$ref": "common.schema.json#/$defs/count" },
+        "rule": { "type": "string" },
+        "location": { "type": "string" },
+        "consumers": { "$ref": "#/$defs/paths" },
+        "consumerFolders": { "$ref": "#/$defs/paths" },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+        "hints": { "type": "array", "items": { "$ref": "#/$defs/hint" } },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": { "code": { "const": "consumers-in-one-folder" }, "detail": { "type": "string" } },
+            "required": ["code", "detail"],
+            "additionalProperties": false
+          }
+        },
+        "exports": { "type": "array", "items": { "$ref": "#/$defs/export" } }
+      },
+      "required": ["path", "reason", "fanIn", "rule", "location", "consumers", "consumerFolders", "findings", "hints", "notes", "exports"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "command": { "const": "scrutinise" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "paths": { "$ref": "#/$defs/paths", "description": "Path prefixes the run was limited to." },
+        "highFanIn": { "$ref": "common.schema.json#/$defs/count", "description": "The locality.highFanIn threshold in effect." }
+      },
+      "required": ["paths", "highFanIn"],
+      "additionalProperties": false
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "results": { "type": "array", "items": { "$ref": "#/$defs/scrutiny" } }
+  },
+  "required": ["warnings"],
+  "unevaluatedProperties": false
+}

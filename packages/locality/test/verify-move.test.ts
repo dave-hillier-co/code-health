@@ -2,7 +2,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
-import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import type { Change, GitFixture } from "@code-health/fixtures/git-fixture";
+import { expectGolden } from "./support/golden.ts";
 import { runLocality } from "./support/run.ts";
 import { distantHelpers } from "./support/scenarios.ts";
 
@@ -27,7 +28,7 @@ afterEach(() => repo.dispose());
 
 async function verify(...args: string[]) {
   const run = await runLocality(repo.path, ["verify-move", "src/shared/utils/money.ts", "--json", ...args]);
-  return { code: run.code, document: JSON.parse(run.stdout) as Verification };
+  return { code: run.code, document: JSON.parse(run.stdout) as Verification, stdout: run.stdout };
 }
 
 function edit(path: string, change: (text: string) => string): void {
@@ -129,4 +130,25 @@ test("a root commit or a merge cannot be verified as a move", async () => {
   const root = repo.git("rev-list", "--max-parents=0", "HEAD");
   const run = await runLocality(repo.path, ["verify-move", "src/shared/utils/money.ts", "--commit", root]);
   expect(run.code).toBe(ExitCode.Usage);
+});
+
+test("the output of a verification, for a commit with fixed dates", async () => {
+  const swap = (path: string, specifier: string): Change => ({
+    op: "modify",
+    path,
+    content: readFileSync(join(repo.path, path), "utf8").replace("../shared/utils/money.ts", specifier),
+  });
+  repo.commit({
+    message: `Move money next to its consumers${trailer}`,
+    date: "2025-02-01T09:00:00Z",
+    changes: [
+      { op: "rename", from: "src/shared/utils/money.ts", path: "src/money.ts" },
+      swap("src/billing/charge.ts", "../money.ts"),
+      swap("src/legacy/dead.ts", "../money.ts"),
+      swap("src/orders/place.ts", "../money.ts"),
+    ],
+  });
+  const { document, stdout } = await verify();
+  expect(document.verified).toBe(true);
+  expectGolden("distant-helpers", "verify-move", stdout);
 });
