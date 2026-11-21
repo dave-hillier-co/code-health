@@ -1,5 +1,6 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { Command, CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
+import { backtestCommand } from "../abandonment/backtest.ts";
 import { groupByComponent, measureCurrent, summariseCurrent } from "../abandonment/current.ts";
 import { commonExtra, commonInputs, prepare } from "../abandonment/prepare.ts";
 import { simulationOptions } from "../abandonment/selection.ts";
@@ -9,7 +10,7 @@ import { byOption, readBy } from "../units.ts";
 
 export const name = "abandonment";
 
-const SUBCOMMANDS = ["current", "simulate", "turnover"] as const;
+const SUBCOMMANDS = ["backtest", "current", "simulate", "turnover"] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
 
 /**
@@ -19,13 +20,15 @@ type Subcommand = (typeof SUBCOMMANDS)[number];
  */
 export const command: Command = {
   summary: "Knowledge lost when people leave: files already abandoned, simulated turnover, and a backtest of the model",
-  options: { ...byOption, ...simulationOptions, top: { type: "string" }, "no-refresh": { type: "boolean" } },
+  options: { ...byOption, ...simulationOptions, top: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
     const [sub, ...rest] = context.positionals;
     if (!SUBCOMMANDS.includes(sub as Subcommand) || rest.length > 0) throw usageError(`usage: abandonment <${SUBCOMMANDS.join("|")}>`);
     const subcommand = sub as Subcommand;
     rejectOptionsOutsideTheirCommand(subcommand, context);
     switch (subcommand) {
+      case "backtest":
+        return backtestCommand(context);
       case "current":
         return current(context);
       case "simulate":
@@ -39,12 +42,13 @@ export const command: Command = {
 function rejectOptionsOutsideTheirCommand(sub: Subcommand, context: CommandContext): void {
   const only: Record<string, Subcommand[]> = {
     by: ["current"],
+    at: ["backtest"],
     mode: ["simulate"],
     k: ["simulate"],
-    trials: ["simulate"],
-    horizon: ["simulate"],
-    seed: ["simulate"],
-    top: ["simulate"],
+    trials: ["backtest", "simulate"],
+    horizon: ["backtest", "simulate"],
+    seed: ["backtest", "simulate"],
+    top: ["backtest", "simulate"],
   };
   for (const [option, owners] of Object.entries(only)) {
     if (context.values[option] !== undefined && !owners.includes(sub)) throw usageError(`--${option} belongs to abandonment ${owners.join(", ")}`);

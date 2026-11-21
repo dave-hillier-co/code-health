@@ -1,0 +1,176 @@
+{
+  "command": "abandonment",
+  "config": "fbef88a267af263a",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 7,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 25.7,
+    "window": {
+      "months": 12,
+      "since": 1709283600,
+      "until": 1740819600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 19,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 20,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "abandonmentThreshold": 90,
+    "activityWindowMonths": 6,
+    "alphas": [
+      95,
+      99
+    ],
+    "at": "2024-02-29",
+    "atRiskProbability": 10,
+    "copyDetection": true,
+    "horizonPeriods": 4,
+    "periodMonths": 3,
+    "seed": 3,
+    "subcommand": "backtest",
+    "trials": 2000,
+    "turnoverRate": 0.1
+  },
+  "repo": {
+    "dirty": false,
+    "head": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6"
+  },
+  "results": {
+    "actual": {
+      "files": 3
+    },
+    "at": "2024-02-29",
+    "candidates": 7,
+    "commits": {
+      "at": "df0d74fd68ecc5e8173f39bb585d7bb8c680cde0",
+      "outcome": "c9a338249d2c81b189bccc3408179cd3ec3d0e48"
+    },
+    "expectedAbandoned": 1.9155,
+    "files": [
+      {
+        "outcome": "false-alarm",
+        "path": "src/api/auth.ts",
+        "probability": 0.347,
+        "score": 0.347
+      },
+      {
+        "outcome": "hit",
+        "path": "src/core/engine.ts",
+        "probability": 0.3405,
+        "score": 0.3405
+      },
+      {
+        "outcome": "hit",
+        "path": "src/core/parser.ts",
+        "probability": 0.3405,
+        "score": 0.3405
+      },
+      {
+        "outcome": "hit",
+        "path": "src/gen/deps.ts",
+        "probability": 0.337,
+        "score": 0.337
+      },
+      {
+        "outcome": "false-alarm",
+        "path": "src/util/log.ts",
+        "probability": 0.3365,
+        "score": 0.3365
+      },
+      {
+        "outcome": "false-alarm",
+        "path": "src/api/routes.ts",
+        "probability": 0.1075,
+        "score": 0.1075
+      },
+      {
+        "outcome": "false-alarm",
+        "path": "src/core/lexer.ts",
+        "probability": 0.1065,
+        "score": 0.1065
+      }
+    ],
+    "model": {
+      "activeDevelopers": 4,
+      "departures": {
+        "atRisk": 6,
+        "departed": 0,
+        "periods": 2
+      },
+      "leaverProbability": 0.3439,
+      "ratePerPeriod": 0.1,
+      "source": "configured"
+    },
+    "outcomeAt": "2025-03-01",
+    "precision": 0.4286,
+    "predicted": {
+      "files": 7,
+      "goneByOutcome": 0
+    },
+    "recall": 1,
+    "truePositives": 3
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2024-03-01T09:00:00.000Z",
+    "until": "2025-03-01T09:00:00.000Z"
+  }
+}

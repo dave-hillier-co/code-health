@@ -1,13 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "abandonment.schema.json",
-  "title": "cochange abandonment <current|turnover|simulate> --json",
+  "title": "cochange abandonment <current|turnover|simulate|backtest> --json",
   "description": "Knowledge lost when people leave. Developers appear only as counts. The output is never stored as a report. `inputs.subcommand` says which shape `results` takes.",
   "$defs": {
     "inputs": {
       "type": "object",
       "properties": {
-        "subcommand": { "enum": ["current", "turnover", "simulate"] },
+        "subcommand": { "enum": ["current", "turnover", "simulate", "backtest"] },
+        "at": { "type": "string", "format": "date", "description": "Backtest: the date the model is built at." },
+        "atRiskProbability": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Backtest: the percentage at which a file is predicted to be abandoned." },
         "by": { "enum": ["file", "component"] },
         "mode": { "enum": ["rate", "historical", "k-leavers"] },
         "k": { "type": ["integer", "null"], "minimum": 1 },
@@ -33,7 +35,7 @@
         },
         "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
       },
-      "required": ["subcommand", "activityWindowMonths", "periodMonths", "abandonmentThreshold", "copyDetection", "overrides"],
+      "required": ["subcommand", "activityWindowMonths", "periodMonths", "abandonmentThreshold", "copyDetection"],
       "additionalProperties": false
     },
     "share": { "type": "number", "minimum": 0 },
@@ -165,6 +167,78 @@
       "required": ["mode", "trials", "horizonPeriods", "seed", "selection", "population", "loss", "files", "components"],
       "additionalProperties": false
     },
+    "backtest": {
+      "type": "object",
+      "description": "The model as it stood at a past date, against what happened one horizon later. Counts and paths only.",
+      "properties": {
+        "at": { "type": "string", "format": "date" },
+        "outcomeAt": { "type": "string", "format": "date" },
+        "commits": {
+          "type": "object",
+          "properties": { "at": { "$ref": "common.schema.json#/$defs/sha" }, "outcome": { "$ref": "common.schema.json#/$defs/sha" } },
+          "required": ["at", "outcome"],
+          "additionalProperties": false
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "source": { "enum": ["history", "configured"] },
+            "ratePerPeriod": { "type": "number", "minimum": 0, "maximum": 1 },
+            "leaverProbability": { "type": "number", "minimum": 0, "maximum": 1 },
+            "activeDevelopers": { "$ref": "common.schema.json#/$defs/count" },
+            "departures": {
+              "type": "object",
+              "description": "The turnover observed in the history up to the date.",
+              "properties": {
+                "atRisk": { "$ref": "common.schema.json#/$defs/count" },
+                "departed": { "$ref": "common.schema.json#/$defs/count" },
+                "periods": { "$ref": "common.schema.json#/$defs/count" }
+              },
+              "required": ["atRisk", "departed", "periods"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["source", "ratePerPeriod", "leaverProbability", "activeDevelopers", "departures"],
+          "additionalProperties": false
+        },
+        "candidates": { "$ref": "common.schema.json#/$defs/count", "description": "Files present at both dates and not abandoned at the first: the ones a prediction can be right or wrong about." },
+        "predicted": {
+          "type": "object",
+          "properties": {
+            "files": { "$ref": "common.schema.json#/$defs/count", "description": "Candidates whose abandonment probability reached the at-risk threshold." },
+            "goneByOutcome": { "$ref": "common.schema.json#/$defs/count", "description": "Files over the threshold that no longer exist at the outcome date, and so were not scored." }
+          },
+          "required": ["files", "goneByOutcome"],
+          "additionalProperties": false
+        },
+        "actual": {
+          "type": "object",
+          "properties": { "files": { "$ref": "common.schema.json#/$defs/count", "description": "Candidates abandoned at the outcome date." } },
+          "required": ["files"],
+          "additionalProperties": false
+        },
+        "truePositives": { "$ref": "common.schema.json#/$defs/count" },
+        "precision": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Predicted files that were abandoned. Null when nothing was predicted." },
+        "recall": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Abandoned files that were predicted. Null when nothing was abandoned." },
+        "expectedAbandoned": { "type": "number", "minimum": 0, "description": "The number of candidates the model expected to be abandoned, to set beside actual.files." },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "score": { "$ref": "#/$defs/share" },
+              "probability": { "type": "number", "minimum": 0, "maximum": 1 },
+              "outcome": { "enum": ["hit", "false-alarm", "missed"], "description": "Predicted and abandoned, predicted and not, or abandoned and not predicted." }
+            },
+            "required": ["path", "score", "probability", "outcome"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["at", "outcomeAt", "commits", "model", "candidates", "predicted", "actual", "truePositives", "precision", "recall", "expectedAbandoned", "files"],
+      "additionalProperties": false
+    },
     "currentSummary": {
       "type": "object",
       "description": "With `current`: the repository as a whole.",
@@ -252,43 +326,59 @@
     "turnover": { "$ref": "#/$defs/turnoverSummary" },
     "results": {}
   },
-  "required": ["developers", "blame"],
   "oneOf": [
     {
       "properties": {
         "inputs": {
           "type": "object",
-          "properties": { "subcommand": { "const": "current" }, "by": true },
-          "required": ["subcommand", "by"]
+          "properties": { "subcommand": { "const": "current" }, "by": true, "overrides": true },
+          "required": ["subcommand", "by", "overrides"]
         },
         "results": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/currentFile" }, { "$ref": "#/$defs/currentComponent" }] } },
-        "summary": true
+        "summary": true,
+        "developers": true,
+        "blame": true
       },
-      "required": ["inputs", "summary"]
+      "required": ["inputs", "summary", "developers", "blame"]
     },
     {
       "properties": {
         "inputs": {
           "type": "object",
-          "properties": { "subcommand": { "const": "turnover" } },
-          "required": ["subcommand"]
+          "properties": { "subcommand": { "const": "turnover" }, "overrides": true },
+          "required": ["subcommand", "overrides"]
         },
         "results": { "type": "array", "items": { "$ref": "#/$defs/turnoverPeriod" } },
-        "turnover": true
+        "turnover": true,
+        "developers": true,
+        "blame": true
       },
-      "required": ["inputs", "turnover"]
+      "required": ["inputs", "turnover", "developers", "blame"]
     },
     {
       "properties": {
         "inputs": {
           "type": "object",
-          "properties": { "subcommand": { "const": "simulate" }, "mode": true, "k": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
-          "required": ["subcommand", "mode", "k", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
+          "properties": { "subcommand": { "const": "simulate" }, "overrides": true, "mode": true, "k": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
+          "required": ["subcommand", "overrides", "mode", "k", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
         },
         "results": { "$ref": "#/$defs/simulation" },
-        "turnover": true
+        "turnover": true,
+        "developers": true,
+        "blame": true
       },
-      "required": ["inputs", "turnover"]
+      "required": ["inputs", "turnover", "developers", "blame"]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "backtest" }, "at": true, "atRiskProbability": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
+          "required": ["subcommand", "at", "atRiskProbability", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
+        },
+        "results": { "$ref": "#/$defs/backtest" }
+      },
+      "required": ["inputs"]
     }
   ],
   "unevaluatedProperties": false
