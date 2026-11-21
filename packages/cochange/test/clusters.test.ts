@@ -16,7 +16,8 @@ afterAll(() => repo.dispose());
 afterEach(() => rmSync(join(repo.path, "code-health.json"), { force: true }));
 
 const clusters = (...args: string[]) => runCochange(repo.path, ["clusters", ...args, "--json"]);
-const rowsOf = (stdout: string) => JSON.parse(stdout).results as Record<string, any>[];
+type Row = Record<string, any>;
+const rowsOf = (stdout: string) => JSON.parse(stdout).results as [Row, Row, Row, Row];
 
 test("the default listing matches its golden", async () => {
   const { code, stdout, stderr } = await clusters();
