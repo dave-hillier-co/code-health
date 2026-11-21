@@ -7466,18 +7466,18 @@ function findUnits(graph, entries) {
   return units.sort((a, b) => compareIds(a.path, b.path));
 }
 
-// packages/locality/src/reports.ts
+// packages/history/src/reports.ts
 import { mkdirSync as mkdirSync2, renameSync, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join7 } from "node:path";
-function reportPath(root, command2) {
-  return join7(root, ".cache", "code-health", "reports", `${TOOL}.${command2}.json`);
+function reportPath(root, tool, command2) {
+  return join7(root, ".cache", "code-health", "reports", `${tool}.${command2}.json`);
 }
-async function writeReport(context, command2, output) {
-  if (context.repo.dirty) return false;
+async function writeReport(context, identity, command2, output, analysedHead) {
+  if (context.repo.dirty || analysedHead !== context.repo.head) return false;
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
   const document = buildDocument({
-    schemaVersion: SCHEMA_VERSION,
-    tool: TOOL,
+    schemaVersion: identity.schemaVersion,
+    tool: identity.tool,
     command: command2,
     repo: { head: context.repo.head, dirty: false },
     configHash: context.config.hash,
@@ -7486,7 +7486,7 @@ async function writeReport(context, command2, output) {
     results,
     truncated
   });
-  const file = reportPath(context.repo.root, command2);
+  const file = reportPath(context.repo.root, identity.tool, command2);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join7(context.repo.root, ".cache", "code-health") });
   mkdirSync2(join7(file, ".."), { recursive: true });
@@ -7494,6 +7494,11 @@ async function writeReport(context, command2, output) {
   writeFileSync2(temporary, serialise(document));
   renameSync(temporary, file);
   return true;
+}
+
+// packages/locality/src/reports.ts
+function writeReport2(context, command2, output) {
+  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION }, command2, output, context.repo.head);
 }
 
 // packages/locality/src/rules.ts
@@ -7671,7 +7676,7 @@ var command = {
       results: rows,
       columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"]
     };
-    if (!partial) await writeReport(context, name2, output);
+    if (!partial) await writeReport2(context, name2, output);
     return output;
   }
 };

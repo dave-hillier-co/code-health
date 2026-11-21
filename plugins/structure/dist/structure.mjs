@@ -2078,18 +2078,18 @@ async function loadHistory(context, options = {}) {
   return { ...analysis, settings, window: { since: since ?? earliest, until: options.window?.until ?? anchor }, refreshed };
 }
 
-// packages/structure/src/reports.ts
+// packages/history/src/reports.ts
 import { mkdirSync as mkdirSync2, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join4 } from "node:path";
-function reportPath(root, command4, tool = TOOL) {
+function reportPath(root, tool, command4) {
   return join4(root, ".cache", "code-health", "reports", `${tool}.${command4}.json`);
 }
-async function writeReport(context, command4, output, analysedHead) {
+async function writeReport(context, identity, command4, output, analysedHead) {
   if (context.repo.dirty || analysedHead !== context.repo.head) return false;
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
   const document = buildDocument({
-    schemaVersion: SCHEMA_VERSION2,
-    tool: TOOL,
+    schemaVersion: identity.schemaVersion,
+    tool: identity.tool,
     command: command4,
     repo: { head: context.repo.head, dirty: false },
     configHash: context.config.hash,
@@ -2098,7 +2098,7 @@ async function writeReport(context, command4, output, analysedHead) {
     results,
     truncated
   });
-  const file = reportPath(context.repo.root, command4);
+  const file = reportPath(context.repo.root, identity.tool, command4);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join4(context.repo.root, ".cache", "code-health") });
   mkdirSync2(join4(file, ".."), { recursive: true });
@@ -2106,6 +2106,14 @@ async function writeReport(context, command4, output, analysedHead) {
   writeFileSync2(temporary, serialise(document));
   renameSync2(temporary, file);
   return true;
+}
+
+// packages/structure/src/reports.ts
+function reportPath2(root, command4, tool = TOOL) {
+  return reportPath(root, tool, command4);
+}
+function writeReport2(context, command4, output, analysedHead) {
+  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command4, output, analysedHead);
 }
 
 // packages/structure/src/analysis-command.ts
@@ -2131,7 +2139,7 @@ function analysisCommand(name5, spec) {
         }
       };
       const wholeRepository = window2 === void 0 && !spec.partial?.(context);
-      if (wholeRepository) await writeReport(context, name5, finished, history.view.headSha);
+      if (wholeRepository) await writeReport2(context, name5, finished, history.view.headSha);
       return finished;
     }
   };
@@ -8219,7 +8227,7 @@ function connectedPairs(graph) {
 import { existsSync as existsSync7, readFileSync as readFileSync6 } from "node:fs";
 var LOCALITY_REPORT = { tool: "locality", command: "analyse" };
 function readLocalityUnblocks(context, head) {
-  const file = reportPath(context.repo.root, LOCALITY_REPORT.command, LOCALITY_REPORT.tool);
+  const file = reportPath2(context.repo.root, LOCALITY_REPORT.command, LOCALITY_REPORT.tool);
   if (!existsSync7(file)) return void 0;
   let document;
   try {
