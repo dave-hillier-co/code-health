@@ -1,0 +1,13 @@
+{
+  "columns": ["unit","cyclomatic","cyclomaticModified","cognitive","nesting","length","statements","parameters","optionCount"],
+  "files": {
+    "shapes.py": [
+      ["comprehensions",5,5,0,0,5,4,2,0],
+      ["lambdas",2,2,2,0,4,5,1,0],
+      ["lambdas.key",2,2,1,0,1,1,1,0],
+      ["stream",3,3,3,2,6,4,1,0],
+      ["drain",4,4,5,2,8,7,1,0],
+      ["guards",6,4,1,1,10,5,1,0]
+    ]
+  }
+}

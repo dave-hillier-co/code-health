@@ -1,0 +1,13 @@
+{
+  "columns": ["unit","cyclomatic","cyclomaticModified","cognitive","nesting","length","statements","parameters","optionCount"],
+  "files": {
+    "members.py": [
+      ["parameters",1,1,0,0,2,1,5,0],
+      ["Service.method",1,1,0,0,2,1,2,0],
+      ["Service.make",1,1,0,0,2,1,1,0],
+      ["Service.plain",1,1,0,0,2,1,1,0],
+      ["Service.helper",1,1,0,0,2,1,1,0],
+      ["statements",2,2,1,1,11,10,1,0]
+    ]
+  }
+}
