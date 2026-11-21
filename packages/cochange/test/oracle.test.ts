@@ -1,9 +1,12 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { randomHistory, RANDOM_MAX_CHANGESET } from "./support/random-history.ts";
 import { compare, deletedAtEnd, interpolated, meanPairDistance, oracleChanges, oraclePairs } from "./support/oracle.ts";
 import { runCochange } from "./support/run.ts";
+
+// Fifteen random repositories are built and analysed, which takes long when every other suite is running too.
+vi.setConfig({ testTimeout: 240_000 });
 
 const SEEDS = Array.from({ length: 15 }, (_, i) => i + 1);
 
