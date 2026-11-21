@@ -1,0 +1,202 @@
+{
+  "command": "evidence",
+  "config": "d4c2f7445b2b2f00",
+  "deferred": [
+    {
+      "field": "quadrant",
+      "milestone": 6
+    },
+    {
+      "field": "nearbyMechanisms",
+      "milestone": 3
+    },
+    {
+      "field": "layerRule",
+      "milestone": 5
+    }
+  ],
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 8,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 4.3,
+    "window": {
+      "months": 12,
+      "since": 1684573200,
+      "until": 1716195600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "level": "file",
+    "locality": null,
+    "target": "src/e.ts->src/c.ts"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "a2e133c801e505ea35ecf47afa6692f2c18f2b92"
+  },
+  "results": [
+    {
+      "breakingSet": [
+        {
+          "kind": "call",
+          "sites": 1,
+          "symbol": "src/c.ts#gamma",
+          "usedBy": [
+            "src/e.ts"
+          ]
+        }
+      ],
+      "coChange": {
+        "confidenceFromTo": 33.3,
+        "confidenceToFrom": 25,
+        "eligibleChanges": 8,
+        "expected": 1.5,
+        "fromChanges": 3,
+        "shared": 1,
+        "toChanges": 4
+      },
+      "findings": [
+        "cycle:file:src/c.ts"
+      ],
+      "from": "src/e.ts",
+      "id": "edge:file:src/e.ts->src/c.ts",
+      "imports": {
+        "fileEdges": 1,
+        "files": [
+          {
+            "from": "src/e.ts",
+            "to": "src/c.ts"
+          }
+        ],
+        "importStatements": 1,
+        "typeOnly": false
+      },
+      "inBreakingSet": true,
+      "kind": "cycle",
+      "kinds": [
+        "cycle"
+      ],
+      "layerRule": null,
+      "level": "file",
+      "misplacement": [
+        {
+          "consumerFiles": 1,
+          "elsewhere": 0,
+          "mostlyOn": "from",
+          "moveMayRemoveDependency": true,
+          "onFromSide": 1,
+          "onToSide": 0,
+          "symbol": "src/c.ts#gamma"
+        }
+      ],
+      "nearbyMechanisms": [],
+      "quadrant": null,
+      "stability": {
+        "from": {
+          "change": {
+            "active": true,
+            "churn": 8,
+            "files": 1,
+            "revisions": 3,
+            "revisionsPerFile": 3
+          },
+          "structural": {
+            "ca": 1,
+            "ce": 1,
+            "instability": 0.5
+          }
+        },
+        "to": {
+          "change": {
+            "active": true,
+            "churn": 10,
+            "files": 1,
+            "revisions": 4,
+            "revisionsPerFile": 4
+          },
+          "structural": {
+            "ca": 1,
+            "ce": 1,
+            "instability": 0.5
+          }
+        }
+      },
+      "stabilityVerdict": {
+        "basis": "change",
+        "changeViolation": false,
+        "disagree": false,
+        "structuralViolation": false,
+        "violates": false,
+        "volatilityRatio": 1.333
+      },
+      "to": "src/c.ts",
+      "unblocks": []
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "window": {
+    "since": "2023-05-20T09:00:00.000Z",
+    "until": "2024-05-20T09:00:00.000Z"
+  }
+}

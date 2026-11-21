@@ -1,0 +1,314 @@
+{
+  "command": "stability",
+  "config": "d4c2f7445b2b2f00",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 6,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 3.8,
+    "window": {
+      "months": 12,
+      "since": 1683277200,
+      "until": 1714899600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "by": "folder",
+    "minInstabilityGap": 20,
+    "minRevisions": 3,
+    "minVolatilityRatio": 2
+  },
+  "repo": {
+    "dirty": false,
+    "head": "ad52cb77a996912de60431c1c668a61fb2832714"
+  },
+  "results": [
+    {
+      "basis": "change",
+      "changeViolation": true,
+      "disagree": true,
+      "fileEdges": 1,
+      "from": "src/stable",
+      "id": "unstable:folder:src/stable->src/volatile",
+      "level": "folder",
+      "stability": {
+        "from": {
+          "change": {
+            "active": false,
+            "churn": 7,
+            "files": 2,
+            "revisions": 1,
+            "revisionsPerFile": 0.5
+          },
+          "structural": {
+            "ca": 2,
+            "ce": 1,
+            "instability": 0.333
+          }
+        },
+        "to": {
+          "change": {
+            "active": true,
+            "churn": 16,
+            "files": 2,
+            "revisions": 6,
+            "revisionsPerFile": 3
+          },
+          "structural": {
+            "ca": 3,
+            "ce": 0,
+            "instability": 0
+          }
+        }
+      },
+      "structuralViolation": false,
+      "to": "src/volatile",
+      "violates": true,
+      "volatilityRatio": 6
+    },
+    {
+      "basis": "change",
+      "changeViolation": true,
+      "disagree": true,
+      "fileEdges": 1,
+      "from": "src/glue",
+      "id": "unstable:folder:src/glue->src/volatile",
+      "level": "folder",
+      "stability": {
+        "from": {
+          "change": {
+            "active": false,
+            "churn": 5,
+            "files": 1,
+            "revisions": 1,
+            "revisionsPerFile": 1
+          },
+          "structural": {
+            "ca": 1,
+            "ce": 2,
+            "instability": 0.667
+          }
+        },
+        "to": {
+          "change": {
+            "active": true,
+            "churn": 16,
+            "files": 2,
+            "revisions": 6,
+            "revisionsPerFile": 3
+          },
+          "structural": {
+            "ca": 3,
+            "ce": 0,
+            "instability": 0
+          }
+        }
+      },
+      "structuralViolation": false,
+      "to": "src/volatile",
+      "violates": true,
+      "volatilityRatio": 3
+    },
+    {
+      "basis": "structure",
+      "changeViolation": null,
+      "disagree": false,
+      "fileEdges": 1,
+      "from": "src/lib",
+      "id": "unstable:folder:src/lib->src/glue",
+      "level": "folder",
+      "stability": {
+        "from": {
+          "change": {
+            "active": false,
+            "churn": 4,
+            "files": 1,
+            "revisions": 1,
+            "revisionsPerFile": 1
+          },
+          "structural": {
+            "ca": 3,
+            "ce": 1,
+            "instability": 0.25
+          }
+        },
+        "to": {
+          "change": {
+            "active": false,
+            "churn": 5,
+            "files": 1,
+            "revisions": 1,
+            "revisionsPerFile": 1
+          },
+          "structural": {
+            "ca": 1,
+            "ce": 2,
+            "instability": 0.667
+          }
+        }
+      },
+      "structuralViolation": true,
+      "to": "src/glue",
+      "violates": true,
+      "volatilityRatio": 1
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 3
+  },
+  "units": [
+    {
+      "change": {
+        "active": true,
+        "churn": 16,
+        "files": 2,
+        "revisions": 6,
+        "revisionsPerFile": 3
+      },
+      "id": "src/volatile",
+      "structural": {
+        "ca": 3,
+        "ce": 0,
+        "instability": 0
+      }
+    },
+    {
+      "change": {
+        "active": false,
+        "churn": 8,
+        "files": 1,
+        "revisions": 2,
+        "revisionsPerFile": 2
+      },
+      "id": "src/app",
+      "structural": {
+        "ca": 0,
+        "ce": 3,
+        "instability": 1
+      }
+    },
+    {
+      "change": {
+        "active": false,
+        "churn": 5,
+        "files": 1,
+        "revisions": 1,
+        "revisionsPerFile": 1
+      },
+      "id": "src/glue",
+      "structural": {
+        "ca": 1,
+        "ce": 2,
+        "instability": 0.667
+      }
+    },
+    {
+      "change": {
+        "active": false,
+        "churn": 4,
+        "files": 1,
+        "revisions": 1,
+        "revisionsPerFile": 1
+      },
+      "id": "src/lib",
+      "structural": {
+        "ca": 3,
+        "ce": 1,
+        "instability": 0.25
+      }
+    },
+    {
+      "change": {
+        "active": false,
+        "churn": 8,
+        "files": 2,
+        "revisions": 1,
+        "revisionsPerFile": 0.5
+      },
+      "id": "src/ext",
+      "structural": {
+        "ca": 0,
+        "ce": 1,
+        "instability": 1
+      }
+    },
+    {
+      "change": {
+        "active": false,
+        "churn": 7,
+        "files": 2,
+        "revisions": 1,
+        "revisionsPerFile": 0.5
+      },
+      "id": "src/stable",
+      "structural": {
+        "ca": 2,
+        "ce": 1,
+        "instability": 0.333
+      }
+    }
+  ],
+  "unitsTotal": 6,
+  "window": {
+    "since": "2023-05-05T09:00:00.000Z",
+    "until": "2024-05-05T09:00:00.000Z"
+  }
+}

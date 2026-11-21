@@ -1,0 +1,675 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "Shared definitions for structure --json output",
+  "$defs": {
+    "sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repo": {
+      "type": "object",
+      "properties": {
+        "head": {
+          "$ref": "#/$defs/sha"
+        },
+        "dirty": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "head",
+        "dirty"
+      ],
+      "additionalProperties": false
+    },
+    "truncated": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "total": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cut": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "required": [
+        "limit",
+        "total",
+        "cut"
+      ],
+      "additionalProperties": false
+    },
+    "envelope": {
+      "description": "Fields every document has. A command schema adds its own `command` and `results` and closes the document with unevaluatedProperties.",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "tool": {
+          "const": "structure"
+        },
+        "command": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/repo"
+        },
+        "config": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "inputs": {
+          "type": "object"
+        },
+        "results": {},
+        "truncated": {
+          "$ref": "#/$defs/truncated"
+        },
+        "meta": {
+          "description": "Wall-clock facts. Absent from reports and ignored by golden comparisons.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "tool",
+        "command",
+        "repo",
+        "config",
+        "inputs",
+        "results",
+        "truncated"
+      ]
+    },
+    "window": {
+      "description": "What the results were limited to. `until` is the analysed commit's committer date, never the wall clock.",
+      "type": "object",
+      "properties": {
+        "since": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "until": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "since",
+        "until"
+      ],
+      "additionalProperties": false
+    },
+    "filtersApplied": {
+      "type": "object",
+      "properties": {
+        "excludeGlobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lockfiles": {
+          "type": "boolean"
+        },
+        "gitattributes": {
+          "type": "boolean"
+        },
+        "blameIgnoreRevs": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "botPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxChangesetSize": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "excludeImported": {
+          "type": "boolean"
+        },
+        "excludeSuiteCommits": {
+          "type": "boolean"
+        },
+        "dropped": {
+          "type": "object",
+          "properties": {
+            "outsideWindow": {
+              "$ref": "#/$defs/count"
+            },
+            "shallowBoundaryCommits": {
+              "$ref": "#/$defs/count"
+            },
+            "importedCommits": {
+              "$ref": "#/$defs/count"
+            },
+            "blameIgnoredCommits": {
+              "$ref": "#/$defs/count"
+            },
+            "botCommits": {
+              "$ref": "#/$defs/count"
+            },
+            "suiteCommits": {
+              "$ref": "#/$defs/count"
+            },
+            "pureRenames": {
+              "$ref": "#/$defs/count"
+            },
+            "excludedByGlob": {
+              "$ref": "#/$defs/count"
+            },
+            "lockfiles": {
+              "$ref": "#/$defs/count"
+            },
+            "generated": {
+              "$ref": "#/$defs/count"
+            },
+            "vendored": {
+              "$ref": "#/$defs/count"
+            },
+            "emptyAfterFiltering": {
+              "$ref": "#/$defs/count"
+            }
+          },
+          "required": [
+            "outsideWindow",
+            "shallowBoundaryCommits",
+            "importedCommits",
+            "blameIgnoredCommits",
+            "botCommits",
+            "suiteCommits",
+            "pureRenames",
+            "excludedByGlob",
+            "lockfiles",
+            "generated",
+            "vendored",
+            "emptyAfterFiltering"
+          ],
+          "additionalProperties": false
+        },
+        "oversizedChanges": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "required": [
+        "excludeGlobs",
+        "lockfiles",
+        "gitattributes",
+        "blameIgnoreRevs",
+        "botPatterns",
+        "maxChangesetSize",
+        "excludeImported",
+        "excludeSuiteCommits",
+        "dropped",
+        "oversizedChanges"
+      ],
+      "additionalProperties": false
+    },
+    "gradeThreshold": {
+      "type": "object",
+      "properties": {
+        "months": {
+          "type": "number",
+          "minimum": 0
+        },
+        "logicalChanges": {
+          "$ref": "#/$defs/count"
+        },
+        "contributors": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "required": [
+        "months",
+        "logicalChanges",
+        "contributors"
+      ],
+      "additionalProperties": false
+    },
+    "evidence": {
+      "description": "How much to trust anything computed from history: the suite's repository-level evidence block.",
+      "type": "object",
+      "properties": {
+        "usableHistoryMonths": {
+          "type": "number",
+          "minimum": 0
+        },
+        "logicalChangesInWindow": {
+          "$ref": "#/$defs/count"
+        },
+        "activeContributors": {
+          "$ref": "#/$defs/count"
+        },
+        "grade": {
+          "enum": [
+            "strong",
+            "moderate",
+            "weak"
+          ]
+        },
+        "window": {
+          "description": "The grading window, in unix seconds.",
+          "type": "object",
+          "properties": {
+            "months": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "since": {
+              "type": "integer"
+            },
+            "until": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "months",
+            "since",
+            "until"
+          ],
+          "additionalProperties": false
+        },
+        "truncated": {
+          "type": "object",
+          "properties": {
+            "shallow": {
+              "type": "boolean"
+            },
+            "boundaryCommits": {
+              "$ref": "#/$defs/count"
+            },
+            "availableSince": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "shallow",
+            "boundaryCommits",
+            "availableSince"
+          ],
+          "additionalProperties": false
+        },
+        "importedHistory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sha": {
+                "$ref": "#/$defs/sha"
+              },
+              "files": {
+                "$ref": "#/$defs/count"
+              },
+              "share": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "committerDate": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "sha",
+              "files",
+              "share",
+              "committerDate"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "commitSize": {
+          "type": "object",
+          "properties": {
+            "earlierMedian": {
+              "type": "number",
+              "minimum": 0
+            },
+            "laterMedian": {
+              "type": "number",
+              "minimum": 0
+            },
+            "shifted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "earlierMedian",
+            "laterMedian",
+            "shifted"
+          ],
+          "additionalProperties": false
+        },
+        "thresholds": {
+          "type": "object",
+          "properties": {
+            "strong": {
+              "$ref": "#/$defs/gradeThreshold"
+            },
+            "moderate": {
+              "$ref": "#/$defs/gradeThreshold"
+            }
+          },
+          "required": [
+            "strong",
+            "moderate"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "usableHistoryMonths",
+        "logicalChangesInWindow",
+        "activeContributors",
+        "grade",
+        "window",
+        "truncated",
+        "importedHistory",
+        "commitSize",
+        "thresholds"
+      ],
+      "additionalProperties": false
+    },
+    "analysisEnvelope": {
+      "description": "The envelope plus the sections every command that reads history adds. A command schema allOf-references this and closes the document with unevaluatedProperties.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
+        }
+      ],
+      "type": "object",
+      "properties": {
+        "window": {
+          "$ref": "#/$defs/window"
+        },
+        "filtersApplied": {
+          "$ref": "#/$defs/filtersApplied"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        }
+      },
+      "required": [
+        "window",
+        "filtersApplied",
+        "evidence"
+      ]
+    },
+    "level": {
+      "enum": [
+        "file",
+        "folder",
+        "package",
+        "component"
+      ]
+    },
+    "localityInput": {
+      "description": "The locality report that was read: whole, from locality, stamped with the analysed commit.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "report": {
+          "type": "string"
+        },
+        "head": {
+          "$ref": "#/$defs/sha"
+        },
+        "config": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        }
+      },
+      "required": [
+        "report",
+        "head",
+        "config"
+      ],
+      "additionalProperties": false
+    },
+    "unblock": {
+      "description": "A move locality reports as held back by a dependency.",
+      "type": "object",
+      "properties": {
+        "unit": {
+          "type": "string"
+        },
+        "unblockedGain": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "unit",
+        "unblockedGain"
+      ],
+      "additionalProperties": false
+    },
+    "symbolUse": {
+      "description": "A symbol used across a boundary.",
+      "type": "object",
+      "properties": {
+        "symbol": {
+          "type": "string",
+          "description": "path#name of what is used, in the module being depended on."
+        },
+        "sites": {
+          "$ref": "#/$defs/count",
+          "description": "Reference sites, calls included."
+        },
+        "kind": {
+          "enum": [
+            "call",
+            "reference"
+          ]
+        }
+      },
+      "required": [
+        "symbol",
+        "sites",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "breakingEdge": {
+      "description": "A dependency whose removal helps break a cycle, with the facts about what crosses it.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "coChange": {
+          "$ref": "#/$defs/count",
+          "description": "Eligible logical changes that touched both sides."
+        },
+        "fileEdges": {
+          "$ref": "#/$defs/count",
+          "description": "File to file imports behind this module edge."
+        },
+        "importStatements": {
+          "$ref": "#/$defs/count"
+        },
+        "typeOnly": {
+          "type": "boolean",
+          "description": "Every import statement behind the edge is `import type`."
+        },
+        "symbolsTotal": {
+          "$ref": "#/$defs/count"
+        },
+        "symbols": {
+          "type": "array",
+          "description": "The most used symbols across the edge, at most ten. `structure evidence` lists them all.",
+          "items": {
+            "$ref": "#/$defs/symbolUse"
+          }
+        },
+        "unblocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/unblock"
+          }
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "coChange",
+        "fileEdges",
+        "importStatements",
+        "typeOnly",
+        "symbolsTotal",
+        "symbols",
+        "unblocks"
+      ],
+      "additionalProperties": false
+    },
+    "structuralStability": {
+      "description": "Martin's figures for one module, counted over distinct files outside it.",
+      "type": "object",
+      "properties": {
+        "ca": {
+          "$ref": "#/$defs/count"
+        },
+        "ce": {
+          "$ref": "#/$defs/count"
+        },
+        "instability": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "ce / (ca + ce). Null for a module with no outside dependency at all."
+        }
+      },
+      "required": [
+        "ca",
+        "ce",
+        "instability"
+      ],
+      "additionalProperties": false
+    },
+    "changeStability": {
+      "description": "How often the module changes, from the history cache.",
+      "type": "object",
+      "properties": {
+        "revisions": {
+          "$ref": "#/$defs/count"
+        },
+        "files": {
+          "$ref": "#/$defs/count"
+        },
+        "revisionsPerFile": {
+          "type": "number",
+          "minimum": 0
+        },
+        "churn": {
+          "$ref": "#/$defs/count"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "At least structure.minRevisions revisions, so a quiet module is evidence and not an absence of data."
+        }
+      },
+      "required": [
+        "revisions",
+        "files",
+        "revisionsPerFile",
+        "churn",
+        "active"
+      ],
+      "additionalProperties": false
+    },
+    "stability": {
+      "type": "object",
+      "properties": {
+        "structural": {
+          "$ref": "#/$defs/structuralStability"
+        },
+        "change": {
+          "$ref": "#/$defs/changeStability"
+        }
+      },
+      "required": [
+        "structural",
+        "change"
+      ],
+      "additionalProperties": false
+    },
+    "againstStability": {
+      "description": "The verdict on one dependency under the stable dependencies principle.",
+      "type": "object",
+      "properties": {
+        "basis": {
+          "enum": [
+            "change",
+            "structure"
+          ],
+          "description": "Change evidence decides whenever the depended-on side is active."
+        },
+        "structuralViolation": {
+          "type": "boolean"
+        },
+        "changeViolation": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Null when the depended-on side is not active."
+        },
+        "volatilityRatio": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Revisions per file of the depended-on side over the dependant's. Null when the dependant has none."
+        },
+        "violates": {
+          "type": "boolean"
+        },
+        "disagree": {
+          "type": "boolean",
+          "description": "The two measures point opposite ways."
+        }
+      },
+      "required": [
+        "basis",
+        "structuralViolation",
+        "changeViolation",
+        "volatilityRatio",
+        "violates",
+        "disagree"
+      ]
+    }
+  }
+}

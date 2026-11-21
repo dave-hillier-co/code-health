@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,7 +21,11 @@ let root: string;
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "new-plugin-"));
   mkdirSync(join(root, ".claude-plugin"));
-  cpSync(join(repository, ".claude-plugin", "marketplace.json"), join(root, ".claude-plugin", "marketplace.json"));
+  // Only cochange: the scaffold is tested against a marketplace of one existing plugin, however many the repository lists.
+  const listed = readFileSync(join(repository, ".claude-plugin", "marketplace.json"), "utf8");
+  const marketplace = JSON.parse(listed);
+  marketplace.plugins = marketplace.plugins.filter((p: { name: string }) => p.name === "cochange");
+  writeFileSync(join(root, ".claude-plugin", "marketplace.json"), JSON.stringify(marketplace, null, 2) + "\n");
   mkdirSync(join(root, "plugins", "cochange", ".claude-plugin"), { recursive: true });
   cpSync(join(repository, "plugins", "cochange", ".claude-plugin", "plugin.json"), join(root, "plugins", "cochange", ".claude-plugin", "plugin.json"));
   cpSync(join(repository, "plugins", "cochange", "schemas"), join(root, "plugins", "cochange", "schemas"), { recursive: true });

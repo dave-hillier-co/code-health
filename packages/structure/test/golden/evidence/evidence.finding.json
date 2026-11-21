@@ -1,0 +1,202 @@
+{
+  "command": "evidence",
+  "config": "d4c2f7445b2b2f00",
+  "deferred": [
+    {
+      "field": "quadrant",
+      "milestone": 6
+    },
+    {
+      "field": "nearbyMechanisms",
+      "milestone": 3
+    },
+    {
+      "field": "layerRule",
+      "milestone": 5
+    }
+  ],
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 6,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 3.8,
+    "window": {
+      "months": 12,
+      "since": 1683277200,
+      "until": 1714899600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "level": "folder",
+    "locality": null,
+    "target": "unstable:folder:src/stable->src/volatile"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "ad52cb77a996912de60431c1c668a61fb2832714"
+  },
+  "results": [
+    {
+      "breakingSet": [
+        {
+          "kind": "call",
+          "sites": 1,
+          "symbol": "src/volatile/rules.ts#rules",
+          "usedBy": [
+            "src/stable/base.ts"
+          ]
+        }
+      ],
+      "coChange": {
+        "confidenceFromTo": 100,
+        "confidenceToFrom": 16.7,
+        "eligibleChanges": 6,
+        "expected": 1,
+        "fromChanges": 1,
+        "shared": 1,
+        "toChanges": 6
+      },
+      "findings": [
+        "unstable:folder:src/stable->src/volatile"
+      ],
+      "from": "src/stable",
+      "id": "edge:folder:src/stable->src/volatile",
+      "imports": {
+        "fileEdges": 1,
+        "files": [
+          {
+            "from": "src/stable/base.ts",
+            "to": "src/volatile/rules.ts"
+          }
+        ],
+        "importStatements": 1,
+        "typeOnly": false
+      },
+      "inBreakingSet": null,
+      "kind": "unstable-dependency",
+      "kinds": [
+        "unstable-dependency"
+      ],
+      "layerRule": null,
+      "level": "folder",
+      "misplacement": [
+        {
+          "consumerFiles": 2,
+          "elsewhere": 1,
+          "mostlyOn": "split",
+          "moveMayRemoveDependency": false,
+          "onFromSide": 1,
+          "onToSide": 0,
+          "symbol": "src/volatile/rules.ts#rules"
+        }
+      ],
+      "nearbyMechanisms": [],
+      "quadrant": null,
+      "stability": {
+        "from": {
+          "change": {
+            "active": false,
+            "churn": 7,
+            "files": 2,
+            "revisions": 1,
+            "revisionsPerFile": 0.5
+          },
+          "structural": {
+            "ca": 2,
+            "ce": 1,
+            "instability": 0.333
+          }
+        },
+        "to": {
+          "change": {
+            "active": true,
+            "churn": 16,
+            "files": 2,
+            "revisions": 6,
+            "revisionsPerFile": 3
+          },
+          "structural": {
+            "ca": 3,
+            "ce": 0,
+            "instability": 0
+          }
+        }
+      },
+      "stabilityVerdict": {
+        "basis": "change",
+        "changeViolation": true,
+        "disagree": true,
+        "structuralViolation": false,
+        "violates": true,
+        "volatilityRatio": 6
+      },
+      "to": "src/volatile",
+      "unblocks": []
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "window": {
+    "since": "2023-05-05T09:00:00.000Z",
+    "until": "2024-05-05T09:00:00.000Z"
+  }
+}

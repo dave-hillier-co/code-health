@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stability.schema.json",
+  "title": "structure stability --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/analysisEnvelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "stability"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "by": {
+          "enum": [
+            "folder",
+            "component"
+          ]
+        },
+        "minRevisions": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minVolatilityRatio": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minInstabilityGap": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Percentage points."
+        }
+      },
+      "required": [
+        "by",
+        "minRevisions",
+        "minVolatilityRatio",
+        "minInstabilityGap"
+      ],
+      "additionalProperties": false
+    },
+    "units": {
+      "description": "Stability of each module, the most volatile first, at most fifty.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "structural": {
+            "$ref": "common.schema.json#/$defs/structuralStability"
+          },
+          "change": {
+            "$ref": "common.schema.json#/$defs/changeStability"
+          }
+        },
+        "required": [
+          "id",
+          "structural",
+          "change"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "unitsTotal": {
+      "$ref": "common.schema.json#/$defs/count"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "common.schema.json#/$defs/againstStability"
+          }
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^unstable:(folder|component):.+->.+"
+          },
+          "level": {
+            "enum": [
+              "folder",
+              "component"
+            ]
+          },
+          "from": {
+            "type": "string",
+            "description": "The dependant."
+          },
+          "to": {
+            "type": "string",
+            "description": "What it depends on."
+          },
+          "fileEdges": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "stability": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "common.schema.json#/$defs/stability"
+              },
+              "to": {
+                "$ref": "common.schema.json#/$defs/stability"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "basis": true,
+          "structuralViolation": true,
+          "changeViolation": true,
+          "volatilityRatio": true,
+          "violates": true,
+          "disagree": true
+        },
+        "required": [
+          "id",
+          "level",
+          "from",
+          "to",
+          "fileEdges",
+          "stability"
+        ],
+        "unevaluatedProperties": false
+      }
+    }
+  },
+  "required": [
+    "units",
+    "unitsTotal"
+  ],
+  "unevaluatedProperties": false
+}

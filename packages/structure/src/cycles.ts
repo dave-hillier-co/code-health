@@ -1,0 +1,99 @@
+import { breakingSets } from "@code-health/graph/feedback-arc-set";
+import { compareIds } from "@code-health/graph/graph";
+import type { StructureSettings } from "./config.ts";
+import type { Model } from "./model.ts";
+import { describeEdge, type EdgeDetail } from "./modules.ts";
+import { edgeKey } from "./project.ts";
+import type { Unblock } from "./locality-report.ts";
+
+/** At most this many symbols are listed per breaking edge in a cycle row. `evidence` lists them all. */
+export const SYMBOLS_SHOWN = 10;
+
+export interface BreakingEdge {
+  from: string;
+  to: string;
+  /** Eligible logical changes that touched both sides. */
+  coChange: number;
+  fileEdges: number;
+  importStatements: number;
+  typeOnly: boolean;
+  symbolsTotal: number;
+  symbols: { symbol: string; sites: number; kind: "call" | "reference" }[];
+  /** Moves locality reports as held back by this dependency. Empty without a matching locality report. */
+  unblocks: Unblock[];
+}
+
+export interface CycleRow {
+  id: string;
+  level: string;
+  size: number;
+  nodes: string[];
+  method: "exact" | "heuristic";
+  breakingSet: BreakingEdge[];
+  /** Eligible logical changes touching two modules of the cycle that depend on each other, each pair counted once. */
+  coChangeAcross: number;
+  /** Sum of the unblocked gain of every move the breaking set would free, or null without a locality report. */
+  unblockedGain: number | null;
+}
+
+export const cycleId = (level: string, firstNode: string): string => `cycle:${level}:${firstNode}`;
+
+export function unblocksOf(model: Model, from: string, to: string): Unblock[] {
+  if (!model.locality) return [];
+  const members = model.graph.members.get(edgeKey(from, to)) ?? [];
+  return members.flatMap((edge) => model.locality!.byFileEdge.get(edgeKey(edge.from, edge.to)) ?? []);
+}
+
+export function breakingEdge(model: Model, from: string, to: string, limit = SYMBOLS_SHOWN): BreakingEdge {
+  const detail: EdgeDetail = describeEdge(model.project, model.graph, from, to);
+  return {
+    from,
+    to,
+    coChange: model.activity.shared(from, to),
+    fileEdges: detail.fileEdges,
+    importStatements: detail.importStatements,
+    typeOnly: detail.typeOnly,
+    symbolsTotal: detail.symbols.length,
+    symbols: detail.symbols.slice(0, limit).map(({ symbol, sites, kind }) => ({ symbol, sites, kind })),
+    unblocks: unblocksOf(model, from, to),
+  };
+}
+
+/**
+ * Every import cycle at the model's level with its breaking set, ranked by the locality gain the
+ * breaking set unblocks (when a locality report is present), then by the size of the cycle, then
+ * by co-change across it, then by id. Breaking-set ties go to the edge whose sides co-change least.
+ */
+export function findCycles(model: Model, settings: Pick<StructureSettings, "exactLimit">): CycleRow[] {
+  const sets = breakingSets(model.graph.graph, {
+    exactLimit: settings.exactLimit,
+    weight: (edge) => model.activity.shared(edge.from, edge.to),
+  });
+  const rows = sets.map((cycle): CycleRow => {
+    const inCycle = new Set(cycle.nodes);
+    let coChangeAcross = 0;
+    for (const from of cycle.nodes) {
+      for (const to of model.graph.graph.get(from) ?? []) {
+        // a pair that depends on each other both ways is one pair
+        if (inCycle.has(to) && (compareIds(from, to) < 0 || !model.graph.graph.get(to)?.includes(from))) {
+          coChangeAcross += model.activity.shared(from, to);
+        }
+      }
+    }
+    const breakingSet = cycle.edges.map((edge) => breakingEdge(model, edge.from, edge.to));
+    return {
+      id: cycleId(model.graph.level, cycle.nodes[0]!),
+      level: model.graph.level,
+      size: cycle.nodes.length,
+      nodes: [...cycle.nodes],
+      method: cycle.method,
+      breakingSet,
+      coChangeAcross,
+      unblockedGain: model.locality ? breakingSet.reduce((sum, edge) => sum + edge.unblocks.reduce((s, u) => s + u.unblockedGain, 0), 0) : null,
+    };
+  });
+  return rows.sort(
+    (a, b) =>
+      (b.unblockedGain ?? 0) - (a.unblockedGain ?? 0) || b.size - a.size || b.coChangeAcross - a.coChangeAcross || compareIds(a.id, b.id),
+  );
+}
