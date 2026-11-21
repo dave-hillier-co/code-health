@@ -8,7 +8,7 @@ import { resolveCsharp } from "./resolve.ts";
 
 /** A folder or file that names tests: `Billing.Tests/`, `tests/`, `InvoiceTests.cs`, `InvoiceSpec.cs`. */
 const testFolder = /^(tests?|unittests?|integrationtests?|specs?)$|\.(tests?|unittests?|integrationtests?|specs?)$/i;
-const testFile = /(?:[a-z0-9]|^)(?:Tests?|Spec|Specs)\.cs$/;
+const testFile = /(?:Tests?|Specs?)\.cs$/;
 
 /**
  * C#: symbol-based. A file names no file; it brings namespaces into scope with `using` and refers to types by

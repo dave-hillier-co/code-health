@@ -19,7 +19,7 @@ export const adapter: LanguageAdapter = {
   grammars: [{ spec: { id: "python", packageName: "tree-sitter-python", file: "tree-sitter-python.wasm" }, extensions: [".py"] }],
   extractorVersion,
   extract: extractFacts,
-  isTestPath: (path) => /(^|\/)(tests?|__tests__)\//.test(path) || /(^|\/)(test_[^/]*|[^/]*_test|conftest)\.py$/.test(path),
+  isTestPath: (path) => /(^|\/)(tests?|__tests__)\//.test(path) || /(^|\/)(test_[^/]*|[^/]*_test|conftest|tests)\.py$/.test(path),
   metrics: pythonMetricRules,
   dependencies: {
     model: "import-based",

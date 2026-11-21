@@ -74,7 +74,7 @@ describe("the Python resolver", () => {
 });
 
 describe("test paths", () => {
-  it.each(["tests/a.py", "test/a.py", "pkg/tests/deep/a.py", "test_core.py", "pkg/core_test.py", "conftest.py", "pkg/conftest.py"])("%s is a test", (path) => {
+  it.each(["tests/a.py", "test/a.py", "pkg/tests/deep/a.py", "test_core.py", "pkg/core_test.py", "conftest.py", "pkg/conftest.py", "app/tests.py", "tests.py"])("%s is a test", (path) => {
     expect(adapter.isTestPath(path)).toBe(true);
   });
   it.each(["core.py", "pkg/contest.py", "pkg/latest.py", "pkg/testing.py", "pkg/attestation_test_data.txt"])("%s is not", (path) => {
