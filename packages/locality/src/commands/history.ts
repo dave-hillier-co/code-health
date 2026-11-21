@@ -6,6 +6,7 @@ export const name = "history";
 
 export const command: Command = {
   summary: "Update the shared history cache (history refresh), so a repository without cochange installed has one",
+  usage: "refresh",
   async run(context) {
     const [subcommand] = context.positionals;
     if (subcommand !== "refresh") throw usageError("history takes one subcommand: refresh");

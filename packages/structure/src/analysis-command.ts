@@ -12,6 +12,10 @@ export interface AnalysisSpec {
   summary: string;
   /** The command's own options. `no-refresh` is added for every analysis command. */
   options?: OptionSpec;
+  /** The positional arguments, shown in the command's help. */
+  usage?: string;
+  /** What each of the command's own options means, shown in the command's help. */
+  optionHelp?: Record<string, string>;
   /**
    * A window stated by the command's own options (for example `--since`). It
    * counts as a stated window for the shallow-clone guard, and a run that
@@ -51,7 +55,9 @@ const sharedOptions = { "no-refresh": { type: "boolean" } } satisfies OptionSpec
 export function analysisCommand(name: string, spec: AnalysisSpec): Command {
   return {
     summary: spec.summary,
+    ...(spec.usage === undefined ? {} : { usage: spec.usage }),
     options: { ...spec.options, ...sharedOptions },
+    optionHelp: { ...spec.optionHelp, "no-refresh": "use the cached history as it is, without updating it first" },
     async run(context) {
       const window = spec.window?.(context);
       const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, window, wholeHistory: spec.wholeHistory });

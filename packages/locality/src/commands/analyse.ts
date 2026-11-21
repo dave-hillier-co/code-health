@@ -23,7 +23,12 @@ const recommendations = ["inline", "move", "split", "blocked", "keep", "scrutini
 
 export const command: Command = {
   summary: "Rank the code that lives far from its consumers, with a default remedy for each unit",
+  usage: "[<path>...]",
   options: { recommendation: { type: "string" }, source: { type: "string" } },
+  optionHelp: {
+    recommendation: "only units with this recommendation: inline, move, split, blocked, keep, scrutinise or review",
+    source: "where candidates come from: structural (default), history or both",
+  },
   async run(context): Promise<CommandOutput> {
     const settings = readSettings(context.config);
     const wanted = context.values.recommendation;

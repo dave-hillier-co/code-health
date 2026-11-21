@@ -27,6 +27,7 @@ async function renamedFiles(root: string, parent: string, ref: string): Promise<
 export const command: Command = {
   summary: "After a C# move commit, plan or with --apply make the optional second commit that makes namespaces follow the folders",
   options: { commit: { type: "string" }, apply: { type: "boolean" }, "no-commit": { type: "boolean" } },
+  optionHelp: { commit: "the move commit to follow (default HEAD)", apply: "make the namespace commit instead of only planning it", "no-commit": "with --apply, leave the change in the working tree" },
   async run(context): Promise<CommandOutput> {
     const ref = context.values.commit ?? "HEAD";
     if (context.positionals.length !== 0 || typeof ref !== "string") throw usageError("usage: update-namespaces [--commit <ref>] [--apply [--no-commit]]");

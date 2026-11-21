@@ -39,7 +39,9 @@ export const rules: Record<string, Rule> = {
 
 export const command = analysisCommand(name, {
   summary: "Whether a break reduced coupling or only hid it: co-change before and after over matching windows",
+  usage: "<from>-><to>",
   options: { at: { type: "string" }, level: { type: "string" } },
+  optionHelp: { at: "the revision that made the break (required)", level: "what a node is: file, folder, package or component (default: inferred from the arguments)" },
   // A query about one pair and one break, never the whole-repository answer a report stores.
   partial: () => true,
   wholeHistory: true,

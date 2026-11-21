@@ -35,6 +35,7 @@ export const rules: Record<string, Rule> = {
 export const command = analysisCommand(name, {
   summary: "Structural and change stability of folders or components, and dependencies pointing against stability",
   options: { by: { type: "string" } },
+  optionHelp: { by: "what a module is: folder or component (default folder)" },
   partial: ({ values }) => values.by !== undefined && values.by !== "folder",
   async analyse({ context, history }) {
     const by = readLevel("by", context.values.by, levels, "folder");

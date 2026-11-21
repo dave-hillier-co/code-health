@@ -65,6 +65,7 @@ export async function analyseCoupling({ context, history }: AnalysisInput, level
 export const command = analysisCommand(name, {
   summary: "Module pairs placed in the coupling quadrants (real, incidental, stable, hidden, independent), ranked within each",
   options: { quadrant: { type: "string" }, by: { type: "string" } },
+  optionHelp: { quadrant: "only this quadrant: real, incidental, stable, hidden or independent", by: "what a module is: file, folder or component (default folder)" },
   partial: ({ values }) => values.quadrant !== undefined || (values.by !== undefined && values.by !== "folder"),
   analyse(input) {
     const level = readLevel("by", input.context.values.by, views, "folder");

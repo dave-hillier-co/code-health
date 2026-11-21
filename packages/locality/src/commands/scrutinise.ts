@@ -8,6 +8,7 @@ import { analyseRevision } from "../unit-analysis.ts";
 export const name = "scrutinise";
 
 export const command: Command = {
+  usage: "[<path>...]",
   summary: "Review the widely used units: the red flags their interfaces and call sites show, with the counts behind each",
   async run(context): Promise<CommandOutput> {
     const settings = readSettings(context.config);

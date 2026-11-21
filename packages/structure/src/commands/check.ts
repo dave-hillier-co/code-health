@@ -9,6 +9,7 @@ export const name = "check";
 export const command: Command = {
   summary: "Exit 1 on import cycles or layer violations that are new since a base revision, for CI",
   options: { base: { type: "string" }, level: { type: "string" } },
+  optionHelp: { base: "the revision to compare against (default: the configured base, else the merge base with the main branch)", level: "check one level only: file, folder or package (default all three)" },
   async run(context) {
     const settings = readSettings(context.config);
     const { root } = context.repo;

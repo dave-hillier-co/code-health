@@ -44,7 +44,9 @@ function parseEdge(edge: string): { kind: "edge"; from: string; to: string } {
 
 export const command = analysisCommand(name, {
   summary: "The evidence pack for one dependency or one finding: symbols across it, stability, co-change, misplacement",
+  usage: "<from>-><to> | <finding id>",
   options: { level: { type: "string" } },
+  optionHelp: { level: "what a node is: file, folder, package or component (default: inferred from the arguments, else file)" },
   // A query about one dependency, never the whole-repository answer a report stores.
   partial: () => true,
   async analyse({ context, history }) {
