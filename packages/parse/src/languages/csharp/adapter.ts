@@ -20,7 +20,7 @@ export const adapter: LanguageAdapter = {
   id: "csharp",
   name: "C#",
   tier: 1,
-  support: "experimental",
+  support: "supported",
   lexerProfile: "csharp",
   grammars: [{ spec: { id: "csharp", packageName: "tree-sitter-c-sharp", file: "tree-sitter-c_sharp.wasm" }, extensions: [".cs"] }],
   extractorVersion,
