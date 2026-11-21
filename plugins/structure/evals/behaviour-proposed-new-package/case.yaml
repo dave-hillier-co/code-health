@@ -1,0 +1,33 @@
+schema_version: "1.0"
+name: behaviour-proposed-new-package
+description: Asked whether the date helpers should become their own package, the agent applies the tests in advance (second consumer, independent change, declared purpose), finds none, and keeps them in a folder without creating a package.
+tags: [behaviour, trigger, negative]
+runs: 3
+context:
+  scaffold_script: ../packaging-scaffold.sh
+execution:
+  prompt: I'd like to move the date helpers in packages/ui/src/dates.ts into their own package, packages/dates, so they can be reused. Should I?
+  model: claude-sonnet-5-5
+  max_turns: 20
+  timeout_seconds: 400
+  allowed_tools: [Skill, Bash, Read, Grep, Glob, Edit, Write]
+graders:
+  - type: tool_used
+    name: loads-the-packaging-skill
+    tool: Skill
+    input_match: packaging
+    min: 1
+    arm: with-only
+  - type: file_exists
+    name: does-not-create-the-package
+    path: packages/dates/package.json
+    exists: false
+    arm: with-only
+  - type: llm
+    name: applies-the-tests-in-advance
+    criteria: The agent asks or finds out who the second consumer of the date helpers would be (it can see that only the ui package uses them), whether they change independently of the files around them, and what purpose the package would be declared for (reuse, ownership, build time or enforcement). Finding no answer to any of the three, it recommends keeping them in a folder, which costs nothing to promote later, and says why. It does not create a package or move the file.
+    arm: with-only
+  - type: llm
+    name: does-not-default-to-more-packages
+    criteria: The agent does not treat creating a package as the default, and does not argue for it from the idea that code might be reused one day. If the user later names a second consumer, the agent says that would change the answer.
+    arm: with-only

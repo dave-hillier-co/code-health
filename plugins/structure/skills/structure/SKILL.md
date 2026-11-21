@@ -27,6 +27,8 @@ Run them from the repository root. They analyse `HEAD`. Useful options:
 
 Read the envelope before the rows. The top-level `evidence.grade` is how far to trust history: with `weak`, rely on the static signals and present co-change as tentative. `inputs.locality` names the locality report that ranked the cycles, and is null when none was usable, in which case cycles are ranked by size and co-change alone.
 
+Questions about whether the packages themselves are the right ones (too many, a boundary in the wrong place, whether to add a package) belong to the packaging skill, which reads the same graph at package level and adds cohesion evidence. `cycles --level package` here groups files by their nearest `package.json`. The packaging skill's `packages coupling` reads packages from every manifest and adds hidden cycles.
+
 What this CLI does not do yet: layer rules, the mechanism census, coupling quadrants, hidden coupling, registration hubs and `check` are not commands, and the evidence pack's `quadrant`, `nearbyMechanisms` and `layerRule` are empty. Where a question below needs them, find the facts by reading the code and the git log, and say that you did.
 
 ## Read the evidence pack

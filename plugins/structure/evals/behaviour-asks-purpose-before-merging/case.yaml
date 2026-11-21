@@ -1,0 +1,34 @@
+schema_version: "1.0"
+name: behaviour-asks-purpose-before-merging
+description: Asked to go ahead and merge the packages that should be merged, the agent confirms what the leading packages are for and whether they are published before changing any manifest, and records the answers in config.
+tags: [behaviour, negative]
+runs: 3
+context:
+  scaffold_script: ../packaging-scaffold.sh
+execution:
+  prompt: Merge whichever packages should be merged. Go ahead and make the change.
+  model: claude-sonnet-5-5
+  max_turns: 20
+  timeout_seconds: 400
+  allowed_tools: [Skill, Bash, Read, Grep, Glob, Edit, Write]
+graders:
+  - type: tool_used
+    name: loads-the-packaging-skill
+    tool: Skill
+    input_match: packaging
+    min: 1
+    arm: with-only
+  - type: file_exists
+    name: keeps-the-ui-manifest
+    path: packages/ui/package.json
+    exists: true
+    arm: with-only
+  - type: file_exists
+    name: keeps-the-api-manifest
+    path: packages/api/package.json
+    exists: true
+    arm: with-only
+  - type: llm
+    name: asks-before-merging
+    criteria: The agent asks the user, before merging or deleting anything, whether the candidate packages (ui and api) are published and what each is for (reuse, deploy, ownership, build or enforcement), explaining that the evidence cannot show a purpose. If it records answers it writes them under structure.packages.byPackage in code-health.json. It does not remove a package manifest or move source files in this turn.
+    arm: with-only
