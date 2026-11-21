@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { grammarSamples } from "@code-health/fixtures/language-samples";
 import { copyGrammars } from "../src/copy-grammars.ts";
 import { grammarIdForPath, loadGrammar, runtimeSpec, shippedGrammarSpecs } from "../src/grammars.ts";
 
@@ -20,6 +21,14 @@ describe("grammarIdForPath", () => {
     ["a.mjs", "javascript"],
     ["a.cjs", "javascript"],
     ["a.jsx", "javascript"],
+    ["a.cs", "csharp"],
+    ["a.cpp", "cpp"],
+    ["a.h", "cpp"],
+    ["a.go", "go"],
+    ["A.java", "java"],
+    ["A.kt", "kotlin"],
+    ["a.py", "python"],
+    ["a.rs", "rust"],
   ])("maps %s to %s", (path, id) => {
     expect(grammarIdForPath(path)).toBe(id);
   });
@@ -67,6 +76,21 @@ describe("loadGrammar", () => {
     expect(tree.rootNode.child(0)?.type).toBe("class_declaration");
     tree.delete();
     expect(grammar.version).toBe((await loadGrammar("typescript")).version);
+  });
+
+  it("loads and parses with every grammar a supported adapter ships, from the copied directory, whatever the language", async () => {
+    const dist = mkdtempSync(join(tmpdir(), "code-health-grammars-"));
+    scratch.push(dist);
+    copyGrammars(join(dist, "grammars"));
+    const specs = shippedGrammarSpecs();
+    expect(specs.map((spec) => spec.id).sort()).toEqual(Object.keys(grammarSamples).sort());
+    for (const spec of specs) {
+      const grammar = await loadGrammar(spec.id, { grammarDir: join(dist, "grammars") });
+      const tree = grammar.parse(grammarSamples[spec.id]!);
+      expect(tree.rootNode.hasError, `${spec.id} parses its sample`).toBe(false);
+      expect(tree.rootNode.childCount, `${spec.id} reads something`).toBeGreaterThan(0);
+      tree.delete();
+    }
   });
 
   it("fails clearly when a grammar file is missing", async () => {

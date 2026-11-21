@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
-import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import { GitFixture } from "@code-health/fixtures/git-fixture";
+import { adapterSamples } from "@code-health/fixtures/language-samples";
 import { distantHelpers } from "../../packages/locality/test/support/scenarios.ts";
 import { manifestsRepository } from "../../packages/structure/test/packaging/support/scenarios.ts";
 import { cyclesRepository } from "../../packages/structure/test/support/scenarios.ts";
@@ -60,5 +61,15 @@ describe("every plugin's installed bundle runs its newest commands", () => {
 
   test("complexity: analyse, which loads the grammars from the bundle's folder", () => {
     expect(run("complexity", fixture(distantHelpers).path, ["analyse"])).toMatchObject({ status: 0, stderr: "", document: { command: "analyse" } });
+  });
+});
+
+describe("every plugin's installed bundle reads a file of each supported language", () => {
+  test.each(Object.entries(adapterSamples))("%s: complexity measures its function and structure reads its census", (_id, sample) => {
+    const repo = fixture(() => GitFixture.build([{ type: "commit", message: "one", date: "2024-01-01T00:00:00Z", changes: [{ op: "add", path: sample.path, content: sample.source }] }]));
+    const measured = run("complexity", repo.path, ["analyse", "--layer", "structural"]);
+    expect(measured).toMatchObject({ status: 0, stderr: "", document: { command: "analyse" } });
+    expect(JSON.stringify(measured.document)).toContain(`${sample.path}#${sample.unit}`);
+    expect(run("structure", repo.path, ["census"])).toMatchObject({ status: 0, stderr: "", document: { command: "census" } });
   });
 });
