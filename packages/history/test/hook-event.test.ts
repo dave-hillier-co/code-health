@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { findRepoRoot, readEditEvent, within } from "../src/hook-event.ts";
 
 let root: string;
@@ -41,10 +41,26 @@ test("stdin that is not JSON throws, for the hook to turn into silence", () => {
 });
 
 test("within gives the answer when it comes in time, and silence when the budget is spent first", async () => {
-  expect(await within(1_000, performance.now(), Promise.resolve("answer"), "silence")).toBe("answer");
-  const slow = new Promise<string>((resolve) => setTimeout(() => resolve("late"), 200));
-  expect(await within(10, performance.now(), slow, "silence")).toBe("silence");
-  expect(await within(1_000, performance.now() - 5_000, slow, "silence")).toBe("silence");
+  // Fake timers drive both the timer and performance.now(), so no ordering depends on how busy the machine is.
+  vi.useFakeTimers();
+  try {
+    expect(await within(1_000, performance.now(), Promise.resolve("answer"), "silence")).toBe("answer");
+
+    const slow = new Promise<string>((resolve) => setTimeout(() => resolve("late"), 200));
+    const raced = within(10, performance.now(), slow, "silence");
+    await vi.advanceTimersByTimeAsync(10);
+    expect(await raced).toBe("silence");
+
+    const started = performance.now();
+    vi.setSystemTime(Date.now() + 5_000);
+    await vi.advanceTimersByTimeAsync(5_000);
+    const never = new Promise<string>(() => {});
+    const late = within(1_000, started, never, "silence");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await late).toBe("silence");
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("within passes a failure of the work on", async () => {
