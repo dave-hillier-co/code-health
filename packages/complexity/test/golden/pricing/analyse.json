@@ -1,0 +1,158 @@
+{
+  "agreement": {},
+  "command": "analyse",
+  "config": "af7adc780c35b023",
+  "filesWithSyntaxErrors": [],
+  "inputs": {
+    "layer": "auto",
+    "metrics": [
+      "cognitive",
+      "cyclomatic",
+      "nesting",
+      "parameters",
+      "length",
+      "keyword",
+      "bumps"
+    ],
+    "paths": [],
+    "tree": "head"
+  },
+  "layers": {
+    "lexical": 0,
+    "none": 3,
+    "structural": 3
+  },
+  "ranking": {
+    "basis": "percentile within the repository, per metric, among units measured the same way",
+    "changeWeighted": false
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3f17e527361d4435314136f637ee9a5627290301"
+  },
+  "results": [
+    {
+      "cognitive": 8,
+      "cyclomatic": 5,
+      "dominant": "cognitive",
+      "endLine": 11,
+      "id": "src/pricing.ts#price",
+      "kind": "function",
+      "labels": [],
+      "length": 11,
+      "nesting": 2,
+      "optionCount": 0,
+      "parameters": 1,
+      "path": "src/pricing.ts",
+      "percentiles": {
+        "cognitive": 0.833333,
+        "cyclomatic": 0.833333,
+        "length": 0.833333,
+        "nesting": 0.833333,
+        "parameters": 0.5
+      },
+      "score": 0.833333,
+      "source": "structural",
+      "startLine": 1,
+      "test": false,
+      "unit": "price"
+    },
+    {
+      "cognitive": 0,
+      "cyclomatic": 1,
+      "dominant": "parameters",
+      "endLine": 3,
+      "id": "src/label.ts#label",
+      "kind": "function",
+      "labels": [],
+      "length": 3,
+      "nesting": 0,
+      "optionCount": 0,
+      "parameters": 1,
+      "path": "src/label.ts",
+      "percentiles": {
+        "cognitive": 0.333333,
+        "cyclomatic": 0.333333,
+        "length": 0.5,
+        "nesting": 0.333333,
+        "parameters": 0.5
+      },
+      "score": 0.5,
+      "source": "structural",
+      "startLine": 1,
+      "test": false,
+      "unit": "label"
+    },
+    {
+      "cognitive": 0,
+      "cyclomatic": 1,
+      "dominant": "parameters",
+      "endLine": 13,
+      "id": "src/pricing.ts#double",
+      "kind": "arrow",
+      "labels": [],
+      "length": 1,
+      "nesting": 0,
+      "optionCount": 0,
+      "parameters": 1,
+      "path": "src/pricing.ts",
+      "percentiles": {
+        "cognitive": 0.333333,
+        "cyclomatic": 0.333333,
+        "length": 0.166667,
+        "nesting": 0.333333,
+        "parameters": 0.5
+      },
+      "score": 0.5,
+      "source": "structural",
+      "startLine": 13,
+      "test": false,
+      "unit": "double"
+    },
+    {
+      "cognitive": 1,
+      "cyclomatic": 2,
+      "dominant": "cognitive",
+      "endLine": 7,
+      "id": "test/pricing.test.ts#checksPrice",
+      "kind": "function",
+      "labels": [],
+      "length": 5,
+      "nesting": 1,
+      "optionCount": 0,
+      "parameters": 0,
+      "path": "test/pricing.test.ts",
+      "percentiles": {
+        "cognitive": 0.5,
+        "cyclomatic": 0.5,
+        "length": 0.5,
+        "nesting": 0.5,
+        "parameters": 0.5
+      },
+      "score": 0.5,
+      "source": "structural",
+      "startLine": 3,
+      "test": true,
+      "unit": "checksPrice"
+    }
+  ],
+  "schemaVersion": 1,
+  "skipped": {
+    "comment and string stripping: no lexer profile": 1,
+    "per-function metrics: no agreement measured for go": 1,
+    "per-function metrics: no agreement measured for python": 1,
+    "per-function metrics: no lexer profile": 1
+  },
+  "skippedFiles": {
+    "binary": 0,
+    "excluded": 0,
+    "large": 0,
+    "tests": 0
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 4
+  }
+}

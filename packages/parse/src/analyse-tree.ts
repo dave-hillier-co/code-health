@@ -1,6 +1,6 @@
 import type { UnitShape } from "@code-health/lexical/unit";
-import { extractFacts } from "./extract-facts.ts";
-import type { FileFacts, ReferenceFact, UnitKind } from "./facts.ts";
+import { parseFacts } from "./file-facts.ts";
+import type { FileFacts, ReferenceFact, UnitKind, UnitMetrics } from "./facts.ts";
 import { grammarIdForPath, loadGrammar, type GrammarId, type LoadedGrammar, type LoadOptions } from "./grammars.ts";
 import type { ParseCache } from "./parse-cache.ts";
 import { isConfigPath, SpecifierResolver, type Resolution } from "./resolve-specifier.ts";
@@ -15,6 +15,8 @@ export interface SourceUnit extends UnitShape {
   /** Qualified name within the file, with `~n` on later duplicates. */
   qualifiedName: string;
   kind: UnitKind;
+  /** Structural metrics. Functions only: classes have none. */
+  metrics?: UnitMetrics;
   /** Declared with `export` or listed in an export clause at module level. */
   exported: boolean;
 }
@@ -111,9 +113,7 @@ export async function analyseTree(tree: SourceTree, options: AnalyseOptions = {}
     const sources = await tree.readMany(pending.slice(start, start + batchSize));
     for (const [path, source] of sources) {
       const grammar = grammars.get(grammarIdForPath(path) as GrammarId) as LoadedGrammar;
-      const parsed = grammar.parse(source);
-      const fileFacts = extractFacts(parsed.rootNode);
-      parsed.delete();
+      const fileFacts = parseFacts(grammar, source);
       loaded.set(path, fileFacts);
       stats.parsed++;
       await options.cache?.set(tree.files.get(path) as string, grammar.version, fileFacts);
@@ -192,6 +192,7 @@ class GraphBuilder {
           endLine: unit.endLine,
           source: unit.source,
           ...(unit.parent === undefined ? {} : { parent: unit.parent }),
+          ...(unit.metrics === undefined ? {} : { metrics: unit.metrics }),
           exported: unit.parent === undefined && exportedLocals.has(unit.qualifiedName),
         });
       }

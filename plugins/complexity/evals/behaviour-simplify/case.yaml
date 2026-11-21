@@ -1,0 +1,47 @@
+schema_version: "1.0"
+name: behaviour-simplify
+description: Given a deeply nested function, the skill measures it, explains it, simplifies it in place with the tests green, and commits with the suite trailer. Needs `--scaffold` and `--allow-tools Bash,Read,Edit,Write,Grep,Glob` (see CONTRIBUTING.md).
+tags: [behaviour]
+context:
+  scaffold_script: scaffold.sh
+runs: 2
+execution:
+  prompt: The ship function in src/ship.js is a nightmare to read. Simplify it and commit the result.
+  model: claude-sonnet-5-5
+  allowed_tools: [Bash, Read, Edit, Write, Grep, Glob]
+  max_turns: 30
+  timeout_seconds: 900
+graders:
+  - type: tool_used
+    name: measures-with-the-cli
+    tool: Bash
+    input_match: "complexity\\.mjs (analyse|explain)"
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: runs-the-tests
+    tool: Bash
+    input_match: "npm test|node --test"
+    min: 1
+  - type: regex
+    name: commit-carries-the-suite-trailer
+    pattern: "Code-Health:\\s*complexity/"
+    flags: i
+    target: trace
+    arm: with-only
+  - type: llm
+    name: simplifies-in-place-and-names-the-red-flag
+    criteria: >-
+      The function was simplified by flattening it (guard clauses, early returns, or removing nesting) and not by
+      splitting it into many small helper functions that are each called once. The final message or the commit message
+      names a design red flag such as nonobvious code, and gives the complexity before and after. The behaviour is
+      unchanged and the tests pass.
+    focus: trace
+    arm: with-only
+  - type: llm
+    name: one-commit-per-simplification
+    criteria: >-
+      The simplification is committed on its own, separate from any other change, with the tests passing before it
+      and after it. Characterisation tests were not weakened or deleted to make the change pass.
+    focus: trace
+    arm: with-only

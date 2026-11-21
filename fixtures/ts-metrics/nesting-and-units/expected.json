@@ -1,0 +1,16 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "legacy.js": [
+      ["legacy", 3, 3, 4, 2, 9, 4, 3, 2]
+    ],
+    "units.ts": [
+      ["outer", 3, 3, 4, 1, 12, 7, 1, 0],
+      ["outer.helper", 2, 2, 1, 0, 3, 1, 1, 0],
+      ["Service.constructor", 1, 1, 0, 0, 1, 0, 2, 0],
+      ["Service.run", 4, 4, 4, 2, 6, 4, 2, 3],
+      ["Service.label", 1, 1, 0, 0, 3, 1, 0, 0],
+      ["Service.walk", 2, 2, 2, 0, 3, 1, 1, 0]
+    ]
+  }
+}

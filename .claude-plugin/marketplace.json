@@ -7,6 +7,11 @@
       "name": "cochange",
       "source": "./plugins/cochange",
       "description": "Mines git history for hotspots, temporal coupling and change spread, and briefs agents before they edit."
+    },
+    {
+      "name": "complexity",
+      "source": "./plugins/complexity",
+      "description": "Finds the functions that are hard to understand, guides simplifications that avoid shallow helpers, and guards CI against regressions."
     }
   ]
 }

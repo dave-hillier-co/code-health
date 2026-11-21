@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "check.schema.json",
+  "title": "complexity check --json",
+  "description": "Exit code 1 when `results` is not empty: a new function over a threshold, or an existing one over a threshold that got worse by more than the configured delta.",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "check"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "$ref": "common.schema.json#/$defs/revision"
+        },
+        "against": {
+          "enum": [
+            "head",
+            "working-tree"
+          ]
+        },
+        "delta": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "base",
+        "against",
+        "delta"
+      ],
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "compared": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "added": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "changed": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "removed": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "moved": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "violations": {
+          "$ref": "common.schema.json#/$defs/count"
+        }
+      },
+      "required": [
+        "compared",
+        "added",
+        "changed",
+        "removed",
+        "moved",
+        "violations"
+      ],
+      "additionalProperties": false
+    },
+    "changedFiles": {
+      "$ref": "common.schema.json#/$defs/count"
+    },
+    "unsupportedFiles": {
+      "$ref": "common.schema.json#/$defs/count",
+      "description": "Changed files with no structural adapter, whose functions cannot be checked."
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "finding": {
+            "enum": [
+              "new",
+              "worsened"
+            ]
+          },
+          "metric": {
+            "enum": [
+              "cyclomatic",
+              "cognitive",
+              "nesting",
+              "parameters"
+            ]
+          },
+          "before": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The metric at the base. null for a new function."
+          },
+          "after": {
+            "type": "integer"
+          },
+          "threshold": {
+            "type": "integer",
+            "description": "The value the metric must not go above."
+          },
+          "delta": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "startLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "endLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "score": {
+            "type": "integer",
+            "description": "The sort key: how far above the threshold the metric is."
+          },
+          "renamedFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The id the function had at the base, when it was renamed or moved."
+          }
+        },
+        "required": [
+          "path",
+          "unit",
+          "id",
+          "finding",
+          "metric",
+          "before",
+          "after",
+          "threshold",
+          "delta",
+          "startLine",
+          "endLine",
+          "score",
+          "renamedFrom"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "changedFiles",
+    "unsupportedFiles"
+  ],
+  "unevaluatedProperties": false
+}

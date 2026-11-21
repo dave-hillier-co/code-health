@@ -1,0 +1,26 @@
+schema_version: "1.0"
+name: trigger-hardest-functions
+description: The skill loads and the CLI runs when the user asks which functions are hard to understand. Needs `--scaffold` (see CONTRIBUTING.md).
+tags: [trigger]
+context:
+  scaffold_script: scaffold.sh
+runs: 3
+execution:
+  prompt: Which functions in this repository are the hardest to understand? I want to know where to start simplifying.
+  model: claude-sonnet-5-5
+  allowed_tools: [Bash, Read, Grep, Glob]
+  max_turns: 10
+  timeout_seconds: 300
+graders:
+  - type: tool_used
+    name: runs-analyse
+    tool: Bash
+    input_match: "complexity\\.mjs analyse"
+    min: 1
+    arm: with-only
+  - type: regex
+    name: reads-the-ranking-as-not-change-weighted
+    pattern: "change|history|hotspot|how often"
+    flags: i
+    target: last_message
+    arm: with-only

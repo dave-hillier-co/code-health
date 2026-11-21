@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "analyse.schema.json",
+  "title": "complexity analyse --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "analyse"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "tree": {
+          "$ref": "common.schema.json#/$defs/tree"
+        },
+        "layer": {
+          "$ref": "common.schema.json#/$defs/layer"
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/metricId"
+          }
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "tree",
+        "layer",
+        "metrics",
+        "paths"
+      ],
+      "additionalProperties": false
+    },
+    "ranking": {
+      "type": "object",
+      "properties": {
+        "basis": {
+          "type": "string"
+        },
+        "changeWeighted": {
+          "const": false,
+          "description": "Ranking is by percentile alone until history-weighted ranking exists."
+        }
+      },
+      "required": [
+        "basis",
+        "changeWeighted"
+      ],
+      "additionalProperties": false
+    },
+    "layers": {
+      "description": "Files by the layer that measured their functions. `none` is files with no per-function metrics.",
+      "type": "object",
+      "properties": {
+        "structural": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "lexical": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "none": {
+          "$ref": "common.schema.json#/$defs/count"
+        }
+      },
+      "required": [
+        "structural",
+        "lexical",
+        "none"
+      ],
+      "additionalProperties": false
+    },
+    "agreement": {
+      "$ref": "common.schema.json#/$defs/agreement"
+    },
+    "skipped": {
+      "$ref": "common.schema.json#/$defs/skipped"
+    },
+    "filesWithSyntaxErrors": {
+      "description": "Files whose parse reported syntax errors, so their units may be incomplete.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "skippedFiles": {
+      "$ref": "common.schema.json#/$defs/skippedFiles"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string",
+            "description": "The qualified name, or <anonymous> for a lexical block without one."
+          },
+          "id": {
+            "type": "string",
+            "description": "path#Qualified.name, with ~n on duplicates."
+          },
+          "kind": {
+            "$ref": "common.schema.json#/$defs/kind"
+          },
+          "startLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "endLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "source": {
+            "$ref": "common.schema.json#/$defs/source"
+          },
+          "test": {
+            "type": "boolean"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "The highest percentile of any selected metric."
+          },
+          "dominant": {
+            "description": "The metric that gave the score, null for a unit with no selected metric.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "common.schema.json#/$defs/metricId"
+              }
+            ]
+          },
+          "percentiles": {
+            "type": "object",
+            "properties": {
+              "cognitive": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "cyclomatic": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "nesting": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "parameters": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "length": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "keyword": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "bumps": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "labels": {
+            "$ref": "common.schema.json#/$defs/labels"
+          },
+          "optionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Properties destructured out of object parameters, which count as one parameter. Structural units, with the parameters metric."
+          },
+          "cognitive": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cyclomatic": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "nesting": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "parameters": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "length": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "keyword": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bumps": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "path",
+          "unit",
+          "id",
+          "kind",
+          "startLine",
+          "endLine",
+          "source",
+          "test",
+          "score",
+          "dominant",
+          "percentiles",
+          "labels"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "ranking",
+    "layers",
+    "agreement",
+    "skipped",
+    "filesWithSyntaxErrors",
+    "skippedFiles"
+  ],
+  "unevaluatedProperties": false
+}

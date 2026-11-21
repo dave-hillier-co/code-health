@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "files.schema.json",
+  "title": "complexity files --json",
+  "description": "A whole-repository run on a clean tree is also stored as the complexity.files report, which the cochange plugin reads: each row's `path` and `complexity`.",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "files"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "tree": {
+          "$ref": "common.schema.json#/$defs/tree"
+        },
+        "layer": {
+          "$ref": "common.schema.json#/$defs/layer"
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "tree",
+        "layer",
+        "paths"
+      ],
+      "additionalProperties": false
+    },
+    "skippedFiles": {
+      "$ref": "common.schema.json#/$defs/skippedFiles"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The sort key: the file's indentation complexity."
+          },
+          "complexity": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Indentation complexity, the definition shared with the cochange plugin."
+          },
+          "source": {
+            "description": "The layer that measured the file's functions, null when none were measured.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "common.schema.json#/$defs/source"
+              }
+            ]
+          },
+          "profile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The lexer profile of the file, if any."
+          },
+          "test": {
+            "type": "boolean"
+          },
+          "unverified": {
+            "type": "boolean",
+            "description": "The profile came from config, so nothing measures its accuracy."
+          },
+          "lineCount": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "codeLines": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "keywordComplexity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "common.schema.json#/$defs/count"
+              }
+            ]
+          },
+          "functions": {
+            "$ref": "common.schema.json#/$defs/count",
+            "description": "Functions measured, nested ones included."
+          },
+          "aggregates": {
+            "description": "Sum and maximum of each metric over the functions that are not inside another function. null when no function was measured.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "cognitive": {
+                    "type": "object",
+                    "properties": {
+                      "sum": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "max": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "sum",
+                      "max"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "cyclomatic": {
+                    "type": "object",
+                    "properties": {
+                      "sum": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "max": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "sum",
+                      "max"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "nesting": {
+                    "type": "object",
+                    "properties": {
+                      "sum": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "max": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "sum",
+                      "max"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "sum": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "max": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "sum",
+                      "max"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "length": {
+                    "type": "object",
+                    "properties": {
+                      "sum": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "max": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "sum",
+                      "max"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "keyword": {
+                    "type": "object",
+                    "properties": {
+                      "sum": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "max": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "sum",
+                      "max"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "bumps": {
+                    "type": "object",
+                    "properties": {
+                      "sum": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "max": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "sum",
+                      "max"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "overThreshold": {
+            "$ref": "common.schema.json#/$defs/count",
+            "description": "Functions over a warn threshold."
+          }
+        },
+        "required": [
+          "path",
+          "score",
+          "complexity",
+          "source",
+          "profile",
+          "test",
+          "unverified",
+          "lineCount",
+          "codeLines",
+          "keywordComplexity",
+          "functions",
+          "aggregates",
+          "overThreshold"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "skippedFiles"
+  ],
+  "unevaluatedProperties": false
+}

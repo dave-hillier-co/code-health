@@ -1,0 +1,25 @@
+schema_version: "1.0"
+name: trigger-unrelated
+description: The skill stays out of the way of a request that has nothing to do with code complexity.
+tags: [trigger, negative]
+runs: 3
+execution:
+  prompt: Write a two line summary of what a pull request description should contain.
+  model: claude-sonnet-5-5
+  allowed_tools: [Bash]
+  max_turns: 3
+  timeout_seconds: 120
+graders:
+  - type: tool_used
+    name: does-not-run-the-cli
+    tool: Bash
+    input_match: "complexity\\.mjs"
+    max: 0
+    arm: with-only
+  - type: regex
+    name: does-not-mention-complexity-metrics
+    pattern: "cognitive complexity|cyclomatic"
+    flags: i
+    match: not_contains
+    target: last_message
+    arm: with-only

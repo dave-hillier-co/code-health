@@ -1,0 +1,116 @@
+{
+  "command": "explain",
+  "config": "af7adc780c35b023",
+  "inputs": {
+    "tree": "head",
+    "unit": "src/pricing.ts#price"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3f17e527361d4435314136f637ee9a5627290301"
+  },
+  "results": [
+    {
+      "amount": 1,
+      "code": "export function price(order: { items: number[]; vip: boolean; coupon?: string }): number {",
+      "construct": "function",
+      "line": 1,
+      "metric": "cyclomatic",
+      "nesting": 0
+    },
+    {
+      "amount": 1,
+      "code": "for (const item of order.items) {",
+      "construct": "for-in",
+      "line": 3,
+      "metric": "cognitive",
+      "nesting": 0
+    },
+    {
+      "amount": 1,
+      "code": "for (const item of order.items) {",
+      "construct": "for-in",
+      "line": 3,
+      "metric": "cyclomatic",
+      "nesting": 0
+    },
+    {
+      "amount": 2,
+      "code": "if (item > 100 && order.vip) {",
+      "construct": "if",
+      "line": 4,
+      "metric": "cognitive",
+      "nesting": 1
+    },
+    {
+      "amount": 1,
+      "code": "if (item > 100 && order.vip) {",
+      "construct": "sequence of &&",
+      "line": 4,
+      "metric": "cognitive",
+      "nesting": 0
+    },
+    {
+      "amount": 1,
+      "code": "if (item > 100 && order.vip) {",
+      "construct": "if",
+      "line": 4,
+      "metric": "cyclomatic",
+      "nesting": 0
+    },
+    {
+      "amount": 1,
+      "code": "if (item > 100 && order.vip) {",
+      "construct": "&&",
+      "line": 4,
+      "metric": "cyclomatic",
+      "nesting": 0
+    },
+    {
+      "amount": 1,
+      "code": "} else {",
+      "construct": "else",
+      "line": 6,
+      "metric": "cognitive",
+      "nesting": 0
+    },
+    {
+      "amount": 3,
+      "code": "total += order.coupon ? item * 0.9 : item;",
+      "construct": "ternary",
+      "line": 7,
+      "metric": "cognitive",
+      "nesting": 2
+    },
+    {
+      "amount": 1,
+      "code": "total += order.coupon ? item * 0.9 : item;",
+      "construct": "ternary",
+      "line": 7,
+      "metric": "cyclomatic",
+      "nesting": 0
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 10
+  },
+  "unit": {
+    "cyclomaticSwitch": "case",
+    "endLine": 11,
+    "id": "src/pricing.ts#price",
+    "kind": "function",
+    "labels": [],
+    "metrics": {
+      "cognitive": 8,
+      "cyclomatic": 5,
+      "length": 11,
+      "nesting": 2,
+      "parameters": 1
+    },
+    "startLine": 1
+  }
+}

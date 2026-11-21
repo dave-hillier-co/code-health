@@ -5,7 +5,7 @@ import { loadComplexity, type FileComplexity } from "./complexity-source.ts";
 import type { By, Unit } from "./file-statistics.ts";
 import type { LoadedHistory } from "./history-access.ts";
 import { siblingTestOf } from "./sibling-test.ts";
-import { midRankPercentiles, shareStrictlyAbove } from "./ranking.ts";
+import { midRankPercentiles, shareStrictlyAbove } from "@code-health/cli-kit/ranking";
 import { SECONDS_PER_DAY, isoDate, loadUnits } from "./units.ts";
 
 export interface HotspotRow {

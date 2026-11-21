@@ -1,4 +1,5 @@
 import type { Node } from "web-tree-sitter";
+import { codeRowsOf, measureFunction } from "./unit-metrics.ts";
 import type {
   BindingFact,
   ExportFact,
@@ -14,7 +15,7 @@ import type {
  * Bump when the extraction rules change in a way that alters facts for the
  * same source, so cached facts from older rules are not reused.
  */
-export const extractorVersion = 3;
+export const extractorVersion = 4;
 
 interface Context {
   /** Qualified name of the innermost enclosing unit; names of nested units are built from it. */
@@ -132,8 +133,13 @@ class Extractor {
   readonly exports: ExportFact[] = [];
   readonly references: ReferenceFact[] = [];
   private readonly nameCounts = new Map<string, number>();
+  private codeRows: boolean[] | undefined;
+  private root: Node | undefined;
+
+  constructor(private readonly explain: boolean) {}
 
   extract(root: Node): FileFacts {
+    this.root = root;
     const context: Context = { unit: undefined, shadow: new Set() };
     this.visitChildren(root, context);
     const locals = new Set<string>();
@@ -180,7 +186,7 @@ class Extractor {
       case "function_declaration":
       case "generator_function_declaration": {
         const name = node.childForFieldName("name")?.text;
-        const inner = name ? this.declareUnit(name, "function", node, wrapperOf(parent), context) : context;
+        const inner = name ? this.declareUnit(name, "function", node, wrapperOf(parent), context, node) : context;
         this.functionBody(node, inner);
         return;
       }
@@ -197,7 +203,7 @@ class Extractor {
         const name = node.childForFieldName("name");
         const inner =
           name && parent.type === "class_body"
-            ? this.declareUnit(name.text, "method", node, undefined, context)
+            ? this.declareUnit(name.text, "method", node, undefined, context, node)
             : context;
         this.functionBody(node, inner);
         return;
@@ -206,7 +212,7 @@ class Extractor {
         const name = node.childForFieldName("name");
         const value = node.childForFieldName("value");
         if (name && value && isFunctionValue(value)) {
-          this.functionBody(value, this.declareUnit(name.text, functionKind(value), node, undefined, context));
+          this.functionBody(value, this.declareUnit(name.text, functionKind(value), node, undefined, context, value));
         } else if (value) {
           this.visit(value, context, node, "value");
         }
@@ -343,6 +349,7 @@ class Extractor {
     node: Node,
     wrapper: Node | undefined,
     context: Context,
+    fn?: Node,
   ): Context {
     const base = context.unit === undefined ? name : `${context.unit}.${name}`;
     const seen = this.nameCounts.get(base) ?? 0;
@@ -357,6 +364,18 @@ class Extractor {
       source: "structural",
     };
     if (context.unit !== undefined) unit.parent = context.unit;
+    if (fn !== undefined && kind !== "class") {
+      this.codeRows ??= codeRowsOf(this.root!);
+      const measured = measureFunction(fn, {
+        name,
+        startLine: unit.startLine,
+        endLine: unit.endLine,
+        codeRows: this.codeRows,
+        explain: this.explain,
+      });
+      unit.metrics = measured.metrics;
+      if (measured.increments !== undefined) unit.increments = measured.increments;
+    }
     this.units.push(unit);
     return { unit: qualifiedName, shadow: context.shadow };
   }
@@ -386,7 +405,7 @@ class Extractor {
       if (name?.type === "identifier" && value) {
         if (this.requireDeclarator(declarator, name, value, context)) continue;
         if (isFunctionValue(value)) {
-          this.functionBody(value, this.declareUnit(name.text, functionKind(value), value, extent, context));
+          this.functionBody(value, this.declareUnit(name.text, functionKind(value), value, extent, context, value));
           continue;
         }
         if (value.type === "class") {
@@ -445,7 +464,7 @@ class Extractor {
     for (const member of object.namedChildren) {
       if (member.type === "method_definition") {
         const key = member.childForFieldName("name");
-        const inner = key ? this.declareUnit(key.text, "method", member, undefined, scopeOf(context, name)) : context;
+        const inner = key ? this.declareUnit(key.text, "method", member, undefined, scopeOf(context, name), member) : context;
         this.functionBody(member, inner);
         continue;
       }
@@ -453,7 +472,7 @@ class Extractor {
         const key = member.childForFieldName("key");
         const value = member.childForFieldName("value");
         if (key && value && isFunctionValue(value)) {
-          const inner = this.declareUnit(key.text, functionKind(value), member, undefined, scopeOf(context, name));
+          const inner = this.declareUnit(key.text, functionKind(value), member, undefined, scopeOf(context, name), value);
           this.functionBody(value, inner);
           continue;
         }
@@ -560,7 +579,7 @@ class Extractor {
     const exported = "default"; // `export = x` is seen as the default export by importers
     if (isDefault && (isFunctionValue(value) || value.type === "class")) {
       const kind: UnitKind = value.type === "class" ? "class" : functionKind(value);
-      const inner = this.declareUnit("default", kind, value, node, context);
+      const inner = this.declareUnit("default", kind, value, node, context, value);
       if (kind === "class") this.visitChildren(value, inner);
       else this.functionBody(value, inner);
       this.exports.push({ exported, local: "default", line });
@@ -595,7 +614,7 @@ class Extractor {
       this.exports.push({ exported: "default", local: unitName, line });
       if (anonymous && !name) {
         const kind: UnitKind = classTypes.has(declaration.type) ? "class" : "function";
-        const inner = this.declareUnit("default", kind, declaration, statement, context);
+        const inner = this.declareUnit("default", kind, declaration, statement, context, declaration);
         if (kind === "class") this.visitChildren(declaration, inner);
         else this.functionBody(declaration, inner);
         return;
@@ -702,7 +721,10 @@ function scopeOf(context: Context, name: string): Context {
   return { unit, shadow: context.shadow };
 }
 
-/** Extracts a file's units, imports, exports and references from its syntax tree. */
-export function extractFacts(root: Node): FileFacts {
-  return new Extractor().extract(root);
+/**
+ * Extracts a file's units, imports, exports and references from its syntax tree. With `explain`, each
+ * function unit also carries where its metric increments came from. Cached facts never have them.
+ */
+export function extractFacts(root: Node, options: { explain?: boolean } = {}): FileFacts {
+  return new Extractor(options.explain === true).extract(root);
 }

@@ -1,0 +1,72 @@
+{
+  "changedFiles": 1,
+  "command": "diff",
+  "config": "d93380546118225f",
+  "inputs": {
+    "against": "revision",
+    "base": {
+      "rev": "main",
+      "sha": "849a854beefaa30058b27200084942c4e60f6dec"
+    },
+    "head": {
+      "rev": "feature",
+      "sha": "1e184ff18a7e8d71256b3bf82e001ebf550ec412"
+    }
+  },
+  "repo": {
+    "dirty": false,
+    "head": "1e184ff18a7e8d71256b3bf82e001ebf550ec412"
+  },
+  "results": [
+    {
+      "after": {
+        "cognitive": 9,
+        "cyclomatic": 6,
+        "length": 12,
+        "nesting": 2,
+        "parameters": 1
+      },
+      "before": {
+        "cognitive": 8,
+        "cyclomatic": 5,
+        "length": 11,
+        "nesting": 2,
+        "parameters": 1
+      },
+      "change": "changed",
+      "delta": {
+        "cognitive": 1,
+        "cyclomatic": 1,
+        "length": 1,
+        "nesting": 0,
+        "parameters": 0
+      },
+      "endLine": 12,
+      "id": "src/pricing.ts#price",
+      "labels": [
+        "cyclomatic-warn",
+        "cognitive-warn"
+      ],
+      "path": "src/pricing.ts",
+      "renamedFrom": null,
+      "score": 1,
+      "startLine": 1,
+      "unit": "price"
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "added": 0,
+    "changed": 1,
+    "moved": 0,
+    "removed": 0,
+    "unchanged": 0
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 1
+  },
+  "unsupportedFiles": 0
+}

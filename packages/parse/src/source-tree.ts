@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -56,6 +56,54 @@ export async function treeFromDirectory(directory: string): Promise<SourceTree> 
       }
       return out;
     },
+  };
+}
+
+/**
+ * A tree of the files in the working directory of a repository: tracked files, and untracked ones that
+ * are not ignored, read from disk. Deleted files are left out, so uncommitted work is analysed as it stands.
+ */
+export async function treeFromWorkingTree(repoPath: string): Promise<SourceTree> {
+  const listing = (await git(repoPath, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"])).toString("utf8");
+  const entries: [string, string][] = [];
+  const seen = new Set<string>();
+  for (const path of listing.split("\0")) {
+    if (path === "" || seen.has(path)) continue;
+    seen.add(path);
+    try {
+      if (!lstatSync(join(repoPath, path)).isFile()) continue;
+      entries.push([path, gitBlobSha(readFileSync(join(repoPath, path)))]);
+    } catch {
+      // Listed but gone from disk: deleted and not yet staged.
+    }
+  }
+  const files = sortedMap(entries);
+  const read = async (path: string) => (files.has(path) ? readFileSync(join(repoPath, path), "utf8") : undefined);
+  return {
+    files,
+    read,
+    async readMany(wanted) {
+      const out = new Map<string, string>();
+      for (const path of wanted) {
+        const text = await read(path);
+        if (text !== undefined) out.set(path, text);
+      }
+      return out;
+    },
+  };
+}
+
+/** A view of a tree holding only some of its files, for comparing the files a change touched. */
+export function restrictTree(tree: SourceTree, paths: Iterable<string>): SourceTree {
+  const files = new Map<string, string>();
+  for (const path of [...new Set(paths)].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)))) {
+    const blob = tree.files.get(path);
+    if (blob !== undefined) files.set(path, blob);
+  }
+  return {
+    files,
+    read: async (path) => (files.has(path) ? tree.read(path) : undefined),
+    readMany: (wanted) => tree.readMany(wanted.filter((path) => files.has(path))),
   };
 }
 

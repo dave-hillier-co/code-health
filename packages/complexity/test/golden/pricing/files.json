@@ -1,0 +1,181 @@
+{
+  "command": "files",
+  "config": "af7adc780c35b023",
+  "inputs": {
+    "layer": "auto",
+    "paths": [],
+    "tree": "head"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3f17e527361d4435314136f637ee9a5627290301"
+  },
+  "results": [
+    {
+      "aggregates": {
+        "cognitive": {
+          "max": 8,
+          "sum": 8
+        },
+        "cyclomatic": {
+          "max": 5,
+          "sum": 6
+        },
+        "length": {
+          "max": 11,
+          "sum": 12
+        },
+        "nesting": {
+          "max": 2,
+          "sum": 2
+        },
+        "parameters": {
+          "max": 1,
+          "sum": 2
+        }
+      },
+      "codeLines": 12,
+      "complexity": 16,
+      "functions": 2,
+      "keywordComplexity": 3,
+      "lineCount": 13,
+      "overThreshold": 0,
+      "path": "src/pricing.ts",
+      "profile": "typescript",
+      "score": 16,
+      "source": "structural",
+      "test": false,
+      "unverified": false
+    },
+    {
+      "aggregates": null,
+      "codeLines": 10,
+      "complexity": 11,
+      "functions": 0,
+      "keywordComplexity": 2,
+      "lineCount": 11,
+      "overThreshold": 0,
+      "path": "src/total.go",
+      "profile": "go",
+      "score": 11,
+      "source": null,
+      "test": false,
+      "unverified": false
+    },
+    {
+      "aggregates": null,
+      "codeLines": 6,
+      "complexity": 8,
+      "functions": 0,
+      "keywordComplexity": 2,
+      "lineCount": 6,
+      "overThreshold": 0,
+      "path": "tools/total.py",
+      "profile": "python",
+      "score": 8,
+      "source": null,
+      "test": false,
+      "unverified": false
+    },
+    {
+      "aggregates": {
+        "cognitive": {
+          "max": 1,
+          "sum": 1
+        },
+        "cyclomatic": {
+          "max": 2,
+          "sum": 2
+        },
+        "length": {
+          "max": 5,
+          "sum": 5
+        },
+        "nesting": {
+          "max": 1,
+          "sum": 1
+        },
+        "parameters": {
+          "max": 0,
+          "sum": 0
+        }
+      },
+      "codeLines": 6,
+      "complexity": 4,
+      "functions": 1,
+      "keywordComplexity": 1,
+      "lineCount": 7,
+      "overThreshold": 0,
+      "path": "test/pricing.test.ts",
+      "profile": "typescript",
+      "score": 4,
+      "source": "structural",
+      "test": true,
+      "unverified": false
+    },
+    {
+      "aggregates": null,
+      "codeLines": 3,
+      "complexity": 1,
+      "functions": 0,
+      "keywordComplexity": null,
+      "lineCount": 4,
+      "overThreshold": 0,
+      "path": "notes.md",
+      "profile": null,
+      "score": 1,
+      "source": null,
+      "test": false,
+      "unverified": false
+    },
+    {
+      "aggregates": {
+        "cognitive": {
+          "max": 0,
+          "sum": 0
+        },
+        "cyclomatic": {
+          "max": 1,
+          "sum": 1
+        },
+        "length": {
+          "max": 3,
+          "sum": 3
+        },
+        "nesting": {
+          "max": 0,
+          "sum": 0
+        },
+        "parameters": {
+          "max": 1,
+          "sum": 1
+        }
+      },
+      "codeLines": 3,
+      "complexity": 1,
+      "functions": 1,
+      "keywordComplexity": 0,
+      "lineCount": 3,
+      "overThreshold": 0,
+      "path": "src/label.ts",
+      "profile": "typescript",
+      "score": 1,
+      "source": "structural",
+      "test": false,
+      "unverified": false
+    }
+  ],
+  "schemaVersion": 1,
+  "skippedFiles": {
+    "binary": 0,
+    "excluded": 0,
+    "large": 0,
+    "tests": 0
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 6
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "agreement": {
+    "typescript": {
+      "bar": 0.9,
+      "exactRate": 0.9889,
+      "spuriousRate": 0.0606
+    }
+  },
+  "command": "analyse",
+  "config": "af7adc780c35b023",
+  "filesWithSyntaxErrors": [],
+  "inputs": {
+    "layer": "lexical",
+    "metrics": [
+      "cognitive",
+      "cyclomatic",
+      "nesting",
+      "parameters",
+      "length",
+      "keyword",
+      "bumps"
+    ],
+    "paths": [
+      "src/pricing.ts"
+    ],
+    "tree": "head"
+  },
+  "layers": {
+    "lexical": 3,
+    "none": 3,
+    "structural": 0
+  },
+  "ranking": {
+    "basis": "percentile within the repository, per metric, among units measured the same way",
+    "changeWeighted": false
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3f17e527361d4435314136f637ee9a5627290301"
+  },
+  "results": [
+    {
+      "bumps": 1,
+      "dominant": "nesting",
+      "endLine": 11,
+      "id": "src/pricing.ts#price",
+      "keyword": 3,
+      "kind": "block",
+      "labels": [],
+      "length": 11,
+      "nesting": 2,
+      "path": "src/pricing.ts",
+      "percentiles": {
+        "bumps": 0.833333,
+        "keyword": 0.833333,
+        "length": 0.833333,
+        "nesting": 0.833333
+      },
+      "score": 0.833333,
+      "source": "lexical",
+      "startLine": 1,
+      "test": false,
+      "unit": "price"
+    },
+    {
+      "bumps": 0,
+      "dominant": "nesting",
+      "endLine": 13,
+      "id": "src/pricing.ts#double",
+      "keyword": 0,
+      "kind": "block",
+      "labels": [],
+      "length": 1,
+      "nesting": 0,
+      "path": "src/pricing.ts",
+      "percentiles": {
+        "bumps": 0.333333,
+        "keyword": 0.333333,
+        "length": 0.166667,
+        "nesting": 0.333333
+      },
+      "score": 0.333333,
+      "source": "lexical",
+      "startLine": 13,
+      "test": false,
+      "unit": "double"
+    }
+  ],
+  "schemaVersion": 1,
+  "skipped": {
+    "comment and string stripping: no lexer profile": 1,
+    "per-function metrics: no agreement measured for go": 1,
+    "per-function metrics: no agreement measured for python": 1,
+    "per-function metrics: no lexer profile": 1
+  },
+  "skippedFiles": {
+    "binary": 0,
+    "excluded": 0,
+    "large": 0,
+    "tests": 0
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 2
+  }
+}

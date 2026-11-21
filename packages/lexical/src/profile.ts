@@ -64,6 +64,11 @@ export interface LexerProfile {
   typeHeaders: string[];
   /** Headers that open a function. Group `name` is optional. Tested against collapsed header text. */
   functionHeaders: string[];
+  /**
+   * Functions written `name = (args) => expression`, which have no braces to close. The block ends with the
+   * expression. Only arrows bound to a name are blocks, as callbacks passed inline are not units.
+   */
+  expressionArrows?: boolean;
 }
 
 const doubleQuote: DelimitedString = {
@@ -141,10 +146,11 @@ const typescript: LexerProfile = {
   controlHeader,
   typeHeaders: cTypeHeaders,
   functionHeaders: [
-    "\\bfunction\\b\\s*\\*?\\s*(?<name>[\\w$]+)?\\s*(?:<[^>]*>)?\\s*\\([^]*\\)[^;{}=]*$",
+    "\\bfunction\\b\\s*\\*?\\s*(?<name>[\\w$]+)?\\s*(?:<[^>]*>)?\\s*\\([^]*\\)(?:[^;{}=]|=>)*$",
     "^(?:export\\s+(?:default\\s+)?)?(?:(?:const|let|var)\\s+(?<name>[\\w$]+)\\s*(?::[^=]+)?=\\s*)?[^]*=>\\s*(?::[^{;]+)?$",
-    "^(?:(?:public|private|protected|static|async|readonly|get|set|override|abstract|declare)\\s+)*\\*?\\s*(?<name>[#\\w$]+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?::\\s*[^{;]+)?$",
+    "^(?:(?:public|private|protected|static|async|readonly|get|set|override|abstract|declare)\\s+)*\\*?\\s*(?<name>[#\\w$]+|\\[[^\\]]+\\])\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?::\\s*[^{;]+)?$",
   ],
+  expressionArrows: true,
 };
 
 const csharp: LexerProfile = {
@@ -281,6 +287,32 @@ const rust: LexerProfile = {
   ],
 };
 
+const go: LexerProfile = {
+  name: "go",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    // Raw strings take no escapes and can span lines.
+    { kind: "delimited", triggers: "`", open: "`", close: "`", multiline: true },
+    doubleQuote,
+    charLiteral,
+  ],
+  // `if err != nil` is an ordinary `if`. `case` covers expression, type and select cases. `defer` and `go` do not branch.
+  branchKeywords: ["if", "for", "case"],
+  shortCircuitOperators: ["&&", "\\|\\|"],
+  bumpOpeners: ["if", "else", "for", "switch", "select", "case", "default"],
+  headerNoise: ["^//go:.*$"],
+  controlHeader: "^(?:else\\s+if|else|if|for|switch|select)\\b",
+  typeHeaders: ["\\btype\\s+(?<name>\\w+)(?:\\s*\\[[^\\]]*\\])?\\s+(?:struct|interface)\\b"],
+  functionHeaders: [
+    // A declaration, with an optional receiver and type parameters.
+    "^func\\s+(?:\\([^)]*\\)\\s*)?(?<name>\\w+)\\s*(?:\\[[^\\]]*\\]\\s*)?\\([^]*\\)[^;{}]*$",
+    // A function literal, alone or as an argument, a value or the operand of `go` and `defer`.
+    "\\bfunc\\s*\\([^]*\\)[^;{}]*$",
+  ],
+};
+
 const python: LexerProfile = {
   name: "python",
   blocks: "indentation",
@@ -308,6 +340,7 @@ export const profiles: Record<string, LexerProfile> = {
   java,
   kotlin,
   rust,
+  go,
   python,
 };
 
@@ -334,6 +367,7 @@ export const extensionProfiles: Record<string, string> = {
   kt: "kotlin",
   kts: "kotlin",
   rs: "rust",
+  go: "go",
   py: "python",
 };
 
