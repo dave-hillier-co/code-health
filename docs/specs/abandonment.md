@@ -105,6 +105,9 @@ Subcommands of the cochange CLI. Every one supports `--json` with a versioned sc
 | `cochange abandonment turnover` | Estimated turnover rate per period, with the developer counts behind it (no names) |
 | `cochange successors PATH... [--names]` | Ranked successors per file, with the coupling evidence |
 | `cochange abandonment backtest [--at DATE]` | At a past date, the predicted at-risk files against the files actually abandoned one horizon later |
+| `cochange abandonment redundancy [--min-authors N] [--min-share PERCENT]` | Share of hotspot files with at least N active authors (default 2) each holding at least the share of lines (default 10 %), with the counts behind it |
+| `cochange abandonment trend [--points N]` | Expected loss and KaR at dates one period apart, each from the history and blame then, with one turnover rate and the same settings at every point |
+| `cochange abandonment adoption [--at DATE] [--successors N]` | Of the files abandoned at a past date, how many an active developer picked up within the horizon, and how many by one of the top recommended successors using only the history before the date |
 
 ## Privacy
 

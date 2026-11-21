@@ -1,0 +1,261 @@
+{
+  "command": "abandonment",
+  "config": "5927bcca0355a5e9",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 7,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 25.7,
+    "window": {
+      "months": 12,
+      "since": 1709283600,
+      "until": 1740819600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 19,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 20,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "abandonmentThreshold": 90,
+    "activityWindowMonths": 6,
+    "alphas": [
+      95,
+      99
+    ],
+    "copyDetection": true,
+    "horizonPeriods": 4,
+    "periodMonths": 3,
+    "points": 3,
+    "seed": 1,
+    "subcommand": "trend",
+    "trials": 200,
+    "turnoverRate": null
+  },
+  "repo": {
+    "dirty": false,
+    "head": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6"
+  },
+  "results": {
+    "direction": "rising",
+    "points": [
+      {
+        "abandonedFiles": 2,
+        "activeDevelopers": 3,
+        "commit": "7e3e596fd539d0ecd378751591bac1af950266c6",
+        "date": "2024-08-30",
+        "files": 7,
+        "lines": {
+          "baseline": 19,
+          "increment": {
+            "atRisk": [
+              {
+                "alpha": 95,
+                "expectedTailLoss": 37.3333,
+                "kar": 33,
+                "karShare": 0.5077,
+                "tailRatio": 1.9114
+              },
+              {
+                "alpha": 99,
+                "expectedTailLoss": 46,
+                "kar": 46,
+                "karShare": 0.7077,
+                "tailRatio": 2.6643
+              }
+            ],
+            "expected": 17.265,
+            "expectedShare": 0.2656
+          },
+          "population": 65,
+          "total": {
+            "atRisk": [
+              {
+                "alpha": 95,
+                "expectedTailLoss": 56.3333,
+                "kar": 52,
+                "karShare": 0.8,
+                "tailRatio": 1.4339
+              },
+              {
+                "alpha": 99,
+                "expectedTailLoss": 65,
+                "kar": 65,
+                "karShare": 1,
+                "tailRatio": 1.7924
+              }
+            ],
+            "expected": 36.265,
+            "expectedShare": 0.5579
+          }
+        }
+      },
+      {
+        "abandonedFiles": 3,
+        "activeDevelopers": 3,
+        "commit": "28d0e3108524dd4acbffe3a752e07b3020f01cfe",
+        "date": "2024-11-30",
+        "files": 8,
+        "lines": {
+          "baseline": 32,
+          "increment": {
+            "atRisk": [
+              {
+                "alpha": 95,
+                "expectedTailLoss": 36.3333,
+                "kar": 33,
+                "karShare": 0.44,
+                "tailRatio": 2.0465
+              },
+              {
+                "alpha": 99,
+                "expectedTailLoss": 43,
+                "kar": 43,
+                "karShare": 0.5733,
+                "tailRatio": 2.6667
+              }
+            ],
+            "expected": 16.125,
+            "expectedShare": 0.215
+          },
+          "population": 75,
+          "total": {
+            "atRisk": [
+              {
+                "alpha": 95,
+                "expectedTailLoss": 68.3333,
+                "kar": 65,
+                "karShare": 0.8667,
+                "tailRatio": 1.3506
+              },
+              {
+                "alpha": 99,
+                "expectedTailLoss": 75,
+                "kar": 75,
+                "karShare": 1,
+                "tailRatio": 1.5584
+              }
+            ],
+            "expected": 48.125,
+            "expectedShare": 0.6417
+          }
+        }
+      },
+      {
+        "abandonedFiles": 3,
+        "activeDevelopers": 3,
+        "commit": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6",
+        "date": "2025-03-01",
+        "files": 8,
+        "lines": {
+          "baseline": 32,
+          "increment": {
+            "atRisk": [
+              {
+                "alpha": 95,
+                "expectedTailLoss": 36.3333,
+                "kar": 33,
+                "karShare": 0.44,
+                "tailRatio": 2.0465
+              },
+              {
+                "alpha": 99,
+                "expectedTailLoss": 43,
+                "kar": 43,
+                "karShare": 0.5733,
+                "tailRatio": 2.6667
+              }
+            ],
+            "expected": 16.125,
+            "expectedShare": 0.215
+          },
+          "population": 75,
+          "total": {
+            "atRisk": [
+              {
+                "alpha": 95,
+                "expectedTailLoss": 68.3333,
+                "kar": 65,
+                "karShare": 0.8667,
+                "tailRatio": 1.3506
+              },
+              {
+                "alpha": 99,
+                "expectedTailLoss": 75,
+                "kar": 75,
+                "karShare": 1,
+                "tailRatio": 1.5584
+              }
+            ],
+            "expected": 48.125,
+            "expectedShare": 0.6417
+          }
+        }
+      }
+    ],
+    "ratePerPeriod": 0.1111,
+    "rateSource": "history",
+    "skippedPoints": 0
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2024-03-01T09:00:00.000Z",
+    "until": "2025-03-01T09:00:00.000Z"
+  }
+}

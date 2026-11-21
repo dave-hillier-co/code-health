@@ -7,6 +7,7 @@ import { fileFindings, hotspotWeights, rankScore, rules as abandonmentRules } fr
 import { readRank } from "../abandonment/settings.ts";
 import { noSuccessorCheck } from "../abandonment/successors.ts";
 import { simulationOptions } from "../abandonment/selection.ts";
+import { adoptionCommand, redundancyCommand, trendCommand } from "../abandonment/outcome-run.ts";
 import { simulateCommand, turnoverCommand } from "../abandonment/simulate-run.ts";
 import { readComponents } from "../components.ts";
 import { byOption, readBy } from "../units.ts";
@@ -15,7 +16,7 @@ export const name = "abandonment";
 
 export const rules = abandonmentRules;
 
-const SUBCOMMANDS = ["backtest", "current", "simulate", "turnover"] as const;
+const SUBCOMMANDS = ["adoption", "backtest", "current", "redundancy", "simulate", "trend", "turnover"] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
 
 /**
@@ -24,20 +25,35 @@ type Subcommand = (typeof SUBCOMMANDS)[number];
  * counts, and is never stored as a report for another plugin to read.
  */
 export const command: Command = {
+  subcommands: {
+    adoption: { summary: "Files abandoned at a past date and whether an active developer, or a recommended successor, picked them up", options: ["at", "successors", "horizon", "no-refresh"] },
+    backtest: { summary: "At a past date, the predicted at-risk files against the files actually abandoned one horizon later", options: ["at", "trials", "horizon", "seed", "top", "no-refresh"] },
+    current: { summary: "Files already abandoned, ranked", options: ["by", "rank", "no-refresh"] },
+    redundancy: { summary: "Share of hotspot files with enough active authors holding enough of the lines", options: ["min-authors", "min-share", "no-refresh"] },
+    simulate: { summary: "Loss distribution of simulated turnover, with the files and components it concentrates in", options: ["mode", "k", "trials", "horizon", "seed", "top", "rank", "no-refresh"] },
+    trend: { summary: "Expected loss and knowledge at risk over time, at the same settings and rate", options: ["points", "trials", "horizon", "seed", "no-refresh"] },
+    turnover: { summary: "Observed turnover rate per period, with the developer counts behind it", options: ["no-refresh"] },
+  },
   summary: "Knowledge lost when people leave: files already abandoned, simulated turnover, and a backtest of the model",
-  options: { ...byOption, ...simulationOptions, top: { type: "string" }, rank: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
+  options: { ...byOption, ...simulationOptions, top: { type: "string" }, points: { type: "string" }, successors: { type: "string" }, "min-authors": { type: "string" }, "min-share": { type: "string" }, rank: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
     const [sub, ...rest] = context.positionals;
     if (!SUBCOMMANDS.includes(sub as Subcommand) || rest.length > 0) throw usageError(`usage: abandonment <${SUBCOMMANDS.join("|")}>`);
     const subcommand = sub as Subcommand;
     rejectOptionsOutsideTheirCommand(subcommand, context);
     switch (subcommand) {
+      case "adoption":
+        return adoptionCommand(context);
       case "backtest":
         return backtestCommand(context);
       case "current":
         return current(context);
+      case "redundancy":
+        return redundancyCommand(context);
       case "simulate":
         return simulateCommand(context);
+      case "trend":
+        return trendCommand(context);
       case "turnover":
         return turnoverCommand(context);
     }
@@ -47,13 +63,17 @@ export const command: Command = {
 function rejectOptionsOutsideTheirCommand(sub: Subcommand, context: CommandContext): void {
   const only: Record<string, Subcommand[]> = {
     by: ["current"],
-    at: ["backtest"],
+    at: ["adoption", "backtest"],
+    points: ["trend"],
+    successors: ["adoption"],
+    "min-authors": ["redundancy"],
+    "min-share": ["redundancy"],
     rank: ["current", "simulate"],
     mode: ["simulate"],
     k: ["simulate"],
-    trials: ["backtest", "simulate"],
-    horizon: ["backtest", "simulate"],
-    seed: ["backtest", "simulate"],
+    trials: ["backtest", "simulate", "trend"],
+    horizon: ["adoption", "backtest", "simulate", "trend"],
+    seed: ["backtest", "simulate", "trend"],
     top: ["backtest", "simulate"],
   };
   for (const [option, owners] of Object.entries(only)) {

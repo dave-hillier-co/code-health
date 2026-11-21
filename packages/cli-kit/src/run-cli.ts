@@ -29,6 +29,13 @@ export interface CommandOutput {
   failed?: boolean;
 }
 
+/** What `--help` says about one subcommand of a command that dispatches on its first positional. */
+export interface SubcommandHelp {
+  summary: string;
+  /** Names of the command's options that this subcommand takes. */
+  options?: readonly string[];
+}
+
 export interface Command {
   summary: string;
   /** The positional arguments, shown in the usage line of the command's help: `<path>...`, `<from>-><to>`. */
@@ -36,6 +43,8 @@ export interface Command {
   options?: OptionSpec;
   /** What each of the command's own options means, including the values it accepts, shown in the command's help. */
   optionHelp?: Record<string, string>;
+  /** The subcommands the command dispatches to, so `--help` can describe each with only its own options. */
+  subcommands?: Record<string, SubcommandHelp>;
   run(context: CommandContext): CommandOutput | Promise<CommandOutput>;
 }
 
@@ -112,7 +121,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
 
   const args = parseArguments(io.argv, command.options);
   if (args.help) {
-    io.stdout.write(commandHelp(cli, name, command));
+    io.stdout.write(commandHelp(cli, name, command, args.positionals[0]));
     return ExitCode.Success;
   }
 
@@ -205,20 +214,40 @@ function helpText(cli: CliDefinition): string {
   ].join("\n");
 }
 
-function commandHelp(cli: CliDefinition, name: string, command: Command): string {
-  const flags = Object.entries(command.options ?? {}).map(([option, spec]): [string, string] => [
-    `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
-    command.optionHelp?.[option] ?? "",
-  ]);
-  const width = Math.max(0, ...flags.map(([flag]) => flag.length));
-  const own = flags.map(([flag, description]) => (description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`));
+function commandHelp(cli: CliDefinition, name: string, command: Command, requested?: string): string {
+  const sub = requested === undefined ? undefined : command.subcommands?.[requested];
+  const optionLines = (entries: [string, { type: string }][]): string[] => {
+    const flags = entries.map(([option, spec]): [string, string] => [
+      `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
+      command.optionHelp?.[option] ?? "",
+    ]);
+    const width = Math.max(0, ...flags.map(([flag]) => flag.length));
+    return flags.map(([flag, description]) => (description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`));
+  };
+  const all = Object.entries(command.options ?? {});
+  if (sub !== undefined) {
+    const taken = new Set(sub.options ?? []);
+    return [
+      `Usage: ${cli.tool} ${name} ${requested}${command.usage === undefined ? "" : ` ${command.usage}`} [options]`,
+      "",
+      sub.summary,
+      "",
+      "Options:",
+      ...optionLines(all.filter(([option]) => taken.has(option))),
+      ...commonOptionHelp,
+      "",
+    ].join("\n");
+  }
+  const subcommands = Object.entries(command.subcommands ?? {});
+  const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli.tool} ${name}${command.usage === undefined ? "" : ` ${command.usage}`} [options]`,
+    `Usage: ${cli.tool} ${name}${command.usage === undefined ? "" : ` ${command.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
     command.summary,
     "",
+    ...(subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli.tool} ${name} <subcommand> --help for the options of one.`, ""] : []),
     "Options:",
-    ...own,
+    ...optionLines(all),
     ...commonOptionHelp,
     "",
   ].join("\n");

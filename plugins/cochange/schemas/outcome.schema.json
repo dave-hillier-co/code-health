@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "outcome.schema.json",
+  "title": "cochange outcome <spread|completeness> --json",
+  "description": "Whether acting on findings worked. `spread` sets the acted-on files beside similarly ranked files left alone, before and after a date. `completeness` compares agent sessions with and without the hook. Paths and counts only. `inputs.subcommand` says which shape `results` takes. Never stored as a report.",
+  "$defs": {
+    "nullableNumber": { "type": ["number", "null"] },
+    "conclusion": { "enum": ["lower", "higher", "no-change", "insufficient-sample", "not-measured"] },
+    "span": {
+      "type": "object",
+      "properties": { "since": { "type": "string", "format": "date" }, "until": { "type": "string", "format": "date" } },
+      "required": ["since", "until"],
+      "additionalProperties": false
+    },
+    "figures": {
+      "type": "object",
+      "description": "Change spread and revisions of the logical changes touching a group of files over one window, leaving out the suite's own commits.",
+      "properties": {
+        "spread": {
+          "type": "object",
+          "properties": {
+            "measured": { "$ref": "common.schema.json#/$defs/count", "description": "Changes at or under the maximum changeset size." },
+            "mean": { "$ref": "#/$defs/nullableNumber", "description": "Mean pairwise tree distance per change. Null when none was measured." }
+          },
+          "required": ["measured", "mean"],
+          "additionalProperties": false
+        },
+        "revisions": {
+          "type": "object",
+          "properties": {
+            "changes": { "$ref": "common.schema.json#/$defs/count" },
+            "files": { "$ref": "common.schema.json#/$defs/count" },
+            "perFile": { "$ref": "#/$defs/nullableNumber" }
+          },
+          "required": ["changes", "files", "perFile"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["spread", "revisions"],
+      "additionalProperties": false
+    },
+    "arms": {
+      "type": "object",
+      "properties": { "before": { "$ref": "#/$defs/figures" }, "after": { "$ref": "#/$defs/figures" } },
+      "required": ["before", "after"]
+    },
+    "difference": {
+      "type": "object",
+      "description": "The acted-on change minus the comparison change. Negative: the acted-on files improved more.",
+      "properties": {
+        "role": { "type": "string" },
+        "actedOn": { "type": "object", "properties": { "change": { "$ref": "#/$defs/nullableNumber" } }, "required": ["change"], "additionalProperties": false },
+        "comparison": { "type": "object", "properties": { "change": { "$ref": "#/$defs/nullableNumber" } }, "required": ["change"], "additionalProperties": false },
+        "difference": { "$ref": "#/$defs/nullableNumber" },
+        "smallestSample": { "$ref": "common.schema.json#/$defs/count" },
+        "conclusion": { "$ref": "#/$defs/conclusion" }
+      },
+      "required": ["role", "actedOn", "comparison", "difference", "smallestSample", "conclusion"],
+      "additionalProperties": false
+    },
+    "pairing": {
+      "type": "object",
+      "properties": {
+        "actedOn": {
+          "type": "object",
+          "properties": { "path": { "type": "string" }, "revisions": { "$ref": "common.schema.json#/$defs/count" } },
+          "required": ["path", "revisions"],
+          "additionalProperties": false
+        },
+        "comparison": {
+          "type": ["object", "null"],
+          "properties": { "path": { "type": "string" }, "revisions": { "$ref": "common.schema.json#/$defs/count" } },
+          "required": ["path", "revisions"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["actedOn", "comparison"],
+      "additionalProperties": false
+    },
+    "spreadOutcome": {
+      "type": "object",
+      "properties": {
+        "at": { "type": "string", "format": "date" },
+        "windows": {
+          "type": "object",
+          "properties": {
+            "before": { "$ref": "#/$defs/span" },
+            "after": {
+              "type": "object",
+              "properties": {
+                "since": { "type": "string", "format": "date" },
+                "until": { "type": "string", "format": "date" },
+                "complete": { "type": "boolean", "description": "False when the analysed commit ends the window early." }
+              },
+              "required": ["since", "until", "complete"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["before", "after"],
+          "additionalProperties": false
+        },
+        "actedOn": {
+          "allOf": [{ "$ref": "#/$defs/arms" }],
+          "type": "object",
+          "properties": { "files": { "type": "array", "items": { "type": "string" } }, "before": true, "after": true },
+          "required": ["files"],
+          "unevaluatedProperties": false
+        },
+        "comparison": {
+          "allOf": [{ "$ref": "#/$defs/arms" }],
+          "type": "object",
+          "properties": {
+            "files": { "type": "array", "items": { "type": "string" }, "description": "Files of nearest rank by revisions in the before window that were left alone." },
+            "pairs": { "type": "array", "items": { "$ref": "#/$defs/pairing" } },
+            "overlapping": { "$ref": "common.schema.json#/$defs/count", "description": "Candidates passed over because they changed together with an acted-on file." },
+            "before": true,
+            "after": true
+          },
+          "required": ["files", "pairs", "overlapping"],
+          "unevaluatedProperties": false
+        },
+        "spread": { "$ref": "#/$defs/difference", "description": "Primary outcome." },
+        "revisions": { "$ref": "#/$defs/difference", "description": "Secondary outcome: revisions per file." }
+      },
+      "required": ["at", "windows", "actedOn", "comparison", "spread", "revisions"],
+      "additionalProperties": false
+    },
+    "rate": {
+      "type": "object",
+      "properties": {
+        "opportunities": { "$ref": "common.schema.json#/$defs/count", "description": "Files edited with a coupled partner not yet edited in the session." },
+        "followed": { "$ref": "common.schema.json#/$defs/count", "description": "Opportunities where a partner was edited later in the same session." },
+        "rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      },
+      "required": ["opportunities", "followed", "rate"]
+    },
+    "completeness": {
+      "type": "object",
+      "properties": {
+        "window": { "$ref": "#/$defs/span" },
+        "sessions": {
+          "type": "object",
+          "properties": {
+            "measured": { "$ref": "common.schema.json#/$defs/count" },
+            "withHook": { "$ref": "common.schema.json#/$defs/count" },
+            "withoutHook": { "$ref": "common.schema.json#/$defs/count" }
+          },
+          "required": ["measured", "withHook", "withoutHook"],
+          "additionalProperties": false
+        },
+        "withHook": {
+          "allOf": [{ "$ref": "#/$defs/rate" }],
+          "type": "object",
+          "properties": {
+            "sessions": { "$ref": "common.schema.json#/$defs/count" },
+            "briefed": { "$ref": "#/$defs/rate", "description": "Opportunities where the hook spoke about the file." },
+            "notBriefed": { "$ref": "#/$defs/rate" },
+            "opportunities": true,
+            "followed": true,
+            "rate": true
+          },
+          "required": ["sessions", "briefed", "notBriefed"],
+          "unevaluatedProperties": false
+        },
+        "withoutHook": {
+          "allOf": [{ "$ref": "#/$defs/rate" }],
+          "type": "object",
+          "properties": { "sessions": { "$ref": "common.schema.json#/$defs/count" }, "opportunities": true, "followed": true, "rate": true },
+          "required": ["sessions"],
+          "unevaluatedProperties": false
+        },
+        "role": { "const": "agent outcome" },
+        "difference": { "$ref": "#/$defs/nullableNumber", "description": "The rate with the hook minus the rate without it." },
+        "smallestSample": { "$ref": "common.schema.json#/$defs/count" },
+        "conclusion": { "$ref": "#/$defs/conclusion" },
+        "caveat": { "type": "string" }
+      },
+      "required": ["window", "sessions", "withHook", "withoutHook", "role", "difference", "smallestSample", "conclusion", "caveat"],
+      "additionalProperties": false
+    }
+  },
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "outcome" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "subcommand": { "enum": ["spread", "completeness"] },
+        "at": { "type": "string", "format": "date" },
+        "months": { "type": "integer", "minimum": 1 },
+        "files": { "type": "array", "items": { "type": "string" } },
+        "since": { "type": "string", "format": "date" },
+        "until": { "type": "string", "format": "date" },
+        "minSamples": { "type": "integer", "minimum": 1 },
+        "noisePercent": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "minSupport": { "type": "integer", "minimum": 1 },
+        "confidence": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
+      },
+      "required": ["subcommand", "minSamples", "noisePercent"],
+      "additionalProperties": false
+    },
+    "results": {}
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "inputs": { "type": "object", "properties": { "subcommand": { "const": "spread" }, "at": true, "months": true, "files": true }, "required": ["subcommand", "at", "months", "files"] },
+        "results": { "$ref": "#/$defs/spreadOutcome" }
+      }
+    },
+    {
+      "properties": {
+        "inputs": { "type": "object", "properties": { "subcommand": { "const": "completeness" }, "since": true, "until": true, "minSupport": true, "confidence": true }, "required": ["subcommand", "since", "until", "minSupport", "confidence"] },
+        "results": { "$ref": "#/$defs/completeness" }
+      }
+    }
+  ],
+  "unevaluatedProperties": false
+}

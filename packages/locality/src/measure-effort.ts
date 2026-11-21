@@ -1,28 +1,12 @@
 import { createHash } from "node:crypto";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { runGit } from "@code-health/history/git";
+import { checkouts } from "@code-health/history/checkouts";
+import { defaultProjectsDirectory } from "@code-health/transcripts/projects-dir";
 import { measureRepo, type EffortReport } from "@code-health/transcripts/measure-repo";
 import type { TaskEffort } from "@code-health/transcripts/agent-effort";
 import { parseWindow } from "@code-health/transcripts/time-window";
 import type { DayWindow } from "./measure-window.ts";
 
-/** Claude Code's projects directory, unless the command names another. */
-export const defaultProjectsDirectory = (): string => join(homedir(), ".claude", "projects");
-
-/**
- * Every checkout of the repository that sessions may have run in: this one, then its linked worktrees. A
- * session in a worktree is work on this repository, and its paths are repo-relative once the worktree root is removed.
- */
-export async function checkouts(root: string): Promise<string[]> {
-  const listing = await runGit(root, ["worktree", "list", "--porcelain"]);
-  const others = listing
-    .split("\n")
-    .filter((line) => line.startsWith("worktree "))
-    .map((line) => line.slice("worktree ".length))
-    .filter((path) => path !== root);
-  return [root, ...others.sort()];
-}
+export { checkouts, defaultProjectsDirectory };
 
 /** Agent effort over a window of days: the transcripts' tasks, paths and counts only. */
 export function readEffort(projectsDir: string, repoRoots: readonly string[], window: DayWindow): EffortReport {

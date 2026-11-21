@@ -25,7 +25,7 @@ export function parseAt(value: string): number {
 }
 
 /** The latest commit of the history made at or before a date, by committer date. */
-function commitAt(history: LoadedHistory, date: number): string | null {
+export function commitAt(history: LoadedHistory, date: number): string | null {
   let found: { sha: string; position: number } | null = null;
   for (const c of history.view.commits) {
     if (c.committerDate <= date && (found === null || c.position > found.position)) found = { sha: c.sha, position: c.position };

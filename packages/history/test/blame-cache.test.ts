@@ -97,6 +97,31 @@ test("without copy detection the commit that moved lines is their author, and th
   expect(on.optionsId).not.toBe(off.optionsId);
 });
 
+test("a mover's commits keep authorship: a renamed file, a file moved across folders with an edit, and a file split in two", async () => {
+  const body = [c2, c3, "export const kept = 1;", "export const alsoKept = 2;"];
+  const text = (...lines: string[]) => lines.join("\n") + "\n";
+  const f = build([
+    commit(1, ana, "ana writes the module", [{ op: "add", path: "src/old/module.ts", content: text(...body) }]),
+    commit(2, carol, "carol writes the helper", [{ op: "add", path: "src/old/helper.ts", content: text(c2.replace("second", "helper"), c3.replace("third", "helperTwo")) }]),
+    { ...commit(3, ben, "move the module next to its users\n\nCode-Health: locality/move-to-neighbour", [{ op: "rename", from: "src/old/module.ts", path: "src/users/module.ts", content: text(...body) }]) },
+    { ...commit(4, ben, "move the helper and touch one line\n\nCode-Health: locality/move-to-neighbour", [{ op: "rename", from: "src/old/helper.ts", path: "src/users/helper.ts", content: text(c2.replace("second", "helper"), "export const touched = 3;") }]) },
+    { ...commit(5, ben, "split the module", [
+      { op: "modify", path: "src/users/module.ts", content: text(body[2]!, body[3]!) },
+      { op: "add", path: "src/users/pieces.ts", content: text(c2, c3) },
+    ]) },
+  ]);
+  fixtures.push(f);
+  const [one, two, , four] = shas(f);
+  await refreshBlame(f.path);
+  const snapshot = await readBlame(f.path);
+  // Renamed unchanged: every line is still the author's, not the mover's.
+  expect(ranges(snapshot, "src/users/module.ts")).toEqual([[1, 2, one]]);
+  // Moved with one line replaced: the kept line follows its author, the new one is the mover's.
+  expect(ranges(snapshot, "src/users/helper.ts")).toEqual([[1, 1, two], [2, 1, four]]);
+  // Lines split out into a new file are followed by -C to where they were written.
+  expect(ranges(snapshot, "src/users/pieces.ts")).toEqual([[1, 2, one]]);
+});
+
 test("a refresh blames only the files whose blob changed", async () => {
   const f = scenario();
   await refreshBlame(f.path);

@@ -1,0 +1,199 @@
+{
+  "command": "outcome",
+  "config": "ef591512ac95ada2",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 25,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 7.1,
+    "window": {
+      "months": 12,
+      "since": 1688547600,
+      "until": 1720170000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 2,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "at": "2024-04-01",
+    "files": [
+      "src/billing/invoice.ts"
+    ],
+    "minSamples": 4,
+    "months": 3,
+    "noisePercent": 10,
+    "subcommand": "spread"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "e5e6690ba4286df12684f789a01a9b7aa67cb01c"
+  },
+  "results": {
+    "actedOn": {
+      "after": {
+        "revisions": {
+          "changes": 4,
+          "files": 1,
+          "perFile": 4
+        },
+        "spread": {
+          "mean": 0,
+          "measured": 4
+        }
+      },
+      "before": {
+        "revisions": {
+          "changes": 4,
+          "files": 1,
+          "perFile": 4
+        },
+        "spread": {
+          "mean": 4,
+          "measured": 4
+        }
+      },
+      "files": [
+        "src/billing/invoice.ts"
+      ]
+    },
+    "at": "2024-04-01",
+    "comparison": {
+      "after": {
+        "revisions": {
+          "changes": 4,
+          "files": 1,
+          "perFile": 4
+        },
+        "spread": {
+          "mean": 4,
+          "measured": 4
+        }
+      },
+      "before": {
+        "revisions": {
+          "changes": 4,
+          "files": 1,
+          "perFile": 4
+        },
+        "spread": {
+          "mean": 4,
+          "measured": 4
+        }
+      },
+      "files": [
+        "src/orders/order.ts"
+      ],
+      "overlapping": 1,
+      "pairs": [
+        {
+          "actedOn": {
+            "path": "src/billing/invoice.ts",
+            "revisions": 4
+          },
+          "comparison": {
+            "path": "src/orders/order.ts",
+            "revisions": 4
+          }
+        }
+      ]
+    },
+    "revisions": {
+      "actedOn": {
+        "change": 0
+      },
+      "comparison": {
+        "change": 0
+      },
+      "conclusion": "insufficient-sample",
+      "difference": 0,
+      "role": "secondary outcome",
+      "smallestSample": 1
+    },
+    "spread": {
+      "actedOn": {
+        "change": -4
+      },
+      "comparison": {
+        "change": 0
+      },
+      "conclusion": "lower",
+      "difference": -4,
+      "role": "primary outcome",
+      "smallestSample": 4
+    },
+    "windows": {
+      "after": {
+        "complete": true,
+        "since": "2024-04-01",
+        "until": "2024-07-01"
+      },
+      "before": {
+        "since": "2024-01-01",
+        "until": "2024-04-01"
+      }
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2024-01-01T00:00:00.000Z",
+    "until": "2024-07-01T00:00:00.000Z"
+  }
+}

@@ -23,6 +23,15 @@ const cli: CliDefinition = {
       optionHelp: { since: "only changes after this date" },
       run: ({ values }) => ({ inputs: { since: values.since ?? null }, results: rows, columns: ["path", "score", "churn"] }),
     },
+    grouped: {
+      summary: "Subcommands",
+      options: { alpha: { type: "string" }, beta: { type: "boolean" } },
+      subcommands: {
+        one: { summary: "First subcommand", options: ["alpha"] },
+        two: { summary: "Second subcommand", options: ["beta"] },
+      },
+      run: () => ({ results: [] }),
+    },
     sections: {
       summary: "Extra sections",
       run: () => ({ results: [], extra: { evidence: { grade: "weak" } } }),
@@ -237,6 +246,27 @@ test("command help shows its positional arguments and describes each option", as
   const { stdout } = await run(["list", "--help"]);
   expect(stdout).toContain("Usage: demo list <path>... [options]");
   expect(stdout).toMatch(/--since <since>\s+only changes after this date/);
+});
+
+test("help for a subcommand lists its summary and only its own options", async () => {
+  const one = await run(["grouped", "one", "--help"]);
+  expect(one.code).toBe(0);
+  expect(one.stdout).toContain("Usage: demo grouped one [options]");
+  expect(one.stdout).toContain("First subcommand");
+  expect(one.stdout).toContain("--alpha <alpha>");
+  expect(one.stdout).not.toContain("--beta");
+  expect(one.stdout).toContain("--limit");
+  const two = await run(["grouped", "--help", "two"]);
+  expect(two.stdout).toContain("--beta");
+  expect(two.stdout).not.toContain("--alpha");
+});
+
+test("help for a command with subcommands lists them, and one without lists none", async () => {
+  const all = await run(["grouped", "--help"]);
+  expect(all.stdout).toMatch(/Subcommands:\n\s+one\s+First subcommand\n\s+two\s+Second subcommand/);
+  expect(all.stdout).toContain("--alpha");
+  expect(all.stdout).toContain("--beta");
+  expect((await run(["list", "--help"])).stdout).not.toContain("Subcommands:");
 });
 
 test("no command prints usage to stderr and exits 2", async () => {
