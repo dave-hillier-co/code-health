@@ -23,7 +23,7 @@ export const adapter: LanguageAdapter = {
   dependencies: jvmDependencies,
   boundaries: jvmBoundaries,
   census: { extract: extractFileCensus },
-  packaging: { ecosystems: ["gradle", "maven"], description: "Java or Kotlin" },
+  packaging: { ecosystems: ["gradle", "maven"], description: "Java" },
   abstractTypes: { typeKinds: ["interface", "abstract-class", "class", "enum"], abstractKinds: ["interface", "abstract-class"] },
   mover: { kind: "codemod", sourceExtensions: [".java"], confirmation: { name: "jdtls", executable: "jdtls" } },
 };

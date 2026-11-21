@@ -124,6 +124,8 @@ class Extractor {
   readonly declarations: SymbolDeclaration[] = [];
   readonly references: SymbolReference[] = [];
   readonly uses = new Set<string>();
+  /** Simple names an import makes visible, to the name they stand for. */
+  private readonly imported = new Map<string, string>();
   private packageName = "";
   private readonly nameCounts = new Map<string, number>();
   private codeRows: boolean[] | undefined;
@@ -137,11 +139,12 @@ class Extractor {
   extract(root: Node): FileFacts {
     this.root = root;
     const context: Context = { unit: undefined, type: undefined, exposed: true, inInterface: false };
+    // Imports are read first, so every name written in the file is known to be imported or not.
     for (const child of root.namedChildren) {
       if (child.type === "package_declaration") this.packageName = chainText(child.namedChildren.find((part) => part.type !== "marker_annotation" && part.type !== "annotation" && !isComment(part)) ?? null) ?? "";
       else if (child.type === "import_declaration") this.importDeclaration(child);
-      else this.visit(child, context);
     }
+    for (const child of root.namedChildren) if (child.type !== "package_declaration" && child.type !== "import_declaration") this.visit(child, context);
     return {
       units: this.units,
       imports: [],
@@ -154,7 +157,7 @@ class Extractor {
     };
   }
 
-  /** `import a.b.C;` reaches the type `a.b.C` and brings its package in; `import a.b.*;` brings `a.b` in; a static import reaches the class that holds the member. */
+  /** `import a.b.C;` reaches the type `a.b.C` and makes `C` mean it; `import a.b.*;` brings `a.b` in; a static import reaches the class that holds the member. */
   private importDeclaration(node: Node): void {
     const name = chainText(node.namedChildren.find((child) => child.type === "scoped_identifier" || child.type === "identifier") ?? null);
     if (name === undefined) return;
@@ -162,19 +165,16 @@ class Extractor {
     const wildcard = node.namedChildren.some((child) => child.type === "asterisk");
     const line = node.startPosition.row + 1;
     const parent = name.includes(".") ? name.slice(0, name.lastIndexOf(".")) : "";
+    if (!wildcard) this.imported.set(name.slice(name.lastIndexOf(".") + 1), name);
     if (wildcard) {
       this.uses.add(name);
       if (isStatic) this.references.push({ name, kind: "reference", line });
       return;
     }
     if (isStatic) {
-      if (parent !== "") {
-        this.uses.add(parent);
-        this.references.push({ name: parent, kind: "reference", line });
-      }
+      if (parent !== "") this.references.push({ name: parent, kind: "reference", line });
       return;
     }
-    if (parent !== "") this.uses.add(parent);
     this.references.push({ name, kind: "reference", line });
   }
 
@@ -182,7 +182,10 @@ class Extractor {
     return this.packageName === "" ? chain : `${this.packageName}.${chain}`;
   }
 
-  private reference(name: string, kind: "call" | "reference", node: Node, context: Context): void {
+  private reference(written: string, kind: "call" | "reference", node: Node, context: Context): void {
+    const head = written.split(".")[0]!;
+    const imported = this.imported.get(head);
+    const name = imported === undefined ? written : `${imported}${written.slice(head.length)}`;
     const fact: SymbolReference = { name, kind, line: node.startPosition.row + 1 };
     if (context.unit !== undefined) fact.inUnit = context.unit;
     this.references.push(fact);
