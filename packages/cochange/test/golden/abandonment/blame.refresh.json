@@ -1,0 +1,30 @@
+{
+  "command": "blame",
+  "config": "7c1427d5780c6792",
+  "inputs": {
+    "copyDetection": true
+  },
+  "repo": {
+    "dirty": false,
+    "head": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6"
+  },
+  "results": {
+    "aborted": false,
+    "blamed": 8,
+    "failed": [],
+    "files": 8,
+    "head": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6",
+    "noText": 0,
+    "optionsId": "13f7aaaabc09",
+    "pruned": 0,
+    "rebuilt": false,
+    "reused": 0
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}
