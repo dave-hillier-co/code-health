@@ -1,0 +1,149 @@
+{
+  "command": "brief",
+  "config": "18353697bd40d72e",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 3,
+      "laterMedian": 3,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 33,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 11.6,
+    "window": {
+      "months": 12,
+      "since": 1702976400,
+      "until": 1734598800
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 1
+  },
+  "inputs": {
+    "partners": 5,
+    "paths": [
+      "src/billing/invoice.ts",
+      "src/app/registry.ts"
+    ]
+  },
+  "repo": {
+    "dirty": false,
+    "head": "dec0218cf5609471948337025b0ecf87b0a771c6"
+  },
+  "results": [
+    {
+      "ageDays": 242,
+      "alongside": [
+        {
+          "confidence": 100,
+          "degree": 31.3,
+          "distance": 2,
+          "path": "src/billing/invoice.ts",
+          "reverseConfidence": 18.5,
+          "support": 5
+        }
+      ],
+      "alongsideNotShown": 0,
+      "exists": true,
+      "frequency": 5,
+      "hotspotScore": 0.452703,
+      "lastChanged": "2024-04-21T09:00:00.000Z",
+      "note": null,
+      "path": "src/app/registry.ts",
+      "recentRevisions": 0,
+      "recommendation": null,
+      "requested": null
+    },
+    {
+      "ageDays": 0,
+      "alongside": [
+        {
+          "confidence": 37,
+          "degree": 54.1,
+          "distance": 0,
+          "path": "src/billing/invoice.test.ts",
+          "reverseConfidence": 100,
+          "support": 10
+        },
+        {
+          "confidence": 18.5,
+          "degree": 31.3,
+          "distance": 2,
+          "path": "src/app/registry.ts",
+          "reverseConfidence": 100,
+          "support": 5
+        },
+        {
+          "confidence": 18.5,
+          "degree": 30.3,
+          "distance": 2,
+          "path": "src/reporting/summary.ts",
+          "reverseConfidence": 83.3,
+          "support": 5
+        }
+      ],
+      "alongsideNotShown": 0,
+      "exists": true,
+      "frequency": 28,
+      "hotspotScore": 0.493243,
+      "lastChanged": "2024-12-19T09:00:00.000Z",
+      "note": null,
+      "path": "src/billing/invoice.ts",
+      "recentRevisions": 6,
+      "recommendation": "hotspot",
+      "requested": null
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 2
+  },
+  "window": {
+    "since": "2023-12-19T09:00:00.000Z",
+    "until": "2024-12-19T09:00:00.000Z"
+  }
+}

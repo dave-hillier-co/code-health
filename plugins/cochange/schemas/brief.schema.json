@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "brief.schema.json",
+  "title": "cochange brief --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "brief" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "paths": { "type": "array", "items": { "type": "string" }, "description": "The paths as asked, after removing ./ and making absolute paths repo-relative." },
+        "partners": { "type": "integer", "minimum": 1, "description": "The most partners listed per file." }
+      },
+      "required": ["paths", "partners"],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "The file's path at the analysed commit. A path renamed away is followed to its current name." },
+          "requested": { "type": ["string", "null"], "description": "The path as asked, when it differs from path." },
+          "exists": { "type": "boolean", "description": "The path is in the tree at the analysed commit." },
+          "frequency": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes touching the file in the analysis window." },
+          "recentRevisions": { "$ref": "common.schema.json#/$defs/count", "description": "Of those, changes inside the recent window." },
+          "lastChanged": { "type": ["string", "null"], "format": "date-time" },
+          "ageDays": { "type": ["integer", "null"], "minimum": 0 },
+          "hotspotScore": { "type": ["number", "null"], "description": "Rank percentile of frequency times rank percentile of complexity, as in hotspots." },
+          "recommendation": { "enum": ["hotspot", null] },
+          "alongside": {
+            "type": "array",
+            "description": "Files that change with this one: support and degree at or above the configured minimums. Strongest confidence first.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string" },
+                "degree": { "type": "number", "minimum": 0, "maximum": 100 },
+                "confidence": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of changes to the briefed file that also touched this one." },
+                "reverseConfidence": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of changes to this file that also touched the briefed one." },
+                "support": { "type": "integer", "minimum": 1 },
+                "distance": { "type": "integer", "minimum": 0 }
+              },
+              "required": ["path", "degree", "confidence", "reverseConfidence", "support", "distance"],
+              "additionalProperties": false
+            }
+          },
+          "alongsideNotShown": { "$ref": "common.schema.json#/$defs/count", "description": "Partners that qualified but were cut by --partners." },
+          "note": { "type": ["string", "null"], "description": "Why the briefing is empty, when it is." }
+        },
+        "required": [
+          "path",
+          "requested",
+          "exists",
+          "frequency",
+          "recentRevisions",
+          "lastChanged",
+          "ageDays",
+          "hotspotScore",
+          "recommendation",
+          "alongside",
+          "alongsideNotShown",
+          "note"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}
