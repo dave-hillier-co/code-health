@@ -1,0 +1,9 @@
+{
+  "packages": {
+    "src/App": { "ecosystem": "dotnet", "exportedTypes": 0, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
+    "src/Core": { "ecosystem": "dotnet", "exportedTypes": 4, "abstractness": 0.5, "abstractnessWeak": false, "consumers": ["src/App"] }
+  },
+  "findings": [
+    "deep-import src/Core src/App | src/App imports 1 file of src/Core past its entry points: src/Core/Internal/Cache.cs"
+  ]
+}

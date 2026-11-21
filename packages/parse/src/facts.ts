@@ -131,6 +131,8 @@ export interface SymbolFacts {
   namespaces: string[];
   /** Namespaces the file brings into scope (`using`, imports), and same-package names a language makes visible. */
   uses: string[];
+  /** Namespaces the file brings into scope for every file of its project (C# `global using`). Also listed in `uses`. */
+  globalUses?: string[];
   declarations: SymbolDeclaration[];
   references: SymbolReference[];
 }

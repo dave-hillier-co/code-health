@@ -1,0 +1,12 @@
+{
+  "packages": {
+    "src/App": { "ecosystem": "dotnet", "exportedTypes": 0, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
+    "src/Base": { "ecosystem": "dotnet", "exportedTypes": 1, "abstractness": 0, "abstractnessWeak": true, "consumers": ["src/App", "src/Mid"] },
+    "src/Idle": { "ecosystem": "dotnet", "exportedTypes": 0, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
+    "src/Mid": { "ecosystem": "dotnet", "exportedTypes": 1, "abstractness": 0, "abstractnessWeak": true, "consumers": ["src/App"] },
+    "src/Spare": { "ecosystem": "dotnet", "exportedTypes": 1, "abstractness": 0, "abstractnessWeak": true, "consumers": [] }
+  },
+  "findings": [
+    "unused-dependency src/Idle | src/Idle declares Spare and its code never uses it: coupling with no purpose, and build weight"
+  ]
+}

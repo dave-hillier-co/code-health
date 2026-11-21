@@ -18,6 +18,8 @@ import type { ConstructMap, MetricRules, RecursionScope } from "./metric-rules.t
  *   Nested functions add to the enclosing function's score.
  * - Nesting: the deepest nesting of `if`, loop, `switch` and `try` statements, with an `else if` at the
  *   level of its `if`. Nested functions do not add a level, they continue from where they sit.
+ * - A switch expression (C# `x switch { ... }`) is a `switch`, and each arm but the catch-all is a case. A pattern
+ *   combinator (C# `and`, `or`) is a logical operator. Which node types those are is the language's, in `ConstructMap`.
  * - Length: lines of the unit holding code, so blank and comment-only lines are left out.
  * - Statements: statement nodes, nested functions' included. An expression body counts as one.
  * - Parameters: declared parameters, `this` excluded. A destructured object parameter counts once, and
@@ -128,9 +130,16 @@ class Measurer {
       if (body !== null) this.children(body, level + 1, depth + 1);
       return;
     }
+    if (c.switchExpression !== undefined && type === c.switchExpression.type) {
+      this.switchExpression(node, level, depth);
+      return;
+    }
     if (type === c.switch.caseType) {
-      this.cyclomatic++;
-      this.record(node, "cyclomatic", "case", 1, 0, "case");
+      const cases = c.switch.caseCount?.(node) ?? 1;
+      for (let i = 0; i < cases; i++) {
+        this.cyclomatic++;
+        this.record(node, "cyclomatic", "case", 1, 0, "case");
+      }
       this.children(node, level, depth);
       return;
     }
@@ -158,12 +167,12 @@ class Measurer {
       }
       return;
     }
+    if (this.logicalOperatorOf(node) !== undefined) {
+      this.logicalChain(node, level, depth);
+      return;
+    }
     if (type === c.binary.type) {
       const operator = this.operatorOf(node);
-      if (operator !== undefined && c.binary.logical.has(operator)) {
-        this.logicalChain(node, level, depth);
-        return;
-      }
       if (operator !== undefined && c.binary.decisions.has(operator)) this.decision(node, operator);
       this.children(node, level, depth);
       return;
@@ -185,6 +194,37 @@ class Measurer {
 
   private operatorOf(node: Node): string | undefined {
     return node.childForFieldName(this.c.binary.operator)?.type;
+  }
+
+  /** The logical operator a node stands for: `&&` of a binary expression, or `or` of a pattern combinator. */
+  private logicalOperatorOf(node: Node): string | undefined {
+    const binary = this.c.binary;
+    if (node.type === binary.type) {
+      const operator = this.operatorOf(node);
+      return operator !== undefined && binary.logical.has(operator) ? operator : undefined;
+    }
+    return this.c.patternCombinators?.[node.type];
+  }
+
+  private switchExpression(node: Node, level: number, depth: number): void {
+    const expression = this.c.switchExpression!;
+    this.flow(node, "switch", level);
+    this.cyclomaticModified++;
+    this.record(node, "cyclomatic", "switch", 1, 0, "modified");
+    this.nesting = Math.max(this.nesting, depth + 1);
+    for (let i = 0; i < node.childCount; i++) {
+      const child = node.child(i);
+      if (child === null || !child.isNamed) continue;
+      if (child.type !== expression.arm) {
+        this.visit(child, level, depth);
+        continue;
+      }
+      if (!expression.isDefaultArm(child)) {
+        this.cyclomatic++;
+        this.record(child, "cyclomatic", "case", 1, 0, "case");
+      }
+      this.children(child, level + 1, depth + 1);
+    }
   }
 
   private ifStatement(node: Node, level: number, depth: number, isElseIf: boolean): void {
@@ -231,13 +271,16 @@ class Measurer {
     const binary = this.c.binary;
     const operators: { type: string; node: Node }[] = [];
     const operands: Node[] = [];
+    const isParenthesis = (type: string): boolean => type === this.c.parenthesized || this.c.parenthesizedAlso?.has(type) === true;
     const collect = (candidate: Node): void => {
       let inner = candidate;
-      while (inner.type === this.c.parenthesized && inner.namedChildCount === 1) inner = inner.namedChild(0)!;
-      const operator = inner.type === binary.type ? this.operatorOf(inner) : undefined;
-      if (operator !== undefined && binary.logical.has(operator)) {
+      while (isParenthesis(inner.type) && inner.namedChildCount === 1) inner = inner.namedChild(0)!;
+      const operator = this.logicalOperatorOf(inner);
+      if (operator !== undefined) {
         collect(inner.childForFieldName(binary.left)!);
-        operators.push({ type: operator, node: inner.childForFieldName(binary.operator)! });
+        // A binary expression names its operator by field, a pattern combinator only by its token.
+        const token = inner.childForFieldName(binary.operator) ?? inner.children.find((child) => !child.isNamed && child.type === operator) ?? inner;
+        operators.push({ type: operator, node: token });
         collect(inner.childForFieldName(binary.right)!);
       } else operands.push(candidate);
     };

@@ -69,6 +69,12 @@ export interface LexerProfile {
    * expression. Only arrows bound to a name are blocks, as callbacks passed inline are not units.
    */
   expressionArrows?: boolean;
+  /**
+   * Members written `header => expression;`, which have no braces to close (C# `int Twice(int x) => x * 2;`).
+   * Regular expressions tested against the collapsed header before an `=>`, with the member's name in group
+   * `name`. An `=>` whose header matches none of them is a lambda or a switch arm, not a member.
+   */
+  expressionMembers?: string[];
 }
 
 const doubleQuote: DelimitedString = {
@@ -183,10 +189,26 @@ const csharp: LexerProfile = {
   bumpOpeners: [...cBumpOpeners, "foreach"],
   headerNoise: annotationNoise,
   controlHeader,
-  typeHeaders: cTypeHeaders,
+  // `object` and `record` are not declarations here: `object o` is a parameter.
+  typeHeaders: ["(?:^|\\s)(?:class|struct|interface|enum|namespace|record(?:\\s+(?:class|struct))?)\\s+(?<name>[\\w.]+)"],
   functionHeaders: [
-    "(?:[^]*\\s)?(?<name>(?!(?:base|this)\\b)[\\w.<>]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    // A method, constructor or operator, with an optional constraint clause and constructor initialiser.
+    "(?:[^]*\\s)?(?<name>(?!(?:base|this)\\b)[\\w.<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    // An accessor with a block body.
+    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$",
     "=>\\s*$",
+  ],
+  expressionMembers: [
+    // A method or operator: `public int Twice(int x)`, `static bool operator ==(A a, B b)`.
+    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|async|extern|unsafe|new|partial|readonly)\\s+)*[\\w.<>\\[\\]?,()]+\\s+(?<name>[\\w.]+|operator\\s*[^\\s(]+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:where\\s+[^=]+)?$",
+    // A conversion operator, which has no return type of its own: `public static implicit operator int(Money m)`.
+    "^(?:(?:public|static)\\s+)*(?:implicit|explicit)\\s+(?<name>operator\\s+[\\w.<>\\[\\]?]+)\\s*\\([^]*\\)$",
+    // A constructor or finaliser, which has modifiers and no return type: `public Money(decimal amount)`.
+    "^(?:(?:public|private|protected|internal|static)\\s+)+(?<name>~?\\w+)\\s*\\([^]*\\)\\s*(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    // A property or indexer: `public int Count`, `public int this[int i]`.
+    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|new|readonly)\\s+)+[\\w.<>\\[\\]?,()]+\\s+(?<name>\\w+|this\\s*\\[[^\\]]*\\])$",
+    // An accessor: `set => value = x;`.
+    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$",
   ],
 };
 

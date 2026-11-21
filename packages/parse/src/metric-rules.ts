@@ -22,8 +22,17 @@ export interface ConstructMap {
     /** The alternative field holds a clause node (`else_clause`) whose first named child is the branch. Otherwise the field is the branch. */
     alternativeIsClause: boolean;
   };
-  /** `switch`, and the node that holds one `case` (a `default` is not a case). */
-  switch: { type: string; body: string; caseType: string };
+  /**
+   * `switch`, and the node that holds one `case` (a `default` is not a case). `caseCount` says how many cases
+   * a `caseType` node holds when that is not one (a C# section of `case 1: case 2:` holds two, and one of
+   * `default:` none).
+   */
+  switch: { type: string; body: string; caseType: string; caseCount?: (node: Node) => number };
+  /**
+   * A switch that is an expression (C# `x switch { ... }`, Rust `match`). It costs like a `switch` and
+   * every arm but the default one is a case. Its arms are children of the node itself, one level deeper.
+   */
+  switchExpression?: { type: string; arm: string; isDefaultArm(arm: Node): boolean };
   /** `try` adds nesting. `catch` is a decision and its `body` field is walked one level deeper. */
   tryType: string;
   catchType: string;
@@ -35,6 +44,14 @@ export interface ConstructMap {
   compoundAssignment: { type: string; operator: string; decisions: ReadonlySet<string> };
   /** Parentheses, looked through when a chain of logical operators is collected. */
   parenthesized: string;
+  /** Further node types looked through the same way (C# parenthesized patterns). */
+  parenthesizedAlso?: ReadonlySet<string>;
+  /**
+   * Pattern combinators that behave like logical operators (C# `is A or B`, `and`): node type to the
+   * operator it stands for, with `left` and `right` fields. Each is a decision for cyclomatic, and a
+   * sequence of like combinators costs one for cognitive.
+   */
+  patternCombinators?: Readonly<Record<string, string>>;
   /** `break` and `continue` node types to their name. One with a `label` field costs a flat 1. */
   labelledJumps: Readonly<Record<string, string>>;
   label: string;

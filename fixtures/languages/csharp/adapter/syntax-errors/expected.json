@@ -1,0 +1,7 @@
+{
+  "consumers": [
+    "Clean.cs#Clean.Make -> Broken.cs#Wobbly call x1",
+    "Clean.cs#Clean.Make -> Broken.cs#Wobbly reference x1"
+  ],
+  "syntaxErrors": ["Broken.cs"]
+}

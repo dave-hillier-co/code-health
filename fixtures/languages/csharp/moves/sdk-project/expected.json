@@ -1,0 +1,6 @@
+{
+  "operations": [{ "from": "src/App/Billing/Invoice.cs", "to": "src/App/Domain/Invoice.cs" }],
+  "rewrites": [],
+  "texts": {},
+  "warnings": []
+}

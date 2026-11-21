@@ -38,6 +38,7 @@ const expectations: Record<string, Expected> = {
     file: { lineCount: 30, nonBlankLines: 27, codeLines: 27, indentUnit: 4, indentationComplexity: 57, maxIndent: 5, keywordComplexity: 3 },
     blocks: [
       ["Shop.Cart.Count", 8, 21, 14, 15, 2, 3, 1, 3, 4],
+      ["Shop.Cart.Name", 23, 23, 1, 0, 0, 0, 0, 0, 0],
       ["Shop.Cart.Cart", 25, 28, 4, 1, 0, 0, 0, 0, 0],
     ],
   },

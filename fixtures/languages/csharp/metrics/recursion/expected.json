@@ -1,0 +1,13 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "Recursion.cs": [
+      ["Recursion.Factorial", 2, 2, 2, 1, 8, 3, 1, 0],
+      ["Recursion.Overloaded", 1, 1, 0, 0, 4, 1, 1, 0],
+      ["Recursion.Overloaded~2", 1, 1, 0, 0, 4, 1, 2, 0],
+      ["Recursion.Walk", 2, 2, 2, 0, 4, 1, 1, 0],
+      ["Recursion.Helper", 2, 2, 2, 0, 8, 3, 1, 0],
+      ["Recursion.Helper.Countdown", 2, 2, 2, 0, 4, 1, 1, 0]
+    ]
+  }
+}

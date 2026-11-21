@@ -19,6 +19,7 @@ interface Compiled {
   control: RegExp;
   types: RegExp[];
   functions: RegExp[];
+  members: RegExp[] | undefined;
 }
 
 const compiledProfiles = new WeakMap<LexerProfile, Compiled>();
@@ -31,6 +32,7 @@ function compile(profile: LexerProfile): Compiled {
       control: new RegExp(profile.controlHeader),
       types: profile.typeHeaders.map((source) => new RegExp(source)),
       functions: profile.functionHeaders.map((source) => new RegExp(source)),
+      members: profile.expressionMembers?.map((source) => new RegExp(source)),
     };
     compiledProfiles.set(profile, compiled);
   }
@@ -159,7 +161,15 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
     const text = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
     let name: string | undefined;
     let matched = false;
-    for (const [i, pattern] of boundArrow.entries()) {
+    const members = compile(profile).members;
+    if (members !== undefined) {
+      // A language whose members have expression bodies (`int Twice(int x) => x * 2;`): the header says whether this arrow is one.
+      const found = members.map((pattern) => pattern.exec(text)).find((match) => match !== null);
+      if (found === undefined) return false;
+      name = found?.groups?.name;
+      matched = true;
+    }
+    for (const [i, pattern] of members === undefined ? [...boundArrow.entries()] : []) {
       const match = pattern.exec(text);
       if (match === null) continue;
       // `handler = () =>` without a keyword is a field only inside a class; `key: () =>` only in an object literal.
@@ -192,7 +202,7 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
       const ch = code[i]!;
       if (arrow !== undefined && ch.trim() !== "") arrow.lastLine = line.number;
       if (arrow !== undefined && parenDepth === 0 && stack.length === arrow.scopes) {
-        if (ch === ";" || ch === ",") {
+        if (ch === ";" || (ch === "," && profile.expressionArrows === true)) {
           inDeclaration = ch === "," && arrow.declaration;
           closeArrow();
           header = [];
@@ -211,7 +221,7 @@ function findBracedBlocks(lines: SourceLine[], profile: LexerProfile): FunctionB
           closeArrow();
         }
         parenDepth = Math.max(0, parenDepth - 1);
-      } else if (ch === "=" && code[i + 1] === ">" && profile.expressionArrows === true && arrow === undefined) {
+      } else if (ch === "=" && code[i + 1] === ">" && (profile.expressionArrows === true || profile.expressionMembers !== undefined) && arrow === undefined) {
         if (openArrow(segment, line, i + 1, index)) {
           segment += "=>";
           i++;
