@@ -19,8 +19,8 @@ graders:
     min: 1
     arm: with-only
   - type: regex
-    name: reads-the-ranking-as-not-change-weighted
-    pattern: "change|history|hotspot|how often"
+    name: reads-the-ranking-as-change-weighted
+    pattern: "change|revisions|weight|how often"
     flags: i
     target: last_message
     arm: with-only
