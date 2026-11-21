@@ -52,7 +52,14 @@
           "complexity": { "type": ["number", "null"], "minimum": 0, "description": "Summed over a component's files." },
           "ageDays": { "$ref": "common.schema.json#/$defs/count", "description": "Whole days from the last revision to the analysed commit." },
           "lastChanged": { "type": "string", "format": "date-time" },
-          "recommendation": { "enum": ["hotspot", null] }
+          "recommendation": { "enum": ["hotspot", null] },
+          "siblingTest": { "type": ["string", "null"], "description": "The test beside the file at the analysed commit, or null. Only with --by file." },
+          "findings": {
+            "type": "array",
+            "description": "Every classification of the file. Only with --by file.",
+            "items": { "enum": ["hotspot", "test-drift"] },
+            "uniqueItems": true
+          }
         },
         "required": ["path", "score", "frequency", "churn", "complexity", "ageDays", "lastChanged", "recommendation"],
         "additionalProperties": false

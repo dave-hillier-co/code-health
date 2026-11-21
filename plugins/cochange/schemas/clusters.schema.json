@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "clusters.schema.json",
+  "title": "cochange clusters --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "clusters" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "minDegree": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Percentage." },
+        "minSupport": { "type": "integer", "minimum": 1 },
+        "magnet": {
+          "type": "object",
+          "description": "The star-shape test behind change-magnet.",
+          "properties": {
+            "folders": { "type": "integer", "minimum": 1, "description": "Folders a file's coupled neighbours must span." },
+            "neighbourCoupling": { "type": "integer", "minimum": 0, "maximum": 100, "description": "At most this percent of cross-folder neighbour pairs may be coupled with each other." }
+          },
+          "required": ["folders", "neighbourCoupling"],
+          "additionalProperties": false
+        },
+        "clusterMinFolders": { "type": "integer", "minimum": 1, "description": "Folders a component must span to be a cluster finding." }
+      },
+      "required": ["minDegree", "minSupport", "magnet", "clusterMinFolders"],
+      "additionalProperties": false
+    },
+    "population": {
+      "description": "The logical changes coupling was counted over.",
+      "type": "object",
+      "properties": {
+        "eligibleChanges": { "$ref": "common.schema.json#/$defs/count" },
+        "oversizedExcluded": { "$ref": "common.schema.json#/$defs/count" }
+      },
+      "required": ["eligibleChanges", "oversizedExcluded"],
+      "additionalProperties": false
+    },
+    "note": { "type": ["string", "null"], "description": "Set when no cluster forms. The thresholds are never lowered." },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "The first file of the cluster in byte order, for ordering." },
+          "score": { "type": "number", "minimum": 0, "description": "Folders times spread times mean degree as a fraction: how many folders a change reaches, how far apart, and how reliably." },
+          "size": { "type": "integer", "minimum": 2, "description": "Files in the cluster." },
+          "folders": { "type": "integer", "minimum": 1, "description": "Distinct folders the files sit in, as they are now." },
+          "spread": { "type": "number", "minimum": 0, "description": "Mean pairwise tree distance over the cluster's files." },
+          "meanDegree": { "type": "number", "minimum": 0, "maximum": 100, "description": "Mean degree, in percent, of the coupled pairs inside the cluster." },
+          "files": { "type": "array", "items": { "type": "string" }, "minItems": 2, "description": "The cluster's files in byte order." },
+          "magnets": { "type": "array", "items": { "type": "string" }, "description": "Files of the cluster with a star shape: coupled to files in many folders which rarely change with each other." },
+          "findings": {
+            "type": "array",
+            "items": { "enum": ["change-magnet", "cluster"] },
+            "uniqueItems": true
+          },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "pairs": { "type": "integer", "minimum": 1, "description": "Coupled pairs inside the cluster." },
+              "weakestSupport": { "type": "integer", "minimum": 1, "description": "The lowest support among those pairs." },
+              "clearsMinimum": { "type": "boolean", "description": "The weakest support reaches the configured cochange.minSupport, whatever --min-support listed." }
+            },
+            "required": ["pairs", "weakestSupport", "clearsMinimum"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["path", "score", "size", "folders", "spread", "meanDegree", "files", "magnets", "findings", "evidence"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["population", "note"],
+  "unevaluatedProperties": false
+}

@@ -1,6 +1,6 @@
 {
   "command": "age",
-  "config": "4f3ccc65d054a77f",
+  "config": "44e649c22de09fb6",
   "evidence": {
     "activeContributors": 2,
     "commitSize": {
@@ -56,6 +56,12 @@
     "excludeImported": true,
     "excludeSuiteCommits": false,
     "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
     "lockfiles": true,
     "maxChangesetSize": 30,
     "oversizedChanges": 0

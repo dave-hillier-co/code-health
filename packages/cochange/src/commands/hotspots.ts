@@ -1,8 +1,12 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
+import { listTree } from "@code-health/history/tree";
 import { monthsBefore } from "@code-health/history/evidence";
 import { analysisCommand } from "../analysis-command.ts";
 import { loadComplexity } from "../complexity-source.ts";
+import { siblingTestOf } from "../sibling-test.ts";
 import { midRankPercentiles, shareStrictlyAbove } from "../ranking.ts";
+import type { Unit } from "../file-statistics.ts";
+import type { LoadedHistory } from "../history-access.ts";
 import { SECONDS_PER_DAY, byOption, isGrouped, isoDate, loadUnits, readBy } from "../units.ts";
 
 export const name = "hotspots";
@@ -18,6 +22,20 @@ export const rules: Record<string, Rule> = {
       "Complexity is indentation complexity, or the complexity plugin's file report when it covers the current commit.",
       "",
       "Suggested handoff: a complexity review of the worst functions in the file. A hotspot is a prompt to look, not a verdict.",
+    ].join("\n"),
+  },
+  "test-drift": {
+    summary: "A frequently changed source file whose sibling test never changes with it",
+    explanation: [
+      "Raised on a file (never a component) when it has at least cochange.minSupport revisions in the analysis window,",
+      "has a sibling test in the tree at the analysed commit, and no eligible logical change in the window touched both, not counting the one that created the test.",
+      "A sibling test sits beside the file with a test suffix or prefix (x.test.ts, x_test.go, test_x.py, XTest.java),",
+      "or under a __tests__ folder beside it. The result names it as `siblingTest`.",
+      "",
+      "Handoff: behaviour may be changing without the tests following. Check whether the test covers what the changes touch.",
+      "A test added recently has had little chance to co-change, so read the revision count against its age.",
+      "",
+      "This is a prompt for investigation, not a verdict.",
     ].join("\n"),
   },
 };
@@ -50,6 +68,8 @@ export const command = analysisCommand(name, {
     const recentSince = monthsBefore(anchor, settings.recentMonths);
     const topShare = (100 - settings.hotspotPercentile) / 100;
 
+    const drifting = by === "file" ? await testDrift(context.repo.root, history, units.map((u) => u.name)) : new Map();
+
     const rows = units.map((unit, i) => {
       const score = scores[i]!;
       const isHotspot =
@@ -64,6 +84,7 @@ export const command = analysisCommand(name, {
         ageDays: Math.floor((anchor - unit.lastChanged) / SECONDS_PER_DAY),
         lastChanged: isoDate(unit.lastChanged),
         recommendation: isHotspot ? "hotspot" : null,
+        ...(by === "file" ? fileFindings(unit, isHotspot, drifting.get(unit.name) ?? null, settings.minSupport) : {}),
       };
     });
 
@@ -80,8 +101,39 @@ export const command = analysisCommand(name, {
         "ageDays",
         "lastChanged",
         "recommendation",
+        ...(by === "file" ? ["siblingTest", "findings"] : []),
       ],
       extra: { complexitySource: complexity.source },
     };
   },
 });
+
+interface SiblingEvidence {
+  test: string;
+  /** Eligible logical changes touching both the file and its test. */
+  together: number;
+}
+
+/** The sibling test of each file that has one, and how often the two changed together. */
+async function testDrift(root: string, history: LoadedHistory, paths: readonly string[]): Promise<Map<string, SiblingEvidence>> {
+  const tree = new Set(await listTree(root, history.view.headSha));
+  const siblings = new Map(paths.flatMap((path) => {
+    const test = siblingTestOf(path, tree);
+    return test === null ? [] : [[path, test] as const];
+  }));
+  const together = new Map<string, number>();
+  for (const change of history.filtered.changes) {
+    if (change.oversized) continue;
+    const touched = new Map(change.files.map((file) => [file.fileId, file.status] as const));
+    for (const [path, test] of siblings) {
+      // The change that created the test is not evidence that later changes update it.
+      if (touched.has(path) && touched.has(test) && touched.get(test) !== "A") together.set(path, (together.get(path) ?? 0) + 1);
+    }
+  }
+  return new Map([...siblings].map(([path, test]) => [path, { test, together: together.get(path) ?? 0 }]));
+}
+
+function fileFindings(unit: Unit, isHotspot: boolean, sibling: SiblingEvidence | null, minSupport: number) {
+  const drift = sibling !== null && sibling.together === 0 && unit.revisions >= minSupport;
+  return { siblingTest: sibling?.test ?? null, findings: [...(isHotspot ? ["hotspot"] : []), ...(drift ? ["test-drift"] : [])] };
+}

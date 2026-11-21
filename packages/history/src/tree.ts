@@ -15,6 +15,16 @@ export async function readBlobAt(repoPath: string, ref: string, path: string): P
   }
 }
 
+/** Contents of the blob with this object id, as text. */
+export async function readBlob(repoPath: string, blob: string): Promise<string> {
+  return runGit(repoPath, ["cat-file", "blob", blob]);
+}
+
+/** Size in bytes of the blob with this object id. */
+export async function blobSize(repoPath: string, blob: string): Promise<number> {
+  return Number((await runGit(repoPath, ["cat-file", "-s", blob])).trim());
+}
+
 /**
  * Parses `.git-blame-ignore-revs`: one revision per line, `#` comments.
  * Returns lower-case SHA prefixes.

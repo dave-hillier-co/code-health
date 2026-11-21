@@ -1,5 +1,6 @@
 import { configError } from "@code-health/cli-kit/errors";
 import type { LoadedConfig, PluginConfigSpec } from "@code-health/cli-kit/config";
+import { DEFAULT_ISSUE_PATTERN, type Grouping } from "@code-health/history/grouping";
 import { DEFAULT_EVIDENCE_THRESHOLDS, type EvidenceThresholds } from "@code-health/history/evidence";
 import { DEFAULT_MAX_CHANGESET_SIZE } from "@code-health/history/noise";
 import { DEFAULT_RENAME_LIMIT, DEFAULT_SIMILARITY } from "@code-health/history/refresh";
@@ -25,8 +26,15 @@ export const cochangeConfig: PluginConfigSpec = {
     staleMonths: 12,
     /** A hotspot's score must be in the top (100 - this) percent of scored files. */
     hotspotPercentile: 90,
-    /** How commits form logical changes. Only "off" (each commit is its own change) is supported. */
+    /**
+     * How commits form logical changes: "off" (each commit is its own change), "issue-key" (commits
+     * sharing an issue key in the message) or "author-window" (one author's commits close in time).
+     */
     grouping: "off",
+    /** For "issue-key": a regular expression; the key is its first capture group, or the whole match. */
+    issuePattern: DEFAULT_ISSUE_PATTERN,
+    /** For "author-window": the longest pause, in hours, between commits of one change. */
+    groupingWindowHours: 4,
     maxChangesetSize: DEFAULT_MAX_CHANGESET_SIZE,
     minSupport: 5,
     /** Minimum coupling degree, as a percentage. */
@@ -51,6 +59,8 @@ export interface CochangeSettings {
   recentMonths: number;
   staleMonths: number;
   hotspotPercentile: number;
+  /** How commits form logical changes. */
+  grouping: Grouping;
   maxChangesetSize: number;
   minSupport: number;
   minDegree: number;
@@ -86,9 +96,7 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
   if (branch !== null && (typeof branch !== "string" || branch === "")) {
     throw configError(`code-health.json: ${at("branch")} must be a branch name or null`);
   }
-  if (section.grouping !== "off") {
-    throw configError(`code-health.json: ${at("grouping")} supports only "off"`);
-  }
+  const grouping = readGrouping(section, positive);
   const botPatterns = (section.identities as { botPatterns: unknown }).botPatterns;
   if (!Array.isArray(botPatterns) || botPatterns.some((p) => typeof p !== "string")) {
     throw configError(`code-health.json: ${at("identities.botPatterns")} must be an array of strings`);
@@ -106,6 +114,7 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
     recentMonths: positive("recentMonths"),
     staleMonths: positive("staleMonths"),
     hotspotPercentile: hotspotPercentile(),
+    grouping,
     maxChangesetSize: positive("maxChangesetSize"),
     minSupport: positive("minSupport"),
     minDegree,
@@ -115,4 +124,24 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
     evidenceThresholds: evidence,
     windowStated: config.sources[at("windowMonths")] === "file",
   };
+}
+
+function readGrouping(section: Record<string, unknown>, positive: (key: string) => number): Grouping {
+  const at = (key: string) => `${TOOL}.${key}`;
+  const mode = section.grouping;
+  if (mode === "off") return { mode };
+  if (mode === "issue-key") {
+    const pattern = section.issuePattern;
+    if (typeof pattern !== "string" || pattern === "") {
+      throw configError(`code-health.json: ${at("issuePattern")} must be a non-empty regular expression`);
+    }
+    try {
+      new RegExp(pattern);
+    } catch (error) {
+      throw configError(`code-health.json: ${at("issuePattern")} is not a valid regular expression: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return { mode, pattern };
+  }
+  if (mode === "author-window") return { mode, windowSeconds: positive("groupingWindowHours") * 3600 };
+  throw configError(`code-health.json: ${at("grouping")} must be "off", "issue-key" or "author-window"`);
 }

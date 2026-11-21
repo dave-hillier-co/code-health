@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "trend.schema.json",
+  "title": "cochange trend --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "trend" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "The file, resolved through renames to its current path." },
+        "samples": { "type": "integer", "minimum": 2, "description": "The most samples taken." },
+        "threshold": { "type": "number", "minimum": 0, "description": "Relative change in complexity, first sample to last, beyond which the direction is worsening or improving." }
+      },
+      "required": ["path", "samples", "threshold"],
+      "additionalProperties": false
+    },
+    "complexitySource": {
+      "const": "indentation",
+      "description": "Historical blobs are always measured with the indentation proxy: a complexity report describes one commit only."
+    },
+    "results": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "revisions": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes that left the file with content, in all usable history." },
+        "samples": {
+          "type": "array",
+          "description": "Revisions spread evenly over the file's history, oldest first, always including the first and the last.",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "commit": { "type": "string", "description": "The commit that wrote the sampled blob." },
+              "date": { "type": "string", "format": "date-time" },
+              "path": { "type": "string", "description": "The file's path in that revision." },
+              "complexity": { "type": ["integer", "null"], "minimum": 0, "description": "Indentation complexity. Null for a binary file." },
+              "lines": { "type": ["integer", "null"], "minimum": 0, "description": "Lines in the file. Null for a binary file." },
+              "bytes": { "$ref": "common.schema.json#/$defs/count" }
+            },
+            "required": ["commit", "date", "path", "complexity", "lines", "bytes"],
+            "additionalProperties": false
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "direction": { "enum": ["worsening", "improving", "stable", "insufficient"], "description": "From the first sample's complexity to the last. Insufficient with fewer than two samples or no measurable complexity." },
+            "complexity": { "$ref": "#/$defs/change" },
+            "lines": { "$ref": "#/$defs/change" }
+          },
+          "required": ["direction", "complexity", "lines"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["path", "revisions", "samples", "summary"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["complexitySource"],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "change": {
+      "type": "object",
+      "properties": {
+        "first": { "type": ["integer", "null"] },
+        "last": { "type": ["integer", "null"] },
+        "change": { "type": ["integer", "null"], "description": "Last minus first." }
+      },
+      "required": ["first", "last", "change"],
+      "additionalProperties": false
+    }
+  }
+}

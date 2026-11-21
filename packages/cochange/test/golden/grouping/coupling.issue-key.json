@@ -1,0 +1,120 @@
+{
+  "command": "coupling",
+  "config": "cdfb5146ac460831",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 1.5,
+      "laterMedian": 1.5,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 12,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 1.2,
+    "window": {
+      "months": 12,
+      "since": 1678708800,
+      "until": 1710331200
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": "[A-Z][A-Z0-9]+-\\d+",
+      "mergedCommits": 12,
+      "mode": "issue-key",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "asymmetry": {
+      "high": 80,
+      "low": 30
+    },
+    "file": null,
+    "minDegree": 30,
+    "minSupport": 5
+  },
+  "note": null,
+  "population": {
+    "eligibleChanges": 12,
+    "oversizedExcluded": 0
+  },
+  "repo": {
+    "dirty": false,
+    "head": "04dbe9730a708239289132a8285931e9ecd38f6e"
+  },
+  "results": [
+    {
+      "confidence": 100,
+      "degree": 100,
+      "dependent": null,
+      "distance": 3,
+      "evidence": {
+        "changesPath": 6,
+        "changesWith": 6,
+        "clearsMinimum": true,
+        "support": 6
+      },
+      "findings": [
+        "distant-coupling"
+      ],
+      "path": "src/model/order.ts",
+      "reverseConfidence": 100,
+      "score": 100,
+      "support": 6,
+      "with": "ui/order-view.ts"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 1
+  },
+  "window": {
+    "since": "2023-03-13T12:00:00.000Z",
+    "until": "2024-03-13T12:00:00.000Z"
+  }
+}

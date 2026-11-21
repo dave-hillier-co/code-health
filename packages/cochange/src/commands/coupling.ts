@@ -1,10 +1,10 @@
-import { usageError } from "@code-health/cli-kit/errors";
-import type { CommandContext, Rule } from "@code-health/cli-kit/run-cli";
-import { listTree } from "@code-health/history/tree";
+import type { Rule } from "@code-health/cli-kit/run-cli";
 import { treeDistance } from "@code-health/graph/tree-distance";
 import { analysisCommand } from "../analysis-command.ts";
 import { readSettings } from "../config.ts";
-import { compareBytes, confidenceOf, countCoupling, degreeOf, type PairCount } from "../coupling.ts";
+import { coupledPairs, integerOption } from "../coupled-pairs.ts";
+import { focusPath } from "../focus-path.ts";
+import { compareBytes, confidenceOf, degreeOf, type PairCount } from "../coupling.ts";
 
 export const name = "coupling";
 
@@ -46,15 +46,6 @@ export const rules: Record<string, Rule> = {
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
-function integerOption(context: CommandContext, option: string, fallback: number, min: number, max: number): number {
-  const raw = context.values[option];
-  if (raw === undefined) return fallback;
-  if (typeof raw !== "string" || !/^\d+$/.test(raw) || Number(raw) < min || Number(raw) > max) {
-    throw usageError(`--${option} must be an integer from ${min} to ${max}, got "${String(raw)}"`);
-  }
-  return Number(raw);
-}
-
 export const command = analysisCommand(name, {
   summary: "Pairs of files that change together, with degree, confidence both ways, support and distance",
   options: {
@@ -69,32 +60,12 @@ export const command = analysisCommand(name, {
     const minDegree = integerOption(context, "min-degree", settings.minDegree, 0, 100);
     const minSupport = integerOption(context, "min-support", settings.minSupport, 1, Number.MAX_SAFE_INTEGER);
 
-    // A file deleted at the end of the window is no use to co-locate, so pairs with one are left out.
-    // Counts for the surviving files are unchanged: only the pair is dropped.
-    const lastStatus = new Map<string, string>();
-    for (const change of history.filtered.changes) {
-      for (const file of change.files) lastStatus.set(file.fileId, file.status);
-    }
-    const counts = countCoupling(
-      history.filtered.changes.map((change) => ({
-        files: change.files.map((file) => file.fileId),
-        oversized: change.oversized,
-      })),
-      { minSupport, minDegree },
-    );
+    const counts = coupledPairs(history, { minSupport, minDegree });
 
     const requested = context.values.file;
-    // A path that exists at the analysed commit names the file there, even if an older file of
-    // that name was renamed away. Only a path that is gone is followed forward through renames.
-    const focus =
-      typeof requested !== "string"
-        ? undefined
-        : (await listTree(context.repo.root, history.view.headSha)).includes(requested)
-          ? requested
-          : history.view.renames.resolve(requested, -1);
+    const focus = typeof requested === "string" ? await focusPath(context, history, requested) : undefined;
 
     const rows = counts.pairs
-      .filter((pair) => lastStatus.get(pair.a) !== "D" && lastStatus.get(pair.b) !== "D")
       .filter((pair) => focus === undefined || pair.a === focus || pair.b === focus)
       .map((pair) => describe(pair, focus, settings))
       .sort((x, y) => y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));

@@ -1,0 +1,264 @@
+{
+  "command": "hotspots",
+  "complexitySource": "indentation",
+  "config": "2a7b17129e6a2723",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 43,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 6.9,
+    "window": {
+      "months": 12,
+      "since": 1690707600,
+      "until": 1722330000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "by": "file",
+    "complexityReport": null
+  },
+  "repo": {
+    "dirty": false,
+    "head": "e936c81e333474ebb1818c3310aca9255ec712e7"
+  },
+  "results": [
+    {
+      "ageDays": 120,
+      "churn": 38,
+      "complexity": 0,
+      "findings": [],
+      "frequency": 19,
+      "lastChanged": "2024-04-01T09:00:00.000Z",
+      "path": "src/app/registry.ts",
+      "recommendation": null,
+      "score": 0.480769,
+      "siblingTest": null
+    },
+    {
+      "ageDays": 90,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [
+        "hotspot"
+      ],
+      "frequency": 7,
+      "lastChanged": "2024-05-01T09:00:00.000Z",
+      "path": "src/a/x.ts",
+      "recommendation": "hotspot",
+      "score": 0.25,
+      "siblingTest": null
+    },
+    {
+      "ageDays": 90,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [
+        "hotspot"
+      ],
+      "frequency": 7,
+      "lastChanged": "2024-05-01T09:00:00.000Z",
+      "path": "src/b/y.ts",
+      "recommendation": "hotspot",
+      "score": 0.25,
+      "siblingTest": null
+    },
+    {
+      "ageDays": 130,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [],
+      "frequency": 7,
+      "lastChanged": "2024-03-22T09:00:00.000Z",
+      "path": "src/billing/plugin.ts",
+      "recommendation": null,
+      "score": 0.25,
+      "siblingTest": null
+    },
+    {
+      "ageDays": 60,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [
+        "hotspot"
+      ],
+      "frequency": 7,
+      "lastChanged": "2024-05-31T09:00:00.000Z",
+      "path": "src/c/p.ts",
+      "recommendation": "hotspot",
+      "score": 0.25,
+      "siblingTest": null
+    },
+    {
+      "ageDays": 60,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [
+        "hotspot"
+      ],
+      "frequency": 7,
+      "lastChanged": "2024-05-31T09:00:00.000Z",
+      "path": "src/c/q.ts",
+      "recommendation": "hotspot",
+      "score": 0.25,
+      "siblingTest": null
+    },
+    {
+      "ageDays": 60,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [
+        "hotspot"
+      ],
+      "frequency": 7,
+      "lastChanged": "2024-05-31T09:00:00.000Z",
+      "path": "src/c/r.ts",
+      "recommendation": "hotspot",
+      "score": 0.25,
+      "siblingTest": null
+    },
+    {
+      "ageDays": 30,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [
+        "hotspot",
+        "test-drift"
+      ],
+      "frequency": 7,
+      "lastChanged": "2024-06-30T09:00:00.000Z",
+      "path": "src/drift/engine.ts",
+      "recommendation": "hotspot",
+      "score": 0.25,
+      "siblingTest": "src/drift/engine.test.ts"
+    },
+    {
+      "ageDays": 125,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [],
+      "frequency": 7,
+      "lastChanged": "2024-03-27T09:00:00.000Z",
+      "path": "src/mail/plugin.ts",
+      "recommendation": null,
+      "score": 0.25,
+      "siblingTest": null
+    },
+    {
+      "ageDays": 0,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [
+        "hotspot"
+      ],
+      "frequency": 7,
+      "lastChanged": "2024-07-30T09:00:00.000Z",
+      "path": "src/ok/svc.test.ts",
+      "recommendation": "hotspot",
+      "score": 0.25,
+      "siblingTest": null
+    },
+    {
+      "ageDays": 0,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [
+        "hotspot"
+      ],
+      "frequency": 7,
+      "lastChanged": "2024-07-30T09:00:00.000Z",
+      "path": "src/ok/svc.ts",
+      "recommendation": "hotspot",
+      "score": 0.25,
+      "siblingTest": "src/ok/svc.test.ts"
+    },
+    {
+      "ageDays": 120,
+      "churn": 14,
+      "complexity": 0,
+      "findings": [],
+      "frequency": 7,
+      "lastChanged": "2024-04-01T09:00:00.000Z",
+      "path": "src/search/plugin.ts",
+      "recommendation": null,
+      "score": 0.25,
+      "siblingTest": null
+    },
+    {
+      "ageDays": 210,
+      "churn": 2,
+      "complexity": 0,
+      "findings": [],
+      "frequency": 1,
+      "lastChanged": "2024-01-02T09:00:00.000Z",
+      "path": "src/drift/engine.test.ts",
+      "recommendation": null,
+      "score": 0.019231,
+      "siblingTest": null
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 13
+  },
+  "window": {
+    "since": "2023-07-30T09:00:00.000Z",
+    "until": "2024-07-30T09:00:00.000Z"
+  }
+}
