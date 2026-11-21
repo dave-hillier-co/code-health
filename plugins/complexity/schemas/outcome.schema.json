@@ -102,7 +102,27 @@
               "$ref": "#/$defs/window"
             },
             "after": {
-              "$ref": "#/$defs/window"
+              "type": "object",
+              "description": "Stops at the end of the history when that comes before a full window; complete says whether it ran its full length.",
+              "properties": {
+                "since": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "until": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "complete": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "since",
+                "until",
+                "complete"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [

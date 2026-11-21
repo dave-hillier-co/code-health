@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
-import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { encodeProjectDir } from "@code-health/transcripts/measure-repo";
 import { edit, read, SyntheticSession } from "../../transcripts/test/synthetic-transcript.ts";
 import type { Outcome } from "../src/outcome.ts";
 import { expectGolden } from "./support/golden.ts";
-import { buildOutcomeRepo } from "./support/outcome-scenario.ts";
+import { buildOutcomeRepo, outcomeSteps } from "./support/outcome-scenario.ts";
 import { runComplexity } from "./support/run.ts";
 
 let repo: GitFixture;
@@ -97,6 +97,56 @@ describe("complexity outcome", () => {
     } finally {
       rmSync(projects, { recursive: true, force: true });
     }
+  });
+
+  describe("with history long after the simplification", () => {
+    let long: GitFixture;
+    let sha: string;
+    beforeAll(() => {
+      long = GitFixture.build([
+        ...outcomeSteps(),
+        { type: "commit", message: "Much later change to warm", date: "2026-05-01T09:00:00+00:00", changes: [{ op: "modify", path: "src/warm.ts", content: "export function warm(a: number): number {\n  return a;\n}\n" }] },
+      ]);
+      sha = long.git("log", "--format=%H", "--grep=Flatten hot").trim();
+    });
+    afterAll(() => long.dispose());
+
+    test("caps the after window at the length of the before window, so the two compare like with like", async () => {
+      const run = await runComplexity(long.path, ["outcome", "--json", sha]);
+      const result = JSON.parse(run.stdout).results as Outcome;
+      expect(result.windows.before).toEqual({ since: "2023-06-01T09:00:00.000Z", until: "2024-06-01T09:00:00.000Z" });
+      expect(result.windows.after).toEqual({ since: "2024-06-01T09:00:00.000Z", until: "2025-06-01T09:00:00.000Z", complete: true });
+      // The 2026 change is outside the capped window, so the counts are over the same span.
+      expect(result.changeCost.comparison.after.changes).toBe(4);
+    });
+
+    test("says the after window is incomplete when the history ends before it would", async () => {
+      const run = await runComplexity(repo.path, ["outcome", "--json", flattenSha]);
+      const result = JSON.parse(run.stdout).results as Outcome;
+      expect(result.windows.after.complete).toBe(false);
+    });
+
+    test("leaves the session that made the simplification out of the after window", async () => {
+      const root = realpathSync(long.path);
+      const projects = mkdtempSync(join(tmpdir(), "outcome-own-session-"));
+      try {
+        // Started on the commit day, before the 09:00 commit: this is the session that flattened hot.ts.
+        const own = new SyntheticSession({ cwd: root, sessionId: "own", start: "2024-06-01T01:00:00.000Z" });
+        own.prompt().assistant("m1", [read(`${root}/src/a.ts`), read(`${root}/src/b.ts`), read(`${root}/src/c.ts`), edit(`${root}/src/hot.ts`)], { output: 10 });
+        const later = new SyntheticSession({ cwd: root, sessionId: "later", start: "2024-07-10T09:00:00.000Z" });
+        later.prompt().assistant("m2", [read(`${root}/src/hot.ts`), edit(`${root}/src/hot.ts`)], { output: 10 });
+        mkdirSync(join(projects, encodeProjectDir(root)), { recursive: true });
+        writeFileSync(join(projects, encodeProjectDir(root), "own.jsonl"), own.toJsonl());
+        writeFileSync(join(projects, encodeProjectDir(root), "later.jsonl"), later.toJsonl());
+        const run = await runComplexity(long.path, ["outcome", "--json", sha, "--projects-dir", projects]);
+        const result = JSON.parse(run.stdout).results as Outcome;
+        if (result.agentEffort.status !== "measured") throw new Error(result.agentEffort.reason);
+        expect(result.agentEffort.actedOn.after.tasks).toBe(1);
+        expect(result.agentEffort.actedOn.before.tasks).toBe(0);
+      } finally {
+        rmSync(projects, { recursive: true, force: true });
+      }
+    });
   });
 
   test("is a usage error without a revision, for an unknown revision, and when nothing with functions changed", async () => {

@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { usageError } from "@code-health/cli-kit/errors";
+import { checkouts } from "@code-health/history/checkouts";
 import { analyseHistory, monthsBefore } from "@code-health/history/evidence";
 import { runGit } from "@code-health/history/git";
 import type { LogicalChange } from "@code-health/history/noise";
@@ -56,7 +57,11 @@ export interface Outcome {
     files: string[];
     basis: string;
   };
-  windows: { before: { since: string; until: string }; after: { since: string; until: string } };
+  /**
+   * Two windows of `windowMonths`, either side of the change. The after window stops at the analysed history's
+   * end when that comes first, and `complete` says whether it ran its full length.
+   */
+  windows: { before: { since: string; until: string }; after: { since: string; until: string; complete: boolean } };
   /** Primary outcome: what changing the code cost afterwards, with the fix rate beside it as the secondary one. */
   changeCost: { actedOn: Group<ChangeFigures>; comparison: Group<ChangeFigures> };
   /** Leading indicator only: the same measure the tool ranks by. */
@@ -204,9 +209,13 @@ export async function measureOutcome(
   const series = new Set((await runGit(root, ["rev-list", `${beforeSha}..${at}`])).split("\n").filter((line) => line !== ""));
   if (series.size === 0 || !series.has(first)) throw usageError(`--from ${options.from} is not an ancestor of ${options.at}`);
   const date = Number((await runGit(root, ["log", "-1", "--format=%ct", at])).trim());
+  const startedAt = Number((await runGit(root, ["log", "-1", "--format=%ct", first])).trim());
 
   const history = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...exclude], excludeSuiteCommits: true } });
-  const anchor = history.view.headDate;
+  const headDate = history.view.headDate;
+  // Matching windows: the after window is as long as the before window, or ends where the history does.
+  const fullEnd = monthsBefore(date, -settings.windowMonths);
+  const anchor = Math.min(fullEnd, headDate);
   const subjects = new Map(history.view.commits.map((commit) => [commit.sha, commit.message.split("\n")[0] ?? ""] as const));
   const subjectOf = (sha: string): string => subjects.get(sha) ?? "";
   const eligible = history.filtered.changes.filter((change) => !change.shas.some((sha) => series.has(sha)));
@@ -270,15 +279,18 @@ export async function measureOutcome(
   };
   const changesDelta = (own: Group<ChangeFigures>) => own.after.changes - own.before.changes;
 
-  const effort = (): Outcome["agentEffort"] => {
+  const effort = async (): Promise<Outcome["agentEffort"]> => {
     const { projectsDir } = options;
     if (projectsDir === undefined || !existsSync(projectsDir)) {
       return { status: "not-measured", reason: projectsDir === undefined ? "no --projects-dir was given" : `${projectsDir} does not exist` };
     }
-    const measure = (from: number, to: number) => measureRepo({ projectsDir, repoRoots: [root], window: parseWindow(day(from), day(to)) }).tasks;
+    const repoRoots = await checkouts(root);
+    const measure = (from: number, to: number) => measureRepo({ projectsDir, repoRoots, window: parseWindow(day(from), day(to)) }).tasks;
     const touching = <T extends { editedPaths: string[] }>(tasks: T[], paths: ReadonlySet<string>): T[] => tasks.filter((task) => task.editedPaths.some((path) => paths.has(path)));
-    const beforeTasks = measure(monthsBefore(date, settings.windowMonths), date);
-    const afterTasks = measure(date, anchor + 86_400);
+    // The sessions that made the simplification are neither before nor after: the before window ends where it
+    // began, and the after window takes only sessions that started after its last commit.
+    const beforeTasks = measure(monthsBefore(date, settings.windowMonths), startedAt).filter((task) => Date.parse(task.startedAt) < startedAt * 1000);
+    const afterTasks = measure(date, anchor + 86_400).filter((task) => Date.parse(task.startedAt) > date * 1000);
     const own = { before: touching(beforeTasks, actedEarlier), after: touching(afterTasks, actedLater) };
     if (own.before.length === 0 && own.after.length === 0) return { status: "not-measured", reason: "no session in the windows edited the acted-on files" };
     return {
@@ -296,7 +308,7 @@ export async function measureOutcome(
     },
     windows: {
       before: { since: iso(monthsBefore(date, settings.windowMonths)), until: iso(date) },
-      after: { since: iso(date), until: iso(anchor) },
+      after: { since: iso(date), until: iso(anchor), complete: fullEnd <= headDate },
     },
     changeCost,
     rank,
@@ -307,6 +319,6 @@ export async function measureOutcome(
       changes: changesDelta(changeCost.actedOn) - changesDelta(changeCost.comparison),
       meanScore: gap(delta(rank.actedOn.before.meanScore, rank.actedOn.after.meanScore), delta(rank.comparison.before.meanScore, rank.comparison.after.meanScore)),
     },
-    agentEffort: effort(),
+    agentEffort: await effort(),
   };
 }

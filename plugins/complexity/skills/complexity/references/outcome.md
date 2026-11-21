@@ -9,8 +9,10 @@ number of unchanged files with functions, matched one to one by the highest metr
 change. Findings are acted on because they are extreme, and extreme values drift back towards the average when left alone,
 so the `difference` block subtracts the comparison group's movement from the acted-on files'.
 
-The windows are `windowMonths` long (default 12) before and after the last commit, up to HEAD's date. The simplification's own
-commits and every commit with a `Code-Health:` trailer are left out of both.
+The windows are `windowMonths` long (default 12) before and after the last commit. The after window stops at HEAD's date when that comes first,
+and `windows.after.complete` says whether it ran its full length; an incomplete window is shorter than the before window, so
+read counts with that in mind. The simplification's own commits and every commit with a `Code-Health:` trailer are left out of
+both, and so are the agent sessions that made the simplification.
 
 | Block | Measures | Role |
 |---|---|---|
