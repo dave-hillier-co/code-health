@@ -25,7 +25,7 @@ describe("grammarIdForPath", () => {
   });
 
   it("returns undefined for files without a grammar", () => {
-    expect(grammarIdForPath("a.py")).toBeUndefined();
+    expect(grammarIdForPath("a.rb")).toBeUndefined();
     expect(grammarIdForPath("Makefile")).toBeUndefined();
     expect(grammarIdForPath("a.d.ts.map")).toBeUndefined();
   });
@@ -61,6 +61,7 @@ describe("loadGrammar", () => {
     const copied = copyGrammars(join(dist, "grammars"));
     expect(copied).toEqual([
       "tree-sitter-javascript.wasm",
+      "tree-sitter-python.wasm",
       "tree-sitter-tsx.wasm",
       "tree-sitter-typescript.wasm",
       "web-tree-sitter.wasm",

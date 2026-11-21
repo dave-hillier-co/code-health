@@ -111,6 +111,7 @@ test("a plugin that parses ships grammars beside its bundle, which loads them re
   const dist = join(root, "plugins", "sample-parser", "dist");
   expect(readdirSync(join(dist, "grammars")).sort()).toEqual([
     "tree-sitter-javascript.wasm",
+    "tree-sitter-python.wasm",
     "tree-sitter-tsx.wasm",
     "tree-sitter-typescript.wasm",
     "web-tree-sitter.wasm",

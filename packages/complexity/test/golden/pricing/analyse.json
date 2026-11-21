@@ -19,8 +19,8 @@
   },
   "layers": {
     "lexical": 0,
-    "none": 3,
-    "structural": 3
+    "none": 2,
+    "structural": 4
   },
   "ranking": {
     "basis": "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
@@ -39,7 +39,7 @@
     {
       "changeWeight": 0.5,
       "cognitive": 8,
-      "complexityScore": 0.833333,
+      "complexityScore": 0.875,
       "cyclomatic": 5,
       "dominant": "cognitive",
       "endLine": 11,
@@ -52,18 +52,47 @@
       "parameters": 1,
       "path": "src/pricing.ts",
       "percentiles": {
-        "cognitive": 0.833333,
-        "cyclomatic": 0.833333,
-        "length": 0.833333,
-        "nesting": 0.833333,
+        "cognitive": 0.875,
+        "cyclomatic": 0.875,
+        "length": 0.875,
+        "nesting": 0.75,
         "parameters": 0.5
       },
       "revisions": 1,
-      "score": 0.416667,
+      "score": 0.4375,
       "source": "structural",
       "startLine": 1,
       "test": false,
       "unit": "price"
+    },
+    {
+      "changeWeight": 0.5,
+      "cognitive": 3,
+      "complexityScore": 0.75,
+      "cyclomatic": 3,
+      "dominant": "nesting",
+      "endLine": 6,
+      "id": "tools/total.py#total",
+      "kind": "function",
+      "labels": [],
+      "length": 6,
+      "nesting": 2,
+      "optionCount": 0,
+      "parameters": 1,
+      "path": "tools/total.py",
+      "percentiles": {
+        "cognitive": 0.625,
+        "cyclomatic": 0.625,
+        "length": 0.625,
+        "nesting": 0.75,
+        "parameters": 0.5
+      },
+      "revisions": 1,
+      "score": 0.375,
+      "source": "structural",
+      "startLine": 1,
+      "test": false,
+      "unit": "total"
     },
     {
       "changeWeight": 0.5,
@@ -81,10 +110,10 @@
       "parameters": 1,
       "path": "src/label.ts",
       "percentiles": {
-        "cognitive": 0.333333,
-        "cyclomatic": 0.333333,
-        "length": 0.5,
-        "nesting": 0.333333,
+        "cognitive": 0.25,
+        "cyclomatic": 0.25,
+        "length": 0.375,
+        "nesting": 0.25,
         "parameters": 0.5
       },
       "revisions": 1,
@@ -110,10 +139,10 @@
       "parameters": 1,
       "path": "src/pricing.ts",
       "percentiles": {
-        "cognitive": 0.333333,
-        "cyclomatic": 0.333333,
-        "length": 0.166667,
-        "nesting": 0.333333,
+        "cognitive": 0.25,
+        "cyclomatic": 0.25,
+        "length": 0.125,
+        "nesting": 0.25,
         "parameters": 0.5
       },
       "revisions": 1,
@@ -157,7 +186,6 @@
   "skipped": {
     "comment and string stripping: no lexer profile": 1,
     "per-function metrics: no agreement measured for go": 1,
-    "per-function metrics: no agreement measured for python": 1,
     "per-function metrics: no lexer profile": 1
   },
   "skippedFiles": {
@@ -170,6 +198,6 @@
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 4
+    "total": 5
   }
 }

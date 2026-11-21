@@ -14,7 +14,7 @@ export const adapter: LanguageAdapter = {
   id: "python",
   name: "Python",
   tier: 2,
-  support: "experimental",
+  support: "supported",
   lexerProfile: "python",
   grammars: [{ spec: { id: "python", packageName: "tree-sitter-python", file: "tree-sitter-python.wasm" }, extensions: [".py"] }],
   extractorVersion,

@@ -2,6 +2,7 @@ import { compareIds } from "@code-health/graph/graph";
 import { isTestPath } from "@code-health/parse/languages";
 import { parseToml, type TomlTable, type TomlValue } from "@code-health/parse/toml";
 import { edgeKey } from "../../project.ts";
+import type { DeclaredDependency } from "../discovery.ts";
 import type { PackageEntries } from "../entries.ts";
 import { raise, type Finding, type FindingContext } from "../findings.ts";
 import type { PackagingLanguage } from "../language.ts";
@@ -136,7 +137,7 @@ async function manifestChecks(context: FindingContext, reuse: ReuseAnalysis): Pr
     if (!reuse.profiles.has(pkg.id) || pkg.ecosystem !== "python") continue;
     const outside = externalsOf.get(pkg.id) ?? { production: new Set<string>(), tests: new Set<string>() };
     const declaredRuntime = pkg.dependencies.filter((d) => d.scope === "runtime");
-    const declares = (names: readonly { name: string }[], importName: string): { name: string } | undefined => names.find((d) => provides(d.name, importName));
+    const declares = (dependencies: readonly DeclaredDependency[], importName: string): DeclaredDependency | undefined => dependencies.find((d) => provides(d.name, importName));
 
     const undeclared: { name: string; internal: boolean; via: "production" | "tests"; declaredAs: string | null; atRoot: boolean }[] = [];
     for (const edge of model.edges.values()) {
@@ -156,8 +157,7 @@ async function manifestChecks(context: FindingContext, reuse: ReuseAnalysis): Pr
         if (model.packages.some((p) => p.ecosystem === "python" && provides(p.name, name))) continue;
         const entry = declares(via === "production" ? declaredRuntime : pkg.dependencies, name);
         if (entry !== undefined) continue;
-        const other = declares(pkg.dependencies, name) as { name: string; scope?: string } | undefined;
-        undeclared.push({ name, internal: false, via, declaredAs: other?.scope ?? null, atRoot: [...atRoot].some((requirement) => provides(requirement, name)) });
+        undeclared.push({ name, internal: false, via, declaredAs: declares(pkg.dependencies, name)?.scope ?? null, atRoot: [...atRoot].some((requirement) => provides(requirement, name)) });
       }
     }
     if (undeclared.length > 0) {
