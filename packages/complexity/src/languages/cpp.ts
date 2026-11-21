@@ -1,4 +1,4 @@
-import type { ComplexityLanguage } from "../language.ts";
+import type { ComplexityLanguage } from "../complexity-language.ts";
 
 /** The C++ readings of the shared definitions: lambdas, `goto`, and the preprocessor, which is not run. */
 export const language: ComplexityLanguage = {

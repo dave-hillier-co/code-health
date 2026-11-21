@@ -1,4 +1,4 @@
-import type { CensusLanguage } from "../language.ts";
+import type { CensusLanguage } from "../census-language.ts";
 
 /**
  * Python conventions: pyee, blinker and Django signals, pubsub libraries, `dependency_injector`, `injector` and

@@ -1,4 +1,4 @@
-import type { ComplexityLanguage } from "../language.ts";
+import type { ComplexityLanguage } from "../complexity-language.ts";
 
 /** What differs in C# from the shared definitions: switch expressions, pattern combinators and null-coalescing. */
 export const language: ComplexityLanguage = {

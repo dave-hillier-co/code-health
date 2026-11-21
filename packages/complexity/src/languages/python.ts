@@ -1,4 +1,4 @@
-import type { ComplexityLanguage } from "../language.ts";
+import type { ComplexityLanguage } from "../complexity-language.ts";
 
 /** Where Python's constructs read differently from the shared definitions. */
 export const language: ComplexityLanguage = {

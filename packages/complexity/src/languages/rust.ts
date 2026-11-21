@@ -1,4 +1,4 @@
-import type { ComplexityLanguage } from "../language.ts";
+import type { ComplexityLanguage } from "../complexity-language.ts";
 
 /** Where Rust's constructs differ from the shared definitions. The construct mapping is the adapter's `MetricRules` (parse/languages/rust/metric-rules.ts). */
 export const language: ComplexityLanguage = {

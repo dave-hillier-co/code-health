@@ -3,7 +3,8 @@ import type { FileCensus, TypeDeclaration } from "@code-health/parse/census-fact
 import { GrammarSet } from "@code-health/parse/grammars";
 import { registeredAdapters } from "@code-health/parse/languages";
 import type { SourceTree } from "@code-health/parse/source-tree";
-import { censusDetectorsOf, type CensusDetectors } from "./language.ts";
+import type { CensusDetectors } from "./census-language.ts";
+import { censusDetectorsOf } from "./language.ts";
 import { folderOf, type Project } from "../project.ts";
 
 export const MECHANISMS = ["callbacks", "interfaces", "dependency-injection", "events", "handlers", "registries", "ports-and-adapters"] as const;

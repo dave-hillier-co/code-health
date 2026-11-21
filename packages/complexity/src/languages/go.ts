@@ -1,4 +1,4 @@
-import type { ComplexityLanguage } from "../language.ts";
+import type { ComplexityLanguage } from "../complexity-language.ts";
 
 /** Go has no exceptions, ternary or compound logical assignment, and spells its multi-way branches `switch`, a type switch and `select`. */
 export const language: ComplexityLanguage = {

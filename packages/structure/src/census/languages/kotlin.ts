@@ -1,4 +1,4 @@
-import type { CensusLanguage } from "../language.ts";
+import type { CensusLanguage } from "../census-language.ts";
 
 /**
  * Kotlin conventions: Spring, Hilt, Dagger and Koin injection, Kotlin and RxJava event streams, and

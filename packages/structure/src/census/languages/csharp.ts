@@ -1,4 +1,4 @@
-import type { CensusLanguage } from "../language.ts";
+import type { CensusLanguage } from "../census-language.ts";
 
 /**
  * C# conventions: .NET events (a `Changed?.Invoke(...)` on an event the file declares, `INotifyPropertyChanged`,

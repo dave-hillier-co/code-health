@@ -1,4 +1,4 @@
-import type { CensusLanguage } from "../language.ts";
+import type { CensusLanguage } from "../census-language.ts";
 
 /**
  * Go conventions. Exported methods are capitalised, so both spellings are listed where code in the same

@@ -1,4 +1,4 @@
-import type { CensusLanguage } from "../language.ts";
+import type { CensusLanguage } from "../census-language.ts";
 
 /** TypeScript and JavaScript conventions: Node and RxJS events, Nest, Angular and Inversify injection, mediator-style handlers. */
 export const language: CensusLanguage = {

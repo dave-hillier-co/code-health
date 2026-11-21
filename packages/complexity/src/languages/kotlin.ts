@@ -1,4 +1,4 @@
-import type { ComplexityLanguage } from "../language.ts";
+import type { ComplexityLanguage } from "../complexity-language.ts";
 
 /** Where Kotlin's constructs differ from the shared definitions. The fixtures in fixtures/languages/kotlin/metrics pin each of them. */
 export const language: ComplexityLanguage = {

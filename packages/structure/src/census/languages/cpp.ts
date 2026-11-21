@@ -1,4 +1,4 @@
-import type { CensusLanguage } from "../language.ts";
+import type { CensusLanguage } from "../census-language.ts";
 
 /**
  * C++ conventions: virtual interfaces and abstract classes (judged from the declarations, so no names are

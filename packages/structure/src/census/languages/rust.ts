@@ -1,4 +1,4 @@
-import type { CensusLanguage } from "../language.ts";
+import type { CensusLanguage } from "../census-language.ts";
 
 /**
  * Rust conventions: events through `emit`, `publish` and `subscribe` and the broadcast channels of tokio and

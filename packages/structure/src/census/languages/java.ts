@@ -1,4 +1,4 @@
-import type { CensusLanguage } from "../language.ts";
+import type { CensusLanguage } from "../census-language.ts";
 
 /**
  * Java conventions: Spring, Guava and RxJava events, Spring, Jakarta, Guice and Dagger injection, and
