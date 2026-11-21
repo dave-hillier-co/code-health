@@ -98,7 +98,8 @@ export async function refresh(repoPath: string, options: RefreshOptions = {}): P
         const stale = storedBoundaryShas(db).filter((sha) => !boundary.has(sha));
         if (stale.length > 0) deleteCommits(db, stale);
 
-        const listing = await runGit(location.repoRoot, ["rev-list", headSha]);
+        const listing = await runGit(location.repoRoot, ["rev-list", "--reverse", headSha]);
+        // Oldest first, so an interrupted refresh leaves only complete ancestry stored.
         const reachable = listing.split("\n").filter((l) => l !== "");
         const stored = storedShas(db);
         const missing = reachable.filter((sha) => !stored.has(sha));

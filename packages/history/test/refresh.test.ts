@@ -209,3 +209,13 @@ test("the analysed repository is never modified", async () => {
   expect(repo.git("for-each-ref")).toBe(before);
   expect(repo.git("status", "--porcelain", "--ignored")).toBe("!! .cache/");
 });
+
+test("an interrupted refresh never stores a commit without its ancestors", async () => {
+  const repo = build([commit(1), commit(2), commit(3), commit(4)]);
+  const blob = repo.git("rev-parse", "HEAD~2:f2");
+  rmSync(join(repo.path, ".git", "objects", blob.slice(0, 2), blob.slice(2)), { force: true });
+  await expect(refresh(repo.path, { batchSize: 1 })).rejects.toThrow();
+  const head = repo.git("rev-parse", "HEAD");
+  const stored = await query<{ sha: string }>(repo, "SELECT sha FROM commits");
+  expect(stored.map((r) => r.sha)).not.toContain(head);
+});
