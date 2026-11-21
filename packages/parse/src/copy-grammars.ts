@@ -15,3 +15,8 @@ export function copyGrammars(destination: string): string[] {
   for (const spec of specs) copyFileSync(locateGrammarFile(spec), join(destination, spec.file));
   return [...new Set(specs.map((spec) => spec.file))].sort();
 }
+
+/** The npm packages whose .wasm files `copyGrammars` ships, sorted, so the build can carry their licences. */
+export function shippedGrammarPackages(): string[] {
+  return [...new Set([...shippedGrammarSpecs(), runtimeSpec].map((spec) => spec.packageName))].sort();
+}
