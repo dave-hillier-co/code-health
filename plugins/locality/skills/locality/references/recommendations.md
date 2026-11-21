@@ -38,10 +38,11 @@ A guard turns an inline or a move into `review`, or `keep`:
 - `creates-cycle`: moving to the target would make two folders import each other. A folder and its own subfolders are not counted.
 - `other-references`: a consumer passes the unit as a value, registers it or decorates with it, so callsite counts are unreliable. Find every use before deciding.
 - `package-entry`: a non-private `package.json` names the file as an entry point, so consumers outside the repository may exist.
+- `interface-unit`, `overrides-inherited-method`, `recursive-unit`: the unit declares an interface or abstract class, holds a method that overrides or implements an inherited one, or holds a function that calls itself. These are not free-standing helpers, so review before inlining or moving.
 - `scattered-unit`: some files of the unit live outside its entry file's folder. Handle its leaves first.
 - `fixed-point`: the file matches `locality.fixedPoints` (routes, migrations, app folders). It does not move, and nothing moves into a fixed folder.
 
-Guards the analyser cannot check, so check them yourself: interfaces and overrides (not free-standing helpers), recursion, and framework conventions the config does not list. The grace period and the cycle guard need history and the import graph, which the analyser has, so they are rules above.
+Guards the analyser cannot check, so check them yourself: framework conventions the config does not list. The grace period and the cycle guard need history and the import graph, which the analyser has, so they are rules above.
 
 ## Gain, target and blockers
 

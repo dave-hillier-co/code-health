@@ -270,6 +270,25 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     return { owned, external };
   }
 
+  // Interfaces and abstract classes, by the file that defines them and the symbol.
+  const interfaces = new Set<string>();
+  for (const exported of analysis.exports) {
+    if (exported.defined.kind === "interface" || exported.defined.kind === "abstract-class") {
+      interfaces.add(`${exported.defined.file}#${exported.defined.symbol ?? exported.defined.name}`);
+      interfaces.add(exported.defined.file);
+    }
+  }
+
+  /** Why code in `path` is not a free-standing helper: for the whole file, or only for what is inside `symbols`. */
+  function notHelperOf(paths: readonly string[], symbols?: ReadonlySet<string>): RecommendInput["notHelper"] {
+    const within = (name: string) => symbols === undefined || [...symbols].some((symbol) => name === symbol || name.startsWith(`${symbol}.`));
+    if (paths.some((path) => (symbols === undefined ? interfaces.has(path) : [...symbols].some((symbol) => interfaces.has(`${path}#${symbol}`))))) return "interface";
+    const units = paths.flatMap((path) => unitsByFile.get(path) ?? []).filter((unit) => within(unit.qualifiedName));
+    if (units.some((unit) => unit.override === true)) return "override";
+    if (units.some((unit) => unit.recursive === true)) return "recursion";
+    return null;
+  }
+
   function exportedUnits(path: string): SourceUnit[] {
     return (unitsByFile.get(path) ?? []).filter((unit) => unit.exported && unit.parent === undefined);
   }
@@ -340,6 +359,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       age: null,
       consumerCoChange: null,
       createsCycle: false,
+      notHelper: notHelperOf([path], symbols),
       ...thresholds,
     });
     return {
@@ -437,6 +457,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       age: history === undefined ? null : ageDays(history, unit.root),
       consumerCoChange: coChange?.amongConsumers ?? null,
       createsCycle,
+      notHelper: notHelperOf(files),
       ...thresholds,
     };
     const decision = recommend(input);
