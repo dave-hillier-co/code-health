@@ -94,6 +94,23 @@ test("loss is reported as the increment over what is already abandoned, and in t
   expect(loss.files.total.expected).toBe(8);
 });
 
+test("historical mode samples the periods of the repository's own past and compounds them over the horizon", async () => {
+  const document = await json("simulate", "--mode", "historical", "--trials", "6000", "--seed", "4");
+  // The observed quarters ran at 0, 0, 25, 0, 33.3 and 0 percent, 9.72 percent on average. Four quarters are
+  // sampled independently, so the mean probability is 1 - (1 - 0.0972)^4.
+  expect(document.results.selection).toMatchObject({ source: "history", ratePerPeriod: null, leavers: null });
+  expect(document.results.selection.leaverProbability).toBeGreaterThan(0.3358 - 0.02);
+  expect(document.results.selection.leaverProbability).toBeLessThan(0.3358 + 0.02);
+  const { stdout } = await abandonment("simulate", "--mode", "historical", "--trials", "2000", "--seed", "42");
+  expectGolden("abandonment", "abandonment.simulate.historical", stdout);
+});
+
+test("historical mode ignores a configured rate, which describes the future rather than the past", async () => {
+  configure({ turnoverRate: 100 });
+  const document = await json("simulate", "--mode", "historical", "--trials", "300");
+  expect(document.results.selection.leaverProbability).toBeLessThan(0.6);
+});
+
 test("k-leavers is a stress test: exactly k active developers leave, and the people are never named", async () => {
   const document = await json("simulate", "--mode", "k-leavers", "--k", "1", "--trials", "3000", "--seed", "5");
   expect(document.results.selection).toMatchObject({ source: "k-leavers", leavers: 1, ratePerPeriod: null, leaverProbability: 0.3333 });
