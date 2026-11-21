@@ -94,7 +94,7 @@ export class SpecifierResolver {
       const file = target === undefined ? undefined : this.resolveFile(target);
       return file === undefined ? { kind: "not-found" } : { kind: "file", path: file };
     }
-    if (specifier.startsWith("node:") || builtins.has(specifier.split("/")[0] as string)) return { kind: "builtin" };
+    if (specifier.startsWith("node:")) return { kind: "builtin" };
 
     const options = this.optionsFor(from);
     let pathsMatched = false;
@@ -120,6 +120,7 @@ export class SpecifierResolver {
       const file = this.resolveInPackage(workspace, subpath);
       return file === undefined ? { kind: "not-found" } : { kind: "file", path: file };
     }
+    if (builtins.has(specifier.split("/")[0] as string)) return { kind: "builtin" };
     return pathsMatched ? { kind: "not-found" } : { kind: "external", packageName: name };
   }
 
@@ -175,11 +176,22 @@ export class SpecifierResolver {
     return target === undefined ? undefined : this.resolveFile(target);
   }
 
-  /** Follows string, array and condition targets, trying `types` last because it points at declarations. */
+  /**
+   * Follows string, array and condition targets. Conditions keep their listed order, except that
+   * `require` comes after the rest (the graph shows what a bundler sees) and `types` comes last
+   * because it points at declarations.
+   */
   private resolveExportTarget(dir: string, target: unknown): string | undefined {
     if (typeof target === "string") {
       const resolved = join(dir, target);
-      return resolved === undefined ? undefined : this.resolveFile(resolved);
+      if (resolved === undefined) return undefined;
+      const built = this.resolveFile(resolved);
+      if (built !== undefined) return built;
+      // A build directory that is not committed: the same path under src is what the build is made from.
+      const relative = join("", target);
+      const fromSource = relative?.replace(/^(dist|build|out|lib)\//, "src/");
+      const sourced = fromSource === undefined || fromSource === relative ? undefined : join(dir, fromSource);
+      return sourced === undefined ? undefined : this.resolveFile(sourced);
     }
     if (Array.isArray(target)) {
       for (const item of target) {
@@ -191,7 +203,8 @@ export class SpecifierResolver {
     const conditions = asRecord(target);
     if (!conditions) return undefined;
     const keys = Object.keys(conditions);
-    const ordered = [...keys.filter((key) => !key.startsWith("types")), ...keys.filter((key) => key.startsWith("types"))];
+    const rank = (key: string) => (key.startsWith("types") ? 2 : key === "require" ? 1 : 0);
+    const ordered = [...keys].sort((a, b) => rank(a) - rank(b));
     for (const key of ordered) {
       const found = this.resolveExportTarget(dir, conditions[key]);
       if (found !== undefined) return found;
@@ -203,10 +216,35 @@ export class SpecifierResolver {
     let directory = directoryOf(from);
     for (;;) {
       const config = directory === "" ? "tsconfig.json" : `${directory}/tsconfig.json`;
-      if (this.tsconfigTexts.has(config)) return this.loadOptions(config);
+      if (this.tsconfigTexts.has(config)) return this.withReferences(config, from);
       if (directory === "") return undefined;
       directory = directoryOf(directory);
     }
+  }
+
+  /**
+   * The options of `config`, or when it sets no `paths` or `baseUrl` itself and has `references`
+   * (a solution config), those of the referenced config that includes `from`.
+   */
+  private withReferences(config: string, from: string): TsOptions | undefined {
+    const own = this.loadOptions(config);
+    if (own?.paths || own?.baseUrl !== undefined) return own;
+    const json = asRecord(parseJsonc(this.tsconfigTexts.get(config) ?? ""));
+    const references = Array.isArray(json?.references) ? json.references : [];
+    const dir = directoryOf(config);
+    const referenced: { path: string; json: Record<string, unknown> | undefined }[] = [];
+    for (const reference of references) {
+      const target = typeof asRecord(reference)?.path === "string" ? join(dir, asRecord(reference)!.path as string) : undefined;
+      if (target === undefined) continue;
+      const path = [target, `${target}.json`, `${target}/tsconfig.json`].find((candidate) => this.tsconfigTexts.has(candidate));
+      if (path !== undefined) referenced.push({ path, json: asRecord(parseJsonc(this.tsconfigTexts.get(path)!)) });
+    }
+    const covering = referenced.find((candidate) => includes(candidate.path, candidate.json, from));
+    const chosen = covering ?? referenced.find((candidate) => {
+      const options = this.loadOptions(candidate.path);
+      return options?.paths || options?.baseUrl !== undefined;
+    });
+    return chosen === undefined ? own : this.loadOptions(chosen.path) ?? own;
   }
 
   /** Reads a tsconfig and the configs it extends. `paths` replaces rather than merges, as in TypeScript. */
@@ -257,6 +295,21 @@ export class SpecifierResolver {
   }
 }
 
+/** Whether a tsconfig's `include` (default: everything beneath it) covers a file, judged by literal directory prefixes. */
+function includes(config: string, json: Record<string, unknown> | undefined, file: string): boolean {
+  const dir = directoryOf(config);
+  const patterns = Array.isArray(json?.include) ? json.include.filter((p): p is string => typeof p === "string") : undefined;
+  if (patterns === undefined) return dir === "" || file.startsWith(`${dir}/`);
+  return patterns.some((pattern) => {
+    const literal = pattern.split("/").filter((part, index, parts) => !/[*?]/.test(part) && parts.slice(0, index).every((p) => !/[*?]/.test(p)));
+    const base = join(dir, literal.join("/"));
+    if (base === undefined) return false;
+    const last = pattern.split("/").at(-1) ?? "";
+    const isFile = !/[*?]/.test(pattern) && /\.[a-z]+$/.test(last);
+    return base === "" || (isFile ? file === base : file === base || file.startsWith(`${base}/`));
+  });
+}
+
 /** Patterns with the longest literal prefix win, and a pattern with no `*` beats any wildcard. */
 function prefixLength(pattern: string): number {
   const star = pattern.indexOf("*");
@@ -275,7 +328,7 @@ function matchPattern(pattern: string, specifier: string): string | undefined {
 }
 
 function substitute(target: unknown, star: string): unknown {
-  if (typeof target === "string") return target.replace("*", star);
+  if (typeof target === "string") return target.replaceAll("*", star);
   if (Array.isArray(target)) return target.map((item) => substitute(item, star));
   const record = asRecord(target);
   if (!record) return target;

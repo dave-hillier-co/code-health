@@ -3,7 +3,8 @@
  * uses. Returns undefined when the text is not valid even after tolerating
  * those, so a broken config is skipped rather than fatal.
  */
-export function parseJsonc(text: string): unknown {
+export function parseJsonc(source: string): unknown {
+  const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source;
   let cleaned = "";
   let i = 0;
   while (i < text.length) {
