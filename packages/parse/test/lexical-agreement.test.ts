@@ -17,7 +17,7 @@ const ratesFile = fileURLToPath(new URL("../../lexical/src/agreement-rates.ts", 
 
 /** Corpus directories per profile: the conformance fixtures, plus files with the awkward shapes. */
 const corpora: Record<string, string[]> = {
-  typescript: [fixtures("ts-adapter"), fixtures("lexical-agreement/typescript")],
+  typescript: [fixtures("ts-adapter"), fixtures("ts-metrics"), fixtures("lexical-agreement/typescript")],
 };
 
 async function measure(directories: string[]): Promise<AgreementCounts> {
@@ -46,8 +46,8 @@ function render(measured: Record<string, AgreementCounts>): string {
     'import type { AgreementCounts } from "./agreement.ts";',
     "",
     "/**",
-    " * Agreement of each lexer profile with the structural layer over the corpus in fixtures/lexical-agreement",
-    " * and fixtures/ts-adapter. Written by the agreement test (run it with UPDATE_AGREEMENT=1 after a deliberate",
+    " * Agreement of each lexer profile with the structural layer over the corpus in fixtures/lexical-agreement,",
+    " * fixtures/ts-adapter and fixtures/ts-metrics. Written by the agreement test (run it with UPDATE_AGREEMENT=1 after a deliberate",
     " * change) and checked by it in CI, so a profile change cannot make the rates worse unnoticed.",
     " * Only profiles with a structural adapter appear here.",
     " */",
