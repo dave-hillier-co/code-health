@@ -1,0 +1,62 @@
+{
+  "applied": false,
+  "command": "move",
+  "commit": null,
+  "config": "59e9516fe0a1f9ff",
+  "inputs": {
+    "apply": false,
+    "commit": null,
+    "reason": null,
+    "to": null,
+    "unit": "src/shared/utils/money.ts"
+  },
+  "mentions": [],
+  "mode": "dry-run",
+  "refusals": [],
+  "repo": {
+    "dirty": false,
+    "head": "78ddadd4de155734ef2b56a253b72b25b5f87053"
+  },
+  "results": [
+    {
+      "from": "src/shared/utils/money.ts",
+      "role": "unit",
+      "to": "src/money.ts"
+    }
+  ],
+  "rewrites": [
+    {
+      "from": "../shared/utils/money.ts",
+      "line": 1,
+      "path": "src/billing/charge.ts",
+      "to": "../money.ts"
+    },
+    {
+      "from": "../shared/utils/money.ts",
+      "line": 1,
+      "path": "src/legacy/dead.ts",
+      "to": "../money.ts"
+    },
+    {
+      "from": "../shared/utils/money.ts",
+      "line": 1,
+      "path": "src/orders/place.ts",
+      "to": "../money.ts"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "unit": {
+    "destination": "src",
+    "fanIn": 2,
+    "path": "src/shared/utils/money.ts",
+    "recommendation": "move",
+    "rule": "two-consumers"
+  },
+  "warnings": []
+}

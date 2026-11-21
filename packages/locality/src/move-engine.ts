@@ -1,0 +1,125 @@
+import { posix } from "node:path";
+import { ts, type Project, type SourceFile } from "ts-morph";
+import type { SourceTree } from "@code-health/parse/source-tree";
+import type { FileOperation } from "./move-plan.ts";
+import { buildProject, SOURCE_EXTENSION } from "./ts-project.ts";
+
+/** One import specifier the move changed. `path` is where the file is after the move. */
+export interface Rewrite {
+  path: string;
+  line: number;
+  from: string;
+  to: string;
+}
+
+export interface MoveResult {
+  rewrites: Rewrite[];
+  /** The text of every file the move changes, by its path after the move. Moved files whose text is unchanged are not listed. */
+  texts: Map<string, string>;
+  warnings: string[];
+}
+
+const KNOWN_EXTENSION = /\.(?:[cm]?[jt]sx?|json)$/;
+const TS_EXTENSION = /\.(?:[cm]?tsx?)$/;
+
+/**
+ * The specifier TypeScript's own rewrite should have produced. It drops the extension a repository writes in
+ * its imports (`./money.ts`, `./money.js`), so the extension of the old specifier is put back, and so is the
+ * `index` of a directory import written out in full.
+ */
+function keepStyle(before: string, after: string): string {
+  if (before === after) return after;
+  const written = KNOWN_EXTENSION.exec(before)?.[0];
+  if (written === undefined || KNOWN_EXTENSION.test(after)) return after;
+  if (/\/index\.[cm]?[jt]sx?$/.test(before) && !after.endsWith("/index")) return `${after}/index${written}`;
+  return `${after}${written}`;
+}
+
+/** A relative specifier from one file to another, written with the extension the old specifier used, if any. */
+function relativeSpecifier(from: string, to: string, old: string): string {
+  let relative = posix.relative(posix.dirname(from), to);
+  if (!relative.startsWith(".")) relative = `./${relative}`;
+  const written = KNOWN_EXTENSION.exec(old)?.[0];
+  if (TS_EXTENSION.test(relative) || (written !== undefined && KNOWN_EXTENSION.test(relative))) {
+    const own = KNOWN_EXTENSION.exec(relative)![0];
+    const stem = relative.slice(0, relative.length - own.length);
+    return written === undefined ? stem : `${stem}${TS_EXTENSION.test(own) ? written : own}`;
+  }
+  return relative;
+}
+
+function resolveSpecifier(project: Project, specifier: string, from: SourceFile): string | undefined {
+  const resolved = ts.resolveModuleName(specifier, from.getFilePath(), project.getCompilerOptions(), project.getModuleResolutionHost());
+  return resolved.resolvedModule?.resolvedFileName;
+}
+
+/**
+ * Applies file operations to a tree in memory and reports the file contents that follow. The moves and
+ * the rewriting of every import that reaches across them are ts-morph's, so path mappings and package
+ * exports are followed. Each specifier is then checked to still reach the file it reached before, with the
+ * move accounted for, and one that does not is rewritten. Nothing is written: the caller decides whether
+ * to show it, apply it or compare it with a move somebody else made.
+ */
+export async function performMove(tree: SourceTree, operations: readonly FileOperation[]): Promise<MoveResult> {
+  const { project, relative, absolute, warnings } = await buildProject(tree);
+  const sources = project.getSourceFiles();
+  const originalText = new Map(sources.map((file) => [relative(file.getFilePath()), file.getFullText()]));
+  const before = new Map(
+    sources.map((file) => [
+      relative(file.getFilePath()),
+      file.getImportStringLiterals().map((literal) => ({ specifier: literal.getLiteralValue(), target: resolveSpecifier(project, literal.getLiteralValue(), file) })),
+    ]),
+  );
+
+  const origin = new Map<string, string>();
+  const destination = new Map<string, string>();
+  for (const operation of operations) {
+    const file = project.getSourceFile(absolute(operation.from));
+    if (file === undefined) {
+      if (SOURCE_EXTENSION.test(operation.from)) warnings.push(`${operation.from} could not be read as a source file`);
+      continue;
+    }
+    file.move(absolute(operation.to));
+    origin.set(operation.to, operation.from);
+    destination.set(absolute(operation.from), absolute(operation.to));
+  }
+
+  const rewrites: Rewrite[] = [];
+  const texts = new Map<string, string>();
+  for (const file of project.getSourceFiles()) {
+    const path = relative(file.getFilePath());
+    const was = before.get(origin.get(path) ?? path);
+    if (was === undefined) continue;
+    const literals = file.getImportStringLiterals();
+    if (literals.length === was.length) {
+      literals.forEach((literal, index) => {
+        const old = was[index]!;
+        let wanted = keepStyle(old.specifier, literal.getLiteralValue());
+        if (old.target !== undefined) {
+          const expected = destination.get(old.target) ?? old.target;
+          if (resolveSpecifier(project, wanted, file) !== expected) {
+            wanted = relativeSpecifier(file.getFilePath(), expected, old.specifier);
+            if (resolveSpecifier(project, wanted, file) !== expected) {
+              warnings.push(`${path}:${literal.getStartLineNumber()} "${old.specifier}" no longer resolves to ${relative(expected)} and could not be repaired`);
+            } else if (!old.specifier.startsWith(".")) {
+              warnings.push(`${path}:${literal.getStartLineNumber()} "${old.specifier}" became the relative "${wanted}": check whether an alias still fits`);
+            }
+          }
+        }
+        if (wanted !== literal.getLiteralValue()) literal.setLiteralValue(wanted);
+      });
+    } else {
+      warnings.push(`${path}: its imports could not be matched against the original, so none were checked`);
+    }
+    const text = file.getFullText();
+    if (text !== originalText.get(origin.get(path) ?? path)) texts.set(path, text);
+    file.getImportStringLiterals().forEach((literal, index) => {
+      const old = was[index];
+      if (old !== undefined && old.specifier !== literal.getLiteralValue()) {
+        rewrites.push({ path, line: literal.getStartLineNumber(), from: old.specifier, to: literal.getLiteralValue() });
+      }
+    });
+  }
+  rewrites.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : a.line - b.line));
+  return { rewrites, texts, warnings };
+}

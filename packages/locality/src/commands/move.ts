@@ -1,0 +1,74 @@
+import { usageError } from "@code-health/cli-kit/errors";
+import type { Command, CommandOutput } from "@code-health/cli-kit/run-cli";
+import { treeFromRef } from "@code-health/parse/source-tree";
+import { readSettings } from "../config.ts";
+import { applyMove, isClean, moveMessage, textMentions } from "../move-apply.ts";
+import { performMove } from "../move-engine.ts";
+import { planMove, type Refusal } from "../move-plan.ts";
+import { SOURCE_EXTENSION } from "../ts-project.ts";
+import { analyseRevision } from "../unit-analysis.ts";
+
+export const name = "move";
+
+export const command: Command = {
+  summary: "Plan, or with --apply make, the move of one unit: file moves and import rewrites, as one move-only commit",
+  options: {
+    to: { type: "string" },
+    apply: { type: "boolean" },
+    reason: { type: "string" },
+    "no-commit": { type: "boolean" },
+  },
+  async run(context): Promise<CommandOutput> {
+    const settings = readSettings(context.config);
+    if (context.positionals.length !== 1) throw usageError("usage: move <unit path> [--to <folder>] [--reason <text>] [--apply [--no-commit]]");
+    const unitPath = (context.positionals[0] as string).replace(/\/+$/, "");
+    const to = context.values.to;
+    const reason = context.values.reason;
+    for (const [option, value] of [["to", to], ["reason", reason]] as const) {
+      if (value !== undefined && typeof value !== "string") throw usageError(`--${option} needs a value`);
+    }
+    const apply = context.values.apply === true;
+    const commit = context.values["no-commit"] !== true;
+    if (!apply && context.values["no-commit"] === true) throw usageError("--no-commit only applies with --apply");
+
+    const { analysis } = await analyseRevision(context, settings, "HEAD");
+    const candidate = analysis.candidates.find((entry) => entry.path === unitPath);
+    if (candidate === undefined) {
+      throw usageError(`"${unitPath}" is not a unit the analyser reports: run \`locality analyse\` and name one of its paths`);
+    }
+
+    const tree = await treeFromRef(context.repo.root, "HEAD");
+    const plan = planMove(candidate, settings, new Set(tree.files.keys()), { to: to as string | undefined, reason: reason as string | undefined });
+    const refusals: Refusal[] = [...plan.refusals];
+    if (apply && !(await isClean(context.repo.root))) {
+      refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
+    }
+
+    const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : undefined;
+    const mentions = moved === undefined ? [] : await textMentions(context.repo.root, plan, SOURCE_EXTENSION);
+
+    let sha: string | null = null;
+    let applied = false;
+    if (apply && moved !== undefined && refusals.length === 0) {
+      sha = await applyMove(context.repo.root, plan, moved, moveMessage(candidate, plan, reason as string | undefined), commit);
+      applied = true;
+    }
+
+    return {
+      inputs: { unit: unitPath, to: to ?? null, apply, commit: apply ? commit : null, reason: reason ?? null },
+      extra: {
+        unit: { path: plan.unit, recommendation: plan.recommendation, rule: plan.rule, destination: plan.destination, fanIn: candidate.fanIn },
+        mode: apply ? "apply" : "dry-run",
+        applied,
+        commit: sha,
+        refusals,
+        rewrites: moved?.rewrites ?? [],
+        mentions,
+        warnings: moved?.warnings ?? [],
+      },
+      results: plan.operations,
+      columns: ["from", "to", "role"],
+      failed: refusals.length > 0,
+    };
+  },
+};
