@@ -6,7 +6,7 @@
     {
       "name": "cochange",
       "source": "./plugins/cochange",
-      "description": "Mines git history for hotspots, temporal coupling and change spread."
+      "description": "Mines git history for hotspots, temporal coupling and change spread, and briefs agents before they edit."
     }
   ]
 }
