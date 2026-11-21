@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "parse.schema.json",
+  "title": "structure parse --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "parse"
+    },
+    "results": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "grammar": {
+          "type": "string"
+        },
+        "rootType": {
+          "type": "string"
+        },
+        "namedChildren": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "hasErrors": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "file",
+        "grammar",
+        "rootType",
+        "namedChildren",
+        "hasErrors"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "unevaluatedProperties": false
+}

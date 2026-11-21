@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "Shared definitions for structure --json output",
+  "$defs": {
+    "sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repo": {
+      "type": "object",
+      "properties": {
+        "head": {
+          "$ref": "#/$defs/sha"
+        },
+        "dirty": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "head",
+        "dirty"
+      ],
+      "additionalProperties": false
+    },
+    "truncated": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "total": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cut": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "required": [
+        "limit",
+        "total",
+        "cut"
+      ],
+      "additionalProperties": false
+    },
+    "envelope": {
+      "description": "Fields every document has. A command schema adds its own `command` and `results` and closes the document with unevaluatedProperties.",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "tool": {
+          "const": "structure"
+        },
+        "command": {
+          "type": "string"
+        },
+        "repo": {
+          "$ref": "#/$defs/repo"
+        },
+        "config": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "inputs": {
+          "type": "object"
+        },
+        "results": {},
+        "truncated": {
+          "$ref": "#/$defs/truncated"
+        },
+        "meta": {
+          "description": "Wall-clock facts. Absent from reports and ignored by golden comparisons.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "tool",
+        "command",
+        "repo",
+        "config",
+        "inputs",
+        "results",
+        "truncated"
+      ]
+    }
+  }
+}

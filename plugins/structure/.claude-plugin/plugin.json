@@ -1,0 +1,17 @@
+{
+  "name": "structure",
+  "displayName": "Structure",
+  "version": "0.1.0",
+  "description": "Finds dependencies that make change expensive: import cycles with minimal breaking sets, and dependencies pointing from stable towards volatile code, with an evidence pack for each.",
+  "author": {
+    "name": "Dave Hillier"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/dave-hillier-co/code-health",
+  "engines": {
+    "claude-code": ">=2.1.0"
+  },
+  "keywords": [
+    "code-health"
+  ]
+}

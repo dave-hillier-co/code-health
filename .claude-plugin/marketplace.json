@@ -7,6 +7,11 @@
       "name": "cochange",
       "source": "./plugins/cochange",
       "description": "Mines git history for hotspots, temporal coupling and change spread."
+    },
+    {
+      "name": "structure",
+      "source": "./plugins/structure",
+      "description": "Finds dependencies that make change expensive: import cycles with minimal breaking sets, and dependencies pointing from stable towards volatile code, with an evidence pack for each."
     }
   ]
 }
