@@ -6,6 +6,7 @@ import { monthsBefore } from "@code-health/history/evidence";
 import { readSession, sessionFile } from "@code-health/history/session-state";
 import { listTree } from "@code-health/history/tree";
 import { defaultProjectsDirectory } from "@code-health/transcripts/projects-dir";
+import { stampOf } from "@code-health/transcripts/stamp";
 import { differenceOf, type Arm } from "@code-health/transcripts/difference";
 import { readRepoSessionEdits } from "@code-health/transcripts/session-edits";
 import { parseWindow } from "@code-health/transcripts/time-window";
@@ -217,6 +218,7 @@ async function completeness(context: CommandContext): Promise<CommandOutput> {
       noisePercent: noise,
       minSupport: settings.minSupport,
       confidence: settings.hook.confidence,
+      transcriptStamp: stampOf(records.map((r) => ({ ...r, spokenAbout: [...r.spokenAbout].sort(byBytes) }))),
       ...identityStamps(history),
     },
     extra: historySections(history),

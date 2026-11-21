@@ -127,6 +127,19 @@ describe("outcome completeness", () => {
     expect(results.caveat).toContain("not assigned");
   });
 
+  test("names the sessions it read in its inputs, so a different session folder is a different input", async () => {
+    const { inputs } = await json(...args());
+    expect(inputs.transcriptStamp).toMatch(/^[0-9a-f]{16}$/);
+    const other = new AgentSessions(repo.path);
+    try {
+      other.session("only", "2026-03-02", [pageA]);
+      const { inputs: otherInputs } = await json(...args().map((a) => (a === sessions.directory ? other.directory : a)));
+      expect(otherInputs.transcriptStamp).not.toBe(inputs.transcriptStamp);
+    } finally {
+      other.dispose();
+    }
+  });
+
   test("with too few opportunities in an arm nothing is concluded", async () => {
     const { results } = await json(...args().slice(0, -2));
     expect(results.conclusion).toBe("insufficient-sample");

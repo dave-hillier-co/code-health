@@ -25,9 +25,9 @@ export const command: Command = {
     if ((await readShallowInfo(root)).isShallow) throw usageError("history is shallow, so the windows before and after the change cannot be measured");
     await refresh(root, { ref: "HEAD" });
     const settings = readSettings(context.config);
-    const result = await measureOutcome(root, settings, context.config.effective.exclude, { at, from, projectsDir });
+    const { outcome: result, transcriptStamp } = await measureOutcome(root, settings, context.config.effective.exclude, { at, from, projectsDir });
     return {
-      inputs: { at: result.actedOn.at, before: result.actedOn.before, transcripts: projectsDir !== undefined },
+      inputs: { at: result.actedOn.at, before: result.actedOn.before, transcripts: projectsDir !== undefined, transcriptStamp },
       results: result,
     };
   },

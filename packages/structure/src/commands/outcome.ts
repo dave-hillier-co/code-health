@@ -2,6 +2,7 @@ import { usageError } from "@code-health/cli-kit/errors";
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { runGit } from "@code-health/history/git";
 import { monthsBefore } from "@code-health/history/evidence";
+import { stampOf } from "@code-health/transcripts/stamp";
 import { readAgentTasks } from "../incidental.ts";
 import { analysisCommand } from "../analysis-command.ts";
 import { buildModel } from "../model.ts";
@@ -112,6 +113,7 @@ export const command = analysisCommand(name, {
         minRevisions: settings.minRevisions,
         significanceLevel: settings.significanceLevel,
         transcripts: projectsDir !== undefined,
+        transcriptStamp: tasks.tasks === undefined ? null : stampOf(tasks.tasks),
       },
       results: [measured.outcome],
       columns: ["id", "verdict", "before", "after"],

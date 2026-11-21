@@ -1,12 +1,12 @@
-import { createHash } from "node:crypto";
 import { checkouts } from "@code-health/history/checkouts";
 import { defaultProjectsDirectory } from "@code-health/transcripts/projects-dir";
 import { measureRepo, type EffortReport } from "@code-health/transcripts/measure-repo";
 import type { TaskEffort } from "@code-health/transcripts/agent-effort";
+import { stampOf } from "@code-health/transcripts/stamp";
 import { parseWindow } from "@code-health/transcripts/time-window";
 import type { DayWindow } from "./measure-window.ts";
 
-export { checkouts, defaultProjectsDirectory };
+export { checkouts, defaultProjectsDirectory, stampOf };
 
 /** Agent effort over a window of days: the transcripts' tasks, paths and counts only. */
 export function readEffort(projectsDir: string, repoRoots: readonly string[], window: DayWindow): EffortReport {
@@ -16,11 +16,6 @@ export function readEffort(projectsDir: string, repoRoots: readonly string[], wi
 /** The tasks that read or edited at least one of the files. A task touching files of two groups counts in both. */
 export function tasksTouching(tasks: readonly TaskEffort[], files: ReadonlySet<string>): TaskEffort[] {
   return tasks.filter((task) => task.readPaths.some((path) => files.has(path)) || task.editedPaths.some((path) => files.has(path)));
-}
-
-/** A stamp of the transcript input: the same tasks always give the same stamp, so output can name it. */
-export function stampOf(tasks: readonly TaskEffort[]): string {
-  return createHash("sha256").update(JSON.stringify(tasks)).digest("hex").slice(0, 16);
 }
 
 export interface Heat {

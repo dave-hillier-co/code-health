@@ -86,6 +86,7 @@
     "minSupport": 3,
     "significanceLevel": 0.01,
     "target": "src/p->src/q",
+    "transcriptStamp": null,
     "transcripts": false
   },
   "repo": {

@@ -1,6 +1,7 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { usageError } from "@code-health/cli-kit/errors";
 import { analysisCommand, type AnalysisInput } from "../analysis-command.ts";
+import { stampOf } from "@code-health/transcripts/stamp";
 import { rankIncidental, readAgentTasks } from "../incidental.ts";
 import { findCoupling, QUADRANTS, type Quadrant } from "../coupling.ts";
 import { buildModel } from "../model.ts";
@@ -81,6 +82,7 @@ export async function analyseCoupling({ context, history }: AnalysisInput, level
       minRevisions: history.settings.minRevisions,
       significanceLevel: history.settings.significanceLevel,
       transcripts: tasks !== undefined,
+      transcriptStamp: tasks === undefined ? null : stampOf(tasks),
     },
     results: rows,
     columns: ["id", "quadrant", "staticCoupling", "coChange", "bothActive"],

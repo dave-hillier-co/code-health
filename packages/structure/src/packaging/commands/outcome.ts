@@ -12,9 +12,9 @@ export const outcome: Subcommand = {
     if (at === undefined) throw usageError(usage);
     const from = typeof context.values.from === "string" ? context.values.from : undefined;
     const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : undefined;
-    const result = await measureOutcome(context.repo.root, history.settings, history.filtered.changes, model.anchor, { at, from, projectsDir });
+    const { outcome: result, transcriptStamp } = await measureOutcome(context.repo.root, history.settings, history.filtered.changes, model.anchor, { at, from, projectsDir });
     return {
-      inputs: { subcommand: "outcome", at: result.reshaped.at, before: result.reshaped.before, transcripts: projectsDir !== undefined },
+      inputs: { subcommand: "outcome", at: result.reshaped.at, before: result.reshaped.before, transcripts: projectsDir !== undefined, transcriptStamp },
       results: result,
     };
   },

@@ -27,12 +27,17 @@
         "transcripts": {
           "type": "boolean",
           "description": "A projects directory was given, so agent effort was looked for."
+        },
+        "transcriptStamp": {
+          "type": ["string", "null"],
+          "description": "A stamp of the tasks read from the session transcripts, so two runs over different session folders are told apart. Null when none were read."
         }
       },
       "required": [
         "at",
         "before",
-        "transcripts"
+        "transcripts",
+        "transcriptStamp"
       ],
       "additionalProperties": false
     },

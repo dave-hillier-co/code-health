@@ -6,6 +6,7 @@ import { runGit } from "@code-health/history/git";
 import type { LogicalChange } from "@code-health/history/noise";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { measureRepo, summariseTasks, type EffortSummary } from "@code-health/transcripts/measure-repo";
+import { stampOf } from "@code-health/transcripts/stamp";
 import { parseWindow } from "@code-health/transcripts/time-window";
 import type { StructureSettings } from "../config.ts";
 import { round3 } from "../stability.ts";
@@ -153,7 +154,7 @@ export async function measureOutcome(
   changes: readonly LogicalChange[],
   anchor: number,
   options: { at: string; from: string | undefined; projectsDir: string | undefined },
-): Promise<Outcome> {
+): Promise<{ outcome: Outcome; transcriptStamp: string | null }> {
   const resolve = async (rev: string): Promise<string> => {
     try {
       return (await runGit(root, ["rev-parse", "--verify", `${rev}^{commit}`])).trim();
@@ -227,6 +228,7 @@ export async function measureOutcome(
     afterFigures.closure > beforeFigures.closure && reuseBefore.medianShare !== null && reuseAfter.medianShare !== null && reuseAfter.medianShare < reuseBefore.medianShare;
 
   const dirsOf = (model: PackageModel, ids: ReadonlySet<string>): string[] => model.packages.filter((p) => ids.has(p.id) && p.dir !== null).map((p) => (p.dir === "." ? "" : p.dir!));
+  let transcriptStamp: string | null = null;
   const effort = (): Outcome["agentEffort"] => {
     const projectsDir = options.projectsDir;
     if (projectsDir === undefined || !existsSync(projectsDir)) {
@@ -237,6 +239,7 @@ export async function measureOutcome(
     const measure = (from: number, to: number) => measureRepo({ projectsDir, repoRoots: [root], window: windowOf(from, to) }).tasks;
     const beforeTasks = measure(monthsBefore(date, settings.windowMonths), date);
     const afterTasks = measure(date, anchor + 86_400);
+    transcriptStamp = stampOf([...beforeTasks, ...afterTasks]);
     const aloneDirs = (model: PackageModel) => dirsOf(model, new Set(aloneBefore));
     const unitBefore = touching(beforeTasks, dirsOf(earlier, replaced));
     const unitAfter = touching(afterTasks, dirsOf(later, created));
@@ -249,7 +252,8 @@ export async function measureOutcome(
     };
   };
 
-  return {
+  const agentEffort = effort();
+  const outcome: Outcome = {
     reshaped: { at, before: beforeSha, kind, replaced: [...replaced].sort(compareIds), created: [...created].sort(compareIds), movedFiles },
     windows: {
       before: { since: new Date(monthsBefore(date, settings.windowMonths) * 1000).toISOString(), until: new Date(date * 1000).toISOString() },
@@ -263,7 +267,8 @@ export async function measureOutcome(
       packages: { before: earlier.packages.length, after: later.packages.length },
       medianDistance: { before: medianDistance(earlier, earlierReuse), after: medianDistance(later, laterReuse) },
     },
-    agentEffort: effort(),
+    agentEffort,
   };
+  return { outcome, transcriptStamp };
 }
 

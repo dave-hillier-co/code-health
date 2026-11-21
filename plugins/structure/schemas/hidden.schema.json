@@ -40,6 +40,10 @@
         "transcripts": {
           "type": "boolean",
           "description": "Session transcripts were read (--projects-dir), so incidental pairs carry agent reads."
+        },
+        "transcriptStamp": {
+          "type": ["string", "null"],
+          "description": "A stamp of the tasks read from the session transcripts, so two runs over different session folders are told apart. Null when none were read."
         }
       },
       "required": [
@@ -49,7 +53,8 @@
         "minSupport",
         "minRevisions",
         "significanceLevel",
-        "transcripts"
+        "transcripts",
+        "transcriptStamp"
       ],
       "additionalProperties": false
     },

@@ -88,7 +88,15 @@ describe("complexity outcome", () => {
       writeFileSync(join(projects, encodeProjectDir(root), "before.jsonl"), before.toJsonl());
       writeFileSync(join(projects, encodeProjectDir(root), "after.jsonl"), after.toJsonl());
 
-      const { result } = await outcome("--projects-dir", projects);
+      const { result, stdout } = await outcome("--projects-dir", projects);
+      const inputs = JSON.parse(stdout).inputs;
+      expect(inputs.transcriptStamp).toMatch(/^[0-9a-f]{16}$/);
+      const none = mkdtempSync(join(tmpdir(), "no-sessions-"));
+      try {
+        expect(JSON.parse((await outcome("--projects-dir", none)).stdout).inputs.transcriptStamp).not.toBe(inputs.transcriptStamp);
+      } finally {
+        rmSync(none, { recursive: true, force: true });
+      }
       if (result.agentEffort.status !== "measured") throw new Error(`agent effort was not measured: ${result.agentEffort.reason}`);
       expect(result.agentEffort.actedOn.before.tasks).toBe(1);
       expect(result.agentEffort.actedOn.before.filesRead).toEqual({ mean: 3, median: 3 });

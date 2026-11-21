@@ -196,6 +196,7 @@
         "noisePercent": { "type": "integer", "minimum": 0, "maximum": 100 },
         "minSupport": { "type": "integer", "minimum": 1 },
         "confidence": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "transcriptStamp": { "type": "string", "description": "A stamp of the sessions read from the session transcripts and the hook's state for them, so two runs over different session folders are told apart." },
         "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
       },
       "required": ["subcommand", "minSamples", "noisePercent"],
@@ -212,7 +213,7 @@
     },
     {
       "properties": {
-        "inputs": { "type": "object", "properties": { "subcommand": { "const": "completeness" }, "since": true, "until": true, "minSupport": true, "confidence": true }, "required": ["subcommand", "since", "until", "minSupport", "confidence"] },
+        "inputs": { "type": "object", "properties": { "subcommand": { "const": "completeness" }, "since": true, "until": true, "minSupport": true, "confidence": true, "transcriptStamp": true }, "required": ["subcommand", "since", "until", "minSupport", "confidence", "transcriptStamp"] },
         "results": { "$ref": "#/$defs/completeness" }
       }
     }

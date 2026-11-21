@@ -7,6 +7,7 @@ import type { LogicalChange } from "@code-health/history/noise";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { measureRepo, summariseTasks, type EffortSummary } from "@code-health/transcripts/measure-repo";
+import { stampOf } from "@code-health/transcripts/stamp";
 import { parseWindow } from "@code-health/transcripts/time-window";
 import { weightsFromChanges } from "./change-weights.ts";
 import type { ComplexitySettings } from "./config.ts";
@@ -197,7 +198,7 @@ export async function measureOutcome(
   settings: ComplexitySettings,
   exclude: readonly string[],
   options: { at: string; from: string | undefined; projectsDir: string | undefined },
-): Promise<Outcome> {
+): Promise<{ outcome: Outcome; transcriptStamp: string | null }> {
   const at = await resolveRevision(root, options.at);
   const first = options.from === undefined ? at : await resolveRevision(root, options.from);
   let beforeSha: string;
@@ -279,6 +280,7 @@ export async function measureOutcome(
   };
   const changesDelta = (own: Group<ChangeFigures>) => own.after.changes - own.before.changes;
 
+  let transcriptStamp: string | null = null;
   const effort = async (): Promise<Outcome["agentEffort"]> => {
     const { projectsDir } = options;
     if (projectsDir === undefined || !existsSync(projectsDir)) {
@@ -291,6 +293,7 @@ export async function measureOutcome(
     // began, and the after window takes only sessions that started after its last commit.
     const beforeTasks = measure(monthsBefore(date, settings.windowMonths), startedAt).filter((task) => Date.parse(task.startedAt) < startedAt * 1000);
     const afterTasks = measure(date, anchor + 86_400).filter((task) => Date.parse(task.startedAt) > date * 1000);
+    transcriptStamp = stampOf([...beforeTasks, ...afterTasks]);
     const own = { before: touching(beforeTasks, actedEarlier), after: touching(afterTasks, actedLater) };
     if (own.before.length === 0 && own.after.length === 0) return { status: "not-measured", reason: "no session in the windows edited the acted-on files" };
     return {
@@ -300,7 +303,8 @@ export async function measureOutcome(
     };
   };
 
-  return {
+  const agentEffort = await effort();
+  const outcome: Outcome = {
     actedOn: { at, before: beforeSha, files: acted },
     comparison: {
       files: control,
@@ -319,6 +323,7 @@ export async function measureOutcome(
       changes: changesDelta(changeCost.actedOn) - changesDelta(changeCost.comparison),
       meanScore: gap(delta(rank.actedOn.before.meanScore, rank.actedOn.after.meanScore), delta(rank.comparison.before.meanScore, rank.comparison.after.meanScore)),
     },
-    agentEffort: await effort(),
+    agentEffort,
   };
+  return { outcome, transcriptStamp };
 }

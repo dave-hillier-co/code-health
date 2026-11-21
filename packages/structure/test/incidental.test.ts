@@ -95,8 +95,19 @@ describe("incidental coupling", () => {
   test("ranks high when tasks open one side only to follow the dependency, from transcripts, and names them in inputs", async () => {
     const without = await runStructure(repo.path, ["coupling", "--json", "--quadrant", "incidental"]);
     expect(JSON.parse(without.stdout).inputs.transcripts).toBe(false);
+    expect(JSON.parse(without.stdout).inputs.transcriptStamp).toBeNull();
     const { byId, stdout, rows } = await incidental("--projects-dir", projects);
     expect(JSON.parse(stdout).inputs.transcripts).toBe(true);
+    // Different session folders must not give identical inputs.
+    const other = mkdtempSync(join(tmpdir(), "no-sessions-"));
+    try {
+      const empty = await runStructure(repo.path, ["coupling", "--json", "--quadrant", "incidental", "--projects-dir", other]);
+      const stamp = JSON.parse(stdout).inputs.transcriptStamp;
+      expect(stamp).toMatch(/^[0-9a-f]{16}$/);
+      expect(JSON.parse(empty.stdout).inputs.transcriptStamp).not.toBe(stamp);
+    } finally {
+      rmSync(other, { recursive: true, force: true });
+    }
     expect(byId("src/burden->src/burdenlib").incidental).toEqual({ rank: "high", reasons: ["agent-reads"], agentReads: 3 });
     expect(byId("src/plain->src/plainlib").incidental).toEqual({ rank: "low", reasons: [], agentReads: 0 });
     expect(rows.map((row) => row.incidental?.rank)).toEqual(["high", "high", "high", "high", "low"]);

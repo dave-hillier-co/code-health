@@ -50,7 +50,7 @@ interface Document {
       | { status: "measured"; before: { tasks: number; filesRead: { mean: number } | null }; after: { tasks: number; filesRead: { mean: number } | null } }
       | { status: "not-measured"; reason: string };
   }[];
-  inputs: { transcripts: boolean };
+  inputs: { transcripts: boolean; transcriptStamp: string | null };
 }
 
 async function outcome(...args: string[]) {
@@ -69,12 +69,21 @@ describe("structure outcome, leading indicators and agent effort", () => {
   test("agent effort is not measured without transcripts", async () => {
     const { document } = await outcome();
     expect(document.inputs.transcripts).toBe(false);
+    expect(document.inputs.transcriptStamp).toBeNull();
     expect(document.results[0]!.agentEffort).toEqual({ status: "not-measured", reason: "no --projects-dir was given" });
   });
 
   test("agent effort on tasks that touch either side, before and after, from transcripts", async () => {
     const { document, stdout } = await outcome("--projects-dir", projects);
     expect(document.inputs.transcripts).toBe(true);
+    expect(document.inputs.transcriptStamp).toMatch(/^[0-9a-f]{16}$/);
+    // Another session folder must not give the same inputs.
+    const other = mkdtempSync(join(tmpdir(), "no-sessions-"));
+    try {
+      expect((await outcome("--projects-dir", other)).document.inputs.transcriptStamp).not.toBe(document.inputs.transcriptStamp);
+    } finally {
+      rmSync(other, { recursive: true, force: true });
+    }
     const effort = document.results[0]!.agentEffort;
     expect(effort).toMatchObject({ status: "measured", before: { tasks: 2, filesRead: { mean: 3 } }, after: { tasks: 2, filesRead: { mean: 1 } } });
     expectGolden("leading", "outcome.leading", stdout);

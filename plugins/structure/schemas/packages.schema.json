@@ -405,13 +405,17 @@
               },
               "transcripts": {
                 "type": "boolean"
+              },
+              "transcriptStamp": {
+                "type": ["string", "null"]
               }
             },
             "required": [
               "subcommand",
               "at",
               "before",
-              "transcripts"
+              "transcripts",
+              "transcriptStamp"
             ],
             "additionalProperties": false
           },

@@ -75,6 +75,7 @@
     "minSupport": 3,
     "significanceLevel": 0.01,
     "target": "src/data->src/ui",
+    "transcriptStamp": "3ff2fab88902b310",
     "transcripts": true
   },
   "repo": {

@@ -97,7 +97,9 @@ describe("a merge of two packages", () => {
   });
 
   test("agent effort is the independent test: tasks touching the reshaped packages, against tasks that touched others", async () => {
-    const { result } = await outcome("--projects-dir", projects);
+    const { result, document } = await outcome("--projects-dir", projects);
+    expect(document.inputs.transcriptStamp).toMatch(/^[0-9a-f]{16}$/);
+    expect((await outcome()).document.inputs.transcriptStamp).toBeNull();
     expect(result.agentEffort.status).toBe("measured");
     expect(result.agentEffort.before.tasks).toBe(2);
     expect(result.agentEffort.after.tasks).toBe(1);

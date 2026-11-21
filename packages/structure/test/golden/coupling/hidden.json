@@ -73,6 +73,7 @@
     "minSupport": 3,
     "quadrant": "hidden",
     "significanceLevel": 0.01,
+    "transcriptStamp": null,
     "transcripts": false
   },
   "population": {
