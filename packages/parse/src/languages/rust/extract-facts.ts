@@ -74,7 +74,7 @@ function pathAttribute(node: Node): string | undefined {
 
 const upper = /^[A-Z]/;
 
-function pathSegments(node: Node | null, out: string[]): boolean {
+export function pathSegments(node: Node | null, out: string[]): boolean {
   if (node === null) return false;
   switch (node.type) {
     case "identifier":

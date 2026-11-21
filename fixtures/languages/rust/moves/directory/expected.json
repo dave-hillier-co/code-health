@@ -1,0 +1,16 @@
+{
+  "operations": [
+    { "from": "src/net/mod.rs", "to": "src/io/net/mod.rs" },
+    { "from": "src/net/client.rs", "to": "src/io/net/client.rs" }
+  ],
+  "rewrites": [
+    { "path": "src/io/mod.rs", "line": 1, "from": "", "to": "pub mod net" },
+    { "path": "src/lib.rs", "line": 2, "from": "pub mod net", "to": "" },
+    { "path": "src/lib.rs", "line": 4, "from": "net::client::Client", "to": "io::net::client::Client" }
+  ],
+  "texts": {
+    "src/io/mod.rs": "pub mod net;\n\npub fn flush() {}\n",
+    "src/lib.rs": "pub mod io;\n\nuse io::net::client::Client;\n\npub fn connect() -> Client {\n    Client::new()\n}\n"
+  },
+  "warnings": []
+}

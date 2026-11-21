@@ -1,0 +1,13 @@
+{
+  "operations": [{ "from": "src/util.rs", "to": "src/helpers.rs" }],
+  "rewrites": [
+    { "path": "src/lib.rs", "line": 2, "from": "mod util", "to": "mod helpers" },
+    { "path": "src/lib.rs", "line": 5, "from": "util::tidy", "to": "helpers::tidy" },
+    { "path": "src/other.rs", "line": 1, "from": "crate::util::tidy", "to": "crate::helpers::tidy" }
+  ],
+  "texts": {
+    "src/lib.rs": "mod other;\nmod helpers;\n\npub fn run() {\n    helpers::tidy();\n    other::go();\n}\n",
+    "src/other.rs": "use crate::helpers::tidy;\n\npub fn go() {\n    tidy();\n}\n"
+  },
+  "warnings": []
+}
