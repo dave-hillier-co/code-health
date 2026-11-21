@@ -1,0 +1,176 @@
+{
+  "command": "hubs",
+  "config": "2871909defc9c039",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 58,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 2.9,
+    "window": {
+      "months": 12,
+      "since": 1680339600,
+      "until": 1711962000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "by": "folder",
+    "contentionDays": 14,
+    "maxFeatureCoupling": 20,
+    "minAppendShare": 60,
+    "minAuthors": 3,
+    "minConfidence": 50,
+    "minFeatures": 3,
+    "minOutward": 50,
+    "minRevisions": 3,
+    "minSupport": 3,
+    "significanceLevel": 0.01
+  },
+  "population": {
+    "eligibleChanges": 58,
+    "modules": 6
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3504c005fe015393a17165e1e61cd23d3e1694d0"
+  },
+  "results": [
+    {
+      "featureCount": 4,
+      "features": [
+        {
+          "confidenceFeatureToHub": 100,
+          "confidenceHubToFeature": 30.8,
+          "featureChanges": 4,
+          "module": "src/features/invoices",
+          "pValue": 0.001685,
+          "referencedBy": "import",
+          "shared": 4
+        },
+        {
+          "confidenceFeatureToHub": 100,
+          "confidenceHubToFeature": 30.8,
+          "featureChanges": 4,
+          "module": "src/features/orders",
+          "pValue": 0.001685,
+          "referencedBy": "import",
+          "shared": 4
+        },
+        {
+          "confidenceFeatureToHub": 100,
+          "confidenceHubToFeature": 30.8,
+          "featureChanges": 4,
+          "module": "src/features/reports",
+          "pValue": 0.001685,
+          "referencedBy": "import",
+          "shared": 4
+        },
+        {
+          "confidenceFeatureToHub": 100,
+          "confidenceHubToFeature": 30.8,
+          "featureChanges": 4,
+          "module": "src/features/users",
+          "pValue": 0.001685,
+          "referencedBy": "import",
+          "shared": 4
+        }
+      ],
+      "file": "src/routes.ts",
+      "id": "hub:src/routes.ts",
+      "level": "folder",
+      "module": "src",
+      "revisions": 13,
+      "signals": {
+        "appendShapedEdits": {
+          "additions": 22,
+          "appendShaped": 22,
+          "collection": {
+            "line": 15,
+            "text": "export const routes = ["
+          },
+          "hunks": 22,
+          "removals": 0
+        },
+        "contention": {
+          "maxAuthors": 3,
+          "windowDays": 14
+        },
+        "outwardDependencies": {
+          "of": 4,
+          "referenced": 4
+        },
+        "starCoChange": {
+          "featurePairs": {
+            "classified": 6,
+            "high": 0
+          },
+          "features": 4
+        }
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 1
+  },
+  "window": {
+    "since": "2023-04-01T09:00:00.000Z",
+    "until": "2024-04-01T09:00:00.000Z"
+  }
+}

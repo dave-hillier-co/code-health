@@ -39,6 +39,20 @@ export const structureConfig: PluginConfigSpec = {
     minSupport: 3,
     /** The level of the one-sided exact test for high co-change, between 0 and 1 exclusive. */
     significanceLevel: 0.01,
+    /** A registration hub needs at least this many distinct features co-changing with it. */
+    hubMinFeatures: 3,
+    /** Percent of a feature's changes that also touch the hub, for the feature to feed it. */
+    hubMinConfidence: 50,
+    /** Percent of the features' pairs that may co-change highly with each other: they should rarely change together. */
+    hubMaxFeatureCoupling: 20,
+    /** Percent of the features the hub must import or name in a path string. */
+    hubMinOutward: 50,
+    /** Percent of the hub's diff hunks that must add or remove entries of one collection. */
+    hubMinAppendShare: 60,
+    /** The window, in days, in which the distinct authors editing the hub are counted. */
+    hubContentionDays: 14,
+    /** Distinct authors within that window for the hub to show contention. */
+    hubMinAuthors: 3,
     /**
      * Ordered layers, top first: `{ "name": "ui", "paths": ["src/ui/**"], "allow": ["domain"] }`.
      * A file belongs to the first layer whose paths match it, and files in no layer are unconstrained.
@@ -74,6 +88,17 @@ export interface StructureSettings {
   minStaticCoupling: number;
   minSupport: number;
   significanceLevel: number;
+  hubMinFeatures: number;
+  /** Percent. */
+  hubMinConfidence: number;
+  /** Percent. */
+  hubMaxFeatureCoupling: number;
+  /** Percent. */
+  hubMinOutward: number;
+  /** Percent. */
+  hubMinAppendShare: number;
+  hubContentionDays: number;
+  hubMinAuthors: number;
   layers: LayerRule[];
   mainBranch: string;
   /** Explicit base revision for `check`, or null for the merge base with mainBranch. */
@@ -113,6 +138,11 @@ export function readSettings(config: LoadedConfig): StructureSettings {
   const exactLimit = positive("exactLimit");
   if (exactLimit > 30) throw configError(`code-health.json: ${at("exactLimit")} is at most 30, the largest component the exact search supports`);
 
+  const percent = (key: string): number => {
+    const value = positive(key);
+    if (value > 100) throw configError(`code-health.json: ${at(key)} is a percentage, at most 100`);
+    return value;
+  };
   const significanceLevel = section.significanceLevel;
   if (typeof significanceLevel !== "number" || !(significanceLevel > 0 && significanceLevel < 1)) {
     throw configError(`code-health.json: ${at("significanceLevel")} must be a number between 0 and 1, exclusive`);
@@ -139,6 +169,13 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     minStaticCoupling: positive("minStaticCoupling"),
     minSupport: positive("minSupport"),
     significanceLevel,
+    hubMinFeatures: positive("hubMinFeatures"),
+    hubMinConfidence: percent("hubMinConfidence"),
+    hubMaxFeatureCoupling: percent("hubMaxFeatureCoupling"),
+    hubMinOutward: percent("hubMinOutward"),
+    hubMinAppendShare: percent("hubMinAppendShare"),
+    hubContentionDays: positive("hubContentionDays"),
+    hubMinAuthors: positive("hubMinAuthors"),
     layers: readLayerRules(section.layers, at("layers")),
     mainBranch,
     base: base as string | null,

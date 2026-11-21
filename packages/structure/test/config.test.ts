@@ -38,3 +38,43 @@ test("an exact limit above what the subset search supports is a config error", (
 test("unknown keys are rejected", () => {
   expect(() => settingsFor({ structure: { exactLimt: 8 } })).toThrow();
 });
+
+test("coupling, hub and check settings have defaults", () => {
+  expect(settingsFor({})).toMatchObject({
+    minStaticCoupling: 3,
+    minSupport: 3,
+    significanceLevel: 0.01,
+    hubMinFeatures: 3,
+    hubMinConfidence: 50,
+    hubMaxFeatureCoupling: 20,
+    hubMinOutward: 50,
+    hubMinAppendShare: 60,
+    hubContentionDays: 14,
+    hubMinAuthors: 3,
+    layers: [],
+    mainBranch: "main",
+    base: null,
+  });
+});
+
+test("the significance level is a probability", () => {
+  expect(() => settingsFor({ structure: { significanceLevel: 1 } })).toThrow(/significanceLevel/);
+  expect(() => settingsFor({ structure: { significanceLevel: 0 } })).toThrow(/significanceLevel/);
+  expect(settingsFor({ structure: { significanceLevel: 0.05 } })).toMatchObject({ significanceLevel: 0.05 });
+});
+
+test("hub shares are percentages", () => {
+  expect(() => settingsFor({ structure: { hubMinAppendShare: 101 } })).toThrow(/percentage/);
+});
+
+test("layers are validated and read in order", () => {
+  const layers = [
+    { name: "ui", paths: ["src/ui/**"] },
+    { name: "domain", paths: ["src/domain/**"], allow: ["ui"] },
+  ];
+  expect(settingsFor({ structure: { layers } }).layers).toEqual([
+    { name: "ui", paths: ["src/ui/**"], allow: null },
+    { name: "domain", paths: ["src/domain/**"], allow: ["ui"] },
+  ]);
+  expect(() => settingsFor({ structure: { layers: [{ name: "ui" }] } })).toThrow(/paths/);
+});

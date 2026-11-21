@@ -95,10 +95,29 @@ export function lineSimilarity(a: string, b: string): number {
  * hunk needs context to be placed in a block, so a diff made without it is never an append.
  */
 export function appendShape(hunk: Hunk, options: AppendShapeOptions = {}): "addition" | "removal" | null {
+  // Changes a few lines apart share one hunk, so each run of changed lines is judged on its own,
+  // beside the context around it, and the hunk is an append only if every run is.
+  const shapes = new Set<"addition" | "removal" | null>();
+  let start = 0;
+  while (start < hunk.lines.length) {
+    if (hunk.lines[start]!.kind === " ") {
+      start++;
+      continue;
+    }
+    let end = start;
+    while (end + 1 < hunk.lines.length && hunk.lines[end + 1]!.kind !== " ") end++;
+    shapes.add(runShape(hunk, start, end, options));
+    start = end + 1;
+  }
+  const [only] = shapes;
+  return shapes.size === 1 ? (only ?? null) : null;
+}
+
+function runShape(hunk: Hunk, first: number, last: number, options: AppendShapeOptions): "addition" | "removal" | null {
   const maxLines = options.maxLines ?? DEFAULT_MAX_APPEND_LINES;
   const minSimilarity = options.minSimilarity ?? DEFAULT_MIN_LINE_SIMILARITY;
 
-  const changed = hunk.lines.filter((line) => line.kind !== " ");
+  const changed = hunk.lines.slice(first, last + 1);
   const kinds = new Set(changed.map((line) => line.kind));
   if (kinds.size !== 1) return null;
   const entries = changed.filter((line) => !isBlank(line.text));
@@ -106,10 +125,11 @@ export function appendShape(hunk: Hunk, options: AppendShapeOptions = {}): "addi
   const indentation = indentOf(entries[0]!.text);
   if (entries.some((line) => indentOf(line.text) !== indentation)) return null;
 
-  const first = hunk.lines.findIndex((line) => line.kind !== " ");
-  const last = hunk.lines.length - 1 - [...hunk.lines].reverse().findIndex((line) => line.kind !== " ");
-  const before = hunk.lines.slice(0, first).reverse().find((line) => !isBlank(line.text));
-  const after = hunk.lines.slice(last + 1).find((line) => !isBlank(line.text));
+  // the nearest line that is not blank counts, and only if it is context: another run is not a neighbour
+  const nearest = hunk.lines.slice(0, first).reverse().find((line) => !isBlank(line.text));
+  const before = nearest?.kind === " " ? nearest : undefined;
+  const next = hunk.lines.slice(last + 1).find((line) => !isBlank(line.text));
+  const after = next?.kind === " " ? next : undefined;
   if (before === undefined && after === undefined) return null;
 
   const siblings: string[] = [];

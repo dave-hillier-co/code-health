@@ -1,0 +1,323 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hubs.schema.json",
+  "title": "structure hubs --json",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/analysisEnvelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "hubs"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "by": {
+          "enum": [
+            "folder",
+            "component"
+          ]
+        },
+        "minSupport": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "minRevisions": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "significanceLevel": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "minFeatures": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minConfidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "maxFeatureCoupling": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "minOutward": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "minAppendShare": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "contentionDays": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minAuthors": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "by",
+        "minSupport",
+        "minRevisions",
+        "significanceLevel",
+        "minFeatures",
+        "minConfidence",
+        "maxFeatureCoupling",
+        "minOutward",
+        "minAppendShare",
+        "contentionDays",
+        "minAuthors"
+      ],
+      "additionalProperties": false
+    },
+    "population": {
+      "type": "object",
+      "properties": {
+        "modules": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "eligibleChanges": {
+          "$ref": "common.schema.json#/$defs/count"
+        }
+      },
+      "required": [
+        "modules",
+        "eligibleChanges"
+      ],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^hub:.+"
+          },
+          "file": {
+            "type": "string"
+          },
+          "module": {
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "folder",
+              "component"
+            ]
+          },
+          "featureCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revisions": {
+            "$ref": "common.schema.json#/$defs/count"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "module": {
+                  "type": "string"
+                },
+                "shared": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "featureChanges": {
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "confidenceFeatureToHub": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "confidenceHubToFeature": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "pValue": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Rounded to six places, so a very small value reads 0."
+                },
+                "referencedBy": {
+                  "enum": [
+                    "import",
+                    "path-string",
+                    null
+                  ],
+                  "description": "How the hub names the feature."
+                }
+              },
+              "required": [
+                "module",
+                "shared",
+                "featureChanges",
+                "confidenceFeatureToHub",
+                "confidenceHubToFeature",
+                "pValue",
+                "referencedBy"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "signals": {
+            "type": "object",
+            "description": "The four signals, each with the figures that made it fire. A hub is reported only when all four fire.",
+            "properties": {
+              "starCoChange": {
+                "type": "object",
+                "properties": {
+                  "features": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "featurePairs": {
+                    "type": "object",
+                    "properties": {
+                      "classified": {
+                        "$ref": "common.schema.json#/$defs/count"
+                      },
+                      "high": {
+                        "$ref": "common.schema.json#/$defs/count"
+                      }
+                    },
+                    "required": [
+                      "classified",
+                      "high"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "features",
+                  "featurePairs"
+                ],
+                "additionalProperties": false
+              },
+              "outwardDependencies": {
+                "type": "object",
+                "properties": {
+                  "referenced": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "of": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "referenced",
+                  "of"
+                ],
+                "additionalProperties": false
+              },
+              "appendShapedEdits": {
+                "type": "object",
+                "properties": {
+                  "hunks": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "appendShaped": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "additions": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "removals": {
+                    "$ref": "common.schema.json#/$defs/count"
+                  },
+                  "collection": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "line": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "line",
+                          "text"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "The line, at the analysed commit, that opens the collection literal being appended to."
+                  }
+                },
+                "required": [
+                  "hunks",
+                  "appendShaped",
+                  "additions",
+                  "removals",
+                  "collection"
+                ],
+                "additionalProperties": false
+              },
+              "contention": {
+                "type": "object",
+                "properties": {
+                  "maxAuthors": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "windowDays": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "maxAuthors",
+                  "windowDays"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "starCoChange",
+              "outwardDependencies",
+              "appendShapedEdits",
+              "contention"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "file",
+          "module",
+          "level",
+          "featureCount",
+          "revisions",
+          "features",
+          "signals"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

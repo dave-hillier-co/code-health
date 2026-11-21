@@ -4,6 +4,7 @@ import * as coupling from "./commands/coupling.ts";
 import * as cycles from "./commands/cycles.ts";
 import * as evidence from "./commands/evidence.ts";
 import * as hidden from "./commands/hidden.ts";
+import * as hubs from "./commands/hubs.ts";
 import * as layers from "./commands/layers.ts";
 import * as outcome from "./commands/outcome.ts";
 import * as stability from "./commands/stability.ts";
@@ -28,6 +29,7 @@ export const commandModules: CommandModule[] = [
   cycles,
   evidence,
   hidden,
+  hubs,
   layers,
   outcome,
   stability,

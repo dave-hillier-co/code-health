@@ -104,6 +104,32 @@ describe("appendShape", () => {
     expect(appendShape(hunk(" function f() {", "+  return compute(a, b)", " }"))).toBeNull();
   });
 
+  test("two entries added a few lines apart share a hunk, and each is judged beside its own context", () => {
+    const merged = hunk(
+      ' import { a } from "./a";',
+      '+import { b } from "./b";',
+      " ",
+      " export const routes = [",
+      '   { path: "/a", component: a },',
+      '+  { path: "/b", component: b },',
+      " ];",
+    );
+    expect(appendShape(merged)).toBe("addition");
+  });
+
+  test("a hunk is not an append when one of its changes is not", () => {
+    const merged = hunk(
+      ' import { a } from "./a";',
+      '+import { b } from "./b";',
+      " ",
+      " export const routes = [",
+      '-  { path: "/a", component: a },',
+      '+  { path: "/a", component: b },',
+      " ];",
+    );
+    expect(appendShape(merged)).toBeNull();
+  });
+
   test("a hunk with only added lines and no context cannot be placed in a block", () => {
     expect(appendShape(hunk('+  { path: "/a", component: A },'))).toBeNull();
   });
