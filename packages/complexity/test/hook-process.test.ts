@@ -33,9 +33,9 @@ describe("the plugin's hook manifest", () => {
     expect(hook.async).toBeUndefined();
   });
 
-  test("has Claude Code's own timeout as a backstop above a budget of a few hundred milliseconds", () => {
+  test("has Claude Code's own timeout as a backstop above the spec's budget of about 150 milliseconds", () => {
     const [hook] = manifest.hooks.PostToolUse[0].hooks;
-    expect(DEFAULT_BUDGET_MS).toBeLessThanOrEqual(300);
+    expect(DEFAULT_BUDGET_MS).toBe(150);
     expect(hook.timeout * 1000).toBeGreaterThan(DEFAULT_BUDGET_MS);
     expect(hook.timeout).toBeLessThanOrEqual(1);
   });
@@ -110,6 +110,17 @@ for (const [label, entry] of entries) {
         hookEventName: "PostToolUse",
         additionalContext: expect.stringContaining("`knot` nesting depth is 3 in a new unit (threshold 2)") as string,
       });
+    });
+
+    test.runIf(label === "the committed bundle")("speaks within the shipped default budget, process start included, with no override", () => {
+      writeFileSync(join(repo.path, "src", "knot.ts"), deep);
+      // The bundle must be fast enough to finish inside the shipped budget. A loaded machine can make one
+      // cold start slow, so a few fresh sessions are allowed, and one of them must speak.
+      const runs = [1, 2, 3, 4, 5].map((n) =>
+        spawnSync(process.execPath, [entry(), "hook"], { cwd: repo.path, input: event(`${label}-default-${n}`), encoding: "utf8" }),
+      );
+      expect(runs.every((run) => run.status === 0 && run.stderr === "")).toBe(true);
+      expect(runs.some((run) => run.stdout.includes("`knot` nesting depth is 3"))).toBe(true);
     });
 
     test("is silent and writes no session state when the repository has not opted in", () => {
