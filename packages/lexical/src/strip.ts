@@ -35,6 +35,7 @@ interface CompiledDelimited {
 interface CompiledWhole {
   rule: WholeLiteral;
   pattern: RegExp;
+  after: RegExp | undefined;
 }
 
 type CompiledRule = CompiledDelimited | CompiledWhole;
@@ -47,7 +48,7 @@ function compileRules(profile: LexerProfile): CompiledRule[] {
   const compiled = profile.strings.map((rule: StringRule): CompiledRule =>
     rule.kind === "delimited"
       ? { rule, open: new RegExp(rule.open, "y") }
-      : { rule, pattern: new RegExp(rule.pattern, "y") },
+      : { rule, pattern: new RegExp(rule.pattern, "y"), after: rule.after === undefined ? undefined : new RegExp(rule.after) },
   );
   compiledProfiles.set(profile, compiled);
   return compiled;
@@ -144,6 +145,7 @@ function maskLiterals(content: string, profile: LexerProfile): Uint8Array {
     }
     for (const compiled of rules) {
       if ("pattern" in compiled) {
+        if (compiled.after !== undefined && !compiled.after.test(content.slice(Math.max(0, i - 16), i))) continue;
         compiled.pattern.lastIndex = i;
         const match = compiled.pattern.exec(content);
         if (match !== null) {

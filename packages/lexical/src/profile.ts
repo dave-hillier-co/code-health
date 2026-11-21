@@ -34,6 +34,11 @@ export interface WholeLiteral {
   triggers: string;
   /** Regex source matching the entire literal, such as a character literal. */
   pattern: string;
+  /**
+   * Regex source tested against the text before the literal. The literal only starts when it
+   * matches, which tells a regex literal from a division sign.
+   */
+  after?: string;
 }
 
 export type StringRule = DelimitedString | WholeLiteral;
@@ -102,6 +107,14 @@ const annotationNoise = ["^\\[.*\\]$", "^@\\w[\\w.]*(?:\\(.*\\))?$", "^#.*$"];
 const cMethodHeader =
   "(?<![\\w.])(?<name>~?[\\w:.$<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:(?:const|noexcept|override|final|volatile|mutable|throws\\s+[\\w.,\\s]+|where\\s+[^{;]+|&&|&)\\s*)*(?:->\\s*[^{;]+)?(?::\\s*[^{;]*)?$";
 
+/** A regex literal. It can only start where an expression can, so a `/` after a name, number or closer is division. */
+const regexLiteral: WholeLiteral = {
+  kind: "whole",
+  triggers: "/",
+  pattern: "/(?![*/])(?:\\\\.|\\[(?:\\\\.|[^\\]\\\\\\n])*\\]|[^/\\\\\\[\\n])+/[a-z]*",
+  after: "(?:^|[(,=:\\[!&|?{};<>~^%*]|\\b(?:return|typeof|case|in|of|delete|void|throw|new|else|do|yield|await))\\s*$",
+};
+
 const typescript: LexerProfile = {
   name: "typescript",
   blocks: "braces",
@@ -119,6 +132,7 @@ const typescript: LexerProfile = {
       multiline: true,
       interpolation: { open: "${", close: "}" },
     },
+    regexLiteral,
   ],
   branchKeywords: cBranchKeywords,
   shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],

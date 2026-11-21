@@ -101,3 +101,26 @@ test("CRLF line endings and a BOM are normalised", () => {
   const lines = stripSource("\uFEFFa\r\n  b\r\n", profiles.java);
   expect(lines.map((l) => l.text)).toEqual(["a", "  b"]);
 });
+
+test("regex literals are masked so quotes and comment markers inside them start nothing", () => {
+  const backtick = stripSource("const r = /`/g;\nif (a) { b(); }\n", profiles.typescript);
+  expect(backtick.map((line) => line.kind)).toEqual(["code", "code"]);
+  expect(squash(backtick[1]!.code)).toBe("if (a) { b(); }");
+
+  const star = code("const r = /[/*]/;\n// real\nx();\n", "typescript");
+  expect(kinds("const r = /[/*]/;\n// real\nx();\n", "typescript")).toEqual(["code", "comment", "code"]);
+  expect(squash(star[0]!)).toBe("const r = ;");
+
+  const slashes = code("const r = /https?:\\/\\//; const t = 1;", "typescript");
+  expect(squash(slashes[0]!)).toBe("const r = ; const t = 1;");
+});
+
+test("a slash after a name, number or closer is division, not a regex", () => {
+  expect(squash(code("const x = a / b / c; y = (a) / 2 / 3;", "typescript")[0]!)).toBe("const x = a / b / c; y = (a) / 2 / 3;");
+  expect(squash(code("const x = a / 2; // c", "typescript")[0]!)).toBe("const x = a / 2;");
+});
+
+test("regex literals after return and in call arguments are masked", () => {
+  expect(squash(code("return /'/.test(s) && f();", "typescript")[0]!)).toBe("return .test(s) && f();");
+  expect(squash(code("s.replace(/\"/g, '');", "typescript")[0]!)).toBe("s.replace( , );");
+});
