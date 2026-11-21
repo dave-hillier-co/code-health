@@ -85,7 +85,7 @@ export async function loadComplexity(
     const texts = await Promise.all(slice.map((path) => readBlobAt(context.repo.root, headSha, path)));
     slice.forEach((path, i) => {
       const text = texts[i];
-      values.set(path, text === undefined || text.includes("\0") ? null : indentationComplexity(text));
+      values.set(path, text === undefined || text.includes("\0") ? null : indentationComplexity(text, path));
     });
   }
   return { source: "indentation", values, input: null };

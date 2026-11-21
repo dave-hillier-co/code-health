@@ -173,3 +173,27 @@ test("a change is oversized above the maximum changeset size, not at it", async 
   expect(result.changes.map((c) => c.oversized)).toEqual([false, true]);
   expect(result.filtersApplied.oversizedChanges).toBe(1);
 });
+
+const suiteMessage = "Move the summary\n\nWhy.\n\nCode-Health: locality/move-to-neighbour";
+
+test("commits with a Code-Health trailer are flagged and kept by default", async () => {
+  const repo = build([commit("human", 1, [file("a")]), commit(suiteMessage, 2, [file("b")])]);
+  const result = await filtered(repo);
+  expect(result.changes.map((c) => c.suiteCommit)).toEqual([false, true]);
+  expect(result.filtersApplied.dropped.suiteCommits).toBe(0);
+});
+
+test("excludeSuiteCommits drops the suite's own commits and counts them", async () => {
+  const repo = build([commit("human", 1, [file("a")]), commit(suiteMessage, 2, [file("b")]), commit("again", 3, [file("c")])]);
+  const result = await filtered(repo, { excludeSuiteCommits: true });
+  expect(paths(result)).toEqual([["a"], ["c"]]);
+  expect(result.filtersApplied.dropped.suiteCommits).toBe(1);
+  expect(result.filtersApplied.excludeSuiteCommits).toBe(true);
+});
+
+test("a Code-Health line outside the trailer paragraph does not mark a commit", async () => {
+  const repo = build([commit("Note\n\nThe Code-Health: trailer marks these.\n\nSigned-off-by: A <a@b>", 1, [file("a")])]);
+  const result = await filtered(repo, { excludeSuiteCommits: true });
+  expect(paths(result)).toEqual([["a"]]);
+  expect(result.filtersApplied.dropped.suiteCommits).toBe(0);
+});

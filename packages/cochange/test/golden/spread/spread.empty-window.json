@@ -49,10 +49,12 @@
       "outsideWindow": 7,
       "pureRenames": 0,
       "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
       "vendored": 0
     },
     "excludeGlobs": [],
     "excludeImported": true,
+    "excludeSuiteCommits": false,
     "gitattributes": true,
     "lockfiles": true,
     "maxChangesetSize": 4,

@@ -9,7 +9,6 @@ import {
   bucketLabel,
   bucketStart,
   changeSpread,
-  hasCodeHealthTrailer,
   nextBucketStart,
   parseDate,
   percentile,
@@ -93,13 +92,10 @@ export const command = analysisCommand(name, {
   partial: (context) => bucketOption(context) !== "month",
   analyse({ context, history }) {
     const bucket = bucketOption(context);
-    const messages = new Map(history.view.commits.map((c) => [c.sha, c.message]));
-
     const measuredChanges: LogicalChange[] = [];
     let excluded: LogicalChange[] = [];
     for (const change of history.filtered.changes) {
-      const ownCommit = change.shas.some((sha) => hasCodeHealthTrailer(messages.get(sha) ?? ""));
-      (ownCommit ? excluded : measuredChanges).push(change);
+      (change.suiteCommit ? excluded : measuredChanges).push(change);
     }
 
     const byBucket = new Map<number, { changes: LogicalChange[]; excluded: number }>();

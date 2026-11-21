@@ -1,6 +1,7 @@
 import { compileGlobs } from "./glob.ts";
 import { detectImportedHistory, type ImportDetectionOptions, type ImportedHistory } from "./imported.ts";
 import type { HistoryChange, HistoryCommit, HistoryView } from "./read.ts";
+import { hasCodeHealthTrailer } from "./trailers.ts";
 import { listTree, readBlameIgnoreRevs, readPathAttributes } from "./tree.ts";
 
 export const DEFAULT_LOCKFILES: readonly string[] = [
@@ -61,6 +62,12 @@ export interface NoiseOptions {
   maxChangesetSize?: number;
   /** Drop the root commit of an imported history. Default true. */
   excludeImported?: boolean;
+  /**
+   * Drop commits that carry a `Code-Health:` trailer, the suite's own refactoring
+   * commits, which are wide by construction. Every window that measures outcomes
+   * should set this. Default false: such commits are kept, flagged `suiteCommit`.
+   */
+  excludeSuiteCommits?: boolean;
   importDetection?: ImportDetectionOptions;
   /** Window, in unix seconds of committer date. `since` is inclusive, `until` exclusive. */
   since?: number;
@@ -84,6 +91,8 @@ export interface LogicalChange {
   files: HistoryChange[];
   /** More files than the maximum changeset size: counts for frequency, not for coupling or spread. */
   oversized: boolean;
+  /** Some commit carries a `Code-Health:` trailer: the change was made through the suite's skills. */
+  suiteCommit: boolean;
 }
 
 export interface FiltersApplied {
@@ -94,6 +103,7 @@ export interface FiltersApplied {
   botPatterns: string[];
   maxChangesetSize: number;
   excludeImported: boolean;
+  excludeSuiteCommits: boolean;
   /** What was dropped, so a reader can see how much each filter removed. */
   dropped: {
     outsideWindow: number;
@@ -101,6 +111,7 @@ export interface FiltersApplied {
     importedCommits: number;
     blameIgnoredCommits: number;
     botCommits: number;
+    suiteCommits: number;
     pureRenames: number;
     excludedByGlob: number;
     lockfiles: number;
@@ -136,6 +147,7 @@ export async function filterHistory(
   const blameFile = options.blameIgnoreRevs === undefined ? ".git-blame-ignore-revs" : options.blameIgnoreRevs;
   const botPatterns = options.botPatterns ?? [];
   const excludeImported = options.excludeImported ?? true;
+  const excludeSuiteCommits = options.excludeSuiteCommits ?? false;
   const excluded = compileGlobs(options.exclude ?? []);
   const bots = botPatterns.map(compileBotPattern);
 
@@ -158,6 +170,7 @@ export async function filterHistory(
     importedCommits: 0,
     blameIgnoredCommits: 0,
     botCommits: 0,
+    suiteCommits: 0,
     pureRenames: 0,
     excludedByGlob: 0,
     lockfiles: 0,
@@ -175,6 +188,7 @@ export async function filterHistory(
     if (ignoredRevs.some((rev) => commit.sha.startsWith(rev))) return countOut("blameIgnoredCommits");
     const author = `${commit.mappedName} <${commit.mappedEmail}>`;
     if (bots.some((re) => re.test(author))) return countOut("botCommits");
+    if (excludeSuiteCommits && hasCodeHealthTrailer(commit.message)) return countOut("suiteCommits");
     return false;
   };
   function countOut(key: keyof typeof dropped): true {
@@ -211,6 +225,7 @@ export async function filterHistory(
       authors: [commit.mappedEmail],
       files,
       oversized: files.length > maxChangesetSize,
+      suiteCommit: hasCodeHealthTrailer(commit.message),
     });
   }
 
@@ -225,6 +240,7 @@ export async function filterHistory(
       botPatterns: [...botPatterns],
       maxChangesetSize,
       excludeImported,
+      excludeSuiteCommits,
       dropped,
       oversizedChanges: changes.filter((c) => c.oversized).length,
     },

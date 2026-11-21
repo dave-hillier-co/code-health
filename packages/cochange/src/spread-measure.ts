@@ -55,20 +55,6 @@ export function bucketLabel(start: number, bucket: Bucket): string {
   return bucket === "month" ? iso.slice(0, 7) : iso.slice(0, 10);
 }
 
-/**
- * True when the message carries a `Code-Health:` trailer: a `Code-Health:` line
- * in the last paragraph, which must follow the subject paragraph. The key is
- * matched case-insensitively, as git's own trailer parsing does.
- */
-export function hasCodeHealthTrailer(message: string): boolean {
-  const paragraphs = message
-    .replace(/\r\n/g, "\n")
-    .trim()
-    .split(/\n[ \t]*\n/);
-  if (paragraphs.length < 2) return false;
-  return paragraphs[paragraphs.length - 1]!.split("\n").some((line) => /^code-health[ \t]*:/i.test(line));
-}
-
 /** Strict date parsing for `--since` and `--until`: `YYYY-MM-DD` (UTC midnight) or an ISO 8601 date-time with a zone. Unix seconds, or null. */
 export function parseDate(text: string): number | null {
   const day = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text);

@@ -60,6 +60,7 @@
         "botPatterns": { "type": "array", "items": { "type": "string" } },
         "maxChangesetSize": { "type": "integer", "minimum": 1 },
         "excludeImported": { "type": "boolean" },
+        "excludeSuiteCommits": { "type": "boolean" },
         "dropped": {
           "type": "object",
           "properties": {
@@ -68,6 +69,7 @@
             "importedCommits": { "$ref": "#/$defs/count" },
             "blameIgnoredCommits": { "$ref": "#/$defs/count" },
             "botCommits": { "$ref": "#/$defs/count" },
+            "suiteCommits": { "$ref": "#/$defs/count" },
             "pureRenames": { "$ref": "#/$defs/count" },
             "excludedByGlob": { "$ref": "#/$defs/count" },
             "lockfiles": { "$ref": "#/$defs/count" },
@@ -81,6 +83,7 @@
             "importedCommits",
             "blameIgnoredCommits",
             "botCommits",
+            "suiteCommits",
             "pureRenames",
             "excludedByGlob",
             "lockfiles",
@@ -100,6 +103,7 @@
         "botPatterns",
         "maxChangesetSize",
         "excludeImported",
+        "excludeSuiteCommits",
         "dropped",
         "oversizedChanges"
       ],

@@ -723,6 +723,13 @@ function detectImportedHistory(view, treeFiles, options = {}) {
   return found;
 }
 
+// packages/history/src/trailers.ts
+function hasCodeHealthTrailer(message) {
+  const paragraphs = message.replace(/\r\n/g, "\n").trim().split(/\n[ \t]*\n/);
+  if (paragraphs.length < 2) return false;
+  return paragraphs[paragraphs.length - 1].split("\n").some((line) => /^code-health[ \t]*:/i.test(line));
+}
+
 // packages/history/src/tree.ts
 async function listTree(repoPath, ref) {
   const out = await runGit(repoPath, ["ls-tree", "-r", "--name-only", "-z", "--full-tree", ref]);
@@ -818,6 +825,7 @@ async function filterHistory(repoPath, view, options = {}) {
   const blameFile = options.blameIgnoreRevs === void 0 ? ".git-blame-ignore-revs" : options.blameIgnoreRevs;
   const botPatterns = options.botPatterns ?? [];
   const excludeImported = options.excludeImported ?? true;
+  const excludeSuiteCommits = options.excludeSuiteCommits ?? false;
   const excluded = compileGlobs(options.exclude ?? []);
   const bots = botPatterns.map(compileBotPattern);
   const treeFiles = await listTree(repoPath, view.headSha);
@@ -836,6 +844,7 @@ async function filterHistory(repoPath, view, options = {}) {
     importedCommits: 0,
     blameIgnoredCommits: 0,
     botCommits: 0,
+    suiteCommits: 0,
     pureRenames: 0,
     excludedByGlob: 0,
     lockfiles: 0,
@@ -852,6 +861,7 @@ async function filterHistory(repoPath, view, options = {}) {
     if (ignoredRevs.some((rev) => commit.sha.startsWith(rev))) return countOut("blameIgnoredCommits");
     const author = `${commit.mappedName} <${commit.mappedEmail}>`;
     if (bots.some((re) => re.test(author))) return countOut("botCommits");
+    if (excludeSuiteCommits && hasCodeHealthTrailer(commit.message)) return countOut("suiteCommits");
     return false;
   };
   function countOut(key) {
@@ -886,7 +896,8 @@ async function filterHistory(repoPath, view, options = {}) {
       committerDate: commit.committerDate,
       authors: [commit.mappedEmail],
       files,
-      oversized: files.length > maxChangesetSize
+      oversized: files.length > maxChangesetSize,
+      suiteCommit: hasCodeHealthTrailer(commit.message)
     });
   }
   return {
@@ -900,6 +911,7 @@ async function filterHistory(repoPath, view, options = {}) {
       botPatterns: [...botPatterns],
       maxChangesetSize,
       excludeImported,
+      excludeSuiteCommits,
       dropped,
       oversizedChanges: changes.filter((c) => c.oversized).length
     }
@@ -2960,7 +2972,7 @@ async function loadComplexity(context, headSha, paths) {
     const texts = await Promise.all(slice.map((path) => readBlobAt(context.repo.root, headSha, path)));
     slice.forEach((path, i) => {
       const text = texts[i];
-      values.set(path, text === void 0 || text.includes("\0") ? null : indentationComplexity(text));
+      values.set(path, text === void 0 || text.includes("\0") ? null : indentationComplexity(text, path));
     });
   }
   return { source: "indentation", values, input: null };
@@ -3122,11 +3134,6 @@ function bucketLabel(start, bucket) {
   const iso = new Date(start * 1e3).toISOString();
   return bucket === "month" ? iso.slice(0, 7) : iso.slice(0, 10);
 }
-function hasCodeHealthTrailer(message) {
-  const paragraphs = message.replace(/\r\n/g, "\n").trim().split(/\n[ \t]*\n/);
-  if (paragraphs.length < 2) return false;
-  return paragraphs[paragraphs.length - 1].split("\n").some((line) => /^code-health[ \t]*:/i.test(line));
-}
 function parseDate(text) {
   const day = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text);
   if (!day) return null;
@@ -3187,12 +3194,10 @@ var command5 = analysisCommand(name5, {
   partial: (context) => bucketOption(context) !== "month",
   analyse({ context, history }) {
     const bucket = bucketOption(context);
-    const messages = new Map(history.view.commits.map((c) => [c.sha, c.message]));
     const measuredChanges = [];
     let excluded = [];
     for (const change of history.filtered.changes) {
-      const ownCommit = change.shas.some((sha) => hasCodeHealthTrailer(messages.get(sha) ?? ""));
-      (ownCommit ? excluded : measuredChanges).push(change);
+      (change.suiteCommit ? excluded : measuredChanges).push(change);
     }
     const byBucket = /* @__PURE__ */ new Map();
     const slot = (time) => {

@@ -3,7 +3,6 @@ import {
   bucketLabel,
   bucketStart,
   changeSpread,
-  hasCodeHealthTrailer,
   nextBucketStart,
   parseDate,
   percentile,
@@ -60,18 +59,6 @@ test("the next bucket crosses month and year ends", () => {
   expect(bucketLabel(nextBucketStart(utc("2024-12-30T00:00:00Z"), "week"), "week")).toBe("2025-01-06");
 });
 
-test("a Code-Health trailer is recognised in the trailer paragraph only", () => {
-  expect(hasCodeHealthTrailer("Move files\n\nWhy.\n\nCode-Health: locality/move")).toBe(true);
-  expect(hasCodeHealthTrailer("Move files\n\nCode-Health: locality/move\nCo-Authored-By: X <x@y>\n")).toBe(true);
-  expect(hasCodeHealthTrailer("Move files\n\ncode-health: locality/move")).toBe(true);
-  expect(hasCodeHealthTrailer("Move files\r\n\r\nCode-Health: locality/move\r\n")).toBe(true);
-  // Mentioned in the body, not a trailer.
-  expect(hasCodeHealthTrailer("Move files\n\nThe Code-Health: trailer marks these.\n\nSigned-off-by: A <a@b>")).toBe(false);
-  expect(hasCodeHealthTrailer("Move files\n\nCode-Health: locality/move\n\nTrailing prose")).toBe(false);
-  // A lone paragraph is the subject, never a trailer block.
-  expect(hasCodeHealthTrailer("Code-Health: locality/move")).toBe(false);
-  expect(hasCodeHealthTrailer("Plain change")).toBe(false);
-});
 
 test("dates are strict ISO 8601", () => {
   expect(parseDate("2024-03-01")).toBe(utc("2024-03-01T00:00:00Z"));
