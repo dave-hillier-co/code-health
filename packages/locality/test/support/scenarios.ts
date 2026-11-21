@@ -11,6 +11,37 @@ function longFunction(name: string, count: number): string {
 const featureCount = 8;
 
 /**
+ * Guards: a published package entry point, a function used as a value, and generated code that the suite
+ * config excludes. The only entry point is src/app/main.ts.
+ */
+export function guardedUnits(): GitFixture {
+  return GitFixture.build([
+    {
+      type: "commit",
+      message: "Add the app and its library",
+      date: "2024-01-01T09:00:00Z",
+      changes: [
+        add("code-health.json", JSON.stringify({ entryPoints: ["src/app/main.ts"], exclude: ["src/generated"] })),
+        add("package.json", JSON.stringify({ name: "lib", main: "src/shared/api.ts" })),
+        add(
+          "src/app/main.ts",
+          [
+            'import { api } from "../shared/api.ts";',
+            'import { helper } from "../shared/helper.ts";',
+            'import { generated } from "../generated/client.ts";',
+            "export const run = () => [api(), [1].map(helper), generated()];",
+            "",
+          ].join("\n"),
+        ),
+        add("src/shared/api.ts", "export function api(): number {\n  return 1;\n}\n"),
+        add("src/shared/helper.ts", "export function helper(value: number): number {\n  return value + 1;\n}\n"),
+        add("src/generated/client.ts", "export const generated = () => 1;\n"),
+      ],
+    },
+  ]);
+}
+
+/**
  * An app whose shared code lives far from the code that uses it: a two-consumer helper, a tiny and a large
  * one-consumer helper, a pass-through, a mixed helpers file, a barrel, a cycle, a heavily used formatter,
  * a dependency that blocks a move, and dead code. The only entry point is src/main.ts.

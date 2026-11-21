@@ -1,0 +1,147 @@
+{
+  "barrels": [],
+  "command": "analyse",
+  "config": "ab17101087059be7",
+  "filesWithSyntaxErrors": [],
+  "inputs": {
+    "entries": [
+      "src/app/main.ts"
+    ],
+    "entrySource": "config",
+    "paths": [],
+    "recommendation": null
+  },
+  "metrics": {
+    "maxDepth": 2,
+    "singleFileFolders": 1,
+    "totalWeightedDistance": 4
+  },
+  "repo": {
+    "dirty": false,
+    "head": "4514ba999da91b59ea5d748d3d50499fe2347be1"
+  },
+  "results": [
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/app/main.ts"
+        }
+      ],
+      "distance": 2,
+      "fanIn": 1,
+      "gain": 2,
+      "lastChanged": null,
+      "location": "src/shared",
+      "netDistance": {
+        "atTarget": 0,
+        "current": 2
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/api.ts",
+      "recommendation": "review",
+      "rule": "package-entry",
+      "score": 2,
+      "signals": [],
+      "size": {
+        "files": 1,
+        "lines": 3,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/app",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 2,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/api.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/api.ts",
+        "tests": []
+      },
+      "visibility": "package-entry"
+    },
+    {
+      "age": null,
+      "blockers": [],
+      "churn": null,
+      "coChange": null,
+      "directCalls": [],
+      "distance": 2,
+      "fanIn": 1,
+      "gain": 2,
+      "lastChanged": null,
+      "location": "src/shared",
+      "netDistance": {
+        "atTarget": 0,
+        "current": 2
+      },
+      "otherRefs": [
+        {
+          "count": 1,
+          "path": "src/app/main.ts"
+        }
+      ],
+      "ownDeps": [],
+      "path": "src/shared/helper.ts",
+      "recommendation": "review",
+      "rule": "other-references",
+      "score": 2,
+      "signals": [],
+      "size": {
+        "files": 1,
+        "lines": 3,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/app",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 2,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/helper.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/helper.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "byRecommendation": {
+      "review": 2
+    },
+    "files": 3,
+    "units": 2
+  },
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 2
+  },
+  "unreachable": [],
+  "unresolved": {
+    "not-found": 1
+  }
+}
