@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import Ajv2020Module from "ajv/dist/2020.js";
 import { afterAll, beforeAll, beforeEach, afterEach, expect, test, vi } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
+import { runtimeSpec, shippedGrammarSpecs } from "@code-health/parse/grammars";
 import { buildAll, staleBundles } from "../bundle.mjs";
 import { scaffoldPlugin, validatePluginName } from "../new-plugin.mjs";
 
@@ -109,12 +110,8 @@ test("a plugin that parses ships grammars beside its bundle, which loads them re
   scaffoldPlugin({ root, name: "sample-parser", description: "Parses a sample.", parses: true });
   await buildAll(root);
   const dist = join(root, "plugins", "sample-parser", "dist");
-  expect(readdirSync(join(dist, "grammars")).sort()).toEqual([
-    "tree-sitter-javascript.wasm",
-    "tree-sitter-tsx.wasm",
-    "tree-sitter-typescript.wasm",
-    "web-tree-sitter.wasm",
-  ]);
+  // The grammar of every supported adapter and the runtime, whichever languages are supported.
+  expect(readdirSync(join(dist, "grammars")).sort()).toEqual([...new Set([...shippedGrammarSpecs().map((spec) => spec.file), runtimeSpec.file])].sort());
 
   // Run a copy of dist from a directory that has no node_modules and is not the build tree: the grammars must come from beside the bundle.
   const installed = mkdtempSync(join(tmpdir(), "installed-plugin-"));
