@@ -1,0 +1,32 @@
+schema_version: "1.0"
+name: triggers-on-distant-helpers
+description: The skill loads for a question about whether helpers in a shared folder are worth keeping, runs the analyser, and answers from its evidence.
+tags: [trigger, behaviour]
+runs: 1
+context:
+  scaffold_script: ../scaffold.sh
+execution:
+  prompt: The shared/utils folder in this repo looks like a dumping ground. Are any of those helpers only used in one place, and should any of them move or be inlined?
+  model: claude-sonnet-5-5
+  max_turns: 15
+  timeout_seconds: 300
+  allowed_tools: [Skill, Bash, Read, Grep, Glob]
+graders:
+  - type: tool_used
+    name: loads-the-skill
+    tool: Skill
+    input_match: locality
+    min: 1
+  - type: tool_used
+    name: runs-the-analyser
+    tool: Bash
+    input_match: locality\.mjs analyse
+    min: 1
+  - type: regex
+    name: finds-the-single-consumer-helper
+    target: last_message
+    pattern: slug
+    flags: i
+  - type: llm
+    name: answers-from-evidence
+    criteria: The answer identifies slugify as used by one file only and recommends inlining or moving it next to its consumer, naming the rule or the consumer count. It does not recommend creating a new helper. It does not propose changing formatMoney, which two files use.
