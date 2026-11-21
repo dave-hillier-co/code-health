@@ -264,7 +264,7 @@ Entry points (including dynamic ones the parser cannot see), exclusions and hist
 
 These were open questions in the strawman. Each decision can be revisited with evidence.
 
-- **First language: TypeScript/JavaScript**, then C#, then C++ (see [suite.md](suite.md#languages)). TypeScript has ts-morph for deterministic moves, and the suite itself is written in it. C# and C++ need symbol-based dependency resolution, and their moves touch namespaces or build files.
+- **First language: TypeScript/JavaScript**, then C#, then C++, then Python, Go, Java, Kotlin and Rust, all now supported (see [suite.md](suite.md#languages)). TypeScript has ts-morph for deterministic moves, and the suite itself is written in it. C# and C++ need symbol-based dependency resolution, and their moves touch namespaces or build files.
 - **Tests do not decide targets.** Production consumers decide where code goes. Tests decide whether to inline (a unit with its own tests may be a deliberate seam), and owned tests move with their unit.
 - **Default grace period: 90 days**, configurable.
 - **Transcript aggregation: local by default.** Only file paths and counts are extracted. Team aggregation is an explicit export of counts and repo-relative paths, never content.
