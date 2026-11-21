@@ -1,6 +1,6 @@
 # Code Health Suite — Spec
 
-This spec covers the conventions shared by every plugin in this marketplace. Each plugin spec ([locality](locality.md), [cochange](cochange.md) with its [abandonment](abandonment.md) and [identities](identities.md) skills, [complexity](complexity.md), [structure](structure.md)) assumes this one, and [red-flags.md](red-flags.md) is the shared design vocabulary.
+This spec covers the conventions shared by every plugin in this marketplace. Each plugin spec ([locality](locality.md), [cochange](cochange.md) with its [abandonment](abandonment.md), [identities](identities.md) and [change-risk](change-risk.md) skills, [complexity](complexity.md), [structure](structure.md) with its [packaging](packaging.md) skill) assumes this one, and [red-flags.md](red-flags.md) is the shared design vocabulary.
 
 ## Purpose
 
@@ -28,7 +28,7 @@ These apply to every plugin, and a plugin spec that departs from one must say wh
 6. **Deep over shallow, and inline by default.** Remedies hide decisions behind simple interfaces. Inlining single-use indirection is a first-class remedy (Carmack, Blow). No plugin creates new shared helpers or abstractions, and any extraction stays local (see [red-flags.md](red-flags.md)). The one stated exception is dependency breaking in [structure](structure.md#decisions).
 7. **Scrutinise what is widely used.** High fan-in multiplies the cost of every flaw. Utilities with many consumers have earned their location, and they are the first place to check for red flags.
 8. **Built for agents, usable by people.** Output is compact, ranked and limited by default. JSON is the contract, and a human-readable table is the default view in a terminal.
-9. **Local and private.** No network access, no telemetry. Data about people is off by default. The exceptions (identity resolution, successor names) are stated and bounded in their own specs.
+9. **Local and private.** No network access, no telemetry. Data about people is off by default. The exceptions (identity resolution, successor names, an author's placement to their own change) are stated and bounded in their own specs.
 10. **Self-contained plugins, composed by data.** No plugin requires another at runtime. They share code at build time and exchange results through files.
 11. **Patterns emerge from the codebase.** Where a remedy involves a design mechanism (an interface, events, a mediator), skills prefer what the codebase already uses nearby and ask before introducing anything new. No skill defaults to a named pattern. CLIs provide the census of what exists; the agent chooses.
 12. **Language-agnostic first.** As much as possible works from history, indentation and lexical structure, which apply to every language and every historical revision. Language adapters add precision where the agnostic layer cannot answer: import resolution, exact metric definitions, deterministic moves. The lexical layer is the lowest common denominator, and language support beyond it is best effort: a repository in a language with no adapter still gets the history layer and whatever the lexical layer can measure.
@@ -239,8 +239,8 @@ Each plugin spec has its own milestones. Across the suite, the order is set by w
 2. A premise check, before any mover exists: from existing history and session transcripts, test whether tasks that touch more distant files cost more reads and tokens. Locality's priority depends on the answer.
 3. The lexical layer with its agreement test, then the TypeScript adapter.
 4. Analysers and baselines for locality and complexity, then the commands that change code.
-5. Structure, which builds on locality's graph and cochange's coupling.
-6. Identities, then abandonment.
+5. Structure, which builds on locality's graph and cochange's coupling, then its packaging skill.
+6. Identities, then abandonment and change risk, which share the blame cache.
 7. Further languages, in tier order.
 
 ## Roadmap

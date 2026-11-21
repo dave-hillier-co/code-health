@@ -18,6 +18,7 @@ In scope:
 - A census of the decoupling mechanisms the codebase already uses.
 - An evidence pack per problem dependency, for the agent's judgement.
 - Measuring whether a break reduced coupling or only hid it.
+- Package boundaries: whether the packages are the right ones, judged by the package cohesion and coupling principles. This is a second skill in this plugin, specified in [packaging.md](packaging.md).
 
 Out of scope:
 
@@ -142,6 +143,7 @@ The skill does not default to any named pattern. Patterns such as mediator, obse
 | `structure coupling [--quadrant incidental\|real\|stable\|hidden] [--by file\|folder\|component]` | Module pairs placed in the coupling quadrants, ranked within each |
 | `structure hidden` | Pairs with high co-change and no static dependency, the result of earlier indirection. Shorthand for `coupling --quadrant hidden`. |
 | `structure check` | Exits 1 on new cycles or layer violations against a baseline. For CI. |
+| `structure packages …` | Package inventory, cohesion, coupling, boundaries and repackaging candidates. See [packaging.md](packaging.md#cli). |
 
 ## Measurement
 
@@ -165,6 +167,7 @@ In the `structure` section of the suite config:
 - Additional census patterns (custom event or handler conventions).
 - Thresholds for static coupling, minimum support and the significance level for high co-change, minimum revisions for "active", and hidden coupling.
 - Baseline path for `check`.
+- Package settings under `structure.packages` ([packaging.md](packaging.md#configuration)).
 
 ## Decisions
 
@@ -189,3 +192,4 @@ In the `structure` section of the suite config:
 5. Layer rules and `check`.
 6. Coupling quadrants, hidden-coupling detection and outcome measurement.
 7. Registration hub detection (star co-change, append-shaped edits) and the inversion guidance.
+8. Packaging skill, following its own milestones.

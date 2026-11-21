@@ -20,6 +20,7 @@ In scope:
 - Complexity trends of hotspot files over their history.
 - Change-set completeness hints: telling an agent which files usually change with the one it is editing.
 - Knowledge distribution and turnover-induced abandonment risk, off by default. It is a separate skill in this plugin, specified in [abandonment.md](abandonment.md).
+- Risk of a branch before merge: its impact on the codebase and its author's placement to the code. Also a separate skill, specified in [change-risk.md](change-risk.md).
 
 Out of scope:
 
@@ -64,6 +65,7 @@ The deterministic CLI does all mining and scoring. The skill decides which quest
 - **Skill** `cochange` holding the investigation playbooks: hotspot review, coupling review, pre-change briefing, and measuring an outcome.
 - **Skill** `abandonment`: knowledge-loss risk from Monte Carlo turnover simulation, and successor recommendations ([abandonment.md](abandonment.md)).
 - **Skill** `identities`: an agent-reviewed `.mailmap` merging each person's names and emails and marking bots, which any analysis that counts people relies on ([identities.md](identities.md)).
+- **Skill** `change-risk`: the impact of a branch and its author's placement to the code it touches, with a recommended review response ([change-risk.md](change-risk.md)).
 - **Hook** (opt-in): change-set completeness hints after edits.
 
 There is no parser dependency. This plugin ships no tree-sitter grammars and stays small.
@@ -102,6 +104,7 @@ Applied at query time, not ingestion, so changing config never needs a rebuild:
 | `cochange trend PATH [--samples N]` | Complexity proxy and size of one file sampled across its history, to show whether a hotspot is getting worse. |
 | `cochange brief PATH...` | A compact pre-change briefing: files usually changed alongside, recent activity, whether the file is a hotspot. Built for agents. |
 | `cochange blame refresh`, `cochange abandonment …`, `cochange successors` | Knowledge-loss analysis. Only when enabled. See [abandonment.md](abandonment.md#cli). |
+| `cochange risk …` | Risk of a branch against its base. See [change-risk.md](change-risk.md#cli). |
 
 Every list output is sorted by score, then by path, so ties are deterministic, and is limited by default (20). The JSON includes `window`, `filtersApplied`, `complexitySource` and the suite's `evidence` block ([suite.md](suite.md#evidence-strength)), so a reader always knows what was measured and how much to trust it. Mature codebases give this plugin its strongest results. On a young repository, `coupling` and `clusters` may return few findings that clear minimum support, and they say so rather than lowering the bar.
 
@@ -178,6 +181,7 @@ In the `cochange` section of the suite config:
 - Hook enablement, confidence threshold and staleness tolerance.
 - Identity settings, including bot and service patterns, under `cochange.identities` ([identities.md](identities.md#configuration)).
 - Knowledge analysis settings under `cochange.knowledge` ([abandonment.md](abandonment.md#configuration)).
+- Change risk settings under `cochange.risk` ([change-risk.md](change-risk.md#configuration)).
 
 ## Decisions
 
@@ -202,3 +206,4 @@ In the `cochange` section of the suite config:
 6. `clusters`, `trend` and complexity-report composition.
 7. Logical change grouping.
 8. Abandonment skill, following its own milestones.
+9. Change risk skill, following its own milestones.

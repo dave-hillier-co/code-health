@@ -62,7 +62,7 @@ Out of scope:
 - Creating helpers or abstractions. The tool never creates them.
 - Replacing thin wrappers or re-implementations with standard-library idioms. That is the separate *idioms* plugin on the [roadmap](suite.md#roadmap).
 - Extracting duplicated code into shared helpers.
-- Moves across published package or deployable boundaries. These are flagged, never applied.
+- Moves across published package or deployable boundaries. These are flagged, never applied. Whether the package boundaries themselves are right is the [packaging](packaging.md) skill's question.
 
 ## Concepts
 
