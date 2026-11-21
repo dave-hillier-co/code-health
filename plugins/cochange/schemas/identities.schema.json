@@ -58,6 +58,7 @@
         "signal": {
           "enum": [
             "exact-email",
+            "same-signing-key",
             "noreply-same-user",
             "noreply-matches-identity",
             "same-name",

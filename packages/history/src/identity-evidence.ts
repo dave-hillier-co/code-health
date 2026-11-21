@@ -23,6 +23,8 @@ export interface RawIdentity extends Address {
   /** Areas (the first two folders of a path) touched per week, to see simultaneous work. */
   weeks: Map<number, Set<string>>;
   areaCounts: Map<string, number>;
+  /** Keys that signed this identity's commits, as named by `signingKeyOf`. Platform keys are already left out. */
+  signingKeys?: Set<string>;
 }
 
 /** Who committed whose commits, by lower-cased email, with platform committers already left out. */
@@ -41,10 +43,12 @@ export interface IdentityNode extends Address {
   files: Set<string>;
   weeks: Map<number, Set<string>>;
   areaCounts: Map<string, number>;
+  signingKeys: Set<string>;
 }
 
 export type SignalName =
   | "exact-email"
+  | "same-signing-key"
   | "noreply-same-user"
   | "noreply-matches-identity"
   | "same-name"
@@ -131,6 +135,7 @@ export function buildNodes(raws: readonly RawIdentity[]): IdentityNode[] {
         files: new Set(),
         weeks: new Map(),
         areaCounts: new Map(),
+        signingKeys: new Set(),
       };
       nodes.set(key, node);
     }
@@ -144,6 +149,7 @@ export function buildNodes(raws: readonly RawIdentity[]): IdentityNode[] {
       for (const area of areas) into.add(area);
       node.weeks.set(week, into);
     }
+    for (const signingKey of raw.signingKeys ?? []) node.signingKeys.add(signingKey);
     for (const [area, count] of raw.areaCounts) node.areaCounts.set(area, (node.areaCounts.get(area) ?? 0) + count);
   }
   const sorted = [...nodes.values()].sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
@@ -162,7 +168,11 @@ interface NodeFacts {
   names: string[];
   derived: string[];
   flattened: string[];
+  signingKeys: string[];
 }
+
+/** A key shared by more than this many identities is a platform's or a team's, not one person's. */
+export const MAX_IDENTITIES_PER_SIGNING_KEY = 3;
 
 function factsOf(node: IdentityNode): NodeFacts {
   const addresses: Address[] = [{ name: node.name, email: node.email }, ...node.aliases];
@@ -194,6 +204,7 @@ function factsOf(node: IdentityNode): NodeFacts {
     names: [...names].sort(),
     derived: [...derived].sort(),
     flattened: [...flattened].sort(),
+    signingKeys: [...node.signingKeys].sort(),
   };
 }
 
@@ -247,6 +258,10 @@ export function findLinks(
   eachPair(index(facts, (f) => f.emails), (email, x, y) =>
     addSignal(candidates, x, y, { signal: "exact-email", strength: "strong", detail: email }),
   );
+  // The same key across identities, unless so many share it that it is a platform's (the web-flow key) and not a person's.
+  const byKey = index(facts, (f) => f.signingKeys);
+  for (const [key, holders] of byKey) if (holders.length > MAX_IDENTITIES_PER_SIGNING_KEY) byKey.delete(key);
+  eachPair(byKey, (key, x, y) => addSignal(candidates, x, y, { signal: "same-signing-key", strength: "strong", detail: key }));
   eachPair(
     index(facts, (f) => f.noreplies.flatMap((n) => [`user:${n.username}`, ...(n.id ? [`id:${n.id}`] : [])])),
     (value, x, y) => addSignal(candidates, x, y, { signal: "noreply-same-user", strength: "strong", detail: value }),

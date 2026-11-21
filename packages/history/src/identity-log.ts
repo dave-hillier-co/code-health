@@ -2,6 +2,7 @@ import { areaOf, weekOf, type Pairing, type RawIdentity } from "./identity-evide
 import { findAgentTrailers } from "./identity-classify.ts";
 import { identityKey, type Address } from "./identity-names.ts";
 import { runGit } from "./git.ts";
+import { isPlatformKey, signaturesIn } from "./signing-keys.ts";
 import type { HistoryView } from "./read.ts";
 
 /** Commits touching more paths than this say little about who works where, so they add no file or area evidence. */
@@ -41,6 +42,11 @@ async function readCommitters(root: string, ref: string): Promise<Map<string, Ad
   return committers;
 }
 
+/** The key that signed each signed commit reachable from `ref`, read from the commits' own signatures so no key needs to be trusted or fetched. */
+async function readSigningKeys(root: string, ref: string): Promise<Map<string, string>> {
+  return signaturesIn(await runGit(root, ["log", "--format=raw", "--no-abbrev", "--no-merges", ref]));
+}
+
 /**
  * Everything the identity commands read from history: each author identity as
  * written with its activity, who committed whose commits, agent trailers and
@@ -55,6 +61,7 @@ export async function gatherIdentityFacts(
   options: { windowSince: number; agentPatterns?: readonly string[] },
 ): Promise<IdentityFacts> {
   const committers = await readCommitters(root, view.headSha);
+  const signingKeys = await readSigningKeys(root, view.headSha);
   const raws = new Map<string, RawIdentity>();
   const windowCommits = new Map<string, number>();
   const subjects = new Map<string, string[]>();
@@ -79,9 +86,12 @@ export async function gatherIdentityFacts(
         files: new Set(),
         weeks: new Map(),
         areaCounts: new Map(),
+        signingKeys: new Set(),
       };
       raws.set(key, raw);
     }
+    const signingKey = signingKeys.get(commit.sha);
+    if (signingKey !== undefined && !isPlatformKey(signingKey)) raw.signingKeys!.add(signingKey);
     raw.commits++;
     raw.first = Math.min(raw.first, commit.authorDate);
     raw.last = Math.max(raw.last, commit.authorDate);

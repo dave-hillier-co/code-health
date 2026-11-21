@@ -20,6 +20,7 @@ interface Spec {
   files?: string[];
   /** Weeks, relative to the start, in which the identity was active, and the area. */
   weeks?: Record<number, string>;
+  signingKeys?: string[];
 }
 
 function raw(spec: Spec): RawIdentity {
@@ -36,6 +37,7 @@ function raw(spec: Spec): RawIdentity {
     files: new Set(spec.files ?? []),
     weeks,
     areaCounts: new Map(),
+    signingKeys: new Set(spec.signingKeys ?? []),
   };
 }
 
@@ -210,4 +212,31 @@ test("output order does not depend on input order", () => {
     { name: "ann lee", email: "ann2@y.com" },
   ];
   expect(analyse([...specs].reverse())).toEqual(analyse(specs));
+});
+
+test("the same signing key across identities with nothing else in common is a strong link", () => {
+  const { links, proposals } = analyse([
+    { name: "Jo Bloggs", email: "jo@corp.com", signingKeys: ["ssh:SHA256:abc"] },
+    { name: "Pat Quill", email: "pat@home.net", signingKeys: ["ssh:SHA256:abc"] },
+    { name: "Sam Reed", email: "sam@else.org", signingKeys: ["ssh:SHA256:other"] },
+  ]);
+  expect(links).toHaveLength(1);
+  expect(links[0]).toMatchObject({ strength: "strong", signals: [{ signal: "same-signing-key", strength: "strong", detail: "ssh:SHA256:abc" }] });
+  expect(proposals).toHaveLength(1);
+});
+
+test.each([
+  [3, true],
+  [4, false],
+])("a key on %i identities is %s as evidence, since one shared by many is a platform's or a team's", (holders, linked) => {
+  const specs = Array.from({ length: holders }, (_, index) => ({ name: `Person ${index} Surname${index}`, email: `p${index}@domain${index}.org`, signingKeys: ["gpg:CAFEBABECAFEBABE"] }));
+  expect(analyse(specs).links.length > 0).toBe(linked);
+});
+
+test("identities that share no key and nothing else are not linked by their keys", () => {
+  const { links } = analyse([
+    { name: "Jo Bloggs", email: "jo@corp.com", signingKeys: ["gpg:1111111111111111"] },
+    { name: "Pat Quill", email: "pat@home.net", signingKeys: ["gpg:2222222222222222"] },
+  ]);
+  expect(links).toEqual([]);
 });

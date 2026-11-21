@@ -1,8 +1,11 @@
-import { writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { GitFixture, type Identity } from "@code-health/fixtures/git-fixture";
 import { blameLineCounts, parseIncrementalBlame } from "../src/blame-lines.ts";
+import { buildNodes, findLinks } from "../src/identity-evidence.ts";
 import { gatherIdentityFacts } from "../src/identity-log.ts";
 import { mapThroughMailmap } from "../src/identity-mapping.ts";
 import { readHistory } from "../src/read.ts";
@@ -81,4 +84,28 @@ test("incremental blame output is read by header lines only", () => {
   const into = new Map<string, number>();
   expect(parseIncrementalBlame(`${sha} 1 1 2\nauthor X\nsummary s\nfilename f\n\tline\n${sha} 5 3 1\n`, into)).toBe(3);
   expect(into.get(sha)).toBe(3);
+});
+
+test("identities whose commits were signed with one SSH key are linked by it, and one with another key is not", async () => {
+  const keys = mkdtempSync(join(tmpdir(), "signing-keys-"));
+  for (const name of ["one", "two"]) execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-C", name, "-f", join(keys, name)]);
+  const repo = GitFixture.build([{ type: "commit", message: "base", date: "2024-01-01T10:00:00Z", changes: [{ op: "add", path: "a.txt", content: "a\n" }] }]);
+  fixtures.push(repo);
+  const signed = (name: string, email: string, key: string, file: string) => {
+    writeFileSync(join(repo.path, file), `${file}\n`);
+    repo.git("add", file);
+    repo.git("-c", `user.name=${name}`, "-c", `user.email=${email}`, "-c", "gpg.format=ssh", "-c", `user.signingkey=${join(keys, `${key}.pub`)}`, "commit", "-q", "-S", "-m", file);
+  };
+  signed("Jo Bloggs", "jo@corp.com", "one", "jo.txt");
+  signed("J B", "jb@home.net", "one", "jb.txt");
+  signed("Sam Reed", "sam@else.org", "two", "sam.txt");
+  await refresh(repo.path);
+  const facts = await gatherIdentityFacts(repo.path, await readHistory(repo.path), { windowSince: 0 });
+  const byEmail = new Map(facts.raws.map((raw) => [raw.email, raw.signingKeys]));
+  expect(byEmail.get("jo@corp.com")).toEqual(byEmail.get("jb@home.net"));
+  expect([...byEmail.get("sam@else.org")!]).not.toEqual([...byEmail.get("jo@corp.com")!]);
+  expect([...byEmail.get("jo@corp.com")!][0]).toMatch(/^ssh:SHA256:/);
+
+  const links = findLinks(buildNodes(facts.raws), facts.raws, facts.pairing);
+  expect(links.map((link) => [link.strength, link.signals.map((s) => s.signal)])).toEqual([["strong", ["same-signing-key"]]]);
 });

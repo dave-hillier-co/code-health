@@ -4147,7 +4147,8 @@ function buildNodes(raws) {
         last: raw.last,
         files: /* @__PURE__ */ new Set(),
         weeks: /* @__PURE__ */ new Map(),
-        areaCounts: /* @__PURE__ */ new Map()
+        areaCounts: /* @__PURE__ */ new Map(),
+        signingKeys: /* @__PURE__ */ new Set()
       };
       nodes.set(key, node);
     }
@@ -4161,6 +4162,7 @@ function buildNodes(raws) {
       for (const area of areas) into.add(area);
       node.weeks.set(week, into);
     }
+    for (const signingKey of raw.signingKeys ?? []) node.signingKeys.add(signingKey);
     for (const [area, count] of raw.areaCounts) node.areaCounts.set(area, (node.areaCounts.get(area) ?? 0) + count);
   }
   const sorted = [...nodes.values()].sort((x, y) => x.key < y.key ? -1 : x.key > y.key ? 1 : 0);
@@ -4168,6 +4170,7 @@ function buildNodes(raws) {
   return sorted;
 }
 var compare2 = (x, y) => x < y ? -1 : x > y ? 1 : 0;
+var MAX_IDENTITIES_PER_SIGNING_KEY = 3;
 function factsOf(node) {
   const addresses = [{ name: node.name, email: node.email }, ...node.aliases];
   const emails = /* @__PURE__ */ new Set();
@@ -4197,7 +4200,8 @@ function factsOf(node) {
     noreplies: [...noreplies.values()].sort((x, y) => compare2(x.username, y.username)),
     names: [...names].sort(),
     derived: [...derived].sort(),
-    flattened: [...flattened].sort()
+    flattened: [...flattened].sort(),
+    signingKeys: [...node.signingKeys].sort()
   };
 }
 function pairKey2(x, y) {
@@ -4234,6 +4238,9 @@ function findLinks(nodes, raws, pairing, rejections = []) {
     index(facts, (f) => f.emails),
     (email, x, y) => addSignal(candidates, x, y, { signal: "exact-email", strength: "strong", detail: email })
   );
+  const byKey = index(facts, (f) => f.signingKeys);
+  for (const [key, holders] of byKey) if (holders.length > MAX_IDENTITIES_PER_SIGNING_KEY) byKey.delete(key);
+  eachPair(byKey, (key, x, y) => addSignal(candidates, x, y, { signal: "same-signing-key", strength: "strong", detail: key }));
   eachPair(
     index(facts, (f) => f.noreplies.flatMap((n) => [`user:${n.username}`, ...n.id ? [`id:${n.id}`] : []])),
     (value, x, y) => addSignal(candidates, x, y, { signal: "noreply-same-user", strength: "strong", detail: value })
@@ -4395,6 +4402,133 @@ function counterEvidenceWithin(group) {
   return found;
 }
 
+// packages/history/src/signing-keys.ts
+import { createHash as createHash3 } from "node:crypto";
+var PLATFORM_KEYS = /* @__PURE__ */ new Set(["gpg:B5690EEEBB952194"]);
+var isPlatformKey = (key) => PLATFORM_KEYS.has(key);
+function armoredBody(text, kind) {
+  const begin = text.indexOf(`-----BEGIN ${kind}-----`);
+  const end = text.indexOf(`-----END ${kind}-----`);
+  if (begin === -1 || end === -1 || end < begin) return void 0;
+  const lines = text.slice(begin + `-----BEGIN ${kind}-----`.length, end).split("\n").map((line) => line.trim());
+  const blank = lines.indexOf("");
+  const body = (blank > 0 ? lines.slice(blank + 1) : lines).filter((line) => line !== "" && !line.startsWith("="));
+  const bytes = Buffer.from(body.join(""), "base64");
+  return bytes.length === 0 ? void 0 : bytes;
+}
+function sshKey(text) {
+  const bytes = armoredBody(text, "SSH SIGNATURE");
+  if (bytes === void 0 || bytes.length < 14 || bytes.subarray(0, 6).toString("latin1") !== "SSHSIG") return void 0;
+  const length = bytes.readUInt32BE(10);
+  if (length === 0 || 14 + length > bytes.length) return void 0;
+  const fingerprint = createHash3("sha256").update(bytes.subarray(14, 14 + length)).digest("base64").replace(/=+$/, "");
+  return `ssh:SHA256:${fingerprint}`;
+}
+function issuerOf(packet) {
+  if (packet.length < 6 || packet[0] !== 4 && packet[0] !== 5) return void 0;
+  let fingerprint;
+  let keyId;
+  let offset = 4;
+  for (let area = 0; area < 2; area++) {
+    if (offset + 2 > packet.length) break;
+    const size = packet.readUInt16BE(offset);
+    let at = offset + 2;
+    const end = Math.min(packet.length, at + size);
+    while (at < end) {
+      let length = packet[at];
+      at++;
+      if (length >= 192 && length < 255) {
+        length = (length - 192 << 8) + (packet[at] ?? 0) + 192;
+        at++;
+      } else if (length === 255) {
+        length = packet.readUInt32BE(at);
+        at += 4;
+      }
+      const type = (packet[at] ?? 0) & 127;
+      const data = packet.subarray(at + 1, at + length);
+      if (type === 33 && data.length > 1) fingerprint = data.subarray(1).toString("hex").toUpperCase();
+      if (type === 16 && data.length === 8) keyId = data.toString("hex").toUpperCase();
+      at += length;
+    }
+    offset = end;
+  }
+  return fingerprint !== void 0 ? fingerprint.slice(-16) : keyId;
+}
+function pgpKey(text) {
+  const bytes = armoredBody(text, "PGP SIGNATURE");
+  if (bytes === void 0) return void 0;
+  const first = bytes[0];
+  if ((first & 128) === 0) return void 0;
+  let tag;
+  let length;
+  let at = 1;
+  if (first & 64) {
+    tag = first & 63;
+    const octet = bytes[at++] ?? 0;
+    if (octet < 192) length = octet;
+    else if (octet < 224) length = (octet - 192 << 8) + (bytes[at++] ?? 0) + 192;
+    else if (octet === 255) {
+      length = bytes.readUInt32BE(at);
+      at += 4;
+    } else return void 0;
+  } else {
+    tag = first >> 2 & 15;
+    const kind = first & 3;
+    if (kind === 0) length = bytes[at++] ?? 0;
+    else if (kind === 1) {
+      length = bytes.readUInt16BE(at);
+      at += 2;
+    } else if (kind === 2) {
+      length = bytes.readUInt32BE(at);
+      at += 4;
+    } else return void 0;
+  }
+  if (tag !== 2) return void 0;
+  const issuer = issuerOf(bytes.subarray(at, at + length));
+  return issuer === void 0 ? void 0 : `gpg:${issuer}`;
+}
+function signingKeyOf(signature) {
+  try {
+    return signature.includes("BEGIN SSH SIGNATURE") ? sshKey(signature) : signature.includes("BEGIN PGP SIGNATURE") ? pgpKey(signature) : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function signaturesIn(raw) {
+  const keys = /* @__PURE__ */ new Map();
+  let sha;
+  let signature;
+  let inHeaders = false;
+  const finish = () => {
+    if (sha !== void 0 && signature !== void 0) {
+      const key = signingKeyOf(signature.join("\n"));
+      if (key !== void 0) keys.set(sha, key);
+    }
+    signature = void 0;
+  };
+  for (const line of raw.split("\n")) {
+    if (line.startsWith("commit ") && !inHeaders) {
+      finish();
+      sha = line.slice(7, 47);
+      inHeaders = true;
+      continue;
+    }
+    if (!inHeaders) continue;
+    if (line === "") {
+      finish();
+      inHeaders = false;
+    } else if (line.startsWith("gpgsig ")) {
+      signature = [line.slice(7)];
+    } else if (line.startsWith(" ") && signature !== void 0) {
+      signature.push(line.slice(1));
+    } else {
+      finish();
+    }
+  }
+  finish();
+  return keys;
+}
+
 // packages/history/src/identity-log.ts
 var MAX_PATHS_FOR_EVIDENCE = 100;
 var isPlatform = (name10, email) => email.toLowerCase() === "noreply@github.com" || name10.toLowerCase() === "github" || name10.toLowerCase() === "github enterprise";
@@ -4408,8 +4542,12 @@ async function readCommitters(root, ref) {
   }
   return committers;
 }
+async function readSigningKeys(root, ref) {
+  return signaturesIn(await runGit(root, ["log", "--format=raw", "--no-abbrev", "--no-merges", ref]));
+}
 async function gatherIdentityFacts(root, view, options) {
   const committers = await readCommitters(root, view.headSha);
+  const signingKeys = await readSigningKeys(root, view.headSha);
   const raws = /* @__PURE__ */ new Map();
   const windowCommits = /* @__PURE__ */ new Map();
   const subjects = /* @__PURE__ */ new Map();
@@ -4432,10 +4570,13 @@ async function gatherIdentityFacts(root, view, options) {
         last: commit.authorDate,
         files: /* @__PURE__ */ new Set(),
         weeks: /* @__PURE__ */ new Map(),
-        areaCounts: /* @__PURE__ */ new Map()
+        areaCounts: /* @__PURE__ */ new Map(),
+        signingKeys: /* @__PURE__ */ new Set()
       };
       raws.set(key, raw);
     }
+    const signingKey = signingKeys.get(commit.sha);
+    if (signingKey !== void 0 && !isPlatformKey(signingKey)) raw.signingKeys.add(signingKey);
     raw.commits++;
     raw.first = Math.min(raw.first, commit.authorDate);
     raw.last = Math.max(raw.last, commit.authorDate);
@@ -4545,7 +4686,7 @@ function topAreas(node, limit = 3) {
 }
 
 // packages/cochange/src/identities/apply.ts
-import { createHash as createHash3 } from "node:crypto";
+import { createHash as createHash4 } from "node:crypto";
 import { existsSync as existsSync9, mkdirSync as mkdirSync4, readFileSync as readFileSync7, renameSync as renameSync4, writeFileSync as writeFileSync4 } from "node:fs";
 import { dirname as dirname3, isAbsolute as isAbsolute2, relative as relative2, resolve } from "node:path";
 
@@ -4710,7 +4851,7 @@ function readDecisionsInput(path, root) {
   const file = isAbsolute2(path) ? path : resolve(root, path);
   if (!existsSync9(file)) throw usageError(`--from: ${path} does not exist`);
   const text = readFileSync7(file, "utf8");
-  const hash = createHash3("sha256").update(text).digest("hex").slice(0, 16);
+  const hash = createHash4("sha256").update(text).digest("hex").slice(0, 16);
   let value;
   try {
     value = JSON.parse(text);
@@ -5296,7 +5437,7 @@ import { existsSync as existsSync11 } from "node:fs";
 import { dirname as dirname4, join as join9 } from "node:path";
 
 // packages/cochange/src/session-state.ts
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 import { closeSync as closeSync2, mkdirSync as mkdirSync5, openSync as openSync2, readFileSync as readFileSync8, renameSync as renameSync5, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync5 } from "node:fs";
 import { join as join8 } from "node:path";
 var emptySession = () => ({ edited: [], spokenAbout: [], lastRun: null });
@@ -5304,7 +5445,7 @@ function sessionDirectory(root) {
   return join8(root, ".cache", "code-health", "sessions");
 }
 function sessionFile(root, sessionId) {
-  const safe = /^[A-Za-z0-9_-]{1,128}$/.test(sessionId) ? sessionId : `h-${createHash4("sha256").update(sessionId).digest("hex").slice(0, 32)}`;
+  const safe = /^[A-Za-z0-9_-]{1,128}$/.test(sessionId) ? sessionId : `h-${createHash5("sha256").update(sessionId).digest("hex").slice(0, 32)}`;
   return join8(sessionDirectory(root), `${safe}.json`);
 }
 var strings = (value) => Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
