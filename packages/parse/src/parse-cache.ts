@@ -1,4 +1,5 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { ensureCacheDir, locateCache } from "@code-health/history/cache-location";
 import { extractorVersion } from "./extract-facts.ts";
@@ -34,9 +35,15 @@ export class ParseCache {
   async set(blobSha: string, grammarVersion: string, facts: FileFacts): Promise<void> {
     const path = this.entryPath(blobSha, grammarVersion);
     await mkdir(dirname(path), { recursive: true });
-    const temporary = `${path}.${process.pid}.tmp`;
-    await writeFile(temporary, JSON.stringify(facts));
-    await rename(temporary, path);
+    // Unique per call: concurrent writers in one process share a pid, and must not share a temporary file.
+    const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporary, JSON.stringify(facts));
+      await rename(temporary, path);
+    } catch (error) {
+      await rm(temporary, { force: true });
+      throw error;
+    }
   }
 
   /** The extractor version is part of the key, so changed extraction rules never read old facts. */

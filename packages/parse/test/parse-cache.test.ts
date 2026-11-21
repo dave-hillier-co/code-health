@@ -71,3 +71,36 @@ describe("ParseCache", () => {
     expect(existsSync(join(repo.path, ".cache", "code-health", "parse"))).toBe(true);
   });
 });
+
+describe("ParseCache under concurrent writers", () => {
+  it("lets many writers set the same entry at once and always reads a whole entry", async () => {
+    const cache = new ParseCache(tempDir());
+    const big: FileFacts = { ...facts, units: Array.from({ length: 2000 }, (_, i) => ({ ...facts.units[0]!, qualifiedName: `u${i}` })) };
+    await Promise.all(Array.from({ length: 25 }, () => cache.set(blob, "typescript-aaa", big)));
+    expect(await cache.get(blob, "typescript-aaa")).toEqual(big);
+  });
+
+  it("never exposes a partial entry to a reader racing a writer", async () => {
+    const cache = new ParseCache(tempDir());
+    const big: FileFacts = { ...facts, units: Array.from({ length: 5000 }, (_, i) => ({ ...facts.units[0]!, qualifiedName: `u${i}` })) };
+    const writes = Promise.all(Array.from({ length: 10 }, () => cache.set(blob, "typescript-aaa", big)));
+    const reads = await Promise.all(Array.from({ length: 50 }, () => cache.get(blob, "typescript-aaa")));
+    await writes;
+    for (const read of reads) expect(read === undefined || read.units.length === 5000).toBe(true);
+  });
+
+  it("leaves no temporary files behind", async () => {
+    const root = tempDir();
+    const cache = new ParseCache(root);
+    await Promise.all(Array.from({ length: 5 }, () => cache.set(blob, "typescript-aaa", facts)));
+    const files = readdirSync(join(root, readdirSync(root)[0]!, blob.slice(0, 2)));
+    expect(files).toEqual([`${blob}.json`]);
+  });
+
+  it("round-trips facts with undefined fields as absent ones", async () => {
+    const cache = new ParseCache(tempDir());
+    const withUndefined = { ...facts, units: [{ ...facts.units[0]!, parent: undefined }] } as FileFacts;
+    await cache.set(blob, "typescript-aaa", withUndefined);
+    expect(await cache.get(blob, "typescript-aaa")).toEqual(facts);
+  });
+});
