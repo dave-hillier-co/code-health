@@ -67,3 +67,42 @@ export function acyclicRepository(): GitFixture {
     ]),
   ]);
 }
+
+const stabilityFiles: Record<string, (revision: number) => string> = {
+  "src/stable/base.ts": (r) => module("base", [["../volatile/rules.ts", "rules"]], r),
+  "src/stable/types.ts": (r) => module("types", [], r),
+  "src/volatile/rules.ts": (r) => module("rules", [], r),
+  "src/volatile/extra.ts": (r) => module("extra", [], r),
+  "src/app/main.ts": (r) =>
+    module("main", [["../stable/base.ts", "base"], ["../volatile/rules.ts", "rules"], ["../lib/api.ts", "api"]], r),
+  "src/lib/api.ts": (r) => module("api", [["../glue/wire.ts", "wire"]], r),
+  "src/glue/wire.ts": (r) =>
+    module("wire", [["../stable/types.ts", "types"], ["../volatile/extra.ts", "extra"]], r),
+  "src/ext/a.ts": (r) => module("extA", [["../lib/api.ts", "api"]], r),
+  "src/ext/b.ts": (r) => module("extB", [["../lib/api.ts", "api"]], r),
+};
+
+/**
+ * Folders that differ in how often they change. src/volatile changes in every
+ * commit after the first; src/stable, src/glue, src/lib and src/ext only on the
+ * day they were added. src/stable depends on src/volatile (against change
+ * stability), src/glue also depends on it, and src/lib depends on src/glue,
+ * which is more unstable structurally but has no change history to say so.
+ */
+export function stabilityRepository(): GitFixture {
+  const steps: Step[] = [
+    commit(
+      "Add the modules",
+      "2024-01-10T09:00:00Z",
+      Object.entries(stabilityFiles).map(([path, content]): Change => ({ op: "add", path, content: content(1) })),
+    ),
+  ];
+  const dates = ["2024-02-01", "2024-02-20", "2024-03-15", "2024-04-10", "2024-05-05"];
+  dates.forEach((date, i) => {
+    const revision = i + 2;
+    const changes: Change[] = [{ op: "modify", path: "src/volatile/rules.ts", content: stabilityFiles["src/volatile/rules.ts"]!(revision) }];
+    if (i === 3) changes.push({ op: "modify", path: "src/app/main.ts", content: stabilityFiles["src/app/main.ts"]!(2) });
+    steps.push(commit(`Tune the rules ${i + 1}`, `${date}T09:00:00Z`, changes, i % 2 === 0 ? alice : bob));
+  });
+  return GitFixture.build(steps);
+}

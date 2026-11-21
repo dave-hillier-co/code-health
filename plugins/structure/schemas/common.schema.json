@@ -551,6 +551,125 @@
         "unblocks"
       ],
       "additionalProperties": false
+    },
+    "structuralStability": {
+      "description": "Martin's figures for one module, counted over distinct files outside it.",
+      "type": "object",
+      "properties": {
+        "ca": {
+          "$ref": "#/$defs/count"
+        },
+        "ce": {
+          "$ref": "#/$defs/count"
+        },
+        "instability": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "ce / (ca + ce). Null for a module with no outside dependency at all."
+        }
+      },
+      "required": [
+        "ca",
+        "ce",
+        "instability"
+      ],
+      "additionalProperties": false
+    },
+    "changeStability": {
+      "description": "How often the module changes, from the history cache.",
+      "type": "object",
+      "properties": {
+        "revisions": {
+          "$ref": "#/$defs/count"
+        },
+        "files": {
+          "$ref": "#/$defs/count"
+        },
+        "revisionsPerFile": {
+          "type": "number",
+          "minimum": 0
+        },
+        "churn": {
+          "$ref": "#/$defs/count"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "At least structure.minRevisions revisions, so a quiet module is evidence and not an absence of data."
+        }
+      },
+      "required": [
+        "revisions",
+        "files",
+        "revisionsPerFile",
+        "churn",
+        "active"
+      ],
+      "additionalProperties": false
+    },
+    "stability": {
+      "type": "object",
+      "properties": {
+        "structural": {
+          "$ref": "#/$defs/structuralStability"
+        },
+        "change": {
+          "$ref": "#/$defs/changeStability"
+        }
+      },
+      "required": [
+        "structural",
+        "change"
+      ],
+      "additionalProperties": false
+    },
+    "againstStability": {
+      "description": "The verdict on one dependency under the stable dependencies principle.",
+      "type": "object",
+      "properties": {
+        "basis": {
+          "enum": [
+            "change",
+            "structure"
+          ],
+          "description": "Change evidence decides whenever the depended-on side is active."
+        },
+        "structuralViolation": {
+          "type": "boolean"
+        },
+        "changeViolation": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Null when the depended-on side is not active."
+        },
+        "volatilityRatio": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Revisions per file of the depended-on side over the dependant's. Null when the dependant has none."
+        },
+        "violates": {
+          "type": "boolean"
+        },
+        "disagree": {
+          "type": "boolean",
+          "description": "The two measures point opposite ways."
+        }
+      },
+      "required": [
+        "basis",
+        "structuralViolation",
+        "changeViolation",
+        "volatilityRatio",
+        "violates",
+        "disagree"
+      ]
     }
   }
 }
