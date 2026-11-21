@@ -1,0 +1,655 @@
+{
+  "command": "packages",
+  "config": "50804ef111cee2ed",
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": true
+    },
+    "grade": "moderate",
+    "importedHistory": [],
+    "logicalChangesInWindow": 97,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 12.7,
+    "window": {
+      "months": 12,
+      "since": 1687251600,
+      "until": 1718874000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "kind": null,
+    "subcommand": "candidates"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "ddea495c3d30d1029ace8a99c9eb3255a4782829"
+  },
+  "results": [
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 13.458,
+      "findings": [
+        "follower:packages/app->packages/shared"
+      ],
+      "handoff": null,
+      "id": "move-unit:packages/shared->packages/app",
+      "into": "packages/app",
+      "kind": "move-unit",
+      "packages": [
+        "packages/shared",
+        "packages/app"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 2,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 13.458,
+      "findings": [
+        "disjoint-reuse:packages/shared",
+        "dumping-ground:packages/shared"
+      ],
+      "handoff": null,
+      "id": "split:packages/shared",
+      "into": null,
+      "kind": "split",
+      "packages": [
+        "packages/shared"
+      ],
+      "parts": [
+        {
+          "consumers": [
+            "packages/ui"
+          ],
+          "exports": [
+            "formatDate"
+          ]
+        },
+        {
+          "consumers": [
+            "packages/api",
+            "packages/orphan"
+          ],
+          "exports": [
+            "newId",
+            "formatMoney"
+          ]
+        },
+        {
+          "consumers": [
+            "packages/app"
+          ],
+          "exports": [
+            "log"
+          ]
+        }
+      ],
+      "status": "proposed",
+      "step": 5,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 3.575,
+      "findings": [
+        "crossing-unit:packages/helper->packages/orphan->packages/helper/src/toOrphan.ts"
+      ],
+      "handoff": null,
+      "id": "move-unit:packages/helper/src/toOrphan.ts->packages/orphan",
+      "into": "packages/orphan",
+      "kind": "move-unit",
+      "packages": [
+        "packages/helper",
+        "packages/orphan"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 2,
+      "tentative": false,
+      "unit": "packages/helper/src/toOrphan.ts"
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 2.839,
+      "findings": [
+        "package-cycle:packages/p1"
+      ],
+      "handoff": "structure evidence \"packages/p1->packages/p2\" --level package",
+      "id": "break-dependency:packages/p1->packages/p2",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/p1",
+        "packages/p2"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [
+        "package-cycle:packages/p1"
+      ],
+      "changeCost": 2.839,
+      "findings": [
+        "always-together:packages/p1->packages/p2",
+        "single-consumer:packages/p2"
+      ],
+      "handoff": null,
+      "id": "merge:packages/p2->packages/p1",
+      "into": "packages/p1",
+      "kind": "merge",
+      "packages": [
+        "packages/p2",
+        "packages/p1"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 4,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0.958,
+      "findings": [
+        "tiny:packages/young"
+      ],
+      "handoff": null,
+      "id": "merge:packages/young->packages/app",
+      "into": "packages/app",
+      "kind": "merge",
+      "packages": [
+        "packages/young",
+        "packages/app"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 4,
+      "tentative": true,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "undeclared-dependency:packages/api"
+      ],
+      "handoff": null,
+      "id": "fix-manifest:packages/api",
+      "into": null,
+      "kind": "fix-manifest",
+      "packages": [
+        "packages/api"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 1,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "unused-dependency:packages/app"
+      ],
+      "handoff": null,
+      "id": "fix-manifest:packages/app",
+      "into": null,
+      "kind": "fix-manifest",
+      "packages": [
+        "packages/app"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 1,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "undeclared-dependency:packages/helper"
+      ],
+      "handoff": null,
+      "id": "fix-manifest:packages/helper",
+      "into": null,
+      "kind": "fix-manifest",
+      "packages": [
+        "packages/helper"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 1,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "unused-dependency:packages/lib"
+      ],
+      "handoff": null,
+      "id": "fix-manifest:packages/lib",
+      "into": null,
+      "kind": "fix-manifest",
+      "packages": [
+        "packages/lib"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 1,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "undeclared-dependency:packages/orphan"
+      ],
+      "handoff": null,
+      "id": "fix-manifest:packages/orphan",
+      "into": null,
+      "kind": "fix-manifest",
+      "packages": [
+        "packages/orphan"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 1,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "unused-dependency:packages/ui"
+      ],
+      "handoff": null,
+      "id": "fix-manifest:packages/ui",
+      "into": null,
+      "kind": "fix-manifest",
+      "packages": [
+        "packages/ui"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 1,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "against-stability:packages/api->packages/shared"
+      ],
+      "handoff": "structure evidence \"packages/api->packages/shared\" --level package",
+      "id": "break-dependency:packages/api->packages/shared",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/api",
+        "packages/shared"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "against-stability:packages/orphan->packages/shared"
+      ],
+      "handoff": "structure evidence \"packages/orphan->packages/shared\" --level package",
+      "id": "break-dependency:packages/orphan->packages/shared",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/orphan",
+        "packages/shared"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "against-stability:packages/testkit->packages/lib"
+      ],
+      "handoff": "structure evidence \"packages/testkit->packages/lib\" --level package",
+      "id": "break-dependency:packages/testkit->packages/lib",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/testkit",
+        "packages/lib"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "against-stability:packages/ui->packages/shared"
+      ],
+      "handoff": "structure evidence \"packages/ui->packages/shared\" --level package",
+      "id": "break-dependency:packages/ui->packages/shared",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/ui",
+        "packages/shared"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "against-stability:packages/wrap->packages/ui"
+      ],
+      "handoff": "structure evidence \"packages/wrap->packages/ui\" --level package",
+      "id": "break-dependency:packages/wrap->packages/ui",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/wrap",
+        "packages/ui"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "deep-import:packages/api->packages/helper"
+      ],
+      "handoff": null,
+      "id": "narrow-interface:packages/helper",
+      "into": null,
+      "kind": "narrow-interface",
+      "packages": [
+        "packages/helper"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "single-consumer:packages/api"
+      ],
+      "handoff": null,
+      "id": "merge:packages/api->packages/app",
+      "into": "packages/app",
+      "kind": "merge",
+      "packages": [
+        "packages/api",
+        "packages/app"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 4,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "single-consumer:packages/helper"
+      ],
+      "handoff": null,
+      "id": "merge:packages/helper->packages/api",
+      "into": "packages/api",
+      "kind": "merge",
+      "packages": [
+        "packages/helper",
+        "packages/api"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 4,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "single-consumer:packages/wrap",
+        "tiny:packages/wrap"
+      ],
+      "handoff": null,
+      "id": "merge:packages/wrap->packages/app",
+      "into": "packages/app",
+      "kind": "merge",
+      "packages": [
+        "packages/wrap",
+        "packages/app"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 4,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "pass-through-package:packages/wrap",
+        "single-consumer:packages/ui"
+      ],
+      "handoff": null,
+      "id": "merge:packages/wrap->packages/ui",
+      "into": "packages/ui",
+      "kind": "merge",
+      "packages": [
+        "packages/wrap",
+        "packages/ui"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 4,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [
+        {
+          "detail": "the merged package would have consumers that use disjoint parts of it (handle:packages/app; view:packages/wrap), and disjoint-reuse would recommend the split back",
+          "hard": true,
+          "kind": "creates-disjoint-reuse",
+          "packages": [
+            "packages/api",
+            "packages/ui"
+          ]
+        }
+      ],
+      "also": [],
+      "changeCost": 8.484,
+      "findings": [
+        "always-together:packages/api->packages/ui"
+      ],
+      "handoff": null,
+      "id": "merge:packages/ui->packages/api",
+      "into": "packages/api",
+      "kind": "merge",
+      "packages": [
+        "packages/ui",
+        "packages/api"
+      ],
+      "parts": null,
+      "status": "blocked",
+      "step": 4,
+      "tentative": false,
+      "unit": null
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 23
+  },
+  "window": {
+    "since": "2023-06-20T09:00:00.000Z",
+    "until": "2024-06-20T09:00:00.000Z"
+  },
+  "withheld": [
+    {
+      "findings": [
+        "lockstep:packages/lib->packages/lib-extra"
+      ],
+      "kind": "merge",
+      "packages": [
+        "packages/lib",
+        "packages/lib-extra"
+      ],
+      "reason": "packages/lib, packages/lib-extra are published: its consumers outside the repository cannot be seen, so nothing is proposed"
+    },
+    {
+      "findings": [
+        "tiny:packages/lib-extra"
+      ],
+      "kind": "merge",
+      "packages": [
+        "packages/lib-extra",
+        "packages/ui"
+      ],
+      "reason": "packages/lib-extra is published: its consumers outside the repository cannot be seen, so nothing is proposed"
+    },
+    {
+      "findings": [
+        "overexposed:packages/lib"
+      ],
+      "kind": "narrow-interface",
+      "packages": [
+        "packages/lib"
+      ],
+      "reason": "packages/lib is published: its consumers outside the repository cannot be seen, so nothing is proposed"
+    },
+    {
+      "findings": [
+        "disjoint-reuse:packages/lib",
+        "inherited-weight:packages/lib->packages/app",
+        "inherited-weight:packages/lib->packages/testkit",
+        "inherited-weight:packages/lib->packages/ui"
+      ],
+      "kind": "split",
+      "packages": [
+        "packages/lib"
+      ],
+      "reason": "packages/lib is published: its consumers outside the repository cannot be seen, so nothing is proposed"
+    }
+  ]
+}

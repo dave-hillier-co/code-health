@@ -1,0 +1,365 @@
+{
+  "command": "packages",
+  "config": "dccee5318f12ad29",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 44,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 3.6,
+    "window": {
+      "months": 12,
+      "since": 1679302800,
+      "until": 1710925200
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "kind": null,
+    "subcommand": "candidates"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3cec9d5e61fc7a0f308fdfb2dea58527d1f600c5"
+  },
+  "results": [
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 9.516,
+      "findings": [
+        "deep-import:packages/edge->packages/core",
+        "overexposed:packages/core"
+      ],
+      "handoff": null,
+      "id": "narrow-interface:packages/core",
+      "into": null,
+      "kind": "narrow-interface",
+      "packages": [
+        "packages/core"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 9.516,
+      "findings": [
+        "single-consumer:packages/core"
+      ],
+      "handoff": null,
+      "id": "merge:packages/core->packages/edge",
+      "into": "packages/edge",
+      "kind": "merge",
+      "packages": [
+        "packages/core",
+        "packages/edge"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 4,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 5.705,
+      "findings": [
+        "crossing-unit:packages/lib2->packages/lib3->packages/lib2/src/p.ts"
+      ],
+      "handoff": null,
+      "id": "move-unit:packages/lib2/src/p.ts->packages/lib3",
+      "into": "packages/lib3",
+      "kind": "move-unit",
+      "packages": [
+        "packages/lib2",
+        "packages/lib3"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 2,
+      "tentative": false,
+      "unit": "packages/lib2/src/p.ts"
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 5.705,
+      "findings": [
+        "crossing-unit:packages/lib3->packages/lib2->packages/lib3/src/q.ts"
+      ],
+      "handoff": null,
+      "id": "move-unit:packages/lib3/src/q.ts->packages/lib2",
+      "into": "packages/lib2",
+      "kind": "move-unit",
+      "packages": [
+        "packages/lib3",
+        "packages/lib2"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 2,
+      "tentative": false,
+      "unit": "packages/lib3/src/q.ts"
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "single-consumer:packages/lib2"
+      ],
+      "handoff": null,
+      "id": "merge:packages/lib2->packages/x",
+      "into": "packages/x",
+      "kind": "merge",
+      "packages": [
+        "packages/lib2",
+        "packages/x"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 4,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "single-consumer:packages/lib3"
+      ],
+      "handoff": null,
+      "id": "merge:packages/lib3->packages/y",
+      "into": "packages/y",
+      "kind": "merge",
+      "packages": [
+        "packages/lib3",
+        "packages/y"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 4,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [
+        {
+          "detail": "the merged package would have consumers that use disjoint parts of it (p:packages/x; q:packages/y), and disjoint-reuse would recommend the split back",
+          "hard": true,
+          "kind": "creates-disjoint-reuse",
+          "packages": [
+            "packages/lib2",
+            "packages/lib3"
+          ]
+        }
+      ],
+      "also": [],
+      "changeCost": 5.705,
+      "findings": [
+        "always-together:packages/lib2->packages/lib3"
+      ],
+      "handoff": null,
+      "id": "merge:packages/lib3->packages/lib2",
+      "into": "packages/lib2",
+      "kind": "merge",
+      "packages": [
+        "packages/lib3",
+        "packages/lib2"
+      ],
+      "parts": null,
+      "status": "blocked",
+      "step": 4,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [
+        {
+          "detail": "moving packages/core/src/shared.ts into packages/edge would make packages/core, packages/edge depend on each other",
+          "hard": true,
+          "kind": "creates-package-cycle",
+          "packages": [
+            "packages/core",
+            "packages/edge"
+          ]
+        },
+        {
+          "detail": "packages/core/src/shared.ts is imported by 1 file of packages/core and 1 of packages/edge",
+          "hard": true,
+          "kind": "consumers-on-both-sides",
+          "packages": [
+            "packages/core",
+            "packages/edge"
+          ]
+        }
+      ],
+      "also": [],
+      "changeCost": 4.765,
+      "findings": [
+        "crossing-unit:packages/core->packages/edge->packages/core/src/shared.ts"
+      ],
+      "handoff": null,
+      "id": "move-unit:packages/core/src/shared.ts->packages/edge",
+      "into": "packages/edge",
+      "kind": "move-unit",
+      "packages": [
+        "packages/core",
+        "packages/edge"
+      ],
+      "parts": null,
+      "status": "blocked",
+      "step": 2,
+      "tentative": false,
+      "unit": "packages/core/src/shared.ts"
+    },
+    {
+      "against": [
+        {
+          "detail": "moving packages/core/src/util.ts into packages/edge would make packages/core, packages/edge depend on each other",
+          "hard": true,
+          "kind": "creates-package-cycle",
+          "packages": [
+            "packages/core",
+            "packages/edge"
+          ]
+        }
+      ],
+      "also": [],
+      "changeCost": 4.751,
+      "findings": [
+        "crossing-unit:packages/core->packages/edge->packages/core/src/util.ts"
+      ],
+      "handoff": null,
+      "id": "move-unit:packages/core/src/util.ts->packages/edge",
+      "into": "packages/edge",
+      "kind": "move-unit",
+      "packages": [
+        "packages/core",
+        "packages/edge"
+      ],
+      "parts": null,
+      "status": "blocked",
+      "step": 2,
+      "tentative": false,
+      "unit": "packages/core/src/util.ts"
+    },
+    {
+      "against": [
+        {
+          "detail": "groups 1 and 2 changed together in 7 changes: as packages they would be always-together, and the merge would be recommended back",
+          "hard": true,
+          "kind": "creates-always-together",
+          "packages": [
+            "packages/big"
+          ]
+        }
+      ],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "disjoint-reuse:packages/big"
+      ],
+      "handoff": null,
+      "id": "split:packages/big",
+      "into": null,
+      "kind": "split",
+      "packages": [
+        "packages/big"
+      ],
+      "parts": [
+        {
+          "consumers": [
+            "packages/x"
+          ],
+          "exports": [
+            "m"
+          ]
+        },
+        {
+          "consumers": [
+            "packages/y"
+          ],
+          "exports": [
+            "n"
+          ]
+        }
+      ],
+      "status": "blocked",
+      "step": 5,
+      "tentative": false,
+      "unit": null
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "structure",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 10
+  },
+  "window": {
+    "since": "2023-03-20T09:00:00.000Z",
+    "until": "2024-03-20T09:00:00.000Z"
+  },
+  "withheld": []
+}

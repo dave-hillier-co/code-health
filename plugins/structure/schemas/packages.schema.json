@@ -190,6 +190,69 @@
             "type": "object",
             "properties": {
               "subcommand": {
+                "const": "candidates"
+              }
+            },
+            "required": [
+              "subcommand"
+            ]
+          }
+        },
+        "required": [
+          "inputs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
+                "const": "candidates"
+              },
+              "kind": {
+                "enum": [
+                  "merge",
+                  "split",
+                  "move-unit",
+                  "narrow-interface",
+                  "fix-manifest",
+                  "break-dependency",
+                  null
+                ]
+              }
+            },
+            "required": [
+              "subcommand",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/candidate"
+            }
+          },
+          "withheld": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/withheld"
+            }
+          }
+        },
+        "required": [
+          "withheld"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "subcommand": {
                 "const": "coupling"
               }
             },
@@ -256,6 +319,7 @@
             "list",
             "cohesion",
             "boundaries",
+            "candidates",
             "coupling"
           ]
         }
@@ -266,13 +330,208 @@
     },
     "repository": true,
     "balance": true,
-    "unavailable": true
+    "unavailable": true,
+    "withheld": true
   },
   "required": [
     "inputs"
   ],
   "unevaluatedProperties": false,
   "$defs": {
+    "candidate": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "merge",
+            "split",
+            "move-unit",
+            "narrow-interface",
+            "fix-manifest",
+            "break-dependency"
+          ]
+        },
+        "status": {
+          "enum": [
+            "proposed",
+            "blocked"
+          ]
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "into": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parts": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "exports": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "consumers": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "exports",
+                  "consumers"
+                ],
+                "additionalProperties": false
+              }
+            }
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "against": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "enum": [
+                  "declared-purpose",
+                  "different-deployables",
+                  "creates-disjoint-reuse",
+                  "creates-always-together",
+                  "creates-package-cycle",
+                  "consumers-on-both-sides"
+                ]
+              },
+              "hard": {
+                "type": "boolean"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "packages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "hard",
+              "detail",
+              "packages"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "changeCost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tentative": {
+          "type": "boolean"
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "also": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "handoff": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "status",
+        "packages",
+        "into",
+        "unit",
+        "parts",
+        "findings",
+        "against",
+        "changeCost",
+        "tentative",
+        "step",
+        "also",
+        "handoff"
+      ],
+      "additionalProperties": false
+    },
+    "withheld": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "merge",
+            "split",
+            "move-unit",
+            "narrow-interface",
+            "fix-manifest",
+            "break-dependency"
+          ]
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason": {
+          "type": "string"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "packages",
+        "reason",
+        "findings"
+      ],
+      "additionalProperties": false
+    },
     "balance": {
       "type": "object",
       "properties": {
