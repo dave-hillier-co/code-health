@@ -37,6 +37,14 @@ Pairs of files that changed in the same logical change. Fields: `path`, `with`, 
 
 Counts are over eligible logical changes: those at or below `cochange.maxChangesetSize` (default 30 files), after noise filtering. Bulk edits are left out of both sides of every ratio.
 
+## clusters [--min-degree D] [--min-support S]
+
+Connected components of the coupled-pair graph above the coupling minimums, ranked by score. Per row: `files`, `folders`, `size`, `spread` (mean pairwise tree distance), `meanDegree`, `findings` (`cluster` when the group spans three or more folders), and `magnets`: files in the group that change with many folders whose partners rarely change with each other (`change-magnet`).
+
+## trend PATH [--samples N]
+
+One file's indentation complexity, lines and bytes at up to N revisions (default 10, from 2 to 500) spread evenly over its history, the first and the last always included. `direction` is `worsening` or `improving` when complexity moved by at least 20 percent from the first sample to the last, `stable` otherwise, and `insufficient` with fewer than two samples. Samples are read from blobs, so no checkout is needed.
+
 ## spread [--since DATE] [--until DATE] [--bucket week|month]
 
 Change-spread distribution per bucket, with an `overall` row. Dates are ISO 8601 (`2024-03-01`). `--since` is inclusive, `--until` exclusive, and a bare `--until` looks back the configured window from it. Per bucket: `logicalChanges`, `measured`, `singleFile`, `oversized`, `oversizedShare`, `excludedByTrailer`, `mean`, `median`, `p75`, `p90`, `max`. Changes carrying a `Code-Health:` trailer are left out and counted in `excludedByTrailer`.

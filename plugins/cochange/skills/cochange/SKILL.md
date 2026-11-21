@@ -63,7 +63,9 @@ When the repository enables the completeness hook, a one-sentence note may appea
 2. Take the rows with `recommendation: "hotspot"`. Ignore the rest unless asked.
 3. `age` shows which of them are `cold` (not changed within the stale window). Cold code is the cheapest to leave alone, so it is the lowest priority.
 4. For each hotspot, read the file's worst functions. Then name the red flag you judge present, or say none applies. The vocabulary is in [references/red-flags.md](references/red-flags.md). Nonobvious code, shallow modules and special-general mixtures are the common ones in a hotspot.
-5. Report a short ranked list: file, why it is a hotspot (frequency, complexity, recency), the red flag, and the suggested handoff, which is a complexity review of its worst functions.
+5. `trend PATH` shows whether a hotspot's complexity is worsening, improving or stable over its history. A file whose complexity is improving needs less urgent attention than one that is worsening.
+6. `test-drift` on a row means a frequently changed source file whose sibling test never changes with it: check whether behaviour is changing without tests.
+7. Report a short ranked list: file, why it is a hotspot (frequency, complexity, recency), the red flag, and the suggested handoff, which is a complexity review of its worst functions.
 
 A hotspot with no red flag and no outcome evidence is a candidate for dismissal. Say so and record why.
 
@@ -79,7 +81,7 @@ A hotspot with no red flag and no outcome evidence is a candidate for dismissal.
 
 Coupling between a file and its sibling test has distance 0 and is expected. Do not report it as a problem.
 
-If a file couples with files in many unrelated folders that do not couple with each other, it is probably a registration hub. Say so and ask before proposing a change.
+`clusters` lists groups of mutually coupled files with their spread, and flags the change magnets: files that change with many folders whose partners rarely change with each other. A `change-magnet` is probably a registration hub. Say so and ask before proposing a change. A `cluster` spanning three or more folders may be one unit spread across the tree: hand it to a locality review.
 
 ## Measuring an outcome
 

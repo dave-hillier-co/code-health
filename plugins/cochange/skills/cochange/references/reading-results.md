@@ -37,8 +37,11 @@ Always quote the support: "changed together 5 times of 27" says more than "19 %"
 | `distant-coupling` | Strong coupling across far-apart folders | Locality review. Else look for information leakage. |
 | `asymmetric-coupling` | One file drags the other, not the reverse | Check for information leakage or temporal decomposition |
 | `cold` | Not changed within the stale window | Lowest priority, cheapest to move |
+| `cluster` | A group of mutually coupled files spanning three or more folders (`clusters`) | Locality review of the whole group: it may be one unit spread across folders |
+| `change-magnet` | A file that changes with files in many folders that rarely change with each other (`clusters`) | Look for a registration hub: a file every feature must edit. Hand it to the structure skill if installed |
+| `test-drift` | A frequently changed source file whose sibling test never changes with it (`hotspots`) | Check whether behaviour is changing without tests |
 
-Findings that this CLI does not classify yet (clusters, change magnets, test drift) you can still spot by hand from `coupling` rows: many partners across unrelated folders suggests a registration hub, and a high-frequency source file whose sibling test never appears in its `coupling --file` list suggests behaviour changing without tests.
+`clusters` lists the groups and the change magnets with their spread and folders. `trend PATH` samples one file's indentation complexity and size across its history (`--samples N`, from 2 to 500) and says whether it is worsening, improving or stable, so you can see whether a hotspot is getting worse before spending effort on it. Run `explain <rule>` for any finding.
 
 ## Red flags that co-change evidences
 
