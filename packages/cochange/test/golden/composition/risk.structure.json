@@ -546,6 +546,7 @@
           "band": null,
           "evidence": [
             {
+              "component": null,
               "coupled": 0,
               "file": "src/app/calc.ts",
               "folder": 2
@@ -560,6 +561,7 @@
           "status": "ok",
           "thresholds": {},
           "value": {
+            "component": null,
             "coupled": 0,
             "folder": 2
           }

@@ -5,19 +5,22 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
-import { bundle, bundledPlugins } from "../bundle.mjs";
+import { bundle, bundleChunks, bundledPlugins } from "../bundle.mjs";
 
 vi.setConfig({ testTimeout: 60_000 });
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 let text: string;
+let chunks: Map<string, string>;
 let work: string;
 let repo: GitFixture;
 beforeAll(async () => {
   text = await bundle("cochange");
+  chunks = await bundleChunks("cochange");
   work = mkdtempSync(join(tmpdir(), "cochange-bundle-"));
   writeFileSync(join(work, "cochange.mjs"), text);
+  for (const [name, chunk] of chunks) writeFileSync(join(work, name), chunk);
   repo = GitFixture.build([
     {
       type: "commit",
@@ -46,13 +49,21 @@ test("a rebuild is byte identical", async () => {
   expect(await bundle("cochange")).toBe(text);
 });
 
-test("the bundle imports only Node builtins, and is a single ESM file", () => {
-  const specifiers = [...text.matchAll(/^import\s[^;]*?from\s+"([^"]+)"/gm)].map((m) => m[1]);
+test("the bundle imports only Node builtins and its own chunks, and is ESM", () => {
+  const specifiersOf = (source: string) => [...source.matchAll(/^import\s[^;]*?from\s+"([^"]+)"/gm)].map((m) => m[1]!);
+  const specifiers = specifiersOf(text);
   expect(specifiers.length).toBeGreaterThan(0);
-  for (const specifier of specifiers) expect(specifier).toMatch(/^node:/);
+  for (const specifier of specifiers) expect(specifier).toMatch(/^node:|^\.\/chunk-[A-Z0-9]+\.mjs$/);
+  // A module loaded on demand is its own file beside the bundle, and imports only builtins as well.
+  for (const [name, chunk] of chunks) {
+    for (const specifier of specifiersOf(chunk)) expect(specifier, name).toMatch(/^node:|^\.\/chunk-[A-Z0-9]+\.mjs$/);
+  }
+  // The parse layer's chunk carries the tree-sitter runtime, whose own Node branch calls require for builtins.
   expect(text).not.toMatch(/require\(["'](?!node:)/);
-  expect(text).not.toContain("sourceMappingURL");
-  expect(text).not.toContain(root);
+  for (const source of [text, ...chunks.values()]) {
+    expect(source).not.toContain("sourceMappingURL");
+    expect(source).not.toContain(root);
+  }
 });
 
 test("the bundle runs under plain node, outside the repository's own node_modules", () => {

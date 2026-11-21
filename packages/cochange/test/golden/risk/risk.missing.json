@@ -83,7 +83,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "a8315ddcd7fd55944a8c26867938cd8591afee71"
+    "head": "eead67bfce2033a2bd6d0602ea3e9c0d1c04fe2d"
   },
   "results": {
     "change": {
@@ -600,6 +600,7 @@
           "band": null,
           "evidence": [
             {
+              "component": null,
               "coupled": 12,
               "file": "src/billing/invoice.ts",
               "folder": 12
@@ -614,6 +615,7 @@
           "status": "ok",
           "thresholds": {},
           "value": {
+            "component": null,
             "coupled": 12,
             "folder": 12
           }

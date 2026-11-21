@@ -6,7 +6,6 @@ import { extractChange, resolveRange, type BranchChange } from "./change.ts";
 import { abandonedTouched } from "./abandoned-touched.ts";
 import { liveMeasurements, readLocalityFanIn, withFanIn, type LocalityFanIn } from "./composition.ts";
 import type { Factor } from "./factor.ts";
-import { changedSignatures, withSignatures } from "./signatures.ts";
 import { NO_EVIDENCE, readEvidence, type EvidenceInputs } from "./evidence-inputs.ts";
 import { chronologicalPass, SECONDS_PER_MONTH, type PastChange } from "./history-pass.ts";
 import type { HistoryState } from "./history-state.ts";
@@ -125,6 +124,8 @@ export async function assessBranch(
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change.head);
   const touched = change.files.filter((file) => file.status !== "D").map((file) => file.fileId);
+  // The parse layer is loaded when a change needs it, so the hook's bundle never carries the grammar loader.
+  const { changedSignatures, withSignatures } = await import("./signatures.ts");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);
