@@ -37,6 +37,24 @@ only. A language mapped to a profile by config is marked `unverified`.
 File-level metrics work for any text file: `complexity` (the indentation complexity, shared with the cochange plugin),
 line counts and, with a profile, `keywordComplexity`.
 
+## Interface depth
+
+`complexity depth` reports the signal behind the *shallow module* and *pass-through method* red flags, from the syntax tree
+of TypeScript and JavaScript. It is never gated.
+
+| Value | Counted as |
+|---|---|
+| `nodes` | Named syntax nodes of the unit, itself included, comments left out. For a module, the whole file without its import statements. |
+| `interface` | A function: its parameters (a destructured object counts once), at least 1. A class: its constructor parameters plus its reachable members, so everything except `private` members and `#` fields, at least 1. A module: the names it exports, re-exports included. |
+| `depth` | `nodes` divided by `interface`, to two places. Higher is deeper. |
+| `passThrough` | The call a function's whole body forwards to. The body is one statement that is a call (`return`, `await`, `as` and `!` do not count as work), and every argument is a parameter, a spread of one, or a literal. A `new`, a computed argument or a second statement is the function doing work. |
+
+Rows are the exported top-level functions and classes, each module that exports something, and every pass-through, exported
+or not (a method of an exported class counts as exported). A row is `shallow` when it is exported, is not a method and has
+fewer than `interfaceDepth.shallow` (default 10) nodes per interface element. Pass-throughs sort first, then the shallowest.
+A small helper with one clear purpose is often shallow and right: read before acting. `files` carries `interfaceDepth`, the
+mean depth over a file's exported functions and classes, and `passThroughs`, so a campaign can be checked for splitting.
+
 ## Thresholds
 
 A metric is over its threshold when its value is **above** it. Only `warn` gates `check`. `high` only changes the label.
@@ -65,6 +83,8 @@ The `complexity` section of `code-health.json`. Missing keys take the defaults, 
 | `agreementBar` | `0.9` | Agreement a lexer profile needs for per-function lexical metrics. |
 | `moveSimilarity` | `0.8` | Body similarity at which a function that disappeared and one that appeared are one function moved or renamed. |
 | `analyseTests` | `true` | Analyse test files. They are ranked among themselves, never against production code. |
+| `interfaceDepth` | `{ "shallow": 10 }` | Nodes per interface element below which an exported unit is labelled `shallow`. |
+| `hook` | `{ "enabled": false }` | The post-edit hook, off unless a repository turns it on. See [hook.md](hook.md). |
 | `overrides` | `[]` | `{ "paths": [globs], "thresholds": { ... } }`, applied in order over the defaults. For generated code, fixtures and the like. |
 
 The suite's shared `exclude` globs leave files out entirely.

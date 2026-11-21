@@ -90,6 +90,13 @@ Declared parameters. Destructured object parameters count as one parameter plus 
 
 For each exported function, class or module: implementation size (AST nodes) divided by interface size (parameters + exported members). It is reported as a signal for the *shallow module* red flag. A *pass-through* signal fires when a function body is a single forwarded call.
 
+- **Nodes** are the named syntax nodes of the unit, itself included, comments left out. For a module, the whole file without its import statements.
+- **Interface size.** A function: its parameters, at least 1. A class: its constructor parameters plus the members a user can reach, everything but `private` members and `#` fields, at least 1. A module: the names it exports, re-exports included.
+- **Pass-through.** The body is one statement that is a call, looking through `return`, `await`, `as` and `!`, and every argument is a parameter of the function, a spread of one, or a literal. A `new`, a computed argument or a second statement is the function doing work. It is reported for any named function or method, exported or not.
+- **Shallow** is a label, not a gate: an exported function, class or module that is not a method, with fewer than `interfaceDepth.shallow` (default 10) nodes per interface element.
+- It needs the structural layer, so a language without an adapter has no depth.
+- The mean depth of a file's exported functions and classes, and its count of pass-throughs, sit on the `files` rows. They are the gaming check of the Measurement table.
+
 ### File aggregates
 
 Per file: function count, sum and max of each metric, and the count of functions over threshold. Sums take top-level units only, because a nested function already adds to its parent's score and would otherwise be counted twice. For unsupported languages, only indentation complexity (shared definition with the cochange plugin) and line counts.
@@ -117,6 +124,7 @@ Default thresholds, which are configurable and used for `check` and labelling on
 | `complexity diff BASE[..HEAD]` | Only units added or changed between two revisions, with before and after values. Without HEAD, compares against the working tree. |
 | `complexity check [--base REV]` | Compares units against a base revision (default: the merge base with the configured main branch). Exits 1 if a new unit exceeds a threshold, or an existing unit is over a threshold and worsened by more than the configured delta. A unit that stays under its thresholds never fails. Built for CI and pre-commit. |
 | `complexity explain UNIT` | Line-by-line breakdown of where each increment came from. Lets the agent target the exact construct. |
+| `complexity depth [PATHS]` | Exported functions, classes and modules by interface depth, and every pass-through, with labels. A full run writes the `complexity.depth` report. |
 
 ## Agent integration
 
@@ -126,7 +134,9 @@ A `PostToolUse` hook on `Edit` and `Write` for any language with a lexer profile
 
 - Measures only the edited file. Each run is a fresh process, so nothing is incremental: the budget (about 150 ms) has to cover process start and, for structural metrics, loading the WASM runtime and one grammar. The hook uses the lexical layer by default, and the structural layer only for languages where the benchmark fixture shows it fits the budget.
 - Compares the file's units against the last measurement in the hook's session state ([suite.md](suite.md#hooks)), or against the values at HEAD when the session has none.
-- Stays silent unless a unit crossed a threshold or worsened by more than the configured delta. When it speaks, it gives a single line with the unit, the metric, the before and after values, and the `explain` command.
+- Stays silent unless a unit crossed a threshold or worsened by more than the configured delta. When it speaks, it gives a single line with the unit, the metric, the before and after values, and the `explain` command. With several findings it names the worst and counts the rest.
+- The lexical values it compares are nesting, keyword complexity (read as cyclomatic complexity minus one, against the cyclomatic threshold) and the bumpy road. A language speaks only where its lexical agreement with the structural layer clears the bar, and a block with no name is left out. Cognitive complexity is structural, so `check` has it and the hook does not.
+- The hook's process, worker and session state are shared with the other plugins' hooks (`packages/history`), and each hook keeps its own state file.
 - Never blocks.
 
 This is the cheapest point to fix complexity: the agent has the code in context and has not yet built on it.
@@ -160,7 +170,8 @@ In the `complexity` section of the suite config:
 - Cyclomatic `switch` mode.
 - Base revision for `check`, and the worsening delta it and the hook share.
 - The agreement bar for per-function lexical metrics.
-- Hook enablement.
+- Hook enablement (`hook.enabled`, off by default).
+- The shallow threshold of the interface depth label (`interfaceDepth.shallow`).
 - Whether tests are analysed (default: analysed, but ranked separately).
 
 ## Languages

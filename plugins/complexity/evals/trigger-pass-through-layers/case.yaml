@@ -1,0 +1,26 @@
+schema_version: "1.0"
+name: trigger-pass-through-layers
+description: The skill loads and runs `depth` when the user asks which functions only forward to another function. Needs `--scaffold` (see CONTRIBUTING.md).
+tags: [trigger]
+context:
+  scaffold_script: ../layers-scaffold.sh
+runs: 3
+execution:
+  prompt: Are there functions in this repository that just forward to another function and add nothing? I want to know which layers are not earning their keep.
+  model: claude-sonnet-5-5
+  allowed_tools: [Bash, Read, Grep, Glob]
+  max_turns: 10
+  timeout_seconds: 300
+graders:
+  - type: tool_used
+    name: runs-depth
+    tool: Bash
+    input_match: "complexity\\.mjs depth"
+    min: 1
+    arm: with-only
+  - type: regex
+    name: names-the-forwarding-functions
+    pattern: "saveRecord|loadRecord"
+    flags: i
+    target: last_message
+    arm: with-only

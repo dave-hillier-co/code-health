@@ -1,6 +1,6 @@
 ---
 name: complexity
-description: Use when code is hard to understand or follow, a function is too complex, deeply nested or confusing, the user asks what to simplify or where the complexity is, wants cognitive or cyclomatic complexity measured, a bumpy road or tangled function reduced, a refactor of a complicated function planned, or a complexity check added to CI or pre-commit. Finds the functions that are hardest to understand, explains where each one's complexity comes from, and guides simplifications that make the code easier to read without scattering it into shallow helpers.
+description: Use when code is hard to understand or follow, a function is too complex, deeply nested or confusing, the user asks what to simplify or where the complexity is, wants cognitive or cyclomatic complexity measured, a bumpy road or tangled function reduced, a refactor of a complicated function planned, shallow modules or pass-through wrapper functions found, a complexity check added to CI or pre-commit, or feedback on complexity wanted as code is edited. Finds the functions that are hardest to understand, explains where each one's complexity comes from, and guides simplifications that make the code easier to read without scattering it into shallow helpers.
 allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs *)
 ---
 
@@ -50,6 +50,20 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
 
 4. To see only what a branch changed, use `diff main..HEAD`, or `diff main` for the working tree.
 
+5. To find layers that add nothing, use `depth`:
+
+   ```
+   node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs depth --json --limit 10
+   ```
+
+   It lists exported functions, classes and modules by interface depth (syntax nodes of implementation per element of
+   interface), plus every function whose whole body forwards to one call. A row labelled `pass-through` names the call it
+   forwards to. A row labelled `shallow` hides little behind its interface. Both are signals to review against the
+   *shallow module* and *pass-through method* red flags, never findings on their own: read the function, and the
+   callers, before acting. The threshold is `interfaceDepth.shallow`, and depth needs a structural adapter, so
+   other languages are counted in `summary.filesWithoutAdapter` and not listed. Details in
+   [references/metrics.md](references/metrics.md).
+
 ## Locate the cost
 
 Run `explain` on the function, with its id from the `analyse` row:
@@ -95,6 +109,8 @@ Work down this list and stop at the first step that is enough. The detail and ex
    regressions in review. If the branching is still there, so is the complexity.
 5. **Inline what is not earning its keep.** A helper called once, that forwards its arguments, or that a reader must jump
    to in order to understand the caller, is a candidate for inlining. Removing a shallow layer deepens what remains.
+   `depth` finds the forwarding ones. Inline a `pass-through` only after checking why it exists: a stable name for a callee
+   that changes, or a dependency boundary, is a reason to keep it.
 
 Do not touch a function because it is long, or because it is just over a threshold and cheap to read. Leave it and say
 why. Ousterhout's position, which the suite follows: shallow decomposition is the problem, not length.
@@ -128,6 +144,10 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs diff HEAD~1..HEAD --json
 check: if the function count of the file rose (`files` shows `functions`, and `diff` shows `summary.added`) while the
 total fell by only a little, you probably split instead of simplifying. Say so, and reconsider.
 
+Check depth as well: `files` shows `interfaceDepth` (the mean over the file's exported functions and classes) and
+`passThroughs`. A rising function count with a falling `interfaceDepth`, or new `pass-through` rows, is the same sign
+that the code was split, not simplified.
+
 If a metric did not fall, do not chase it. A simplification that makes the code clearer and leaves the score is still a
 good commit. A score that fell while the code got harder to follow is a bad one.
 
@@ -142,14 +162,24 @@ Run `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs check --json` before committ
 If it fails, simplify the function it names: do not raise a threshold to make it pass. A raised threshold or a
 per-path override in `code-health.json` is a decision for the owner of the code, with a reason recorded in the commit.
 
+## Feedback while editing
+
+A repository can turn on a post-edit hook (`complexity.hook.enabled` in `code-health.json`, off by default). After each
+`Edit`, `Write` or `MultiEdit` it measures the edited file, and when a function crossed a threshold or got worse since
+the session's last measurement (or HEAD) it adds one line naming the function, the metric and the before and after values,
+with the `explain` command. It speaks once per file per session. Treat the line as the cheapest moment to simplify: the code
+is in your context and nothing is built on it yet. Apply the same remedy policy, in place first. Do not respond by
+splitting the function to silence the hook. If the user asks why it is silent or noisy, read
+[references/hook.md](references/hook.md).
+
 ## Reporting
 
 When you finish, report in this order and keep it short:
 
 1. What you changed, function by function, with the red flag cited and the before and after metrics.
 2. What you left alone and why.
-3. What the numbers cannot tell: lexical-only languages, code outside the ranked set, and that the ranking is not yet
-   weighted by change frequency.
+3. What the numbers cannot tell: lexical-only languages, code outside the ranked set, and, when `ranking.changeWeighted`
+   is false, that the ranking is not weighted by change frequency.
 4. The outcome to watch: whether the simplified functions are cheaper to change over the next commits. Do not claim an
    effect the data cannot show yet.
 
@@ -157,5 +187,6 @@ When you finish, report in this order and keep it short:
 
 - [references/metrics.md](references/metrics.md): how each metric is counted, the default thresholds and every config key.
 - [references/remedies.md](references/remedies.md): the remedies with before and after examples, and the gaming patterns to refuse.
+- [references/hook.md](references/hook.md): the opt-in post-edit hook, what it measures, when it speaks and how to read its state.
 - [references/ci.md](references/ci.md): `check` and `diff` in CI and pre-commit, exit codes, and choosing a base.
 - [references/red-flags.md](references/red-flags.md): the shared design vocabulary.
