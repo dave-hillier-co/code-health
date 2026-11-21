@@ -1,19 +1,17 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
-import { monthsBefore } from "@code-health/history/evidence";
 import type { LogicalChange } from "@code-health/history/noise";
 import { analysisCommand } from "../analysis-command.ts";
 import { readSettings } from "../config.ts";
-import type { ExplicitWindow } from "../history-access.ts";
 import {
   bucketLabel,
   bucketStart,
   changeSpread,
   nextBucketStart,
-  parseDate,
   percentile,
   type Bucket,
 } from "../spread-measure.ts";
+import { statedWindow } from "../window-options.ts";
 
 export const name = "spread";
 
@@ -62,33 +60,10 @@ function bucketOption(context: CommandContext): Bucket {
   throw usageError(`--bucket must be "week" or "month", not "${String(value)}"`);
 }
 
-function dateOption(context: CommandContext, option: "since" | "until"): number | undefined {
-  const value = context.values[option];
-  if (value === undefined) return undefined;
-  const parsed = typeof value === "string" ? parseDate(value) : null;
-  if (parsed === null) {
-    throw usageError(`--${option} must be an ISO 8601 date such as 2024-03-01, not "${String(value)}"`);
-  }
-  return parsed;
-}
-
-/**
- * The window the options state. `--since` is inclusive and `--until`
- * exclusive. A bare `--until` looks back the configured window from that date.
- */
-function statedWindow(context: CommandContext): ExplicitWindow | undefined {
-  const since = dateOption(context, "since");
-  const until = dateOption(context, "until");
-  if (since === undefined && until === undefined) return undefined;
-  const effectiveSince = since ?? monthsBefore(until!, readSettings(context.config).windowMonths);
-  if (until !== undefined && effectiveSince >= until) throw usageError("--since must be before --until");
-  return { since: effectiveSince, until };
-}
-
 export const command = analysisCommand(name, {
   summary: "Change-spread distribution (mean pairwise tree distance per logical change) per week or month",
   options: { since: { type: "string" }, until: { type: "string" }, bucket: { type: "string" } },
-  window: statedWindow,
+  window: (context) => statedWindow(context, readSettings(context.config).windowMonths),
   partial: (context) => bucketOption(context) !== "month",
   analyse({ context, history }) {
     const bucket = bucketOption(context);

@@ -2,6 +2,8 @@ import type { OptionSpec } from "@code-health/cli-kit/args";
 import type { Command, CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { loadHistory, type ExplicitWindow, type LoadedHistory } from "./history-access.ts";
 import { writeReport } from "./reports.ts";
+import { readSettings } from "./config.ts";
+import { statedWindow, windowOptions } from "./window-options.ts";
 
 export interface AnalysisInput {
   context: CommandContext;
@@ -57,12 +59,20 @@ export function identityStamps(history: LoadedHistory): Record<string, unknown> 
 const sharedOptions = { "no-refresh": { type: "boolean" } } satisfies OptionSpec;
 
 /**
+ * Whether the command states its window itself, or reads all of history so that a window means nothing to it.
+ * Every other command takes `--since` and `--until`, which is how a shallow clone is given the window it needs.
+ */
+function ownsWindow(spec: AnalysisSpec): boolean {
+  return spec.window !== undefined || spec.wholeHistory === true || spec.options?.since !== undefined || spec.options?.until !== undefined;
+}
+
+/**
  * Builds a command that reads history. It does the plumbing every analysis
  * command needs, so the command itself is only its computation:
  *
  * - refreshes the history cache first unless `--no-refresh` is given,
  * - refuses a shallow clone without a stated window,
- * - reads the history for the analysis window and applies the noise filters,
+ * - reads the history for the analysis window (or the one `--since` and `--until` state) and applies the noise filters,
  * - adds `window`, `filtersApplied` and `evidence` to the output,
  * - stores the full result as a report on a clean tree, for whole-repository runs
  *   that analyse HEAD itself.
@@ -70,9 +80,9 @@ const sharedOptions = { "no-refresh": { type: "boolean" } } satisfies OptionSpec
 export function analysisCommand(name: string, spec: AnalysisSpec): Command {
   return {
     summary: spec.summary,
-    options: { ...spec.options, ...sharedOptions },
+    options: { ...(ownsWindow(spec) ? {} : windowOptions), ...spec.options, ...sharedOptions },
     async run(context) {
-      const window = spec.window?.(context);
+      const window = ownsWindow(spec) ? spec.window?.(context) : statedWindow(context, readSettings(context.config).windowMonths);
       const history = await loadHistory(context, {
         noRefresh: context.values["no-refresh"] === true,
         window,

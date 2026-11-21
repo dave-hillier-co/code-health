@@ -1,6 +1,8 @@
 import type { OptionSpec } from "@code-health/cli-kit/args";
 import type { Command, CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { loadHistory, type ExplicitWindow, type LoadedHistory } from "./history-access.ts";
+import { statedWindow, windowOptions } from "@code-health/cochange/window-options";
+import { readSettings } from "./config.ts";
 import { writeReport } from "./reports.ts";
 
 export interface AnalysisInput {
@@ -37,6 +39,11 @@ export interface AnalysisSpec {
 
 const sharedOptions = { "no-refresh": { type: "boolean" } } satisfies OptionSpec;
 
+/** Whether the command states its window itself, or reads all of history so that a window means nothing to it. */
+function ownsWindow(spec: AnalysisSpec): boolean {
+  return spec.window !== undefined || spec.wholeHistory === true || spec.options?.since !== undefined || spec.options?.until !== undefined;
+}
+
 /**
  * Builds a command that reads history. It does the plumbing every analysis
  * command needs, so the command itself is only its computation:
@@ -51,9 +58,9 @@ const sharedOptions = { "no-refresh": { type: "boolean" } } satisfies OptionSpec
 export function analysisCommand(name: string, spec: AnalysisSpec): Command {
   return {
     summary: spec.summary,
-    options: { ...spec.options, ...sharedOptions },
+    options: { ...(ownsWindow(spec) ? {} : windowOptions), ...spec.options, ...sharedOptions },
     async run(context) {
-      const window = spec.window?.(context);
+      const window = ownsWindow(spec) ? spec.window?.(context) : statedWindow(context, readSettings(context.config).windowMonths);
       const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, window, wholeHistory: spec.wholeHistory });
       const output = await spec.analyse({ context, history });
       const finished: CommandOutput = {
