@@ -1,0 +1,6 @@
+{
+  "$comment": "Pins every plugin eval run. Cases must set execution.model to model; run-evals passes judgeModel and maxCostUsd to claude plugin eval.",
+  "model": "claude-sonnet-5-5",
+  "judgeModel": "claude-haiku-4-5",
+  "maxCostUsd": 5
+}

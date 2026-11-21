@@ -55,6 +55,9 @@ jobs:
       - name: Skills follow the skill conventions
         run: npm run check:skills
 
+      - name: Eval cases are valid and pinned
+        run: npm run check:evals
+
       - name: Version bump
         env:
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
