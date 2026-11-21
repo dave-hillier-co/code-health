@@ -80,7 +80,37 @@ test("C# methods with attributes, constructors and lambdas", () => {
     ["App.Svc.Run", 4, 10],
     [undefined, 6, 8],
     ["App.Svc.Svc", 11, 12],
+    ["App.Svc.get", 13, 13],
   ]);
+});
+
+test("C# members with expression bodies are blocks that end at their semicolon, and lambdas and switch arms are not", () => {
+  const source = [
+    "class Money {", // 1
+    "  public decimal Amount { get; }", // 2
+    "  public Money(decimal amount) => Amount = amount;", // 3
+    "  public static Money Zero => new Money(0);", // 4
+    "  public int Twice(int x) =>", // 5
+    "    x * 2;", // 6
+    "  public static bool operator ==(Money a, Money b) => a.Amount == b.Amount;", // 7
+    "  public static implicit operator decimal(Money m) => m.Amount;", // 8
+    "  private readonly Func<int, int> inc = x => x + 1;", // 9
+    "  public string Name(int n) { return n switch { 0 => \"zero\", _ => \"many\" }; }", // 10
+    "}", // 11
+  ].join("\n");
+  expect(blocks(source, "csharp")).toEqual([
+    ["Money.Money", 3, 3],
+    ["Money.Zero", 4, 4],
+    ["Money.Twice", 5, 6],
+    ["Money.operator ==", 7, 7],
+    ["Money.operator decimal", 8, 8],
+    ["Money.Name", 10, 10],
+  ]);
+});
+
+test("a C# parameter of type object is not a type declaration", () => {
+  const source = ["class A {", "  public bool Is(object o) {", "    return o is int;", "  }", "}"].join("\n");
+  expect(blocks(source, "csharp")).toEqual([["A.Is", 2, 4]]);
 });
 
 test("C++ functions, qualified definitions, templates and lambdas", () => {
