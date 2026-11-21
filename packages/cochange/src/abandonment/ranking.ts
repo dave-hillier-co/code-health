@@ -40,8 +40,8 @@ export interface FileEvidence {
   /** Probability of being abandoned within the horizon, 0 to 1. */
   probability: number;
   hot: boolean;
-  /** No active developer has changed a file that changes with this one. */
-  noSuccessor: boolean;
+  /** Asked only for files that are abandoned or at risk: no active developer has changed a file that changes with this one. */
+  noSuccessor: () => boolean;
 }
 
 /** The findings of one file. `atRiskPercent` is the configured probability, in percent, at which a file is at risk. */
@@ -50,7 +50,7 @@ export function fileFindings(evidence: FileEvidence, atRiskPercent: number): Fin
   const findings: Finding[] = [];
   if (evidence.abandoned) findings.push("abandoned");
   else if (atRisk) findings.push(evidence.hot ? "at-risk-hot" : "at-risk-cold");
-  if ((evidence.abandoned || atRisk) && evidence.noSuccessor) findings.push("no-successor");
+  if ((evidence.abandoned || atRisk) && evidence.noSuccessor()) findings.push("no-successor");
   return findings;
 }
 

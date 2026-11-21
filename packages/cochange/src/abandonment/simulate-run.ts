@@ -8,6 +8,7 @@ import { goneLinesOf, reachesThreshold } from "./knowledge-model.ts";
 import { commonExtra, commonInputs, prepare, type Prepared } from "./prepare.ts";
 import { fileFindings, hotspotWeights, rankScore } from "./ranking.ts";
 import { reportLoss } from "./report.ts";
+import { noSuccessorCheck } from "./successors.ts";
 import { chooseSelection, readSimulationSettings } from "./selection.ts";
 import { readRank, requireKnowledge } from "./settings.ts";
 import { simulate } from "./simulate.ts";
@@ -74,6 +75,7 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
   });
 
   const weights = await hotspotWeights(context, p.history);
+  const noSuccessor = noSuccessorCheck(p.history, model);
   const rank = readRank(context, settings);
   const byPath = new Map(model.files.map((f) => [f.path, f]));
   const fileRows = result.fileRisks
@@ -94,7 +96,7 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
         peopleLines: file.people,
         activeAuthors: file.holders.length - former,
         formerAuthors: former,
-        findings: fileFindings({ abandoned, probability: f.probability, hot: weight?.hot ?? false, noSuccessor: false }, settings.atRiskProbability),
+        findings: fileFindings({ abandoned, probability: f.probability, hot: weight?.hot ?? false, noSuccessor: () => noSuccessor(f.path) }, settings.atRiskProbability),
       };
     })
     .sort((a, b) => b.score - a.score || b.probability - a.probability || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)))

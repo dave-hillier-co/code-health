@@ -9,6 +9,7 @@ import * as hotspots from "./commands/hotspots.ts";
 import * as identities from "./commands/identities.ts";
 import * as refresh from "./commands/refresh.ts";
 import * as spread from "./commands/spread.ts";
+import * as successors from "./commands/successors.ts";
 import * as trend from "./commands/trend.ts";
 
 /** What a module in `commands/` exports. */
@@ -36,6 +37,7 @@ export const commandModules: CommandModule[] = [
   identities,
   refresh,
   spread,
+  successors,
   trend,
 ];
 

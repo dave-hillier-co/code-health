@@ -98,7 +98,8 @@
       "abandonedShare": 1,
       "activeAuthors": 0,
       "findings": [
-        "abandoned"
+        "abandoned",
+        "no-successor"
       ],
       "formerAuthors": 1,
       "hotspot": false,
@@ -113,7 +114,8 @@
       "abandonedShare": 0.9,
       "activeAuthors": 1,
       "findings": [
-        "abandoned"
+        "abandoned",
+        "no-successor"
       ],
       "formerAuthors": 1,
       "hotspot": false,
@@ -128,7 +130,8 @@
       "abandonedShare": 1,
       "activeAuthors": 0,
       "findings": [
-        "abandoned"
+        "abandoned",
+        "no-successor"
       ],
       "formerAuthors": 1,
       "hotspot": false,

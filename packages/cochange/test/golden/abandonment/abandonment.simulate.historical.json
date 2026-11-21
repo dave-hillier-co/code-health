@@ -162,7 +162,8 @@
         "abandoned": false,
         "activeAuthors": 1,
         "findings": [
-          "at-risk-cold"
+          "at-risk-cold",
+          "no-successor"
         ],
         "formerAuthors": 0,
         "hotspot": false,
@@ -177,7 +178,8 @@
         "abandoned": true,
         "activeAuthors": 0,
         "findings": [
-          "abandoned"
+          "abandoned",
+          "no-successor"
         ],
         "formerAuthors": 1,
         "hotspot": false,
@@ -192,7 +194,8 @@
         "abandoned": true,
         "activeAuthors": 1,
         "findings": [
-          "abandoned"
+          "abandoned",
+          "no-successor"
         ],
         "formerAuthors": 1,
         "hotspot": false,
@@ -207,7 +210,8 @@
         "abandoned": true,
         "activeAuthors": 0,
         "findings": [
-          "abandoned"
+          "abandoned",
+          "no-successor"
         ],
         "formerAuthors": 1,
         "hotspot": false,
@@ -222,7 +226,8 @@
         "abandoned": false,
         "activeAuthors": 1,
         "findings": [
-          "at-risk-cold"
+          "at-risk-cold",
+          "no-successor"
         ],
         "formerAuthors": 1,
         "hotspot": false,
@@ -237,7 +242,8 @@
         "abandoned": false,
         "activeAuthors": 1,
         "findings": [
-          "at-risk-cold"
+          "at-risk-cold",
+          "no-successor"
         ],
         "formerAuthors": 0,
         "hotspot": false,

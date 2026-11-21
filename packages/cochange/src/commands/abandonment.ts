@@ -5,6 +5,7 @@ import { groupByComponent, measureCurrent, round4, summariseCurrent } from "../a
 import { commonExtra, commonInputs, prepare } from "../abandonment/prepare.ts";
 import { fileFindings, hotspotWeights, rankScore, rules as abandonmentRules } from "../abandonment/ranking.ts";
 import { readRank } from "../abandonment/settings.ts";
+import { noSuccessorCheck } from "../abandonment/successors.ts";
 import { simulationOptions } from "../abandonment/selection.ts";
 import { simulateCommand, turnoverCommand } from "../abandonment/simulate-run.ts";
 import { readComponents } from "../components.ts";
@@ -69,6 +70,7 @@ async function current(context: CommandContext): Promise<CommandOutput> {
 
   const rank = readRank(context, p.settings);
   const weights = by === "file" ? await hotspotWeights(context, p.history) : new Map();
+  const noSuccessor = noSuccessorCheck(p.history, model);
   const rows =
     by === "file"
       ? files
@@ -79,7 +81,7 @@ async function current(context: CommandContext): Promise<CommandOutput> {
             score: rank === "hotspot" ? rankScore(rank, f.abandonedShare, weights.get(f.path)) : f.abandonedLines,
             hotspot: weights.get(f.path)?.hot ?? false,
             hotspotPercentile: round4(weights.get(f.path)?.percentile ?? 0),
-            findings: fileFindings({ abandoned: true, probability: 1, hot: weights.get(f.path)?.hot ?? false, noSuccessor: false }, p.settings.atRiskProbability),
+            findings: fileFindings({ abandoned: true, probability: 1, hot: weights.get(f.path)?.hot ?? false, noSuccessor: () => noSuccessor(f.path) }, p.settings.atRiskProbability),
             abandonedShare: f.abandonedShare,
             abandonedLines: f.abandonedLines,
             peopleLines: f.peopleLines,

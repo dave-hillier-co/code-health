@@ -160,15 +160,16 @@ const byPath = (document: { results: { files: FileRow[] } }): Record<string, Fil
 test("findings follow the table: abandoned, at risk where it changes, at risk where it is cold", async () => {
   const document = await json("simulate", "--trials", "3000", "--seed", "8", "--top", "20");
   const files = byPath(document);
-  expect(files[engine]!.findings).toEqual(["abandoned"]);
-  expect(files[parser]!.findings).toEqual(["abandoned"]);
-  expect(files[deps]!.findings).toEqual(["abandoned"]);
+  expect(files[engine]!.findings).toEqual(["abandoned", "no-successor"]);
+  expect(files[parser]!.findings).toEqual(["abandoned", "no-successor"]);
+  expect(files[deps]!.findings).toEqual(["abandoned", "no-successor"]);
   // Auth and routes change together every ten days, so they are hotspots.
   expect(files[auth]).toMatchObject({ hotspot: true, hotspotPercentile: 0.6667, findings: ["at-risk-hot"] });
   expect(files[routes]).toMatchObject({ hotspot: true, findings: ["at-risk-hot"] });
   // The view changed once in the window: it is scored, low, and not a hotspot. The lexer and the log never changed in it.
-  expect(files[view]).toMatchObject({ hotspot: false, hotspotPercentile: 0.1667, findings: ["at-risk-cold"] });
-  for (const cold of [lexer, log]) expect(files[cold]).toMatchObject({ hotspot: false, hotspotPercentile: 0, findings: ["at-risk-cold"] });
+  // None of the three has a file that changes with it, so nobody active works near it.
+  expect(files[view]).toMatchObject({ hotspot: false, hotspotPercentile: 0.1667, findings: ["at-risk-cold", "no-successor"] });
+  for (const cold of [lexer, log]) expect(files[cold]).toMatchObject({ hotspot: false, hotspotPercentile: 0, findings: ["at-risk-cold", "no-successor"] });
 });
 
 test("the at-risk line is configurable: routes, with two holders, falls under a higher one", async () => {
