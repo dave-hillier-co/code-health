@@ -341,7 +341,7 @@ function handoverSignal(x: IdentityNode, y: IdentityNode): Signal | undefined {
   };
 }
 
-function counterSignal(x: IdentityNode, y: IdentityNode): Signal | undefined {
+export function counterSignal(x: IdentityNode, y: IdentityNode): Signal | undefined {
   const weeks = [...x.weeks.keys()].filter((w) => y.weeks.has(w)).sort((p, q) => p - q);
   if (weeks.length < COUNTER_MIN_WEEKS) return undefined;
   const areasX = new Set(weeks.flatMap((w) => [...x.weeks.get(w)!]));
@@ -422,4 +422,21 @@ export function buildProposals(links: readonly Link[]): Proposal[] {
   }
   const order = { strong: 0, medium: 1, chain: 2 };
   return proposals.sort((p, q) => order[p.strength] - order[q.strength] || compare(p.members[0]!, q.members[0]!));
+}
+
+/**
+ * Pairs among identities a mailmap has joined that look like different people:
+ * active in the same weeks and never in the same area. Compares each raw
+ * identity with every other one in the group.
+ */
+export function counterEvidenceWithin(group: readonly RawIdentity[]): { a: string; b: string; signal: Signal }[] {
+  const nodes = buildNodes(group.map((r) => ({ ...r, mappedName: r.name, mappedEmail: r.email })));
+  const found: { a: string; b: string; signal: Signal }[] = [];
+  nodes.forEach((x, i) => {
+    for (const y of nodes.slice(i + 1)) {
+      const signal = counterSignal(x, y);
+      if (signal) found.push({ a: x.key, b: y.key, signal });
+    }
+  });
+  return found;
 }
