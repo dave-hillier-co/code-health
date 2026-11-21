@@ -22,7 +22,7 @@ The change is `close` when most of its churn is in `owner` or `regular` files, `
 
 - With the blame cache: the share of each touched file's lines the authors last wrote at the base. Lines held by bots, services and agents belong to nobody.
 - Without it: the authors' earlier changes to the file weighted by recency, which needs only history. The output says which basis it used (`blame`, `history`, or `mixed`).
-- Also shown, as counts and paths: `neighbourhood` (the authors' changes to coupled files and to the same folder), `first-touch-share`, `owner-distance` (files with a clear owner who is not an author) and `no-owner`.
+- Also shown, as counts and paths: `neighbourhood` (the authors' changes to coupled files, to the same folder and, when components are configured, to the same component), `first-touch-share`, `owner-distance` (files with a clear owner who is not an author) and `no-owner`.
 
 ## What bounds it
 

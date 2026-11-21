@@ -11,6 +11,7 @@
     "@code-health/graph": "^0.0.0",
     "@code-health/history": "^0.0.0",
     "@code-health/lexical": "^0.0.0",
+    "@code-health/parse": "^0.0.0",
     "@code-health/transcripts": "^0.0.0"
   },
   "devDependencies": {

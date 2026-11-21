@@ -35,7 +35,7 @@ function rangeOf(rest: readonly string[]): string | undefined {
 
 export const command = analysisCommand(name, {
   summary: "How much a branch puts at risk before it is merged, and how to review it: risk [BASE[..HEAD]] | explain | reviewers | backtest",
-  options: { worktree: { type: "boolean" }, evidence: { type: "string", multiple: true }, names: { type: "boolean" }, since: { type: "string" } },
+  options: { worktree: { type: "boolean" }, evidence: { type: "string", multiple: true }, names: { type: "boolean" }, since: { type: "string" }, adopted: { type: "string" } },
   wholeHistory: true,
   // A branch is not the repository's own answer, so nothing here is stored as a whole-repository report.
   partial: () => true,

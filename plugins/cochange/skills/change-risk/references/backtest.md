@@ -24,6 +24,10 @@ The file-level test over-counts in busy files, so each rate is shown beside the 
 - `completeness`: the share of `missing-co-change` findings whose named file was then edited soon after, which says whether the completeness signal finds real omissions.
 - `elevatedShare`: the share of changes at `elevated`. If it is large, the level is inflating into noise.
 
+## Before and after adoption
+
+`risk backtest --adopted DATE` adds `adoption`: the share of merged changes followed by trouble in a window before the date against a window of the same length after it. The windows are equal so neither side has longer for a fix to arrive, and the after window stops where outcomes stop being known, a follow-up window before HEAD. `status` is `lower`, `higher` or `unchanged`, or `insufficient` when either side holds fewer than five changes. A lower rate after adoption is what the skill is for, but the comparison does not control for anything else that changed at the same time, so report it as an observation. An adoption run is printed and not stored.
+
 ## What follows from it
 
 Run on a clean tree and without `--since`, the result is stored, and `risk` shows a level only when the stored result separates, stating the backtest beside it. If the levels do not separate, say so plainly and present the factors as observations. Do not offer a level the repository's own history does not support, and do not tune the settings until the backtest looks good: a threshold fitted to the answer is no longer evidence.

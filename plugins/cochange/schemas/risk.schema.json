@@ -539,6 +539,44 @@
       ],
       "additionalProperties": false
     },
+    "adoptionWindow": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Inclusive."
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Exclusive."
+        },
+        "changes": {
+          "$ref": "#/$defs/count",
+          "description": "Merged changes in the window whose follow-up window has run."
+        },
+        "troubled": {
+          "$ref": "#/$defs/count"
+        },
+        "rate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "changes",
+        "troubled",
+        "rate"
+      ],
+      "additionalProperties": false
+    },
     "backtest": {
       "description": "`risk backtest`: every merged change on the main line scored as of itself, against whether it was later reverted or fixed. Per level and per factor band, never per person.",
       "type": "object",
@@ -688,6 +726,55 @@
           "minimum": 0,
           "maximum": 1,
           "description": "The share of scored changes at the elevated level: the gaming check."
+        },
+        "adoption": {
+          "description": "Present when --adopted names a date: the follow-up fix rate of changes merged in a window before the date against a window of the same length after it.",
+          "type": "object",
+          "properties": {
+            "adopted": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "windowDays": {
+              "type": "number",
+              "minimum": 0,
+              "description": "The length of each window: the shorter of the history before the date and the history after it whose outcomes are known."
+            },
+            "before": {
+              "$ref": "#/$defs/adoptionWindow"
+            },
+            "after": {
+              "$ref": "#/$defs/adoptionWindow"
+            },
+            "difference": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "After minus before. Negative means fewer changes met trouble after adoption."
+            },
+            "status": {
+              "enum": [
+                "lower",
+                "higher",
+                "unchanged",
+                "insufficient"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "adopted",
+            "windowDays",
+            "before",
+            "after",
+            "difference",
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
         },
         "separation": {
           "type": "object",

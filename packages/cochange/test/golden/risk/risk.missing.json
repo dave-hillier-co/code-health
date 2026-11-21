@@ -393,7 +393,7 @@
         "name": "blast-radius",
         "reason": null,
         "scored": true,
-        "source": "co-change",
+        "source": "co-change and parse",
         "status": "ok",
         "thresholds": {
           "files": {
@@ -402,7 +402,9 @@
           }
         },
         "value": {
-          "files": 2
+          "files": 2,
+          "signatureChanges": 0,
+          "symbolFanIn": 0
         }
       },
       {
@@ -598,6 +600,7 @@
           "band": null,
           "evidence": [
             {
+              "component": null,
               "coupled": 12,
               "file": "src/billing/invoice.ts",
               "folder": 12
@@ -612,6 +615,7 @@
           "status": "ok",
           "thresholds": {},
           "value": {
+            "component": null,
             "coupled": 12,
             "folder": 12
           }

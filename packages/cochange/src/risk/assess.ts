@@ -124,9 +124,14 @@ export async function assessBranch(
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change.head);
   const touched = change.files.filter((file) => file.status !== "D").map((file) => file.fileId);
+  // The parse layer is loaded when a change needs it, so the hook's bundle never carries the grammar loader.
+  const { changedSignatures, withSignatures } = await import("./signatures.ts");
+  const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change);
   const factors = banded.map(({ m, result }) => {
-    const factor = toFactor(m, result, risk);
-    return locality !== null && factor.name === "blast-radius" && factor.status !== "disabled" ? withFanIn(factor, touched, locality, risk) : factor;
+    let factor = toFactor(m, result, risk);
+    if (factor.name !== "blast-radius" || factor.status === "disabled") return factor;
+    if (locality !== null) factor = withFanIn(factor, touched, locality, risk);
+    return signatures === null ? factor : withSignatures(factor, signatures, risk);
   });
   const impact = impactOf(
     factors.map((f) => ({ name: f.name, family: f.family, band: f.band ?? "unavailable", disabled: f.status === "disabled" })),

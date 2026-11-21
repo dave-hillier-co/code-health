@@ -4,6 +4,7 @@ import type { LoadedHistory } from "../history-access.ts";
 import { writeReport } from "../reports.ts";
 import { parseDate } from "../spread-measure.ts";
 import { measureContext } from "./assess.ts";
+import { adoptionOf } from "./adoption.ts";
 import { outcomesOf, scoreMainline, summarise } from "./backtest.ts";
 import { mergedChanges } from "./merged-changes.ts";
 import { readRiskSettings } from "./settings.ts";
@@ -31,6 +32,11 @@ export async function runBacktest(context: CommandContext, history: LoadedHistor
   const since = sinceText === undefined ? undefined : parseDate(sinceText);
   if (sinceText !== undefined && since === null) throw usageError(`--since must be YYYY-MM-DD or an ISO 8601 date-time with a zone, got "${sinceText}"`);
 
+  const adoptedText = context.values.adopted;
+  if (adoptedText !== undefined && typeof adoptedText !== "string") throw usageError("--adopted needs a date");
+  const adopted = adoptedText === undefined ? undefined : parseDate(adoptedText);
+  if (adoptedText !== undefined && adopted === null) throw usageError(`--adopted must be YYYY-MM-DD or an ISO 8601 date-time with a zone, got "${adoptedText}"`);
+
   const root = context.repo.root;
   const measure = measureContext(context, history, risk);
   const mainline = await mergedChanges(root, history.view, history.filtered.changes, history.view.headSha);
@@ -45,6 +51,7 @@ export async function runBacktest(context: CommandContext, history: LoadedHistor
   const output: CommandOutput = {
     inputs: {
       since: since === undefined || since === null ? null : new Date(since * 1000).toISOString(),
+      ...(adopted === undefined || adopted === null ? {} : { adopted: new Date(adopted * 1000).toISOString() }),
       followUpDays: risk.followUpDays,
       baselineChanges: risk.baselineChanges,
       fixPatterns: risk.fixPatternSources,
@@ -54,13 +61,14 @@ export async function runBacktest(context: CommandContext, history: LoadedHistor
     results: {
       kind: "backtest",
       ...summary,
+      ...(adopted === undefined || adopted === null ? {} : { adoption: adoptionOf(mainline.changes, outcomes, adopted, risk, history.view.headDate) }),
       limits: [...BACKTEST_LIMITS],
       stored: false,
     },
   };
 
   // Only a run over the whole history is the repository's answer. A window is printed and not kept.
-  if (since === undefined && history.view.ref === "HEAD") {
+  if (since === undefined && adopted === undefined && history.view.ref === "HEAD") {
     const stored = await writeReport(context, BACKTEST_REPORT, output, history.view.headSha);
     (output.results as { stored: boolean }).stored = stored;
   }

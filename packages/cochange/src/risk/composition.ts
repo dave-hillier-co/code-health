@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readBlobAt } from "@code-health/history/tree";
-import { indentationComplexity } from "@code-health/lexical/indentation-complexity";
+import { analyseSource } from "@code-health/lexical/analyse-source";
 import { reportPath } from "../reports.ts";
 import type { Factor } from "./factor.ts";
 import { bandAgainst, cutoffsOf, higherBand, type Band } from "./bands.ts";
@@ -55,7 +55,7 @@ async function complexityDelta(root: string, change: BranchChange, risk: RiskSet
     };
   }
 
-  // Without the complexity plugin: how much more indentation the touched files carry than they did at the base.
+  // Without the complexity plugin: how much more indentation the touched code files carry than they did at the base.
   const rows: { file: string; before: number; after: number; delta: number }[] = [];
   let examined = 0;
   for (const file of change.files) {
@@ -63,11 +63,13 @@ async function complexityDelta(root: string, change: BranchChange, risk: RiskSet
     const before = file.status === "A" ? "" : await readBlobAt(root, change.base, file.oldPath ?? file.path);
     const after = change.worktree ? readWorktree(root, file.path) : await readBlobAt(root, change.head, file.path);
     if (after === undefined || before === undefined || after.includes("\0") || before.includes("\0")) continue;
+    // Prose has no lexer profile, so its indentation says nothing about how hard code is to read.
+    const now = analyseSource(file.path, after);
+    if (now.profile === null) continue;
     examined++;
-    const was = before === "" ? 0 : indentationComplexity(before, file.path);
-    const now = indentationComplexity(after, file.path);
-    if (was === null || now === null) continue;
-    if (now - was >= risk.complexityRise) rows.push({ file: file.path, before: was, after: now, delta: now - was });
+    const was = before === "" ? 0 : analyseSource(file.oldPath ?? file.path, before).file.indentationComplexity;
+    const rose = now.file.indentationComplexity;
+    if (rose - was >= risk.complexityRise) rows.push({ file: file.path, before: was, after: rose, delta: rose - was });
   }
   rows.sort((a, b) => b.delta - a.delta || (a.file < b.file ? -1 : 1));
   return {

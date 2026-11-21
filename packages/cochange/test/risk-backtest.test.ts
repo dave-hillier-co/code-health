@@ -297,6 +297,48 @@ describe("the command", () => {
   });
 });
 
+describe("the follow-up fix rate before and after adoption", () => {
+  const adopted = async (...args: string[]) => {
+    const { code, stdout, stderr } = await runCochange(repo.path, ["risk", "backtest", ...args, "--json"]);
+    return { code, stderr, stdout, adoption: stdout === "" ? undefined : JSON.parse(stdout).results.adoption };
+  };
+
+  test("without an adoption date there is no comparison", async () => {
+    expect((await adopted()).adoption).toBeUndefined();
+  });
+
+  test("changes before and after the date are compared over windows of the same length", async () => {
+    const { code, adoption } = await adopted("--adopted", "2024-05-20");
+    expect(code).toBe(ExitCode.Success);
+    // Week 20 is 2024-05-20. Outcomes are known up to the follow-up window before HEAD, so the windows are 14.7 weeks either side.
+    expect(adoption.windowDays).toBeGreaterThan(100);
+    expect(Date.parse(adoption.after.to) - Date.parse(adoption.adopted)).toBe(Date.parse(adoption.adopted) - Date.parse(adoption.before.from));
+    expect(adoption.before).toMatchObject({ changes: 14, troubled: 2, rate: 0.1429 });
+    expect(adoption.after).toMatchObject({ changes: 15, troubled: 3, rate: 0.2 });
+    expect(adoption).toMatchObject({ status: "higher", difference: 0.0571 });
+  });
+
+  test("a date with too few changes known on one side is insufficient evidence, not a verdict", async () => {
+    expect((await adopted("--adopted", "2024-01-10")).adoption).toMatchObject({ status: "insufficient" });
+    expect((await adopted("--adopted", "2025-06-01")).adoption).toMatchObject({ status: "insufficient" });
+  });
+
+  test("an adoption run is printed and not stored", async () => {
+    rmSync(join(repo.path, ".cache"), { recursive: true, force: true });
+    expect((await runCochange(repo.path, ["risk", "backtest", "--adopted", "2024-05-20", "--json"])).code).toBe(ExitCode.Success);
+    expect(existsSync(reportPath(repo.path, "risk-backtest"))).toBe(false);
+  });
+
+  test("a bad date is a usage error", async () => {
+    expect((await adopted("--adopted", "soon")).code).toBe(ExitCode.Usage);
+  });
+
+  test("the comparison, byte for byte", async () => {
+    const { stdout } = await runCochange(repo.path, ["risk", "backtest", "--adopted", "2024-05-20"]);
+    expectGolden("risk", "risk.backtest-adoption", stdout);
+  });
+});
+
 test("dates of the scenario are a week apart", () => {
   expect(dateOf(1)).toBe("2024-01-08T09:00:00.000Z");
 });

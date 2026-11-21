@@ -131,6 +131,19 @@ describe("labels from hand-computed blame", () => {
   });
 });
 
+describe("neighbourhood", () => {
+  test("the same folder is not the same component: Alice's change to another module of the src component counts, whatever its folder", async () => {
+    config({});
+    const withoutComponents = factor((await place("main..alice")).placement, "neighbourhood");
+    expect(withoutComponents.value).toMatchObject({ folder: 0, component: null });
+
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ components: { src: "src/**", docs: "docs/**" }, cochange: { risk: { newIdentityChanges: 2, placement: "any" } } }));
+    const placed = factor((await place("main..alice")).placement, "neighbourhood");
+    expect(placed.value).toMatchObject({ folder: 0, component: 1 });
+    expect(placed.evidence).toEqual([{ file: ledger, coupled: 0, folder: 0, component: 1 }]);
+  });
+});
+
 describe("the blame cache", () => {
   test("it is refreshed for the touched files at the base, and nothing else is blamed", async () => {
     await place("main..alice");
