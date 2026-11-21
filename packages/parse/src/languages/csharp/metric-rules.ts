@@ -12,8 +12,9 @@ import type { ConstructMap, MetricRules, RecursionScope } from "../../metric-rul
  *   `when` guard is the default and counts for nothing, as `default:` does.
  * - Pattern combinators `and` and `or` are logical operators: each is a cyclomatic decision, and a run of
  *   like combinators costs one cognitive increment. `not` is negation and costs nothing.
- * - Free: `?.`, `!`, `is` on its own, `await`, `yield`, `goto`, `lock`, `using`, `finally`, relational
+ * - Free: `?.`, `!`, `is` on its own, `await`, `yield`, `lock`, `using`, `finally`, relational
  *   patterns, preprocessor directives (both branches of an `#if` are parsed as written).
+ * - `goto` costs a flat 1 in cognitive complexity and nothing in cyclomatic, as in C++ and Go.
  * - Lambdas, anonymous methods and local functions are nested functions: their decisions add to the
  *   enclosing function, one level deeper. Accessors, constructors, destructors and operators are functions.
  */
@@ -43,8 +44,10 @@ const constructs: ConstructMap = {
   parenthesized: "parenthesized_expression",
   parenthesizedAlso: new Set(["parenthesized_pattern"]),
   patternCombinators: { and_pattern: "and", or_pattern: "or" },
+  // The target of a `goto` is a plain identifier child (or `case`/`default`), not a `label` field, and every one costs.
   labelledJumps: {},
   label: "label",
+  labelledJump: (node) => (node.type === "goto_statement" ? "goto" : null),
   commentTypes: new Set(["comment"]),
 };
 
@@ -147,7 +150,7 @@ function isRecursiveCall(call: Node, scope: RecursionScope): boolean {
     const name = simple(callee.childForFieldName("name"));
     if (name === undefined || !scope.member.has(name)) return false;
     const target = callee.childForFieldName("expression");
-    if (target === null) return callee.children[0]?.type === "this";
+    if (target === null || target.type === "this") return true;
     return scope.owner !== undefined && target.type === "identifier" && target.text === scope.owner;
   }
   return false;

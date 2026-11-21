@@ -1,0 +1,9 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "Jumps.cs": [
+      ["Jumps.Countdown", 1, 1, 1, 0, 4, 1, 1, 0],
+      ["Jumps.Search", 3, 3, 4, 2, 12, 4, 1, 0]
+    ]
+  }
+}
