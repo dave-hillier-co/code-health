@@ -34,6 +34,10 @@ export const localityConfig: PluginConfigSpec = {
     highCoChange: 40,
     /** Logical changes touching any of the consumers that the co-change rules need before they speak. */
     minCoChangeChanges: 6,
+    /** History-only mode: shared logical changes a partner needs before it counts as a consumer. */
+    historyMinSupport: 4,
+    /** History-only mode: percent of a unit's changes that must also touch a partner for it to count as a consumer. */
+    historyMinConfidence: 30,
     /** Globs of files that must not move and folders code may not move into (routes, migrations, app folders). */
     fixedPoints: [] as string[],
   },
@@ -53,6 +57,8 @@ export interface LocalitySettings {
   lowCoChange: number;
   highCoChange: number;
   minCoChangeChanges: number;
+  historyMinSupport: number;
+  historyMinConfidence: number;
   /** The suite's shared `entryPoints` globs. Empty means entries are detected. */
   entryPoints: string[];
   /** The suite's shared `exclude` globs. */
@@ -111,6 +117,8 @@ export function readSettings(config: LoadedConfig): LocalitySettings {
     lowCoChange,
     highCoChange,
     minCoChangeChanges: positive("minCoChangeChanges"),
+    historyMinSupport: positive("historyMinSupport"),
+    historyMinConfidence: percent("historyMinConfidence"),
     entryPoints: config.effective.entryPoints,
     exclude: config.effective.exclude,
     vagueNames: config.effective.vagueNames,

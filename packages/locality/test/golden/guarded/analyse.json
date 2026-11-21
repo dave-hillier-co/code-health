@@ -1,7 +1,7 @@
 {
   "barrels": [],
   "command": "analyse",
-  "config": "937f5269029ca4f4",
+  "config": "77784d7c7997369d",
   "filesWithSyntaxErrors": [],
   "history": {
     "activeContributors": 1,
@@ -20,7 +20,8 @@
     ],
     "entrySource": "config",
     "paths": [],
-    "recommendation": null
+    "recommendation": null,
+    "source": "structural"
   },
   "metrics": {
     "maxDepth": 2,

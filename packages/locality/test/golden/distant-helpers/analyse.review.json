@@ -3,7 +3,7 @@
     "src/billing/index.ts"
   ],
   "command": "analyse",
-  "config": "59e9516fe0a1f9ff",
+  "config": "ea7466e05f9abe6b",
   "filesWithSyntaxErrors": [],
   "history": {
     "activeContributors": 1,
@@ -22,7 +22,8 @@
     ],
     "entrySource": "config",
     "paths": [],
-    "recommendation": "review"
+    "recommendation": "review",
+    "source": "structural"
   },
   "metrics": {
     "maxDepth": 3,
