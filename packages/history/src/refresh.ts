@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ensureCacheDir, locateCache } from "./cache-location.ts";
-import { gitVersion, runGit } from "./git.ts";
+import { GitError, gitVersion, runGit } from "./git.ts";
 import { withLock, type LockOptions } from "./lock.ts";
 import { logArgs, parseLog } from "./log-parser.ts";
 import {
@@ -63,8 +63,23 @@ export async function readShallowInfo(repoPath: string): Promise<ShallowInfo> {
   return { isShallow, boundary: boundary.sort() };
 }
 
+export class RefNotFoundError extends Error {
+  readonly ref: string;
+
+  constructor(ref: string) {
+    super(`"${ref}" does not name a commit in this repository`);
+    this.name = "RefNotFoundError";
+    this.ref = ref;
+  }
+}
+
 export async function resolveRef(repoPath: string, ref: string): Promise<string> {
-  return (await runGit(repoPath, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`])).trim();
+  try {
+    return (await runGit(repoPath, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`])).trim();
+  } catch (error) {
+    if (error instanceof GitError && error.code === 1) throw new RefNotFoundError(ref);
+    throw error;
+  }
 }
 
 /**
