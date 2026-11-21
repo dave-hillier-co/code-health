@@ -8,6 +8,7 @@ import * as coupling from "./commands/coupling.ts";
 import * as hotspots from "./commands/hotspots.ts";
 import * as identities from "./commands/identities.ts";
 import * as refresh from "./commands/refresh.ts";
+import * as risk from "./commands/risk.ts";
 import * as spread from "./commands/spread.ts";
 import * as successors from "./commands/successors.ts";
 import * as trend from "./commands/trend.ts";
@@ -36,6 +37,7 @@ export const commandModules: CommandModule[] = [
   hotspots,
   identities,
   refresh,
+  risk,
   spread,
   successors,
   trend,

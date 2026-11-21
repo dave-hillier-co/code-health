@@ -1,0 +1,17 @@
+schema_version: "1.0"
+name: trigger-risk-branch
+description: "The change-risk skill loads when someone asks how risky a branch is before it is merged."
+tags: [trigger, positive, risk]
+runs: 3
+execution:
+  prompt: "I'm about to merge my feature branch. How risky is this change, and is it ready for review?"
+  model: claude-sonnet-5-5
+  max_turns: 6
+  timeout_seconds: 180
+graders:
+  - type: "tool_used"
+    name: "loads-the-change-risk-skill"
+    tool: "Skill"
+    input_match: "change-risk"
+    min: 1
+    arm: "with-only"

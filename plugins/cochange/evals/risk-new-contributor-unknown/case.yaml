@@ -1,0 +1,42 @@
+schema_version: "1.0"
+name: risk-new-contributor-unknown
+description: "For a change by someone with no history in the repository, the skill reports their placement as unknown, never first-touch, and says nothing about their ability. Needs `--scaffold` and `--allow-tools Bash,Read,Edit,Write,Grep,Glob` (see CONTRIBUTING.md)."
+tags: [behaviour, risk, privacy]
+context:
+  scaffold_script: ../risk-newcomer-scaffold.sh
+runs: 2
+execution:
+  prompt: "This is my first commit to this repository, on the branch feature/first-change. Before I open the pull request, how well placed am I to make this change, and how risky is it?"
+  model: claude-sonnet-5-5
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Edit, Write, Grep, Glob]
+graders:
+  - type: "tool_used"
+    name: "loads-the-change-risk-skill"
+    tool: "Skill"
+    input_match: "change-risk"
+    min: 1
+    arm: "with-only"
+  - type: "tool_used"
+    name: "runs-risk-with-the-cli"
+    tool: "Bash"
+    input_match: "dist/cochange\\.mjs risk"
+    min: 1
+  - type: "regex"
+    name: "says-unknown"
+    pattern: "unknown"
+    flags: i
+    target: "last_message"
+  - type: "tool_used"
+    name: "does-not-edit-files"
+    tool: "Edit"
+    max: 0
+  - type: "tool_used"
+    name: "does-not-write-files"
+    tool: "Write"
+    max: 0
+  - type: "llm"
+    name: "unknown-not-first-touch-and-no-judgement"
+    focus: "last_message"
+    criteria: "The answer says the author's placement is unknown because they have no history in this repository, and explains that someone new may know this code from elsewhere, so the tool cannot tell. It does not describe the author as first-touch, inexperienced, junior, risky or unprepared, and it does not say anything about their ability. It may say what the history does show (the file's usual partners, who could review) and what to do next. It does not edit any file."

@@ -1,0 +1,699 @@
+{
+  "command": "risk",
+  "config": "ef591512ac95ada2",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 17,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 5,
+    "window": {
+      "months": 12,
+      "since": 1686128400,
+      "until": 1717750800
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "backtest": null,
+    "baseline": {
+      "direct": 14,
+      "mergedChanges": 16,
+      "merges": 2,
+      "population": 16,
+      "since": "2023-06-07T09:00:00.000Z"
+    },
+    "evidence": [],
+    "locality": null,
+    "range": "main..missing",
+    "worktree": false
+  },
+  "repo": {
+    "dirty": false,
+    "head": "eead67bfce2033a2bd6d0602ea3e9c0d1c04fe2d"
+  },
+  "results": {
+    "change": {
+      "added": 20,
+      "against": "main",
+      "agentCommits": 0,
+      "authors": 1,
+      "base": "a8315ddcd7fd55944a8c26867938cd8591afee71",
+      "commits": 1,
+      "deleted": 20,
+      "files": 1,
+      "filteredPaths": 0,
+      "head": "d9e663050c424ee3d4da436198a547a528153a88",
+      "moved": 0,
+      "paths": [
+        {
+          "added": 20,
+          "deleted": 20,
+          "path": "src/billing/invoice.ts",
+          "status": "M"
+        }
+      ],
+      "pathsNotShown": 0,
+      "worktree": false
+    },
+    "factors": [
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "size",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "lines": {
+            "high": 80,
+            "moderate": 80
+          }
+        },
+        "value": {
+          "files": 1,
+          "lines": 40
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "spread",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "spread": {
+            "high": 0,
+            "moderate": 0
+          }
+        },
+        "value": {
+          "components": null,
+          "folders": 1,
+          "spread": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "entropy",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "entropy": {
+            "high": 1.5,
+            "moderate": 1.5
+          }
+        },
+        "value": {
+          "entropy": 0,
+          "files": 1
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "size-and-diffusion",
+        "layer": "history",
+        "name": "mixed-purpose",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "edited": 1,
+          "editedWhileMoved": 0,
+          "moved": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [
+          {
+            "file": "src/billing/invoice.ts",
+            "revisions": 7
+          }
+        ],
+        "family": "history",
+        "layer": "history",
+        "name": "hotspots-touched",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "share": {
+            "high": 1,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "hotFiles": 1,
+          "share": 1
+        }
+      },
+      {
+        "band": null,
+        "evidence": [
+          {
+            "file": "src/billing/invoice.ts",
+            "fixes": 1,
+            "revisions": 7
+          }
+        ],
+        "family": "history",
+        "layer": "history",
+        "name": "defect-history",
+        "reason": "fewer than 10 merged changes in the baseline, so a value of 0.142857 cannot be placed",
+        "scored": true,
+        "source": "history",
+        "status": "unavailable",
+        "thresholds": {
+          "share": null
+        },
+        "value": {
+          "fixes": 1,
+          "revisions": 7,
+          "share": 0.142857
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "history",
+        "layer": "history",
+        "name": "contention",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "authors": {
+            "high": 1,
+            "moderate": 0
+          }
+        },
+        "value": {
+          "authors": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "history",
+        "layer": "history",
+        "name": "age",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "settling": {
+            "high": 0,
+            "moderate": 0
+          },
+          "stale": {
+            "high": 0,
+            "moderate": 0
+          }
+        },
+        "value": {
+          "known": 1,
+          "settling": 0,
+          "stale": 0
+        }
+      },
+      {
+        "band": "moderate",
+        "evidence": [
+          {
+            "confidence": 85.7,
+            "file": "src/billing/invoice.test.ts",
+            "support": 6,
+            "towards": "src/billing/invoice.ts"
+          },
+          {
+            "confidence": 85.7,
+            "file": "src/billing/tax.ts",
+            "support": 6,
+            "towards": "src/billing/invoice.ts"
+          }
+        ],
+        "family": "completeness",
+        "layer": "history",
+        "name": "missing-co-change",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "count": 2
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "completeness",
+        "layer": "history",
+        "name": "novel-coupling",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "count": 0
+        }
+      },
+      {
+        "band": "moderate",
+        "evidence": [
+          {
+            "file": "src/billing/invoice.ts",
+            "kind": "not-updated",
+            "revisions": 7,
+            "test": "src/billing/invoice.test.ts",
+            "together": 6
+          }
+        ],
+        "family": "completeness",
+        "layer": "history",
+        "name": "test-evidence",
+        "reason": null,
+        "scored": true,
+        "source": "history",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "count": 1
+        }
+      },
+      {
+        "band": "moderate",
+        "evidence": [
+          {
+            "confidence": 85.7,
+            "file": "src/billing/invoice.test.ts",
+            "towards": "src/billing/invoice.ts"
+          },
+          {
+            "confidence": 85.7,
+            "file": "src/billing/tax.ts",
+            "towards": "src/billing/invoice.ts"
+          }
+        ],
+        "family": "structure-and-content",
+        "layer": "history",
+        "name": "blast-radius",
+        "reason": null,
+        "scored": true,
+        "source": "co-change",
+        "status": "ok",
+        "thresholds": {
+          "files": {
+            "high": 2,
+            "moderate": 0
+          }
+        },
+        "value": {
+          "files": 2
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "structure-and-content",
+        "layer": "history",
+        "name": "sensitive-paths",
+        "reason": null,
+        "scored": false,
+        "source": "configured globs",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "count": 0
+        }
+      },
+      {
+        "band": "low",
+        "evidence": [],
+        "family": "structure-and-content",
+        "layer": "lexical",
+        "name": "complexity-delta",
+        "reason": null,
+        "scored": false,
+        "source": "indentation",
+        "status": "ok",
+        "thresholds": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
+        "value": {
+          "count": 0,
+          "files": 1
+        }
+      },
+      {
+        "band": null,
+        "evidence": [],
+        "family": "structure-and-content",
+        "layer": "structural",
+        "name": "structure-delta",
+        "reason": "no structure check was passed in: run `structure check --json` for this branch and pass it with --evidence",
+        "scored": false,
+        "source": "structure check",
+        "status": "unavailable",
+        "thresholds": {},
+        "value": {}
+      },
+      {
+        "band": null,
+        "evidence": [],
+        "family": "history",
+        "layer": "history",
+        "name": "abandoned-touched",
+        "reason": "knowledge analysis is not enabled (cochange.knowledge.enabled)",
+        "scored": false,
+        "source": "knowledge analysis",
+        "status": "unavailable",
+        "thresholds": {},
+        "value": {}
+      }
+    ],
+    "findings": [
+      {
+        "band": "moderate",
+        "evidence": [
+          {
+            "confidence": 85.7,
+            "file": "src/billing/invoice.test.ts",
+            "support": 6,
+            "towards": "src/billing/invoice.ts"
+          },
+          {
+            "confidence": 85.7,
+            "file": "src/billing/tax.ts",
+            "support": 6,
+            "towards": "src/billing/invoice.ts"
+          }
+        ],
+        "factor": "missing-co-change",
+        "fromPlacement": false,
+        "id": "missing-co-change",
+        "redFlag": "Information leakage",
+        "response": "Open the named files and decide, for each, whether it needs changing. Record the ones deliberately left alone.",
+        "step": "complete",
+        "summary": "2 files that usually change with the touched files are not in the change"
+      },
+      {
+        "band": "moderate",
+        "evidence": [
+          {
+            "file": "src/billing/invoice.ts",
+            "kind": "not-updated",
+            "revisions": 7,
+            "test": "src/billing/invoice.test.ts",
+            "together": 6
+          }
+        ],
+        "factor": "test-evidence",
+        "fromPlacement": false,
+        "id": "test-evidence",
+        "redFlag": null,
+        "response": "Add or update the tests that usually change with these files, or say why not.",
+        "step": "test",
+        "summary": "1 source file changed without the tests that usually change with it, or tests deleted"
+      }
+    ],
+    "impact": {
+      "band": "moderate",
+      "baseline": {
+        "high": 3,
+        "moderate": 0,
+        "population": 16
+      },
+      "events": [],
+      "score": 2,
+      "scoreBand": "moderate",
+      "unavailable": [
+        "defect-history"
+      ]
+    },
+    "kind": "assessment",
+    "level": {
+      "backtest": null,
+      "impact": "moderate",
+      "placement": "unknown",
+      "reason": "no stored backtest for this configuration: run cochange risk backtest, and a level is shown if the levels separate past changes",
+      "status": "unavailable",
+      "value": null
+    },
+    "placement": {
+      "band": "unknown",
+      "basis": "blame",
+      "blame": {
+        "missing": 0,
+        "refreshed": true,
+        "used": true
+      },
+      "factors": [
+        {
+          "band": null,
+          "evidence": [
+            {
+              "file": "src/billing/invoice.ts",
+              "share": 1
+            }
+          ],
+          "family": "placement",
+          "layer": "placement",
+          "name": "authorship",
+          "reason": null,
+          "scored": false,
+          "source": "blame",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "files": 1,
+            "meanShare": 1
+          }
+        },
+        {
+          "band": null,
+          "evidence": [
+            {
+              "earlierChanges": 7,
+              "familiarity": 5.82,
+              "file": "src/billing/invoice.ts",
+              "recentChanges": 3
+            }
+          ],
+          "family": "placement",
+          "layer": "placement",
+          "name": "change-familiarity",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "familiarity": 5.82,
+            "files": 1
+          }
+        },
+        {
+          "band": null,
+          "evidence": [
+            {
+              "coupled": 12,
+              "file": "src/billing/invoice.ts",
+              "folder": 12
+            }
+          ],
+          "family": "placement",
+          "layer": "placement",
+          "name": "neighbourhood",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "coupled": 12,
+            "folder": 12
+          }
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "layer": "placement",
+          "name": "first-touch-share",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "share": 0
+          }
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "layer": "placement",
+          "name": "owner-distance",
+          "reason": null,
+          "scored": false,
+          "source": "blame",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "files": 0
+          }
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "layer": "placement",
+          "name": "no-owner",
+          "reason": null,
+          "scored": false,
+          "source": "blame",
+          "status": "ok",
+          "thresholds": {},
+          "value": {
+            "files": 0
+          }
+        }
+      ],
+      "files": [
+        {
+          "authorship": 1,
+          "churn": 40,
+          "earlierChanges": 7,
+          "familiarity": 5.82,
+          "file": "src/billing/invoice.ts",
+          "label": "unknown",
+          "recentChanges": 3
+        }
+      ],
+      "mode": "self",
+      "newIdentity": true,
+      "reason": null,
+      "shares": {
+        "first-touch": 0,
+        "occasional": 0,
+        "owner": 0,
+        "regular": 0,
+        "unknown": 1
+      },
+      "status": "computed"
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2024-01-08T09:00:00.000Z",
+    "until": "2024-06-07T09:00:00.000Z"
+  }
+}

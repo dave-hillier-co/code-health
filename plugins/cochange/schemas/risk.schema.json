@@ -1,0 +1,1208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "risk.schema.json",
+  "title": "cochange risk --json",
+  "description": "The output of risk and of its subcommands. `results.kind` says which.",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/analysisEnvelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "risk"
+    },
+    "inputs": {
+      "type": "object"
+    },
+    "results": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/assessment"
+        },
+        {
+          "$ref": "#/$defs/explain"
+        },
+        {
+          "$ref": "#/$defs/backtest"
+        },
+        {
+          "$ref": "#/$defs/reviewers"
+        }
+      ]
+    }
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "band": {
+      "enum": [
+        "low",
+        "moderate",
+        "high"
+      ]
+    },
+    "count": {
+      "$ref": "common.schema.json#/$defs/count"
+    },
+    "assessment": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "assessment"
+        },
+        "change": {
+          "description": "The change under review: the commits of BASE..HEAD taken together, as one logical change.",
+          "type": "object",
+          "properties": {
+            "base": {
+              "$ref": "common.schema.json#/$defs/sha"
+            },
+            "head": {
+              "$ref": "common.schema.json#/$defs/sha"
+            },
+            "against": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The ref the base was taken against: the main branch, or the BASE asked for."
+            },
+            "worktree": {
+              "type": "boolean",
+              "description": "Uncommitted edits to tracked files are part of the change."
+            },
+            "commits": {
+              "$ref": "#/$defs/count"
+            },
+            "files": {
+              "$ref": "#/$defs/count",
+              "description": "Files left after the noise filters, pure moves excluded."
+            },
+            "added": {
+              "$ref": "#/$defs/count"
+            },
+            "deleted": {
+              "$ref": "#/$defs/count"
+            },
+            "moved": {
+              "$ref": "#/$defs/count",
+              "description": "Files moved or renamed, pure moves included."
+            },
+            "filteredPaths": {
+              "$ref": "#/$defs/count",
+              "description": "Changed paths removed by the noise filters: exclude globs, lockfiles, generated and vendored files."
+            },
+            "agentCommits": {
+              "$ref": "#/$defs/count",
+              "description": "Commits with an agent Co-Authored-By trailer."
+            },
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "A",
+                      "M",
+                      "D",
+                      "R",
+                      "T"
+                    ]
+                  },
+                  "added": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "deleted": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "path",
+                  "status",
+                  "added",
+                  "deleted"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "pathsNotShown": {
+              "$ref": "#/$defs/count"
+            },
+            "authors": {
+              "$ref": "#/$defs/count",
+              "description": "People among the commits' authors, after the mailmap. Never named."
+            }
+          },
+          "required": [
+            "base",
+            "head",
+            "against",
+            "worktree",
+            "commits",
+            "files",
+            "added",
+            "deleted",
+            "moved",
+            "filteredPaths",
+            "agentCommits",
+            "authors",
+            "paths",
+            "pathsNotShown"
+          ],
+          "additionalProperties": false
+        },
+        "impact": {
+          "description": "What the change puts at risk: the score of the families, banded against the repository's merged changes, raised once by events.",
+          "type": "object",
+          "properties": {
+            "score": {
+              "$ref": "#/$defs/count"
+            },
+            "scoreBand": {
+              "enum": [
+                "low",
+                "moderate",
+                "high",
+                "unavailable"
+              ]
+            },
+            "band": {
+              "enum": [
+                "low",
+                "moderate",
+                "high",
+                "unavailable"
+              ]
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "baseline": {
+              "type": "object",
+              "properties": {
+                "population": {
+                  "$ref": "#/$defs/count"
+                },
+                "moderate": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "high": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "population",
+                "moderate",
+                "high"
+              ],
+              "additionalProperties": false
+            },
+            "unavailable": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Scored factors that could not be computed or placed. They add nothing to the score."
+            }
+          },
+          "required": [
+            "score",
+            "scoreBand",
+            "band",
+            "events",
+            "unavailable",
+            "baseline"
+          ],
+          "additionalProperties": false
+        },
+        "factors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/factor"
+          }
+        },
+        "placement": {
+          "$ref": "#/$defs/placement"
+        },
+        "level": {
+          "$ref": "#/$defs/level"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "change",
+        "impact",
+        "placement",
+        "factors",
+        "level",
+        "findings"
+      ],
+      "additionalProperties": false
+    },
+    "factor": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "family": {
+          "enum": [
+            "size-and-diffusion",
+            "history",
+            "completeness",
+            "structure-and-content",
+            "placement"
+          ]
+        },
+        "layer": {
+          "enum": [
+            "history",
+            "lexical",
+            "structural",
+            "placement"
+          ]
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "unavailable",
+            "disabled"
+          ],
+          "description": "Unavailable means it could not be computed. It is never reported as low."
+        },
+        "band": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/band"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scored": {
+          "type": "boolean",
+          "description": "Counts towards the impact score."
+        },
+        "value": {
+          "type": "object"
+        },
+        "thresholds": {
+          "description": "For each measured series, the values above which the factor is moderate and high. Null when the baseline was too small to set them.",
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "moderate": {
+                    "type": "number"
+                  },
+                  "high": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "moderate",
+                  "high"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "source": {
+          "type": "string"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "family",
+        "layer",
+        "status",
+        "band",
+        "scored",
+        "value",
+        "thresholds",
+        "evidence",
+        "source",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "explain": {
+      "description": "`risk explain`: the rules behind the level (no topic argument), or one factor's definition, thresholds and the evidence that drove it on the branch.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "explain"
+        },
+        "topic": {
+          "type": "string",
+          "description": "`level`, or the name of a factor."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "text"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "settings": {
+          "type": "object"
+        },
+        "factors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "family": {
+                "type": "string"
+              },
+              "layer": {
+                "type": "string"
+              },
+              "banding": {
+                "enum": [
+                  "percentile",
+                  "count",
+                  "none"
+                ]
+              },
+              "signal": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "family",
+              "layer",
+              "banding",
+              "signal"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "doc": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "family": {
+              "type": "string"
+            },
+            "layer": {
+              "type": "string"
+            },
+            "banding": {
+              "enum": [
+                "percentile",
+                "count",
+                "none"
+              ]
+            },
+            "signal": {
+              "type": "string"
+            },
+            "definition": {
+              "type": "string"
+            },
+            "why": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "family",
+            "layer",
+            "banding",
+            "signal",
+            "definition",
+            "why"
+          ],
+          "additionalProperties": false
+        },
+        "branch": {
+          "description": "The factor as measured on the branch, with its thresholds and the files behind it. Null for a placement factor, which only `risk` computes.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/factor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "topic"
+      ],
+      "additionalProperties": false
+    },
+    "bandRow": {
+      "description": "Past changes at one band or level: how many met trouble, and the rate of the same files for comparison.",
+      "type": "object",
+      "properties": {
+        "band": {
+          "type": "string"
+        },
+        "changes": {
+          "$ref": "#/$defs/count"
+        },
+        "troubled": {
+          "$ref": "#/$defs/count"
+        },
+        "rate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "baseRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "The same rate over the files these changes touched. The rate to beat."
+        }
+      },
+      "required": [
+        "band",
+        "changes",
+        "troubled",
+        "rate",
+        "baseRate"
+      ],
+      "additionalProperties": false
+    },
+    "backtest": {
+      "description": "`risk backtest`: every merged change on the main line scored as of itself, against whether it was later reverted or fixed. Per level and per factor band, never per person.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "backtest"
+        },
+        "population": {
+          "type": "object",
+          "properties": {
+            "mergedChanges": {
+              "$ref": "#/$defs/count"
+            },
+            "scored": {
+              "$ref": "#/$defs/count"
+            },
+            "withLevel": {
+              "$ref": "#/$defs/count"
+            },
+            "censored": {
+              "$ref": "#/$defs/count",
+              "description": "Changes whose follow-up window runs past the analysed commit. They are left out of every rate."
+            },
+            "unscored": {
+              "$ref": "#/$defs/count"
+            }
+          },
+          "required": [
+            "mergedChanges",
+            "scored",
+            "withLevel",
+            "censored",
+            "unscored"
+          ],
+          "additionalProperties": false
+        },
+        "outcome": {
+          "type": "object",
+          "properties": {
+            "followUpDays": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "fixConvention": {
+              "type": "boolean",
+              "description": "Some change matches a fix pattern. Without one, only reverts count."
+            },
+            "reverts": {
+              "$ref": "#/$defs/count"
+            },
+            "troubled": {
+              "$ref": "#/$defs/count"
+            },
+            "rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "followUpDays",
+            "fixConvention",
+            "reverts",
+            "troubled",
+            "rate"
+          ],
+          "additionalProperties": false
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bandRow"
+          }
+        },
+        "impact": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bandRow"
+          }
+        },
+        "placement": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bandRow"
+          }
+        },
+        "factors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "bands": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/bandRow"
+                }
+              },
+              "unavailable": {
+                "$ref": "#/$defs/count"
+              }
+            },
+            "required": [
+              "name",
+              "bands",
+              "unavailable"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "completeness": {
+          "type": "object",
+          "properties": {
+            "findings": {
+              "$ref": "#/$defs/count"
+            },
+            "followed": {
+              "$ref": "#/$defs/count",
+              "description": "Changes with a missing-co-change finding whose named file was edited by a later change within the follow-up window."
+            },
+            "share": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "findings",
+            "followed",
+            "share"
+          ],
+          "additionalProperties": false
+        },
+        "elevatedShare": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "The share of scored changes at the elevated level: the gaming check."
+        },
+        "separation": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "separates",
+                "does-not-separate",
+                "insufficient"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stored": {
+          "type": "boolean",
+          "description": "A whole run on a clean tree is stored, and risk shows a level only when the stored result separates."
+        }
+      },
+      "required": [
+        "kind",
+        "population",
+        "outcome",
+        "levels",
+        "impact",
+        "placement",
+        "factors",
+        "completeness",
+        "elevatedShare",
+        "separation",
+        "limits",
+        "stored"
+      ],
+      "additionalProperties": false
+    },
+    "placement": {
+      "description": "How the change's authors stand to the code it touches. Computed for the invoking git identity's own change, or for anyone's when cochange.risk.placement is any. Never stored, and no one is named.",
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "computed",
+            "withheld",
+            "off"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "self",
+            "any",
+            "off"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why it was withheld or off."
+        },
+        "band": {
+          "enum": [
+            "close",
+            "mixed",
+            "distant",
+            "unknown",
+            null
+          ]
+        },
+        "basis": {
+          "enum": [
+            "blame",
+            "history",
+            "mixed",
+            null
+          ],
+          "description": "blame when the cache supplied authorship, history when the labels came from change familiarity alone."
+        },
+        "newIdentity": {
+          "type": "boolean",
+          "description": "Every person among the authors is a new identity, so no file is placed: unknown, not first-touch."
+        },
+        "shares": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "description": "Share of the change's churn in files of each label.",
+              "properties": {
+                "owner": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "regular": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "occasional": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "first-touch": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "unknown": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "owner",
+                "regular",
+                "occasional",
+                "first-touch",
+                "unknown"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "label": {
+                "enum": [
+                  "owner",
+                  "regular",
+                  "occasional",
+                  "first-touch",
+                  "unknown"
+                ]
+              },
+              "churn": {
+                "$ref": "#/$defs/count"
+              },
+              "earlierChanges": {
+                "$ref": "#/$defs/count"
+              },
+              "recentChanges": {
+                "$ref": "#/$defs/count"
+              },
+              "familiarity": {
+                "type": "number",
+                "minimum": 0
+              },
+              "authorship": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "file",
+              "label",
+              "churn",
+              "earlierChanges",
+              "recentChanges",
+              "familiarity",
+              "authorship"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "blame": {
+          "type": "object",
+          "properties": {
+            "used": {
+              "type": "boolean"
+            },
+            "missing": {
+              "$ref": "#/$defs/count"
+            },
+            "refreshed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "used",
+            "missing",
+            "refreshed"
+          ],
+          "additionalProperties": false
+        },
+        "factors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/factor"
+          }
+        }
+      },
+      "required": [
+        "status",
+        "mode",
+        "reason",
+        "band",
+        "basis",
+        "newIdentity",
+        "shares",
+        "files",
+        "blame",
+        "factors"
+      ],
+      "additionalProperties": false
+    },
+    "level": {
+      "description": "The review level from impact and placement. Shown only when a stored backtest of this configuration says the levels separate past changes, and then stated beside that backtest. Never stored: placement could be read back from it.",
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "shown",
+            "withheld",
+            "unavailable"
+          ]
+        },
+        "value": {
+          "enum": [
+            "routine",
+            "attention",
+            "elevated",
+            null
+          ]
+        },
+        "impact": {
+          "enum": [
+            "low",
+            "moderate",
+            "high",
+            "unavailable"
+          ]
+        },
+        "placement": {
+          "enum": [
+            "close",
+            "mixed",
+            "distant",
+            "unknown"
+          ],
+          "description": "The placement band the level used: unknown when placement was withheld or off."
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "backtest": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "head": {
+                  "$ref": "common.schema.json#/$defs/sha"
+                },
+                "commitsAgo": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "description": "Commits between the backtest's commit and this change's tip, or null when it is not an ancestor."
+                },
+                "separation": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "separates",
+                        "does-not-separate",
+                        "insufficient"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                },
+                "elevatedShare": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "levels": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/bandRow"
+                  }
+                }
+              },
+              "required": [
+                "head",
+                "commitsAgo",
+                "separation",
+                "elevatedShare",
+                "levels"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "value",
+        "impact",
+        "placement",
+        "reason",
+        "backtest"
+      ],
+      "additionalProperties": false
+    },
+    "finding": {
+      "description": "One thing the change shows, with what to do about it. `cochange explain risk-<id>` describes the rule.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "factor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "band": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "step": {
+          "enum": [
+            "complete",
+            "split",
+            "test",
+            "simplify",
+            "check",
+            "review"
+          ],
+          "description": "Cheapest first: complete the change, split it, add tests, then route review."
+        },
+        "summary": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "response": {
+          "type": "string"
+        },
+        "redFlag": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The shared red flag it usually is."
+        },
+        "fromPlacement": {
+          "type": "boolean",
+          "description": "It rests on placement, so it exists only when placement was computed."
+        }
+      },
+      "required": [
+        "id",
+        "factor",
+        "band",
+        "step",
+        "summary",
+        "evidence",
+        "response",
+        "redFlag",
+        "fromPlacement"
+      ],
+      "additionalProperties": false
+    },
+    "reviewers": {
+      "description": "`risk reviewers`: active developers who could review each touched area. Names only with --names.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "reviewers"
+        },
+        "names": {
+          "type": "boolean"
+        },
+        "basis": {
+          "enum": [
+            "blame",
+            "history",
+            "mixed"
+          ]
+        },
+        "perArea": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "areas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "area": {
+                "type": "string",
+                "description": "A configured component, or else a folder."
+              },
+              "files": {
+                "$ref": "#/$defs/count"
+              },
+              "candidates": {
+                "$ref": "#/$defs/count",
+                "description": "Active developers who could review it, not counting the change's authors."
+              },
+              "suggested": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "authorship": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "coupledChanges": {
+                          "$ref": "#/$defs/count"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "email",
+                        "authorship",
+                        "coupledChanges"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                ]
+              }
+            },
+            "required": [
+              "area",
+              "files",
+              "candidates",
+              "suggested"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "names",
+        "basis",
+        "perArea",
+        "areas",
+        "note"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

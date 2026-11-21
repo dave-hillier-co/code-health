@@ -1,6 +1,6 @@
 {
   "command": "identities",
-  "config": "7c1427d5780c6792",
+  "config": "ef591512ac95ada2",
   "inputs": {
     "subcommand": "list",
     "unmapped": false

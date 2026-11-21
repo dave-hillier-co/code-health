@@ -31,6 +31,8 @@ export interface HistoryOptions {
    * window then starts at the earliest revision.
    */
   wholeHistory?: boolean;
+  /** Analyse this ref instead of the configured one: a command about a branch other than the checked out one. */
+  ref?: string;
 }
 
 export interface LoadedHistory extends HistoryAnalysis {
@@ -58,7 +60,7 @@ export interface LoadedHistory extends HistoryAnalysis {
  * Time is anchored to the analysed commit's committer date, never the wall clock.
  */
 export async function loadHistory(context: CommandContext, options: HistoryOptions = {}): Promise<LoadedHistory> {
-  const settings = readSettings(context.config);
+  const settings = { ...readSettings(context.config), ...(options.ref === undefined ? {} : { ref: options.ref }) };
   const { root } = context.repo;
 
   const shallow = await readShallowInfo(root);

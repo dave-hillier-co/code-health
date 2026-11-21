@@ -22,7 +22,7 @@ export function isTestPath(path: string): boolean {
  * suffix or prefix in the same folder, or the same name in a `__tests__` folder beside it. Null for a
  * test file, or when there is none.
  */
-export function siblingTestOf(path: string, tree: ReadonlySet<string>): string | null {
+export function siblingTestOf(path: string, tree: { has(path: string): boolean }): string | null {
   if (isTestPath(path)) return null;
   const { folder, stem, ext } = split(path);
   const names = [

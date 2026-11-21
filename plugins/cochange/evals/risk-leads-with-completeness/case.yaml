@@ -1,0 +1,46 @@
+schema_version: "1.0"
+name: risk-leads-with-completeness
+description: "Asked how risky a branch is, the skill runs the CLI and leads with the file that usually changes with the touched one and is missing, before size or reviewers. Needs `--scaffold` and `--allow-tools Bash,Read,Edit,Write,Grep,Glob` (see CONTRIBUTING.md)."
+tags: [behaviour, risk]
+context:
+  scaffold_script: ../risk-scaffold.sh
+runs: 2
+execution:
+  prompt: "I'm the author of the branch feature/discount and about to ask for review. How risky is it, and what should I fix first? Do not edit anything yet."
+  model: claude-sonnet-5-5
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Edit, Write, Grep, Glob]
+graders:
+  - type: "tool_used"
+    name: "loads-the-change-risk-skill"
+    tool: "Skill"
+    input_match: "change-risk"
+    min: 1
+    arm: "with-only"
+  - type: "tool_used"
+    name: "runs-risk-with-the-cli"
+    tool: "Bash"
+    input_match: "dist/cochange\\.mjs risk"
+    min: 1
+  - type: "tool_order"
+    name: "skill-before-cli"
+    before: {"tool": "Skill", "input_match": "change-risk"}
+    after: {"tool": "Bash", "input_match": "dist/cochange\\.mjs risk"}
+    arm: "with-only"
+  - type: "regex"
+    name: "names-the-missing-tax-file"
+    pattern: "tax\\.ts"
+    target: "last_message"
+  - type: "tool_used"
+    name: "does-not-edit-files"
+    tool: "Edit"
+    max: 0
+  - type: "tool_used"
+    name: "does-not-write-files"
+    tool: "Write"
+    max: 0
+  - type: "llm"
+    name: "leads-with-completeness-and-states-limits"
+    focus: "last_message"
+    criteria: "The answer leads with the files that usually change with src/billing/invoice.ts and are missing from the branch (src/billing/tax.ts and src/billing/invoice.test.ts), before talking about size, spread or reviewers, and says to open each and decide whether the change needs it. It reports the outcome in a sentence or two with the few factors that drove it rather than pasting the whole table. It proposes cheapest responses first (complete the change, then tests, then who reviews). It says what could not be computed or is only an estimate, and does not call the change safe or approved. It does not edit any file."
