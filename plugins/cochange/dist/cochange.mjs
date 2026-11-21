@@ -2451,6 +2451,9 @@ function compareBytes(a, b) {
 function degreeOf(pair) {
   return 200 * pair.support / (pair.changesA + pair.changesB);
 }
+function reachesDegree(pair, minDegree) {
+  return 200 * pair.support >= minDegree * (pair.changesA + pair.changesB);
+}
 function confidenceOf(support, changes) {
   return 100 * support / changes;
 }
@@ -2477,8 +2480,7 @@ function countCoupling(changes, thresholds) {
   for (const [a, row] of together) {
     for (const [b, support] of row) {
       const pair = { a, b, support, changesA: perFile.get(a), changesB: perFile.get(b) };
-      const reachesDegree = 200 * support >= thresholds.minDegree * (pair.changesA + pair.changesB);
-      if (support >= thresholds.minSupport && reachesDegree) pairs.push(pair);
+      if (support >= thresholds.minSupport && reachesDegree(pair, thresholds.minDegree)) pairs.push(pair);
     }
   }
   pairs.sort((p, q) => compareBytes(p.a, q.a) || compareBytes(p.b, q.b));
@@ -3671,7 +3673,7 @@ var command2 = analysisCommand(name2, {
       const lastChanged = dates.length === 0 ? null : Math.max(...dates);
       const hotspot = rankedBy.get(path);
       const { partners } = partnersOf(couplingChanges, path);
-      const alongside = partners.filter((partner) => present.has(partner.path) && lastStatus.get(partner.path) !== "D").map((partner) => ({
+      const alongside = partners.filter((partner) => present.has(partner.path) && lastStatus.get(partner.path) !== "D").filter((partner) => reachesDegree({ a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner }, settings.minDegree)).map((partner) => ({
         path: partner.path,
         degree: round1(
           degreeOf({ a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner })
@@ -3680,7 +3682,7 @@ var command2 = analysisCommand(name2, {
         reverseConfidence: round1(confidenceOf(partner.support, partner.changesPartner)),
         support: partner.support,
         distance: treeDistance(path, partner.path)
-      })).filter((partner) => partner.support >= settings.minSupport && partner.degree >= settings.minDegree).sort((x, y) => y.confidence - x.confidence || y.support - x.support || compareBytes(x.path, y.path));
+      })).filter((partner) => partner.support >= settings.minSupport).sort((x, y) => y.confidence - x.confidence || y.support - x.support || compareBytes(x.path, y.path));
       const note = !exists && dates.length === 0 ? `"${asked}" is not in the tree at the analysed commit and has no history in the window: a new file, or a wrong path.` : dates.length === 0 ? `No revisions in the ${settings.windowMonths} month window, so there is no co-change evidence for it.` : alongside.length === 0 ? `Nothing changes with it often enough (support ${settings.minSupport}, degree ${settings.minDegree} %).` : null;
       return {
         path,

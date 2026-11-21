@@ -4,7 +4,7 @@ import { treeDistance } from "@code-health/graph/tree-distance";
 import { monthsBefore } from "@code-health/history/evidence";
 import { listTree } from "@code-health/history/tree";
 import { analysisCommand } from "../analysis-command.ts";
-import { compareBytes, confidenceOf, degreeOf, partnersOf } from "../coupling.ts";
+import { compareBytes, confidenceOf, degreeOf, partnersOf, reachesDegree } from "../coupling.ts";
 import { rankHotspots, type HotspotRow } from "../hotspot-ranking.ts";
 import { repoRelative } from "../repo-paths.ts";
 import { SECONDS_PER_DAY, isoDate } from "../units.ts";
@@ -66,6 +66,7 @@ export const command = analysisCommand(name, {
       const { partners } = partnersOf(couplingChanges, path);
       const alongside = partners
         .filter((partner) => present.has(partner.path) && lastStatus.get(partner.path) !== "D")
+        .filter((partner) => reachesDegree({ a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner }, settings.minDegree))
         .map((partner) => ({
           path: partner.path,
           degree: round1(
@@ -76,7 +77,7 @@ export const command = analysisCommand(name, {
           support: partner.support,
           distance: treeDistance(path, partner.path),
         }))
-        .filter((partner) => partner.support >= settings.minSupport && partner.degree >= settings.minDegree)
+        .filter((partner) => partner.support >= settings.minSupport)
         .sort((x, y) => y.confidence - x.confidence || y.support - x.support || compareBytes(x.path, y.path));
 
       const note = !exists && dates.length === 0

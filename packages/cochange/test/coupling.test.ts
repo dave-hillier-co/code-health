@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { compareBytes, confidenceOf, countCoupling, degreeOf, partnersOf, type CouplingChange, type PairCount } from "../src/coupling.ts";
+import { compareBytes, confidenceOf, countCoupling, degreeOf, partnersOf, reachesDegree, type CouplingChange, type PairCount } from "../src/coupling.ts";
 
 /** Deterministic pseudo random numbers, so a failing history can be regenerated from its seed. */
 function random(seed: number): () => number {
@@ -113,4 +113,11 @@ test("pairs sort in UTF-8 byte order, with the smaller path first", () => {
     ["b", "\u{1F600}"],
     ["～", "\u{1F600}"],
   ]);
+});
+
+test("a degree is tested exactly, so 19.98 shown as 20.0 does not reach a minimum of 20", () => {
+  const pair = { a: "a.ts", b: "b.ts", support: 100, changesA: 500, changesB: 501 };
+  expect(Math.round(degreeOf(pair) * 10) / 10).toBe(20);
+  expect(reachesDegree(pair, 20)).toBe(false);
+  expect(reachesDegree({ ...pair, changesB: 500 }, 20)).toBe(true);
 });

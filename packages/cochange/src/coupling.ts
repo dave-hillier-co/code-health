@@ -43,6 +43,14 @@ export function degreeOf(pair: PairCount): number {
   return (200 * pair.support) / (pair.changesA + pair.changesB);
 }
 
+/**
+ * Whether a pair's degree reaches `minDegree`, in exact integer arithmetic: the degree rounded for
+ * display (19.98 shown as 20.0) must never decide a threshold.
+ */
+export function reachesDegree(pair: PairCount, minDegree: number): boolean {
+  return 200 * pair.support >= minDegree * (pair.changesA + pair.changesB);
+}
+
 /** Probability, as a percentage, that a change to a file with `changes` revisions also touches the other. Unrounded. */
 export function confidenceOf(support: number, changes: number): number {
   return (100 * support) / changes;
@@ -78,8 +86,7 @@ export function countCoupling(changes: readonly CouplingChange[], thresholds: Co
   for (const [a, row] of together) {
     for (const [b, support] of row) {
       const pair = { a, b, support, changesA: perFile.get(a)!, changesB: perFile.get(b)! };
-      const reachesDegree = 200 * support >= thresholds.minDegree * (pair.changesA + pair.changesB);
-      if (support >= thresholds.minSupport && reachesDegree) pairs.push(pair);
+      if (support >= thresholds.minSupport && reachesDegree(pair, thresholds.minDegree)) pairs.push(pair);
     }
   }
   pairs.sort((p, q) => compareBytes(p.a, q.a) || compareBytes(p.b, q.b));
