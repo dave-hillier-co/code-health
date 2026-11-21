@@ -7,6 +7,11 @@
       "name": "cochange",
       "source": "./plugins/cochange",
       "description": "Mines git history for hotspots, temporal coupling and change spread."
+    },
+    {
+      "name": "locality",
+      "source": "./plugins/locality",
+      "description": "Finds code that lives far from the code that uses it and recommends moving, inlining or splitting it."
     }
   ]
 }
