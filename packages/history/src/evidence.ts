@@ -1,0 +1,129 @@
+import type { ImportedHistory } from "./imported.ts";
+import { filterHistory, type FilteredHistory, type FiltersApplied, type LogicalChange, type NoiseOptions } from "./noise.ts";
+import { readHistory, type HistoryView, type ReadOptions } from "./read.ts";
+import { readShallowInfo, type ShallowInfo } from "./refresh.ts";
+
+export type Grade = "strong" | "moderate" | "weak";
+
+export interface GradeThreshold {
+  /** Months of usable history. */
+  months: number;
+  /** Logical changes in the analysis window. */
+  logicalChanges: number;
+  /** Distinct active contributors in the window. */
+  contributors: number;
+}
+
+export interface EvidenceThresholds {
+  strong: GradeThreshold;
+  moderate: GradeThreshold;
+}
+
+export const DEFAULT_EVIDENCE_THRESHOLDS: EvidenceThresholds = {
+  strong: { months: 24, logicalChanges: 300, contributors: 5 },
+  moderate: { months: 6, logicalChanges: 50, contributors: 2 },
+};
+
+export const DEFAULT_WINDOW_MONTHS = 12;
+
+export interface EvidenceOptions {
+  /** Analysis window in months back from the head commit's date. Default 12. */
+  windowMonths?: number;
+  thresholds?: EvidenceThresholds;
+}
+
+/** The suite's repository-level `evidence` block. */
+export interface Evidence {
+  /** Months between the first usable change and the head commit, to one decimal. */
+  usableHistoryMonths: number;
+  logicalChangesInWindow: number;
+  activeContributors: number;
+  grade: Grade;
+  window: { months: number; since: number; until: number };
+  truncated: {
+    /** The clone is shallow: history before `availableSince` is missing. */
+    shallow: boolean;
+    boundaryCommits: number;
+    /** Committer date of the oldest commit available, unix seconds. */
+    availableSince: number | null;
+  };
+  importedHistory: ImportedHistory[];
+  thresholds: EvidenceThresholds;
+}
+
+const SECONDS_PER_MONTH = 30.4375 * 86_400;
+
+/** Unix seconds `months` calendar months before `anchor`, in UTC. */
+export function monthsBefore(anchor: number, months: number): number {
+  const date = new Date(anchor * 1000);
+  date.setUTCMonth(date.getUTCMonth() - months);
+  return Math.floor(date.getTime() / 1000);
+}
+
+const meets = (t: GradeThreshold, months: number, changes: number, contributors: number) =>
+  months >= t.months && changes >= t.logicalChanges && contributors >= t.contributors;
+
+export function computeEvidence(
+  view: HistoryView,
+  changes: readonly LogicalChange[],
+  shallow: ShallowInfo,
+  imported: readonly ImportedHistory[],
+  options: EvidenceOptions = {},
+): Evidence {
+  const windowMonths = options.windowMonths ?? DEFAULT_WINDOW_MONTHS;
+  const thresholds = options.thresholds ?? DEFAULT_EVIDENCE_THRESHOLDS;
+  const until = view.headDate;
+  const since = monthsBefore(until, windowMonths);
+
+  const first = changes.reduce<number | null>((min, c) => (min === null || c.committerDate < min ? c.committerDate : min), null);
+  const usableHistoryMonths = first === null ? 0 : Math.round(((until - first) / SECONDS_PER_MONTH) * 10) / 10;
+
+  const inWindow = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
+  const contributors = new Set(inWindow.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
+
+  const grade: Grade = meets(thresholds.strong, usableHistoryMonths, inWindow.length, contributors.size)
+    ? "strong"
+    : meets(thresholds.moderate, usableHistoryMonths, inWindow.length, contributors.size)
+      ? "moderate"
+      : "weak";
+
+  const available = view.commits.reduce<number | null>(
+    (min, c) => (min === null || c.committerDate < min ? c.committerDate : min),
+    null,
+  );
+  return {
+    usableHistoryMonths,
+    logicalChangesInWindow: inWindow.length,
+    activeContributors: contributors.size,
+    grade,
+    window: { months: windowMonths, since, until },
+    truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
+    importedHistory: [...imported],
+    thresholds,
+  };
+}
+
+export interface HistoryAnalysisOptions extends ReadOptions {
+  noise?: NoiseOptions;
+  evidence?: EvidenceOptions;
+}
+
+export interface HistoryAnalysis {
+  view: HistoryView;
+  /** Filtered changes over the whole usable history. Apply the window with `window.since`. */
+  filtered: FilteredHistory;
+  filtersApplied: FiltersApplied;
+  evidence: Evidence;
+}
+
+/**
+ * Reads the cached history for a ref, applies the noise filters and computes
+ * the evidence block. Call `refresh` first.
+ */
+export async function analyseHistory(repoPath: string, options: HistoryAnalysisOptions = {}): Promise<HistoryAnalysis> {
+  const view = await readHistory(repoPath, options);
+  const filtered = await filterHistory(repoPath, view, options.noise);
+  const shallow = await readShallowInfo(repoPath);
+  const evidence = computeEvidence(view, filtered.changes, shallow, filtered.imported, options.evidence);
+  return { view, filtered, filtersApplied: filtered.filtersApplied, evidence };
+}
