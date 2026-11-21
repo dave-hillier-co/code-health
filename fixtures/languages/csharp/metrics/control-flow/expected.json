@@ -1,0 +1,13 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "Flow.cs": [
+      ["Flow.Straight", 1, 1, 0, 0, 5, 2, 2, 0],
+      ["Flow.Classify", 3, 3, 3, 1, 15, 5, 1, 0],
+      ["Flow.Loops", 6, 6, 7, 2, 24, 11, 1, 0],
+      ["Flow.Guarded", 4, 4, 3, 2, 19, 6, 2, 0],
+      ["Flow.Cleanup", 1, 1, 0, 0, 3, 0, 0, 0],
+      ["Flow.Nested", 4, 4, 6, 3, 16, 7, 3, 0]
+    ]
+  }
+}

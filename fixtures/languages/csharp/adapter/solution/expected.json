@@ -1,0 +1,172 @@
+{
+  "units": {
+    "src/App/Billing/Invoice.cs": [
+      [
+        "Invoice",
+        "class",
+        5,
+        13
+      ],
+      [
+        "Invoice.Invoice",
+        "method",
+        7,
+        10
+      ]
+    ],
+    "src/App/Program.cs": [
+      [
+        "Program",
+        "class",
+        5,
+        14
+      ],
+      [
+        "Program.Main",
+        "method",
+        7,
+        13
+      ]
+    ],
+    "src/Core/IClock.cs": [
+      [
+        "IClock",
+        "class",
+        3,
+        6
+      ]
+    ],
+    "src/Core/Ledger.Rules.cs": [
+      [
+        "Ledger",
+        "class",
+        3,
+        9
+      ],
+      [
+        "Ledger.IsBalanced",
+        "method",
+        5,
+        8
+      ]
+    ],
+    "src/Core/Ledger.cs": [
+      [
+        "Ledger",
+        "class",
+        3,
+        11
+      ],
+      [
+        "Ledger.Add",
+        "method",
+        7,
+        10
+      ]
+    ],
+    "src/Core/Money.cs": [
+      [
+        "Money",
+        "class",
+        3,
+        10
+      ],
+      [
+        "Money.Money",
+        "method",
+        7,
+        7
+      ],
+      [
+        "Money.Zero",
+        "method",
+        9,
+        9
+      ]
+    ],
+    "src/Lib/Money.cs": [
+      [
+        "Money",
+        "class",
+        3,
+        5
+      ]
+    ],
+    "src/Lib/Use.cs": [
+      [
+        "Use",
+        "class",
+        3,
+        6
+      ],
+      [
+        "Use.Make",
+        "method",
+        5,
+        5
+      ]
+    ],
+    "tests/App.Tests/InvoiceTests.cs": [
+      [
+        "InvoiceTests",
+        "class",
+        6,
+        12
+      ],
+      [
+        "InvoiceTests.Total",
+        "method",
+        8,
+        11
+      ]
+    ]
+  },
+  "importEdges": [
+    "src/App/Billing/Invoice.cs -> src/Core/Money.cs import",
+    "src/App/Program.cs -> src/App/Billing/Invoice.cs import",
+    "src/App/Program.cs -> src/Core/Ledger.Rules.cs import",
+    "src/App/Program.cs -> src/Core/Ledger.cs import",
+    "src/App/Program.cs -> src/Core/Money.cs import",
+    "src/Core/Ledger.Rules.cs -> src/Core/IClock.cs import",
+    "src/Core/Ledger.Rules.cs -> src/Core/Ledger.cs import",
+    "src/Core/Ledger.cs -> src/Core/Ledger.Rules.cs import",
+    "src/Core/Ledger.cs -> src/Core/Money.cs import",
+    "src/Lib/Use.cs -> src/Lib/Money.cs import",
+    "tests/App.Tests/InvoiceTests.cs -> src/App/Billing/Invoice.cs import",
+    "tests/App.Tests/InvoiceTests.cs -> src/Core/Money.cs import"
+  ],
+  "fileEdges": [
+    "src/App/Billing/Invoice.cs -> src/Core/Money.cs reference call=0 reference=3",
+    "src/App/Program.cs -> src/App/Billing/Invoice.cs call call=1 reference=0",
+    "src/App/Program.cs -> src/Core/Ledger.Rules.cs call call=1 reference=0",
+    "src/App/Program.cs -> src/Core/Ledger.cs call call=1 reference=0",
+    "src/App/Program.cs -> src/Core/Money.cs reference call=0 reference=1",
+    "src/Core/Ledger.Rules.cs -> src/Core/IClock.cs reference call=0 reference=1",
+    "src/Core/Ledger.Rules.cs -> src/Core/Ledger.cs reference call=0 reference=1",
+    "src/Core/Ledger.cs -> src/Core/Ledger.Rules.cs reference call=0 reference=1",
+    "src/Core/Ledger.cs -> src/Core/Money.cs reference call=0 reference=2",
+    "src/Lib/Use.cs -> src/Lib/Money.cs call call=1 reference=1",
+    "tests/App.Tests/InvoiceTests.cs -> src/App/Billing/Invoice.cs test call=1 reference=0",
+    "tests/App.Tests/InvoiceTests.cs -> src/Core/Money.cs test call=0 reference=1"
+  ],
+  "consumers": [
+    "src/App/Billing/Invoice.cs -> src/Core/Money.cs#Money reference x1",
+    "src/App/Billing/Invoice.cs#Invoice -> src/Core/Money.cs#Money reference x1",
+    "src/App/Billing/Invoice.cs#Invoice.Invoice -> src/Core/Money.cs#Money reference x1",
+    "src/App/Program.cs#Program.Main -> src/App/Billing/Invoice.cs#Invoice call x1",
+    "src/App/Program.cs#Program.Main -> src/Core/Ledger.cs#Ledger call x1",
+    "src/App/Program.cs#Program.Main -> src/Core/Money.cs#Money reference x1",
+    "src/Core/Ledger.Rules.cs#Ledger -> src/Core/Ledger.cs#Ledger reference x1",
+    "src/Core/Ledger.Rules.cs#Ledger.IsBalanced -> src/Core/IClock.cs#IClock reference x1",
+    "src/Core/Ledger.cs#Ledger -> src/Core/Ledger.Rules.cs#Ledger reference x1",
+    "src/Core/Ledger.cs#Ledger -> src/Core/Money.cs#Money reference x1",
+    "src/Core/Ledger.cs#Ledger.Add -> src/Core/Money.cs#Money reference x1",
+    "src/Lib/Use.cs#Use.Make -> src/Lib/Money.cs#Money call x1",
+    "src/Lib/Use.cs#Use.Make -> src/Lib/Money.cs#Money reference x1",
+    "tests/App.Tests/InvoiceTests.cs#InvoiceTests.Total -> src/App/Billing/Invoice.cs#Invoice test x1",
+    "tests/App.Tests/InvoiceTests.cs#InvoiceTests.Total -> src/Core/Money.cs#Money test x1"
+  ],
+  "unresolved": [],
+  "barrels": [],
+  "syntaxErrors": []
+}

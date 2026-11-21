@@ -1,0 +1,29 @@
+{
+  "columns": ["unit", "nodes", "interfaceSize", "passThrough"],
+  "files": {
+    "Forwarding.cs": [
+      ["Forwarding", 107, 6, null],
+      ["Forwarding.Relay", 16, 1, "store.Save"],
+      ["Forwarding.Fixed", 19, 1, "store.Save"],
+      ["Forwarding.Computed", 18, 1, null],
+      ["Forwarding.Early", 22, 1, null],
+      ["Forwarding.Wrapped", 14, 1, "Run"],
+      ["Forwarding.Many", 15, 3, null]
+    ],
+    "Shapes.cs": [
+      ["Shapes", 63, 7, null],
+      ["Shapes.Shapes", 11, 2, null],
+      ["Shapes.Shapes~2", 8, 1, null],
+      ["Shapes.Describe", 7, 1, null],
+      ["Shapes.Hidden", 6, 1, null],
+      ["ISized", 16, 2, null],
+      ["Level", 10, 3, null],
+      ["Pair", 19, 3, null],
+      ["Pair.Sum", 8, 1, null]
+    ]
+  },
+  "modules": {
+    "Forwarding.cs": 107,
+    "Shapes.cs": 108
+  }
+}

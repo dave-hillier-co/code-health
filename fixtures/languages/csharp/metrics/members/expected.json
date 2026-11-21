@@ -1,0 +1,20 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "Members.cs": [
+      ["Members.Members", 2, 2, 1, 1, 7, 2, 2, 0],
+      ["Members.~Members", 1, 1, 0, 0, 4, 1, 0, 0],
+      ["Members.Count", 1, 1, 0, 0, 1, 1, 0, 0],
+      ["Members.Cached.get", 2, 2, 1, 1, 8, 3, 0, 0],
+      ["Members.Cached.set", 1, 1, 0, 0, 1, 1, 0, 0],
+      ["Members.this[].get", 1, 1, 0, 0, 1, 1, 1, 0],
+      ["Members.operator +", 1, 1, 0, 0, 7, 4, 2, 0],
+      ["Members.operator int", 1, 1, 0, 0, 1, 1, 1, 0],
+      ["Members.Total", 3, 3, 3, 1, 13, 6, 1, 0],
+      ["Members.Total.Plus", 2, 2, 1, 0, 4, 1, 2, 0],
+      ["Members.Evens", 2, 2, 2, 1, 11, 4, 0, 0],
+      ["Members.First", 2, 2, 1, 0, 5, 3, 2, 0],
+      ["Members.Twice", 1, 1, 0, 0, 1, 1, 1, 0]
+    ]
+  }
+}

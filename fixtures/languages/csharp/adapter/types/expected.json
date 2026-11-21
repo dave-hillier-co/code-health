@@ -1,0 +1,36 @@
+{
+  "units": {
+    "Types.cs": [
+      ["IShape", "class", 6, 9],
+      ["Shape", "class", 11, 19],
+      ["Shape.Builder", "class", 15, 18],
+      ["Shape.Builder.Build", "method", 17, 17],
+      ["Unit", "class", 21, 21],
+      ["Resized", "class", 23, 23],
+      ["Circle", "class", 25, 28],
+      ["Circle.Area", "method", 27, 27],
+      ["Geometry", "class", 30, 33],
+      ["Geometry.Half", "method", 32, 32],
+      ["Box", "class", 35, 35],
+      ["Box~2", "class", 37, 37],
+      ["Point", "class", 42, 42]
+    ],
+    "User.cs": [
+      ["Drawing", "class", 7, 18],
+      ["Drawing.Resize", "method", 13, 17]
+    ]
+  },
+  "importEdges": ["User.cs -> Types.cs import"],
+  "fileEdges": ["User.cs -> Types.cs reference call=0 reference=7"],
+  "consumers": [
+    "User.cs#Drawing -> Types.cs#Box reference x1",
+    "User.cs#Drawing -> Types.cs#Point reference x1",
+    "User.cs#Drawing -> Types.cs#Shape reference x2",
+    "User.cs#Drawing -> Types.cs#Shape.Builder reference x1",
+    "User.cs#Drawing -> Types.cs#Unit reference x1",
+    "User.cs#Drawing.Resize -> Types.cs#Resized reference x1"
+  ],
+  "unresolved": [],
+  "barrels": [],
+  "syntaxErrors": []
+}
