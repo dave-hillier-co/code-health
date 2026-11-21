@@ -5,6 +5,7 @@ import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { runHook } from "../src/hook.ts";
 import { sessionFile, readSession } from "../src/session-state.ts";
 import { couplingHistory } from "./support/coupling-scenarios.ts";
+import { model, splitFeatures, view } from "./support/grouping-scenarios.ts";
 import { runCochange } from "./support/run.ts";
 
 let repo: GitFixture;
@@ -202,4 +203,33 @@ test("a session id that is not a safe file name cannot name a path outside the s
   const file = sessionFile(repo.path, "../../../etc/passwd");
   expect(file.startsWith(join(repo.path, ".cache", "code-health", "sessions"))).toBe(true);
   expect(file).not.toContain("..");
+});
+
+describe("the cache it writes into", () => {
+  test("session state written before any CLI command has run comes with the cache's own .gitignore, so git status stays clean", async () => {
+    enable();
+    await edit(registry);
+    expect(readFileSync(join(repo.path, ".cache", "code-health", ".gitignore"), "utf8")).toBe("*\n");
+    expect(repo.git("status", "--porcelain", "--", ".cache")).toBe("");
+  });
+});
+
+describe("history as the commands see it", () => {
+  let split: GitFixture;
+  beforeAll(() => {
+    split = splitFeatures();
+  });
+  afterAll(() => split.dispose());
+
+  const editIn = (file: string) =>
+    runHook({
+      cwd: split.path,
+      stdin: JSON.stringify({ session_id: "grouped", cwd: split.path, tool_name: "Edit", tool_input: { file_path: join(split.path, file) } }),
+    });
+
+  test("commits grouped by issue key count as one change, as in coupling, so the hook hears the coupled partner", async () => {
+    writeFileSync(join(split.path, "code-health.json"), JSON.stringify({ cochange: { grouping: "issue-key", hook: { enabled: true } } }));
+    await runCochange(split.path, ["refresh"]);
+    expect(note(await editIn(model))).toContain(view);
+  });
 });

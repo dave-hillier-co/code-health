@@ -40,7 +40,12 @@ export async function locateCache(repoPath: string): Promise<CacheLocation> {
 
 /** Creates the cache directory and, on first use, its self-ignoring `.gitignore`. */
 export function ensureCacheDir(location: CacheLocation): void {
-  mkdirSync(location.cacheDir, { recursive: true });
-  const ignore = join(location.cacheDir, ".gitignore");
+  ensureSelfIgnoring(location.cacheDir);
+}
+
+/** Creates a directory that git ignores everything in, by a `.gitignore` of `*` inside it. */
+export function ensureSelfIgnoring(directory: string): void {
+  mkdirSync(directory, { recursive: true });
+  const ignore = join(directory, ".gitignore");
   if (!existsSync(ignore)) writeFileSync(ignore, "*\n");
 }

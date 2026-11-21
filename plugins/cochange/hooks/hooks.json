@@ -8,7 +8,7 @@
             "type": "command",
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs", "hook"],
-            "timeout": 2
+            "timeout": 1
           }
         ]
       }

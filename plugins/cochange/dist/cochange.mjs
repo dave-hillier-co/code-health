@@ -107,8 +107,8 @@ function normalise(value) {
   if (value !== null && typeof value === "object") {
     const sorted = {};
     for (const key of Object.keys(value).sort()) {
-      const entry = value[key];
-      if (entry !== void 0) sorted[key] = normalise(entry);
+      const entry2 = value[key];
+      if (entry2 !== void 0) sorted[key] = normalise(entry2);
     }
     return sorted;
   }
@@ -1045,8 +1045,11 @@ async function locateCache(repoPath) {
   };
 }
 function ensureCacheDir(location) {
-  mkdirSync(location.cacheDir, { recursive: true });
-  const ignore = join2(location.cacheDir, ".gitignore");
+  ensureSelfIgnoring(location.cacheDir);
+}
+function ensureSelfIgnoring(directory) {
+  mkdirSync(directory, { recursive: true });
+  const ignore = join2(directory, ".gitignore");
   if (!existsSync2(ignore)) writeFileSync(ignore, "*\n");
 }
 
@@ -1891,23 +1894,23 @@ function parse(text, file) {
   const classes = document.classifications ?? [];
   if (!Array.isArray(rejected) || !Array.isArray(classes)) return fail("rejectedMerges and classifications must be arrays");
   const rejectedMerges = rejected.map((r, i) => {
-    const entry = r;
-    const ids = entry?.identities;
+    const entry2 = r;
+    const ids = entry2?.identities;
     if (!Array.isArray(ids) || ids.length !== 2 || ids.some((x) => typeof x !== "string")) {
       return fail(`rejectedMerges[${i}].identities must be two "Name <email>" strings`);
     }
-    return { identities: [ids[0], ids[1]], ...typeof entry.reason === "string" ? { reason: entry.reason } : {} };
+    return { identities: [ids[0], ids[1]], ...typeof entry2.reason === "string" ? { reason: entry2.reason } : {} };
   });
   const classifications = classes.map((c, i) => {
-    const entry = c;
-    if (typeof entry?.identity !== "string") return fail(`classifications[${i}].identity must be a "Name <email>" string`);
-    if (typeof entry.kind !== "string" || !KINDS.has(entry.kind)) {
+    const entry2 = c;
+    if (typeof entry2?.identity !== "string") return fail(`classifications[${i}].identity must be a "Name <email>" string`);
+    if (typeof entry2.kind !== "string" || !KINDS.has(entry2.kind)) {
       return fail(`classifications[${i}].kind must be bot, service, agent or person`);
     }
     return {
-      identity: entry.identity,
-      kind: entry.kind,
-      ...typeof entry.reason === "string" ? { reason: entry.reason } : {}
+      identity: entry2.identity,
+      kind: entry2.kind,
+      ...typeof entry2.reason === "string" ? { reason: entry2.reason } : {}
     };
   });
   return normaliseDecisions({ schemaVersion: 1, rejectedMerges, classifications });
@@ -4687,11 +4690,11 @@ var emailOf2 = (identity) => {
 // packages/cochange/src/identities/apply.ts
 var KEYS = ["merges", "rejectedMerges", "classifications"];
 function address(value, where) {
-  const entry = value;
-  if (typeof entry?.name !== "string" || typeof entry.email !== "string" || entry.name === "" || entry.email === "") {
+  const entry2 = value;
+  if (typeof entry2?.name !== "string" || typeof entry2.email !== "string" || entry2.name === "" || entry2.email === "") {
     throw usageError(`${where} must be {"name": ..., "email": ...}`);
   }
-  return { name: entry.name, email: entry.email };
+  return { name: entry2.name, email: entry2.email };
 }
 function readDecisionsInput(path, root) {
   const file = isAbsolute2(path) ? path : resolve(root, path);
@@ -4709,33 +4712,33 @@ function readDecisionsInput(path, root) {
   const unknown = Object.keys(document).filter((k) => !KEYS.includes(k));
   if (unknown.length > 0) throw usageError(`--from: unknown key ${unknown.join(", ")}; expected ${KEYS.join(", ")}`);
   const list = (key) => {
-    const entry = document[key] ?? [];
-    if (!Array.isArray(entry)) throw usageError(`--from: ${key} must be an array`);
-    return entry;
+    const entry2 = document[key] ?? [];
+    if (!Array.isArray(entry2)) throw usageError(`--from: ${key} must be an array`);
+    return entry2;
   };
   const merges = list("merges").map((m, i) => {
-    const entry = m;
-    if (!Array.isArray(entry?.aliases) || entry.aliases.length === 0) throw usageError(`--from: merges[${i}].aliases must be a non-empty array`);
+    const entry2 = m;
+    if (!Array.isArray(entry2?.aliases) || entry2.aliases.length === 0) throw usageError(`--from: merges[${i}].aliases must be a non-empty array`);
     return {
-      canonical: address(entry.canonical, `merges[${i}].canonical`),
-      aliases: entry.aliases.map((a, j) => address(a, `merges[${i}].aliases[${j}]`))
+      canonical: address(entry2.canonical, `merges[${i}].canonical`),
+      aliases: entry2.aliases.map((a, j) => address(a, `merges[${i}].aliases[${j}]`))
     };
   });
   const rejectedMerges = list("rejectedMerges").map((r, i) => {
-    const entry = r;
-    const ids = entry?.identities;
+    const entry2 = r;
+    const ids = entry2?.identities;
     if (!Array.isArray(ids) || ids.length !== 2 || ids.some((x) => typeof x !== "string")) {
       throw usageError(`--from: rejectedMerges[${i}].identities must be two "Name <email>" strings`);
     }
-    return { identities: [ids[0], ids[1]], ...typeof entry.reason === "string" ? { reason: entry.reason } : {} };
+    return { identities: [ids[0], ids[1]], ...typeof entry2.reason === "string" ? { reason: entry2.reason } : {} };
   });
   const classifications = list("classifications").map((c, i) => {
-    const entry = c;
-    if (typeof entry?.identity !== "string") throw usageError(`--from: classifications[${i}].identity must be a "Name <email>" string`);
-    if (entry.kind !== "bot" && entry.kind !== "service" && entry.kind !== "agent" && entry.kind !== "person") {
+    const entry2 = c;
+    if (typeof entry2?.identity !== "string") throw usageError(`--from: classifications[${i}].identity must be a "Name <email>" string`);
+    if (entry2.kind !== "bot" && entry2.kind !== "service" && entry2.kind !== "agent" && entry2.kind !== "person") {
       throw usageError(`--from: classifications[${i}].kind must be bot, service, agent or person`);
     }
-    return { identity: entry.identity, kind: entry.kind, ...typeof entry.reason === "string" ? { reason: entry.reason } : {} };
+    return { identity: entry2.identity, kind: entry2.kind, ...typeof entry2.reason === "string" ? { reason: entry2.reason } : {} };
   });
   return { input: { merges, rejectedMerges, classifications }, hash };
 }
@@ -4781,8 +4784,8 @@ function planApply(root, location, input, analysis) {
   const decisions = mergeDecisions(existing, input);
   const decisionsPath = decisionsFile(root, location);
   const changes = [
-    ...update.added.map((entry) => ({ target: relative2(root, mailmapPath), change: "add", entry })),
-    ...update.present.map((entry) => ({ target: relative2(root, mailmapPath), change: "present", entry }))
+    ...update.added.map((entry2) => ({ target: relative2(root, mailmapPath), change: "add", entry: entry2 })),
+    ...update.present.map((entry2) => ({ target: relative2(root, mailmapPath), change: "present", entry: entry2 }))
   ];
   const target = relative2(root, decisionsPath);
   const hadRejection = new Set(existing.rejectedMerges.map((r) => rejectedPair(...r.identities)));
@@ -5142,9 +5145,9 @@ var command8 = analysisCommand(name8, {
     const byBucket = /* @__PURE__ */ new Map();
     const slot = (time) => {
       const start = bucketStart(time, bucket);
-      let entry = byBucket.get(start);
-      if (!entry) byBucket.set(start, entry = { changes: [], excluded: 0 });
-      return entry;
+      let entry2 = byBucket.get(start);
+      if (!entry2) byBucket.set(start, entry2 = { changes: [], excluded: 0 });
+      return entry2;
     };
     for (const change of measuredChanges) slot(change.committerDate).changes.push(change);
     for (const change of excluded) slot(change.committerDate).excluded++;
@@ -5153,11 +5156,11 @@ var command8 = analysisCommand(name8, {
       const first = Math.min(...byBucket.keys());
       const last = bucketStart(history.window.until - (context.values.until === void 0 ? 0 : 1), bucket);
       for (let start = first; start <= last; start = nextBucketStart(start, bucket)) {
-        const entry = byBucket.get(start);
+        const entry2 = byBucket.get(start);
         rows.push({
           bucket: bucketLabel(start, bucket),
           start: new Date(start * 1e3).toISOString(),
-          ...distribution(entry?.changes ?? [], entry?.excluded ?? 0)
+          ...distribution(entry2?.changes ?? [], entry2?.excluded ?? 0)
         });
       }
     }
@@ -5275,13 +5278,16 @@ var cli = {
   mapError: mapHistoryError
 };
 
+// packages/cochange/src/hook-process.ts
+import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
+
 // packages/cochange/src/hook.ts
 import { existsSync as existsSync11 } from "node:fs";
 import { dirname as dirname4, join as join9 } from "node:path";
 
 // packages/cochange/src/session-state.ts
 import { createHash as createHash4 } from "node:crypto";
-import { mkdirSync as mkdirSync5, readFileSync as readFileSync8, renameSync as renameSync5, writeFileSync as writeFileSync5 } from "node:fs";
+import { closeSync as closeSync2, mkdirSync as mkdirSync5, openSync as openSync2, readFileSync as readFileSync8, renameSync as renameSync5, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync5 } from "node:fs";
 import { join as join8 } from "node:path";
 var emptySession = () => ({ edited: [], spokenAbout: [], lastRun: null });
 function sessionDirectory(root) {
@@ -5307,16 +5313,55 @@ function readSession(root, sessionId) {
 }
 function writeSession(root, sessionId, state) {
   const file = sessionFile(root, sessionId);
+  ensureSelfIgnoring(join8(root, ".cache", "code-health"));
   mkdirSync5(sessionDirectory(root), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
   writeFileSync5(temporary, JSON.stringify(state) + "\n");
   renameSync5(temporary, file);
 }
+var STALE_LOCK_MS = 2e3;
+var LOCK_WAIT_MS = 300;
+var sleep2 = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+function withLock2(file, work) {
+  const lock = `${file}.lock`;
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  let held = false;
+  for (; ; ) {
+    try {
+      closeSync2(openSync2(lock, "wx"));
+      held = true;
+      break;
+    } catch {
+      try {
+        if (Date.now() - statSync2(lock).mtimeMs > STALE_LOCK_MS) rmSync3(lock, { force: true });
+      } catch {
+      }
+      if (Date.now() >= deadline) break;
+      sleep2(5);
+    }
+  }
+  try {
+    return work();
+  } finally {
+    if (held) rmSync3(lock, { force: true });
+  }
+}
+function updateSession(root, sessionId, change) {
+  const file = sessionFile(root, sessionId);
+  ensureSelfIgnoring(join8(root, ".cache", "code-health"));
+  mkdirSync5(sessionDirectory(root), { recursive: true });
+  return withLock2(file, () => {
+    const state = readSession(root, sessionId);
+    change(state);
+    writeSession(root, sessionId, state);
+    return state;
+  });
+}
 
 // packages/cochange/src/hook.ts
 var WATCHED_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit"]);
 var MAX_PARTNERS_NAMED = 3;
-var DEFAULT_BUDGET_MS = 500;
+var DEFAULT_BUDGET_MS = 250;
 function findRepoRoot(start) {
   let directory = start;
   for (; ; ) {
@@ -5348,11 +5393,14 @@ async function consider(root, file, settings, state) {
   const location = await locateCache(root);
   const found = await commitsBehind(root, location.dbPath, settings.ref, settings.hook.maxCommitsBehind);
   if (!found) return { note: null, outcome: "silent: no cache within tolerance" };
-  const view = await readHistory(root, { ref: found.sha, firstParent: settings.firstParent });
+  const identities = loadIdentityState(root, settings);
+  const view = await readHistory(root, { ref: found.sha, firstParent: settings.firstParent, mailmapFile: identities.localMailmap });
   const filtered = await filterHistory(root, view, {
     exclude: settings.exclude,
     botPatterns: settings.botPatterns,
+    nonPerson: identities.matcher,
     maxChangesetSize: settings.maxChangesetSize,
+    grouping: settings.grouping,
     since: monthsBefore(view.headDate, settings.windowMonths),
     until: view.headDate + 1
   });
@@ -5386,20 +5434,21 @@ async function runHook(request) {
     if (!settings.hook.enabled) return "";
     const file = repoRelative(root, path);
     if (file.startsWith("..") || file.startsWith("/") || file === "") return "";
-    const state = readSession(root, input.session_id);
-    const alreadyEdited = state.edited.includes(file);
-    if (!alreadyEdited) state.edited.push(file);
+    const state = updateSession(root, input.session_id, (current) => {
+      if (!current.edited.includes(file)) current.edited.push(file);
+    });
     const decision = state.spokenAbout.includes(file) ? { note: null, outcome: "silent: already spoke about this file" } : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state));
-    if (decision.note !== null) state.spokenAbout.push(file);
-    state.lastRun = { outcome: decision.outcome, durationMs: Math.round(performance.now() - started) };
-    writeSession(root, input.session_id, state);
+    updateSession(root, input.session_id, (current) => {
+      if (decision.note !== null && !current.spokenAbout.includes(file)) current.spokenAbout.push(file);
+      current.lastRun = { outcome: decision.outcome, durationMs: Math.round(performance.now() - started) };
+    });
     return decision.note === null ? "" : JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: decision.note } });
   } catch {
     return "";
   }
 }
-function within(budgetMs, started, work) {
-  const remaining = Math.max(0, budgetMs - (performance.now() - started));
+function within(budgetMs2, started, work) {
+  const remaining = Math.max(0, budgetMs2 - (performance.now() - started));
   return new Promise((resolve2, reject) => {
     const timer = setTimeout(() => resolve2({ note: null, outcome: "silent: over the time budget" }), remaining);
     work.then(
@@ -5430,10 +5479,46 @@ function readStdin(limitMs) {
     process.stdin.on("error", finish);
   });
 }
+var entry = import.meta.url.endsWith("/hook-process.ts") ? new URL("./main.ts", import.meta.url) : new URL(import.meta.url);
+function runInWorker(job, budgetMs2) {
+  return new Promise((resolve2) => {
+    let worker;
+    try {
+      worker = new Worker(entry, { workerData: job });
+    } catch {
+      return resolve2("");
+    }
+    const timer = setTimeout(() => resolve2(""), Math.max(0, budgetMs2 - performance.now()));
+    worker.on("message", (output) => {
+      clearTimeout(timer);
+      resolve2(output);
+    });
+    worker.on("error", () => {
+      clearTimeout(timer);
+      resolve2("");
+    });
+    worker.on("exit", () => {
+      clearTimeout(timer);
+      resolve2("");
+    });
+  });
+}
+async function runHookWorker() {
+  const job = workerData;
+  const output = await runHook({ stdin: job.stdin, cwd: job.cwd, budgetMs: 6e4 });
+  parentPort?.postMessage(output);
+}
+var inHookWorker = () => !isMainThread && workerData?.kind === "cochange-hook";
+function budgetMs() {
+  const override = Number(process.env.CODE_HEALTH_HOOK_BUDGET_MS);
+  return Number.isInteger(override) && override > 0 ? override : DEFAULT_BUDGET_MS;
+}
 async function runHookProcess() {
   let output = "";
   try {
-    output = await runHook({ stdin: await readStdin(DEFAULT_BUDGET_MS), cwd: process.cwd(), startedAt: 0 });
+    const budget = budgetMs();
+    const stdin = await readStdin(budget);
+    output = await runInWorker({ kind: "cochange-hook", stdin, cwd: process.cwd() }, budget);
   } catch {
   }
   return new Promise(() => {
@@ -5445,10 +5530,14 @@ async function runHookProcess() {
 
 // packages/cochange/src/main.ts
 var argv = process.argv.slice(2);
-if (argv[0] === "hook") await runHookProcess();
-process.exitCode = await runCli(cli, {
-  argv,
-  cwd: process.cwd(),
-  stdout: process.stdout,
-  stderr: process.stderr
-});
+if (inHookWorker()) {
+  await runHookWorker();
+} else {
+  if (argv[0] === "hook") await runHookProcess();
+  process.exitCode = await runCli(cli, {
+    argv,
+    cwd: process.cwd(),
+    stdout: process.stdout,
+    stderr: process.stderr
+  });
+}

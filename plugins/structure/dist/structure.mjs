@@ -1038,8 +1038,11 @@ async function locateCache(repoPath) {
   };
 }
 function ensureCacheDir(location) {
-  mkdirSync(location.cacheDir, { recursive: true });
-  const ignore = join2(location.cacheDir, ".gitignore");
+  ensureSelfIgnoring(location.cacheDir);
+}
+function ensureSelfIgnoring(directory) {
+  mkdirSync(directory, { recursive: true });
+  const ignore = join2(directory, ".gitignore");
   if (!existsSync2(ignore)) writeFileSync(ignore, "*\n");
 }
 

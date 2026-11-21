@@ -10,7 +10,8 @@ import { openForRead } from "@code-health/history/store";
 import { cochangeConfig, readSettings, type CochangeSettings } from "./config.ts";
 import { confidenceOf, partnersOf } from "./coupling.ts";
 import { repoRelative } from "./repo-paths.ts";
-import { readSession, writeSession, type SessionState } from "./session-state.ts";
+import { loadIdentityState } from "./identity-access.ts";
+import { updateSession, type SessionState } from "./session-state.ts";
 
 /** What Claude Code sends a hook on stdin. Only the fields the hook uses are read. */
 interface HookInput {
@@ -36,7 +37,7 @@ export interface HookRequest {
 }
 
 /** The tools whose edits the hook watches. */
-const WATCHED_TOOLS = new Set(["Edit", "Write", "MultiEdit"]);
+export const WATCHED_TOOLS = new Set(["Edit", "Write", "MultiEdit"]);
 
 /** The most partners one note names. */
 const MAX_PARTNERS_NAMED = 3;
@@ -46,7 +47,7 @@ const MAX_PARTNERS_NAMED = 3;
  * a run that has not finished by then goes silent instead of slowing the
  * session. The hook's own timeout in `hooks.json` is a backstop above it.
  */
-export const DEFAULT_BUDGET_MS = 500;
+export const DEFAULT_BUDGET_MS = 250;
 
 /** The directory holding `.git`, found by walking up from `start` with no process spawned. Undefined outside a repository. */
 function findRepoRoot(start: string): string | undefined {
@@ -92,11 +93,15 @@ async function consider(root: string, file: string, settings: CochangeSettings, 
   const found = await commitsBehind(root, location.dbPath, settings.ref, settings.hook.maxCommitsBehind);
   if (!found) return { note: null, outcome: "silent: no cache within tolerance" };
 
-  const view = await readHistory(root, { ref: found.sha, firstParent: settings.firstParent });
+  // The same filters the commands apply, so the hook's confidence agrees with brief and coupling.
+  const identities = loadIdentityState(root, settings);
+  const view = await readHistory(root, { ref: found.sha, firstParent: settings.firstParent, mailmapFile: identities.localMailmap });
   const filtered = await filterHistory(root, view, {
     exclude: settings.exclude,
     botPatterns: settings.botPatterns,
+    nonPerson: identities.matcher,
     maxChangesetSize: settings.maxChangesetSize,
+    grouping: settings.grouping,
     since: monthsBefore(view.headDate, settings.windowMonths),
     until: view.headDate + 1,
   });
@@ -155,16 +160,18 @@ export async function runHook(request: HookRequest): Promise<string> {
     const file = repoRelative(root, path);
     if (file.startsWith("..") || file.startsWith("/") || file === "") return "";
 
-    const state = readSession(root, input.session_id);
-    const alreadyEdited = state.edited.includes(file);
-    if (!alreadyEdited) state.edited.push(file);
+    // The edit is recorded first, under the lock, so it survives however the rest of the run ends.
+    const state = updateSession(root, input.session_id, (current) => {
+      if (!current.edited.includes(file)) current.edited.push(file);
+    });
 
     const decision: Decision = state.spokenAbout.includes(file)
       ? { note: null, outcome: "silent: already spoke about this file" }
       : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state));
-    if (decision.note !== null) state.spokenAbout.push(file);
-    state.lastRun = { outcome: decision.outcome, durationMs: Math.round(performance.now() - started) };
-    writeSession(root, input.session_id, state);
+    updateSession(root, input.session_id, (current) => {
+      if (decision.note !== null && !current.spokenAbout.includes(file)) current.spokenAbout.push(file);
+      current.lastRun = { outcome: decision.outcome, durationMs: Math.round(performance.now() - started) };
+    });
 
     return decision.note === null
       ? ""

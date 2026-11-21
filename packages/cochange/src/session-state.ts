@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { ensureSelfIgnoring } from "@code-health/history/cache-location";
 
 /**
  * What a hook remembers about one session. It is the hook's own record,
@@ -54,8 +55,60 @@ export function readSession(root: string, sessionId: string): SessionState {
 /** Writes the state through a temporary file and a rename, so a reader never sees half a file. */
 export function writeSession(root: string, sessionId: string, state: SessionState): void {
   const file = sessionFile(root, sessionId);
+  // The cache's own .gitignore comes first: the hook may be the first thing to write here.
+  ensureSelfIgnoring(join(root, ".cache", "code-health"));
   mkdirSync(sessionDirectory(root), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
   writeFileSync(temporary, JSON.stringify(state) + "\n");
   renameSync(temporary, file);
+}
+
+/** A lock older than this is a crashed holder's, and is taken over. */
+const STALE_LOCK_MS = 2_000;
+/** How long to wait for a lock before going on without it. */
+const LOCK_WAIT_MS = 300;
+
+const sleep = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/** Runs `work` holding the session's lock file, so concurrent hook processes take turns. After the wait it runs unlocked rather than block an edit. */
+function withLock<T>(file: string, work: () => T): T {
+  const lock = `${file}.lock`;
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  let held = false;
+  for (;;) {
+    try {
+      closeSync(openSync(lock, "wx"));
+      held = true;
+      break;
+    } catch {
+      try {
+        if (Date.now() - statSync(lock).mtimeMs > STALE_LOCK_MS) rmSync(lock, { force: true });
+      } catch {
+        // The holder released it between the attempt and the stat; try again.
+      }
+      if (Date.now() >= deadline) break;
+      sleep(5);
+    }
+  }
+  try {
+    return work();
+  } finally {
+    if (held) rmSync(lock, { force: true });
+  }
+}
+
+/**
+ * Reads the latest state, applies `change` to it and writes it back, all under the session's lock.
+ * Two hooks editing different files in one session each see the other's edit, so neither is lost.
+ */
+export function updateSession(root: string, sessionId: string, change: (state: SessionState) => void): SessionState {
+  const file = sessionFile(root, sessionId);
+  ensureSelfIgnoring(join(root, ".cache", "code-health"));
+  mkdirSync(sessionDirectory(root), { recursive: true });
+  return withLock(file, () => {
+    const state = readSession(root, sessionId);
+    change(state);
+    writeSession(root, sessionId, state);
+    return state;
+  });
 }
