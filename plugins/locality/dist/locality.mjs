@@ -19,17 +19,17 @@ import {
 } from "./chunk-U2IXLVHY.mjs";
 import {
   analyseTree
-} from "./chunk-F65BYJUZ.mjs";
-import "./chunk-6VUZXA5D.mjs";
+} from "./chunk-EIIDG75E.mjs";
+import "./chunk-IHJS3JTB.mjs";
 import {
   isSourceFile
-} from "./chunk-5VAMIMG4.mjs";
+} from "./chunk-VALAITAM.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isTestPath
-} from "./chunk-7ANC25UC.mjs";
+} from "./chunk-JLMLNIDH.mjs";
 import {
   __export
 } from "./chunk-ICEC5XXC.mjs";
@@ -89,9 +89,9 @@ function parseArguments(argv, commandOptions = {}) {
     throw usageError(error instanceof Error ? error.message : String(error));
   }
   const { json, help, limit, fields, ...values } = parsed.values;
-  const [command7, ...positionals] = parsed.positionals;
+  const [command8, ...positionals] = parsed.positionals;
   return {
-    command: command7,
+    command: command8,
     positionals,
     json: json === true,
     help: help === true,
@@ -382,8 +382,8 @@ async function runCli(cli2, io) {
 }
 async function execute(cli2, io) {
   const started = Date.now();
-  const name7 = discoverCommand(io.argv);
-  if (name7 === void 0) {
+  const name8 = discoverCommand(io.argv);
+  if (name8 === void 0) {
     if (io.argv.includes("--help")) {
       io.stdout.write(helpText(cli2));
       return ExitCode.Success;
@@ -391,22 +391,22 @@ async function execute(cli2, io) {
     io.stderr.write(helpText(cli2));
     return ExitCode.Usage;
   }
-  if (name7 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
-  const command7 = name7 === "config" ? configExplain : cli2.commands[name7];
-  if (!command7) throw usageError(`unknown command "${name7}"; run with --help to list commands`);
-  const args = parseArguments(io.argv, command7.options);
+  if (name8 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
+  const command8 = name8 === "config" ? configExplain : cli2.commands[name8];
+  if (!command8) throw usageError(`unknown command "${name8}"; run with --help to list commands`);
+  const args = parseArguments(io.argv, command8.options);
   if (args.help) {
-    io.stdout.write(commandHelp(cli2, name7, command7));
+    io.stdout.write(commandHelp(cli2, name8, command8));
     return ExitCode.Success;
   }
-  let commandName = name7;
-  if (name7 === "config") {
+  let commandName = name8;
+  if (name8 === "config") {
     if (args.positionals[0] !== "explain") throw usageError("usage: config explain");
     commandName = "config explain";
   }
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli2.config);
-  const output = await command7.run({ repo, config, positionals: args.positionals, values: args.values });
+  const output = await command8.run({ repo, config, positionals: args.positionals, values: args.values });
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
   if (args.json || !io.stdout.isTTY) {
@@ -467,31 +467,31 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands2 = [
-    ...Object.entries(cli2.commands).map(([name7, command7]) => [name7, command7.summary]),
+    ...Object.entries(cli2.commands).map(([name8, command8]) => [name8, command8.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
-  const width = Math.max(...commands2.map(([name7]) => name7.length));
+  const width = Math.max(...commands2.map(([name8]) => name8.length));
   return [
     `Usage: ${cli2.tool} <command> [options]`,
     "",
     "Commands:",
-    ...commands2.map(([name7, summary]) => `  ${name7.padEnd(width)}  ${summary}`),
+    ...commands2.map(([name8, summary]) => `  ${name8.padEnd(width)}  ${summary}`),
     "",
     "Options:",
     ...commonOptionHelp,
     ""
   ].join("\n");
 }
-function commandHelp(cli2, name7, command7) {
-  const own = Object.entries(command7.options ?? {}).map(([option, spec]) => {
+function commandHelp(cli2, name8, command8) {
+  const own = Object.entries(command8.options ?? {}).map(([option, spec]) => {
     const argument = spec.type === "string" ? ` <${option}>` : "";
     return `  --${option}${argument}`;
   });
   return [
-    `Usage: ${cli2.tool} ${name7} [options]`,
+    `Usage: ${cli2.tool} ${name8} [options]`,
     "",
-    command7.summary,
+    command8.summary,
     "",
     "Options:",
     ...own,
@@ -848,7 +848,8 @@ function countLines(text) {
 async function loadProject(root, ref, settings) {
   const tree = withoutExcluded(await treeFromRef(root, ref), settings.exclude);
   const analysis = await analyseTree(tree, { cache: await ParseCache.forRepository(root) });
-  const production = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path));
+  const generated = new Set(analysis.generatedFiles);
+  const production = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !generated.has(path));
   const texts = await tree.readMany(production);
   const packageEntries = await readPackageEntries(tree);
   return { analysis, production, isTest: isTestPath, texts, packageEntries };
@@ -881,8 +882,8 @@ function fileCohesion(project, path, isLive) {
     consumersOf.get(consumer.toSymbol)?.add(consumer.from);
   }
   const parent = new Map(exported.map((unit) => [unit.qualifiedName, unit.qualifiedName]));
-  const find = (name7) => {
-    let root = name7;
+  const find = (name8) => {
+    let root = name8;
     while (parent.get(root) !== root) root = parent.get(root);
     return root;
   };
@@ -2099,7 +2100,7 @@ function isPassThrough(source) {
   if (!call) return false;
   const names = signature.params.map(parameterName);
   const args = splitTopLevel(call[2]);
-  return names.length === args.length && names.every((name7, index) => name7 === args[index]);
+  return names.length === args.length && names.every((name8, index) => name8 === args[index]);
 }
 function flagParameters(source) {
   const signature = signatureOf(source);
@@ -2282,7 +2283,7 @@ function analyseProject(project, model, settings, history) {
     const own = (consumersTo.get(path) ?? []).filter(
       (consumer) => consumer.toSymbol !== void 0 && symbols.has(consumer.toSymbol) && consumer.kind !== "test" && consumer.from !== path && live(consumer.from)
     );
-    const within = (name7) => name7 !== void 0 && [...symbols].some((symbol) => name7 === symbol || name7.startsWith(`${symbol}.`));
+    const within = (name8) => name8 !== void 0 && [...symbols].some((symbol) => name8 === symbol || name8.startsWith(`${symbol}.`));
     const outward = analysis.consumers.filter(
       (consumer) => consumer.from === path && within(consumer.fromUnit) && consumer.to !== path && productionSet.has(consumer.to)
     );
@@ -2994,16 +2995,16 @@ function analyseByHistory(history, files, settings) {
 // packages/history/src/reports.ts
 import { mkdirSync as mkdirSync2, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join5 } from "node:path";
-function reportPath(root, tool, command7) {
-  return join5(root, ".cache", "code-health", "reports", `${tool}.${command7}.json`);
+function reportPath(root, tool, command8) {
+  return join5(root, ".cache", "code-health", "reports", `${tool}.${command8}.json`);
 }
-async function writeReport(context, identity, command7, output, analysedHead) {
+async function writeReport(context, identity, command8, output, analysedHead) {
   if (context.repo.dirty || analysedHead !== context.repo.head) return false;
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
     tool: identity.tool,
-    command: command7,
+    command: command8,
     repo: { head: context.repo.head, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
@@ -3011,7 +3012,7 @@ async function writeReport(context, identity, command7, output, analysedHead) {
     results,
     truncated
   });
-  const file = reportPath(context.repo.root, identity.tool, command7);
+  const file = reportPath(context.repo.root, identity.tool, command8);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join5(context.repo.root, ".cache", "code-health") });
   mkdirSync2(join5(file, ".."), { recursive: true });
@@ -3022,8 +3023,8 @@ async function writeReport(context, identity, command7, output, analysedHead) {
 }
 
 // packages/locality/src/reports.ts
-function writeReport2(context, command7, output) {
-  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command7, output, context.repo.head);
+function writeReport2(context, command8, output) {
+  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command8, output, context.repo.head);
 }
 
 // packages/locality/src/rules.ts
@@ -3166,7 +3167,7 @@ var ruleDescriptions = {
   "package-entry": {
     summary: "Guard: the unit is exported from a published package entry point",
     explanation: lines(
-      "A non-private package.json names the file as its main, module, types, bin or exports, so consumers outside the",
+      "A non-private package manifest (package.json, pyproject.toml, Cargo.toml and the like) names the file as an entry point, so consumers outside the",
       "repository may exist. An inline or move becomes a review."
     )
   },
@@ -3400,12 +3401,12 @@ function pathOf(input) {
   return asString(input["file_path"]) ?? asString(input["notebook_path"]) ?? asString(input["path"]);
 }
 function actionOf(block) {
-  const name7 = asString(block["name"]);
-  if (name7 === null) return null;
+  const name8 = asString(block["name"]);
+  if (name8 === null) return null;
   const input = isObject(block["input"]) ? block["input"] : {};
-  if (READ_TOOLS.has(name7)) return { kind: "read", path: pathOf(input) };
-  if (SEARCH_TOOLS.has(name7)) return { kind: "search", path: pathOf(input) };
-  if (EDIT_TOOLS.has(name7)) return { kind: "edit", path: pathOf(input) };
+  if (READ_TOOLS.has(name8)) return { kind: "read", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name8)) return { kind: "search", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name8)) return { kind: "edit", path: pathOf(input) };
   return null;
 }
 var INTERRUPT_MARKER = "[Request interrupted by user";
@@ -3716,11 +3717,11 @@ function ensureLocalState(root) {
 // packages/locality/src/baseline-store.ts
 var footprintOf = (candidate) => [.../* @__PURE__ */ new Set([...candidate.files, ...candidate.consumers])].sort();
 var NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-function baselinePath(root, name7) {
-  if (!NAME.test(name7)) throw usageError(`--name must be letters, digits, dots, dashes and underscores, not "${name7}"`);
-  return join8(identityFiles(root).localDir, `${TOOL}.baseline.${name7}.json`);
+function baselinePath(root, name8) {
+  if (!NAME.test(name8)) throw usageError(`--name must be letters, digits, dots, dashes and underscores, not "${name8}"`);
+  return join8(identityFiles(root).localDir, `${TOOL}.baseline.${name8}.json`);
 }
-var baselineExists = (root, name7) => existsSync8(baselinePath(root, name7));
+var baselineExists = (root, name8) => existsSync8(baselinePath(root, name8));
 function writeBaseline(root, baseline2) {
   ensureLocalState(root);
   const path = baselinePath(root, baseline2.name);
@@ -3729,10 +3730,10 @@ function writeBaseline(root, baseline2) {
   renameSync4(temporary, path);
   return path;
 }
-function readBaseline(root, name7) {
-  const path = baselinePath(root, name7);
+function readBaseline(root, name8) {
+  const path = baselinePath(root, name8);
   if (!existsSync8(path)) {
-    throw usageError(`no baseline named "${name7}": run \`locality measure baseline\` before the first tidy-up`);
+    throw usageError(`no baseline named "${name8}": run \`locality measure baseline\` before the first tidy-up`);
   }
   let value;
   try {
@@ -4001,16 +4002,16 @@ function projectsDirectory(context) {
 function measureName(context) {
   return stringOption(context, "name") ?? DEFAULT_NAME;
 }
-var localPath = (context, name7) => relative2(context.repo.root, baselinePath(context.repo.root, name7)).split("\\").join("/");
+var localPath = (context, name8) => relative2(context.repo.root, baselinePath(context.repo.root, name8)).split("\\").join("/");
 async function baseline(context, settings) {
   const { root } = context.repo;
-  const name7 = measureName(context);
+  const name8 = measureName(context);
   const requested = stringOption(context, "candidates");
   if (requested !== void 0 && !/^[1-9]\d*$/.test(requested)) throw usageError("--candidates must be a positive integer");
   const keep = requested === void 0 ? DEFAULT_CANDIDATES : Number(requested);
-  if (baselineExists(root, name7) && context.values.force !== true) {
+  if (baselineExists(root, name8) && context.values.force !== true) {
     throw usageError(
-      `a baseline named "${name7}" already exists and cannot be regenerated once code has moved: pass --force to replace it, or --name for another`
+      `a baseline named "${name8}" already exists and cannot be regenerated once code has moved: pass --force to replace it, or --name for another`
     );
   }
   const analysis = await readMeasureHistory(root, settings);
@@ -4038,7 +4039,7 @@ async function baseline(context, settings) {
   const record = {
     schemaVersion: 1,
     tool: "locality",
-    name: name7,
+    name: name8,
     head: view.headSha,
     headDate: new Date(view.headDate * 1e3).toISOString(),
     window,
@@ -4060,11 +4061,11 @@ async function baseline(context, settings) {
   };
   writeBaseline(root, record);
   return {
-    inputs: { name: name7, transcripts: { tasks: effort.tasks.length, stamp: record.effort.stamp } },
+    inputs: { name: name8, transcripts: { tasks: effort.tasks.length, stamp: record.effort.stamp } },
     extra: { evidence: record.evidence },
     results: {
-      name: name7,
-      file: localPath(context, name7),
+      name: name8,
+      file: localPath(context, name8),
       head: record.head,
       window,
       spread,
@@ -4091,8 +4092,8 @@ async function structureNow(context, settings) {
 var EFFORT_FIGURES = ["filesRead", "foldersVisited", "reReads", "tokens"];
 async function compare(context, settings) {
   const { root } = context.repo;
-  const name7 = measureName(context);
-  const before = readBaseline(root, name7);
+  const name8 = measureName(context);
+  const before = readBaseline(root, name8);
   const analysis = await readMeasureHistory(root, settings);
   const { view } = analysis;
   if (!await isAncestor(root, before.head, view.headSha)) {
@@ -4102,13 +4103,13 @@ async function compare(context, settings) {
   const moved = new Set(done.actions.map((action) => action.from));
   const actedOn = before.candidates.filter((candidate) => candidate.files.some((file) => moved.has(file)));
   const common = {
-    inputs: { name: name7, baseline: { head: before.head, stamp: before.effort.stamp } }
+    inputs: { name: name8, baseline: { head: before.head, stamp: before.effort.stamp } }
   };
   if (actedOn.length === 0) {
     return {
       ...common,
       results: {
-        name: name7,
+        name: name8,
         status: "nothing-acted-on",
         baseline: { head: before.head, window: before.window },
         suite: { commits: done.commits, actedOn: 0 }
@@ -4170,7 +4171,7 @@ async function compare(context, settings) {
       since: requested ?? null
     },
     results: {
-      name: name7,
+      name: name8,
       status: "compared",
       baseline: { head: before.head, window: before.window, spread: before.spread, effort: before.effort.summary },
       spreadReproduced: reproduced(recomputed, before.spread),
@@ -4253,8 +4254,11 @@ async function applyMove(root, plan, result, message, commit) {
     mkdirSync4(dirname3(join10(root, operation.to)), { recursive: true });
     await git2(root, ["mv", operation.from, operation.to]);
   }
-  for (const [path, text] of result.texts) writeFileSync5(join10(root, path), text);
-  if (result.texts.size > 0) await git2(root, ["add", "--", ...result.texts.keys()]);
+  return commitTexts(root, result.texts, message, commit);
+}
+async function commitTexts(root, texts, message, commit) {
+  for (const [path, text] of texts) writeFileSync5(join10(root, path), text);
+  if (texts.size > 0) await git2(root, ["add", "--", ...texts.keys()]);
   if (!commit) return null;
   const identity = await hasIdentity(root) ? {} : { GIT_AUTHOR_NAME: "code-health", GIT_AUTHOR_EMAIL: "code-health@localhost", GIT_COMMITTER_NAME: "code-health", GIT_COMMITTER_EMAIL: "code-health@localhost" };
   await git2(root, ["commit", "--quiet", "-m", message], identity);
@@ -4281,6 +4285,10 @@ function packageRoot(path, boundaries) {
     if (dir === "") return "";
     folder = posix2.dirname(folder);
   }
+}
+function internalScopes(path) {
+  const folders = posix2.dirname(path).split("/");
+  return folders.flatMap((folder, index) => folder === "internal" ? [folders.slice(0, index + 1).join("/")] : []);
 }
 function planMove(candidate, settings, tree, request = {}) {
   const refusals = [];
@@ -4336,6 +4344,9 @@ function planMove(candidate, settings, tree, request = {}) {
     if (packageRoot(operation.from, manifests) !== packageRoot(operation.to, manifests)) {
       refuse("package-boundary", `${operation.from} would leave its package for ${operation.to}`);
     }
+    if (operation.from.endsWith(".go") && internalScopes(operation.from).join("\0") !== internalScopes(operation.to).join("\0")) {
+      refuse("fixed-point", `${operation.from} to ${operation.to} crosses an internal/ directory, which the Go compiler restricts to code under its parent`);
+    }
     if (landing.has(operation.to)) refuse("collision", `${operation.to} is the destination of two files`);
     else if (tree.has(operation.to) && !leaving.has(operation.to)) refuse("collision", `${operation.to} already exists`);
     landing.add(operation.to);
@@ -4390,7 +4401,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-HBPFEZCU.mjs");
+    const { performMove } = await import("./chunk-S4IJERJY.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -4439,7 +4450,7 @@ var command5 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-JSOSPFX4.mjs");
-      const { buildProject } = await import("./chunk-FCQZ3JLW.mjs");
+      const { buildProject } = await import("./chunk-ZIZIDDIQ.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -4453,14 +4464,184 @@ var command5 = {
   }
 };
 
-// packages/locality/src/commands/verify-move.ts
-var verify_move_exports = {};
-__export(verify_move_exports, {
+// packages/locality/src/commands/update-namespaces.ts
+var update_namespaces_exports = {};
+__export(update_namespaces_exports, {
   command: () => command6,
   name: () => name6
 });
-var name6 = "verify-move";
+
+// packages/locality/src/movers/csharp-namespaces.ts
+import { posix as posix3 } from "node:path";
+var declaration = /^(\s*namespace\s+)([\w.]+)(\s*[;{]?)/;
+var segmentsOf = (folder) => folder === "." || folder === "" ? [] : folder.split("/");
+var directoryOf = (path) => posix3.dirname(path);
+function namespaceAfterMove(namespace, from, to) {
+  const before = segmentsOf(directoryOf(from));
+  const after = segmentsOf(directoryOf(to));
+  let shared = 0;
+  while (shared < before.length && shared < after.length && before[shared] === after[shared]) shared++;
+  const leaving = before.slice(shared);
+  const arriving = after.slice(shared);
+  const parts = namespace.split(".");
+  if (leaving.length === 0) {
+    const folder = before.at(-1);
+    return folder !== void 0 && parts.at(-1) === folder && arriving.length > 0 ? [...parts, ...arriving].join(".") : void 0;
+  }
+  const tail = parts.slice(parts.length - leaving.length);
+  if (tail.length !== leaving.length || tail.some((part, index) => part !== leaving[index])) return void 0;
+  return [...parts.slice(0, parts.length - leaving.length), ...arriving].join(".");
+}
+async function planNamespaceUpdate(tree, operations) {
+  const moved = new Map(operations.filter((operation) => operation.to.endsWith(".cs")).map((operation) => [operation.to, operation.from]));
+  const sources2 = [...tree.files.keys()].filter((path) => path.endsWith(".cs")).sort();
+  const texts = await tree.readMany(sources2);
+  const warnings = [];
+  const declaredBy = /* @__PURE__ */ new Map();
+  for (const path of sources2) {
+    for (const line of (texts.get(path) ?? "").split("\n")) {
+      const found = declaration.exec(line);
+      if (found !== null) declaredBy.set(found[2], [...declaredBy.get(found[2]) ?? [], path]);
+    }
+  }
+  const proposals = /* @__PURE__ */ new Map();
+  for (const [namespace, files] of declaredBy) {
+    for (const path of files) {
+      const from = moved.get(path);
+      if (from === void 0) continue;
+      const next = namespaceAfterMove(namespace, from, path);
+      if (next === void 0) warnings.push(`${path}: namespace ${namespace} does not follow the folder ${directoryOf(from)}, so it is left alone`);
+      else proposals.set(namespace, (proposals.get(namespace) ?? /* @__PURE__ */ new Set()).add(next));
+    }
+  }
+  const renamed = /* @__PURE__ */ new Map();
+  for (const [namespace, options] of [...proposals].sort(([a], [b]) => a < b ? -1 : 1)) {
+    const files = declaredBy.get(namespace);
+    const staying = files.filter((path) => !moved.has(path));
+    const children = [...declaredBy.keys()].filter((other) => other.startsWith(`${namespace}.`));
+    if (options.size !== 1) warnings.push(`${namespace} would become ${[...options].sort().join(" and ")} in different files, so it is left alone`);
+    else if (staying.length > 0) warnings.push(`${namespace} is still declared by ${staying.join(", ")}: its users would need a new using, so it is left alone`);
+    else if (children.length > 0) warnings.push(`${namespace} encloses ${children.sort().join(", ")}, which reach its types without a using: it is left alone`);
+    else renamed.set(namespace, [...options][0]);
+  }
+  const changed = /* @__PURE__ */ new Map();
+  const rewrites = [];
+  for (const path of sources2) {
+    const lines2 = (texts.get(path) ?? "").split("\n");
+    let touched = false;
+    lines2.forEach((line, index) => {
+      let next = line;
+      let from;
+      let to;
+      const declared = declaration.exec(line);
+      if (declared !== null && moved.has(path) && renamed.has(declared[2])) {
+        from = declared[2];
+        to = renamed.get(from);
+        next = line.replace(declaration, (_all, head, _name, tail) => `${head}${to}${tail}`);
+      }
+      next = next.replace(/^(\s*(?:global\s+)?using\s+(?:static\s+)?(?:\w+\s*=\s*)?)([\w.]+)(\s*;)/, (all, head, name8, tail) => {
+        for (const [old, replacement] of renamed) {
+          if (name8 !== old && !name8.startsWith(`${old}.`)) continue;
+          from = old;
+          to = replacement;
+          return `${head}${replacement}${name8.slice(old.length)}${tail}`;
+        }
+        return all;
+      });
+      if (next !== line && from !== void 0 && to !== void 0) {
+        rewrites.push({ path, line: index + 1, from, to });
+        lines2[index] = next;
+        touched = true;
+      }
+    });
+    if (touched) changed.set(path, lines2.join("\n"));
+  }
+  for (const path of sources2) {
+    for (const [from] of renamed) {
+      const qualified = new RegExp(`(?<![\\w.])${from.replaceAll(".", "\\.")}\\.[A-Za-z_]`);
+      (changed.get(path) ?? texts.get(path) ?? "").split("\n").forEach((line, index) => {
+        if (qualified.test(line) && !/^\s*(?:global\s+)?using\b/.test(line) && !declaration.test(line)) warnings.push(`${path}:${index + 1} names ${from} in full, which is not rewritten`);
+      });
+    }
+  }
+  rewrites.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : a.line - b.line);
+  return { rewrites, texts: changed, warnings, renamed: Object.fromEntries(renamed) };
+}
+
+// packages/locality/src/commands/update-namespaces.ts
+var name6 = "update-namespaces";
+async function renamedFiles(root, parent, ref) {
+  const out = await runGit(root, ["diff", "--name-status", "-M", "-z", parent, ref]);
+  const fields = out.split("\0");
+  const operations = [];
+  for (let index = 0; index < fields.length; index++) {
+    const status = fields[index];
+    if (status.startsWith("R")) {
+      operations.push({ from: fields[index + 1], to: fields[index + 2], role: "unit" });
+      index += 2;
+    } else if (status !== "") index += 1;
+  }
+  return operations.filter((operation) => operation.to.endsWith(".cs"));
+}
 var command6 = {
+  summary: "After a C# move commit, plan or with --apply make the optional second commit that makes namespaces follow the folders",
+  options: { commit: { type: "string" }, apply: { type: "boolean" }, "no-commit": { type: "boolean" } },
+  async run(context) {
+    const ref = context.values.commit ?? "HEAD";
+    if (context.positionals.length !== 0 || typeof ref !== "string") throw usageError("usage: update-namespaces [--commit <ref>] [--apply [--no-commit]]");
+    const apply = context.values.apply === true;
+    const commit = context.values["no-commit"] !== true;
+    if (!apply && context.values["no-commit"] === true) throw usageError("--no-commit only applies with --apply");
+    const root = context.repo.root;
+    let parent;
+    try {
+      const parents = (await runGit(root, ["rev-list", "--parents", "-n", "1", ref])).trim().split(" ");
+      if (parents.length !== 2) throw new Error(parents.length < 2 ? "is a root commit" : "is a merge");
+      parent = parents[1];
+    } catch (error) {
+      throw usageError(`${ref} cannot be read as a move: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    const head = (await runGit(root, ["rev-parse", "HEAD"])).trim();
+    const sha = (await runGit(root, ["rev-parse", ref])).trim();
+    if (apply && sha !== head) throw usageError(`--apply makes the commit after HEAD, so --commit must be HEAD, not ${ref}`);
+    if (!hasCodeHealthTrailer(await runGit(root, ["log", "-1", "--format=%B", sha]))) {
+      throw usageError(`${ref} carries no Code-Health trailer: this step follows a move commit made by \`locality move\` or by hand with the trailer`);
+    }
+    const operations = await renamedFiles(root, parent, sha);
+    if (operations.length === 0) throw usageError(`${ref} moves no C# file, so there are no namespaces to follow`);
+    if (apply && !await isClean(root)) throw usageError("commit or stash first: the namespace commit must hold only the namespace update");
+    const plan = await planNamespaceUpdate(await treeFromRef(root, sha), operations);
+    let created = null;
+    let applied = false;
+    if (apply && plan.texts.size > 0) {
+      created = await commitTexts(root, plan.texts, namespaceMessage(sha, plan.renamed), commit);
+      applied = true;
+    }
+    return {
+      inputs: { commit: sha, apply, noCommit: apply ? !commit : null },
+      extra: { applied, commit: created, renamed: plan.renamed, rewrites: plan.rewrites, warnings: plan.warnings },
+      results: plan.rewrites,
+      columns: ["path", "line", "from", "to"],
+      failed: false
+    };
+  }
+};
+function namespaceMessage(moveSha, renamed) {
+  const lines2 = [`Make namespaces follow the folders moved by ${moveSha.slice(0, 10)}`, ""];
+  for (const [from, to] of Object.entries(renamed)) lines2.push(`  ${from} -> ${to}`);
+  lines2.push("", "Only namespace declarations and the usings that name them change.", "", "Code-Health: locality namespaces");
+  return `${lines2.join("\n")}
+`;
+}
+
+// packages/locality/src/commands/verify-move.ts
+var verify_move_exports = {};
+__export(verify_move_exports, {
+  command: () => command7,
+  name: () => name7
+});
+var name7 = "verify-move";
+var command7 = {
   summary: "Check that a commit made by hand reproduces the planned move of one unit, and changes nothing else",
   options: { commit: { type: "string" }, to: { type: "string" } },
   async run(context) {
@@ -4486,7 +4667,7 @@ var command6 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-ATCYUHMG.mjs");
+    const { verifyMove } = await import("./chunk-OQTMS4LE.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;
@@ -4514,6 +4695,7 @@ var commandModules = [
   measure_exports,
   move_exports,
   scrutinise_exports,
+  update_namespaces_exports,
   verify_move_exports
 ];
 var commands = Object.fromEntries(commandModules.map((m) => [m.name, m.command]));

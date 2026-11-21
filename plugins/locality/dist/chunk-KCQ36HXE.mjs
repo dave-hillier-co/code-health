@@ -5,17 +5,17 @@ import {
 } from "./chunk-U2IXLVHY.mjs";
 import {
   analyseTree
-} from "./chunk-F65BYJUZ.mjs";
+} from "./chunk-EIIDG75E.mjs";
 import {
   loadGrammar
-} from "./chunk-6VUZXA5D.mjs";
+} from "./chunk-IHJS3JTB.mjs";
 import {
   sourceFilesOf
-} from "./chunk-5VAMIMG4.mjs";
+} from "./chunk-VALAITAM.mjs";
 import {
   PythonResolver,
   adapterById
-} from "./chunk-7ANC25UC.mjs";
+} from "./chunk-JLMLNIDH.mjs";
 import "./chunk-ICEC5XXC.mjs";
 
 // packages/locality/src/movers/python-backend.ts
@@ -233,7 +233,8 @@ var PythonMove = class {
   /** `from pkg import sub` where `sub` is a module of `pkg` that moved elsewhere: the name is imported from where it now is. */
   movedSubmodules(node, from, to, init, edits) {
     if (posix.basename(init) !== "__init__.py") return;
-    const initText = this.sources.get(init) ?? "";
+    const initSource = this.sources.get(init) ?? "";
+    const initText = from === init ? initSource.slice(0, node.startIndex) + initSource.slice(node.endIndex) : initSource;
     const own = [];
     const split = [];
     for (const name of node.childrenForFieldName("name")) {

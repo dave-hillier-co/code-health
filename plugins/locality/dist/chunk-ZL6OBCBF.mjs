@@ -3,13 +3,13 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   analyseTree,
   parseWith
-} from "./chunk-F65BYJUZ.mjs";
+} from "./chunk-EIIDG75E.mjs";
 import {
   GrammarSet
-} from "./chunk-6VUZXA5D.mjs";
+} from "./chunk-IHJS3JTB.mjs";
 import {
   adapterById
-} from "./chunk-7ANC25UC.mjs";
+} from "./chunk-JLMLNIDH.mjs";
 import "./chunk-ICEC5XXC.mjs";
 
 // packages/locality/src/movers/jvm-confirm.ts
@@ -272,6 +272,22 @@ async function performMove(tree, operations) {
       top = qualified(head.packageName, rest.split(".")[0]);
     }
     needs.set(consumer.from, (needs.get(consumer.from) ?? /* @__PURE__ */ new Set()).add(top));
+  }
+  const packageAfter = (path) => moves.get(path)?.newPackage ?? heads.get(path)?.packageName ?? "";
+  const reachable = new Set(analysis.exports.map((exported) => `${exported.defined.file}\0${exported.defined.name}`));
+  const stranded = /* @__PURE__ */ new Set();
+  for (const consumer of analysis.consumers) {
+    if (consumer.from === consumer.to || !consumer.from.endsWith(".java") || !consumer.to.endsWith(".java")) continue;
+    if (!moves.has(consumer.from) && !moves.has(consumer.to)) continue;
+    const before = heads.get(consumer.from)?.packageName;
+    if (before === void 0 || before !== heads.get(consumer.to)?.packageName || packageAfter(consumer.from) === packageAfter(consumer.to)) continue;
+    if (reachable.has(`${consumer.to}\0${consumer.toExport}`)) continue;
+    const name = consumer.toExport.slice(before === "" ? 0 : before.length + 1);
+    const warning = `${moves.get(consumer.from)?.to ?? consumer.from} uses ${name} of ${moves.get(consumer.to)?.to ?? consumer.to}, which is package-private in ${before} and out of reach from ${packageAfter(consumer.from) === before ? packageAfter(consumer.to) : packageAfter(consumer.from)}`;
+    if (!stranded.has(warning)) {
+      stranded.add(warning);
+      warnings.push(warning);
+    }
   }
   const rewrites = [];
   const changed = /* @__PURE__ */ new Map();

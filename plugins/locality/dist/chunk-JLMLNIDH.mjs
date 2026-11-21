@@ -408,7 +408,9 @@ function resolveCpp(input) {
   for (const path of input.facts.keys()) {
     if (!isSource(path)) continue;
     const stem2 = stemOf(path);
-    const header = (includes2.get(path) ?? []).find((target2) => isHeader(target2) && stemOf(target2) === stem2) ?? (headersByDirectoryAndStem.get(`${posix3.dirname(path)}\0${stem2}`) ?? [])[0];
+    const sameFolder = headersByDirectoryAndStem.get(`${posix3.dirname(path)}\0${stem2}`) ?? [];
+    const included = includes2.get(path) ?? [];
+    const header = sameFolder.find((target2) => included.includes(target2)) ?? sameFolder[0] ?? included.find((target2) => isHeader(target2) && stemOf(target2) === stem2);
     if (header === void 0) continue;
     pairedWith.set(path, header);
     implementations.set(header, [...implementations.get(header) ?? [], path]);
@@ -781,6 +783,9 @@ var PythonResolver = class {
     if (parts.at(-1) === "__init__") parts.pop();
     return parts.length === 0 ? void 0 : parts.join(".");
   }
+  reexportsImplicitly(path) {
+    return posix4.basename(path) === "__init__.py";
+  }
   submodule(modulePath, name) {
     if (posix4.basename(modulePath) !== "__init__.py") return void 0;
     return this.moduleFile(posix4.dirname(modulePath), [name]);
@@ -836,16 +841,21 @@ function modulesOf(configs) {
 }
 function importPathToDirectory(modules, importPath) {
   let best;
-  const consider = (prefix, dir, module) => {
-    if ((importPath === prefix || importPath.startsWith(`${prefix}/`)) && (best === void 0 || prefix.length > best.prefix.length)) best = { prefix, dir, module };
+  const consider = (prefix, dir2, module) => {
+    if ((importPath === prefix || importPath.startsWith(`${prefix}/`)) && (best === void 0 || prefix.length > best.prefix.length)) best = { prefix, dir: dir2, module };
   };
   for (const module of modules) {
     if (module.path !== null) consider(module.path, module.dir, module);
-    for (const replaced of module.replaces) consider(replaced.from, replaced.dir, module);
+    for (const replaced2 of module.replaces) consider(replaced2.from, replaced2.dir, module);
   }
-  if (best === void 0) return void 0;
-  const rest = importPath.slice(best.prefix.length + 1);
-  return { dir: rest === "" ? best.dir : posix5.normalize(best.dir === "." ? rest : posix5.join(best.dir, rest)), module: best.module };
+  const found = best;
+  if (found === void 0) return void 0;
+  const rest = importPath.slice(found.prefix.length + 1);
+  const dir = rest === "" ? found.dir : posix5.normalize(found.dir === "." ? rest : posix5.join(found.dir, rest));
+  const owner = moduleOwning(modules, `${dir}/_`);
+  const replaced = found.module.replaces.some((replace) => replace.from === found.prefix);
+  if (owner !== void 0 && owner.dir !== found.dir && !replaced) return void 0;
+  return { dir, module: found.module };
 }
 function directoryToImportPath(modules, dir) {
   let best;
@@ -1656,7 +1666,7 @@ function measureFunction(fn, options, rules) {
 }
 
 // packages/parse/src/languages/go/extract-facts.ts
-var extractorVersion = 1;
+var extractorVersion = 2;
 var GENERATED = /^\/\/ Code generated .* DO NOT EDIT\.$/;
 var predeclared = /* @__PURE__ */ new Set([
   "any",
@@ -1705,11 +1715,11 @@ var predeclared = /* @__PURE__ */ new Set([
   "recover",
   "_"
 ]);
-function isGenerated(root) {
-  for (const child of root.children) {
-    if (child === null) continue;
-    if (child.type === "package_clause") return false;
-    if (child.type === "comment" && GENERATED.test(child.text)) return true;
+function isGeneratedSource(text2) {
+  for (const line of text2.split("\n")) {
+    const trimmed = line.trimEnd();
+    if (GENERATED.test(trimmed)) return true;
+    if (/^package\s/.test(trimmed)) return false;
   }
   return false;
 }
@@ -1806,8 +1816,8 @@ var Extractor = class {
     for (const child of root.namedChildren) {
       if (child.type === "package_clause") packageName = child.namedChildren[0]?.text ?? "";
     }
-    if (isGenerated(root)) {
-      return { units: [], imports: [], reexports: [], exports: [], references: [], symbols: { namespaces: [packageName], uses: [], declarations: [], references: [] }, nodes: 0, hasSyntaxErrors: root.hasError };
+    if (isGeneratedSource(root.text)) {
+      return { generated: true, units: [], imports: [], reexports: [], exports: [], references: [], symbols: { namespaces: [packageName], uses: [], declarations: [], references: [] }, nodes: 0, hasSyntaxErrors: root.hasError };
     }
     for (const child of root.namedChildren) {
       if (child.type === "type_declaration") {
@@ -3606,7 +3616,7 @@ var constructs5 = {
   catchType: "catch_block",
   bodyOf,
   ternary: { type: "(none)", condition: "", consequence: "", alternative: "" },
-  binary: { type: "binary_expression", operator: "operator", left: "left", right: "right", logical: /* @__PURE__ */ new Set(["&&", "||"]), decisions: /* @__PURE__ */ new Set() },
+  binary: { type: "binary_expression", operator: "operator", left: "left", right: "right", logical: /* @__PURE__ */ new Set(["&&", "||"]), decisions: /* @__PURE__ */ new Set(["?:"]) },
   compoundAssignment: { type: "assignment", operator: "operator", decisions: /* @__PURE__ */ new Set() },
   parenthesized: "parenthesized_expression",
   labelledJumps: {},
@@ -5556,8 +5566,10 @@ var constructs6 = {
   parenthesized: "parenthesized_expression",
   parenthesizedAlso: /* @__PURE__ */ new Set(["parenthesized_pattern"]),
   patternCombinators: { and_pattern: "and", or_pattern: "or" },
+  // The target of a `goto` is a plain identifier child (or `case`/`default`), not a `label` field, and every one costs.
   labelledJumps: {},
   label: "label",
+  labelledJump: (node) => node.type === "goto_statement" ? "goto" : null,
   commentTypes: /* @__PURE__ */ new Set(["comment"])
 };
 function isDefaultArm(arm) {
@@ -5626,7 +5638,7 @@ function isRecursiveCall6(call, scope) {
     const name = simple(callee.childForFieldName("name"));
     if (name === void 0 || !scope.member.has(name)) return false;
     const target2 = callee.childForFieldName("expression");
-    if (target2 === null) return callee.children[0]?.type === "this";
+    if (target2 === null || target2.type === "this") return true;
     return scope.owner !== void 0 && target2.type === "identifier" && target2.text === scope.owner;
   }
   return false;
@@ -5736,7 +5748,7 @@ function passThroughOf6(fn, parameterNames6) {
 }
 
 // packages/parse/src/languages/csharp/extract-facts.ts
-var extractorVersion3 = 1;
+var extractorVersion3 = 2;
 var typeDeclarations3 = /* @__PURE__ */ new Set([
   "class_declaration",
   "struct_declaration",
@@ -5928,7 +5940,7 @@ var Extractor6 = class {
     const written = qualifiedName.replace(/~\d+$/, "");
     const declaredName = this.namespace === "" ? written : `${this.namespace}.${written}`;
     if (!this.declarations.some((declaration) => declaration.name === declaredName)) {
-      this.declarations.push({ name: declaredName, kind, unit: qualifiedName, exported: visible, line: unit.startLine });
+      this.declarations.push({ name: declaredName, kind, unit: qualifiedName, exported: visible, line: unit.startLine, ...modifiers.includes("partial") ? { partial: true } : {} });
     }
     const parameters = /* @__PURE__ */ new Set();
     for (const parameter of node.descendantsOfType("type_parameter").filter((candidate) => candidate.parent?.parent?.id === node.id)) {
@@ -6377,7 +6389,7 @@ function partialTypes(facts, owner) {
   const declared = /* @__PURE__ */ new Map();
   for (const [file, fileFacts] of facts) {
     for (const declaration of fileFacts.symbols?.declarations ?? []) {
-      if (declaration.unit === void 0) continue;
+      if (declaration.unit === void 0 || declaration.partial !== true) continue;
       const key = `${owner(file)}\0${declaration.name}`;
       const list2 = declared.get(key) ?? [];
       if (!list2.some((part) => part.file === file)) list2.push({ file, unit: declaration.unit });
@@ -6408,7 +6420,12 @@ function mergePartials(resolved, partial, own, isTest) {
     const target2 = lead.get(`${consumer.to}\0${consumer.toExport}`);
     addConsumer(target2 === void 0 ? consumer : { ...consumer, to: target2.file, toSymbol: target2.unit });
   }
-  const fileEdges = new Map(resolved.fileEdges.map((edge) => [`${edge.from}\0${edge.to}`, edge]));
+  const behind = /* @__PURE__ */ new Set();
+  for (const [key, parts] of partial) for (const part of parts.slice(1)) behind.add(`${part.file}\0${nameOf(key)}`);
+  const behindFiles = new Set([...behind].map((entry) => entry.slice(0, entry.indexOf("\0"))));
+  const used = new Set([...consumers.values()].map((consumer) => `${consumer.from}\0${consumer.to}`));
+  const explained = (edge) => !behindFiles.has(edge.to) || used.has(`${edge.from}\0${edge.to}`);
+  const fileEdges = new Map(resolved.fileEdges.filter(explained).map((edge) => [`${edge.from}\0${edge.to}`, edge]));
   for (const [key, parts] of partial) {
     for (const from of parts) {
       for (const to of parts) {
@@ -6424,7 +6441,7 @@ function mergePartials(resolved, partial, own, isTest) {
     const target2 = lead.get(`${exported.defined.file}\0${exported.defined.name}`);
     return target2 === void 0 ? exported : { ...exported, defined: { ...exported.defined, file: target2.file, symbol: target2.unit } };
   });
-  const importEdges = new Map(resolved.importEdges.map((edge) => [`${edge.from}\0${edge.to}`, edge]));
+  const importEdges = new Map(resolved.importEdges.filter(explained).map((edge) => [`${edge.from}\0${edge.to}`, edge]));
   for (const edge of fileEdges.values()) {
     if (!importEdges.has(`${edge.from}\0${edge.to}`)) importEdges.set(`${edge.from}\0${edge.to}`, { from: edge.from, to: edge.to, kind: "import", typeOnly: false });
   }
@@ -6465,7 +6482,7 @@ function resolveCsharp(input) {
 
 // packages/parse/src/languages/csharp/adapter.ts
 var testFolder = /^(tests?|unittests?|integrationtests?|specs?)$|\.(tests?|unittests?|integrationtests?|specs?)$/i;
-var testFile = /(?:[a-z0-9]|^)(?:Tests?|Spec|Specs)\.cs$/;
+var testFile = /(?:Tests?|Specs?)\.cs$/;
 var adapter4 = {
   id: "csharp",
   name: "C#",
@@ -7989,7 +8006,7 @@ function passThroughOf8(fn) {
 }
 
 // packages/parse/src/languages/python/extract-facts.ts
-var extractorVersion4 = 1;
+var extractorVersion4 = 2;
 var importTypes = /* @__PURE__ */ new Set(["import_statement", "import_from_statement", "future_import_statement"]);
 var targetTypes = /* @__PURE__ */ new Set(["pattern_list", "tuple_pattern", "list_pattern", "list_splat_pattern", "tuple", "list"]);
 var comprehensionTypes = /* @__PURE__ */ new Set(["list_comprehension", "set_comprehension", "dictionary_comprehension", "generator_expression"]);
@@ -8192,10 +8209,10 @@ var Extractor8 = class {
   /** Every name a module defines or imports at its top level, including inside `if` and `try`: what `from module import name` can reach. */
   collectExports(root) {
     const seen = /* @__PURE__ */ new Set();
-    const add = (exported, line, kind) => {
+    const add = (exported, line, kind, implicit = false) => {
       if (seen.has(exported) || exported === "__all__") return;
       seen.add(exported);
-      this.exports.push({ exported, local: exported, line, ...kind === void 0 ? {} : { kind } });
+      this.exports.push({ exported, local: exported, line, ...kind === void 0 ? {} : { kind }, ...implicit ? { implicit: true } : {} });
     };
     const walk = (node) => {
       for (const statement of node.namedChildren) {
@@ -8223,7 +8240,7 @@ var Extractor8 = class {
           }
           case "import_statement":
           case "import_from_statement":
-            for (const binding of importBindings(definition)) if (!binding.local.includes(".")) add(binding.local, line);
+            for (const binding of importBindings(definition)) if (!binding.local.includes(".")) add(binding.local, line, void 0, true);
             break;
           case "if_statement":
           case "try_statement":
@@ -8645,7 +8662,7 @@ var adapter6 = {
   grammars: [{ spec: { id: "python", packageName: "tree-sitter-python", file: "tree-sitter-python.wasm" }, extensions: [".py"] }],
   extractorVersion: extractorVersion4,
   extract: extractFacts8,
-  isTestPath: (path) => /(^|\/)(tests?|__tests__)\//.test(path) || /(^|\/)(test_[^/]*|[^/]*_test|conftest)\.py$/.test(path),
+  isTestPath: (path) => /(^|\/)(tests?|__tests__)\//.test(path) || /(^|\/)(test_[^/]*|[^/]*_test|conftest|tests)\.py$/.test(path),
   metrics: pythonMetricRules,
   dependencies: {
     model: "import-based",
@@ -8843,6 +8860,7 @@ var adapter7 = {
   grammars: [{ spec: { id: "go", packageName: "tree-sitter-go", file: "tree-sitter-go.wasm" }, extensions: [".go"] }],
   extractorVersion,
   extract: extractFacts,
+  isGeneratedSource,
   isTestPath: (path) => path.endsWith("_test.go") || /(^|\/)testdata\//.test(path),
   metrics: goMetricRules,
   dependencies: {
@@ -9265,6 +9283,8 @@ var isConfigPath3 = isManifestPath;
 var builtinCrates2 = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
 var PathResolver = class {
   tree;
+  /** A `use` of an inline module of the file itself is no dependency. */
+  dropsSelfDependencies = true;
   constructor(paths, configs) {
     this.tree = new ModuleTree(paths, readCrates(paths, configs));
   }

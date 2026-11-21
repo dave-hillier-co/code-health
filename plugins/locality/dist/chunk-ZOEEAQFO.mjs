@@ -2,26 +2,32 @@
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
   moverFor
-} from "./chunk-5VAMIMG4.mjs";
+} from "./chunk-VALAITAM.mjs";
 import {
   adapterForPath,
   supportedAdapters
-} from "./chunk-7ANC25UC.mjs";
+} from "./chunk-JLMLNIDH.mjs";
 
-// packages/locality/src/external-tools.ts
-import { constants, promises as fs } from "node:fs";
+// packages/cli-kit/src/executables.ts
+import { accessSync, constants, statSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { delimiter, join } from "node:path";
-async function findExecutable(executable, searchPath = process.env.PATH) {
+function findExecutable(executable, searchPath = process.env.PATH) {
   for (const directory of (searchPath ?? "").split(delimiter)) {
     if (directory === "") continue;
     const candidate = join(directory, executable);
     try {
-      await fs.access(candidate, constants.X_OK);
-      if ((await fs.stat(candidate)).isFile()) return candidate;
+      accessSync(candidate, constants.X_OK);
+      if (statSync(candidate).isFile()) return candidate;
     } catch {
     }
   }
   return void 0;
+}
+
+// packages/locality/src/external-tools.ts
+async function findExecutable2(executable, searchPath) {
+  return findExecutable(executable, searchPath ?? process.env.PATH);
 }
 function notConfirmed(tool) {
   return { status: "not confirmed", detail: `${tool.name} (${tool.executable}) is not installed, so references were not confirmed` };
@@ -50,7 +56,7 @@ async function performMove(tree, operations, options = {}) {
     for (const [adapter, moved] of [...byAdapter].sort(([a], [b]) => a.id < b.id ? -1 : 1)) {
       const tool = adapter.mover.confirmation;
       if (tool === null) continue;
-      const found = await findExecutable(tool.executable, options.searchPath);
+      const found = await findExecutable2(tool.executable, options.searchPath);
       const outcome = found === void 0 || backend.confirm === void 0 ? notConfirmed(tool) : await backend.confirm(tree, moved, { name: tool.name, path: found });
       result.confirmations.push({ language: adapter.id, tool: tool.name, ...outcome });
     }

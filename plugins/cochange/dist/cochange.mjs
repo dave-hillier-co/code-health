@@ -3727,10 +3727,10 @@ var recorded4 = { units: 66, found: 64, exact: 63, blocks: 63, spurious: 0 };
 var recorded5 = { units: 51, found: 51, exact: 51, blocks: 57, spurious: 3 };
 
 // packages/lexical/src/agreement-rates/java.ts
-var recorded6 = { units: 58, found: 55, exact: 55, blocks: 63, spurious: 0 };
+var recorded6 = { units: 68, found: 65, exact: 65, blocks: 73, spurious: 0 };
 
 // packages/lexical/src/agreement-rates/kotlin.ts
-var recorded7 = { units: 57, found: 57, exact: 57, blocks: 58, spurious: 0 };
+var recorded7 = { units: 67, found: 67, exact: 67, blocks: 68, spurious: 0 };
 
 // packages/lexical/src/agreement-rates/rust.ts
 var recorded8 = { units: 58, found: 56, exact: 53, blocks: 53, spurious: 0 };

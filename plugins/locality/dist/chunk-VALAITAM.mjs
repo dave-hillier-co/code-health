@@ -4,7 +4,7 @@ import {
   adapterById,
   adapterForPath,
   supportedAdapters
-} from "./chunk-7ANC25UC.mjs";
+} from "./chunk-JLMLNIDH.mjs";
 import {
   __export
 } from "./chunk-ICEC5XXC.mjs";
@@ -25,49 +25,49 @@ __export(registered_languages_exports, {
 // packages/locality/src/movers/java.ts
 var language = {
   id: "java",
-  load: async () => (await import("./chunk-4WMLMQ7D.mjs")).backend
+  load: async () => (await import("./chunk-ZL6OBCBF.mjs")).backend
 };
 
 // packages/locality/src/movers/kotlin.ts
 var language2 = {
   id: "kotlin",
-  load: async () => (await import("./chunk-4WMLMQ7D.mjs")).backend
+  load: async () => (await import("./chunk-ZL6OBCBF.mjs")).backend
 };
 
 // packages/locality/src/movers/typescript.ts
 var language3 = {
   id: "typescript",
-  load: async () => (await import("./chunk-DZG6V7CB.mjs")).backend
+  load: async () => (await import("./chunk-LFMQP2V6.mjs")).backend
 };
 
 // packages/locality/src/movers/csharp.ts
 var language4 = {
   id: "csharp",
-  load: async () => (await import("./chunk-WDCIUT6O.mjs")).backend
+  load: async () => (await import("./chunk-G5BAUI2Y.mjs")).backend
 };
 
 // packages/locality/src/movers/cpp.ts
 var language5 = {
   id: "cpp",
-  load: async () => (await import("./chunk-AVLHZH44.mjs")).createBackend()
+  load: async () => (await import("./chunk-XYF3WT2J.mjs")).createBackend()
 };
 
 // packages/locality/src/movers/python.ts
 var language6 = {
   id: "python",
-  load: async () => (await import("./chunk-JZR4Q6MY.mjs")).load()
+  load: async () => (await import("./chunk-KCQ36HXE.mjs")).load()
 };
 
 // packages/locality/src/movers/go.ts
 var language7 = {
   id: "go",
-  load: async () => (await import("./chunk-AIHOO5UO.mjs")).createBackend()
+  load: async () => (await import("./chunk-GXIRGXX4.mjs")).createBackend()
 };
 
 // packages/locality/src/movers/rust.ts
 var language8 = {
   id: "rust",
-  load: async () => (await import("./chunk-RKYUJR6E.mjs")).backend
+  load: async () => (await import("./chunk-73BVGMN5.mjs")).backend
 };
 
 // packages/locality/src/movers/language.ts

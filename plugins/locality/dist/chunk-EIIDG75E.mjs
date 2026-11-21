@@ -3,13 +3,13 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   GrammarSet,
   cacheKeyOf
-} from "./chunk-6VUZXA5D.mjs";
+} from "./chunk-IHJS3JTB.mjs";
 import {
   isConfigPath,
   isTestPath,
   resolveBySymbols,
   supportedAdapters
-} from "./chunk-7ANC25UC.mjs";
+} from "./chunk-JLMLNIDH.mjs";
 
 // packages/parse/src/file-facts.ts
 function parseWith(adapter, grammar, source, options = {}) {
@@ -73,6 +73,7 @@ var ImportModel = class {
     this.unresolved.set(`${from}\0${line}\0${specifier}\0${reason}`, { from, line, specifier, reason });
   }
   addImportEdge(from, to, kind, typeOnly) {
+    if (from === to && this.resolver.dropsSelfDependencies === true) return;
     this.importEdges.set(`${from}\0${to}\0${kind}\0${typeOnly}`, { from, to, kind, typeOnly });
   }
   addExternal(from, packageName, typeOnly) {
@@ -129,7 +130,8 @@ var ImportModel = class {
       else if (target.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
     }
     const unitNames = new Set(file.units.map((unit) => unit.qualifiedName));
-    const exportedLocals = new Set(file.exports.map((exported) => exported.local));
+    const implicitIsReexport = this.resolver.reexportsImplicitly?.(path) === true;
+    const exportedLocals = new Set(file.exports.filter((exported) => exported.implicit !== true || implicitIsReexport).map((exported) => exported.local));
     for (const imported of file.imports) {
       if (imported.kind === "dynamic") {
         this.addUnresolved(path, imported.line, imported.specifier, "dynamic-import");
@@ -177,6 +179,7 @@ var ImportModel = class {
   }
   /** Records that a file depends on another, even when nothing in it is referenced. */
   touch(from, to) {
+    if (from === to && this.resolver.dropsSelfDependencies === true) return { from, to, kind: "reference", calls: 0, references: 0 };
     const key = `${from}\0${to}`;
     let edge = this.fileEdges.get(key);
     if (!edge) {
@@ -207,6 +210,7 @@ var ImportModel = class {
    * import is a use of `service`, so it is another reference.
    */
   consume(from, use, unitNames, to, toExport, toSymbol, memberOfNamespace) {
+    if (from === to && this.resolver.dropsSelfDependencies === true) return;
     const direct = use.member === void 0 || memberOfNamespace;
     const kind = direct ? use.kind : "reference";
     const edge = this.touch(from, to);
@@ -341,7 +345,9 @@ function assemble(facts, resolved) {
   const units = [];
   const filesWithSyntaxErrors = [];
   const filesWithMacroCode = [];
+  const generatedFiles = [];
   for (const [path, fileFacts] of facts) {
+    if (fileFacts.generated === true) generatedFiles.push(path);
     if (fileFacts.hasSyntaxErrors) filesWithSyntaxErrors.push(path);
     if (fileFacts.macroGenerated !== void 0) filesWithMacroCode.push(path);
     const exportedLocals = /* @__PURE__ */ new Set([
@@ -380,7 +386,8 @@ function assemble(facts, resolved) {
     ),
     unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
     filesWithSyntaxErrors,
-    filesWithMacroCode
+    filesWithMacroCode,
+    generatedFiles
   };
 }
 function compareUtf8(a, b) {
