@@ -178,6 +178,7 @@ function findIndentedBlocks(lines: SourceLine[], profile: LexerProfile): Functio
   const stack: IndentScope[] = [];
   let lastBodyLine = 0;
   let bracketDepth = 0;
+  let backslashContinued = false;
 
   const close = (scope: IndentScope) => {
     if (scope.block === undefined) return;
@@ -191,7 +192,8 @@ function findIndentedBlocks(lines: SourceLine[], profile: LexerProfile): Functio
       continue;
     }
     if (line.kind !== "code") continue;
-    const continuation = bracketDepth > 0;
+    const continuation = bracketDepth > 0 || backslashContinued;
+    backslashContinued = line.code.trimEnd().endsWith("\\");
     for (const ch of line.code) {
       if (ch === "(" || ch === "[" || ch === "{") bracketDepth++;
       else if (ch === ")" || ch === "]" || ch === "}") bracketDepth = Math.max(0, bracketDepth - 1);

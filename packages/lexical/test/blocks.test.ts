@@ -217,3 +217,11 @@ test("functions inside an object literal argument are still found", () => {
   const source = ["register({", "  run() {", "    return 1;", "  },", "});"].join("\n");
   expect(blocks(source, "typescript")).toEqual([["run", 2, 4]]);
 });
+
+test("a Python backslash continuation line does not close the enclosing def", () => {
+  const source = ["def f():", "    x = 1 + \\", "2", "    return x", "", "def g():", "    pass"].join("\n");
+  expect(blocks(source, "python")).toEqual([
+    ["f", 1, 4],
+    ["g", 6, 7],
+  ]);
+});
