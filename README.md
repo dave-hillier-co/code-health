@@ -16,6 +16,8 @@ A suite of Claude Code plugins that measure code health from git history and sou
 /plugin marketplace add dave-hillier-co/code-health
 /plugin install cochange@code-health
 /plugin install complexity@code-health
+/plugin install structure@code-health
+/plugin install locality@code-health
 ```
 
 ## Requirements
