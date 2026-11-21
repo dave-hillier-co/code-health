@@ -197,6 +197,18 @@ describe("go.mod and go.work", () => {
     expect(directoryToImportPath(modules, ".")).toBe("example.com/root");
   });
 
+  it("does not find a package through the parent module when a nested go.mod makes it part of another module", () => {
+    const modules = modulesOf(
+      new Map([
+        ["go.mod", "module example.com/m\n"],
+        ["nested/go.mod", "module example.com/other\n"],
+      ]),
+    );
+    expect(importPathToDirectory(modules, "example.com/m/nested/pkg")).toBeUndefined();
+    expect(importPathToDirectory(modules, "example.com/m/pkg")?.dir).toBe("pkg");
+    expect(importPathToDirectory(modules, "example.com/other/pkg")?.dir).toBe("nested/pkg");
+  });
+
   it("names the module an outside import belongs to, from go.mod or the conventional root of the path", () => {
     const module = parseGoMod("go.mod", "module m\n\nrequire google.golang.org/grpc v1.0.0\n");
     expect(externalModuleOf(module, "google.golang.org/grpc/codes")).toBe("google.golang.org/grpc");
