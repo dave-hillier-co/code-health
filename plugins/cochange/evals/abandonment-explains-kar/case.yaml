@@ -1,0 +1,61 @@
+schema_version: "1.0"
+name: abandonment-explains-kar
+description: The skill simulates turnover, reports expected loss and knowledge at risk in plain terms, explains the difference, and shows the backtest beside them. Needs `--scaffold` and `--allow-tools Bash,Read,Grep,Glob` (see CONTRIBUTING.md).
+tags: [behaviour, abandonment]
+plugins: [cochange]
+context:
+  scaffold_script: ../abandonment-scaffold.sh
+runs: 2
+execution:
+  prompt: How much knowledge would this team lose if people leave over the next year? Explain the numbers to me as I am not a statistician. In particular, what is the difference between the expected loss and the knowledge at risk?
+  model: claude-sonnet-5-5
+  allowed_tools: [Bash, Read, Grep, Glob]
+  max_turns: 25
+  timeout_seconds: 900
+graders:
+  - type: tool_used
+    name: simulates-turnover
+    tool: Bash
+    input_match: "cochange\\.mjs abandonment simulate"
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: backtests-the-model
+    tool: Bash
+    input_match: "cochange\\.mjs abandonment backtest"
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: checks-identities-first
+    tool: Bash
+    input_match: "cochange\\.mjs identities check"
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: no-names-were-asked-for
+    tool: Bash
+    input_match: "--names|identities list|git shortlog"
+    max: 0
+  - type: llm
+    name: explains-expected-loss-and-knowledge-at-risk
+    criteria: >-
+      The final message explains in plain words that expected loss is the average year and knowledge at risk is the loss
+      exceeded only in a bad year (for example one year in twenty), gives numbers for both from the simulation (files or
+      lines lost, with what is already abandoned stated apart), and explains what a high tail ratio means.
+    focus: last_message
+    arm: with-only
+  - type: llm
+    name: gives-the-backtest-beside-the-result
+    criteria: >-
+      The final message states the backtest's precision and recall (or says plainly that one is undefined and why) and
+      says how far the simulation can be trusted for this repository because of them. It also reports the share of lines
+      that identities have settled, or says that the identity check was clean.
+    focus: last_message
+    arm: with-only
+  - type: llm
+    name: speaks-of-files-and-counts-not-people
+    criteria: >-
+      The final message talks about files, components and numbers of people, and names no individual, and does not say
+      who is likely to leave.
+    focus: last_message
+    arm: with-only

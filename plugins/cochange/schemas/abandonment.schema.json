@@ -1,0 +1,398 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "abandonment.schema.json",
+  "title": "cochange abandonment <current|turnover|simulate|backtest> --json",
+  "description": "Knowledge lost when people leave. Developers appear only as counts. The output is never stored as a report. `inputs.subcommand` says which shape `results` takes.",
+  "$defs": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "subcommand": { "enum": ["current", "turnover", "simulate", "backtest"] },
+        "at": { "type": "string", "format": "date", "description": "Backtest: the date the model is built at." },
+        "atRiskProbability": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Backtest: the percentage at which a file is predicted to be abandoned." },
+        "by": { "enum": ["file", "component"] },
+        "rank": { "enum": ["hotspot", "abandonment"], "description": "How files are ranked: the probability weighted by the hotspot percentile, or the raw measure." },
+        "mode": { "enum": ["rate", "historical", "k-leavers"] },
+        "k": { "type": ["integer", "null"], "minimum": 1 },
+        "trials": { "type": "integer", "minimum": 1 },
+        "horizonPeriods": { "type": "integer", "minimum": 1 },
+        "seed": { "type": "integer", "minimum": 0 },
+        "alphas": { "type": "array", "items": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 100 }, "minItems": 1 },
+        "turnoverRate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "The configured per-period rate as a fraction, or null when it is estimated." },
+        "activityWindowMonths": { "type": "integer", "minimum": 1 },
+        "periodMonths": { "type": "integer", "minimum": 1 },
+        "abandonmentThreshold": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Percentage of a file's lines held by people who have left at which it is abandoned." },
+        "copyDetection": { "type": "boolean" },
+        "overrides": {
+          "type": "object",
+          "description": "Counts of the local activity overrides in effect, and a hash of the file. Never identities.",
+          "properties": {
+            "active": { "$ref": "common.schema.json#/$defs/count" },
+            "inactive": { "$ref": "common.schema.json#/$defs/count" },
+            "hash": { "type": ["string", "null"], "pattern": "^[0-9a-f]{16}$" }
+          },
+          "required": ["active", "inactive", "hash"],
+          "additionalProperties": false
+        },
+        "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
+      },
+      "required": ["subcommand", "activityWindowMonths", "periodMonths", "abandonmentThreshold", "copyDetection"],
+      "additionalProperties": false
+    },
+    "share": { "type": "number", "minimum": 0 },
+    "findings": {
+      "description": "Rules raised, described by `cochange explain <rule>`.",
+      "type": "array",
+      "items": { "enum": ["abandoned", "at-risk-hot", "at-risk-cold", "concentrated-component", "no-successor"] }
+    },
+    "distribution": {
+      "description": "One loss across the trials: its mean and share of the whole, and knowledge at risk (the alpha percentile) with the tail ratio and the mean of the losses at or beyond it.",
+      "type": "object",
+      "properties": {
+        "expected": { "type": "number", "minimum": 0 },
+        "expectedShare": { "$ref": "#/$defs/share" },
+        "atRisk": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "alpha": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 100 },
+              "kar": { "type": "number", "minimum": 0 },
+              "karShare": { "$ref": "#/$defs/share" },
+              "tailRatio": { "type": ["number", "null"], "minimum": 0, "description": "kar over the expected loss. Null when nothing is expected to be lost." },
+              "expectedTailLoss": { "type": "number", "minimum": 0 }
+            },
+            "required": ["alpha", "kar", "karShare", "tailRatio", "expectedTailLoss"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["expected", "expectedShare", "atRisk"],
+      "additionalProperties": false
+    },
+    "loss": {
+      "type": "object",
+      "properties": {
+        "baseline": { "$ref": "common.schema.json#/$defs/count", "description": "Already abandoned before any scenario." },
+        "population": { "$ref": "common.schema.json#/$defs/count", "description": "All lines held by people, or all files that hold such lines." },
+        "increment": { "$ref": "#/$defs/distribution", "description": "The loss over the baseline: the part that can still be prevented." },
+        "total": { "$ref": "#/$defs/distribution", "description": "The baseline plus the increment." }
+      },
+      "required": ["baseline", "population", "increment", "total"],
+      "additionalProperties": false
+    },
+    "turnoverSummary": {
+      "type": "object",
+      "description": "The turnover observed in history, pooled over its usable periods. Counts of people, never names.",
+      "properties": {
+        "rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Departures over developers on the team at each period's start. Null when no period is usable." },
+        "atRisk": { "$ref": "common.schema.json#/$defs/count", "description": "Developer-periods: developers on the team at the start of each usable period, summed." },
+        "departed": { "$ref": "common.schema.json#/$defs/count" },
+        "periods": { "$ref": "common.schema.json#/$defs/count" },
+        "configuredRate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Only with `turnover`: the rate the config states, which simulation uses instead of the estimate." }
+      },
+      "required": ["rate", "atRisk", "departed", "periods"],
+      "additionalProperties": false
+    },
+    "turnoverPeriod": {
+      "type": "object",
+      "properties": {
+        "start": { "type": "string", "format": "date" },
+        "end": { "type": "string", "format": "date" },
+        "developers": { "$ref": "common.schema.json#/$defs/count", "description": "On the team at the start of the period." },
+        "departed": { "$ref": "common.schema.json#/$defs/count" },
+        "rate": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "required": ["start", "end", "developers", "departed", "rate"],
+      "additionalProperties": false
+    },
+    "simulationFile": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "score": { "$ref": "#/$defs/share", "description": "What the list is ranked by." },
+        "probability": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fraction of trials in which the file ends up abandoned. 1 for a file already abandoned." },
+        "tailShare": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fraction of the worst trials (by files lost, at the lowest alpha) in which the file is lost." },
+        "abandoned": { "type": "boolean", "description": "Already abandoned at the analysed commit." },
+        "hotspot": { "type": "boolean" },
+        "hotspotPercentile": { "$ref": "#/$defs/share" },
+        "findings": { "$ref": "#/$defs/findings" },
+        "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
+        "activeAuthors": { "$ref": "common.schema.json#/$defs/count" },
+        "formerAuthors": { "$ref": "common.schema.json#/$defs/count" }
+      },
+      "required": ["path", "score", "probability", "tailShare", "abandoned", "hotspot", "hotspotPercentile", "findings", "peopleLines", "activeAuthors", "formerAuthors"],
+      "additionalProperties": false
+    },
+    "simulationComponent": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "The component, or (unassigned)." },
+        "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
+        "abandonedLines": { "$ref": "common.schema.json#/$defs/count", "description": "Already abandoned." },
+        "expectedLoss": { "type": "number", "minimum": 0, "description": "Expected increment in abandoned lines." },
+        "atRisk": { "$ref": "#/$defs/distribution/properties/atRisk", "description": "Knowledge at risk of the increment, in lines." },
+        "findings": { "$ref": "#/$defs/findings" }
+      },
+      "required": ["path", "peopleLines", "abandonedLines", "expectedLoss", "atRisk", "findings"],
+      "additionalProperties": false
+    },
+    "simulation": {
+      "type": "object",
+      "properties": {
+        "mode": { "enum": ["rate", "historical", "k-leavers"] },
+        "trials": { "type": "integer", "minimum": 1 },
+        "horizonPeriods": { "type": "integer", "minimum": 1 },
+        "seed": { "type": "integer", "minimum": 0 },
+        "selection": {
+          "type": "object",
+          "properties": {
+            "source": { "enum": ["history", "configured", "k-leavers"], "description": "Where the turnover rate came from." },
+            "ratePerPeriod": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Rate mode only." },
+            "leavers": { "type": ["integer", "null"], "minimum": 1, "description": "k-leavers mode only." },
+            "leaverProbability": { "type": "number", "minimum": 0, "maximum": 1, "description": "The mean probability that an active developer leaves over the horizon." }
+          },
+          "required": ["source", "ratePerPeriod", "leavers", "leaverProbability"],
+          "additionalProperties": false
+        },
+        "population": {
+          "type": "object",
+          "properties": {
+            "activeDevelopers": { "$ref": "common.schema.json#/$defs/count" },
+            "files": { "$ref": "common.schema.json#/$defs/count" },
+            "peopleLines": { "$ref": "common.schema.json#/$defs/count" }
+          },
+          "required": ["activeDevelopers", "files", "peopleLines"],
+          "additionalProperties": false
+        },
+        "loss": {
+          "type": "object",
+          "properties": { "lines": { "$ref": "#/$defs/loss" }, "files": { "$ref": "#/$defs/loss" } },
+          "required": ["lines", "files"],
+          "additionalProperties": false
+        },
+        "files": { "type": "array", "items": { "$ref": "#/$defs/simulationFile" } },
+        "components": { "type": "array", "items": { "$ref": "#/$defs/simulationComponent" } }
+      },
+      "required": ["mode", "trials", "horizonPeriods", "seed", "selection", "population", "loss", "files", "components"],
+      "additionalProperties": false
+    },
+    "backtest": {
+      "type": "object",
+      "description": "The model as it stood at a past date, against what happened one horizon later. Counts and paths only.",
+      "properties": {
+        "at": { "type": "string", "format": "date" },
+        "outcomeAt": { "type": "string", "format": "date" },
+        "commits": {
+          "type": "object",
+          "properties": { "at": { "$ref": "common.schema.json#/$defs/sha" }, "outcome": { "$ref": "common.schema.json#/$defs/sha" } },
+          "required": ["at", "outcome"],
+          "additionalProperties": false
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "source": { "enum": ["history", "configured"] },
+            "ratePerPeriod": { "type": "number", "minimum": 0, "maximum": 1 },
+            "leaverProbability": { "type": "number", "minimum": 0, "maximum": 1 },
+            "activeDevelopers": { "$ref": "common.schema.json#/$defs/count" },
+            "departures": {
+              "type": "object",
+              "description": "The turnover observed in the history up to the date.",
+              "properties": {
+                "atRisk": { "$ref": "common.schema.json#/$defs/count" },
+                "departed": { "$ref": "common.schema.json#/$defs/count" },
+                "periods": { "$ref": "common.schema.json#/$defs/count" }
+              },
+              "required": ["atRisk", "departed", "periods"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["source", "ratePerPeriod", "leaverProbability", "activeDevelopers", "departures"],
+          "additionalProperties": false
+        },
+        "candidates": { "$ref": "common.schema.json#/$defs/count", "description": "Files present at both dates and not abandoned at the first: the ones a prediction can be right or wrong about." },
+        "predicted": {
+          "type": "object",
+          "properties": {
+            "files": { "$ref": "common.schema.json#/$defs/count", "description": "Candidates whose abandonment probability reached the at-risk threshold." },
+            "goneByOutcome": { "$ref": "common.schema.json#/$defs/count", "description": "Files over the threshold that no longer exist at the outcome date, and so were not scored." }
+          },
+          "required": ["files", "goneByOutcome"],
+          "additionalProperties": false
+        },
+        "actual": {
+          "type": "object",
+          "properties": { "files": { "$ref": "common.schema.json#/$defs/count", "description": "Candidates abandoned at the outcome date." } },
+          "required": ["files"],
+          "additionalProperties": false
+        },
+        "truePositives": { "$ref": "common.schema.json#/$defs/count" },
+        "precision": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Predicted files that were abandoned. Null when nothing was predicted." },
+        "recall": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Abandoned files that were predicted. Null when nothing was abandoned." },
+        "expectedAbandoned": { "type": "number", "minimum": 0, "description": "The number of candidates the model expected to be abandoned, to set beside actual.files." },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "score": { "$ref": "#/$defs/share" },
+              "probability": { "type": "number", "minimum": 0, "maximum": 1 },
+              "outcome": { "enum": ["hit", "false-alarm", "missed"], "description": "Predicted and abandoned, predicted and not, or abandoned and not predicted." }
+            },
+            "required": ["path", "score", "probability", "outcome"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["at", "outcomeAt", "commits", "model", "candidates", "predicted", "actual", "truePositives", "precision", "recall", "expectedAbandoned", "files"],
+      "additionalProperties": false
+    },
+    "currentSummary": {
+      "type": "object",
+      "description": "With `current`: the repository as a whole.",
+      "properties": {
+        "files": {
+          "type": "object",
+          "properties": {
+            "measured": { "$ref": "common.schema.json#/$defs/count", "description": "Files with at least one line held by a person." },
+            "abandoned": { "$ref": "common.schema.json#/$defs/count" },
+            "share": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "required": ["measured", "abandoned", "share"],
+          "additionalProperties": false
+        },
+        "lines": {
+          "type": "object",
+          "properties": {
+            "people": { "$ref": "common.schema.json#/$defs/count", "description": "Lines held by people." },
+            "abandoned": { "$ref": "common.schema.json#/$defs/count", "description": "Of those, lines whose last author has left." },
+            "share": { "type": "number", "minimum": 0, "maximum": 1 },
+            "nonPerson": { "$ref": "common.schema.json#/$defs/count", "description": "Lines of bots, services and agents. They belong to nobody and are on neither side of the share." },
+            "unattributed": { "$ref": "common.schema.json#/$defs/count" }
+          },
+          "required": ["people", "abandoned", "share", "nonPerson", "unattributed"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["files", "lines"],
+      "additionalProperties": false
+    },
+    "currentFile": {
+      "description": "A file already abandoned (`--by file`).",
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "score": { "type": "number", "minimum": 0, "description": "What the list is ranked by: the abandoned share weighted by the hotspot percentile, or with --rank abandonment the abandoned lines." },
+        "hotspot": { "type": "boolean" },
+        "hotspotPercentile": { "$ref": "#/$defs/share", "description": "Rank percentile of the file's hotspot score, 0 when the analysis window saw no change to it." },
+        "findings": { "$ref": "#/$defs/findings" },
+        "abandonedShare": { "type": "number", "minimum": 0, "maximum": 1 },
+        "abandonedLines": { "$ref": "common.schema.json#/$defs/count" },
+        "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
+        "activeAuthors": { "$ref": "common.schema.json#/$defs/count" },
+        "formerAuthors": { "$ref": "common.schema.json#/$defs/count" },
+        "nonPersonLines": { "$ref": "common.schema.json#/$defs/count" }
+      },
+      "required": ["path", "score", "hotspot", "hotspotPercentile", "findings", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines"],
+      "additionalProperties": false
+    },
+    "currentComponent": {
+      "description": "A component with abandoned lines (`--by component`).",
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "score": { "type": "number", "minimum": 0, "maximum": 1, "description": "The abandoned share: what the list is ranked by." },
+        "files": { "$ref": "common.schema.json#/$defs/count" },
+        "abandonedFiles": { "$ref": "common.schema.json#/$defs/count" },
+        "abandonedShare": { "type": "number", "minimum": 0, "maximum": 1 },
+        "abandonedLines": { "$ref": "common.schema.json#/$defs/count" },
+        "peopleLines": { "$ref": "common.schema.json#/$defs/count" }
+      },
+      "required": ["path", "score", "files", "abandonedFiles", "abandonedShare", "abandonedLines", "peopleLines"],
+      "additionalProperties": false
+    }
+  },
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "abandonment" },
+    "inputs": { "$ref": "#/$defs/inputs" },
+    "developers": {
+      "type": "object",
+      "description": "People in the history, as counts: active at the analysed commit (after overrides) and not.",
+      "properties": { "active": { "$ref": "common.schema.json#/$defs/count" }, "inactive": { "$ref": "common.schema.json#/$defs/count" } },
+      "required": ["active", "inactive"],
+      "additionalProperties": false
+    },
+    "blame": {
+      "type": "object",
+      "properties": {
+        "unknownFiles": { "$ref": "common.schema.json#/$defs/count", "description": "Authored files the blame cache holds nothing right for. Their authorship is unknown, not zero." },
+        "unattributedLines": { "$ref": "common.schema.json#/$defs/count", "description": "Lines whose commit is unknown, for example beyond a shallow boundary." }
+      },
+      "required": ["unknownFiles", "unattributedLines"],
+      "additionalProperties": false
+    },
+    "summary": { "$ref": "#/$defs/currentSummary" },
+    "turnover": { "$ref": "#/$defs/turnoverSummary" },
+    "results": {}
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "current" }, "by": true, "rank": true, "overrides": true },
+          "required": ["subcommand", "by", "rank", "overrides"]
+        },
+        "results": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/currentFile" }, { "$ref": "#/$defs/currentComponent" }] } },
+        "summary": true,
+        "developers": true,
+        "blame": true
+      },
+      "required": ["inputs", "summary", "developers", "blame"]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "turnover" }, "overrides": true },
+          "required": ["subcommand", "overrides"]
+        },
+        "results": { "type": "array", "items": { "$ref": "#/$defs/turnoverPeriod" } },
+        "turnover": true,
+        "developers": true,
+        "blame": true
+      },
+      "required": ["inputs", "turnover", "developers", "blame"]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "simulate" }, "overrides": true, "rank": true, "mode": true, "k": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
+          "required": ["subcommand", "overrides", "rank", "mode", "k", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
+        },
+        "results": { "$ref": "#/$defs/simulation" },
+        "turnover": true,
+        "developers": true,
+        "blame": true
+      },
+      "required": ["inputs", "turnover", "developers", "blame"]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "backtest" }, "at": true, "atRiskProbability": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
+          "required": ["subcommand", "at", "atRiskProbability", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
+        },
+        "results": { "$ref": "#/$defs/backtest" }
+      },
+      "required": ["inputs"]
+    }
+  ],
+  "unevaluatedProperties": false
+}

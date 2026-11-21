@@ -35,6 +35,23 @@ export interface AnalysisSpec {
   analyse(input: AnalysisInput): CommandOutput | Promise<CommandOutput>;
 }
 
+/** The `window`, `filtersApplied` and `evidence` sections every command that reads history adds to its output. */
+export function historySections(history: LoadedHistory): Record<string, unknown> {
+  return {
+    window: {
+      since: new Date(history.window.since * 1000).toISOString(),
+      until: new Date(history.window.until * 1000).toISOString(),
+    },
+    filtersApplied: history.filtersApplied,
+    evidence: history.evidence,
+  };
+}
+
+/** The `identityInputs` entry of a command's `inputs`, present when identity decisions or a local mailmap shaped the results. */
+export function identityStamps(history: LoadedHistory): Record<string, unknown> {
+  return Object.keys(history.identities.stamps).length > 0 ? { identityInputs: history.identities.stamps } : {};
+}
+
 const sharedOptions = { "no-refresh": { type: "boolean" } } satisfies OptionSpec;
 
 /**
@@ -56,19 +73,10 @@ export function analysisCommand(name: string, spec: AnalysisSpec): Command {
       const window = spec.window?.(context);
       const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, window, wholeHistory: spec.wholeHistory });
       const output = await spec.analyse({ context, history });
-      const identityStamps = Object.keys(history.identities.stamps).length > 0 ? { identityInputs: history.identities.stamps } : {};
       const finished: CommandOutput = {
         ...output,
-        inputs: { ...output.inputs, ...identityStamps },
-        extra: {
-          window: {
-            since: new Date(history.window.since * 1000).toISOString(),
-            until: new Date(history.window.until * 1000).toISOString(),
-          },
-          filtersApplied: history.filtersApplied,
-          evidence: history.evidence,
-          ...output.extra,
-        },
+        inputs: { ...output.inputs, ...identityStamps(history) },
+        extra: { ...historySections(history), ...output.extra },
       };
       const wholeRepository = window === undefined && !spec.partial?.(context);
       if (wholeRepository) await writeReport(context, name, finished, history.view.headSha);

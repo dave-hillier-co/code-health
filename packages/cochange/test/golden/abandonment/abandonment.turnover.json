@@ -1,0 +1,155 @@
+{
+  "blame": {
+    "unattributedLines": 0,
+    "unknownFiles": 0
+  },
+  "command": "abandonment",
+  "config": "8af900be7a62dbed",
+  "developers": {
+    "active": 3,
+    "inactive": 2
+  },
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 7,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 25.7,
+    "window": {
+      "months": 12,
+      "since": 1709283600,
+      "until": 1740819600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 19,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 20,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "abandonmentThreshold": 90,
+    "activityWindowMonths": 6,
+    "copyDetection": true,
+    "overrides": {
+      "active": 0,
+      "hash": null,
+      "inactive": 0
+    },
+    "periodMonths": 3,
+    "subcommand": "turnover"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6"
+  },
+  "results": [
+    {
+      "departed": 0,
+      "developers": 2,
+      "end": "2023-06-01",
+      "rate": 0,
+      "start": "2023-03-01"
+    },
+    {
+      "departed": 0,
+      "developers": 4,
+      "end": "2023-08-31",
+      "rate": 0,
+      "start": "2023-06-01"
+    },
+    {
+      "departed": 1,
+      "developers": 4,
+      "end": "2023-11-30",
+      "rate": 0.25,
+      "start": "2023-08-31"
+    },
+    {
+      "departed": 0,
+      "developers": 3,
+      "end": "2024-03-01",
+      "rate": 0,
+      "start": "2023-11-30"
+    },
+    {
+      "departed": 1,
+      "developers": 3,
+      "end": "2024-05-31",
+      "rate": 0.3333,
+      "start": "2024-03-01"
+    },
+    {
+      "departed": 0,
+      "developers": 2,
+      "end": "2024-08-30",
+      "rate": 0,
+      "start": "2024-05-31"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 6
+  },
+  "turnover": {
+    "atRisk": 18,
+    "configuredRate": null,
+    "departed": 2,
+    "periods": 6,
+    "rate": 0.1111
+  },
+  "window": {
+    "since": "2024-03-01T09:00:00.000Z",
+    "until": "2025-03-01T09:00:00.000Z"
+  }
+}

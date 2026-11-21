@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blame.schema.json",
+  "title": "cochange blame refresh --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "blame" },
+    "inputs": {
+      "type": "object",
+      "properties": { "copyDetection": { "type": "boolean", "description": "Whether lines moved or copied between files were followed (`git blame -C`)." } },
+      "required": ["copyDetection"],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "object",
+      "properties": {
+        "head": { "$ref": "common.schema.json#/$defs/sha", "description": "The commit every stored blame is now known to be right at." },
+        "optionsId": { "type": "string", "pattern": "^[0-9a-f]{12}$", "description": "Names the options the blames were made with." },
+        "files": { "$ref": "common.schema.json#/$defs/count", "description": "Files holding authored code at the commit." },
+        "blamed": { "$ref": "common.schema.json#/$defs/count", "description": "Files blamed by this refresh." },
+        "reused": { "$ref": "common.schema.json#/$defs/count", "description": "Files whose stored blame was still right." },
+        "noText": { "$ref": "common.schema.json#/$defs/count", "description": "Binary or empty files, remembered so they are not examined again until they change." },
+        "failed": { "type": "array", "items": { "type": "string" }, "description": "Paths git could not blame. Tried again next time." },
+        "pruned": { "$ref": "common.schema.json#/$defs/count", "description": "Stored blames dropped because their blob left the tree." },
+        "rebuilt": { "type": "boolean", "description": "The cache was discarded and rebuilt." },
+        "aborted": { "type": "boolean", "description": "The refresh was interrupted. What finished is stored, and the next run resumes." }
+      },
+      "required": ["head", "optionsId", "files", "blamed", "reused", "noText", "failed", "pruned", "rebuilt", "aborted"],
+      "additionalProperties": false
+    }
+  },
+  "unevaluatedProperties": false
+}

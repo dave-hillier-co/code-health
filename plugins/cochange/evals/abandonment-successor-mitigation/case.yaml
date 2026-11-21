@@ -1,0 +1,50 @@
+schema_version: "1.0"
+name: abandonment-successor-mitigation
+description: For a file at risk the skill finds successors from coupling and proposes the cheapest mitigation from the table, naming only active developers and only because the user asked who should take it. Needs `--scaffold` and `--allow-tools Bash,Read,Edit,Write,Grep,Glob` (see CONTRIBUTING.md).
+tags: [behaviour, abandonment]
+plugins: [cochange]
+context:
+  scaffold_script: ../abandonment-scaffold.sh
+runs: 2
+execution:
+  prompt: src/api/auth.ts is held by one engineer and I am worried about losing that knowledge. Who should start reviewing it or pair on it, and what should we do about it? Name the people, since I need to ask them.
+  model: claude-sonnet-5-5
+  allowed_tools: [Bash, Read, Edit, Write, Grep, Glob]
+  max_turns: 25
+  timeout_seconds: 900
+graders:
+  - type: tool_used
+    name: runs-successors-for-the-file
+    tool: Bash
+    input_match: "cochange\\.mjs successors .*src/api/auth\\.ts"
+    min: 1
+    arm: with-only
+  - type: tool_used
+    name: names-only-on-request-and-through-successors
+    tool: Bash
+    input_match: "identities list|git shortlog|git blame"
+    max: 0
+  - type: tool_used
+    name: makes-no-edits
+    tool: Edit
+    max: 0
+  - type: regex
+    name: never-names-someone-who-left
+    target: last_message
+    pattern: "Cy Gone|Di Departed|cy@example\\.com|di@example\\.com"
+    match: not_contains
+  - type: llm
+    name: proposes-successor-based-mitigation
+    criteria: >-
+      The final message recommends reviews by, or pairing with, active developers named from the successors output, with
+      the coupling evidence (src/api/routes.ts changes with auth in every change, and who made those changes), and chooses
+      the cheapest mitigation that works: reviews on the next changes, and pairing on the next change to a hotspot.
+    focus: last_message
+    arm: with-only
+  - type: llm
+    name: frames-it-as-assignment-not-ranking
+    criteria: >-
+      The final message presents the people as candidates to review or pair, not as a ranking of individuals by value or
+      risk, and does not say who might leave.
+    focus: last_message
+    arm: with-only

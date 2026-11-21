@@ -1,0 +1,17 @@
+schema_version: "1.0"
+name: abandonment-no-trigger-hotspots
+description: "The abandonment skill stays unloaded on a question about where change effort concentrates, which belongs to the cochange skill."
+tags: [trigger, negative, abandonment]
+runs: 3
+execution:
+  prompt: "Which files in this codebase are changed the most and are also the hardest to understand?"
+  model: claude-sonnet-5-5
+  max_turns: 6
+  timeout_seconds: 180
+graders:
+  - type: "tool_used"
+    name: "does-not-load-the-abandonment-skill"
+    tool: "Skill"
+    input_match: "abandonment"
+    max: 0
+    arm: "with-only"

@@ -12,8 +12,8 @@ vi.setConfig({ testTimeout: 120_000 });
 
 const evals = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "plugins", "cochange", "evals");
 const cases = readdirSync(evals, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
-// The identities skill has its own scaffolds, which build different repositories.
-const scaffolded = cases.filter((name) => !name.startsWith("identities-")).filter((name) => parse(readFileSync(join(evals, name, "case.yaml"), "utf8")).context?.scaffold_script);
+// The identities and abandonment skills have their own scaffolds, which build different repositories.
+const scaffolded = cases.filter((name) => !name.startsWith("identities-") && !name.startsWith("abandonment-")).filter((name) => parse(readFileSync(join(evals, name, "case.yaml"), "utf8")).context?.scaffold_script);
 
 const made: string[] = [];
 afterAll(() => made.forEach((dir) => rmSync(dir, { recursive: true, force: true })));

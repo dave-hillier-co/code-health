@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "successors.schema.json",
+  "title": "cochange successors PATH... [--names] --json",
+  "description": "Who could pick up a file's knowledge. Without --names a successor is a rank and a score. With it the developer's identity is shown, and only an active developer's: the command never lists people who have left. Never stored as a report.",
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "description": "A coupled file the successor changed.",
+      "properties": {
+        "path": { "type": "string" },
+        "degree": { "type": "number", "minimum": 0, "maximum": 100 },
+        "changes": { "type": "integer", "minimum": 1, "description": "Eligible logical changes in the analysis window that touched the file with this developer as an author." }
+      },
+      "required": ["path", "degree", "changes"],
+      "additionalProperties": false
+    },
+    "successor": {
+      "type": "object",
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1 },
+        "developer": { "type": "string", "description": "`Name <email>` of an active developer. Only with --names." },
+        "score": { "type": "number", "minimum": 0, "description": "coupledChanges plus ownShare." },
+        "coupledChanges": { "type": "number", "minimum": 0, "description": "Sum over coupled files of the coupling degree (as a fraction) times the developer's changes to that file." },
+        "ownShare": { "type": "number", "minimum": 0, "maximum": 1, "description": "The share of the people's lines in the file that the developer holds." },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+      },
+      "required": ["rank", "score", "coupledChanges", "ownShare", "evidence"],
+      "additionalProperties": false
+    },
+    "row": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "abandoned": { "type": "boolean", "description": "Already abandoned at the analysed commit." },
+        "coupledFiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "degree": { "type": "number", "minimum": 0, "maximum": 100 },
+              "support": { "type": "integer", "minimum": 1 }
+            },
+            "required": ["path", "degree", "support"],
+            "additionalProperties": false
+          }
+        },
+        "candidates": { "$ref": "common.schema.json#/$defs/count", "description": "Active developers with a score, before --top limits the list." },
+        "noSuccessor": { "type": "boolean", "description": "No active developer has changed a file that changes with this one." },
+        "successors": { "type": "array", "items": { "$ref": "#/$defs/successor" } }
+      },
+      "required": ["path", "abandoned", "coupledFiles", "candidates", "noSuccessor", "successors"],
+      "additionalProperties": false
+    }
+  },
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "successors" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "subcommand": { "const": "successors" },
+        "paths": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "names": { "type": "boolean" },
+        "top": { "type": "integer", "minimum": 1 },
+        "minSupport": { "type": "integer", "minimum": 1 },
+        "minDegree": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "activityWindowMonths": { "type": "integer", "minimum": 1 },
+        "periodMonths": { "type": "integer", "minimum": 1 },
+        "abandonmentThreshold": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "copyDetection": { "type": "boolean" },
+        "overrides": {
+          "type": "object",
+          "properties": {
+            "active": { "$ref": "common.schema.json#/$defs/count" },
+            "inactive": { "$ref": "common.schema.json#/$defs/count" },
+            "hash": { "type": ["string", "null"], "pattern": "^[0-9a-f]{16}$" }
+          },
+          "required": ["active", "inactive", "hash"],
+          "additionalProperties": false
+        },
+        "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
+      },
+      "required": ["subcommand", "paths", "names", "top", "minSupport", "minDegree", "activityWindowMonths", "periodMonths", "abandonmentThreshold", "copyDetection", "overrides"],
+      "additionalProperties": false
+    },
+    "developers": {
+      "type": "object",
+      "properties": { "active": { "$ref": "common.schema.json#/$defs/count" }, "inactive": { "$ref": "common.schema.json#/$defs/count" } },
+      "required": ["active", "inactive"],
+      "additionalProperties": false
+    },
+    "blame": {
+      "type": "object",
+      "properties": { "unknownFiles": { "$ref": "common.schema.json#/$defs/count" }, "unattributedLines": { "$ref": "common.schema.json#/$defs/count" } },
+      "required": ["unknownFiles", "unattributedLines"],
+      "additionalProperties": false
+    },
+    "results": { "type": "array", "items": { "$ref": "#/$defs/row" } }
+  },
+  "required": ["developers", "blame"],
+  "unevaluatedProperties": false
+}

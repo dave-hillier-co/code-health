@@ -1,5 +1,7 @@
 import type { Command, Rule } from "@code-health/cli-kit/run-cli";
+import * as abandonment from "./commands/abandonment.ts";
 import * as age from "./commands/age.ts";
+import * as blame from "./commands/blame.ts";
 import * as brief from "./commands/brief.ts";
 import * as clusters from "./commands/clusters.ts";
 import * as coupling from "./commands/coupling.ts";
@@ -7,6 +9,7 @@ import * as hotspots from "./commands/hotspots.ts";
 import * as identities from "./commands/identities.ts";
 import * as refresh from "./commands/refresh.ts";
 import * as spread from "./commands/spread.ts";
+import * as successors from "./commands/successors.ts";
 import * as trend from "./commands/trend.ts";
 
 /** What a module in `commands/` exports. */
@@ -24,7 +27,9 @@ export interface CommandModule {
  * and add it to this list, one line each, in alphabetical order.
  */
 export const commandModules: CommandModule[] = [
+  abandonment,
   age,
+  blame,
   brief,
   clusters,
   coupling,
@@ -32,6 +37,7 @@ export const commandModules: CommandModule[] = [
   identities,
   refresh,
   spread,
+  successors,
   trend,
 ];
 

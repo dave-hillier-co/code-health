@@ -1,0 +1,196 @@
+{
+  "blame": {
+    "unattributedLines": 0,
+    "unknownFiles": 0
+  },
+  "command": "successors",
+  "config": "8af900be7a62dbed",
+  "developers": {
+    "active": 3,
+    "inactive": 2
+  },
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 7,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 25.7,
+    "window": {
+      "months": 12,
+      "since": 1709283600,
+      "until": 1740819600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 19,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 20,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "abandonmentThreshold": 90,
+    "activityWindowMonths": 6,
+    "copyDetection": true,
+    "minDegree": 30,
+    "minSupport": 5,
+    "names": false,
+    "overrides": {
+      "active": 0,
+      "hash": null,
+      "inactive": 0
+    },
+    "paths": [
+      "src/api/auth.ts",
+      "src/api/routes.ts"
+    ],
+    "periodMonths": 3,
+    "subcommand": "successors",
+    "top": 5
+  },
+  "repo": {
+    "dirty": false,
+    "head": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6"
+  },
+  "results": [
+    {
+      "abandoned": false,
+      "candidates": 2,
+      "coupledFiles": [
+        {
+          "degree": 100,
+          "path": "src/api/routes.ts",
+          "support": 6
+        }
+      ],
+      "noSuccessor": false,
+      "path": "src/api/auth.ts",
+      "successors": [
+        {
+          "coupledChanges": 4,
+          "evidence": [
+            {
+              "changes": 4,
+              "degree": 100,
+              "path": "src/api/routes.ts"
+            }
+          ],
+          "ownShare": 1,
+          "rank": 1,
+          "score": 5
+        },
+        {
+          "coupledChanges": 2,
+          "evidence": [
+            {
+              "changes": 2,
+              "degree": 100,
+              "path": "src/api/routes.ts"
+            }
+          ],
+          "ownShare": 0,
+          "rank": 2,
+          "score": 2
+        }
+      ]
+    },
+    {
+      "abandoned": false,
+      "candidates": 2,
+      "coupledFiles": [
+        {
+          "degree": 100,
+          "path": "src/api/auth.ts",
+          "support": 6
+        }
+      ],
+      "noSuccessor": false,
+      "path": "src/api/routes.ts",
+      "successors": [
+        {
+          "coupledChanges": 4,
+          "evidence": [
+            {
+              "changes": 4,
+              "degree": 100,
+              "path": "src/api/auth.ts"
+            }
+          ],
+          "ownShare": 0.5,
+          "rank": 1,
+          "score": 4.5
+        },
+        {
+          "coupledChanges": 2,
+          "evidence": [
+            {
+              "changes": 2,
+              "degree": 100,
+              "path": "src/api/auth.ts"
+            }
+          ],
+          "ownShare": 0.5,
+          "rank": 2,
+          "score": 2.5
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 2
+  },
+  "window": {
+    "since": "2024-03-01T09:00:00.000Z",
+    "until": "2025-03-01T09:00:00.000Z"
+  }
+}
