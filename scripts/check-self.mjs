@@ -20,7 +20,7 @@ function run(bundle, command, cwd) {
   return new Promise((resolveRun) => {
     execFile(
       "node",
-      [bundle, command, "--json", "--limit", "1"],
+      [bundle, command, "--json", "--limit", command === "cycles" ? "all" : "1"],
       { cwd, maxBuffer: 256 * 1024 * 1024 },
       (error, stdout, stderr) => {
         const exitCode = error === null ? 0 : typeof error.code === "number" ? error.code : 1;
