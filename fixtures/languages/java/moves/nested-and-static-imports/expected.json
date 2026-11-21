@@ -1,0 +1,34 @@
+{
+  "operations": [
+    {
+      "from": "src/main/java/acme/util/Strings.java",
+      "to": "src/main/java/acme/text/Strings.java"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "src/main/java/acme/app/Nested.java",
+      "line": 3,
+      "from": "acme.util.Strings.Pair",
+      "to": "acme.text.Strings.Pair"
+    },
+    {
+      "path": "src/main/java/acme/app/Static.java",
+      "line": 3,
+      "from": "acme.util.Strings.trim",
+      "to": "acme.text.Strings.trim"
+    },
+    {
+      "path": "src/main/java/acme/text/Strings.java",
+      "line": 1,
+      "from": "acme.util",
+      "to": "acme.text"
+    }
+  ],
+  "texts": {
+    "src/main/java/acme/app/Nested.java": "package acme.app;\n\nimport acme.text.Strings.Pair;\n\npublic class Nested {\n    public Pair make() {\n        return new Pair();\n    }\n}\n",
+    "src/main/java/acme/app/Static.java": "package acme.app;\n\nimport static acme.text.Strings.trim;\n\npublic class Static {\n    public String run(String s) {\n        return trim(s);\n    }\n}\n",
+    "src/main/java/acme/text/Strings.java": "package acme.text;\n\npublic class Strings {\n    public static String trim(String s) {\n        return s.trim();\n    }\n\n    public static class Pair {\n        public String left;\n    }\n}\n"
+  },
+  "warnings": []
+}

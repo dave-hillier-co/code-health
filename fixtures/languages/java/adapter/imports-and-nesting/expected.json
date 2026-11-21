@@ -1,0 +1,33 @@
+{
+  "importEdges": [
+    "src/extra/java/acme/app/Extra.java -> src/main/java/acme/app/Neighbour.java import",
+    "src/main/java/acme/app/Nested.java -> src/main/java/acme/util/Strings.java import",
+    "src/main/java/acme/app/Same.java -> src/main/java/acme/app/Neighbour.java import",
+    "src/main/java/acme/app/Static.java -> src/main/java/acme/util/Strings.java import",
+    "src/main/java/acme/app/Wild.java -> src/main/java/acme/util/Numbers.java import",
+    "src/main/java/acme/loop/A.java -> src/main/java/acme/loop/B.java import",
+    "src/main/java/acme/loop/B.java -> src/main/java/acme/loop/A.java import"
+  ],
+  "fileEdges": [
+    "src/extra/java/acme/app/Extra.java -> src/main/java/acme/app/Neighbour.java call call=1 reference=0",
+    "src/main/java/acme/app/Nested.java -> src/main/java/acme/util/Strings.java call call=1 reference=2",
+    "src/main/java/acme/app/Same.java -> src/main/java/acme/app/Neighbour.java call call=1 reference=0",
+    "src/main/java/acme/app/Static.java -> src/main/java/acme/util/Strings.java reference call=0 reference=1",
+    "src/main/java/acme/app/Wild.java -> src/main/java/acme/util/Numbers.java call call=1 reference=0",
+    "src/main/java/acme/loop/A.java -> src/main/java/acme/loop/B.java call call=1 reference=0",
+    "src/main/java/acme/loop/B.java -> src/main/java/acme/loop/A.java call call=1 reference=0"
+  ],
+  "consumers": [
+    "src/extra/java/acme/app/Extra.java#Extra.run -> src/main/java/acme/app/Neighbour.java#Neighbour call x1",
+    "src/main/java/acme/app/Nested.java -> src/main/java/acme/util/Strings.java#Strings.Pair reference x1",
+    "src/main/java/acme/app/Nested.java#Nested.make -> src/main/java/acme/util/Strings.java#Strings.Pair call x1",
+    "src/main/java/acme/app/Nested.java#Nested.make -> src/main/java/acme/util/Strings.java#Strings.Pair reference x1",
+    "src/main/java/acme/app/Same.java#Same.run -> src/main/java/acme/app/Neighbour.java#Neighbour call x1",
+    "src/main/java/acme/app/Static.java -> src/main/java/acme/util/Strings.java#Strings reference x1",
+    "src/main/java/acme/app/Wild.java#Wild.run -> src/main/java/acme/util/Numbers.java#Numbers call x1",
+    "src/main/java/acme/loop/A.java#A.go -> src/main/java/acme/loop/B.java#B call x1",
+    "src/main/java/acme/loop/B.java#B.back -> src/main/java/acme/loop/A.java#A call x1"
+  ],
+  "unresolved": [],
+  "barrels": []
+}

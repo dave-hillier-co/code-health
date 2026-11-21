@@ -1,0 +1,34 @@
+{
+  "operations": [
+    {
+      "from": "src/main/kotlin/acme/app/Neighbour.kt",
+      "to": "src/main/kotlin/acme/other/Neighbour.kt"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "src/extra/kotlin/acme/app/Extra.kt",
+      "line": 3,
+      "from": "",
+      "to": "acme.other.Neighbour"
+    },
+    {
+      "path": "src/main/kotlin/acme/app/Same.kt",
+      "line": 3,
+      "from": "",
+      "to": "acme.other.Neighbour"
+    },
+    {
+      "path": "src/main/kotlin/acme/other/Neighbour.kt",
+      "line": 1,
+      "from": "acme.app",
+      "to": "acme.other"
+    }
+  ],
+  "texts": {
+    "src/extra/kotlin/acme/app/Extra.kt": "package acme.app\n\nimport acme.other.Neighbour\n\nclass Extra {\n    fun run(): Int {\n        return Neighbour().one()\n    }\n}\n",
+    "src/main/kotlin/acme/app/Same.kt": "package acme.app\n\nimport acme.other.Neighbour\n\nclass Same {\n    fun run(): Int {\n        return Neighbour().one()\n    }\n}\n",
+    "src/main/kotlin/acme/other/Neighbour.kt": "package acme.other\n\nclass Neighbour {\n    fun one(): Int {\n        return 1\n    }\n}\n"
+  },
+  "warnings": []
+}

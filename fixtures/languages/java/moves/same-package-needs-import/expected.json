@@ -1,0 +1,34 @@
+{
+  "operations": [
+    {
+      "from": "src/main/java/acme/app/Neighbour.java",
+      "to": "src/main/java/acme/other/Neighbour.java"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "src/extra/java/acme/app/Extra.java",
+      "line": 3,
+      "from": "",
+      "to": "acme.other.Neighbour"
+    },
+    {
+      "path": "src/main/java/acme/app/Same.java",
+      "line": 3,
+      "from": "",
+      "to": "acme.other.Neighbour"
+    },
+    {
+      "path": "src/main/java/acme/other/Neighbour.java",
+      "line": 1,
+      "from": "acme.app",
+      "to": "acme.other"
+    }
+  ],
+  "texts": {
+    "src/extra/java/acme/app/Extra.java": "package acme.app;\n\nimport acme.other.Neighbour;\n\npublic class Extra {\n    public int run() {\n        return new Neighbour().one();\n    }\n}\n",
+    "src/main/java/acme/app/Same.java": "package acme.app;\n\nimport acme.other.Neighbour;\n\npublic class Same {\n    public int run() {\n        return new Neighbour().one();\n    }\n}\n",
+    "src/main/java/acme/other/Neighbour.java": "package acme.other;\n\npublic class Neighbour {\n    public int one() {\n        return 1;\n    }\n}\n"
+  },
+  "warnings": []
+}

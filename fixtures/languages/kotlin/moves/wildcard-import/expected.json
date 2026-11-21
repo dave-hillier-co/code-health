@@ -1,0 +1,27 @@
+{
+  "operations": [
+    {
+      "from": "src/main/kotlin/acme/util/Numbers.kt",
+      "to": "src/main/kotlin/acme/math/Numbers.kt"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "src/main/kotlin/acme/app/Wild.kt",
+      "line": 4,
+      "from": "",
+      "to": "acme.math.Numbers"
+    },
+    {
+      "path": "src/main/kotlin/acme/math/Numbers.kt",
+      "line": 1,
+      "from": "acme.util",
+      "to": "acme.math"
+    }
+  ],
+  "texts": {
+    "src/main/kotlin/acme/app/Wild.kt": "package acme.app\n\nimport acme.util.*\nimport acme.math.Numbers\n\nclass Wild {\n    fun run(): Int {\n        return Numbers.twice(2)\n    }\n}\n",
+    "src/main/kotlin/acme/math/Numbers.kt": "package acme.math\n\nobject Numbers {\n    fun twice(n: Int): Int {\n        return n * 2\n    }\n}\n"
+  },
+  "warnings": []
+}

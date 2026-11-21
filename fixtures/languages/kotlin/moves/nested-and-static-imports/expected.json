@@ -1,0 +1,34 @@
+{
+  "operations": [
+    {
+      "from": "src/main/kotlin/acme/util/Strings.kt",
+      "to": "src/main/kotlin/acme/text/Strings.kt"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "src/main/kotlin/acme/app/Aliased.kt",
+      "line": 3,
+      "from": "acme.util.Strings",
+      "to": "acme.text.Strings"
+    },
+    {
+      "path": "src/main/kotlin/acme/app/Nested.kt",
+      "line": 3,
+      "from": "acme.util.Strings.Pair",
+      "to": "acme.text.Strings.Pair"
+    },
+    {
+      "path": "src/main/kotlin/acme/text/Strings.kt",
+      "line": 1,
+      "from": "acme.util",
+      "to": "acme.text"
+    }
+  ],
+  "texts": {
+    "src/main/kotlin/acme/app/Aliased.kt": "package acme.app\n\nimport acme.text.Strings as Text\n\nclass Aliased {\n    fun run(s: String): String {\n        return Text.trim(s)\n    }\n}\n",
+    "src/main/kotlin/acme/app/Nested.kt": "package acme.app\n\nimport acme.text.Strings.Pair\n\nclass Nested {\n    fun make(): Pair {\n        return Pair()\n    }\n}\n",
+    "src/main/kotlin/acme/text/Strings.kt": "package acme.text\n\nobject Strings {\n    fun trim(s: String): String {\n        return s.trim()\n    }\n\n    class Pair {\n        var left: String = \"\"\n    }\n}\n"
+  },
+  "warnings": []
+}

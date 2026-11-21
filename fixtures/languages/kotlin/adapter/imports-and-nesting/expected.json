@@ -1,0 +1,35 @@
+{
+  "importEdges": [
+    "src/extra/kotlin/acme/app/Extra.kt -> src/main/kotlin/acme/app/Neighbour.kt import",
+    "src/main/kotlin/acme/app/Aliased.kt -> src/main/kotlin/acme/util/Strings.kt import",
+    "src/main/kotlin/acme/app/Nested.kt -> src/main/kotlin/acme/util/Strings.kt import",
+    "src/main/kotlin/acme/app/Same.kt -> src/main/kotlin/acme/app/Neighbour.kt import",
+    "src/main/kotlin/acme/app/Wild.kt -> src/main/kotlin/acme/util/Numbers.kt import",
+    "src/main/kotlin/acme/loop/A.kt -> src/main/kotlin/acme/loop/B.kt import",
+    "src/main/kotlin/acme/loop/B.kt -> src/main/kotlin/acme/loop/A.kt import"
+  ],
+  "fileEdges": [
+    "src/extra/kotlin/acme/app/Extra.kt -> src/main/kotlin/acme/app/Neighbour.kt call call=1 reference=0",
+    "src/main/kotlin/acme/app/Aliased.kt -> src/main/kotlin/acme/util/Strings.kt call call=1 reference=1",
+    "src/main/kotlin/acme/app/Nested.kt -> src/main/kotlin/acme/util/Strings.kt call call=1 reference=3",
+    "src/main/kotlin/acme/app/Same.kt -> src/main/kotlin/acme/app/Neighbour.kt call call=1 reference=0",
+    "src/main/kotlin/acme/app/Wild.kt -> src/main/kotlin/acme/util/Numbers.kt call call=1 reference=0",
+    "src/main/kotlin/acme/loop/A.kt -> src/main/kotlin/acme/loop/B.kt call call=1 reference=0",
+    "src/main/kotlin/acme/loop/B.kt -> src/main/kotlin/acme/loop/A.kt call call=1 reference=0"
+  ],
+  "consumers": [
+    "src/extra/kotlin/acme/app/Extra.kt#Extra.run -> src/main/kotlin/acme/app/Neighbour.kt#Neighbour call x1",
+    "src/main/kotlin/acme/app/Aliased.kt -> src/main/kotlin/acme/util/Strings.kt#Strings reference x1",
+    "src/main/kotlin/acme/app/Aliased.kt#Aliased.run -> src/main/kotlin/acme/util/Strings.kt#Strings call x1",
+    "src/main/kotlin/acme/app/Nested.kt -> src/main/kotlin/acme/util/Strings.kt#Strings reference x1",
+    "src/main/kotlin/acme/app/Nested.kt -> src/main/kotlin/acme/util/Strings.kt#Strings.Pair reference x1",
+    "src/main/kotlin/acme/app/Nested.kt#Nested.make -> src/main/kotlin/acme/util/Strings.kt#Strings.Pair call x1",
+    "src/main/kotlin/acme/app/Nested.kt#Nested.make -> src/main/kotlin/acme/util/Strings.kt#Strings.Pair reference x1",
+    "src/main/kotlin/acme/app/Same.kt#Same.run -> src/main/kotlin/acme/app/Neighbour.kt#Neighbour call x1",
+    "src/main/kotlin/acme/app/Wild.kt#Wild.run -> src/main/kotlin/acme/util/Numbers.kt#Numbers call x1",
+    "src/main/kotlin/acme/loop/A.kt#A.go -> src/main/kotlin/acme/loop/B.kt#B call x1",
+    "src/main/kotlin/acme/loop/B.kt#B.back -> src/main/kotlin/acme/loop/A.kt#A call x1"
+  ],
+  "unresolved": [],
+  "barrels": []
+}

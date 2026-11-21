@@ -1,0 +1,27 @@
+{
+  "operations": [
+    {
+      "from": "src/main/java/acme/util/Numbers.java",
+      "to": "src/main/java/acme/math/Numbers.java"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "src/main/java/acme/app/Wild.java",
+      "line": 4,
+      "from": "",
+      "to": "acme.math.Numbers"
+    },
+    {
+      "path": "src/main/java/acme/math/Numbers.java",
+      "line": 1,
+      "from": "acme.util",
+      "to": "acme.math"
+    }
+  ],
+  "texts": {
+    "src/main/java/acme/app/Wild.java": "package acme.app;\n\nimport acme.util.*;\nimport acme.math.Numbers;\n\npublic class Wild {\n    public int run() {\n        return Numbers.twice(2);\n    }\n}\n",
+    "src/main/java/acme/math/Numbers.java": "package acme.math;\n\npublic class Numbers {\n    public static int twice(int n) {\n        return n * 2;\n    }\n}\n"
+  },
+  "warnings": []
+}
