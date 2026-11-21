@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "risk.schema.json",
+  "title": "cochange risk --json",
+  "description": "The output of risk and of its subcommands. `results.kind` says which.",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "risk" },
+    "inputs": { "type": "object" },
+    "results": {
+      "oneOf": [{ "$ref": "#/$defs/assessment" }]
+    }
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "band": { "enum": ["low", "moderate", "high"] },
+    "count": { "$ref": "common.schema.json#/$defs/count" },
+    "assessment": {
+      "type": "object",
+      "properties": {
+        "kind": { "const": "assessment" },
+        "change": {
+          "description": "The change under review: the commits of BASE..HEAD taken together, as one logical change.",
+          "type": "object",
+          "properties": {
+            "base": { "$ref": "common.schema.json#/$defs/sha" },
+            "head": { "$ref": "common.schema.json#/$defs/sha" },
+            "against": { "type": ["string", "null"], "description": "The ref the base was taken against: the main branch, or the BASE asked for." },
+            "worktree": { "type": "boolean", "description": "Uncommitted edits to tracked files are part of the change." },
+            "commits": { "$ref": "#/$defs/count" },
+            "files": { "$ref": "#/$defs/count", "description": "Files left after the noise filters, pure moves excluded." },
+            "added": { "$ref": "#/$defs/count" },
+            "deleted": { "$ref": "#/$defs/count" },
+            "moved": { "$ref": "#/$defs/count", "description": "Files moved or renamed, pure moves included." },
+            "filteredPaths": { "$ref": "#/$defs/count", "description": "Changed paths removed by the noise filters: exclude globs, lockfiles, generated and vendored files." },
+            "agentCommits": { "$ref": "#/$defs/count", "description": "Commits with an agent Co-Authored-By trailer." },
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": { "type": "string" },
+                  "status": { "enum": ["A", "M", "D", "R", "T"] },
+                  "added": { "type": ["integer", "null"], "minimum": 0 },
+                  "deleted": { "type": ["integer", "null"], "minimum": 0 }
+                },
+                "required": ["path", "status", "added", "deleted"],
+                "additionalProperties": false
+              }
+            },
+            "pathsNotShown": { "$ref": "#/$defs/count" }
+          },
+          "required": ["base", "head", "against", "worktree", "commits", "files", "added", "deleted", "moved", "filteredPaths", "agentCommits", "paths", "pathsNotShown"],
+          "additionalProperties": false
+        },
+        "impact": {
+          "description": "What the change puts at risk: the score of the families, banded against the repository's merged changes, raised once by events.",
+          "type": "object",
+          "properties": {
+            "score": { "$ref": "#/$defs/count" },
+            "scoreBand": { "enum": ["low", "moderate", "high", "unavailable"] },
+            "band": { "enum": ["low", "moderate", "high", "unavailable"] },
+            "events": { "type": "array", "items": { "type": "string" } },
+            "baseline": {
+              "type": "object",
+              "properties": {
+                "population": { "$ref": "#/$defs/count" },
+                "moderate": { "type": ["number", "null"] },
+                "high": { "type": ["number", "null"] }
+              },
+              "required": ["population", "moderate", "high"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["score", "scoreBand", "band", "events", "baseline"],
+          "additionalProperties": false
+        },
+        "factors": { "type": "array", "items": { "$ref": "#/$defs/factor" } }
+      },
+      "required": ["kind", "change", "impact", "factors"],
+      "additionalProperties": false
+    },
+    "factor": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "family": { "enum": ["size-and-diffusion", "history", "completeness", "structure-and-content", "placement"] },
+        "layer": { "enum": ["history", "lexical", "structural", "placement"] },
+        "status": { "enum": ["ok", "unavailable", "disabled"], "description": "Unavailable means it could not be computed. It is never reported as low." },
+        "band": { "oneOf": [{ "$ref": "#/$defs/band" }, { "type": "null" }] },
+        "scored": { "type": "boolean", "description": "Counts towards the impact score." },
+        "value": { "type": "object" },
+        "thresholds": {
+          "description": "For each measured series, the values above which the factor is moderate and high. Null when the baseline was too small to set them.",
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "properties": { "moderate": { "type": "number" }, "high": { "type": "number" } },
+                "required": ["moderate", "high"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "evidence": { "type": "array", "items": { "type": "object" } },
+        "source": { "type": "string" },
+        "reason": { "type": ["string", "null"] }
+      },
+      "required": ["name", "family", "layer", "status", "band", "scored", "value", "thresholds", "evidence", "source", "reason"],
+      "additionalProperties": false
+    }
+  }
+}

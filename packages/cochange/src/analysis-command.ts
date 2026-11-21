@@ -18,6 +18,8 @@ export interface AnalysisSpec {
    * states one is not stored as a report.
    */
   window?(context: CommandContext): ExplicitWindow | undefined;
+  /** The ref to analyse instead of the configured one, for a command about a branch other than the checked out one. */
+  ref?(context: CommandContext): string | undefined | Promise<string | undefined>;
   /** Read all usable history rather than the analysis window (see `HistoryOptions.wholeHistory`). */
   wholeHistory?: boolean;
   /**
@@ -54,7 +56,12 @@ export function analysisCommand(name: string, spec: AnalysisSpec): Command {
     options: { ...spec.options, ...sharedOptions },
     async run(context) {
       const window = spec.window?.(context);
-      const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, window, wholeHistory: spec.wholeHistory });
+      const history = await loadHistory(context, {
+        noRefresh: context.values["no-refresh"] === true,
+        window,
+        wholeHistory: spec.wholeHistory,
+        ref: await spec.ref?.(context),
+      });
       const output = await spec.analyse({ context, history });
       const identityStamps = Object.keys(history.identities.stamps).length > 0 ? { identityInputs: history.identities.stamps } : {};
       const finished: CommandOutput = {
