@@ -55,7 +55,7 @@ function usage(project: Project, graph: ModuleGraph, from: string, to: string): 
   return { sites: detail.symbols.reduce((sum, s) => sum + s.sites, 0), symbols: detail.symbols.length };
 }
 
-function staticCoupling(project: Project, graph: ModuleGraph, from: string, to: string, settings: CouplingSettings): StaticCoupling {
+export function staticCoupling(project: Project, graph: ModuleGraph, from: string, to: string, settings: CouplingSettings): StaticCoupling {
   const forward = usage(project, graph, from, to);
   const backward = usage(project, graph, to, from);
   const sites = forward.sites + backward.sites;

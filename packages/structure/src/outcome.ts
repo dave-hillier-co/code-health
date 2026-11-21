@@ -6,7 +6,7 @@ import type { TaskEffort } from "@code-health/transcripts/agent-effort";
 import { summariseTasks, type EffortSummary } from "@code-health/transcripts/measure-repo";
 import { measureActivity, type Activity } from "./activity.ts";
 import type { StructureSettings } from "./config.ts";
-import { couplingId, judgePair, type CoChangeJudgement, type Quadrant, type QuadrantJudgement, type StaticCoupling } from "./coupling.ts";
+import { couplingId, judgePair, staticCoupling, type CoChangeJudgement, type Quadrant, type QuadrantJudgement, type StaticCoupling } from "./coupling.ts";
 import { findLayerViolations } from "./layers.ts";
 import { buildModuleGraph, type Level, type ModuleGraph } from "./modules.ts";
 import type { Project } from "./project.ts";
@@ -65,7 +65,17 @@ export interface Outcome {
    * Navigation did not get worse through indirection: agent effort on tasks that edited either side, over the
    * same two windows. Measured only when session transcripts were given.
    */
-  agentEffort: { status: "measured"; before: EffortSummary; after: EffortSummary } | { status: "not-measured"; reason: string };
+  agentEffort:
+    | {
+        status: "measured";
+        before: EffortSummary;
+        after: EffortSummary;
+        /** The same tasks measured on a pair of modules that stayed statically coupled, matched to this pair by static coupling at the break's parent. Null when no such pair exists. */
+        comparison: { pair: [string, string]; before: EffortSummary; after: EffortSummary } | null;
+        /** The acted-on change in mean per-task effort minus the comparison pair's change, so drift every part of the repository shared cancels. Negative: effort fell more here. Null where a figure is missing. */
+        difference: { filesRead: number | null; tokens: number | null };
+      }
+    | { status: "not-measured"; reason: string };
 }
 
 /** A pair that dropped its static dependency across the break and kept its co-change. */
@@ -196,7 +206,7 @@ export function measureOutcome(inputs: OutcomeInputs, from: string, to: string):
       after,
       verdict: verdictOf(before, after),
       leading,
-      agentEffort: agentEffortOf(inputs, graphBefore, from, to, seconds),
+      agentEffort: agentEffortOf(inputs, graphBefore, from, to, seconds, controlPair(inputs, graphBefore, dropped, [from, to], before.staticCoupling.sites)),
     },
     hiddenCreated,
   };
@@ -222,15 +232,60 @@ function droppedPairs(before: ModuleGraph, after: ModuleGraph): [string, string]
   return pairs.sort((a, b) => compareIds(a[0], b[0]) || compareIds(a[1], b[1]));
 }
 
-/** Agent effort on the tasks that edited a file of either side, in the window before the break and the window after it. */
-function agentEffortOf(inputs: OutcomeInputs, graphBefore: ModuleGraph, from: string, to: string, seconds: number): Outcome["agentEffort"] {
+/**
+ * The pair left alone that stands for this one: a pair of modules that depended on each other at the break's parent and
+ * still do, sharing no module with it, whose static coupling there is nearest this pair's. Ties go to the earlier id.
+ */
+function controlPair(inputs: OutcomeInputs, graphBefore: ModuleGraph, dropped: readonly [string, string][], target: readonly [string, string], sites: number): [string, string] | null {
+  const droppedKeys = new Set(dropped.map(([a, b]) => `${a}\u0000${b}`));
+  let best: { pair: [string, string]; distance: number } | null = null;
+  const seen = new Set<string>();
+  for (const [from, targets] of graphBefore.graph) {
+    for (const to of targets) {
+      const [a, b] = from < to ? [from, to] : [to, from];
+      const key = `${a}\u0000${b}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (target.includes(a) || target.includes(b) || droppedKeys.has(`${from}\u0000${to}`) || droppedKeys.has(`${to}\u0000${from}`)) continue;
+      if (!inputs.graphAfter.filesOf.has(a) || !inputs.graphAfter.filesOf.has(b)) continue;
+      if (!inputs.graphAfter.graph.get(a)?.includes(b) && !inputs.graphAfter.graph.get(b)?.includes(a)) continue;
+      const distance = Math.abs(staticCoupling(inputs.projectBefore, graphBefore, a, b, inputs.settings).sites - sites);
+      if (best === null || distance < best.distance || (distance === best.distance && compareIds(key, `${best.pair[0]}\u0000${best.pair[1]}`) < 0)) best = { pair: [a, b], distance };
+    }
+  }
+  return best === null ? null : best.pair;
+}
+
+/**
+ * Agent effort on the tasks that edited a file of either side, in the window before the break and the window after it.
+ * The session that made the break is in neither: tasks that started on the break's day before it are left out, and so
+ * are tasks that started before the break's time in the after window.
+ */
+function agentEffortOf(inputs: OutcomeInputs, graphBefore: ModuleGraph, from: string, to: string, seconds: number, control: [string, string] | null): Outcome["agentEffort"] {
   if ("reason" in inputs.tasks) return { status: "not-measured", reason: inputs.tasks.reason };
   const { point } = inputs;
-  const sides = new Set([from, to].flatMap((side) => [...(graphBefore.filesOf.get(side) ?? []), ...(inputs.graphAfter.filesOf.get(side) ?? [])]));
-  const touching = inputs.tasks.tasks.filter((task) => task.editedPaths.some((path) => sides.has(path)));
-  const within = (since: number, until: number) => touching.filter((task) => Date.parse(task.startedAt) >= since * 1000 && Date.parse(task.startedAt) < until * 1000);
-  const before = within(point.date - seconds, point.date);
-  const after = within(point.date, point.date + seconds);
-  if (before.length === 0 && after.length === 0) return { status: "not-measured", reason: "no session in the windows edited either side" };
-  return { status: "measured", before: summariseTasks(before), after: summariseTasks(after) };
+  const allTasks = inputs.tasks.tasks;
+  const filesOfSides = (sides: readonly string[]) => new Set(sides.flatMap((side) => [...(graphBefore.filesOf.get(side) ?? []), ...(inputs.graphAfter.filesOf.get(side) ?? [])]));
+  const touching = (files: ReadonlySet<string>) => allTasks.filter((task) => task.editedPaths.some((path) => files.has(path)));
+  const dayStart = point.date - (point.date % 86_400);
+  const within = (tasks: readonly TaskEffort[], since: number, until: number) => tasks.filter((task) => Date.parse(task.startedAt) >= since * 1000 && Date.parse(task.startedAt) < until * 1000);
+  const windows = (tasks: readonly TaskEffort[]) => ({ before: within(tasks, point.date - seconds, dayStart), after: within(tasks, point.date + 1, point.date + seconds) });
+  const own = windows(touching(filesOfSides([from, to])));
+  if (own.before.length === 0 && own.after.length === 0) return { status: "not-measured", reason: "no session in the windows edited either side" };
+  const others = control === null ? null : windows(touching(filesOfSides(control)));
+  const summary = (tasks: readonly TaskEffort[]) => summariseTasks([...tasks]);
+  const ownBefore = summary(own.before);
+  const ownAfter = summary(own.after);
+  const comparison = control === null || others === null ? null : { pair: control, before: summary(others.before), after: summary(others.after) };
+  const change = (pick: (figures: EffortSummary) => { mean: number } | null, beforeSummary: EffortSummary, afterSummary: EffortSummary): number | null => {
+    const was = pick(beforeSummary);
+    const now = pick(afterSummary);
+    return was === null || now === null ? null : now.mean - was.mean;
+  };
+  const gap = (pick: (figures: EffortSummary) => { mean: number } | null): number | null => {
+    const mine = change(pick, ownBefore, ownAfter);
+    const other = comparison === null ? null : change(pick, comparison.before, comparison.after);
+    return mine === null || other === null ? null : Math.round((mine - other) * 1000) / 1000;
+  };
+  return { status: "measured", before: ownBefore, after: ownAfter, comparison, difference: { filesRead: gap((figures) => figures.filesRead), tokens: gap((figures) => figures.tokens) } };
 }

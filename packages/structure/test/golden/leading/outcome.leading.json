@@ -68,19 +68,19 @@
   },
   "hiddenCreated": [],
   "inputs": {
-    "at": "52d1ebad5d2565257618b98714df9c58aba0f81d",
+    "at": "7aa69430cdae56102b6e49ff7020130122e20268",
     "level": "folder",
     "minRevisions": 3,
     "minStaticCoupling": 3,
     "minSupport": 3,
     "significanceLevel": 0.01,
     "target": "src/data->src/ui",
-    "transcriptStamp": "3ff2fab88902b310",
+    "transcriptStamp": "799df0d86e30626c",
     "transcripts": true
   },
   "repo": {
     "dirty": false,
-    "head": "06768b60d1db52417938de0dc809278ea10d712c"
+    "head": "3e9e8198eefe7cefff22c579ba82c0219b7e7087"
   },
   "results": [
     {
@@ -152,6 +152,62 @@
             "median": 100
           }
         },
+        "comparison": {
+          "after": {
+            "edits": {
+              "mean": 1,
+              "median": 1
+            },
+            "filesRead": {
+              "mean": 2,
+              "median": 2
+            },
+            "foldersVisited": {
+              "mean": 2,
+              "median": 2
+            },
+            "reReads": {
+              "mean": 0,
+              "median": 0
+            },
+            "tasks": 1,
+            "tokens": {
+              "mean": 100,
+              "median": 100
+            }
+          },
+          "before": {
+            "edits": {
+              "mean": 1,
+              "median": 1
+            },
+            "filesRead": {
+              "mean": 1,
+              "median": 1
+            },
+            "foldersVisited": {
+              "mean": 1,
+              "median": 1
+            },
+            "reReads": {
+              "mean": 0,
+              "median": 0
+            },
+            "tasks": 1,
+            "tokens": {
+              "mean": 100,
+              "median": 100
+            }
+          },
+          "pair": [
+            "src/misc",
+            "src/util"
+          ]
+        },
+        "difference": {
+          "filesRead": -3,
+          "tokens": 0
+        },
         "status": "measured"
       },
       "before": {
@@ -177,9 +233,9 @@
       },
       "break": {
         "date": "2024-03-01T09:00:00.000Z",
-        "parent": "ff11d43db2834c70e27524c414f8c6d01659becc",
-        "rev": "52d1ebad5d2565257618b98714df9c58aba0f81d",
-        "sha": "52d1ebad5d2565257618b98714df9c58aba0f81d"
+        "parent": "db78fe7223c9c85af5c1f421dd619424cf0e8f08",
+        "rev": "7aa69430cdae56102b6e49ff7020130122e20268",
+        "sha": "7aa69430cdae56102b6e49ff7020130122e20268"
       },
       "from": "src/data",
       "id": "outcome:folder:src/data->src/ui",

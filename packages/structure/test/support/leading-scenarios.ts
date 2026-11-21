@@ -29,6 +29,9 @@ export function leadingRepository(): GitFixture {
     { op: "add", path: "code-health.json", content: JSON.stringify(leadingConfig) },
     { op: "add", path: "src/ui/view.ts", content: view(1) },
     { op: "add", path: "src/data/store.ts", content: store(1, false) },
+    // A pair left alone: statically coupled, never changed, never broken. The comparison group for agent effort.
+    { op: "add", path: "src/misc/x.ts", content: source(["x"], [{ from: "../util/y.ts", names: ["y"] }]) },
+    { op: "add", path: "src/util/y.ts", content: source(["y"]) },
   ]);
   let day = 0;
   const edit = (revision: number, broken: boolean, spacing: number, offset: number) => {
