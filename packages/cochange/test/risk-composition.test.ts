@@ -126,12 +126,12 @@ describe("evidence from complexity diff", () => {
 
 describe("evidence from structure check", () => {
   const check = (results: unknown[], base?: string) =>
-    evidenceFile("structure.json", { tool: "structure", command: "check", inputs: base ? { base: { rev: "main", sha: base } } : {}, results });
+    evidenceFile("structure.json", { tool: "structure", command: "check", inputs: base ? { base: "main", baseSha: base } : {}, results });
 
   test("new cycles and layer violations become structure-delta, an event that raises the impact band", async () => {
     const without = await risk("main..quiet");
     const base = repo.git("merge-base", "main", "quiet");
-    const file = check([{ kind: "cycle", id: "a<->b", new: true }, { kind: "layer-violation", id: "ui->db" }, { kind: "cycle", id: "old", new: false }], base);
+    const file = check([{ kind: "cycle", id: "cycle:file:a.ts" }, { kind: "layer-violation", id: "layer:ui.ts to db.ts" }], base);
     const result = await risk("main..quiet", "--evidence", file);
     const delta = factor(result, "structure-delta");
     expect(delta).toMatchObject({ status: "ok", layer: "structural", source: "structure check", value: { count: 2 } });
@@ -230,7 +230,7 @@ describe("locality's report", () => {
 });
 
 test("a branch with a structure check passed in, byte for byte", async () => {
-  const file = evidenceFile("structure.json", { tool: "structure", command: "check", inputs: {}, results: [{ kind: "cycle", id: "a-b", new: true }] });
+  const file = evidenceFile("structure.json", { tool: "structure", command: "check", inputs: {}, results: [{ kind: "cycle", id: "a-b" }] });
   const { stdout } = await runCochange(repo.path, ["risk", "main..nest", "--evidence", file]);
   expectGolden("composition", "risk.structure", stdout);
 });

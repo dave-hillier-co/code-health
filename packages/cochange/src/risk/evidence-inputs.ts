@@ -12,7 +12,9 @@ import { usageError } from "@code-health/cli-kit/errors";
  * - `complexity diff --json`, for the change's own base. A unit counts when it is over a threshold
  *   (a label ending in `-warn` or `-high`) and either new or worse (a positive cognitive delta).
  * - `structure check --json`: its results are the cycles and layer violations new since the base, each
- *   a row with a `kind` of `cycle` or `layer-violation`. A row marked `new: false` is not counted.
+ *   a row with a `kind` of `cycle` or `layer-violation` and an `id`. Every row counts, since the command
+ *   lists nothing else. It names its base as `inputs.baseSha` and its tip as `inputs.analysed`, where
+ *   `complexity diff` names `inputs.base.sha` and `inputs.head.sha`.
  */
 export interface ComplexityEvidence {
   stamp: EvidenceStamp;
@@ -42,7 +44,7 @@ export interface EvidenceInputs {
 interface Document {
   tool?: unknown;
   command?: unknown;
-  inputs?: { base?: { sha?: unknown }; head?: { sha?: unknown } | null };
+  inputs?: { base?: { sha?: unknown }; head?: { sha?: unknown } | null; baseSha?: unknown; analysed?: unknown };
   results?: unknown;
 }
 
@@ -93,7 +95,7 @@ export function readEvidence(root: string, files: readonly string[], change: { b
       structure = {
         stamp,
         findings: (document.results as Record<string, unknown>[])
-          .filter((row) => (row.kind === "cycle" || row.kind === "layer-violation") && row.new !== false)
+          .filter((row) => row.kind === "cycle" || row.kind === "layer-violation")
           .map((row) => ({ kind: String(row.kind), id: String(row.id ?? row.edge ?? row.path ?? "") })),
       };
     } else {
@@ -111,13 +113,13 @@ function numberAt(value: unknown, key: string): number | null {
 
 /** Evidence about another base or tip says nothing about this change. */
 function checkAgainst(file: string, document: Document, change: { base: string; head: string; worktree: boolean }): void {
-  const base = document.inputs?.base?.sha;
+  const base = document.inputs?.base?.sha ?? document.inputs?.baseSha;
   if (typeof base === "string" && base !== change.base) {
     throw usageError(`--evidence ${file}: made against ${base.slice(0, 10)}, but this change starts at ${change.base.slice(0, 10)}; run it for the same base`);
   }
-  const head = document.inputs?.head;
-  if (!change.worktree && head !== null && head !== undefined && typeof head.sha === "string" && head.sha !== change.head) {
-    throw usageError(`--evidence ${file}: made up to ${head.sha.slice(0, 10)}, but this change ends at ${change.head.slice(0, 10)}`);
+  const head = document.inputs?.head?.sha ?? document.inputs?.analysed;
+  if (!change.worktree && typeof head === "string" && head !== change.head) {
+    throw usageError(`--evidence ${file}: made up to ${head.slice(0, 10)}, but this change ends at ${change.head.slice(0, 10)}`);
   }
 }
 
