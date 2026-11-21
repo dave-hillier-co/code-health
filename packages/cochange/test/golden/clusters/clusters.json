@@ -1,0 +1,178 @@
+{
+  "command": "clusters",
+  "config": "18353697bd40d72e",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "importedHistory": [],
+    "logicalChangesInWindow": 43,
+    "thresholds": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 6.9,
+    "window": {
+      "months": 12,
+      "since": 1690707600,
+      "until": 1722330000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "clusterMinFolders": 3,
+    "magnet": {
+      "folders": 3,
+      "neighbourCoupling": 25
+    },
+    "minDegree": 30,
+    "minSupport": 5
+  },
+  "note": null,
+  "population": {
+    "eligibleChanges": 43,
+    "oversizedExcluded": 0
+  },
+  "repo": {
+    "dirty": false,
+    "head": "e936c81e333474ebb1818c3310aca9255ec712e7"
+  },
+  "results": [
+    {
+      "evidence": {
+        "clearsMinimum": true,
+        "pairs": 3,
+        "weakestSupport": 7
+      },
+      "files": [
+        "src/app/registry.ts",
+        "src/billing/plugin.ts",
+        "src/mail/plugin.ts",
+        "src/search/plugin.ts"
+      ],
+      "findings": [
+        "change-magnet",
+        "cluster"
+      ],
+      "folders": 4,
+      "magnets": [
+        "src/app/registry.ts"
+      ],
+      "meanDegree": 53.8,
+      "path": "src/app/registry.ts",
+      "score": 4.3,
+      "size": 4,
+      "spread": 2
+    },
+    {
+      "evidence": {
+        "clearsMinimum": true,
+        "pairs": 1,
+        "weakestSupport": 7
+      },
+      "files": [
+        "src/a/x.ts",
+        "src/b/y.ts"
+      ],
+      "findings": [],
+      "folders": 2,
+      "magnets": [],
+      "meanDegree": 100,
+      "path": "src/a/x.ts",
+      "score": 4,
+      "size": 2,
+      "spread": 2
+    },
+    {
+      "evidence": {
+        "clearsMinimum": true,
+        "pairs": 3,
+        "weakestSupport": 7
+      },
+      "files": [
+        "src/c/p.ts",
+        "src/c/q.ts",
+        "src/c/r.ts"
+      ],
+      "findings": [],
+      "folders": 1,
+      "magnets": [],
+      "meanDegree": 100,
+      "path": "src/c/p.ts",
+      "score": 0,
+      "size": 3,
+      "spread": 0
+    },
+    {
+      "evidence": {
+        "clearsMinimum": true,
+        "pairs": 1,
+        "weakestSupport": 7
+      },
+      "files": [
+        "src/ok/svc.test.ts",
+        "src/ok/svc.ts"
+      ],
+      "findings": [],
+      "folders": 1,
+      "magnets": [],
+      "meanDegree": 100,
+      "path": "src/ok/svc.test.ts",
+      "score": 0,
+      "size": 2,
+      "spread": 0
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 4
+  },
+  "window": {
+    "since": "2023-07-30T09:00:00.000Z",
+    "until": "2024-07-30T09:00:00.000Z"
+  }
+}
