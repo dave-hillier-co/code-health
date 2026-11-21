@@ -16,7 +16,7 @@ export const adapter: LanguageAdapter = {
   id: "rust",
   name: "Rust",
   tier: 2,
-  support: "experimental",
+  support: "supported",
   lexerProfile: "rust",
   grammars: [{ spec: { id: "rust", packageName: "tree-sitter-rust", file: "tree-sitter-rust.wasm" }, extensions: [".rs"] }],
   extractorVersion,

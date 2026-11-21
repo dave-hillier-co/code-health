@@ -228,7 +228,7 @@ Package discovery reads manifests, so it works in any language the suite has a m
 | Python | Distribution (`pyproject.toml`) | Leading-underscore modules and names; anything outside `__all__` | `Protocol` and `ABC` classes |
 | Java / Kotlin | Gradle or Maven module | Package-private and `internal`; non-exported packages in a module descriptor | Interfaces, abstract classes |
 | Go | Module (`go.mod`) | Unexported (lower-case) identifiers, and packages under `internal/` | Interfaces |
-| Rust | Crate | Anything not `pub` at the crate root | Traits |
+| Rust | Crate | Anything not `pub` at the crate root: a library's entries are its root and the modules reachable through `pub mod` | Traits |
 
 ## Configuration
 

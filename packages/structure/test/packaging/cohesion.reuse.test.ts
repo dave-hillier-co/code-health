@@ -1,3 +1,4 @@
+import { describeSupportedCode } from "@code-health/parse/languages";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "../support/golden.ts";
@@ -210,7 +211,7 @@ describe("where the structural layer cannot read", () => {
       const { document } = await packages(fixture, "cohesion");
       const unavailable = document.unavailable as { package: string; reason: string; findings: string[] }[];
       expect(unavailable.map((u) => u.package)).toContain("dotnet/Web");
-      expect(unavailable.find((u) => u.package === "dotnet/Web")!.reason).toContain("no TypeScript or JavaScript");
+      expect(unavailable.find((u) => u.package === "dotnet/Web")!.reason).toContain(`no ${describeSupportedCode()}`);
       expect(unavailable[0]!.findings).toContain("partial-use");
       expect(document.balance.find((b: any) => b.id === "dotnet/Web").reuse).toBeNull();
     } finally {
