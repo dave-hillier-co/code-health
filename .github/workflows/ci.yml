@@ -58,8 +58,7 @@ jobs:
         run: npm run check:schemas
 
       - name: Install the claude CLI
-        # Optional: the next step skips with a notice when this fails.
-        continue-on-error: true
+        # Required: the validation step fails in CI when the CLI is missing.
         run: npm install --global @anthropic-ai/claude-code
 
       - name: Validate the marketplace and plugins

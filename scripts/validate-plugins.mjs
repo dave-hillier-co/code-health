@@ -7,12 +7,17 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
  * Runs `claude plugin validate --strict` on the marketplace and on every plugin.
- * The claude CLI is not an npm dependency, so without it the check is skipped
- * with a notice rather than failed: CI installs it where it can.
+ * The claude CLI is not an npm dependency, so locally the check is skipped with
+ * a notice when it is missing. In CI (`CI` is set) a missing CLI fails the
+ * check, so the gate can never go green without having run.
  */
 function main() {
   const probe = spawnSync("claude", ["--version"], { encoding: "utf8" });
   if (probe.error || probe.status !== 0) {
+    if (process.env.CI) {
+      console.error("the claude CLI is not available, so `claude plugin validate --strict` could not run");
+      return 1;
+    }
     console.log("NOTICE: the claude CLI is not available, so `claude plugin validate --strict` was skipped");
     return 0;
   }
