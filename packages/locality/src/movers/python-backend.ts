@@ -119,13 +119,27 @@ class PythonMove {
       const visit = (node: Node): void => {
         if (node.type === "import_from_statement") this.fromImport(node, path, to, edits);
         else if (node.type === "import_statement") this.plainImport(node, path, to, edits, tree.rootNode);
-        else for (const child of node.namedChildren) visit(child);
+        else {
+          if (node.type === "call") this.dynamicImport(node, path, to);
+          for (const child of node.namedChildren) visit(child);
+        }
       };
       visit(tree.rootNode);
       return applyEdits(text, edits);
     } finally {
       tree.delete();
     }
+  }
+
+  /** `importlib.import_module("a.b")` names a module in a string, which no import statement shows: when it names a moved file, the agent is told. */
+  private dynamicImport(call: Node, from: string, to: string): void {
+    const callee = call.childForFieldName("function")?.text;
+    if (callee !== "importlib.import_module" && callee !== "import_module" && callee !== "__import__") return;
+    const first = call.childForFieldName("arguments")?.namedChildren[0];
+    if (first?.type !== "string" || first.namedChildren.some((child) => child.type === "interpolation")) return;
+    const spec = first.namedChildren.filter((child) => child.type === "string_content").map((child) => child.text).join("");
+    const found = this.before.resolve(from, spec);
+    if (found.kind === "file" && this.newPath(found.path) !== found.path) this.warnings.push(`${to}:${call.startPosition.row + 1} "${spec}" is imported dynamically and names a moved module: update it by hand`);
   }
 
   private record(path: string, node: Node, from: string, to: string): void {

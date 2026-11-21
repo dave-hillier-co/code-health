@@ -20,9 +20,26 @@ root = sys.argv[1]
 operations = json.loads(sys.stdin.read())
 project = Project(root, ropefolder=None)
 try:
+    packages = []
     for operation in operations:
         source, destination = operation["from"], operation["to"]
+        if any(source.startswith(package + "/") for package in packages):
+            continue
         directory, name = os.path.split(destination)
+        if name == "__init__.py":
+            # the package moves as a folder, and takes the files that move with it
+            was, now = os.path.dirname(source), directory
+            packages.append(was)
+            folder = project.get_resource(was)
+            if os.path.basename(was) != os.path.basename(now):
+                project.do(Rename(project, folder).get_changes(os.path.basename(now)))
+                was = os.path.join(os.path.dirname(was), os.path.basename(now))
+                folder = project.get_resource(was)
+            parent = os.path.dirname(now)
+            if os.path.dirname(was) != parent:
+                os.makedirs(os.path.join(root, parent), exist_ok=True)
+                project.do(MoveModule(project, folder).get_changes(project.get_resource(parent) if parent else project.root))
+            continue
         stem = os.path.splitext(name)[0]
         resource = project.get_resource(source)
         if os.path.splitext(os.path.basename(source))[0] != stem:

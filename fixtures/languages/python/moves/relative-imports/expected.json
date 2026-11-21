@@ -1,0 +1,27 @@
+{
+  "operations": [
+    {
+      "from": "shop/tax.py",
+      "to": "shop/rates/tax.py"
+    }
+  ],
+  "rewrites": [
+    {
+      "path": "shop/price.py",
+      "line": 1,
+      "from": ".tax",
+      "to": ".rates.tax"
+    },
+    {
+      "path": "shop/rates/tax.py",
+      "line": 1,
+      "from": ".",
+      "to": ".."
+    }
+  ],
+  "texts": {
+    "shop/price.py": "from .rates.tax import tax\n\n\ndef price(value):\n    return value + tax(value)\n",
+    "shop/rates/tax.py": "from .. import rounding\n\n\ndef tax(value):\n    return rounding.up(value * 0.2)\n"
+  },
+  "warnings": []
+}
