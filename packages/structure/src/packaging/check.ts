@@ -6,7 +6,7 @@ import type { FilteredHistory } from "@code-health/history/noise";
 import type { StructureSettings } from "../config.ts";
 import { loadProject } from "../project.ts";
 import { deepImports, manifestChecks } from "./boundaries.ts";
-import { couplingFindings } from "./coupling.ts";
+import { packageCycles } from "./coupling.ts";
 import { discoverPackages } from "./discovery.ts";
 import { findingContext } from "./findings.ts";
 import { assemblePackageModel, type PackageModel } from "./model.ts";
@@ -30,7 +30,7 @@ export async function violationsAt(root: string, sha: string, settings: Structur
   const context = findingContext(built);
   const reuse = await analyseReuse(built);
   const violations: Violation[] = [];
-  for (const finding of couplingFindings(context).filter((f) => f.kind === "package-cycle")) {
+  for (const finding of packageCycles(context)) {
     violations.push({ kind: "package-cycle", key: `cycle:${[...finding.packages].sort().join(",")}`, packages: finding.packages, detail: finding.summary });
   }
   for (const finding of deepImports(context, reuse)) {

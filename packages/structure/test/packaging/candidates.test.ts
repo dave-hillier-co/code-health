@@ -187,6 +187,13 @@ describe("narrow-interface, fix-manifest and break-dependency", () => {
   });
 });
 
+test("a package in the zone of pain gives a dependency to break for each package that depends on it", async () => {
+  const { byId } = await candidates(workspace);
+  const ids = ["packages/api", "packages/app", "packages/orphan", "packages/ui"].map((from) => `break-dependency:${from}->packages/shared`);
+  for (const id of ids) expect(byId(id)!.findings).toContain("zone-of-pain:packages/shared");
+  expect(byId(ids[0]!)!.handoff).toBe('structure evidence "packages/api->packages/shared" --level package');
+});
+
 describe("ranking", () => {
   test("candidates are ranked by the change cost they address, with blocked ones last", async () => {
     const { rows } = await candidates(workspace);

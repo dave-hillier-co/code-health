@@ -1,11 +1,6 @@
 import { usageError } from "@code-health/cli-kit/errors";
+import { analysePackages } from "../analysis.ts";
 import { balances } from "../balance.ts";
-import { closureFindings } from "../closure.ts";
-import { externalNeeds } from "../externals.ts";
-import { findingContext, rankFindings } from "../findings.ts";
-import { releaseFindings } from "../release.ts";
-import { analyseReuse } from "../reuse.ts";
-import { reuseFindings } from "../reuse-findings.ts";
 import type { Subcommand } from "../subcommand.ts";
 
 export const cohesion: Subcommand = {
@@ -13,13 +8,7 @@ export const cohesion: Subcommand = {
   async analyse({ context: command, model, args }) {
     const [only] = args;
     if (only !== undefined && !model.byId.has(only)) throw usageError(`"${only}" is not a package of the analysed commit; run \`packages list\` for the ids`);
-    const context = findingContext(model);
-    const reuse = await analyseReuse(model);
-    const all = rankFindings([
-      ...closureFindings(context),
-      ...reuseFindings(context, reuse, externalNeeds(model)),
-      ...(await releaseFindings(context, reuse, command.repo.root)),
-    ]);
+    const { cohesion: all, reuse } = await analysePackages(model, command.repo.root);
     const rows = await balances(model, all, reuse, command.repo.root);
     const wanted = (ids: readonly string[]) => only === undefined || ids.includes(only);
     return {

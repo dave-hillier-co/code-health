@@ -72,7 +72,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "ddea495c3d30d1029ace8a99c9eb3255a4782829"
+    "head": "d3939fbaccd21c7ccf9d72fb86bbfa9eaad7e7de"
   },
   "results": {
     "balance": {
@@ -435,31 +435,36 @@
           "exportedAs": [
             "diff"
           ],
-          "key": "packages/lib/src/diff.ts#diff"
+          "key": "packages/lib/src/diff.ts#diff",
+          "kind": "function"
         },
         {
           "exportedAs": [
             "parse"
           ],
-          "key": "packages/lib/src/parse.ts#parse"
+          "key": "packages/lib/src/parse.ts#parse",
+          "kind": "function"
         },
         {
           "exportedAs": [
             "render"
           ],
-          "key": "packages/lib/src/render.ts#render"
+          "key": "packages/lib/src/render.ts#render",
+          "kind": "function"
         },
         {
           "exportedAs": [
             "serialize"
           ],
-          "key": "packages/lib/src/serialize.ts#serialize"
+          "key": "packages/lib/src/serialize.ts#serialize",
+          "kind": "function"
         },
         {
           "exportedAs": [
             "validate"
           ],
-          "key": "packages/lib/src/validate.ts#validate"
+          "key": "packages/lib/src/validate.ts#validate",
+          "kind": "function"
         }
       ],
       "unused": [
@@ -471,6 +476,7 @@
     },
     "row": {
       "abstractness": null,
+      "abstractnessWeak": false,
       "ca": 3,
       "ce": 0,
       "closure": 0.5,
@@ -484,6 +490,7 @@
       "distance": null,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": null,
       "files": 8,
       "firstSeen": "2023-06-02",
       "id": "packages/lib",

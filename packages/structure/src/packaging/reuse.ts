@@ -1,4 +1,5 @@
 import { compareIds } from "@code-health/graph/graph";
+import type { DeclarationKind } from "@code-health/parse/facts";
 import { edgeKey } from "../project.ts";
 import { round3 } from "../stability.ts";
 import { readEntries, type PackageEntries } from "./entries.ts";
@@ -12,6 +13,8 @@ export interface SurfaceElement {
   name: string;
   /** Qualified name of the defining function or class, when it is one. */
   symbol: string | null;
+  /** What it is declared as: an interface, an abstract class, a function, and so on. */
+  kind: DeclarationKind | null;
   /** The names the package's entry files export it under. */
   exportedAs: string[];
 }
@@ -99,7 +102,7 @@ export async function analyseReuse(model: PackageModel): Promise<ReuseAnalysis> 
     if (owner === undefined || !entries.get(owner)?.files.has(exported.file)) continue;
     const key = `${exported.defined.file}#${exported.defined.name}`;
     const surface = surfaces.get(owner)!;
-    const element = surface.get(key) ?? { key, file: exported.defined.file, name: exported.defined.name, symbol: exported.defined.symbol ?? null, exportedAs: [] };
+    const element = surface.get(key) ?? { key, file: exported.defined.file, name: exported.defined.name, symbol: exported.defined.symbol ?? null, kind: exported.defined.kind ?? null, exportedAs: [] };
     if (!element.exportedAs.includes(exported.name)) element.exportedAs.push(exported.name);
     surface.set(key, element);
   }

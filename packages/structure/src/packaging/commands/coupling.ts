@@ -1,11 +1,12 @@
 import { couplingFindings } from "../coupling.ts";
 import { findingContext, rankFindings } from "../findings.ts";
+import { analyseReuse } from "../reuse.ts";
 import type { Subcommand } from "../subcommand.ts";
 
 export const coupling: Subcommand = {
   summary: "Package cycles, dependencies against stability, and the zones of pain and uselessness",
-  analyse({ model }) {
-    const found = rankFindings(couplingFindings(findingContext(model)));
+  async analyse({ model }) {
+    const found = rankFindings(couplingFindings(findingContext(model), await analyseReuse(model)));
     return {
       inputs: {
         subcommand: "coupling",

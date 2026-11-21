@@ -72,7 +72,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "ddea495c3d30d1029ace8a99c9eb3255a4782829"
+    "head": "d3939fbaccd21c7ccf9d72fb86bbfa9eaad7e7de"
   },
   "results": [
     {
@@ -93,6 +93,93 @@
       "parts": null,
       "status": "proposed",
       "step": 2,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 13.458,
+      "findings": [
+        "against-stability:packages/api->packages/shared",
+        "zone-of-pain:packages/shared"
+      ],
+      "handoff": "structure evidence \"packages/api->packages/shared\" --level package",
+      "id": "break-dependency:packages/api->packages/shared",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/api",
+        "packages/shared"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 13.458,
+      "findings": [
+        "zone-of-pain:packages/shared"
+      ],
+      "handoff": "structure evidence \"packages/app->packages/shared\" --level package",
+      "id": "break-dependency:packages/app->packages/shared",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/app",
+        "packages/shared"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 13.458,
+      "findings": [
+        "against-stability:packages/orphan->packages/shared",
+        "zone-of-pain:packages/shared"
+      ],
+      "handoff": "structure evidence \"packages/orphan->packages/shared\" --level package",
+      "id": "break-dependency:packages/orphan->packages/shared",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/orphan",
+        "packages/shared"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 13.458,
+      "findings": [
+        "against-stability:packages/ui->packages/shared",
+        "zone-of-pain:packages/shared"
+      ],
+      "handoff": "structure evidence \"packages/ui->packages/shared\" --level package",
+      "id": "break-dependency:packages/ui->packages/shared",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/ui",
+        "packages/shared"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
       "tentative": false,
       "unit": null
     },
@@ -356,48 +443,6 @@
       "also": [],
       "changeCost": 0,
       "findings": [
-        "against-stability:packages/api->packages/shared"
-      ],
-      "handoff": "structure evidence \"packages/api->packages/shared\" --level package",
-      "id": "break-dependency:packages/api->packages/shared",
-      "into": null,
-      "kind": "break-dependency",
-      "packages": [
-        "packages/api",
-        "packages/shared"
-      ],
-      "parts": null,
-      "status": "proposed",
-      "step": 3,
-      "tentative": false,
-      "unit": null
-    },
-    {
-      "against": [],
-      "also": [],
-      "changeCost": 0,
-      "findings": [
-        "against-stability:packages/orphan->packages/shared"
-      ],
-      "handoff": "structure evidence \"packages/orphan->packages/shared\" --level package",
-      "id": "break-dependency:packages/orphan->packages/shared",
-      "into": null,
-      "kind": "break-dependency",
-      "packages": [
-        "packages/orphan",
-        "packages/shared"
-      ],
-      "parts": null,
-      "status": "proposed",
-      "step": 3,
-      "tentative": false,
-      "unit": null
-    },
-    {
-      "against": [],
-      "also": [],
-      "changeCost": 0,
-      "findings": [
         "against-stability:packages/testkit->packages/lib"
       ],
       "handoff": "structure evidence \"packages/testkit->packages/lib\" --level package",
@@ -407,27 +452,6 @@
       "packages": [
         "packages/testkit",
         "packages/lib"
-      ],
-      "parts": null,
-      "status": "proposed",
-      "step": 3,
-      "tentative": false,
-      "unit": null
-    },
-    {
-      "against": [],
-      "also": [],
-      "changeCost": 0,
-      "findings": [
-        "against-stability:packages/ui->packages/shared"
-      ],
-      "handoff": "structure evidence \"packages/ui->packages/shared\" --level package",
-      "id": "break-dependency:packages/ui->packages/shared",
-      "into": null,
-      "kind": "break-dependency",
-      "packages": [
-        "packages/ui",
-        "packages/shared"
       ],
       "parts": null,
       "status": "proposed",
@@ -599,7 +623,7 @@
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 23
+    "total": 24
   },
   "window": {
     "since": "2023-06-20T09:00:00.000Z",

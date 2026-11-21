@@ -81,7 +81,8 @@
       "changeCost": 9.516,
       "findings": [
         "deep-import:packages/edge->packages/core",
-        "overexposed:packages/core"
+        "overexposed:packages/core",
+        "volatile-interface:packages/core"
       ],
       "handoff": null,
       "id": "narrow-interface:packages/core",
@@ -158,6 +159,66 @@
       "step": 2,
       "tentative": false,
       "unit": "packages/lib3/src/q.ts"
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 5.705,
+      "findings": [
+        "volatile-interface:packages/lib2"
+      ],
+      "handoff": null,
+      "id": "narrow-interface:packages/lib2",
+      "into": null,
+      "kind": "narrow-interface",
+      "packages": [
+        "packages/lib2"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 5.705,
+      "findings": [
+        "volatile-interface:packages/lib3"
+      ],
+      "handoff": null,
+      "id": "narrow-interface:packages/lib3",
+      "into": null,
+      "kind": "narrow-interface",
+      "packages": [
+        "packages/lib3"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "findings": [
+        "volatile-interface:packages/big"
+      ],
+      "handoff": null,
+      "id": "narrow-interface:packages/big",
+      "into": null,
+      "kind": "narrow-interface",
+      "packages": [
+        "packages/big"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
     },
     {
       "against": [],
@@ -355,7 +416,7 @@
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 10
+    "total": 13
   },
   "window": {
     "since": "2023-03-20T09:00:00.000Z",

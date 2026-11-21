@@ -72,7 +72,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "ddea495c3d30d1029ace8a99c9eb3255a4782829"
+    "head": "d3939fbaccd21c7ccf9d72fb86bbfa9eaad7e7de"
   },
   "repository": {
     "ecosystems": {
@@ -83,7 +83,8 @@
   },
   "results": [
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 1,
       "ce": 2,
       "closure": 0.2,
@@ -95,9 +96,10 @@
         "packages/helper",
         "packages/shared"
       ],
-      "distance": null,
+      "distance": 0.333,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 4,
       "firstSeen": "2023-06-06",
       "id": "packages/api",
@@ -111,7 +113,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 0,
       "ce": 7,
       "closure": 0.13,
@@ -126,9 +129,10 @@
         "packages/wrap",
         "packages/young"
       ],
-      "distance": null,
+      "distance": 0,
       "ecosystem": "npm",
       "entry": true,
+      "exportedTypes": 0,
       "files": 5,
       "firstSeen": "2023-06-12",
       "id": "packages/app",
@@ -142,7 +146,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 1,
       "ce": 0,
       "closure": 0.231,
@@ -151,9 +156,10 @@
       ],
       "crossing": 10,
       "dependencies": [],
-      "distance": null,
+      "distance": 1,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 6,
       "firstSeen": "2023-06-04",
       "id": "packages/helper",
@@ -167,7 +173,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 3,
       "ce": 0,
       "closure": 0.5,
@@ -178,9 +185,10 @@
       ],
       "crossing": 3,
       "dependencies": [],
-      "distance": null,
+      "distance": 1,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 8,
       "firstSeen": "2023-06-02",
       "id": "packages/lib",
@@ -194,7 +202,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 1,
       "ce": 0,
       "closure": 0,
@@ -203,9 +212,10 @@
       ],
       "crossing": 3,
       "dependencies": [],
-      "distance": null,
+      "distance": 1,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 3,
       "firstSeen": "2023-06-03",
       "id": "packages/lib-extra",
@@ -219,7 +229,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 1,
+      "abstractnessWeak": true,
       "ca": 1,
       "ce": 1,
       "closure": 0.167,
@@ -228,9 +239,10 @@
       "dependencies": [
         "packages/shared"
       ],
-      "distance": null,
+      "distance": 0.5,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 2,
       "files": 4,
       "firstSeen": "2023-06-08",
       "id": "packages/orphan",
@@ -244,7 +256,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 2,
       "ce": 1,
       "closure": 0,
@@ -256,9 +269,10 @@
       "dependencies": [
         "packages/p2"
       ],
-      "distance": null,
+      "distance": 0.667,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 4,
       "firstSeen": "2023-06-09",
       "id": "packages/p1",
@@ -272,7 +286,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 1,
       "ce": 1,
       "closure": 0,
@@ -283,9 +298,10 @@
       "dependencies": [
         "packages/p1"
       ],
-      "distance": null,
+      "distance": 0.5,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 4,
       "firstSeen": "2023-06-10",
       "id": "packages/p2",
@@ -299,7 +315,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 4,
       "ce": 0,
       "closure": 0.648,
@@ -311,9 +328,10 @@
       ],
       "crossing": 19,
       "dependencies": [],
-      "distance": null,
+      "distance": 1,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 7,
       "firstSeen": "2023-06-01",
       "id": "packages/shared",
@@ -327,7 +345,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 0,
       "ce": 1,
       "closure": 1,
@@ -336,9 +355,10 @@
       "dependencies": [
         "packages/lib"
       ],
-      "distance": null,
+      "distance": 0,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 4,
       "firstSeen": "2023-06-11",
       "id": "packages/testkit",
@@ -352,7 +372,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 2,
       "ce": 4,
       "closure": 0.2,
@@ -366,9 +387,10 @@
         "packages/orphan",
         "packages/shared"
       ],
-      "distance": null,
+      "distance": 0.333,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 4,
       "firstSeen": "2023-06-05",
       "id": "packages/ui",
@@ -382,7 +404,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 1,
       "ce": 1,
       "closure": 1,
@@ -393,9 +416,10 @@
       "dependencies": [
         "packages/ui"
       ],
-      "distance": null,
+      "distance": 0.5,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 3,
       "firstSeen": "2023-06-07",
       "id": "packages/wrap",
@@ -409,7 +433,8 @@
       "young": false
     },
     {
-      "abstractness": null,
+      "abstractness": 0,
+      "abstractnessWeak": true,
       "ca": 1,
       "ce": 0,
       "closure": 0,
@@ -418,9 +443,10 @@
       ],
       "crossing": 1,
       "dependencies": [],
-      "distance": null,
+      "distance": 1,
       "ecosystem": "npm",
       "entry": false,
+      "exportedTypes": 0,
       "files": 3,
       "firstSeen": "2024-05-20",
       "id": "packages/young",

@@ -212,11 +212,11 @@
         "young": false
       },
       "reuse": {
-        "components": 1,
+        "components": 3,
         "consumers": 0,
         "medianShare": null,
-        "surface": 1,
-        "unused": 1
+        "surface": 3,
+        "unused": 3
       }
     },
     {
@@ -540,7 +540,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "ddea495c3d30d1029ace8a99c9eb3255a4782829"
+    "head": "d3939fbaccd21c7ccf9d72fb86bbfa9eaad7e7de"
   },
   "results": [
     {

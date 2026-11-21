@@ -32,7 +32,7 @@ export interface ReuseEvidence {
   entries: string[];
   wildcardExports: boolean;
   hasExportsMap: boolean;
-  surface: { key: string; exportedAs: string[] }[];
+  surface: { key: string; kind: string | null; exportedAs: string[] }[];
   consumers: { package: string; used: string[]; share: number }[];
   components: { exports: string[]; consumers: string[] }[];
   unused: string[];
@@ -74,7 +74,7 @@ const reuseEvidence = (profile: ReuseProfile): ReuseEvidence => ({
   entries: [...profile.entries.files],
   wildcardExports: profile.entries.wildcard,
   hasExportsMap: profile.entries.hasExportsMap,
-  surface: profile.surface.map((e) => ({ key: e.key, exportedAs: e.exportedAs })),
+  surface: profile.surface.map((e) => ({ key: e.key, kind: e.kind, exportedAs: e.exportedAs })),
   consumers: profile.consumers.map((c) => ({ ...c })),
   components: profile.components.map((c) => ({ ...c })),
   unused: profile.unused,

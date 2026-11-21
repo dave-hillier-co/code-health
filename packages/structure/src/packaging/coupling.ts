@@ -3,7 +3,10 @@ import { stronglyConnectedComponents } from "@code-health/graph/scc";
 import { findCycles } from "../cycles.ts";
 import { findUnstableDependencies } from "../unstable.ts";
 import { edgeKey } from "../project.ts";
-import { raise, type Finding, type FindingContext } from "./findings.ts";
+import { round3 } from "../stability.ts";
+import { measureAbstractness, type Abstractness } from "./abstractness.ts";
+import { percent, raise, type Finding, type FindingContext } from "./findings.ts";
+import type { ReuseAnalysis } from "./reuse.ts";
 
 const edgeList = (edges: readonly { from: string; to: string }[]): string[] => edges.map((e) => `${e.from}->${e.to}`);
 
@@ -119,7 +122,92 @@ export function againstStability(context: FindingContext): Finding[] {
   );
 }
 
-/** The package cycles, stability against change, and (once abstractness is known) the zones. */
-export function couplingFindings(context: FindingContext): Finding[] {
-  return [...packageCycles(context), ...hiddenCycles(context), ...againstStability(context)];
+const medianRevisions = (context: FindingContext): number => {
+  const revisions = context.model.packages.map((p) => context.model.activity.revisions(p.id)).sort((a, b) => a - b);
+  return revisions[Math.floor((revisions.length - 1) / 2)] ?? 0;
+};
+
+/**
+ * The zone of pain, concrete and stable and widely depended on, and the zone of uselessness, abstract and
+ * unused. A stable concrete package that rarely changes is healthy, so the zone of pain also needs frequent
+ * change. Where `A` is weak the finding says so and the change evidence carries it.
+ */
+export function zones(context: FindingContext, abstractness: ReadonlyMap<string, Abstractness>): Finding[] {
+  const { model } = context;
+  const { zoneDistance } = model.settings.packages;
+  const median = medianRevisions(context);
+  const findings: Finding[] = [];
+  for (const pkg of model.packages) {
+    const measured = abstractness.get(pkg.id);
+    const stability = model.model.structural.get(pkg.id);
+    if (!measured || !stability || stability.instability === null) continue;
+    const a = measured.value;
+    const i = stability.instability;
+    const revisions = model.activity.revisions(pkg.id);
+    const evidence = {
+      abstractness: a,
+      instability: i,
+      distance: round3(Math.abs(a + i - 1)),
+      ca: stability.ca,
+      ce: stability.ce,
+      revisions,
+      medianRevisions: median,
+      exportedTypes: measured.exportedTypes,
+      abstractnessWeak: measured.weak,
+    };
+    if (a + i <= 1 - zoneDistance && stability.ca >= 2 && revisions > median && revisions >= model.settings.minRevisions) {
+      findings.push(
+        raise(context, "zone-of-pain", "SAP", [pkg.id],
+          `${pkg.id} is concrete (A ${a}) and stable (I ${i}), ${stability.ca} packages depend on it, and it changed in ${revisions} changes: every change ripples${measured.weak ? "; A is weak here, so the change evidence carries this" : ""}`,
+          evidence,
+          { changeCost: context.cost.package(pkg.id) }),
+      );
+    }
+    if (a + i >= 1 + zoneDistance && measured.exportedTypes >= 1 && stability.ca <= 1) {
+      findings.push(
+        raise(context, "zone-of-uselessness", "SAP", [pkg.id],
+          `${pkg.id} is abstract (A ${a}) and has ${stability.ca === 0 ? "no dependents" : "one dependent"} (I ${i}): abstractions written for consumers that never arrived`,
+          evidence,
+          { changeCost: 0 }),
+      );
+    }
+  }
+  return findings;
+}
+
+/**
+ * The exported surface changes in a large share of a package's revisions. Surface changes are read as changes to
+ * the files that define what the package exports, which counts a change inside an exported function too.
+ */
+export function volatileInterfaces(context: FindingContext, reuse: ReuseAnalysis): Finding[] {
+  const { model } = context;
+  const { volatileInterfaceShare } = model.settings.packages;
+  const findings: Finding[] = [];
+  for (const [id, profile] of reuse.profiles) {
+    if (profile.consumers.length === 0 || profile.surface.length === 0) continue;
+    const defining = new Set(profile.surface.map((e) => e.file));
+    const touching = model.changes.filter((c) => c.touched.includes(id));
+    if (touching.length < model.settings.minRevisions) continue;
+    const onSurface = touching.filter((c) => c.files.some((f) => f.package === id && defining.has(f.path))).length;
+    const share = onSurface / touching.length;
+    if (share < volatileInterfaceShare) continue;
+    findings.push(
+      raise(context, "volatile-interface", "SDP", [id],
+        `the files that define what ${id} exports changed in ${onSurface} of its ${touching.length} changes (${percent(share)}), with ${profile.consumers.length} consumer${profile.consumers.length === 1 ? "" : "s"} depending on them`,
+        { surfaceChanges: onSurface, revisions: touching.length, share: round3(share), consumers: profile.consumers.length, surfaceFiles: [...defining].sort(compareIds).slice(0, 10) },
+        { changeCost: context.cost.package(id) }),
+    );
+  }
+  return findings;
+}
+
+/** The package cycles, stability against change, the zones, and the volatile interfaces. */
+export function couplingFindings(context: FindingContext, reuse: ReuseAnalysis): Finding[] {
+  return [
+    ...packageCycles(context),
+    ...hiddenCycles(context),
+    ...againstStability(context),
+    ...zones(context, measureAbstractness(reuse)),
+    ...volatileInterfaces(context, reuse),
+  ];
 }

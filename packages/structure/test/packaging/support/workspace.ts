@@ -49,6 +49,8 @@ const reexports = (names: string[]): string => `${names.map((n) => `export { ${n
  *   outside packages that the others do not. It declares a fourth outside package it never imports.
  * - `lib-extra` is published and versioned beside `lib`: both change version in the same three commits.
  * - `helper` has one consumer, `api`, which also reaches into its internals: helper names only a `main`.
+ *   Some of its changes are to the file that defines what it exports.
+ * - `orphan` exports an interface and an abstract class, and nothing depends on it.
  * - `wrap` only re-exports `ui`.
  * - `p1` and `p2` import each other.
  * - `orphan` has no consumer and uses `shared` without declaring it.
@@ -137,7 +139,10 @@ export const workspace: PackageSpec[] = [
   },
   {
     name: "orphan",
-    files: { "index.ts": fn("orphan", [["@acme/shared", "newId"]]), "work.ts": fn("orphanWork") },
+    files: {
+      "index.ts": `${fn("orphan", [["@acme/shared", "newId"]])}export interface Contract { id: string }\nexport abstract class Base { abstract run(): void }\n`,
+      "work.ts": fn("orphanWork"),
+    },
   },
   {
     name: "p1",
@@ -189,7 +194,7 @@ function plan(): string[][] {
     [14, ["app", "shared"]],
     [35, ["shared"]],
     [2, ["app"]],
-    [3, ["helper"]],
+    [3, ["helper:index:help"]],
     [3, ["lib"]],
     [3, ["lib@version", "lib-extra@version"]],
     [4, ["p1", "p2"]],
@@ -245,11 +250,11 @@ export function workspaceRepository(): GitFixture {
         changes.push(modify(`packages/${pkg}/package.json`, manifest({ ...spec, version: `${spec.version!.split(".")[0]}.0.${next}` })));
         continue;
       }
-      const [pkg, file] = target.split(":") as [string, string | undefined];
+      const [pkg, file, exported] = target.split(":") as [string, string | undefined, string | undefined];
       const path = `packages/${pkg}/src/${file ?? "work"}.ts`;
       const next = (revision.get(path) ?? 1) + 1;
       revision.set(path, next);
-      changes.push(modify(path, fn(`${pkg}${file ?? "Work"}`, [], next)));
+      changes.push(modify(path, fn(exported ?? `${pkg}${file ?? "Work"}`, [], next)));
     }
     steps.push(commit(`Change ${touch.join(" and ")} (${i + 1})`, isoDay("2023-07-01T09:00:00Z", i * 3), changes, authors[i % authors.length]));
   });

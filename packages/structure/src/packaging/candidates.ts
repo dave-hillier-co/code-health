@@ -372,6 +372,14 @@ export function buildCandidates(model: PackageModel, analysis: PackageAnalysis):
       const [from, to] = finding.packages as [string, string];
       add({ id: `break-dependency:${from}->${to}`, kind: "break-dependency", packages: [from, to], into: null, unit: null, parts: null, findings: [finding.id], against: [], changeCost: finding.changeCost, handoff: `structure evidence "${from}->${to}" --level package` });
     }
+    if (finding.kind === "zone-of-pain") {
+      // the dependants are what ripples: each dependency on it is one to break or invert
+      const id = finding.packages[0]!;
+      for (const [from, targets] of model.model.graph.graph) {
+        if (!targets.includes(id)) continue;
+        add({ id: `break-dependency:${from}->${id}`, kind: "break-dependency", packages: [from, id], into: null, unit: null, parts: null, findings: [finding.id], against: [], changeCost: finding.changeCost, handoff: `structure evidence "${from}->${id}" --level package` });
+      }
+    }
     if (finding.kind === "package-cycle") {
       for (const edge of finding.evidence.breakingSet as string[]) {
         const [from, to] = edge.split("->") as [string, string];

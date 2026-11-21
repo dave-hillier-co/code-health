@@ -1,4 +1,5 @@
 import { compareIds } from "@code-health/graph/graph";
+import type { Abstractness } from "./abstractness.ts";
 import { measureClosure } from "./closure.ts";
 import { consumerPackages, isPublished, isYoung, purposeOf, type PackageModel } from "./model.ts";
 import type { Purpose } from "./settings.ts";
@@ -23,6 +24,10 @@ export interface PackageRow {
   instability: number | null;
   /** Share of exported types that are abstract. Null where the structural layer has no adapter. */
   abstractness: number | null;
+  /** Exported interfaces, abstract classes, classes and enums, which `abstractness` is the share of. Null where it is. */
+  exportedTypes: number | null;
+  /** Too few exported types for `abstractness` to say much, so its distance carries a caveat and change evidence carries the judgement. */
+  abstractnessWeak: boolean;
   /** `|A + I - 1|`. Null when `A` or `I` is. */
   distance: number | null;
   /** Share of its changes that touched no other package. Null with no changes in the window. */
@@ -39,14 +44,15 @@ export interface PackageRow {
   young: boolean;
 }
 
-export function packageRows(model: PackageModel, abstractness: ReadonlyMap<string, number | null> = new Map()): PackageRow[] {
+export function packageRows(model: PackageModel, abstractness: ReadonlyMap<string, Abstractness> = new Map()): PackageRow[] {
   const closure = measureClosure(model);
   return model.packages
     .map((pkg): PackageRow => {
       const structural = model.model.structural.get(pkg.id)!;
       const figures = closure.get(pkg.id)!;
       const first = model.firstSeen.get(pkg.id);
-      const a = abstractness.get(pkg.id) ?? null;
+      const measured = abstractness.get(pkg.id);
+      const a = measured?.value ?? null;
       return {
         id: pkg.id,
         name: pkg.name,
@@ -62,6 +68,8 @@ export function packageRows(model: PackageModel, abstractness: ReadonlyMap<strin
         ce: structural.ce,
         instability: structural.instability,
         abstractness: a,
+        exportedTypes: measured?.exportedTypes ?? null,
+        abstractnessWeak: measured?.weak ?? false,
         distance: a === null || structural.instability === null ? null : Math.round(Math.abs(a + structural.instability - 1) * 1000) / 1000,
         closure: figures.closure,
         share: figures.share,

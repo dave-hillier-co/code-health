@@ -632,6 +632,12 @@
                       "key": {
                         "type": "string"
                       },
+                      "kind": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "exportedAs": {
                         "type": "array",
                         "items": {
@@ -641,6 +647,7 @@
                     },
                     "required": [
                       "key",
+                      "kind",
                       "exportedAs"
                     ],
                     "additionalProperties": false
@@ -1529,6 +1536,19 @@
           "minimum": 0,
           "maximum": 1
         },
+        "exportedTypes": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/count"
+            }
+          ]
+        },
+        "abstractnessWeak": {
+          "type": "boolean"
+        },
         "distance": {
           "type": [
             "number",
@@ -1582,6 +1602,8 @@
         "ce",
         "instability",
         "abstractness",
+        "exportedTypes",
+        "abstractnessWeak",
         "distance",
         "closure",
         "share",

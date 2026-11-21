@@ -27,7 +27,7 @@ export async function analysePackages(model: PackageModel, root: string): Promis
     ...reuseFindings(context, reuse, externalNeeds(model)),
     ...(await releaseFindings(context, reuse, root)),
   ]);
-  const coupling = rankFindings(couplingFindings(context));
+  const coupling = rankFindings(couplingFindings(context, reuse));
   const boundaries = rankFindings(await boundaryFindings(context, reuse));
   return { context, reuse, cohesion, coupling, boundaries, all: rankFindings([...cohesion, ...coupling, ...boundaries]) };
 }

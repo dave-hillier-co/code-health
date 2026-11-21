@@ -74,9 +74,33 @@
   },
   "repo": {
     "dirty": false,
-    "head": "ddea495c3d30d1029ace8a99c9eb3255a4782829"
+    "head": "d3939fbaccd21c7ccf9d72fb86bbfa9eaad7e7de"
   },
   "results": [
+    {
+      "changeCost": 13.458,
+      "evidence": {
+        "abstractness": 0,
+        "abstractnessWeak": true,
+        "ca": 4,
+        "ce": 0,
+        "distance": 1,
+        "exportedTypes": 0,
+        "instability": 0,
+        "medianRevisions": 6,
+        "revisions": 54
+      },
+      "id": "zone-of-pain:packages/shared",
+      "kind": "zone-of-pain",
+      "packages": [
+        "packages/shared"
+      ],
+      "principle": "SAP",
+      "priority": "normal",
+      "summary": "packages/shared is concrete (A 0) and stable (I 0), 4 packages depend on it, and it changed in 54 changes: every change ripples; A is weak here, so the change evidence carries this",
+      "tentative": false,
+      "unit": null
+    },
     {
       "changeCost": 2.839,
       "evidence": {
@@ -239,6 +263,30 @@
     {
       "changeCost": 0,
       "evidence": {
+        "abstractness": 1,
+        "abstractnessWeak": true,
+        "ca": 1,
+        "ce": 1,
+        "distance": 0.5,
+        "exportedTypes": 2,
+        "instability": 0.5,
+        "medianRevisions": 6,
+        "revisions": 6
+      },
+      "id": "zone-of-uselessness:packages/orphan",
+      "kind": "zone-of-uselessness",
+      "packages": [
+        "packages/orphan"
+      ],
+      "principle": "SAP",
+      "priority": "normal",
+      "summary": "packages/orphan is abstract (A 1) and has one dependent (I 0.5): abstractions written for consumers that never arrived",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "changeCost": 0,
+      "evidence": {
         "size": 2,
         "testOnly": true,
         "via": [
@@ -263,7 +311,7 @@
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 8
+    "total": 10
   },
   "window": {
     "since": "2023-06-20T09:00:00.000Z",
