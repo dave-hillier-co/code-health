@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -110,6 +110,20 @@ for (const [label, entry] of entries) {
         hookEventName: "PostToolUse",
         additionalContext: expect.stringContaining("`knot` nesting depth is 3 in a new unit (threshold 2)") as string,
       });
+    });
+
+    test("is silent and writes no session state when the repository has not opted in", () => {
+      const config = join(repo.path, "code-health.json");
+      const enabled = readFileSync(config, "utf8");
+      writeFileSync(config, JSON.stringify({ complexity: { thresholds: { nesting: 2 }, hook: { enabled: false } } }));
+      writeFileSync(join(repo.path, "src", "knot.ts"), deep);
+      try {
+        const result = hook(event(`${label}-off`));
+        expect(result).toMatchObject({ status: 0, stdout: "", stderr: "" });
+        expect(existsSync(join(repo.path, ".cache", "code-health", "sessions", `${label}-off.complexity.json`))).toBe(false);
+      } finally {
+        writeFileSync(config, enabled);
+      }
     });
 
     test("exits 0 with nothing on stdout for the same file again, for stdin that is not JSON and for no stdin", () => {
