@@ -3,6 +3,7 @@ import { monthsBefore } from "@code-health/history/evidence";
 import { readComponents } from "../components.ts";
 import type { LoadedHistory } from "../history-access.ts";
 import { extractChange, resolveRange, type BranchChange } from "./change.ts";
+import { abandonedTouched } from "./abandoned-touched.ts";
 import { liveMeasurements, readLocalityFanIn, withFanIn, type LocalityFanIn } from "./composition.ts";
 import { NO_EVIDENCE, readEvidence, type EvidenceInputs } from "./evidence-inputs.ts";
 import { chronologicalPass, SECONDS_PER_MONTH, type PastChange } from "./history-pass.ts";
@@ -11,7 +12,6 @@ import { measureHistoryLayer, type ChangeFacts, type MeasureContext, type Measur
 import { mergedChanges, type Mainline } from "./merged-changes.ts";
 import { baselineScores, impactOf, makeBander, SCORED_FACTORS, type BandResult, type FactorBand, type ImpactResult } from "./scoring.ts";
 import { readRiskSettings, type RiskSettings } from "./settings.ts";
-import { TOOL } from "../tool.ts";
 
 /** A factor as it is reported: its value, band, the evidence behind it and the layer that produced it. */
 export interface Factor {
@@ -128,10 +128,9 @@ export async function assessBranch(
     moved: change.moved,
   };
   state.advance(time);
-  const knowledge = (context.config.effective[TOOL] as { knowledge?: { enabled?: unknown } }).knowledge;
   const measurements = [
     ...measureHistoryLayer(facts, state, measure),
-    ...(await liveMeasurements(root, change, risk, evidence, knowledge?.enabled === true)),
+    ...(await liveMeasurements(root, change, risk, evidence, await abandonedTouched(context, history, change))),
   ];
   const baselineMeasures = past.map((p) => p.measurements);
   const bander = makeBander(baselineMeasures, risk);

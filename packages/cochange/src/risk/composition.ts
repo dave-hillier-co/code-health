@@ -12,33 +12,17 @@ import type { RiskSettings } from "./settings.ts";
 
 /**
  * The factors that need more than history: `complexity-delta` and `structure-delta` from what the
- * skill passed in, and `abandoned-touched`, which needs the knowledge analysis. Each is a count, or is
- * unavailable: a factor that could not be computed is never low.
+ * skill passed in, and `abandoned-touched`, which is measured from the knowledge analysis (see
+ * `abandoned-touched.ts`). Each is a count, or is unavailable: a factor that could not be computed is never low.
  */
 export async function liveMeasurements(
   root: string,
   change: BranchChange,
   risk: RiskSettings,
   evidence: EvidenceInputs,
-  knowledgeEnabled: boolean,
+  abandoned: Measurement,
 ): Promise<Measurement[]> {
-  return [await complexityDelta(root, change, risk, evidence), structureDelta(evidence), abandonedTouched(knowledgeEnabled)];
-}
-
-function abandonedTouched(enabled: boolean): Measurement {
-  return {
-    name: "abandoned-touched",
-    family: "history",
-    layer: "history",
-    kind: "percentile",
-    source: "knowledge analysis",
-    unavailable: enabled
-      ? "the knowledge analysis is enabled, but this command does not read its report yet"
-      : "knowledge analysis is not enabled (cochange.knowledge.enabled)",
-    series: {},
-    value: {},
-    evidence: [],
-  };
+  return [await complexityDelta(root, change, risk, evidence), structureDelta(evidence), abandoned];
 }
 
 function structureDelta(evidence: EvidenceInputs): Measurement {

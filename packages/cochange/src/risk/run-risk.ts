@@ -34,7 +34,9 @@ export async function runRisk(context: CommandContext, history: LoadedHistory, r
   const behind = stored === null ? null : await commitsSince(context.repo.root, stored.head, assessed.change.head);
   const level = levelResult(assessed, placement, stored, behind);
 
+  // Abandonment is knowledge about people, and is never stored for another plugin to read: its factor is shown, not kept.
   const impactOnly = { kind: "assessment", change: describeChange(assessed), impact: assessed.impact, factors: assessed.factors };
+  const kept = { ...impactOnly, factors: assessed.factors.filter((f) => f.name !== "abandoned-touched" || f.status !== "ok") };
   const inputs = {
     range: range ?? null,
     worktree,
@@ -45,7 +47,7 @@ export async function runRisk(context: CommandContext, history: LoadedHistory, r
   };
   // The impact factors are about code, and are kept. Placement is about a person, so neither it nor
   // anything derived from it (the level, the findings that rest on it) is ever written down.
-  if (range === undefined && !worktree) await writeReport(context, "risk", { inputs, results: impactOnly }, history.view.headSha);
+  if (range === undefined && !worktree) await writeReport(context, "risk", { inputs, results: kept }, history.view.headSha);
   return {
     inputs,
     results: {

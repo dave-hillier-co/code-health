@@ -132,7 +132,7 @@
         "signal": "Touched files not changed within the stale window, and files changed within the last few days"
       },
       {
-        "banding": "none",
+        "banding": "count",
         "family": "history",
         "layer": "history",
         "name": "abandoned-touched",

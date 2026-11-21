@@ -70,6 +70,13 @@ export const RESPONSES: Record<string, { step: Step; response: string; summary: 
     explanation: "Neither the author nor any reviewer has first-hand knowledge of these files. Needs placement, so it is shown for the invoking user's own change, or when cochange.risk.placement is any.",
     redFlag: null,
   },
+  "abandoned-touched": {
+    step: "test",
+    response: "Characterisation tests before the change, and a short note capturing what was learned.",
+    summary: "Touched files are abandoned, or likely to be: nobody active holds most of their lines",
+    explanation: "From the knowledge analysis (cochange.knowledge.enabled), computed from the blame cache and the abandonment model at the base, and never stored. Files are counted when at least cochange.knowledge.abandonmentThreshold percent of the lines held by people belong to people who have left, or when their probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. `cochange successors PATH` names who could adopt one.",
+    redFlag: null,
+  },
   "complexity-delta": {
     step: "simplify",
     response: "Run `complexity explain` on the named units and simplify before merge.",
@@ -163,6 +170,8 @@ export function findingsOf(assessed: Assessed, placement: PlacementOutcome | nul
   }
   const tests = get("test-evidence");
   if (atLeastModerate(tests)) found.push(make("test-evidence", tests, `${count(tests)} source file${count(tests) === 1 ? "" : "s"} changed without the tests that usually change with ${count(tests) === 1 ? "it" : "them"}, or tests deleted`, tests.evidence));
+  const abandoned = get("abandoned-touched");
+  if (atLeastModerate(abandoned)) found.push(make("abandoned-touched", abandoned, `${count(abandoned)} touched file${count(abandoned) === 1 ? " is" : "s are"} abandoned or likely to be: nobody active holds most of ${count(abandoned) === 1 ? "its" : "their"} lines`, abandoned.evidence));
   const complexity = get("complexity-delta");
   if (atLeastModerate(complexity)) found.push(make("complexity-delta", complexity, `${count(complexity)} unit${count(complexity) === 1 ? "" : "s"} or file${count(complexity) === 1 ? "" : "s"} gained complexity`, complexity.evidence));
   const novel = get("novel-coupling");
