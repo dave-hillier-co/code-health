@@ -1,0 +1,30 @@
+{
+  "importEdges": [
+    "src/main/java/acme/Main.java -> src/main/java/acme/service/Billing.java import",
+    "src/main/java/acme/model/Ledger.java -> src/main/java/acme/model/Account.java import",
+    "src/main/java/acme/service/Billing.java -> src/main/java/acme/model/Account.java import",
+    "src/main/java/acme/service/Billing.java -> src/main/java/acme/model/Ledger.java import",
+    "src/main/java/acme/service/Reports.java -> src/main/java/acme/model/Ledger.java import",
+    "src/test/java/acme/service/BillingTest.java -> src/main/java/acme/service/Billing.java import"
+  ],
+  "fileEdges": [
+    "src/main/java/acme/Main.java -> src/main/java/acme/service/Billing.java reference call=0 reference=1",
+    "src/main/java/acme/model/Ledger.java -> src/main/java/acme/model/Account.java call call=1 reference=1",
+    "src/main/java/acme/service/Billing.java -> src/main/java/acme/model/Account.java reference call=0 reference=2",
+    "src/main/java/acme/service/Billing.java -> src/main/java/acme/model/Ledger.java call call=1 reference=0",
+    "src/main/java/acme/service/Reports.java -> src/main/java/acme/model/Ledger.java call call=1 reference=0",
+    "src/test/java/acme/service/BillingTest.java -> src/main/java/acme/service/Billing.java test call=1 reference=0"
+  ],
+  "consumers": [
+    "src/main/java/acme/Main.java -> src/main/java/acme/service/Billing.java#Billing reference x1",
+    "src/main/java/acme/model/Ledger.java#Ledger -> src/main/java/acme/model/Account.java#Account call x1",
+    "src/main/java/acme/model/Ledger.java#Ledger -> src/main/java/acme/model/Account.java#Account reference x1",
+    "src/main/java/acme/service/Billing.java -> src/main/java/acme/model/Account.java#Account reference x1",
+    "src/main/java/acme/service/Billing.java#Billing.charge -> src/main/java/acme/model/Account.java#Account reference x1",
+    "src/main/java/acme/service/Billing.java#Billing.charge -> src/main/java/acme/model/Ledger.java#Ledger call x1",
+    "src/main/java/acme/service/Reports.java#Reports.run -> src/main/java/acme/model/Ledger.java#Ledger call x1",
+    "src/test/java/acme/service/BillingTest.java#BillingTest.run -> src/main/java/acme/service/Billing.java#Billing test x1"
+  ],
+  "unresolved": [],
+  "barrels": []
+}

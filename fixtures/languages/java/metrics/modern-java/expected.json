@@ -1,0 +1,15 @@
+{
+  "columns": ["unit", "cyclomatic", "cyclomaticModified", "cognitive", "nesting", "length", "statements", "parameters", "optionCount"],
+  "files": {
+    "Modern.java": [
+      ["Modern.arrow", 4, 3, 3, 2, 12, 6, 1, 0],
+      ["Modern.resources", 3, 3, 2, 2, 13, 7, 1, 0],
+      ["Modern.Modern", 2, 2, 1, 1, 6, 3, 2, 0],
+      ["Modern.Modern~2", 1, 1, 0, 0, 2, 0, 1, 0],
+      ["Modern.varargs", 1, 1, 0, 0, 3, 1, 2, 0],
+      ["Modern.viaThis", 2, 2, 2, 0, 3, 1, 1, 0],
+      ["Modern.viaOwner", 2, 2, 2, 0, 3, 1, 1, 0],
+      ["Modern.notRecursive", 2, 2, 1, 0, 3, 1, 2, 0]
+    ]
+  }
+}

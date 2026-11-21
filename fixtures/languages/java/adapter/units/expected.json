@@ -1,0 +1,21 @@
+{
+  "units": {
+    "src/main/java/acme/Shapes.java": [
+      ["Shapes", "class", 5, 60],
+      ["Shapes.Shapes", "method", 8, 10],
+      ["Shapes.count", "method", 12, 14],
+      ["Shapes.count~2", "method", 16, 18],
+      ["Shapes.toString", "method", 21, 24],
+      ["Shapes.Visitor", "class", 26, 31],
+      ["Shapes.Visitor.leave", "method", 29, 30],
+      ["Shapes.Kind", "class", 33, 40],
+      ["Shapes.Kind.isRound", "method", 37, 39],
+      ["Shapes.Point", "class", 42, 52],
+      ["Shapes.Point.Point", "method", 43, 47],
+      ["Shapes.Point.sum", "method", 49, 51],
+      ["Shapes.make", "method", 54, 59],
+      ["Shapes.make.run", "method", 56, 57]
+    ]
+  },
+  "syntaxErrors": []
+}
