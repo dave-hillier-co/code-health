@@ -1,0 +1,27 @@
+{
+  "command": "refresh",
+  "config": "2fc89d53ab233ee2",
+  "inputs": {},
+  "repo": {
+    "dirty": false,
+    "head": "9f65c10e2680360c26e94d73aa12fc4b81bdd0dc"
+  },
+  "results": {
+    "added": 0,
+    "head": "9f65c10e2680360c26e94d73aa12fc4b81bdd0dc",
+    "reachable": 6,
+    "rebuilt": false,
+    "ref": "HEAD",
+    "shallow": {
+      "boundaryCommits": 0,
+      "isShallow": false
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}
