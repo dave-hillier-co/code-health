@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { parseToml } from "../../src/packaging/toml.ts";
+import { parseToml } from "../src/toml.ts";
 
 test("reads tables, dotted tables, strings, numbers and booleans", () => {
   const text = [
