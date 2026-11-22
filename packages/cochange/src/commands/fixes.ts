@@ -3,7 +3,7 @@ import type { Rule } from "@code-health/cli-kit/run-cli";
 import { analysisCommand } from "../analysis-command.ts";
 import { readFixClassifier } from "../risk/settings.ts";
 import { readFixes, statisticsOf } from "../fix-statistics.ts";
-import { byOption, isGrouped, loadUnits, readBy } from "../units.ts";
+import { allFilesOption, byOption, isGrouped, loadUnits, readBy, wantsAllFiles } from "../units.ts";
 
 export const name = "fixes";
 
@@ -32,8 +32,8 @@ function evidenceOption(value: unknown): number {
 
 export const command = analysisCommand(name, {
   summary: "Rank files or components by how many of their changes were fixes, with the matching commits",
-  options: { ...byOption, evidence: { type: "string" } },
-  partial: (context) => isGrouped(context) || context.values.evidence !== undefined,
+  options: { ...byOption, ...allFilesOption, evidence: { type: "string" } },
+  partial: (context) => isGrouped(context) || wantsAllFiles(context) || context.values.evidence !== undefined,
   async analyse({ context, history }) {
     const by = readBy(context);
     const evidenceLimit = evidenceOption(context.values.evidence);
@@ -56,7 +56,7 @@ export const command = analysisCommand(name, {
     });
     const { convention } = reading;
     return {
-      inputs: { by, evidenceLimit },
+      inputs: { by, allFiles: wantsAllFiles(context), evidenceLimit },
       results: rows,
       columns: ["path", ...(by === "component" ? ["files"] : []), "fixes", "revisions", "fixShare", "recentFixes", "lastFix", "reverts", "evidence"],
       extra: { fixConvention: convention },

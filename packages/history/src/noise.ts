@@ -1,11 +1,13 @@
 import { historyDefaults } from "@code-health/cli-kit/config";
+import { recordDropped } from "@code-health/cli-kit/dropped-files";
+import { classifyFiles } from "./file-class.ts";
 import { builtinExcluder } from "./builtin-excludes.ts";
 import { compileGlobs } from "./glob.ts";
 import { groupCommits, ISSUE_KEY_WINDOW_SECONDS, mergeFileChanges, type Grouping } from "./grouping.ts";
 import { detectImportedHistory, type ImportDetectionOptions, type ImportedHistory } from "./imported.ts";
 import type { HistoryChange, HistoryCommit, HistoryView } from "./read.ts";
 import { hasCodeHealthTrailer } from "./trailers.ts";
-import { listGitlinks, listTree, readBlameIgnoreRevs, readPathAttributes } from "./tree.ts";
+import { listBlobs, listGitlinks, readBlameIgnoreRevs } from "./tree.ts";
 
 export const DEFAULT_LOCKFILES: readonly string[] = [
   "package-lock.json",
@@ -76,7 +78,10 @@ export interface NoiseOptions {
   exclude?: readonly string[];
   /** Lockfile basenames to drop. Defaults to the built-in list. `false` keeps lockfiles. */
   lockfiles?: readonly string[] | false;
-  /** Drop paths marked linguist-generated or linguist-vendored. Default true. */
+  /**
+   * Drop generated and vendored paths: marked linguist-generated or linguist-vendored, carrying a generated-code
+   * header at the analysed revision, or below a vendor directory. Default true.
+   */
   gitattributes?: boolean;
   /** File listing revisions to ignore. Default `.git-blame-ignore-revs`; `false` disables. */
   blameIgnoreRevs?: string | false;
@@ -202,16 +207,19 @@ export async function filterHistory(
   const excluded = compileGlobs(options.exclude ?? []);
   const bots = botPatterns.map(compileBotPattern);
 
-  const treeFiles = await listTree(repoPath, view.headSha);
+  const blobs = await listBlobs(repoPath, view.headSha);
+  const treeFiles = blobs.map((entry) => entry.path);
+  const blobOf = new Map(blobs.map((entry) => [entry.path, entry.blob]));
   const builtinExcluded = builtinExcluder(repoPath, await listGitlinks(repoPath, view.headSha));
   const imported = detectImportedHistory(view, treeFiles, options.importDetection);
   const importedShas = new Set(excludeImported ? imported.map((i) => i.sha) : []);
   const ignoredRevs = blameFile === false ? [] : await readBlameIgnoreRevs(repoPath, view.headSha, blameFile);
+  const touchedPaths = [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort();
   const attributes = useAttributes
-    ? await readPathAttributes(
+    ? await classifyFiles(
         repoPath,
         view.headSha,
-        [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort(),
+        touchedPaths.map((path) => ({ path, blob: blobOf.get(path) ?? null })),
         treeFiles,
       )
     : { generated: new Set<string>(), vendored: new Set<string>() };
@@ -269,8 +277,10 @@ export async function filterHistory(
         dropped.lockfiles++;
       } else if (attributes.generated.has(change.path)) {
         dropped.generated++;
+        recordDropped("generated", change.path);
       } else if (attributes.vendored.has(change.path)) {
         dropped.vendored++;
+        recordDropped("vendored", change.path);
       } else {
         files.push(change);
       }

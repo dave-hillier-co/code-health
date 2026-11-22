@@ -1,6 +1,7 @@
 import { discoverCommand, parseArguments, type OptionSpec, type ParsedArguments } from "./args.ts";
 import { explainConfig, loadConfig, type LoadedConfig, type PluginConfigSpec } from "./config.ts";
 import { builtinOmissions, resetBuiltinOmissions } from "./builtin-excludes.ts";
+import { droppedCounts, resetDropped } from "./dropped-files.ts";
 import { buildDocument } from "./document.ts";
 import { assertNodeVersion } from "./environment.ts";
 import { CliError, ExitCode, usageError } from "./errors.ts";
@@ -149,9 +150,12 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
   const config = loadConfig(repo.root, cli.config);
   const context: CommandContext = { repo, config, positionals: args.positionals, values: args.values };
   resetBuiltinOmissions();
+  resetDropped();
   const output = await command.run(context);
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
+  const leftOut = droppedCounts();
+  const droppedFiles = Object.keys(leftOut).length === 0 ? {} : { dropped: leftOut };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}\n`);
 
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
@@ -167,7 +171,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: { ...output.extra, ...omittedByBuiltin },
+          extra: { ...output.extra, ...omittedByBuiltin, ...droppedFiles },
           results,
           truncated,
           meta: {
@@ -186,6 +190,11 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
       io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count]) => `${count} ${count === 1 ? "file" : "files"} (${entry})`).join(", ")}.\n`);
+    }
+    const left = Object.entries(leftOut);
+    if (left.length > 0) {
+      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code" } as const;
+      io.stdout.write(`Notice: omitted ${left.map(([kind, count]) => `${count} ${names[kind as keyof typeof names]} ${count === 1 ? "file" : "files"}`).join(", ")}.\n`);
     }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.\n`);
   } else {

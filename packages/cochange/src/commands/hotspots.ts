@@ -1,7 +1,7 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { analysisCommand } from "../analysis-command.ts";
 import { rankHotspots } from "../hotspot-ranking.ts";
-import { byOption, isGrouped, readBy } from "../units.ts";
+import { allFilesOption, byOption, isGrouped, readBy, wantsAllFiles } from "../units.ts";
 
 export const name = "hotspots";
 
@@ -36,13 +36,13 @@ export const rules: Record<string, Rule> = {
 
 export const command = analysisCommand(name, {
   summary: "Rank files or components by change frequency weighted by complexity",
-  options: byOption,
-  partial: isGrouped,
+  options: { ...byOption, ...allFilesOption },
+  partial: (context) => isGrouped(context) || wantsAllFiles(context),
   async analyse({ context, history }) {
     const by = readBy(context);
     const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
     return {
-      inputs: { by, complexityReport: complexity.input },
+      inputs: { by, allFiles: wantsAllFiles(context), complexityReport: complexity.input },
       results: rows,
       columns: [
         "path",

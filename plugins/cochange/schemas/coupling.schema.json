@@ -43,7 +43,9 @@
         "type": "object",
         "properties": {
           "path": { "type": "string", "description": "The first file of the pair. With --file, the named file." },
+          "pathKind": { "enum": ["code", "non-code"], "description": "Whether a language adapter or lexical profile claims `path`. Coupling includes the files that are not code, such as a lockfile that changes with its manifest, and labels them." },
           "with": { "type": "string", "description": "The other file." },
+          "withKind": { "enum": ["code", "non-code"], "description": "The same label for `with`." },
           "score": { "type": "number", "description": "The degree, for ordering." },
           "degree": { "type": "number", "minimum": 0, "maximum": 100, "description": "Symmetric strength in percent: support over the mean of the two files' change counts." },
           "aboveGuideline": { "type": "boolean", "description": "Degree is at or above the degree guideline. Pairs under it are listed after the others." },
@@ -72,7 +74,7 @@
             "additionalProperties": false
           }
         },
-        "required": ["path", "with", "score", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings", "dependent", "evidence"],
+        "required": ["path", "pathKind", "with", "withKind", "score", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings", "dependent", "evidence"],
         "additionalProperties": false
       }
     }

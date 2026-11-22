@@ -8,8 +8,8 @@
     "command": { "const": "age" },
     "inputs": {
       "type": "object",
-      "properties": { "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }, "by": { "enum": ["file", "component"] } },
-      "required": ["by"],
+      "properties": { "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }, "by": { "enum": ["file", "component"] }, "allFiles": { "type": "boolean", "description": "True when --all-files ranked the files that are not code as well." } },
+      "required": ["by", "allFiles"],
       "additionalProperties": false
     },
     "results": {

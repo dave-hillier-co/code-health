@@ -92,9 +92,13 @@ export async function readBlameIgnoreRevs(repoPath: string, ref: string, file: s
 export interface PathAttributes {
   generated: Set<string>;
   vendored: Set<string>;
+  /** Attribute unset or false: the path is opted back in, whatever a header or a directory says. */
+  notGenerated: Set<string>;
+  notVendored: Set<string>;
 }
 
 const isSet = (value: string) => value === "set" || value === "true";
+const isUnset = (value: string) => value === "unset" || value === "false";
 
 /**
  * Paths carrying `linguist-generated` or `linguist-vendored`, as git itself
@@ -108,7 +112,7 @@ export async function readPathAttributes(
   paths: readonly string[],
   treeFiles: readonly string[],
 ): Promise<PathAttributes> {
-  const result: PathAttributes = { generated: new Set(), vendored: new Set() };
+  const result: PathAttributes = { generated: new Set(), vendored: new Set(), notGenerated: new Set(), notVendored: new Set() };
   const hasAttributes = treeFiles.some((p) => p === ".gitattributes" || p.endsWith("/.gitattributes"));
   if (!hasAttributes || paths.length === 0) return result;
   const input = paths.join("\0") + "\0";
@@ -124,9 +128,8 @@ export async function readPathAttributes(
   const tokens = out.split("\0");
   for (let i = 0; i + 2 < tokens.length; i += 3) {
     const [path, attribute, value] = [tokens[i]!, tokens[i + 1]!, tokens[i + 2]!];
-    if (!isSet(value)) continue;
-    if (attribute === "linguist-generated") result.generated.add(path);
-    else if (attribute === "linguist-vendored") result.vendored.add(path);
+    if (isSet(value)) (attribute === "linguist-generated" ? result.generated : result.vendored).add(path);
+    else if (isUnset(value)) (attribute === "linguist-generated" ? result.notGenerated : result.notVendored).add(path);
   }
   return result;
 }

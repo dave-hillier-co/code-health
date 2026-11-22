@@ -38,6 +38,16 @@
           "type": "object",
           "additionalProperties": { "type": "integer", "minimum": 1 }
         },
+        "dropped": {
+          "description": "Present only when files were left out because of what they are: the number of distinct files left out as generated (a linguist-generated attribute or a generated-code header), as vendored (a linguist-vendored attribute or a vendor directory), and as non-code (no language adapter or lexical profile claims them, for a command that ranks only code). Kinds that left out nothing are not listed.",
+          "type": "object",
+          "properties": {
+            "generated": { "type": "integer", "minimum": 1 },
+            "vendored": { "type": "integer", "minimum": 1 },
+            "nonCode": { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": false
+        },
         "meta": {
           "description": "Wall-clock facts. Absent from reports and ignored by golden comparisons.",
           "type": "object"

@@ -1,5 +1,6 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { treeDistance } from "@code-health/graph/tree-distance";
+import { isCodePath } from "@code-health/parse/code-files";
 import { analysisCommand } from "../analysis-command.ts";
 import { readSettings } from "../config.ts";
 import { coupledPairs, integerOption } from "../coupled-pairs.ts";
@@ -63,18 +64,19 @@ export const command = analysisCommand(name, {
     // The degree is a guideline: no pair is dropped for being under it. The support floor is the only cut.
     const counts = coupledPairs(history, { minSupport });
 
+    const languages = context.config.effective.languages;
     const requested = context.values.file;
     const focus = typeof requested === "string" ? await focusPath(context, history, requested) : undefined;
 
     const rows = counts.pairs
       .filter((pair) => focus === undefined || pair.a === focus || pair.b === focus)
-      .map((pair) => describe(pair, focus, settings, minDegree))
+      .map((pair) => describe(pair, focus, settings, minDegree, (path) => (isCodePath(path, languages) ? "code" : "non-code")))
       .sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
 
     return {
       inputs: { file: focus ?? null, degreeGuideline: minDegree, minSupport, asymmetry: ASYMMETRY },
       results: rows,
-      columns: ["path", "with", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
+      columns: ["path", "pathKind", "with", "withKind", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
       extra: {
         population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
         note:
@@ -91,6 +93,7 @@ function describe(
   focus: string | undefined,
   settings: { minDegree: number; minSupport: number; minDistance: number },
   guideline: number,
+  kindOf: (path: string) => "code" | "non-code",
 ) {
   // With --file the focused file leads, whichever way the pair sorts.
   const flipped = focus !== undefined && pair.b === focus;
@@ -118,7 +121,10 @@ function describe(
 
   return {
     path,
+    // Coupling includes files that are not code, such as a lockfile that changes with its manifest, and labels them.
+    pathKind: kindOf(path),
     with: other,
+    withKind: kindOf(other),
     score: round1(degree),
     degree: round1(degree),
     // The degree guideline orders the listing: pairs under it come after the others.

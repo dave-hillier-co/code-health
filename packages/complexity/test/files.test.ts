@@ -32,7 +32,7 @@ async function files(...args: string[]) {
   return run;
 }
 
-test("lists every text file with file-level metrics and function aggregates, and matches its golden", async () => {
+test("lists every code file with file-level metrics and function aggregates, and matches its golden", async () => {
   const { stdout } = await files();
   expectGolden("pricing", "files", stdout);
   const rows = JSON.parse(stdout).results as FileRow[];
@@ -44,17 +44,15 @@ test("lists every text file with file-level metrics and function aggregates, and
   expect(pricing.aggregates!.cognitive).toEqual({ sum: 8, max: 8 });
   expect(pricing.aggregates!.cyclomatic).toEqual({ sum: 6, max: 5 });
 
-  // No structural adapter and no lexer profile: file-level metrics only, with what was skipped.
-  const ruby = byPath.get("tools/total.rb")!;
-  expect(ruby).toMatchObject({ source: null, profile: null, functions: 0, aggregates: null, keywordComplexity: null });
+  // No adapter and no lexer profile claims a Ruby file or a Markdown document: they are not code, so they are not ranked, and are counted.
+  expect(byPath.has("tools/total.rb")).toBe(false);
+  expect(byPath.has("notes.md")).toBe(false);
+  expect(JSON.parse(stdout).dropped).toEqual({ nonCode: 2 });
   // Go has an adapter: its functions are measured structurally, `for` and `if` counted as in any language.
   const go = byPath.get("src/total.go")!;
   expect(go).toMatchObject({ source: "structural", functions: 1 });
   expect(go.aggregates!.cognitive).toEqual({ sum: 3, max: 3 });
   expect(go.aggregates!.cyclomatic).toEqual({ sum: 3, max: 3 });
-  const notes = byPath.get("notes.md")!;
-  expect(notes).toMatchObject({ source: null, profile: null, keywordComplexity: null });
-  expect(notes.complexity).toBe(1);
 });
 
 test("sorts by file complexity and each row's score is that complexity", async () => {

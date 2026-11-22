@@ -2,6 +2,8 @@ import type { Command, CommandContext } from "@code-health/cli-kit/run-cli";
 import { layerOption, measureCurrent, parseLayer, storeReport } from "../analysis.ts";
 import { normalisePaths, pathSelector } from "../current-tree.ts";
 import { fileRow } from "../rows.ts";
+import { recordDropped } from "@code-health/cli-kit/dropped-files";
+import { isCodePath } from "@code-health/parse/code-files";
 import { skipReport } from "@code-health/history/reports";
 
 export const name = "files";
@@ -12,7 +14,8 @@ function isPartial(context: CommandContext): boolean {
 }
 
 /**
- * File-level aggregates. A whole-repository run on a clean tree stores `complexity.files`, which the
+ * File-level aggregates of the code: files that a language adapter or a lexical profile claims. The files that are
+ * not code are counted in `dropped.nonCode`. A whole-repository run on a clean tree stores `complexity.files`, which the
  * cochange plugin reads: each row's `complexity` is the file's indentation complexity, the definition
  * shared with cochange's own proxy.
  */
@@ -24,7 +27,14 @@ export const command: Command = {
     const { settings, current, measurement } = await measureCurrent(context, layer);
     const paths = normalisePaths(context.positionals);
     const inPaths = pathSelector(paths);
-    const rows = measurement.files.filter((file) => inPaths(file.path)).map((file) => fileRow(file, settings));
+    const rows = measurement.files
+      .filter((file) => inPaths(file.path))
+      .filter((file) => {
+        if (isCodePath(file.path, settings.languageProfiles)) return true;
+        recordDropped("nonCode", file.path);
+        return false;
+      })
+      .map((file) => fileRow(file, settings));
     const output = {
       inputs: { tree: current.kind, layer, paths },
       extra: { skippedFiles: measurement.skippedFiles },
