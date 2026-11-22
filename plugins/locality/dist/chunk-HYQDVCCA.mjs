@@ -1340,6 +1340,7 @@ var Measurer = class {
     let size = 0;
     for (let row = Math.max(region.startPosition.row, headerRow + 1); row <= last; row++) if (this.options.codeRows[row] === true) size++;
     if (region.text.includes("\n") && region.text.split("\n").at(-1).trim() === "}") size--;
+    if (size <= 0) return;
     this.bumps++;
     this.bumpSize = Math.max(this.bumpSize, size);
   }

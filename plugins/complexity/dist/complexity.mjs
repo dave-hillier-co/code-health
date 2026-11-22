@@ -54,8 +54,10 @@ async function runHookWorker(hook) {
 }
 var inHookWorker = (kind) => !isMainThread && workerData?.kind === kind;
 function budgetMs(fallback) {
-  const override = Number(process.env.CODE_HEALTH_HOOK_BUDGET_MS);
-  return Number.isInteger(override) && override > 0 ? override : fallback;
+  const raw = process.env.CODE_HEALTH_HOOK_BUDGET_MS;
+  if (raw === void 0 || raw.trim() === "") return fallback;
+  const override = Number(raw);
+  return Number.isInteger(override) && override >= 0 ? override : fallback;
 }
 async function runHookProcess(hook) {
   let output = "";
@@ -75,7 +77,7 @@ async function runHookProcess(hook) {
 // packages/complexity/src/hook-definition.ts
 var complexityHook = {
   kind: "complexity-hook",
-  run: async ({ stdin, cwd, budgetMs: budgetMs2 }) => (await import("./chunk-FI5YYVDR.mjs")).runHook({ stdin, cwd, budgetMs: budgetMs2 }),
+  run: async ({ stdin, cwd, budgetMs: budgetMs2 }) => (await import("./chunk-UH5JJWOY.mjs")).runHook({ stdin, cwd, budgetMs: budgetMs2 }),
   defaultBudgetMs: DEFAULT_BUDGET_MS,
   entry: workerEntry(import.meta.url, "hook-definition.ts")
 };
@@ -86,7 +88,7 @@ if (inHookWorker(complexityHook.kind)) {
   await runHookWorker(complexityHook);
 } else {
   if (argv[0] === "hook") await runHookProcess(complexityHook);
-  const [{ runCli }, { cli }] = await Promise.all([import("./chunk-LGRZTALM.mjs"), import("./chunk-WRIJ7MEC.mjs")]);
+  const [{ runCli }, { cli }] = await Promise.all([import("./chunk-LGRZTALM.mjs"), import("./chunk-D4KCDAAP.mjs")]);
   process.exitCode = await runCli(cli, {
     argv,
     cwd: process.cwd(),

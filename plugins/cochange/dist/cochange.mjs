@@ -7192,6 +7192,12 @@ import { homedir } from "node:os";
 import { join as join10 } from "node:path";
 var defaultProjectsDirectory = () => join10(homedir(), ".claude", "projects");
 
+// packages/transcripts/src/stamp.ts
+import { createHash as createHash8 } from "node:crypto";
+function stampOf(input) {
+  return createHash8("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
+}
+
 // packages/transcripts/src/difference.ts
 var change = (arm) => arm.before.mean === null || arm.after.mean === null ? null : arm.after.mean - arm.before.mean;
 function differenceOf(actedOn, comparison, minSamples, noisePercent) {
@@ -7489,7 +7495,7 @@ function findOpportunities(sessions, partnersOf2) {
       if (!firstEdit.has(file)) firstEdit.set(file, position);
     });
     for (const [file, position] of firstEdit) {
-      const unedited = partnersOf2(file).filter((partner) => {
+      const unedited = partnersOf2(file, session).filter((partner) => {
         const at = firstEdit.get(partner);
         return at === void 0 || at > position;
       });
@@ -7611,7 +7617,7 @@ function within(budgetMs2, started, work, silence) {
 // packages/cochange/src/hook.ts
 var HOOK_NAME = "cochange";
 var MAX_PARTNERS_NAMED = 3;
-var DEFAULT_BUDGET_MS = 250;
+var DEFAULT_BUDGET_MS = 200;
 async function commitsBehind(root, dbPath, ref, limit) {
   const recent = (await runGit(root, ["rev-list", `--max-count=${limit + 1}`, ref])).split("\n").filter((sha) => sha !== "");
   if (recent.length === 0) return void 0;
@@ -7817,14 +7823,18 @@ async function completeness(context) {
   const { settings } = history;
   const present = new Set(await listTree(root, history.view.headSha));
   const identityOf = (path) => present.has(path) ? path : history.view.renames.resolve(path, -1);
-  const couplingChanges = history.filtered.changes.map((c) => ({ files: c.files.map((f) => f.fileId), oversized: c.oversized }));
+  const dated = [...history.filtered.changes].sort((a, b) => a.committerDate - b.committerDate);
+  const couplingChanges = dated.map((c) => ({ files: c.files.map((f) => f.fileId), oversized: c.oversized }));
   const cache = /* @__PURE__ */ new Map();
-  const partnersNamed = (file) => {
-    const known = cache.get(file);
-    if (known !== void 0) return known;
-    const { changesFocus, partners } = partnersOf(couplingChanges, file);
+  const partnersNamed = (file, session) => {
+    let known = 0;
+    while (known < dated.length && dated[known].committerDate < session.startedAt) known++;
+    const key = `${known}\0${file}`;
+    const cached = cache.get(key);
+    if (cached !== void 0) return cached;
+    const { changesFocus, partners } = partnersOf(couplingChanges.slice(0, known), file);
     const named = partners.filter((p) => p.support >= settings.minSupport && confidenceOf(p.support, changesFocus) >= settings.hook.confidence && present.has(p.path)).map((p) => p.path);
-    cache.set(file, named);
+    cache.set(key, named);
     return named;
   };
   const found = readRepoSessionEdits({ projectsDir, repoRoots: roots, window });
@@ -7833,6 +7843,7 @@ async function completeness(context) {
     const state = holder === void 0 ? null : readSession(holder, session.sessionId, HOOK_NAME);
     return {
       sessionId: session.sessionId,
+      startedAt: Math.floor(Date.parse(session.startedAt) / 1e3),
       edits: session.edits.map(identityOf),
       hook: state !== null,
       spokenAbout: new Set((state?.spokenAbout ?? []).map(identityOf))
@@ -7854,6 +7865,7 @@ async function completeness(context) {
       noisePercent: noise,
       minSupport: settings.minSupport,
       confidence: settings.hook.confidence,
+      transcriptStamp: stampOf(records.map((r) => ({ ...r, spokenAbout: [...r.spokenAbout].sort(byBytes3) }))),
       ...identityStamps(history)
     },
     extra: historySections(history),
@@ -8408,7 +8420,7 @@ import { existsSync as existsSync18, readFileSync as readFileSync14 } from "node
 import { join as join15 } from "node:path";
 
 // packages/cochange/src/risk/evidence-inputs.ts
-import { createHash as createHash8 } from "node:crypto";
+import { createHash as createHash9 } from "node:crypto";
 import { readFileSync as readFileSync13 } from "node:fs";
 import { isAbsolute as isAbsolute4, join as join14 } from "node:path";
 var NO_EVIDENCE = { complexity: null, structure: null, stamps: [] };
@@ -8432,7 +8444,7 @@ function readEvidence(root, files, change2) {
     }
     const tool = String(document.tool ?? "");
     const command15 = String(document.command ?? "");
-    const stamp2 = { tool, command: command15, hash: createHash8("sha256").update(text).digest("hex").slice(0, 16) };
+    const stamp2 = { tool, command: command15, hash: createHash9("sha256").update(text).digest("hex").slice(0, 16) };
     if (!Array.isArray(document.results)) throw usageError(`--evidence ${file}: no results list`);
     checkAgainst(file, document, change2);
     if (tool === "complexity" && command15 === "diff") {
@@ -9037,11 +9049,11 @@ function placeChange(facts, state, context, options = {}) {
       if (other !== file.fileId) nearby += state.revisionsOf(other).filter(by).length;
     }
     let sameComponent = null;
-    if (context.components.length > 0) {
+    const home = componentOf(context.components, file.fileId);
+    if (context.components.length > 0 && home !== UNASSIGNED) {
       sameComponent = 0;
-      const mine2 = componentOf(context.components, file.fileId);
       for (const other of state.knownFiles()) {
-        if (other !== file.fileId && componentOf(context.components, other) === mine2) sameComponent += state.revisionsOf(other).filter(by).length;
+        if (other !== file.fileId && componentOf(context.components, other) === home) sameComponent += state.revisionsOf(other).filter(by).length;
       }
     }
     return {
@@ -9340,7 +9352,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change2.head);
   const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-TNVGX6OZ.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-MGHBS6ZP.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);
@@ -10009,7 +10021,7 @@ function placementFactors(placement, withBlame) {
       {
         coupled: placement.files.reduce((s, f) => s + f.neighbourhood.coupled, 0),
         folder: placement.files.reduce((s, f) => s + f.neighbourhood.folder, 0),
-        component: placement.files.some((f) => f.neighbourhood.component === null) ? null : placement.files.reduce((s, f) => s + (f.neighbourhood.component ?? 0), 0)
+        component: placement.files.every((f) => f.neighbourhood.component === null) ? null : placement.files.reduce((s, f) => s + (f.neighbourhood.component ?? 0), 0)
       },
       placement.files.map((f) => ({ file: f.file, coupled: f.neighbourhood.coupled, folder: f.neighbourhood.folder, component: f.neighbourhood.component }))
     ),
@@ -10546,8 +10558,10 @@ async function runHookWorker(hook) {
 }
 var inHookWorker = (kind) => !isMainThread && workerData?.kind === kind;
 function budgetMs(fallback) {
-  const override = Number(process.env.CODE_HEALTH_HOOK_BUDGET_MS);
-  return Number.isInteger(override) && override > 0 ? override : fallback;
+  const raw = process.env.CODE_HEALTH_HOOK_BUDGET_MS;
+  if (raw === void 0 || raw.trim() === "") return fallback;
+  const override = Number(raw);
+  return Number.isInteger(override) && override >= 0 ? override : fallback;
 }
 async function runHookProcess(hook) {
   let output = "";

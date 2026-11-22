@@ -15,7 +15,7 @@ import {
   overrideSupportedAdapters,
   registeredAdapters,
   supportedAdapters
-} from "./chunk-3GUJDKVK.mjs";
+} from "./chunk-K5DXLP26.mjs";
 import "./chunk-NYIILDEN.mjs";
 export {
   adapterById,

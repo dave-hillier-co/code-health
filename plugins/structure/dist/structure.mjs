@@ -6018,6 +6018,7 @@ var Measurer = class {
     let size = 0;
     for (let row = Math.max(region.startPosition.row, headerRow + 1); row <= last; row++) if (this.options.codeRows[row] === true) size++;
     if (region.text.includes("\n") && region.text.split("\n").at(-1).trim() === "}") size--;
+    if (size <= 0) return;
     this.bumps++;
     this.bumpSize = Math.max(this.bumpSize, size);
   }
@@ -17445,6 +17446,19 @@ function analysisCommand(name13, spec) {
   };
 }
 
+// packages/history/src/checkouts.ts
+async function checkouts(root) {
+  const listing = await runGit(root, ["worktree", "list", "--porcelain"]);
+  const others = listing.split("\n").filter((line) => line.startsWith("worktree ")).map((line) => line.slice("worktree ".length)).filter((path) => path !== root);
+  return [root, ...others.sort()];
+}
+
+// packages/transcripts/src/stamp.ts
+import { createHash as createHash4 } from "node:crypto";
+function stampOf(input) {
+  return createHash4("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
+}
+
 // packages/structure/src/incidental.ts
 import { existsSync as existsSync8 } from "node:fs";
 
@@ -17886,20 +17900,21 @@ function layerRuleOf(model, from, to, settings) {
 
 // packages/structure/src/incidental.ts
 var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
-function readAgentTasks(root, projectsDir, window2) {
+function readAgentTasks(repoRoots, projectsDir, window2) {
   if (!existsSync8(projectsDir)) throw environmentError("no-projects-dir", `${projectsDir} does not exist`);
   const parsed = parseWindow(day(window2.since), day(window2.until + 86400));
-  return measureRepo({ projectsDir, repoRoots: [root], window: parsed }).tasks;
+  return measureRepo({ projectsDir, repoRoots, window: parsed }).tasks;
 }
-function agentReadsAcross(tasks, from, to) {
+function agentReadsAcross(tasks, from, to, fileEdges) {
   const sideFrom = new Set(from);
   const sideTo = new Set(to);
-  const touches = (paths, side) => paths.some((path) => side.has(path));
-  return tasks.filter((task) => {
-    const editsFrom = touches(task.editedPaths, sideFrom);
-    const editsTo = touches(task.editedPaths, sideTo);
-    return editsFrom && !editsTo && touches(task.readPaths, sideTo) || editsTo && !editsFrom && touches(task.readPaths, sideFrom);
-  }).length;
+  const linked = new Set(fileEdges.flatMap((edge) => [edgeKey(edge.from, edge.to), edgeKey(edge.to, edge.from)]));
+  const follows = (task, edited, other) => {
+    const editedHere = task.editedPaths.filter((path) => edited.has(path));
+    if (editedHere.length === 0 || task.editedPaths.some((path) => other.has(path))) return false;
+    return task.readPaths.some((read) => other.has(read) && editedHere.some((path) => linked.has(edgeKey(path, read))));
+  };
+  return tasks.filter((task) => follows(task, sideFrom, sideTo) || follows(task, sideTo, sideFrom)).length;
 }
 function rankIncidental(rows, model, settings, tasks) {
   const cycles = rows.some((row) => row.quadrant === "incidental") ? findCycles(model, settings) : [];
@@ -17909,7 +17924,12 @@ function rankIncidental(rows, model, settings, tasks) {
     if (unblocksOf(model, row.from, row.to).length + unblocksOf(model, row.to, row.from).length > 0) reasons.push("blocks-locality-move");
     if (cycles.some((cycle) => cycle.nodes.includes(row.from) && cycle.nodes.includes(row.to))) reasons.push("in-cycle");
     if (layerRuleOf(model, row.from, row.to, settings) !== null || layerRuleOf(model, row.to, row.from, settings) !== null) reasons.push("layer-violation");
-    const agentReads = tasks === void 0 ? null : agentReadsAcross(tasks, model.graph.filesOf.get(row.from) ?? [], model.graph.filesOf.get(row.to) ?? []);
+    const agentReads = tasks === void 0 ? null : agentReadsAcross(
+      tasks,
+      model.graph.filesOf.get(row.from) ?? [],
+      model.graph.filesOf.get(row.to) ?? [],
+      [...model.graph.members.get(edgeKey(row.from, row.to)) ?? [], ...model.graph.members.get(edgeKey(row.to, row.from)) ?? []]
+    );
     if (agentReads !== null && agentReads >= settings.minSupport) reasons.push("agent-reads");
     return { ...row, incidental: { rank: reasons.length > 0 ? "high" : "low", reasons, agentReads } };
   });
@@ -18223,7 +18243,7 @@ function parseQuadrant(value) {
 async function analyseCoupling({ context, history }, level, quadrant) {
   const model = await buildModel(context, history, level, void 0, { everyPair: true });
   const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : void 0;
-  const tasks = projectsDir === void 0 ? void 0 : readAgentTasks(context.repo.root, projectsDir, history.window);
+  const tasks = projectsDir === void 0 ? void 0 : readAgentTasks(await checkouts(context.repo.root), projectsDir, history.window);
   const all = rankIncidental(findCoupling(model, history.settings), model, history.settings, tasks);
   const rows = quadrant === void 0 ? all : all.filter((row) => row.quadrant === quadrant);
   return {
@@ -18234,7 +18254,8 @@ async function analyseCoupling({ context, history }, level, quadrant) {
       minSupport: history.settings.minSupport,
       minRevisions: history.settings.minRevisions,
       significanceLevel: history.settings.significanceLevel,
-      transcripts: tasks !== void 0
+      transcripts: tasks !== void 0,
+      transcriptStamp: tasks === void 0 ? null : stampOf(tasks)
     },
     results: rows,
     columns: ["id", "quadrant", "staticCoupling", "coChange", "bothActive"],
@@ -19073,7 +19094,7 @@ function measureOutcome(inputs, from, to) {
       after,
       verdict: verdictOf(before, after),
       leading,
-      agentEffort: agentEffortOf(inputs, graphBefore, from, to, seconds)
+      agentEffort: agentEffortOf(inputs, graphBefore, from, to, seconds, controlPair(inputs, graphBefore, dropped, [from, to], before.staticCoupling.sites))
     },
     hiddenCreated
   };
@@ -19093,16 +19114,52 @@ function droppedPairs(before, after) {
   }
   return pairs.sort((a, b) => compareIds(a[0], b[0]) || compareIds(a[1], b[1]));
 }
-function agentEffortOf(inputs, graphBefore, from, to, seconds) {
+function controlPair(inputs, graphBefore, dropped, target2, sites) {
+  const droppedKeys = new Set(dropped.map(([a, b]) => `${a}\0${b}`));
+  let best = null;
+  const seen = /* @__PURE__ */ new Set();
+  for (const [from, targets] of graphBefore.graph) {
+    for (const to of targets) {
+      const [a, b] = from < to ? [from, to] : [to, from];
+      const key = `${a}\0${b}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (target2.includes(a) || target2.includes(b) || droppedKeys.has(`${from}\0${to}`) || droppedKeys.has(`${to}\0${from}`)) continue;
+      if (!inputs.graphAfter.filesOf.has(a) || !inputs.graphAfter.filesOf.has(b)) continue;
+      if (!inputs.graphAfter.graph.get(a)?.includes(b) && !inputs.graphAfter.graph.get(b)?.includes(a)) continue;
+      const distance = Math.abs(staticCoupling(inputs.projectBefore, graphBefore, a, b, inputs.settings).sites - sites);
+      if (best === null || distance < best.distance || distance === best.distance && compareIds(key, `${best.pair[0]}\0${best.pair[1]}`) < 0) best = { pair: [a, b], distance };
+    }
+  }
+  return best === null ? null : best.pair;
+}
+function agentEffortOf(inputs, graphBefore, from, to, seconds, control) {
   if ("reason" in inputs.tasks) return { status: "not-measured", reason: inputs.tasks.reason };
   const { point } = inputs;
-  const sides = new Set([from, to].flatMap((side) => [...graphBefore.filesOf.get(side) ?? [], ...inputs.graphAfter.filesOf.get(side) ?? []]));
-  const touching = inputs.tasks.tasks.filter((task) => task.editedPaths.some((path) => sides.has(path)));
-  const within = (since, until) => touching.filter((task) => Date.parse(task.startedAt) >= since * 1e3 && Date.parse(task.startedAt) < until * 1e3);
-  const before = within(point.date - seconds, point.date);
-  const after = within(point.date, point.date + seconds);
-  if (before.length === 0 && after.length === 0) return { status: "not-measured", reason: "no session in the windows edited either side" };
-  return { status: "measured", before: summariseTasks(before), after: summariseTasks(after) };
+  const allTasks = inputs.tasks.tasks;
+  const filesOfSides = (sides) => new Set(sides.flatMap((side) => [...graphBefore.filesOf.get(side) ?? [], ...inputs.graphAfter.filesOf.get(side) ?? []]));
+  const touching = (files) => allTasks.filter((task) => task.editedPaths.some((path) => files.has(path)));
+  const dayStart = point.date - point.date % 86400;
+  const within = (tasks, since, until) => tasks.filter((task) => Date.parse(task.startedAt) >= since * 1e3 && Date.parse(task.startedAt) < until * 1e3);
+  const windows = (tasks) => ({ before: within(tasks, point.date - seconds, dayStart), after: within(tasks, point.date + 1, point.date + seconds) });
+  const own = windows(touching(filesOfSides([from, to])));
+  if (own.before.length === 0 && own.after.length === 0) return { status: "not-measured", reason: "no session in the windows edited either side" };
+  const others = control === null ? null : windows(touching(filesOfSides(control)));
+  const summary = (tasks) => summariseTasks([...tasks]);
+  const ownBefore = summary(own.before);
+  const ownAfter = summary(own.after);
+  const comparison = control === null || others === null ? null : { pair: control, before: summary(others.before), after: summary(others.after) };
+  const change = (pick, beforeSummary, afterSummary) => {
+    const was = pick(beforeSummary);
+    const now = pick(afterSummary);
+    return was === null || now === null ? null : now.mean - was.mean;
+  };
+  const gap = (pick) => {
+    const mine = change(pick, ownBefore, ownAfter);
+    const other = comparison === null ? null : change(pick, comparison.before, comparison.after);
+    return mine === null || other === null ? null : Math.round((mine - other) * 1e3) / 1e3;
+  };
+  return { status: "measured", before: ownBefore, after: ownAfter, comparison, difference: { filesRead: gap((figures) => figures.filesRead), tokens: gap((figures) => figures.tokens) } };
 }
 
 // packages/structure/src/commands/outcome.ts
@@ -19170,7 +19227,7 @@ var command9 = analysisCommand(name10, {
     const projectBefore = await loadProject(root, parent, settings.exclude);
     const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : void 0;
     const seconds = Math.min(date - monthsBefore(date, settings.windowMonths), history.window.until - date);
-    const tasks = projectsDir === void 0 ? { reason: "no --projects-dir was given" } : { tasks: readAgentTasks(root, projectsDir, { since: date - seconds, until: date + seconds }) };
+    const tasks = projectsDir === void 0 ? { reason: "no --projects-dir was given" } : { tasks: readAgentTasks(await checkouts(root), projectsDir, { since: date - seconds, until: date + seconds }) };
     const measured = measureOutcome(
       {
         level,
@@ -19197,7 +19254,8 @@ var command9 = analysisCommand(name10, {
         minSupport: settings.minSupport,
         minRevisions: settings.minRevisions,
         significanceLevel: settings.significanceLevel,
-        transcripts: projectsDir !== void 0
+        transcripts: projectsDir !== void 0,
+        transcriptStamp: tasks.tasks === void 0 ? null : stampOf(tasks.tasks)
       },
       results: [measured.outcome],
       columns: ["id", "verdict", "before", "after"],
@@ -22531,6 +22589,8 @@ async function measureOutcome2(root, settings, changes, anchor, options2) {
   const reuseAfter = reuseOf(laterReuse, created);
   const traded = reuseBefore !== null && reuseAfter !== null && afterFigures !== null && beforeFigures.closure !== null && afterFigures.closure !== null && afterFigures.closure > beforeFigures.closure && reuseBefore.medianShare !== null && reuseAfter.medianShare !== null && reuseAfter.medianShare < reuseBefore.medianShare;
   const dirsOf = (model, ids) => model.packages.filter((p) => ids.has(p.id) && p.dir !== null).map((p) => p.dir === "." ? "" : p.dir);
+  let transcriptStamp = null;
+  const repoRoots = options2.projectsDir === void 0 ? [root] : await checkouts(root);
   const effort = () => {
     const projectsDir = options2.projectsDir;
     if (projectsDir === void 0 || !existsSync10(projectsDir)) {
@@ -22538,9 +22598,10 @@ async function measureOutcome2(root, settings, changes, anchor, options2) {
     }
     const windowOf = (from, to) => parseWindow(day2(from), day2(to));
     const touching = (tasks, dirs) => tasks.filter((t) => t.editedPaths.some((p) => dirs.some((d) => d === "" || p === d || p.startsWith(`${d}/`))));
-    const measure = (from, to) => measureRepo({ projectsDir, repoRoots: [root], window: windowOf(from, to) }).tasks;
+    const measure = (from, to) => measureRepo({ projectsDir, repoRoots, window: windowOf(from, to) }).tasks;
     const beforeTasks = measure(monthsBefore(date, settings.windowMonths), date);
     const afterTasks = measure(date, anchor + 86400);
+    transcriptStamp = stampOf([...beforeTasks, ...afterTasks]);
     const aloneDirs = (model) => dirsOf(model, new Set(aloneBefore));
     const unitBefore = touching(beforeTasks, dirsOf(earlier, replaced));
     const unitAfter = touching(afterTasks, dirsOf(later, created));
@@ -22552,7 +22613,8 @@ async function measureOutcome2(root, settings, changes, anchor, options2) {
       control: { before: summariseTasks(touching(beforeTasks, aloneDirs(earlier))), after: summariseTasks(touching(afterTasks, aloneDirs(later))) }
     };
   };
-  return {
+  const agentEffort = effort();
+  const outcome2 = {
     reshaped: { at, before: beforeSha, kind, replaced: [...replaced].sort(compareIds), created: [...created].sort(compareIds), movedFiles },
     windows: {
       before: { since: new Date(monthsBefore(date, settings.windowMonths) * 1e3).toISOString(), until: new Date(date * 1e3).toISOString() },
@@ -22566,8 +22628,9 @@ async function measureOutcome2(root, settings, changes, anchor, options2) {
       packages: { before: earlier.packages.length, after: later.packages.length },
       medianDistance: { before: medianDistance(earlier, earlierReuse), after: medianDistance(later, laterReuse) }
     },
-    agentEffort: effort()
+    agentEffort
   };
+  return { outcome: outcome2, transcriptStamp };
 }
 
 // packages/structure/src/packaging/commands/outcome.ts
@@ -22580,9 +22643,9 @@ var outcome = {
     if (at === void 0) throw usageError(usage5);
     const from = typeof context.values.from === "string" ? context.values.from : void 0;
     const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : void 0;
-    const result = await measureOutcome2(context.repo.root, history.settings, history.filtered.changes, model.anchor, { at, from, projectsDir });
+    const { outcome: result, transcriptStamp } = await measureOutcome2(context.repo.root, history.settings, history.filtered.changes, model.anchor, { at, from, projectsDir });
     return {
-      inputs: { subcommand: "outcome", at: result.reshaped.at, before: result.reshaped.before, transcripts: projectsDir !== void 0 },
+      inputs: { subcommand: "outcome", at: result.reshaped.at, before: result.reshaped.before, transcripts: projectsDir !== void 0, transcriptStamp },
       results: result
     };
   }

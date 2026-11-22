@@ -5,7 +5,7 @@ import {
   adapterForPath,
   bindingForPath,
   isTestPath
-} from "./chunk-3GUJDKVK.mjs";
+} from "./chunk-K5DXLP26.mjs";
 import {
   GitError,
   SCHEMA_VERSION,
@@ -6609,6 +6609,13 @@ __export(outcome_exports, {
 // packages/complexity/src/outcome.ts
 import { existsSync as existsSync6 } from "node:fs";
 
+// packages/history/src/checkouts.ts
+async function checkouts(root) {
+  const listing = await runGit(root, ["worktree", "list", "--porcelain"]);
+  const others = listing.split("\n").filter((line) => line.startsWith("worktree ")).map((line) => line.slice("worktree ".length)).filter((path) => path !== root);
+  return [root, ...others.sort()];
+}
+
 // packages/transcripts/src/measure-repo.ts
 import { existsSync as existsSync5, readFileSync as readFileSync5, readdirSync as readdirSync2 } from "node:fs";
 import { join as join6 } from "node:path";
@@ -6982,6 +6989,12 @@ function measureRepo(options) {
   };
 }
 
+// packages/transcripts/src/stamp.ts
+import { createHash as createHash3 } from "node:crypto";
+function stampOf(input) {
+  return createHash3("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
+}
+
 // packages/complexity/src/outcome.ts
 var round3 = (value) => Math.round(value * 1e3) / 1e3;
 var mean = (values) => values.length === 0 ? null : round3(values.reduce((sum, value) => sum + value, 0) / values.length);
@@ -7078,8 +7091,11 @@ async function measureOutcome(root, settings, exclude, options) {
   const series = new Set((await runGit(root, ["rev-list", `${beforeSha}..${at}`])).split("\n").filter((line) => line !== ""));
   if (series.size === 0 || !series.has(first)) throw usageError(`--from ${options.from} is not an ancestor of ${options.at}`);
   const date = Number((await runGit(root, ["log", "-1", "--format=%ct", at])).trim());
+  const startedAt = Number((await runGit(root, ["log", "-1", "--format=%ct", first])).trim());
   const history = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...exclude], excludeSuiteCommits: true } });
-  const anchor = history.view.headDate;
+  const headDate = history.view.headDate;
+  const fullEnd = monthsBefore(date, -settings.windowMonths);
+  const anchor = Math.min(fullEnd, headDate);
   const subjects = new Map(history.view.commits.map((commit) => [commit.sha, commit.message.split("\n")[0] ?? ""]));
   const subjectOf = (sha) => subjects.get(sha) ?? "";
   const eligible = history.filtered.changes.filter((change) => !change.shas.some((sha) => series.has(sha)));
@@ -7131,15 +7147,18 @@ async function measureOutcome(root, settings, exclude, options) {
     return gap(own, other);
   };
   const changesDelta = (own) => own.after.changes - own.before.changes;
-  const effort = () => {
+  let transcriptStamp = null;
+  const effort = async () => {
     const { projectsDir } = options;
     if (projectsDir === void 0 || !existsSync6(projectsDir)) {
       return { status: "not-measured", reason: projectsDir === void 0 ? "no --projects-dir was given" : `${projectsDir} does not exist` };
     }
-    const measure = (from, to) => measureRepo({ projectsDir, repoRoots: [root], window: parseWindow(day(from), day(to)) }).tasks;
+    const repoRoots = await checkouts(root);
+    const measure = (from, to) => measureRepo({ projectsDir, repoRoots, window: parseWindow(day(from), day(to)) }).tasks;
     const touching = (tasks, paths) => tasks.filter((task) => task.editedPaths.some((path) => paths.has(path)));
-    const beforeTasks = measure(monthsBefore(date, settings.windowMonths), date);
-    const afterTasks = measure(date, anchor + 86400);
+    const beforeTasks = measure(monthsBefore(date, settings.windowMonths), startedAt).filter((task) => Date.parse(task.startedAt) < startedAt * 1e3);
+    const afterTasks = measure(date, anchor + 86400).filter((task) => Date.parse(task.startedAt) > date * 1e3);
+    transcriptStamp = stampOf([...beforeTasks, ...afterTasks]);
     const own = { before: touching(beforeTasks, actedEarlier), after: touching(afterTasks, actedLater) };
     if (own.before.length === 0 && own.after.length === 0) return { status: "not-measured", reason: "no session in the windows edited the acted-on files" };
     return {
@@ -7148,7 +7167,8 @@ async function measureOutcome(root, settings, exclude, options) {
       comparison: { before: summariseTasks(touching(beforeTasks, controlSet)), after: summariseTasks(touching(afterTasks, controlSet)) }
     };
   };
-  return {
+  const agentEffort = await effort();
+  const outcome = {
     actedOn: { at, before: beforeSha, files: acted },
     comparison: {
       files: control,
@@ -7156,7 +7176,7 @@ async function measureOutcome(root, settings, exclude, options) {
     },
     windows: {
       before: { since: iso(monthsBefore(date, settings.windowMonths)), until: iso(date) },
-      after: { since: iso(date), until: iso(anchor) }
+      after: { since: iso(date), until: iso(anchor), complete: fullEnd <= headDate }
     },
     changeCost,
     rank,
@@ -7167,8 +7187,9 @@ async function measureOutcome(root, settings, exclude, options) {
       changes: changesDelta(changeCost.actedOn) - changesDelta(changeCost.comparison),
       meanScore: gap(delta2(rank.actedOn.before.meanScore, rank.actedOn.after.meanScore), delta2(rank.comparison.before.meanScore, rank.comparison.after.meanScore))
     },
-    agentEffort: effort()
+    agentEffort
   };
+  return { outcome, transcriptStamp };
 }
 
 // packages/complexity/src/commands/outcome.ts
@@ -7186,9 +7207,9 @@ var command7 = {
     if ((await readShallowInfo(root)).isShallow) throw usageError("history is shallow, so the windows before and after the change cannot be measured");
     await refresh(root, { ref: "HEAD" });
     const settings = readSettings(context.config);
-    const result = await measureOutcome(root, settings, context.config.effective.exclude, { at, from, projectsDir });
+    const { outcome: result, transcriptStamp } = await measureOutcome(root, settings, context.config.effective.exclude, { at, from, projectsDir });
     return {
-      inputs: { at: result.actedOn.at, before: result.actedOn.before, transcripts: projectsDir !== void 0 },
+      inputs: { at: result.actedOn.at, before: result.actedOn.before, transcripts: projectsDir !== void 0, transcriptStamp },
       results: result
     };
   }

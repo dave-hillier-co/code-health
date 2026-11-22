@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-BO6O4Q6D.mjs";
+} from "./chunk-EJG3OZLP.mjs";
 import {
   GitError,
   gitVersion,
@@ -29,14 +29,14 @@ import {
 } from "./chunk-Z55QIW6L.mjs";
 import {
   analyseTree
-} from "./chunk-ISP6GH5Y.mjs";
-import "./chunk-EUZU5IVE.mjs";
+} from "./chunk-A2ZYUZBY.mjs";
+import "./chunk-TF4VDQLH.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isTestPath
-} from "./chunk-T5M6AR2G.mjs";
+} from "./chunk-HYQDVCCA.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -3772,9 +3772,6 @@ function chooseComparison(candidates, actedOn) {
   return { group, pairs, overlapping: left.length - pool.length };
 }
 
-// packages/locality/src/measure-effort.ts
-import { createHash as createHash2 } from "node:crypto";
-
 // packages/history/src/checkouts.ts
 async function checkouts(root) {
   const listing = await runGit(root, ["worktree", "list", "--porcelain"]);
@@ -3787,15 +3784,18 @@ import { homedir } from "node:os";
 import { join as join9 } from "node:path";
 var defaultProjectsDirectory = () => join9(homedir(), ".claude", "projects");
 
+// packages/transcripts/src/stamp.ts
+import { createHash as createHash2 } from "node:crypto";
+function stampOf(input) {
+  return createHash2("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
+}
+
 // packages/locality/src/measure-effort.ts
 function readEffort(projectsDir, repoRoots, window) {
   return measureRepo({ projectsDir, repoRoots, window: parseWindow(window.from, window.to) });
 }
 function tasksTouching(tasks, files) {
   return tasks.filter((task) => task.readPaths.some((path) => files.has(path)) || task.editedPaths.some((path) => files.has(path)));
-}
-function stampOf(tasks) {
-  return createHash2("sha256").update(JSON.stringify(tasks)).digest("hex").slice(0, 16);
 }
 function readHeat(tasks, limit) {
   const counts = /* @__PURE__ */ new Map();
@@ -3993,6 +3993,7 @@ function conclude(n, minSamples, partial, z) {
 }
 function verdictOf(conclusions) {
   if (conclusions.every((c) => c === "insufficient-sample")) return "insufficient-sample";
+  if (conclusions.every((c) => c === "insufficient-sample" || c === "not-measured")) return "not-measured";
   const costlier = conclusions.filter((c) => c === "costlier-when-distant").length;
   const cheaper = conclusions.filter((c) => c === "cheaper-when-distant").length;
   if (costlier > 0 && cheaper > 0) return "mixed";
@@ -4311,6 +4312,7 @@ var PREMISE_VERDICTS = {
   contradicted: "tasks touching more distant files cost less",
   mixed: "the cost figures disagree",
   "not-shown": "no relationship between distance and cost was shown. That is not evidence there is none",
+  "not-measured": "distance did not vary across the tasks, or cost did not, so nothing could be tested. That is not a finding of no relationship",
   "insufficient-sample": "too few tasks to conclude anything"
 };
 function premiseWindow(context, settings, headDate) {
@@ -4580,7 +4582,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-EABPRGAO.mjs");
+    const { performMove } = await import("./chunk-N3LMGT5M.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -4631,7 +4633,7 @@ var command5 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-M5GZFAGF.mjs");
+      const { buildProject } = await import("./chunk-OQWBCTM4.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -4851,7 +4853,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-S7CMPERL.mjs");
+    const { verifyMove } = await import("./chunk-PTME2LGI.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;
