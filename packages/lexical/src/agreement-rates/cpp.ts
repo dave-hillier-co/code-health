@@ -5,4 +5,4 @@ import type { AgreementCounts } from "../agreement.ts";
  * (fixtures/languages/<id>/adapter, metrics and agreement). Written by the agreement test: run it with
  * UPDATE_AGREEMENT=1 after a deliberate change. Checked by it in CI, so a profile change cannot make the rates worse unnoticed.
  */
-export const recorded: AgreementCounts = { units: 66, found: 65, exact: 65, blocks: 67, spurious: 1 };
+export const recorded: AgreementCounts = { units: 71, found: 70, exact: 70, blocks: 72, spurious: 1 };

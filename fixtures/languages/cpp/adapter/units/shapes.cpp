@@ -34,3 +34,40 @@ T identity(T value) {
 }
 
 }  // namespace acme
+
+namespace other {
+
+class Widget {
+ public:
+  void draw() const {}
+};
+
+}  // namespace other
+
+namespace {
+
+int hidden() {
+  return 1;
+}
+
+}  // namespace
+
+inline namespace v2 {
+
+int version() {
+  return 2;
+}
+
+}  // inline namespace v2
+
+namespace outer::inner {
+
+int deep() {
+  return 1;
+}
+
+}  // namespace outer::inner
+
+int acme::Widget::count() {
+  return 0;
+}

@@ -7,9 +7,9 @@
     "src/invoice.cpp -> src/money.h call call=2 reference=1"
   ],
   "consumers": [
-    "src/invoice.cpp#total -> src/money.h#Money call x1",
-    "src/invoice.cpp#total -> src/money.h#Money reference x1",
-    "src/invoice.cpp#total -> src/money.h#add call x1"
+    "src/invoice.cpp#acme::total -> src/money.h#acme::Money call x1",
+    "src/invoice.cpp#acme::total -> src/money.h#acme::Money reference x1",
+    "src/invoice.cpp#acme::total -> src/money.h#add call x1"
   ],
   "unresolved": [],
   "barrels": [],

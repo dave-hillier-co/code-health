@@ -118,7 +118,7 @@ Per file: function count, sum and max of each metric, and the count of functions
 
 A unit is a function, method, constructor, accessor, or a lambda or closure with a body. Each unit has a stable identity, `path#Qualified.name`, with an ordinal suffix for duplicate names in one scope. The identity is used for diffs and the ratchet. When a function is renamed or moved, the comparison matches it by body similarity before treating it as new. An unmatched unit counts as new, so moving code never hides a regression from the ratchet without the agent having looked at it.
 
-Matching is by identity first. The leftovers are paired greedily, best first, by weighted token Jaccard similarity of their bodies at `moveSimilarity` (default 0.8, a judgement call). The 0.8 is a pairing floor, because below it two bodies are not the same unit. Whitespace-only differences are not changes, and a pure move is left out of `diff` and counted in `summary.moved`, as CodeScene's delta analysis follows code that moves. In C++ a unit name drops its namespaces and uses the last qualifier (`A::B::m` is `B.m`), with `~n` for overloads, so two same-named classes in different namespaces can collide in identity (see the open questions).
+Matching is by identity first. The leftovers are paired greedily, best first, by weighted token Jaccard similarity of their bodies at `moveSimilarity` (default 0.8, a judgement call). The 0.8 is a pairing floor, because below it two bodies are not the same unit. Whitespace-only differences are not changes, and a pure move is left out of `diff` and counted in `summary.moved`, as CodeScene's delta analysis follows code that moves. In C++ a unit name keeps its namespaces, so two same-named classes in different namespaces have different identities (see "Unit names in C++" in suite.md).
 
 `check` and `diff` measure only the files changed between the base and the target, with the structural layer, as CodeScene's delta analysis checks changed files only. A rename appears as a delete plus an add in the file list, and the unit matching above pairs the units across it, so a rename does not hide a regression. Files with no adapter are counted in `unsupportedFiles`. `analyse` measures a clean tree at HEAD and uncommitted work from disk, untracked files that are not ignored included. A report is stored only for a whole-repository run on a clean tree.
 
@@ -229,7 +229,6 @@ The plugin supports every supported language of the suite (tier 1: TypeScript/Ja
 ## Open questions
 
 - Whether symbol-level co-change, from mapping diff hunks onto function ranges, belongs here (this plugin already parses) or in cochange.
-- Whether a C++ unit name should keep its namespaces, so that same-named classes in different namespaces keep separate identities for trends and history.
 - Whether Rust's wildcard `match` arm should stop counting as a case, for consistency with the other languages.
 - Whether `complexity depth` rows should rank by a corpus-calibrated figure instead of the judgement-call guideline.
 - Whether the hook should also report *improvements*. That would be positive feedback for the agent, at a token cost.

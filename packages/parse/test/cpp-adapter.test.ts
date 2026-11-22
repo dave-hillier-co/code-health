@@ -178,3 +178,26 @@ describe("CMake", () => {
     ]);
   });
 });
+
+describe("unit ids keep their namespaces", () => {
+  const ids = async (texts: Record<string, string>) => (await analyse(texts)).units.map((unit) => unit.qualifiedName);
+
+  it("tell apart classes of one name in different namespaces, and their members", async () => {
+    const found = await ids({
+      "a.cpp": "namespace a { class W { public: void run() {} }; }\nnamespace b { class W { public: void run() {} }; }\n",
+    });
+    expect(found).toEqual(["a::W", "a::W.run", "b::W", "b::W.run"]);
+  });
+
+  it("name an out-of-line member by the namespaces around it and the qualifier it is written with", async () => {
+    const found = await ids({
+      "a.cpp": "namespace a { void W::run() {} }\nvoid b::W::run() {}\nvoid c::free() {}\n",
+    });
+    expect(found).toEqual(["a::W.run", "b::W.run", "c.free"]);
+  });
+
+  it("add no segment for an anonymous namespace, and the name for an inline one", async () => {
+    const found = await ids({ "a.cpp": "namespace { int hidden() { return 1; } }\ninline namespace v1 { int f() { return 1; } }\nnamespace x::y { int g() { return 1; } }\n" });
+    expect(found).toEqual(["hidden", "v1::f", "x::y::g"]);
+  });
+});
