@@ -1,8 +1,14 @@
 import { folderOf } from "@code-health/graph/tree-distance";
 import { isWithinRepo, toRepoPath, worktreeRootOf } from "./repo-path.ts";
-import { parseTranscript, type SessionEvent, type TokenCounts, type ToolAction } from "./transcript-format.ts";
+import { parseTranscript, type ActionOrigin, type SessionEvent, type TokenCounts, type ToolAction } from "./transcript-format.ts";
 
 export type TaskSource = "main" | "subagent";
+
+/**
+ * Which calls count toward a task's totals: `tools` counts only the Read, Grep, Glob, Edit, Write and
+ * NotebookEdit tools, `all` counts those and the files named in the commands of Bash calls.
+ */
+export type EffortMode = "tools" | "all";
 
 /** What the meta file beside a subagent transcript says. The first two are short labels written by whoever spawned the subagent. */
 export interface SubagentMeta {
@@ -13,6 +19,15 @@ export interface SubagentMeta {
 
 export interface TaskTokens extends TokenCounts {
   total: number;
+}
+
+/** Counts from one origin, tool calls or shell commands, computed as if the other origin did not exist. */
+export interface OriginCounts {
+  reads: number;
+  filesRead: number;
+  reReads: number;
+  searches: number;
+  edits: number;
 }
 
 /** Paths and counts for one task. Nothing from message text or tool output. */
@@ -31,16 +46,25 @@ export interface TaskEffort {
   taskIndex: number;
   /** Timestamp of the task's prompt. */
   startedAt: string;
-  /** Read calls on repo files. */
+  /** Which origins the totals, the paths and the folders below count. */
+  effortMode: EffortMode;
+  /** Read calls on repo files, over the counted origins. */
   reads: number;
+  /** Distinct repo files read. A file read through a tool and through the shell counts once, so the two parts can sum to more than this. */
   filesRead: number;
-  /** Reads of a file the task had already read. */
+  /** Reads of a file the task had already read, whichever origin read it first. */
   reReads: number;
   searches: number;
   /** Distinct folders of the files read or edited, `""` being the repo root. */
   foldersVisited: number;
   edits: number;
   filesEdited: number;
+  /** The same counts from tool calls alone, and from shell commands alone, whatever `effortMode` is. */
+  tool: OriginCounts;
+  shell: OriginCounts;
+  /** Bash calls in the task, and those whose command was not parsed, whatever `effortMode` is. */
+  shellCalls: number;
+  unparsedShellCalls: number;
   tokens: TaskTokens;
   readPaths: string[];
   editedPaths: string[];
@@ -66,8 +90,10 @@ function sortedBytes(values: Iterable<string>): string[] {
   return [...values].sort(compareBytes);
 }
 
-function segment(events: readonly SessionEvent[]): { startedAt: string; turns: Extract<SessionEvent, { kind: "agent-turn" }>[] }[] {
-  const tasks: { startedAt: string; turns: Extract<SessionEvent, { kind: "agent-turn" }>[] }[] = [];
+type Turn = Extract<SessionEvent, { kind: "agent-turn" }>;
+
+function segment(events: readonly SessionEvent[]): { startedAt: string; turns: Turn[] }[] {
+  const tasks: { startedAt: string; turns: Turn[] }[] = [];
   for (const event of events) {
     if (event.kind === "prompt") tasks.push({ startedAt: event.timestamp, turns: [] });
     else tasks.at(-1)?.turns.push(event);
@@ -83,60 +109,88 @@ interface TaskOrigin {
   description: string | null;
 }
 
-function measureTask(
-  origin: TaskOrigin,
-  taskIndex: number,
-  startedAt: string,
-  turns: readonly { tokens: TokenCounts; actions: ToolAction[] }[],
-  roots: readonly string[],
-): TaskEffort {
+/** What the actions of the given origins did to repo files. */
+function tally(actions: readonly ToolAction[], origins: readonly ActionOrigin[], roots: readonly string[]) {
   const readCounts = new Map<string, number>();
   const edited = new Set<string>();
   let searches = 0;
   let edits = 0;
-  const tokens: TokenCounts = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
+  for (const action of actions) {
+    if (!origins.includes(action.origin)) continue;
+    const path = toRepoPath(action.path, roots);
+    if (action.kind === "search") {
+      if (isWithinRepo(action.path, roots)) searches++;
+    } else if (path === null) {
+      continue;
+    } else if (action.kind === "read") {
+      readCounts.set(path, (readCounts.get(path) ?? 0) + 1);
+    } else {
+      edits++;
+      edited.add(path);
+    }
+  }
+  const reads = [...readCounts.values()].reduce((sum, n) => sum + n, 0);
+  return { readCounts, edited, searches, edits, reads };
+}
 
+function originCounts(result: ReturnType<typeof tally>): OriginCounts {
+  return {
+    reads: result.reads,
+    filesRead: result.readCounts.size,
+    reReads: result.reads - result.readCounts.size,
+    searches: result.searches,
+    edits: result.edits,
+  };
+}
+
+function measureTask(
+  origin: TaskOrigin,
+  taskIndex: number,
+  startedAt: string,
+  turns: readonly Turn[],
+  roots: readonly string[],
+  effortMode: EffortMode,
+): TaskEffort {
+  const tokens: TokenCounts = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
+  const actions: ToolAction[] = [];
+  let shellCalls = 0;
+  let unparsedShellCalls = 0;
   for (const turn of turns) {
     tokens.input += turn.tokens.input;
     tokens.output += turn.tokens.output;
     tokens.cacheRead += turn.tokens.cacheRead;
     tokens.cacheCreation += turn.tokens.cacheCreation;
-    for (const action of turn.actions) {
-      const path = toRepoPath(action.path, roots);
-      if (action.kind === "search") {
-        if (isWithinRepo(action.path, roots)) searches++;
-      } else if (path === null) {
-        continue;
-      } else if (action.kind === "read") {
-        readCounts.set(path, (readCounts.get(path) ?? 0) + 1);
-      } else {
-        edits++;
-        edited.add(path);
-      }
-    }
+    actions.push(...turn.actions);
+    shellCalls += turn.shell.calls;
+    unparsedShellCalls += turn.shell.unparsed;
   }
 
-  const reads = [...readCounts.values()].reduce((sum, n) => sum + n, 0);
+  const counted = tally(actions, effortMode === "all" ? ["tool", "shell"] : ["tool"], roots);
   const folders = new Set<string>();
-  for (const path of [...readCounts.keys(), ...edited]) folders.add(folderOf(path));
+  for (const path of [...counted.readCounts.keys(), ...counted.edited]) folders.add(folderOf(path));
 
   return {
     ...origin,
     taskIndex,
     startedAt,
-    reads,
-    filesRead: readCounts.size,
-    reReads: reads - readCounts.size,
-    searches,
+    effortMode,
+    reads: counted.reads,
+    filesRead: counted.readCounts.size,
+    reReads: counted.reads - counted.readCounts.size,
+    searches: counted.searches,
     foldersVisited: folders.size,
-    edits,
-    filesEdited: edited.size,
+    edits: counted.edits,
+    filesEdited: counted.edited.size,
+    tool: originCounts(tally(actions, ["tool"], roots)),
+    shell: originCounts(tally(actions, ["shell"], roots)),
+    shellCalls,
+    unparsedShellCalls,
     tokens: {
       ...tokens,
       total: tokens.input + tokens.output + tokens.cacheRead + tokens.cacheCreation,
     },
-    readPaths: sortedBytes(readCounts.keys()),
-    editedPaths: sortedBytes(edited),
+    readPaths: sortedBytes(counted.readCounts.keys()),
+    editedPaths: sortedBytes(counted.edited),
     folders: sortedBytes(folders),
   };
 }
@@ -149,7 +203,8 @@ function mainOrigin(sessionId: string): TaskOrigin {
  * Measures one subagent transcript as one task: its first prompt starts it, every later turn of the file belongs
  * to it, and it is measured from the file's sidechain lines. The checkouts it may have run in are `roots`, the
  * meta file's `worktreePath` and the worktree its recorded working directories lie in, so paths in a worktree that
- * has since been deleted still map to the repo. The task is left out when it made no edit to a repo file.
+ * has since been deleted still map to the repo. The task is left out when it made no edit to a repo file, counting
+ * the edits of the origins `effortMode` names.
  */
 export function measureSubagent(
   text: string,
@@ -157,6 +212,7 @@ export function measureSubagent(
   agentId: string,
   roots: readonly string[],
   meta: SubagentMeta | null,
+  effortMode: EffortMode = "all",
 ): SessionMeasurement {
   const parsed = parseTranscript(text, "sidechain");
   if (parsed.status === "not-measured") {
@@ -174,7 +230,7 @@ export function measureSubagent(
     agentType: meta?.agentType ?? null,
     description: meta?.description ?? null,
   };
-  const task = start === undefined ? null : measureTask(origin, 0, start.timestamp, turns, mapRoots);
+  const task = start === undefined ? null : measureTask(origin, 0, start.timestamp, turns, mapRoots, effortMode);
   return { status: "measured", sessionId, version: parsed.version, tasks: task === null || task.edits === 0 ? [] : [task], cwds: parsed.cwds };
 }
 
@@ -182,13 +238,13 @@ export function measureSubagent(
  * Measures one session transcript. `roots` lists the checkouts of the repo the
  * session may have run in. Tasks with no edits to repo files are left out.
  */
-export function measureSession(text: string, sessionId: string, roots: readonly string[]): SessionMeasurement {
+export function measureSession(text: string, sessionId: string, roots: readonly string[], effortMode: EffortMode = "all"): SessionMeasurement {
   const parsed = parseTranscript(text);
   if (parsed.status === "not-measured") {
     return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
   }
   const tasks = segment(parsed.events)
-    .map((task, index) => measureTask(mainOrigin(sessionId), index, task.startedAt, task.turns, roots))
+    .map((task, index) => measureTask(mainOrigin(sessionId), index, task.startedAt, task.turns, roots, effortMode))
     .filter((task) => task.edits > 0);
   return { status: "measured", sessionId, version: parsed.version, tasks, cwds: parsed.cwds };
 }

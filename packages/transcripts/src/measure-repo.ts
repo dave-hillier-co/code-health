@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { isWithinRepo } from "./repo-path.ts";
-import { measureSession, measureSubagent, type SubagentMeta, type TaskEffort } from "./agent-effort.ts";
+import { measureSession, measureSubagent, type EffortMode, type SubagentMeta, type TaskEffort } from "./agent-effort.ts";
 import { inWindow, type TimeWindow } from "./time-window.ts";
 
 export interface MeasureRepoOptions {
@@ -12,9 +12,13 @@ export interface MeasureRepoOptions {
   window: TimeWindow;
   /** Which tasks to measure: those of main sessions, those of subagent transcripts, or both. Default `all`. */
   source?: EffortSource;
+  /** Which calls count: `tools` for the Read, Grep, Glob, Edit, Write and NotebookEdit tools only, `all` for those and the files named in Bash commands. Default `all`. */
+  effort?: EffortMode;
 }
 
 export type EffortSource = "main" | "subagent" | "all";
+
+export type { EffortMode };
 
 export interface Distribution {
   mean: number;
@@ -29,6 +33,16 @@ export interface EffortSummary {
   reReads: Distribution | null;
   edits: Distribution | null;
   tokens: Distribution | null;
+  /** Bash calls over the tasks, whatever the effort mode. */
+  shell: ShellSummary;
+}
+
+export interface ShellSummary {
+  calls: number;
+  /** Calls whose command was not parsed, so they contributed no path. */
+  unparsed: number;
+  /** Calls parsed divided by calls, or null when the tasks made none. */
+  parsedShare: number | null;
 }
 
 export interface NotMeasuredSession {
@@ -67,6 +81,12 @@ function distribution(values: number[]): Distribution | null {
   return { mean: round(mean), median: round(median) };
 }
 
+export function summariseShell(tasks: readonly TaskEffort[]): ShellSummary {
+  const calls = tasks.reduce((sum, task) => sum + (task.shellCalls ?? 0), 0);
+  const unparsed = tasks.reduce((sum, task) => sum + (task.unparsedShellCalls ?? 0), 0);
+  return { calls, unparsed, parsedShare: calls === 0 ? null : Number(((calls - unparsed) / calls).toFixed(3)) };
+}
+
 export function summariseTasks(tasks: readonly TaskEffort[]): EffortSummary {
   return {
     tasks: tasks.length,
@@ -75,6 +95,7 @@ export function summariseTasks(tasks: readonly TaskEffort[]): EffortSummary {
     reReads: distribution(tasks.map((t) => t.reReads)),
     edits: distribution(tasks.map((t) => t.edits)),
     tokens: distribution(tasks.map((t) => t.tokens.total)),
+    shell: summariseShell(tasks),
   };
 }
 
@@ -147,6 +168,7 @@ export function sessionFiles(projectsDir: string, root: string): { sessionId: st
 export function measureRepo(options: MeasureRepoOptions): EffortReport {
   const { projectsDir, repoRoots, window } = options;
   const source = options.source ?? "all";
+  const effort = options.effort ?? "all";
   const seen = new Set<string>();
   const tasks: TaskEffort[] = [];
   const notMeasured: NotMeasuredSession[] = [];
@@ -165,7 +187,7 @@ export function measureRepo(options: MeasureRepoOptions): EffortReport {
           continue;
         }
         const meta = readMeta(file.path);
-        const result = measureSubagent(text, file.sessionId, file.agentId, repoRoots, meta);
+        const result = measureSubagent(text, file.sessionId, file.agentId, repoRoots, meta, effort);
         // The meta file's worktree is a checkout of this repo, since the transcript sits in this repo's project directory.
         const places = meta?.worktreePath == null ? repoRoots : [...repoRoots, meta.worktreePath];
         if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, places))) continue;
@@ -188,7 +210,7 @@ export function measureRepo(options: MeasureRepoOptions): EffortReport {
       } catch {
         continue; // unreadable now, so it cannot be placed in a window either
       }
-      const result = measureSession(text, file.sessionId, repoRoots);
+      const result = measureSession(text, file.sessionId, repoRoots, effort);
       // The directory name is a lossy encoding (/work/my.repo and /work/my-repo collide), so the working
       // directory recorded in the session decides whether it belongs to this repo.
       if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;

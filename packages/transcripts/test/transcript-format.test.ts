@@ -18,7 +18,7 @@ test("a recognised version yields prompts and agent turns in order", () => {
   expect(result[1]).toMatchObject({
     kind: "agent-turn",
     tokens: { input: 3, output: 5, cacheRead: 7, cacheCreation: 11 },
-    actions: [{ kind: "read", path: "/work/repo/a.ts" }],
+    actions: [{ kind: "read", origin: "tool", path: "/work/repo/a.ts" }],
   });
 });
 
@@ -64,13 +64,13 @@ test("tool calls are classified as read, search or edit by name, and unknown too
   ]);
   const turn = events(session)[1];
   expect(turn?.kind === "agent-turn" && turn.actions).toEqual([
-    { kind: "read", path: "/work/repo/a.ts" },
-    { kind: "search", path: "/work/repo/src" },
-    { kind: "search", path: null },
-    { kind: "edit", path: "/work/repo/b.ts" },
-    { kind: "edit", path: "/work/repo/c.ts" },
-    { kind: "edit", path: "/work/repo/n.ipynb" },
-    { kind: "edit", path: "/work/repo/d.ts" },
+    { kind: "read", origin: "tool", path: "/work/repo/a.ts" },
+    { kind: "search", origin: "tool", path: "/work/repo/src" },
+    { kind: "search", origin: "tool", path: null },
+    { kind: "edit", origin: "tool", path: "/work/repo/b.ts" },
+    { kind: "edit", origin: "tool", path: "/work/repo/c.ts" },
+    { kind: "edit", origin: "tool", path: "/work/repo/n.ipynb" },
+    { kind: "edit", origin: "tool", path: "/work/repo/d.ts" },
   ]);
 });
 

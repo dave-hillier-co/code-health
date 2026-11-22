@@ -1,3 +1,5 @@
+import { shellAccess } from "./shell-command.ts";
+
 /**
  * The only module that knows the Claude Code session transcript format. The
  * format is internal to Claude Code and can change, so everything else works on
@@ -25,6 +27,10 @@
  * - An assistant line with no id, timestamp or content array (a synthetic API error, say) is skipped and
  *   counted in `skippedLines` rather than failing the session, as are lines that are not JSON.
  *
+ * - A `Bash` call is read for the files its command names (see `shell-command.ts`), resolved against the `cwd`
+ *   recorded on the line. Its actions are marked `shell`, and the turn counts its Bash calls and those whose
+ *   command was not parsed. A call that is not parsed contributes no path.
+ *
  * Only paths and counts leave this module. Message text, tool output and tool
  * inputs other than path fields are never copied.
  */
@@ -38,15 +44,28 @@ export interface TokenCounts {
 
 export type ActionKind = "read" | "search" | "edit";
 
+/** `tool` is a Read, Grep, Glob, Edit, Write or NotebookEdit call, `shell` a path read from the command of a Bash call. */
+export type ActionOrigin = "tool" | "shell";
+
 export interface ToolAction {
   kind: ActionKind;
-  /** The path as written in the tool call, or null when the call named none. */
+  origin: ActionOrigin;
+  /**
+   * The path as written in the tool call, or null when the call named none. For a shell action it is resolved
+   * against the working directory recorded on the line and any literal `cd` in the command.
+   */
   path: string | null;
+}
+
+/** The Bash calls of one agent turn: all of them, and those whose command could not be parsed (see `shell-command.ts`). */
+export interface ShellCalls {
+  calls: number;
+  unparsed: number;
 }
 
 export type SessionEvent =
   | { kind: "prompt"; timestamp: string }
-  | { kind: "agent-turn"; timestamp: string; messageId: string; tokens: TokenCounts; actions: ToolAction[] };
+  | { kind: "agent-turn"; timestamp: string; messageId: string; tokens: TokenCounts; actions: ToolAction[]; shell: ShellCalls };
 
 export type ParsedTranscript =
   | {
@@ -88,10 +107,25 @@ function actionOf(block: Json): ToolAction | null {
   const name = asString(block["name"]);
   if (name === null) return null;
   const input = isObject(block["input"]) ? block["input"] : {};
-  if (READ_TOOLS.has(name)) return { kind: "read", path: pathOf(input) };
-  if (SEARCH_TOOLS.has(name)) return { kind: "search", path: pathOf(input) };
-  if (EDIT_TOOLS.has(name)) return { kind: "edit", path: pathOf(input) };
+  if (READ_TOOLS.has(name)) return { kind: "read", origin: "tool", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name)) return { kind: "search", origin: "tool", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name)) return { kind: "edit", origin: "tool", path: pathOf(input) };
   return null;
+}
+
+const SHELL_TOOLS = new Set(["Bash"]);
+
+/** The actions a Bash call's command makes, or null when the command is not parsed. */
+function shellActionsOf(block: Json, cwd: string | null): ToolAction[] | null {
+  const input = isObject(block["input"]) ? block["input"] : {};
+  const command = asString(input["command"]);
+  const access = command === null ? null : shellAccess(command, cwd);
+  if (access === null) return null;
+  return [
+    ...access.reads.map((path): ToolAction => ({ kind: "read", origin: "shell", path })),
+    ...access.searches.map((path): ToolAction => ({ kind: "search", origin: "shell", path })),
+    ...access.edits.map((path): ToolAction => ({ kind: "edit", origin: "shell", path })),
+  ];
 }
 
 const INTERRUPT_MARKER = "[Request interrupted by user";
@@ -202,6 +236,7 @@ export function parseTranscript(text: string, scope: TranscriptScope = "main"): 
         messageId: id,
         tokens: { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 },
         actions: [],
+        shell: { calls: 0, unparsed: 0 },
       };
       turnsById.set(id, turn);
       events.push(turn);
@@ -217,6 +252,14 @@ export function parseTranscript(text: string, scope: TranscriptScope = "main"): 
     }
     for (const block of message["content"]) {
       if (!isObject(block) || block["type"] !== "tool_use") continue;
+      const name = asString(block["name"]);
+      if (name !== null && SHELL_TOOLS.has(name)) {
+        const actions = shellActionsOf(block, asString(line["cwd"]));
+        turn.shell.calls++;
+        if (actions === null) turn.shell.unparsed++;
+        else turn.actions.push(...actions);
+        continue;
+      }
       const action = actionOf(block);
       if (action !== null) turn.actions.push(action);
     }

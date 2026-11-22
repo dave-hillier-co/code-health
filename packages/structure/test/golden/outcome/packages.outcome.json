@@ -76,7 +76,7 @@
     "at": "bd3097bd7710eaca807372848f56f4ad9cb20e4f",
     "before": "fce501fcf6e5d8ef8e0e859ef67afdfff896d013",
     "subcommand": "outcome",
-    "transcriptStamp": "6104eaef6bf90cc3",
+    "transcriptStamp": "b999f142ba4ace54",
     "transcripts": true
   },
   "repo": {
@@ -114,6 +114,11 @@
           "mean": 0,
           "median": 0
         },
+        "shell": {
+          "calls": 0,
+          "parsedShare": null,
+          "unparsed": 0
+        },
         "tasks": 1,
         "tokens": {
           "mean": 100,
@@ -136,6 +141,11 @@
         "reReads": {
           "mean": 0,
           "median": 0
+        },
+        "shell": {
+          "calls": 0,
+          "parsedShare": null,
+          "unparsed": 0
         },
         "tasks": 2,
         "tokens": {
@@ -161,6 +171,11 @@
             "mean": 0,
             "median": 0
           },
+          "shell": {
+            "calls": 0,
+            "parsedShare": null,
+            "unparsed": 0
+          },
           "tasks": 1,
           "tokens": {
             "mean": 100,
@@ -183,6 +198,11 @@
           "reReads": {
             "mean": 0,
             "median": 0
+          },
+          "shell": {
+            "calls": 0,
+            "parsedShare": null,
+            "unparsed": 0
           },
           "tasks": 1,
           "tokens": {

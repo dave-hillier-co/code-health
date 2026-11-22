@@ -149,6 +149,27 @@ describe("measure compare", () => {
       sessionsAfter(sessions, [1, 2]);
     });
 
+    test("a baseline records which calls counted as effort, compare counts the same, and a conflicting --effort is refused", async () => {
+      const file = join(repo.path, ".code-health", "local", "locality.baseline.default.json");
+      const original = readFileSync(file, "utf8");
+      expect(JSON.parse(original).effort.mode).toBe("all");
+      const conflicting = await measure(repo, sessions, ["compare", "--effort", "tools"]);
+      expect(conflicting.run.code).toBe(ExitCode.Usage);
+      expect(conflicting.run.stderr).toMatch(/counted all for effort.*take a new baseline/);
+      expect((await measure(repo, sessions, ["compare", "--effort", "all"])).run.code).toBe(ExitCode.Success);
+      // A baseline from before shell commands were read has no mode and counted tool calls only.
+      const { mode: _mode, ...effort } = JSON.parse(original).effort;
+      writeFileSync(file, JSON.stringify({ ...JSON.parse(original), effort }));
+      try {
+        const old = await measure(repo, sessions, ["compare", "--effort", "all"]);
+        expect(old.run.code).toBe(ExitCode.Usage);
+        expect(old.run.stderr).toMatch(/counted tools for effort/);
+        expect((await measure(repo, sessions, ["compare"])).run.code).toBe(ExitCode.Success);
+      } finally {
+        writeFileSync(file, original);
+      }
+    });
+
     test("sets the acted-on files beside candidates of the nearest rank that were left alone", async () => {
       const { document } = await measure(repo, sessions, ["compare"]);
       expect(document.results.status).toBe("compared");

@@ -27,9 +27,9 @@ test("the plugins with hooks are found", () => {
  * What a hook process can parse: the bundle and every chunk it imports statically. The cochange hook never reads its
  * on-demand parse chunk (bundle.test.ts traces that), so it is not counted there. The complexity hook does load its
  * parse chunks, as the one thing it exists to run, so all of its chunks are. Measured with the committed bundles
- * (about 470 KB and 800 KB); raise a ceiling only knowing what the hook now pays.
+ * (about 523 KB and 880 KB); raise a ceiling only knowing what the hook now pays.
  */
-const CEILING = { cochange: 520_000, complexity: 870_000 } as const;
+const CEILING = { cochange: 540_000, complexity: 900_000 } as const;
 
 async function startupBytes(plugin: string): Promise<{ text: string; bytes: number }> {
   const text = await bundle(plugin);

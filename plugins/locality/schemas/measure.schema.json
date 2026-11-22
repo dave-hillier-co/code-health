@@ -37,6 +37,18 @@
         { "type": "null" }
       ]
     },
+    "effortMode": { "enum": ["tools", "all"], "description": "`tools` counts only the Read, Grep, Glob, Edit, Write and NotebookEdit tools. `all` counts those and the files named in the commands of Bash calls." },
+    "shellCalls": {
+      "type": "object",
+      "description": "Bash calls over the tasks, whatever the effort mode. A call is parsed when every command in it was understood; a call that is not parsed contributes no path.",
+      "properties": {
+        "calls": { "$ref": "common.schema.json#/$defs/count" },
+        "unparsed": { "$ref": "common.schema.json#/$defs/count" },
+        "parsedShare": { "type": ["number", "null"], "description": "Parsed calls divided by calls, or null when there were no Bash calls." }
+      },
+      "required": ["calls", "unparsed", "parsedShare"],
+      "additionalProperties": false
+    },
     "effort": {
       "type": "object",
       "description": "Agent effort per task, from session transcripts: paths and counts only. Tasks with no edits are left out.",
@@ -46,7 +58,8 @@
         "foldersVisited": { "$ref": "#/$defs/distribution" },
         "reReads": { "$ref": "#/$defs/distribution" },
         "edits": { "$ref": "#/$defs/distribution" },
-        "tokens": { "$ref": "#/$defs/distribution" }
+        "tokens": { "$ref": "#/$defs/distribution" },
+        "shell": { "$ref": "#/$defs/shellCalls", "description": "Absent in a baseline recorded before shell commands were read." }
       },
       "required": ["tasks", "filesRead", "foldersVisited", "reReads", "edits", "tokens"],
       "additionalProperties": false
@@ -163,9 +176,10 @@
           "required": ["filesRead", "reReads", "tokens"],
           "additionalProperties": false
         },
+        "shell": { "$ref": "#/$defs/shellCalls", "description": "Bash calls in the tasks in window, so a reader sees how much of the shell the figures could see." },
         "verdict": { "enum": ["supported", "partly-supported", "contradicted", "mixed", "not-shown", "not-measured", "insufficient-sample"] }
       },
-      "required": ["tasks", "distance", "figures", "verdict"],
+      "required": ["tasks", "distance", "figures", "shell", "verdict"],
       "additionalProperties": false
     },
     "premiseResults": {
@@ -175,6 +189,7 @@
         "status": { "const": "premise" },
         "window": { "$ref": "#/$defs/window" },
         "source": { "$ref": "#/$defs/effortSource", "description": "Which tasks were read, from --source. The figures below are those of these tasks." },
+        "effort": { "$ref": "#/$defs/effortMode", "description": "Which calls count toward effort, from --effort. The figures and the files edited, and so the distance, are those of these calls." },
         "sessions": { "$ref": "#/$defs/sessionCounts" },
         "minSamples": { "$ref": "common.schema.json#/$defs/count", "description": "locality.measureMinSamples: nothing is concluded from fewer tasks." },
         "history": {
@@ -186,6 +201,7 @@
         "tasks": { "$ref": "#/$defs/premiseSample/properties/tasks" },
         "distance": { "$ref": "#/$defs/premiseSample/properties/distance" },
         "figures": { "$ref": "#/$defs/premiseSample/properties/figures" },
+        "shell": { "$ref": "#/$defs/premiseSample/properties/shell" },
         "verdict": { "$ref": "#/$defs/premiseSample/properties/verdict" },
         "bySource": {
           "type": "object",
@@ -196,7 +212,7 @@
         "meaning": { "type": "string" },
         "limits": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["status", "window", "source", "sessions", "minSamples", "history", "tasks", "distance", "figures", "verdict", "bySource", "meaning", "limits"],
+      "required": ["status", "window", "source", "effort", "sessions", "minSamples", "history", "tasks", "distance", "figures", "shell", "verdict", "bySource", "meaning", "limits"],
       "additionalProperties": false
     },
     "baselineResults": {
@@ -211,15 +227,17 @@
           "type": "object",
           "properties": {
             "source": { "$ref": "#/$defs/effortSource", "description": "Which tasks were read, from --source. `measure compare` reads the same." },
+            "mode": { "$ref": "#/$defs/effortMode", "description": "Which calls count toward effort, from --effort. `measure compare` counts the same." },
             "sessions": { "$ref": "#/$defs/sessionCounts" },
             "tasks": { "$ref": "common.schema.json#/$defs/count" },
             "filesRead": { "$ref": "#/$defs/distribution" },
             "foldersVisited": { "$ref": "#/$defs/distribution" },
             "reReads": { "$ref": "#/$defs/distribution" },
             "edits": { "$ref": "#/$defs/distribution" },
-            "tokens": { "$ref": "#/$defs/distribution" }
+            "tokens": { "$ref": "#/$defs/distribution" },
+            "shell": { "$ref": "#/$defs/shellCalls" }
           },
-          "required": ["source", "sessions", "tasks", "filesRead", "foldersVisited", "reReads", "edits", "tokens"],
+          "required": ["source", "mode", "sessions", "tasks", "filesRead", "foldersVisited", "reReads", "edits", "tokens", "shell"],
           "additionalProperties": false
         },
         "candidates": {

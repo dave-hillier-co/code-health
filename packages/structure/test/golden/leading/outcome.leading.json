@@ -81,7 +81,7 @@
     "minSupport": 3,
     "significanceLevel": 0.01,
     "target": "src/data->src/ui",
-    "transcriptStamp": "e5e636b264591d8b",
+    "transcriptStamp": "09a83b14ff93b3b1",
     "transcripts": true
   },
   "repo": {
@@ -129,6 +129,11 @@
             "mean": 0,
             "median": 0
           },
+          "shell": {
+            "calls": 0,
+            "parsedShare": null,
+            "unparsed": 0
+          },
           "tasks": 2,
           "tokens": {
             "mean": 100,
@@ -151,6 +156,11 @@
           "reReads": {
             "mean": 0,
             "median": 0
+          },
+          "shell": {
+            "calls": 0,
+            "parsedShare": null,
+            "unparsed": 0
           },
           "tasks": 2,
           "tokens": {
@@ -176,6 +186,11 @@
               "mean": 0,
               "median": 0
             },
+            "shell": {
+              "calls": 0,
+              "parsedShare": null,
+              "unparsed": 0
+            },
             "tasks": 1,
             "tokens": {
               "mean": 100,
@@ -198,6 +213,11 @@
             "reReads": {
               "mean": 0,
               "median": 0
+            },
+            "shell": {
+              "calls": 0,
+              "parsedShare": null,
+              "unparsed": 0
             },
             "tasks": 1,
             "tokens": {

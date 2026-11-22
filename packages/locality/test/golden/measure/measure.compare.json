@@ -4,12 +4,12 @@
   "inputs": {
     "baseline": {
       "head": "3de5fcd69ef623babdf72a887d014457da424aa7",
-      "stamp": "52ef01f36214d0cb"
+      "stamp": "e5957ca027531793"
     },
     "name": "default",
     "since": null,
     "transcripts": {
-      "stamp": "107d39e6ec0da9b1",
+      "stamp": "f591a14ec0584bcb",
       "tasksAfter": 24
     }
   },
@@ -36,6 +36,11 @@
           "reReads": {
             "mean": 0,
             "median": 0
+          },
+          "shell": {
+            "calls": 0,
+            "parsedShare": null,
+            "unparsed": 0
           },
           "tasks": 8,
           "tokens": {
@@ -68,6 +73,11 @@
           "reReads": {
             "mean": 1,
             "median": 1
+          },
+          "shell": {
+            "calls": 0,
+            "parsedShare": null,
+            "unparsed": 0
           },
           "tasks": 8,
           "tokens": {
@@ -113,6 +123,11 @@
           "mean": 1,
           "median": 1
         },
+        "shell": {
+          "calls": 0,
+          "parsedShare": null,
+          "unparsed": 0
+        },
         "tasks": 24,
         "tokens": {
           "mean": 5000,
@@ -152,6 +167,11 @@
             "mean": 1,
             "median": 1
           },
+          "shell": {
+            "calls": 0,
+            "parsedShare": null,
+            "unparsed": 0
+          },
           "tasks": 8,
           "tokens": {
             "mean": 5000,
@@ -183,6 +203,11 @@
           "reReads": {
             "mean": 1,
             "median": 1
+          },
+          "shell": {
+            "calls": 0,
+            "parsedShare": null,
+            "unparsed": 0
           },
           "tasks": 8,
           "tokens": {

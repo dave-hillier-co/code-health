@@ -1,7 +1,7 @@
 import { checkouts } from "@code-health/history/checkouts";
 import { defaultProjectsDirectory } from "@code-health/transcripts/projects-dir";
 import { measureRepo, type EffortReport, type EffortSource } from "@code-health/transcripts/measure-repo";
-import type { TaskEffort } from "@code-health/transcripts/agent-effort";
+import type { EffortMode, TaskEffort } from "@code-health/transcripts/agent-effort";
 import { stampOf } from "@code-health/transcripts/stamp";
 import { parseWindow } from "@code-health/transcripts/time-window";
 import type { DayWindow } from "./measure-window.ts";
@@ -9,8 +9,14 @@ import type { DayWindow } from "./measure-window.ts";
 export { checkouts, defaultProjectsDirectory, stampOf };
 
 /** Agent effort over a window of days: the transcripts' tasks, paths and counts only. */
-export function readEffort(projectsDir: string, repoRoots: readonly string[], window: DayWindow, source: EffortSource = "all"): EffortReport {
-  return measureRepo({ projectsDir, repoRoots, window: parseWindow(window.from, window.to), source });
+export function readEffort(
+  projectsDir: string,
+  repoRoots: readonly string[],
+  window: DayWindow,
+  source: EffortSource = "all",
+  effort: EffortMode = "all",
+): EffortReport {
+  return measureRepo({ projectsDir, repoRoots, window: parseWindow(window.from, window.to), source, effort });
 }
 
 /** The tasks that read or edited at least one of the files. A task touching files of two groups counts in both. */

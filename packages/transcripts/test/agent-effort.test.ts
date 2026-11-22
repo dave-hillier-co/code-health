@@ -82,7 +82,7 @@ test("repo root files live in the root folder, named by the empty string", () =>
 
 test("searches and other tools do not count as reads", () => {
   const [task] = tasksOf(
-    new SyntheticSession().prompt().assistant("m1", [grep(`${R}src`), bash("cat a.ts"), edit(`${R}a.ts`)]),
+    new SyntheticSession().prompt().assistant("m1", [grep(`${R}src`), bash("npm test"), edit(`${R}a.ts`)]),
   );
   expect(task).toMatchObject({ reads: 0, searches: 1, edits: 1 });
 });
