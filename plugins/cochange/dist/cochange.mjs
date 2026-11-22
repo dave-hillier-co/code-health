@@ -7193,6 +7193,7 @@ var command6 = analysisCommand(name7, {
     return { ...output, inputs: { ...output.inputs, resultsCache: named } };
   },
   async analyse({ context, history }) {
+    if (context.positionals.length === 0) throw usageError("brief needs at least one file path: cochange brief PATH...");
     const window = statedWindow(context, history.settings.windowMonths);
     const stored = storedSources(context, history.view.headSha, window);
     const finish = async (computed, result) => {

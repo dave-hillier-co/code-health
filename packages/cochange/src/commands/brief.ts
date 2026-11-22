@@ -201,6 +201,8 @@ export const command = analysisCommand(name, {
     return { ...output, inputs: { ...output.inputs, resultsCache: named } };
   },
   async analyse({ context, history }) {
+    // Asked before anything is computed or stored.
+    if (context.positionals.length === 0) throw usageError("brief needs at least one file path: cochange brief PATH...");
     const window = statedWindow(context, history.settings.windowMonths);
     const stored = storedSources(context, history.view.headSha, window);
     // Each result is stored as soon as it is computed, so what it records of the files left out is its own.
