@@ -320,7 +320,7 @@ describe("reviewers", () => {
   });
 
   test("a bot is never suggested, and its lines belong to nobody", async () => {
-    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { risk: { newIdentityChanges: 2 }, identities: { botPatterns: ["^Bob "] } } }));
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { risk: { newIdentityChanges: 2 }, botPatterns: ["^Bob "] } }));
     const { areas } = await reviewers("main..dave", "--names");
     expect(areas[0]!.suggested!.map((c) => c.name)).toEqual(["Alice"]);
   });

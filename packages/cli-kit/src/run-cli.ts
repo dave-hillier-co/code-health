@@ -38,7 +38,7 @@ export interface CommandOutput {
   columns?: string[];
   /** Lines a table run prints after the rows, such as a check that does not apply. JSON carries the same facts in the command's own fields. */
   notices?: string[];
-  /** The command's check failed (findings over threshold or a regression): exit 1. */
+  /** The command's check failed (findings above guideline or a regression): exit 1. */
   failed?: boolean;
 }
 

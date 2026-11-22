@@ -47,7 +47,7 @@ import { parseArgs } from "node:util";
 // packages/cli-kit/src/errors.ts
 var ExitCode = {
   Success: 0,
-  /** Findings over threshold or a regression. */
+  /** Findings above guideline or a regression. */
   CheckFailed: 1,
   /** Bad arguments or invalid config. */
   Usage: 2,
@@ -153,12 +153,33 @@ function normalise2(value) {
 
 // packages/cli-kit/src/config.ts
 var CONFIG_FILE = "code-health.json";
+var historyDefaults = {
+  /** Analysed branch. null analyses HEAD. */
+  branch: null,
+  /** Follow only first parents, for repositories that merge long-lived feature branches. */
+  firstParent: false,
+  /** Rename similarity percentage for git's -M. Changing it rebuilds the cache. */
+  renameSimilarity: 50,
+  renameLimit: 1e3,
+  /** Analysis window in months, back from the analysed commit's date. */
+  windowMonths: 12,
+  /** Commits touching more files than this are left out of co-change, as bulk changes. */
+  maxChangesetSize: 30,
+  /** Regular expressions matched against `Name <email>` of an author; their commits are left out of history. */
+  botPatterns: [],
+  /** Guidelines that grade the evidence a history gives (months of history, logical changes, contributors). */
+  evidence: {
+    strong: { months: 24, logicalChanges: 300, contributors: 5 },
+    moderate: { months: 6, logicalChanges: 50, contributors: 2 }
+  }
+};
 var sharedDefaults = {
   exclude: [],
   languages: {},
   entryPoints: [],
   components: {},
-  vagueNames: ["utils", "helpers", "common", "misc"]
+  vagueNames: ["utils", "helpers", "common", "misc"],
+  history: historyDefaults
 };
 var stringLists = ["exclude", "entryPoints", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
@@ -181,16 +202,63 @@ function loadConfig(root, spec) {
     }
   }
   if (document !== void 0 && document.languages !== void 0) document.languages = readLanguages(document.languages);
-  const defaults = { ...sharedDefaults, [spec.plugin]: spec.section };
+  const historyKeys = spec.history ?? [];
+  for (const key of historyKeys) {
+    if (key in spec.section) throw new Error(`the ${spec.plugin} section lists ${key}, which it takes from history`);
+  }
+  const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
+  const defaults = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
   const rows = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
     effective[key] = merge(defaults[key], document?.[key], key, rows);
   }
+  readHistory(effective.history, "history");
+  const pluginDocument = document?.[spec.plugin];
+  const override = Object.fromEntries(historyKeys.filter((key) => pluginDocument?.[key] !== void 0).map((key) => [key, pluginDocument[key]]));
+  readHistory(override, spec.plugin);
+  const section = effective[spec.plugin];
+  for (const key of historyKeys) {
+    section[key] = overlay(effective.history[key], pluginDocument?.[key]);
+    inheritSources(rows, spec.plugin, key);
+  }
   const sources2 = {};
   for (const row of rows.values()) sources2[row.path] = row.source;
   const hash = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash, sources: sources2 };
+}
+function overlay(shared, own) {
+  if (own === void 0) return shared;
+  if (isPlainObject(shared) && isPlainObject(own)) {
+    return Object.fromEntries(Object.keys(shared).map((key) => [key, overlay(shared[key], own[key])]));
+  }
+  return own;
+}
+function inheritSources(rows, plugin, key) {
+  const own = `${plugin}.${key}`;
+  for (const row of [...rows.values()]) {
+    if (row.path !== own && !row.path.startsWith(`${own}.`)) continue;
+    if (row.source === "file") continue;
+    const shared = rows.get(`history${row.path.slice(plugin.length)}`);
+    if (shared !== void 0) rows.set(row.path, { ...row, source: shared.source });
+  }
+}
+function readHistory(history, where) {
+  const positive = (key) => {
+    const value = history[key];
+    if (value !== void 0 && (!Number.isInteger(value) || value < 1)) throw configError(`${CONFIG_FILE}: ${where}.${key} must be a positive integer`);
+  };
+  positive("renameSimilarity");
+  positive("renameLimit");
+  positive("windowMonths");
+  positive("maxChangesetSize");
+  const { branch, botPatterns } = history;
+  if (branch !== void 0 && branch !== null && (typeof branch !== "string" || branch === "")) {
+    throw configError(`${CONFIG_FILE}: ${where}.branch must be a branch name or null`);
+  }
+  if (botPatterns !== void 0 && (!Array.isArray(botPatterns) || botPatterns.some((pattern) => typeof pattern !== "string"))) {
+    throw configError(`${CONFIG_FILE}: ${where}.botPatterns must be an array of strings`);
+  }
 }
 function readLanguages(value) {
   if (!isPlainObject(value)) throw configError(`${CONFIG_FILE}: languages must be an object mapping file extensions to lexer profile names`);
@@ -1112,7 +1180,7 @@ function compileIssuePattern(pattern) {
     throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error), "issue pattern");
   }
 }
-var DEFAULT_MAX_CHANGESET_SIZE = 30;
+var DEFAULT_MAX_CHANGESET_SIZE = historyDefaults.maxChangesetSize;
 var isPureRename = (c) => c.status === "R" && c.similarity === 100 && (c.added ?? 0) === 0 && (c.deleted ?? 0) === 0;
 async function filterHistory(repoPath, view, options = {}) {
   const maxChangesetSize = options.maxChangesetSize ?? DEFAULT_MAX_CHANGESET_SIZE;
@@ -1644,8 +1712,8 @@ function insertCommits(db, commits, boundary) {
 }
 
 // packages/history/src/refresh.ts
-var DEFAULT_SIMILARITY = 50;
-var DEFAULT_RENAME_LIMIT = 1e3;
+var DEFAULT_SIMILARITY = historyDefaults.renameSimilarity;
+var DEFAULT_RENAME_LIMIT = historyDefaults.renameLimit;
 async function readShallowInfo(repoPath) {
   const out = (await runGit(repoPath, ["rev-parse", "--is-shallow-repository", "--path-format=absolute", "--git-common-dir"])).trim().split("\n");
   const isShallow = out[0] === "true";
@@ -1756,7 +1824,7 @@ var REACH = (firstParent) => `
     UNION
     SELECT p.parent FROM reach r JOIN commit_parents p ON p.sha = r.sha ${firstParent ? "AND p.ord = 0" : ""}
   )`;
-async function readHistory(repoPath, options = {}) {
+async function readHistory2(repoPath, options = {}) {
   const ref = options.ref ?? "HEAD";
   const firstParent = options.firstParent ?? false;
   const location = await locateCache(repoPath);
@@ -1896,11 +1964,8 @@ function topologicalOrder(rows, parents) {
 }
 
 // packages/history/src/evidence.ts
-var DEFAULT_EVIDENCE_THRESHOLDS = {
-  strong: { months: 24, logicalChanges: 300, contributors: 5 },
-  moderate: { months: 6, logicalChanges: 50, contributors: 2 }
-};
-var DEFAULT_WINDOW_MONTHS = 12;
+var DEFAULT_EVIDENCE_GUIDELINES = historyDefaults.evidence;
+var DEFAULT_WINDOW_MONTHS = historyDefaults.windowMonths;
 var SECONDS_PER_MONTH = 30.4375 * 86400;
 function monthsBefore(anchor, months) {
   const date = new Date(anchor * 1e3);
@@ -1930,7 +1995,7 @@ function commitSize(changes, minChanges) {
 var meets = (t, months, changes, contributors) => months >= t.months && changes >= t.logicalChanges && contributors >= t.contributors;
 function computeEvidence(view, changes, shallow, imported, options = {}) {
   const windowMonths = options.windowMonths ?? DEFAULT_WINDOW_MONTHS;
-  const thresholds = options.thresholds ?? DEFAULT_EVIDENCE_THRESHOLDS;
+  const guidelines = options.guidelines ?? DEFAULT_EVIDENCE_GUIDELINES;
   const until = view.headDate;
   const since = monthsBefore(until, windowMonths);
   const afterImport = imported.reduce((max, i) => Math.max(max, i.committerDate), -Infinity);
@@ -1938,7 +2003,7 @@ function computeEvidence(view, changes, shallow, imported, options = {}) {
   const usableHistoryMonths = first === null ? 0 : Math.round((until - first) / SECONDS_PER_MONTH * 10) / 10;
   const inWindow2 = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
   const contributors = new Set(inWindow2.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
-  const grade = meets(thresholds.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(thresholds.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
+  const grade = meets(guidelines.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(guidelines.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
   const available = view.commits.reduce(
     (min, c) => min === null || c.committerDate < min ? c.committerDate : min,
     null
@@ -1952,11 +2017,11 @@ function computeEvidence(view, changes, shallow, imported, options = {}) {
     truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
     importedHistory: [...imported],
     commitSize: commitSize(changes, options.minChangesForShift ?? 20),
-    thresholds
+    guidelines
   };
 }
 async function analyseHistory(repoPath, options = {}) {
-  const view = await readHistory(repoPath, options);
+  const view = await readHistory2(repoPath, options);
   const filtered = await filterHistory(repoPath, view, options.noise);
   const windowed = options.noise?.since !== void 0 || options.noise?.until !== void 0;
   const whole = windowed ? await filterHistory(repoPath, view, { ...options.noise, since: void 0, until: void 0 }) : filtered;
@@ -1967,12 +2032,12 @@ async function analyseHistory(repoPath, options = {}) {
 
 // packages/locality/src/history-evidence.ts
 var SECONDS_PER_DAY = 86400;
-async function readHistory2(context, settings) {
+async function readHistory3(context, settings) {
   const { root } = context.repo;
   try {
     if ((await readShallowInfo(root)).isShallow) return void 0;
     await refresh(root, { ref: "HEAD" });
-    const analysis = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...settings.exclude] }, evidence: { windowMonths: settings.windowMonths } });
+    const analysis = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...settings.exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize }, evidence: { windowMonths: settings.windowMonths } });
     const until = analysis.view.headDate;
     const since = monthsBefore(until, settings.windowMonths);
     const firstSeen = /* @__PURE__ */ new Map();
@@ -2204,7 +2269,7 @@ function analyseProject(project, model, settings, history) {
   const { analysis } = project;
   const isFixed = compileGlobs(settings.fixedPoints);
   const forbidden = (folder) => settings.fixedPoints.length > 0 && isFixed(folder === "" ? "_" : `${folder}/_`);
-  const thresholds = {
+  const guidelines = {
     minDistance: settings.minDistance,
     tinyLines: settings.tinyLines,
     largeLines: settings.largeLines,
@@ -2357,7 +2422,7 @@ function analyseProject(project, model, settings, history) {
       consumerCoChange: null,
       createsCycle: false,
       notHelper: notHelperOf([path], symbols),
-      ...thresholds
+      ...guidelines
     });
     return {
       ...component,
@@ -2446,7 +2511,7 @@ function analyseProject(project, model, settings, history) {
       consumerCoChange: coChange?.amongConsumers ?? null,
       createsCycle,
       notHelper: notHelperOf(files),
-      ...thresholds
+      ...guidelines
     };
     const decision = recommend(input);
     const scored = cohesion?.mixed ? cohesion.components.map((component) => scoreComponent(unit.root, component)) : void 0;
@@ -2521,6 +2586,7 @@ var SCHEMA_VERSION2 = 1;
 // packages/locality/src/config.ts
 var localityConfig = {
   plugin: TOOL,
+  history: ["windowMonths", "maxChangesetSize", "botPatterns"],
   section: {
     /** Guideline for the net distance a move saves, in folder hops. Ranks and annotates candidates (`guidelines.gain`); units below it are counted in `summary.placed`, not listed. A judgement call. */
     minDistance: 2,
@@ -2538,8 +2604,6 @@ var localityConfig = {
     useHistory: true,
     /** Guideline: a unit younger than this many days is reviewed, not inlined or moved, because one callsite is only evidence once reuse has had time. A judgement call. */
     graceDays: 90,
-    /** The window for churn and co-change, back from HEAD's commit date. CodeScene advises 6 to 12 months for hotspot windows. */
-    windowMonths: 12,
     /** Guideline: consumers co-changing at or below this degree (percent) look independent, which suggests coincidental reuse. A judgement call. */
     lowCoChange: 10,
     /** Guideline: consumers co-changing at or above this degree (percent) share a reason to change, so the distance looks earned. Matches the 30 to 50 percent range Tornhill gives for coupling degree. */
@@ -2600,6 +2664,8 @@ function readSettings(config) {
     useHistory: section.useHistory === true,
     graceDays: positive("graceDays"),
     windowMonths: positive("windowMonths"),
+    maxChangesetSize: positive("maxChangesetSize"),
+    botPatterns: section.botPatterns,
     lowCoChange,
     highCoChange,
     minCoChangeChanges: positive("minCoChangeChanges"),
@@ -3269,7 +3335,7 @@ var command = {
       throw usageError(`--source must be one of ${sources.join(", ")}`);
     }
     const prefixes = context.positionals.map((path) => path.replace(/\/+$/, ""));
-    const history = settings.useHistory ? await readHistory2(context, settings) : void 0;
+    const history = settings.useHistory ? await readHistory3(context, settings) : void 0;
     if (source === "history") return historyOnly(context.repo.root, history, settings, prefixes, wanted);
     const project = await loadProject(context.repo.root, "HEAD", settings);
     const model = buildModel(project, settings, history);
@@ -3870,7 +3936,7 @@ async function readMeasureHistory(root, settings) {
   await refresh(root, { ref: "HEAD" });
   return analyseHistory(root, {
     ref: "HEAD",
-    noise: { exclude: [...settings.exclude], excludeSuiteCommits: true },
+    noise: { exclude: [...settings.exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize, excludeSuiteCommits: true },
     evidence: { windowMonths: settings.windowMonths }
   });
 }
@@ -4224,7 +4290,7 @@ async function baseline(context, settings) {
   const spread = summariseSpread(changesBetween(analysis.filtered.changes, seconds.since, seconds.until));
   const effort = readEffort(projectsDirectory(context), await checkouts(root), window);
   const project = await loadProject(root, "HEAD", settings);
-  const history = settings.useHistory ? await readHistory2(context, settings) : void 0;
+  const history = settings.useHistory ? await readHistory3(context, settings) : void 0;
   const analysed = analyseProject(project, buildModel(project, settings, history), settings, history);
   const ranked = analysed.candidates;
   const candidates = ranked.slice(0, keep).map(
@@ -4291,7 +4357,7 @@ function reproduced(now, recorded) {
 }
 async function structureNow(context, settings) {
   const project = await loadProject(context.repo.root, "HEAD", settings);
-  const history = settings.useHistory ? await readHistory2(context, settings) : void 0;
+  const history = settings.useHistory ? await readHistory3(context, settings) : void 0;
   return analyseProject(project, buildModel(project, settings, history), settings, history).metrics;
 }
 var EFFORT_FIGURES = ["filesRead", "foldersVisited", "reReads", "tokens"];
@@ -4636,7 +4702,7 @@ function planMove(candidate, settings, tree, request = {}) {
 // packages/locality/src/unit-analysis.ts
 async function analyseRevision(context, settings, ref) {
   const project = await loadProject(context.repo.root, ref, settings);
-  const history = settings.useHistory ? await readHistory2(context, settings) : void 0;
+  const history = settings.useHistory ? await readHistory3(context, settings) : void 0;
   const model = buildModel(project, settings, history);
   return { project, analysis: analyseProject(project, model, settings, history) };
 }

@@ -17,9 +17,7 @@
       "shifted": false
     },
     "grade": "weak",
-    "importedHistory": [],
-    "logicalChangesInWindow": 7,
-    "thresholds": {
+    "guidelines": {
       "moderate": {
         "contributors": 2,
         "logicalChanges": 50,
@@ -31,6 +29,8 @@
         "months": 24
       }
     },
+    "importedHistory": [],
+    "logicalChangesInWindow": 7,
     "truncated": {
       "availableSince": null,
       "boundaryCommits": 0,
@@ -110,7 +110,7 @@
     "oversizedChanges": 0
   },
   "inputs": {
-    "abandonmentThreshold": 90,
+    "abandonmentGuideline": 90,
     "activityWindowMonths": 6,
     "copyDetection": true,
     "minSupport": 5,

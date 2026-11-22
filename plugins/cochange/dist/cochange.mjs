@@ -20,7 +20,7 @@ import {
   readBlobAt,
   readPathAttributes,
   runGit
-} from "./chunk-6EEA5ZVL.mjs";
+} from "./chunk-QY7HQ5YQ.mjs";
 
 // packages/cli-kit/src/args.ts
 import { parseArgs } from "node:util";
@@ -28,7 +28,7 @@ import { parseArgs } from "node:util";
 // packages/cli-kit/src/errors.ts
 var ExitCode = {
   Success: 0,
-  /** Findings over threshold or a regression. */
+  /** Findings above guideline or a regression. */
   CheckFailed: 1,
   /** Bad arguments or invalid config. */
   Usage: 2,
@@ -134,12 +134,33 @@ function normalise(value) {
 
 // packages/cli-kit/src/config.ts
 var CONFIG_FILE = "code-health.json";
+var historyDefaults = {
+  /** Analysed branch. null analyses HEAD. */
+  branch: null,
+  /** Follow only first parents, for repositories that merge long-lived feature branches. */
+  firstParent: false,
+  /** Rename similarity percentage for git's -M. Changing it rebuilds the cache. */
+  renameSimilarity: 50,
+  renameLimit: 1e3,
+  /** Analysis window in months, back from the analysed commit's date. */
+  windowMonths: 12,
+  /** Commits touching more files than this are left out of co-change, as bulk changes. */
+  maxChangesetSize: 30,
+  /** Regular expressions matched against `Name <email>` of an author; their commits are left out of history. */
+  botPatterns: [],
+  /** Guidelines that grade the evidence a history gives (months of history, logical changes, contributors). */
+  evidence: {
+    strong: { months: 24, logicalChanges: 300, contributors: 5 },
+    moderate: { months: 6, logicalChanges: 50, contributors: 2 }
+  }
+};
 var sharedDefaults = {
   exclude: [],
   languages: {},
   entryPoints: [],
   components: {},
-  vagueNames: ["utils", "helpers", "common", "misc"]
+  vagueNames: ["utils", "helpers", "common", "misc"],
+  history: historyDefaults
 };
 var stringLists = ["exclude", "entryPoints", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
@@ -162,16 +183,63 @@ function loadConfig(root, spec) {
     }
   }
   if (document !== void 0 && document.languages !== void 0) document.languages = readLanguages(document.languages);
-  const defaults = { ...sharedDefaults, [spec.plugin]: spec.section };
+  const historyKeys = spec.history ?? [];
+  for (const key of historyKeys) {
+    if (key in spec.section) throw new Error(`the ${spec.plugin} section lists ${key}, which it takes from history`);
+  }
+  const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
+  const defaults = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
   const rows = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
     effective[key] = merge(defaults[key], document?.[key], key, rows);
   }
+  readHistory(effective.history, "history");
+  const pluginDocument = document?.[spec.plugin];
+  const override = Object.fromEntries(historyKeys.filter((key) => pluginDocument?.[key] !== void 0).map((key) => [key, pluginDocument[key]]));
+  readHistory(override, spec.plugin);
+  const section = effective[spec.plugin];
+  for (const key of historyKeys) {
+    section[key] = overlay(effective.history[key], pluginDocument?.[key]);
+    inheritSources(rows, spec.plugin, key);
+  }
   const sources = {};
   for (const row2 of rows.values()) sources[row2.path] = row2.source;
   const hash = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash, sources };
+}
+function overlay(shared, own) {
+  if (own === void 0) return shared;
+  if (isPlainObject(shared) && isPlainObject(own)) {
+    return Object.fromEntries(Object.keys(shared).map((key) => [key, overlay(shared[key], own[key])]));
+  }
+  return own;
+}
+function inheritSources(rows, plugin, key) {
+  const own = `${plugin}.${key}`;
+  for (const row2 of [...rows.values()]) {
+    if (row2.path !== own && !row2.path.startsWith(`${own}.`)) continue;
+    if (row2.source === "file") continue;
+    const shared = rows.get(`history${row2.path.slice(plugin.length)}`);
+    if (shared !== void 0) rows.set(row2.path, { ...row2, source: shared.source });
+  }
+}
+function readHistory(history, where) {
+  const positive = (key) => {
+    const value = history[key];
+    if (value !== void 0 && (!Number.isInteger(value) || value < 1)) throw configError(`${CONFIG_FILE}: ${where}.${key} must be a positive integer`);
+  };
+  positive("renameSimilarity");
+  positive("renameLimit");
+  positive("windowMonths");
+  positive("maxChangesetSize");
+  const { branch, botPatterns } = history;
+  if (branch !== void 0 && branch !== null && (typeof branch !== "string" || branch === "")) {
+    throw configError(`${CONFIG_FILE}: ${where}.branch must be a branch name or null`);
+  }
+  if (botPatterns !== void 0 && (!Array.isArray(botPatterns) || botPatterns.some((pattern) => typeof pattern !== "string"))) {
+    throw configError(`${CONFIG_FILE}: ${where}.botPatterns must be an array of strings`);
+  }
 }
 function readLanguages(value) {
   if (!isPlainObject(value)) throw configError(`${CONFIG_FILE}: languages must be an object mapping file extensions to lexer profile names`);
@@ -875,7 +943,7 @@ function compileIssuePattern(pattern) {
     throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error), "issue pattern");
   }
 }
-var DEFAULT_MAX_CHANGESET_SIZE = 30;
+var DEFAULT_MAX_CHANGESET_SIZE = historyDefaults.maxChangesetSize;
 var isPureRename = (c) => c.status === "R" && c.similarity === 100 && (c.added ?? 0) === 0 && (c.deleted ?? 0) === 0;
 async function filterHistory(repoPath, view, options = {}) {
   const maxChangesetSize = options.maxChangesetSize ?? DEFAULT_MAX_CHANGESET_SIZE;
@@ -1300,8 +1368,8 @@ function insertCommits(db, commits, boundary) {
 }
 
 // packages/history/src/refresh.ts
-var DEFAULT_SIMILARITY = 50;
-var DEFAULT_RENAME_LIMIT = 1e3;
+var DEFAULT_SIMILARITY = historyDefaults.renameSimilarity;
+var DEFAULT_RENAME_LIMIT = historyDefaults.renameLimit;
 async function readShallowInfo(repoPath) {
   const out = (await runGit(repoPath, ["rev-parse", "--is-shallow-repository", "--path-format=absolute", "--git-common-dir"])).trim().split("\n");
   const isShallow = out[0] === "true";
@@ -1412,7 +1480,7 @@ var REACH = (firstParent) => `
     UNION
     SELECT p.parent FROM reach r JOIN commit_parents p ON p.sha = r.sha ${firstParent ? "AND p.ord = 0" : ""}
   )`;
-async function readHistory(repoPath, options = {}) {
+async function readHistory2(repoPath, options = {}) {
   const ref = options.ref ?? "HEAD";
   const firstParent = options.firstParent ?? false;
   const location = await locateCache(repoPath);
@@ -1620,11 +1688,8 @@ async function writeReport(context, identity, command15, output, analysedHead) {
 }
 
 // packages/history/src/evidence.ts
-var DEFAULT_EVIDENCE_THRESHOLDS = {
-  strong: { months: 24, logicalChanges: 300, contributors: 5 },
-  moderate: { months: 6, logicalChanges: 50, contributors: 2 }
-};
-var DEFAULT_WINDOW_MONTHS = 12;
+var DEFAULT_EVIDENCE_GUIDELINES = historyDefaults.evidence;
+var DEFAULT_WINDOW_MONTHS = historyDefaults.windowMonths;
 var SECONDS_PER_MONTH = 30.4375 * 86400;
 function monthsBefore(anchor, months) {
   const date = new Date(anchor * 1e3);
@@ -1654,7 +1719,7 @@ function commitSize(changes, minChanges) {
 var meets = (t, months, changes, contributors) => months >= t.months && changes >= t.logicalChanges && contributors >= t.contributors;
 function computeEvidence(view, changes, shallow, imported, options = {}) {
   const windowMonths = options.windowMonths ?? DEFAULT_WINDOW_MONTHS;
-  const thresholds = options.thresholds ?? DEFAULT_EVIDENCE_THRESHOLDS;
+  const guidelines = options.guidelines ?? DEFAULT_EVIDENCE_GUIDELINES;
   const until = view.headDate;
   const since = monthsBefore(until, windowMonths);
   const afterImport = imported.reduce((max, i) => Math.max(max, i.committerDate), -Infinity);
@@ -1662,7 +1727,7 @@ function computeEvidence(view, changes, shallow, imported, options = {}) {
   const usableHistoryMonths = first === null ? 0 : Math.round((until - first) / SECONDS_PER_MONTH * 10) / 10;
   const inWindow2 = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
   const contributors = new Set(inWindow2.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
-  const grade = meets(thresholds.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(thresholds.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
+  const grade = meets(guidelines.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(guidelines.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
   const available = view.commits.reduce(
     (min, c) => min === null || c.committerDate < min ? c.committerDate : min,
     null
@@ -1676,11 +1741,11 @@ function computeEvidence(view, changes, shallow, imported, options = {}) {
     truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
     importedHistory: [...imported],
     commitSize: commitSize(changes, options.minChangesForShift ?? 20),
-    thresholds
+    guidelines
   };
 }
 async function analyseHistory(repoPath, options = {}) {
-  const view = await readHistory(repoPath, options);
+  const view = await readHistory2(repoPath, options);
   const filtered = await filterHistory(repoPath, view, options.noise);
   const windowed = options.noise?.since !== void 0 || options.noise?.until !== void 0;
   const whole = windowed ? await filterHistory(repoPath, view, { ...options.noise, since: void 0, until: void 0 }) : filtered;
@@ -1983,7 +2048,7 @@ function loadIdentityState(root, settings) {
     localMailmap,
     stamps,
     matcher: createNonPersonMatcher({
-      botPatterns: settings.identities.botPatterns,
+      botPatterns: settings.botPatterns,
       servicePatterns: settings.identities.servicePatterns,
       agentPatterns: settings.identities.agentTrailerPatterns,
       decisions: decisions.classifications
@@ -2006,7 +2071,7 @@ var KNOWLEDGE_DEFAULTS = {
   /** Periods the simulation looks ahead. */
   horizonPeriods: 4,
   /** A file is abandoned when at least this percentage of the lines held by people belong to people who have left. */
-  abandonmentThreshold: 90,
+  abandonmentGuideline: 90,
   /** Per-period turnover, as a percentage. null estimates it from history. */
   turnoverRate: null,
   trials: 1e4,
@@ -2048,7 +2113,7 @@ function readKnowledgeSettings(effective) {
     activityWindowMonths: whole("activityWindowMonths", 1),
     periodMonths: whole("periodMonths", 1),
     horizonPeriods: whole("horizonPeriods", 1),
-    abandonmentThreshold: whole("abandonmentThreshold", 1, 100),
+    abandonmentGuideline: whole("abandonmentGuideline", 1, 100),
     turnoverRate: rate === null ? null : rate / 100,
     trials: whole("trials", 1, 1e7),
     alphas: [...alphas].sort((a, b) => a - b),
@@ -2285,16 +2350,8 @@ function readRiskSettings(config) {
 // packages/cochange/src/config.ts
 var cochangeConfig = {
   plugin: TOOL2,
+  history: ["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "evidence"],
   section: {
-    /** Analysed branch. null analyses HEAD. */
-    branch: null,
-    /** Follow only first parents, for repositories that merge long-lived feature branches. */
-    firstParent: false,
-    /** Rename similarity percentage for git's -M. Changing it rebuilds the cache. */
-    renameSimilarity: DEFAULT_SIMILARITY,
-    renameLimit: DEFAULT_RENAME_LIMIT,
-    /** Analysis window, back from the analysed commit's date. */
-    windowMonths: 12,
     recentMonths: 3,
     staleMonths: 12,
     /** A hotspot's score must be in the top (100 - this) percent of scored files. */
@@ -2308,7 +2365,6 @@ var cochangeConfig = {
     issuePattern: DEFAULT_ISSUE_PATTERN,
     /** For "author-window": the longest pause, in hours, between commits of one change. */
     groupingWindowHours: 4,
-    maxChangesetSize: DEFAULT_MAX_CHANGESET_SIZE,
     minSupport: 5,
     /** Coupling degree guideline, as a percentage (Tornhill's code-maat default). Orders and labels pairs. Only cluster membership cuts on it. */
     minDegree: 30,
@@ -2325,22 +2381,17 @@ var cochangeConfig = {
     identities: {
       /** Where the mapping lives: "committed" or "local". null decides from the files present, and the identities skill asks when there are none. */
       location: null,
-      /** The one place bot and service patterns are configured. Regular expressions matched against `Name <email>`. */
-      botPatterns: [],
+      /** Regular expressions matched against `Name <email>`. Bot patterns are the `history.botPatterns` setting, which this section may override as `cochange.botPatterns`. */
       servicePatterns: [],
       /** Extra patterns for a Co-Authored-By trailer naming an AI agent, beside the built-in ones. */
       agentTrailerPatterns: [],
       /** Unmapped identities holding more than this percentage of lines at HEAD make the abandonment skill run the identities skill. */
-      unmappedShareThreshold: 5,
+      unmappedShareGuideline: 5,
       /** Commits in the analysis window that make an unmapped identity significant, whether or not it holds lines. */
       significantCommits: 3
     },
     /** The abandonment analysis. Off until `enabled` is true. */
-    knowledge: { ...KNOWLEDGE_DEFAULTS, alphas: [...KNOWLEDGE_DEFAULTS.alphas] },
-    evidence: {
-      strong: { ...DEFAULT_EVIDENCE_THRESHOLDS.strong },
-      moderate: { ...DEFAULT_EVIDENCE_THRESHOLDS.moderate }
-    }
+    knowledge: { ...KNOWLEDGE_DEFAULTS, alphas: [...KNOWLEDGE_DEFAULTS.alphas] }
   }
 };
 function readSettings(config) {
@@ -2395,9 +2446,9 @@ function readSettings(config) {
     minDegree,
     minDistance: positive("minDistance"),
     exclude: config.effective.exclude,
-    botPatterns: identities.botPatterns,
+    botPatterns: section.botPatterns,
     identities,
-    evidenceThresholds: evidence,
+    evidenceGuidelines: evidence,
     windowStated: config.sources[at("windowMonths")] === "file",
     hook: { enabled: hook.enabled === true, confidence: hookConfidence, maxPartners, maxCommitsBehind: behind }
   };
@@ -2442,10 +2493,9 @@ function readIdentities(section, at) {
   };
   return {
     location,
-    botPatterns: strings2("botPatterns"),
     servicePatterns: strings2("servicePatterns"),
     agentTrailerPatterns: strings2("agentTrailerPatterns"),
-    unmappedShareThreshold: count2("unmappedShareThreshold", 100),
+    unmappedShareGuideline: count2("unmappedShareGuideline", 100),
     significantCommits: count2("significantCommits", 1e6)
   };
 }
@@ -2481,7 +2531,7 @@ async function loadHistory(context, options = {}) {
       since,
       until
     },
-    evidence: { windowMonths: settings.windowMonths, thresholds: settings.evidenceThresholds }
+    evidence: { windowMonths: settings.windowMonths, guidelines: settings.evidenceGuidelines }
   });
   const earliest2 = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
   return { ...analysis, settings, window: { since: since ?? earliest2, until: options.window?.until ?? anchor }, refreshed, identities };
@@ -2653,7 +2703,7 @@ function reachesDegree(pair, minDegree) {
 function confidenceOf(support, changes) {
   return 100 * support / changes;
 }
-function countCoupling(changes, thresholds) {
+function countCoupling(changes, guidelines) {
   const perFile = /* @__PURE__ */ new Map();
   const together = /* @__PURE__ */ new Map();
   let eligibleChanges = 0;
@@ -2676,7 +2726,7 @@ function countCoupling(changes, thresholds) {
   for (const [a, row2] of together) {
     for (const [b, support] of row2) {
       const pair = { a, b, support, changesA: perFile.get(a), changesB: perFile.get(b) };
-      if (support >= thresholds.minSupport && reachesDegree(pair, thresholds.minDegree ?? 0)) pairs.push(pair);
+      if (support >= guidelines.minSupport && reachesDegree(pair, guidelines.minDegree ?? 0)) pairs.push(pair);
     }
   }
   pairs.sort((p, q) => compareBytes(p.a, q.a) || compareBytes(p.b, q.b));
@@ -2707,14 +2757,14 @@ function integerOption(context, option, fallback, min, max) {
   }
   return Number(raw);
 }
-function coupledPairs(history, thresholds) {
+function coupledPairs(history, guidelines) {
   const lastStatus = /* @__PURE__ */ new Map();
   for (const change2 of history.filtered.changes) {
     for (const file of change2.files) lastStatus.set(file.fileId, file.status);
   }
   const counts = countCoupling(
     history.filtered.changes.map((change2) => ({ files: change2.files.map((file) => file.fileId), oversized: change2.oversized })),
-    thresholds
+    guidelines
   );
   const gone = (id) => lastStatus.get(id) === "D";
   return { ...counts, pairs: counts.pairs.filter((pair) => !gone(pair.a) && !gone(pair.b)) };
@@ -2916,7 +2966,7 @@ function buildKnowledgeModel(input) {
   files.sort((a, b) => compareBytes2(a.path, b.path));
   return { asOf, developers, files, missing: snapshot.missing };
 }
-var reachesThreshold = (goneLines, people, thresholdPercent) => people > 0 && 100 * goneLines >= thresholdPercent * people;
+var reachesGuideline = (goneLines, people, guidelinePercent) => people > 0 && 100 * goneLines >= guidelinePercent * people;
 function goneLinesOf(file, developers) {
   let lines = 0;
   for (const h of file.holders) if (!developers[h.dev].active) lines += h.lines;
@@ -2925,7 +2975,7 @@ function goneLinesOf(file, developers) {
 
 // packages/cochange/src/abandonment/current.ts
 var round4 = (value) => Math.round(value * 1e4) / 1e4;
-function measureCurrent(model, thresholdPercent) {
+function measureCurrent(model, guidelinePercent) {
   return model.files.map((file) => {
     const gone = goneLinesOf(file, model.developers);
     const former = file.holders.filter((h) => !model.developers[h.dev].active).length;
@@ -2934,7 +2984,7 @@ function measureCurrent(model, thresholdPercent) {
       peopleLines: file.people,
       abandonedLines: gone,
       abandonedShare: round4(gone / file.people),
-      abandoned: reachesThreshold(gone, file.people, thresholdPercent),
+      abandoned: reachesGuideline(gone, file.people, guidelinePercent),
       activeAuthors: file.holders.length - former,
       formerAuthors: former,
       nonPersonLines: file.nonPerson
@@ -3406,7 +3456,7 @@ function distributionOf(values, alphas) {
     })
   };
 }
-function compile(model, thresholdPercent, components2) {
+function compile(model, guidelinePercent, components2) {
   const pool = [];
   const poolIndex = /* @__PURE__ */ new Map();
   model.developers.forEach((d, i) => {
@@ -3439,7 +3489,7 @@ function compile(model, thresholdPercent, components2) {
       poolLines[p] += h.lines;
       byComponent[p].set(c, (byComponent[p].get(c) ?? 0) + h.lines);
     }
-    if (reachesThreshold(baseGone, file.people, thresholdPercent)) abandonedFiles.add(fi);
+    if (reachesGuideline(baseGone, file.people, guidelinePercent)) abandonedFiles.add(fi);
     else if (holders.length > 0) relevant.push({ file: fi, people: file.people, baseGone, holders });
   });
   return {
@@ -3478,8 +3528,8 @@ function draw(selection, poolSize, rng, leave) {
   return probability;
 }
 function simulate(model, options) {
-  const { selection, trials, seed, alphas, thresholdPercent } = options;
-  const compiled = compile(model, thresholdPercent, options.components ?? []);
+  const { selection, trials, seed, alphas, guidelinePercent } = options;
+  const compiled = compile(model, guidelinePercent, options.components ?? []);
   const { poolSize, relevant } = compiled;
   if (selection.mode === "k-leavers" && (selection.k < 1 || selection.k > poolSize)) {
     throw new RangeError(`k must be from 1 to ${poolSize}, the active developers`);
@@ -3494,7 +3544,7 @@ function simulate(model, options) {
     relevant.forEach((rel, r) => {
       let gone = rel.baseGone;
       for (const h of rel.holders) if (leave[h.pool]) gone += h.lines;
-      if (gone > rel.baseGone && reachesThreshold(gone, rel.people, thresholdPercent)) visit(r);
+      if (gone > rel.baseGone && reachesGuideline(gone, rel.people, guidelinePercent)) visit(r);
     });
   };
   for (let t = 0; t < trials; t++) {
@@ -3516,11 +3566,11 @@ function simulate(model, options) {
   const filesDistribution = distributionOf(incrementFiles, alphas);
   const linesDistribution = distributionOf(incrementLines, alphas);
   const tailAlpha = alphas[0];
-  const tailThreshold = filesDistribution.atRisk[0].kar;
+  const tailGuideline = filesDistribution.atRisk[0].kar;
   const tailHits = new Uint32Array(relevant.length);
   let tailTrials = 0;
   for (let t = 0; t < trials; t++) {
-    if (incrementFiles[t] < tailThreshold) continue;
+    if (incrementFiles[t] < tailGuideline) continue;
     tailTrials++;
     draw(selection, poolSize, trialRng(seed, t), leave);
     abandoned((r) => tailHits[r]++);
@@ -3613,15 +3663,15 @@ async function backtestCommand(context) {
     trials: sim.trials,
     seed: sim.seed,
     alphas: settings.alphas,
-    thresholdPercent: settings.abandonmentThreshold,
+    guidelinePercent: settings.abandonmentGuideline,
     components: readComponents(context.config.effective.components)
   });
   const positionOf = (sha) => history.view.commits.find((c) => c.sha === sha).position;
   const identityBefore = (path) => history.view.renames.resolve(path, positionOf(startSha));
   const identityAfter = (path) => history.view.renames.resolve(path, positionOf(outcomeSha));
   const pathOf2 = new Map(before.model.files.map((f) => [identityBefore(f.path), f.path]));
-  const abandonedBefore = new Set(measureCurrent(before.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => identityBefore(f.path)));
-  const abandonedAfter = new Set(measureCurrent(after.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => identityAfter(f.path)));
+  const abandonedBefore = new Set(measureCurrent(before.model, settings.abandonmentGuideline).filter((f) => f.abandoned).map((f) => identityBefore(f.path)));
+  const abandonedAfter = new Set(measureCurrent(after.model, settings.abandonmentGuideline).filter((f) => f.abandoned).map((f) => identityAfter(f.path)));
   const present = new Set(pathOf2.keys());
   const survivors = new Set(after.model.files.map((f) => identityAfter(f.path)));
   const candidates = [...present].filter((id) => survivors.has(id) && !abandonedBefore.has(id));
@@ -3645,7 +3695,7 @@ async function backtestCommand(context) {
       seed: sim.seed,
       alphas: settings.alphas,
       atRiskProbability: settings.atRiskProbability,
-      abandonmentThreshold: settings.abandonmentThreshold,
+      abandonmentGuideline: settings.abandonmentGuideline,
       activityWindowMonths: settings.activityWindowMonths,
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,
@@ -3670,7 +3720,7 @@ async function backtestCommand(context) {
       truePositives: score.hits.length,
       precision: score.precision === null ? null : round4(score.precision),
       recall: score.recall === null ? null : round4(score.recall),
-      // What the model expected against what happened, over every file, whether or not it crossed the threshold.
+      // What the model expected against what happened, over every file, whether or not it crossed the guideline.
       expectedAbandoned: round4(candidates.reduce((sum, path) => sum + probability.get(path), 0)),
       files: rows
     }
@@ -3717,7 +3767,7 @@ function commonInputs(p, subcommand, more = {}) {
     ...more,
     activityWindowMonths: settings.activityWindowMonths,
     periodMonths: settings.periodMonths,
-    abandonmentThreshold: settings.abandonmentThreshold,
+    abandonmentGuideline: settings.abandonmentGuideline,
     copyDetection: settings.copyDetection,
     overrides: { active: knowledge.overrides.active.size, inactive: knowledge.overrides.inactive.size, hash: knowledge.overrides.stamp },
     ...identityStamps(p.history)
@@ -4273,8 +4323,8 @@ function findBumps(codeLines, profile, threshold) {
   endRun();
   return { bumps, bumpDepth, bumpSize };
 }
-function isBumpyRoad(metrics, thresholds = {}) {
-  const { bumps = 3, deepBumps = 2, nesting = 4 } = thresholds;
+function isBumpyRoad(metrics, guidelines = {}) {
+  const { bumps = 3, deepBumps = 2, nesting = 4 } = guidelines;
   if (metrics.bumps >= bumps) return true;
   return metrics.bumps >= deepBumps && metrics.bumpDepth > nesting;
 }
@@ -5050,7 +5100,7 @@ var rules = {
     explanation: [
       "A line is abandoned when its last author, by git blame -w -M -C ignoring the ignore-revs file, is no longer active:",
       "no commit within cochange.knowledge.activityWindowMonths (default 6) of the analysed commit. A file is abandoned when",
-      "at least cochange.knowledge.abandonmentThreshold percent (default 90) of the lines held by people are. Lines of bots,",
+      "at least cochange.knowledge.abandonmentGuideline percent (default 90) of the lines held by people are. Lines of bots,",
       "services and agents are on neither side of the share.",
       "",
       "Suggested mitigation: adoption. Assign the top successor (`cochange successors PATH`) to the next change, and prioritise it if it is also a hotspot.",
@@ -5281,10 +5331,10 @@ async function trendCommand(context) {
       trials: sim.trials,
       seed: sim.seed,
       alphas: settings.alphas,
-      thresholdPercent: settings.abandonmentThreshold,
+      guidelinePercent: settings.abandonmentGuideline,
       components: components2
     });
-    const abandoned = measureCurrent(knowledge.model, settings.abandonmentThreshold).filter((f) => f.abandoned).length;
+    const abandoned = measureCurrent(knowledge.model, settings.abandonmentGuideline).filter((f) => f.abandoned).length;
     rows.push({
       date: isoDay2(at),
       commit: sha,
@@ -5306,7 +5356,7 @@ async function trendCommand(context) {
       horizonPeriods: sim.horizonPeriods,
       seed: sim.seed,
       alphas: settings.alphas,
-      abandonmentThreshold: settings.abandonmentThreshold,
+      abandonmentGuideline: settings.abandonmentGuideline,
       activityWindowMonths: settings.activityWindowMonths,
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,
@@ -5348,7 +5398,7 @@ async function adoptionCommand(context) {
   const eligible = history.filtered.changes.filter((c) => !c.oversized);
   const known = eligible.filter((c) => c.committerDate <= at);
   const index2 = buildSuccessorIndex({ ...history, filtered: { ...history.filtered, changes: known } });
-  const abandoned = measureCurrent(before.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => f.path);
+  const abandoned = measureCurrent(before.model, settings.abandonmentGuideline).filter((f) => f.abandoned).map((f) => f.path);
   const files = measureAdoption({
     before: before.model,
     after: after.model,
@@ -5365,7 +5415,7 @@ async function adoptionCommand(context) {
       at: isoDay2(at),
       successors: recommended,
       horizonPeriods: sim.horizonPeriods,
-      abandonmentThreshold: settings.abandonmentThreshold,
+      abandonmentGuideline: settings.abandonmentGuideline,
       activityWindowMonths: settings.activityWindowMonths,
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,
@@ -5432,7 +5482,7 @@ async function simulateCommand(context) {
     trials: sim.trials,
     seed: sim.seed,
     alphas: settings.alphas,
-    thresholdPercent: settings.abandonmentThreshold,
+    guidelinePercent: settings.abandonmentGuideline,
     components: components2
   });
   const weights = await hotspotWeights(context, p.history);
@@ -5442,7 +5492,7 @@ async function simulateCommand(context) {
   const fileRows = result.fileRisks.filter((f) => f.probability > 0).map((f) => {
     const file = byPath.get(f.path);
     const former = file.holders.filter((h) => !model.developers[h.dev].active).length;
-    const abandoned = reachesThreshold(goneLinesOf(file, model.developers), file.people, settings.abandonmentThreshold);
+    const abandoned = reachesGuideline(goneLinesOf(file, model.developers), file.people, settings.abandonmentGuideline);
     const weight = weights.get(f.path);
     return {
       path: f.path,
@@ -5582,7 +5632,7 @@ async function current(context) {
   const by = readBy(context);
   const p = await prepare(context);
   const { model } = p.knowledge;
-  const files = measureCurrent(model, p.settings.abandonmentThreshold);
+  const files = measureCurrent(model, p.settings.abandonmentGuideline);
   const unattributed = model.files.reduce((sum, f) => sum + f.unattributed, 0);
   const rank2 = readRank(context, p.settings);
   const weights = by === "file" ? await hotspotWeights(context, p.history) : /* @__PURE__ */ new Map();
@@ -5907,7 +5957,7 @@ function isMagnet(file, neighbours) {
   return crossPairs === 0 || 100 * coupled / crossPairs <= MAGNET.neighbourCoupling;
 }
 var command5 = analysisCommand(name5, {
-  summary: "Groups of mutually coupled files (connected components above the coupling thresholds) with their spread",
+  summary: "Groups of mutually coupled files (connected components above the coupling guidelines) with their spread",
   options: { "min-degree": { type: "string" }, "min-support": { type: "string" } },
   partial: ({ values }) => values["min-degree"] !== void 0 || values["min-support"] !== void 0,
   analyse({ context, history }) {
@@ -5952,7 +6002,7 @@ var command5 = analysisCommand(name5, {
       columns: ["path", "score", "size", "folders", "spread", "meanDegree", "findings"],
       extra: {
         population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
-        note: rows.length === 0 ? `No cluster: no pair reaches support ${minSupport} and degree ${minDegree} %. The thresholds were not lowered; a young or sparse history has little coupling evidence.` : null
+        note: rows.length === 0 ? `No cluster: no pair reaches support ${minSupport} and degree ${minDegree} %. The guidelines were not lowered; a young or sparse history has little coupling evidence.` : null
       }
     };
   }
@@ -7088,13 +7138,13 @@ async function measureMapping(context, analysis, options) {
     if (node) windowCommitsByNode.set(node, (windowCommitsByNode.get(node) ?? 0) + count2);
   }
   const headLines = { ...share2(linesByNode, analysis), unattributed, unknownFiles: snapshot.missing.length };
-  const threshold = history.settings.identities.unmappedShareThreshold;
+  const guideline = history.settings.identities.unmappedShareGuideline;
   return {
     measurement: {
       headLines,
       windowCommits: share2(windowCommitsByNode, analysis),
-      unmappedShareThreshold: threshold,
-      needsIdentityReview: headLines.people > 0 && percent(headLines.unmapped, headLines.people) > threshold
+      unmappedShareGuideline: guideline,
+      needsIdentityReview: headLines.people > 0 && percent(headLines.unmapped, headLines.people) > guideline
     },
     linesByNode,
     windowCommitsByNode
@@ -7719,7 +7769,7 @@ async function consider(root, file, settings, state) {
   const found = await commitsBehind(root, location.dbPath, settings.ref, settings.hook.maxCommitsBehind);
   if (!found) return { note: null, outcome: "printed nothing: no cache within tolerance" };
   const identities = loadIdentityState(root, settings);
-  const view = await readHistory(root, { ref: found.sha, firstParent: settings.firstParent, mailmapFile: identities.localMailmap });
+  const view = await readHistory2(root, { ref: found.sha, firstParent: settings.firstParent, mailmapFile: identities.localMailmap });
   const filtered = await filterHistory(root, view, {
     exclude: settings.exclude,
     botPatterns: settings.botPatterns,
@@ -8198,7 +8248,7 @@ var FACTOR_DOCS = [
     layer: "history",
     banding: "count",
     signal: "Touched files already abandoned, or with high abandonment probability",
-    definition: "Needs the knowledge analysis (cochange.knowledge.enabled), and is unavailable without it. Counts the touched files that existed at the base and are abandoned there (at least cochange.knowledge.abandonmentThreshold percent of the lines held by people belong to people who have left, judged at the tip's date), or whose simulated probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. Banded on the count. Computed from the blame cache and never stored, and the evidence names files, not people.",
+    definition: "Needs the knowledge analysis (cochange.knowledge.enabled), and is unavailable without it. Counts the touched files that existed at the base and are abandoned there (at least cochange.knowledge.abandonmentGuideline percent of the lines held by people belong to people who have left, judged at the tip's date), or whose simulated probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. Banded on the count. Computed from the blame cache and never stored, and the evidence names files, not people.",
     why: "Nobody is left who can review these with first-hand knowledge."
   },
   {
@@ -8234,7 +8284,7 @@ var FACTOR_DOCS = [
     layer: "history",
     banding: "percentile",
     signal: "Files with high co-change confidence towards the touched files",
-    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change thresholds towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base, placed against every exported symbol's fan-in. The band is the highest of these.",
+    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change guidelines towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base, placed against every exported symbol's fan-in. The band is the highest of these.",
     why: "A flaw in widely used code is inherited by every consumer."
   },
   {
@@ -8242,8 +8292,8 @@ var FACTOR_DOCS = [
     family: "structure-and-content",
     layer: "lexical",
     banding: "count",
-    signal: "Units that are new and over a threshold, or over a threshold and worse",
-    definition: "With the complexity plugin's diff passed in: the units it reports as new and over its threshold, or over it and worse. Without it: the touched code files (those a lexer profile reads, so not prose or licence text) whose indentation complexity rose by at least cochange.risk.complexityRise. Banded on the count, and not counted in the score.",
+    signal: "Units that are new and over a guideline, or over a guideline and worse",
+    definition: "With the complexity plugin's diff passed in: the units it reports as new and over its guideline, or over it and worse. Without it: the touched code files (those a lexer profile reads, so not prose or licence text) whose indentation complexity rose by at least cochange.risk.complexityRise. Banded on the count, and not counted in the score.",
     why: "The change is adding code that is hard to understand."
   },
   {
@@ -8288,7 +8338,7 @@ var FACTOR_DOCS = [
     layer: "placement",
     banding: "none",
     signal: "The authors' earlier changes to files coupled with the touched files, to the same folder, and to the same configured component",
-    definition: "The authors' earlier changes to the files that changed with the touched file at the missing-co-change thresholds, to files in its folder, and to files in its component when cochange components are configured.",
+    definition: "The authors' earlier changes to the files that changed with the touched file at the missing-co-change guidelines, to files in its folder, and to files in its component when cochange components are configured.",
     why: "Someone who knows the surroundings is better placed than a file-level count shows."
   },
   {
@@ -8463,12 +8513,12 @@ async function fromBlame(context, history, change2, settings) {
       trials: settings.trials,
       seed: settings.seed,
       alphas: settings.alphas,
-      thresholdPercent: settings.abandonmentThreshold
+      guidelinePercent: settings.abandonmentGuideline
     });
     for (const risk of result.fileRisks) probabilities.set(risk.path, risk.probability);
   }
   const rows = model.files.map((file) => {
-    const abandoned = reachesThreshold(goneLinesOf(file, model.developers), file.people, settings.abandonmentThreshold);
+    const abandoned = reachesGuideline(goneLinesOf(file, model.developers), file.people, settings.abandonmentGuideline);
     const probability = abandoned ? 1 : probabilities.get(file.path) ?? 0;
     return { path: file.path, abandoned, probability, share: round4(goneLinesOf(file, model.developers) / file.people) };
   }).filter((row2) => row2.abandoned || row2.probability > 0 && row2.probability * 100 >= settings.atRiskProbability);
@@ -8568,7 +8618,7 @@ function checkAgainst(file, document, change2) {
     throw usageError(`--evidence ${file}: made up to ${head.slice(0, 10)}, but this change ends at ${change2.head.slice(0, 10)}`);
   }
 }
-function overThreshold(evidence) {
+function aboveGuideline(evidence) {
   return evidence.units.filter((unit) => {
     const over = unit.labels.some((label) => /-(warn|high)$/.test(label));
     return over && (unit.change === "added" || (unit.delta ?? 0) > 0);
@@ -8596,7 +8646,7 @@ function structureDelta(evidence) {
 async function complexityDelta(root, change2, risk, evidence) {
   const base = { name: "complexity-delta", family: "structure-and-content", kind: "count" };
   if (evidence.complexity !== null) {
-    const units = overThreshold(evidence.complexity);
+    const units = aboveGuideline(evidence.complexity);
     return {
       ...base,
       layer: "structural",
@@ -8672,7 +8722,7 @@ function withFanIn(factor, touched, locality, risk) {
     source: "co-change and locality report",
     reason: band === null ? factor.reason : null,
     value: { ...factor.value, fanIn },
-    thresholds: { ...factor.thresholds, fanIn: cutoffs === null ? null : { moderate: cutoffs.moderate, high: cutoffs.high } },
+    guidelines: { ...factor.guidelines, fanIn: cutoffs === null ? null : { moderate: cutoffs.moderate, high: cutoffs.high } },
     evidence: [...factor.evidence, ...rows.sort((a, b) => b.fanIn - a.fanIn || (a.file < b.file ? -1 : 1)).slice(0, 5).map((row2) => ({ ...row2, from: "locality" }))]
   };
 }
@@ -9311,26 +9361,26 @@ function makeBander(baseline, settings) {
     return cache.get(key);
   };
   return (measurement3) => {
-    if (measurement3.unavailable !== null) return { band: "unavailable", reason: measurement3.unavailable, thresholds: {} };
+    if (measurement3.unavailable !== null) return { band: "unavailable", reason: measurement3.unavailable, guidelines: {} };
     if (measurement3.kind === "count") {
-      const thresholds2 = { moderate: settings.countModerate, high: settings.countHigh };
+      const guidelines2 = { moderate: settings.countModerate, high: settings.countHigh };
       const count2 = Object.values(measurement3.series)[0] ?? 0;
-      return { band: bandCount(count2, thresholds2), reason: null, thresholds: { count: thresholds2 } };
+      return { band: bandCount(count2, guidelines2), reason: null, guidelines: { count: guidelines2 } };
     }
     let band = "low";
     let reason = null;
-    const thresholds = {};
+    const guidelines = {};
     for (const [series, value] of Object.entries(measurement3.series)) {
       const found = cutoffs(measurement3.name, series);
-      thresholds[series] = found === null ? null : { moderate: found.moderate, high: found.high };
+      guidelines[series] = found === null ? null : { moderate: found.moderate, high: found.high };
       if (found === null) {
         if (value > 0) reason = `fewer than ${settings.minBaseline} merged changes in the baseline, so a value of ${value} cannot be placed`;
         continue;
       }
       band = higherBand(band, bandAgainst(value, found));
     }
-    if (reason !== null && band === "low") return { band: "unavailable", reason, thresholds };
-    return { band, reason: null, thresholds };
+    if (reason !== null && band === "low") return { band: "unavailable", reason, guidelines };
+    return { band, reason: null, guidelines };
   };
 }
 var FAMILY_POINTS = { low: 0, moderate: 1, high: 2 };
@@ -9386,7 +9436,7 @@ function toFactor(measurement3, banded, risk) {
     band: disabled ? null : banded.band === "unavailable" ? null : banded.band,
     scored: SCORED_FACTORS.has(measurement3.name) && !disabled,
     value: disabled ? {} : measurement3.value,
-    thresholds: disabled ? {} : banded.thresholds,
+    guidelines: disabled ? {} : banded.guidelines,
     evidence: disabled ? [] : measurement3.evidence,
     source: measurement3.source,
     reason: disabled ? "switched off by cochange.risk.disable" : measurement3.unavailable ?? banded.reason
@@ -9431,7 +9481,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change2.head);
   const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-F6BEKVWM.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-2BHDKMEM.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);
@@ -9850,14 +9900,14 @@ var RESPONSES = {
     step: "test",
     response: "Characterisation tests before the change, and a short note capturing what was learned.",
     summary: "Touched files are abandoned, or likely to be: nobody active holds most of their lines",
-    explanation: "From the knowledge analysis (cochange.knowledge.enabled), computed from the blame cache and the abandonment model at the base, and never stored. Files are counted when at least cochange.knowledge.abandonmentThreshold percent of the lines held by people belong to people who have left, or when their probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. `cochange successors PATH` names who could adopt one.",
+    explanation: "From the knowledge analysis (cochange.knowledge.enabled), computed from the blame cache and the abandonment model at the base, and never stored. Files are counted when at least cochange.knowledge.abandonmentGuideline percent of the lines held by people belong to people who have left, or when their probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. `cochange successors PATH` names who could adopt one.",
     redFlag: null
   },
   "complexity-delta": {
     step: "simplify",
     response: "Run `complexity explain` on the named units and simplify before merge.",
     summary: "The change adds code that is hard to understand",
-    explanation: "From `complexity diff` passed in with --evidence: units that are new and over its threshold, or over it and worse. Without that, the touched files whose indentation complexity rose.",
+    explanation: "From `complexity diff` passed in with --evidence: units that are new and over its guideline, or over it and worse. Without that, the touched files whose indentation complexity rose.",
     redFlag: null
   },
   "structure-delta": {
@@ -10074,7 +10124,7 @@ var row = (name15, value, evidence, unavailable3 = null) => ({
   band: null,
   scored: false,
   value: unavailable3 === null ? value : {},
-  thresholds: {},
+  guidelines: {},
   evidence: unavailable3 === null ? evidence : [],
   source: name15 === "authorship" || name15 === "owner-distance" || name15 === "no-owner" ? "blame" : "history",
   reason: unavailable3
@@ -10447,7 +10497,7 @@ var command13 = {
       const file = model.files.find((f) => f.path === path);
       rows.push({
         path,
-        abandoned: file !== void 0 && reachesThreshold(goneLinesOf(file, model.developers), file.people, p.settings.abandonmentThreshold),
+        abandoned: file !== void 0 && reachesGuideline(goneLinesOf(file, model.developers), file.people, p.settings.abandonmentGuideline),
         coupledFiles: [...index2.partners.get(path) ?? []].map((c) => ({ path: c.path, degree: round4(c.degree), support: c.support })).sort((a, b) => b.degree - a.degree || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))),
         candidates: successors.length,
         noSuccessor: hasNoSuccessor(successors),

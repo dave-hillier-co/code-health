@@ -79,7 +79,7 @@ export async function loadHistory(context: CommandContext, options: HistoryOptio
       since,
       until,
     },
-    evidence: { windowMonths: settings.windowMonths, thresholds: settings.evidenceThresholds },
+    evidence: { windowMonths: settings.windowMonths, guidelines: settings.evidenceGuidelines },
   });
   const earliest = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
   return { ...analysis, settings, window: { since: since ?? earliest, until: options.window?.until ?? anchor }, refreshed };

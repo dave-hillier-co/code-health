@@ -1,4 +1,4 @@
-import type { PluginConfigSpec } from "./config.ts";
+import { historyDefaults, type PluginConfigSpec } from "./config.ts";
 
 export type JsonSchema = Record<string, unknown>;
 
@@ -20,6 +20,11 @@ function sharedProperties(): Record<string, JsonSchema> {
     entryPoints: stringList("Globs of files that are entry points: code nothing in the repository imports and nothing may move."),
     components: { type: "object", description: "Named groups of paths: component name to globs." },
     vagueNames: stringList("Folder and file names that say nothing about their content."),
+    history: {
+      ...sectionSchema(historyDefaults),
+      description:
+        "How history is read, for every plugin that reads it. A plugin section may override any key it lists, and the plugin's own value wins over this one.",
+    },
   };
 }
 
@@ -57,7 +62,11 @@ function sectionSchema(defaults: unknown): JsonSchema {
 export function buildConfigSchema(specs: readonly PluginConfigSpec[]): JsonSchema {
   const sections: Record<string, JsonSchema> = {};
   for (const spec of [...specs].sort((a, b) => (a.plugin < b.plugin ? -1 : 1))) {
-    sections[spec.plugin] = { ...sectionSchema(spec.section), description: `Settings of the ${spec.plugin} plugin.` };
+    const section = sectionSchema(spec.section) as { properties?: Record<string, JsonSchema> };
+    const overrides = Object.fromEntries(
+      (spec.history ?? []).map((key) => [key, { ...sectionSchema(historyDefaults[key]), description: `Overrides history.${key} for the ${spec.plugin} plugin.` }]),
+    );
+    sections[spec.plugin] = { ...section, properties: { ...section.properties, ...overrides }, description: `Settings of the ${spec.plugin} plugin.` };
   }
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",

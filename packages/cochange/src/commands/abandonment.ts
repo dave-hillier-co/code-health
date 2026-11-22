@@ -85,7 +85,7 @@ async function current(context: CommandContext): Promise<CommandOutput> {
   const by = readBy(context);
   const p = await prepare(context);
   const { model } = p.knowledge;
-  const files = measureCurrent(model, p.settings.abandonmentThreshold);
+  const files = measureCurrent(model, p.settings.abandonmentGuideline);
   const unattributed = model.files.reduce((sum, f) => sum + f.unattributed, 0);
 
   const rank = readRank(context, p.settings);
@@ -94,7 +94,7 @@ async function current(context: CommandContext): Promise<CommandOutput> {
   const rows =
     by === "file"
       ? files
-          // The threshold is a guideline: a file with any lines held by people who have left is listed, and `abandoned` marks those at it.
+          // The guideline does not remove a file: a file with any lines held by people who have left is listed, and `abandoned` marks those at it.
           .filter((f) => f.abandonedLines > 0)
           .map((f) => ({
             path: f.path,

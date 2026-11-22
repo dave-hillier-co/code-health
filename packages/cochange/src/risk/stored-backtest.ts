@@ -17,7 +17,7 @@ export interface StoredBacktest {
 }
 
 /**
- * The stored backtest, when it was made with the same configuration as this run: a different threshold
+ * The stored backtest, when it was made with the same configuration as this run: a different guideline
  * or pattern makes different bands, so its verdict would be about another model. A missing, unreadable
  * or foreign file is no backtest at all.
  */

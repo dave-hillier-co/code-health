@@ -46,11 +46,11 @@ After that, the choice is found from the files present. To pin it, set `cochange
 - **service**: a generic name such as `build`, `jenkins` or `release`, or an account whose commits are only version bumps or merges.
 - **agent**: a `Co-Authored-By` trailer naming an AI agent. The human author or committer stays the person of record. The trailer is only recorded.
 
-Bots, services and agents are left out of the population of people and out of every proposal. Bot and service patterns are configured in one place, `cochange.identities.botPatterns` and `servicePatterns` in `code-health.json`, and cochange's noise filters read them from there together with the decisions file.
+Bots, services and agents are left out of the population of people and out of every proposal. Bot patterns are the shared `history.botPatterns` setting in `code-health.json` (`cochange.botPatterns` overrides it for cochange), and service patterns are `cochange.identities.servicePatterns`. Cochange's noise filters read both together with the decisions file.
 
 ## Reading the measurement
 
-`check` reads line ownership from the blame cache with the same options as abandonment, so the two shares agree. It reports how much of the code the mapping has settled: the share of lines at HEAD and of commits in the analysis window held by identities that no proposal still names, with bots and services counted separately. It should be close to 100 percent before any abandonment result is trusted. Report it alongside whatever you do next. When `needsIdentityReview` is true, unmapped identities hold more than the guideline `cochange.identities.unmappedShareThreshold` percent of the lines. The measured share is printed beside it. Below the guideline the unmapped identities are still listed.
+`check` reads line ownership from the blame cache with the same options as abandonment, so the two shares agree. It reports how much of the code the mapping has settled: the share of lines at HEAD and of commits in the analysis window held by identities that no proposal still names, with bots and services counted separately. It should be close to 100 percent before any abandonment result is trusted. Report it alongside whatever you do next. When `needsIdentityReview` is true, unmapped identities hold more than the guideline `cochange.identities.unmappedShareGuideline` percent of the lines. The measured share is printed beside it. Below the guideline the unmapped identities are still listed.
 
 ## Commands
 

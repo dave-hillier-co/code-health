@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial. Third-party licences: THIRD_PARTY_NOTICES.md.
 import {
   configError
-} from "./chunk-T3PHNALX.mjs";
+} from "./chunk-Q2L3NSZB.mjs";
 import {
   __export
 } from "./chunk-NYIILDEN.mjs";
@@ -463,7 +463,7 @@ function structuralValues(metrics, switchMode) {
     bumps: metrics.bumps
   };
 }
-var defaultThresholds = {
+var defaultGuidelines = {
   cyclomatic: { warn: 10, high: 20 },
   cognitive: { warn: 15, high: 25 },
   nesting: 4,
@@ -472,54 +472,55 @@ var defaultThresholds = {
   deepBumps: 2
 };
 var gatedMetrics = ["cyclomatic", "cognitive", "nesting", "parameters"];
-function limitOf(thresholds, metric) {
-  const threshold = thresholds[metric];
-  return typeof threshold === "number" ? threshold : threshold.warn;
+function limitOf(guidelines, metric) {
+  const guideline = guidelines[metric];
+  return typeof guideline === "number" ? guideline : guideline.warn;
 }
-function exceeded(values, thresholds) {
+function exceeded(values, guidelines) {
   return gatedMetrics.filter((metric) => {
     const value = values[metric];
-    return value !== void 0 && value > limitOf(thresholds, metric);
+    return value !== void 0 && value > limitOf(guidelines, metric);
   });
 }
-function labelsFor(values, thresholds, bumpyRoad = false) {
+function labelsFor(values, guidelines, bumpyRoad = false) {
   const labels = [];
   for (const metric of gatedMetrics) {
     const value = values[metric];
     if (value === void 0) continue;
-    const threshold = thresholds[metric];
-    if (typeof threshold === "number") {
-      if (value > threshold) labels.push(`${metric}-warn`);
-    } else if (value > threshold.high) labels.push(`${metric}-high`);
-    else if (value > threshold.warn) labels.push(`${metric}-warn`);
+    const guideline = guidelines[metric];
+    if (typeof guideline === "number") {
+      if (value > guideline) labels.push(`${metric}-warn`);
+    } else if (value > guideline.high) labels.push(`${metric}-high`);
+    else if (value > guideline.warn) labels.push(`${metric}-warn`);
   }
   if (bumpyRoad) labels.push("bumpy-road");
   return labels;
 }
-function bumpyRoadLimits(thresholds) {
-  return { bumps: thresholds.bumps, deepBumps: thresholds.deepBumps, nesting: thresholds.nesting };
+function bumpyRoadLimits(guidelines) {
+  return { bumps: guidelines.bumps, deepBumps: guidelines.deepBumps, nesting: guidelines.nesting };
 }
 
 // packages/complexity/src/config.ts
 var complexityConfig = {
   plugin: TOOL,
+  history: ["windowMonths", "maxChangesetSize", "botPatterns"],
   section: {
     /** Metrics reported and ranked. `--metrics` narrows them for one run. */
     metrics: [...metricIds],
     /**
-     * Guidelines for investigation, named `thresholds` in the config. A metric is above its guideline when its value is above it, and `high` marks a second band. They label and order results and
+     * Guidelines for investigation. A metric is above its guideline when its value is above it, and `high` marks a second band. They label and order results and
      * hide nothing. Only `check` turns them into an exit code, and only for new or worsened units. Defaults: cyclomatic 10 and 20, cognitive 15 and 25, nesting 4 and parameters 5 are judgement calls
      * (CodeScene's default for cyclomatic is 9 and for parameters 4); bumps 3 and deepBumps 2 are judgement calls beside CodeScene's 2 bumps at depth 2.
      */
-    thresholds: {
-      cyclomatic: { ...defaultThresholds.cyclomatic },
-      cognitive: { ...defaultThresholds.cognitive },
-      nesting: defaultThresholds.nesting,
-      parameters: defaultThresholds.parameters,
+    guidelines: {
+      cyclomatic: { ...defaultGuidelines.cyclomatic },
+      cognitive: { ...defaultGuidelines.cognitive },
+      nesting: defaultGuidelines.nesting,
+      parameters: defaultGuidelines.parameters,
       /** A function with this many bumps or more is labelled a bumpy road. */
-      bumps: defaultThresholds.bumps,
+      bumps: defaultGuidelines.bumps,
       /** The count that makes a bumpy road when the deepest bump is deeper than `nesting`. */
-      deepBumps: defaultThresholds.deepBumps
+      deepBumps: defaultGuidelines.deepBumps
     },
     /** `case` counts every case of a switch toward cyclomatic complexity, `modified` counts one per switch. */
     cyclomaticSwitch: "case",
@@ -537,11 +538,9 @@ var complexityConfig = {
     analyseTests: true,
     /** Weight the ranking by how often each file changed in the window, so code that never changes ranks last. */
     changeWeighting: true,
-    /** The window for change frequency, back from HEAD's commit date. */
-    windowMonths: 12,
-    /** `{ "paths": [globs], "thresholds": { ...partial thresholds } }`, the last matching entry winning per metric. */
+    /** `{ "paths": [globs], "guidelines": { ...partial guidelines } }`, the last matching entry winning per metric. */
     overrides: [],
-    /** The post-edit hook, off unless a repository turns it on. It uses the `thresholds` guidelines, `delta`, `analyseTests` and `agreementBar`. */
+    /** The post-edit hook, off unless a repository turns it on. It uses `guidelines`, `delta`, `analyseTests` and `agreementBar`. */
     hook: { enabled: false },
     /** `shallow`: a guideline of 10, a judgement call not calibrated on a corpus. An exported function, class or module with fewer syntax nodes than this per element of its interface is labelled shallow. Rows are ordered by depth whatever the guideline. */
     interfaceDepth: { shallow: 10 }
@@ -574,11 +573,11 @@ function readSettings(config) {
   if (section.cyclomaticSwitch !== "case" && section.cyclomaticSwitch !== "modified") {
     throw configError(`code-health.json: ${at("cyclomaticSwitch")} must be "case" or "modified"`);
   }
-  const thresholds = readThresholds(section.thresholds, at("thresholds"), number);
-  const overrides = readOverrides(section.overrides, at("overrides"), number, thresholds);
+  const guidelines = readGuidelines(section.guidelines, at("guidelines"), number);
+  const overrides = readOverrides(section.overrides, at("overrides"), number, guidelines);
   return {
     metrics,
-    thresholds,
+    guidelines,
     overrides,
     cyclomaticSwitch: section.cyclomaticSwitch,
     base: optionalString("base"),
@@ -589,6 +588,8 @@ function readSettings(config) {
     analyseTests: section.analyseTests === true,
     changeWeighting: section.changeWeighting === true,
     windowMonths: number(section.windowMonths, at("windowMonths"), 1),
+    maxChangesetSize: number(section.maxChangesetSize, at("maxChangesetSize"), 1),
+    botPatterns: section.botPatterns,
     hook: { enabled: section.hook.enabled === true },
     shallowDepth: number(section.interfaceDepth.shallow, at("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
@@ -603,7 +604,7 @@ function readLanguageProfiles(languages) {
   }
   return languages;
 }
-function readThresholds(value, where, number) {
+function readGuidelines(value, where, number) {
   const source = value;
   const level = (name) => {
     const { warn, high } = source[name];
@@ -625,19 +626,19 @@ function readOverrides(value, where, number, global) {
   return value.map((entry, index) => {
     const here = `${where}[${index}]`;
     if (!isRecord(entry) || !Array.isArray(entry.paths) || entry.paths.some((glob) => typeof glob !== "string")) {
-      throw configError(`code-health.json: ${here} needs "paths", an array of globs, and "thresholds"`);
+      throw configError(`code-health.json: ${here} needs "paths", an array of globs, and "guidelines"`);
     }
-    if (!isRecord(entry.thresholds)) throw configError(`code-health.json: ${here}.thresholds must be an object`);
-    const merged = mergeThresholds(global, entry.thresholds, `${here}.thresholds`, number);
+    if (!isRecord(entry.guidelines)) throw configError(`code-health.json: ${here}.guidelines must be an object`);
+    const merged = mergeGuidelines(global, entry.guidelines, `${here}.guidelines`, number);
     for (const name of ["cyclomatic", "cognitive"]) {
       if (merged[name].high < merged[name].warn) {
-        throw configError(`code-health.json: ${here}.thresholds.${name}.high must not be below warn (${merged[name].warn}); set both when raising warn`);
+        throw configError(`code-health.json: ${here}.guidelines.${name}.high must not be below warn (${merged[name].warn}); set both when raising warn`);
       }
     }
-    return { matches: compileGlobs(entry.paths), thresholds: entry.thresholds };
+    return { matches: compileGlobs(entry.paths), guidelines: entry.guidelines };
   });
 }
-function mergeThresholds(base, patch, where, number) {
+function mergeGuidelines(base, patch, where, number) {
   if (!isRecord(patch)) throw configError(`code-health.json: ${where} must be an object`);
   const merged = { cyclomatic: { ...base.cyclomatic }, cognitive: { ...base.cognitive }, nesting: base.nesting, parameters: base.parameters, bumps: base.bumps, deepBumps: base.deepBumps };
   for (const [key, entry] of Object.entries(patch)) {
@@ -657,12 +658,12 @@ function mergeThresholds(base, patch, where, number) {
   }
   return merged;
 }
-function thresholdsFor(settings, path) {
-  let thresholds = settings.thresholds;
+function guidelinesFor(settings, path) {
+  let guidelines = settings.guidelines;
   for (const override of settings.overrides) {
-    if (override.matches(path)) thresholds = mergeThresholds(thresholds, override.thresholds, "override", (value) => value);
+    if (override.matches(path)) guidelines = mergeGuidelines(guidelines, override.guidelines, "override", (value) => value);
   }
-  return thresholds;
+  return guidelines;
 }
 
 // packages/history/src/cache-location.ts
@@ -1217,8 +1218,8 @@ function findBumps(codeLines, profile, threshold) {
   endRun();
   return { bumps, bumpDepth, bumpSize };
 }
-function isBumpyRoad(metrics, thresholds = {}) {
-  const { bumps = 3, deepBumps = 2, nesting = 4 } = thresholds;
+function isBumpyRoad(metrics, guidelines = {}) {
+  const { bumps = 3, deepBumps = 2, nesting = 4 } = guidelines;
   if (metrics.bumps >= bumps) return true;
   return metrics.bumps >= deepBumps && metrics.bumpDepth > nesting;
 }
@@ -1447,7 +1448,7 @@ export {
   SCHEMA_VERSION,
   complexityConfig,
   readSettings,
-  thresholdsFor,
+  guidelinesFor,
   isBumpyRoad,
   analyseSource
 };

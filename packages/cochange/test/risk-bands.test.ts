@@ -64,9 +64,9 @@ test("nearest rank takes the smallest value that the percentile of the populatio
   expect(nearestRank([4, 1, 3, 2], 100)).toBe(4);
 });
 
-test("a count is banded on fixed thresholds, not on a distribution", () => {
-  const thresholds = { moderate: 1, high: 3 };
-  expect([0, 1, 2, 3, 9].map((n) => bandCount(n, thresholds))).toEqual(["low", "moderate", "moderate", "high", "high"]);
+test("a count is banded on fixed guidelines, not on a distribution", () => {
+  const guidelines = { moderate: 1, high: 3 };
+  expect([0, 1, 2, 3, 9].map((n) => bandCount(n, guidelines))).toEqual(["low", "moderate", "moderate", "high", "high"]);
 });
 
 const settings = { ...riskDefaults, fixPatterns: [], revertPatterns: [], disabled: new Set<string>(), minBaseline: 10 } as unknown as RiskSettings;
@@ -109,7 +109,7 @@ test("a factor is placed against the population measured the same way", () => {
   expect(bander(measured("size", "size-and-diffusion", 15)).band).toBe("low");
   expect(bander(measured("size", "size-and-diffusion", 16)).band).toBe("moderate");
   expect(bander(measured("size", "size-and-diffusion", 19)).band).toBe("high");
-  expect(bander(measured("size", "size-and-diffusion", 16)).thresholds).toEqual({ value: { moderate: 15, high: 18 } });
+  expect(bander(measured("size", "size-and-diffusion", 16)).guidelines).toEqual({ value: { moderate: 15, high: 18 } });
 });
 
 test("a two-sided factor takes the higher of its sides", () => {

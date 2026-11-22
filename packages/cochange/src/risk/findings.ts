@@ -75,14 +75,14 @@ export const RESPONSES: Record<string, { step: Step; response: string; summary: 
     step: "test",
     response: "Characterisation tests before the change, and a short note capturing what was learned.",
     summary: "Touched files are abandoned, or likely to be: nobody active holds most of their lines",
-    explanation: "From the knowledge analysis (cochange.knowledge.enabled), computed from the blame cache and the abandonment model at the base, and never stored. Files are counted when at least cochange.knowledge.abandonmentThreshold percent of the lines held by people belong to people who have left, or when their probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. `cochange successors PATH` names who could adopt one.",
+    explanation: "From the knowledge analysis (cochange.knowledge.enabled), computed from the blame cache and the abandonment model at the base, and never stored. Files are counted when at least cochange.knowledge.abandonmentGuideline percent of the lines held by people belong to people who have left, or when their probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. `cochange successors PATH` names who could adopt one.",
     redFlag: null,
   },
   "complexity-delta": {
     step: "simplify",
     response: "Run `complexity explain` on the named units and simplify before merge.",
     summary: "The change adds code that is hard to understand",
-    explanation: "From `complexity diff` passed in with --evidence: units that are new and over its threshold, or over it and worse. Without that, the touched files whose indentation complexity rose.",
+    explanation: "From `complexity diff` passed in with --evidence: units that are new and over its guideline, or over it and worse. Without that, the touched files whose indentation complexity rose.",
     redFlag: null,
   },
   "structure-delta": {

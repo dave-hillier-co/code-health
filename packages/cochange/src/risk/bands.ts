@@ -48,9 +48,9 @@ export function bandAgainst(value: number, cutoffs: Cutoffs): Band {
   return "low";
 }
 
-/** A count of specific events against fixed thresholds. */
-export function bandCount(count: number, thresholds: { moderate: number; high: number }): Band {
-  if (count >= thresholds.high) return "high";
-  if (count >= thresholds.moderate) return "moderate";
+/** A count of specific events against fixed guidelines. */
+export function bandCount(count: number, guidelines: { moderate: number; high: number }): Band {
+  if (count >= guidelines.high) return "high";
+  if (count >= guidelines.moderate) return "moderate";
   return "low";
 }

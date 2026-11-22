@@ -315,7 +315,7 @@
         "value": {
           "type": "object"
         },
-        "thresholds": {
+        "guidelines": {
           "description": "For each measured series, the values above which the factor is moderate and high. Null when the baseline was too small to set them.",
           "type": "object",
           "additionalProperties": {
@@ -366,7 +366,7 @@
         "band",
         "scored",
         "value",
-        "thresholds",
+        "guidelines",
         "evidence",
         "source",
         "reason"
@@ -374,7 +374,7 @@
       "additionalProperties": false
     },
     "explain": {
-      "description": "`risk explain`: the rules behind the level (no topic argument), or one factor's definition, thresholds and the evidence that drove it on the branch.",
+      "description": "`risk explain`: the rules behind the level (no topic argument), or one factor's definition, guidelines and the evidence that drove it on the branch.",
       "type": "object",
       "properties": {
         "kind": {
@@ -482,7 +482,7 @@
           "additionalProperties": false
         },
         "branch": {
-          "description": "The factor as measured on the branch, with its thresholds and the files behind it. Null for a placement factor, which only `risk` computes.",
+          "description": "The factor as measured on the branch, with its guidelines and the files behind it. Null for a placement factor, which only `risk` computes.",
           "oneOf": [
             {
               "$ref": "#/$defs/factor"

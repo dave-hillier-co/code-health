@@ -12,7 +12,7 @@ Brings the blame cache up to date: `git blame -w -M -C` of every authored file w
 
 ## abandonment current [--by file|component] [--rank hotspot|abandonment]
 
-Files with any lines held by people who have left. Rows: `path`, `abandoned` (the share is at or above `abandonmentThreshold`), `score`, `hotspot`, `hotspotPercentile`, `findings`, `abandonedShare`, `abandonedLines`, `peopleLines`, `activeAuthors`, `formerAuthors` (counts of people holding lines), `nonPersonLines`. `score` is the abandoned share times the hotspot percentile, or with `--rank abandonment` the abandoned lines. With `--by component`: `path`, `score`, `files`, `abandonedFiles`, `abandonedShare`, `abandonedLines`, `peopleLines`. The `summary` section gives the files and lines of the whole repository.
+Files with any lines held by people who have left. Rows: `path`, `abandoned` (the share is at or above `abandonmentGuideline`), `score`, `hotspot`, `hotspotPercentile`, `findings`, `abandonedShare`, `abandonedLines`, `peopleLines`, `activeAuthors`, `formerAuthors` (counts of people holding lines), `nonPersonLines`. `score` is the abandoned share times the hotspot percentile, or with `--rank abandonment` the abandoned lines. With `--by component`: `path`, `score`, `files`, `abandonedFiles`, `abandonedShare`, `abandonedLines`, `peopleLines`. The `summary` section gives the files and lines of the whole repository.
 
 ## abandonment turnover
 
@@ -40,6 +40,6 @@ One row per path: `abandoned`, `coupledFiles` (`path`, `degree`, `support`), `ca
 
 ## Configuration (`cochange.knowledge`)
 
-`enabled` (false), `activityWindowMonths` (6), `periodMonths` (3), `horizonPeriods` (4), `abandonmentThreshold` (90), `turnoverRate` (null, a percentage per period), `trials` (10000), `alphas` ([95, 99]), `seed` (1), `rank` (`hotspot`), `copyDetection` (true), `atRiskProbability` (10), `concentratedTailRatio` (3).
+`enabled` (false), `activityWindowMonths` (6), `periodMonths` (3), `horizonPeriods` (4), `abandonmentGuideline` (90), `turnoverRate` (null, a percentage per period), `trials` (10000), `alphas` ([95, 99]), `seed` (1), `rank` (`hotspot`), `copyDetection` (true), `atRiskProbability` (10), `concentratedTailRatio` (3).
 
 Local, never committed: `.code-health/local/knowledge-overrides.json`, `{ "schemaVersion": 1, "active": ["Name <email>"], "inactive": ["Name <email>"] }`.

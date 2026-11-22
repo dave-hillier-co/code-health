@@ -23,7 +23,7 @@ interface Factor {
   value: Record<string, unknown>;
   evidence: Record<string, unknown>[];
   source: string;
-  thresholds: Record<string, unknown>;
+  guidelines: Record<string, unknown>;
 }
 
 async function blastRadius(range: string): Promise<Factor> {
@@ -49,7 +49,7 @@ describe("blast-radius of a changed signature", () => {
   test("the fan-in of the changed symbol is placed against every exported symbol's, and raises the band", async () => {
     const blast = await blastRadius("main..signature");
     expect(blast.band).toBe("high");
-    expect(blast.thresholds.symbolFanIn).toMatchObject({ moderate: expect.any(Number), high: expect.any(Number) });
+    expect(blast.guidelines.symbolFanIn).toMatchObject({ moderate: expect.any(Number), high: expect.any(Number) });
   });
 
   test("a change to the body alone leaves the signature, and so the symbol, out", async () => {

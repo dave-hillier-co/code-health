@@ -1,6 +1,6 @@
 import { analyseSource } from "@code-health/lexical/analyse-source";
 import type { FileMeasurement } from "@code-health/history/session-state";
-import { bumpyRoadLimits, type Thresholds } from "./metrics.ts";
+import { bumpyRoadLimits, type Guidelines } from "./metrics.ts";
 
 /**
  * The metrics the hook compares, all lexical, in tie-break order. A unit's `bumpy` value is 1 when the
@@ -20,12 +20,12 @@ export type Measured = { measurement: FileMeasurement } | { unmeasured: string }
 export function measureFile(
   path: string,
   text: string,
-  options: { agreementBar: number; languageProfiles: Record<string, string>; thresholds: Thresholds },
+  options: { agreementBar: number; languageProfiles: Record<string, string>; guidelines: Guidelines },
 ): Measured {
   const analysis = analyseSource(path, text, {
     agreementBar: options.agreementBar,
     mappings: options.languageProfiles,
-    bumpyRoad: bumpyRoadLimits(options.thresholds),
+    bumpyRoad: bumpyRoadLimits(options.guidelines),
   });
   if (analysis.functions.gated) return { unmeasured: analysis.functions.reason };
   // The hook states measured values, so it prints nothing where nothing measures how accurate the values are.
@@ -64,14 +64,14 @@ export interface HookFinding {
  * above its guideline when the unit is a bumpy road. Keyword complexity counts decision points, so
  * cyclomatic complexity is one more than it, and the cyclomatic guideline is applied as that.
  */
-function limitOf(metric: HookMetric, thresholds: Thresholds): number | undefined {
-  if (metric === "nesting") return thresholds.nesting;
-  if (metric === "keyword") return thresholds.cyclomatic.warn - 1;
+function limitOf(metric: HookMetric, guidelines: Guidelines): number | undefined {
+  if (metric === "nesting") return guidelines.nesting;
+  if (metric === "keyword") return guidelines.cyclomatic.warn - 1;
   return undefined;
 }
 
-const isOver = (metric: HookMetric, values: Record<string, number>, thresholds: Thresholds): boolean => {
-  const limit = limitOf(metric, thresholds);
+const isOver = (metric: HookMetric, values: Record<string, number>, guidelines: Guidelines): boolean => {
+  const limit = limitOf(metric, guidelines);
   return limit === undefined ? values.bumpy === 1 : values[metric]! > limit;
 };
 
@@ -81,15 +81,15 @@ const isOver = (metric: HookMetric, values: Record<string, number>, thresholds: 
  * a unit under its guideline, or above it and not worse, is left out of the message, and so is a removed
  * one. Sorted by how far above the guideline, the most notable first.
  */
-export function findingsFor(before: FileMeasurement, after: FileMeasurement, thresholds: Thresholds, delta: number): HookFinding[] {
+export function findingsFor(before: FileMeasurement, after: FileMeasurement, guidelines: Guidelines, delta: number): HookFinding[] {
   const findings: HookFinding[] = [];
   for (const [unit, values] of Object.entries(after)) {
     const earlier = before[unit];
     for (const metric of hookMetrics) {
-      if (!isOver(metric, values, thresholds)) continue;
+      if (!isOver(metric, values, guidelines)) continue;
       const was = earlier?.[metric];
-      if (earlier !== undefined && isOver(metric, earlier, thresholds) && values[metric]! - (was ?? 0) <= delta) continue;
-      const limit = limitOf(metric, thresholds);
+      if (earlier !== undefined && isOver(metric, earlier, guidelines) && values[metric]! - (was ?? 0) <= delta) continue;
+      const limit = limitOf(metric, guidelines);
       findings.push({
         unit,
         metric,

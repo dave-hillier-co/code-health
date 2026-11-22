@@ -97,7 +97,7 @@ test("an oversized change counts on neither side of the ratio", () => {
   expect(pair).toEqual({ a: "a", b: "b", support: 2, changesA: 2, changesB: 2 });
 });
 
-test("a pair exactly at the degree threshold is kept", () => {
+test("a pair exactly at the degree guideline is kept", () => {
   const history = [
     { files: ["a", "b"], oversized: false },
     { files: ["c", "d"], oversized: false },

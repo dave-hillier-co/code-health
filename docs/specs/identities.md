@@ -120,8 +120,8 @@ The rest of the suite keeps data about people off by default. This skill is the 
 In `cochange.identities`:
 
 - Mapping location (committed or local).
-- Bot and service patterns. This is the one place they are configured. Cochange's noise filters and the abandonment skill read them from here, together with the classifications in the decisions file.
-- The unmapped-share guideline (`unmappedShareThreshold`) above which the abandonment skill uses this one first, and the `significantCommits` guideline.
+- Service patterns (`servicePatterns`). Bot patterns are the shared `history.botPatterns` setting, which `cochange.botPatterns` may override. Cochange's noise filters and the abandonment skill read both, together with the classifications in the decisions file.
+- The unmapped-share guideline (`unmappedShareGuideline`) above which the abandonment skill uses this one first, and the `significantCommits` guideline.
 - Agent trailer patterns.
 
 ## Resolved definitions
@@ -132,7 +132,7 @@ Numbers here are guidelines or floors, as in [cochange.md](cochange.md#resolved-
 
 **Line ownership.** `check` reads line ownership from the shared blame cache, refreshed first unless `--no-refresh` is given, with the options the abandonment analysis uses (`-w -M -C` unless `cochange.knowledge.copyDetection` is false, and the ignore-revs file). Its mapped share therefore equals the one abandonment reports for the same commit and options. It does not need `cochange.knowledge.enabled`, because it reads line counts per commit and no analysis of people. `headLines.unknownFiles` counts authored files the cache holds no right blame for (zero after a refresh), and their lines are not counted.
 
-**Mapped share.** An identity is unmapped while any proposal that is not rejected names it. `mappedShare` is the share of people's lines held by identities no such proposal names, with bots, services and agents left out of the denominator. A proposal that is pending and wrong therefore counts as unresolved. `needsIdentityReview` is true when the unmapped share exceeds `unmappedShareThreshold` (default 5 percent, a judgement call). It is a guideline for deciding whether to use this skill first, and the measured share is printed beside it.
+**Mapped share.** An identity is unmapped while any proposal that is not rejected names it. `mappedShare` is the share of people's lines held by identities no such proposal names, with bots, services and agents left out of the denominator. A proposal that is pending and wrong therefore counts as unresolved. `needsIdentityReview` is true when the unmapped share exceeds `unmappedShareGuideline` (default 5 percent, a judgement call). It is a guideline for deciding whether to use this skill first, and the measured share is printed beside it.
 
 **Evidence constants.** A handover is a gap of at most 90 days or an overlap of at most 14 days between one identity's last commit and the other's first. Counter-evidence is computed only for links without a strong signal, since a strong signal outranks it. Simultaneous activity is compared by week, in areas given by the first two folders of each path. A shared signing key is a strong signal, and platform keys are ignored as in the table. Both day counts are judgement calls. They decide which proposals the agent is shown, and never which are applied.
 

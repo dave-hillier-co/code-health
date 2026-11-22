@@ -39,7 +39,7 @@ export function structuralValues(metrics: UnitMetrics, switchMode: CyclomaticSwi
   };
 }
 
-export interface Thresholds {
+export interface Guidelines {
   cyclomatic: { warn: number; high: number };
   cognitive: { warn: number; high: number };
   nesting: number;
@@ -50,7 +50,7 @@ export interface Thresholds {
   deepBumps: number;
 }
 
-export const defaultThresholds: Thresholds = {
+export const defaultGuidelines: Guidelines = {
   cyclomatic: { warn: 10, high: 20 },
   cognitive: { warn: 15, high: 25 },
   nesting: 4,
@@ -59,41 +59,41 @@ export const defaultThresholds: Thresholds = {
   deepBumps: 2,
 };
 
-/** Metrics a threshold applies to. Length has none, and the lexical metrics are labelled by the bumpy road rule. */
+/** Metrics a guideline applies to. Length has none, and the lexical metrics are labelled by the bumpy road rule. */
 export const gatedMetrics = ["cyclomatic", "cognitive", "nesting", "parameters"] as const;
 export type GatedMetric = (typeof gatedMetrics)[number];
 
-/** The value above which a metric is over its threshold: the warn level, since only labels use `high`. */
-export function limitOf(thresholds: Thresholds, metric: GatedMetric): number {
-  const threshold = thresholds[metric];
-  return typeof threshold === "number" ? threshold : threshold.warn;
+/** The value above which a metric is over its guideline: the warn level, since only labels use `high`. */
+export function limitOf(guidelines: Guidelines, metric: GatedMetric): number {
+  const guideline = guidelines[metric];
+  return typeof guideline === "number" ? guideline : guideline.warn;
 }
 
-/** Gated metrics whose value is above the threshold. */
-export function exceeded(values: Values, thresholds: Thresholds): GatedMetric[] {
+/** Gated metrics whose value is above the guideline. */
+export function exceeded(values: Values, guidelines: Guidelines): GatedMetric[] {
   return gatedMetrics.filter((metric) => {
     const value = values[metric];
-    return value !== undefined && value > limitOf(thresholds, metric);
+    return value !== undefined && value > limitOf(guidelines, metric);
   });
 }
 
-/** Labels such as `cognitive-high` or `nesting-warn`, in metric order, plus `bumpy-road` for a unit whose bumps cross the threshold. */
-export function labelsFor(values: Values, thresholds: Thresholds, bumpyRoad = false): string[] {
+/** Labels such as `cognitive-high` or `nesting-warn`, in metric order, plus `bumpy-road` for a unit whose bumps cross the guideline. */
+export function labelsFor(values: Values, guidelines: Guidelines, bumpyRoad = false): string[] {
   const labels: string[] = [];
   for (const metric of gatedMetrics) {
     const value = values[metric];
     if (value === undefined) continue;
-    const threshold = thresholds[metric];
-    if (typeof threshold === "number") {
-      if (value > threshold) labels.push(`${metric}-warn`);
-    } else if (value > threshold.high) labels.push(`${metric}-high`);
-    else if (value > threshold.warn) labels.push(`${metric}-warn`);
+    const guideline = guidelines[metric];
+    if (typeof guideline === "number") {
+      if (value > guideline) labels.push(`${metric}-warn`);
+    } else if (value > guideline.high) labels.push(`${metric}-high`);
+    else if (value > guideline.warn) labels.push(`${metric}-warn`);
   }
   if (bumpyRoad) labels.push("bumpy-road");
   return labels;
 }
 
 /** The deepest-bump and count limits of the bumpy road rule, as the lexical rule reads them. */
-export function bumpyRoadLimits(thresholds: Thresholds): { bumps: number; deepBumps: number; nesting: number } {
-  return { bumps: thresholds.bumps, deepBumps: thresholds.deepBumps, nesting: thresholds.nesting };
+export function bumpyRoadLimits(guidelines: Guidelines): { bumps: number; deepBumps: number; nesting: number } {
+  return { bumps: guidelines.bumps, deepBumps: guidelines.deepBumps, nesting: guidelines.nesting };
 }

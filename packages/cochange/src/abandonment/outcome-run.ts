@@ -83,10 +83,10 @@ export async function trendCommand(context: CommandContext): Promise<CommandOutp
       trials: sim.trials,
       seed: sim.seed,
       alphas: settings.alphas,
-      thresholdPercent: settings.abandonmentThreshold,
+      guidelinePercent: settings.abandonmentGuideline,
       components,
     });
-    const abandoned = measureCurrent(knowledge.model, settings.abandonmentThreshold).filter((f) => f.abandoned).length;
+    const abandoned = measureCurrent(knowledge.model, settings.abandonmentGuideline).filter((f) => f.abandoned).length;
     rows.push({
       date: isoDay(at),
       commit: sha,
@@ -108,7 +108,7 @@ export async function trendCommand(context: CommandContext): Promise<CommandOutp
       horizonPeriods: sim.horizonPeriods,
       seed: sim.seed,
       alphas: settings.alphas,
-      abandonmentThreshold: settings.abandonmentThreshold,
+      abandonmentGuideline: settings.abandonmentGuideline,
       activityWindowMonths: settings.activityWindowMonths,
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,
@@ -158,7 +158,7 @@ export async function adoptionCommand(context: CommandContext): Promise<CommandO
   const eligible = history.filtered.changes.filter((c) => !c.oversized);
   const known = eligible.filter((c) => c.committerDate <= at);
   const index = buildSuccessorIndex({ ...history, filtered: { ...history.filtered, changes: known } });
-  const abandoned = measureCurrent(before.model, settings.abandonmentThreshold)
+  const abandoned = measureCurrent(before.model, settings.abandonmentGuideline)
     .filter((f) => f.abandoned)
     .map((f) => f.path);
   const files = measureAdoption({
@@ -179,7 +179,7 @@ export async function adoptionCommand(context: CommandContext): Promise<CommandO
       at: isoDay(at),
       successors: recommended,
       horizonPeriods: sim.horizonPeriods,
-      abandonmentThreshold: settings.abandonmentThreshold,
+      abandonmentGuideline: settings.abandonmentGuideline,
       activityWindowMonths: settings.activityWindowMonths,
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,

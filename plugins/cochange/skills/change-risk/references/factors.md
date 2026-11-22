@@ -1,6 +1,6 @@
 # Factors
 
-Every factor is computed deterministically and shown with its value, band, evidence and the layer that produced it. `risk explain FACTOR` prints a factor's exact definition and thresholds, and the files that drove it on the branch. This page says what each is for.
+Every factor is computed deterministically and shown with its value, band, evidence and the layer that produced it. `risk explain FACTOR` prints a factor's exact definition and guidelines, and the files that drove it on the branch. This page says what each is for.
 
 ## How bands are made
 

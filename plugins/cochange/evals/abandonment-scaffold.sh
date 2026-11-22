@@ -12,7 +12,7 @@
 #   src/util/log.ts      10  Bob 10
 #   src/ui/view.ts       10  Eve 10
 #   src/gen/deps.ts      10  the bot 5 (nobody's), Di 5*
-# With the default threshold of 90 percent three files are abandoned: the engine, the parser and what people wrote
+# With the default guideline of 90 percent three files are abandoned: the engine, the parser and what people wrote
 # in deps. Routes and auth change together six times between January and March 2025, so they are coupled hotspots.
 set -e
 git init -q -b main .

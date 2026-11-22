@@ -497,7 +497,7 @@
           "unevaluatedProperties": false,
           "type": "object"
         },
-        "unmappedShareThreshold": {
+        "unmappedShareGuideline": {
           "type": "integer",
           "minimum": 0,
           "maximum": 100
@@ -509,7 +509,7 @@
       "required": [
         "headLines",
         "windowCommits",
-        "unmappedShareThreshold",
+        "unmappedShareGuideline",
         "needsIdentityReview"
       ],
       "additionalProperties": false

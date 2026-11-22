@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
 import { recommend, type RecommendInput } from "../src/recommend.ts";
 
-const thresholds = { minDistance: 2, tinyLines: 15, largeLines: 150, inlineHostLines: 300, highFanIn: 8, graceDays: 90, lowCoChange: 10, highCoChange: 40 };
+const guidelines = { minDistance: 2, tinyLines: 15, largeLines: 150, inlineHostLines: 300, highFanIn: 8, graceDays: 90, lowCoChange: 10, highCoChange: 40 };
 
 function input(overrides: Partial<RecommendInput>): RecommendInput {
   return {
-    ...thresholds,
+    ...guidelines,
     fanIn: 1,
     gain: 4,
     unblockedGain: 4,

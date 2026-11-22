@@ -6,9 +6,9 @@ Part of the code-health suite. Read [suite.md](suite.md) for shared conventions 
 
 The tool measures how hard individual functions and files are to understand, flags where that difficulty sits in code that actually changes, and guides simplifications that reduce cognitive load without scattering code. It also gives agents fast feedback on the code they have just written.
 
-Traditional metrics are useful and easily misused. Ranked alone, they produce long lists of old, stable code nobody needs to touch. Used as hard gates, they reward splitting functions into shallow helpers that pass the threshold and make the system harder to follow. This tool counters both. It ranks by complexity in changing code, gates only on regressions, and steers remedies towards deeper modules rather than more of them.
+Traditional metrics are useful and easily misused. Ranked alone, they produce long lists of old, stable code nobody needs to touch. Used as hard gates, they reward splitting functions into shallow helpers that pass the guideline and make the system harder to follow. This tool counters both. It ranks by complexity in changing code, gates only on regressions, and steers remedies towards deeper modules rather than more of them.
 
-**Guidelines, not thresholds.** Every numeric value that CodeScene or the literature gives for a metric is a *guideline*: a heuristic that tells the reader where to look. Output carries the measured value and where it sits relative to the guideline (a band word such as `above guideline`, and where useful `guideline: 4`, `ratio: 1.75`), and is sorted by how far past the guideline each item is. A guideline never hides, drops or fails an item. Output is capped by explicit, overridable limits (`--limit N`, with a count of what was left out), not by values. The only floors are minimum-evidence floors, where a statistic is meaningless below them. Findings are for investigation, so wording is "worth a look" or "above guideline", never "violation" or "too complex". The only exit code 1 in this plugin is the explicit gate of `check`. Each default has a recorded source, in [Guidelines](#guidelines).
+**Guidelines, not hard limits.** Every numeric value that CodeScene or the literature gives for a metric is a *guideline*: a heuristic that tells the reader where to look. Output carries the measured value and where it sits relative to the guideline (a band word such as `above guideline`, and where useful `guideline: 4`, `ratio: 1.75`), and is sorted by how far past the guideline each item is. A guideline never hides, drops or fails an item. Output is capped by explicit, overridable limits (`--limit N`, with a count of what was left out), not by values. The only floors are minimum-evidence floors, where a statistic is meaningless below them. Findings are for investigation, so wording is "worth a look" or "above guideline", never "violation" or "too complex". The only exit code 1 in this plugin is the explicit gate of `check`. Each default has a recorded source, in [Guidelines](#guidelines).
 
 **Terms.** A *code smell* is Fowler's: a surface indication of a deeper problem. *Code health* is what the suite quantifies, as CodeScene uses the term: how easy code is to understand and change. This tool reports measurements that bear on code health. It does not produce a single code health score, because the weights behind one are opaque.
 
@@ -112,7 +112,7 @@ For each exported function, class or module: implementation size (AST nodes) div
 
 ### File aggregates
 
-Per file: function count, sum and max of each metric, and the count of functions over threshold. Sums take top-level units only, because a nested function already adds to its parent's score and would otherwise be counted twice. For unsupported languages, only indentation complexity (shared definition with the cochange plugin) and line counts.
+Per file: function count, sum and max of each metric, and the count of functions above guideline. Sums take top-level units only, because a nested function already adds to its parent's score and would otherwise be counted twice. For unsupported languages, only indentation complexity (shared definition with the cochange plugin) and line counts.
 
 ## Units and identity
 
@@ -130,11 +130,11 @@ Guideline values are reported, but **ranking is relative and change-weighted**:
 2. When history is available (the shared history cache, which this plugin can refresh itself), the function's file change frequency (or the function's own, once symbol-level co-change exists) weights the rank. Complexity in code that never changes ranks last.
 3. Default output is the top N by weighted rank, with the metric that dominated and a count of the units left out. Output says whether it is change-weighted (`changeWeighted`). Without history, or with `changeWeighting` off, the ranking is by complexity alone and says so, because CodeScene prioritises by change frequency times low code health and an unweighted list answers a different question.
 
-The `files` rows carry `complexity`, the file's indentation complexity (the definition cochange shares), and `score`, equal to it so that the default order is by complexity. They also carry `functions`, `overThreshold` (the count of units above a guideline), `source`, `profile`, `test` and `codeLines`. A file-level value defined differently from the per-function metrics is a proxy, and `source` says so.
+The `files` rows carry `complexity`, the file's indentation complexity (the definition cochange shares), and `score`, equal to it so that the default order is by complexity. They also carry `functions`, `aboveGuideline` (the count of units above a guideline), `source`, `profile`, `test` and `codeLines`. A file-level value defined differently from the per-function metrics is a proxy, and `source` says so.
 
 ## Guidelines
 
-The default guideline values, each with its source. They are configurable under `thresholds` (the config key keeps its name, and its description calls the values guidelines) and per glob under `overrides`. A value above a guideline is labelled `warn` or `high`, a band word that orders the result and does not hide it. A metric is above its guideline when its value is strictly above it.
+The default guideline values, each with its source. They are configurable under `guidelines` and per glob under `overrides`. A value above a guideline is labelled `warn` or `high`, a band word that orders the result and does not hide it. A metric is above its guideline when its value is strictly above it.
 
 | Guideline | Default | Source |
 |---|---|---|
@@ -172,7 +172,7 @@ A `PostToolUse` hook on `Edit` and `Write` for any language with a lexer profile
 - Compares the file's units against the last measurement of the file in the hook's session state ([suite.md](suite.md#hooks)), or against the values at HEAD when the session has none. The measurement is stored even when nothing is printed, so the next edit is compared with what the previous one left. CodeScene's delta compares against the committed version and matches moved code by similarity. The hook compares unit names only, because it has no bodies to match, so a renamed unit is treated as a new one and is printed if it is above a guideline. The message says `a new or renamed unit` so the agent can tell. A name used twice in a file gets `~2`, `~3` in order, and a block with no name is left out.
 - Prints only when a unit went above a guideline in this edit or was above it and rose by more than the configured delta. A guideline decides whether to print, to keep the token cost down. It does not hide anything from `analyse`, which lists every unit. When it prints, it gives one sentence with the unit, the metric, the before and after values, the guideline and the ratio of the value to it, and `Worth a look: run <command> for the breakdown`. With several findings it names the one furthest above its guideline and counts the rest (`and N more findings in this file`). The message states values and does not state a rule.
 - The pointer is `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs explain FILE#UNIT` when the host sets `CLAUDE_PLUGIN_ROOT`, else `complexity explain FILE#UNIT`. It is left out for a file type with no structural grammar, because `explain` cannot read it. The form of the pointer is part of the output contract.
-- The lexical values it compares are nesting (against `thresholds.nesting`), keyword complexity (read as cyclomatic complexity minus one, against `thresholds.cyclomatic.warn`, so the hook and `check` agree on where a function sits) and the bumpy road. Cognitive complexity needs the syntax tree, so `check` and `analyse` have it and the hook does not. The hook and `check` can therefore disagree on a function that is above the cognitive guideline and under the others.
+- The lexical values it compares are nesting (against `guidelines.nesting`), keyword complexity (read as cyclomatic complexity minus one, against `guidelines.cyclomatic.warn`, so the hook and `check` agree on where a function sits) and the bumpy road. Cognitive complexity needs the syntax tree, so `check` and `analyse` have it and the hook does not. The hook and `check` can therefore disagree on a function that is above the cognitive guideline and under the others.
 - It prints for a language only where the lexical agreement with the structural layer clears `agreementBar` and the profile was not mapped by config. For any other file it prints nothing and records the reason in the session state (`printed nothing: no per-function metrics (<reason>)`), which is where a user finds out why a language gets no feedback.
 - It prints at most once per file per session.
 - The hook's process, worker and session state are shared with the other plugins' hooks (`packages/history`), and each hook keeps its own state file.
@@ -187,7 +187,7 @@ The skill holds the remedy policy, which is the main point of the plugin:
 1. **Locate the cost.** Run `explain` and find which constructs contribute. Name the red flag, usually *nonobvious code*, *special-general mixture* or *shallow module*.
 2. **Prefer simplification that deletes.** Guard clauses instead of nested `if`, removing dead or impossible branches, replacing flags with separate call paths at the caller, table-driven dispatch, defining error cases out of existence, and standard-library constructs.
 3. **Prefer deepening over splitting.** If a function must be split, the extracted part must be a deep, well-named unit that hides a decision. It stays in the same file and is module-private unless evidence says otherwise. This keeps the complexity plugin from creating the distant, single-use helpers the locality plugin exists to remove.
-4. **Never game the metric.** Moving conditionals into lookup objects that encode the same branching, or splitting a function purely to pass a threshold, counts as a regression in review.
+4. **Never game the metric.** Moving conditionals into lookup objects that encode the same branching, or splitting a function purely to pass a guideline, counts as a regression in review.
 5. **Tests first.** Simplifications are behaviour-preserving refactorings. Characterisation tests come first if coverage is thin, and each simplification is its own commit with tests green.
 
 ## Measurement
@@ -205,7 +205,8 @@ A rising function count with falling interface depth after a simplification camp
 
 In the `complexity` section of the suite config:
 
-- Enabled metrics and the guideline of each metric (`thresholds`), with optional per-glob overrides (generated code, tests). Guidelines are configurable because they are defaults for investigation, and a repository that disagrees changes them.
+- Enabled metrics and the guideline of each metric (`guidelines`), with optional per-glob overrides (generated code, tests). Guidelines are configurable because they are defaults for investigation, and a repository that disagrees changes them.
+- Shared history settings that the change weighting and `outcome` read, from the top-level `history` section of the suite config ([suite.md](suite.md#configuration)), overridable here under the same names: `windowMonths` (default 12), `maxChangesetSize` and `botPatterns`.
 - Cyclomatic `switch` mode.
 - Base revision for `check`, and the worsening delta it and the hook share.
 - The agreement bar for per-function lexical metrics.
@@ -221,10 +222,10 @@ The plugin supports every supported language of the suite (tier 1: TypeScript/Ja
 
 - **One plugin, pluggable metrics**, for the reasons above.
 - **Cognitive complexity follows the SonarSource specification exactly**, so results can be compared with a widely used tool and the definition is not re-litigated.
-- **Guidelines, not thresholds.** Values from CodeScene and the literature order and annotate results. They do not hide or fail them, except in `check`, which the user runs as a gate.
+- **Guidelines, not hard limits.** Values from CodeScene and the literature order and annotate results. They do not hide or fail them, except in `check`, which the user runs as a gate.
 - **Defect fix.** The outcome comparison and cochange's risk factors share one definition of a fix commit (`cochange/risk/fix-patterns`: a subject starting with fix, bugfix or hotfix, a fix with a `#123` reference, or a merge of a fix branch), because two definitions in one suite give inconsistent outcomes. The comparison group is unchanged files with functions, matched one to one by the highest pre-change metric percentile.
-- **Ratchet, not gate.** A hard threshold on an existing codebase produces a backlog nobody burns down, or a blanket waiver. The ratchet compares against a base revision, not a committed baseline file: a file holding every unit's values would conflict on every merge, and the blob-keyed parse cache makes the base revision cheap to measure.
-- **No length threshold**, following Ousterhout's argument against shallow decomposition.
+- **Ratchet, not gate.** A hard limit on an existing codebase produces a backlog nobody burns down, or a blanket waiver. The ratchet compares against a base revision, not a committed baseline file: a file holding every unit's values would conflict on every merge, and the blob-keyed parse cache makes the base revision cheap to measure.
+- **No length guideline**, following Ousterhout's argument against shallow decomposition.
 
 ## Open questions
 

@@ -44,7 +44,7 @@ export function loadIdentityState(root: string, settings: CochangeSettings): Ide
     localMailmap,
     stamps,
     matcher: createNonPersonMatcher({
-      botPatterns: settings.identities.botPatterns,
+      botPatterns: settings.botPatterns,
       servicePatterns: settings.identities.servicePatterns,
       agentPatterns: settings.identities.agentTrailerPatterns,
       decisions: decisions.classifications,

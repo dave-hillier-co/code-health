@@ -49,4 +49,4 @@ Then run `candidates` again. Committing the config is a commit of its own, with 
 
 ## Other settings
 
-`structure.packages` also holds discovery overrides (`ignore`, `extra`), the comparable-share band for closure, the thresholds of `always-together`, `follower`, `partial-use` and `tiny`, the grace period `graceDays` (180), and the names that prompt `dumping-ground`. `config explain` lists each with its value. Components in the suite-wide `components` stand in as packages where a repository has no manifests.
+`structure.packages` also holds discovery overrides (`ignore`, `extra`), the comparable-share band for closure, the guidelines of `always-together`, `follower`, `partial-use` and `tiny`, the grace period `graceDays` (180), and the names that prompt `dumping-ground`. `config explain` lists each with its value. Components in the suite-wide `components` stand in as packages where a repository has no manifests.

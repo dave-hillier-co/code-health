@@ -237,7 +237,7 @@ function coupledPartners(facts: ChangeFacts, state: HistoryState, context: Measu
     const revisions = state.eligibleRevisionsInWindow(file.fileId);
     if (revisions === 0) continue;
     for (const [other, support] of state.partners(file.fileId)) {
-      // Exact integer arithmetic: a pair at the threshold is never lost to rounding.
+      // Exact integer arithmetic: a pair at the guideline is never lost to rounding.
       if (support < context.minSupport || 100 * support < context.risk.missingConfidence * revisions) continue;
       if (!state.present(other)) continue;
       const confidence = round((100 * support) / revisions, 1);

@@ -37,7 +37,7 @@ interface Factor {
   reason: string | null;
   source: string;
   layer: string;
-  thresholds: Record<string, unknown>;
+  guidelines: Record<string, unknown>;
 }
 interface Result {
   code: number;
@@ -229,7 +229,7 @@ describe("locality's report", () => {
     writeReport(repo.git("rev-parse", "HEAD"), { [calc]: 40 }, 3);
     const blast = factor(await risk(), "blast-radius");
     expect(blast.value).toMatchObject({ fanIn: 40 });
-    expect(blast.thresholds.fanIn).toBeNull();
+    expect(blast.guidelines.fanIn).toBeNull();
     expect(blast.band).toBe("low");
   });
 });

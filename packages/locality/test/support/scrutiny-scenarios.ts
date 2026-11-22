@@ -41,7 +41,7 @@ const callers: Record<string, string> = {
  * A text helper module that six files in three folders use: a function that switches behaviour on two flags
  * (one of which is passed false only once), an option almost nobody passes, a result several callers change,
  * a wrapper that fixes arguments, a locale-dependent function and one that sorts its argument in place.
- * The fan-in threshold is lowered to 6, so the module is scrutinised. The only entry point is src/main.ts.
+ * The fan-in guideline is lowered to 6, so the module is scrutinised. The only entry point is src/main.ts.
  */
 export function widelyUsed(): GitFixture {
   const changes: Change[] = [

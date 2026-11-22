@@ -1,5 +1,5 @@
 import { componentOf, type Component } from "../components.ts";
-import { goneLinesOf, reachesThreshold, type KnowledgeModel } from "./knowledge-model.ts";
+import { goneLinesOf, reachesGuideline, type KnowledgeModel } from "./knowledge-model.ts";
 
 export const round4 = (value: number): number => Math.round(value * 10_000) / 10_000;
 
@@ -19,7 +19,7 @@ export interface FileAbandonment {
 }
 
 /** Abandonment at the model's date for every file that has lines held by people. */
-export function measureCurrent(model: KnowledgeModel, thresholdPercent: number): FileAbandonment[] {
+export function measureCurrent(model: KnowledgeModel, guidelinePercent: number): FileAbandonment[] {
   return model.files.map((file) => {
     const gone = goneLinesOf(file, model.developers);
     const former = file.holders.filter((h) => !model.developers[h.dev]!.active).length;
@@ -28,7 +28,7 @@ export function measureCurrent(model: KnowledgeModel, thresholdPercent: number):
       peopleLines: file.people,
       abandonedLines: gone,
       abandonedShare: round4(gone / file.people),
-      abandoned: reachesThreshold(gone, file.people, thresholdPercent),
+      abandoned: reachesGuideline(gone, file.people, guidelinePercent),
       activeAuthors: file.holders.length - former,
       formerAuthors: former,
       nonPersonLines: file.nonPerson,

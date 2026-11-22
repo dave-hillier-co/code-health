@@ -60,7 +60,7 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    interface), plus every function whose whole body forwards to one call. A row labelled `pass-through` names the call it
    forwards to. A row labelled `shallow` hides little behind its interface. Both are signals to review against the
    *shallow module* and *pass-through method* red flags, never findings on their own: read the function, and the
-   callers, before acting. The threshold is `interfaceDepth.shallow`, and depth needs a structural adapter, so
+   callers, before acting. The guideline is `interfaceDepth.shallow`, and depth needs a structural adapter, so
    other languages are counted in `summary.filesWithoutAdapter` and not listed. Details in
    [references/metrics.md](references/metrics.md).
 
@@ -105,14 +105,14 @@ Work down this list and stop at the first step that is enough. The detail and ex
    hides a decision and has a small interface. It stays in the same file and is not exported, unless evidence
    (consumers, co-change) says otherwise. Do not extract a bump, a branch or a block just because it is nested.
 4. **Never game the metric.** Moving a conditional into a lookup object that encodes the same branching, splitting
-   a function only to pass a threshold, or hiding `&&` chains in named booleans that are used once all count as
+   a function only to pass a guideline, or hiding `&&` chains in named booleans that are used once all count as
    regressions in review. If the branching is still there, so is the complexity.
 5. **Inline what is not earning its keep.** A helper called once, that forwards its arguments, or that a reader must jump
    to in order to understand the caller, is a candidate for inlining. Removing a shallow layer deepens what remains.
    `depth` finds the forwarding ones. Inline a `pass-through` only after checking why it exists: a stable name for a callee
    that changes, or a dependency boundary, is a reason to keep it.
 
-Do not touch a function because it is long, or because it is just over a threshold and cheap to read. Leave it and say
+Do not touch a function because it is long, or because it is just over a guideline and cheap to read. Leave it and say
 why. Ousterhout's position, which the suite follows: shallow decomposition is the problem, not length.
 
 ## Commit discipline
@@ -191,7 +191,7 @@ When you finish, report in this order and keep it short:
 
 ## Reference
 
-- [references/metrics.md](references/metrics.md): how each metric is counted, the default thresholds and every config key.
+- [references/metrics.md](references/metrics.md): how each metric is counted, the default guidelines and every config key.
 - [references/remedies.md](references/remedies.md): the remedies with before and after examples, and the gaming patterns to refuse.
 - [references/hook.md](references/hook.md): the opt-in post-edit hook, what it measures, when it prints and how to read its state.
 - [references/outcome.md](references/outcome.md): the `outcome` command, its instruments and how to read them.

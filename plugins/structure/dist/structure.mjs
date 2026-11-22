@@ -12,7 +12,7 @@ import { parseArgs } from "node:util";
 // packages/cli-kit/src/errors.ts
 var ExitCode = {
   Success: 0,
-  /** Findings over threshold or a regression. */
+  /** Findings above guideline or a regression. */
   CheckFailed: 1,
   /** Bad arguments or invalid config. */
   Usage: 2,
@@ -118,12 +118,33 @@ function normalise(value) {
 
 // packages/cli-kit/src/config.ts
 var CONFIG_FILE = "code-health.json";
+var historyDefaults = {
+  /** Analysed branch. null analyses HEAD. */
+  branch: null,
+  /** Follow only first parents, for repositories that merge long-lived feature branches. */
+  firstParent: false,
+  /** Rename similarity percentage for git's -M. Changing it rebuilds the cache. */
+  renameSimilarity: 50,
+  renameLimit: 1e3,
+  /** Analysis window in months, back from the analysed commit's date. */
+  windowMonths: 12,
+  /** Commits touching more files than this are left out of co-change, as bulk changes. */
+  maxChangesetSize: 30,
+  /** Regular expressions matched against `Name <email>` of an author; their commits are left out of history. */
+  botPatterns: [],
+  /** Guidelines that grade the evidence a history gives (months of history, logical changes, contributors). */
+  evidence: {
+    strong: { months: 24, logicalChanges: 300, contributors: 5 },
+    moderate: { months: 6, logicalChanges: 50, contributors: 2 }
+  }
+};
 var sharedDefaults = {
   exclude: [],
   languages: {},
   entryPoints: [],
   components: {},
-  vagueNames: ["utils", "helpers", "common", "misc"]
+  vagueNames: ["utils", "helpers", "common", "misc"],
+  history: historyDefaults
 };
 var stringLists = ["exclude", "entryPoints", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
@@ -146,16 +167,63 @@ function loadConfig(root, spec) {
     }
   }
   if (document !== void 0 && document.languages !== void 0) document.languages = readLanguages(document.languages);
-  const defaults = { ...sharedDefaults, [spec.plugin]: spec.section };
+  const historyKeys = spec.history ?? [];
+  for (const key of historyKeys) {
+    if (key in spec.section) throw new Error(`the ${spec.plugin} section lists ${key}, which it takes from history`);
+  }
+  const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
+  const defaults = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
   const rows = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
     effective[key] = merge(defaults[key], document?.[key], key, rows);
   }
+  readHistory(effective.history, "history");
+  const pluginDocument = document?.[spec.plugin];
+  const override2 = Object.fromEntries(historyKeys.filter((key) => pluginDocument?.[key] !== void 0).map((key) => [key, pluginDocument[key]]));
+  readHistory(override2, spec.plugin);
+  const section = effective[spec.plugin];
+  for (const key of historyKeys) {
+    section[key] = overlay(effective.history[key], pluginDocument?.[key]);
+    inheritSources(rows, spec.plugin, key);
+  }
   const sources = {};
   for (const row of rows.values()) sources[row.path] = row.source;
   const hash2 = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash: hash2, sources };
+}
+function overlay(shared, own) {
+  if (own === void 0) return shared;
+  if (isPlainObject(shared) && isPlainObject(own)) {
+    return Object.fromEntries(Object.keys(shared).map((key) => [key, overlay(shared[key], own[key])]));
+  }
+  return own;
+}
+function inheritSources(rows, plugin, key) {
+  const own = `${plugin}.${key}`;
+  for (const row of [...rows.values()]) {
+    if (row.path !== own && !row.path.startsWith(`${own}.`)) continue;
+    if (row.source === "file") continue;
+    const shared = rows.get(`history${row.path.slice(plugin.length)}`);
+    if (shared !== void 0) rows.set(row.path, { ...row, source: shared.source });
+  }
+}
+function readHistory(history, where) {
+  const positive = (key) => {
+    const value = history[key];
+    if (value !== void 0 && (!Number.isInteger(value) || value < 1)) throw configError(`${CONFIG_FILE}: ${where}.${key} must be a positive integer`);
+  };
+  positive("renameSimilarity");
+  positive("renameLimit");
+  positive("windowMonths");
+  positive("maxChangesetSize");
+  const { branch, botPatterns } = history;
+  if (branch !== void 0 && branch !== null && (typeof branch !== "string" || branch === "")) {
+    throw configError(`${CONFIG_FILE}: ${where}.branch must be a branch name or null`);
+  }
+  if (botPatterns !== void 0 && (!Array.isArray(botPatterns) || botPatterns.some((pattern) => typeof pattern !== "string"))) {
+    throw configError(`${CONFIG_FILE}: ${where}.botPatterns must be an array of strings`);
+  }
 }
 function readLanguages(value) {
   if (!isPlainObject(value)) throw configError(`${CONFIG_FILE}: languages must be an object mapping file extensions to lexer profile names`);
@@ -955,7 +1023,7 @@ function compileIssuePattern(pattern) {
     throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error), "issue pattern");
   }
 }
-var DEFAULT_MAX_CHANGESET_SIZE = 30;
+var DEFAULT_MAX_CHANGESET_SIZE = historyDefaults.maxChangesetSize;
 var isPureRename = (c) => c.status === "R" && c.similarity === 100 && (c.added ?? 0) === 0 && (c.deleted ?? 0) === 0;
 async function filterHistory(repoPath, view, options2 = {}) {
   const maxChangesetSize = options2.maxChangesetSize ?? DEFAULT_MAX_CHANGESET_SIZE;
@@ -1413,8 +1481,8 @@ function insertCommits(db, commits, boundary) {
 }
 
 // packages/history/src/refresh.ts
-var DEFAULT_SIMILARITY = 50;
-var DEFAULT_RENAME_LIMIT = 1e3;
+var DEFAULT_SIMILARITY = historyDefaults.renameSimilarity;
+var DEFAULT_RENAME_LIMIT = historyDefaults.renameLimit;
 async function readShallowInfo(repoPath) {
   const out2 = (await runGit(repoPath, ["rev-parse", "--is-shallow-repository", "--path-format=absolute", "--git-common-dir"])).trim().split("\n");
   const isShallow = out2[0] === "true";
@@ -1525,7 +1593,7 @@ var REACH = (firstParent) => `
     UNION
     SELECT p.parent FROM reach r JOIN commit_parents p ON p.sha = r.sha ${firstParent ? "AND p.ord = 0" : ""}
   )`;
-async function readHistory(repoPath, options2 = {}) {
+async function readHistory2(repoPath, options2 = {}) {
   const ref = options2.ref ?? "HEAD";
   const firstParent = options2.firstParent ?? false;
   const location = await locateCache(repoPath);
@@ -16896,76 +16964,6 @@ function censusRows(census) {
   });
 }
 
-// packages/history/src/evidence.ts
-var DEFAULT_EVIDENCE_THRESHOLDS = {
-  strong: { months: 24, logicalChanges: 300, contributors: 5 },
-  moderate: { months: 6, logicalChanges: 50, contributors: 2 }
-};
-var DEFAULT_WINDOW_MONTHS = 12;
-var SECONDS_PER_MONTH = 30.4375 * 86400;
-function monthsBefore(anchor, months) {
-  const date = new Date(anchor * 1e3);
-  const day3 = date.getUTCDate();
-  date.setUTCDate(1);
-  date.setUTCMonth(date.getUTCMonth() - months);
-  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-  date.setUTCDate(Math.min(day3, lastDay));
-  return Math.floor(date.getTime() / 1e3);
-}
-function median(values) {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = sorted.length >> 1;
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-function commitSize(changes, minChanges) {
-  const half = changes.length >> 1;
-  const earlier = changes.slice(0, half).map((c) => c.files.length);
-  const later = changes.slice(half).map((c) => c.files.length);
-  const earlierMedian = median(earlier);
-  const laterMedian = median(later);
-  const enough = earlier.length >= minChanges && later.length >= minChanges;
-  const shifted = enough && earlierMedian > 0 && (laterMedian >= earlierMedian * 2 || laterMedian <= earlierMedian / 2);
-  return { earlierMedian, laterMedian, shifted };
-}
-var meets = (t, months, changes, contributors) => months >= t.months && changes >= t.logicalChanges && contributors >= t.contributors;
-function computeEvidence(view, changes, shallow, imported, options2 = {}) {
-  const windowMonths = options2.windowMonths ?? DEFAULT_WINDOW_MONTHS;
-  const thresholds = options2.thresholds ?? DEFAULT_EVIDENCE_THRESHOLDS;
-  const until = view.headDate;
-  const since = monthsBefore(until, windowMonths);
-  const afterImport = imported.reduce((max, i2) => Math.max(max, i2.committerDate), -Infinity);
-  const first = changes.filter((c) => c.committerDate >= afterImport).reduce((min, c) => min === null || c.committerDate < min ? c.committerDate : min, null);
-  const usableHistoryMonths = first === null ? 0 : Math.round((until - first) / SECONDS_PER_MONTH * 10) / 10;
-  const inWindow2 = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
-  const contributors = new Set(inWindow2.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
-  const grade = meets(thresholds.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(thresholds.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
-  const available = view.commits.reduce(
-    (min, c) => min === null || c.committerDate < min ? c.committerDate : min,
-    null
-  );
-  return {
-    usableHistoryMonths,
-    logicalChangesInWindow: inWindow2.length,
-    activeContributors: contributors.size,
-    grade,
-    window: { months: windowMonths, since, until },
-    truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
-    importedHistory: [...imported],
-    commitSize: commitSize(changes, options2.minChangesForShift ?? 20),
-    thresholds
-  };
-}
-async function analyseHistory(repoPath, options2 = {}) {
-  const view = await readHistory(repoPath, options2);
-  const filtered = await filterHistory(repoPath, view, options2.noise);
-  const windowed = options2.noise?.since !== void 0 || options2.noise?.until !== void 0;
-  const whole = windowed ? await filterHistory(repoPath, view, { ...options2.noise, since: void 0, until: void 0 }) : filtered;
-  const shallow = await readShallowInfo(repoPath);
-  const evidence2 = computeEvidence(view, whole.changes, shallow, whole.imported, options2.evidence);
-  return { view, filtered, filtersApplied: filtered.filtersApplied, evidence: evidence2 };
-}
-
 // packages/graph/src/scc.ts
 function stronglyConnectedComponents(input) {
   const graph = normalise3(input);
@@ -17502,18 +17500,8 @@ var SCHEMA_VERSION2 = 1;
 var BUILT_IN_FOLDER_NAMES = ["ports", "adapters", "infrastructure"];
 var structureConfig = {
   plugin: TOOL,
+  history: ["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "evidence"],
   section: {
-    /** Analysed branch. null analyses HEAD. */
-    branch: null,
-    /** Follow only first parents, for repositories that merge long-lived feature branches. */
-    firstParent: false,
-    renameSimilarity: DEFAULT_SIMILARITY,
-    renameLimit: DEFAULT_RENAME_LIMIT,
-    /** Analysis window, back from the analysed commit's date. */
-    windowMonths: 12,
-    maxChangesetSize: DEFAULT_MAX_CHANGESET_SIZE,
-    /** Regular expressions matched against `Name <email>` of an author; their commits are left out of history. */
-    botPatterns: [],
     /** Cycles whose strongly connected component has at most this many nodes get a minimum breaking set. */
     exactLimit: DEFAULT_EXACT_LIMIT,
     /** Evidence floor (a judgement call): a side is "active" when it has at least this many revisions in the window, so a low co-change is evidence and not absence of data. Below it the pair is reported as insufficient evidence. */
@@ -17569,10 +17557,6 @@ var structureConfig = {
     mainBranch: "main",
     /** The revision `check` compares against, replacing the merge base with mainBranch. null uses the merge base. */
     base: null,
-    evidence: {
-      strong: { ...DEFAULT_EVIDENCE_THRESHOLDS.strong },
-      moderate: { ...DEFAULT_EVIDENCE_THRESHOLDS.moderate }
-    },
     /** The packaging skill's settings; see docs/specs/packaging.md. */
     packages: packagesDefaults
   }
@@ -17652,7 +17636,7 @@ function readSettings(config) {
     entryPoints: config.effective.entryPoints,
     components: config.effective.components,
     census: { folderNames: [.../* @__PURE__ */ new Set([...BUILT_IN_FOLDER_NAMES, ...names("folderNames")])], eventCalls: names("eventCalls"), handlerCalls: names("handlerCalls"), registerCalls: names("registerCalls") },
-    evidenceThresholds: section.evidence,
+    evidenceGuidelines: section.evidence,
     packages: withVagueNames(readPackageSettings(section.packages, at("packages")), config.effective.vagueNames),
     windowStated: config.sources[at("windowMonths")] === "file"
   };
@@ -17856,6 +17840,73 @@ __export(coupling_exports, {
   rules: () => rules2
 });
 
+// packages/history/src/evidence.ts
+var DEFAULT_EVIDENCE_GUIDELINES = historyDefaults.evidence;
+var DEFAULT_WINDOW_MONTHS = historyDefaults.windowMonths;
+var SECONDS_PER_MONTH = 30.4375 * 86400;
+function monthsBefore(anchor, months) {
+  const date = new Date(anchor * 1e3);
+  const day3 = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() - months);
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(day3, lastDay));
+  return Math.floor(date.getTime() / 1e3);
+}
+function median(values) {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+function commitSize(changes, minChanges) {
+  const half = changes.length >> 1;
+  const earlier = changes.slice(0, half).map((c) => c.files.length);
+  const later = changes.slice(half).map((c) => c.files.length);
+  const earlierMedian = median(earlier);
+  const laterMedian = median(later);
+  const enough = earlier.length >= minChanges && later.length >= minChanges;
+  const shifted = enough && earlierMedian > 0 && (laterMedian >= earlierMedian * 2 || laterMedian <= earlierMedian / 2);
+  return { earlierMedian, laterMedian, shifted };
+}
+var meets = (t, months, changes, contributors) => months >= t.months && changes >= t.logicalChanges && contributors >= t.contributors;
+function computeEvidence(view, changes, shallow, imported, options2 = {}) {
+  const windowMonths = options2.windowMonths ?? DEFAULT_WINDOW_MONTHS;
+  const guidelines = options2.guidelines ?? DEFAULT_EVIDENCE_GUIDELINES;
+  const until = view.headDate;
+  const since = monthsBefore(until, windowMonths);
+  const afterImport = imported.reduce((max, i2) => Math.max(max, i2.committerDate), -Infinity);
+  const first = changes.filter((c) => c.committerDate >= afterImport).reduce((min, c) => min === null || c.committerDate < min ? c.committerDate : min, null);
+  const usableHistoryMonths = first === null ? 0 : Math.round((until - first) / SECONDS_PER_MONTH * 10) / 10;
+  const inWindow2 = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
+  const contributors = new Set(inWindow2.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
+  const grade = meets(guidelines.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(guidelines.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
+  const available = view.commits.reduce(
+    (min, c) => min === null || c.committerDate < min ? c.committerDate : min,
+    null
+  );
+  return {
+    usableHistoryMonths,
+    logicalChangesInWindow: inWindow2.length,
+    activeContributors: contributors.size,
+    grade,
+    window: { months: windowMonths, since, until },
+    truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
+    importedHistory: [...imported],
+    commitSize: commitSize(changes, options2.minChangesForShift ?? 20),
+    guidelines
+  };
+}
+async function analyseHistory(repoPath, options2 = {}) {
+  const view = await readHistory2(repoPath, options2);
+  const filtered = await filterHistory(repoPath, view, options2.noise);
+  const windowed = options2.noise?.since !== void 0 || options2.noise?.until !== void 0;
+  const whole = windowed ? await filterHistory(repoPath, view, { ...options2.noise, since: void 0, until: void 0 }) : filtered;
+  const shallow = await readShallowInfo(repoPath);
+  const evidence2 = computeEvidence(view, whole.changes, shallow, whole.imported, options2.evidence);
+  return { view, filtered, filtersApplied: filtered.filtersApplied, evidence: evidence2 };
+}
+
 // packages/structure/src/history-access.ts
 async function refreshHistory(context, settings = readSettings(context.config)) {
   return refresh(context.repo.root, {
@@ -17883,7 +17934,7 @@ async function loadHistory(context, options2 = {}) {
       since,
       until
     },
-    evidence: { windowMonths: settings.windowMonths, thresholds: settings.evidenceThresholds }
+    evidence: { windowMonths: settings.windowMonths, guidelines: settings.evidenceGuidelines }
   });
   const earliest2 = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
   return { ...analysis, settings, window: { since: since ?? earliest2, until: options2.window?.until ?? anchor }, refreshed };

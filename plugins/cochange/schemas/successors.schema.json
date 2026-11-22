@@ -68,7 +68,7 @@
         "minSupport": { "type": "integer", "minimum": 1 },
         "activityWindowMonths": { "type": "integer", "minimum": 1 },
         "periodMonths": { "type": "integer", "minimum": 1 },
-        "abandonmentThreshold": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "abandonmentGuideline": { "type": "integer", "minimum": 1, "maximum": 100 },
         "copyDetection": { "type": "boolean" },
         "overrides": {
           "type": "object",
@@ -82,7 +82,7 @@
         },
         "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
       },
-      "required": ["subcommand", "paths", "names", "top", "minSupport", "activityWindowMonths", "periodMonths", "abandonmentThreshold", "copyDetection", "overrides"],
+      "required": ["subcommand", "paths", "names", "top", "minSupport", "activityWindowMonths", "periodMonths", "abandonmentGuideline", "copyDetection", "overrides"],
       "additionalProperties": false
     },
     "developers": {

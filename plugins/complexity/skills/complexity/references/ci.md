@@ -1,6 +1,6 @@
 # Complexity in CI and pre-commit
 
-`check` is a ratchet. It is the one command that exits with 1, because the user runs it as a gate. A hard threshold on an existing codebase produces a backlog nobody burns down, or a
+`check` is a ratchet. It is the one command that exits with 1, because the user runs it as a gate. A hard limit on an existing codebase produces a backlog nobody burns down, or a
 blanket waiver. `check` compares against a base revision instead, so only functions that are new or got worse can fail.
 
 ```

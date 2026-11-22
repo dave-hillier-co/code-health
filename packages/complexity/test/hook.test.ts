@@ -15,9 +15,9 @@ function nested(depth: number, name = "run"): string {
   return lines.join("\n");
 }
 
-const thresholds = { nesting: 2, cyclomatic: { warn: 20, high: 40 } };
+const guidelines = { nesting: 2, cyclomatic: { warn: 20, high: 40 } };
 const enable = (hook: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) =>
-  writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ complexity: { thresholds, hook: { enabled: true, ...hook }, ...extra } }));
+  writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ complexity: { guidelines, hook: { enabled: true, ...hook }, ...extra } }));
 
 const simple = "src/simple.ts";
 const busy = "src/busy.ts";
@@ -33,7 +33,7 @@ beforeAll(() => {
       date: "2024-01-01T00:00:00+00:00",
       changes: [
         { op: "add", path: simple, content: nested(1) },
-        // Already over the nesting threshold of 2 at HEAD.
+        // Already over the nesting guideline of 2 at HEAD.
         { op: "add", path: busy, content: nested(3) },
         { op: "add", path: "notes.txt", content: "plain text\n" },
         { op: "add", path: "tool.rb", content: "def run(a)\n  a\nend\n" },
@@ -67,7 +67,7 @@ const note = (stdout: string): string => JSON.parse(stdout).hookSpecificOutput.a
 const state = (session = "session-1") => readSession(repo.path, session, "complexity");
 
 describe("when it speaks", () => {
-  test("a unit that crossed a threshold in the edit gets one sentence in the hook output format", async () => {
+  test("a unit that crossed a guideline in the edit gets one sentence in the hook output format", async () => {
     enable();
     write(simple, nested(3));
     const stdout = await edit(simple);
@@ -87,14 +87,14 @@ describe("when it speaks", () => {
     );
   });
 
-  test("a unit already over a threshold that got worse by more than the delta speaks", async () => {
+  test("a unit already over a guideline that got worse by more than the delta speaks", async () => {
     enable();
     write(busy, nested(4));
     expect(note(await edit(busy))).toContain("`run` nesting depth rose from 3 to 4 (guideline 2, ratio 2)");
   });
 
   test("the keyword count stands in for cyclomatic complexity, one below it", async () => {
-    enable({}, { thresholds: { nesting: 10, cyclomatic: { warn: 3, high: 6 } } });
+    enable({}, { guidelines: { nesting: 10, cyclomatic: { warn: 3, high: 6 } } });
     // Three nested ifs have 3 decision points, cyclomatic complexity 4, which is over a warn level of 3.
     write(simple, nested(3));
     expect(note(await edit(simple))).toContain("keyword complexity rose from 1 to 3");
@@ -145,7 +145,7 @@ describe("when it stays silent", () => {
     expect(state().lastRun?.outcome).toBe("printed nothing: nothing went above a guideline or worsened");
   });
 
-  test("a unit over a threshold that did not get worse, or got better", async () => {
+  test("a unit over a guideline that did not get worse, or got better", async () => {
     enable();
     write(busy, `// reformatted\n${nested(3)}`);
     expect(await edit(busy)).toBe("");
@@ -179,7 +179,7 @@ describe("when it stays silent", () => {
 
   test("an excluded file", async () => {
     enable();
-    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ exclude: ["src/**"], complexity: { thresholds, hook: { enabled: true } } }));
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ exclude: ["src/**"], complexity: { guidelines, hook: { enabled: true } } }));
     write(simple, nested(5));
     expect(await edit(simple)).toBe("");
   });
@@ -264,7 +264,7 @@ describe("what it compares with", () => {
     expect(state().edited).toEqual([simple]);
   });
 
-  test("a file edited back under the threshold and over again speaks about the second crossing, from the last measurement", async () => {
+  test("a file edited back under the guideline and over again speaks about the second crossing, from the last measurement", async () => {
     enable();
     write(busy, nested(2));
     expect(await edit(busy)).toBe("");

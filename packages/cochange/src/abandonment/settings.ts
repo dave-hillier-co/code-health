@@ -24,7 +24,7 @@ export const KNOWLEDGE_DEFAULTS = {
   /** Periods the simulation looks ahead. */
   horizonPeriods: 4,
   /** A file is abandoned when at least this percentage of the lines held by people belong to people who have left. */
-  abandonmentThreshold: 90,
+  abandonmentGuideline: 90,
   /** Per-period turnover, as a percentage. null estimates it from history. */
   turnoverRate: null as number | null,
   trials: 10_000,
@@ -46,7 +46,7 @@ export interface KnowledgeSettings {
   periodMonths: number;
   horizonPeriods: number;
   /** Percentage, 1 to 100. */
-  abandonmentThreshold: number;
+  abandonmentGuideline: number;
   /** Per-period turnover as a fraction (0 to 1), or null to estimate it from history. */
   turnoverRate: number | null;
   trials: number;
@@ -87,7 +87,7 @@ export function readKnowledgeSettings(effective: Record<string, unknown>): Knowl
     activityWindowMonths: whole("activityWindowMonths", 1),
     periodMonths: whole("periodMonths", 1),
     horizonPeriods: whole("horizonPeriods", 1),
-    abandonmentThreshold: whole("abandonmentThreshold", 1, 100),
+    abandonmentGuideline: whole("abandonmentGuideline", 1, 100),
     turnoverRate: rate === null ? null : (rate as number) / 100,
     trials: whole("trials", 1, 10_000_000),
     alphas: [...(alphas as number[])].sort((a, b) => a - b),

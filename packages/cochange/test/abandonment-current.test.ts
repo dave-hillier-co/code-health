@@ -60,7 +60,7 @@ test("files whose people have left are abandoned: engine, parser at exactly 90 p
   expect(document.blame).toEqual({ unknownFiles: 0, unattributedLines: 0 });
 });
 
-test("the abandonment threshold is a guideline: a file below it is still listed, marked not abandoned", async () => {
+test("the abandonment guideline is a guideline: a file below it is still listed, marked not abandoned", async () => {
   const document = await json("current", "--limit", "all");
   // The lexer is at 80 percent, under the 90 percent guideline, and still listed with its share.
   const lexerRow = document.results.find((r: { path: string }) => r.path === lexer);
@@ -76,10 +76,10 @@ test("the output has developers as counts and never a name or an address", async
   expectGolden("abandonment", "abandonment.current", stdout);
 });
 
-test("the threshold is configurable and decides on exact arithmetic", async () => {
-  configure({ abandonmentThreshold: 91 });
+test("the guideline is configurable and decides on exact arithmetic", async () => {
+  configure({ abandonmentGuideline: 91 });
   expect(abandonedPaths(await json("current", "--limit", "all"))).toEqual([engine, deps]);
-  configure({ abandonmentThreshold: 80 });
+  configure({ abandonmentGuideline: 80 });
   expect(abandonedPaths(await json("current", "--limit", "all"))).toEqual([engine, lexer, parser, deps]);
 });
 

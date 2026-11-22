@@ -20,7 +20,7 @@ interface FileRow {
   source: string | null;
   profile: string | null;
   functions: number;
-  overThreshold: number;
+  aboveGuideline: number;
   aggregates: Record<string, { sum: number; max: number }> | null;
   keywordComplexity: number | null;
 }

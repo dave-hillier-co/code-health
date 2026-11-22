@@ -6,7 +6,7 @@ import { estimateTurnover, readActivity } from "../abandonment/activity.ts";
 import { round4 } from "../abandonment/current.ts";
 import { windowSecondsOf } from "../active-developers.ts";
 import { blameOptions, periodSecondsOf } from "../abandonment/load.ts";
-import { buildKnowledgeModel, goneLinesOf, reachesThreshold } from "../abandonment/knowledge-model.ts";
+import { buildKnowledgeModel, goneLinesOf, reachesGuideline } from "../abandonment/knowledge-model.ts";
 import { readKnowledgeSettings, readOverrides } from "../abandonment/settings.ts";
 import { readAbandonmentReport, type AbandonmentReport } from "./abandonment-report.ts";
 import { simulate } from "../abandonment/simulate.ts";
@@ -101,14 +101,14 @@ async function fromBlame(
       trials: settings.trials,
       seed: settings.seed,
       alphas: settings.alphas,
-      thresholdPercent: settings.abandonmentThreshold,
+      guidelinePercent: settings.abandonmentGuideline,
     });
     for (const risk of result.fileRisks) probabilities.set(risk.path, risk.probability);
   }
 
   const rows = model.files
     .map((file) => {
-      const abandoned = reachesThreshold(goneLinesOf(file, model.developers), file.people, settings.abandonmentThreshold);
+      const abandoned = reachesGuideline(goneLinesOf(file, model.developers), file.people, settings.abandonmentGuideline);
       const probability = abandoned ? 1 : (probabilities.get(file.path) ?? 0);
       return { path: file.path, abandoned, probability, share: round4(goneLinesOf(file, model.developers) / file.people) };
     })

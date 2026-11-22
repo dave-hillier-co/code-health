@@ -30,7 +30,7 @@ Run them from the repository root. They analyse `HEAD`. The subcommands:
 - `evidence PACKAGE` or `evidence A->B`: the full facts for one package or one pair.
 - `check [--base REV]`: exits 1 on package cycles, deep imports or undeclared dependencies added since a base revision.
 - `outcome REV [--from REV] [--projects-dir DIR]`: whether a repackaging made change cheaper.
-- `explain <finding>` describes a finding and its thresholds. `config explain` shows the settings under `structure.packages`.
+- `explain <finding>` describes a finding and its guidelines. `config explain` shows the settings under `structure.packages`.
 
 Read the envelope first. `evidence.grade` says how far to trust history: with `weak`, lean on the manifests and imports and present co-change as tentative. A finding with `tentative: true` involves a package inside the grace period (180 days by default), which has had no time to be reused. A package listed under `unavailable` is one the structural layer cannot read (its language has no adapter): its closure and co-change findings stand, its reuse and boundary findings do not exist, and you must say so rather than call it clean.
 

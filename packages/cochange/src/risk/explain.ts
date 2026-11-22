@@ -24,7 +24,7 @@ export function explainRules(risk: RiskSettings) {
 }
 
 /**
- * `risk explain FACTOR`: the factor's definition and thresholds, and what drove it on the branch: its
+ * `risk explain FACTOR`: the factor's definition and guidelines, and what drove it on the branch: its
  * value, band and the files behind it. Placement factors are defined here and computed by `risk`,
  * because placement is bounded by the privacy rules.
  */

@@ -61,5 +61,5 @@ test("every plugin's defaults validate, and each loads the same document the sch
 
 test("a setting no plugin has is rejected", () => {
   expect(validate({ locality: { minDistanc: 2 } })).toBe(false);
-  expect(validate({ complexity: { thresholds: { nesting: "deep" } } })).toBe(false);
+  expect(validate({ complexity: { guidelines: { nesting: "deep" } } })).toBe(false);
 });

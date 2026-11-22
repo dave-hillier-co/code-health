@@ -60,7 +60,7 @@ export const rules: Record<string, Rule> = {
     explanation: [
       "A line is abandoned when its last author, by git blame -w -M -C ignoring the ignore-revs file, is no longer active:",
       "no commit within cochange.knowledge.activityWindowMonths (default 6) of the analysed commit. A file is abandoned when",
-      "at least cochange.knowledge.abandonmentThreshold percent (default 90) of the lines held by people are. Lines of bots,",
+      "at least cochange.knowledge.abandonmentGuideline percent (default 90) of the lines held by people are. Lines of bots,",
       "services and agents are on neither side of the share.",
       "",
       "Suggested mitigation: adoption. Assign the top successor (`cochange successors PATH`) to the next change, and prioritise it if it is also a hotspot.",

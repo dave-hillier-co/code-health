@@ -1,5 +1,5 @@
 import { componentOf as componentNameOf, type Component } from "../components.ts";
-import { goneLinesOf, reachesThreshold, type KnowledgeModel } from "./knowledge-model.ts";
+import { goneLinesOf, reachesGuideline, type KnowledgeModel } from "./knowledge-model.ts";
 
 /**
  * Monte Carlo simulation of turnover over a knowledge model.
@@ -25,7 +25,7 @@ export interface SimulationOptions {
   /** Percentiles, ascending, for knowledge at risk. */
   alphas: readonly number[];
   /** Percentage of a file's lines held by people who have left at which it is abandoned. */
-  thresholdPercent: number;
+  guidelinePercent: number;
   components?: readonly Component[];
 }
 
@@ -157,7 +157,7 @@ interface Compiled {
   componentBaselineLines: number[];
 }
 
-function compile(model: KnowledgeModel, thresholdPercent: number, components: readonly Component[]): Compiled {
+function compile(model: KnowledgeModel, guidelinePercent: number, components: readonly Component[]): Compiled {
   const pool: number[] = [];
   const poolIndex = new Map<number, number>();
   model.developers.forEach((d, i) => {
@@ -191,7 +191,7 @@ function compile(model: KnowledgeModel, thresholdPercent: number, components: re
       poolLines[p]! += h.lines;
       byComponent[p]!.set(c, (byComponent[p]!.get(c) ?? 0) + h.lines);
     }
-    if (reachesThreshold(baseGone, file.people, thresholdPercent)) abandonedFiles.add(fi);
+    if (reachesGuideline(baseGone, file.people, guidelinePercent)) abandonedFiles.add(fi);
     else if (holders.length > 0) relevant.push({ file: fi, people: file.people, baseGone, holders });
   });
   return {
@@ -234,8 +234,8 @@ function draw(selection: Selection, poolSize: number, rng: () => number, leave: 
 }
 
 export function simulate(model: KnowledgeModel, options: SimulationOptions): SimulationResult {
-  const { selection, trials, seed, alphas, thresholdPercent } = options;
-  const compiled = compile(model, thresholdPercent, options.components ?? []);
+  const { selection, trials, seed, alphas, guidelinePercent } = options;
+  const compiled = compile(model, guidelinePercent, options.components ?? []);
   const { poolSize, relevant } = compiled;
   if (selection.mode === "k-leavers" && (selection.k < 1 || selection.k > poolSize)) {
     throw new RangeError(`k must be from 1 to ${poolSize}, the active developers`);
@@ -253,7 +253,7 @@ export function simulate(model: KnowledgeModel, options: SimulationOptions): Sim
     relevant.forEach((rel, r) => {
       let gone = rel.baseGone;
       for (const h of rel.holders) if (leave[h.pool]) gone += h.lines;
-      if (gone > rel.baseGone && reachesThreshold(gone, rel.people, thresholdPercent)) visit(r);
+      if (gone > rel.baseGone && reachesGuideline(gone, rel.people, guidelinePercent)) visit(r);
     });
   };
 
@@ -280,11 +280,11 @@ export function simulate(model: KnowledgeModel, options: SimulationOptions): Sim
   // The tail trials are those at or beyond knowledge at risk, in files, at the lowest alpha. They are
   // replayed to see which files the bad scenarios lose.
   const tailAlpha = alphas[0]!;
-  const tailThreshold = filesDistribution.atRisk[0]!.kar;
+  const tailGuideline = filesDistribution.atRisk[0]!.kar;
   const tailHits = new Uint32Array(relevant.length);
   let tailTrials = 0;
   for (let t = 0; t < trials; t++) {
-    if (incrementFiles[t]! < tailThreshold) continue;
+    if (incrementFiles[t]! < tailGuideline) continue;
     tailTrials++;
     draw(selection, poolSize, trialRng(seed, t), leave);
     abandoned((r) => tailHits[r]!++);

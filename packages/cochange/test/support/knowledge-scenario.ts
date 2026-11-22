@@ -45,7 +45,7 @@ const utc = (day: string) => `${day}T09:00:00Z`;
  * | src/ui/view.ts        | 10    | Eve 10                         |
  * | src/gen/deps.ts       | 10    | the bot 5 (nobody), Di 5*      |
  *
- * People's lines: 75. Held by people who have left: 32 (Cy 19, Di 13). With the default threshold of
+ * People's lines: 75. Held by people who have left: 32 (Cy 19, Di 13). With the default guideline of
  * 90 % three files are abandoned: engine, parser (exactly 90 %) and deps (all of what people wrote).
  * The lexer is at 80 %. Ann holds 16 lines, Bob 17 and Eve 10.
  *

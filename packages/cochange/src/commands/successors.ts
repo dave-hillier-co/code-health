@@ -1,7 +1,7 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { Command } from "@code-health/cli-kit/run-cli";
 import { listTree } from "@code-health/history/tree";
-import { goneLinesOf, reachesThreshold } from "../abandonment/knowledge-model.ts";
+import { goneLinesOf, reachesGuideline } from "../abandonment/knowledge-model.ts";
 import { commonExtra, commonInputs, prepare } from "../abandonment/prepare.ts";
 import { buildSuccessorIndex, hasNoSuccessor, successorsOf } from "../abandonment/successors.ts";
 import { round4 } from "../abandonment/current.ts";
@@ -36,7 +36,7 @@ export const command: Command = {
       const file = model.files.find((f) => f.path === path);
       rows.push({
         path,
-        abandoned: file !== undefined && reachesThreshold(goneLinesOf(file, model.developers), file.people, p.settings.abandonmentThreshold),
+        abandoned: file !== undefined && reachesGuideline(goneLinesOf(file, model.developers), file.people, p.settings.abandonmentGuideline),
         coupledFiles: [...(index.partners.get(path) ?? [])]
           .map((c) => ({ path: c.path, degree: round4(c.degree), support: c.support }))
           .sort((a, b) => b.degree - a.degree || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))),

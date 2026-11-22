@@ -2,7 +2,7 @@
 
 ## The evidence block
 
-Every history-based output carries `evidence`: `usableHistoryMonths`, `logicalChangesInWindow`, `activeContributors`, a `grade`, and `truncated` (shallow clone). The default thresholds:
+Every history-based output carries `evidence`: `usableHistoryMonths`, `logicalChangesInWindow`, `activeContributors`, a `grade`, and `truncated` (shallow clone). The default guidelines:
 
 | Grade | Months of usable history | Logical changes in window | Contributors |
 |---|---|---|---|

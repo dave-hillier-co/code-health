@@ -2,7 +2,7 @@ import { GitFixture, type Change, type Step } from "@code-health/fixtures/git-fi
 
 const add = (path: string, content: string): Change => ({ op: "add", path, content });
 
-/** A function of `count` lines, so size thresholds are met without a wall of source. */
+/** A function of `count` lines, so size guidelines are met without a wall of source. */
 function longFunction(name: string, count: number): string {
   const body = Array.from({ length: count }, (_, index) => `  total += ${index + 1};`).join("\n");
   return `export function ${name}(): number {\n  let total = 0;\n${body}\n  return total;\n}\n`;

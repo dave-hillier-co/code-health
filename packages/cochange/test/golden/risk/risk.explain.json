@@ -9,9 +9,7 @@
       "shifted": false
     },
     "grade": "weak",
-    "importedHistory": [],
-    "logicalChangesInWindow": 17,
-    "thresholds": {
+    "guidelines": {
       "moderate": {
         "contributors": 2,
         "logicalChanges": 50,
@@ -23,6 +21,8 @@
         "months": 24
       }
     },
+    "importedHistory": [],
+    "logicalChangesInWindow": 17,
     "truncated": {
       "availableSince": null,
       "boundaryCommits": 0,
@@ -206,7 +206,7 @@
         "family": "structure-and-content",
         "layer": "lexical",
         "name": "complexity-delta",
-        "signal": "Units that are new and over a threshold, or over a threshold and worse"
+        "signal": "Units that are new and over a guideline, or over a guideline and worse"
       },
       {
         "banding": "count",

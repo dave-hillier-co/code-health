@@ -1,4 +1,4 @@
-# Metrics, thresholds and configuration
+# Metrics, guidelines and configuration
 
 ## How each metric is counted
 
@@ -14,7 +14,7 @@ bound to a name. Anonymous callbacks are not units: they add to the function tha
 | `nesting` | The deepest nesting of `if`, loop, `switch` and `try` statements. An `else if` sits at the level of its `if`. A nested function continues from where it sits. |
 | `parameters` | Declared parameters, `this` excluded. A destructured object parameter counts once. |
 | `length` | Lines of the function holding code, with blank lines and comment-only lines left out. A `statements` count of the function's statements is reported beside it, and a nested function's `parent` names the function it sits in. |
-| `bumps` | Separate regions of nested control flow directly in the function: the body of each branch of an `if` chain and of a loop, and a whole `switch` or `try`. Structures inside a bump belong to it, and a body that fits on the line that opens it is not one. `bumpDepth` and `bumpSize` give the deepest level and the largest bump in code lines. Three bumps, or two when `bumpDepth` is above `thresholds.nesting`, make a `bumpy-road` label. |
+| `bumps` | Separate regions of nested control flow directly in the function: the body of each branch of an `if` chain and of a loop, and a whole `switch` or `try`. Structures inside a bump belong to it, and a body that fits on the line that opens it is not one. `bumpDepth` and `bumpSize` give the deepest level and the largest bump in code lines. Three bumps, or two when `bumpDepth` is above `guidelines.nesting`, make a `bumpy-road` label. |
 
 A logical sequence is counted once per run of like operators, reading left to right and looking through parentheses:
 `a && b && c || d` is two (an `&&` run and an `||` run). A `!` ends a sequence, so `a && !(b && c)` is two.
@@ -30,7 +30,7 @@ A file type with no profile can be mapped to one in `code-health.json`, as `"lan
 | Metric | Counted as |
 |---|---|
 | `keyword` | Branch keywords and short-circuit operators in the block. An approximation of cyclomatic complexity, without the base 1. |
-| `bumps` | Separate runs of lines nested two or more levels below the function, each opened by a branch keyword. Three bumps, or two when any is deeper than the nesting threshold, make a `bumpy-road` label. |
+| `bumps` | Separate runs of lines nested two or more levels below the function, each opened by a branch keyword. Three bumps, or two when any is deeper than the nesting guideline, make a `bumpy-road` label. |
 | `nesting`, `length` | As above, from indentation. |
 
 Per-function lexical values are released only for a profile whose recorded agreement with the structural layer
@@ -61,7 +61,7 @@ mean depth over a file's exported functions and classes, and `passThroughs`, so 
 
 ## Guidelines
 
-The values are guidelines for investigation, configured under `thresholds`. A metric is above its guideline when its value is **above** it. Output labels it and sorts by how far above, and hides nothing. Only `check` reads `warn` as an exit code, for new or worsened functions. `high` only changes the label. The defaults are McCabe's 10 and SonarSource's 15, CodeScene's nesting 4, and judgement calls for the rest.
+The values are guidelines for investigation, configured under `guidelines`. A metric is above its guideline when its value is **above** it. Output labels it and sorts by how far above, and hides nothing. Only `check` reads `warn` as an exit code, for new or worsened functions. `high` only changes the label. The defaults are McCabe's 10 and SonarSource's 15, CodeScene's nesting 4, and judgement calls for the rest.
 
 | Metric | warn | high |
 |---|---|---|
@@ -79,7 +79,7 @@ The `complexity` section of `code-health.json`. Missing keys take the defaults, 
 | Key | Default | Meaning |
 |---|---|---|
 | `metrics` | all | Metrics reported and ranked. `--metrics a,b` narrows one run. |
-| `thresholds` | above | `{ cyclomatic: { warn, high }, cognitive: { warn, high }, nesting, parameters, bumps, deepBumps }`. `bumps` (3) and `deepBumps` (2) are the bump counts that make a bumpy road, the second applying when the deepest bump is deeper than `nesting`. |
+| `guidelines` | above | `{ cyclomatic: { warn, high }, cognitive: { warn, high }, nesting, parameters, bumps, deepBumps }`. `bumps` (3) and `deepBumps` (2) are the bump counts that make a bumpy road, the second applying when the deepest bump is deeper than `nesting`. |
 | `cyclomaticSwitch` | `case` | `case` or `modified` |
 | `base` | `null` | Base revision for `check`. `null` is the merge base with the main branch. |
 | `mainBranch` | `null` | The branch `check` forks from. `null` tries `origin/main`, `main`, `origin/master`, `master`. |
@@ -89,8 +89,10 @@ The `complexity` section of `code-health.json`. Missing keys take the defaults, 
 | `analyseTests` | `true` | Analyse test files. They are ranked among themselves, never against production code. |
 | `interfaceDepth` | `{ "shallow": 10 }` | Nodes per interface element below which an exported unit is labelled `shallow`. |
 | `hook` | `{ "enabled": false }` | The post-edit hook, off unless a repository turns it on. See [hook.md](hook.md). |
-| `overrides` | `[]` | `{ "paths": [globs], "thresholds": { ... } }`, applied in order over the defaults. For generated code, fixtures and the like. |
+| `overrides` | `[]` | `{ "paths": [globs], "guidelines": { ... } }`, applied in order over the defaults. For generated code, fixtures and the like. |
 
 The suite's shared `exclude` globs leave files out entirely.
+
+The change window (`windowMonths`, default 12), `maxChangesetSize` and `botPatterns` come from the shared top-level `history` section, and a `complexity` key of the same name overrides one of them.
 
 `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs config explain` prints the effective config and where each value came from.

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { serialise } from "../src/serialise.ts";
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { explainConfig, loadConfig, PLUGIN_SECTIONS } from "../src/config.ts";
+import { explainConfig, historyDefaults, loadConfig, PLUGIN_SECTIONS, type PluginConfigSpec } from "../src/config.ts";
 import { CliError, ExitCode } from "../src/errors.ts";
 
 const section = { windowMonths: 12, firstParent: false, bots: { patterns: ["[bot]"] }, ignored: {} };
@@ -47,6 +47,7 @@ test("missing file gives defaults for shared keys and the plugin section", () =>
     entryPoints: [],
     components: {},
     vagueNames: ["utils", "helpers", "common", "misc"],
+    history: historyDefaults,
     cochange: section,
   });
 });
@@ -84,7 +85,90 @@ test("hash is the first 16 hex digits of the SHA-256 of the serialised effective
   writeConfig({ exclude: ["dist"], cochange: { windowMonths: 3 } });
   const config = load();
   expect(config.hash).toBe(createHash("sha256").update(serialise(config.effective)).digest("hex").slice(0, 16));
-  expect(config.hash).toBe("65450dcc79f675e3");
+  expect(config.hash).toBe("8dd22b3a545cd25c");
+});
+
+const reading: PluginConfigSpec = { plugin: "cochange", section: { minSupport: 5 }, history: ["windowMonths", "botPatterns", "evidence", "branch"] };
+
+function loadReading() {
+  return loadConfig(root, reading);
+}
+
+test("the history section holds defaults for the settings every plugin reading history shares", () => {
+  expect(loadReading().effective.history).toEqual({
+    branch: null,
+    firstParent: false,
+    renameSimilarity: 50,
+    renameLimit: 1000,
+    windowMonths: 12,
+    maxChangesetSize: 30,
+    botPatterns: [],
+    evidence: {
+      strong: { months: 24, logicalChanges: 300, contributors: 5 },
+      moderate: { months: 6, logicalChanges: 50, contributors: 2 },
+    },
+  });
+});
+
+test("a plugin takes the shared history value, and its own section overrides it", () => {
+  writeConfig({ history: { windowMonths: 6, botPatterns: ["ci$"] } });
+  expect(loadReading().effective.cochange).toMatchObject({ windowMonths: 6, botPatterns: ["ci$"], minSupport: 5 });
+  writeConfig({ history: { windowMonths: 6, botPatterns: ["ci$"] }, cochange: { windowMonths: 3 } });
+  expect(loadReading().effective.cochange).toMatchObject({ windowMonths: 3, botPatterns: ["ci$"] });
+});
+
+test("an override may reset a shared value to null, and a nested one overrides one key of the shared object", () => {
+  writeConfig({ history: { branch: "main", evidence: { strong: { months: 36 } } }, cochange: { branch: null, evidence: { moderate: { months: 3 } } } });
+  const cochange = loadReading().effective.cochange as Record<string, unknown>;
+  expect(cochange.branch).toBeNull();
+  expect(cochange.evidence).toEqual({
+    strong: { months: 36, logicalChanges: 300, contributors: 5 },
+    moderate: { months: 3, logicalChanges: 50, contributors: 2 },
+  });
+});
+
+test("the hash covers the resolved history, so the shared section and an override each change it", () => {
+  const defaults = loadReading().hash;
+  writeConfig({ history: { windowMonths: 6 } });
+  const shared = loadReading().hash;
+  expect(shared).not.toBe(defaults);
+  writeConfig({ cochange: { windowMonths: 6 } });
+  const own = loadReading().hash;
+  expect(own).not.toBe(defaults);
+  expect(own).not.toBe(shared);
+  writeConfig({ history: { windowMonths: 6 }, cochange: { windowMonths: 6 } });
+  expect(loadReading().hash).not.toBe(defaults);
+});
+
+test("explain says whether a history value came from the shared section, an override or a default", () => {
+  writeConfig({ history: { windowMonths: 6 }, cochange: { botPatterns: ["ci$"] } });
+  const byPath = Object.fromEntries(explainConfig(loadReading()).map((row) => [row.path, row]));
+  expect(byPath["history.windowMonths"]).toEqual({ path: "history.windowMonths", value: 6, source: "file" });
+  expect(byPath["cochange.windowMonths"]).toEqual({ path: "cochange.windowMonths", value: 6, source: "file" });
+  expect(byPath["cochange.botPatterns"]).toEqual({ path: "cochange.botPatterns", value: ["ci$"], source: "file" });
+  expect(byPath["history.botPatterns"]?.source).toBe("default");
+  expect(byPath["cochange.branch"]?.source).toBe("default");
+  expect(byPath["cochange.evidence.strong.months"]?.source).toBe("default");
+});
+
+test("an invalid history value names the path it was written at", () => {
+  writeConfig({ history: { windowMonths: 0 } });
+  expect(() => loadReading()).toThrowError(/history\.windowMonths must be a positive integer/);
+  writeConfig({ cochange: { windowMonths: 0 } });
+  expect(() => loadReading()).toThrowError(/cochange\.windowMonths must be a positive integer/);
+  writeConfig({ history: { botPatterns: [1] } });
+  expect(() => loadReading()).toThrowError(/history\.botPatterns must be an array of strings/);
+  writeConfig({ history: { branch: "" } });
+  expect(() => loadReading()).toThrowError(/history\.branch must be a branch name or null/);
+  writeConfig({ history: { windowMonth: 6 } });
+  expect(() => loadReading()).toThrowError(/history\.windowMonth is an unknown setting/);
+});
+
+test("a plugin section accepts only the history keys its spec lists", () => {
+  writeConfig({ cochange: { renameLimit: 5 } });
+  expect(() => loadReading()).toThrowError(/cochange\.renameLimit is an unknown setting/);
+  writeConfig({ history: { renameLimit: 5 } });
+  expect(loadReading().effective.history).toMatchObject({ renameLimit: 5 });
 });
 
 test("hash does not depend on key order in the file", () => {

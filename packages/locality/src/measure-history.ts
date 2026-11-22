@@ -13,7 +13,7 @@ export async function readMeasureHistory(root: string, settings: LocalitySetting
   await refresh(root, { ref: "HEAD" });
   return analyseHistory(root, {
     ref: "HEAD",
-    noise: { exclude: [...settings.exclude], excludeSuiteCommits: true },
+    noise: { exclude: [...settings.exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize, excludeSuiteCommits: true },
     evidence: { windowMonths: settings.windowMonths },
   });
 }

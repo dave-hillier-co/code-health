@@ -1,3 +1,4 @@
+import { historyDefaults } from "@code-health/cli-kit/config";
 import { compileGlobs } from "./glob.ts";
 import { groupCommits, ISSUE_KEY_WINDOW_SECONDS, mergeFileChanges, type Grouping } from "./grouping.ts";
 import { detectImportedHistory, type ImportDetectionOptions, type ImportedHistory } from "./imported.ts";
@@ -67,7 +68,7 @@ function compileIssuePattern(pattern: string): RegExp {
   }
 }
 
-export const DEFAULT_MAX_CHANGESET_SIZE = 30;
+export const DEFAULT_MAX_CHANGESET_SIZE = historyDefaults.maxChangesetSize;
 
 export interface NoiseOptions {
   /** The suite's shared `exclude` globs. */

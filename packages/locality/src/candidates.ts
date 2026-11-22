@@ -229,7 +229,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   const { analysis } = project;
   const isFixed = compileGlobs(settings.fixedPoints);
   const forbidden = (folder: string) => settings.fixedPoints.length > 0 && isFixed(folder === "" ? "_" : `${folder}/_`);
-  const thresholds = {
+  const guidelines = {
     minDistance: settings.minDistance,
     tinyLines: settings.tinyLines,
     largeLines: settings.largeLines,
@@ -398,7 +398,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       consumerCoChange: null,
       createsCycle: false,
       notHelper: notHelperOf([path], symbols),
-      ...thresholds,
+      ...guidelines,
     });
     return {
       ...component,
@@ -496,7 +496,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       consumerCoChange: coChange?.amongConsumers ?? null,
       createsCycle,
       notHelper: notHelperOf(files),
-      ...thresholds,
+      ...guidelines,
     };
     const decision = recommend(input);
 

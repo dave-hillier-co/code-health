@@ -9,9 +9,7 @@
       "shifted": false
     },
     "grade": "weak",
-    "importedHistory": [],
-    "logicalChangesInWindow": 8,
-    "thresholds": {
+    "guidelines": {
       "moderate": {
         "contributors": 2,
         "logicalChanges": 50,
@@ -23,6 +21,8 @@
         "months": 24
       }
     },
+    "importedHistory": [],
+    "logicalChangesInWindow": 8,
     "truncated": {
       "availableSince": null,
       "boundaryCommits": 0,
@@ -149,15 +149,15 @@
         "band": null,
         "evidence": [],
         "family": "size-and-diffusion",
+        "guidelines": {
+          "lines": null
+        },
         "layer": "history",
         "name": "size",
         "reason": "fewer than 10 merged changes in the baseline, so a value of 12 cannot be placed",
         "scored": true,
         "source": "history",
         "status": "unavailable",
-        "thresholds": {
-          "lines": null
-        },
         "value": {
           "files": 1,
           "lines": 12
@@ -167,15 +167,15 @@
         "band": "low",
         "evidence": [],
         "family": "size-and-diffusion",
+        "guidelines": {
+          "spread": null
+        },
         "layer": "history",
         "name": "spread",
         "reason": null,
         "scored": true,
         "source": "history",
         "status": "ok",
-        "thresholds": {
-          "spread": null
-        },
         "value": {
           "components": null,
           "folders": 1,
@@ -186,15 +186,15 @@
         "band": "low",
         "evidence": [],
         "family": "size-and-diffusion",
+        "guidelines": {
+          "entropy": null
+        },
         "layer": "history",
         "name": "entropy",
         "reason": null,
         "scored": true,
         "source": "history",
         "status": "ok",
-        "thresholds": {
-          "entropy": null
-        },
         "value": {
           "entropy": 0,
           "files": 1
@@ -204,18 +204,18 @@
         "band": "low",
         "evidence": [],
         "family": "size-and-diffusion",
+        "guidelines": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
         "layer": "history",
         "name": "mixed-purpose",
         "reason": null,
         "scored": true,
         "source": "history",
         "status": "ok",
-        "thresholds": {
-          "count": {
-            "high": 3,
-            "moderate": 1
-          }
-        },
         "value": {
           "edited": 1,
           "editedWhileMoved": 0,
@@ -226,15 +226,15 @@
         "band": "low",
         "evidence": [],
         "family": "history",
+        "guidelines": {
+          "share": null
+        },
         "layer": "history",
         "name": "hotspots-touched",
         "reason": null,
         "scored": true,
         "source": "history",
         "status": "ok",
-        "thresholds": {
-          "share": null
-        },
         "value": {
           "hotFiles": 0,
           "share": 0
@@ -244,28 +244,28 @@
         "band": null,
         "evidence": [],
         "family": "history",
+        "guidelines": {},
         "layer": "history",
         "name": "defect-history",
         "reason": "no change in the window matches a fix or revert pattern, so the commit messages cannot say which revisions were fixes",
         "scored": true,
         "source": "history",
         "status": "unavailable",
-        "thresholds": {},
         "value": {}
       },
       {
         "band": "low",
         "evidence": [],
         "family": "history",
+        "guidelines": {
+          "authors": null
+        },
         "layer": "history",
         "name": "contention",
         "reason": null,
         "scored": true,
         "source": "history",
         "status": "ok",
-        "thresholds": {
-          "authors": null
-        },
         "value": {
           "authors": 0
         }
@@ -274,16 +274,16 @@
         "band": "low",
         "evidence": [],
         "family": "history",
+        "guidelines": {
+          "settling": null,
+          "stale": null
+        },
         "layer": "history",
         "name": "age",
         "reason": null,
         "scored": true,
         "source": "history",
         "status": "ok",
-        "thresholds": {
-          "settling": null,
-          "stale": null
-        },
         "value": {
           "known": 1,
           "settling": 0,
@@ -294,18 +294,18 @@
         "band": "low",
         "evidence": [],
         "family": "completeness",
+        "guidelines": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
         "layer": "history",
         "name": "missing-co-change",
         "reason": null,
         "scored": true,
         "source": "history",
         "status": "ok",
-        "thresholds": {
-          "count": {
-            "high": 3,
-            "moderate": 1
-          }
-        },
         "value": {
           "count": 0
         }
@@ -314,18 +314,18 @@
         "band": "low",
         "evidence": [],
         "family": "completeness",
+        "guidelines": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
         "layer": "history",
         "name": "novel-coupling",
         "reason": null,
         "scored": true,
         "source": "history",
         "status": "ok",
-        "thresholds": {
-          "count": {
-            "high": 3,
-            "moderate": 1
-          }
-        },
         "value": {
           "count": 0
         }
@@ -334,18 +334,18 @@
         "band": "low",
         "evidence": [],
         "family": "completeness",
+        "guidelines": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
         "layer": "history",
         "name": "test-evidence",
         "reason": null,
         "scored": true,
         "source": "history",
         "status": "ok",
-        "thresholds": {
-          "count": {
-            "high": 3,
-            "moderate": 1
-          }
-        },
         "value": {
           "count": 0
         }
@@ -354,15 +354,15 @@
         "band": "low",
         "evidence": [],
         "family": "structure-and-content",
+        "guidelines": {
+          "files": null
+        },
         "layer": "history",
         "name": "blast-radius",
         "reason": null,
         "scored": true,
         "source": "co-change and parse",
         "status": "ok",
-        "thresholds": {
-          "files": null
-        },
         "value": {
           "files": 0,
           "signatureChanges": 0,
@@ -373,18 +373,18 @@
         "band": "low",
         "evidence": [],
         "family": "structure-and-content",
+        "guidelines": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
         "layer": "history",
         "name": "sensitive-paths",
         "reason": null,
         "scored": false,
         "source": "configured globs",
         "status": "ok",
-        "thresholds": {
-          "count": {
-            "high": 3,
-            "moderate": 1
-          }
-        },
         "value": {
           "count": 0
         }
@@ -393,18 +393,18 @@
         "band": "low",
         "evidence": [],
         "family": "structure-and-content",
+        "guidelines": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
         "layer": "lexical",
         "name": "complexity-delta",
         "reason": null,
         "scored": false,
         "source": "indentation",
         "status": "ok",
-        "thresholds": {
-          "count": {
-            "high": 3,
-            "moderate": 1
-          }
-        },
         "value": {
           "count": 0,
           "files": 1
@@ -414,26 +414,26 @@
         "band": null,
         "evidence": [],
         "family": "structure-and-content",
+        "guidelines": {},
         "layer": "structural",
         "name": "structure-delta",
         "reason": "no structure check was passed in: run `structure check --json` for this branch and pass it with --evidence",
         "scored": false,
         "source": "structure check",
         "status": "unavailable",
-        "thresholds": {},
         "value": {}
       },
       {
         "band": null,
         "evidence": [],
         "family": "history",
+        "guidelines": {},
         "layer": "history",
         "name": "abandoned-touched",
         "reason": "knowledge analysis is not enabled (cochange.knowledge.enabled)",
         "scored": false,
         "source": "knowledge analysis",
         "status": "unavailable",
-        "thresholds": {},
         "value": {}
       }
     ],
@@ -497,13 +497,13 @@
             }
           ],
           "family": "placement",
+          "guidelines": {},
           "layer": "placement",
           "name": "authorship",
           "reason": null,
           "scored": false,
           "source": "blame",
           "status": "ok",
-          "thresholds": {},
           "value": {
             "files": 1,
             "meanShare": 0.4
@@ -520,13 +520,13 @@
             }
           ],
           "family": "placement",
+          "guidelines": {},
           "layer": "placement",
           "name": "change-familiarity",
           "reason": null,
           "scored": false,
           "source": "history",
           "status": "ok",
-          "thresholds": {},
           "value": {
             "familiarity": 0.78,
             "files": 1
@@ -543,13 +543,13 @@
             }
           ],
           "family": "placement",
+          "guidelines": {},
           "layer": "placement",
           "name": "neighbourhood",
           "reason": null,
           "scored": false,
           "source": "history",
           "status": "ok",
-          "thresholds": {},
           "value": {
             "component": null,
             "coupled": 0,
@@ -560,13 +560,13 @@
           "band": null,
           "evidence": [],
           "family": "placement",
+          "guidelines": {},
           "layer": "placement",
           "name": "first-touch-share",
           "reason": null,
           "scored": false,
           "source": "history",
           "status": "ok",
-          "thresholds": {},
           "value": {
             "share": 0
           }
@@ -580,13 +580,13 @@
             }
           ],
           "family": "placement",
+          "guidelines": {},
           "layer": "placement",
           "name": "owner-distance",
           "reason": null,
           "scored": false,
           "source": "blame",
           "status": "ok",
-          "thresholds": {},
           "value": {
             "files": 1
           }
@@ -595,13 +595,13 @@
           "band": null,
           "evidence": [],
           "family": "placement",
+          "guidelines": {},
           "layer": "placement",
           "name": "no-owner",
           "reason": null,
           "scored": false,
           "source": "blame",
           "status": "ok",
-          "thresholds": {},
           "value": {
             "files": 0
           }

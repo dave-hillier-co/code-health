@@ -1,8 +1,6 @@
 import { configError } from "@code-health/cli-kit/errors";
 import type { LoadedConfig, PluginConfigSpec } from "@code-health/cli-kit/config";
-import { DEFAULT_EVIDENCE_THRESHOLDS, type EvidenceThresholds } from "@code-health/history/evidence";
-import { DEFAULT_MAX_CHANGESET_SIZE } from "@code-health/history/noise";
-import { DEFAULT_RENAME_LIMIT, DEFAULT_SIMILARITY } from "@code-health/history/refresh";
+import type { EvidenceGuidelines } from "@code-health/history/evidence";
 import { DEFAULT_EXACT_LIMIT } from "@code-health/graph/feedback-arc-set";
 import type { CensusSettings } from "./census/census.ts";
 import { readLayerRules, type LayerRule } from "./layers.ts";
@@ -18,18 +16,8 @@ export const BUILT_IN_FOLDER_NAMES: readonly string[] = ["ports", "adapters", "i
  */
 export const structureConfig: PluginConfigSpec = {
   plugin: TOOL,
+  history: ["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "evidence"],
   section: {
-    /** Analysed branch. null analyses HEAD. */
-    branch: null,
-    /** Follow only first parents, for repositories that merge long-lived feature branches. */
-    firstParent: false,
-    renameSimilarity: DEFAULT_SIMILARITY,
-    renameLimit: DEFAULT_RENAME_LIMIT,
-    /** Analysis window, back from the analysed commit's date. */
-    windowMonths: 12,
-    maxChangesetSize: DEFAULT_MAX_CHANGESET_SIZE,
-    /** Regular expressions matched against `Name <email>` of an author; their commits are left out of history. */
-    botPatterns: [] as string[],
     /** Cycles whose strongly connected component has at most this many nodes get a minimum breaking set. */
     exactLimit: DEFAULT_EXACT_LIMIT,
     /** Evidence floor (a judgement call): a side is "active" when it has at least this many revisions in the window, so a low co-change is evidence and not absence of data. Below it the pair is reported as insufficient evidence. */
@@ -85,10 +73,6 @@ export const structureConfig: PluginConfigSpec = {
     mainBranch: "main",
     /** The revision `check` compares against, replacing the merge base with mainBranch. null uses the merge base. */
     base: null,
-    evidence: {
-      strong: { ...DEFAULT_EVIDENCE_THRESHOLDS.strong },
-      moderate: { ...DEFAULT_EVIDENCE_THRESHOLDS.moderate },
-    },
     /** The packaging skill's settings; see docs/specs/packaging.md. */
     packages: packagesDefaults,
   },
@@ -134,7 +118,7 @@ export interface StructureSettings {
   /** The suite's shared `components` config, as written. */
   components: Record<string, unknown>;
   census: CensusSettings;
-  evidenceThresholds: EvidenceThresholds;
+  evidenceGuidelines: EvidenceGuidelines;
   packages: PackageSettings;
   /** True when the config file states the analysis window, which a shallow clone requires. */
   windowStated: boolean;
@@ -220,7 +204,7 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     entryPoints: config.effective.entryPoints,
     components: config.effective.components,
     census: { folderNames: [...new Set([...BUILT_IN_FOLDER_NAMES, ...names("folderNames")])], eventCalls: names("eventCalls"), handlerCalls: names("handlerCalls"), registerCalls: names("registerCalls") },
-    evidenceThresholds: section.evidence as EvidenceThresholds,
+    evidenceGuidelines: section.evidence as EvidenceGuidelines,
     packages: withVagueNames(readPackageSettings(section.packages as Record<string, unknown>, at("packages")), config.effective.vagueNames),
     windowStated: config.sources[at("windowMonths")] === "file",
   };

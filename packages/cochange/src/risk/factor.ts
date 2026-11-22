@@ -11,7 +11,7 @@ export interface Factor {
   /** True when the factor counts towards the impact score. */
   scored: boolean;
   value: Record<string, unknown>;
-  thresholds: BandResult["thresholds"];
+  guidelines: BandResult["guidelines"];
   evidence: Record<string, unknown>[];
   source: string;
   reason: string | null;

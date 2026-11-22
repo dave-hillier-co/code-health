@@ -112,7 +112,7 @@
       "type": "object",
       "properties": {
         "paths": { "$ref": "#/$defs/paths", "description": "Path prefixes the run was limited to." },
-        "highFanIn": { "$ref": "common.schema.json#/$defs/count", "description": "The locality.highFanIn threshold in effect." }
+        "highFanIn": { "$ref": "common.schema.json#/$defs/count", "description": "The locality.highFanIn guideline in effect." }
       },
       "required": ["paths", "highFanIn"],
       "additionalProperties": false

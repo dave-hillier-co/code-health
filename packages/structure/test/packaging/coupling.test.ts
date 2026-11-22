@@ -94,7 +94,7 @@ describe("against-stability", () => {
     expect(row?.aboveGuideline ?? false).toBe(false);
   });
 
-  test("thresholds are structure's own, from the structure section of the config", async () => {
+  test("guidelines are structure's own, from the structure section of the config", async () => {
     const strict = await withPackageSettings(repo, {}, async () => (await packages(repo, "coupling")).document);
     expect(strict.inputs).toMatchObject({ subcommand: "coupling", minVolatilityRatio: 2, minInstabilityGap: 20 });
   });

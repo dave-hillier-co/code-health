@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { GitFixture, type Change, type Step } from "@code-health/fixtures/git-fixture";
-import { analyseHistory, monthsBefore, type EvidenceThresholds } from "../src/evidence.ts";
+import { analyseHistory, monthsBefore, type EvidenceGuidelines } from "../src/evidence.ts";
 import { refresh } from "../src/refresh.ts";
 
 // Fixture repos run real processes many times, which is slow on a loaded machine.
@@ -30,7 +30,7 @@ function edit(date: string, path: string, n: number, author = alice): Step {
   return { type: "commit", message: `edit ${path} ${n}`, date, author, changes: [{ op: "add", path, content: `${n}\n` }] };
 }
 
-const thresholds: EvidenceThresholds = {
+const guidelines: EvidenceGuidelines = {
   strong: { months: 12, logicalChanges: 6, contributors: 2 },
   moderate: { months: 3, logicalChanges: 3, contributors: 1 },
 };
@@ -59,7 +59,7 @@ test("a long, busy, multi-author history grades strong", async () => {
   steps.push(edit("2024-02-10T10:00:00Z", "last", 1, bob), edit("2024-03-10T10:00:00Z", "last2", 1, alice));
   const repo = build(steps);
   await refresh(repo.path);
-  const { evidence } = await analyseHistory(repo.path, { evidence: { thresholds, windowMonths: 12 } });
+  const { evidence } = await analyseHistory(repo.path, { evidence: { guidelines, windowMonths: 12 } });
   expect(evidence.usableHistoryMonths).toBeGreaterThanOrEqual(12);
   // the January and February 2023 commits fall before the 12 month window
   expect(evidence.logicalChangesInWindow).toBe(8);
@@ -76,10 +76,10 @@ test("grade falls back to moderate and weak as evidence thins", async () => {
     edit("2024-05-01T10:00:00Z", "c", 1),
   ]);
   await refresh(repo.path);
-  const moderate = await analyseHistory(repo.path, { evidence: { thresholds } });
+  const moderate = await analyseHistory(repo.path, { evidence: { guidelines } });
   expect(moderate.evidence.grade).toBe("moderate");
   const weak = await analyseHistory(repo.path, {
-    evidence: { thresholds: { ...thresholds, moderate: { months: 6, logicalChanges: 3, contributors: 1 } } },
+    evidence: { guidelines: { ...guidelines, moderate: { months: 6, logicalChanges: 3, contributors: 1 } } },
   });
   expect(weak.evidence.grade).toBe("weak");
 });
@@ -103,7 +103,7 @@ test("windowing the changes through noise.since does not clip usable history or 
   const since = Date.parse("2023-09-01T00:00:00Z") / 1000;
   const { evidence, filtered } = await analyseHistory(repo.path, {
     noise: { since },
-    evidence: { thresholds, windowMonths: 12 },
+    evidence: { guidelines, windowMonths: 12 },
   });
   expect(filtered.changes).toHaveLength(8);
   expect(evidence.usableHistoryMonths).toBeGreaterThan(24);
@@ -182,7 +182,7 @@ test("contributors alone can hold a long, busy history at moderate", async () =>
   steps.push(edit("2024-03-10T10:00:00Z", "last", 1));
   const repo = build(steps);
   await refresh(repo.path);
-  const { evidence } = await analyseHistory(repo.path, { evidence: { thresholds, windowMonths: 12 } });
+  const { evidence } = await analyseHistory(repo.path, { evidence: { guidelines, windowMonths: 12 } });
   expect(evidence.activeContributors).toBe(1);
   expect(evidence.grade).toBe("moderate");
 });

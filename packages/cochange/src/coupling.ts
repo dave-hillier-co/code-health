@@ -30,7 +30,7 @@ export interface CouplingCounts {
   pairs: PairCount[];
 }
 
-export interface CouplingThresholds {
+export interface CouplingGuidelines {
   /** Evidence floor: pairs with fewer shared eligible changes are not counted. */
   minSupport: number;
   /**
@@ -51,7 +51,7 @@ export function degreeOf(pair: PairCount): number {
 
 /**
  * Whether a pair's degree reaches `minDegree`, in exact integer arithmetic: the degree rounded for
- * display (19.98 shown as 20.0) must never decide a threshold.
+ * display (19.98 shown as 20.0) must never decide a guideline.
  */
 export function reachesDegree(pair: PairCount, minDegree: number): boolean {
   return 200 * pair.support >= minDegree * (pair.changesA + pair.changesB);
@@ -65,9 +65,9 @@ export function confidenceOf(support: number, changes: number): number {
 /**
  * Counts co-changes over eligible changes and keeps the pairs that reach the
  * support floor and, when given, the degree. The degree test is exact integer arithmetic, so
- * a pair at the threshold is never lost to rounding.
+ * a pair at the guideline is never lost to rounding.
  */
-export function countCoupling(changes: readonly CouplingChange[], thresholds: CouplingThresholds): CouplingCounts {
+export function countCoupling(changes: readonly CouplingChange[], guidelines: CouplingGuidelines): CouplingCounts {
   const perFile = new Map<string, number>();
   const together = new Map<string, Map<string, number>>();
   let eligibleChanges = 0;
@@ -92,7 +92,7 @@ export function countCoupling(changes: readonly CouplingChange[], thresholds: Co
   for (const [a, row] of together) {
     for (const [b, support] of row) {
       const pair = { a, b, support, changesA: perFile.get(a)!, changesB: perFile.get(b)! };
-      if (support >= thresholds.minSupport && reachesDegree(pair, thresholds.minDegree ?? 0)) pairs.push(pair);
+      if (support >= guidelines.minSupport && reachesDegree(pair, guidelines.minDegree ?? 0)) pairs.push(pair);
     }
   }
   pairs.sort((p, q) => compareBytes(p.a, q.a) || compareBytes(p.b, q.b));
@@ -118,7 +118,7 @@ export interface Partners {
 
 /**
  * The same counts as `countCoupling`, restricted to the pairs that include one
- * file and without any threshold. It never builds the pair table of the whole
+ * file and without any guideline. It never builds the pair table of the whole
  * repository, which keeps it cheap enough for a hook.
  */
 export function partnersOf(changes: readonly CouplingChange[], focus: string): Partners {

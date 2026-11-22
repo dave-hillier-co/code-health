@@ -29,7 +29,7 @@ export const command: Command = {
       inputs: { tree: current.kind, layer, paths },
       extra: { skippedFiles: measurement.skippedFiles },
       results: rows,
-      columns: ["path", "complexity", "functions", "overThreshold", "source", "profile", "test", "codeLines"],
+      columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "test", "codeLines"],
     };
     if (!isPartial(context) && current.kind === "head") await storeReport(context, name, output);
     else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");

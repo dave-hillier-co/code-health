@@ -15,7 +15,7 @@
       "unmapped": 68
     },
     "needsIdentityReview": true,
-    "unmappedShareThreshold": 5,
+    "unmappedShareGuideline": 5,
     "windowCommits": {
       "mappedShare": 20.6,
       "nonPerson": 6,

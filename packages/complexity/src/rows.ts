@@ -1,4 +1,4 @@
-import { thresholdsFor, type ComplexitySettings } from "./config.ts";
+import { guidelinesFor, type ComplexitySettings } from "./config.ts";
 import { meanDepth, passThroughCount } from "./interface-depth.ts";
 import type { FileRecord, UnitRecord } from "./measure.ts";
 import { exceeded, labelsFor, metricIds, type MetricId, type Values } from "./metrics.ts";
@@ -14,7 +14,7 @@ export function pick(values: Values, selected: readonly MetricId[]): Values {
 }
 
 export function unitLabels(unit: UnitRecord, settings: ComplexitySettings): string[] {
-  return labelsFor(unit.values, thresholdsFor(settings, unit.path), unit.bumpyRoad === true);
+  return labelsFor(unit.values, guidelinesFor(settings, unit.path), unit.bumpyRoad === true);
 }
 
 export function unitName(unit: UnitRecord): string {
@@ -77,7 +77,7 @@ export function fileRow(file: FileRecord, settings: ComplexitySettings) {
     const values = top.flatMap((unit) => (unit.values[metric] === undefined ? [] : [unit.values[metric]!]));
     if (values.length > 0) aggregates[metric] = { sum: values.reduce((a, b) => a + b, 0), max: Math.max(...values) };
   }
-  const thresholds = thresholdsFor(settings, file.path);
+  const guidelines = guidelinesFor(settings, file.path);
   return {
     path: file.path,
     score: file.indentationComplexity,
@@ -91,7 +91,7 @@ export function fileRow(file: FileRecord, settings: ComplexitySettings) {
     keywordComplexity: file.keywordComplexity ?? null,
     functions: file.units.length,
     aggregates: file.units.length === 0 ? null : aggregates,
-    overThreshold: file.units.filter((unit) => exceeded(unit.values, thresholds).length > 0).length,
+    aboveGuideline: file.units.filter((unit) => exceeded(unit.values, guidelines).length > 0).length,
     interfaceDepth: meanDepth(file),
     passThroughs: passThroughCount(file),
   };

@@ -30,4 +30,4 @@ The file-level test over-counts in busy files, so each rate is shown beside the 
 
 ## What follows from it
 
-Run on a clean tree and without `--since`, the result is stored, and `risk` shows a level only when the stored result separates, stating the backtest beside it. If the levels do not separate, say so plainly and present the factors as observations. Do not offer a level the repository's own history does not support, and do not tune the settings until the backtest looks good: a threshold fitted to the answer is no longer evidence.
+Run on a clean tree and without `--since`, the result is stored, and `risk` shows a level only when the stored result separates, stating the backtest beside it. If the levels do not separate, say so plainly and present the factors as observations. Do not offer a level the repository's own history does not support, and do not tune the settings until the backtest looks good: a guideline fitted to the answer is no longer evidence.

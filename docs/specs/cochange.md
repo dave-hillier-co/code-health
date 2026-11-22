@@ -116,7 +116,7 @@ The tool classifies findings, and the skill turns the classifications into actio
 | Finding | Condition | Suggested handoff |
 |---|---|---|
 | `hotspot` | Score in the top configured percentile and changed within the recent window | Complexity review of the file's worst functions |
-| `distant-coupling` | Degree ≥ threshold, support ≥ minimum, distance ≥ minimum | Locality review: should these live together? Otherwise check for *information leakage*, where one design decision is encoded in both files. |
+| `distant-coupling` | Degree ≥ guideline, support ≥ minimum, distance ≥ minimum | Locality review: should these live together? Otherwise check for *information leakage*, where one design decision is encoded in both files. |
 | `change-magnet` | A file that co-changes with many folders, which rarely co-change with each other (a star shape) | Likely a registration hub. See [structure](structure.md#concepts) for confirmation and the inversion remedy. |
 | `asymmetric-coupling` | Confidence A→B high, B→A low | A depends on B implicitly. Check for *information leakage* or *temporal decomposition* (code split by when it runs rather than by what it knows). |
 | `cluster` | Coupled component spanning ≥ 3 folders | Candidate for co-location or a module boundary |
@@ -178,12 +178,12 @@ This plugin supplies the suite's primary outcome measure, change spread. Its own
 
 In the `cochange` section of the suite config:
 
-- Branch, first-parent mode, analysis window (default 12 months), recent window (default 3 months) and stale window.
+- Shared history settings, read from the top-level `history` section of the suite config ([suite.md](suite.md#configuration)) and overridable here under the same names: `branch`, `firstParent`, `renameSimilarity`, `renameLimit`, `windowMonths` (default 12 months), `maxChangesetSize`, `botPatterns` and `evidence`.
+- Recent window (default 3 months) and stale window.
 - Logical change grouping: off, by issue-key pattern, or by author and time window.
-- Maximum changeset size.
 - Minimum support, minimum degree, minimum coupling distance.
-- Hook enablement, confidence threshold and staleness tolerance.
-- Identity settings, including bot and service patterns, under `cochange.identities` ([identities.md](identities.md#configuration)).
+- Hook enablement, confidence guideline and staleness tolerance.
+- Identity settings, including service patterns, under `cochange.identities` ([identities.md](identities.md#configuration)).
 - Knowledge analysis settings under `cochange.knowledge` ([abandonment.md](abandonment.md#configuration)).
 - Change risk settings under `cochange.risk` ([change-risk.md](change-risk.md#configuration)).
 

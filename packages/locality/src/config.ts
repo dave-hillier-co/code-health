@@ -9,6 +9,7 @@ import { TOOL } from "./tool.ts";
  */
 export const localityConfig: PluginConfigSpec = {
   plugin: TOOL,
+  history: ["windowMonths", "maxChangesetSize", "botPatterns"],
   section: {
     /** Guideline for the net distance a move saves, in folder hops. Ranks and annotates candidates (`guidelines.gain`); units below it are counted in `summary.placed`, not listed. A judgement call. */
     minDistance: 2,
@@ -26,8 +27,6 @@ export const localityConfig: PluginConfigSpec = {
     useHistory: true,
     /** Guideline: a unit younger than this many days is reviewed, not inlined or moved, because one callsite is only evidence once reuse has had time. A judgement call. */
     graceDays: 90,
-    /** The window for churn and co-change, back from HEAD's commit date. CodeScene advises 6 to 12 months for hotspot windows. */
-    windowMonths: 12,
     /** Guideline: consumers co-changing at or below this degree (percent) look independent, which suggests coincidental reuse. A judgement call. */
     lowCoChange: 10,
     /** Guideline: consumers co-changing at or above this degree (percent) share a reason to change, so the distance looks earned. Matches the 30 to 50 percent range Tornhill gives for coupling degree. */
@@ -57,7 +56,10 @@ export interface LocalitySettings {
   fixedPoints: string[];
   useHistory: boolean;
   graceDays: number;
+  /** The shared history settings: the window, the largest changeset kept and the author patterns left out. */
   windowMonths: number;
+  maxChangesetSize: number;
+  botPatterns: string[];
   lowCoChange: number;
   highCoChange: number;
   minCoChangeChanges: number;
@@ -120,6 +122,8 @@ export function readSettings(config: LoadedConfig): LocalitySettings {
     useHistory: section.useHistory === true,
     graceDays: positive("graceDays"),
     windowMonths: positive("windowMonths"),
+    maxChangesetSize: positive("maxChangesetSize"),
+    botPatterns: section.botPatterns as string[],
     lowCoChange,
     highCoChange,
     minCoChangeChanges: positive("minCoChangeChanges"),
