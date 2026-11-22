@@ -86,16 +86,22 @@
           "default": [
             "^fix(\\([^)]*\\))?!?:",
             "^merge .*\\b(fix|hotfix|bugfix)[/-]",
-            "\\bfix\\b",
-            "\\bfixes\\b",
-            "\\bfixed\\b",
-            "\\bfixing\\b",
+            "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
+            "\\bto\\s+fix\\b",
             "\\bbug\\b",
             "\\bbugs\\b",
             "\\bbugfix\\b",
             "\\bhotfix\\b",
-            "\\bdefect\\b",
-            "\\bissue\\b"
+            "\\bdefect\\b"
+          ]
+        },
+        "fixExcludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|lints?|linting|linters?|tests?|testing|flaky|docs?|documentation|readme|formatting|whitespace|ci|prettier|eslint)\\b"
           ]
         },
         "revertPatterns": {
@@ -534,6 +540,13 @@
           },
           "description": "Overrides history.fixPatterns for the cochange plugin."
         },
+        "fixExcludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Overrides history.fixExcludePatterns for the cochange plugin."
+        },
         "revertPatterns": {
           "type": "array",
           "items": {
@@ -734,18 +747,22 @@
           "type": "object",
           "properties": {
             "maxCommits": {
-              "type": "number",
-              "default": 500
+              "default": null
             },
             "evidence": {
+              "type": "number",
+              "default": 3
+            },
+            "minRevisions": {
               "type": "number",
               "default": 3
             }
           },
           "additionalProperties": false,
           "default": {
-            "maxCommits": 500,
-            "evidence": 3
+            "maxCommits": null,
+            "evidence": 3,
+            "minRevisions": 3
           }
         },
         "interfaceDepth": {
@@ -779,6 +796,13 @@
             "type": "string"
           },
           "description": "Overrides history.fixPatterns for the complexity plugin."
+        },
+        "fixExcludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Overrides history.fixExcludePatterns for the complexity plugin."
         },
         "revertPatterns": {
           "type": "array",

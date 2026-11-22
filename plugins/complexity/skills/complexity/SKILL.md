@@ -38,11 +38,14 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    `parseCoverage` gives the share of parsed files with syntax errors, and a notice says when it is above the
    `syntaxErrorPercent` guideline: those files' functions may be incomplete, so say so before ranking from them.
 
-2. The ranking is by percentile within the repository, weighted by how often the file changed in the window
-   (`ranking.changeWeighted` is true). Each row carries `revisions`, `changeWeight` and `complexityScore`, the percentile
-   before weighting. Complex code that has not changed in the window has weight 0 and ranks last, so the top of the
-   list is code that is both hard to read and edited. When `changeWeighted` is false (change weighting is off, or the
-   clone is shallow), check history yourself with `git log --oneline -- <path>` before spending effort on a function.
+2. The default order is the complexity itself: the highest percentile of any selected metric within the repository
+   (`complexityScore`, `ranking.by` is `complexity`), so the hardest functions to read come first whether or not they
+   change. `--by change-weighted` gives the hotspot order instead: that percentile times the file's change weight, so
+   complex code that has not changed in the window has weight 0 and ranks last, and the top of the list is code that is
+   both hard to read and edited (`ranking.changeWeighted` is true). Each row carries both scores, `fileRevisions` (the
+   file's changes in the window, not the function's own: `analyse --with-fixes` adds the function's `unitRevisions`) and
+   `changeWeight`. When `ranking.changeWeightsAvailable` is false (change weighting is off, or the clone is shallow),
+   check history yourself with `git log --oneline -- <path>` before spending effort on a function.
 
 3. For files, use `files`. A run over the whole repository on a clean tree stores the report other plugins read.
 
@@ -74,9 +77,12 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    ```
 
    Each row has `fixCommits`, `unitRevisions`, `fixShare`, the function's current `cognitive` complexity and the `evidence`
-   commits, and a function renamed or moved keeps its history. Read the header first: `fixConvention.note` says when the
-   commit messages probably do not follow a convention the patterns can use, and `commits` says how many commits were
-   skipped. The run parses historical revisions, so bound it with `--max-commits` on a large history. Details in
+   commits, and a function renamed or moved keeps its history. A row labelled `low evidence` has fewer than 3 revisions
+   in the window, so its `fixShare` rests on little history. Read the header first: `fixConvention.note` says when the
+   commit messages probably do not follow a convention the patterns can use, `fixesExcluded` counts the changes left out
+   because the fix was about typos, lint, docs, tests or formatting, and `commits` says how many commits were skipped.
+   The run covers the whole window and parses historical revisions, so on a very large history bound it with
+   `--max-commits N`, and say that the figures then cover part of the window. Details in
    [references/fixes.md](references/fixes.md).
 
 ## Locate the cost

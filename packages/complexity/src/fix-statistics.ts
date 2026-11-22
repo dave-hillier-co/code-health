@@ -1,5 +1,5 @@
 import { analyseHistory, monthsBefore } from "@code-health/history/evidence";
-import { checkFixConvention, findFix, fixEvidence, type FixConvention, type FixMatch } from "@code-health/history/fix-commits";
+import { checkFixConvention, findExcludedFix, findFix, fixEvidence, type FixConvention, type FixEvidence, type FixMatch } from "@code-health/history/fix-commits";
 import { runGit } from "@code-health/history/git";
 import type { LogicalChange } from "@code-health/history/noise";
 import type { HistoryCommit } from "@code-health/history/read";
@@ -22,8 +22,8 @@ const DIFF_BATCH = 200;
 export interface FixRequest {
   /** Repo-relative paths or directories, by their names at HEAD. None selects every file. */
   paths: readonly string[];
-  /** Most commits to analyse, newest first. */
-  maxCommits: number;
+  /** Most commits to analyse, newest first. Null analyses the whole window. */
+  maxCommits: number | null;
   /** Evidence commits to keep per unit. */
   evidence: number;
 }
@@ -63,6 +63,10 @@ export interface OutsideUnits {
 export interface FixStatistics {
   window: { months: number; since: number; until: number };
   convention: FixConvention;
+  /** Logical changes of the window that a fix pattern matched and an exclude pattern removed (`history.fixExcludePatterns`), by the excluding pattern. They are not fixes. */
+  excluded: FixEvidence;
+  /** Revisions below which a unit's fix figures are labelled low evidence (`fixes.minRevisions`). */
+  minRevisions: number;
   /** History before the window start is missing because the clone is shallow. */
   shallow: boolean;
   commits: {
@@ -79,7 +83,8 @@ export interface FixStatistics {
   units: Map<string, UnitFixes>;
   /** Units no longer in the current revision that the window touched. */
   deleted: UnitFixes[];
-  outside: { fixCommits: number; files: OutsideUnits[] };
+  /** `fixCommits` is the distinct fix changes with a changed line outside every function, so it never exceeds the fixes of the window. `fixFileChanges` is the sum of the files' counts, where a change touching three files counts three times. */
+  outside: { fixCommits: number; fixFileChanges: number; files: OutsideUnits[] };
   /** Units touched at least once, and the ones with at least one fix. Deleted units included. */
   unitsTouched: number;
   unitsWithFixes: number;
@@ -105,9 +110,16 @@ const round3 = (value: number): number => Math.round(value * 1000) / 1000;
 const day = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);
 const utf8 = (a: string, b: string): number => Buffer.compare(Buffer.from(a), Buffer.from(b));
 
-/** Fix count, then fix share, then id, which is the order of every list of units. */
-export function byFixes(a: UnitFixes, b: UnitFixes): number {
-  return b.fixCommits - a.fixCommits || (b.fixShare ?? 0) - (a.fixShare ?? 0) || utf8(a.id, b.id);
+/** A unit with fewer revisions than `minRevisions` has too little history for its fix share to mean much. */
+export const isLowEvidence = (fixes: UnitFixes, minRevisions: number): boolean => fixes.revisions < minRevisions;
+
+/** Fix count, then units with enough revisions before low evidence ones, then fix share, then id, which is the order of every list of units. */
+export function byFixes(minRevisions: number): (a: UnitFixes, b: UnitFixes) => number {
+  return (a, b) =>
+    b.fixCommits - a.fixCommits ||
+    Number(isLowEvidence(a, minRevisions)) - Number(isLowEvidence(b, minRevisions)) ||
+    (b.fixShare ?? 0) - (a.fixShare ?? 0) ||
+    utf8(a.id, b.id);
 }
 
 /**
@@ -169,6 +181,7 @@ export async function measureFixes(
   const messages = new Map(history.view.commits.map((commit) => [commit.sha, commit.message] as const));
   const commitBySha = new Map<string, HistoryCommit>(history.view.commits.map((commit) => [commit.sha, commit] as const));
   const fixOf = new Map<string, FixMatch | null>();
+  const excludedMatches: FixMatch[] = [];
   for (const change of inWindow) {
     let found: FixMatch | null = null;
     for (const sha of change.shas) {
@@ -176,6 +189,15 @@ export async function measureFixes(
       if (found !== null) break;
     }
     fixOf.set(change.id, found);
+    if (found === null) {
+      for (const sha of change.shas) {
+        const excluded = findExcludedFix(settings.fix, sha, [messages.get(sha) ?? ""]);
+        if (excluded !== null) {
+          excludedMatches.push(excluded);
+          break;
+        }
+      }
+    }
   }
   const convention = checkFixConvention(inWindow.length, [...fixOf.values()].filter((found) => found !== null).length);
 
@@ -189,7 +211,7 @@ export async function measureFixes(
   for (const change of [...relevant].sort((a, b) => b.committerDate - a.committerDate || utf8(a.id, b.id))) {
     if (change.oversized) commits.skippedBy.oversized += change.shas.length;
     else if (sourceFiles(change).length === 0) commits.skippedBy.noSourceFile += change.shas.length;
-    else if (commits.analysed > 0 && commits.analysed + change.shas.length > request.maxCommits) commits.skippedBy.maxCommits += change.shas.length;
+    else if (commits.analysed > 0 && commits.analysed + change.shas.length > (request.maxCommits ?? Infinity)) commits.skippedBy.maxCommits += change.shas.length;
     else {
       commits.analysed += change.shas.length;
       analysed.push(change);
@@ -345,7 +367,7 @@ export async function measureFixes(
     if (key.startsWith("c:")) units.set(row.id, row);
     else deleted.push(row);
   }
-  deleted.sort(byFixes);
+  deleted.sort(byFixes(settings.fixes.minRevisions));
 
   const outsideByFile = new Map<string, { changes: Set<string>; fixes: Set<string> }>();
   for (const touch of outsideTouches) {
@@ -363,13 +385,19 @@ export async function measureFixes(
   return {
     window,
     convention,
+    excluded: fixEvidence(excludedMatches),
+    minRevisions: settings.fixes.minRevisions,
     shallow,
     commits,
     files: { analysed: analysedFiles, skipped },
     cache: cacheStats,
     units,
     deleted,
-    outside: { fixCommits: outsideFiles.reduce((sum, file) => sum + file.fixCommits, 0), files: outsideFiles },
+    outside: {
+      fixCommits: new Set(outsideTouches.filter((touch) => touch.fix).map((touch) => touch.changeId)).size,
+      fixFileChanges: outsideFiles.reduce((sum, file) => sum + file.fixCommits, 0),
+      files: outsideFiles,
+    },
     unitsTouched: all.length,
     unitsWithFixes: all.filter((unit) => unit.fixCommits > 0).length,
   };

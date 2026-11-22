@@ -1,10 +1,11 @@
 import { afterEach, expect, test, vi } from "vitest";
+import { historyDefaults } from "@code-health/cli-kit/config";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import { runInProcess } from "@code-health/fixtures/cli-testing";
-import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { cli } from "../src/cli.ts";
 import { expectGolden } from "./support/golden.ts";
-import { buildFixRepo } from "./support/fix-history.ts";
+import { buildFixRepo, evidenceHistory, finalBilling, fixHistory, outsideHistory } from "./support/fix-history.ts";
 import { runComplexity } from "./support/run.ts";
 
 vi.setConfig({ testTimeout: 180_000 });
@@ -37,6 +38,7 @@ interface Row {
   unitRevisions: number;
   fixShare: number;
   cognitive: number | null;
+  labels: string[];
   evidence: Evidence[];
   evidenceOmitted: number;
   earlierIds: string[];
@@ -69,7 +71,7 @@ test("lists the evidence commits newest first with the pattern that matched, up 
   const run = await fixes(fixRepo(), "--evidence", "1");
   const price = run.rows.find((row) => row.unit === "priceOrder")!;
   expect(price.evidence).toHaveLength(1);
-  expect(price.evidence[0]).toMatchObject({ date: "2024-02-10", subject: "Fix vip rate in priceOrder", pattern: "\\bfix\\b", matchedIn: "subject" });
+  expect(price.evidence[0]).toMatchObject({ date: "2024-02-10", subject: "Fix vip rate in priceOrder", pattern: historyDefaults.fixPatterns[2], matchedIn: "subject" });
   expect(price.evidence[0]!.sha).toMatch(/^[0-9a-f]{40}$/);
   expect(price.evidenceOmitted).toBe(1);
 
@@ -94,12 +96,61 @@ test("counts a fix that changed only lines outside every function against the fi
 
 test("reports how many commits were analysed and skipped, and what bounded the work", async () => {
   const all = await fixes(fixRepo());
-  expect(all.document.commits).toEqual({ inWindow: 11, analysed: 11, skipped: 0, skippedBy: { maxCommits: 0, oversized: 0, noSourceFile: 0 }, maxCommits: 500 });
+  expect(all.document.commits).toEqual({ inWindow: 11, analysed: 11, skipped: 0, skippedBy: { maxCommits: 0, oversized: 0, noSourceFile: 0 }, maxCommits: null });
 
   const bounded = await fixes(fixRepo(), "--max-commits", "3");
   expect(bounded.document.commits).toEqual({ inWindow: 11, analysed: 3, skipped: 8, skippedBy: { maxCommits: 8, oversized: 0, noSourceFile: 0 }, maxCommits: 3 });
   // The three newest commits are the removal, the second priceOrder fix and the rename, so only the fix of priceOrder is left.
   expect(bounded.rows.map((row) => [row.unit, row.fixCommits])).toEqual([["priceOrder", 1]]);
+});
+
+test("analyses the whole window by default, and --max-commits all says so", async () => {
+  const repo = fixRepo();
+  const run = await fixes(repo, "--max-commits", "all");
+  expect(run.document.inputs.maxCommits).toBeNull();
+  expect(run.document.commits.skippedBy.maxCommits).toBe(0);
+  const bounded = await runInProcess(cli, repo.path, ["fixes", "--max-commits", "3", "--limit", "all"], true);
+  expect(bounded.stdout).toMatch(/Only the newest 3 of 11 commits in the window were analysed: 8 older commits were left out by --max-commits 3/);
+  const whole = await runInProcess(cli, repo.path, ["fixes", "--limit", "all"], true);
+  expect(whole.stdout).not.toMatch(/Only the newest/);
+  const refused = await runComplexity(repo.path, ["fixes", "--max-commits", "none"]);
+  expect(refused.code).toBe(ExitCode.Usage);
+});
+
+test("counts a fix that a pattern matched and an exclude pattern removed as excluded, with the pattern, and not as a fix", async () => {
+  const repo = fixRepo();
+  repo.commit({ message: "Fix typo in the legacy comment", date: "2024-02-12T12:00:00+00:00", changes: [{ op: "modify", path: "src/billing.ts", content: finalBilling("// Order totals, in euro.") }] });
+  const { document, rows } = await fixes(repo);
+  expect(document.fixesExcluded).toMatchObject({ fixes: 1, byPattern: [{ count: 1 }] });
+  expect(document.fixesExcluded.commits[0]).toMatchObject({ subject: "Fix typo in the legacy comment" });
+  expect(document.fixesExcluded.commits[0].pattern).toContain("typos?");
+  expect(document.fixConvention.fixes).toBe(6);
+  expect(rows.find((row) => row.unit === "priceOrder")!.fixCommits).toBe(2);
+});
+
+test("labels a function with fewer than 3 revisions low evidence, and sorts it after the others with the same fix count", async () => {
+  const repo = GitFixture.build([...fixHistory, ...evidenceHistory]);
+  repos.push(repo);
+  const { rows, document } = await fixes(repo);
+  expect(document.lowEvidence.minRevisions).toBe(3);
+  const ones = rows.filter((row) => row.fixCommits === 1);
+  const steady = rows.find((row) => row.unit === "steady")!;
+  const tiny = rows.find((row) => row.unit === "tiny")!;
+  expect([steady.unitRevisions, steady.fixShare, steady.labels]).toEqual([4, 0.25, []]);
+  expect([tiny.unitRevisions, tiny.fixShare, tiny.labels]).toEqual([2, 0.5, ["low evidence"]]);
+  expect(ones.map((row) => row.unit)).toEqual(["steady", "describe", "tiny"]);
+  expect(rows[0]!.unit).toBe("priceOrder");
+});
+
+test("outsideUnits.fixCommits counts each fix once however many files it touched, and never exceeds the fixes", async () => {
+  const repo = GitFixture.build([...fixHistory, ...outsideHistory]);
+  repos.push(repo);
+  const { document } = await fixes(repo);
+  // Two fixes outside functions in billing.ts, and one change that touched src/rates.ts and src/limits.ts outside any function.
+  expect(document.outsideUnits.files).toBe(3);
+  expect(document.outsideUnits.fixFileChanges).toBe(4);
+  expect(document.outsideUnits.fixCommits).toBe(3);
+  expect(document.outsideUnits.fixCommits).toBeLessThanOrEqual(document.fixConvention.fixes);
 });
 
 test("a commit that touches no source file is skipped and counted", async () => {

@@ -24,7 +24,7 @@ export interface ChangeFigures {
   linesChurnedPerChange: number | null;
   /** Share of those changes with a commit that matches the shared fix definition (`history.fixPatterns`). Null with no change. */
   fixCommitRate: number | null;
-  /** The commits behind `fixCommitRate`, with the pattern that matched each. "issue" also matches subjects such as "address review issue". */
+  /** The commits behind `fixCommitRate`, with the pattern that matched each. Some matches are not defects, such as "fix the bug report template". */
   fixCommits: FixEvidence;
 }
 

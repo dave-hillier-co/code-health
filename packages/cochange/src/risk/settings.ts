@@ -112,7 +112,7 @@ export interface RiskSettings {
   newIdentityDays: number;
   newIdentityChanges: number;
   sensitivePaths: string[];
-  /** The shared definition of a fix commit: `history.fixPatterns`, `revertPatterns` and `fixMatchBody`, as `cochange` resolves them. */
+  /** The shared definition of a fix commit: `history.fixPatterns`, `fixExcludePatterns`, `revertPatterns` and `fixMatchBody`, as `cochange` resolves them. */
   fix: FixClassifier;
   followUpDays: number;
   placement: PlacementMode;
@@ -194,9 +194,9 @@ export function readRiskSettings(config: LoadedConfig): RiskSettings {
 
 /** The shared fix definition as cochange resolves it: `cochange.fixPatterns` when set, otherwise `history.fixPatterns`. */
 export function readFixClassifier(config: LoadedConfig): FixClassifier {
-  const section = config.effective[TOOL] as { fixPatterns: string[]; revertPatterns: string[]; fixMatchBody: boolean };
+  const section = config.effective[TOOL] as { fixPatterns: string[]; fixExcludePatterns: string[]; revertPatterns: string[]; fixMatchBody: boolean };
   try {
-    return compileFixClassifier({ fixPatterns: section.fixPatterns, revertPatterns: section.revertPatterns, fixMatchBody: section.fixMatchBody });
+    return compileFixClassifier({ fixPatterns: section.fixPatterns, fixExcludePatterns: section.fixExcludePatterns, revertPatterns: section.revertPatterns, fixMatchBody: section.fixMatchBody });
   } catch (error) {
     if (error instanceof InvalidPatternError) throw configError(`code-health.json: ${error.message}`);
     throw error;

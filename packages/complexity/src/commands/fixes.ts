@@ -22,12 +22,12 @@ export const command: Command = {
     const settings = readSettings(context.config);
     const current = await currentTree(context);
     const { stats, request, paths } = await measureFixesFor(context, settings, current);
-    const rows = [...stats.units.values()].filter((unit) => unit.fixCommits > 0).map(fixRow);
+    const rows = [...stats.units.values()].filter((unit) => unit.fixCommits > 0).map((unit) => fixRow(unit, stats.minRevisions));
     return {
       inputs: { tree: current.kind, paths, maxCommits: request.maxCommits, evidence: request.evidence },
       extra: fixHeader(stats, request),
       results: rows,
-      columns: ["path", "unit", "fixCommits", "unitRevisions", "fixShare", "cognitive"],
+      columns: ["path", "unit", "fixCommits", "unitRevisions", "fixShare", "cognitive", "labels"],
       notices: fixNotices(stats, request),
     };
   },

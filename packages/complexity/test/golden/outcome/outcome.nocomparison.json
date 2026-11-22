@@ -46,14 +46,14 @@
             "byPattern": [
               {
                 "count": 1,
-                "pattern": "\\bfix\\b"
+                "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b"
               }
             ],
             "commits": [
               {
                 "id": "31b364c5b3a01209862efa2e39dadf5ec37c5b65",
                 "matchedIn": "subject",
-                "pattern": "\\bfix\\b",
+                "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
                 "subject": "Fix crash in hot"
               }
             ],
@@ -129,12 +129,12 @@
         "after": {
           "functions": 1,
           "meanComplexityScore": 0.5,
-          "meanScore": 0.375
+          "meanScore": 0.5
         },
         "before": {
           "functions": 1,
           "meanComplexityScore": 0.5,
-          "meanScore": 0.375
+          "meanScore": 0.5
         }
       },
       "comparison": {

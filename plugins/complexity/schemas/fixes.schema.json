@@ -29,8 +29,9 @@
           }
         },
         "maxCommits": {
-          "type": "integer",
-          "minimum": 1
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "The most commits analysed, newest first. Null analyses the whole window."
         },
         "evidence": {
           "type": "integer",

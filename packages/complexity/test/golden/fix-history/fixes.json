@@ -7,7 +7,7 @@
   "commits": {
     "analysed": 11,
     "inWindow": 11,
-    "maxCommits": 500,
+    "maxCommits": null,
     "skipped": 0,
     "skippedBy": {
       "maxCommits": 0,
@@ -27,8 +27,8 @@
           {
             "date": "2024-02-08",
             "matchedIn": "subject",
-            "pattern": "\\bfix\\b",
-            "sha": "73f8c73212fe6de1eb586910e5792c2c3eef295e",
+            "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
+            "sha": "202dda384372200bbdc7df1355e4a6b138d2e2dd",
             "subject": "Fix legacy shipping rate"
           }
         ],
@@ -36,8 +36,11 @@
         "fixCommits": 1,
         "fixShare": 0.5,
         "id": "src/orders.ts#legacy",
+        "labels": [
+          "low evidence"
+        ],
         "path": "src/orders.ts",
-        "score": 1.5,
+        "score": 1.2,
         "unit": "legacy",
         "unitRevisions": 2
       }
@@ -68,15 +71,28 @@
     "note": "The commit messages probably do not follow a convention this can use: there are 11 logical changes in the window, fewer than 30.",
     "share": 0.545
   },
+  "fixesExcluded": {
+    "byPattern": [],
+    "commits": [],
+    "excludePatterns": "history.fixExcludePatterns",
+    "fixes": 0,
+    "note": "Changes that a fix pattern matched and an exclude pattern removed because the fix target is formatting, lint, typos, docs, tests or CI. They are not counted as fixes.",
+    "omitted": 0
+  },
   "inputs": {
     "evidence": 3,
-    "maxCommits": 500,
+    "maxCommits": null,
     "paths": [],
     "tree": "head"
+  },
+  "lowEvidence": {
+    "minRevisions": 3,
+    "rule": "A function with fewer than 3 revisions in the analysed window is labelled \"low evidence\" and sorts after the others with the same fix count."
   },
   "outsideUnits": {
     "files": 1,
     "fixCommits": 2,
+    "fixFileChanges": 2,
     "limit": 10,
     "omitted": 0,
     "rows": [
@@ -89,7 +105,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "1fea426f74295b84106396e7ca0b1a81ece5c08b"
+    "head": "ff3b4208d8631f234e71c3f979954c0eb2989f9e"
   },
   "results": [
     {
@@ -102,14 +118,14 @@
         {
           "date": "2024-02-10",
           "matchedIn": "subject",
-          "pattern": "\\bfix\\b",
-          "sha": "511562087272505e4e47f546c17682f8c8ca8a10",
+          "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
+          "sha": "5ea87bc4aa7617dbe11b31a2ab7a1ddfbbd964c2",
           "subject": "Fix vip rate in priceOrder"
         },
         {
           "date": "2024-02-03",
           "matchedIn": "subject",
-          "pattern": "\\bfix\\b",
+          "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
           "sha": "165f96cc24ae38fe4e16798cc2d3ad6a07099754",
           "subject": "Fix coupon rounding bug"
         }
@@ -119,8 +135,9 @@
       "fixShare": 0.4,
       "id": "src/billing.ts#priceOrder",
       "kind": "function",
+      "labels": [],
       "path": "src/billing.ts",
-      "score": 2.4,
+      "score": 2.66,
       "startLine": 4,
       "unit": "priceOrder",
       "unitRevisions": 5
@@ -135,8 +152,8 @@
         {
           "date": "2024-02-05",
           "matchedIn": "subject",
-          "pattern": "\\bfix\\b",
-          "sha": "72e1821fc040c310f37501db8868bb5d837a2485",
+          "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
+          "sha": "e2761932ac0ce0b9f97b215002d19812b7d77cf5",
           "subject": "Fix the separator in describe"
         }
       ],
@@ -145,8 +162,11 @@
       "fixShare": 0.5,
       "id": "src/billing.ts#describe",
       "kind": "function",
+      "labels": [
+        "low evidence"
+      ],
       "path": "src/billing.ts",
-      "score": 1.5,
+      "score": 1.2,
       "startLine": 16,
       "unit": "describe",
       "unitRevisions": 2

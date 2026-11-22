@@ -13,16 +13,21 @@ export const rules: Record<string, Rule> = {
   "fix-count": {
     summary: "How many of the changes to a file or component were fixes, by commit message",
     explanation: [
-      "A logical change is a fix when one of its commits matches history.fixPatterns (default: the whole words fix, bug, issue and similar in the subject, a fix: prefix, a merge of a fix branch),",
+      "A logical change is a fix when one of its commits matches history.fixPatterns (default: fix, fixes, fixed or fixing at the start of the subject or after 'to', the whole words bug, bugfix, hotfix and defect, a fix: prefix, a merge of a fix branch),",
       "and a revert when one matches history.revertPatterns or says 'This reverts commit'. A revert is counted in its own column and is not a fix.",
+      "A change that a fix pattern matched is left out, and counted in fixesExcluded with the pattern that excluded it, when history.fixExcludePatterns matches the subject (default: the fix target is typos, lint, docs, tests, formatting or CI).",
       "Bodies are matched only with history.fixMatchBody. The count is per file or component, once per logical change, over the same window and noise filters as hotspots.",
       "",
-      "This is a count of commit messages, not of defects. A message such as 'address review issue' matches, and a fix that does not say so does not.",
+      "This is a count of commit messages, not of defects. A message such as 'fix the bug report template' matches, and a fix that does not say so does not.",
       "The output carries the convention check as fixConvention: when fixes are under 2 percent or over 60 percent of logical changes, or there are fewer than 30, the commit messages probably do not follow a convention this can use, and the table prints a Notice.",
       "Read the evidence commits before relying on a count, and read it with hotspots (change frequency) and complexity (what makes the code hard to change).",
     ].join("\n"),
   },
 };
+
+function excludedNotice(count: number, byPattern: { pattern: string; count: number }[]): string {
+  return `${count} changes matched a fix pattern and were left out because the subject is about formatting, lint, typos, docs or tests (history.fixExcludePatterns): ${byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`;
+}
 
 function evidenceOption(value: unknown): number {
   if (value === undefined) return DEFAULT_EVIDENCE;
@@ -59,8 +64,11 @@ export const command = analysisCommand(name, {
       inputs: { by, allFiles: wantsAllFiles(context), evidenceLimit },
       results: rows,
       columns: ["path", ...(by === "component" ? ["files"] : []), "fixes", "revisions", "fixShare", "recentFixes", "lastFix", "reverts", "evidence"],
-      extra: { fixConvention: convention },
-      notices: convention.note === null ? [] : [convention.note.replace(/\.$/, "")],
+      extra: { fixConvention: convention, fixesExcluded: reading.excluded },
+      notices: [
+        ...(convention.note === null ? [] : [convention.note.replace(/\.$/, "")]),
+        ...(reading.excluded.fixes === 0 ? [] : [excludedNotice(reading.excluded.fixes, reading.excluded.byPattern)]),
+      ],
     };
   },
 });

@@ -17,7 +17,7 @@ Factors that measure nearly the same thing form a **family**, and a family count
 | `entropy` | size and diffusion | Whether the churn is concentrated or smeared | A reading aid: concentrated changes are easier to follow |
 | `mixed-purpose` | size and diffusion | Moves or renames combined with content changes | Moves and renames first, on their own |
 | `hotspots-touched` | history | Share of the churn landing in files that change often and recently | Review by an owner, brief the author |
-| `defect-history` | history | Share of the touched files' revisions that were fixes (`history.fixPatterns`; a revert is not a fix). Each file lists the matching commits and the pattern, and "issue" also matches subjects such as "address review issue" | Treat as a prompt to read the fixes |
+| `defect-history` | history | Share of the touched files' revisions that were fixes (`history.fixPatterns`; a revert is not a fix). Each file lists the matching commits and the pattern,, and a fix of typos, lint, docs or tests is left out by `history.fixExcludePatterns` | Treat as a prompt to read the fixes |
 | `contention` | history | Other authors changing the same files lately (a count only) | Check for semantic conflicts a clean merge hides |
 | `age` | history | Old files that lost their context, and files still settling | Read the file's history before reviewing |
 | `abandoned-touched` | history | Touched files that are abandoned, or likely to be (needs `cochange.knowledge.enabled`; unavailable without it) | Characterisation tests and a short note before the change. Counts and file paths only, never stored |
