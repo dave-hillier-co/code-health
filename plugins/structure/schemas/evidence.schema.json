@@ -570,7 +570,7 @@
         },
         "featureCount": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 0
         },
         "revisions": {
           "$ref": "common.schema.json#/$defs/count"
@@ -643,14 +643,17 @@
         },
         "signals": {
           "type": "object",
-          "description": "The four signals, each with the figures that made it fire. A hub is reported only when all four fire.",
+          "description": "The four signals, each with the figures behind it and whether it reached its guideline. A hub is listed when at least two reached.",
           "properties": {
             "starCoChange": {
               "type": "object",
               "properties": {
+                "reached": {
+                  "type": "boolean"
+                },
                 "features": {
                   "type": "integer",
-                  "minimum": 1
+                  "minimum": 0
                 },
                 "featurePairs": {
                   "type": "object",
@@ -670,6 +673,7 @@
                 }
               },
               "required": [
+                "reached",
                 "features",
                 "featurePairs"
               ],
@@ -678,15 +682,19 @@
             "outwardDependencies": {
               "type": "object",
               "properties": {
+                "reached": {
+                  "type": "boolean"
+                },
                 "referenced": {
                   "$ref": "common.schema.json#/$defs/count"
                 },
                 "of": {
                   "type": "integer",
-                  "minimum": 1
+                  "minimum": 0
                 }
               },
               "required": [
+                "reached",
                 "referenced",
                 "of"
               ],
@@ -695,6 +703,9 @@
             "appendShapedEdits": {
               "type": "object",
               "properties": {
+                "reached": {
+                  "type": "boolean"
+                },
                 "hunks": {
                   "$ref": "common.schema.json#/$defs/count"
                 },
@@ -734,6 +745,7 @@
                 }
               },
               "required": [
+                "reached",
                 "hunks",
                 "appendShaped",
                 "additions",
@@ -745,6 +757,9 @@
             "contention": {
               "type": "object",
               "properties": {
+                "reached": {
+                  "type": "boolean"
+                },
                 "maxAuthors": {
                   "type": "integer",
                   "minimum": 1
@@ -755,6 +770,7 @@
                 }
               },
               "required": [
+                "reached",
                 "maxAuthors",
                 "windowDays"
               ],
@@ -799,6 +815,12 @@
           "type": "integer",
           "minimum": 0,
           "description": "Census entries not listed in nearbyMechanisms because of the limit of ten."
+        },
+        "signalsReached": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 4,
+          "description": "How many of the four signals reached their guidelines."
         }
       },
       "required": [
@@ -812,6 +834,7 @@
         "featureCount",
         "revisions",
         "features",
+        "signalsReached",
         "signals",
         "stability",
         "unblocks",

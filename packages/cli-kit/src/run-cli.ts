@@ -23,6 +23,8 @@ export interface CommandContext {
   values: ParsedArguments["values"];
   /** Set by a command that may store a report, so the run prints whether it did. Left unset by commands that never do. */
   report?: ReportStatus;
+  /** Lines a command wants printed to stderr after its output, such as an input it ignored and why. */
+  stderrNotices?: string[];
 }
 
 export interface CommandOutput {
@@ -34,6 +36,8 @@ export interface CommandOutput {
   results: unknown;
   /** Table columns, and the valid values for --fields. Defaults to the keys of the first row. */
   columns?: string[];
+  /** Lines a table run prints after the rows, such as a check that does not apply. JSON carries the same facts in the command's own fields. */
+  notices?: string[];
   /** The command's check failed (findings over threshold or a regression): exit 1. */
   failed?: boolean;
 }
@@ -144,6 +148,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
   const config = loadConfig(repo.root, cli.config);
   const context: CommandContext = { repo, config, positionals: args.positionals, values: args.values };
   const output = await command.run(context);
+  for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}\n`);
 
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
@@ -173,6 +178,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
     );
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results as Record<string, unknown>[], args.fields ?? columns, truncated));
+    for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.\n`);
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.\n`);
   } else {
     io.stdout.write(serialise(results));

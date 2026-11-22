@@ -52,6 +52,7 @@ function writeLocalityReport(): void {
   writeFileSync(
     join(directory, "locality.analyse.json"),
     JSON.stringify({
+      schemaVersion: 1,
       tool: "locality",
       command: "analyse",
       repo: { head: repo.git("rev-parse", "HEAD"), dirty: false },

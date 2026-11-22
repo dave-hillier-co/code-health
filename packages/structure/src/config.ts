@@ -56,6 +56,8 @@ export const structureConfig: PluginConfigSpec = {
     minStaticCoupling: 3,
     /** Evidence floor: co-change is "high" only with at least this many shared changes, and significantly above what independence predicts. A coupling from fewer shared changes is not meaningful. */
     minSupport: 3,
+    /** Evidence floor: an incidental pair counts as burdening agents with reads when at least this many tasks edited one side and opened a file of the other only to follow the dependency. Fewer tasks than this is too few to read as a pattern. */
+    minAgentTasks: 3,
     /** The level of the one-sided exact test for high co-change, between 0 and 1 exclusive. */
     significanceLevel: 0.01,
     /** Guideline (a judgement call, after CodeScene's co-change hotspots): a registration hub has at least this many distinct features co-changing with it. */
@@ -108,6 +110,7 @@ export interface StructureSettings {
   minInstabilityGap: number;
   minStaticCoupling: number;
   minSupport: number;
+  minAgentTasks: number;
   significanceLevel: number;
   hubMinFeatures: number;
   /** Percent. */
@@ -201,6 +204,7 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     minInstabilityGap,
     minStaticCoupling: positive("minStaticCoupling"),
     minSupport: positive("minSupport"),
+    minAgentTasks: positive("minAgentTasks"),
     significanceLevel,
     hubMinFeatures: positive("hubMinFeatures"),
     hubMinConfidence: percent("hubMinConfidence"),

@@ -40,13 +40,13 @@ export function agentReadsAcross(tasks: readonly TaskEffort[], from: readonly st
 
 /**
  * Ranks the incidental pairs of `rows` by what else they do: a pair ranks high when it blocks a locality move,
- * is part of a cycle, violates a layer rule, or burdens agents with reads (at least `minSupport` tasks). High pairs
+ * is part of a cycle, violates a layer rule, or burdens agents with reads (at least `minAgentTasks` tasks). High pairs
  * come first, then those with more reasons, then the larger entanglements. Pairs of other quadrants are untouched.
  */
 export function rankIncidental(
   rows: readonly CouplingRow[],
   model: Model,
-  settings: Pick<StructureSettings, "exactLimit" | "layers" | "minSupport">,
+  settings: Pick<StructureSettings, "exactLimit" | "layers" | "minAgentTasks">,
   tasks: readonly TaskEffort[] | undefined,
 ): CouplingRow[] {
   const cycles = rows.some((row) => row.quadrant === "incidental") ? findCycles(model, settings) : [];
@@ -62,7 +62,7 @@ export function rankIncidental(
             model.graph.filesOf.get(row.to) ?? [],
             [...(model.graph.members.get(edgeKey(row.from, row.to)) ?? []), ...(model.graph.members.get(edgeKey(row.to, row.from)) ?? [])],
           );
-    if (agentReads !== null && agentReads >= settings.minSupport) reasons.push("agent-reads");
+    if (agentReads !== null && agentReads >= settings.minAgentTasks) reasons.push("agent-reads");
     return { ...row, incidental: { rank: reasons.length > 0 ? "high" : "low", reasons, agentReads } };
   });
   // `findCoupling` orders by quadrant, so the incidental rows are one run, and only they move.
