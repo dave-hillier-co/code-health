@@ -24,7 +24,8 @@
     "status": "nothing-acted-on",
     "suite": {
       "actedOn": 0,
-      "commits": 0
+      "commits": 0,
+      "untrailered": 0
     }
   },
   "schemaVersion": 1,

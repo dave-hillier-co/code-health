@@ -246,6 +246,8 @@ describe("measure compare, where the moves did not go through the skill", () => 
     tidyUp(repo, [1], { trailer: false });
     const { document } = await measure(repo, sessions, ["compare"]);
     expect(document.results.status).toBe("nothing-acted-on");
+    // The rename is not attributed to the tool, but the count shows that a candidate's file was moved.
+    expect(document.results.suite).toMatchObject({ commits: 0, actedOn: 0, untrailered: 1 });
   }, 60_000);
 
   test("a baseline taken after a tidy-up says so", async () => {

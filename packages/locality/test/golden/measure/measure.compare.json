@@ -343,7 +343,8 @@
       "actedOn": 2,
       "commits": 2,
       "comparison": 2,
-      "overlapping": 4
+      "overlapping": 4,
+      "untrailered": 0
     }
   },
   "schemaVersion": 1,

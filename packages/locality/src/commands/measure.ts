@@ -199,6 +199,9 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
   const done = await actionsSince(root, view, before.head, TOOL_PLUGIN);
   const moved = new Set(done.actions.map((action) => action.from));
   const actedOn = before.candidates.filter((candidate) => candidate.files.some((file) => moved.has(file)));
+  // Candidates whose files were moved or removed without the trailer are not attributed to the tool. Counted so the reader sees them.
+  const movedByHand = new Set(done.untrailered.map((action) => action.from));
+  const untrailered = before.candidates.filter((candidate) => !actedOn.includes(candidate) && candidate.files.some((file) => movedByHand.has(file))).length;
   const common = {
     inputs: { name, baseline: { head: before.head, stamp: before.effort.stamp } },
   };
@@ -209,7 +212,7 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
         name,
         status: "nothing-acted-on",
         baseline: { head: before.head, window: before.window },
-        suite: { commits: done.commits, actedOn: 0 },
+        suite: { commits: done.commits, actedOn: 0, untrailered },
       },
     };
   }
@@ -281,7 +284,7 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
       spreadReproduced: reproduced(recomputed, before.spread),
       structure,
       after: { ...after, days: windowLength(after), matchingDays: windowLength(before.window) },
-      suite: { commits: done.commits, actedOn: actedOn.length, comparison: comparison.group.length, overlapping: comparison.overlapping },
+      suite: { commits: done.commits, actedOn: actedOn.length, untrailered, comparison: comparison.group.length, overlapping: comparison.overlapping },
       pairs: comparison.pairs,
       actedOn: { candidates: actedOn.map((candidate) => candidate.path), ...actedArms },
       comparison: { candidates: comparison.group.map((candidate) => candidate.path), ...aloneArms },
