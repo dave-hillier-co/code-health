@@ -58,6 +58,25 @@ export function cyclesRepository(): GitFixture {
   ]);
 }
 
+/**
+ * Two folder cycles with no file cycle behind either. src/app and its child src/app/feature import each
+ * other, so that cycle is nested, and src/core and src/ui import each other, which is not. The nested one
+ * sorts first by id, so only its being nested puts it last.
+ */
+export function nestedCyclesRepository(): GitFixture {
+  return GitFixture.build([
+    commit("Add the modules", "2024-01-10T09:00:00Z", [
+      { op: "add", path: "src/app/main.ts", content: module("main", [["./feature/page.ts", "page"]]) },
+      { op: "add", path: "src/app/shared.ts", content: module("shared", []) },
+      { op: "add", path: "src/app/feature/page.ts", content: module("page", [["../shared.ts", "shared"]]) },
+      { op: "add", path: "src/core/model.ts", content: module("model", [["../ui/format.ts", "format"]]) },
+      { op: "add", path: "src/core/base.ts", content: module("base", []) },
+      { op: "add", path: "src/ui/format.ts", content: module("format", []) },
+      { op: "add", path: "src/ui/view.ts", content: module("view", [["../core/base.ts", "base"]]) },
+    ]),
+  ]);
+}
+
 /** One module importing another, no cycle anywhere. */
 export function acyclicRepository(): GitFixture {
   return GitFixture.build([

@@ -81,6 +81,10 @@
             },
             "minItems": 1
           },
+          "nested": {
+            "type": "boolean",
+            "description": "A folder cycle whose folders all lie on one path from the root, such as a folder and its child. Sorted after cycles with nested false. Always false at other levels."
+          },
           "method": {
             "enum": [
               "exact",
@@ -111,6 +115,7 @@
           "level",
           "size",
           "nodes",
+          "nested",
           "method",
           "breakingSet",
           "coChangeAcross",
