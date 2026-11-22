@@ -19,7 +19,7 @@ This is the most sensitive analysis in the suite. These rules are not optional.
 - **`successors --names` is the one command that shows identities**, and it shows only active developers, as recommended reviewers and pair partners. Run it only when the user wants to assign people to files at risk. It never lists the people who have left, and you must not work them out another way.
 - **Do not rank people.** Decline to say who is most likely to leave, whose departure would hurt most, or who is "the risk". Decline to judge anyone's contribution or performance, and to speculate about individuals' plans. Say why: the model assumes departures are random and says nothing about any person, and a ranking of people reads as an evaluation of them. Offer what it can do: where knowledge concentrates, and who could pick it up.
 - **No named scenarios.** There is no "what if Dana leaves" mode and you must not build one by overriding activity. `--mode k-leavers` samples uniformly and reports distributions only.
-- **Overrides stay local.** If someone is on leave or has gone, `.code-health/local/knowledge-overrides.json` corrects who counts as active. It is ignored by git. Never put identities in the committed config, in reports, issues or commit messages.
+- **Overrides stay local.** If someone is on leave or has gone, `.code-health/local/knowledge-overrides.json` corrects who counts as active. It is ignored by git, and every abandonment command prints a warning on stderr if the file is tracked or not ignored. Never put identities in the committed config, in reports, issues or commit messages.
 - The output of these commands is never stored as a report for other tools to read. Keep it that way: do not copy it into files in the repository.
 
 ## Workflow

@@ -25,7 +25,7 @@ The paper's thresholds are defaults here, and every one is configurable.
 In scope:
 
 - Line-level authorship at HEAD, cached incrementally.
-- Current abandonment: files already abandoned because their authors are inactive.
+- Current abandonment: files with lines held by people who have left, ranked by score, with the files at the abandonment guideline marked abandoned.
 - Simulated abandonment: loss distribution, expected loss, KaR and tail ratio, per file and per component.
 - Risk weighted by importance: abandonment probability combined with hotspot score, so cold code ranks below code that changes.
 - Successor recommendations for at-risk files.
@@ -100,7 +100,7 @@ Subcommands of the cochange CLI. Every one supports `--json` with a versioned sc
 | Command | Output |
 |---|---|
 | `cochange blame refresh` | Updates line authorship for files whose blob changed since the last run |
-| `cochange abandonment current [--by file\|component]` | Files already abandoned, ranked |
+| `cochange abandonment current [--by file\|component]` | Files with lines held by people who have left, ranked, with `abandoned` set for those at the abandonment guideline |
 | `cochange abandonment simulate [--mode rate\|historical\|k-leavers] [--k N] [--trials N] [--horizon P] [--seed S]` | Loss distribution summary, plus top at-risk files and components |
 | `cochange abandonment turnover` | Estimated turnover rate per period, with the developer counts behind it (no names) |
 | `cochange successors PATH... [--names]` | Ranked successors per file, with the coupling evidence |
@@ -116,7 +116,7 @@ This is the most sensitive analysis in the suite, so it is the most constrained.
 - **Off by default.** It needs `cochange.knowledge.enabled: true` in the repo config.
 - **No names by default.** Outputs are per file and per component, with developers as counts. `successors --names` is the only command that shows identities, and it shows only *active* developers as recommended reviewers and pair partners. It never lists leavers, or the people whose departure would cause the most loss.
 - **No individual departure ranking.** The CLI does not output "impact if person X leaves". The `k-leavers` mode samples uniformly and reports distributions only. Named scenarios (a specific person or team leaving) are deliberately unsupported. Their output reads as an evaluation of people.
-- **Overrides stay local.** Corrections to the activity window (someone on leave, someone gone) go in `.code-health/local/knowledge-overrides.json`, which that folder's own `.gitignore` excludes from git ([suite.md](suite.md#local-state)). It is not part of the cache, so clearing the cache keeps them. Identities never go in the committed config.
+- **Overrides stay local.** Corrections to the activity window (someone on leave, someone gone) go in `.code-health/local/knowledge-overrides.json`, which that folder's own `.gitignore` excludes from git ([suite.md](suite.md#local-state)). It is not part of the cache, so clearing the cache keeps them. Identities never go in the committed config. Every abandonment subcommand and `successors` prints a warning on stderr when that file exists and git tracks it or does not ignore it. The warning creates and changes no file.
 - **One report, of files.** A configured `simulate` run (no `--mode`, `--k`, `--trials`, `--horizon` or `--seed`) on a clean tree stores `reports/cochange.abandonment.simulate.json` for change-risk to read. It holds files, components and probabilities, and no identities. Nothing else here is stored.
 - **Local only.** As for the rest of the suite.
 

@@ -1,6 +1,7 @@
 import type { CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { historySections, identityStamps } from "../analysis-command.ts";
 import { loadHistory, type LoadedHistory } from "../history-access.ts";
+import { overridesExposure } from "./overrides-exposure.ts";
 import { loadKnowledge, type LoadedKnowledge } from "./load.ts";
 import { requireKnowledge, type KnowledgeSettings } from "./settings.ts";
 
@@ -21,6 +22,8 @@ export interface Prepared {
 export async function prepare(context: CommandContext): Promise<Prepared> {
   const settings = requireKnowledge(context);
   const noRefresh = context.values["no-refresh"] === true;
+  const exposure = await overridesExposure(context.repo.root);
+  if (exposure !== null) process.stderr.write(`${exposure}\n`);
   const history = await loadHistory(context, { noRefresh });
   const knowledge = await loadKnowledge(context, history, settings, { noRefresh });
   return { context, settings, history, knowledge, noRefresh };
