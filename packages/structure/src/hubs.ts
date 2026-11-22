@@ -45,15 +45,19 @@ export interface Hub {
   /** Logical changes to the hub file in the window. */
   revisions: number;
   features: HubFeature[];
-  /** The four signals, each with the figures that made it fire. A hub is reported only when all four fire. */
+  /** How many of the four signals reached their guidelines. A hub is listed when at least two did. */
+  signalsReached: number;
+  /** The four signals, each with the figures behind it and whether it reached its guideline. */
   signals: {
     starCoChange: {
+      reached: boolean;
       features: number;
       /** Pairs of those features that are active or co-change highly, so a low co-change between them is evidence. */
       featurePairs: { classified: number; high: number };
     };
-    outwardDependencies: { referenced: number; of: number };
+    outwardDependencies: { reached: boolean; referenced: number; of: number };
     appendShapedEdits: {
+      reached: boolean;
       hunks: number;
       appendShaped: number;
       additions: number;
@@ -61,7 +65,7 @@ export interface Hub {
       /** The line, at the analysed commit, that opens the collection literal being appended to. */
       collection: { line: number; text: string } | null;
     };
-    contention: { maxAuthors: number; windowDays: number };
+    contention: { reached: boolean; maxAuthors: number; windowDays: number };
   };
 }
 
@@ -149,9 +153,27 @@ function maxAuthorsWithin(changes: readonly LogicalChange[], windowSeconds: numb
   return most;
 }
 
+const SIGNALS_LISTED = 2;
+
+const share = (part: number, whole: number): number => (whole === 0 ? 0 : part / whole);
+
+/** Hubs with more signals first, then by the figures behind each signal (features, outward share, append share, authors), then revisions and path. */
+export function compareHubs(a: Hub, b: Hub): number {
+  return (
+    b.signalsReached - a.signalsReached ||
+    b.featureCount - a.featureCount ||
+    share(b.signals.outwardDependencies.referenced, b.signals.outwardDependencies.of) - share(a.signals.outwardDependencies.referenced, a.signals.outwardDependencies.of) ||
+    share(b.signals.appendShapedEdits.appendShaped, b.signals.appendShapedEdits.hunks) - share(a.signals.appendShapedEdits.appendShaped, a.signals.appendShapedEdits.hunks) ||
+    b.signals.contention.maxAuthors - a.signals.contention.maxAuthors ||
+    b.revisions - a.revisions ||
+    compareIds(a.file, b.file)
+  );
+}
+
 /**
- * Registration hubs: central files that every feature has to edit. A file is a hub only when four
- * signals hold together, so each one alone (a busy file, a barrel of imports) is not enough:
+ * Registration hubs: central files that every feature has to edit. Four signals describe one, and
+ * each alone matches ordinary files (a busy file, a barrel of imports), so a file is listed when at
+ * least two reach their guidelines and the all-four files sort first:
  *
  * 1. Star co-change: at least `hubMinFeatures` modules each co-change with it significantly and at
  *    high confidence feature to hub, while those features rarely co-change with each other.
@@ -160,8 +182,7 @@ function maxAuthorsWithin(changes: readonly LogicalChange[], windowSeconds: numb
  *    `appendShape`, which works in any language).
  * 4. Contention: `hubMinAuthors` distinct authors edit it within `hubContentionDays`. Only the count is used.
  *
- * The model must count every pair of modules (`everyPair`). Hubs are ranked by the features feeding
- * them, then by their revisions.
+ * The model must count every pair of modules (`everyPair`). See `compareHubs` for the order.
  */
 export async function findHubs({ root, headSha, model, changes, settings }: HubInputs): Promise<Hub[]> {
   const { activity, graph, project } = model;
@@ -186,7 +207,6 @@ export async function findHubs({ root, headSha, model, changes, settings }: HubI
         referencedBy: null,
       });
     }
-    if (features.length < settings.hubMinFeatures) continue;
     features.sort((a, b) => compareIds(a.module, b.module));
 
     // the features must rarely co-change with each other
@@ -204,27 +224,38 @@ export async function findHubs({ root, headSha, model, changes, settings }: HubI
         if (together) high++;
       }
     }
-    if (classified > 0 && percent(high, classified) > settings.hubMaxFeatureCoupling) continue;
+    const starReached = features.length >= settings.hubMinFeatures && !(classified > 0 && percent(high, classified) > settings.hubMaxFeatureCoupling);
 
     // the stable mechanism depends on the volatile features
-    const text = (await readBlobAt(root, headSha, file)) ?? "";
-    const imported = new Set((project.graph.get(file) ?? []).map((target) => graph.moduleByFile.get(target)));
-    for (const feature of features) {
-      feature.referencedBy = imported.has(feature.module) ? "import" : namesInPathString(text, feature.module) ? "path-string" : null;
+    let text = "";
+    let referenced = 0;
+    if (features.length > 0) {
+      text = (await readBlobAt(root, headSha, file)) ?? "";
+      const imported = new Set((project.graph.get(file) ?? []).map((target) => graph.moduleByFile.get(target)));
+      for (const feature of features) {
+        feature.referencedBy = imported.has(feature.module) ? "import" : namesInPathString(text, feature.module) ? "path-string" : null;
+      }
+      referenced = features.filter((f) => f.referencedBy !== null).length;
     }
-    const referenced = features.filter((f) => f.referencedBy !== null).length;
-    if (percent(referenced, features.length) < settings.hubMinOutward) continue;
+    const outwardReached = features.length > 0 && percent(referenced, features.length) >= settings.hubMinOutward;
+
+    const maxAuthors = maxAuthorsWithin(history.changes, settings.hubContentionDays * 86_400);
+    const contentionReached = maxAuthors >= settings.hubMinAuthors;
+
+    // the diff is read only when the file can still reach two signals
+    const cheapReached = [starReached, outwardReached, contentionReached].filter(Boolean).length;
+    if (cheapReached === 0) continue;
 
     // most of its edits add or remove entries of one collection
     const shas = new Set(history.changes.flatMap((change) => change.shas));
     const hunks = await windowHunks(root, headSha, file, shas);
     const shapes = hunks.map((hunk) => ({ hunk, shape: appendShape(hunk) }));
     const appended = shapes.filter((s) => s.shape !== null);
-    if (hunks.length < settings.minSupport || percent(appended.length, hunks.length) < settings.hubMinAppendShare) continue;
+    const appendReached = hunks.length >= settings.minSupport && percent(appended.length, hunks.length) >= settings.hubMinAppendShare;
+    const signalsReached = cheapReached + (appendReached ? 1 : 0);
+    if (signalsReached < SIGNALS_LISTED) continue;
 
-    const maxAuthors = maxAuthorsWithin(history.changes, settings.hubContentionDays * 86_400);
-    if (maxAuthors < settings.hubMinAuthors) continue;
-
+    if (text === "") text = (await readBlobAt(root, headSha, file)) ?? "";
     const lines = text.split("\n");
     let collection: { line: number; text: string } | null = null;
     for (const { hunk } of appended) {
@@ -245,19 +276,21 @@ export async function findHubs({ root, headSha, model, changes, settings }: HubI
       featureCount: features.length,
       revisions: history.changes.length,
       features,
+      signalsReached,
       signals: {
-        starCoChange: { features: features.length, featurePairs: { classified, high } },
-        outwardDependencies: { referenced, of: features.length },
+        starCoChange: { reached: starReached, features: features.length, featurePairs: { classified, high } },
+        outwardDependencies: { reached: outwardReached, referenced, of: features.length },
         appendShapedEdits: {
+          reached: appendReached,
           hunks: hunks.length,
           appendShaped: appended.length,
           additions: shapes.filter((s) => s.shape === "addition").length,
           removals: shapes.filter((s) => s.shape === "removal").length,
           collection,
         },
-        contention: { maxAuthors, windowDays: settings.hubContentionDays },
+        contention: { reached: contentionReached, maxAuthors, windowDays: settings.hubContentionDays },
       },
     });
   }
-  return hubs.sort((a, b) => b.featureCount - a.featureCount || b.revisions - a.revisions || compareIds(a.file, b.file));
+  return hubs.sort(compareHubs);
 }

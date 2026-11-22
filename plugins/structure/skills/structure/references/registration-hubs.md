@@ -4,7 +4,7 @@ A registration hub is a central file that every feature has to edit: a route tab
 
 ## What the CLI tells you
 
-`structure hubs --json` reports a file only when four signals hold together, and prints the figures behind each:
+`structure hubs --json` lists a file when at least two of four signals reach their guidelines, and prints the figures behind each. `signalsReached` counts them and each signal has a `reached` flag. Files that reach all four come first. A file with two or three is a weaker match, so check which signals did not reach before treating it as a hub:
 
 - **Star co-change** (`starCoChange`, `features`): folders or components that each change with the hub at high confidence (`confidenceFeatureToHub`) and not by chance (`pValue`), while those features rarely change with each other (`featurePairs.high` is small next to `classified`).
 - **Outward dependencies** (`outwardDependencies`, and `referencedBy` on each feature): the hub imports the features or names them in a path string. The stable mechanism depends on the volatile features.
@@ -28,7 +28,7 @@ Do not default to any named pattern. If the mechanism you would choose does not 
 - **Prefer declarative over side-effect registration.** Registration triggered by importing a module depends on import order, defeats tree-shaking and hides what is registered. An explicit contribution that is collected is easier for agents and people to trace.
 - **Keep the overview.** A central route or menu file is also documentation: one place to see the whole app. If the inversion removes it, keep a generated or queryable view (a script, or a test that snapshots the assembled table) so the overview survives.
 - **Ordering and cross-cutting rules.** Menu order, permissions and grouping often lived in the hub. Move them into explicit fields on each contribution (order, group), or keep them central as policy over contributions. They must not become implicit in discovery order.
-- **Is it really a hub?** A file with the first three signals and no contention is still a hub, only one nobody has yet collided on. A file with append-shaped edits but few features is a list that one feature grows, which is not a hub: look at `featureCount` and `featurePairs` before concluding.
+- **Is it really a hub?** A file with the first three signals and no contention (`contention.reached` false) is still a hub, only one nobody has yet collided on. A file with append-shaped edits but few features is a list that one feature grows, which is not a hub: look at `featureCount` and `featurePairs` before concluding.
 - **Features that do co-change.** If `featurePairs.high` is large, the features share a design decision of their own, and the hub is the lesser problem. Co-locate the features first.
 
 ## Make the change
