@@ -1,0 +1,194 @@
+{
+  "agreement": {},
+  "command": "analyse",
+  "config": "25577109d836aa14",
+  "filesWithSyntaxErrors": [],
+  "inputs": {
+    "layer": "structural",
+    "metrics": [
+      "cognitive",
+      "cyclomatic",
+      "nesting",
+      "parameters",
+      "length",
+      "keyword",
+      "bumps"
+    ],
+    "paths": [],
+    "tree": "head"
+  },
+  "layers": {
+    "lexical": 0,
+    "none": 0,
+    "structural": 1
+  },
+  "ranking": {
+    "basis": "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
+    "changeWeighted": true,
+    "window": {
+      "months": 12,
+      "since": 1672531200,
+      "until": 1704067200
+    }
+  },
+  "repo": {
+    "dirty": false,
+    "head": "f906356fd55b6fb906d5715d29855e61ad649cec"
+  },
+  "results": [
+    {
+      "bumpDepth": 3,
+      "bumpSize": 5,
+      "bumps": 4,
+      "changeWeight": 0.5,
+      "cognitive": 7,
+      "complexityScore": 0.875,
+      "cyclomatic": 6,
+      "dominant": "length",
+      "endLine": 22,
+      "id": "src/tangled.ts#tangled",
+      "kind": "function",
+      "labels": [
+        "bumpy-road"
+      ],
+      "length": 22,
+      "nesting": 2,
+      "optionCount": 0,
+      "parameters": 2,
+      "path": "src/tangled.ts",
+      "percentiles": {
+        "bumps": 0.875,
+        "cognitive": 0.625,
+        "cyclomatic": 0.75,
+        "length": 0.875,
+        "nesting": 0.625,
+        "parameters": 0.75
+      },
+      "revisions": 1,
+      "score": 0.4375,
+      "source": "structural",
+      "startLine": 1,
+      "statements": 14,
+      "test": false,
+      "unit": "tangled"
+    },
+    {
+      "bumpDepth": 5,
+      "bumpSize": 7,
+      "bumps": 2,
+      "changeWeight": 0.5,
+      "cognitive": 11,
+      "complexityScore": 0.875,
+      "cyclomatic": 6,
+      "dominant": "cognitive",
+      "endLine": 54,
+      "id": "src/tangled.ts#deep",
+      "kind": "function",
+      "labels": [
+        "bumpy-road"
+      ],
+      "length": 15,
+      "nesting": 4,
+      "optionCount": 0,
+      "parameters": 2,
+      "path": "src/tangled.ts",
+      "percentiles": {
+        "bumps": 0.625,
+        "cognitive": 0.875,
+        "cyclomatic": 0.75,
+        "length": 0.625,
+        "nesting": 0.875,
+        "parameters": 0.75
+      },
+      "revisions": 1,
+      "score": 0.4375,
+      "source": "structural",
+      "startLine": 40,
+      "statements": 8,
+      "test": false,
+      "unit": "deep"
+    },
+    {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
+      "changeWeight": 0.5,
+      "cognitive": 3,
+      "complexityScore": 0.375,
+      "cyclomatic": 4,
+      "dominant": "cognitive",
+      "endLine": 32,
+      "id": "src/tangled.ts#emptyBodies",
+      "kind": "function",
+      "labels": [],
+      "length": 9,
+      "nesting": 1,
+      "optionCount": 0,
+      "parameters": 1,
+      "path": "src/tangled.ts",
+      "percentiles": {
+        "bumps": 0.25,
+        "cognitive": 0.375,
+        "cyclomatic": 0.375,
+        "length": 0.375,
+        "nesting": 0.25,
+        "parameters": 0.25
+      },
+      "revisions": 1,
+      "score": 0.1875,
+      "source": "structural",
+      "startLine": 24,
+      "statements": 4,
+      "test": false,
+      "unit": "emptyBodies"
+    },
+    {
+      "bumpDepth": 0,
+      "bumpSize": 0,
+      "bumps": 0,
+      "changeWeight": 0.5,
+      "cognitive": 2,
+      "complexityScore": 0.25,
+      "cyclomatic": 3,
+      "dominant": "nesting",
+      "endLine": 38,
+      "id": "src/tangled.ts#flat",
+      "kind": "function",
+      "labels": [],
+      "length": 5,
+      "nesting": 1,
+      "optionCount": 0,
+      "parameters": 1,
+      "path": "src/tangled.ts",
+      "percentiles": {
+        "bumps": 0.25,
+        "cognitive": 0.125,
+        "cyclomatic": 0.125,
+        "length": 0.125,
+        "nesting": 0.25,
+        "parameters": 0.25
+      },
+      "revisions": 1,
+      "score": 0.125,
+      "source": "structural",
+      "startLine": 34,
+      "statements": 5,
+      "test": false,
+      "unit": "flat"
+    }
+  ],
+  "schemaVersion": 1,
+  "skipped": {},
+  "skippedFiles": {
+    "binary": 0,
+    "excluded": 0,
+    "large": 0,
+    "tests": 0
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 4
+  }
+}

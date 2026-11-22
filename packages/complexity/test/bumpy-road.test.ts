@@ -3,9 +3,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { loadConfig } from "@code-health/cli-kit/config";
+import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { treeFromDirectory } from "@code-health/parse/source-tree";
 import { complexityConfig, readSettings } from "../src/config.ts";
 import { measureTree, type UnitRecord } from "../src/measure.ts";
+import { expectGolden } from "./support/golden.ts";
+import { runComplexity } from "./support/run.ts";
 
 /**
  * The bumpy road, computed from the syntax tree: a bump is the body of a control structure that sits directly in
@@ -177,5 +180,52 @@ describe("the bumpy road thresholds", () => {
 
   test("reject a value that is not a count", async () => {
     await expect(measureWith({ bumps: 0 })).rejects.toThrow(/thresholds.bumps/);
+  });
+});
+
+describe("the bumpy road through the CLI", () => {
+  const repoWith = (config?: object) =>
+    GitFixture.build([
+      {
+        type: "commit",
+        message: "Add a tangled function and a flat one",
+        date: "2024-01-01T00:00:00+00:00",
+        changes: [
+          ...(config === undefined ? [] : [{ op: "add" as const, path: "code-health.json", content: JSON.stringify(config) }]),
+          { op: "add", path: "src/tangled.ts", content: files["tangled.ts"]! },
+        ],
+      },
+    ]);
+  const analyse = async (repo: GitFixture) => {
+    const run = await runComplexity(repo.path, ["analyse", "--layer", "structural", "--limit", "all", "--json"]);
+    expect(run.stderr).toBe("");
+    return { stdout: run.stdout, rows: JSON.parse(run.stdout).results as { id: string; values: { bumps: number }; bumpDepth: number; bumpSize: number; labels?: string[]; bumpyRoad?: boolean }[] };
+  };
+
+  test("analyse reports the bump count, depth and size of a bumpy function, matches its golden, and leaves a flat one alone", async () => {
+    const repo = repoWith();
+    try {
+      const { rows, stdout } = await analyse(repo);
+      const tangled = rows.find((row) => row.id === "src/tangled.ts#tangled")!;
+      expect(JSON.stringify(tangled)).toContain("bump");
+      expect(tangled).toMatchObject({ bumpDepth: 3, bumpSize: 5 });
+      expect(rows.find((row) => row.id === "src/tangled.ts#flat")).toMatchObject({ bumpDepth: 0, bumpSize: 0 });
+      expectGolden("bumpy", "analyse", stdout);
+    } finally {
+      repo.dispose();
+    }
+  });
+
+  test("thresholds.bumps from the repository's configuration decides which functions are labelled", async () => {
+    const strict = repoWith({ complexity: { thresholds: { bumps: 5 } } });
+    const lax = repoWith();
+    try {
+      const labelled = async (repo: GitFixture) => (await analyse(repo)).rows.filter((row) => JSON.stringify(row).includes("bumpy")).map((row) => row.id);
+      expect(await labelled(lax)).toContain("src/tangled.ts#tangled");
+      expect(await labelled(strict)).not.toContain("src/tangled.ts#tangled");
+    } finally {
+      strict.dispose();
+      lax.dispose();
+    }
   });
 });
