@@ -31,21 +31,30 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs analyse --json --limit 10
    ```
 
-   Each row is a function with its metrics, a `score` (its highest percentile), the `dominant` metric, and `labels`
-   such as `cognitive-high` or `bumpy-road`. Read `layers` and `skipped` first: a language with no structural adapter,
+   Each row is a production function with its metrics, a `score` (its cognitive complexity by default), percentiles, the
+   `dominant` metric of its highest percentile, a `role` and `labels` such as `cognitive-high` or `bumpy-road`. Read `layers` and `skipped` first: a language with no structural adapter,
    and no lexical profile with measured agreement, gets file-level numbers only, and the output says so. Do not
    present a lexical value as exact. The `agreement` section carries the rate that released it.
    `parseCoverage` gives the share of parsed files with syntax errors, and a notice says when it is above the
    `syntaxErrorPercent` guideline: those files' functions may be incomplete, so say so before ranking from them.
 
-2. The default order is the complexity itself: the highest percentile of any selected metric within the repository
-   (`complexityScore`, `ranking.by` is `complexity`), so the hardest functions to read come first whether or not they
-   change. `--by change-weighted` gives the hotspot order instead: that percentile times the file's change weight, so
-   complex code that has not changed in the window has weight 0 and ranks last, and the top of the list is code that is
-   both hard to read and edited (`ranking.changeWeighted` is true). Each row carries both scores, `fileRevisions` (the
-   file's changes in the window, not the function's own: `analyse --with-fixes` adds the function's `unitRevisions`) and
-   `changeWeight`. When `ranking.changeWeightsAvailable` is false (change weighting is off, or the clone is shallow),
-   check history yourself with `git log --oneline -- <path>` before spending effort on a function.
+2. The default order is cognitive complexity, highest first, then nesting, then cyclomatic complexity, then length,
+   then path, so a tie is broken by a metric the row shows (`ranking.sortedBy` and a `Notice: sorted by` line in a table
+   say which keys were used). A long keyword switch or a constructor with many parameters is an outlier of one metric
+   and does not outrank a function that is hard to follow, but it keeps its column and its percentile, and `--by` takes
+   another order: `max-percentile` (the highest percentile of any selected metric, `dominant` names it), a metric name
+   such as `cyclomatic` or `length`, or `change-weighted`, the hotspot order: that percentile times the file's change
+   weight, so complex code that has not changed in the window has weight 0 and ranks last, and the top of the list is
+   code that is both hard to read and edited (`ranking.changeWeighted` is true). Each row carries both percentile
+   scores, `fileRevisions` (the file's changes in the window, not the function's own: `analyse --with-fixes` adds the
+   function's `unitRevisions`) and `changeWeight`. When `ranking.changeWeightsAvailable` is false (change weighting is
+   off, or the clone is shallow), check history yourself with `git log --oneline -- <path>` before spending effort on a
+   function.
+
+   Test code is not in the rows. A file is a test by its language's naming conventions and the `testPatterns` of
+   `code-health.json`, and `tests` in the JSON (and a notice in a table) says how many test functions were left out and
+   lists the first ten. `--include-tests` puts them in the one list, each row with its `role`. `files`, `fixes` and
+   `depth` do the same. Say how many tests were left out when you report the top of the list.
 
 3. For files, use `files`. A run over the whole repository on a clean tree stores the report other plugins read.
 
@@ -62,7 +71,9 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    ```
 
    It lists exported functions, classes and modules by interface depth (syntax nodes of implementation per element of
-   interface), plus every function whose whole body forwards to one call. A row labelled `pass-through` names the call it
+   interface), plus the exported functions and public methods whose whole body forwards to one call. A function the
+   language does not export (private, internal, package-private, lower-case, underscore-prefixed) has no row, and
+   `summary.passThroughNotExported` counts the pass-throughs left out. A row labelled `pass-through` names the call it
    forwards to. A row labelled `shallow` hides little behind its interface. Both are signals to review against the
    *shallow module* and *pass-through method* red flags, never findings on their own: read the function, and the
    callers, before acting. The guideline is `interfaceDepth.shallow`, and depth needs a structural adapter, so

@@ -1,9 +1,9 @@
 /**
  * The files every plugin leaves out of a run because of what they are, not because of a configured glob: the
- * generated ones, the vendored ones, and the ones that are not code when a command ranks only code. Each
+ * generated ones, the vendored ones, the ones that are not code when a command ranks only code, and the test files when a command ranks production code first. Each
  * command reports the counts as `dropped`, so a filter never removes a file without saying how many.
  */
-export const DROPPED_KINDS = ["generated", "vendored", "nonCode"] as const;
+export const DROPPED_KINDS = ["generated", "vendored", "nonCode", "tests"] as const;
 
 export type DroppedKind = (typeof DROPPED_KINDS)[number];
 

@@ -4,7 +4,8 @@
   "config": "0000000000000000",
   "filesWithSyntaxErrors": [],
   "inputs": {
-    "by": "complexity",
+    "by": "cognitive",
+    "includeTests": false,
     "layer": "auto",
     "metrics": [
       "cognitive",
@@ -31,10 +32,17 @@
     "syntaxErrorShare": 0
   },
   "ranking": {
-    "basis": "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available",
-    "by": "complexity",
+    "basis": "the value of cognitive, highest first; the percentiles and the other metrics are columns, not part of the order",
+    "by": "cognitive",
     "changeWeighted": false,
     "changeWeightsAvailable": true,
+    "sortedBy": [
+      "cognitive",
+      "nesting",
+      "cyclomatic",
+      "length",
+      "path"
+    ],
     "window": {
       "months": 12,
       "since": 1672531200,
@@ -75,11 +83,11 @@
         "nesting": 0.5,
         "parameters": 0.5
       },
-      "score": 0.9375,
+      "role": "production",
+      "score": 0,
       "source": "structural",
       "startLine": 4,
       "statements": 1,
-      "test": false,
       "unit": "A.add"
     },
     {
@@ -110,11 +118,11 @@
         "nesting": 0.5,
         "parameters": 0.5
       },
-      "score": 0.8125,
+      "role": "production",
+      "score": 0,
       "source": "structural",
       "startLine": 1,
       "statements": 1,
-      "test": false,
       "unit": "add"
     },
     {
@@ -145,11 +153,11 @@
         "nesting": 0.5,
         "parameters": 0.5
       },
-      "score": 0.5,
+      "role": "production",
+      "score": 0,
       "source": "structural",
       "startLine": 3,
       "statements": 1,
-      "test": false,
       "unit": "Add"
     },
     {
@@ -181,11 +189,11 @@
         "nesting": 0.5,
         "parameters": 0.5
       },
-      "score": 0.5,
+      "role": "production",
+      "score": 0,
       "source": "structural",
       "startLine": 1,
       "statements": 1,
-      "test": false,
       "unit": "A.Add"
     },
     {
@@ -216,11 +224,11 @@
         "nesting": 0.5,
         "parameters": 0.5
       },
-      "score": 0.5,
+      "role": "production",
+      "score": 0,
       "source": "structural",
       "startLine": 1,
       "statements": 1,
-      "test": false,
       "unit": "add"
     },
     {
@@ -251,11 +259,11 @@
         "nesting": 0.5,
         "parameters": 0.5
       },
-      "score": 0.5,
+      "role": "production",
+      "score": 0,
       "source": "structural",
       "startLine": 1,
       "statements": 1,
-      "test": false,
       "unit": "add"
     },
     {
@@ -286,11 +294,11 @@
         "nesting": 0.5,
         "parameters": 0.5
       },
-      "score": 0.5,
+      "role": "production",
+      "score": 0,
       "source": "structural",
       "startLine": 1,
       "statements": 1,
-      "test": false,
       "unit": "add"
     },
     {
@@ -322,11 +330,11 @@
         "nesting": 0.5,
         "parameters": 0.5
       },
-      "score": 0.5,
+      "role": "production",
+      "score": 0,
       "source": "structural",
       "startLine": 3,
       "statements": 1,
-      "test": false,
       "unit": "A.add"
     }
   ],
@@ -337,6 +345,12 @@
     "excluded": 0,
     "large": 0,
     "tests": 0
+  },
+  "tests": {
+    "count": 0,
+    "listed": 0,
+    "omitted": 0,
+    "rows": []
   },
   "tool": "complexity",
   "truncated": {

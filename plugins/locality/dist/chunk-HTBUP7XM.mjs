@@ -145,7 +145,7 @@ function builtinExcluder(root, gitlinks = [], options = {}) {
 }
 
 // packages/cli-kit/src/dropped-files.ts
-var DROPPED_KINDS = ["generated", "vendored", "nonCode"];
+var DROPPED_KINDS = ["generated", "vendored", "nonCode", "tests"];
 var dropped = /* @__PURE__ */ new Map();
 function recordDropped(kind, path) {
   const paths = dropped.get(kind);

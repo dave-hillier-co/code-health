@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "depth.schema.json",
   "title": "complexity depth --json",
-  "description": "The interface depth signal for the shallow module and pass-through red flags: exported functions, classes and modules, and every pass-through. A whole-repository run on a clean tree is also stored as the complexity.depth report.",
+  "description": "The interface depth signal for the shallow module and pass-through red flags: exported functions, classes and modules, and the exported pass-throughs. A whole-repository run on a clean tree is also stored as the complexity.depth report.",
   "allOf": [
     {
       "$ref": "common.schema.json#/$defs/envelope"
@@ -29,12 +29,17 @@
           "type": "number",
           "minimum": 0,
           "description": "Nodes per interface element below which an exported unit is shallow."
+        },
+        "includeTests": {
+          "type": "boolean",
+          "description": "True when --include-tests listed the test rows with the production ones."
         }
       },
       "required": [
         "tree",
         "paths",
-        "shallow"
+        "shallow",
+        "includeTests"
       ],
       "additionalProperties": false
     },
@@ -57,6 +62,10 @@
         },
         "passThrough": {
           "$ref": "common.schema.json#/$defs/count"
+        },
+        "passThroughNotExported": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Pass-through functions that have no row because their language does not export them (private, internal, package-private, lower-case or underscore-prefixed, or in a type that is not exported). Counted whatever their role."
         }
       },
       "required": [
@@ -64,9 +73,13 @@
         "filesWithoutAdapter",
         "rows",
         "shallow",
-        "passThrough"
+        "passThrough",
+        "passThroughNotExported"
       ],
       "additionalProperties": false
+    },
+    "tests": {
+      "$ref": "common.schema.json#/$defs/testsSection"
     },
     "skippedFiles": {
       "$ref": "common.schema.json#/$defs/skippedFiles"
@@ -98,7 +111,7 @@
           },
           "exported": {
             "type": "boolean",
-            "description": "Exported by its file, or a method of an exported class."
+            "description": "Exported by its file (public, capitalised, `export` or `pub`, by language), or a public method of an exported class."
           },
           "startLine": {
             "type": "integer",
@@ -133,8 +146,8 @@
             ],
             "description": "The call the function's whole body forwards to."
           },
-          "test": {
-            "type": "boolean"
+          "role": {
+            "$ref": "common.schema.json#/$defs/role"
           },
           "labels": {
             "type": "array",
@@ -163,7 +176,7 @@
           "interface",
           "depth",
           "passThrough",
-          "test",
+          "role",
           "labels",
           "score"
         ],

@@ -17,6 +17,7 @@ import {
   gitVersion,
   hasAdapter,
   higherBand,
+  isTestPath,
   listBlobs,
   listGitlinks,
   listTree,
@@ -29,7 +30,7 @@ import {
   resetBuiltinOmissions,
   resetDropped,
   runGit
-} from "./chunk-7PJUILTM.mjs";
+} from "./chunk-WAGW2KAZ.mjs";
 
 // packages/cli-kit/src/args.ts
 import { parseArgs } from "node:util";
@@ -195,6 +196,7 @@ var historyDefaults = {
 };
 var sharedDefaults = {
   exclude: [],
+  testPatterns: [],
   languages: {},
   entryPoints: [],
   includeRoots: [],
@@ -202,7 +204,7 @@ var sharedDefaults = {
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults
 };
-var stringLists = ["exclude", "entryPoints", "includeRoots", "vagueNames"];
+var stringLists = ["exclude", "testPatterns", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
 function rejectUnknownKeys(document, plugin) {
@@ -453,7 +455,7 @@ function shapeResults(results, options) {
       throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns.join(", ")}`);
     }
   }
-  const sorted = [...results].sort(byScoreThenPath);
+  const sorted = options.presorted === true ? results : [...results].sort(byScoreThenPath);
   const kept = sorted.slice(0, limit);
   const projected = fields ? kept.map((row2) => Object.fromEntries(fields.map((field) => [field, row2[field]]))) : kept;
   return {
@@ -572,7 +574,7 @@ async function execute(cli2, io) {
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
+  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns, presorted: output.presorted });
   if (args.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -614,7 +616,7 @@ async function execute(cli2, io) {
     }
     const left = Object.entries(leftOut);
     if (left.length > 0) {
-      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code" };
+      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" };
       io.stdout.write(`Notice: omitted ${left.map(([kind, count2]) => `${count2} ${names[kind]} ${count2 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
@@ -4937,6 +4939,17 @@ function isCodePath(path, mappings = {}) {
   }
 }
 
+// packages/parse/src/test-files.ts
+function testClassifier(patterns = []) {
+  const entries = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern !== "" && !pattern.startsWith("#")).map((pattern) => pattern.startsWith("!") ? { test: false, matches: compileGlobs([pattern.slice(1)]) } : { test: true, matches: compileGlobs([pattern]) });
+  return (path) => {
+    for (let index2 = entries.length - 1; index2 >= 0; index2--) {
+      if (entries[index2].matches(path)) return entries[index2].test;
+    }
+    return isTestPath(path);
+  };
+}
+
 // packages/cochange/src/file-statistics.ts
 function fileUnits(changes, present) {
   const units = /* @__PURE__ */ new Map();
@@ -5012,6 +5025,8 @@ var isoDate = (unixSeconds) => new Date(unixSeconds * 1e3).toISOString();
 var byOption = { by: { type: "string" } };
 var allFilesOption = { "all-files": { type: "boolean" } };
 var wantsAllFiles = (context) => context.values["all-files"] === true;
+var includeTestsOption = { "include-tests": { type: "boolean" } };
+var wantsTests = (context) => context.values["include-tests"] === true;
 function readBy(context) {
   const value = context.values.by;
   if (value === void 0) return "file";
@@ -5019,7 +5034,7 @@ function readBy(context) {
   throw usageError(`--by must be "file" or "component", not "${String(value)}"`);
 }
 var isGrouped = (context) => readBy(context) !== "file";
-async function loadUnits(context, history, by = readBy(context)) {
+async function loadUnits(context, history, by = readBy(context), omitTests = false) {
   const present = new Set(await listTree(context.repo.root, history.view.headSha));
   const { changes } = history.filtered;
   if (!wantsAllFiles(context)) {
@@ -5029,6 +5044,15 @@ async function loadUnits(context, history, by = readBy(context)) {
       if (isCodePath(path, languages)) continue;
       present.delete(path);
       if (touched.has(path)) recordDropped("nonCode", path);
+    }
+  }
+  if (omitTests && !wantsTests(context)) {
+    const isTest = testClassifier(context.config.effective.testPatterns);
+    const touched = new Set(changes.flatMap((change2) => change2.files.map((file) => file.fileId)));
+    for (const path of [...present]) {
+      if (!isTest(path)) continue;
+      present.delete(path);
+      if (touched.has(path)) recordDropped("tests", path);
     }
   }
   return by === "file" ? fileUnits(changes, present) : componentUnits(changes, present, readComponents(context.config.effective.components));
@@ -5890,12 +5914,12 @@ var split = (path) => {
   const dot = base.lastIndexOf(".");
   return dot <= 0 ? { folder, stem: base, ext: "" } : { folder, stem: base.slice(0, dot), ext: base.slice(dot) };
 };
-function isTestPath(path) {
+function isTestPath2(path) {
   const { stem } = split(path);
   return /(^|\/)__tests__\//.test(path) || /[._-](test|spec)$/.test(stem) || /^test_/.test(stem) || /[a-z0-9]Tests?$/.test(stem);
 }
 function siblingTestOf(path, tree) {
-  if (isTestPath(path)) return null;
+  if (isTestPath2(path)) return null;
   const { folder, stem, ext } = split(path);
   const names = [
     `${stem}.test${ext}`,
@@ -5913,7 +5937,8 @@ function siblingTestOf(path, tree) {
 // packages/cochange/src/hotspot-ranking.ts
 async function rankHotspots(context, history, by) {
   const { settings } = history;
-  const units = await loadUnits(context, history, by);
+  const units = await loadUnits(context, history, by, true);
+  const isTest = testClassifier(context.config.effective.testPatterns);
   const fixReading = readFixes(history, units, readFixClassifier(context.config));
   const paths = [...new Set(units.flatMap((u) => [...u.members]))].sort();
   const complexity = await loadComplexity(context, history.view.headSha, paths);
@@ -5938,6 +5963,7 @@ async function rankHotspots(context, history, by) {
     const isHotspot = score !== null && shareStrictlyAbove(scored, score) < topShare && unit.lastChanged >= recentSince;
     return {
       path: unit.name,
+      ...by === "file" ? { role: isTest(unit.name) ? "test" : "production" } : {},
       score,
       ...by === "component" ? { files: unit.files } : {},
       frequency: unit.revisions,
@@ -7148,16 +7174,17 @@ var rules7 = {
 };
 var command8 = analysisCommand(name8, {
   summary: "Rank files or components by change frequency weighted by complexity",
-  options: { ...byOption, ...allFilesOption },
-  partial: (context) => isGrouped(context) || wantsAllFiles(context),
+  options: { ...byOption, ...allFilesOption, ...includeTestsOption },
+  partial: (context) => isGrouped(context) || wantsAllFiles(context) || wantsTests(context),
   async analyse({ context, history }) {
     const by = readBy(context);
     const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
     return {
-      inputs: { by, allFiles: wantsAllFiles(context), complexityReport: complexity.input },
+      inputs: { by, allFiles: wantsAllFiles(context), includeTests: wantsTests(context), complexityReport: complexity.input },
       results: rows,
       columns: [
         "path",
+        ...by === "file" ? ["role"] : [],
         "score",
         ...by === "component" ? ["files"] : [],
         "frequency",
@@ -9999,7 +10026,7 @@ function testEvidence(facts, state, context) {
   const exists2 = { has: (path) => touched.has(path) || state.present(path) };
   const rows = [];
   for (const file of facts.files) {
-    if (file.status === "D" || isTestPath(file.path)) continue;
+    if (file.status === "D" || isTestPath2(file.path)) continue;
     const test = siblingTestOf(file.path, exists2);
     if (test === null || touched.has(test)) continue;
     const revisions = state.eligibleRevisionsInWindow(file.fileId);
@@ -10008,7 +10035,7 @@ function testEvidence(facts, state, context) {
       rows.push({ file: file.fileId, test, kind: "not-updated", together, revisions });
     }
   }
-  for (const file of facts.files) if (file.status === "D" && isTestPath(file.path)) rows.push({ file: file.fileId, test: file.fileId, kind: "deleted" });
+  for (const file of facts.files) if (file.status === "D" && isTestPath2(file.path)) rows.push({ file: file.fileId, test: file.fileId, kind: "deleted" });
   rows.sort((a, b) => String(a.file) < String(b.file) ? -1 : 1);
   return measurement2("test-evidence", "completeness", "history", "count", "history", {
     series: { count: rows.length },
@@ -10390,7 +10417,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change2.head);
   const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-TIA3KDS3.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-KJJ5W4OE.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);

@@ -4,7 +4,8 @@
   "config": "0000000000000000",
   "filesWithSyntaxErrors": [],
   "inputs": {
-    "by": "complexity",
+    "by": "cognitive",
+    "includeTests": false,
     "layer": "auto",
     "metrics": [
       "cognitive",
@@ -31,10 +32,17 @@
     "syntaxErrorShare": 0
   },
   "ranking": {
-    "basis": "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available",
-    "by": "complexity",
+    "basis": "the value of cognitive, highest first; the percentiles and the other metrics are columns, not part of the order",
+    "by": "cognitive",
     "changeWeighted": false,
     "changeWeightsAvailable": true,
+    "sortedBy": [
+      "cognitive",
+      "nesting",
+      "cyclomatic",
+      "length",
+      "path"
+    ],
     "window": {
       "months": 12,
       "since": 1672531200,
@@ -74,11 +82,11 @@
         "nesting": 0.75,
         "parameters": 0.5
       },
-      "score": 0.875,
+      "role": "production",
+      "score": 8,
       "source": "structural",
       "startLine": 1,
       "statements": 6,
-      "test": false,
       "unit": "price"
     },
     {
@@ -109,11 +117,11 @@
         "nesting": 0.75,
         "parameters": 0.5
       },
-      "score": 0.75,
+      "role": "production",
+      "score": 3,
       "source": "structural",
       "startLine": 3,
       "statements": 5,
-      "test": false,
       "unit": "Total"
     },
     {
@@ -144,11 +152,11 @@
         "nesting": 0.25,
         "parameters": 0.5
       },
-      "score": 0.5,
+      "role": "production",
+      "score": 0,
       "source": "structural",
       "startLine": 1,
       "statements": 1,
-      "test": false,
       "unit": "label"
     },
     {
@@ -179,47 +187,12 @@
         "nesting": 0.25,
         "parameters": 0.5
       },
-      "score": 0.5,
+      "role": "production",
+      "score": 0,
       "source": "structural",
       "startLine": 13,
       "statements": 1,
-      "test": false,
       "unit": "double"
-    },
-    {
-      "bumpDepth": 2,
-      "bumpSize": 1,
-      "bumps": 1,
-      "changeWeight": 0.5,
-      "changeWeightedScore": 0.25,
-      "cognitive": 1,
-      "complexityScore": 0.5,
-      "cyclomatic": 2,
-      "dominant": "cognitive",
-      "endLine": 7,
-      "fileRevisions": 1,
-      "id": "test/pricing.test.ts#checksPrice",
-      "kind": "function",
-      "labels": [],
-      "length": 5,
-      "nesting": 1,
-      "optionCount": 0,
-      "parameters": 0,
-      "path": "test/pricing.test.ts",
-      "percentiles": {
-        "bumps": 0.5,
-        "cognitive": 0.5,
-        "cyclomatic": 0.5,
-        "length": 0.5,
-        "nesting": 0.5,
-        "parameters": 0.5
-      },
-      "score": 0.5,
-      "source": "structural",
-      "startLine": 3,
-      "statements": 2,
-      "test": true,
-      "unit": "checksPrice"
     }
   ],
   "schemaVersion": 1,
@@ -233,10 +206,52 @@
     "large": 0,
     "tests": 0
   },
+  "tests": {
+    "count": 1,
+    "listed": 1,
+    "omitted": 0,
+    "rows": [
+      {
+        "bumpDepth": 2,
+        "bumpSize": 1,
+        "bumps": 1,
+        "changeWeight": 0.5,
+        "changeWeightedScore": 0.25,
+        "cognitive": 1,
+        "complexityScore": 0.5,
+        "cyclomatic": 2,
+        "dominant": "cognitive",
+        "endLine": 7,
+        "fileRevisions": 1,
+        "id": "test/pricing.test.ts#checksPrice",
+        "kind": "function",
+        "labels": [],
+        "length": 5,
+        "nesting": 1,
+        "optionCount": 0,
+        "parameters": 0,
+        "path": "test/pricing.test.ts",
+        "percentiles": {
+          "bumps": 0.5,
+          "cognitive": 0.5,
+          "cyclomatic": 0.5,
+          "length": 0.5,
+          "nesting": 0.5,
+          "parameters": 0.5
+        },
+        "role": "test",
+        "score": 1,
+        "source": "structural",
+        "startLine": 3,
+        "statements": 2,
+        "unit": "checksPrice"
+      }
+    ]
+  },
   "tool": "complexity",
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 5
+    "total": 4
   }
 }

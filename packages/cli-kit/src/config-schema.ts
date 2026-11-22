@@ -13,6 +13,9 @@ function sharedProperties(): Record<string, JsonSchema> {
     exclude: stringList(
       "Globs of files no plugin analyses. They add to the built-in excludes and do not replace them: .claude/**, .cache/**, .code-health/** and every directory below the repository root that is its own git checkout (it contains a .git file or directory: a linked worktree, a nested clone or a submodule) are always left out of source trees and history. `config explain` prints them with the source built-in, and commands report how many files each omitted.",
     ),
+    testPatterns: stringList(
+      "Globs that decide which files are tests, laid over each language's own conventions (*_test.go, *Tests.cs, *.test.ts, src/test/, tests/ and the like). A match makes a file a test, an entry that starts with ! makes it production, and the last matching entry wins. Rankings list production code first and say how many tests they left out.",
+    ),
     languages: {
       type: "object",
       description:

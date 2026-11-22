@@ -1,3 +1,5 @@
+import { rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { isTestPath, siblingTestOf } from "../src/sibling-test.ts";
@@ -12,7 +14,7 @@ beforeAll(() => {
 });
 afterAll(() => repo.dispose());
 
-const hotspots = async () => runCochange(repo.path, ["hotspots", "--json", "--limit", "all"]);
+const hotspots = async (...args: string[]) => runCochange(repo.path, ["hotspots", "--json", "--limit", "all", ...args]);
 const rowsOf = (stdout: string) => JSON.parse(stdout).results as Record<string, any>[];
 
 test("a frequently changed file whose sibling test never changes with it is test-drift", async () => {
@@ -29,8 +31,37 @@ test("a file whose sibling test changes with it is not test-drift", async () => 
   expect(row.findings).not.toContain("test-drift");
 });
 
+test("hotspots rank production files, and count the test files it left out in dropped.tests", async () => {
+  const document = JSON.parse((await hotspots()).stdout);
+  const rows = document.results as Record<string, any>[];
+  expect(rows.every((row) => row.role === "production")).toBe(true);
+  expect(rows.map((row) => row.path)).not.toContain(driftingTest);
+  expect(document.dropped.tests).toBeGreaterThan(0);
+  expect(document.inputs.includeTests).toBe(false);
+});
+
+test("--include-tests ranks the test files with the production code, each with its role, and the run is not stored as a report", async () => {
+  const run = await hotspots("--include-tests");
+  const document = JSON.parse(run.stdout);
+  const rows = document.results as Record<string, any>[];
+  expect(rows.find((row) => row.path === driftingTest)!.role).toBe("test");
+  expect(document.dropped?.tests).toBeUndefined();
+  expect(document.inputs.includeTests).toBe(true);
+  expect(document.report?.stored).not.toBe(true);
+});
+
+test("testPatterns decide which files count as tests", async () => {
+  writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ testPatterns: [`!${driftingTest}`] }));
+  try {
+    const rows = rowsOf((await hotspots()).stdout);
+    expect(rows.find((row) => row.path === driftingTest)!.role).toBe("production");
+  } finally {
+    rmSync(join(repo.path, "code-health.json"), { force: true });
+  }
+});
+
 test("files with no sibling test, and the tests themselves, have no test finding", async () => {
-  const rows = rowsOf((await hotspots()).stdout);
+  const rows = rowsOf((await hotspots("--include-tests")).stdout);
   const byPath = new Map(rows.map((r) => [r.path, r]));
   expect(byPath.get("src/app/registry.ts")).toMatchObject({ siblingTest: null, findings: [] });
   expect(byPath.get(driftingTest)).toMatchObject({ siblingTest: null, findings: [] });

@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-4ADFWIOL.mjs";
+} from "./chunk-6JNAD27T.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -36,18 +36,18 @@ import {
   resetDropped,
   runGit,
   treeFromRef
-} from "./chunk-XYM3TEG5.mjs";
+} from "./chunk-HTBUP7XM.mjs";
 import {
   analyseTree
-} from "./chunk-DUZXXCLK.mjs";
-import "./chunk-42MG6GLZ.mjs";
+} from "./chunk-JEH2H4PA.mjs";
+import "./chunk-ZOCW2RSI.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isCppPath,
   isTestPath
-} from "./chunk-FM6TO3OG.mjs";
+} from "./chunk-CZES2SMZ.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -216,6 +216,7 @@ var historyDefaults = {
 };
 var sharedDefaults = {
   exclude: [],
+  testPatterns: [],
   languages: {},
   entryPoints: [],
   includeRoots: [],
@@ -223,7 +224,7 @@ var sharedDefaults = {
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults
 };
-var stringLists = ["exclude", "entryPoints", "includeRoots", "vagueNames"];
+var stringLists = ["exclude", "testPatterns", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
 function rejectUnknownKeys(document, plugin) {
@@ -474,7 +475,7 @@ function shapeResults(results, options) {
       throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns.join(", ")}`);
     }
   }
-  const sorted = [...results].sort(byScoreThenPath);
+  const sorted = options.presorted === true ? results : [...results].sort(byScoreThenPath);
   const kept = sorted.slice(0, limit);
   const projected = fields ? kept.map((row) => Object.fromEntries(fields.map((field) => [field, row[field]]))) : kept;
   return {
@@ -596,7 +597,7 @@ async function execute(cli2, io) {
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
+  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns, presorted: output.presorted });
   if (args.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -638,7 +639,7 @@ async function execute(cli2, io) {
     }
     const left = Object.entries(leftOut);
     if (left.length > 0) {
-      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code" };
+      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" };
       io.stdout.write(`Notice: omitted ${left.map(([kind, count2]) => `${count2} ${names[kind]} ${count2 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
@@ -5786,7 +5787,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-QPHQTP33.mjs");
+    const { performMove } = await import("./chunk-HRLTQFPE.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -5837,7 +5838,7 @@ var command5 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-DKJRYEVZ.mjs");
+      const { buildProject } = await import("./chunk-KJ7TLY45.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -6057,7 +6058,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-EQ63Q6DO.mjs");
+    const { verifyMove } = await import("./chunk-CSUC7R3W.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

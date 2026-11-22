@@ -192,6 +192,7 @@ var historyDefaults = {
 };
 var sharedDefaults = {
   exclude: [],
+  testPatterns: [],
   languages: {},
   entryPoints: [],
   includeRoots: [],
@@ -199,7 +200,7 @@ var sharedDefaults = {
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults
 };
-var stringLists = ["exclude", "entryPoints", "includeRoots", "vagueNames"];
+var stringLists = ["exclude", "testPatterns", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
 function rejectUnknownKeys(document, plugin) {
@@ -366,7 +367,7 @@ function article(kind) {
 }
 
 // packages/cli-kit/src/dropped-files.ts
-var DROPPED_KINDS = ["generated", "vendored", "nonCode"];
+var DROPPED_KINDS = ["generated", "vendored", "nonCode", "tests"];
 var dropped = /* @__PURE__ */ new Map();
 function recordDropped(kind, path) {
   const paths = dropped.get(kind);
@@ -470,7 +471,7 @@ function shapeResults(results, options) {
       throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns.join(", ")}`);
     }
   }
-  const sorted = [...results].sort(byScoreThenPath);
+  const sorted = options.presorted === true ? results : [...results].sort(byScoreThenPath);
   const kept = sorted.slice(0, limit);
   const projected = fields ? kept.map((row) => Object.fromEntries(fields.map((field6) => [field6, row[field6]]))) : kept;
   return {
@@ -589,7 +590,7 @@ async function execute(cli2, io) {
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns });
+  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns, presorted: output.presorted });
   if (args2.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -631,7 +632,7 @@ async function execute(cli2, io) {
     }
     const left = Object.entries(leftOut);
     if (left.length > 0) {
-      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code" };
+      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" };
       io.stdout.write(`Notice: omitted ${left.map(([kind, count3]) => `${count3} ${names[kind]} ${count3 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
@@ -2938,981 +2939,6 @@ function selectProfile(path, mappings = {}) {
   return profile === void 0 ? void 0 : { profile, mapped: profilesWithoutAdapter.has(profile.name) };
 }
 
-// packages/complexity/src/metrics.ts
-var metricIds = ["cognitive", "cyclomatic", "nesting", "parameters", "length", "keyword", "bumps"];
-function isMetricId(value) {
-  return metricIds.includes(value);
-}
-function structuralValues(metrics, switchMode) {
-  return {
-    cyclomatic: switchMode === "case" ? metrics.cyclomatic : metrics.cyclomaticModified,
-    cognitive: metrics.cognitive,
-    nesting: metrics.nesting,
-    length: metrics.length,
-    parameters: metrics.parameters,
-    bumps: metrics.bumps
-  };
-}
-var defaultGuidelines = {
-  cyclomatic: { warn: 10, high: 20 },
-  cognitive: { warn: 15, high: 25 },
-  nesting: 4,
-  parameters: 5,
-  bumps: 3,
-  deepBumps: 2
-};
-var gatedMetrics = ["cyclomatic", "cognitive", "nesting", "parameters"];
-function limitOf(guidelines, metric) {
-  const guideline = guidelines[metric];
-  return typeof guideline === "number" ? guideline : guideline.warn;
-}
-function exceeded(values, guidelines) {
-  return gatedMetrics.filter((metric) => {
-    const value = values[metric];
-    return value !== void 0 && value > limitOf(guidelines, metric);
-  });
-}
-function labelsFor(values, guidelines, bumpyRoad = false) {
-  const labels = [];
-  for (const metric of gatedMetrics) {
-    const value = values[metric];
-    if (value === void 0) continue;
-    const guideline = guidelines[metric];
-    if (typeof guideline === "number") {
-      if (value > guideline) labels.push(`${metric}-warn`);
-    } else if (value > guideline.high) labels.push(`${metric}-high`);
-    else if (value > guideline.warn) labels.push(`${metric}-warn`);
-  }
-  if (bumpyRoad) labels.push("bumpy-road");
-  return labels;
-}
-function bumpyRoadLimits(guidelines) {
-  return { bumps: guidelines.bumps, deepBumps: guidelines.deepBumps, nesting: guidelines.nesting };
-}
-
-// packages/complexity/src/tool.ts
-var TOOL = "complexity";
-var SCHEMA_VERSION2 = 1;
-
-// packages/complexity/src/config.ts
-var complexityConfig = {
-  plugin: TOOL,
-  history: ["windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "fixExcludePatterns", "revertPatterns", "fixMatchBody"],
-  section: {
-    /** Metrics reported and ranked. `--metrics` narrows them for one run. */
-    metrics: [...metricIds],
-    /**
-     * Guidelines for investigation. A metric is above its guideline when its value is above it, and `high` marks a second band. They label and order results and
-     * hide nothing. Only `check` turns them into an exit code, and only for new or worsened units. Defaults: cyclomatic 10 and 20, cognitive 15 and 25, nesting 4 and parameters 5 are judgement calls
-     * (CodeScene's default for cyclomatic is 9 and for parameters 4); bumps 3 and deepBumps 2 are judgement calls beside CodeScene's 2 bumps at depth 2.
-     */
-    guidelines: {
-      cyclomatic: { ...defaultGuidelines.cyclomatic },
-      cognitive: { ...defaultGuidelines.cognitive },
-      nesting: defaultGuidelines.nesting,
-      parameters: defaultGuidelines.parameters,
-      /** A function with this many bumps or more is labelled a bumpy road. */
-      bumps: defaultGuidelines.bumps,
-      /** The count that makes a bumpy road when the deepest bump is deeper than `nesting`. */
-      deepBumps: defaultGuidelines.deepBumps
-    },
-    /** `case` counts every case of a switch toward cyclomatic complexity, `modified` counts one per switch. */
-    cyclomaticSwitch: "case",
-    /** Base revision of `check`. null is the merge base with `mainBranch`. */
-    base: null,
-    /** The branch `check` forks from. null tries origin/main, main, origin/master and master. */
-    mainBranch: null,
-    /** `check` exits 1 for a unit above a guideline that worsened by more than this on that metric. `check` is the gate, so this is the only place a guideline becomes an exit code. */
-    delta: 0,
-    /** Guideline (a judgement call): `analyse` prints a notice when more than this percent of the files a grammar read have syntax errors, because the units of those files may be incomplete. The share is always reported and hides no file. */
-    syntaxErrorPercent: 5,
-    /** Exact-boundary agreement a lexer profile must reach for its per-function metrics to be reported. */
-    agreementBar: 0.9,
-    /** Body similarity, 0 to 1, at which a unit that disappeared and one that appeared are the same unit moved or renamed. */
-    moveSimilarity: 0.8,
-    /** Analyse test files. They are ranked among themselves. */
-    analyseTests: true,
-    /** Weight the ranking by how often each file changed in the window, so code that never changes ranks last. */
-    changeWeighting: true,
-    /** `{ "paths": [globs], "guidelines": { ...partial guidelines } }`, the last matching entry winning per metric. */
-    overrides: [],
-    /**
-     * `complexity fixes` and `analyse --with-fixes`. `maxCommits` is null, which analyses every commit of the history window, or a number that bounds how many commits are parsed, newest first, and the output says how many were left out. `evidence` is how many fix commits are listed per function. `minRevisions` is a guideline of 3, a judgement call not calibrated on a corpus: a function with fewer revisions in the window is labelled low evidence and sorts after the others with the same fix count.
-     */
-    fixes: { maxCommits: null, evidence: 3, minRevisions: 3 },
-    /** `shallow`: a guideline of 10, a judgement call not calibrated on a corpus. An exported function, class or module with fewer syntax nodes than this per element of its interface is labelled shallow. Rows are ordered by depth whatever the guideline. */
-    interfaceDepth: { shallow: 10 }
-  }
-};
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function readSettings(config) {
-  const section = config.effective[TOOL];
-  const at = (key) => `${TOOL}.${key}`;
-  const number = (value, where, min, max = Infinity) => {
-    if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
-      throw configError(`code-health.json: ${where} must be a number from ${min}${max === Infinity ? "" : ` to ${max}`}`);
-    }
-    return value;
-  };
-  const optionalString = (key) => {
-    const value = section[key];
-    if (value !== null && (typeof value !== "string" || value === "")) {
-      throw configError(`code-health.json: ${at(key)} must be a revision name or null`);
-    }
-    return value;
-  };
-  const requested = section.metrics;
-  if (!Array.isArray(requested) || requested.some((metric) => typeof metric !== "string" || !isMetricId(metric))) {
-    throw configError(`code-health.json: ${at("metrics")} must list metrics from ${metricIds.join(", ")}`);
-  }
-  const metrics = metricIds.filter((metric) => requested.includes(metric));
-  if (section.cyclomaticSwitch !== "case" && section.cyclomaticSwitch !== "modified") {
-    throw configError(`code-health.json: ${at("cyclomaticSwitch")} must be "case" or "modified"`);
-  }
-  const guidelines = readGuidelines(section.guidelines, at("guidelines"), number);
-  const overrides = readOverrides(section.overrides, at("overrides"), number, guidelines);
-  return {
-    metrics,
-    guidelines,
-    overrides,
-    cyclomaticSwitch: section.cyclomaticSwitch,
-    base: optionalString("base"),
-    mainBranch: optionalString("mainBranch"),
-    delta: number(section.delta, at("delta"), 0),
-    agreementBar: number(section.agreementBar, at("agreementBar"), 0, 1),
-    syntaxErrorPercent: number(section.syntaxErrorPercent, at("syntaxErrorPercent"), 0, 100),
-    moveSimilarity: number(section.moveSimilarity, at("moveSimilarity"), 0, 1),
-    analyseTests: section.analyseTests === true,
-    changeWeighting: section.changeWeighting === true,
-    windowMonths: number(section.windowMonths, at("windowMonths"), 1),
-    maxChangesetSize: number(section.maxChangesetSize, at("maxChangesetSize"), 1),
-    botPatterns: section.botPatterns,
-    fix: readFixClassifier(section),
-    fixes: {
-      maxCommits: section.fixes.maxCommits === null ? null : number(section.fixes.maxCommits, at("fixes.maxCommits"), 1),
-      evidence: number(section.fixes.evidence, at("fixes.evidence"), 0),
-      minRevisions: number(section.fixes.minRevisions, at("fixes.minRevisions"), 1)
-    },
-    shallowDepth: number(section.interfaceDepth.shallow, at("interfaceDepth.shallow"), 0),
-    isExcluded: compileGlobs(config.effective.exclude),
-    languageProfiles: readLanguageProfiles(config.effective.languages)
-  };
-}
-function readFixClassifier(section) {
-  try {
-    return compileFixClassifier({
-      fixPatterns: section.fixPatterns,
-      fixExcludePatterns: section.fixExcludePatterns,
-      revertPatterns: section.revertPatterns,
-      fixMatchBody: section.fixMatchBody === true
-    });
-  } catch (error) {
-    if (error instanceof InvalidPatternError) throw configError(`code-health.json: ${error.message}`);
-    throw error;
-  }
-}
-function readLanguageProfiles(languages) {
-  for (const [extension, name10] of Object.entries(languages)) {
-    if (!(name10 in profiles)) {
-      throw configError(`code-health.json: languages.${extension} names the lexer profile "${name10}", which does not exist: use one of ${Object.keys(profiles).join(", ")}`);
-    }
-  }
-  return languages;
-}
-function readGuidelines(value, where, number) {
-  const source = value;
-  const level = (name10) => {
-    const { warn, high } = source[name10];
-    const checked = { warn: number(warn, `${where}.${name10}.warn`, 0), high: number(high, `${where}.${name10}.high`, 0) };
-    if (checked.high < checked.warn) throw configError(`code-health.json: ${where}.${name10}.high must not be below warn`);
-    return checked;
-  };
-  return {
-    cyclomatic: level("cyclomatic"),
-    cognitive: level("cognitive"),
-    nesting: number(source.nesting, `${where}.nesting`, 0),
-    parameters: number(source.parameters, `${where}.parameters`, 0),
-    bumps: number(source.bumps, `${where}.bumps`, 1),
-    deepBumps: number(source.deepBumps, `${where}.deepBumps`, 1)
-  };
-}
-function readOverrides(value, where, number, global) {
-  if (!Array.isArray(value)) throw configError(`code-health.json: ${where} must be an array`);
-  return value.map((entry, index) => {
-    const here = `${where}[${index}]`;
-    if (!isRecord(entry) || !Array.isArray(entry.paths) || entry.paths.some((glob) => typeof glob !== "string")) {
-      throw configError(`code-health.json: ${here} needs "paths", an array of globs, and "guidelines"`);
-    }
-    if (!isRecord(entry.guidelines)) throw configError(`code-health.json: ${here}.guidelines must be an object`);
-    const merged = mergeGuidelines(global, entry.guidelines, `${here}.guidelines`, number);
-    for (const name10 of ["cyclomatic", "cognitive"]) {
-      if (merged[name10].high < merged[name10].warn) {
-        throw configError(`code-health.json: ${here}.guidelines.${name10}.high must not be below warn (${merged[name10].warn}); set both when raising warn`);
-      }
-    }
-    return { matches: compileGlobs(entry.paths), guidelines: entry.guidelines };
-  });
-}
-function mergeGuidelines(base, patch, where, number) {
-  if (!isRecord(patch)) throw configError(`code-health.json: ${where} must be an object`);
-  const merged = { cyclomatic: { ...base.cyclomatic }, cognitive: { ...base.cognitive }, nesting: base.nesting, parameters: base.parameters, bumps: base.bumps, deepBumps: base.deepBumps };
-  for (const [key, entry] of Object.entries(patch)) {
-    if (key === "cyclomatic" || key === "cognitive") {
-      if (!isRecord(entry)) throw configError(`code-health.json: ${where}.${key} must be an object with warn and high`);
-      for (const [level, limit] of Object.entries(entry)) {
-        if (level !== "warn" && level !== "high") throw configError(`code-health.json: ${where}.${key}.${level} is an unknown setting`);
-        merged[key][level] = number(limit, `${where}.${key}.${level}`, 0);
-      }
-    } else if (key === "nesting" || key === "parameters") {
-      merged[key] = number(entry, `${where}.${key}`, 0);
-    } else if (key === "bumps" || key === "deepBumps") {
-      merged[key] = number(entry, `${where}.${key}`, 1);
-    } else {
-      throw configError(`code-health.json: ${where}.${key} is an unknown setting`);
-    }
-  }
-  return merged;
-}
-function guidelinesFor(settings, path) {
-  let guidelines = settings.guidelines;
-  for (const override2 of settings.overrides) {
-    if (override2.matches(path)) guidelines = mergeGuidelines(guidelines, override2.guidelines, "override", (value) => value);
-  }
-  return guidelines;
-}
-
-// packages/lexical/src/agreement.ts
-function exactRate(counts) {
-  return counts.units === 0 ? 0 : Math.round(counts.exact / counts.units * 1e4) / 1e4;
-}
-function spuriousRate(counts) {
-  return counts.blocks === 0 ? 0 : Math.round(counts.spurious / counts.blocks * 1e4) / 1e4;
-}
-
-// packages/lexical/src/recorded-agreement.ts
-var recorded_agreement_exports = {};
-__export(recorded_agreement_exports, {
-  cpp: () => recorded3,
-  csharp: () => recorded2,
-  go: () => recorded5,
-  java: () => recorded6,
-  kotlin: () => recorded7,
-  python: () => recorded4,
-  rust: () => recorded8,
-  typescript: () => recorded
-});
-
-// packages/lexical/src/agreement-rates/typescript.ts
-var recorded = { units: 107, found: 105, exact: 105, blocks: 115, spurious: 6 };
-
-// packages/lexical/src/agreement-rates/csharp.ts
-var recorded2 = { units: 71, found: 70, exact: 69, blocks: 74, spurious: 2 };
-
-// packages/lexical/src/agreement-rates/cpp.ts
-var recorded3 = { units: 73, found: 72, exact: 72, blocks: 74, spurious: 1 };
-
-// packages/lexical/src/agreement-rates/python.ts
-var recorded4 = { units: 70, found: 68, exact: 67, blocks: 67, spurious: 0 };
-
-// packages/lexical/src/agreement-rates/go.ts
-var recorded5 = { units: 51, found: 51, exact: 51, blocks: 57, spurious: 3 };
-
-// packages/lexical/src/agreement-rates/java.ts
-var recorded6 = { units: 68, found: 65, exact: 65, blocks: 73, spurious: 0 };
-
-// packages/lexical/src/agreement-rates/kotlin.ts
-var recorded7 = { units: 70, found: 70, exact: 70, blocks: 71, spurious: 0 };
-
-// packages/lexical/src/agreement-rates/rust.ts
-var recorded8 = { units: 61, found: 59, exact: 56, blocks: 56, spurious: 0 };
-
-// packages/lexical/src/agreement-rates.ts
-var recordedAgreement = { ...recorded_agreement_exports };
-
-// packages/lexical/src/indentation.ts
-var DEFAULT_UNIT = 4;
-var MAX_UNIT = 8;
-function isIndentLine(line) {
-  return line.kind === "code" && !line.startsInLiteral;
-}
-function detectIndentUnit(lines) {
-  const votes = /* @__PURE__ */ new Map();
-  let previous = 0;
-  for (const line of lines) {
-    if (!isIndentLine(line)) continue;
-    if (line.text.startsWith("	")) {
-      previous = 0;
-      continue;
-    }
-    const width = leadingSpaces(line.text);
-    const increase = width - previous;
-    if (increase > 0 && increase <= MAX_UNIT) votes.set(increase, (votes.get(increase) ?? 0) + 1);
-    previous = width;
-  }
-  let best = DEFAULT_UNIT;
-  let bestVotes = 0;
-  for (const [unit, count3] of [...votes].sort((a, b) => a[0] - b[0])) {
-    if (count3 > bestVotes) {
-      best = unit;
-      bestVotes = count3;
-    }
-  }
-  return best;
-}
-function leadingSpaces(text2) {
-  let width = 0;
-  while (text2[width] === " ") width++;
-  return width;
-}
-function levelOf(text2, unit) {
-  let tabs = 0;
-  while (text2[tabs] === "	") tabs++;
-  let spaces = 0;
-  while (text2[tabs + spaces] === " ") spaces++;
-  return tabs + Math.floor(spaces / unit);
-}
-function indentationMetrics(lines) {
-  const indentUnit = detectIndentUnit(lines);
-  let indentationComplexity = 0;
-  let maxIndent = 0;
-  for (const line of lines) {
-    if (!isIndentLine(line)) continue;
-    const level = levelOf(line.text, indentUnit);
-    indentationComplexity += level;
-    if (level > maxIndent) maxIndent = level;
-  }
-  return { indentUnit, indentationComplexity, maxIndent };
-}
-function lengthMetrics(lines) {
-  let nonBlankLines = 0;
-  let codeLines = 0;
-  for (const line of lines) {
-    if (line.kind !== "blank") nonBlankLines++;
-    if (line.kind === "code" || line.kind === "literal") codeLines++;
-  }
-  return { lineCount: lines.length, nonBlankLines, codeLines };
-}
-
-// packages/lexical/src/blocks.ts
-var compiledProfiles = /* @__PURE__ */ new WeakMap();
-function compile2(profile) {
-  let compiled = compiledProfiles.get(profile);
-  if (compiled === void 0) {
-    compiled = {
-      noise: profile.headerNoise.map((source) => new RegExp(source)),
-      control: new RegExp(profile.controlHeader),
-      types: profile.typeHeaders.map((source) => new RegExp(source)),
-      functions: profile.functionHeaders.map((source) => new RegExp(source)),
-      members: profile.expressionMembers?.map((source) => new RegExp(source)),
-      statementEnd: profile.statementEnd === void 0 ? void 0 : new RegExp(profile.statementEnd)
-    };
-    compiledProfiles.set(profile, compiled);
-  }
-  return compiled;
-}
-function classifyHeader(segments, profile) {
-  const { noise, control, types, functions } = compile2(profile);
-  const kept = segments.filter((segment3) => {
-    const trimmed = segment3.text.trim();
-    return trimmed !== "" && !noise.some((pattern) => pattern.test(trimmed));
-  });
-  if (kept.length === 0) return { kind: "other" };
-  const text2 = kept.map((segment3) => segment3.text.trim()).join(" ").replace(/\s+/g, " ");
-  const line = kept[0].line;
-  if (control.test(text2)) return { kind: "other" };
-  for (const pattern of types) {
-    const match = pattern.exec(text2);
-    if (match?.groups?.name !== void 0) return { kind: "type", name: cleanName(match.groups.name), line };
-  }
-  for (const pattern of functions) {
-    const match = pattern.exec(text2);
-    if (match !== null) {
-      const name10 = match.groups?.name;
-      return { kind: "function", name: name10 === void 0 ? void 0 : cleanName(name10), line };
-    }
-  }
-  return { kind: "other" };
-}
-function cleanName(name10) {
-  return name10.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
-}
-function findFunctionBlocks(lines, profile) {
-  const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines, profile) : findBracedBlocks(lines, profile);
-  return blocks.sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
-}
-function qualify(scopes2, name10) {
-  return name10 === void 0 ? void 0 : [...scopes2, name10].join(".");
-}
-var modifiers = "(?:(?:public|private|protected|static|readonly|override|declare|export)\\s+)*";
-var boundArrow = [
-  // `const f = (a) =>`, `export const f: Fn = async (a) =>`, and a class field `handler = (a) =>`.
-  new RegExp(
-    `^${modifiers}(?:(?:const|let|var)\\s+)?(?<name>[#\\w$]+)\\s*(?::(?:[^=]|=>)*?)?=(?!>)\\s*(?:async\\s+)?(?:<[^>]*>\\s*)?(?:\\([^]*\\)|[\\w$]+)\\s*(?::\\s*[^=]+)?$`
-  ),
-  // An object literal property `key: (a) =>`.
-  /^(?<name>[#\w$]+|\[[^\]]+\])\s*:\s*(?:async\s+)?(?:<[^>]*>\s*)?(?:\([^]*\)|[\w$]+)\s*(?::\s*[^=]+)?$/,
-  // `export default (a) =>`, which has no name.
-  /^export\s+default\s+(?:async\s+)?(?:<[^>]*>\s*)?(?:\([^]*\)|[\w$]+)\s*(?::\s*[^=]+)?$/
-];
-var keywordAssignment = /^(?:export\s+)?(?:const|let|var)\b/;
-var continuesExpression = /[-+*/%&|^?:=<>.,([!~]$/;
-var continuesFromStart = /^[-+*/%&|^?:=<>.)\]]/;
-function isPlainEquals(code, index) {
-  return code[index + 1] !== "=" && code[index + 1] !== ">" && !/[-+*/%&|^!<>=]/.test(code[index - 1] ?? "");
-}
-function endsStatement(code, following) {
-  const text2 = code.trimEnd();
-  if (text2 === "" || /[-+*/%&|^?:=<.,([!~]$/.test(text2) || /(?:^|\s)>$/.test(text2) || text2.endsWith("->")) return false;
-  return !continuesFromStart.test(following) && !following.startsWith("{") && !/^else\b/.test(following);
-}
-function angleBalanced(text2) {
-  const flat = text2.replace(/=>|->/g, "");
-  return (flat.match(/</g)?.length ?? 0) <= (flat.match(/>/g)?.length ?? 0);
-}
-function findBracedBlocks(lines, profile) {
-  const closed = [];
-  const stack = [];
-  const codeLines = lines.filter((line) => line.kind === "code");
-  let header = [];
-  let parenDepth = 0;
-  let arrow;
-  let inDeclaration = false;
-  const { statementEnd } = compile2(profile);
-  const endsLineWithoutSemicolon = (line) => {
-    const code = line.code.trimEnd();
-    if (statementEnd === void 0 || code === "") return false;
-    return /^["'`]/.test(line.text.slice(code.length).trimStart()) || statementEnd.test(code);
-  };
-  const headerText = (extra) => [...header.map((part) => part.text), extra].join(" ").replace(/\s+/g, " ").trim();
-  const closeArrow = () => {
-    if (arrow === void 0) return;
-    arrow.block.endLine = arrow.lastLine;
-    closed.push(arrow.block);
-    arrow = void 0;
-  };
-  const openExpressionBody = (before, line) => {
-    const top = stack[stack.length - 1];
-    if (top?.typeOnly === true) return false;
-    const kept = [...header, { line: line.number, text: before }];
-    const classification = classifyHeader(kept, profile);
-    if (classification.kind !== "function") return false;
-    const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
-    const block = { startLine: classification.line, endLine: -1, source: "lexical" };
-    if (classification.name !== void 0) {
-      block.name = classification.name;
-      block.qualifiedName = qualify(names, classification.name);
-    }
-    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: false };
-    return true;
-  };
-  const openArrow = (before, line, column, index) => {
-    const rest = line.code.slice(column + 1).trim();
-    const nextLine = codeLines[index + 1]?.code.trim();
-    if (rest.startsWith("{") || rest === "" && nextLine?.startsWith("{")) return false;
-    const top = stack[stack.length - 1];
-    if (top?.typeOnly === true || parenDepth > 0) return false;
-    const kept = [...header, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
-    if (kept.length === 0) return false;
-    const text2 = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
-    let name10;
-    let matched = false;
-    const members2 = compile2(profile).members;
-    if (members2 !== void 0) {
-      const found = members2.map((pattern) => pattern.exec(text2)).find((match) => match !== null);
-      if (found === void 0) return false;
-      name10 = found?.groups?.name;
-      matched = true;
-    }
-    for (const [i2, pattern] of members2 === void 0 ? [...boundArrow.entries()] : []) {
-      const match = pattern.exec(text2);
-      if (match === null) continue;
-      if (i2 === 0 && !inDeclaration && !keywordAssignment.test(text2) && top?.name === void 0) continue;
-      if (i2 === 1 && (top === void 0 || top.name !== void 0)) continue;
-      name10 = match.groups?.name;
-      matched = true;
-      break;
-    }
-    if (!matched) return false;
-    const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
-    const block = { startLine: kept[0].line, endLine: -1, source: "lexical" };
-    if (name10 !== void 0) {
-      block.name = cleanName(name10);
-      block.qualifiedName = qualify(names, block.name);
-    }
-    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text2) };
-    return true;
-  };
-  for (const [index, line] of codeLines.entries()) {
-    let segment3 = "";
-    const code = line.code;
-    if (profile.expressionArrows === true && arrow === void 0 && parenDepth === 0 && keywordAssignment.test(code.trim())) {
-      header = [];
-      inDeclaration = false;
-    }
-    for (let i2 = 0; i2 < code.length; i2++) {
-      const ch = code[i2];
-      if (arrow !== void 0 && ch.trim() !== "") arrow.lastLine = line.number;
-      if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
-        if (ch === ";" || ch === "," && profile.expressionArrows === true) {
-          inDeclaration = ch === "," && arrow.declaration;
-          closeArrow();
-          header = [];
-          segment3 = "";
-          continue;
-        }
-        if (ch === "}") {
-          arrow.lastLine = Math.max(arrow.block.startLine, arrow.lastLine === line.number && segment3.trim() === "" ? previousCodeLine(codeLines, index) : line.number);
-          closeArrow();
-        }
-      }
-      if (ch === "(" || ch === "[") parenDepth++;
-      else if (ch === ")" || ch === "]") {
-        if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
-          arrow.lastLine = segment3.trim() === "" ? previousCodeLine(codeLines, index) : line.number;
-          closeArrow();
-        }
-        parenDepth = Math.max(0, parenDepth - 1);
-      } else if (ch === "=" && code[i2 + 1] === ">" && (profile.expressionArrows === true || profile.expressionMembers !== void 0) && arrow === void 0) {
-        if (openArrow(segment3, line, i2 + 1, index)) {
-          segment3 += "=>";
-          i2++;
-          continue;
-        }
-      } else if (ch === "=" && profile.expressionBodies === true && arrow === void 0 && parenDepth === 0 && isPlainEquals(code, i2)) {
-        if (openExpressionBody(segment3, line)) {
-          segment3 += "=";
-          continue;
-        }
-      } else if (ch === ";" && parenDepth === 0) {
-        inDeclaration = false;
-        header = [];
-        segment3 = "";
-        continue;
-      } else if (ch === "," && parenDepth === 0 && profile.expressionArrows === true && arrow === void 0 && !/\b(?:class|interface|implements|extends|enum|namespace|type)\b/.test(headerText(segment3)) && angleBalanced(headerText(segment3))) {
-        inDeclaration = inDeclaration || keywordAssignment.test(headerText(segment3));
-        header = [];
-        segment3 = "";
-        continue;
-      } else if (ch === "{") {
-        header.push({ line: line.number, text: segment3 });
-        if (parenDepth > 0 && /(?:[(,=:]|\b(?:struct|interface))\s*$/.test(header.map((part) => part.text).join(" "))) {
-          stack.push({ name: void 0, block: void 0, parenDepth, resume: header });
-          header = [];
-          segment3 = "";
-          continue;
-        }
-        const classification = classifyHeader(header, profile);
-        const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
-        let block;
-        let name10;
-        if (classification.kind === "function") {
-          name10 = classification.name;
-          block = { startLine: classification.line, endLine: -1, source: "lexical" };
-          if (name10 !== void 0) {
-            block.name = name10;
-            block.qualifiedName = qualify(names, name10);
-          }
-        } else if (classification.kind === "type") name10 = classification.name;
-        const typeOnly = /^(?:export\s+)?(?:declare\s+)?(?:interface|type)\b/.test(headerText(""));
-        stack.push({ name: name10, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
-        header = [];
-        segment3 = "";
-        continue;
-      } else if (ch === "}") {
-        const scope = stack.pop();
-        if (scope?.resume !== void 0) {
-          parenDepth = scope.parenDepth;
-          header = scope.resume;
-          segment3 = "{}";
-          continue;
-        }
-        if (scope !== void 0) {
-          parenDepth = scope.parenDepth;
-          if (scope.block !== void 0) {
-            scope.block.endLine = line.number;
-            closed.push(scope.block);
-          }
-        }
-        header = [];
-        segment3 = "";
-        continue;
-      }
-      segment3 += ch;
-    }
-    header.push({ line: line.number, text: segment3 });
-    if (parenDepth === 0 && arrow === void 0 && endsLineWithoutSemicolon(line)) header = [];
-    if (profile.newlineEndsStatements === true && arrow === void 0 && parenDepth === 0 && endsStatement(code, codeLines[index + 1]?.code.trim() ?? "")) header = [];
-    if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
-      const text2 = code.trimEnd();
-      const following = codeLines[index + 1]?.code.trim() ?? "";
-      if (text2 !== "" && !continuesExpression.test(text2) && !continuesFromStart.test(following) && !(profile.expressionBodies === true && /^else\b/.test(following))) {
-        closeArrow();
-        header = [];
-      }
-    }
-  }
-  if (arrow !== void 0) closeArrow();
-  return closed;
-}
-function previousCodeLine(codeLines, index) {
-  return codeLines[Math.max(0, index - 1)].number;
-}
-function findIndentedBlocks(lines, profile) {
-  const unit = detectIndentUnit(lines);
-  const closed = [];
-  const stack = [];
-  let lastBodyLine = 0;
-  let bracketDepth = 0;
-  let backslashContinued = false;
-  const close = (scope) => {
-    if (scope.block === void 0) return;
-    scope.block.endLine = Math.max(lastBodyLine, scope.block.startLine);
-    closed.push(scope.block);
-  };
-  for (const line of lines) {
-    if (line.kind === "literal") {
-      lastBodyLine = line.number;
-      continue;
-    }
-    if (line.kind !== "code") continue;
-    const continuation = bracketDepth > 0 || backslashContinued;
-    backslashContinued = line.code.trimEnd().endsWith("\\");
-    for (const ch of line.code) {
-      if (ch === "(" || ch === "[" || ch === "{") bracketDepth++;
-      else if (ch === ")" || ch === "]" || ch === "}") bracketDepth = Math.max(0, bracketDepth - 1);
-    }
-    if (continuation || line.startsInLiteral) {
-      lastBodyLine = line.number;
-      continue;
-    }
-    const level = levelOf(line.text, unit);
-    while (stack.length > 0 && stack[stack.length - 1].level >= level) close(stack.pop());
-    const classification = classifyHeader([{ line: line.number, text: line.code }], profile);
-    if (classification.kind !== "other") {
-      const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
-      let block;
-      if (classification.kind === "function") {
-        block = { startLine: line.number, endLine: -1, source: "lexical" };
-        if (classification.name !== void 0) {
-          block.name = classification.name;
-          block.qualifiedName = qualify(names, classification.name);
-        }
-      }
-      stack.push({ level, name: classification.name, block });
-    }
-    lastBodyLine = line.number;
-  }
-  while (stack.length > 0) close(stack.pop());
-  return closed;
-}
-
-// packages/lexical/src/metrics.ts
-var DEFAULT_BUMP_DEPTH = 2;
-var keywordPatterns = /* @__PURE__ */ new WeakMap();
-var openerPatterns = /* @__PURE__ */ new WeakMap();
-function keywordPattern(profile) {
-  let pattern = keywordPatterns.get(profile);
-  if (pattern === void 0) {
-    const words = `\\b(?:${profile.branchKeywords.join("|")})\\b`;
-    pattern = new RegExp([words, ...profile.shortCircuitOperators].join("|"), "g");
-    keywordPatterns.set(profile, pattern);
-  }
-  return pattern;
-}
-function openerPattern(profile) {
-  let pattern = openerPatterns.get(profile);
-  if (pattern === void 0) {
-    pattern = new RegExp(`\\b(?:${profile.bumpOpeners.join("|")})\\b`);
-    openerPatterns.set(profile, pattern);
-  }
-  return pattern;
-}
-function keywordComplexity(lines, profile, from = 1, to = lines.length) {
-  const pattern = keywordPattern(profile);
-  let count3 = 0;
-  for (let n = from; n <= to; n++) {
-    const line = lines[n - 1];
-    if (line === void 0 || line.kind !== "code") continue;
-    count3 += line.code.match(pattern)?.length ?? 0;
-  }
-  return count3;
-}
-function blockMetrics(lines, block, profile, options = {}) {
-  const unit = options.indentUnit ?? detectIndentUnit(lines);
-  const threshold = options.bumpDepth ?? DEFAULT_BUMP_DEPTH;
-  const header = lines[block.startLine - 1];
-  const base = levelOf(header.text, unit);
-  let length = 0;
-  let indentationComplexity = 0;
-  let maxRelative = 0;
-  const codeLines = [];
-  for (let n = block.startLine; n <= block.endLine; n++) {
-    const line = lines[n - 1];
-    if (line.kind === "code" || line.kind === "literal") length++;
-    if (line.kind !== "code" || line.startsInLiteral) continue;
-    const relative = Math.max(0, levelOf(line.text, unit) - base);
-    indentationComplexity += relative;
-    if (n > block.startLine && relative > maxRelative) maxRelative = relative;
-    codeLines.push({ relative, text: line.code });
-  }
-  return {
-    length,
-    indentationComplexity,
-    maxNesting: Math.max(0, maxRelative - 1),
-    keywordComplexity: keywordComplexity(lines, profile, block.startLine, block.endLine),
-    ...findBumps(codeLines, profile, threshold)
-  };
-}
-function findBumps(codeLines, profile, threshold) {
-  const opener = openerPattern(profile);
-  let bumps = 0;
-  let bumpDepth = 0;
-  let bumpSize = 0;
-  let runSize = 0;
-  let runDepth = 0;
-  let state = "outside";
-  const endRun = () => {
-    if (state === "bump") {
-      bumps++;
-      bumpDepth = Math.max(bumpDepth, runDepth);
-      bumpSize = Math.max(bumpSize, runSize);
-    }
-    state = "outside";
-  };
-  for (let i2 = 0; i2 < codeLines.length; i2++) {
-    const line = codeLines[i2];
-    if (line.relative < threshold) {
-      endRun();
-      continue;
-    }
-    if (state === "outside") {
-      let previous = codeLines[i2 - 1];
-      if (previous !== void 0 && profile.blocks === "braces" && previous.text.trim() === "{") {
-        previous = codeLines[i2 - 2];
-      }
-      state = previous !== void 0 && opener.test(previous.text) ? "bump" : "other";
-      runSize = 0;
-      runDepth = 0;
-    }
-    runSize++;
-    runDepth = Math.max(runDepth, line.relative);
-  }
-  endRun();
-  return { bumps, bumpDepth, bumpSize };
-}
-function isBumpyRoad(metrics, guidelines = {}) {
-  const { bumps = 3, deepBumps = 2, nesting = 4 } = guidelines;
-  if (metrics.bumps >= bumps) return true;
-  return metrics.bumps >= deepBumps && metrics.bumpDepth > nesting;
-}
-
-// packages/lexical/src/strip.ts
-function normaliseNewlines(content) {
-  const withoutBom = content.charCodeAt(0) === 65279 ? content.slice(1) : content;
-  return withoutBom.replace(/\r\n?/g, "\n");
-}
-var NONE = 0;
-var COMMENT = 1;
-var STRING = 2;
-var compiledProfiles2 = /* @__PURE__ */ new WeakMap();
-function compileRules(profile) {
-  const cached = compiledProfiles2.get(profile);
-  if (cached !== void 0) return cached;
-  const compiled = profile.strings.map(
-    (rule) => rule.kind === "delimited" ? { rule, open: new RegExp(rule.open, "y") } : { rule, pattern: new RegExp(rule.pattern, "y"), after: rule.after === void 0 ? void 0 : new RegExp(rule.after) }
-  );
-  compiledProfiles2.set(profile, compiled);
-  return compiled;
-}
-function stripSource(rawContent, profile) {
-  const content = normaliseNewlines(rawContent);
-  const mask = profile === void 0 ? new Uint8Array(content.length) : maskLiterals(content, profile);
-  const lines = [];
-  let start2 = 0;
-  let number = 1;
-  while (start2 <= content.length) {
-    let end = content.indexOf("\n", start2);
-    if (end === -1) end = content.length;
-    if (end === content.length && start2 === content.length && start2 > 0) break;
-    const text2 = content.slice(start2, end);
-    let code = "";
-    let sawComment = false;
-    for (let i2 = start2; i2 < end; i2++) {
-      if (mask[i2] === NONE) code += content[i2];
-      else {
-        code += " ";
-        if (mask[i2] === COMMENT) sawComment = true;
-      }
-    }
-    const startsInString = start2 > 0 && mask[start2 - 1] === STRING;
-    let kind;
-    if (text2.trim() === "") kind = "blank";
-    else if (startsInString && code.trim() === "") kind = "literal";
-    else if (code.trim() !== "") kind = "code";
-    else kind = sawComment || start2 > 0 && mask[start2 - 1] === COMMENT ? "comment" : "code";
-    lines.push({ number, text: text2, code, kind, startsInLiteral: startsInString });
-    number++;
-    start2 = end + 1;
-  }
-  return lines;
-}
-function maskLiterals(content, profile) {
-  const mask = new Uint8Array(content.length);
-  const rules5 = compileRules(profile);
-  const triggers = /* @__PURE__ */ new Set();
-  for (const comment3 of profile.lineComments) triggers.add(comment3[0]);
-  for (const comment3 of profile.blockComments) triggers.add(comment3.open[0]);
-  for (const { rule } of rules5) for (const ch of rule.triggers) triggers.add(ch);
-  scan(0, false);
-  return mask;
-  function scan(from, untilBrace, closer = "}") {
-    let depth = 0;
-    let i2 = from;
-    while (i2 < content.length) {
-      const ch = content[i2];
-      if (untilBrace) {
-        if (ch === "{") depth++;
-        else if (content.startsWith(closer, i2)) {
-          if (depth === 0) return i2;
-          depth--;
-        }
-      }
-      if (!triggers.has(ch)) {
-        i2++;
-        continue;
-      }
-      const skipped = tryLiteral(i2);
-      i2 = skipped > i2 ? skipped : i2 + 1;
-    }
-    return i2;
-  }
-  function tryLiteral(i2) {
-    for (const comment3 of profile.lineComments) {
-      if (content.startsWith(comment3, i2)) {
-        let end = content.indexOf("\n", i2);
-        if (end === -1) end = content.length;
-        mask.fill(COMMENT, i2, end);
-        return end;
-      }
-    }
-    for (const comment3 of profile.blockComments) {
-      if (content.startsWith(comment3.open, i2)) return maskBlockComment(i2, comment3.open, comment3.close, comment3.nested === true);
-    }
-    for (const compiled of rules5) {
-      if ("pattern" in compiled) {
-        if (compiled.after !== void 0 && !compiled.after.test(content.slice(Math.max(0, i2 - 16), i2))) continue;
-        compiled.pattern.lastIndex = i2;
-        const match = compiled.pattern.exec(content);
-        if (match !== null) {
-          mask.fill(STRING, i2, i2 + match[0].length);
-          return i2 + match[0].length;
-        }
-      } else {
-        compiled.open.lastIndex = i2;
-        const match = compiled.open.exec(content);
-        if (match !== null) return maskDelimited(i2, match, compiled.rule);
-      }
-    }
-    return i2;
-  }
-  function maskBlockComment(from, open, close, nested) {
-    let depth = 1;
-    let i2 = from + open.length;
-    while (i2 < content.length) {
-      if (nested && content.startsWith(open, i2)) {
-        depth++;
-        i2 += open.length;
-      } else if (content.startsWith(close, i2)) {
-        depth--;
-        i2 += close.length;
-        if (depth === 0) break;
-      } else i2++;
-    }
-    mask.fill(COMMENT, from, i2);
-    return i2;
-  }
-  function maskDelimited(from, opener, rule) {
-    const close = rule.close.replace("$1", opener[1] ?? "");
-    let i2 = from + opener[0].length;
-    let segmentStart = from;
-    const finish = (end) => {
-      mask.fill(STRING, segmentStart, end);
-      return end;
-    };
-    while (i2 < content.length) {
-      const ch = content[i2];
-      if (rule.escape !== void 0 && ch === rule.escape) {
-        i2 += 2;
-        continue;
-      }
-      if (ch === "\n" && !rule.multiline) return finish(i2);
-      if (rule.doubledCloseEscapes === true && content.startsWith(close + close, i2)) {
-        i2 += close.length * 2;
-        continue;
-      }
-      if (content.startsWith(close, i2)) return finish(i2 + close.length);
-      if (rule.interpolation !== void 0 && content.startsWith(rule.interpolation.open, i2)) {
-        const innerStart = i2 + rule.interpolation.open.length;
-        const innerEnd = scan(innerStart, true, rule.interpolation.close);
-        mask.fill(STRING, segmentStart, innerStart);
-        i2 = Math.min(innerEnd, content.length);
-        segmentStart = i2;
-        continue;
-      }
-      i2++;
-    }
-    return finish(Math.min(i2, content.length));
-  }
-}
-
-// packages/lexical/src/analyse-source.ts
-var DEFAULT_AGREEMENT_BAR = 0.9;
-function analyseSource(path, content, options = {}) {
-  const selection = selectProfile(path, options.mappings);
-  const profile = selection?.profile;
-  const lines = stripSource(content, profile);
-  const file = { ...indentationMetrics(lines), ...lengthMetrics(lines) };
-  const skipped = [];
-  const blocks = [];
-  if (profile === void 0) {
-    const reason = `no lexer profile for ${path}`;
-    skipped.push(`comment and string stripping: ${reason}`);
-    skipped.push(`keywordComplexity: ${reason}`);
-    skipped.push(`function blocks: ${reason}`);
-  } else {
-    file.keywordComplexity = keywordComplexity(lines, profile);
-    for (const block of findFunctionBlocks(lines, profile)) {
-      const metrics = blockMetrics(lines, block, profile, {
-        indentUnit: file.indentUnit,
-        ...options.bumpDepth === void 0 ? {} : { bumpDepth: options.bumpDepth }
-      });
-      blocks.push({ ...block, metrics, bumpyRoad: isBumpyRoad(metrics, options.bumpyRoad) });
-    }
-  }
-  return {
-    path,
-    source: "lexical",
-    profile: profile?.name ?? null,
-    unverified: selection?.mapped ?? false,
-    file,
-    functions: releaseFunctions(profile?.name, selection?.mapped ?? false, blocks, options),
-    skipped
-  };
-}
-function releaseFunctions(profileName, mapped, blocks, options) {
-  const gated = (reason) => ({ gated: true, gate: "agreement", reason, blocks });
-  if (profileName === void 0) return gated("no lexer profile");
-  if (mapped) return { gated: false, gate: "config", blocks };
-  const counts = (options.agreement ?? recordedAgreement)[profileName];
-  if (counts === void 0) return gated(`no agreement measured for ${profileName}`);
-  const bar = options.agreementBar ?? DEFAULT_AGREEMENT_BAR;
-  const rate = exactRate(counts);
-  if (rate < bar) return gated(`${profileName} agreement ${rate} is below the bar ${bar}`);
-  return { gated: false, gate: "agreement", agreement: { exactRate: rate, spuriousRate: spuriousRate(counts), bar }, blocks };
-}
-
 // packages/parse/src/registered-adapters.ts
 var registered_adapters_exports = {};
 __export(registered_adapters_exports, {
@@ -4647,7 +3673,7 @@ var memberTypes = /* @__PURE__ */ new Set([
   "index_signature",
   "property_signature"
 ]);
-function isHidden(member) {
+function isHiddenMember(member) {
   if (member.namedChildren.some((child) => child.type === "accessibility_modifier" && child.text === "private")) return true;
   return member.childForFieldName("name")?.type === "private_property_identifier";
 }
@@ -4655,7 +3681,7 @@ function classShape(declaration) {
   const body2 = declaration.childForFieldName("body");
   let interfaceSize = 0;
   for (const member of body2?.namedChildren ?? []) {
-    if (!memberTypes.has(member.type) || isHidden(member)) continue;
+    if (!memberTypes.has(member.type) || isHiddenMember(member)) continue;
     if (member.type === "method_definition" && member.childForFieldName("name")?.text === "constructor") {
       interfaceSize += parameterCounts(member).parameters;
     } else {
@@ -5041,6 +4067,8 @@ var Extractor = class {
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (overridesMethod(node)) unit.override = true;
+    const words = modifiersOf(node);
+    if (!context.inInterface && !words.has("public") && !words.has("protected")) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const inside = { ...context, unit: qualifiedName };
@@ -5208,7 +4236,7 @@ var adapter = {
   support: "supported",
   lexerProfile: "java",
   grammars: [{ spec: { id: "java", packageName: "tree-sitter-java", file: "tree-sitter-java.wasm" }, extensions: [".java"] }],
-  extractorVersion: 2,
+  extractorVersion: 3,
   extract: extractFacts,
   isTestPath: (path) => isJvmTestPath(path, /\.java$/),
   metrics: javaMetricRules,
@@ -5624,6 +4652,7 @@ var Extractor2 = class {
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (modifierWords(node).has("override")) unit.override = true;
+    if (context.inType && (modifierWords(node).has("private") || modifierWords(node).has("internal"))) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     if (context.topLevel && !isConstructor2) {
@@ -5833,7 +4862,7 @@ var adapter2 = {
   support: "supported",
   lexerProfile: "kotlin",
   grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm", repairs: kotlinRepairs }, extensions: [".kt"] }],
-  extractorVersion: 3,
+  extractorVersion: 4,
   extract: extractFacts2,
   isTestPath: (path) => isJvmTestPath(path, /\.kt$/),
   metrics: kotlinMetricRules,
@@ -6441,6 +5470,7 @@ var Extractor3 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (kind === "method" && isHiddenMember(node)) unit.hidden = true;
     if (kind === "class") unit.shape = classShape(node);
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root, typescriptMetricRules);
@@ -7167,7 +6197,7 @@ var adapter3 = {
     { spec: { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm", repairs: typescriptRepairs }, extensions: [".tsx"] },
     { spec: { id: "javascript", packageName: "tree-sitter-javascript", file: "tree-sitter-javascript.wasm" }, extensions: [".js", ".mjs", ".cjs", ".jsx"] }
   ],
-  extractorVersion: 8,
+  extractorVersion: 9,
   extract: extractFacts3,
   isTestPath: (path) => /(^|\/)(__tests__|__mocks__|tests?)\//.test(path) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(path),
   metrics: typescriptMetricRules,
@@ -7479,7 +6509,7 @@ function passThroughOf4(fn, parameterNames6) {
 }
 
 // packages/parse/src/languages/csharp/extract-facts.ts
-var extractorVersion = 3;
+var extractorVersion = 4;
 var typeDeclarations3 = /* @__PURE__ */ new Set([
   "class_declaration",
   "struct_declaration",
@@ -7763,6 +6793,7 @@ var Extractor4 = class {
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (modifiersOf2(fn).includes("override")) unit.override = true;
+    if (kind === "method" && isHiddenMember2(fn)) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     return { ...context, unit: qualifiedName };
@@ -7927,6 +6958,13 @@ var Extractor4 = class {
 };
 function extractFacts4(root, options = {}) {
   return new Extractor4(options).extract(root);
+}
+function isHiddenMember2(fn) {
+  const member = fn.type === "accessor_declaration" ? fn.parent?.parent : fn;
+  if (member === void 0 || member === null) return false;
+  if (member.parent?.parent?.type === "interface_declaration") return false;
+  if (member.namedChildren.some((child) => child.type === "explicit_interface_specifier")) return false;
+  return !modifiersOf2(member).some((modifier) => modifier === "public" || modifier === "protected");
 }
 
 // packages/parse/src/languages/csharp/census.ts
@@ -9248,6 +8286,7 @@ var Extractor5 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (kind === "method" && context.scope === "class" && !context.publicMembers) unit.hidden = true;
     const measured = measureFunction(fn, { ...name10 === void 0 ? {} : { name: name10 }, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, cppMetricRules);
     unit.metrics = measured.metrics;
     unit.shape = functionShape3(fn, measured.metrics.parameters);
@@ -9892,7 +8931,7 @@ var adapter5 = {
   support: "supported",
   lexerProfile: "cpp",
   grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm", repairs: cppRepairs }, extensions: claimed }],
-  extractorVersion: 3,
+  extractorVersion: 4,
   extract: extractFacts5,
   isTestPath: (path) => /(^|\/)(tests?|unittests?|gtest|testing)\//i.test(path) || /(^|\/)(test_[^/]+|[^/]+_(test|tests|unittest|unittests)|[^/]+Tests?|[^/]+\.(test|spec))\.[^/.]+$/.test(path),
   metrics: cppMetricRules,
@@ -10333,7 +9372,7 @@ function passThroughOf6(fn) {
 }
 
 // packages/parse/src/languages/python/extract-facts.ts
-var extractorVersion2 = 3;
+var extractorVersion2 = 4;
 var importTypes = /* @__PURE__ */ new Set(["import_statement", "import_from_statement", "future_import_statement"]);
 var targetTypes = /* @__PURE__ */ new Set(["pattern_list", "tuple_pattern", "list_pattern", "list_splat_pattern", "tuple", "list"]);
 var comprehensionTypes = /* @__PURE__ */ new Set(["list_comprehension", "set_comprehension", "dictionary_comprehension", "generator_expression"]);
@@ -10800,6 +9839,7 @@ var Extractor6 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (name10.startsWith("_") && !(name10.startsWith("__") && name10.endsWith("__"))) unit.hidden = true;
     if (kind === "class") unit.shape = classShape3(extent);
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root, pythonMetricRules);
@@ -11757,7 +10797,7 @@ function passThroughOf7(fn) {
 }
 
 // packages/parse/src/languages/go/extract-facts.ts
-var extractorVersion3 = 3;
+var extractorVersion3 = 4;
 var GENERATED = /^\/\/ Code generated .* DO NOT EDIT\.$/;
 var predeclared = /* @__PURE__ */ new Set([
   "any",
@@ -12005,6 +11045,7 @@ var Extractor7 = class {
     const forwarded = passThroughOf7(fn);
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
+    if (kind === "method" && methodName2 !== void 0 && !isExported(methodName2)) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const locals = /* @__PURE__ */ new Set([...context.locals, ...declaredIn(fn)]);
@@ -12770,7 +11811,7 @@ var rustMetricRules = {
 };
 
 // packages/parse/src/languages/rust/extract-facts.ts
-var extractorVersion4 = 2;
+var extractorVersion4 = 3;
 function visibilityOf(node) {
   const modifier = node.namedChildren.find((child) => child.type === "visibility_modifier");
   if (modifier === void 0) return "private";
@@ -12786,6 +11827,9 @@ function attributesOf(node) {
 }
 function attributeNamed(node, name10) {
   return attributesOf(node).map((item) => item.namedChildren.find((child) => child.type === "attribute")).find((attribute2) => attribute2?.namedChildren[0]?.text === name10);
+}
+function isTestItem(node) {
+  return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
 }
 function pathAttribute(node) {
   const value = attributeNamed(node, "path")?.childForFieldName("value");
@@ -12998,6 +12042,7 @@ var Extractor8 = class {
     const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
     const unit = { qualifiedName, kind, startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, source: "structural" };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (context.inTests === true || isTestItem(node)) unit.test = true;
     if (fn === void 0) unit.shape = typeShape5(node);
     else {
       this.codeRows ??= codeRowsOf(this.root, rustMetricRules);
@@ -13008,6 +12053,7 @@ var Extractor8 = class {
       if (forwarded !== void 0) unit.passThrough = forwarded;
       if (measured.recursive) unit.recursive = true;
       if (memberOf !== void 0 && context.implementsTrait === true) unit.override = true;
+      if (memberOf !== void 0 && context.implementsTrait !== true && visibilityOf(node) !== "public") unit.hidden = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
     this.units.push(unit);
@@ -13060,7 +12106,7 @@ var Extractor8 = class {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body2 = node.childForFieldName("body");
         this.visitChildrenExcept(node, body2, { ...context, owner: void 0 });
-        if (body2 !== null) this.visitScope(body2, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
+        if (body2 !== null) this.visitScope(body2, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null, ...isTestItem(node) ? { inTests: true } : {} });
         return;
       }
       case "type_item":
@@ -13156,7 +12202,7 @@ var Extractor8 = class {
     const body2 = node.childForFieldName("body");
     if (body2 !== null) {
       this.export(node, name10, void 0, "namespace", visibility, context);
-      this.visitScope(body2, { ...context, mods: [...context.mods, name10], exposed: context.exposed && visibility === "public" });
+      this.visitScope(body2, { ...context, mods: [...context.mods, name10], exposed: context.exposed && visibility === "public", ...isTestItem(node) ? { inTests: true } : {} });
       return;
     }
     const written = pathAttribute(node);
@@ -13631,6 +12677,993 @@ var folderConvention = /(^|\/)(__tests__|__mocks__|tests?)\//;
 function isTestPath(path, adapters) {
   const adapter9 = adapterForPath(path, adapters);
   return adapter9 === void 0 ? folderConvention.test(path) : adapter9.isTestPath(path);
+}
+
+// packages/parse/src/test-files.ts
+function testClassifier(patterns = []) {
+  const entries = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern !== "" && !pattern.startsWith("#")).map((pattern) => pattern.startsWith("!") ? { test: false, matches: compileGlobs([pattern.slice(1)]) } : { test: true, matches: compileGlobs([pattern]) });
+  return (path) => {
+    for (let index = entries.length - 1; index >= 0; index--) {
+      if (entries[index].matches(path)) return entries[index].test;
+    }
+    return isTestPath(path);
+  };
+}
+
+// packages/complexity/src/metrics.ts
+var metricIds = ["cognitive", "cyclomatic", "nesting", "parameters", "length", "keyword", "bumps"];
+function isMetricId(value) {
+  return metricIds.includes(value);
+}
+function structuralValues(metrics, switchMode) {
+  return {
+    cyclomatic: switchMode === "case" ? metrics.cyclomatic : metrics.cyclomaticModified,
+    cognitive: metrics.cognitive,
+    nesting: metrics.nesting,
+    length: metrics.length,
+    parameters: metrics.parameters,
+    bumps: metrics.bumps
+  };
+}
+var defaultGuidelines = {
+  cyclomatic: { warn: 10, high: 20 },
+  cognitive: { warn: 15, high: 25 },
+  nesting: 4,
+  parameters: 5,
+  bumps: 3,
+  deepBumps: 2
+};
+var gatedMetrics = ["cyclomatic", "cognitive", "nesting", "parameters"];
+function limitOf(guidelines, metric) {
+  const guideline = guidelines[metric];
+  return typeof guideline === "number" ? guideline : guideline.warn;
+}
+function exceeded(values, guidelines) {
+  return gatedMetrics.filter((metric) => {
+    const value = values[metric];
+    return value !== void 0 && value > limitOf(guidelines, metric);
+  });
+}
+function labelsFor(values, guidelines, bumpyRoad = false) {
+  const labels = [];
+  for (const metric of gatedMetrics) {
+    const value = values[metric];
+    if (value === void 0) continue;
+    const guideline = guidelines[metric];
+    if (typeof guideline === "number") {
+      if (value > guideline) labels.push(`${metric}-warn`);
+    } else if (value > guideline.high) labels.push(`${metric}-high`);
+    else if (value > guideline.warn) labels.push(`${metric}-warn`);
+  }
+  if (bumpyRoad) labels.push("bumpy-road");
+  return labels;
+}
+function bumpyRoadLimits(guidelines) {
+  return { bumps: guidelines.bumps, deepBumps: guidelines.deepBumps, nesting: guidelines.nesting };
+}
+
+// packages/complexity/src/tool.ts
+var TOOL = "complexity";
+var SCHEMA_VERSION2 = 1;
+
+// packages/complexity/src/config.ts
+var complexityConfig = {
+  plugin: TOOL,
+  history: ["windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "fixExcludePatterns", "revertPatterns", "fixMatchBody"],
+  section: {
+    /** Metrics reported and ranked. `--metrics` narrows them for one run. */
+    metrics: [...metricIds],
+    /**
+     * Guidelines for investigation. A metric is above its guideline when its value is above it, and `high` marks a second band. They label and order results and
+     * hide nothing. Only `check` turns them into an exit code, and only for new or worsened units. Defaults: cyclomatic 10 and 20, cognitive 15 and 25, nesting 4 and parameters 5 are judgement calls
+     * (CodeScene's default for cyclomatic is 9 and for parameters 4); bumps 3 and deepBumps 2 are judgement calls beside CodeScene's 2 bumps at depth 2.
+     */
+    guidelines: {
+      cyclomatic: { ...defaultGuidelines.cyclomatic },
+      cognitive: { ...defaultGuidelines.cognitive },
+      nesting: defaultGuidelines.nesting,
+      parameters: defaultGuidelines.parameters,
+      /** A function with this many bumps or more is labelled a bumpy road. */
+      bumps: defaultGuidelines.bumps,
+      /** The count that makes a bumpy road when the deepest bump is deeper than `nesting`. */
+      deepBumps: defaultGuidelines.deepBumps
+    },
+    /** `case` counts every case of a switch toward cyclomatic complexity, `modified` counts one per switch. */
+    cyclomaticSwitch: "case",
+    /** Base revision of `check`. null is the merge base with `mainBranch`. */
+    base: null,
+    /** The branch `check` forks from. null tries origin/main, main, origin/master and master. */
+    mainBranch: null,
+    /** `check` exits 1 for a unit above a guideline that worsened by more than this on that metric. `check` is the gate, so this is the only place a guideline becomes an exit code. */
+    delta: 0,
+    /** Guideline (a judgement call): `analyse` prints a notice when more than this percent of the files a grammar read have syntax errors, because the units of those files may be incomplete. The share is always reported and hides no file. */
+    syntaxErrorPercent: 5,
+    /** Exact-boundary agreement a lexer profile must reach for its per-function metrics to be reported. */
+    agreementBar: 0.9,
+    /** Body similarity, 0 to 1, at which a unit that disappeared and one that appeared are the same unit moved or renamed. */
+    moveSimilarity: 0.8,
+    /** Analyse test files. They are ranked among themselves, and the commands that list rows put them after the production rows (`--include-tests` merges them). */
+    analyseTests: true,
+    /** Weight the ranking by how often each file changed in the window, so code that never changes ranks last. */
+    changeWeighting: true,
+    /** `{ "paths": [globs], "guidelines": { ...partial guidelines } }`, the last matching entry winning per metric. */
+    overrides: [],
+    /**
+     * `complexity fixes` and `analyse --with-fixes`. `maxCommits` is null, which analyses every commit of the history window, or a number that bounds how many commits are parsed, newest first, and the output says how many were left out. `evidence` is how many fix commits are listed per function. `minRevisions` is a guideline of 3, a judgement call not calibrated on a corpus: a function with fewer revisions in the window is labelled low evidence and sorts after the others with the same fix count.
+     */
+    fixes: { maxCommits: null, evidence: 3, minRevisions: 3 },
+    /** `shallow`: a guideline of 10, a judgement call not calibrated on a corpus. An exported function, class or module with fewer syntax nodes than this per element of its interface is labelled shallow. Rows are ordered by depth whatever the guideline. */
+    interfaceDepth: { shallow: 10 }
+  }
+};
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function readSettings(config) {
+  const section = config.effective[TOOL];
+  const at = (key) => `${TOOL}.${key}`;
+  const number = (value, where, min, max = Infinity) => {
+    if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
+      throw configError(`code-health.json: ${where} must be a number from ${min}${max === Infinity ? "" : ` to ${max}`}`);
+    }
+    return value;
+  };
+  const optionalString = (key) => {
+    const value = section[key];
+    if (value !== null && (typeof value !== "string" || value === "")) {
+      throw configError(`code-health.json: ${at(key)} must be a revision name or null`);
+    }
+    return value;
+  };
+  const requested = section.metrics;
+  if (!Array.isArray(requested) || requested.some((metric) => typeof metric !== "string" || !isMetricId(metric))) {
+    throw configError(`code-health.json: ${at("metrics")} must list metrics from ${metricIds.join(", ")}`);
+  }
+  const metrics = metricIds.filter((metric) => requested.includes(metric));
+  if (section.cyclomaticSwitch !== "case" && section.cyclomaticSwitch !== "modified") {
+    throw configError(`code-health.json: ${at("cyclomaticSwitch")} must be "case" or "modified"`);
+  }
+  const guidelines = readGuidelines(section.guidelines, at("guidelines"), number);
+  const overrides = readOverrides(section.overrides, at("overrides"), number, guidelines);
+  return {
+    metrics,
+    guidelines,
+    overrides,
+    cyclomaticSwitch: section.cyclomaticSwitch,
+    base: optionalString("base"),
+    mainBranch: optionalString("mainBranch"),
+    delta: number(section.delta, at("delta"), 0),
+    agreementBar: number(section.agreementBar, at("agreementBar"), 0, 1),
+    syntaxErrorPercent: number(section.syntaxErrorPercent, at("syntaxErrorPercent"), 0, 100),
+    moveSimilarity: number(section.moveSimilarity, at("moveSimilarity"), 0, 1),
+    analyseTests: section.analyseTests === true,
+    changeWeighting: section.changeWeighting === true,
+    windowMonths: number(section.windowMonths, at("windowMonths"), 1),
+    maxChangesetSize: number(section.maxChangesetSize, at("maxChangesetSize"), 1),
+    botPatterns: section.botPatterns,
+    fix: readFixClassifier(section),
+    fixes: {
+      maxCommits: section.fixes.maxCommits === null ? null : number(section.fixes.maxCommits, at("fixes.maxCommits"), 1),
+      evidence: number(section.fixes.evidence, at("fixes.evidence"), 0),
+      minRevisions: number(section.fixes.minRevisions, at("fixes.minRevisions"), 1)
+    },
+    shallowDepth: number(section.interfaceDepth.shallow, at("interfaceDepth.shallow"), 0),
+    isExcluded: compileGlobs(config.effective.exclude),
+    isTest: testClassifier(config.effective.testPatterns),
+    languageProfiles: readLanguageProfiles(config.effective.languages)
+  };
+}
+function readFixClassifier(section) {
+  try {
+    return compileFixClassifier({
+      fixPatterns: section.fixPatterns,
+      fixExcludePatterns: section.fixExcludePatterns,
+      revertPatterns: section.revertPatterns,
+      fixMatchBody: section.fixMatchBody === true
+    });
+  } catch (error) {
+    if (error instanceof InvalidPatternError) throw configError(`code-health.json: ${error.message}`);
+    throw error;
+  }
+}
+function readLanguageProfiles(languages) {
+  for (const [extension, name10] of Object.entries(languages)) {
+    if (!(name10 in profiles)) {
+      throw configError(`code-health.json: languages.${extension} names the lexer profile "${name10}", which does not exist: use one of ${Object.keys(profiles).join(", ")}`);
+    }
+  }
+  return languages;
+}
+function readGuidelines(value, where, number) {
+  const source = value;
+  const level = (name10) => {
+    const { warn, high } = source[name10];
+    const checked = { warn: number(warn, `${where}.${name10}.warn`, 0), high: number(high, `${where}.${name10}.high`, 0) };
+    if (checked.high < checked.warn) throw configError(`code-health.json: ${where}.${name10}.high must not be below warn`);
+    return checked;
+  };
+  return {
+    cyclomatic: level("cyclomatic"),
+    cognitive: level("cognitive"),
+    nesting: number(source.nesting, `${where}.nesting`, 0),
+    parameters: number(source.parameters, `${where}.parameters`, 0),
+    bumps: number(source.bumps, `${where}.bumps`, 1),
+    deepBumps: number(source.deepBumps, `${where}.deepBumps`, 1)
+  };
+}
+function readOverrides(value, where, number, global) {
+  if (!Array.isArray(value)) throw configError(`code-health.json: ${where} must be an array`);
+  return value.map((entry, index) => {
+    const here = `${where}[${index}]`;
+    if (!isRecord(entry) || !Array.isArray(entry.paths) || entry.paths.some((glob) => typeof glob !== "string")) {
+      throw configError(`code-health.json: ${here} needs "paths", an array of globs, and "guidelines"`);
+    }
+    if (!isRecord(entry.guidelines)) throw configError(`code-health.json: ${here}.guidelines must be an object`);
+    const merged = mergeGuidelines(global, entry.guidelines, `${here}.guidelines`, number);
+    for (const name10 of ["cyclomatic", "cognitive"]) {
+      if (merged[name10].high < merged[name10].warn) {
+        throw configError(`code-health.json: ${here}.guidelines.${name10}.high must not be below warn (${merged[name10].warn}); set both when raising warn`);
+      }
+    }
+    return { matches: compileGlobs(entry.paths), guidelines: entry.guidelines };
+  });
+}
+function mergeGuidelines(base, patch, where, number) {
+  if (!isRecord(patch)) throw configError(`code-health.json: ${where} must be an object`);
+  const merged = { cyclomatic: { ...base.cyclomatic }, cognitive: { ...base.cognitive }, nesting: base.nesting, parameters: base.parameters, bumps: base.bumps, deepBumps: base.deepBumps };
+  for (const [key, entry] of Object.entries(patch)) {
+    if (key === "cyclomatic" || key === "cognitive") {
+      if (!isRecord(entry)) throw configError(`code-health.json: ${where}.${key} must be an object with warn and high`);
+      for (const [level, limit] of Object.entries(entry)) {
+        if (level !== "warn" && level !== "high") throw configError(`code-health.json: ${where}.${key}.${level} is an unknown setting`);
+        merged[key][level] = number(limit, `${where}.${key}.${level}`, 0);
+      }
+    } else if (key === "nesting" || key === "parameters") {
+      merged[key] = number(entry, `${where}.${key}`, 0);
+    } else if (key === "bumps" || key === "deepBumps") {
+      merged[key] = number(entry, `${where}.${key}`, 1);
+    } else {
+      throw configError(`code-health.json: ${where}.${key} is an unknown setting`);
+    }
+  }
+  return merged;
+}
+function guidelinesFor(settings, path) {
+  let guidelines = settings.guidelines;
+  for (const override2 of settings.overrides) {
+    if (override2.matches(path)) guidelines = mergeGuidelines(guidelines, override2.guidelines, "override", (value) => value);
+  }
+  return guidelines;
+}
+
+// packages/lexical/src/agreement.ts
+function exactRate(counts) {
+  return counts.units === 0 ? 0 : Math.round(counts.exact / counts.units * 1e4) / 1e4;
+}
+function spuriousRate(counts) {
+  return counts.blocks === 0 ? 0 : Math.round(counts.spurious / counts.blocks * 1e4) / 1e4;
+}
+
+// packages/lexical/src/recorded-agreement.ts
+var recorded_agreement_exports = {};
+__export(recorded_agreement_exports, {
+  cpp: () => recorded3,
+  csharp: () => recorded2,
+  go: () => recorded5,
+  java: () => recorded6,
+  kotlin: () => recorded7,
+  python: () => recorded4,
+  rust: () => recorded8,
+  typescript: () => recorded
+});
+
+// packages/lexical/src/agreement-rates/typescript.ts
+var recorded = { units: 107, found: 105, exact: 105, blocks: 115, spurious: 6 };
+
+// packages/lexical/src/agreement-rates/csharp.ts
+var recorded2 = { units: 71, found: 70, exact: 69, blocks: 74, spurious: 2 };
+
+// packages/lexical/src/agreement-rates/cpp.ts
+var recorded3 = { units: 73, found: 72, exact: 72, blocks: 74, spurious: 1 };
+
+// packages/lexical/src/agreement-rates/python.ts
+var recorded4 = { units: 70, found: 68, exact: 67, blocks: 67, spurious: 0 };
+
+// packages/lexical/src/agreement-rates/go.ts
+var recorded5 = { units: 51, found: 51, exact: 51, blocks: 57, spurious: 3 };
+
+// packages/lexical/src/agreement-rates/java.ts
+var recorded6 = { units: 68, found: 65, exact: 65, blocks: 73, spurious: 0 };
+
+// packages/lexical/src/agreement-rates/kotlin.ts
+var recorded7 = { units: 70, found: 70, exact: 70, blocks: 71, spurious: 0 };
+
+// packages/lexical/src/agreement-rates/rust.ts
+var recorded8 = { units: 61, found: 59, exact: 56, blocks: 56, spurious: 0 };
+
+// packages/lexical/src/agreement-rates.ts
+var recordedAgreement = { ...recorded_agreement_exports };
+
+// packages/lexical/src/indentation.ts
+var DEFAULT_UNIT = 4;
+var MAX_UNIT = 8;
+function isIndentLine(line) {
+  return line.kind === "code" && !line.startsInLiteral;
+}
+function detectIndentUnit(lines) {
+  const votes = /* @__PURE__ */ new Map();
+  let previous = 0;
+  for (const line of lines) {
+    if (!isIndentLine(line)) continue;
+    if (line.text.startsWith("	")) {
+      previous = 0;
+      continue;
+    }
+    const width = leadingSpaces(line.text);
+    const increase = width - previous;
+    if (increase > 0 && increase <= MAX_UNIT) votes.set(increase, (votes.get(increase) ?? 0) + 1);
+    previous = width;
+  }
+  let best = DEFAULT_UNIT;
+  let bestVotes = 0;
+  for (const [unit, count3] of [...votes].sort((a, b) => a[0] - b[0])) {
+    if (count3 > bestVotes) {
+      best = unit;
+      bestVotes = count3;
+    }
+  }
+  return best;
+}
+function leadingSpaces(text2) {
+  let width = 0;
+  while (text2[width] === " ") width++;
+  return width;
+}
+function levelOf(text2, unit) {
+  let tabs = 0;
+  while (text2[tabs] === "	") tabs++;
+  let spaces = 0;
+  while (text2[tabs + spaces] === " ") spaces++;
+  return tabs + Math.floor(spaces / unit);
+}
+function indentationMetrics(lines) {
+  const indentUnit = detectIndentUnit(lines);
+  let indentationComplexity = 0;
+  let maxIndent = 0;
+  for (const line of lines) {
+    if (!isIndentLine(line)) continue;
+    const level = levelOf(line.text, indentUnit);
+    indentationComplexity += level;
+    if (level > maxIndent) maxIndent = level;
+  }
+  return { indentUnit, indentationComplexity, maxIndent };
+}
+function lengthMetrics(lines) {
+  let nonBlankLines = 0;
+  let codeLines = 0;
+  for (const line of lines) {
+    if (line.kind !== "blank") nonBlankLines++;
+    if (line.kind === "code" || line.kind === "literal") codeLines++;
+  }
+  return { lineCount: lines.length, nonBlankLines, codeLines };
+}
+
+// packages/lexical/src/blocks.ts
+var compiledProfiles = /* @__PURE__ */ new WeakMap();
+function compile2(profile) {
+  let compiled = compiledProfiles.get(profile);
+  if (compiled === void 0) {
+    compiled = {
+      noise: profile.headerNoise.map((source) => new RegExp(source)),
+      control: new RegExp(profile.controlHeader),
+      types: profile.typeHeaders.map((source) => new RegExp(source)),
+      functions: profile.functionHeaders.map((source) => new RegExp(source)),
+      members: profile.expressionMembers?.map((source) => new RegExp(source)),
+      statementEnd: profile.statementEnd === void 0 ? void 0 : new RegExp(profile.statementEnd)
+    };
+    compiledProfiles.set(profile, compiled);
+  }
+  return compiled;
+}
+function classifyHeader(segments, profile) {
+  const { noise, control, types, functions } = compile2(profile);
+  const kept = segments.filter((segment3) => {
+    const trimmed = segment3.text.trim();
+    return trimmed !== "" && !noise.some((pattern) => pattern.test(trimmed));
+  });
+  if (kept.length === 0) return { kind: "other" };
+  const text2 = kept.map((segment3) => segment3.text.trim()).join(" ").replace(/\s+/g, " ");
+  const line = kept[0].line;
+  if (control.test(text2)) return { kind: "other" };
+  for (const pattern of types) {
+    const match = pattern.exec(text2);
+    if (match?.groups?.name !== void 0) return { kind: "type", name: cleanName(match.groups.name), line };
+  }
+  for (const pattern of functions) {
+    const match = pattern.exec(text2);
+    if (match !== null) {
+      const name10 = match.groups?.name;
+      return { kind: "function", name: name10 === void 0 ? void 0 : cleanName(name10), line };
+    }
+  }
+  return { kind: "other" };
+}
+function cleanName(name10) {
+  return name10.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
+}
+function findFunctionBlocks(lines, profile) {
+  const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines, profile) : findBracedBlocks(lines, profile);
+  return blocks.sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
+}
+function qualify(scopes2, name10) {
+  return name10 === void 0 ? void 0 : [...scopes2, name10].join(".");
+}
+var modifiers = "(?:(?:public|private|protected|static|readonly|override|declare|export)\\s+)*";
+var boundArrow = [
+  // `const f = (a) =>`, `export const f: Fn = async (a) =>`, and a class field `handler = (a) =>`.
+  new RegExp(
+    `^${modifiers}(?:(?:const|let|var)\\s+)?(?<name>[#\\w$]+)\\s*(?::(?:[^=]|=>)*?)?=(?!>)\\s*(?:async\\s+)?(?:<[^>]*>\\s*)?(?:\\([^]*\\)|[\\w$]+)\\s*(?::\\s*[^=]+)?$`
+  ),
+  // An object literal property `key: (a) =>`.
+  /^(?<name>[#\w$]+|\[[^\]]+\])\s*:\s*(?:async\s+)?(?:<[^>]*>\s*)?(?:\([^]*\)|[\w$]+)\s*(?::\s*[^=]+)?$/,
+  // `export default (a) =>`, which has no name.
+  /^export\s+default\s+(?:async\s+)?(?:<[^>]*>\s*)?(?:\([^]*\)|[\w$]+)\s*(?::\s*[^=]+)?$/
+];
+var keywordAssignment = /^(?:export\s+)?(?:const|let|var)\b/;
+var continuesExpression = /[-+*/%&|^?:=<>.,([!~]$/;
+var continuesFromStart = /^[-+*/%&|^?:=<>.)\]]/;
+function isPlainEquals(code, index) {
+  return code[index + 1] !== "=" && code[index + 1] !== ">" && !/[-+*/%&|^!<>=]/.test(code[index - 1] ?? "");
+}
+function endsStatement(code, following) {
+  const text2 = code.trimEnd();
+  if (text2 === "" || /[-+*/%&|^?:=<.,([!~]$/.test(text2) || /(?:^|\s)>$/.test(text2) || text2.endsWith("->")) return false;
+  return !continuesFromStart.test(following) && !following.startsWith("{") && !/^else\b/.test(following);
+}
+function angleBalanced(text2) {
+  const flat = text2.replace(/=>|->/g, "");
+  return (flat.match(/</g)?.length ?? 0) <= (flat.match(/>/g)?.length ?? 0);
+}
+function findBracedBlocks(lines, profile) {
+  const closed = [];
+  const stack = [];
+  const codeLines = lines.filter((line) => line.kind === "code");
+  let header = [];
+  let parenDepth = 0;
+  let arrow;
+  let inDeclaration = false;
+  const { statementEnd } = compile2(profile);
+  const endsLineWithoutSemicolon = (line) => {
+    const code = line.code.trimEnd();
+    if (statementEnd === void 0 || code === "") return false;
+    return /^["'`]/.test(line.text.slice(code.length).trimStart()) || statementEnd.test(code);
+  };
+  const headerText = (extra) => [...header.map((part) => part.text), extra].join(" ").replace(/\s+/g, " ").trim();
+  const closeArrow = () => {
+    if (arrow === void 0) return;
+    arrow.block.endLine = arrow.lastLine;
+    closed.push(arrow.block);
+    arrow = void 0;
+  };
+  const openExpressionBody = (before, line) => {
+    const top = stack[stack.length - 1];
+    if (top?.typeOnly === true) return false;
+    const kept = [...header, { line: line.number, text: before }];
+    const classification = classifyHeader(kept, profile);
+    if (classification.kind !== "function") return false;
+    const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+    const block = { startLine: classification.line, endLine: -1, source: "lexical" };
+    if (classification.name !== void 0) {
+      block.name = classification.name;
+      block.qualifiedName = qualify(names, classification.name);
+    }
+    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: false };
+    return true;
+  };
+  const openArrow = (before, line, column, index) => {
+    const rest = line.code.slice(column + 1).trim();
+    const nextLine = codeLines[index + 1]?.code.trim();
+    if (rest.startsWith("{") || rest === "" && nextLine?.startsWith("{")) return false;
+    const top = stack[stack.length - 1];
+    if (top?.typeOnly === true || parenDepth > 0) return false;
+    const kept = [...header, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
+    if (kept.length === 0) return false;
+    const text2 = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
+    let name10;
+    let matched = false;
+    const members2 = compile2(profile).members;
+    if (members2 !== void 0) {
+      const found = members2.map((pattern) => pattern.exec(text2)).find((match) => match !== null);
+      if (found === void 0) return false;
+      name10 = found?.groups?.name;
+      matched = true;
+    }
+    for (const [i2, pattern] of members2 === void 0 ? [...boundArrow.entries()] : []) {
+      const match = pattern.exec(text2);
+      if (match === null) continue;
+      if (i2 === 0 && !inDeclaration && !keywordAssignment.test(text2) && top?.name === void 0) continue;
+      if (i2 === 1 && (top === void 0 || top.name !== void 0)) continue;
+      name10 = match.groups?.name;
+      matched = true;
+      break;
+    }
+    if (!matched) return false;
+    const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+    const block = { startLine: kept[0].line, endLine: -1, source: "lexical" };
+    if (name10 !== void 0) {
+      block.name = cleanName(name10);
+      block.qualifiedName = qualify(names, block.name);
+    }
+    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text2) };
+    return true;
+  };
+  for (const [index, line] of codeLines.entries()) {
+    let segment3 = "";
+    const code = line.code;
+    if (profile.expressionArrows === true && arrow === void 0 && parenDepth === 0 && keywordAssignment.test(code.trim())) {
+      header = [];
+      inDeclaration = false;
+    }
+    for (let i2 = 0; i2 < code.length; i2++) {
+      const ch = code[i2];
+      if (arrow !== void 0 && ch.trim() !== "") arrow.lastLine = line.number;
+      if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
+        if (ch === ";" || ch === "," && profile.expressionArrows === true) {
+          inDeclaration = ch === "," && arrow.declaration;
+          closeArrow();
+          header = [];
+          segment3 = "";
+          continue;
+        }
+        if (ch === "}") {
+          arrow.lastLine = Math.max(arrow.block.startLine, arrow.lastLine === line.number && segment3.trim() === "" ? previousCodeLine(codeLines, index) : line.number);
+          closeArrow();
+        }
+      }
+      if (ch === "(" || ch === "[") parenDepth++;
+      else if (ch === ")" || ch === "]") {
+        if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
+          arrow.lastLine = segment3.trim() === "" ? previousCodeLine(codeLines, index) : line.number;
+          closeArrow();
+        }
+        parenDepth = Math.max(0, parenDepth - 1);
+      } else if (ch === "=" && code[i2 + 1] === ">" && (profile.expressionArrows === true || profile.expressionMembers !== void 0) && arrow === void 0) {
+        if (openArrow(segment3, line, i2 + 1, index)) {
+          segment3 += "=>";
+          i2++;
+          continue;
+        }
+      } else if (ch === "=" && profile.expressionBodies === true && arrow === void 0 && parenDepth === 0 && isPlainEquals(code, i2)) {
+        if (openExpressionBody(segment3, line)) {
+          segment3 += "=";
+          continue;
+        }
+      } else if (ch === ";" && parenDepth === 0) {
+        inDeclaration = false;
+        header = [];
+        segment3 = "";
+        continue;
+      } else if (ch === "," && parenDepth === 0 && profile.expressionArrows === true && arrow === void 0 && !/\b(?:class|interface|implements|extends|enum|namespace|type)\b/.test(headerText(segment3)) && angleBalanced(headerText(segment3))) {
+        inDeclaration = inDeclaration || keywordAssignment.test(headerText(segment3));
+        header = [];
+        segment3 = "";
+        continue;
+      } else if (ch === "{") {
+        header.push({ line: line.number, text: segment3 });
+        if (parenDepth > 0 && /(?:[(,=:]|\b(?:struct|interface))\s*$/.test(header.map((part) => part.text).join(" "))) {
+          stack.push({ name: void 0, block: void 0, parenDepth, resume: header });
+          header = [];
+          segment3 = "";
+          continue;
+        }
+        const classification = classifyHeader(header, profile);
+        const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+        let block;
+        let name10;
+        if (classification.kind === "function") {
+          name10 = classification.name;
+          block = { startLine: classification.line, endLine: -1, source: "lexical" };
+          if (name10 !== void 0) {
+            block.name = name10;
+            block.qualifiedName = qualify(names, name10);
+          }
+        } else if (classification.kind === "type") name10 = classification.name;
+        const typeOnly = /^(?:export\s+)?(?:declare\s+)?(?:interface|type)\b/.test(headerText(""));
+        stack.push({ name: name10, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
+        header = [];
+        segment3 = "";
+        continue;
+      } else if (ch === "}") {
+        const scope = stack.pop();
+        if (scope?.resume !== void 0) {
+          parenDepth = scope.parenDepth;
+          header = scope.resume;
+          segment3 = "{}";
+          continue;
+        }
+        if (scope !== void 0) {
+          parenDepth = scope.parenDepth;
+          if (scope.block !== void 0) {
+            scope.block.endLine = line.number;
+            closed.push(scope.block);
+          }
+        }
+        header = [];
+        segment3 = "";
+        continue;
+      }
+      segment3 += ch;
+    }
+    header.push({ line: line.number, text: segment3 });
+    if (parenDepth === 0 && arrow === void 0 && endsLineWithoutSemicolon(line)) header = [];
+    if (profile.newlineEndsStatements === true && arrow === void 0 && parenDepth === 0 && endsStatement(code, codeLines[index + 1]?.code.trim() ?? "")) header = [];
+    if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
+      const text2 = code.trimEnd();
+      const following = codeLines[index + 1]?.code.trim() ?? "";
+      if (text2 !== "" && !continuesExpression.test(text2) && !continuesFromStart.test(following) && !(profile.expressionBodies === true && /^else\b/.test(following))) {
+        closeArrow();
+        header = [];
+      }
+    }
+  }
+  if (arrow !== void 0) closeArrow();
+  return closed;
+}
+function previousCodeLine(codeLines, index) {
+  return codeLines[Math.max(0, index - 1)].number;
+}
+function findIndentedBlocks(lines, profile) {
+  const unit = detectIndentUnit(lines);
+  const closed = [];
+  const stack = [];
+  let lastBodyLine = 0;
+  let bracketDepth = 0;
+  let backslashContinued = false;
+  const close = (scope) => {
+    if (scope.block === void 0) return;
+    scope.block.endLine = Math.max(lastBodyLine, scope.block.startLine);
+    closed.push(scope.block);
+  };
+  for (const line of lines) {
+    if (line.kind === "literal") {
+      lastBodyLine = line.number;
+      continue;
+    }
+    if (line.kind !== "code") continue;
+    const continuation = bracketDepth > 0 || backslashContinued;
+    backslashContinued = line.code.trimEnd().endsWith("\\");
+    for (const ch of line.code) {
+      if (ch === "(" || ch === "[" || ch === "{") bracketDepth++;
+      else if (ch === ")" || ch === "]" || ch === "}") bracketDepth = Math.max(0, bracketDepth - 1);
+    }
+    if (continuation || line.startsInLiteral) {
+      lastBodyLine = line.number;
+      continue;
+    }
+    const level = levelOf(line.text, unit);
+    while (stack.length > 0 && stack[stack.length - 1].level >= level) close(stack.pop());
+    const classification = classifyHeader([{ line: line.number, text: line.code }], profile);
+    if (classification.kind !== "other") {
+      const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+      let block;
+      if (classification.kind === "function") {
+        block = { startLine: line.number, endLine: -1, source: "lexical" };
+        if (classification.name !== void 0) {
+          block.name = classification.name;
+          block.qualifiedName = qualify(names, classification.name);
+        }
+      }
+      stack.push({ level, name: classification.name, block });
+    }
+    lastBodyLine = line.number;
+  }
+  while (stack.length > 0) close(stack.pop());
+  return closed;
+}
+
+// packages/lexical/src/metrics.ts
+var DEFAULT_BUMP_DEPTH = 2;
+var keywordPatterns = /* @__PURE__ */ new WeakMap();
+var openerPatterns = /* @__PURE__ */ new WeakMap();
+function keywordPattern(profile) {
+  let pattern = keywordPatterns.get(profile);
+  if (pattern === void 0) {
+    const words = `\\b(?:${profile.branchKeywords.join("|")})\\b`;
+    pattern = new RegExp([words, ...profile.shortCircuitOperators].join("|"), "g");
+    keywordPatterns.set(profile, pattern);
+  }
+  return pattern;
+}
+function openerPattern(profile) {
+  let pattern = openerPatterns.get(profile);
+  if (pattern === void 0) {
+    pattern = new RegExp(`\\b(?:${profile.bumpOpeners.join("|")})\\b`);
+    openerPatterns.set(profile, pattern);
+  }
+  return pattern;
+}
+function keywordComplexity(lines, profile, from = 1, to = lines.length) {
+  const pattern = keywordPattern(profile);
+  let count3 = 0;
+  for (let n = from; n <= to; n++) {
+    const line = lines[n - 1];
+    if (line === void 0 || line.kind !== "code") continue;
+    count3 += line.code.match(pattern)?.length ?? 0;
+  }
+  return count3;
+}
+function blockMetrics(lines, block, profile, options = {}) {
+  const unit = options.indentUnit ?? detectIndentUnit(lines);
+  const threshold = options.bumpDepth ?? DEFAULT_BUMP_DEPTH;
+  const header = lines[block.startLine - 1];
+  const base = levelOf(header.text, unit);
+  let length = 0;
+  let indentationComplexity = 0;
+  let maxRelative = 0;
+  const codeLines = [];
+  for (let n = block.startLine; n <= block.endLine; n++) {
+    const line = lines[n - 1];
+    if (line.kind === "code" || line.kind === "literal") length++;
+    if (line.kind !== "code" || line.startsInLiteral) continue;
+    const relative = Math.max(0, levelOf(line.text, unit) - base);
+    indentationComplexity += relative;
+    if (n > block.startLine && relative > maxRelative) maxRelative = relative;
+    codeLines.push({ relative, text: line.code });
+  }
+  return {
+    length,
+    indentationComplexity,
+    maxNesting: Math.max(0, maxRelative - 1),
+    keywordComplexity: keywordComplexity(lines, profile, block.startLine, block.endLine),
+    ...findBumps(codeLines, profile, threshold)
+  };
+}
+function findBumps(codeLines, profile, threshold) {
+  const opener = openerPattern(profile);
+  let bumps = 0;
+  let bumpDepth = 0;
+  let bumpSize = 0;
+  let runSize = 0;
+  let runDepth = 0;
+  let state = "outside";
+  const endRun = () => {
+    if (state === "bump") {
+      bumps++;
+      bumpDepth = Math.max(bumpDepth, runDepth);
+      bumpSize = Math.max(bumpSize, runSize);
+    }
+    state = "outside";
+  };
+  for (let i2 = 0; i2 < codeLines.length; i2++) {
+    const line = codeLines[i2];
+    if (line.relative < threshold) {
+      endRun();
+      continue;
+    }
+    if (state === "outside") {
+      let previous = codeLines[i2 - 1];
+      if (previous !== void 0 && profile.blocks === "braces" && previous.text.trim() === "{") {
+        previous = codeLines[i2 - 2];
+      }
+      state = previous !== void 0 && opener.test(previous.text) ? "bump" : "other";
+      runSize = 0;
+      runDepth = 0;
+    }
+    runSize++;
+    runDepth = Math.max(runDepth, line.relative);
+  }
+  endRun();
+  return { bumps, bumpDepth, bumpSize };
+}
+function isBumpyRoad(metrics, guidelines = {}) {
+  const { bumps = 3, deepBumps = 2, nesting = 4 } = guidelines;
+  if (metrics.bumps >= bumps) return true;
+  return metrics.bumps >= deepBumps && metrics.bumpDepth > nesting;
+}
+
+// packages/lexical/src/strip.ts
+function normaliseNewlines(content) {
+  const withoutBom = content.charCodeAt(0) === 65279 ? content.slice(1) : content;
+  return withoutBom.replace(/\r\n?/g, "\n");
+}
+var NONE = 0;
+var COMMENT = 1;
+var STRING = 2;
+var compiledProfiles2 = /* @__PURE__ */ new WeakMap();
+function compileRules(profile) {
+  const cached = compiledProfiles2.get(profile);
+  if (cached !== void 0) return cached;
+  const compiled = profile.strings.map(
+    (rule) => rule.kind === "delimited" ? { rule, open: new RegExp(rule.open, "y") } : { rule, pattern: new RegExp(rule.pattern, "y"), after: rule.after === void 0 ? void 0 : new RegExp(rule.after) }
+  );
+  compiledProfiles2.set(profile, compiled);
+  return compiled;
+}
+function stripSource(rawContent, profile) {
+  const content = normaliseNewlines(rawContent);
+  const mask = profile === void 0 ? new Uint8Array(content.length) : maskLiterals(content, profile);
+  const lines = [];
+  let start2 = 0;
+  let number = 1;
+  while (start2 <= content.length) {
+    let end = content.indexOf("\n", start2);
+    if (end === -1) end = content.length;
+    if (end === content.length && start2 === content.length && start2 > 0) break;
+    const text2 = content.slice(start2, end);
+    let code = "";
+    let sawComment = false;
+    for (let i2 = start2; i2 < end; i2++) {
+      if (mask[i2] === NONE) code += content[i2];
+      else {
+        code += " ";
+        if (mask[i2] === COMMENT) sawComment = true;
+      }
+    }
+    const startsInString = start2 > 0 && mask[start2 - 1] === STRING;
+    let kind;
+    if (text2.trim() === "") kind = "blank";
+    else if (startsInString && code.trim() === "") kind = "literal";
+    else if (code.trim() !== "") kind = "code";
+    else kind = sawComment || start2 > 0 && mask[start2 - 1] === COMMENT ? "comment" : "code";
+    lines.push({ number, text: text2, code, kind, startsInLiteral: startsInString });
+    number++;
+    start2 = end + 1;
+  }
+  return lines;
+}
+function maskLiterals(content, profile) {
+  const mask = new Uint8Array(content.length);
+  const rules5 = compileRules(profile);
+  const triggers = /* @__PURE__ */ new Set();
+  for (const comment3 of profile.lineComments) triggers.add(comment3[0]);
+  for (const comment3 of profile.blockComments) triggers.add(comment3.open[0]);
+  for (const { rule } of rules5) for (const ch of rule.triggers) triggers.add(ch);
+  scan(0, false);
+  return mask;
+  function scan(from, untilBrace, closer = "}") {
+    let depth = 0;
+    let i2 = from;
+    while (i2 < content.length) {
+      const ch = content[i2];
+      if (untilBrace) {
+        if (ch === "{") depth++;
+        else if (content.startsWith(closer, i2)) {
+          if (depth === 0) return i2;
+          depth--;
+        }
+      }
+      if (!triggers.has(ch)) {
+        i2++;
+        continue;
+      }
+      const skipped = tryLiteral(i2);
+      i2 = skipped > i2 ? skipped : i2 + 1;
+    }
+    return i2;
+  }
+  function tryLiteral(i2) {
+    for (const comment3 of profile.lineComments) {
+      if (content.startsWith(comment3, i2)) {
+        let end = content.indexOf("\n", i2);
+        if (end === -1) end = content.length;
+        mask.fill(COMMENT, i2, end);
+        return end;
+      }
+    }
+    for (const comment3 of profile.blockComments) {
+      if (content.startsWith(comment3.open, i2)) return maskBlockComment(i2, comment3.open, comment3.close, comment3.nested === true);
+    }
+    for (const compiled of rules5) {
+      if ("pattern" in compiled) {
+        if (compiled.after !== void 0 && !compiled.after.test(content.slice(Math.max(0, i2 - 16), i2))) continue;
+        compiled.pattern.lastIndex = i2;
+        const match = compiled.pattern.exec(content);
+        if (match !== null) {
+          mask.fill(STRING, i2, i2 + match[0].length);
+          return i2 + match[0].length;
+        }
+      } else {
+        compiled.open.lastIndex = i2;
+        const match = compiled.open.exec(content);
+        if (match !== null) return maskDelimited(i2, match, compiled.rule);
+      }
+    }
+    return i2;
+  }
+  function maskBlockComment(from, open, close, nested) {
+    let depth = 1;
+    let i2 = from + open.length;
+    while (i2 < content.length) {
+      if (nested && content.startsWith(open, i2)) {
+        depth++;
+        i2 += open.length;
+      } else if (content.startsWith(close, i2)) {
+        depth--;
+        i2 += close.length;
+        if (depth === 0) break;
+      } else i2++;
+    }
+    mask.fill(COMMENT, from, i2);
+    return i2;
+  }
+  function maskDelimited(from, opener, rule) {
+    const close = rule.close.replace("$1", opener[1] ?? "");
+    let i2 = from + opener[0].length;
+    let segmentStart = from;
+    const finish = (end) => {
+      mask.fill(STRING, segmentStart, end);
+      return end;
+    };
+    while (i2 < content.length) {
+      const ch = content[i2];
+      if (rule.escape !== void 0 && ch === rule.escape) {
+        i2 += 2;
+        continue;
+      }
+      if (ch === "\n" && !rule.multiline) return finish(i2);
+      if (rule.doubledCloseEscapes === true && content.startsWith(close + close, i2)) {
+        i2 += close.length * 2;
+        continue;
+      }
+      if (content.startsWith(close, i2)) return finish(i2 + close.length);
+      if (rule.interpolation !== void 0 && content.startsWith(rule.interpolation.open, i2)) {
+        const innerStart = i2 + rule.interpolation.open.length;
+        const innerEnd = scan(innerStart, true, rule.interpolation.close);
+        mask.fill(STRING, segmentStart, innerStart);
+        i2 = Math.min(innerEnd, content.length);
+        segmentStart = i2;
+        continue;
+      }
+      i2++;
+    }
+    return finish(Math.min(i2, content.length));
+  }
+}
+
+// packages/lexical/src/analyse-source.ts
+var DEFAULT_AGREEMENT_BAR = 0.9;
+function analyseSource(path, content, options = {}) {
+  const selection = selectProfile(path, options.mappings);
+  const profile = selection?.profile;
+  const lines = stripSource(content, profile);
+  const file = { ...indentationMetrics(lines), ...lengthMetrics(lines) };
+  const skipped = [];
+  const blocks = [];
+  if (profile === void 0) {
+    const reason = `no lexer profile for ${path}`;
+    skipped.push(`comment and string stripping: ${reason}`);
+    skipped.push(`keywordComplexity: ${reason}`);
+    skipped.push(`function blocks: ${reason}`);
+  } else {
+    file.keywordComplexity = keywordComplexity(lines, profile);
+    for (const block of findFunctionBlocks(lines, profile)) {
+      const metrics = blockMetrics(lines, block, profile, {
+        indentUnit: file.indentUnit,
+        ...options.bumpDepth === void 0 ? {} : { bumpDepth: options.bumpDepth }
+      });
+      blocks.push({ ...block, metrics, bumpyRoad: isBumpyRoad(metrics, options.bumpyRoad) });
+    }
+  }
+  return {
+    path,
+    source: "lexical",
+    profile: profile?.name ?? null,
+    unverified: selection?.mapped ?? false,
+    file,
+    functions: releaseFunctions(profile?.name, selection?.mapped ?? false, blocks, options),
+    skipped
+  };
+}
+function releaseFunctions(profileName, mapped, blocks, options) {
+  const gated = (reason) => ({ gated: true, gate: "agreement", reason, blocks });
+  if (profileName === void 0) return gated("no lexer profile");
+  if (mapped) return { gated: false, gate: "config", blocks };
+  const counts = (options.agreement ?? recordedAgreement)[profileName];
+  if (counts === void 0) return gated(`no agreement measured for ${profileName}`);
+  const bar = options.agreementBar ?? DEFAULT_AGREEMENT_BAR;
+  const rate = exactRate(counts);
+  if (rate < bar) return gated(`${profileName} agreement ${rate} is below the bar ${bar}`);
+  return { gated: false, gate: "agreement", agreement: { exactRate: rate, spuriousRate: spuriousRate(counts), bar }, blocks };
 }
 
 // packages/parse/src/grammars.ts
@@ -17788,6 +17821,14 @@ async function factsForBlob(language9, blob, source, cache) {
   return { facts, cached: false };
 }
 
+// packages/parse/src/exported-units.ts
+function exportedUnitNames(facts) {
+  return /* @__PURE__ */ new Set([
+    ...facts.exports.filter((exported) => exported.internal !== true).map((exported) => exported.local),
+    ...(facts.symbols?.declarations ?? []).filter((declaration) => declaration.exported).map((declaration) => declaration.unit)
+  ]);
+}
+
 // packages/complexity/src/measure.ts
 var MAX_BYTES = 1e6;
 var BATCH = 100;
@@ -17800,7 +17841,7 @@ async function measureTree(tree, options) {
   const paths = [];
   for (const path of [...tree.files.keys()].sort(utf8Compare)) {
     if (settings.isExcluded(path)) skippedFiles.excluded++;
-    else if (!settings.analyseTests && isTestPath(path)) skippedFiles.tests++;
+    else if (!settings.analyseTests && settings.isTest(path)) skippedFiles.tests++;
     else paths.push(path);
   }
   const grammars = options.grammars ?? new GrammarSet();
@@ -17846,7 +17887,7 @@ async function measureTree(tree, options) {
   return { files, skippedFiles, stats };
 }
 function interfaceUnits(path, facts) {
-  const exported = new Set(facts.exports.flatMap((fact) => fact.local === void 0 ? [] : [fact.local]));
+  const exported = exportedUnitNames(facts);
   const units = [];
   for (const unit of facts.units) {
     if (unit.shape === void 0) continue;
@@ -17858,6 +17899,7 @@ function interfaceUnits(path, facts) {
       endLine: unit.endLine,
       ...unit.parent === void 0 ? {} : { parent: unit.parent },
       exported: unit.parent === void 0 && exported.has(unit.qualifiedName),
+      ...unit.hidden === true ? { hidden: true } : {},
       nodes: unit.shape.nodes,
       interfaceSize: unit.shape.interfaceSize,
       ...unit.passThrough === void 0 ? {} : { passThrough: unit.passThrough }
@@ -17866,7 +17908,7 @@ function interfaceUnits(path, facts) {
   return { units, module: { nodes: facts.nodes, exports: facts.exports.length + facts.reexports.length } };
 }
 function structuralUnits(path, units, settings) {
-  const test = isTestPath(path);
+  const test = settings.isTest(path);
   const guidelines = guidelinesFor(settings, path);
   const records = [];
   for (const unit of units) {
@@ -17879,7 +17921,7 @@ function structuralUnits(path, units, settings) {
       startLine: unit.startLine,
       endLine: unit.endLine,
       ...unit.parent === void 0 ? {} : { parent: unit.parent },
-      test,
+      test: test || unit.test === true,
       source: "structural",
       values: structuralValues(unit.metrics, settings.cyclomaticSwitch),
       optionCount: unit.metrics.optionCount,
@@ -17892,7 +17934,7 @@ function structuralUnits(path, units, settings) {
   return records;
 }
 function fileRecord(path, text2, lexical, structural, options) {
-  const test = isTestPath(path);
+  const test = options.settings.isTest(path);
   const skipped = lexical.skipped.filter((reason) => reason.startsWith("comment and string stripping"));
   let units = [];
   let source = null;
@@ -18159,7 +18201,7 @@ async function measureFixes(root, settings, exclude, current, request) {
   }
   const convention = checkFixConvention(inWindow2.length, [...fixOf.values()].filter((found) => found !== null).length);
   const selected = pathSelector(request.paths);
-  const analysable = (path) => adapterForPath(path) !== void 0 && !settings.isExcluded(path) && (settings.analyseTests || !isTestPath(path));
+  const analysable = (path) => adapterForPath(path) !== void 0 && !settings.isExcluded(path) && (settings.analyseTests || !settings.isTest(path));
   const sourceFiles = (change) => change.files.filter((file) => selected(file.fileId) && analysable(file.path));
   const relevant = inWindow2.filter((change) => change.files.some((file) => selected(file.fileId)));
   const commits = { inWindow: relevant.reduce((sum, change) => sum + change.shas.length, 0), analysed: 0, skipped: 0, skippedBy: { maxCommits: 0, oversized: 0, noSourceFile: 0 } };
@@ -18338,6 +18380,22 @@ async function measureFixes(root, settings, exclude, current, request) {
   };
 }
 
+// packages/complexity/src/roles.ts
+var includeTestsOption = { "include-tests": { type: "boolean" } };
+var includeTestsHelp = "list test code in the same ranking as production code (default: production first, with the tests counted apart and, in the JSON, listed in `tests`); a file is a test by its language's naming conventions and the shared `testPatterns`";
+var wantsTests = (context) => context.values["include-tests"] === true;
+var roleOfTest = (test) => test ? "test" : "production";
+var TEST_ROWS_LISTED = 10;
+function splitRoles(rows, include) {
+  if (include) return { listed: [...rows], tests: null };
+  const tests = rows.filter((row) => row.role === "test");
+  const shown = tests.slice(0, TEST_ROWS_LISTED);
+  return {
+    listed: rows.filter((row) => row.role === "production"),
+    tests: { count: tests.length, listed: shown.length, omitted: tests.length - shown.length, rows: shown }
+  };
+}
+
 // packages/complexity/src/interface-depth.ts
 var round = (value, places) => Math.round(value * 10 ** places) / 10 ** places;
 function exportedUnits(file) {
@@ -18345,11 +18403,11 @@ function exportedUnits(file) {
   const exported = /* @__PURE__ */ new Set();
   for (const unit of known.values()) {
     if (unit.parent === void 0) {
-      if (unit.exported) exported.add(unit.name);
+      if (unit.exported && unit.hidden !== true) exported.add(unit.name);
       continue;
     }
     const owner = known.get(unit.parent);
-    if (unit.kind === "method" && owner?.kind === "class" && owner.parent === void 0 && owner.exported) exported.add(unit.name);
+    if (unit.kind === "method" && unit.hidden !== true && owner?.kind === "class" && owner.parent === void 0 && owner.exported) exported.add(unit.name);
   }
   return exported;
 }
@@ -18368,14 +18426,14 @@ function depthRows(file, shallow) {
       path: file.path,
       ...rest,
       depth,
-      test: file.test,
+      role: roleOfTest(file.test),
       labels,
       score: round(row.interface / row.nodes, 4) + (row.passThrough === null ? 0 : 1)
     });
   };
   for (const unit of file.interfaces.units) {
     const isExported2 = exported.has(unit.name);
-    const listed = unit.parent === void 0 && isExported2 || unit.passThrough !== void 0;
+    const listed = isExported2 && (unit.parent === void 0 || unit.passThrough !== void 0);
     if (!listed) continue;
     add({
       unit: unit.name,
@@ -18443,7 +18501,7 @@ function unitRow(ranked, selected, settings) {
     ...unit.parent === void 0 ? {} : { parent: unit.parent },
     source: unit.source,
     ...unit.unverified === true ? { unverified: true } : {},
-    test: unit.test,
+    role: roleOfTest(unit.test),
     score: ranked.score,
     complexityScore: ranked.complexityScore,
     changeWeightedScore: ranked.changeWeightedScore,
@@ -18481,7 +18539,7 @@ function fileRow(file, settings) {
     complexity: file.indentationComplexity,
     source: file.source,
     profile: file.profile,
-    test: file.test,
+    role: roleOfTest(file.test),
     unverified: file.unverified,
     lineCount: file.lines.lineCount,
     codeLines: file.lines.codeLines,
@@ -18521,13 +18579,14 @@ function fixFigures(fixes) {
   };
 }
 var LOW_EVIDENCE = "low evidence";
-function fixRow(fixes, minRevisions) {
+function fixRow(fixes, minRevisions, isTest) {
   const low = isLowEvidence(fixes, minRevisions);
   const unit = fixes.current;
   return {
     path: fixes.path,
     unit: unit === void 0 ? fixes.id.slice(fixes.id.indexOf("#") + 1) : unitName(unit),
     id: fixes.id,
+    role: roleOfTest(isTest(fixes.path)),
     ...unit === void 0 ? {} : { kind: unit.kind, startLine: unit.startLine, endLine: unit.endLine },
     score: fixes.fixCommits + (low ? 0 : 0.5) + (fixes.fixShare ?? 0) * 0.4,
     ...fixFigures(fixes),
@@ -18538,7 +18597,7 @@ function fixRow(fixes, minRevisions) {
     earlierIds: fixes.earlierIds
   };
 }
-function fixHeader(stats, request) {
+function fixHeader(stats, request, settings) {
   const deleted = stats.deleted.filter((unit) => unit.fixCommits > 0);
   return {
     window: { months: stats.window.months, since: iso(stats.window.since), until: iso(stats.window.until) },
@@ -18559,7 +18618,7 @@ function fixHeader(stats, request) {
       withFixes: deleted.length,
       limit: SECONDARY_LIST_LIMIT,
       omitted: Math.max(0, deleted.length - SECONDARY_LIST_LIMIT),
-      rows: deleted.slice(0, SECONDARY_LIST_LIMIT).map((unit) => fixRow(unit, stats.minRevisions))
+      rows: deleted.slice(0, SECONDARY_LIST_LIMIT).map((unit) => fixRow(unit, stats.minRevisions, settings.isTest))
     },
     outsideUnits: {
       /** Distinct fix changes with a changed line outside every function, so never more than the fixes of the window. */
@@ -18596,8 +18655,14 @@ async function measureFixesFor(context, settings, current) {
 }
 
 // packages/complexity/src/ranking.ts
-var rankByValues = ["complexity", "change-weighted"];
-function rankUnits(units, selected, changes, by = "complexity") {
+var rankByValues = ["cognitive", "max-percentile", "change-weighted", ...metricIds.filter((metric) => metric !== "cognitive")];
+var defaultRankBy = "cognitive";
+var tieBreakers = ["cognitive", "nesting", "cyclomatic", "length"];
+function sortKeys(by) {
+  const primary = by === "max-percentile" ? "max percentile" : by;
+  return [.../* @__PURE__ */ new Set([primary, ...tieBreakers]), "path"];
+}
+function rankUnits(units, selected, changes, by = "max-percentile") {
   const ranked = units.map((unit) => ({
     unit,
     score: 0,
@@ -18633,9 +18698,26 @@ function rankUnits(units, selected, changes, by = "complexity") {
   }
   for (const entry of ranked) {
     entry.changeWeightedScore = entry.changeWeight === null ? null : entry.complexityScore * entry.changeWeight;
-    entry.score = by === "change-weighted" && entry.changeWeightedScore !== null ? entry.changeWeightedScore : entry.complexityScore;
+    entry.score = scoreOf(entry, by);
   }
   return ranked;
+}
+function scoreOf(entry, by) {
+  if (by === "max-percentile") return entry.complexityScore;
+  if (by === "change-weighted") return entry.changeWeightedScore ?? entry.complexityScore;
+  return entry.unit.values[by] ?? 0;
+}
+var utf82 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
+function sortRanked(ranked, by) {
+  const metrics = [.../* @__PURE__ */ new Set([...by === "max-percentile" || by === "change-weighted" ? [] : [by], ...tieBreakers])];
+  return [...ranked].sort((a, b) => {
+    if (a.score !== b.score) return b.score - a.score;
+    for (const metric of metrics) {
+      const difference = (b.unit.values[metric] ?? 0) - (a.unit.values[metric] ?? 0);
+      if (difference !== 0) return difference;
+    }
+    return utf82(a.unit.path, b.unit.path) || a.unit.startLine - b.unit.startLine || utf82(a.unit.id, b.unit.id);
+  });
 }
 
 // packages/complexity/src/rules.ts
@@ -18757,18 +18839,19 @@ var ruleDescriptions = {
 var name2 = "analyse";
 var rules = ruleDescriptions;
 function isPartial(context) {
-  return context.positionals.length > 0 || context.values.metrics !== void 0 || context.values.layer !== void 0 || context.values.by !== void 0 || context.values["with-fixes"] === true;
+  return context.positionals.length > 0 || context.values.metrics !== void 0 || context.values.layer !== void 0 || context.values.by !== void 0 || context.values["with-fixes"] === true || wantsTests(context);
 }
 function parseBy(value) {
-  if (value === void 0) return "complexity";
+  if (value === void 0) return defaultRankBy;
   if (rankByValues.includes(value)) return value;
-  throw usageError(`--by must be ${rankByValues.join(" or ")}, got "${String(value)}"`);
+  throw usageError(`--by must be one of ${rankByValues.join(", ")}, got "${String(value)}"`);
 }
 var command = {
-  summary: "Rank the functions that are hardest to understand (highest metric percentile; --by change-weighted for hotspot order), with all selected metrics, percentiles and labels",
-  options: { ...metricsOption, ...layerOption, by: { type: "string" }, "with-fixes": { type: "boolean" }, ...fixOptions },
+  summary: "Rank the production functions that are hardest to understand (cognitive complexity, then nesting, cyclomatic and length; --by for another order), with all selected metrics, percentiles and labels, and the tests counted apart",
+  options: { ...metricsOption, ...layerOption, by: { type: "string" }, "with-fixes": { type: "boolean" }, ...includeTestsOption, ...fixOptions },
   optionHelp: {
-    by: "what rows sort on: complexity (default, the highest metric percentile) or change-weighted (that percentile times how often the function's file changed in the window, a hotspot order)",
+    by: `what rows sort on, highest first, with ties broken by cognitive, nesting, cyclomatic, length and then path: ${rankByValues.join(", ")}. cognitive is the default; max-percentile is the highest metric percentile of any selected metric; change-weighted is that percentile times how often the function's file changed in the window (a hotspot order); the other names sort by that metric's value`,
+    "include-tests": includeTestsHelp,
     "with-fixes": "add fixCommits, unitRevisions and fixShare per function from the history window (see `complexity fixes`); costs a parse of the historical revisions",
     ...fixOptionHelp
   },
@@ -18783,8 +18866,9 @@ var command = {
     if (by === "change-weighted" && changes === void 0) {
       throw usageError("--by change-weighted needs change frequency, and there is none: complexity.changeWeighting is off, the clone is shallow, or the repository has no history");
     }
-    const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected, changes, by);
-    const unitRows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
+    const ranked = sortRanked(rankUnits(measurement.files.flatMap((file) => file.units), selected, changes, by), by);
+    const allRows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
+    const { listed: unitRows, tests } = splitRoles(allRows, wantsTests(context));
     const withFixes = context.values["with-fixes"] === true;
     const fixes = withFixes ? await measureFixesFor(context, settings, current) : void 0;
     const rows = fixes === void 0 ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
@@ -18806,23 +18890,28 @@ var command = {
     const syntaxErrorNotices = parsedFiles > 0 && syntaxErrorShare * 100 > settings.syntaxErrorPercent ? [
       `${filesWithSyntaxErrors.length} of ${parsedFiles} parsed files (${(syntaxErrorShare * 100).toFixed(1)}%) have syntax errors, above the complexity.syntaxErrorPercent guideline of ${settings.syntaxErrorPercent}%, so their units may be incomplete or missing; filesWithSyntaxErrors lists them`
     ] : [];
+    const keys = sortKeys(by);
     const output = {
+      presorted: true,
       inputs: {
         tree: current.kind,
         layer,
         metrics: selected,
         by,
+        includeTests: wantsTests(context),
         paths,
         ...fixes === void 0 ? {} : { withFixes: true, maxCommits: fixes.request.maxCommits, evidence: fixes.request.evidence }
       },
       extra: {
         ranking: {
           by,
-          basis: by === "complexity" ? "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available" : "the highest percentile of any selected metric within the repository, among units measured the same way, times the change weight of the unit's file (fileRevisions counts the file's changes, not the function's)",
+          sortedBy: keys,
+          basis: by === "max-percentile" ? "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available" : by === "change-weighted" ? "the highest percentile of any selected metric within the repository, among units measured the same way, times the change weight of the unit's file (fileRevisions counts the file's changes, not the function's)" : `the value of ${by}, highest first; the percentiles and the other metrics are columns, not part of the order`,
           changeWeighted: by === "change-weighted",
           changeWeightsAvailable: changes !== void 0,
           window: changes?.window ?? null
         },
+        ...tests === null ? {} : { tests },
         layers,
         agreement,
         skipped,
@@ -18835,13 +18924,19 @@ var command = {
         },
         filesWithSyntaxErrors,
         skippedFiles: measurement.skippedFiles,
-        ...fixes === void 0 ? {} : { fixes: fixHeader(fixes.stats, fixes.request) }
+        ...fixes === void 0 ? {} : { fixes: fixHeader(fixes.stats, fixes.request, settings) }
       },
       results: rows,
-      ...fixes === void 0 && syntaxErrorNotices.length === 0 ? {} : { notices: [...syntaxErrorNotices, ...fixes === void 0 ? [] : fixNotices(fixes.stats, fixes.request)] },
+      notices: [
+        `sorted by ${keys.join(", then ")}`,
+        ...tests === null || tests.count === 0 ? [] : [`${tests.count} test functions are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`],
+        ...syntaxErrorNotices,
+        ...fixes === void 0 ? [] : fixNotices(fixes.stats, fixes.request)
+      ],
       columns: [
         "path",
         "unit",
+        "role",
         "score",
         "complexityScore",
         "changeWeightedScore",
@@ -18994,28 +19089,34 @@ __export(depth_exports, {
 var name4 = "depth";
 var rules2 = ruleDescriptions;
 function isPartial2(context) {
-  return context.positionals.length > 0;
+  return context.positionals.length > 0 || wantsTests(context);
 }
 var command3 = {
-  summary: "Rank exported functions, classes and modules by interface depth, and list every pass-through function, exported or not",
+  summary: "Rank exported functions, classes and modules by interface depth, exported pass-throughs first, with the tests counted apart",
+  options: { ...includeTestsOption },
+  optionHelp: { "include-tests": includeTestsHelp },
   async run(context) {
     const { settings, current, measurement } = await measureCurrent(context, "structural");
     const paths = normalisePaths(context.positionals);
     const inPaths = pathSelector(paths);
     const files = measurement.files.filter((file) => inPaths(file.path));
-    const rows = files.flatMap((file) => depthRows(file, settings.shallowDepth));
+    const all = files.flatMap((file) => depthRows(file, settings.shallowDepth)).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+    const { listed: rows, tests } = splitRoles(all, wantsTests(context));
     const summary = {
       files: files.filter((file) => file.interfaces !== void 0).length,
       filesWithoutAdapter: files.filter((file) => file.interfaces === void 0).length,
       rows: rows.length,
       shallow: rows.filter((row) => row.labels.includes("shallow")).length,
-      passThrough: rows.filter((row) => row.passThrough !== null).length
+      passThrough: rows.filter((row) => row.passThrough !== null).length,
+      /** Pass-through functions with no row because the language does not export them. */
+      passThroughNotExported: files.reduce((sum, file) => sum + passThroughCount(file), 0) - all.filter((row) => row.passThrough !== null && row.kind !== "module").length
     };
     const output = {
-      inputs: { tree: current.kind, paths, shallow: settings.shallowDepth },
-      extra: { summary, skippedFiles: measurement.skippedFiles },
+      inputs: { tree: current.kind, paths, shallow: settings.shallowDepth, includeTests: wantsTests(context) },
+      extra: { summary, ...tests === null ? {} : { tests }, skippedFiles: measurement.skippedFiles },
       results: rows,
-      columns: ["path", "unit", "kind", "exported", "nodes", "interface", "depth", "passThrough", "labels"]
+      columns: ["path", "unit", "kind", "role", "exported", "nodes", "interface", "depth", "passThrough", "labels"],
+      notices: tests === null || tests.count === 0 ? [] : [`${tests.count} test rows are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`]
     };
     if (!isPartial2(context) && current.kind === "head") await storeReport(context, name4, output);
     else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
@@ -19353,24 +19454,29 @@ function isPartial3(context) {
 }
 var command6 = {
   summary: "File-level aggregates; a full run writes the complexity.files report other plugins read",
-  options: { ...layerOption },
+  options: { ...layerOption, ...includeTestsOption },
+  optionHelp: { "include-tests": includeTestsHelp },
   async run(context) {
     const layer = parseLayer(context.values.layer);
     const { settings, current, measurement } = await measureCurrent(context, layer);
     const paths = normalisePaths(context.positionals);
     const inPaths = pathSelector(paths);
-    const rows = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
+    const all = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
       if (isCodePath(file.path, settings.languageProfiles)) return true;
       recordDropped("nonCode", file.path);
       return false;
     }).map((file) => fileRow(file, settings));
+    const listed = wantsTests(context) ? all : all.filter((row) => row.role === "production");
+    if (listed.length < all.length) {
+      for (const row of all) if (row.role === "test") recordDropped("tests", row.path);
+    }
     const output = {
-      inputs: { tree: current.kind, layer, paths },
+      inputs: { tree: current.kind, layer, paths, includeTests: wantsTests(context) },
       extra: { skippedFiles: measurement.skippedFiles },
-      results: rows,
-      columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "test", "codeLines"]
+      results: listed,
+      columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "role", "codeLines"]
     };
-    if (!isPartial3(context) && current.kind === "head") await storeReport(context, name7, output);
+    if (!isPartial3(context) && current.kind === "head") await storeReport(context, name7, { ...output, inputs: { ...output.inputs, includeTests: true }, results: all });
     else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
     return output;
   }
@@ -19388,19 +19494,23 @@ var rules3 = { fixes: ruleDescriptions.fixes };
 var command7 = {
   summary: "Per function: fix commits in the history window, revisions touching it, fix share and current cognitive complexity, with the evidence commits",
   usage: "[paths...]",
-  options: { ...fixOptions },
-  optionHelp: { ...fixOptionHelp },
+  options: { ...includeTestsOption, ...fixOptions },
+  optionHelp: { "include-tests": includeTestsHelp, ...fixOptionHelp },
   async run(context) {
     const settings = readSettings(context.config);
     const current = await currentTree(context);
     const { stats, request, paths } = await measureFixesFor(context, settings, current);
-    const rows = [...stats.units.values()].filter((unit) => unit.fixCommits > 0).map((unit) => fixRow(unit, stats.minRevisions));
+    const all = [...stats.units.values()].filter((unit) => unit.fixCommits > 0).map((unit) => fixRow(unit, stats.minRevisions, settings.isTest)).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+    const { listed, tests } = splitRoles(all, wantsTests(context));
     return {
-      inputs: { tree: current.kind, paths, maxCommits: request.maxCommits, evidence: request.evidence },
-      extra: fixHeader(stats, request),
-      results: rows,
-      columns: ["path", "unit", "fixCommits", "unitRevisions", "fixShare", "cognitive", "labels"],
-      notices: fixNotices(stats, request)
+      inputs: { tree: current.kind, paths, maxCommits: request.maxCommits, evidence: request.evidence, includeTests: wantsTests(context) },
+      extra: { ...fixHeader(stats, request, settings), ...tests === null ? {} : { tests } },
+      results: listed,
+      columns: ["path", "unit", "role", "fixCommits", "unitRevisions", "fixShare", "cognitive", "labels"],
+      notices: [
+        ...tests === null || tests.count === 0 ? [] : [`${tests.count} test functions with fixes are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`],
+        ...fixNotices(stats, request)
+      ]
     };
   }
 };

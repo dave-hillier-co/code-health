@@ -6,7 +6,7 @@ import { functionShape, modifiersOf, nodeCount, passThroughOf, typeShape } from 
 import { bodyOf, csharpMetricRules, parameterInfo } from "./metric-rules.ts";
 
 /** Bump when the extraction rules change in a way that alters facts for the same source, so cached facts are not reused. */
-export const extractorVersion = 3;
+export const extractorVersion = 4;
 
 const typeDeclarations = new Set([
   "class_declaration",
@@ -330,6 +330,7 @@ class Extractor {
     if (forwarded !== undefined) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (modifiersOf(fn).includes("override")) unit.override = true;
+    if (kind === "method" && isHiddenMember(fn)) unit.hidden = true;
     if (measured.increments !== undefined) unit.increments = measured.increments;
     this.units.push(unit);
     return { ...context, unit: qualifiedName };
@@ -505,4 +506,13 @@ class Extractor {
 
 export function extractFacts(root: Node, options: ExtractOptions = {}): FileFacts {
   return new Extractor(options).extract(root);
+}
+
+/** A member nothing outside its type can call: not public or protected, and not a member of an interface or an explicit interface implementation. An accessor takes its property's modifiers. */
+function isHiddenMember(fn: Node): boolean {
+  const member = fn.type === "accessor_declaration" ? fn.parent?.parent : fn;
+  if (member === undefined || member === null) return false;
+  if (member.parent?.parent?.type === "interface_declaration") return false;
+  if (member.namedChildren.some((child) => child.type === "explicit_interface_specifier")) return false;
+  return !modifiersOf(member).some((modifier) => modifier === "public" || modifier === "protected");
 }

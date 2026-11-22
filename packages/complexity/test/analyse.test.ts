@@ -47,11 +47,14 @@ describe("analyse", () => {
     expect(price.dominant).not.toBeNull();
   });
 
-  test("puts the most complex function first, and tests are ranked among themselves", async () => {
-    const rows = JSON.parse((await analyse()).stdout).results as (Row & { test: boolean; id: string })[];
+  test("puts the most complex function first, and tests are ranked among themselves and listed apart", async () => {
+    const document = JSON.parse((await analyse()).stdout);
+    const rows = document.results as (Row & { role: string; id: string })[];
     expect(rows[0]!.id).toBe("src/pricing.ts#price");
-    const testRow = rows.find((row) => row.path === "test/pricing.test.ts")!;
-    expect(testRow.test).toBe(true);
+    expect(rows.some((row) => row.path === "test/pricing.test.ts")).toBe(false);
+    expect(document.tests.rows.find((row: Row) => row.path === "test/pricing.test.ts").role).toBe("test");
+    const merged = JSON.parse((await analyse("--include-tests")).stdout).results as (Row & { role: string })[];
+    expect(merged.find((row) => row.path === "test/pricing.test.ts")!.role).toBe("test");
   });
 
   test("selects metrics with --metrics and ranks on them alone", async () => {

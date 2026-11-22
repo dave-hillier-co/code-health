@@ -5,7 +5,7 @@ import { boundParameterNames, classShape, functionShape, nodeCount, passThroughO
 import { enclosingClass, pythonMetricRules } from "./metric-rules.ts";
 
 /** Bump when the extraction rules change in a way that alters facts for the same source, so cached facts from older rules are not reused. */
-export const extractorVersion = 3;
+export const extractorVersion = 4;
 
 interface Context {
   /** Qualified name of the innermost enclosing unit; names of nested units are built from it. */
@@ -534,6 +534,7 @@ class Extractor {
       source: "structural",
     };
     if (context.unit !== undefined) unit.parent = context.unit;
+    if (name.startsWith("_") && !(name.startsWith("__") && name.endsWith("__"))) unit.hidden = true;
     if (kind === "class") unit.shape = classShape(extent);
     if (fn !== undefined && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root!, pythonMetricRules);

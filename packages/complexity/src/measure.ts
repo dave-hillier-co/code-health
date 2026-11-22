@@ -1,9 +1,10 @@
 import { analyseSource, type FileAnalysis } from "@code-health/lexical/analyse-source";
 import type { LengthMetrics } from "@code-health/lexical/indentation";
-import { adapterForPath, isTestPath } from "@code-health/parse/languages";
+import { adapterForPath } from "@code-health/parse/languages";
 import { factsForBlob } from "@code-health/parse/file-facts";
 import { GrammarSet } from "@code-health/parse/grammars";
 import type { ParseCache } from "@code-health/parse/parse-cache";
+import { exportedUnitNames } from "@code-health/parse/exported-units";
 import type { FileFacts, UnitFact } from "@code-health/parse/facts";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { UnitKind } from "@code-health/lexical/unit";
@@ -57,6 +58,8 @@ export interface InterfaceUnit {
   interfaceSize: number;
   /** The call the function's whole body forwards to, when it does nothing else. */
   passThrough?: string;
+  /** A method code outside its class cannot call (the language's own rule), so it is not part of the class's interface. */
+  hidden?: true;
 }
 
 export interface FileRecord {
@@ -113,7 +116,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
   const paths: string[] = [];
   for (const path of [...tree.files.keys()].sort(utf8Compare)) {
     if (settings.isExcluded(path)) skippedFiles.excluded++;
-    else if (!settings.analyseTests && isTestPath(path)) skippedFiles.tests++;
+    else if (!settings.analyseTests && settings.isTest(path)) skippedFiles.tests++;
     else paths.push(path);
   }
 
@@ -163,7 +166,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
 
 /** The units of a file for the interface depth signal, and its module. */
 function interfaceUnits(path: string, facts: FileFacts): NonNullable<FileRecord["interfaces"]> {
-  const exported = new Set(facts.exports.flatMap((fact) => (fact.local === undefined ? [] : [fact.local])));
+  const exported = exportedUnitNames(facts);
   const units: InterfaceUnit[] = [];
   for (const unit of facts.units) {
     if (unit.shape === undefined) continue;
@@ -175,6 +178,7 @@ function interfaceUnits(path: string, facts: FileFacts): NonNullable<FileRecord[
       endLine: unit.endLine,
       ...(unit.parent === undefined ? {} : { parent: unit.parent }),
       exported: unit.parent === undefined && exported.has(unit.qualifiedName),
+      ...(unit.hidden === true ? { hidden: true as const } : {}),
       nodes: unit.shape.nodes,
       interfaceSize: unit.shape.interfaceSize,
       ...(unit.passThrough === undefined ? {} : { passThrough: unit.passThrough }),
@@ -184,7 +188,7 @@ function interfaceUnits(path: string, facts: FileFacts): NonNullable<FileRecord[
 }
 
 function structuralUnits(path: string, units: UnitFact[], settings: ComplexitySettings): UnitRecord[] {
-  const test = isTestPath(path);
+  const test = settings.isTest(path);
   const guidelines = guidelinesFor(settings, path);
   const records: UnitRecord[] = [];
   for (const unit of units) {
@@ -197,7 +201,7 @@ function structuralUnits(path: string, units: UnitFact[], settings: ComplexitySe
       startLine: unit.startLine,
       endLine: unit.endLine,
       ...(unit.parent === undefined ? {} : { parent: unit.parent }),
-      test,
+      test: test || unit.test === true,
       source: "structural",
       values: structuralValues(unit.metrics, settings.cyclomaticSwitch),
       optionCount: unit.metrics.optionCount,
@@ -217,7 +221,7 @@ function fileRecord(
   structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean } | undefined,
   options: MeasureOptions,
 ): FileRecord {
-  const test = isTestPath(path);
+  const test = options.settings.isTest(path);
   // The lexical layer lists three things it skipped for a file with no profile; the per-function reason below covers two of them.
   const skipped = lexical.skipped.filter((reason) => reason.startsWith("comment and string stripping"));
   let units: UnitRecord[] = [];

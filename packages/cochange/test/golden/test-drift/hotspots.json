@@ -2,6 +2,9 @@
   "command": "hotspots",
   "complexitySource": "indentation",
   "config": "0000000000000000",
+  "dropped": {
+    "tests": 2
+  },
   "evidence": {
     "activeContributors": 1,
     "commitSize": {
@@ -118,7 +121,8 @@
   "inputs": {
     "allFiles": false,
     "by": "file",
-    "complexityReport": null
+    "complexityReport": null,
+    "includeTests": false
   },
   "repo": {
     "dirty": false,
@@ -136,7 +140,8 @@
       "lastChanged": "2024-04-01T09:00:00.000Z",
       "path": "src/app/registry.ts",
       "recommendation": null,
-      "score": 0.480769,
+      "role": "production",
+      "score": 0.477273,
       "siblingTest": null
     },
     {
@@ -152,7 +157,8 @@
       "lastChanged": "2024-05-01T09:00:00.000Z",
       "path": "src/a/x.ts",
       "recommendation": "hotspot",
-      "score": 0.25,
+      "role": "production",
+      "score": 0.227273,
       "siblingTest": null
     },
     {
@@ -168,7 +174,8 @@
       "lastChanged": "2024-05-01T09:00:00.000Z",
       "path": "src/b/y.ts",
       "recommendation": "hotspot",
-      "score": 0.25,
+      "role": "production",
+      "score": 0.227273,
       "siblingTest": null
     },
     {
@@ -182,7 +189,8 @@
       "lastChanged": "2024-03-22T09:00:00.000Z",
       "path": "src/billing/plugin.ts",
       "recommendation": null,
-      "score": 0.25,
+      "role": "production",
+      "score": 0.227273,
       "siblingTest": null
     },
     {
@@ -198,7 +206,8 @@
       "lastChanged": "2024-05-31T09:00:00.000Z",
       "path": "src/c/p.ts",
       "recommendation": "hotspot",
-      "score": 0.25,
+      "role": "production",
+      "score": 0.227273,
       "siblingTest": null
     },
     {
@@ -214,7 +223,8 @@
       "lastChanged": "2024-05-31T09:00:00.000Z",
       "path": "src/c/q.ts",
       "recommendation": "hotspot",
-      "score": 0.25,
+      "role": "production",
+      "score": 0.227273,
       "siblingTest": null
     },
     {
@@ -230,7 +240,8 @@
       "lastChanged": "2024-05-31T09:00:00.000Z",
       "path": "src/c/r.ts",
       "recommendation": "hotspot",
-      "score": 0.25,
+      "role": "production",
+      "score": 0.227273,
       "siblingTest": null
     },
     {
@@ -247,7 +258,8 @@
       "lastChanged": "2024-06-30T09:00:00.000Z",
       "path": "src/drift/engine.ts",
       "recommendation": "hotspot",
-      "score": 0.25,
+      "role": "production",
+      "score": 0.227273,
       "siblingTest": "src/drift/engine.test.ts"
     },
     {
@@ -261,23 +273,8 @@
       "lastChanged": "2024-03-27T09:00:00.000Z",
       "path": "src/mail/plugin.ts",
       "recommendation": null,
-      "score": 0.25,
-      "siblingTest": null
-    },
-    {
-      "ageDays": 0,
-      "churn": 14,
-      "complexity": 0,
-      "findings": [
-        "hotspot"
-      ],
-      "fixShare": 0,
-      "fixes": 0,
-      "frequency": 7,
-      "lastChanged": "2024-07-30T09:00:00.000Z",
-      "path": "src/ok/svc.test.ts",
-      "recommendation": "hotspot",
-      "score": 0.25,
+      "role": "production",
+      "score": 0.227273,
       "siblingTest": null
     },
     {
@@ -293,7 +290,8 @@
       "lastChanged": "2024-07-30T09:00:00.000Z",
       "path": "src/ok/svc.ts",
       "recommendation": "hotspot",
-      "score": 0.25,
+      "role": "production",
+      "score": 0.227273,
       "siblingTest": "src/ok/svc.test.ts"
     },
     {
@@ -307,21 +305,8 @@
       "lastChanged": "2024-04-01T09:00:00.000Z",
       "path": "src/search/plugin.ts",
       "recommendation": null,
-      "score": 0.25,
-      "siblingTest": null
-    },
-    {
-      "ageDays": 210,
-      "churn": 2,
-      "complexity": 0,
-      "findings": [],
-      "fixShare": 0,
-      "fixes": 0,
-      "frequency": 1,
-      "lastChanged": "2024-01-02T09:00:00.000Z",
-      "path": "src/drift/engine.test.ts",
-      "recommendation": null,
-      "score": 0.019231,
+      "role": "production",
+      "score": 0.227273,
       "siblingTest": null
     }
   ],
@@ -330,7 +315,7 @@
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 13
+    "total": 11
   },
   "window": {
     "since": "2023-07-30T09:00:00.000Z",

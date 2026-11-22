@@ -38,8 +38,12 @@
           "description": "Present when --with-fixes added the fix columns."
         },
         "by": {
-          "enum": ["complexity", "change-weighted"],
-          "description": "What rows sort on: the complexity percentile, or that percentile times the change weight."
+          "enum": ["cognitive", "max-percentile", "change-weighted", "cyclomatic", "nesting", "parameters", "length", "keyword", "bumps"],
+          "description": "What rows sort on, highest first: a metric's value (cognitive by default), the highest metric percentile (max-percentile), or that percentile times the change weight (change-weighted). Ties are broken by cognitive, nesting, cyclomatic and length, then path."
+        },
+        "includeTests": {
+          "type": "boolean",
+          "description": "True when --include-tests listed the test functions with the production ones."
         },
         "maxCommits": {
           "type": ["integer", "null"],
@@ -57,6 +61,7 @@
         "layer",
         "metrics",
         "by",
+        "includeTests",
         "paths"
       ],
       "additionalProperties": false
@@ -68,8 +73,13 @@
           "type": "string"
         },
         "by": {
-          "enum": ["complexity", "change-weighted"],
+          "enum": ["cognitive", "max-percentile", "change-weighted", "cyclomatic", "nesting", "parameters", "length", "keyword", "bumps"],
           "description": "What `score` is and rows sort on."
+        },
+        "sortedBy": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The sort keys in order, highest first, ending with path: the primary key, then each of cognitive, nesting, cyclomatic and length not already used."
         },
         "changeWeighted": {
           "type": "boolean",
@@ -99,11 +109,15 @@
       "required": [
         "basis",
         "by",
+        "sortedBy",
         "changeWeighted",
         "changeWeightsAvailable",
         "window"
       ],
       "additionalProperties": false
+    },
+    "tests": {
+      "$ref": "common.schema.json#/$defs/testsSection"
     },
     "layers": {
       "description": "Files by the layer that measured their functions. `none` is files with no per-function metrics.",
@@ -193,14 +207,13 @@
             "const": true,
             "description": "Present when the file's lexer profile came from config (`languages`), so nothing measures the accuracy of the per-function values."
           },
-          "test": {
-            "type": "boolean"
+          "role": {
+            "$ref": "common.schema.json#/$defs/role"
           },
           "score": {
             "type": "number",
             "minimum": 0,
-            "maximum": 1,
-            "description": "The sort key: complexityScore by default, changeWeightedScore with --by change-weighted."
+            "description": "The primary sort key: the value of the metric named by --by (cognitive by default, 0 for a unit without it), complexityScore with --by max-percentile, changeWeightedScore with --by change-weighted."
           },
           "complexityScore": {
             "type": "number",
@@ -355,7 +368,7 @@
           "startLine",
           "endLine",
           "source",
-          "test",
+          "role",
           "score",
           "complexityScore",
           "changeWeightedScore",

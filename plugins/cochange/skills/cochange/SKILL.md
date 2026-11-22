@@ -59,7 +59,7 @@ Run `brief` again when the plan grows to files you did not brief, before you edi
 
 ## Hotspot review
 
-1. `hotspots --limit 20`. Note `complexitySource` (`indentation` is a proxy, `complexity-report` is more precise) and the evidence grade.
+1. `hotspots --limit 20`. Test files are left out and counted in `dropped.tests` (`--include-tests` ranks them with a `role`); say how many. Note `complexitySource` (`indentation` is a proxy, `complexity-report` is more precise) and the evidence grade.
 2. Take the rows with `recommendation: "hotspot"`. Ignore the rest unless asked.
 3. `age` shows which of them are `cold` (not changed within the stale window). Cold code is the cheapest to leave alone, so it is the lowest priority.
 4. For each hotspot, read the file's worst functions. Then name the red flag you judge present, or say none applies. The vocabulary is in [references/red-flags.md](references/red-flags.md). Nonobvious code, shallow modules and special-general mixtures are the common ones in a hotspot.

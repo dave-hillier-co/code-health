@@ -48,7 +48,8 @@ const memberTypes = new Set([
   "property_signature",
 ]);
 
-function isHidden(member: Node): boolean {
+/** A class member that is `private` or a `#` field, which nothing outside the class can reach. */
+export function isHiddenMember(member: Node): boolean {
   if (member.namedChildren.some((child) => child.type === "accessibility_modifier" && child.text === "private")) return true;
   return member.childForFieldName("name")?.type === "private_property_identifier";
 }
@@ -57,7 +58,7 @@ export function classShape(declaration: Node): InterfaceShape {
   const body = declaration.childForFieldName("body");
   let interfaceSize = 0;
   for (const member of body?.namedChildren ?? []) {
-    if (!memberTypes.has(member.type) || isHidden(member)) continue;
+    if (!memberTypes.has(member.type) || isHiddenMember(member)) continue;
     if (member.type === "method_definition" && member.childForFieldName("name")?.text === "constructor") {
       interfaceSize += parameterCounts(member).parameters;
     } else {

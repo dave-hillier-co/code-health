@@ -15,7 +15,8 @@
   "config": "0000000000000000",
   "filesWithSyntaxErrors": [],
   "inputs": {
-    "by": "complexity",
+    "by": "cognitive",
+    "includeTests": false,
     "layer": "lexical",
     "metrics": [
       "cognitive",
@@ -44,10 +45,17 @@
     "syntaxErrorShare": 0
   },
   "ranking": {
-    "basis": "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available",
-    "by": "complexity",
+    "basis": "the value of cognitive, highest first; the percentiles and the other metrics are columns, not part of the order",
+    "by": "cognitive",
     "changeWeighted": false,
     "changeWeightsAvailable": true,
+    "sortedBy": [
+      "cognitive",
+      "nesting",
+      "cyclomatic",
+      "length",
+      "path"
+    ],
     "window": {
       "months": 12,
       "since": 1672531200,
@@ -82,10 +90,10 @@
         "length": 0.875,
         "nesting": 0.75
       },
-      "score": 0.875,
+      "role": "production",
+      "score": 0,
       "source": "lexical",
       "startLine": 1,
-      "test": false,
       "unit": "price"
     },
     {
@@ -111,10 +119,10 @@
         "length": 0.125,
         "nesting": 0.25
       },
-      "score": 0.25,
+      "role": "production",
+      "score": 0,
       "source": "lexical",
       "startLine": 13,
-      "test": false,
       "unit": "double"
     }
   ],
@@ -128,6 +136,12 @@
     "excluded": 0,
     "large": 0,
     "tests": 0
+  },
+  "tests": {
+    "count": 0,
+    "listed": 0,
+    "omitted": 0,
+    "rows": []
   },
   "tool": "complexity",
   "truncated": {

@@ -52,6 +52,7 @@ afterAll(() => repo.dispose());
 interface Row {
   path: string;
   score: number;
+  cognitive?: number;
   complexityScore: number | null;
   changeWeightedScore: number | null;
   fileRevisions: number | null;
@@ -65,20 +66,29 @@ async function analyse(...args: string[]) {
   return JSON.parse(run.stdout) as { ranking: { by: string; changeWeighted: boolean; changeWeightsAvailable: boolean; window: { months: number } | null }; results: Row[] };
 }
 
-describe("ranking by complexity, the default", () => {
-  test("sorts by the complexity percentile alone, so code that has not changed in the window is not pushed down", async () => {
+describe("ranking by cognitive complexity, the default", () => {
+  test("sorts by cognitive complexity alone, so code that has not changed in the window is not pushed down", async () => {
     const { results, ranking } = await analyse();
-    expect(ranking).toMatchObject({ by: "complexity", changeWeighted: false, changeWeightsAvailable: true });
+    expect(ranking).toMatchObject({ by: "cognitive", sortedBy: ["cognitive", "nesting", "cyclomatic", "length", "path"], changeWeighted: false, changeWeightsAvailable: true });
     // The three equally complex functions tie and sort by path, and the simpler function follows whatever its file's history.
     expect(results.map((row) => row.path)).toEqual(["src/busy.ts", "src/frozen.ts", "src/quiet.ts", "src/plain.ts"]);
-    for (const row of results) expect(row.score).toBe(row.complexityScore);
+    for (const row of results) expect(row.score).toBe(row.cognitive);
     expect(results.find((row) => row.path === "src/frozen.ts")).toMatchObject({ fileRevisions: 0, changeWeight: 0, changeWeightedScore: 0 });
   });
 
   test("--by with an unknown value is a usage error", async () => {
     const run = await runComplexity(repo.path, ["analyse", "--json", "--by", "hotspot"]);
     expect(run.code).toBe(ExitCode.Usage);
-    expect(run.stderr).toMatch(/--by must be complexity or change-weighted/);
+    expect(run.stderr).toMatch(/--by must be one of cognitive, max-percentile, change-weighted, cyclomatic, nesting, parameters, length, keyword, bumps/);
+  });
+});
+
+describe("ranking by the highest percentile, with --by max-percentile", () => {
+  test("sorts by complexityScore, and the score is that percentile", async () => {
+    const { results, ranking } = await analyse("--by", "max-percentile");
+    expect(ranking).toMatchObject({ by: "max-percentile", sortedBy: ["max percentile", "cognitive", "nesting", "cyclomatic", "length", "path"] });
+    for (const row of results) expect(row.score).toBe(row.complexityScore);
+    expect(results.map((row) => row.path)).toEqual(["src/busy.ts", "src/frozen.ts", "src/quiet.ts", "src/plain.ts"]);
   });
 });
 

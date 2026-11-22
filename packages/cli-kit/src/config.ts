@@ -67,6 +67,11 @@ export type HistoryConfig = typeof historyDefaults;
 
 export interface SharedConfig {
   exclude: string[];
+  /**
+   * Globs that decide which files are tests, laid over each language's own conventions: a match makes a file a test, an
+   * entry with a leading exclamation mark makes it production, and the last matching entry wins.
+   */
+  testPatterns: string[];
   /** File extension (no dot, lower case) to lexer profile name: file types the suite has no profile for. */
   languages: Record<string, string>;
   entryPoints: string[];
@@ -115,6 +120,7 @@ export interface ConfigRow {
 
 const sharedDefaults: SharedConfig = {
   exclude: [],
+  testPatterns: [],
   languages: {},
   entryPoints: [],
   includeRoots: [],
@@ -123,7 +129,7 @@ const sharedDefaults: SharedConfig = {
   history: historyDefaults,
 };
 
-const stringLists = ["exclude", "entryPoints", "includeRoots", "vagueNames"];
+const stringLists = ["exclude", "testPatterns", "entryPoints", "includeRoots", "vagueNames"];
 
 /**
  * The plugins whose sections may appear in code-health.json. Every plugin reads the one file, so a plugin

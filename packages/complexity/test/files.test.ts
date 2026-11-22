@@ -47,12 +47,26 @@ test("lists every code file with file-level metrics and function aggregates, and
   // No adapter and no lexer profile claims a Ruby file or a Markdown document: they are not code, so they are not ranked, and are counted.
   expect(byPath.has("tools/total.rb")).toBe(false);
   expect(byPath.has("notes.md")).toBe(false);
-  expect(JSON.parse(stdout).dropped).toEqual({ nonCode: 2 });
+  expect(JSON.parse(stdout).dropped).toEqual({ nonCode: 2, tests: 1 });
   // Go has an adapter: its functions are measured structurally, `for` and `if` counted as in any language.
   const go = byPath.get("src/total.go")!;
   expect(go).toMatchObject({ source: "structural", functions: 1 });
   expect(go.aggregates!.cognitive).toEqual({ sum: 3, max: 3 });
   expect(go.aggregates!.cyclomatic).toEqual({ sum: 3, max: 3 });
+});
+
+test("--include-tests lists the test files in the same list, with a role on every row", async () => {
+  const plain = JSON.parse((await files()).stdout).results as (FileRow & { role: string })[];
+  expect(plain.every((row) => row.role === "production")).toBe(true);
+  const merged = JSON.parse((await files("--include-tests")).stdout);
+  expect(merged.dropped).toEqual({ nonCode: 2 });
+  expect((merged.results as (FileRow & { role: string })[]).filter((row) => row.role === "test")).toHaveLength(1);
+});
+
+test("the stored report keeps the test files, because cochange reads a complexity for each file it ranks", async () => {
+  await files();
+  const stored = JSON.parse(readFileSync(join(repo.path, ".cache", "code-health", "reports", "complexity.files.json"), "utf8"));
+  expect((stored.results as { role: string }[]).some((row) => row.role === "test")).toBe(true);
 });
 
 test("sorts by file complexity and each row's score is that complexity", async () => {

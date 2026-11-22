@@ -5,7 +5,7 @@ import type { LogicalChange } from "@code-health/history/noise";
 import type { HistoryCommit } from "@code-health/history/read";
 import { readShallowInfo, refresh } from "@code-health/history/refresh";
 import { GrammarSet } from "@code-health/parse/grammars";
-import { adapterForPath, isTestPath } from "@code-health/parse/languages";
+import { adapterForPath } from "@code-health/parse/languages";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { readBlobs, restrictTree, treeFromTexts, type SourceTree } from "@code-health/parse/source-tree";
 import type { ComplexitySettings } from "./config.ts";
@@ -202,7 +202,7 @@ export async function measureFixes(
   const convention = checkFixConvention(inWindow.length, [...fixOf.values()].filter((found) => found !== null).length);
 
   const selected = pathSelector(request.paths);
-  const analysable = (path: string): boolean => adapterForPath(path) !== undefined && !settings.isExcluded(path) && (settings.analyseTests || !isTestPath(path));
+  const analysable = (path: string): boolean => adapterForPath(path) !== undefined && !settings.isExcluded(path) && (settings.analyseTests || !settings.isTest(path));
   const sourceFiles = (change: LogicalChange) => change.files.filter((file) => selected(file.fileId) && analysable(file.path));
 
   const relevant = inWindow.filter((change) => change.files.some((file) => selected(file.fileId)));

@@ -192,6 +192,7 @@ var historyDefaults = {
 };
 var sharedDefaults = {
   exclude: [],
+  testPatterns: [],
   languages: {},
   entryPoints: [],
   includeRoots: [],
@@ -199,7 +200,7 @@ var sharedDefaults = {
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults
 };
-var stringLists = ["exclude", "entryPoints", "includeRoots", "vagueNames"];
+var stringLists = ["exclude", "testPatterns", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
 function rejectUnknownKeys(document, plugin) {
@@ -366,7 +367,7 @@ function article(kind) {
 }
 
 // packages/cli-kit/src/dropped-files.ts
-var DROPPED_KINDS = ["generated", "vendored", "nonCode"];
+var DROPPED_KINDS = ["generated", "vendored", "nonCode", "tests"];
 var dropped = /* @__PURE__ */ new Map();
 function recordDropped(kind, path) {
   const paths = dropped.get(kind);
@@ -470,7 +471,7 @@ function shapeResults(results, options2) {
       throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns.join(", ")}`);
     }
   }
-  const sorted = [...results].sort(byScoreThenPath);
+  const sorted = options2.presorted === true ? results : [...results].sort(byScoreThenPath);
   const kept = sorted.slice(0, limit);
   const projected = fields ? kept.map((row) => Object.fromEntries(fields.map((field6) => [field6, row[field6]]))) : kept;
   return {
@@ -592,7 +593,7 @@ async function execute(cli2, io) {
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns });
+  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns, presorted: output.presorted });
   if (args2.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -634,7 +635,7 @@ async function execute(cli2, io) {
     }
     const left = Object.entries(leftOut);
     if (left.length > 0) {
-      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code" };
+      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" };
       io.stdout.write(`Notice: omitted ${left.map(([kind, count2]) => `${count2} ${names[kind]} ${count2 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
@@ -7010,7 +7011,7 @@ var memberTypes = /* @__PURE__ */ new Set([
   "index_signature",
   "property_signature"
 ]);
-function isHidden(member) {
+function isHiddenMember(member) {
   if (member.namedChildren.some((child2) => child2.type === "accessibility_modifier" && child2.text === "private")) return true;
   return member.childForFieldName("name")?.type === "private_property_identifier";
 }
@@ -7018,7 +7019,7 @@ function classShape(declaration) {
   const body2 = declaration.childForFieldName("body");
   let interfaceSize = 0;
   for (const member of body2?.namedChildren ?? []) {
-    if (!memberTypes.has(member.type) || isHidden(member)) continue;
+    if (!memberTypes.has(member.type) || isHiddenMember(member)) continue;
     if (member.type === "method_definition" && member.childForFieldName("name")?.text === "constructor") {
       interfaceSize += parameterCounts(member).parameters;
     } else {
@@ -7404,6 +7405,8 @@ var Extractor = class {
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (overridesMethod(node)) unit.override = true;
+    const words = modifiersOf(node);
+    if (!context.inInterface && !words.has("public") && !words.has("protected")) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const inside = { ...context, unit: qualifiedName };
@@ -7571,7 +7574,7 @@ var adapter = {
   support: "supported",
   lexerProfile: "java",
   grammars: [{ spec: { id: "java", packageName: "tree-sitter-java", file: "tree-sitter-java.wasm" }, extensions: [".java"] }],
-  extractorVersion: 2,
+  extractorVersion: 3,
   extract: extractFacts,
   isTestPath: (path) => isJvmTestPath(path, /\.java$/),
   metrics: javaMetricRules,
@@ -7987,6 +7990,7 @@ var Extractor2 = class {
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (modifierWords(node).has("override")) unit.override = true;
+    if (context.inType && (modifierWords(node).has("private") || modifierWords(node).has("internal"))) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     if (context.topLevel && !isConstructor2) {
@@ -8196,7 +8200,7 @@ var adapter2 = {
   support: "supported",
   lexerProfile: "kotlin",
   grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm", repairs: kotlinRepairs }, extensions: [".kt"] }],
-  extractorVersion: 3,
+  extractorVersion: 4,
   extract: extractFacts2,
   isTestPath: (path) => isJvmTestPath(path, /\.kt$/),
   metrics: kotlinMetricRules,
@@ -8804,6 +8808,7 @@ var Extractor3 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (kind === "method" && isHiddenMember(node)) unit.hidden = true;
     if (kind === "class") unit.shape = classShape(node);
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root, typescriptMetricRules);
@@ -9530,7 +9535,7 @@ var adapter3 = {
     { spec: { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm", repairs: typescriptRepairs }, extensions: [".tsx"] },
     { spec: { id: "javascript", packageName: "tree-sitter-javascript", file: "tree-sitter-javascript.wasm" }, extensions: [".js", ".mjs", ".cjs", ".jsx"] }
   ],
-  extractorVersion: 8,
+  extractorVersion: 9,
   extract: extractFacts3,
   isTestPath: (path) => /(^|\/)(__tests__|__mocks__|tests?)\//.test(path) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(path),
   metrics: typescriptMetricRules,
@@ -9842,7 +9847,7 @@ function passThroughOf4(fn, parameterNames6) {
 }
 
 // packages/parse/src/languages/csharp/extract-facts.ts
-var extractorVersion = 3;
+var extractorVersion = 4;
 var typeDeclarations3 = /* @__PURE__ */ new Set([
   "class_declaration",
   "struct_declaration",
@@ -10126,6 +10131,7 @@ var Extractor4 = class {
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (modifiersOf2(fn).includes("override")) unit.override = true;
+    if (kind === "method" && isHiddenMember2(fn)) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     return { ...context, unit: qualifiedName };
@@ -10290,6 +10296,13 @@ var Extractor4 = class {
 };
 function extractFacts4(root, options2 = {}) {
   return new Extractor4(options2).extract(root);
+}
+function isHiddenMember2(fn) {
+  const member = fn.type === "accessor_declaration" ? fn.parent?.parent : fn;
+  if (member === void 0 || member === null) return false;
+  if (member.parent?.parent?.type === "interface_declaration") return false;
+  if (member.namedChildren.some((child2) => child2.type === "explicit_interface_specifier")) return false;
+  return !modifiersOf2(member).some((modifier) => modifier === "public" || modifier === "protected");
 }
 
 // packages/parse/src/languages/csharp/census.ts
@@ -11611,6 +11624,7 @@ var Extractor5 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (kind === "method" && context.scope === "class" && !context.publicMembers) unit.hidden = true;
     const measured = measureFunction(fn, { ...name13 === void 0 ? {} : { name: name13 }, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, cppMetricRules);
     unit.metrics = measured.metrics;
     unit.shape = functionShape3(fn, measured.metrics.parameters);
@@ -12255,7 +12269,7 @@ var adapter5 = {
   support: "supported",
   lexerProfile: "cpp",
   grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm", repairs: cppRepairs }, extensions: claimed }],
-  extractorVersion: 3,
+  extractorVersion: 4,
   extract: extractFacts5,
   isTestPath: (path) => /(^|\/)(tests?|unittests?|gtest|testing)\//i.test(path) || /(^|\/)(test_[^/]+|[^/]+_(test|tests|unittest|unittests)|[^/]+Tests?|[^/]+\.(test|spec))\.[^/.]+$/.test(path),
   metrics: cppMetricRules,
@@ -12696,7 +12710,7 @@ function passThroughOf6(fn) {
 }
 
 // packages/parse/src/languages/python/extract-facts.ts
-var extractorVersion2 = 3;
+var extractorVersion2 = 4;
 var importTypes = /* @__PURE__ */ new Set(["import_statement", "import_from_statement", "future_import_statement"]);
 var targetTypes = /* @__PURE__ */ new Set(["pattern_list", "tuple_pattern", "list_pattern", "list_splat_pattern", "tuple", "list"]);
 var comprehensionTypes = /* @__PURE__ */ new Set(["list_comprehension", "set_comprehension", "dictionary_comprehension", "generator_expression"]);
@@ -13163,6 +13177,7 @@ var Extractor6 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (name13.startsWith("_") && !(name13.startsWith("__") && name13.endsWith("__"))) unit.hidden = true;
     if (kind === "class") unit.shape = classShape3(extent);
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root, pythonMetricRules);
@@ -14124,7 +14139,7 @@ function passThroughOf7(fn) {
 }
 
 // packages/parse/src/languages/go/extract-facts.ts
-var extractorVersion3 = 3;
+var extractorVersion3 = 4;
 var GENERATED = /^\/\/ Code generated .* DO NOT EDIT\.$/;
 var predeclared = /* @__PURE__ */ new Set([
   "any",
@@ -14372,6 +14387,7 @@ var Extractor7 = class {
     const forwarded = passThroughOf7(fn);
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
+    if (kind === "method" && methodName2 !== void 0 && !isExported(methodName2)) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const locals = /* @__PURE__ */ new Set([...context.locals, ...declaredIn(fn)]);
@@ -15137,7 +15153,7 @@ var rustMetricRules = {
 };
 
 // packages/parse/src/languages/rust/extract-facts.ts
-var extractorVersion4 = 2;
+var extractorVersion4 = 3;
 function visibilityOf(node) {
   const modifier = node.namedChildren.find((child2) => child2.type === "visibility_modifier");
   if (modifier === void 0) return "private";
@@ -15153,6 +15169,9 @@ function attributesOf(node) {
 }
 function attributeNamed(node, name13) {
   return attributesOf(node).map((item) => item.namedChildren.find((child2) => child2.type === "attribute")).find((attribute2) => attribute2?.namedChildren[0]?.text === name13);
+}
+function isTestItem(node) {
+  return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
 }
 function pathAttribute(node) {
   const value = attributeNamed(node, "path")?.childForFieldName("value");
@@ -15365,6 +15384,7 @@ var Extractor8 = class {
     const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
     const unit = { qualifiedName, kind, startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, source: "structural" };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (context.inTests === true || isTestItem(node)) unit.test = true;
     if (fn === void 0) unit.shape = typeShape5(node);
     else {
       this.codeRows ??= codeRowsOf(this.root, rustMetricRules);
@@ -15375,6 +15395,7 @@ var Extractor8 = class {
       if (forwarded !== void 0) unit.passThrough = forwarded;
       if (measured.recursive) unit.recursive = true;
       if (memberOf !== void 0 && context.implementsTrait === true) unit.override = true;
+      if (memberOf !== void 0 && context.implementsTrait !== true && visibilityOf(node) !== "public") unit.hidden = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
     this.units.push(unit);
@@ -15427,7 +15448,7 @@ var Extractor8 = class {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body2 = node.childForFieldName("body");
         this.visitChildrenExcept(node, body2, { ...context, owner: void 0 });
-        if (body2 !== null) this.visitScope(body2, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
+        if (body2 !== null) this.visitScope(body2, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null, ...isTestItem(node) ? { inTests: true } : {} });
         return;
       }
       case "type_item":
@@ -15523,7 +15544,7 @@ var Extractor8 = class {
     const body2 = node.childForFieldName("body");
     if (body2 !== null) {
       this.export(node, name13, void 0, "namespace", visibility, context);
-      this.visitScope(body2, { ...context, mods: [...context.mods, name13], exposed: context.exposed && visibility === "public" });
+      this.visitScope(body2, { ...context, mods: [...context.mods, name13], exposed: context.exposed && visibility === "public", ...isTestItem(node) ? { inTests: true } : {} });
       return;
     }
     const written = pathAttribute(node);
@@ -22153,8 +22174,8 @@ async function readEntries6(model) {
       const all = allOf(texts.get(file) ?? "");
       const isPackageInit = file.endsWith("/__init__.py") || file === "__init__.py";
       for (const { name: name13, reexport } of exportedBy.get(file) ?? []) {
-        const isHidden2 = all === null ? name13.startsWith("_") || reexport && !isPackageInit : !all.has(name13);
-        if (isHidden2) hidden.add(`${file}#${name13}`);
+        const isHidden = all === null ? name13.startsWith("_") || reexport && !isPackageInit : !all.has(name13);
+        if (isHidden) hidden.add(`${file}#${name13}`);
       }
     }
     entries.set(pkg.id, { id: pkg.id, files: new Set([...files].sort(compareIds)), wildcard: false, hasExportsMap: true, hidden });

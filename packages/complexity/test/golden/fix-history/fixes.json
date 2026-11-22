@@ -40,6 +40,7 @@
           "low evidence"
         ],
         "path": "src/orders.ts",
+        "role": "production",
         "score": 1.2,
         "unit": "legacy",
         "unitRevisions": 2
@@ -81,6 +82,7 @@
   },
   "inputs": {
     "evidence": 3,
+    "includeTests": false,
     "maxCommits": null,
     "paths": [],
     "tree": "head"
@@ -137,6 +139,7 @@
       "kind": "function",
       "labels": [],
       "path": "src/billing.ts",
+      "role": "production",
       "score": 2.66,
       "startLine": 4,
       "unit": "priceOrder",
@@ -166,6 +169,7 @@
         "low evidence"
       ],
       "path": "src/billing.ts",
+      "role": "production",
       "score": 1.2,
       "startLine": 16,
       "unit": "describe",
@@ -178,6 +182,12 @@
     "currentUnitsWithFixes": 2,
     "unitsTouched": 3,
     "unitsWithFixes": 3
+  },
+  "tests": {
+    "count": 0,
+    "listed": 0,
+    "omitted": 0,
+    "rows": []
   },
   "tool": "complexity",
   "truncated": {

@@ -3,7 +3,8 @@
   "complexitySource": "indentation",
   "config": "0000000000000000",
   "dropped": {
-    "nonCode": 1
+    "nonCode": 1,
+    "tests": 1
   },
   "evidence": {
     "activeContributors": 2,
@@ -121,7 +122,8 @@
   "inputs": {
     "allFiles": false,
     "by": "file",
-    "complexityReport": null
+    "complexityReport": null,
+    "includeTests": false
   },
   "repo": {
     "dirty": false,
@@ -141,7 +143,8 @@
       "lastChanged": "2024-06-01T09:00:00.000Z",
       "path": "src/billing/invoice.ts",
       "recommendation": "hotspot",
-      "score": 0.416667,
+      "role": "production",
+      "score": 0.375,
       "siblingTest": null
     },
     {
@@ -155,21 +158,8 @@
       "lastChanged": "2024-05-01T09:00:00.000Z",
       "path": "src/reporting/summary.ts",
       "recommendation": null,
-      "score": 0.25,
-      "siblingTest": null
-    },
-    {
-      "ageDays": 88,
-      "churn": 3,
-      "complexity": 0,
-      "findings": [],
-      "fixShare": 0,
-      "fixes": 0,
-      "frequency": 2,
-      "lastChanged": "2024-03-05T09:00:00.000Z",
-      "path": "test/billing/invoice.test.ts",
-      "recommendation": null,
-      "score": 0.083333,
+      "role": "production",
+      "score": 0.125,
       "siblingTest": null
     }
   ],
@@ -178,7 +168,7 @@
   "truncated": {
     "cut": 0,
     "limit": 20,
-    "total": 3
+    "total": 2
   },
   "window": {
     "since": "2023-06-01T09:00:00.000Z",

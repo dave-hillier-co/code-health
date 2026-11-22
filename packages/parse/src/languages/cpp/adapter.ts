@@ -22,7 +22,7 @@ export const adapter: LanguageAdapter = {
   support: "supported",
   lexerProfile: "cpp",
   grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm", repairs: cppRepairs }, extensions: claimed }],
-  extractorVersion: 3,
+  extractorVersion: 4,
   extract: extractFacts,
   isTestPath: (path) =>
     /(^|\/)(tests?|unittests?|gtest|testing)\//i.test(path) ||

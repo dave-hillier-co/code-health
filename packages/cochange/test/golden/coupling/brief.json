@@ -1,6 +1,9 @@
 {
   "command": "brief",
   "config": "0000000000000000",
+  "dropped": {
+    "tests": 1
+  },
   "evidence": {
     "activeContributors": 1,
     "commitSize": {
@@ -145,7 +148,7 @@
       "fixShare": 0,
       "fixes": 0,
       "frequency": 5,
-      "hotspotScore": 0.452703,
+      "hotspotScore": 0.465278,
       "lastChanged": "2024-04-21T09:00:00.000Z",
       "note": null,
       "path": "src/app/registry.ts",
@@ -189,7 +192,7 @@
       "fixShare": 0,
       "fixes": 0,
       "frequency": 28,
-      "hotspotScore": 0.493243,
+      "hotspotScore": 0.493056,
       "lastChanged": "2024-12-19T09:00:00.000Z",
       "note": null,
       "path": "src/billing/invoice.ts",

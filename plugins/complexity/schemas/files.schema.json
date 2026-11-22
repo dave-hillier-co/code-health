@@ -27,12 +27,17 @@
           "items": {
             "type": "string"
           }
+        },
+        "includeTests": {
+          "type": "boolean",
+          "description": "True when --include-tests listed the test files. Otherwise they are counted in dropped.tests."
         }
       },
       "required": [
         "tree",
         "layer",
-        "paths"
+        "paths",
+        "includeTests"
       ],
       "additionalProperties": false
     },
@@ -75,8 +80,8 @@
             ],
             "description": "The lexer profile of the file, if any."
           },
-          "test": {
-            "type": "boolean"
+          "role": {
+            "$ref": "common.schema.json#/$defs/role"
           },
           "unverified": {
             "type": "boolean",
@@ -269,7 +274,7 @@
           "complexity",
           "source",
           "profile",
-          "test",
+          "role",
           "unverified",
           "lineCount",
           "codeLines",

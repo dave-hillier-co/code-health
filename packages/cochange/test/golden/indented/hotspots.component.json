@@ -118,7 +118,8 @@
   "inputs": {
     "allFiles": false,
     "by": "component",
-    "complexityReport": null
+    "complexityReport": null,
+    "includeTests": false
   },
   "repo": {
     "dirty": false,

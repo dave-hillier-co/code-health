@@ -91,12 +91,13 @@
           }
         },
         "dropped": {
-          "description": "Present only when files were left out because of what they are: the number of distinct files left out as generated (a linguist-generated attribute or a generated-code header), as vendored (a linguist-vendored attribute or a vendor directory), and as non-code (no language adapter or lexical profile claims them, for a command that ranks only code). Kinds that left out nothing are not listed.",
+          "description": "Present only when files were left out because of what they are: the number of distinct files left out as generated (a linguist-generated attribute or a generated-code header), as vendored (a linguist-vendored attribute or a vendor directory), and as non-code (no language adapter or lexical profile claims them, for a command that ranks only code), and as tests (a command that lists production code first, left out unless `--include-tests` is given). Kinds that left out nothing are not listed.",
           "type": "object",
           "properties": {
             "generated": { "type": "integer", "minimum": 1 },
             "vendored": { "type": "integer", "minimum": 1 },
-            "nonCode": { "type": "integer", "minimum": 1 }
+            "nonCode": { "type": "integer", "minimum": 1 },
+            "tests": { "type": "integer", "minimum": 1 }
           },
           "additionalProperties": false
         },
@@ -369,6 +370,22 @@
       ],
       "additionalProperties": false
     },
+    "role": {
+      "enum": ["production", "test"],
+      "description": "Whether the code is a test: its file is named as a test by the language's conventions or by the shared testPatterns of code-health.json, or (Rust) it sits in a #[cfg(test)] module or is a #[test] function."
+    },
+    "testsSection": {
+      "type": "object",
+      "description": "Present when the rows are production code only: the tests left out of them, counted, with the first few in the same order. A run with --include-tests lists the tests in results and has no tests section.",
+      "properties": {
+        "count": { "$ref": "#/$defs/count" },
+        "listed": { "$ref": "#/$defs/count", "description": "Rows in rows." },
+        "omitted": { "$ref": "#/$defs/count", "description": "count minus listed." },
+        "rows": { "type": "array", "items": { "type": "object" } }
+      },
+      "required": ["count", "listed", "omitted", "rows"],
+      "additionalProperties": false
+    },
     "fixRow": {
       "type": "object",
       "description": "One function with its fix statistics, followed forward to the current revision. A function that no longer exists has no kind, lines or cognitive complexity.",
@@ -383,6 +400,9 @@
         "id": {
           "type": "string",
           "description": "path#Qualified.name."
+        },
+        "role": {
+          "$ref": "#/$defs/role"
         },
         "kind": {
           "$ref": "#/$defs/kind"
@@ -486,6 +506,7 @@
         "path",
         "unit",
         "id",
+        "role",
         "score",
         "fixCommits",
         "unitRevisions",

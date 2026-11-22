@@ -2,6 +2,7 @@ import type { Command, CommandContext } from "@code-health/cli-kit/run-cli";
 import { layerOption, measureCurrent, parseLayer, storeReport } from "../analysis.ts";
 import { normalisePaths, pathSelector } from "../current-tree.ts";
 import { fileRow } from "../rows.ts";
+import { includeTestsHelp, includeTestsOption, wantsTests } from "../roles.ts";
 import { recordDropped } from "@code-health/cli-kit/dropped-files";
 import { isCodePath } from "@code-health/parse/code-files";
 import { skipReport } from "@code-health/history/reports";
@@ -21,13 +22,14 @@ function isPartial(context: CommandContext): boolean {
  */
 export const command: Command = {
   summary: "File-level aggregates; a full run writes the complexity.files report other plugins read",
-  options: { ...layerOption },
+  options: { ...layerOption, ...includeTestsOption },
+  optionHelp: { "include-tests": includeTestsHelp },
   async run(context) {
     const layer = parseLayer(context.values.layer);
     const { settings, current, measurement } = await measureCurrent(context, layer);
     const paths = normalisePaths(context.positionals);
     const inPaths = pathSelector(paths);
-    const rows = measurement.files
+    const all = measurement.files
       .filter((file) => inPaths(file.path))
       .filter((file) => {
         if (isCodePath(file.path, settings.languageProfiles)) return true;
@@ -35,13 +37,16 @@ export const command: Command = {
         return false;
       })
       .map((file) => fileRow(file, settings));
+    // The stored report holds every file, tests included with their role, because cochange reads a complexity for each file it ranks.
+    const listed = wantsTests(context) ? all : all.filter((row) => row.role === "production");
+    if (listed.length < all.length) for (const row of all) if (row.role === "test") recordDropped("tests", row.path);
     const output = {
-      inputs: { tree: current.kind, layer, paths },
+      inputs: { tree: current.kind, layer, paths, includeTests: wantsTests(context) },
       extra: { skippedFiles: measurement.skippedFiles },
-      results: rows,
-      columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "test", "codeLines"],
+      results: listed,
+      columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "role", "codeLines"],
     };
-    if (!isPartial(context) && current.kind === "head") await storeReport(context, name, output);
+    if (!isPartial(context) && current.kind === "head") await storeReport(context, name, { ...output, inputs: { ...output.inputs, includeTests: true }, results: all });
     else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
     return output;
   },

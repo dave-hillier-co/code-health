@@ -36,19 +36,27 @@
         "evidence": {
           "type": "integer",
           "minimum": 0
+        },
+        "includeTests": {
+          "type": "boolean",
+          "description": "True when --include-tests listed the test functions with the production ones."
         }
       },
       "required": [
         "tree",
         "paths",
         "maxCommits",
-        "evidence"
+        "evidence",
+        "includeTests"
       ],
       "additionalProperties": false
     },
+    "tests": {
+      "$ref": "common.schema.json#/$defs/testsSection"
+    },
     "results": {
       "type": "array",
-      "description": "Functions with at least one fix, sorted by fixCommits, then fixShare.",
+      "description": "Production functions with at least one fix (test functions too with --include-tests), sorted by fixCommits, then fixShare.",
       "items": {
         "$ref": "common.schema.json#/$defs/fixRow"
       }

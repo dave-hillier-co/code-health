@@ -37,6 +37,8 @@ export interface CommandOutput {
   extra?: Record<string, unknown>;
   /** A list of rows (sorted, limited and projected by the kit) or any other JSON value. */
   results: unknown;
+  /** The rows are already in the order the command states, so the kit keeps that order instead of sorting by ranking ratio, score and path. */
+  presorted?: boolean;
   /** Table columns, and the valid values for --fields. Defaults to the keys of the first row. */
   columns?: string[];
   /** Lines a table run prints after the rows, such as a check that does not apply. JSON carries the same facts in the command's own fields. */
@@ -167,7 +169,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
   for (const note of noted) if (note.warning !== undefined) io.stderr.write(`${note.warning}\n`);
 
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
+  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns, presorted: output.presorted });
 
   if (args.json || !io.stdout.isTTY) {
     io.stdout.write(
@@ -207,7 +209,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
     }
     const left = Object.entries(leftOut);
     if (left.length > 0) {
-      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code" } as const;
+      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" } as const;
       io.stdout.write(`Notice: omitted ${left.map(([kind, count]) => `${count} ${names[kind as keyof typeof names]} ${count === 1 ? "file" : "files"}`).join(", ")}.\n`);
     }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.\n`);

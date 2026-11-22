@@ -23,6 +23,7 @@ test("the schema is valid and names the shared keys and a section per plugin, in
   expect(Object.keys((schema.properties as object))).toEqual([
     "$schema",
     "exclude",
+    "testPatterns",
     "languages",
     "entryPoints",
     "includeRoots",

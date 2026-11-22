@@ -2,9 +2,11 @@
   "command": "files",
   "config": "0000000000000000",
   "dropped": {
-    "nonCode": 2
+    "nonCode": 2,
+    "tests": 1
   },
   "inputs": {
+    "includeTests": false,
     "layer": "auto",
     "paths": [],
     "tree": "head"
@@ -51,9 +53,9 @@
       "passThroughs": 0,
       "path": "src/pricing.ts",
       "profile": "typescript",
+      "role": "production",
       "score": 16,
       "source": "structural",
-      "test": false,
       "unverified": false
     },
     {
@@ -87,57 +89,15 @@
       "codeLines": 10,
       "complexity": 11,
       "functions": 1,
-      "interfaceDepth": null,
+      "interfaceDepth": 37,
       "keywordComplexity": 2,
       "lineCount": 11,
       "passThroughs": 0,
       "path": "src/total.go",
       "profile": "go",
+      "role": "production",
       "score": 11,
       "source": "structural",
-      "test": false,
-      "unverified": false
-    },
-    {
-      "aboveGuideline": 0,
-      "aggregates": {
-        "bumps": {
-          "max": 1,
-          "sum": 1
-        },
-        "cognitive": {
-          "max": 1,
-          "sum": 1
-        },
-        "cyclomatic": {
-          "max": 2,
-          "sum": 2
-        },
-        "length": {
-          "max": 5,
-          "sum": 5
-        },
-        "nesting": {
-          "max": 1,
-          "sum": 1
-        },
-        "parameters": {
-          "max": 0,
-          "sum": 0
-        }
-      },
-      "codeLines": 6,
-      "complexity": 4,
-      "functions": 1,
-      "interfaceDepth": 28,
-      "keywordComplexity": 1,
-      "lineCount": 7,
-      "passThroughs": 0,
-      "path": "test/pricing.test.ts",
-      "profile": "typescript",
-      "score": 4,
-      "source": "structural",
-      "test": true,
       "unverified": false
     },
     {
@@ -177,9 +137,9 @@
       "passThroughs": 1,
       "path": "src/label.ts",
       "profile": "typescript",
+      "role": "production",
       "score": 1,
       "source": "structural",
-      "test": false,
       "unverified": false
     }
   ],
@@ -194,6 +154,6 @@
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 4
+    "total": 3
   }
 }

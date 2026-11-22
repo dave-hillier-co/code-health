@@ -10,9 +10,12 @@ import type { LoadedHistory } from "./history-access.ts";
 import { siblingTestOf } from "./sibling-test.ts";
 import { midRankPercentiles, shareStrictlyAbove } from "@code-health/cli-kit/ranking";
 import { SECONDS_PER_DAY, isoDate, loadUnits } from "./units.ts";
+import { testClassifier } from "@code-health/parse/test-files";
 
 export interface HotspotRow {
   path: string;
+  /** File views only: `test` for a test file, which a run lists only with `--include-tests`. */
+  role?: "production" | "test";
   score: number | null;
   /** Files in the unit, for component views only. */
   files?: number;
@@ -43,7 +46,8 @@ export interface HotspotRanking {
  */
 export async function rankHotspots(context: CommandContext, history: LoadedHistory, by: By): Promise<HotspotRanking> {
   const { settings } = history;
-  const units = await loadUnits(context, history, by);
+  const units = await loadUnits(context, history, by, true);
+  const isTest = testClassifier(context.config.effective.testPatterns);
   const fixReading = readFixes(history, units, readFixClassifier(context.config));
 
   const paths = [...new Set(units.flatMap((u) => [...u.members]))].sort();
@@ -73,6 +77,7 @@ export async function rankHotspots(context: CommandContext, history: LoadedHisto
     const isHotspot = score !== null && shareStrictlyAbove(scored, score) < topShare && unit.lastChanged >= recentSince;
     return {
       path: unit.name,
+      ...(by === "file" ? { role: isTest(unit.name) ? ("test" as const) : ("production" as const) } : {}),
       score,
       ...(by === "component" ? { files: unit.files } : {}),
       frequency: unit.revisions,

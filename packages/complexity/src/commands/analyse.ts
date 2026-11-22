@@ -5,7 +5,8 @@ import { normalisePaths, pathSelector } from "../current-tree.ts";
 import { fixFigures, fixHeader, fixNotices, fixOptionHelp, fixOptions, measureFixesFor } from "../fix-report.ts";
 import { metricIds } from "../metrics.ts";
 import { usageError } from "@code-health/cli-kit/errors";
-import { rankByValues, rankUnits, type RankBy } from "../ranking.ts";
+import { defaultRankBy, rankByValues, rankUnits, sortKeys, sortRanked, type RankBy } from "../ranking.ts";
+import { includeTestsHelp, includeTestsOption, splitRoles, wantsTests } from "../roles.ts";
 import { ruleDescriptions } from "../rules.ts";
 import { unitRow } from "../rows.ts";
 import { skipReport } from "@code-health/history/reports";
@@ -16,20 +17,21 @@ export const rules: Record<string, Rule> = ruleDescriptions;
 
 /** Whether a run covers less than the whole repository, so it is printed but never stored as a report. */
 function isPartial(context: CommandContext): boolean {
-  return context.positionals.length > 0 || context.values.metrics !== undefined || context.values.layer !== undefined || context.values.by !== undefined || context.values["with-fixes"] === true;
+  return context.positionals.length > 0 || context.values.metrics !== undefined || context.values.layer !== undefined || context.values.by !== undefined || context.values["with-fixes"] === true || wantsTests(context);
 }
 
 function parseBy(value: unknown): RankBy {
-  if (value === undefined) return "complexity";
+  if (value === undefined) return defaultRankBy;
   if ((rankByValues as readonly unknown[]).includes(value)) return value as RankBy;
-  throw usageError(`--by must be ${rankByValues.join(" or ")}, got "${String(value)}"`);
+  throw usageError(`--by must be one of ${rankByValues.join(", ")}, got "${String(value)}"`);
 }
 
 export const command: Command = {
-  summary: "Rank the functions that are hardest to understand (highest metric percentile; --by change-weighted for hotspot order), with all selected metrics, percentiles and labels",
-  options: { ...metricsOption, ...layerOption, by: { type: "string" }, "with-fixes": { type: "boolean" }, ...fixOptions },
+  summary: "Rank the production functions that are hardest to understand (cognitive complexity, then nesting, cyclomatic and length; --by for another order), with all selected metrics, percentiles and labels, and the tests counted apart",
+  options: { ...metricsOption, ...layerOption, by: { type: "string" }, "with-fixes": { type: "boolean" }, ...includeTestsOption, ...fixOptions },
   optionHelp: {
-    by: "what rows sort on: complexity (default, the highest metric percentile) or change-weighted (that percentile times how often the function's file changed in the window, a hotspot order)",
+    by: `what rows sort on, highest first, with ties broken by cognitive, nesting, cyclomatic, length and then path: ${rankByValues.join(", ")}. cognitive is the default; max-percentile is the highest metric percentile of any selected metric; change-weighted is that percentile times how often the function's file changed in the window (a hotspot order); the other names sort by that metric's value`,
+    "include-tests": includeTestsHelp,
     "with-fixes": "add fixCommits, unitRevisions and fixShare per function from the history window (see `complexity fixes`); costs a parse of the historical revisions",
     ...fixOptionHelp,
   },
@@ -45,8 +47,9 @@ export const command: Command = {
     if (by === "change-weighted" && changes === undefined) {
       throw usageError("--by change-weighted needs change frequency, and there is none: complexity.changeWeighting is off, the clone is shallow, or the repository has no history");
     }
-    const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected, changes, by);
-    const unitRows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
+    const ranked = sortRanked(rankUnits(measurement.files.flatMap((file) => file.units), selected, changes, by), by);
+    const allRows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
+    const { listed: unitRows, tests } = splitRoles(allRows, wantsTests(context));
     const withFixes = context.values["with-fixes"] === true;
     const fixes = withFixes ? await measureFixesFor(context, settings, current) : undefined;
     const rows = fixes === undefined ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
@@ -77,26 +80,33 @@ export const command: Command = {
           ]
         : [];
 
+    const keys = sortKeys(by);
     const output = {
+      presorted: true,
       inputs: {
         tree: current.kind,
         layer,
         metrics: selected,
         by,
+        includeTests: wantsTests(context),
         paths,
         ...(fixes === undefined ? {} : { withFixes: true, maxCommits: fixes.request.maxCommits, evidence: fixes.request.evidence }),
       },
       extra: {
         ranking: {
           by,
+          sortedBy: keys,
           basis:
-            by === "complexity"
+            by === "max-percentile"
               ? "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available"
-              : "the highest percentile of any selected metric within the repository, among units measured the same way, times the change weight of the unit's file (fileRevisions counts the file's changes, not the function's)",
+              : by === "change-weighted"
+                ? "the highest percentile of any selected metric within the repository, among units measured the same way, times the change weight of the unit's file (fileRevisions counts the file's changes, not the function's)"
+                : `the value of ${by}, highest first; the percentiles and the other metrics are columns, not part of the order`,
           changeWeighted: by === "change-weighted",
           changeWeightsAvailable: changes !== undefined,
           window: changes?.window ?? null,
         },
+        ...(tests === null ? {} : { tests }),
         layers,
         agreement,
         skipped,
@@ -109,13 +119,19 @@ export const command: Command = {
         },
         filesWithSyntaxErrors,
         skippedFiles: measurement.skippedFiles,
-        ...(fixes === undefined ? {} : { fixes: fixHeader(fixes.stats, fixes.request) }),
+        ...(fixes === undefined ? {} : { fixes: fixHeader(fixes.stats, fixes.request, settings) }),
       },
       results: rows,
-      ...(fixes === undefined && syntaxErrorNotices.length === 0 ? {} : { notices: [...syntaxErrorNotices, ...(fixes === undefined ? [] : fixNotices(fixes.stats, fixes.request))] }),
+      notices: [
+        `sorted by ${keys.join(", then ")}`,
+        ...(tests === null || tests.count === 0 ? [] : [`${tests.count} test functions are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`]),
+        ...syntaxErrorNotices,
+        ...(fixes === undefined ? [] : fixNotices(fixes.stats, fixes.request)),
+      ],
       columns: [
         "path",
         "unit",
+        "role",
         "score",
         "complexityScore",
         "changeWeightedScore",

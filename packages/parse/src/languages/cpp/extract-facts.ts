@@ -494,6 +494,7 @@ class Extractor {
       source: "structural",
     };
     if (context.unit !== undefined) unit.parent = context.unit;
+    if (kind === "method" && context.scope === "class" && !context.publicMembers) unit.hidden = true;
     const measured = measureFunction(fn, { ...(name === undefined ? {} : { name }), startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, cppMetricRules);
     unit.metrics = measured.metrics;
     unit.shape = functionShape(fn, measured.metrics.parameters);
