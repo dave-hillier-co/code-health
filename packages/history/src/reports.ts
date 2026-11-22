@@ -93,13 +93,14 @@ export async function writeReport(
       return false;
     }
   }
-  const { results, truncated } = shapeResults(output.results, { limit: Infinity });
+  const { results, truncated } = shapeResults(output.results, { limit: Infinity, presorted: output.presorted });
   const dropped = options.replayable === true ? droppedCounts() : {};
   const builtin = options.replayable === true ? builtinOmissions() : {};
   const printed = {
     ...(output.columns === undefined ? {} : { columns: output.columns }),
     ...(output.notices === undefined || output.notices.length === 0 ? {} : { notices: output.notices }),
     ...(output.failed === true ? { failed: true } : {}),
+    ...(output.presorted === true ? { presorted: true } : {}),
   };
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,

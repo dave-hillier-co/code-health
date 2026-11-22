@@ -76,6 +76,7 @@ export function readStored(context: CommandContext, stored: StoredResult): Hit |
     columns?: string[];
     notices?: string[];
     failed?: boolean;
+    presorted?: boolean;
   };
   const input = { report: `${stored.identity.tool}.${stored.command}`, head: stored.head, config: context.config.hash };
   return {
@@ -91,6 +92,7 @@ export function readStored(context: CommandContext, stored: StoredResult): Hit |
       ...(printed.columns === undefined ? {} : { columns: printed.columns }),
       ...(printed.notices === undefined ? {} : { notices: printed.notices }),
       ...(printed.failed === true ? { failed: true } : {}),
+      ...(printed.presorted === true ? { presorted: true } : {}),
     },
   };
 }

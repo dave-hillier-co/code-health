@@ -18373,13 +18373,14 @@ async function writeReport(context, identity, command12, output, analysedHead, o
       return false;
     }
   }
-  const { results, truncated } = shapeResults(output.results, { limit: Infinity });
+  const { results, truncated } = shapeResults(output.results, { limit: Infinity, presorted: output.presorted });
   const dropped2 = options2.replayable === true ? droppedCounts() : {};
   const builtin = options2.replayable === true ? builtinOmissions() : {};
   const printed = {
     ...output.columns === void 0 ? {} : { columns: output.columns },
     ...output.notices === void 0 || output.notices.length === 0 ? {} : { notices: output.notices },
-    ...output.failed === true ? { failed: true } : {}
+    ...output.failed === true ? { failed: true } : {},
+    ...output.presorted === true ? { presorted: true } : {}
   };
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
