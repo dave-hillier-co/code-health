@@ -1,5 +1,8 @@
-import type { Conclusion } from "@code-health/transcripts/difference";
-export { differenceOf, type Arm, type Conclusion, type Difference } from "@code-health/transcripts/difference";
+import { guidedDifferenceOf, type Conclusion } from "@code-health/transcripts/difference";
+export type { Arm, Conclusion, GuidedDifference as Difference } from "@code-health/transcripts/difference";
+
+/** The difference between two groups, with its measured values placed against the noise and sample guidelines. */
+export const differenceOf = guidedDifferenceOf;
 
 /** Effort is several figures. It fell when two or more fell and none rose, and the reverse for rising. */
 export function effortConclusion(parts: readonly Conclusion[]): Conclusion | "mixed" {

@@ -75,9 +75,16 @@
         "comparison": { "type": "object", "properties": { "change": { "type": ["number", "null"] } }, "required": ["change"], "additionalProperties": false },
         "difference": { "type": ["number", "null"], "description": "The acted-on change minus the comparison change. Negative: the acted-on files improved more." },
         "smallestSample": { "$ref": "common.schema.json#/$defs/count" },
-        "conclusion": { "$ref": "#/$defs/conclusion" }
+        "conclusion": { "$ref": "#/$defs/conclusion" },
+        "observed": { "enum": ["lower", "higher", "no-change", null], "description": "The direction the figures show whatever the sample size. Low confidence when lowConfidence is true." },
+        "startingMean": { "type": ["number", "null"], "description": "The acted-on files' own starting figure, the base of the noise guideline." },
+        "percentOfStart": { "type": ["number", "null"], "description": "The size of the difference as a percent of the starting figure." },
+        "noiseGuidelinePercent": { "type": "number", "description": "Guideline (locality.measureNoisePercent): a difference within it is called no-change." },
+        "ratioToNoiseGuideline": { "type": ["number", "null"], "description": "percentOfStart divided by the guideline. Above 1 is past it." },
+        "minSamples": { "$ref": "common.schema.json#/$defs/count", "description": "Floor (locality.measureMinSamples) below which nothing is concluded." },
+        "lowConfidence": { "type": "boolean", "description": "The smallest sample is below the floor." }
       },
-      "required": ["actedOn", "comparison", "difference", "smallestSample", "conclusion"]
+      "required": ["actedOn", "comparison", "difference", "smallestSample", "conclusion", "observed", "startingMean", "percentOfStart", "noiseGuidelinePercent", "ratioToNoiseGuideline", "minSamples", "lowConfidence"]
     },
     "closedDifference": { "type": "object", "allOf": [{ "$ref": "#/$defs/difference" }], "unevaluatedProperties": false },
     "structureMetrics": {
