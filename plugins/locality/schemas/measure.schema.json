@@ -119,25 +119,27 @@
       "required": ["n", "spearman", "partialSpearman", "z", "near", "far", "conclusion"],
       "additionalProperties": false
     },
-    "premiseResults": {
+    "effortSource": { "enum": ["main", "subagent", "all"] },
+    "sessionCounts": {
       "type": "object",
-      "description": "From existing history and session transcripts: whether tasks that edit files further apart cost more reads and tokens. An association over observed tasks, never a cause.",
+      "description": "Sessions are main-session transcripts. `subagents` counts subagent transcript files the same way, and is 0 and 0 when they were not read.",
       "properties": {
-        "status": { "const": "premise" },
-        "window": { "$ref": "#/$defs/window" },
-        "sessions": {
+        "measured": { "$ref": "common.schema.json#/$defs/count" },
+        "notMeasured": { "$ref": "common.schema.json#/$defs/count", "description": "Sessions in a transcript format the tool does not recognise." },
+        "subagents": {
           "type": "object",
           "properties": { "measured": { "$ref": "common.schema.json#/$defs/count" }, "notMeasured": { "$ref": "common.schema.json#/$defs/count" } },
           "required": ["measured", "notMeasured"],
           "additionalProperties": false
-        },
-        "minSamples": { "$ref": "common.schema.json#/$defs/count", "description": "locality.measureMinSamples: nothing is concluded from fewer tasks." },
-        "history": {
-          "type": "object",
-          "properties": { "spread": { "$ref": "#/$defs/spread" } },
-          "required": ["spread"],
-          "additionalProperties": false
-        },
+        }
+      },
+      "required": ["measured", "notMeasured", "subagents"],
+      "additionalProperties": false
+    },
+    "premiseSample": {
+      "type": "object",
+      "description": "The premise test over one set of tasks.",
+      "properties": {
         "tasks": {
           "type": "object",
           "properties": {
@@ -161,11 +163,40 @@
           "required": ["filesRead", "reReads", "tokens"],
           "additionalProperties": false
         },
-        "verdict": { "enum": ["supported", "partly-supported", "contradicted", "mixed", "not-shown", "not-measured", "insufficient-sample"] },
+        "verdict": { "enum": ["supported", "partly-supported", "contradicted", "mixed", "not-shown", "not-measured", "insufficient-sample"] }
+      },
+      "required": ["tasks", "distance", "figures", "verdict"],
+      "additionalProperties": false
+    },
+    "premiseResults": {
+      "type": "object",
+      "description": "From existing history and session transcripts: whether tasks that edit files further apart cost more reads and tokens. An association over observed tasks, never a cause.",
+      "properties": {
+        "status": { "const": "premise" },
+        "window": { "$ref": "#/$defs/window" },
+        "source": { "$ref": "#/$defs/effortSource", "description": "Which tasks were read, from --source. The figures below are those of these tasks." },
+        "sessions": { "$ref": "#/$defs/sessionCounts" },
+        "minSamples": { "$ref": "common.schema.json#/$defs/count", "description": "locality.measureMinSamples: nothing is concluded from fewer tasks." },
+        "history": {
+          "type": "object",
+          "properties": { "spread": { "$ref": "#/$defs/spread" } },
+          "required": ["spread"],
+          "additionalProperties": false
+        },
+        "tasks": { "$ref": "#/$defs/premiseSample/properties/tasks" },
+        "distance": { "$ref": "#/$defs/premiseSample/properties/distance" },
+        "figures": { "$ref": "#/$defs/premiseSample/properties/figures" },
+        "verdict": { "$ref": "#/$defs/premiseSample/properties/verdict" },
+        "bySource": {
+          "type": "object",
+          "description": "The same tasks, distance, figures and verdict for each source that was read: `main` for tasks of main sessions, `subagent` for tasks of subagent transcripts. Present for each source `source` includes.",
+          "properties": { "main": { "$ref": "#/$defs/premiseSample" }, "subagent": { "$ref": "#/$defs/premiseSample" } },
+          "additionalProperties": false
+        },
         "meaning": { "type": "string" },
         "limits": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["status", "window", "sessions", "minSamples", "history", "tasks", "distance", "figures", "verdict", "meaning", "limits"],
+      "required": ["status", "window", "source", "sessions", "minSamples", "history", "tasks", "distance", "figures", "verdict", "bySource", "meaning", "limits"],
       "additionalProperties": false
     },
     "baselineResults": {
@@ -179,12 +210,8 @@
         "effort": {
           "type": "object",
           "properties": {
-            "sessions": {
-              "type": "object",
-              "properties": { "measured": { "$ref": "common.schema.json#/$defs/count" }, "notMeasured": { "$ref": "common.schema.json#/$defs/count", "description": "Sessions in a transcript format the tool does not recognise." } },
-              "required": ["measured", "notMeasured"],
-              "additionalProperties": false
-            },
+            "source": { "$ref": "#/$defs/effortSource", "description": "Which tasks were read, from --source. `measure compare` reads the same." },
+            "sessions": { "$ref": "#/$defs/sessionCounts" },
             "tasks": { "$ref": "common.schema.json#/$defs/count" },
             "filesRead": { "$ref": "#/$defs/distribution" },
             "foldersVisited": { "$ref": "#/$defs/distribution" },
@@ -192,7 +219,7 @@
             "edits": { "$ref": "#/$defs/distribution" },
             "tokens": { "$ref": "#/$defs/distribution" }
           },
-          "required": ["sessions", "tasks", "filesRead", "foldersVisited", "reReads", "edits", "tokens"],
+          "required": ["source", "sessions", "tasks", "filesRead", "foldersVisited", "reReads", "edits", "tokens"],
           "additionalProperties": false
         },
         "candidates": {

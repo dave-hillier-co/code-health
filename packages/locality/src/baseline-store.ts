@@ -4,7 +4,7 @@ import { configError, usageError } from "@code-health/cli-kit/errors";
 import { serialise } from "@code-health/cli-kit/serialise";
 import { ensureLocalState, identityFiles } from "@code-health/history/identity-decisions";
 import type { TaskEffort } from "@code-health/transcripts/agent-effort";
-import type { EffortSummary, NotMeasuredSession } from "@code-health/transcripts/measure-repo";
+import type { EffortSource, EffortSummary, NotMeasuredSession } from "@code-health/transcripts/measure-repo";
 import type { DayWindow } from "./measure-window.ts";
 import type { Heat } from "./measure-effort.ts";
 import type { SpreadSummary } from "./measure-spread.ts";
@@ -44,7 +44,9 @@ export interface Baseline {
   /** Change spread of the whole repository over the window. */
   spread: SpreadSummary;
   effort: {
-    sessions: { measured: number; notMeasured: NotMeasuredSession[] };
+    sessions: { measured: number; notMeasured: NotMeasuredSession[]; subagents?: { measured: number; notMeasured: number } };
+    /** Which tasks were read: `main`, `subagent` or `all`. Absent in baselines written before subagent transcripts were read, which read main sessions only. */
+    source?: EffortSource;
     summary: EffortSummary;
     /** Paths and counts of each task. The transcripts may be gone by the time of the comparison, so they are kept here. */
     tasks: TaskEffort[];

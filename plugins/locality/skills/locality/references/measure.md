@@ -10,6 +10,8 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs measure premise --json
 
 Locality is worth the effort only where tasks that edit files further apart really cost more reads and tokens. `premise` tests that from existing history and session transcripts, so it can run before any move and before any baseline. `--since` and `--until` (days, `until` excluded) choose the window, which is the last `locality.windowMonths` back from HEAD otherwise.
 
+Tasks come from main sessions and from subagent transcripts, and `--source main|subagent|all` (default `all`) chooses which are read. `tasks`, `distance`, `figures` and `verdict` are for the tasks read, and `bySource` repeats them for `main` and for `subagent`. `sessions.subagents` counts subagent transcript files measured and not measured. A subagent task is given to it by an orchestrator, so the kind of task is a stronger confounder for subagent tasks: report the two sources apart and say so when they disagree. Paths in a deleted Claude Code worktree (`.claude/worktrees/<name>/`) are mapped to the repo, so work done in a worktree is counted.
+
 Each task's distance is the change spread of the files it edited, and tasks editing a single file have none and are left out (`tasks.singleFile`). Each of `filesRead`, `reReads` and `tokens` is correlated with distance (Spearman), and the conclusion rests on the partial correlation that holds the number of files edited constant, because larger tasks both spread further and read more. `near` and `far` are the means either side of the median distance.
 
 Read `verdict` with `tasks.measured`, `evidence` and `limits`:
@@ -31,7 +33,7 @@ Run it on the commit you are about to tidy, before any move. It writes `.code-he
 It records, over the twelve months (`history.windowMonths`, or `locality.windowMonths`) back from HEAD's commit date:
 
 - **Change spread**: the mean pairwise tree distance of the files of each logical change, each file at its path as of that change. The suite's own commits are left out.
-- **Agent effort**: per task, from Claude Code session transcripts in `~/.claude/projects/` (`--projects-dir` names another), for this checkout and its worktrees: files read, folders visited, re-reads, edits and tokens. Only paths and counts are kept. Tasks with no edits are left out. Sessions in a transcript format the tool does not recognise are counted as `notMeasured`.
+- **Agent effort**: per task, from Claude Code session transcripts in `~/.claude/projects/` (`--projects-dir` names another), for this checkout and its worktrees, main sessions and subagent transcripts alike (`--source` limits it, and `measure compare` reads what the baseline did): files read, folders visited, re-reads, edits and tokens. Only paths and counts are kept. Tasks with no edits are left out. Sessions in a transcript format the tool does not recognise are counted as `notMeasured`.
 - **Structure**: total weighted import distance (the leading indicator), the number of folders holding a single production file, and the maximum folder depth (the gaming check), as `structure`.
 - **The ranked candidates** of `analyse`, each with its files and its consumers, so the comparison group can be drawn later (`--candidates` limits how many are kept, 200 by default).
 - **Read heat**: the files most tasks read, for deciding where to start.

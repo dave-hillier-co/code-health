@@ -4,7 +4,7 @@ import type { Command, CommandContext, CommandOutput } from "@code-health/cli-ki
 import { roundFloat } from "@code-health/cli-kit/serialise";
 import { compareIds } from "@code-health/graph/graph";
 import { listTree } from "@code-health/history/tree";
-import { summariseTasks } from "@code-health/transcripts/measure-repo";
+import { summariseTasks, type EffortSource } from "@code-health/transcripts/measure-repo";
 import type { TaskEffort } from "@code-health/transcripts/agent-effort";
 import { analyseProject, SORT_METHOD } from "../candidates.ts";
 import { baselineExists, baselinePath, footprintOf, readBaseline, writeBaseline, type Baseline, type BaselineCandidate } from "../baseline-store.ts";
@@ -39,6 +39,7 @@ export const command: Command = {
     candidates: "how many top candidates the baseline records (default 200)",
     since: "baseline and compare: start the after window on this date, YYYY-MM-DD (default: the day after the last suite commit); premise: start of the window read",
     until: "premise: end of the window read, YYYY-MM-DD, exclusive",
+    source: "baseline and premise: which tasks are read, main (main sessions), subagent (subagent transcripts) or all (default all); compare uses the baseline's",
     force: "replace a baseline of the same name",
   },
   options: {
@@ -47,6 +48,7 @@ export const command: Command = {
     candidates: { type: "string" },
     since: { type: "string" },
     until: { type: "string" },
+    source: { type: "string" },
     force: { type: "boolean" },
   },
   async run(context): Promise<CommandOutput> {
@@ -69,6 +71,16 @@ function stringOption(context: CommandContext, option: string): string | undefin
 
 function projectsDirectory(context: CommandContext): string {
   return stringOption(context, "projects-dir") ?? defaultProjectsDirectory();
+}
+
+const SOURCES: readonly EffortSource[] = ["main", "subagent", "all"];
+
+function sourceOption(context: CommandContext): EffortSource | undefined {
+  const value = stringOption(context, "source");
+  if (value === undefined) return undefined;
+  const source = SOURCES.find((candidate) => candidate === value);
+  if (source === undefined) throw usageError("--source must be main, subagent or all");
+  return source;
 }
 
 function measureName(context: CommandContext): string {
@@ -95,7 +107,8 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
   const seconds = windowSeconds(window);
   const spread = summariseSpread(changesBetween(analysis.filtered.changes, seconds.since, seconds.until));
 
-  const effort = readEffort(projectsDirectory(context), await checkouts(root), window);
+  const source = sourceOption(context) ?? "all";
+  const effort = readEffort(projectsDirectory(context), await checkouts(root), window, source);
 
   const project = await loadProject(root, "HEAD", settings);
   const history = settings.useHistory ? await readHistory(context, settings) : undefined;
@@ -131,7 +144,7 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
       shallow: analysis.evidence.truncated.shallow,
     },
     spread,
-    effort: { sessions: effort.sessions, summary: effort.summary, tasks: effort.tasks, stamp: stampOf(effort.tasks) },
+    effort: { sessions: effort.sessions, source, summary: effort.summary, tasks: effort.tasks, stamp: stampOf(effort.tasks) },
     readHeat: readHeat(effort.tasks, HEAT_FILES),
     structure: analysed.metrics,
     sortMethod: SORT_METHOD,
@@ -151,7 +164,11 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
       window,
       spread,
       structure: analysed.metrics,
-      effort: { sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length }, ...effort.summary },
+      effort: {
+        source,
+        sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length, subagents: effort.sessions.subagents },
+        ...effort.summary,
+      },
       candidates: { recorded: candidates.length, ranked: ranked.length },
       priorSuiteCommits: prior,
     },
@@ -254,7 +271,13 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
   const afterChanges = windowChanges(after);
   const recomputed = summariseSpread(beforeChanges);
 
-  const afterEffort = readEffort(projectsDirectory(context), await checkouts(root), after);
+  // The after window is read the way the baseline was, which is main sessions only for a baseline from before subagents were read.
+  const recordedSource = before.effort.source ?? "main";
+  const requestedSource = sourceOption(context);
+  if (requestedSource !== undefined && requestedSource !== recordedSource) {
+    throw usageError(`the baseline "${name}" read ${recordedSource} tasks, so the comparison reads them too: drop --source or take a new baseline with --name`);
+  }
+  const afterEffort = readEffort(projectsDirectory(context), await checkouts(root), after, recordedSource);
   const arms = (g: Group) => ({
     before: describeArm(summariseSpread(changesTouching(beforeChanges, g.identities)), tasksTouching(before.effort.tasks, g.baselineFiles)),
     after: describeArm(summariseSpread(changesTouching(afterChanges, g.identities)), tasksTouching(afterEffort.tasks, g.existing)),
@@ -305,7 +328,9 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
 const PREMISE_LIMITS = [
   "Observational: tasks were not assigned to near or far files, so what the task was is a confounder the data cannot remove.",
   "Distance is that of the files a task edited. Tasks editing a single file have none and are left out.",
-  "Effort is the main agent's reads and tokens. Work delegated to subagents is not counted.",
+  "Effort is read from the transcripts of main sessions and of subagents. Reads made through the shell are not counted, so every figure is a lower bound.",
+  "A subagent task is given to it by an orchestrator, which writes its prompt and sets its scope, so the kind of task is a stronger confounder for subagent tasks than for main-session tasks. A subagent starts with none of the context the main session had, and that alone can raise its reads.",
+  "A main-session task that delegated work to a subagent is counted without that work, and the subagent's work is a task of its own, so the two halves of one piece of work are measured apart.",
   "A correlation here is not a measure of what a move would save.",
 ];
 
@@ -344,8 +369,14 @@ async function premise(context: CommandContext, settings: LocalitySettings): Pro
   const seconds = windowSeconds(window);
   const spread = summariseSpread(changesBetween(analysis.filtered.changes, seconds.since, seconds.until));
 
-  const effort = readEffort(projectsDirectory(context), await checkouts(context.repo.root), window);
+  const source = sourceOption(context) ?? "all";
+  const effort = readEffort(projectsDirectory(context), await checkouts(context.repo.root), window, source);
   const result = testPremise(effort.tasks, settings.measureMinSamples);
+  const bySource = Object.fromEntries(
+    (["main", "subagent"] as const)
+      .filter((each) => source === "all" || source === each)
+      .map((each) => [each, testPremise(effort.tasks.filter((task) => task.source === each), settings.measureMinSamples)]),
+  );
 
   return {
     inputs: {
@@ -365,10 +396,12 @@ async function premise(context: CommandContext, settings: LocalitySettings): Pro
     results: {
       status: "premise",
       window,
-      sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length },
+      source,
+      sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length, subagents: effort.sessions.subagents },
       minSamples: settings.measureMinSamples,
       history: { spread },
       ...result,
+      bySource,
       meaning: PREMISE_VERDICTS[result.verdict],
       limits: PREMISE_LIMITS,
     },

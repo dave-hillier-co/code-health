@@ -21,7 +21,7 @@ export class SyntheticSession {
   private counter = 0;
 
   constructor(
-    private readonly options: { version?: string | null; cwd?: string; sessionId?: string; start?: string } = {},
+    private readonly options: { version?: string | null; cwd?: string; sessionId?: string; start?: string; sidechain?: boolean } = {},
   ) {
     this.clock = Date.parse(options.start ?? "2026-03-01T09:00:00.000Z");
   }
@@ -35,7 +35,7 @@ export class SyntheticSession {
       timestamp: new Date(this.clock).toISOString(),
       sessionId: this.options.sessionId ?? "session-1",
       cwd: this.options.cwd ?? "/work/repo",
-      isSidechain: false,
+      isSidechain: this.options.sidechain === true,
       ...(version === null ? {} : { version }),
     };
   }

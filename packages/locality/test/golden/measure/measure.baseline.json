@@ -11,7 +11,7 @@
   "inputs": {
     "name": "default",
     "transcripts": {
-      "stamp": "20fc6615f2146571",
+      "stamp": "52ef01f36214d0cb",
       "tasks": 24
     }
   },
@@ -43,8 +43,13 @@
       },
       "sessions": {
         "measured": 6,
-        "notMeasured": 0
+        "notMeasured": 0,
+        "subagents": {
+          "measured": 0,
+          "notMeasured": 0
+        }
       },
+      "source": "all",
       "tasks": 24,
       "tokens": {
         "mean": 5000,

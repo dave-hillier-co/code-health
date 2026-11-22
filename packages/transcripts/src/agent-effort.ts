@@ -1,6 +1,15 @@
 import { folderOf } from "@code-health/graph/tree-distance";
-import { isWithinRepo, toRepoPath } from "./repo-path.ts";
+import { isWithinRepo, toRepoPath, worktreeRootOf } from "./repo-path.ts";
 import { parseTranscript, type SessionEvent, type TokenCounts, type ToolAction } from "./transcript-format.ts";
+
+export type TaskSource = "main" | "subagent";
+
+/** What the meta file beside a subagent transcript says. The first two are short labels written by whoever spawned the subagent. */
+export interface SubagentMeta {
+  agentType: string | null;
+  description: string | null;
+  worktreePath: string | null;
+}
 
 export interface TaskTokens extends TokenCounts {
   total: number;
@@ -8,8 +17,17 @@ export interface TaskTokens extends TokenCounts {
 
 /** Paths and counts for one task. Nothing from message text or tool output. */
 export interface TaskEffort {
+  /** The session the task ran under: for a subagent task, the session that spawned it. */
   sessionId: string;
-  /** Position of the task's prompt among the session's prompts, from 0. */
+  /** `main` for a task of a main session, `subagent` for one subagent transcript. */
+  source: TaskSource;
+  /** The subagent's id, or null for a main-session task. */
+  agentId: string | null;
+  /** The meta file's `agentType`, or null for a main-session task or a subagent with no meta file. */
+  agentType: string | null;
+  /** The meta file's `description`, a short label written by the orchestrator, or null as for `agentType`. */
+  description: string | null;
+  /** Position of the task's prompt among the session's prompts, from 0. A subagent task is 0. */
   taskIndex: number;
   /** Timestamp of the task's prompt. */
   startedAt: string;
@@ -57,8 +75,16 @@ function segment(events: readonly SessionEvent[]): { startedAt: string; turns: E
   return tasks;
 }
 
+interface TaskOrigin {
+  sessionId: string;
+  source: TaskSource;
+  agentId: string | null;
+  agentType: string | null;
+  description: string | null;
+}
+
 function measureTask(
-  sessionId: string,
+  origin: TaskOrigin,
   taskIndex: number,
   startedAt: string,
   turns: readonly { tokens: TokenCounts; actions: ToolAction[] }[],
@@ -95,7 +121,7 @@ function measureTask(
   for (const path of [...readCounts.keys(), ...edited]) folders.add(folderOf(path));
 
   return {
-    sessionId,
+    ...origin,
     taskIndex,
     startedAt,
     reads,
@@ -115,6 +141,43 @@ function measureTask(
   };
 }
 
+function mainOrigin(sessionId: string): TaskOrigin {
+  return { sessionId, source: "main", agentId: null, agentType: null, description: null };
+}
+
+/**
+ * Measures one subagent transcript as one task: its first prompt starts it, every later turn of the file belongs
+ * to it, and it is measured from the file's sidechain lines. The checkouts it may have run in are `roots`, the
+ * meta file's `worktreePath` and the worktree its recorded working directories lie in, so paths in a worktree that
+ * has since been deleted still map to the repo. The task is left out when it made no edit to a repo file.
+ */
+export function measureSubagent(
+  text: string,
+  sessionId: string,
+  agentId: string,
+  roots: readonly string[],
+  meta: SubagentMeta | null,
+): SessionMeasurement {
+  const parsed = parseTranscript(text, "sidechain");
+  if (parsed.status === "not-measured") {
+    return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
+  }
+  const worktrees = [meta?.worktreePath ?? null, ...parsed.cwds.map(worktreeRootOf)].filter((root): root is string => root !== null);
+  const mapRoots = [...roots, ...worktrees];
+  const first = parsed.events.findIndex((event) => event.kind === "prompt");
+  const start = parsed.events[first];
+  const turns = parsed.events.slice(first + 1).flatMap((event) => (event.kind === "agent-turn" ? [event] : []));
+  const origin: TaskOrigin = {
+    sessionId,
+    source: "subagent",
+    agentId,
+    agentType: meta?.agentType ?? null,
+    description: meta?.description ?? null,
+  };
+  const task = start === undefined ? null : measureTask(origin, 0, start.timestamp, turns, mapRoots);
+  return { status: "measured", sessionId, version: parsed.version, tasks: task === null || task.edits === 0 ? [] : [task], cwds: parsed.cwds };
+}
+
 /**
  * Measures one session transcript. `roots` lists the checkouts of the repo the
  * session may have run in. Tasks with no edits to repo files are left out.
@@ -125,7 +188,7 @@ export function measureSession(text: string, sessionId: string, roots: readonly 
     return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
   }
   const tasks = segment(parsed.events)
-    .map((task, index) => measureTask(sessionId, index, task.startedAt, task.turns, roots))
+    .map((task, index) => measureTask(mainOrigin(sessionId), index, task.startedAt, task.turns, roots))
     .filter((task) => task.edits > 0);
   return { status: "measured", sessionId, version: parsed.version, tasks, cwds: parsed.cwds };
 }

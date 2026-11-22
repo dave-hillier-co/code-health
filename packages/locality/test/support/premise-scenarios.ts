@@ -14,6 +14,18 @@ const START = "2023-03-05T09:00:00Z";
  * third file, so size varies on its own.
  */
 export function sessionsWhereDistanceCosts(sessions: Sessions): void {
+  sessions.tasks(START, distanceCostsSpecs());
+}
+
+/**
+ * The same tasks as `sessionsWhereDistanceCosts`, each run by a subagent in a worktree that has since been deleted:
+ * its paths are `<worktree>/src/...` and only map to the repo through the worktree rule.
+ */
+export function subagentsInDeletedWorktree(sessions: Sessions, worktree: string): void {
+  sessions.subagents(START, distanceCostsSpecs(), { checkout: worktree, meta: { agentType: "general-purpose", description: "Change a feature", worktreePath: worktree } });
+}
+
+function distanceCostsSpecs(): TaskSpec[] {
   const specs: TaskSpec[] = [];
   for (let i = 0; i < 8; i++) {
     const feature = (i % 6) + 1;
@@ -26,7 +38,7 @@ export function sessionsWhereDistanceCosts(sessions: Sessions): void {
     specs.push({ reads: [...nearEdits, ...nearExtra], edits: nearEdits, tokens: 2000 + 100 * i });
     specs.push({ reads: [...farEdits, ...farExtra], edits: farEdits, tokens: 4000 + 100 * i });
   }
-  sessions.tasks(START, specs);
+  return specs;
 }
 
 /** Sessions in which every task edits two files of one folder: cost varies, distance never does. */

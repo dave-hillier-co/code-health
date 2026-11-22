@@ -156,6 +156,30 @@ export class Sessions {
     writeFileSync(join(this.project, `session-${this.count}.jsonl`), session.toJsonl());
   }
 
+  /**
+   * One subagent transcript per spec, under one session, each a single task. The paths are written under
+   * `checkout`, which is the repository itself unless a worktree is named, and `meta` goes in the meta file beside each.
+   */
+  subagents(
+    start: string,
+    specs: ReadonlyArray<{ reads: string[]; edits: string[]; tokens: number }>,
+    options: { checkout?: string; meta?: Record<string, unknown> } = {},
+  ): void {
+    const checkout = options.checkout ?? this.root;
+    const sessionId = `session-${++this.count}`;
+    const dir = join(this.project, sessionId, "subagents");
+    mkdirSync(dir, { recursive: true });
+    specs.forEach((spec, index) => {
+      const agentId = `a${String(index).padStart(3, "0")}`;
+      const session = new SyntheticSession({ cwd: checkout, sessionId, start, sidechain: true });
+      session.prompt(`Subagent task ${index}`);
+      const calls = [...spec.reads.map((path) => read(join(checkout, path))), ...spec.edits.map((path) => edit(join(checkout, path)))];
+      session.assistant(`s${this.count}-${index}`, calls, { input: spec.tokens });
+      writeFileSync(join(dir, `agent-${agentId}.jsonl`), session.toJsonl());
+      if (options.meta !== undefined) writeFileSync(join(dir, `agent-${agentId}.meta.json`), JSON.stringify(options.meta));
+    });
+  }
+
   dispose(): void {
     rmSync(this.directory, { recursive: true, force: true });
   }

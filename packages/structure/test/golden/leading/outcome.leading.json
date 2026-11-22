@@ -81,7 +81,7 @@
     "minSupport": 3,
     "significanceLevel": 0.01,
     "target": "src/data->src/ui",
-    "transcriptStamp": "799df0d86e30626c",
+    "transcriptStamp": "e5e636b264591d8b",
     "transcripts": true
   },
   "repo": {

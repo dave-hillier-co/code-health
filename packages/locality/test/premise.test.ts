@@ -6,7 +6,7 @@ import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { partialSpearman, ranks, spearman } from "../src/premise.ts";
 import { expectGolden, withoutMeta } from "./support/golden.ts";
 import { relocationApp, Sessions } from "./support/measure-scenarios.ts";
-import { sessionsWhereDistanceCosts, sessionsWhereDistanceDoesNotCost, sessionsWhereDistanceNeverVaries } from "./support/premise-scenarios.ts";
+import { sessionsWhereDistanceCosts, sessionsWhereDistanceDoesNotCost, sessionsWhereDistanceNeverVaries, subagentsInDeletedWorktree } from "./support/premise-scenarios.ts";
 import { runLocality } from "./support/run.ts";
 
 const disposables: Array<{ dispose(): void }> = [];
@@ -111,6 +111,48 @@ describe("measure premise", () => {
     expect(outside.document.results.tasks.inWindow).toBe(0);
     expect((await premise(repo, sessions, ["--since", "June"])).run.code).toBe(ExitCode.Usage);
     expect((await premise(repo, sessions, ["--since", "2023-06-01", "--until", "2023-05-01"])).run.code).toBe(ExitCode.Usage);
+  }, 60_000);
+
+  test("measures subagent tasks from a worktree that no longer exists, with a distance from the mapped repo paths", async () => {
+    const { repo, sessions } = fresh();
+    const gone = join(sessions.root, ".claude", "worktrees", "agent-gone");
+    subagentsInDeletedWorktree(sessions, gone);
+    const { document } = await premise(repo, sessions, ["--source", "subagent"]);
+    const { results } = document;
+    expect(results.source).toBe("subagent");
+    expect(results.sessions.subagents).toEqual({ measured: 16, notMeasured: 0 });
+    expect(results.tasks).toEqual({ inWindow: 16, measured: 16, singleFile: 0 });
+    expect(results.distance.max).toBeGreaterThan(0);
+    expect(results.figures.filesRead).toMatchObject({ n: 16, conclusion: "costlier-when-distant" });
+    expect(Object.keys(results.bySource)).toEqual(["subagent"]);
+    expect(JSON.stringify(document)).not.toContain("agent-gone");
+  }, 60_000);
+
+  test("reports all tasks and each source separately, and --source limits what is read", async () => {
+    const { repo, sessions } = fresh();
+    sessionsWhereDistanceDoesNotCost(sessions);
+    subagentsInDeletedWorktree(sessions, join(sessions.root, ".claude", "worktrees", "agent-gone"));
+    const all = (await premise(repo, sessions)).document.results;
+    expect(all.source).toBe("all");
+    expect(all.tasks.inWindow).toBe(32);
+    expect(all.bySource.main.tasks.inWindow).toBe(16);
+    expect(all.bySource.subagent.tasks.inWindow).toBe(16);
+    expect(all.bySource.main.verdict).toBe("not-shown");
+    expect(all.bySource.subagent.verdict).toBe("supported");
+    const main = (await premise(repo, sessions, ["--source", "main"])).document.results;
+    expect(main.tasks.inWindow).toBe(16);
+    expect(main.sessions.subagents).toEqual({ measured: 0, notMeasured: 0 });
+    expect(Object.keys(main.bySource)).toEqual(["main"]);
+    expect((await premise(repo, sessions, ["--source", "some"])).run.code).toBe(ExitCode.Usage);
+  }, 60_000);
+
+  test("says subagent tasks are given by an orchestrator, and no longer says subagent work is not counted", async () => {
+    const { repo, sessions } = fresh();
+    const { document } = await premise(repo, sessions);
+    const limits = document.results.limits.join(" ");
+    expect(limits).toMatch(/given to it by an orchestrator/);
+    expect(limits).not.toMatch(/not counted\.$/m);
+    expect(limits).not.toMatch(/Work delegated to subagents is not counted/);
   }, 60_000);
 
   test("is byte for byte reproducible", async () => {

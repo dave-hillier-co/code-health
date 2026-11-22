@@ -7608,12 +7608,17 @@ function isExcluded(relative4) {
 function comparable(path) {
   return /^[A-Za-z]:\//.test(path) ? path.toLowerCase() : path;
 }
+var WORKTREE_BELOW_ROOT = /^\.claude\/worktrees\/[^/]+(?:\/(.*))?$/;
 function relativeToRoots(path, roots) {
   const ordered = roots.map((root) => stripTrailingSlash(normalise2(root))).sort((a, b) => b.length - a.length);
   for (const root of ordered) {
+    let relative4;
     if (comparable(path) === comparable(root)) return "";
     const prefix = root.endsWith("/") ? root : `${root}/`;
-    if (comparable(path).startsWith(comparable(prefix))) return stripTrailingSlash(path.slice(prefix.length));
+    if (comparable(path).startsWith(comparable(prefix))) relative4 = stripTrailingSlash(path.slice(prefix.length));
+    else continue;
+    const worktree = WORKTREE_BELOW_ROOT.exec(relative4);
+    return worktree === null ? relative4 : stripTrailingSlash(worktree[1] ?? "");
   }
   return null;
 }
@@ -7705,7 +7710,7 @@ function earliest(lines) {
   }
   return best;
 }
-function parseTranscript(text) {
+function parseTranscript(text, scope = "main") {
   const lines = [];
   let skippedLines = 0;
   const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
@@ -7739,7 +7744,7 @@ function parseTranscript(text) {
   const events = [];
   const turnsById = /* @__PURE__ */ new Map();
   for (const line of messageLines) {
-    if (line["isSidechain"] === true) continue;
+    if (line["isSidechain"] === true !== (scope === "sidechain")) continue;
     const message = line["message"];
     const timestamp = asString(line["timestamp"]);
     if (line["type"] === "user") {

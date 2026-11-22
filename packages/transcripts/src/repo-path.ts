@@ -1,3 +1,11 @@
+/**
+ * Maps the paths in tool calls to repo-relative paths. Claude Code worktrees live at
+ * `<repo>/.claude/worktrees/<name>/` and are deleted once their work is merged, after which `git worktree list`
+ * no longer names them, so the mapping does not depend on it: a path under `<root>/.claude/worktrees/<name>/`
+ * maps to the same relative path in the repo, for any root given. The checkouts a caller lists (the main
+ * checkout, live worktrees, a subagent's meta `worktreePath`) are matched first, longest first, and the path rule
+ * covers every other worktree. A worktree is recognised only by its path, never by reading the file system.
+ */
 import { posix } from "node:path";
 
 function normalise(path: string): string {
@@ -27,13 +35,33 @@ function comparable(path: string): string {
   return /^[A-Za-z]:\//.test(path) ? path.toLowerCase() : path;
 }
 
-/** The part of `path` below the longest root that contains it, "" for the root itself, or null when outside every root. */
+const WORKTREE_BELOW_ROOT = /^\.claude\/worktrees\/[^/]+(?:\/(.*))?$/;
+const WORKTREE_ROOT = /^(.*\/\.claude\/worktrees\/[^/]+)(?:\/|$)/;
+
+/**
+ * The checkout root of a Claude Code worktree that `path` lies in (`<repo>/.claude/worktrees/<name>`), or null when
+ * it is not under one. It needs no `git worktree list`, so it names worktrees that have since been deleted.
+ */
+export function worktreeRootOf(path: string): string | null {
+  const match = WORKTREE_ROOT.exec(normalise(path));
+  return match === null ? null : match[1]!;
+}
+
+/**
+ * The part of `path` below the longest root that contains it, "" for the root itself, or null when outside every root.
+ * A path under `<root>/.claude/worktrees/<name>/` maps to the same relative path in the repo, whether or not that
+ * worktree is among the roots, because Claude Code worktrees are deleted after the work is done.
+ */
 function relativeToRoots(path: string, roots: readonly string[]): string | null {
   const ordered = roots.map((root) => stripTrailingSlash(normalise(root))).sort((a, b) => b.length - a.length);
   for (const root of ordered) {
+    let relative: string;
     if (comparable(path) === comparable(root)) return "";
     const prefix = root.endsWith("/") ? root : `${root}/`;
-    if (comparable(path).startsWith(comparable(prefix))) return stripTrailingSlash(path.slice(prefix.length));
+    if (comparable(path).startsWith(comparable(prefix))) relative = stripTrailingSlash(path.slice(prefix.length));
+    else continue;
+    const worktree = WORKTREE_BELOW_ROOT.exec(relative);
+    return worktree === null ? relative : stripTrailingSlash(worktree[1] ?? "");
   }
   return null;
 }

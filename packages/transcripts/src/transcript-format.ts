@@ -16,8 +16,12 @@
  * Choices that shape the numbers:
  * - Token usage is taken from the last line seen for a `message.id`, since the final line is the one
  *   that can carry the completed usage.
- * - Sidechain lines (subagent turns) are left out. Effort is the main agent's: reads, edits and tokens
- *   spent inside delegated subagents are not counted, so a task that delegates looks cheaper than it was.
+ * - A main-session transcript is read with scope `main`: its sidechain lines (subagent turns, when present)
+ *   are left out, so reads, edits and tokens spent inside a subagent are not counted in the task that
+ *   delegated it, and that task looks cheaper than it was. A subagent transcript
+ *   (`<session>/subagents/.../agent-*.jsonl`) is read with scope `sidechain`: only its sidechain lines are kept,
+ *   and the caller treats the whole file as one task. A line is never read in both scopes, so nothing is
+ *   counted twice.
  * - An assistant line with no id, timestamp or content array (a synthetic API error, say) is skipped and
  *   counted in `skippedLines` rather than failing the session, as are lines that are not JSON.
  *
@@ -135,7 +139,10 @@ function earliest(lines: readonly Json[]): string | null {
   return best;
 }
 
-export function parseTranscript(text: string): ParsedTranscript {
+/** `main` keeps the lines of the main agent, `sidechain` the lines of a subagent. */
+export type TranscriptScope = "main" | "sidechain";
+
+export function parseTranscript(text: string, scope: TranscriptScope = "main"): ParsedTranscript {
   const lines: Json[] = [];
   let skippedLines = 0;
   const body = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
@@ -172,7 +179,7 @@ export function parseTranscript(text: string): ParsedTranscript {
   const turnsById = new Map<string, Extract<SessionEvent, { kind: "agent-turn" }>>();
 
   for (const line of messageLines) {
-    if (line["isSidechain"] === true) continue;
+    if ((line["isSidechain"] === true) !== (scope === "sidechain")) continue;
     const message = line["message"];
     const timestamp = asString(line["timestamp"]);
     if (line["type"] === "user") {

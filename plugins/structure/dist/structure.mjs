@@ -18133,12 +18133,22 @@ function isExcluded(relative) {
 function comparable(path) {
   return /^[A-Za-z]:\//.test(path) ? path.toLowerCase() : path;
 }
+var WORKTREE_BELOW_ROOT = /^\.claude\/worktrees\/[^/]+(?:\/(.*))?$/;
+var WORKTREE_ROOT = /^(.*\/\.claude\/worktrees\/[^/]+)(?:\/|$)/;
+function worktreeRootOf(path) {
+  const match = WORKTREE_ROOT.exec(normalise4(path));
+  return match === null ? null : match[1];
+}
 function relativeToRoots(path, roots) {
   const ordered = roots.map((root) => stripTrailingSlash(normalise4(root))).sort((a, b) => b.length - a.length);
   for (const root of ordered) {
+    let relative;
     if (comparable(path) === comparable(root)) return "";
     const prefix = root.endsWith("/") ? root : `${root}/`;
-    if (comparable(path).startsWith(comparable(prefix))) return stripTrailingSlash(path.slice(prefix.length));
+    if (comparable(path).startsWith(comparable(prefix))) relative = stripTrailingSlash(path.slice(prefix.length));
+    else continue;
+    const worktree = WORKTREE_BELOW_ROOT.exec(relative);
+    return worktree === null ? relative : stripTrailingSlash(worktree[1] ?? "");
   }
   return null;
 }
@@ -18226,7 +18236,7 @@ function earliest(lines) {
   }
   return best;
 }
-function parseTranscript(text2) {
+function parseTranscript(text2, scope = "main") {
   const lines = [];
   let skippedLines = 0;
   const body2 = text2.charCodeAt(0) === 65279 ? text2.slice(1) : text2;
@@ -18260,7 +18270,7 @@ function parseTranscript(text2) {
   const events = [];
   const turnsById = /* @__PURE__ */ new Map();
   for (const line of messageLines) {
-    if (line["isSidechain"] === true) continue;
+    if (line["isSidechain"] === true !== (scope === "sidechain")) continue;
     const message = line["message"];
     const timestamp = asString(line["timestamp"]);
     if (line["type"] === "user") {
@@ -18319,7 +18329,7 @@ function segment(events) {
   }
   return tasks;
 }
-function measureTask(sessionId, taskIndex, startedAt, turns, roots) {
+function measureTask(origin, taskIndex, startedAt, turns, roots) {
   const readCounts = /* @__PURE__ */ new Map();
   const edited = /* @__PURE__ */ new Set();
   let searches = 0;
@@ -18348,7 +18358,7 @@ function measureTask(sessionId, taskIndex, startedAt, turns, roots) {
   const folders = /* @__PURE__ */ new Set();
   for (const path of [...readCounts.keys(), ...edited]) folders.add(folderOf2(path));
   return {
-    sessionId,
+    ...origin,
     taskIndex,
     startedAt,
     reads,
@@ -18367,12 +18377,35 @@ function measureTask(sessionId, taskIndex, startedAt, turns, roots) {
     folders: sortedBytes(folders)
   };
 }
+function mainOrigin(sessionId) {
+  return { sessionId, source: "main", agentId: null, agentType: null, description: null };
+}
+function measureSubagent(text2, sessionId, agentId, roots, meta) {
+  const parsed = parseTranscript(text2, "sidechain");
+  if (parsed.status === "not-measured") {
+    return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
+  }
+  const worktrees = [meta?.worktreePath ?? null, ...parsed.cwds.map(worktreeRootOf)].filter((root) => root !== null);
+  const mapRoots = [...roots, ...worktrees];
+  const first = parsed.events.findIndex((event) => event.kind === "prompt");
+  const start2 = parsed.events[first];
+  const turns = parsed.events.slice(first + 1).flatMap((event) => event.kind === "agent-turn" ? [event] : []);
+  const origin = {
+    sessionId,
+    source: "subagent",
+    agentId,
+    agentType: meta?.agentType ?? null,
+    description: meta?.description ?? null
+  };
+  const task = start2 === void 0 ? null : measureTask(origin, 0, start2.timestamp, turns, mapRoots);
+  return { status: "measured", sessionId, version: parsed.version, tasks: task === null || task.edits === 0 ? [] : [task], cwds: parsed.cwds };
+}
 function measureSession(text2, sessionId, roots) {
   const parsed = parseTranscript(text2);
   if (parsed.status === "not-measured") {
     return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
   }
-  const tasks = segment(parsed.events).map((task, index) => measureTask(sessionId, index, task.startedAt, task.turns, roots)).filter((task) => task.edits > 0);
+  const tasks = segment(parsed.events).map((task, index) => measureTask(mainOrigin(sessionId), index, task.startedAt, task.turns, roots)).filter((task) => task.edits > 0);
   return { status: "measured", sessionId, version: parsed.version, tasks, cwds: parsed.cwds };
 }
 
@@ -18423,6 +18456,42 @@ function summariseTasks(tasks) {
     tokens: distribution(tasks.map((t) => t.tokens.total))
   };
 }
+function agentFilesUnder(dir) {
+  const found = [];
+  for (const entry of readdirSync2(dir, { withFileTypes: true })) {
+    const path = join10(dir, entry.name);
+    if (entry.isDirectory()) found.push(...agentFilesUnder(path));
+    else if (entry.isFile() && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) found.push(path);
+  }
+  return found;
+}
+function subagentFiles(projectsDir, root) {
+  const dir = join10(projectsDir, encodeProjectDir(root));
+  if (!existsSync7(dir)) return [];
+  const files = [];
+  for (const entry of readdirSync2(dir, { withFileTypes: true })) {
+    const subagents = join10(dir, entry.name, "subagents");
+    if (!entry.isDirectory() || !existsSync7(subagents)) continue;
+    for (const path of agentFilesUnder(subagents)) {
+      const name13 = path.slice(path.lastIndexOf("/") + 1);
+      files.push({ sessionId: entry.name, agentId: name13.slice("agent-".length, -".jsonl".length), path });
+    }
+  }
+  return files.sort((a, b) => compareBytes2(a.path, b.path));
+}
+function stringField(value) {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+function readMeta2(transcriptPath) {
+  try {
+    const parsed = JSON.parse(readFileSync6(`${transcriptPath.slice(0, -".jsonl".length)}.meta.json`, "utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+    const meta = parsed;
+    return { agentType: stringField(meta["agentType"]), description: stringField(meta["description"]), worktreePath: stringField(meta["worktreePath"]) };
+  } catch {
+    return null;
+  }
+}
 function sessionFiles(projectsDir, root) {
   const dir = join10(projectsDir, encodeProjectDir(root));
   if (!existsSync7(dir)) return [];
@@ -18430,11 +18499,37 @@ function sessionFiles(projectsDir, root) {
 }
 function measureRepo(options2) {
   const { projectsDir, repoRoots, window: window2 } = options2;
+  const source = options2.source ?? "all";
   const seen = /* @__PURE__ */ new Set();
   const tasks = [];
   const notMeasured = [];
+  const subagents = { measured: 0, notMeasured: 0 };
   let measured = 0;
   for (const root of repoRoots) {
+    if (source !== "main") {
+      for (const file of subagentFiles(projectsDir, root)) {
+        if (seen.has(file.path)) continue;
+        seen.add(file.path);
+        let text2;
+        try {
+          text2 = readFileSync6(file.path, "utf8");
+        } catch {
+          continue;
+        }
+        const meta = readMeta2(file.path);
+        const result = measureSubagent(text2, file.sessionId, file.agentId, repoRoots, meta);
+        const places = meta?.worktreePath == null ? repoRoots : [...repoRoots, meta.worktreePath];
+        if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, places))) continue;
+        if (result.status === "not-measured") {
+          if (result.startedAt !== null && inWindow(window2, result.startedAt)) subagents.notMeasured++;
+          continue;
+        }
+        const inside = result.tasks.filter((task) => inWindow(window2, task.startedAt));
+        if (inside.length > 0) subagents.measured++;
+        tasks.push(...inside);
+      }
+    }
+    if (source === "subagent") continue;
     for (const file of sessionFiles(projectsDir, root)) {
       if (seen.has(file.path)) continue;
       seen.add(file.path);
@@ -18458,12 +18553,12 @@ function measureRepo(options2) {
     }
   }
   tasks.sort(
-    (a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt) || compareBytes2(a.sessionId, b.sessionId) || a.taskIndex - b.taskIndex
+    (a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt) || compareBytes2(a.sessionId, b.sessionId) || compareBytes2(a.agentId ?? "", b.agentId ?? "") || a.taskIndex - b.taskIndex
   );
   notMeasured.sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
   return {
     window: { from: window2.from, to: window2.to },
-    sessions: { measured, notMeasured },
+    sessions: { measured, notMeasured, subagents },
     tasks,
     summary: summariseTasks(tasks)
   };

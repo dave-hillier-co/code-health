@@ -42,7 +42,7 @@ test("tasks come from every session of the repo, ordered by start time then sess
   addSession(repo, "a", simple("2026-03-02T00:00:00.000Z", "x/b.ts"));
   const report = measureRepo({ projectsDir: projects, repoRoots: [repo], window: march });
   expect(report.tasks.map((t) => t.sessionId)).toEqual(["a", "b"]);
-  expect(report.sessions).toEqual({ measured: 2, notMeasured: [] });
+  expect(report.sessions).toEqual({ measured: 2, notMeasured: [], subagents: { measured: 0, notMeasured: 0 } });
 });
 
 test("only tasks that started inside the window are kept", () => {
@@ -61,6 +61,7 @@ test("sessions in an unrecognised format are listed as not measured, if they fal
   expect(report.sessions).toEqual({
     measured: 0,
     notMeasured: [{ sessionId: "old", version: "7.0.0", reason: "unrecognised transcript version" }],
+    subagents: { measured: 0, notMeasured: 0 },
   });
 });
 

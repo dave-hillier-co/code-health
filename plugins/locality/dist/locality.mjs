@@ -3522,12 +3522,22 @@ function isExcluded(relative3) {
 function comparable(path) {
   return /^[A-Za-z]:\//.test(path) ? path.toLowerCase() : path;
 }
+var WORKTREE_BELOW_ROOT = /^\.claude\/worktrees\/[^/]+(?:\/(.*))?$/;
+var WORKTREE_ROOT = /^(.*\/\.claude\/worktrees\/[^/]+)(?:\/|$)/;
+function worktreeRootOf(path) {
+  const match = WORKTREE_ROOT.exec(normalise3(path));
+  return match === null ? null : match[1];
+}
 function relativeToRoots(path, roots) {
   const ordered = roots.map((root) => stripTrailingSlash(normalise3(root))).sort((a, b) => b.length - a.length);
   for (const root of ordered) {
+    let relative3;
     if (comparable(path) === comparable(root)) return "";
     const prefix = root.endsWith("/") ? root : `${root}/`;
-    if (comparable(path).startsWith(comparable(prefix))) return stripTrailingSlash(path.slice(prefix.length));
+    if (comparable(path).startsWith(comparable(prefix))) relative3 = stripTrailingSlash(path.slice(prefix.length));
+    else continue;
+    const worktree = WORKTREE_BELOW_ROOT.exec(relative3);
+    return worktree === null ? relative3 : stripTrailingSlash(worktree[1] ?? "");
   }
   return null;
 }
@@ -3615,7 +3625,7 @@ function earliest(lines2) {
   }
   return best;
 }
-function parseTranscript(text) {
+function parseTranscript(text, scope = "main") {
   const lines2 = [];
   let skippedLines = 0;
   const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
@@ -3649,7 +3659,7 @@ function parseTranscript(text) {
   const events = [];
   const turnsById = /* @__PURE__ */ new Map();
   for (const line of messageLines) {
-    if (line["isSidechain"] === true) continue;
+    if (line["isSidechain"] === true !== (scope === "sidechain")) continue;
     const message = line["message"];
     const timestamp = asString(line["timestamp"]);
     if (line["type"] === "user") {
@@ -3708,7 +3718,7 @@ function segment(events) {
   }
   return tasks;
 }
-function measureTask(sessionId, taskIndex, startedAt, turns, roots) {
+function measureTask(origin, taskIndex, startedAt, turns, roots) {
   const readCounts = /* @__PURE__ */ new Map();
   const edited = /* @__PURE__ */ new Set();
   let searches = 0;
@@ -3737,7 +3747,7 @@ function measureTask(sessionId, taskIndex, startedAt, turns, roots) {
   const folders = /* @__PURE__ */ new Set();
   for (const path of [...readCounts.keys(), ...edited]) folders.add(folderOf(path));
   return {
-    sessionId,
+    ...origin,
     taskIndex,
     startedAt,
     reads,
@@ -3756,12 +3766,35 @@ function measureTask(sessionId, taskIndex, startedAt, turns, roots) {
     folders: sortedBytes(folders)
   };
 }
+function mainOrigin(sessionId) {
+  return { sessionId, source: "main", agentId: null, agentType: null, description: null };
+}
+function measureSubagent(text, sessionId, agentId, roots, meta) {
+  const parsed = parseTranscript(text, "sidechain");
+  if (parsed.status === "not-measured") {
+    return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
+  }
+  const worktrees = [meta?.worktreePath ?? null, ...parsed.cwds.map(worktreeRootOf)].filter((root) => root !== null);
+  const mapRoots = [...roots, ...worktrees];
+  const first = parsed.events.findIndex((event) => event.kind === "prompt");
+  const start = parsed.events[first];
+  const turns = parsed.events.slice(first + 1).flatMap((event) => event.kind === "agent-turn" ? [event] : []);
+  const origin = {
+    sessionId,
+    source: "subagent",
+    agentId,
+    agentType: meta?.agentType ?? null,
+    description: meta?.description ?? null
+  };
+  const task = start === void 0 ? null : measureTask(origin, 0, start.timestamp, turns, mapRoots);
+  return { status: "measured", sessionId, version: parsed.version, tasks: task === null || task.edits === 0 ? [] : [task], cwds: parsed.cwds };
+}
 function measureSession(text, sessionId, roots) {
   const parsed = parseTranscript(text);
   if (parsed.status === "not-measured") {
     return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
   }
-  const tasks = segment(parsed.events).map((task, index) => measureTask(sessionId, index, task.startedAt, task.turns, roots)).filter((task) => task.edits > 0);
+  const tasks = segment(parsed.events).map((task, index) => measureTask(mainOrigin(sessionId), index, task.startedAt, task.turns, roots)).filter((task) => task.edits > 0);
   return { status: "measured", sessionId, version: parsed.version, tasks, cwds: parsed.cwds };
 }
 
@@ -3812,6 +3845,42 @@ function summariseTasks(tasks) {
     tokens: distribution(tasks.map((t) => t.tokens.total))
   };
 }
+function agentFilesUnder(dir) {
+  const found = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join6(dir, entry.name);
+    if (entry.isDirectory()) found.push(...agentFilesUnder(path));
+    else if (entry.isFile() && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) found.push(path);
+  }
+  return found;
+}
+function subagentFiles(projectsDir, root) {
+  const dir = join6(projectsDir, encodeProjectDir(root));
+  if (!existsSync6(dir)) return [];
+  const files = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const subagents = join6(dir, entry.name, "subagents");
+    if (!entry.isDirectory() || !existsSync6(subagents)) continue;
+    for (const path of agentFilesUnder(subagents)) {
+      const name8 = path.slice(path.lastIndexOf("/") + 1);
+      files.push({ sessionId: entry.name, agentId: name8.slice("agent-".length, -".jsonl".length), path });
+    }
+  }
+  return files.sort((a, b) => compareBytes2(a.path, b.path));
+}
+function stringField(value) {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+function readMeta2(transcriptPath) {
+  try {
+    const parsed = JSON.parse(readFileSync4(`${transcriptPath.slice(0, -".jsonl".length)}.meta.json`, "utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+    const meta = parsed;
+    return { agentType: stringField(meta["agentType"]), description: stringField(meta["description"]), worktreePath: stringField(meta["worktreePath"]) };
+  } catch {
+    return null;
+  }
+}
 function sessionFiles(projectsDir, root) {
   const dir = join6(projectsDir, encodeProjectDir(root));
   if (!existsSync6(dir)) return [];
@@ -3819,11 +3888,37 @@ function sessionFiles(projectsDir, root) {
 }
 function measureRepo(options) {
   const { projectsDir, repoRoots, window } = options;
+  const source = options.source ?? "all";
   const seen = /* @__PURE__ */ new Set();
   const tasks = [];
   const notMeasured = [];
+  const subagents = { measured: 0, notMeasured: 0 };
   let measured = 0;
   for (const root of repoRoots) {
+    if (source !== "main") {
+      for (const file of subagentFiles(projectsDir, root)) {
+        if (seen.has(file.path)) continue;
+        seen.add(file.path);
+        let text;
+        try {
+          text = readFileSync4(file.path, "utf8");
+        } catch {
+          continue;
+        }
+        const meta = readMeta2(file.path);
+        const result = measureSubagent(text, file.sessionId, file.agentId, repoRoots, meta);
+        const places = meta?.worktreePath == null ? repoRoots : [...repoRoots, meta.worktreePath];
+        if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, places))) continue;
+        if (result.status === "not-measured") {
+          if (result.startedAt !== null && inWindow(window, result.startedAt)) subagents.notMeasured++;
+          continue;
+        }
+        const inside = result.tasks.filter((task) => inWindow(window, task.startedAt));
+        if (inside.length > 0) subagents.measured++;
+        tasks.push(...inside);
+      }
+    }
+    if (source === "subagent") continue;
     for (const file of sessionFiles(projectsDir, root)) {
       if (seen.has(file.path)) continue;
       seen.add(file.path);
@@ -3847,12 +3942,12 @@ function measureRepo(options) {
     }
   }
   tasks.sort(
-    (a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt) || compareBytes2(a.sessionId, b.sessionId) || a.taskIndex - b.taskIndex
+    (a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt) || compareBytes2(a.sessionId, b.sessionId) || compareBytes2(a.agentId ?? "", b.agentId ?? "") || a.taskIndex - b.taskIndex
   );
   notMeasured.sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
   return {
     window: { from: window.from, to: window.to },
-    sessions: { measured, notMeasured },
+    sessions: { measured, notMeasured, subagents },
     tasks,
     summary: summariseTasks(tasks)
   };
@@ -3964,8 +4059,8 @@ function stampOf(input) {
 }
 
 // packages/locality/src/measure-effort.ts
-function readEffort(projectsDir, repoRoots, window) {
-  return measureRepo({ projectsDir, repoRoots, window: parseWindow(window.from, window.to) });
+function readEffort(projectsDir, repoRoots, window, source = "all") {
+  return measureRepo({ projectsDir, repoRoots, window: parseWindow(window.from, window.to), source });
 }
 function tasksTouching(tasks, files) {
   return tasks.filter((task) => task.readPaths.some((path) => files.has(path)) || task.editedPaths.some((path) => files.has(path)));
@@ -4284,6 +4379,7 @@ var command3 = {
     candidates: "how many top candidates the baseline records (default 200)",
     since: "baseline and compare: start the after window on this date, YYYY-MM-DD (default: the day after the last suite commit); premise: start of the window read",
     until: "premise: end of the window read, YYYY-MM-DD, exclusive",
+    source: "baseline and premise: which tasks are read, main (main sessions), subagent (subagent transcripts) or all (default all); compare uses the baseline's",
     force: "replace a baseline of the same name"
   },
   options: {
@@ -4292,6 +4388,7 @@ var command3 = {
     candidates: { type: "string" },
     since: { type: "string" },
     until: { type: "string" },
+    source: { type: "string" },
     force: { type: "boolean" }
   },
   async run(context) {
@@ -4313,6 +4410,14 @@ function stringOption(context, option) {
 function projectsDirectory(context) {
   return stringOption(context, "projects-dir") ?? defaultProjectsDirectory();
 }
+var SOURCES = ["main", "subagent", "all"];
+function sourceOption(context) {
+  const value = stringOption(context, "source");
+  if (value === void 0) return void 0;
+  const source = SOURCES.find((candidate) => candidate === value);
+  if (source === void 0) throw usageError("--source must be main, subagent or all");
+  return source;
+}
 function measureName(context) {
   return stringOption(context, "name") ?? DEFAULT_NAME;
 }
@@ -4333,7 +4438,8 @@ async function baseline(context, settings) {
   const window = windowEndingAt(view.headDate, settings.windowMonths);
   const seconds = windowSeconds(window);
   const spread = summariseSpread(changesBetween(analysis.filtered.changes, seconds.since, seconds.until));
-  const effort = readEffort(projectsDirectory(context), await checkouts(root), window);
+  const source = sourceOption(context) ?? "all";
+  const effort = readEffort(projectsDirectory(context), await checkouts(root), window, source);
   const project = await loadProject(root, "HEAD", settings);
   const history = settings.useHistory ? await readHistory3(context, settings) : void 0;
   const analysed = analyseProject(project, buildModel(project, settings, history), settings, history);
@@ -4367,7 +4473,7 @@ async function baseline(context, settings) {
       shallow: analysis.evidence.truncated.shallow
     },
     spread,
-    effort: { sessions: effort.sessions, summary: effort.summary, tasks: effort.tasks, stamp: stampOf(effort.tasks) },
+    effort: { sessions: effort.sessions, source, summary: effort.summary, tasks: effort.tasks, stamp: stampOf(effort.tasks) },
     readHeat: readHeat(effort.tasks, HEAT_FILES),
     structure: analysed.metrics,
     sortMethod: SORT_METHOD,
@@ -4386,7 +4492,11 @@ async function baseline(context, settings) {
       window,
       spread,
       structure: analysed.metrics,
-      effort: { sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length }, ...effort.summary },
+      effort: {
+        source,
+        sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length, subagents: effort.sessions.subagents },
+        ...effort.summary
+      },
       candidates: { recorded: candidates.length, ranked: ranked.length },
       priorSuiteCommits: prior
     }
@@ -4465,7 +4575,12 @@ async function compare(context, settings) {
   const beforeChanges = windowChanges(before.window);
   const afterChanges = windowChanges(after);
   const recomputed = summariseSpread(beforeChanges);
-  const afterEffort = readEffort(projectsDirectory(context), await checkouts(root), after);
+  const recordedSource = before.effort.source ?? "main";
+  const requestedSource = sourceOption(context);
+  if (requestedSource !== void 0 && requestedSource !== recordedSource) {
+    throw usageError(`the baseline "${name8}" read ${recordedSource} tasks, so the comparison reads them too: drop --source or take a new baseline with --name`);
+  }
+  const afterEffort = readEffort(projectsDirectory(context), await checkouts(root), after, recordedSource);
   const arms = (g) => ({
     before: describeArm(summariseSpread(changesTouching(beforeChanges, g.identities)), tasksTouching(before.effort.tasks, g.baselineFiles)),
     after: describeArm(summariseSpread(changesTouching(afterChanges, g.identities)), tasksTouching(afterEffort.tasks, g.existing))
@@ -4513,7 +4628,9 @@ async function compare(context, settings) {
 var PREMISE_LIMITS = [
   "Observational: tasks were not assigned to near or far files, so what the task was is a confounder the data cannot remove.",
   "Distance is that of the files a task edited. Tasks editing a single file have none and are left out.",
-  "Effort is the main agent's reads and tokens. Work delegated to subagents is not counted.",
+  "Effort is read from the transcripts of main sessions and of subagents. Reads made through the shell are not counted, so every figure is a lower bound.",
+  "A subagent task is given to it by an orchestrator, which writes its prompt and sets its scope, so the kind of task is a stronger confounder for subagent tasks than for main-session tasks. A subagent starts with none of the context the main session had, and that alone can raise its reads.",
+  "A main-session task that delegated work to a subagent is counted without that work, and the subagent's work is a task of its own, so the two halves of one piece of work are measured apart.",
   "A correlation here is not a measure of what a move would save."
 ];
 var PREMISE_VERDICTS = {
@@ -4542,8 +4659,12 @@ async function premise(context, settings) {
   const window = premiseWindow(context, settings, view.headDate);
   const seconds = windowSeconds(window);
   const spread = summariseSpread(changesBetween(analysis.filtered.changes, seconds.since, seconds.until));
-  const effort = readEffort(projectsDirectory(context), await checkouts(context.repo.root), window);
+  const source = sourceOption(context) ?? "all";
+  const effort = readEffort(projectsDirectory(context), await checkouts(context.repo.root), window, source);
   const result = testPremise(effort.tasks, settings.measureMinSamples);
+  const bySource = Object.fromEntries(
+    ["main", "subagent"].filter((each) => source === "all" || source === each).map((each) => [each, testPremise(effort.tasks.filter((task) => task.source === each), settings.measureMinSamples)])
+  );
   return {
     inputs: {
       transcripts: { tasks: effort.tasks.length, stamp: stampOf(effort.tasks) },
@@ -4562,10 +4683,12 @@ async function premise(context, settings) {
     results: {
       status: "premise",
       window,
-      sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length },
+      source,
+      sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length, subagents: effort.sessions.subagents },
       minSamples: settings.measureMinSamples,
       history: { spread },
       ...result,
+      bySource,
       meaning: PREMISE_VERDICTS[result.verdict],
       limits: PREMISE_LIMITS
     }
