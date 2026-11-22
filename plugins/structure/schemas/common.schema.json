@@ -55,6 +55,36 @@
       ],
       "additionalProperties": false
     },
+    "includeResolution": {
+      "description": "Present only when the tree has C or C++ files: where the include directories came from and how many quoted includes found no file. A warning is printed on stderr and a notice added to a table when the share is above the plugin's unresolvedIncludePercent guideline. Nothing is hidden.",
+      "type": "object",
+      "properties": {
+        "compileCommands": {
+          "description": "The compile_commands.json files the include directories came from, or null when none was read. tracked is false for a file read from disk that git does not track.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "paths": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                "tracked": { "type": "boolean" }
+              },
+              "required": ["paths", "tracked"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "configuredRoots": { "description": "The includeRoots setting, normalised.", "type": "array", "items": { "type": "string" } },
+        "inferredRoots": { "description": "Directories inferred from where the included files are. Inferred only with neither a compile_commands.json nor includeRoots.", "type": "array", "items": { "type": "string" } },
+        "includes": { "description": "Includes that name a file of the repository or look for one: every quoted include, and every angle include that resolved.", "type": "integer", "minimum": 0 },
+        "unresolved": { "description": "Quoted includes that found no file.", "type": "integer", "minimum": 0 },
+        "unresolvedShare": { "description": "unresolved over includes, 0 to 1.", "type": "number", "minimum": 0, "maximum": 1 },
+        "guideline": { "description": "The plugin's unresolvedIncludePercent guideline.", "type": "number" },
+        "aboveGuideline": { "type": "boolean" }
+      },
+      "required": ["compileCommands", "configuredRoots", "inferredRoots", "includes", "unresolved", "unresolvedShare", "guideline", "aboveGuideline"],
+      "additionalProperties": false
+    },
     "envelope": {
       "description": "Fields every document has. A command schema adds its own `command` and `results` and closes the document with unevaluatedProperties.",
       "type": "object",
@@ -81,6 +111,9 @@
         "results": {},
         "truncated": {
           "$ref": "#/$defs/truncated"
+        },
+        "includeResolution": {
+          "$ref": "#/$defs/includeResolution"
         },
         "omittedByBuiltinExcludes": {
           "description": "Present only when a built-in exclude omitted files: the number of files each built-in entry omitted (.claude/**, .cache/**, .code-health/**, or a directory below the repository root that is its own git checkout). Entries that omitted nothing are not listed.",

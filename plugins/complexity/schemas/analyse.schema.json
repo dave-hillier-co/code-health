@@ -117,6 +117,19 @@
     "skipped": {
       "$ref": "common.schema.json#/$defs/skipped"
     },
+    "parseCoverage": {
+      "description": "How many of the files a grammar read have syntax errors, against the complexity.syntaxErrorPercent guideline. A notice is printed when the share is above it. Nothing is hidden.",
+      "type": "object",
+      "properties": {
+        "parsedFiles": { "description": "Files a grammar read.", "type": "integer", "minimum": 0 },
+        "filesWithSyntaxErrors": { "description": "How many of them have syntax errors.", "type": "integer", "minimum": 0 },
+        "syntaxErrorShare": { "description": "filesWithSyntaxErrors over parsedFiles, 0 to 1, rounded to four decimals.", "type": "number", "minimum": 0, "maximum": 1 },
+        "guideline": { "description": "The complexity.syntaxErrorPercent guideline, a percent.", "type": "number" },
+        "aboveGuideline": { "type": "boolean" }
+      },
+      "required": ["parsedFiles", "filesWithSyntaxErrors", "syntaxErrorShare", "guideline", "aboveGuideline"],
+      "additionalProperties": false
+    },
     "filesWithSyntaxErrors": {
       "description": "Files whose parse reported syntax errors, so their units may be incomplete.",
       "type": "array",
@@ -339,6 +352,7 @@
     "layers",
     "agreement",
     "skipped",
+    "parseCoverage",
     "filesWithSyntaxErrors",
     "skippedFiles"
   ],

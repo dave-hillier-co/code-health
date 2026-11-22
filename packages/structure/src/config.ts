@@ -69,6 +69,8 @@ export const structureConfig: PluginConfigSpec = {
      * on itself and exactly the layers named.
      */
     layers: [] as unknown[],
+    /** Guideline (a judgement call): when more than this percent of the C and C++ includes found no file, a warning is printed on stderr and a notice goes in the output, because the include graph, and every result drawn from it, is incomplete. The share is always reported and nothing is hidden. */
+    unresolvedIncludePercent: 20,
     /** The branch `check` compares against when no base is given: the base is the merge base of the analysed commit with it. */
     mainBranch: "main",
     /** The revision `check` compares against, replacing the merge base with mainBranch. null uses the merge base. */
@@ -115,6 +117,10 @@ export interface StructureSettings {
   exclude: string[];
   /** The suite's shared `entryPoints` globs. */
   entryPoints: string[];
+  /** The suite's shared `includeRoots`: directories C and C++ includes are tried against. */
+  includeRoots: string[];
+  /** Percent of C and C++ includes that found no file above which a warning and a notice are given. */
+  unresolvedIncludePercent: number;
   /** The suite's shared `components` config, as written. */
   components: Record<string, unknown>;
   census: CensusSettings;
@@ -197,6 +203,8 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     hubMinAppendShare: percent("hubMinAppendShare"),
     hubContentionDays: positive("hubContentionDays"),
     hubMinAuthors: positive("hubMinAuthors"),
+    unresolvedIncludePercent: percent("unresolvedIncludePercent"),
+    includeRoots: config.effective.includeRoots,
     layers: readLayerRules(section.layers, at("layers")),
     mainBranch,
     base: base as string | null,

@@ -17,3 +17,6 @@ const extensionOf = (path: string): string => path.slice(path.lastIndexOf("."));
 export const isHeader = (path: string): boolean => (headerExtensions as readonly string[]).includes(extensionOf(path));
 export const isSource = (path: string): boolean => (sourceExtensions as readonly string[]).includes(extensionOf(path));
 export const stemOf = (path: string): string => posix.basename(path, extensionOf(path));
+
+/** Whether a path has the extension of a C or C++ header, source file or inline body. */
+export const isCppPath = (path: string): boolean => isHeader(path) || isSource(path) || (inlineExtensions as readonly string[]).includes(extensionOf(path));

@@ -6,6 +6,9 @@ import { readComponents } from "@code-health/cochange/components";
 import { hasAdapter, isTestPath } from "@code-health/parse/languages";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { treeFromRef, type SourceTree } from "@code-health/parse/source-tree";
+import { recordRunNote } from "@code-health/cli-kit/run-notes";
+import { readBuildConfigs } from "@code-health/parse/build-configs";
+import { describeIncludeResolution } from "@code-health/parse/include-resolution";
 import { discoverPackages, indexPackages, type DiscoveredPackage, type PackageIndex } from "./packaging/discovery.ts";
 
 export const edgeKey = (from: string, to: string): string => `${from}\u0000${to}`;
@@ -37,6 +40,12 @@ export interface ProjectOptions {
   /** The suite's `components`, as written. They stand in as packages where no manifest is found. */
   components?: Record<string, unknown>;
   entryPoints?: readonly string[];
+  /** Build files read from disk that the tree does not hold (see `readBuildConfigs`). */
+  extraConfigs?: ReadonlyMap<string, string>;
+  /** The suite's `includeRoots`, for C and C++. */
+  includeRoots?: readonly string[];
+  /** Percent of C and C++ includes that found no file above which a warning and a notice are given. Defaults to 20. */
+  unresolvedIncludePercent?: number;
   packages?: { ignore: readonly string[]; extra: readonly string[] };
 }
 
@@ -49,13 +58,17 @@ export function folderOf(path: string): string {
 /** Analyses the tree of a commit, so the answer never depends on the working directory's state. */
 export async function loadProject(root: string, headSha: string, options: ProjectOptions): Promise<Project> {
   const tree = await treeFromRef(root, headSha);
-  return projectFromTree(tree, headSha, options, await ParseCache.forRepository(root));
+  return projectFromTree(tree, headSha, { ...options, extraConfigs: readBuildConfigs(root, tree) }, await ParseCache.forRepository(root));
 }
 
 /** The same for a tree already read, which the conformance suites build from a fixture directory. */
 export async function projectFromTree(tree: SourceTree, headSha: string, options: ProjectOptions, cache?: ParseCache): Promise<Project> {
   const excluded = compileGlobs(options.exclude);
-  const analysed = await analyseTree(tree, cache === undefined ? {} : { cache });
+  const analysed = await analyseTree(tree, { ...(cache === undefined ? {} : { cache }), ...(options.extraConfigs === undefined ? {} : { extraConfigs: options.extraConfigs }), includeRoots: options.includeRoots ?? [] });
+  if (analysed.includeResolution !== undefined) {
+    const report = describeIncludeResolution(analysed.includeResolution, options.unresolvedIncludePercent ?? 20, "structure");
+    recordRunNote({ key: "includeResolution", value: report.section, ...(report.notice === undefined ? {} : { notice: report.notice }), ...(report.warning === undefined ? {} : { warning: report.warning }) });
+  }
   // what an excluded file imports from outside the repository is not the repository's need
   const analysis: ProjectAnalysis = { ...analysed, externalImports: analysed.externalImports.filter((external) => !excluded(external.from)) };
 
@@ -68,7 +81,7 @@ export async function projectFromTree(tree: SourceTree, headSha: string, options
   const imports = new Map<string, ImportEdge[]>();
   const adjacency = new Map<string, string[]>(files.map((path) => [path, []]));
   for (const edge of analysis.importEdges) {
-    if (!inProject.has(edge.from) || !inProject.has(edge.to)) continue;
+    if (edge.pairing === true || !inProject.has(edge.from) || !inProject.has(edge.to)) continue;
     const key = edgeKey(edge.from, edge.to);
     imports.set(key, [...(imports.get(key) ?? []), edge]);
     adjacency.get(edge.from)!.push(edge.to);

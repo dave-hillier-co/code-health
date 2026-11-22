@@ -1,10 +1,16 @@
 import type { DeclarationKind } from "./facts.ts";
+import type { IncludeResolution } from "./include-resolution.ts";
 
 export interface ImportEdge {
   from: string;
   to: string;
   kind: "import" | "reexport" | "require";
   typeOnly: boolean;
+  /**
+   * C++ only: the edge from a header to the source file that implements it. It stands for the pair being one unit, and is
+   * no dependency of the header on the source, so a view of what depends on what (cycles, package dependencies) leaves it out.
+   */
+  pairing?: true;
 }
 
 export type ConsumerKind = "call" | "reference" | "test";
@@ -82,4 +88,6 @@ export interface ResolvedDependencies {
   /** Imports of packages outside the tree. Node's own modules are not among them. */
   externalImports: ExternalImport[];
   unresolved: Unresolved[];
+  /** C and C++ only: where the include directories came from and how many includes found no file. Absent for other languages. */
+  includeResolution?: IncludeResolution;
 }

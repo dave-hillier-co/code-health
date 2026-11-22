@@ -40,6 +40,8 @@ export const complexityConfig: PluginConfigSpec = {
     mainBranch: null,
     /** `check` exits 1 for a unit above a guideline that worsened by more than this on that metric. `check` is the gate, so this is the only place a guideline becomes an exit code. */
     delta: 0,
+    /** Guideline (a judgement call): `analyse` prints a notice when more than this percent of the files a grammar read have syntax errors, because the units of those files may be incomplete. The share is always reported and hides no file. */
+    syntaxErrorPercent: 5,
     /** Exact-boundary agreement a lexer profile must reach for its per-function metrics to be reported. */
     agreementBar: 0.9,
     /** Body similarity, 0 to 1, at which a unit that disappeared and one that appeared are the same unit moved or renamed. */
@@ -76,6 +78,8 @@ export interface ComplexitySettings {
   mainBranch: string | null;
   delta: number;
   agreementBar: number;
+  /** Percent of parsed files with syntax errors above which `analyse` prints a notice. */
+  syntaxErrorPercent: number;
   moveSimilarity: number;
   analyseTests: boolean;
   changeWeighting: boolean;
@@ -142,6 +146,7 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     mainBranch: optionalString("mainBranch"),
     delta: number(section.delta, at("delta"), 0),
     agreementBar: number(section.agreementBar, at("agreementBar"), 0, 1),
+    syntaxErrorPercent: number(section.syntaxErrorPercent, at("syntaxErrorPercent"), 0, 100),
     moveSimilarity: number(section.moveSimilarity, at("moveSimilarity"), 0, 1),
     analyseTests: section.analyseTests === true,
     changeWeighting: section.changeWeighting === true,

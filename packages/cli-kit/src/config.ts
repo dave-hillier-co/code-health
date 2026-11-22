@@ -64,6 +64,8 @@ export interface SharedConfig {
   /** File extension (no dot, lower case) to lexer profile name: file types the suite has no profile for. */
   languages: Record<string, string>;
   entryPoints: string[];
+  /** Repo-relative directories `#include` is tried against, for C and C++ trees with no usable `compile_commands.json`. */
+  includeRoots: string[];
   components: Record<string, unknown>;
   vagueNames: string[];
   /** The shared history settings, as written in the `history` section. */
@@ -109,12 +111,13 @@ const sharedDefaults: SharedConfig = {
   exclude: [],
   languages: {},
   entryPoints: [],
+  includeRoots: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults,
 };
 
-const stringLists = ["exclude", "entryPoints", "vagueNames"];
+const stringLists = ["exclude", "entryPoints", "includeRoots", "vagueNames"];
 
 /**
  * The plugins whose sections may appear in code-health.json. Every plugin reads the one file, so a plugin

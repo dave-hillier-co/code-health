@@ -41,6 +41,8 @@ export const localityConfig: PluginConfigSpec = {
     measureMinSamples: 10,
     /** Guideline: `measure compare` calls a difference no change when it is within this percent of the acted-on files' own starting figure. It reports the percent and its ratio to this guideline. A judgement call. */
     measureNoisePercent: 10,
+    /** Guideline (a judgement call): when more than this percent of the C and C++ includes found no file, a warning is printed on stderr and a notice goes in the output, because consumers, and every result drawn from them, are incomplete. Units whose results rest on an include that found no file are marked low confidence whatever the share. Nothing is hidden. */
+    unresolvedIncludePercent: 20,
     /** Globs of files that must not move and folders code may not move into (routes, migrations, app folders). */
     fixedPoints: [] as string[],
   },
@@ -67,6 +69,10 @@ export interface LocalitySettings {
   historyMinConfidence: number;
   measureMinSamples: number;
   measureNoisePercent: number;
+  /** Percent of C and C++ includes that found no file above which a warning and a notice are given. */
+  unresolvedIncludePercent: number;
+  /** The suite's shared `includeRoots`: directories C and C++ includes are tried against. */
+  includeRoots: string[];
   /** The suite's shared `entryPoints` globs. Empty means entries are detected. */
   entryPoints: string[];
   /** The suite's shared `exclude` globs. */
@@ -131,6 +137,8 @@ export function readSettings(config: LoadedConfig): LocalitySettings {
     historyMinConfidence: percent("historyMinConfidence"),
     measureMinSamples: positive("measureMinSamples"),
     measureNoisePercent: percent("measureNoisePercent"),
+    unresolvedIncludePercent: percent("unresolvedIncludePercent"),
+    includeRoots: config.effective.includeRoots,
     entryPoints: config.effective.entryPoints,
     exclude: config.effective.exclude,
     vagueNames: config.effective.vagueNames,

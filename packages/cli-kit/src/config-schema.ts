@@ -20,6 +20,9 @@ function sharedProperties(): Record<string, JsonSchema> {
       additionalProperties: { type: "string" },
     },
     entryPoints: stringList("Globs of files that are entry points: code nothing in the repository imports and nothing may move."),
+    includeRoots: stringList(
+      "Directories, relative to the repository root, that C and C++ `#include` paths are written against (for `#include \"stage/Terrain.h\"` with the file at `src/stage/Terrain.h`, `src`). They are tried after the include directories of a compile_commands.json and before CMake's target include directories. With neither a compile_commands.json nor includeRoots, the directories are inferred from where the included files are.",
+    ),
     components: { type: "object", description: "Named groups of paths: component name to globs." },
     vagueNames: stringList("Folder and file names that say nothing about their content."),
     history: {

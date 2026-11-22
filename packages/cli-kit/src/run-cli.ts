@@ -6,6 +6,7 @@ import { assertNodeVersion } from "./environment.ts";
 import { CliError, ExitCode, usageError } from "./errors.ts";
 import { readRepoState, type RepoState } from "./repo-state.ts";
 import { shapeResults } from "./results.ts";
+import { resetRunNotes, runNotes } from "./run-notes.ts";
 import { serialise } from "./serialise.ts";
 import { renderTable } from "./table.ts";
 
@@ -149,10 +150,13 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
   const config = loadConfig(repo.root, cli.config);
   const context: CommandContext = { repo, config, positionals: args.positionals, values: args.values };
   resetBuiltinOmissions();
+  resetRunNotes();
   const output = await command.run(context);
+  const noted = runNotes();
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}\n`);
+  for (const note of noted) if (note.warning !== undefined) io.stderr.write(`${note.warning}\n`);
 
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
@@ -167,7 +171,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: { ...output.extra, ...omittedByBuiltin },
+          extra: { ...output.extra, ...Object.fromEntries(noted.map((note) => [note.key, note.value])), ...omittedByBuiltin },
           results,
           truncated,
           meta: {
@@ -183,6 +187,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results as Record<string, unknown>[], args.fields ?? columns, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.\n`);
+    for (const note of noted) if (note.notice !== undefined) io.stdout.write(`Notice: ${note.notice}.\n`);
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
       io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count]) => `${count} ${count === 1 ? "file" : "files"} (${entry})`).join(", ")}.\n`);

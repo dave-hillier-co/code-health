@@ -3,14 +3,26 @@ import { parseCmake } from "./cmake.ts";
 
 /**
  * Where `#include` looks. The authority is `compile_commands.json` (the flags the build gives each source
- * file); `target_include_directories` and `include_directories` in the CMakeLists.txt files are the fallback
- * for a tree that has none, applied to the files under the directory that states them, and the repository
- * root is the last place tried. The compiler never searched the root unasked, so this is the one guess.
+ * file): a tracked one, or one `analyseTree` was given from the usual build directories. The config `includeRoots`
+ * come next, then `target_include_directories` and `include_directories` in the CMakeLists.txt files, applied to the
+ * files under the directory that states them, then the directories inferred from the includes that still found no
+ * file (see `inferIncludeRoots`), and the repository root is the last place tried.
  */
 
 export interface IncludePaths {
-  /** Repo-relative directories to try for a file, in order, without duplicates. "" is the root. */
-  dirsFor(file: string): string[];
+  /** Repo-relative directories to try for a file, in order, without duplicates. "" is the root. `inferred` are put before the root. */
+  dirsFor(file: string, inferred?: readonly string[]): string[];
+  /** The `compile_commands.json` files read, or null when there are none. */
+  compileCommands: { paths: string[]; tracked: boolean } | null;
+  /** The configured `includeRoots`, normalised. */
+  configuredRoots: string[];
+}
+
+export interface IncludePathOptions {
+  /** The config `includeRoots`: repo-relative directories, every file tries them. */
+  includeRoots?: readonly string[];
+  /** Config paths that were read from disk and are not in the tree, so that they are reported as untracked. */
+  untracked?: ReadonlySet<string>;
 }
 
 interface CompileEntry {
@@ -91,7 +103,13 @@ function includeDirectories(flags: readonly string[]): string[] {
   return dirs;
 }
 
-export function includePathsOf(paths: readonly string[], configs: ReadonlyMap<string, string>): IncludePaths {
+/** A configured include root as a repo-relative directory, "" for the root: `./`, `.` and `src/` become "", "" and "src". */
+const normaliseRoot = (root: string): string => {
+  const cleaned = posix.normalize(root.replaceAll("\\", "/")).replace(/\/+$/, "");
+  return cleaned === "." ? "" : cleaned;
+};
+
+export function includePathsOf(paths: readonly string[], configs: ReadonlyMap<string, string>, options: IncludePathOptions = {}): IncludePaths {
   const files = new Set(paths);
   const directories = new Set<string>([""]);
   for (const path of paths) {
@@ -119,8 +137,10 @@ export function includePathsOf(paths: readonly string[], configs: ReadonlyMap<st
 
   const forFile = new Map<string, string[]>();
   const everyEntry: string[] = [];
+  const compileCommandPaths: string[] = [];
   for (const [path, text] of configs) {
     if (posix.basename(path) !== "compile_commands.json") continue;
+    compileCommandPaths.push(path);
     const base = posix.dirname(path) === "." ? "" : posix.dirname(path);
     for (const entry of entriesOf(text)) {
       const directory = entry.directory === "" ? base : entry.directory;
@@ -160,15 +180,72 @@ export function includePathsOf(paths: readonly string[], configs: ReadonlyMap<st
     if (resolved.length > 0) cmake.set(directory, resolved);
   }
 
+  const configuredRoots = [...new Set((options.includeRoots ?? []).map(normaliseRoot))];
+  const untracked = options.untracked ?? new Set<string>();
   return {
-    dirsFor(file) {
-      const dirs: string[] = [...(forFile.get(file) ?? (forFile.size > 0 ? everyEntry : []))];
+    compileCommands: compileCommandPaths.length === 0 ? null : { paths: compileCommandPaths, tracked: compileCommandPaths.every((path) => !untracked.has(path)) },
+    configuredRoots,
+    dirsFor(file, inferred = []) {
+      const dirs: string[] = [...(forFile.get(file) ?? (forFile.size > 0 ? everyEntry : [])), ...configuredRoots];
       for (let dir = posix.dirname(file) === "." ? "" : posix.dirname(file); ; dir = posix.dirname(dir) === "." ? "" : posix.dirname(dir)) {
         dirs.push(...(cmake.get(dir) ?? []));
         if (dir === "") break;
       }
-      dirs.push("");
+      dirs.push(...inferred, "");
       return [...new Set(dirs)];
     },
   };
+}
+
+/** A quoted or angle include that found no file. */
+export interface UnresolvedInclude {
+  specifier: string;
+}
+
+/** An inferred root must make at least this many includes resolve. A directory that resolves one include is more likely a name that two files share than an include root. */
+const MIN_INFERRED_COVERAGE = 2;
+
+/**
+ * Include directories inferred from the includes that found no file: for each, the directories that hold a file at
+ * the path the include names (for `"stage/Terrain.h"`, `src` when `src/stage/Terrain.h` exists). The directories are
+ * chosen greedily, each taking the most includes that no earlier one covers, shallower directories first on a tie,
+ * and a directory that would cover fewer than two includes is not chosen. Returns directories in the order chosen.
+ * A root of "" is never returned, because the root is always tried.
+ */
+export function inferIncludeRoots(unresolved: readonly UnresolvedInclude[], paths: readonly string[]): string[] {
+  const byBasename = new Map<string, string[]>();
+  for (const path of paths) {
+    const name = posix.basename(path);
+    byBasename.set(name, [...(byBasename.get(name) ?? []), path]);
+  }
+  const wanted = new Map<string, number>();
+  for (const { specifier } of unresolved) {
+    if (specifier.startsWith("<")) continue;
+    const name = specifier;
+    wanted.set(name, (wanted.get(name) ?? 0) + 1);
+  }
+  // Which roots would resolve each distinct include, and how many statements it stands for.
+  const rootsOf = new Map<string, string[]>();
+  for (const name of wanted.keys()) {
+    const normal = posix.normalize(name);
+    const found: string[] = [];
+    for (const path of byBasename.get(posix.basename(normal)) ?? []) {
+      if (path === normal) continue;
+      if (path.endsWith(`/${normal}`)) found.push(path.slice(0, path.length - normal.length - 1));
+    }
+    if (found.length > 0) rootsOf.set(name, found);
+  }
+  const chosen: string[] = [];
+  const covered = new Set<string>();
+  for (;;) {
+    const gain = new Map<string, number>();
+    for (const [name, roots] of rootsOf) {
+      if (covered.has(name)) continue;
+      for (const root of new Set(roots)) gain.set(root, (gain.get(root) ?? 0) + (wanted.get(name) ?? 0));
+    }
+    const best = [...gain].sort(([a, x], [b, y]) => y - x || a.split("/").length - b.split("/").length || (a < b ? -1 : a > b ? 1 : 0))[0];
+    if (best === undefined || best[1] < MIN_INFERRED_COVERAGE) return chosen;
+    chosen.push(best[0]);
+    for (const [name, roots] of rootsOf) if (roots.includes(best[0])) covered.add(name);
+  }
 }

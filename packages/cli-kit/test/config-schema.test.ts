@@ -25,6 +25,7 @@ test("the schema is valid and names the shared keys and a section per plugin, in
     "exclude",
     "languages",
     "entryPoints",
+    "includeRoots",
     "components",
     "vagueNames",
     "history",

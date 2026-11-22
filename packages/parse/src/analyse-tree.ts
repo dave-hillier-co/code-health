@@ -1,4 +1,5 @@
 import type { UnitShape } from "@code-health/lexical/unit";
+import type { IncludeResolution } from "./include-resolution.ts";
 import { exportedUnitNames } from "./exported-units.ts";
 import { parseWith } from "./file-facts.ts";
 import type { FileFacts, UnitKind, UnitMetrics } from "./facts.ts";
@@ -38,6 +39,8 @@ export interface ProjectAnalysis extends ResolvedDependencies {
   filesWithMacroCode: string[];
   /** Generated files, which are read as empty: they have no units and no edges, and are not production code. */
   generatedFiles: string[];
+  /** C and C++ only, and absent when the tree has none: where the include directories came from and how many includes found no file. */
+  includeResolution?: IncludeResolution;
   stats: { parsed: number; cached: number };
 }
 
@@ -47,6 +50,13 @@ export interface AnalyseOptions extends LoadOptions {
   isTestPath?: (path: string) => boolean;
   /** The adapters to analyse with. Defaults to the supported ones. */
   adapters?: readonly LanguageAdapter[];
+  /**
+   * Config files read from disk that the tree does not hold, by repo-relative path (see `readBuildConfigs`). They are
+   * used where the tree has no file of the same name, and reported as not tracked.
+   */
+  extraConfigs?: ReadonlyMap<string, string>;
+  /** The config `includeRoots`: directories `#include` is also tried against. Read by C and C++ only. */
+  includeRoots?: readonly string[];
 }
 
 const batchSize = 200;
@@ -102,12 +112,21 @@ export async function analyseTree(tree: SourceTree, options: AnalyseOptions = {}
     if (fileFacts) facts.set(path, fileFacts);
   }
   const configs = await tree.readMany(sortedPaths.filter((path) => isConfigPath(path, adapters)));
+  const untrackedConfigs = new Set<string>();
+  const baseName = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
+  const trackedNames = new Set([...configs.keys()].map(baseName));
+  for (const [path, text] of options.extraConfigs ?? []) {
+    // A tracked file of the same name wins, so a repository that commits its compile_commands.json is read the same everywhere.
+    if (trackedNames.has(baseName(path)) || tree.files.has(path) || !isConfigPath(path, adapters)) continue;
+    configs.set(path, text);
+    untrackedConfigs.add(path);
+  }
 
   const resolved: ResolvedDependencies[] = [];
   for (const group of dependencyGroups(new Set(owners.values()))) {
     const members = new Set(group.map((adapter) => adapter.id));
     const groupFacts = new Map([...facts].filter(([path]) => members.has(owners.get(path)!.id)));
-    const input = { facts: groupFacts, paths: sortedPaths, configs, isTestPath: isTest };
+    const input = { facts: groupFacts, paths: sortedPaths, configs, isTestPath: isTest, untrackedConfigs, includeRoots: options.includeRoots ?? [] };
     const dependencies = group[0]!.dependencies;
     resolved.push(
       dependencies.model === "import-based"
@@ -146,7 +165,7 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
       });
     }
   }
-  const all = <K extends keyof ResolvedDependencies>(key: K): ResolvedDependencies[K][number][] => resolved.flatMap((group) => group[key] as ResolvedDependencies[K][number][]);
+  const all = <K extends Exclude<keyof ResolvedDependencies, "includeResolution">>(key: K): ResolvedDependencies[K][number][] => resolved.flatMap((group) => group[key] as ResolvedDependencies[K][number][]);
   return {
     units,
     importEdges: all("importEdges").sort(
@@ -174,6 +193,7 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
     filesWithSyntaxErrors,
     filesWithMacroCode,
     generatedFiles,
+    ...(resolved.some((group) => group.includeResolution !== undefined) ? { includeResolution: resolved.find((group) => group.includeResolution !== undefined)!.includeResolution! } : {}),
   };
 }
 

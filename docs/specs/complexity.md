@@ -146,6 +146,7 @@ The default guideline values, each with its source. They are configurable under 
 | length | none | See Length |
 | `interfaceDepth.shallow` | 10 nodes per interface element | Judgement call, not calibrated on a corpus |
 | `agreementBar` | 0.9 | Judgement call, a measurement floor |
+| `syntaxErrorPercent` | 5 | Judgement call. `analyse` prints a notice when more than this percent of the files a grammar read have syntax errors. The share is reported either way, and no file is hidden. |
 | `moveSimilarity` | 0.8 | Judgement call, a pairing floor |
 | `fixes.maxCommits` | 500 commits | Judgement call about run time, not calibrated on a corpus. It bounds the work and omits nothing without saying how many commits it left out. |
 | `delta` | 0 | The gate of `check`, below |
@@ -156,7 +157,7 @@ Only cyclomatic, cognitive, nesting and parameters have a guideline that `check`
 
 | Command | Output |
 |---|---|
-| `complexity analyse [PATHS] [--metrics m1,m2] [--layer auto\|lexical\|structural] [--with-fixes] [--limit N]` | Ranked functions with all selected metrics, percentile, change weight and labels, and a count of the functions left out by the limit. `--with-fixes` adds `fixCommits`, `unitRevisions` and `fixShare` per function from the computation of `complexity fixes`, and its header under `fixes`. Exits with 0 whatever the values. |
+| `complexity analyse [PATHS] [--metrics m1,m2] [--layer auto\|lexical\|structural] [--with-fixes] [--limit N]` | Ranked functions with all selected metrics, percentile, change weight and labels, and a count of the functions left out by the limit. `--with-fixes` adds `fixCommits`, `unitRevisions` and `fixShare` per function from the computation of `complexity fixes`, and its header under `fixes`. Exits with 0 whatever the values. Its header has `parseCoverage`: the files a grammar read (`parsedFiles`), how many of them have syntax errors and their share, against the `syntaxErrorPercent` guideline. A table run prints a notice when the share is above it. A file with syntax errors keeps the units the parser recovered and is listed in `filesWithSyntaxErrors`. |
 | `complexity files [PATHS]` | File-level aggregates. A full run writes the `complexity.files` report that other plugins read. |
 | `complexity diff BASE[..HEAD]` | Only units added or changed between two revisions, with before and after values. Without HEAD, compares against the working tree. |
 | `complexity check [--base REV]` | Compares units against a base revision (default: the merge base with the configured main branch). This is a gate the user chooses to run, so it is the one command that exits with 1: when a new unit is above a guideline, or an existing unit is above a guideline and worsened by more than the configured delta (default 0, so any rise counts). Only cyclomatic, cognitive, nesting and parameters count. Length and the bumpy road do not. A unit that stays under its guidelines never makes it exit with 1, which matches CodeScene gating on a regression and not on absolute values. Built for CI and pre-commit. |

@@ -4,6 +4,7 @@ import { depthOf, folderDistance, folderOf, treeDistance } from "@code-health/gr
 import type { SourceUnit } from "@code-health/parse/analyse-tree";
 import type { Consumer } from "@code-health/parse/resolved-dependencies";
 import { compileGlobs } from "@code-health/history/glob";
+import { lowConfidenceReader } from "@code-health/parse/include-resolution";
 import { fileCohesion, type ExportComponent, type FileCohesion } from "./cohesion.ts";
 import type { LocalitySettings } from "./config.ts";
 import { bestTarget, type BoundaryEdge } from "./footprint.ts";
@@ -134,6 +135,12 @@ export interface Candidate {
   signals: Signal[];
   strays: string[];
   blockers: Blocker[];
+  /**
+   * Present only when the unit's result rests on C or C++ includes that found no file: one of its files has an include that
+   * found none, or an include elsewhere names one of its files and found none, so a dependency or a consumer may be missing.
+   * Whatever the result says about consumers (including "no production consumers") is then a lower bound.
+   */
+  confidence?: { level: "low"; reason: string };
   cohesion?: { components: Array<ExportComponent | ScoredComponent>; mixed: boolean };
 }
 
@@ -227,6 +234,7 @@ const MAX_COMPARED_CONSUMERS = 7;
 /** Finds, scores and recommends units. Everything here is deterministic over the project, model and settings. */
 export function analyseProject(project: Project, model: Model, settings: LocalitySettings, history?: History): AnalysisResult {
   const { analysis } = project;
+  const lowConfidence = lowConfidenceReader(analysis.unresolved);
   const isFixed = compileGlobs(settings.fixedPoints);
   const forbidden = (folder: string) => settings.fixedPoints.length > 0 && isFixed(folder === "" ? "_" : `${folder}/_`);
   const guidelines = {
@@ -510,6 +518,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
             ? consumerFiles.length
             : choice.gain;
 
+    const unresolvedReason = files.flatMap((file) => lowConfidence(file) ?? []).sort(compareIds)[0];
     const ownDeps = targets;
     const scoreUnit: ScoreUnit =
       decision.recommendation === "blocked"
@@ -556,6 +565,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       signals,
       strays: blockers.filter((blocker) => blocker.kind === "stray").map((blocker) => blocker.path).sort(compareIds),
       blockers,
+      ...(unresolvedReason === undefined ? {} : { confidence: { level: "low" as const, reason: unresolvedReason } }),
       ...(cohesion ? { cohesion: { components: scored ?? cohesion.components, mixed: cohesion.mixed } } : {}),
     };
   }
