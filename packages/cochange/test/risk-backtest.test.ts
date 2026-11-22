@@ -222,7 +222,7 @@ describe("the command", () => {
     expect(results.kind).toBe("backtest");
     expect(results.population).toMatchObject({ mergedChanges: 40, scored: 40, censored: 5 });
     expect(results.outcome).toMatchObject({ followUpDays: 30, reverts: 1 });
-    expect(results.outcome.fixConvention).toMatchObject({ logicalChanges: 40, followsConvention: true });
+    expect(results.outcome.fixConvention).toMatchObject({ landedChanges: 40, followsConvention: true });
     expect(results.outcome.fixes.commits.every((commit: { pattern: string }) => commit.pattern !== "^revert\\b")).toBe(true);
     expect(results.levels.map((l: BandRow) => l.band)).toEqual(["routine", "attention", "elevated"]);
     expect(results.factors.map((f: { name: string }) => f.name)).toContain("size");

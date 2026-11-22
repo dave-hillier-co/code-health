@@ -103,16 +103,21 @@
   },
   "fixConvention": {
     "fixes": 4,
-    "followsConvention": false,
-    "guidelines": {
-      "maxShare": 0.6,
-      "minChanges": 30,
-      "minShare": 0.02,
-      "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+    "followsConvention": true,
+    "forms": {
+      "conventionalCommits": 0,
+      "fixVerb": 3,
+      "issueReference": 0
     },
-    "logicalChanges": 11,
-    "note": "The commit messages probably do not follow a convention this can use: there are 11 logical changes in the window, fewer than 30.",
+    "landedChanges": 11,
+    "note": null,
     "share": 0.364
+  },
+  "fixesDuringReview": {
+    "byPattern": [],
+    "commits": [],
+    "fixes": 0,
+    "omitted": 0
   },
   "fixesExcluded": {
     "byPattern": [],
@@ -152,10 +157,16 @@
       },
       "fixShare": 0.4,
       "fixes": 2,
+      "landedChanges": 5,
       "lastFix": "2024-02-10T09:00:00.000Z",
       "path": "src/billing/invoice.ts",
       "recentFixes": 0,
       "reverts": 0,
+      "reviewEvidence": {
+        "commits": [],
+        "omitted": 0
+      },
+      "reviewFixes": 0,
       "revisions": 5,
       "score": 2
     },
@@ -181,10 +192,16 @@
       },
       "fixShare": 0.4,
       "fixes": 2,
+      "landedChanges": 5,
       "lastFix": "2024-05-10T09:00:00.000Z",
       "path": "src/billing/tax.ts",
       "recentFixes": 1,
       "reverts": 1,
+      "reviewEvidence": {
+        "commits": [],
+        "omitted": 0
+      },
+      "reviewFixes": 0,
       "revisions": 5,
       "score": 2
     },
@@ -203,10 +220,16 @@
       },
       "fixShare": 0.2,
       "fixes": 1,
+      "landedChanges": 5,
       "lastFix": "2024-06-15T09:00:00.000Z",
       "path": "src/web/page.ts",
       "recentFixes": 1,
       "reverts": 0,
+      "reviewEvidence": {
+        "commits": [],
+        "omitted": 0
+      },
+      "reviewFixes": 0,
       "revisions": 5,
       "score": 1
     }

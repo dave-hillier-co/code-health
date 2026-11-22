@@ -57,8 +57,34 @@
           "complexity": { "type": ["number", "null"], "minimum": 0, "description": "Summed over a component's files." },
           "ageDays": { "$ref": "common.schema.json#/$defs/count", "description": "Whole days from the last revision to the analysed commit." },
           "lastChanged": { "type": "string", "format": "date-time" },
-          "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes in the window whose commit message is a fix under history.fixPatterns, counted once per file or component. A count of messages, not of defects." },
-          "fixShare": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "fixes over frequency. null with no revisions." },
+          "landedChanges": { "$ref": "common.schema.json#/$defs/count", "description": "Landed changes in the window that touched it: a merge with the commits it brought in counts once, a squash or direct commit counts once. The denominator of fixShare. frequency counts every commit." },
+          "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Landed changes in the window whose own title or message is a fix under history.fixPatterns (the pull request title of a merge), counted once per file or component. A count of messages, not of defects." },
+          "fixShare": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "fixes over landedChanges. null with no landed change." },
+          "reviewFixes": { "$ref": "common.schema.json#/$defs/count", "description": "Fix-like commits made on a branch before it merged that touched it. Caught in review, so not counted in fixes." },
+          "reviewFixEvidence": {
+            "type": "object",
+            "description": "The newest of those commits.",
+            "properties": {
+              "commits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sha": { "$ref": "common.schema.json#/$defs/sha" },
+                    "date": { "type": "string" },
+                    "subject": { "type": "string" },
+                    "pattern": { "type": "string" },
+                    "matchedIn": { "enum": ["subject", "body"] }
+                  },
+                  "required": ["sha", "date", "subject", "pattern", "matchedIn"],
+                  "additionalProperties": false
+                }
+              },
+              "omitted": { "$ref": "common.schema.json#/$defs/count" }
+            },
+            "required": ["commits", "omitted"],
+            "additionalProperties": false
+          },
           "recommendation": { "enum": ["hotspot", null] },
           "siblingTest": { "type": ["string", "null"], "description": "The test beside the file at the analysed commit, or null. Only with --by file." },
           "findings": {
@@ -68,7 +94,7 @@
             "uniqueItems": true
           }
         },
-        "required": ["path", "score", "frequency", "churn", "complexity", "ageDays", "lastChanged", "fixes", "fixShare", "recommendation"],
+        "required": ["path", "score", "frequency", "churn", "complexity", "ageDays", "lastChanged", "landedChanges", "fixes", "fixShare", "reviewFixes", "reviewFixEvidence", "recommendation"],
         "additionalProperties": false
       }
     }

@@ -17,6 +17,10 @@ export interface AnalysisSpec {
   summary: string;
   /** The command's own options. `no-refresh` is added for every analysis command. */
   options?: OptionSpec;
+  /** The subcommands the command dispatches to, so `--help` can describe each with only its own options (see `Command.subcommands`). */
+  subcommands?: Command["subcommands"];
+  /** Options only hidden subcommands take, left out of the command's own `--help` listing (see `Command.hiddenOptions`). */
+  hiddenOptions?: Command["hiddenOptions"];
   /**
    * A window stated by the command's own options (for example `--since`). It
    * counts as a stated window for the shallow-clone guard, and a run that
@@ -105,6 +109,8 @@ export function analysisCommand(name: string, spec: AnalysisSpec): Command {
     summary: spec.summary,
     options: { ...(ownsWindow(spec) ? {} : windowOptions), ...spec.options, ...sharedOptions, ...(spec.cache || spec.fromCache ? noCacheOption : {}) },
     optionHelp: spec.cache || spec.fromCache ? { "no-cache": noCacheHelp } : undefined,
+    ...(spec.subcommands === undefined ? {} : { subcommands: spec.subcommands }),
+    ...(spec.hiddenOptions === undefined ? {} : { hiddenOptions: spec.hiddenOptions }),
     async run(context) {
       const window = ownsWindow(spec) ? spec.window?.(context) : statedWindow(context, readSettings(context.config).windowMonths);
       const reuse = !wantsNoCache(context);

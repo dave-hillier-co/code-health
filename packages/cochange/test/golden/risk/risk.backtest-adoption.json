@@ -106,8 +106,7 @@
     "baselineChanges": 200,
     "fixExcludePatterns": [
       "^(?:chore|ci|test|tests|docs|style|build|refactor|perf)(?:\\([^)]*\\))?!?:",
-      "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b",
-      "\\b(?:address(?:es|ed|ing)?\\s+(?:the\\s+)?(?:review\\s+)?comments?|review\\s+(?:comments?|feedback|fixes)|comment\\s+nits?)\\b"
+      "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b"
     ],
     "fixMatchBody": false,
     "fixPatterns": [
@@ -550,13 +549,12 @@
       "fixConvention": {
         "fixes": 6,
         "followsConvention": true,
-        "guidelines": {
-          "maxShare": 0.6,
-          "minChanges": 30,
-          "minShare": 0.02,
-          "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+        "forms": {
+          "conventionalCommits": 0,
+          "fixVerb": 6,
+          "issueReference": 0
         },
-        "logicalChanges": 40,
+        "landedChanges": 40,
         "note": null,
         "share": 0.15
       },

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { historyDefaults } from "@code-health/cli-kit/config";
-import { checkFixConvention, compileFixClassifier, defaultFixSettings, findExcludedFix, findFix, fixEvidence } from "../src/fix-commits.ts";
+import { checkFixConvention, compileFixClassifier, defaultFixSettings, findExcludedFix, findFix, fixEvidence, fixForms } from "../src/fix-commits.ts";
 import { InvalidPatternError } from "../src/noise.ts";
 
 const classifier = compileFixClassifier(defaultFixSettings);
@@ -125,14 +125,9 @@ describe("the default fix exclude patterns", () => {
     }
   });
 
-  test("count a review-comment follow-up as excluded, with the excluding pattern", () => {
-    for (const subject of ["fix: address comments", "fix: comment nits", "fix: review comments", "Fix review feedback", "Review fixes", "Fix: address review comments"]) {
-      expect(classifier.classify(subject), subject).toEqual({
-        kind: "excluded",
-        pattern: historyDefaults.fixExcludePatterns[2],
-        fixPattern: expect.any(String),
-        matchedIn: "subject",
-      });
+  test("do not exclude a follow-up to review comments, which is counted apart as a fix during review", () => {
+    for (const subject of ["fix: address comments", "fix: review comments", "Fix review feedback", "Review fixes", "Fix: address review comments"]) {
+      expect(classifier.classify(subject).kind, subject).toBe("fix");
     }
   });
 
@@ -202,21 +197,33 @@ describe("fixEvidence", () => {
 });
 
 describe("checkFixConvention", () => {
-  test("accepts a share from 2 to 60 percent over at least 30 logical changes", () => {
-    expect(checkFixConvention(100, 20)).toMatchObject({ share: 0.2, followsConvention: true, note: null });
-    expect(checkFixConvention(30, 1).followsConvention).toBe(true);
-    expect(checkFixConvention(100, 60).followsConvention).toBe(true);
+  const filler = Array.from({ length: 60 }, (_, i) => `Add feature ${i}`);
+
+  test("follows a convention when the titles use Conventional Commits types, a leading Fix or Fixes, or issue references, whatever the share", () => {
+    expect(checkFixConvention([...filler, "fix(parser): handle empty input"], 1)).toMatchObject({ followsConvention: true, note: null });
+    expect(checkFixConvention([...filler, "Fixes the crash"], 1).followsConvention).toBe(true);
+    expect(checkFixConvention([...filler, "Handle the crash, closes #12"], 1).followsConvention).toBe(true);
+    expect(checkFixConvention(["feat: add a thing", "chore: bump"], 0).followsConvention).toBe(true);
+    expect(checkFixConvention(["Fix a", "Fix b", "Fix c"], 3).followsConvention).toBe(true);
   });
 
-  test("says the messages probably do not follow a convention under 2 percent, over 60 percent and under 30 changes", () => {
-    expect(checkFixConvention(100, 1).note).toMatch(/fixes are 1% of logical changes, under 2%/);
-    expect(checkFixConvention(100, 61).note).toMatch(/over 60%/);
-    expect(checkFixConvention(29, 10).note).toMatch(/fewer than 30/);
-    expect(checkFixConvention(0, 0)).toMatchObject({ share: null, followsConvention: false });
-    expect(checkFixConvention(100, 1).note).toMatch(/probably do not follow a convention/);
+  test("a repository with few fixes but a clear form is not flagged, and the share is information beside the form counts", () => {
+    const titles = [...filler, "fix: one crash"];
+    expect(checkFixConvention(titles, 1)).toMatchObject({ landedChanges: 61, fixes: 1, share: 0.016, followsConvention: true, forms: { conventionalCommits: 1, fixVerb: 1, issueReference: 0 } });
   });
 
-  test("states its provenance", () => {
-    expect(checkFixConvention(100, 20).guidelines.provenance).toMatch(/Judgement calls/);
+  test("does not follow a convention when no title uses a recognisable form, and says so", () => {
+    const result = checkFixConvention(filler, 0);
+    expect(result).toMatchObject({ followsConvention: false, forms: { conventionalCommits: 0, fixVerb: 0, issueReference: 0 } });
+    expect(result.note).toMatch(/probably do not follow a convention/);
+    expect(checkFixConvention([], 0)).toMatchObject({ share: null, followsConvention: false });
+  });
+
+  test("a pull request number alone is not an issue reference", () => {
+    expect(fixForms(["Add retries (#12)", "Merge pull request #4 from a/b"])).toEqual({ conventionalCommits: 0, fixVerb: 0, issueReference: 0 });
+  });
+
+  test("counts each form separately", () => {
+    expect(fixForms(["fix: a", "Fix b (Fixes #2)", "feat(x)!: c", "ABC-12: Fixed d", "Resolves ABC-3"])).toEqual({ conventionalCommits: 2, fixVerb: 3, issueReference: 2 });
   });
 });

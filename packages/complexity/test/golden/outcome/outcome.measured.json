@@ -247,15 +247,14 @@
     },
     "fixConvention": {
       "fixes": 4,
-      "followsConvention": false,
-      "guidelines": {
-        "maxShare": 0.6,
-        "minChanges": 30,
-        "minShare": 0.02,
-        "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+      "followsConvention": true,
+      "forms": {
+        "conventionalCommits": 0,
+        "fixVerb": 4,
+        "issueReference": 0
       },
-      "logicalChanges": 12,
-      "note": "The commit messages probably do not follow a convention this can use: there are 12 logical changes in the window, fewer than 30.",
+      "landedChanges": 12,
+      "note": null,
       "share": 0.333
     },
     "gamingCheck": {

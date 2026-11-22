@@ -272,10 +272,10 @@
       "required": ["window", "filtersApplied", "evidence"]
     },
     "fixConvention": {
-      "description": "The repository-level check on the fix definition: the share of logical changes in the window that are fixes. A note says the commit messages probably do not follow a convention this can use. The counts are reported either way.",
       "type": "object",
+      "description": "The repository-level check on the fix definition. It decides whether the titles of the landed changes in the window use a recognisable fix form (Conventional Commits types, a leading Fix or Fixes, or issue references), and counts each form. The share of landed changes that are fixes is reported beside it as information and does not decide the verdict. A note says the commit messages probably do not follow a convention this can use. The counts are reported either way.",
       "properties": {
-        "logicalChanges": {
+        "landedChanges": {
           "type": "integer",
           "minimum": 0
         },
@@ -291,6 +291,29 @@
           "minimum": 0,
           "maximum": 1
         },
+        "forms": {
+          "type": "object",
+          "properties": {
+            "conventionalCommits": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fixVerb": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "issueReference": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "conventionalCommits",
+            "fixVerb",
+            "issueReference"
+          ],
+          "additionalProperties": false
+        },
         "followsConvention": {
           "type": "boolean"
         },
@@ -299,39 +322,15 @@
             "string",
             "null"
           ]
-        },
-        "guidelines": {
-          "type": "object",
-          "properties": {
-            "minShare": {
-              "type": "number"
-            },
-            "maxShare": {
-              "type": "number"
-            },
-            "minChanges": {
-              "type": "integer"
-            },
-            "provenance": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "minShare",
-            "maxShare",
-            "minChanges",
-            "provenance"
-          ],
-          "additionalProperties": false
         }
       },
       "required": [
-        "logicalChanges",
+        "landedChanges",
         "fixes",
         "share",
+        "forms",
         "followsConvention",
-        "note",
-        "guidelines"
+        "note"
       ],
       "additionalProperties": false
     }

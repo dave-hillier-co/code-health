@@ -293,7 +293,7 @@ export function summarise(
     },
     outcome: {
       followUpDays: risk.followUpDays,
-      fixConvention: checkFixConvention(all.length, fixMatches.length),
+      fixConvention: checkFixConvention(all.map((change) => change.text), fixMatches.length),
       fixes: fixEvidence(fixMatches),
       reverts: outcomeList.filter((o) => o.reverted).length,
       troubled,

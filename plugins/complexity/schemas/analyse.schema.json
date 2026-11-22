@@ -348,17 +348,21 @@
           },
           "fixCommits": {
             "$ref": "common.schema.json#/$defs/count",
-            "description": "With --with-fixes: logical changes in the analysed history window that are fixes and changed a line of the function."
+            "description": "With --with-fixes: landed changes in the analysed history window that are fixes by their own title and changed a line of the function."
           },
           "unitRevisions": {
             "$ref": "common.schema.json#/$defs/count",
-            "description": "With --with-fixes: logical changes in the analysed window that changed a line of the function, fixes included."
+            "description": "With --with-fixes: landed changes in the analysed window that changed a line of the function, fixes included."
           },
           "fixShare": {
             "type": ["number", "null"],
             "minimum": 0,
             "maximum": 1,
             "description": "With --with-fixes: fixCommits over unitRevisions. Null for a function no analysed change touched."
+          },
+          "reviewFixes": {
+            "$ref": "common.schema.json#/$defs/count",
+            "description": "With --with-fixes: fix-like commits made on a branch before it merged that changed a line of the function. Not counted in fixCommits."
           }
         },
         "required": [

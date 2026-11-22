@@ -45,8 +45,8 @@ describe("complexity outcome", () => {
     // Every fix rate keeps the commits behind it, each with the pattern that matched.
     expect(result.changeCost.actedOn.before.fixCommits).toMatchObject({ fixes: 1, omitted: 0, byPattern: [{ count: 1 }] });
     expect(result.changeCost.actedOn.before.fixCommits.commits).toHaveLength(1);
-    expect(result.fixConvention).toMatchObject({ followsConvention: false });
-    expect(result.fixConvention.note).toMatch(/probably do not follow a convention/);
+    expect(result.fixConvention).toMatchObject({ followsConvention: true, note: null });
+    expect(result.fixConvention.forms.fixVerb).toBeGreaterThan(0);
     expectGolden("outcome", "outcome", stdout);
   });
 

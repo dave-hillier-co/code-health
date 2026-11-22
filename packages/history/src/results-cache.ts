@@ -3,7 +3,7 @@ import { restoreBuiltinOmissions } from "@code-health/cli-kit/builtin-excludes";
 import { restoreDropped } from "@code-health/cli-kit/dropped-files";
 import type { OptionSpec } from "@code-health/cli-kit/args";
 import type { CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
-import { reportPath, skipReport, variantOf, writeReport, type ReportIdentity } from "./reports.ts";
+import { canonical, reportPath, skipReport, variantOf, writeReport, type ReportIdentity } from "./reports.ts";
 
 /**
  * Results computed on demand and kept in `.cache/code-health/reports/`. A stored result is reused when it was
@@ -45,7 +45,8 @@ export interface CachedInput {
 
 const ENVELOPE = new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta", "dropped", "omittedByBuiltinExcludes"]);
 
-const same = (a: unknown, b: unknown): boolean => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+/** Stored inputs are written with sorted keys, so they are compared that way: the order a run builds its expected inputs in must not decide a hit. */
+const same = (a: unknown, b: unknown): boolean => canonical(a ?? null) === canonical(b ?? null);
 
 export interface Hit {
   output: CommandOutput;

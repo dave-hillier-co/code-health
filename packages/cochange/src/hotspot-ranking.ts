@@ -2,7 +2,7 @@ import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import { monthsBefore } from "@code-health/history/evidence";
 import { listTree } from "@code-health/history/tree";
 import type { FixConvention } from "@code-health/history/fix-commits";
-import { readFixes, statisticsOf } from "./fix-statistics.ts";
+import { readFixes, statisticsOf, type FixCommit } from "./fix-statistics.ts";
 import { readFixClassifier } from "./risk/settings.ts";
 import { loadComplexity, type FileComplexity } from "./complexity-source.ts";
 import type { By, Unit } from "./file-statistics.ts";
@@ -11,6 +11,9 @@ import { siblingTestOf } from "./sibling-test.ts";
 import { midRankPercentiles, shareStrictlyAbove } from "@code-health/cli-kit/ranking";
 import { SECONDS_PER_DAY, isoDate, loadUnits } from "./units.ts";
 import { testClassifier } from "@code-health/parse/test-files";
+
+/** Fixes during review listed per row of the ranking. `cochange fixes` lists as many as `--evidence` asks for. */
+const REVIEW_EVIDENCE = 3;
 
 export interface HotspotRow {
   path: string;
@@ -24,9 +27,15 @@ export interface HotspotRow {
   complexity: number | null;
   ageDays: number;
   lastChanged: string;
-  /** Logical changes in the window whose commit message is a fix, and their share of `frequency`. */
+  /** Landed changes in the window that touched the unit: a merge with the commits it brought in counts once, a squash or direct commit counts once. */
+  landedChanges: number;
+  /** Landed changes in the window whose own title or message is a fix, and their share of `landedChanges`. */
   fixes: number;
   fixShare: number | null;
+  /** Fix-like commits made on a branch before it merged and touching the unit. They were caught in review, and they are not in `fixes`. */
+  reviewFixes: number;
+  /** The newest of those commits. */
+  reviewFixEvidence: { commits: FixCommit[]; omitted: number };
   recommendation: "hotspot" | null;
   /** File views only: the sibling test, and the findings raised on the file. */
   siblingTest?: string | null;
@@ -48,7 +57,7 @@ export async function rankHotspots(context: CommandContext, history: LoadedHisto
   const { settings } = history;
   const units = await loadUnits(context, history, by, true);
   const isTest = testClassifier(context.config.effective.testPatterns);
-  const fixReading = readFixes(history, units, readFixClassifier(context.config));
+  const fixReading = await readFixes(history, units, readFixClassifier(context.config), context.repo.root);
 
   const paths = [...new Set(units.flatMap((u) => [...u.members]))].sort();
   const complexity = await loadComplexity(context, history.view.headSha, paths);
@@ -85,8 +94,11 @@ export async function rankHotspots(context: CommandContext, history: LoadedHisto
       complexity: unitComplexity[i]!,
       ageDays: Math.floor((anchor - unit.lastChanged) / SECONDS_PER_DAY),
       lastChanged: isoDate(unit.lastChanged),
+      landedChanges: fixStats.landedChanges,
       fixes: fixStats.fixes,
       fixShare: fixStats.fixShare,
+      reviewFixes: fixStats.reviewFixes,
+      reviewFixEvidence: { commits: fixStats.reviewCommits.slice(0, REVIEW_EVIDENCE), omitted: Math.max(0, fixStats.reviewFixes - REVIEW_EVIDENCE) },
       recommendation: isHotspot ? "hotspot" : null,
       ...(by === "file" ? fileFindings(unit, isHotspot, drifting.get(unit.name) ?? null, settings.minSupport) : {}),
     };

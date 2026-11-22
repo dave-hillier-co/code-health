@@ -397,7 +397,7 @@
       "properties": {
         "changes": {
           "$ref": "common.schema.json#/$defs/count",
-          "description": "Logical changes that touched the files: the sample every other figure rests on."
+          "description": "Landed changes that touched the files: a merge with the commits it brought in counts once. The sample every other figure rests on."
         },
         "linesChurnedPerChange": {
           "type": [
@@ -413,7 +413,7 @@
           ],
           "minimum": 0,
           "maximum": 1,
-          "description": "Share of those changes with a commit that matches history.fixPatterns. A revert is not a fix."
+          "description": "Share of those landed changes whose own title (the pull request title of a merge, the message of a squash or direct commit) matches history.fixPatterns. A revert is not a fix, and a fix made on a branch before it merged is not counted."
         },
         "fixCommits": {
           "$ref": "#/$defs/fixEvidence"

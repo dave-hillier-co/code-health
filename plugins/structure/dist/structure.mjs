@@ -180,14 +180,13 @@ var historyDefaults = {
    * commit is not a defect fix, so it is counted as excluded with the pattern that excluded it and not as a fix. The first pattern
    * is the Conventional Commits rule: when a subject has a type prefix, the type decides, so chore, ci, test, docs, style, build,
    * refactor and perf are not fixes even when "fix" appears later in the subject. The others name fix targets that are not defects
-   * (typos, spelling, lint and formatting, within three words after the fix word) and review-comment follow-ups ("address
-   * comments", "review comments", "comment nits", "review feedback", "review fixes"). Test and CI repairs are fixes. A guideline
+   * (typos, spelling, lint and formatting, within three words after the fix word). Test and CI repairs are fixes. Follow-ups to review
+   * comments are not excluded: a fix made on a branch before it merged is counted apart, as a fix during review. A guideline
    * list, a judgement call not calibrated on a corpus.
    */
   fixExcludePatterns: [
     "^(?:chore|ci|test|tests|docs|style|build|refactor|perf)(?:\\([^)]*\\))?!?:",
-    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b",
-    "\\b(?:address(?:es|ed|ing)?\\s+(?:the\\s+)?(?:review\\s+)?comments?|review\\s+(?:comments?|feedback|fixes)|comment\\s+nits?)\\b"
+    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b"
   ],
   /** Regular expressions matched against a commit subject that mark a revert. The "This reverts commit" line git writes in the body always marks one. A revert is not counted as a fix. */
   revertPatterns: ["^revert\\b"],

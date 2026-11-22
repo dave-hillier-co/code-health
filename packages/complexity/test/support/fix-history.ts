@@ -107,3 +107,22 @@ export const outsideHistory: Step[] = [
     ],
   },
 ];
+
+/**
+ * Two functions: `reviewed` is created, then changed by a merged pull request titled "Add retries" whose branch has a commit
+ * "fix: review comments" (caught in review, so no fix), and `crashy` is created, then changed by a squash-merged "Fix crash (#12)"
+ * and by a merge whose pull request title, in the body, says "Fix the null check", though its branch commit says "Tidy".
+ */
+export const landedHistory: Step[] = [
+  { type: "commit", message: "Add reviewed and crashy", date: later(12), changes: [{ op: "add", path: "src/reviewed.ts", content: small("reviewed", 0) }, { op: "add", path: "src/crashy.ts", content: small("crashy", 0) }] },
+  { type: "branch", name: "retries", from: "main" },
+  { type: "commit", message: "Add retries", date: later(13), changes: [{ op: "modify", path: "src/reviewed.ts", content: small("reviewed", 1) }] },
+  { type: "commit", message: "fix: review comments", date: later(14), changes: [{ op: "modify", path: "src/reviewed.ts", content: small("reviewed", 2) }] },
+  { type: "checkout", name: "main" },
+  { type: "merge", branch: "retries", message: "Merge pull request #1 from owner/retries\n\nAdd retries", date: later(15) },
+  { type: "commit", message: "Fix crash (#12)", date: later(16), changes: [{ op: "modify", path: "src/crashy.ts", content: small("crashy", 1) }] },
+  { type: "branch", name: "tidy", from: "main" },
+  { type: "commit", message: "Tidy", date: later(17), changes: [{ op: "modify", path: "src/crashy.ts", content: small("crashy", 2) }] },
+  { type: "checkout", name: "main" },
+  { type: "merge", branch: "tidy", message: "Merge pull request #2 from owner/tidy\n\nFix the null check", date: later(18) },
+];

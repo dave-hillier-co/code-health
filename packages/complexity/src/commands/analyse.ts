@@ -28,7 +28,7 @@ export const command: Command = {
     "no-cache": noCacheHelp,
     by: `what rows sort on, highest first, with ties broken by cognitive, nesting, cyclomatic, length and then path: ${rankByValues.join(", ")}. cognitive is the default; max-percentile is the highest metric percentile of any selected metric; change-weighted is that percentile times how often the function's file changed in the window (a hotspot order); the other names sort by that metric's value`,
     "include-tests": includeTestsHelp,
-    "with-fixes": "add fixCommits, unitRevisions and fixShare per function from the history window (see `complexity fixes`); costs a parse of the historical revisions",
+    "with-fixes": "add fixCommits, unitRevisions, fixShare and reviewFixes per function from the history window (see `complexity fixes`); costs a parse of the historical revisions",
     ...fixOptionHelp,
   },
   run(context) {
@@ -148,7 +148,7 @@ async function compute(context: CommandContext, paths: string[]): Promise<Comman
         "changeWeight",
         "dominant",
         ...metricIds.filter((metric) => selected.includes(metric)),
-        ...(fixes === undefined ? [] : ["fixCommits", "unitRevisions", "fixShare"]),
+        ...(fixes === undefined ? [] : ["fixCommits", "unitRevisions", "fixShare", "reviewFixes"]),
         "labels",
       ],
     };

@@ -133,7 +133,7 @@ function briefOutput(
       frequency,
       recentRevisions: activity?.recentRevisions ?? 0,
       fixes: hotspot?.fixes ?? 0,
-      fixShare: frequency === 0 ? null : Math.round(((hotspot?.fixes ?? 0) / frequency) * 1000) / 1000,
+      fixShare: hotspot === undefined || hotspot.landedChanges === 0 ? null : Math.round((hotspot.fixes / hotspot.landedChanges) * 1000) / 1000,
       lastChanged: activity === undefined ? null : isoDate(activity.lastChanged),
       ageDays: activity === undefined ? null : Math.floor((anchor - activity.lastChanged) / SECONDS_PER_DAY),
       hotspotScore: hotspot?.score ?? null,

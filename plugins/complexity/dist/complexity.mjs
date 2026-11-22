@@ -188,14 +188,13 @@ var historyDefaults = {
    * commit is not a defect fix, so it is counted as excluded with the pattern that excluded it and not as a fix. The first pattern
    * is the Conventional Commits rule: when a subject has a type prefix, the type decides, so chore, ci, test, docs, style, build,
    * refactor and perf are not fixes even when "fix" appears later in the subject. The others name fix targets that are not defects
-   * (typos, spelling, lint and formatting, within three words after the fix word) and review-comment follow-ups ("address
-   * comments", "review comments", "comment nits", "review feedback", "review fixes"). Test and CI repairs are fixes. A guideline
+   * (typos, spelling, lint and formatting, within three words after the fix word). Test and CI repairs are fixes. Follow-ups to review
+   * comments are not excluded: a fix made on a branch before it merged is counted apart, as a fix during review. A guideline
    * list, a judgement call not calibrated on a corpus.
    */
   fixExcludePatterns: [
     "^(?:chore|ci|test|tests|docs|style|build|refactor|perf)(?:\\([^)]*\\))?!?:",
-    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b",
-    "\\b(?:address(?:es|ed|ing)?\\s+(?:the\\s+)?(?:review\\s+)?comments?|review\\s+(?:comments?|feedback|fixes)|comment\\s+nits?)\\b"
+    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b"
   ],
   /** Regular expressions matched against a commit subject that mark a revert. The "This reverts commit" line git writes in the body always marks one. A revert is not counted as a fix. */
   revertPatterns: ["^revert\\b"],
@@ -2312,7 +2311,7 @@ var noCacheOption = { "no-cache": { type: "boolean" } };
 var noCacheHelp = "recompute instead of reading the stored result, and store the new one";
 var wantsNoCache = (context) => context.values["no-cache"] === true;
 var ENVELOPE = /* @__PURE__ */ new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta", "dropped", "omittedByBuiltinExcludes"]);
-var same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+var same = (a, b) => canonical(a ?? null) === canonical(b ?? null);
 function readStored(context, stored) {
   const file = reportPath(context.repo.root, stored.identity.tool, stored.command, variantOf(stored.stated));
   if (!existsSync7(file)) return void 0;
@@ -2705,27 +2704,31 @@ function fixEvidence(matches, limit = FIX_EVIDENCE_LIMIT) {
     omitted: Math.max(0, matches.length - limit)
   };
 }
-var FIX_CONVENTION_GUIDELINES = {
-  minShare: 0.02,
-  maxShare: 0.6,
-  minChanges: 30,
-  provenance: "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
-};
-var percent = (share) => `${Math.round(share * 1e3) / 10}%`;
-function checkFixConvention(logicalChanges, fixes) {
-  const { minShare, maxShare, minChanges } = FIX_CONVENTION_GUIDELINES;
-  const share = logicalChanges === 0 ? null : Math.round(fixes / logicalChanges * 1e3) / 1e3;
-  const reasons = [];
-  if (logicalChanges < minChanges) reasons.push(`there are ${logicalChanges} logical changes in the window, fewer than ${minChanges}`);
-  if (share !== null && share < minShare) reasons.push(`fixes are ${percent(share)} of logical changes, under ${percent(minShare)}`);
-  if (share !== null && share > maxShare) reasons.push(`fixes are ${percent(share)} of logical changes, over ${percent(maxShare)}`);
+var CONVENTIONAL_TYPE = /^(?:feat|fix|chore|ci|test|tests|docs|style|build|refactor|perf|revert)(?:\([^)]*\))?!?:/i;
+var FIX_VERB = /^(?:[a-z][a-z0-9]*-\d+:\s*)?(?:fix|fixes|fixed|fixing)\b/i;
+var ISSUE_REFERENCE = /\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\s+(?:#\d+|[a-z][a-z0-9]*-\d+)/i;
+function fixForms(titles) {
+  const forms = { conventionalCommits: 0, fixVerb: 0, issueReference: 0 };
+  for (const title of titles) {
+    const subject = subjectOf(title);
+    if (CONVENTIONAL_TYPE.test(subject)) forms.conventionalCommits++;
+    if (FIX_VERB.test(subject)) forms.fixVerb++;
+    if (ISSUE_REFERENCE.test(subject)) forms.issueReference++;
+  }
+  return forms;
+}
+function checkFixConvention(titles, fixes) {
+  const landedChanges = titles.length;
+  const forms = fixForms(titles);
+  const share = landedChanges === 0 ? null : Math.round(fixes / landedChanges * 1e3) / 1e3;
+  const follows = forms.conventionalCommits + forms.fixVerb + forms.issueReference > 0;
   return {
-    logicalChanges,
+    landedChanges,
     fixes,
     share,
-    followsConvention: reasons.length === 0,
-    note: reasons.length === 0 ? null : `The commit messages probably do not follow a convention this can use: ${reasons.join("; ")}.`,
-    guidelines: { minShare, maxShare, minChanges, provenance: FIX_CONVENTION_GUIDELINES.provenance }
+    forms,
+    followsConvention: follows,
+    note: follows ? null : `The commit messages probably do not follow a convention this can use: none of the ${landedChanges} landed changes uses a recognisable fix form (a Conventional Commits type, a leading Fix or Fixes, or an issue reference).`
   };
 }
 
@@ -18157,6 +18160,94 @@ async function cachedAnalysis(context, command9, stated, compute3, cacheable = t
   return cachedOutput(context, stored, compute3, (run3) => skipReport(run3, "the run did not analyse HEAD"), notStorableBecause);
 }
 
+// packages/history/src/landings.ts
+var firstContent = (lines, skip) => lines.findIndex((line) => line.trim() !== "" && !skip.test(line.trim()));
+function landedText(message) {
+  const normalised = message.replace(/\r\n/g, "\n").trim();
+  const lines = normalised.split("\n");
+  const subject = lines[0].trim();
+  const body2 = lines.slice(1);
+  const bodyTitle = (skip) => {
+    const at = firstContent(body2, skip);
+    if (at === -1) return { title: null, text: normalised };
+    return { title: body2[at].trim(), text: [body2[at].trim(), ...body2.slice(at + 1)].join("\n").trim() };
+  };
+  const pull = /^Merge pull request #\d+\b(.*)$/i.exec(subject);
+  if (pull) {
+    const inSubject = /^(?:\s*:\s*|\s+[-–—]\s+)(\S.*)$/.exec(pull[1]);
+    if (inSubject) return { title: inSubject[1].trim(), text: [inSubject[1].trim(), ...body2].join("\n").trim() };
+    return bodyTitle(/^$/);
+  }
+  if (/^Merge branch '.+' into '.+'/i.test(subject)) return bodyTitle(/^See merge request\b/i);
+  return { title: null, text: normalised };
+}
+async function readGraph(root, tip) {
+  const out2 = await runGit(root, ["log", "--format=%H%x1f%P%x1f%ct%x1f%B%x1e", tip]);
+  const graph = /* @__PURE__ */ new Map();
+  for (const record of out2.split("")) {
+    if (record.trim() === "") continue;
+    const [sha, parents, time, ...message] = record.replace(/^\n/, "").split("");
+    graph.set(sha, { sha, parents: parents === "" ? [] : parents.split(" "), time: Number(time), message: message.join("").trim() });
+  }
+  return graph;
+}
+async function readLandings(root, tip) {
+  const graph = await readGraph(root, tip);
+  const head = (await runGit(root, ["rev-parse", "--verify", `${tip}^{commit}`])).trim();
+  const line = [];
+  for (let at = graph.get(head); at !== void 0; at = at.parents[0] === void 0 ? void 0 : graph.get(at.parents[0])) line.push(at);
+  line.reverse();
+  const assigned = new Set(line.map((c) => c.sha));
+  const landings = [];
+  for (const entry of line) {
+    const { title, text: text2 } = landedText(entry.message);
+    if (entry.parents.length < 2) {
+      landings.push({ id: entry.sha, time: entry.time, how: "direct", title: title ?? entry.message.split("\n", 1)[0].trim(), text: text2, members: [entry.sha], branch: [] });
+      continue;
+    }
+    const stack = entry.parents.slice(1);
+    const found = [];
+    while (stack.length > 0) {
+      const sha = stack.pop();
+      if (assigned.has(sha)) continue;
+      assigned.add(sha);
+      const commit = graph.get(sha);
+      if (!commit) continue;
+      found.push(commit);
+      stack.push(...commit.parents);
+    }
+    found.sort((a, b) => a.time - b.time || (a.sha < b.sha ? -1 : 1));
+    const branch = found.filter((commit) => commit.parents.length < 2).map((commit) => ({ sha: commit.sha, message: commit.message }));
+    landings.push({
+      id: entry.sha,
+      time: entry.time,
+      how: "merge",
+      title: title ?? entry.message.split("\n", 1)[0].trim(),
+      text: text2,
+      members: branch.map((commit) => commit.sha),
+      branch
+    });
+  }
+  return landings;
+}
+function landingOf(landings) {
+  const of = /* @__PURE__ */ new Map();
+  for (const landing of landings) for (const sha of landing.members) of.set(sha, landing);
+  return of;
+}
+function groupByLanding(changes, landings) {
+  const of = landingOf(landings);
+  const groups = /* @__PURE__ */ new Map();
+  for (const change of changes) {
+    for (const landing of new Set(change.shas.flatMap((sha) => of.get(sha) ?? []))) {
+      const list2 = groups.get(landing);
+      if (list2) list2.push(change);
+      else groups.set(landing, [change]);
+    }
+  }
+  return landings.flatMap((landing) => groups.has(landing) ? [{ landing, changes: groups.get(landing) }] : []);
+}
+
 // packages/complexity/src/fix-ranges.ts
 var COMMIT_LINE = /^[0-9a-f]{40}$/;
 var HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
@@ -18319,28 +18410,27 @@ async function measureFixes(root, settings, exclude, current, request) {
   const since = monthsBefore(until, settings.windowMonths);
   const window2 = { months: settings.windowMonths, since, until };
   const inWindow2 = history.filtered.changes.filter((change) => change.committerDate >= since && change.committerDate <= until);
-  const messages = new Map(history.view.commits.map((commit) => [commit.sha, commit.message]));
   const commitBySha = new Map(history.view.commits.map((commit) => [commit.sha, commit]));
+  const landings = await readLandings(root, history.view.headSha);
+  const landingBySha = landingOf(landings);
+  const landedById = new Map(landings.map((landing) => [landing.id, landing]));
   const fixOf = /* @__PURE__ */ new Map();
   const excludedMatches = [];
-  for (const change of inWindow2) {
-    let found = null;
-    for (const sha of change.shas) {
-      found = findFix(settings.fix, sha, [messages.get(sha) ?? ""]);
-      if (found !== null) break;
-    }
-    fixOf.set(change.id, found);
+  const reviewFixOf = /* @__PURE__ */ new Map();
+  const landed = groupByLanding(inWindow2, landings);
+  for (const { landing } of landed) {
+    const found = findFix(settings.fix, landing.id, [landing.text]);
+    fixOf.set(landing.id, found);
     if (found === null) {
-      for (const sha of change.shas) {
-        const excluded = findExcludedFix(settings.fix, sha, [messages.get(sha) ?? ""]);
-        if (excluded !== null) {
-          excludedMatches.push(excluded);
-          break;
-        }
-      }
+      const excluded = findExcludedFix(settings.fix, landing.id, [landing.text]);
+      if (excluded !== null) excludedMatches.push(excluded);
+    }
+    for (const { sha, message } of landing.branch) {
+      const review = findFix(settings.fix, sha, [message]);
+      if (review !== null) reviewFixOf.set(sha, review);
     }
   }
-  const convention = checkFixConvention(inWindow2.length, [...fixOf.values()].filter((found) => found !== null).length);
+  const convention = checkFixConvention(landed.map(({ landing }) => landing.text), [...fixOf.values()].filter((found) => found !== null).length);
   const selected = pathSelector(request.paths);
   const analysable = (path) => adapterForPath(path) !== void 0 && !settings.isExcluded(path) && (settings.analyseTests || !settings.isTest(path));
   const sourceFiles = (change) => change.files.filter((file) => selected(file.fileId) && analysable(file.path));
@@ -18362,12 +18452,14 @@ async function measureFixes(root, settings, exclude, current, request) {
   for (const change of analysed) {
     const fileIds2 = new Set(sourceFiles(change).map((file) => file.fileId));
     for (const sha of change.shas) {
+      const landing = landingBySha.get(sha);
+      if (landing === void 0) continue;
       for (const file of commitBySha.get(sha)?.changes ?? []) {
         if (file.status === "D" || file.binary || file.blob === null || !fileIds2.has(file.fileId)) continue;
         const diff = diffs.get(sha)?.get(file.path);
         const added = file.status === "A" || diff?.added === true;
         if (!added && (diff === void 0 || diff.ranges.length === 0)) continue;
-        touches.push({ changeId: change.id, fileId: file.fileId, path: file.path, blob: file.blob, added, ranges: diff?.ranges ?? [] });
+        touches.push({ changeId: landing.id, sha, fileId: file.fileId, path: file.path, blob: file.blob, added, ranges: diff?.ranges ?? [] });
       }
     }
   }
@@ -18436,12 +18528,12 @@ async function measureFixes(root, settings, exclude, current, request) {
       if (unmatched.length > 0) retained.set(key, { record, unmatched });
       for (const touch of pairTouches) {
         if (touch.added) {
-          for (const unit of record.units) unitTouches.push({ key, unitId: unit.id, changeId: touch.changeId, fix: false });
+          for (const unit of record.units) unitTouches.push({ key, unitId: unit.id, changeId: touch.changeId, sha: touch.sha, fix: false, review: false });
           continue;
         }
-        const fix = fixOf.get(touch.changeId) !== null;
+        const fix = (fixOf.get(touch.changeId) ?? null) !== null;
         const hit = touchedUnits(record.units, touch.ranges);
-        for (const unitId2 of hit.units) unitTouches.push({ key, unitId: unitId2, changeId: touch.changeId, fix });
+        for (const unitId2 of hit.units) unitTouches.push({ key, unitId: unitId2, changeId: touch.changeId, sha: touch.sha, fix, review: reviewFixOf.has(touch.sha) });
         if (hit.outsideUnits) outsideTouches.push({ fileId, changeId: touch.changeId, fix });
       }
     }
@@ -18458,18 +18550,20 @@ async function measureFixes(root, settings, exclude, current, request) {
   const aggregates = /* @__PURE__ */ new Map();
   for (const touch of unitTouches) {
     const key = mapping.get(touch.key)?.get(touch.unitId) ?? `d:${touch.unitId}`;
-    const entry = aggregates.get(key) ?? { changes: /* @__PURE__ */ new Set(), fixes: /* @__PURE__ */ new Set(), ids: /* @__PURE__ */ new Set() };
+    const entry = aggregates.get(key) ?? { changes: /* @__PURE__ */ new Set(), fixes: /* @__PURE__ */ new Set(), review: /* @__PURE__ */ new Set(), ids: /* @__PURE__ */ new Set() };
     aggregates.set(key, entry);
     entry.changes.add(touch.changeId);
     if (touch.fix) entry.fixes.add(touch.changeId);
+    if (touch.review) entry.review.add(touch.sha);
     entry.ids.add(touch.unitId);
   }
-  const changeById = new Map(analysed.map((change) => [change.id, change]));
   const build = (key, entry) => {
     const id = key.slice(2);
-    const newestFirst = [...entry.fixes].sort((a, b) => changeById.get(b).committerDate - changeById.get(a).committerDate || utf8(a, b));
+    const newestFirst = [...entry.fixes].sort((a, b) => landedById.get(b).time - landedById.get(a).time || utf8(a, b));
     const kept = fixEvidence(newestFirst.map((changeId) => fixOf.get(changeId)), request.evidence);
-    const dateOf = new Map(newestFirst.map((changeId) => [fixOf.get(changeId).id, changeById.get(changeId).committerDate]));
+    const dateOf = new Map(newestFirst.map((changeId) => [fixOf.get(changeId).id, landedById.get(changeId).time]));
+    const reviewNewest = [...entry.review].sort((a, b) => commitBySha.get(b).committerDate - commitBySha.get(a).committerDate || utf8(a, b));
+    const reviewKept = fixEvidence(reviewNewest.map((sha) => reviewFixOf.get(sha)), request.evidence);
     const unit = key.startsWith("c:") ? currentUnits.get(id) : void 0;
     return {
       id,
@@ -18480,6 +18574,9 @@ async function measureFixes(root, settings, exclude, current, request) {
       fixShare: entry.changes.size === 0 ? null : round3(entry.fixes.size / entry.changes.size),
       evidence: kept.commits.map((match) => ({ sha: match.id, date: day(dateOf.get(match.id)), subject: match.subject, pattern: match.pattern, matchedIn: match.matchedIn })),
       evidenceOmitted: kept.omitted,
+      reviewFixes: entry.review.size,
+      reviewEvidence: reviewKept.commits.map((match) => ({ sha: match.id, date: day(commitBySha.get(match.id).committerDate), subject: match.subject, pattern: match.pattern, matchedIn: match.matchedIn })),
+      reviewEvidenceOmitted: reviewKept.omitted,
       earlierIds: [...entry.ids].filter((earlier) => earlier !== id).sort(utf8)
     };
   };
@@ -18716,7 +18813,8 @@ function fixFigures(fixes) {
   return {
     fixCommits: fixes?.fixCommits ?? 0,
     unitRevisions: fixes?.revisions ?? 0,
-    fixShare: fixes?.fixShare ?? null
+    fixShare: fixes?.fixShare ?? null,
+    reviewFixes: fixes?.reviewFixes ?? 0
   };
 }
 var LOW_EVIDENCE = "low evidence";
@@ -18735,6 +18833,8 @@ function fixRow(fixes, minRevisions, isTest) {
     labels: low ? [LOW_EVIDENCE] : [],
     evidence: fixes.evidence,
     evidenceOmitted: fixes.evidenceOmitted,
+    reviewEvidence: fixes.reviewEvidence,
+    reviewEvidenceOmitted: fixes.reviewEvidenceOmitted,
     earlierIds: fixes.earlierIds
   };
 }
@@ -18744,7 +18844,7 @@ function fixHeader(stats, request, settings) {
     window: { months: stats.window.months, since: iso(stats.window.since), until: iso(stats.window.until) },
     shallow: stats.shallow,
     fixConvention: stats.convention,
-    fixesExcluded: { ...stats.excluded, excludePatterns: "history.fixExcludePatterns", note: "Changes that a fix pattern matched and an exclude pattern removed because the commit has a non-fix Conventional Commits type, the fix target is typos, spelling, lint or formatting, or it follows up review comments. They are not counted as fixes." },
+    fixesExcluded: { ...stats.excluded, excludePatterns: "history.fixExcludePatterns", note: "Landed changes that a fix pattern matched and an exclude pattern removed because the change has a non-fix Conventional Commits type or the fix target is typos, spelling, lint or formatting. They are not counted as fixes." },
     lowEvidence: { minRevisions: stats.minRevisions, rule: `A function with fewer than ${stats.minRevisions} revisions in the analysed window is labelled "${LOW_EVIDENCE}" and sorts after the others with the same fix count.` },
     commits: { ...stats.commits, maxCommits: request.maxCommits },
     files: stats.files,
@@ -18783,7 +18883,7 @@ function fixNotices(stats, request) {
   ];
   if (stats.convention.note !== null) notices.unshift(stats.convention.note.replace(/\.$/, ""));
   if (stats.excluded.fixes > 0) {
-    notices.push(`${stats.excluded.fixes} changes matched a fix pattern and were left out because the commit has a non-fix Conventional Commits type, or is about typos, spelling, lint or formatting, or follows up review comments (history.fixExcludePatterns): ${stats.excluded.byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`);
+    notices.push(`${stats.excluded.fixes} changes matched a fix pattern and were left out because the commit has a non-fix Conventional Commits type, or is about typos, spelling, lint or formatting (history.fixExcludePatterns): ${stats.excluded.byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`);
   }
   if (stats.shallow) notices.push("The clone is shallow, so history before its boundary is missing");
   return notices;
@@ -18956,17 +19056,19 @@ var ruleDescriptions = {
   fixes: {
     summary: "Fix commits per function: which functions the bug fixes of the history window changed",
     explanation: [
-      "`complexity fixes` takes each logical change of the history window (history.windowMonths) that touched a source file, and maps the lines it",
+      "`complexity fixes` takes each change that landed on the main line in the history window (history.windowMonths) and touched a source file, and maps the lines it",
       "changed in the new revision (git diff -U0 against the first parent) onto the functions and methods that contain them. A function",
       "nested in another owns its own lines. A deletion counts for the function that holds the lines either side of it. Each function is then",
       "followed forward to the current revision with the same matcher as `check` (complexity.moveSimilarity), so a renamed or moved function keeps",
       "its history, and a file renamed in git keeps the history of its functions. A function that no longer exists is listed apart, with its count.",
-      "A change is a fix when a commit message matches the shared definition: history.fixPatterns, fixExcludePatterns, revertPatterns and fixMatchBody. A change that is",
-      "a revert is not a fix. Each row lists the commits that matched, with the pattern, newest first, up to --evidence.",
-      "fixCommits is the changes that were fixes, unitRevisions is every change that touched the function, and fixShare is the first over the second.",
+      "A landed change is a merge with the commits it brought in, or one commit on the first-parent line, and it is a fix when its own text matches the shared definition:",
+      "the pull request title of a merge, the message of a squash or direct commit, against history.fixPatterns, fixExcludePatterns, revertPatterns and fixMatchBody. A change that is",
+      "a revert is not a fix. Each row lists the changes that matched, with the pattern, newest first, up to --evidence.",
+      "A fix made on a branch before it merged was caught in review and is not a regression: reviewFixes counts those commits that changed the function, with reviewEvidence, and they are never in fixCommits.",
+      "fixCommits is the landed changes that were fixes, unitRevisions is every landed change that touched the function, and fixShare is the first over the second.",
       "Rows are sorted by fixCommits, then functions with at least fixes.minRevisions revisions before those labelled low evidence, then fixShare. A function in a commit that created its file counts as one revision and never as a fix.",
       "A fix that changed only lines outside every function counts against the file, not a function, and is listed per file in the output.",
-      "Read the header first. fixConvention says whether the repository's messages follow a convention these patterns can use: when it says they",
+      "Read the header first. fixConvention says whether the landed changes' titles use a recognisable fix form (Conventional Commits types, a leading Fix or Fixes, issue references), with the form counts and the share of fixes beside it: when it says they",
       "probably do not, the counts are of the commits the patterns happened to match. The header also says how many commits were analysed and how many",
       "were skipped, by cause. By default the whole window is analysed. --max-commits N analyses the newest N commits first and skips the rest, and says so first. It costs a parse of every historical",
       "revision of the files touched, which is cached by blob, so a rerun parses nothing it has parsed before.",
@@ -18991,7 +19093,7 @@ var command = {
     "no-cache": noCacheHelp,
     by: `what rows sort on, highest first, with ties broken by cognitive, nesting, cyclomatic, length and then path: ${rankByValues.join(", ")}. cognitive is the default; max-percentile is the highest metric percentile of any selected metric; change-weighted is that percentile times how often the function's file changed in the window (a hotspot order); the other names sort by that metric's value`,
     "include-tests": includeTestsHelp,
-    "with-fixes": "add fixCommits, unitRevisions and fixShare per function from the history window (see `complexity fixes`); costs a parse of the historical revisions",
+    "with-fixes": "add fixCommits, unitRevisions, fixShare and reviewFixes per function from the history window (see `complexity fixes`); costs a parse of the historical revisions",
     ...fixOptionHelp
   },
   run(context) {
@@ -19090,7 +19192,7 @@ async function compute(context, paths) {
       "changeWeight",
       "dominant",
       ...metricIds.filter((metric) => selected.includes(metric)),
-      ...fixes === void 0 ? [] : ["fixCommits", "unitRevisions", "fixShare"],
+      ...fixes === void 0 ? [] : ["fixCommits", "unitRevisions", "fixShare", "reviewFixes"],
       "labels"
     ]
   };
@@ -19661,7 +19763,7 @@ var command7 = {
       inputs: { tree: current.kind, paths, maxCommits: request.maxCommits, evidence: request.evidence, includeTests: wantsTests(context) },
       extra: { ...fixHeader(stats, request, settings), ...tests === null ? {} : { tests } },
       results: listed,
-      columns: ["path", "unit", "role", "fixCommits", "unitRevisions", "fixShare", "cognitive", "labels"],
+      columns: ["path", "unit", "role", "fixCommits", "unitRevisions", "fixShare", "reviewFixes", "cognitive", "labels"],
       notices: [
         ...tests === null || tests.count === 0 ? [] : [`${tests.count} test functions with fixes are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`],
         ...fixNotices(stats, request)
@@ -20922,13 +21024,7 @@ function stampOf(input) {
 // packages/complexity/src/outcome.ts
 var round32 = (value) => Math.round(value * 1e3) / 1e3;
 var mean = (values) => values.length === 0 ? null : round32(values.reduce((sum, value) => sum + value, 0) / values.length);
-function fixOfChange(change, fix, messageOf) {
-  for (const sha of change.shas) {
-    const found = findFix(fix, sha, [messageOf(sha)]);
-    if (found !== null) return found;
-  }
-  return null;
-}
+var fixOfLanding = (landing, fix) => findFix(fix, landing.id, [landing.text]);
 var day2 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 var iso2 = (seconds) => new Date(seconds * 1e3).toISOString();
 async function resolveRevision2(root, rev) {
@@ -20956,14 +21052,14 @@ async function changedFiles(root, earlier, later) {
   }
   return files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
-function changeFigures(changes, members2, fix, messageOf) {
+function changeFigures(changes, members2, fix, landings) {
   const churn = [];
   const fixes = [];
-  for (const change of changes) {
-    const touched = change.files.filter((file) => members2.has(file.path) || members2.has(file.fileId));
+  for (const { landing, changes: inLanding } of groupByLanding(changes, landings)) {
+    const touched = inLanding.flatMap((change) => change.files.filter((file) => members2.has(file.path) || members2.has(file.fileId)));
     if (touched.length === 0) continue;
     churn.push(touched.reduce((sum, file) => sum + (file.added ?? 0) + (file.deleted ?? 0), 0));
-    const found = fixOfChange(change, fix, messageOf);
+    const found = fixOfLanding(landing, fix);
     if (found !== null) fixes.push(found);
   }
   return {
@@ -21028,8 +21124,7 @@ async function measureOutcome(root, settings, exclude, options) {
   const headDate = history.view.headDate;
   const fullEnd = monthsBefore(date, -settings.windowMonths);
   const anchor = Math.min(fullEnd, headDate);
-  const messages = new Map(history.view.commits.map((commit) => [commit.sha, commit.message]));
-  const messageOf = (sha) => messages.get(sha) ?? "";
+  const landings = await readLandings(root, history.view.headSha);
   const eligible = history.filtered.changes.filter((change) => !change.shas.some((sha) => series.has(sha)));
   const beforeChanges = eligible.filter((change) => change.committerDate >= monthsBefore(date, settings.windowMonths) && change.committerDate < date);
   const afterChanges = eligible.filter((change) => change.committerDate > date && change.committerDate <= anchor);
@@ -21053,9 +21148,10 @@ async function measureOutcome(root, settings, exclude, options) {
     scores
   );
   const controlSet = new Set(control);
-  const figures = (changes, members2) => changeFigures(changes, members2, settings.fix, messageOf);
+  const figures = (changes, members2) => changeFigures(changes, members2, settings.fix, landings);
   const inWindows = [...beforeChanges, ...afterChanges];
-  const fixConvention = checkFixConvention(inWindows.length, inWindows.filter((change) => fixOfChange(change, settings.fix, messageOf) !== null).length);
+  const landedInWindows = groupByLanding(inWindows, landings).map(({ landing }) => landing);
+  const fixConvention = checkFixConvention(landedInWindows.map((landing) => landing.text), landedInWindows.filter((landing) => fixOfLanding(landing, settings.fix) !== null).length);
   const changeCost = {
     actedOn: { before: figures(beforeChanges, actedEarlier), after: figures(afterChanges, actedLater) },
     comparison: { before: figures(beforeChanges, controlSet), after: figures(afterChanges, controlSet) }

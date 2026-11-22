@@ -184,14 +184,13 @@ var historyDefaults = {
    * commit is not a defect fix, so it is counted as excluded with the pattern that excluded it and not as a fix. The first pattern
    * is the Conventional Commits rule: when a subject has a type prefix, the type decides, so chore, ci, test, docs, style, build,
    * refactor and perf are not fixes even when "fix" appears later in the subject. The others name fix targets that are not defects
-   * (typos, spelling, lint and formatting, within three words after the fix word) and review-comment follow-ups ("address
-   * comments", "review comments", "comment nits", "review feedback", "review fixes"). Test and CI repairs are fixes. A guideline
+   * (typos, spelling, lint and formatting, within three words after the fix word). Test and CI repairs are fixes. Follow-ups to review
+   * comments are not excluded: a fix made on a branch before it merged is counted apart, as a fix during review. A guideline
    * list, a judgement call not calibrated on a corpus.
    */
   fixExcludePatterns: [
     "^(?:chore|ci|test|tests|docs|style|build|refactor|perf)(?:\\([^)]*\\))?!?:",
-    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b",
-    "\\b(?:address(?:es|ed|ing)?\\s+(?:the\\s+)?(?:review\\s+)?comments?|review\\s+(?:comments?|feedback|fixes)|comment\\s+nits?)\\b"
+    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b"
   ],
   /** Regular expressions matched against a commit subject that mark a revert. The "This reverts commit" line git writes in the body always marks one. A revert is not counted as a fix. */
   revertPatterns: ["^revert\\b"],
@@ -1763,7 +1762,7 @@ var noCacheOption = { "no-cache": { type: "boolean" } };
 var noCacheHelp = "recompute instead of reading the stored result, and store the new one";
 var wantsNoCache = (context) => context.values["no-cache"] === true;
 var ENVELOPE = /* @__PURE__ */ new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta", "dropped", "omittedByBuiltinExcludes"]);
-var same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+var same = (a, b) => canonical(a ?? null) === canonical(b ?? null);
 function readStored(context, stored) {
   const file = reportPath(context.repo.root, stored.identity.tool, stored.command, variantOf(stored.stated));
   if (!existsSync5(file)) return void 0;
@@ -2116,27 +2115,31 @@ function fixEvidence(matches, limit = FIX_EVIDENCE_LIMIT) {
     omitted: Math.max(0, matches.length - limit)
   };
 }
-var FIX_CONVENTION_GUIDELINES = {
-  minShare: 0.02,
-  maxShare: 0.6,
-  minChanges: 30,
-  provenance: "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
-};
-var percent = (share3) => `${Math.round(share3 * 1e3) / 10}%`;
-function checkFixConvention(logicalChanges, fixes) {
-  const { minShare, maxShare, minChanges } = FIX_CONVENTION_GUIDELINES;
-  const share3 = logicalChanges === 0 ? null : Math.round(fixes / logicalChanges * 1e3) / 1e3;
-  const reasons = [];
-  if (logicalChanges < minChanges) reasons.push(`there are ${logicalChanges} logical changes in the window, fewer than ${minChanges}`);
-  if (share3 !== null && share3 < minShare) reasons.push(`fixes are ${percent(share3)} of logical changes, under ${percent(minShare)}`);
-  if (share3 !== null && share3 > maxShare) reasons.push(`fixes are ${percent(share3)} of logical changes, over ${percent(maxShare)}`);
+var CONVENTIONAL_TYPE = /^(?:feat|fix|chore|ci|test|tests|docs|style|build|refactor|perf|revert)(?:\([^)]*\))?!?:/i;
+var FIX_VERB = /^(?:[a-z][a-z0-9]*-\d+:\s*)?(?:fix|fixes|fixed|fixing)\b/i;
+var ISSUE_REFERENCE = /\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\s+(?:#\d+|[a-z][a-z0-9]*-\d+)/i;
+function fixForms(titles) {
+  const forms = { conventionalCommits: 0, fixVerb: 0, issueReference: 0 };
+  for (const title of titles) {
+    const subject = subjectOf(title);
+    if (CONVENTIONAL_TYPE.test(subject)) forms.conventionalCommits++;
+    if (FIX_VERB.test(subject)) forms.fixVerb++;
+    if (ISSUE_REFERENCE.test(subject)) forms.issueReference++;
+  }
+  return forms;
+}
+function checkFixConvention(titles, fixes) {
+  const landedChanges = titles.length;
+  const forms = fixForms(titles);
+  const share3 = landedChanges === 0 ? null : Math.round(fixes / landedChanges * 1e3) / 1e3;
+  const follows = forms.conventionalCommits + forms.fixVerb + forms.issueReference > 0;
   return {
-    logicalChanges,
+    landedChanges,
     fixes,
     share: share3,
-    followsConvention: reasons.length === 0,
-    note: reasons.length === 0 ? null : `The commit messages probably do not follow a convention this can use: ${reasons.join("; ")}.`,
-    guidelines: { minShare, maxShare, minChanges, provenance: FIX_CONVENTION_GUIDELINES.provenance }
+    forms,
+    followsConvention: follows,
+    note: follows ? null : `The commit messages probably do not follow a convention this can use: none of the ${landedChanges} landed changes uses a recognisable fix form (a Conventional Commits type, a leading Fix or Fixes, or an issue reference).`
   };
 }
 
@@ -2950,6 +2953,8 @@ function analysisCommand(name17, spec) {
     summary: spec.summary,
     options: { ...ownsWindow(spec) ? {} : windowOptions, ...spec.options, ...sharedOptions, ...spec.cache || spec.fromCache ? noCacheOption : {} },
     optionHelp: spec.cache || spec.fromCache ? { "no-cache": noCacheHelp } : void 0,
+    ...spec.subcommands === void 0 ? {} : { subcommands: spec.subcommands },
+    ...spec.hiddenOptions === void 0 ? {} : { hiddenOptions: spec.hiddenOptions },
     async run(context) {
       const window = ownsWindow(spec) ? spec.window?.(context) : statedWindow(context, readSettings(context.config).windowMonths);
       const reuse = !wantsNoCache(context);
@@ -4243,7 +4248,7 @@ async function loadKnowledge(context, history, settings, options) {
 }
 
 // packages/cochange/src/identities/measure.ts
-var percent2 = (part, whole) => whole === 0 ? 0 : Math.round(part / whole * 1e3) / 10;
+var percent = (part, whole) => whole === 0 ? 0 : Math.round(part / whole * 1e3) / 10;
 function share(byNode, analysis) {
   let total = 0;
   let nonPerson = 0;
@@ -4258,7 +4263,7 @@ function share(byNode, analysis) {
     }
   }
   const people = total - nonPerson;
-  return { total, nonPerson, people, unmapped, unmappedStrong, mappedShare: people === 0 ? 100 : Math.round((100 - percent2(unmapped, people)) * 10) / 10 };
+  return { total, nonPerson, people, unmapped, unmappedStrong, mappedShare: people === 0 ? 100 : Math.round((100 - percent(unmapped, people)) * 10) / 10 };
 }
 async function measureMapping(context, analysis, options) {
   const { history, facts, nodeOfRaw } = analysis;
@@ -4290,7 +4295,7 @@ async function measureMapping(context, analysis, options) {
       headLines,
       windowCommits: share(windowCommitsByNode, analysis),
       unmappedShareGuideline: guideline,
-      needsIdentityReview: headLines.people > 0 && percent2(headLines.unmapped, headLines.people) > guideline
+      needsIdentityReview: headLines.people > 0 && percent(headLines.unmapped, headLines.people) > guideline
     },
     linesByNode,
     windowCommitsByNode
@@ -4312,8 +4317,8 @@ async function mappedShareNotices(context, settings) {
 }
 function strongClause(lines) {
   if (lines.unmappedStrong === 0) return "";
-  const percent3 = Math.round(lines.unmappedStrong / lines.people * 1e3) / 10;
-  return `; ${percent3}% of the lines held by people are in strong proposals, which the identities skill applies without asking`;
+  const percent2 = Math.round(lines.unmappedStrong / lines.people * 1e3) / 10;
+  return `; ${percent2}% of the lines held by people are in strong proposals, which the identities skill applies without asking`;
 }
 function turnoverNotices(settings, turnover, usesHistory) {
   const notices = [];
@@ -4803,6 +4808,94 @@ function shareStrictlyAbove(values, value) {
   return values.filter((other) => other > value).length / values.length;
 }
 
+// packages/history/src/landings.ts
+var firstContent = (lines, skip) => lines.findIndex((line) => line.trim() !== "" && !skip.test(line.trim()));
+function landedText(message) {
+  const normalised = message.replace(/\r\n/g, "\n").trim();
+  const lines = normalised.split("\n");
+  const subject = lines[0].trim();
+  const body = lines.slice(1);
+  const bodyTitle = (skip) => {
+    const at = firstContent(body, skip);
+    if (at === -1) return { title: null, text: normalised };
+    return { title: body[at].trim(), text: [body[at].trim(), ...body.slice(at + 1)].join("\n").trim() };
+  };
+  const pull = /^Merge pull request #\d+\b(.*)$/i.exec(subject);
+  if (pull) {
+    const inSubject = /^(?:\s*:\s*|\s+[-–—]\s+)(\S.*)$/.exec(pull[1]);
+    if (inSubject) return { title: inSubject[1].trim(), text: [inSubject[1].trim(), ...body].join("\n").trim() };
+    return bodyTitle(/^$/);
+  }
+  if (/^Merge branch '.+' into '.+'/i.test(subject)) return bodyTitle(/^See merge request\b/i);
+  return { title: null, text: normalised };
+}
+async function readGraph(root, tip) {
+  const out = await runGit(root, ["log", "--format=%H%x1f%P%x1f%ct%x1f%B%x1e", tip]);
+  const graph = /* @__PURE__ */ new Map();
+  for (const record of out.split("")) {
+    if (record.trim() === "") continue;
+    const [sha, parents, time, ...message] = record.replace(/^\n/, "").split("");
+    graph.set(sha, { sha, parents: parents === "" ? [] : parents.split(" "), time: Number(time), message: message.join("").trim() });
+  }
+  return graph;
+}
+async function readLandings(root, tip) {
+  const graph = await readGraph(root, tip);
+  const head = (await runGit(root, ["rev-parse", "--verify", `${tip}^{commit}`])).trim();
+  const line = [];
+  for (let at = graph.get(head); at !== void 0; at = at.parents[0] === void 0 ? void 0 : graph.get(at.parents[0])) line.push(at);
+  line.reverse();
+  const assigned = new Set(line.map((c) => c.sha));
+  const landings = [];
+  for (const entry of line) {
+    const { title, text } = landedText(entry.message);
+    if (entry.parents.length < 2) {
+      landings.push({ id: entry.sha, time: entry.time, how: "direct", title: title ?? entry.message.split("\n", 1)[0].trim(), text, members: [entry.sha], branch: [] });
+      continue;
+    }
+    const stack = entry.parents.slice(1);
+    const found = [];
+    while (stack.length > 0) {
+      const sha = stack.pop();
+      if (assigned.has(sha)) continue;
+      assigned.add(sha);
+      const commit = graph.get(sha);
+      if (!commit) continue;
+      found.push(commit);
+      stack.push(...commit.parents);
+    }
+    found.sort((a, b) => a.time - b.time || (a.sha < b.sha ? -1 : 1));
+    const branch = found.filter((commit) => commit.parents.length < 2).map((commit) => ({ sha: commit.sha, message: commit.message }));
+    landings.push({
+      id: entry.sha,
+      time: entry.time,
+      how: "merge",
+      title: title ?? entry.message.split("\n", 1)[0].trim(),
+      text,
+      members: branch.map((commit) => commit.sha),
+      branch
+    });
+  }
+  return landings;
+}
+function landingOf(landings) {
+  const of = /* @__PURE__ */ new Map();
+  for (const landing of landings) for (const sha of landing.members) of.set(sha, landing);
+  return of;
+}
+function groupByLanding(changes, landings) {
+  const of = landingOf(landings);
+  const groups = /* @__PURE__ */ new Map();
+  for (const change2 of changes) {
+    for (const landing of new Set(change2.shas.flatMap((sha) => of.get(sha) ?? []))) {
+      const list = groups.get(landing);
+      if (list) list.push(change2);
+      else groups.set(landing, [change2]);
+    }
+  }
+  return landings.flatMap((landing) => groups.has(landing) ? [{ landing, changes: groups.get(landing) }] : []);
+}
+
 // packages/lexical/src/profile.ts
 var doubleQuote = {
   kind: "delimited",
@@ -5278,65 +5371,91 @@ async function loadUnits(context, history, by = readBy(context), omitTests = fal
 }
 
 // packages/cochange/src/fix-statistics.ts
+var empty = () => ({ landedChanges: 0, fixes: 0, reverts: 0, fixShare: null, recentFixes: 0, lastFix: null, commits: [], reviewFixes: 0, reviewCommits: [] });
 function statisticsOf(reading, unit) {
-  const found = reading.statistics.get(unit.name) ?? { fixes: 0, reverts: 0, fixShare: null, recentFixes: 0, lastFix: null, commits: [] };
-  return { ...found, fixShare: unit.revisions === 0 ? null : Math.round(found.fixes / unit.revisions * 1e3) / 1e3 };
+  return reading.statistics.get(unit.name) ?? empty();
 }
-function readFixes(history, units, classifier) {
+async function readFixes(history, units, classifier, root) {
+  const landings = await readLandings(root, history.view.headSha);
   const commits = new Map(history.view.commits.map((commit) => [commit.sha, commit]));
   const unitOf = /* @__PURE__ */ new Map();
   for (const unit of units) for (const member of unit.members) unitOf.set(member, unit.name);
   const recentSince = monthsBefore(history.view.headDate, history.settings.recentMonths);
   const found = /* @__PURE__ */ new Map();
-  const reverts = /* @__PURE__ */ new Map();
+  const statsOf = (name17) => {
+    let stats = found.get(name17);
+    if (stats === void 0) found.set(name17, stats = empty());
+    return stats;
+  };
   let fixChanges = 0;
+  const titles = [];
   const excludedMatches = [];
-  for (const change2 of history.filtered.changes) {
-    const classed = classify(change2.shas, change2.committerDate, commits, classifier);
+  const reviewMatches = [];
+  for (const { landing, changes } of groupByLanding(history.filtered.changes, landings)) {
+    const classed = classify(landing, classifier);
+    titles.push(landing.text);
     if (classed.fix) fixChanges++;
     else if (classed.excluded) excludedMatches.push(classed.excluded);
+    const review = reviewFixesOf(landing, classifier, (sha) => commits.get(sha)?.committerDate ?? landing.time);
     const touched = /* @__PURE__ */ new Set();
-    for (const file of change2.files) {
-      const name17 = unitOf.get(file.fileId);
-      if (name17 !== void 0) touched.add(name17);
+    const reviewTouched = /* @__PURE__ */ new Map();
+    const reviewSeen = /* @__PURE__ */ new Set();
+    for (const change2 of changes) {
+      const names = /* @__PURE__ */ new Set();
+      for (const file of change2.files) {
+        const name17 = unitOf.get(file.fileId);
+        if (name17 !== void 0) names.add(name17);
+      }
+      for (const name17 of names) touched.add(name17);
+      for (const sha of change2.shas) {
+        if (!review.has(sha)) continue;
+        reviewSeen.add(sha);
+        for (const name17 of names) reviewTouched.set(name17, (reviewTouched.get(name17) ?? /* @__PURE__ */ new Set()).add(sha));
+      }
     }
+    for (const sha of reviewSeen) reviewMatches.push(review.get(sha).commit);
     for (const name17 of touched) {
-      if (classed.fix) found.set(name17, [...found.get(name17) ?? [], { commit: classed.fix, time: change2.committerDate }]);
-      if (classed.revert) reverts.set(name17, (reverts.get(name17) ?? 0) + 1);
+      const stats = statsOf(name17);
+      stats.landedChanges++;
+      if (classed.fix) {
+        stats.fixes++;
+        stats.commits.push(classed.fix);
+        if (landing.time >= recentSince) stats.recentFixes++;
+      }
+      if (classed.revert) stats.reverts++;
+    }
+    for (const [name17, shas] of reviewTouched) {
+      const stats = statsOf(name17);
+      for (const sha of shas) stats.reviewCommits.push(review.get(sha).commit);
     }
   }
-  const statistics = /* @__PURE__ */ new Map();
-  for (const name17 of /* @__PURE__ */ new Set([...found.keys(), ...reverts.keys()])) {
-    const newestFirst = (found.get(name17) ?? []).map((entry, index2) => ({ ...entry, index: index2 })).sort((a, b) => b.time - a.time || b.index - a.index);
-    statistics.set(name17, {
-      fixes: newestFirst.length,
-      reverts: reverts.get(name17) ?? 0,
-      fixShare: null,
-      recentFixes: newestFirst.filter((entry) => entry.time >= recentSince).length,
-      lastFix: newestFirst[0]?.commit.date ?? null,
-      commits: newestFirst.map((entry) => entry.commit)
-    });
+  for (const stats of found.values()) {
+    stats.commits.reverse();
+    stats.lastFix = stats.commits[0]?.date ?? null;
+    stats.fixShare = stats.landedChanges === 0 ? null : Math.round(stats.fixes / stats.landedChanges * 1e3) / 1e3;
+    stats.reviewCommits.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+    stats.reviewFixes = stats.reviewCommits.length;
   }
-  const excluded = fixEvidence(excludedMatches.map((commit) => ({ id: commit.sha, subject: commit.subject, pattern: commit.pattern, matchedIn: commit.matchedIn })));
-  return { statistics, convention: checkFixConvention(history.filtered.changes.length, fixChanges), excluded };
+  const evidence = (matches) => fixEvidence(matches.map((commit) => ({ id: commit.sha, subject: commit.subject, pattern: commit.pattern, matchedIn: commit.matchedIn })));
+  return { statistics: found, convention: checkFixConvention(titles, fixChanges), excluded: evidence(excludedMatches), reviewFixes: evidence(reviewMatches) };
 }
-function classify(shas, committerDate, commits, classifier) {
-  let fix = null;
-  let excluded = null;
-  let revert = false;
-  for (const sha of shas) {
-    const message = commits.get(sha)?.message;
-    if (message === void 0) continue;
+function classify(landing, classifier) {
+  const kind = classifier.classify(landing.text);
+  const at = (matched) => ({ sha: landing.id, date: isoDate(landing.time), subject: landing.title, pattern: matched.pattern, matchedIn: matched.matchedIn });
+  return {
+    fix: kind.kind === "fix" ? at(kind) : null,
+    excluded: kind.kind === "excluded" ? at(kind) : null,
+    revert: kind.kind === "revert"
+  };
+}
+function reviewFixesOf(landing, classifier, timeOf) {
+  const found = /* @__PURE__ */ new Map();
+  for (const { sha, message } of landing.branch) {
     const kind = classifier.classify(message);
-    if (kind.kind === "revert") revert = true;
-    if (kind.kind === "fix" && fix === null) {
-      fix = { sha, date: isoDate(committerDate), subject: subjectOf(message), pattern: kind.pattern, matchedIn: kind.matchedIn };
-    }
-    if (kind.kind === "excluded" && excluded === null) {
-      excluded = { sha, date: isoDate(committerDate), subject: subjectOf(message), pattern: kind.pattern, matchedIn: kind.matchedIn };
-    }
+    if (kind.kind !== "fix") continue;
+    found.set(sha, { commit: { sha, date: isoDate(timeOf(sha)), subject: subjectOf(message), pattern: kind.pattern, matchedIn: kind.matchedIn } });
   }
-  return { fix, excluded: fix === null ? excluded : null, revert };
+  return found;
 }
 
 // packages/cochange/src/complexity-source.ts
@@ -6159,11 +6278,12 @@ function siblingTestOf(path, tree) {
 }
 
 // packages/cochange/src/hotspot-ranking.ts
+var REVIEW_EVIDENCE = 3;
 async function rankHotspots(context, history, by) {
   const { settings } = history;
   const units = await loadUnits(context, history, by, true);
   const isTest = testClassifier(context.config.effective.testPatterns);
-  const fixReading = readFixes(history, units, readFixClassifier(context.config));
+  const fixReading = await readFixes(history, units, readFixClassifier(context.config), context.repo.root);
   const paths = [...new Set(units.flatMap((u) => [...u.members]))].sort();
   const complexity = await loadComplexity(context, history.view.headSha, paths);
   const unitComplexity = units.map((unit) => {
@@ -6195,8 +6315,11 @@ async function rankHotspots(context, history, by) {
       complexity: unitComplexity[i],
       ageDays: Math.floor((anchor - unit.lastChanged) / SECONDS_PER_DAY2),
       lastChanged: isoDate(unit.lastChanged),
+      landedChanges: fixStats.landedChanges,
       fixes: fixStats.fixes,
       fixShare: fixStats.fixShare,
+      reviewFixes: fixStats.reviewFixes,
+      reviewFixEvidence: { commits: fixStats.reviewCommits.slice(0, REVIEW_EVIDENCE), omitted: Math.max(0, fixStats.reviewFixes - REVIEW_EVIDENCE) },
       recommendation: isHotspot ? "hotspot" : null,
       ...by === "file" ? fileFindings(unit, isHotspot, drifting.get(unit.name) ?? null, settings.minSupport) : {}
     };
@@ -7168,8 +7291,10 @@ async function rankedOutput(context, history) {
       "complexity",
       "ageDays",
       "lastChanged",
+      "landedChanges",
       "fixes",
       "fixShare",
+      "reviewFixes",
       "recommendation",
       ...by === "file" ? ["siblingTest", "findings"] : []
     ],
@@ -7241,7 +7366,7 @@ function briefOutput(context, settings, present, sources, resolve2) {
       frequency,
       recentRevisions: activity?.recentRevisions ?? 0,
       fixes: hotspot?.fixes ?? 0,
-      fixShare: frequency === 0 ? null : Math.round((hotspot?.fixes ?? 0) / frequency * 1e3) / 1e3,
+      fixShare: hotspot === void 0 || hotspot.landedChanges === 0 ? null : Math.round(hotspot.fixes / hotspot.landedChanges * 1e3) / 1e3,
       lastChanged: activity === void 0 ? null : isoDate(activity.lastChanged),
       ageDays: activity === void 0 ? null : Math.floor((anchor - activity.lastChanged) / SECONDS_PER_DAY2),
       hotspotScore: hotspot?.score ?? null,
@@ -7473,19 +7598,22 @@ var rules7 = {
   "fix-count": {
     summary: "How many of the changes to a file or component were fixes, by commit message",
     explanation: [
-      "A logical change is a fix when one of its commits matches history.fixPatterns (default: fix, fixes, fixed or fixing at the start of the subject or after 'to', the whole words bug, bugfix, hotfix and defect, a fix: prefix, a merge of a fix branch),",
-      "and a revert when one matches history.revertPatterns or says 'This reverts commit'. A revert is counted in its own column and is not a fix.",
-      "A change that a fix pattern matched is left out, and counted in fixesExcluded with the pattern that excluded it, when history.fixExcludePatterns matches the subject (default: a non-fix Conventional Commits type such as chore, ci, test or docs, a fix target of typos, spelling, lint or formatting, or a follow-up to review comments).",
-      "Bodies are matched only with history.fixMatchBody. The count is per file or component, once per logical change, over the same window and noise filters as hotspots.",
+      `Fixes are counted per change that landed on the main line (the first-parent line), classified by the change's own text. A squash or direct commit is classified by its message. A merge commit is classified by the pull request title: the line after the blank one in 'Merge pull request #N from owner/branch', the title in 'Merge pull request #N: title', or the title under GitLab's "Merge branch 'x' into 'main'".`,
+      "A landed change is a fix when that text matches history.fixPatterns (default: fix, fixes, fixed or fixing at the start of the subject or after 'to', the whole words bug, bugfix, hotfix and defect, a fix: prefix, a merge of a fix branch),",
+      "and a revert when it matches history.revertPatterns or says 'This reverts commit'. A revert is counted in its own column and is not a fix.",
+      "A change that a fix pattern matched is left out, and counted in fixesExcluded with the pattern that excluded it, when history.fixExcludePatterns matches the subject (default: a non-fix Conventional Commits type such as chore, ci, test or docs, or a fix target of typos, spelling, lint or formatting).",
+      "Bodies are matched only with history.fixMatchBody. The count is per file or component, once per landed change, over the same window and noise filters as hotspots.",
+      "The commits that only a merge's later parents reach belong to the landed change, and a fix made there was caught in review, so it is not a regression. Their fix-like messages are counted apart as reviewFixes, with reviewEvidence, and never in fixes.",
+      "landedChanges is the number of landed changes that touched the file or component, and fixShare is fixes over landedChanges. revisions counts every commit, as hotspots does, so it is not the denominator of fixShare.",
       "",
       "This is a count of commit messages, not of defects. A message such as 'fix the bug report template' matches, and a fix that does not say so does not.",
-      "The output carries the convention check as fixConvention: when fixes are under 2 percent or over 60 percent of logical changes, or there are fewer than 30, the commit messages probably do not follow a convention this can use, and the table prints a Notice.",
+      "The output carries the convention check as fixConvention: it says whether the landed changes' titles use a recognisable fix form (Conventional Commits types, a leading Fix or Fixes, or issue references) and counts each form. The share of fixes is reported beside it and does not decide the verdict. When no form is seen the commit messages probably do not follow a convention this can use, and the table prints a Notice.",
       "Read the evidence commits before relying on a count, and read it with hotspots (change frequency) and complexity (what makes the code hard to change)."
     ].join("\n")
   }
 };
 function excludedNotice(count2, byPattern) {
-  return `${count2} changes matched a fix pattern and were left out because the commit has a non-fix Conventional Commits type, or is about typos, spelling, lint or formatting, or follows up review comments (history.fixExcludePatterns): ${byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`;
+  return `${count2} changes matched a fix pattern and were left out because the commit has a non-fix Conventional Commits type, or is about typos, spelling, lint or formatting (history.fixExcludePatterns): ${byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`;
 }
 function evidenceOption(value) {
   if (value === void 0) return DEFAULT_EVIDENCE;
@@ -7500,7 +7628,7 @@ var command8 = analysisCommand(name9, {
     const by = readBy(context);
     const evidenceLimit = evidenceOption(context.values.evidence);
     const units = await loadUnits(context, history, by);
-    const reading = readFixes(history, units, readFixClassifier(context.config));
+    const reading = await readFixes(history, units, readFixClassifier(context.config), context.repo.root);
     const rows = units.map((unit) => {
       const stats = statisticsOf(reading, unit);
       return {
@@ -7509,19 +7637,22 @@ var command8 = analysisCommand(name9, {
         ...by === "component" ? { files: unit.files } : {},
         fixes: stats.fixes,
         revisions: unit.revisions,
+        landedChanges: stats.landedChanges,
         fixShare: stats.fixShare,
         recentFixes: stats.recentFixes,
         lastFix: stats.lastFix,
         reverts: stats.reverts,
-        evidence: { commits: stats.commits.slice(0, evidenceLimit), omitted: Math.max(0, stats.commits.length - evidenceLimit) }
+        evidence: { commits: stats.commits.slice(0, evidenceLimit), omitted: Math.max(0, stats.commits.length - evidenceLimit) },
+        reviewFixes: stats.reviewFixes,
+        reviewEvidence: { commits: stats.reviewCommits.slice(0, evidenceLimit), omitted: Math.max(0, stats.reviewCommits.length - evidenceLimit) }
       };
     });
     const { convention } = reading;
     return {
       inputs: { by, allFiles: wantsAllFiles(context), evidenceLimit },
       results: rows,
-      columns: ["path", ...by === "component" ? ["files"] : [], "fixes", "revisions", "fixShare", "recentFixes", "lastFix", "reverts", "evidence"],
-      extra: { fixConvention: convention, fixesExcluded: reading.excluded },
+      columns: ["path", ...by === "component" ? ["files"] : [], "fixes", "revisions", "landedChanges", "fixShare", "recentFixes", "lastFix", "reverts", "evidence", "reviewFixes", "reviewEvidence"],
+      extra: { fixConvention: convention, fixesExcluded: reading.excluded, fixesDuringReview: reading.reviewFixes },
       notices: [
         ...convention.note === null ? [] : [convention.note.replace(/\.$/, "")],
         ...reading.excluded.fixes === 0 ? [] : [excludedNotice(reading.excluded.fixes, reading.excluded.byPattern)]
@@ -9485,7 +9616,7 @@ var FACTOR_DOCS = [
     layer: "history",
     banding: "percentile",
     signal: "Share of each touched file's revisions that were fixes",
-    definition: `Over the touched files' revisions in the analysis window, the share made by a change whose subject matches history.fixPatterns (cochange.fixPatterns when set). A revert is not a fix. Each file lists the commits that matched and the pattern that matched, and the patterns also match subjects that are not defects, such as "fix the bug report template", while a fix of typos, spelling, lint or formatting, a follow-up to review comments, and a commit with a non-fix Conventional Commits type are left out by history.fixExcludePatterns. Unavailable when no change in the window matches, since the repository then has no convention to read.`,
+    definition: `Over the touched files' revisions in the analysis window, counted as changes that landed on the main line (a merge with the commits it brought in is one revision), the share made by a landed change whose own title matches history.fixPatterns (cochange.fixPatterns when set): the pull request title of a merge, the subject of a squash or direct commit. A fix made on a branch before it merged was caught in review and does not make the change a fix. A revert is not a fix. Each file lists the commits that matched and the pattern that matched, and the patterns also match subjects that are not defects, such as "fix the bug report template", while a fix of typos, spelling, lint or formatting, and a commit with a non-fix Conventional Commits type are left out by history.fixExcludePatterns. Unavailable when no change in the window matches, since the repository then has no convention to read.`,
     why: "Code that has needed fixing tends to need it again."
   },
   {
@@ -10501,7 +10632,7 @@ function factsOf2(change2) {
     moved: change2.files.filter((file) => file.status === "R").length
   };
 }
-var fixOf = (change2, fix) => findFix(fix, change2.id, change2.messages);
+var fixOf = (change2, fix) => findFix(fix, change2.id, [change2.text]);
 function chronologicalPass(changes, context, options) {
   const state = new HistoryState({ windowSeconds: Math.round(options.windowMonths * SECONDS_PER_MONTH4), maxChangesetSize: options.maxChangesetSize });
   const past = [];
@@ -10521,59 +10652,20 @@ function chronologicalPass(changes, context, options) {
 }
 
 // packages/cochange/src/risk/merged-changes.ts
-async function readGraph(root, tip) {
-  const out = await runGit(root, ["log", "--format=%H%x1f%P%x1f%ct%x1f%B%x1e", tip]);
-  const graph = /* @__PURE__ */ new Map();
-  for (const record of out.split("")) {
-    if (record.trim() === "") continue;
-    const [sha, parents, time, ...message] = record.replace(/^\n/, "").split("");
-    graph.set(sha, { sha, parents: parents === "" ? [] : parents.split(" "), time: Number(time), message: message.join("").trim() });
-  }
-  return graph;
-}
 async function mergedChanges(root, view, changes, tip) {
-  const graph = await readGraph(root, tip);
-  const line = [];
-  for (let at = graph.get(tip); at !== void 0; at = at.parents[0] === void 0 ? void 0 : graph.get(at.parents[0])) {
-    line.push(at);
-  }
-  line.reverse();
+  const landings = await readLandings(root, tip);
   const commits = new Map(view.commits.map((c) => [c.sha, c]));
   const logicalOf = /* @__PURE__ */ new Map();
   for (const change2 of changes) for (const sha of change2.shas) logicalOf.set(sha, change2);
-  const assigned = new Set(line.map((c) => c.sha));
   const result = [];
   let merges = 0;
   let direct = 0;
   let clock = 0;
-  for (const entry of line) {
-    clock = Math.max(clock, entry.time);
-    const members = [];
-    const messages = [entry.message];
-    if (entry.parents.length > 1) {
-      merges++;
-      const stack = entry.parents.slice(1);
-      const found = [];
-      while (stack.length > 0) {
-        const sha = stack.pop();
-        if (assigned.has(sha)) continue;
-        assigned.add(sha);
-        const commit = graph.get(sha);
-        if (!commit) continue;
-        found.push(commit);
-        stack.push(...commit.parents);
-      }
-      found.sort((a, b) => a.time - b.time || (a.sha < b.sha ? -1 : 1));
-      for (const commit of found) {
-        if (commit.parents.length < 2) {
-          members.push(commit.sha);
-          messages.push(commit.message);
-        }
-      }
-    } else {
-      direct++;
-      members.push(entry.sha);
-    }
+  for (const landing of landings) {
+    clock = Math.max(clock, landing.time);
+    if (landing.how === "merge") merges++;
+    else direct++;
+    const members = landing.members;
     const distinct = [...new Set(members.flatMap((sha) => logicalOf.has(sha) ? [logicalOf.get(sha)] : []))];
     if (distinct.length === 0) continue;
     const perFile = /* @__PURE__ */ new Map();
@@ -10586,13 +10678,14 @@ async function mergedChanges(root, view, changes, tip) {
     }
     const files = [...perFile.values()].map(mergeFileChanges).sort((a, b) => a.fileId < b.fileId ? -1 : a.fileId > b.fileId ? 1 : 0);
     result.push({
-      id: entry.sha,
+      id: landing.id,
       time: clock,
       shas: members.filter((sha) => commits.has(sha)),
       authors: [...new Set(distinct.flatMap((c) => c.authors))].sort(),
       files,
-      messages: [...new Set(messages)],
-      how: entry.parents.length > 1 ? "merge" : "direct"
+      text: landing.text,
+      branchMessages: landing.branch.map((commit) => commit.message),
+      how: landing.how
     });
   }
   return { changes: result, merges, direct };
@@ -10991,7 +11084,7 @@ function summarise(scored, all, outcomes, risk) {
     },
     outcome: {
       followUpDays: risk.followUpDays,
-      fixConvention: checkFixConvention(all.length, fixMatches.length),
+      fixConvention: checkFixConvention(all.map((change2) => change2.text), fixMatches.length),
       fixes: fixEvidence(fixMatches),
       reverts: outcomeList.filter((o) => o.reverted).length,
       troubled,
@@ -11638,6 +11731,14 @@ function rangeOf(rest) {
 var command12 = analysisCommand(name13, {
   summary: "How much a branch puts at risk before it is merged, and how to review it: risk [BASE[..HEAD]] | explain | reviewers",
   options: { worktree: { type: "boolean" }, evidence: { type: "string", multiple: true }, names: { type: "boolean" }, since: { type: "string" }, adopted: { type: "string" } },
+  subcommands: {
+    backtest: {
+      summary: "Every merged change on the main line, scored as of itself, against whether it was later reverted or fixed within the follow-up window",
+      options: ["since", "adopted", "no-refresh"],
+      hidden: true
+    }
+  },
+  hiddenOptions: ["since", "adopted"],
   wholeHistory: true,
   // A branch is not the repository's own answer, so nothing here is stored as a whole-repository report.
   partial: () => true,

@@ -96,11 +96,12 @@ test("components are sorted the same way, counting a change once per component",
   expect(byPath(document, "web")).toMatchObject({ fixes: 1, revisions: 5 });
 });
 
-test("the convention check is in the output and the table prints a Notice when it fails", async () => {
+test("the convention check reads the forms of the landed titles, with the share beside them, and prints no Notice when a form is used", async () => {
   const document = json((await fixes()).stdout);
-  expect(document.fixConvention).toMatchObject({ logicalChanges: 11, fixes: 4, followsConvention: false });
+  expect(document.fixConvention).toMatchObject({ landedChanges: 11, fixes: 4, followsConvention: true, note: null, forms: { conventionalCommits: 0, fixVerb: 3, issueReference: 0 } });
+  expect(document.fixConvention.share).toBeCloseTo(4 / 11, 3);
   const table = await runCochangeOnTerminal(repo.path, ["fixes"]);
-  expect(table.stdout).toContain("Notice: The commit messages probably do not follow a convention this can use: there are 11 logical changes in the window, fewer than 30");
+  expect(table.stdout).not.toContain("probably do not follow a convention");
 });
 
 test("history.fixPatterns changes what counts, and reverts follow history.revertPatterns", async () => {

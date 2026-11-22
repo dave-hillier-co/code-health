@@ -1,5 +1,6 @@
 import { analyseHistory, monthsBefore } from "@code-health/history/evidence";
 import { checkFixConvention, findExcludedFix, findFix, fixEvidence, type FixConvention, type FixEvidence, type FixMatch } from "@code-health/history/fix-commits";
+import { groupByLanding, landingOf, readLandings } from "@code-health/history/landings";
 import { runGit } from "@code-health/history/git";
 import type { LogicalChange } from "@code-health/history/noise";
 import type { HistoryCommit } from "@code-health/history/read";
@@ -43,12 +44,17 @@ export interface UnitFixes {
   path: string;
   /** Present for a unit that still exists. */
   current: UnitRecord | undefined;
+  /** Landed changes in the analysed window that are fixes by their own title, and touched the unit. */
   fixCommits: number;
-  /** Logical changes in the analysed window that touched the unit, fixes included. */
+  /** Landed changes in the analysed window that touched the unit, fixes included. The denominator of `fixShare`. */
   revisions: number;
   fixShare: number | null;
   evidence: FixEvidenceRow[];
   evidenceOmitted: number;
+  /** Fix-like commits made on a branch before it merged that changed lines of the unit. Caught in review, so not in `fixCommits`. */
+  reviewFixes: number;
+  reviewEvidence: FixEvidenceRow[];
+  reviewEvidenceOmitted: number;
   /** Other ids the unit had earlier in the window, from a rename or a move. */
   earlierIds: string[];
 }
@@ -63,7 +69,7 @@ export interface OutsideUnits {
 export interface FixStatistics {
   window: { months: number; since: number; until: number };
   convention: FixConvention;
-  /** Logical changes of the window that a fix pattern matched and an exclude pattern removed (`history.fixExcludePatterns`), by the excluding pattern. They are not fixes. */
+  /** Landed changes of the window that a fix pattern matched and an exclude pattern removed (`history.fixExcludePatterns`), by the excluding pattern. They are not fixes. */
   excluded: FixEvidence;
   /** Revisions below which a unit's fix figures are labelled low evidence (`fixes.minRevisions`). */
   minRevisions: number;
@@ -91,7 +97,9 @@ export interface FixStatistics {
 }
 
 interface Touch {
+  /** The landed change the commit belongs to. */
   changeId: string;
+  sha: string;
   fileId: string;
   path: string;
   blob: string;
@@ -103,6 +111,8 @@ interface Touch {
 interface Aggregate {
   changes: Set<string>;
   fixes: Set<string>;
+  /** Fix-like commits of merged branches that changed lines of the unit. */
+  review: Set<string>;
   ids: Set<string>;
 }
 
@@ -178,28 +188,28 @@ export async function measureFixes(
   const window = { months: settings.windowMonths, since, until };
   const inWindow = history.filtered.changes.filter((change) => change.committerDate >= since && change.committerDate <= until);
 
-  const messages = new Map(history.view.commits.map((commit) => [commit.sha, commit.message] as const));
   const commitBySha = new Map<string, HistoryCommit>(history.view.commits.map((commit) => [commit.sha, commit] as const));
+  // Fixes are counted per change that landed on the main line, by the change's own title. `fixOf` and `landedById` are keyed by the landing's commit.
+  const landings = await readLandings(root, history.view.headSha);
+  const landingBySha = landingOf(landings);
+  const landedById = new Map(landings.map((landing) => [landing.id, landing] as const));
   const fixOf = new Map<string, FixMatch | null>();
   const excludedMatches: FixMatch[] = [];
-  for (const change of inWindow) {
-    let found: FixMatch | null = null;
-    for (const sha of change.shas) {
-      found = findFix(settings.fix, sha, [messages.get(sha) ?? ""]);
-      if (found !== null) break;
-    }
-    fixOf.set(change.id, found);
+  const reviewFixOf = new Map<string, FixMatch>();
+  const landed = groupByLanding(inWindow, landings);
+  for (const { landing } of landed) {
+    const found = findFix(settings.fix, landing.id, [landing.text]);
+    fixOf.set(landing.id, found);
     if (found === null) {
-      for (const sha of change.shas) {
-        const excluded = findExcludedFix(settings.fix, sha, [messages.get(sha) ?? ""]);
-        if (excluded !== null) {
-          excludedMatches.push(excluded);
-          break;
-        }
-      }
+      const excluded = findExcludedFix(settings.fix, landing.id, [landing.text]);
+      if (excluded !== null) excludedMatches.push(excluded);
+    }
+    for (const { sha, message } of landing.branch) {
+      const review = findFix(settings.fix, sha, [message]);
+      if (review !== null) reviewFixOf.set(sha, review);
     }
   }
-  const convention = checkFixConvention(inWindow.length, [...fixOf.values()].filter((found) => found !== null).length);
+  const convention = checkFixConvention(landed.map(({ landing }) => landing.text), [...fixOf.values()].filter((found) => found !== null).length);
 
   const selected = pathSelector(request.paths);
   const analysable = (path: string): boolean => adapterForPath(path) !== undefined && !settings.isExcluded(path) && (settings.analyseTests || !settings.isTest(path));
@@ -226,12 +236,14 @@ export async function measureFixes(
   for (const change of analysed) {
     const fileIds = new Set(sourceFiles(change).map((file) => file.fileId));
     for (const sha of change.shas) {
+      const landing = landingBySha.get(sha);
+      if (landing === undefined) continue;
       for (const file of commitBySha.get(sha)?.changes ?? []) {
         if (file.status === "D" || file.binary || file.blob === null || !fileIds.has(file.fileId)) continue;
         const diff = diffs.get(sha)?.get(file.path);
         const added = file.status === "A" || diff?.added === true;
         if (!added && (diff === undefined || diff.ranges.length === 0)) continue;
-        touches.push({ changeId: change.id, fileId: file.fileId, path: file.path, blob: file.blob, added, ranges: diff?.ranges ?? [] });
+        touches.push({ changeId: landing.id, sha, fileId: file.fileId, path: file.path, blob: file.blob, added, ranges: diff?.ranges ?? [] });
       }
     }
   }
@@ -268,7 +280,7 @@ export async function measureFixes(
   /** Which unit a historical unit is now, by revision of a file: `c:` is a unit that still exists and `d:` one that does not. */
   const mapping = new Map<string, Map<string, string>>();
   const retained = new Map<string, { record: FileRecord; unmatched: UnitRecord[] }>();
-  const unitTouches: { key: string; unitId: string; changeId: string; fix: boolean }[] = [];
+  const unitTouches: { key: string; unitId: string; changeId: string; sha: string; fix: boolean; review: boolean }[] = [];
   const outsideTouches: { fileId: string; changeId: string; fix: boolean }[] = [];
   let analysedFiles = 0;
 
@@ -309,12 +321,12 @@ export async function measureFixes(
 
       for (const touch of pairTouches) {
         if (touch.added) {
-          for (const unit of record.units) unitTouches.push({ key, unitId: unit.id, changeId: touch.changeId, fix: false });
+          for (const unit of record.units) unitTouches.push({ key, unitId: unit.id, changeId: touch.changeId, sha: touch.sha, fix: false, review: false });
           continue;
         }
-        const fix = fixOf.get(touch.changeId) !== null;
+        const fix = (fixOf.get(touch.changeId) ?? null) !== null;
         const hit = touchedUnits(record.units, touch.ranges);
-        for (const unitId of hit.units) unitTouches.push({ key, unitId, changeId: touch.changeId, fix });
+        for (const unitId of hit.units) unitTouches.push({ key, unitId, changeId: touch.changeId, sha: touch.sha, fix, review: reviewFixOf.has(touch.sha) });
         if (hit.outsideUnits) outsideTouches.push({ fileId, changeId: touch.changeId, fix });
       }
     }
@@ -334,19 +346,21 @@ export async function measureFixes(
   const aggregates = new Map<string, Aggregate>();
   for (const touch of unitTouches) {
     const key = mapping.get(touch.key)?.get(touch.unitId) ?? `d:${touch.unitId}`;
-    const entry = aggregates.get(key) ?? { changes: new Set<string>(), fixes: new Set<string>(), ids: new Set<string>() };
+    const entry = aggregates.get(key) ?? { changes: new Set<string>(), fixes: new Set<string>(), review: new Set<string>(), ids: new Set<string>() };
     aggregates.set(key, entry);
     entry.changes.add(touch.changeId);
     if (touch.fix) entry.fixes.add(touch.changeId);
+    if (touch.review) entry.review.add(touch.sha);
     entry.ids.add(touch.unitId);
   }
 
-  const changeById = new Map(analysed.map((change) => [change.id, change] as const));
   const build = (key: string, entry: Aggregate): UnitFixes => {
     const id = key.slice(2);
-    const newestFirst = [...entry.fixes].sort((a, b) => changeById.get(b)!.committerDate - changeById.get(a)!.committerDate || utf8(a, b));
+    const newestFirst = [...entry.fixes].sort((a, b) => landedById.get(b)!.time - landedById.get(a)!.time || utf8(a, b));
     const kept = fixEvidence(newestFirst.map((changeId) => fixOf.get(changeId)!), request.evidence);
-    const dateOf = new Map(newestFirst.map((changeId) => [fixOf.get(changeId)!.id, changeById.get(changeId)!.committerDate] as const));
+    const dateOf = new Map(newestFirst.map((changeId) => [fixOf.get(changeId)!.id, landedById.get(changeId)!.time] as const));
+    const reviewNewest = [...entry.review].sort((a, b) => commitBySha.get(b)!.committerDate - commitBySha.get(a)!.committerDate || utf8(a, b));
+    const reviewKept = fixEvidence(reviewNewest.map((sha) => reviewFixOf.get(sha)!), request.evidence);
     const unit = key.startsWith("c:") ? currentUnits.get(id) : undefined;
     return {
       id,
@@ -357,6 +371,9 @@ export async function measureFixes(
       fixShare: entry.changes.size === 0 ? null : round3(entry.fixes.size / entry.changes.size),
       evidence: kept.commits.map((match) => ({ sha: match.id, date: day(dateOf.get(match.id)!), subject: match.subject, pattern: match.pattern, matchedIn: match.matchedIn })),
       evidenceOmitted: kept.omitted,
+      reviewFixes: entry.review.size,
+      reviewEvidence: reviewKept.commits.map((match) => ({ sha: match.id, date: day(commitBySha.get(match.id)!.committerDate), subject: match.subject, pattern: match.pattern, matchedIn: match.matchedIn })),
+      reviewEvidenceOmitted: reviewKept.omitted,
       earlierIds: [...entry.ids].filter((earlier) => earlier !== id).sort(utf8),
     };
   };

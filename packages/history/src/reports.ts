@@ -26,7 +26,8 @@ export function variantOf(stated: Record<string, unknown> | undefined): string |
   return createHash("sha256").update(canonical(Object.fromEntries(entries))).digest("hex").slice(0, 12);
 }
 
-function canonical(value: unknown): string {
+/** The JSON of a value with its keys sorted, so two values that differ only in key order are the same string. */
+export function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value !== null && typeof value === "object") {
     const record = value as Record<string, unknown>;

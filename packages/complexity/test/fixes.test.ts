@@ -5,7 +5,7 @@ import { runInProcess } from "@code-health/fixtures/cli-testing";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { cli } from "../src/cli.ts";
 import { expectGolden } from "./support/golden.ts";
-import { buildFixRepo, evidenceHistory, finalBilling, fixHistory, outsideHistory } from "./support/fix-history.ts";
+import { buildFixRepo, evidenceHistory, finalBilling, fixHistory, landedHistory, outsideHistory } from "./support/fix-history.ts";
 import { runComplexity } from "./support/run.ts";
 
 vi.setConfig({ testTimeout: 180_000 });
@@ -37,6 +37,7 @@ interface Row {
   fixCommits: number;
   unitRevisions: number;
   fixShare: number;
+  reviewFixes: number;
   cognitive: number | null;
   labels: string[];
   evidence: Evidence[];
@@ -160,11 +161,11 @@ test("a commit that touches no source file is skipped and counted", async () => 
   expect(document.commits).toMatchObject({ inWindow: 12, analysed: 11, skipped: 1, skippedBy: { noSourceFile: 1 } });
 });
 
-test("puts the convention check in the header: a window too short for a share to mean anything says so", async () => {
+test("puts the convention check in the header: the forms the landed titles use decide it, and the share is beside them", async () => {
   const { document } = await fixes(fixRepo());
-  expect(document.fixConvention).toMatchObject({ logicalChanges: 11, fixes: 6, followsConvention: false });
-  expect(document.fixConvention.note).toContain("fewer than 30");
-  expect(document.fixConvention.guidelines.minChanges).toBe(30);
+  expect(document.fixConvention).toMatchObject({ landedChanges: 11, fixes: 6, followsConvention: true, note: null });
+  expect(document.fixConvention.forms.fixVerb).toBeGreaterThan(0);
+  expect(document.fixConvention.share).toBeCloseTo(6 / 11, 3);
 });
 
 test("a rerun parses nothing, because historical blobs are cached by blob", async () => {
@@ -191,7 +192,7 @@ test("prints the header as notices after a table of rows by fix count", async ()
   expect(run.code).toBe(ExitCode.Success);
   expect(run.stdout).toMatch(/priceOrder\s+production\s+2\s+5\s+0\.4/);
   expect(run.stdout.indexOf("priceOrder")).toBeLessThan(run.stdout.indexOf("describe"));
-  expect(run.stdout).toContain("Notice: The commit messages probably do not follow a convention this can use");
+  expect(run.stdout).not.toContain("probably do not follow a convention");
   expect(run.stdout).toContain("Notice: Analysed 11 of 11 commits in the 12 month window and skipped 0");
 });
 
@@ -204,5 +205,21 @@ test("rejects an option that is not a count", async () => {
 test("describes the rule", async () => {
   const run = await runComplexity(fixRepo().path, ["explain", "fixes"]);
   expect(run.code).toBe(ExitCode.Success);
-  expect(run.stdout).toContain("fixCommits is the changes that were fixes");
+  expect(run.stdout).toContain("fixCommits is the landed changes that were fixes");
+});
+
+test("counts a landed change by its own title, and lists the fixes made on a branch before it merged apart from the fixes", async () => {
+  const repo = GitFixture.build(landedHistory);
+  repos.push(repo);
+  const { rows, document } = await fixes(repo);
+  const crashy = rows.find((row) => row.unit === "crashy")!;
+  // Two landed changes after the one that created the file: a squash titled Fix, and a merge whose title says Fix though its branch commit says Tidy.
+  expect([crashy.fixCommits, crashy.unitRevisions]).toEqual([2, 3]);
+  expect(crashy.evidence.map((entry) => entry.subject)).toEqual(["Fix the null check", "Fix crash (#12)"]);
+  expect(crashy.reviewFixes).toBe(0);
+  // The branch commit "fix: review comments" is in a landed change titled "Add retries", so the function has no fix, and one fix during review.
+  expect(rows.find((row) => row.unit === "reviewed")).toBeUndefined();
+  const analysed = JSON.parse((await runComplexity(repo.path, ["analyse", "--json", "--with-fixes", "--limit", "all"])).stdout).results as { unit: string; fixCommits: number; unitRevisions: number; reviewFixes: number }[];
+  expect(analysed.find((row) => row.unit === "reviewed")).toMatchObject({ fixCommits: 0, unitRevisions: 2, reviewFixes: 1 });
+  expect(document.fixConvention).toMatchObject({ landedChanges: 4, fixes: 2, followsConvention: true });
 });

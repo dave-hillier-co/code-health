@@ -20,7 +20,7 @@
     "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" },
     "fixesExcluded": {
       "type": "object",
-      "description": "Logical changes of the window that a fix pattern matched and a history.fixExcludePatterns entry removed, because the commit has a non-fix Conventional Commits type, the fix target is typos, spelling, lint or formatting, or it follows up review comments. They are not counted as fixes.",
+      "description": "Landed changes of the window that a fix pattern matched and a history.fixExcludePatterns entry removed, because the change has a non-fix Conventional Commits type or the fix target is typos, spelling, lint or formatting. They are not counted as fixes.",
       "properties": {
         "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Excluded changes." },
         "byPattern": {
@@ -52,6 +52,40 @@
       "required": ["fixes", "byPattern", "commits", "omitted"],
       "additionalProperties": false
     },
+    "fixesDuringReview": {
+      "type": "object",
+      "description": "Fix-like commits of the branches that merges of the window brought in, over the whole window. A fix made on a branch before it merged was caught in review, so it is not a regression and is not counted in any `fixes`.",
+      "properties": {
+        "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Fix-like commits on merged branches." },
+        "byPattern": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": { "pattern": { "type": "string", "description": "The history.fixPatterns entry that matched." }, "count": { "$ref": "common.schema.json#/$defs/count" } },
+            "required": ["pattern", "count"],
+            "additionalProperties": false
+          }
+        },
+        "commits": {
+          "type": "array",
+          "description": "The first of those commits.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "description": "The branch commit." },
+              "subject": { "type": "string" },
+              "pattern": { "type": "string", "description": "The history.fixPatterns entry that matched." },
+              "matchedIn": { "enum": ["subject", "body"] }
+            },
+            "required": ["id", "subject", "pattern", "matchedIn"],
+            "additionalProperties": false
+          }
+        },
+        "omitted": { "$ref": "common.schema.json#/$defs/count", "description": "Commits beyond `commits`." }
+      },
+      "required": ["fixes", "byPattern", "commits", "omitted"],
+      "additionalProperties": false
+    },
     "results": {
       "type": "array",
       "items": {
@@ -60,12 +94,13 @@
           "path": { "type": "string", "description": "The file's path, or the component's name with --by component." },
           "score": { "$ref": "common.schema.json#/$defs/count", "description": "The fix count, so the list runs from the most fixes." },
           "files": { "type": "integer", "minimum": 1, "description": "Files in the component. Only with --by component." },
-          "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes in the window that are fixes, counted once per file or component. A count of commit messages, not of defects: read the evidence." },
-          "revisions": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes that touched it in the window, the same count as hotspots frequency." },
-          "fixShare": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "fixes over revisions." },
+          "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Landed changes in the window that are fixes by their own title (the pull request title of a merge, the message of a squash or direct commit), counted once per file or component. A count of commit messages, not of defects: read the evidence." },
+          "revisions": { "$ref": "common.schema.json#/$defs/count", "description": "Commits that touched it in the window, the same count as hotspots frequency. Not the denominator of fixShare." },
+          "landedChanges": { "$ref": "common.schema.json#/$defs/count", "description": "Landed changes that touched it in the window: a merge with the commits it brought in counts once, a squash or direct commit counts once." },
+          "fixShare": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "fixes over landedChanges." },
           "recentFixes": { "$ref": "common.schema.json#/$defs/count", "description": "Fixes inside the recent window (cochange.recentMonths)." },
           "lastFix": { "type": ["string", "null"], "format": "date-time" },
-          "reverts": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes that are reverts. Not counted as fixes." },
+          "reverts": { "$ref": "common.schema.json#/$defs/count", "description": "Landed changes that are reverts. Not counted as fixes." },
           "evidence": {
             "type": "object",
             "description": "The matching commits, newest first.",
@@ -90,13 +125,39 @@
             },
             "required": ["commits", "omitted"],
             "additionalProperties": false
+          },
+          "reviewFixes": { "$ref": "common.schema.json#/$defs/count", "description": "Fix-like commits made on a branch before it merged that touched it. Caught in review, so not counted in fixes." },
+          "reviewEvidence": {
+            "type": "object",
+            "description": "The fix-like commits made on a branch before it merged, newest first.",
+            "properties": {
+              "commits": {
+                "type": "array",
+                "description": "Up to the evidence limit.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sha": { "$ref": "common.schema.json#/$defs/sha" },
+                    "date": { "type": "string", "format": "date-time" },
+                    "subject": { "type": "string" },
+                    "pattern": { "type": "string", "description": "The history.fixPatterns entry that matched." },
+                    "matchedIn": { "enum": ["subject", "body"] }
+                  },
+                  "required": ["sha", "date", "subject", "pattern", "matchedIn"],
+                  "additionalProperties": false
+                }
+              },
+              "omitted": { "$ref": "common.schema.json#/$defs/count", "description": "Commits beyond the limit." }
+            },
+            "required": ["commits", "omitted"],
+            "additionalProperties": false
           }
         },
-        "required": ["path", "score", "fixes", "revisions", "fixShare", "recentFixes", "lastFix", "reverts", "evidence"],
+        "required": ["path", "score", "fixes", "revisions", "landedChanges", "fixShare", "recentFixes", "lastFix", "reverts", "evidence", "reviewFixes", "reviewEvidence"],
         "additionalProperties": false
       }
     }
   },
-  "required": ["fixConvention", "fixesExcluded"],
+  "required": ["fixConvention", "fixesExcluded", "fixesDuringReview"],
   "unevaluatedProperties": false
 }

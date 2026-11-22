@@ -4,6 +4,7 @@ import { checkouts } from "@code-health/history/checkouts";
 import { analyseHistory, monthsBefore } from "@code-health/history/evidence";
 import { checkFixConvention, fixEvidence, findFix, type FixClassifier, type FixConvention, type FixEvidence, type FixMatch } from "@code-health/history/fix-commits";
 import { runGit } from "@code-health/history/git";
+import { groupByLanding, readLandings, type Landing } from "@code-health/history/landings";
 import type { LogicalChange } from "@code-health/history/noise";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { treeFromRef } from "@code-health/parse/source-tree";
@@ -18,13 +19,13 @@ import { rankUnits } from "./ranking.ts";
 
 /** What the change history says about a set of files in one window. */
 export interface ChangeFigures {
-  /** Logical changes that touched the files. The sample every other figure here rests on. */
+  /** Changes that landed on the main line and touched the files: a merge with the commits it brought in counts once. The sample every other figure here rests on. */
   changes: number;
-  /** Mean lines added plus deleted in the files per such change. Null with no change. */
+  /** Mean lines added plus deleted in the files per landed change. Null with no change. */
   linesChurnedPerChange: number | null;
-  /** Share of those changes with a commit that matches the shared fix definition (`history.fixPatterns`). Null with no change. */
+  /** Share of those landed changes whose own title (the pull request title of a merge, the message of a squash or direct commit) matches the shared fix definition (`history.fixPatterns`). A fix made on a branch before it merged is not counted. Null with no change. */
   fixCommitRate: number | null;
-  /** The commits behind `fixCommitRate`, with the pattern that matched each. Some matches are not defects, such as "fix the bug report template". */
+  /** The landed changes behind `fixCommitRate`, with the pattern that matched each. Some matches are not defects, such as "fix the bug report template". */
   fixCommits: FixEvidence;
 }
 
@@ -67,7 +68,7 @@ export interface Outcome {
    */
   windows: { before: { since: string; until: string }; after: { since: string; until: string; complete: boolean } };
   /**
-   * The repository-level check on the fix definition, over every logical change in the two windows. When it says the commit
+   * The repository-level check on the fix definition, over every landed change in the two windows. When it says the commit
    * messages probably do not follow a convention, read `fixCommitRate` with that in mind.
    */
   fixConvention: FixConvention;
@@ -88,14 +89,8 @@ const round3 = (value: number): number => Math.round(value * 1000) / 1000;
 
 const mean = (values: number[]): number | null => (values.length === 0 ? null : round3(values.reduce((sum, value) => sum + value, 0) / values.length));
 
-/** The first commit of a logical change that matches the shared fix definition, from `@code-health/history/fix-commits`. */
-function fixOfChange(change: LogicalChange, fix: FixClassifier, messageOf: (sha: string) => string): FixMatch | null {
-  for (const sha of change.shas) {
-    const found = findFix(fix, sha, [messageOf(sha)]);
-    if (found !== null) return found;
-  }
-  return null;
-}
+/** The landed change as a fix under the shared fix definition (`@code-health/history/fix-commits`), judged by its own text. */
+const fixOfLanding = (landing: Landing, fix: FixClassifier): FixMatch | null => findFix(fix, landing.id, [landing.text]);
 
 const day = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);
 const iso = (seconds: number): string => new Date(seconds * 1000).toISOString();
@@ -132,15 +127,15 @@ function changeFigures(
   changes: readonly LogicalChange[],
   members: ReadonlySet<string>,
   fix: FixClassifier,
-  messageOf: (sha: string) => string,
+  landings: readonly Landing[],
 ): ChangeFigures {
   const churn: number[] = [];
   const fixes: FixMatch[] = [];
-  for (const change of changes) {
-    const touched = change.files.filter((file) => members.has(file.path) || members.has(file.fileId));
+  for (const { landing, changes: inLanding } of groupByLanding(changes, landings)) {
+    const touched = inLanding.flatMap((change) => change.files.filter((file) => members.has(file.path) || members.has(file.fileId)));
     if (touched.length === 0) continue;
     churn.push(touched.reduce((sum, file) => sum + (file.added ?? 0) + (file.deleted ?? 0), 0));
-    const found = fixOfChange(change, fix, messageOf);
+    const found = fixOfLanding(landing, fix);
     if (found !== null) fixes.push(found);
   }
   return {
@@ -234,8 +229,7 @@ export async function measureOutcome(
   // Matching windows: the after window is as long as the before window, or ends where the history does.
   const fullEnd = monthsBefore(date, -settings.windowMonths);
   const anchor = Math.min(fullEnd, headDate);
-  const messages = new Map(history.view.commits.map((commit) => [commit.sha, commit.message] as const));
-  const messageOf = (sha: string): string => messages.get(sha) ?? "";
+  const landings = await readLandings(root, history.view.headSha);
   const eligible = history.filtered.changes.filter((change) => !change.shas.some((sha) => series.has(sha)));
   const beforeChanges = eligible.filter((change) => change.committerDate >= monthsBefore(date, settings.windowMonths) && change.committerDate < date);
   const afterChanges = eligible.filter((change) => change.committerDate > date && change.committerDate <= anchor);
@@ -265,9 +259,10 @@ export async function measureOutcome(
   );
   const controlSet = new Set(control);
 
-  const figures = (changes: readonly LogicalChange[], members: ReadonlySet<string>) => changeFigures(changes, members, settings.fix, messageOf);
+  const figures = (changes: readonly LogicalChange[], members: ReadonlySet<string>) => changeFigures(changes, members, settings.fix, landings);
   const inWindows = [...beforeChanges, ...afterChanges];
-  const fixConvention = checkFixConvention(inWindows.length, inWindows.filter((change) => fixOfChange(change, settings.fix, messageOf) !== null).length);
+  const landedInWindows = groupByLanding(inWindows, landings).map(({ landing }) => landing);
+  const fixConvention = checkFixConvention(landedInWindows.map((landing) => landing.text), landedInWindows.filter((landing) => fixOfLanding(landing, settings.fix) !== null).length);
   const changeCost: Outcome["changeCost"] = {
     actedOn: { before: figures(beforeChanges, actedEarlier), after: figures(afterChanges, actedLater) },
     comparison: { before: figures(beforeChanges, controlSet), after: figures(afterChanges, controlSet) },

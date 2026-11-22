@@ -322,9 +322,9 @@
     },
     "fixConvention": {
       "type": "object",
-      "description": "The repository-level check on the fix definition: the share of logical changes in the window that are fixes. A note says the commit messages probably do not follow a convention this can use. The counts are reported either way.",
+      "description": "The repository-level check on the fix definition. It decides whether the titles of the landed changes in the window use a recognisable fix form (Conventional Commits types, a leading Fix or Fixes, or issue references), and counts each form. The share of landed changes that are fixes is reported beside it as information and does not decide the verdict. A note says the commit messages probably do not follow a convention this can use. The counts are reported either way.",
       "properties": {
-        "logicalChanges": {
+        "landedChanges": {
           "type": "integer",
           "minimum": 0
         },
@@ -340,6 +340,29 @@
           "minimum": 0,
           "maximum": 1
         },
+        "forms": {
+          "type": "object",
+          "properties": {
+            "conventionalCommits": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fixVerb": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "issueReference": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "conventionalCommits",
+            "fixVerb",
+            "issueReference"
+          ],
+          "additionalProperties": false
+        },
         "followsConvention": {
           "type": "boolean"
         },
@@ -348,39 +371,15 @@
             "string",
             "null"
           ]
-        },
-        "guidelines": {
-          "type": "object",
-          "properties": {
-            "minShare": {
-              "type": "number"
-            },
-            "maxShare": {
-              "type": "number"
-            },
-            "minChanges": {
-              "type": "integer"
-            },
-            "provenance": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "minShare",
-            "maxShare",
-            "minChanges",
-            "provenance"
-          ],
-          "additionalProperties": false
         }
       },
       "required": [
-        "logicalChanges",
+        "landedChanges",
         "fixes",
         "share",
+        "forms",
         "followsConvention",
-        "note",
-        "guidelines"
+        "note"
       ],
       "additionalProperties": false
     },
@@ -436,11 +435,11 @@
         },
         "fixCommits": {
           "$ref": "#/$defs/count",
-          "description": "Logical changes in the analysed window that match the shared fix definition and changed a line of the function."
+          "description": "Landed changes in the analysed window that match the shared fix definition by their own title (the pull request title of a merge, the message of a squash or direct commit) and changed a line of the function."
         },
         "unitRevisions": {
           "$ref": "#/$defs/count",
-          "description": "Logical changes in the analysed window that changed a line of the function, fixes included. A change that created the file counts once for each of its functions."
+          "description": "Landed changes in the analysed window that changed a line of the function, fixes included. A change that created the file counts once for each of its functions. The denominator of fixShare."
         },
         "fixShare": {
           "type": [
@@ -449,7 +448,11 @@
           ],
           "minimum": 0,
           "maximum": 1,
-          "description": "fixCommits over unitRevisions, to 3 decimals."
+          "description": "fixCommits over unitRevisions (landed changes), to 3 decimals."
+        },
+        "reviewFixes": {
+          "$ref": "#/$defs/count",
+          "description": "Fix-like commits made on a branch before it merged that changed a line of the function. Caught in review, so not counted in fixCommits."
         },
         "cognitive": {
           "type": [
@@ -478,7 +481,7 @@
               "date": {
                 "type": "string",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "description": "Committer date of the logical change."
+                "description": "Committer date of the landed change (the merge commit, for a merge)."
               },
               "subject": {
                 "type": "string"
@@ -508,6 +511,46 @@
           "$ref": "#/$defs/count",
           "description": "Fix commits beyond the evidence limit."
         },
+        "reviewEvidence": {
+          "type": "array",
+          "description": "The fix-like commits made on a branch before it merged, newest first, up to --evidence.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sha": {
+                "$ref": "#/$defs/sha"
+              },
+              "date": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "matchedIn": {
+                "enum": [
+                  "subject",
+                  "body"
+                ]
+              }
+            },
+            "required": [
+              "sha",
+              "date",
+              "subject",
+              "pattern",
+              "matchedIn"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "reviewEvidenceOmitted": {
+          "$ref": "#/$defs/count",
+          "description": "Review fixes beyond the evidence limit."
+        },
         "earlierIds": {
           "type": "array",
           "description": "Other ids the function had earlier in the window: a rename or a move.",
@@ -525,10 +568,13 @@
         "fixCommits",
         "unitRevisions",
         "fixShare",
+        "reviewFixes",
         "cognitive",
         "labels",
         "evidence",
         "evidenceOmitted",
+        "reviewEvidence",
+        "reviewEvidenceOmitted",
         "earlierIds"
       ],
       "additionalProperties": false
@@ -567,7 +613,7 @@
         },
         "fixesExcluded": {
           "type": "object",
-          "description": "Logical changes of the window that a fix pattern matched and an exclude pattern (history.fixExcludePatterns) removed, because the commit has a non-fix Conventional Commits type, the fix target is typos, spelling, lint or formatting, or it follows up review comments. They are not counted as fixes. `byPattern` counts them by the excluding pattern.",
+          "description": "Landed changes of the window that a fix pattern matched and an exclude pattern (history.fixExcludePatterns) removed, because the change has a non-fix Conventional Commits type or the fix target is typos, spelling, lint or formatting. They are not counted as fixes. `byPattern` counts them by the excluding pattern.",
           "properties": {
             "fixes": { "$ref": "#/$defs/count", "description": "Excluded changes." },
             "byPattern": {

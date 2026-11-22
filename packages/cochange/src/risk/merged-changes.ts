@@ -1,4 +1,4 @@
-import { runGit } from "@code-health/history/git";
+import { readLandings } from "@code-health/history/landings";
 import { mergeFileChanges } from "@code-health/history/grouping";
 import type { LogicalChange } from "@code-health/history/noise";
 import type { HistoryChange, HistoryView } from "@code-health/history/read";
@@ -19,8 +19,10 @@ export interface MergedChange {
   authors: string[];
   /** Files left after the noise filters, one entry per file, as the change leaves them. */
   files: HistoryChange[];
-  /** The full messages of the main-line commit and of the commits it brought in. */
-  messages: string[];
+  /** What the change says of itself, which is what decides whether it is a fix: the pull request title of a merge, or the message of a squash or direct commit. */
+  text: string;
+  /** The messages of the commits only the merge's later parents reach. They are not what the change is classified by. */
+  branchMessages: string[];
   /** How it came in: a merge commit, or one commit on the main line. */
   how: "merge" | "direct";
 }
@@ -30,24 +32,6 @@ export interface Mainline {
   changes: MergedChange[];
   merges: number;
   direct: number;
-}
-
-interface CommitLine {
-  sha: string;
-  parents: string[];
-  time: number;
-  message: string;
-}
-
-async function readGraph(root: string, tip: string): Promise<Map<string, CommitLine>> {
-  const out = await runGit(root, ["log", "--format=%H%x1f%P%x1f%ct%x1f%B%x1e", tip]);
-  const graph = new Map<string, CommitLine>();
-  for (const record of out.split("\x1e")) {
-    if (record.trim() === "") continue;
-    const [sha, parents, time, ...message] = record.replace(/^\n/, "").split("\x1f");
-    graph.set(sha!, { sha: sha!, parents: parents === "" ? [] : parents!.split(" "), time: Number(time), message: message.join("\x1f").trim() });
-  }
-  return graph;
 }
 
 /**
@@ -61,52 +45,20 @@ export async function mergedChanges(
   changes: readonly LogicalChange[],
   tip: string,
 ): Promise<Mainline> {
-  const graph = await readGraph(root, tip);
-  const line: CommitLine[] = [];
-  for (let at = graph.get(tip); at !== undefined; at = at.parents[0] === undefined ? undefined : graph.get(at.parents[0])) {
-    line.push(at);
-  }
-  line.reverse();
-
+  const landings = await readLandings(root, tip);
   const commits = new Map(view.commits.map((c) => [c.sha, c]));
   const logicalOf = new Map<string, LogicalChange>();
   for (const change of changes) for (const sha of change.shas) logicalOf.set(sha, change);
 
-  const assigned = new Set<string>(line.map((c) => c.sha));
   const result: MergedChange[] = [];
   let merges = 0;
   let direct = 0;
   let clock = 0;
-  for (const entry of line) {
-    clock = Math.max(clock, entry.time);
-    const members: string[] = [];
-    const messages = [entry.message];
-    if (entry.parents.length > 1) {
-      merges++;
-      // Everything the merge brought in, oldest first, and not already part of an earlier change.
-      const stack = entry.parents.slice(1);
-      const found: CommitLine[] = [];
-      while (stack.length > 0) {
-        const sha = stack.pop()!;
-        if (assigned.has(sha)) continue;
-        assigned.add(sha);
-        const commit = graph.get(sha);
-        if (!commit) continue;
-        found.push(commit);
-        stack.push(...commit.parents);
-      }
-      found.sort((a, b) => a.time - b.time || (a.sha < b.sha ? -1 : 1));
-      for (const commit of found) {
-        if (commit.parents.length < 2) {
-          members.push(commit.sha);
-          messages.push(commit.message);
-        }
-      }
-    } else {
-      direct++;
-      members.push(entry.sha);
-    }
-
+  for (const landing of landings) {
+    clock = Math.max(clock, landing.time);
+    if (landing.how === "merge") merges++;
+    else direct++;
+    const members = landing.members;
     const distinct = [...new Set(members.flatMap((sha) => (logicalOf.has(sha) ? [logicalOf.get(sha)!] : [])))];
     if (distinct.length === 0) continue;
     const perFile = new Map<string, HistoryChange[]>();
@@ -119,13 +71,14 @@ export async function mergedChanges(
     }
     const files = [...perFile.values()].map(mergeFileChanges).sort((a, b) => (a.fileId < b.fileId ? -1 : a.fileId > b.fileId ? 1 : 0));
     result.push({
-      id: entry.sha,
+      id: landing.id,
       time: clock,
       shas: members.filter((sha) => commits.has(sha)),
       authors: [...new Set(distinct.flatMap((c) => c.authors))].sort(),
       files,
-      messages: [...new Set(messages)],
-      how: entry.parents.length > 1 ? "merge" : "direct",
+      text: landing.text,
+      branchMessages: landing.branch.map((commit) => commit.message),
+      how: landing.how,
     });
   }
   return { changes: result, merges, direct };

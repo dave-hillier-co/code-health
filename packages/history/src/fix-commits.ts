@@ -24,7 +24,7 @@ export const REVERT_BODY_PATTERN = "This reverts commit";
 export type CommitClass =
   | { kind: "fix"; pattern: string; matchedIn: "subject" | "body" }
   | { kind: "revert"; pattern: string; matchedIn: "subject" | "body" }
-  /** A fix pattern matched, and the exclude pattern `pattern` says the commit is not a defect fix: it has a non-fix Conventional Commits type, or its fix target is typos, spelling, lint or formatting, or it follows up review comments. `fixPattern` is the one that matched as a fix. */
+  /** A fix pattern matched, and the exclude pattern `pattern` says the commit is not a defect fix: it has a non-fix Conventional Commits type, or its fix target is typos, spelling, lint or formatting, `fixPattern` is the one that matched as a fix. */
   | { kind: "excluded"; pattern: string; fixPattern: string; matchedIn: "subject" | "body" }
   | { kind: "other" };
 
@@ -126,47 +126,66 @@ export function fixEvidence(matches: readonly FixMatch[], limit = FIX_EVIDENCE_L
   };
 }
 
-/** Guidelines for the convention check. Judgement calls, not measurements. */
-export const FIX_CONVENTION_GUIDELINES = {
-  minShare: 0.02,
-  maxShare: 0.6,
-  minChanges: 30,
-  provenance:
-    "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything.",
-} as const;
+/** The fix forms a title can use. Each is a way a project says that a change is a fix, which the fix patterns can then match. */
+export interface FixForms {
+  /** A Conventional Commits type prefix: `feat:`, `fix(scope):`, `chore!:` and the like. A project that writes types writes `fix:` for a fix. */
+  conventionalCommits: number;
+  /** A leading Fix, Fixes, Fixed or Fixing, after an optional ticket prefix such as "ABC-123:". */
+  fixVerb: number;
+  /** A closing keyword and an issue reference: "Fixes #12", "Closes #12", "Resolves ABC-12". */
+  issueReference: number;
+}
+
+const CONVENTIONAL_TYPE = /^(?:feat|fix|chore|ci|test|tests|docs|style|build|refactor|perf|revert)(?:\([^)]*\))?!?:/i;
+const FIX_VERB = /^(?:[a-z][a-z0-9]*-\d+:\s*)?(?:fix|fixes|fixed|fixing)\b/i;
+const ISSUE_REFERENCE = /\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\s+(?:#\d+|[a-z][a-z0-9]*-\d+)/i;
+
+/** How many of the titles use each recognisable fix form. A title can use more than one. */
+export function fixForms(titles: readonly string[]): FixForms {
+  const forms: FixForms = { conventionalCommits: 0, fixVerb: 0, issueReference: 0 };
+  for (const title of titles) {
+    const subject = subjectOf(title);
+    if (CONVENTIONAL_TYPE.test(subject)) forms.conventionalCommits++;
+    if (FIX_VERB.test(subject)) forms.fixVerb++;
+    if (ISSUE_REFERENCE.test(subject)) forms.issueReference++;
+  }
+  return forms;
+}
 
 export interface FixConvention {
-  logicalChanges: number;
+  /** Landed changes in the window: a merge with the commits it brought in counts once, a squash or direct commit counts once. */
+  landedChanges: number;
+  /** Landed changes that are fixes, by their own title. */
   fixes: number;
-  /** Fixes over logical changes, 3 decimals. Null with no change. */
+  /** Fixes over landed changes, 3 decimals. Null with no change. Information only: it does not decide the verdict. */
   share: number | null;
-  /** False when the share is outside the guideline or there are too few changes. */
+  /** The forms the landed changes' titles use, with counts. This is the evidence the verdict rests on. */
+  forms: FixForms;
+  /** True when the titles use a recognisable fix form: Conventional Commits types, a leading Fix or Fixes, or closing keywords with issue references. */
   followsConvention: boolean;
   /** Why the commit messages probably do not follow a convention this can use. Null when they do. */
   note: string | null;
-  guidelines: { minShare: number; maxShare: number; minChanges: number; provenance: string };
 }
 
-const percent = (share: number): string => `${Math.round(share * 1000) / 10}%`;
-
 /**
- * The repository-level check that commands run before they use a fix count: the share of logical changes in the window that
- * are fixes. A share under 2% or over 60%, or fewer than 30 logical changes, says the commit messages probably do not follow
- * a convention this can use. The share is the logical changes with a commit that matches a fix pattern and is not excluded or a revert, over all logical changes. The counts are still reported, and nothing is removed.
+ * The repository-level check that commands run before they use a fix count. It decides whether the landed changes' titles use a
+ * recognisable fix form (Conventional Commits types, a leading Fix or Fixes, or issue references), and not by the share of fixes:
+ * a repository with few fixes and a clear form is not flagged. The share is reported beside the form counts, as information.
+ * The counts are still reported, and nothing is removed.
  */
-export function checkFixConvention(logicalChanges: number, fixes: number): FixConvention {
-  const { minShare, maxShare, minChanges } = FIX_CONVENTION_GUIDELINES;
-  const share = logicalChanges === 0 ? null : Math.round((fixes / logicalChanges) * 1000) / 1000;
-  const reasons: string[] = [];
-  if (logicalChanges < minChanges) reasons.push(`there are ${logicalChanges} logical changes in the window, fewer than ${minChanges}`);
-  if (share !== null && share < minShare) reasons.push(`fixes are ${percent(share)} of logical changes, under ${percent(minShare)}`);
-  if (share !== null && share > maxShare) reasons.push(`fixes are ${percent(share)} of logical changes, over ${percent(maxShare)}`);
+export function checkFixConvention(titles: readonly string[], fixes: number): FixConvention {
+  const landedChanges = titles.length;
+  const forms = fixForms(titles);
+  const share = landedChanges === 0 ? null : Math.round((fixes / landedChanges) * 1000) / 1000;
+  const follows = forms.conventionalCommits + forms.fixVerb + forms.issueReference > 0;
   return {
-    logicalChanges,
+    landedChanges,
     fixes,
     share,
-    followsConvention: reasons.length === 0,
-    note: reasons.length === 0 ? null : `The commit messages probably do not follow a convention this can use: ${reasons.join("; ")}.`,
-    guidelines: { minShare, maxShare, minChanges, provenance: FIX_CONVENTION_GUIDELINES.provenance },
+    forms,
+    followsConvention: follows,
+    note: follows
+      ? null
+      : `The commit messages probably do not follow a convention this can use: none of the ${landedChanges} landed changes uses a recognisable fix form (a Conventional Commits type, a leading Fix or Fixes, or an issue reference).`,
   };
 }

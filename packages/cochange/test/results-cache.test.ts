@@ -188,3 +188,23 @@ test("commands running at once leave whole stored results and each print the sam
   expect(cacheOf(await run("hotspots"))).toHaveLength(1);
   expect(existsSync(reportPath(repo.path, "units"))).toBe(true);
 });
+
+test("a repository with a complexity report for the commit reads its stored hotspots, and so does the briefing", async () => {
+  const head = repo.git("rev-parse", "HEAD");
+  const directory = join(repo.path, ".cache", "code-health", "reports");
+  mkdirSync(directory, { recursive: true });
+  const report = { schemaVersion: 1, tool: "complexity", command: "files", repo: { head, dirty: false }, config: "0".repeat(16), results: [{ path: invoice, complexity: 12 }] };
+  writeFileSync(join(directory, "complexity.files.json"), JSON.stringify(report));
+
+  const cold = await run("hotspots");
+  expect(JSON.parse(cold).inputs.complexityReport).toEqual({ report: "complexity.files", head, config: "0".repeat(16) });
+  // The stored inputs are written with sorted keys. A run that builds the same inputs in another order must still read them.
+  expect(cacheOf(await run("hotspots"))).toHaveLength(1);
+
+  const first = await run("brief", invoice);
+  expect(cacheOf(first)).toBeUndefined();
+  const warm = JSON.parse(await run("brief", invoice));
+  expect(warm.inputs.resultsCache.map((input: { report: string }) => input.report)).toEqual(["cochange.units", "cochange.coupling", "cochange.hotspots"]);
+  // A run that was answered from the stored results does not say it stored nothing.
+  expect(warm.meta.report).toBeUndefined();
+});

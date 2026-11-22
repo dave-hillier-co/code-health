@@ -34,3 +34,17 @@ test("a command's own help lists its subcommands with a line each", async () => 
   expect(await help("risk")).not.toContain("backtest");
   expect(await help("outcome")).toMatch(/completeness\s+How often/);
 });
+
+test("risk backtest describes itself with its own options, as abandonment backtest does, and both stay out of listings", async () => {
+  const backtest = await help("risk", "backtest");
+  expect(backtest).toContain("Usage: cochange risk backtest [options]");
+  expect(backtest).toContain("--since <since>");
+  expect(backtest).toContain("--adopted <adopted>");
+  expect(backtest).not.toContain("--worktree");
+  expect(backtest).not.toContain("--evidence");
+  const risk = await help("risk");
+  expect(risk).toContain("--worktree");
+  expect(risk).not.toContain("backtest");
+  expect(risk).not.toContain("--adopted");
+  expect(await help()).not.toContain("backtest");
+});

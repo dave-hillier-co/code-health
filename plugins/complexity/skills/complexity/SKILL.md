@@ -87,11 +87,11 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs fixes --json --limit 10
    ```
 
-   Each row has `fixCommits`, `unitRevisions`, `fixShare`, the function's current `cognitive` complexity and the `evidence`
-   commits, and a function renamed or moved keeps its history. A row labelled `low evidence` has fewer than 3 revisions
-   in the window, so its `fixShare` rests on little history. Read the header first: `fixConvention.note` says when the
-   commit messages probably do not follow a convention the patterns can use, `fixesExcluded` counts the changes left out
-   because the commit has a non-fix Conventional Commits type, or the fix was about typos, spelling, lint or formatting, or followed up review comments, and `commits` says how many commits were skipped.
+   Each row has `fixCommits` (changes that landed on the main line and are fixes by their own title), `unitRevisions`, `fixShare`, `reviewFixes` (fixes made on a branch before it merged, never counted in `fixCommits`), the function's current `cognitive` complexity and the `evidence`
+   changes, and a function renamed or moved keeps its history. A row labelled `low evidence` has fewer than 3 revisions
+   in the window, so its `fixShare` rests on little history. Read the header first: `fixConvention.note` says when no
+   landed title uses a recognisable fix form so the commit messages probably do not follow a convention the patterns can use, `fixesExcluded` counts the changes left out
+   because the change has a non-fix Conventional Commits type, or the fix was about typos, spelling, lint or formatting, and `commits` says how many commits were skipped.
    The run covers the whole window and parses historical revisions, so on a very large history bound it with
    `--max-commits N`, and say that the figures then cover part of the window. Details in
    [references/fixes.md](references/fixes.md).

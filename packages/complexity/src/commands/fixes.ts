@@ -32,7 +32,7 @@ export const command: Command = {
       inputs: { tree: current.kind, paths, maxCommits: request.maxCommits, evidence: request.evidence, includeTests: wantsTests(context) },
       extra: { ...fixHeader(stats, request, settings), ...(tests === null ? {} : { tests }) },
       results: listed,
-      columns: ["path", "unit", "role", "fixCommits", "unitRevisions", "fixShare", "cognitive", "labels"],
+      columns: ["path", "unit", "role", "fixCommits", "unitRevisions", "fixShare", "reviewFixes", "cognitive", "labels"],
       notices: [
         ...(tests === null || tests.count === 0 ? [] : [`${tests.count} test functions with fixes are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`]),
         ...fixNotices(stats, request),

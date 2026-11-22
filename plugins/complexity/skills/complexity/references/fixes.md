@@ -1,6 +1,6 @@
 # Fixes: which functions the bug fixes changed
 
-`fixes [paths...] [--max-commits N] [--evidence N]` reports, per function, how many fix commits of the history window changed
+`fixes [paths...] [--max-commits N] [--evidence N]` reports, per function, how many fix changes (changes that landed on the main line) of the history window changed
 it, in the manner of CodeScene's X-Ray. `analyse --with-fixes` adds the same figures as columns to the ranking. Both run one
 computation.
 
@@ -18,20 +18,25 @@ computation.
    in git keeps its functions' identities), then by body similarity (`complexity.moveSimilarity`), so a function renamed
    inside its file keeps its history. `earlierIds` lists the earlier names. A function moved to a different file is not
    followed across files.
-5. A logical change is a fix when one of its commits matches the shared definition (`history.fixPatterns`,
-   `fixExcludePatterns`, `revertPatterns`, `fixMatchBody`). A revert is never a fix, and neither is a change whose subject
-   a fix pattern matched but an exclude pattern removed because the commit has a non-fix Conventional Commits type, or the fix was about typos, spelling, lint or formatting, or followed up review comments:
-   it is counted in `fixesExcluded`. A commit that created the file counts as one revision of each of its functions
+5. Fixes are counted per change that landed on the main line. A landed change is a commit on the first-parent line, or a
+   merge commit with the commits that only its later parents reach, and it is a fix when its own text matches the shared
+   definition (`history.fixPatterns`, `fixExcludePatterns`, `revertPatterns`, `fixMatchBody`): the message of a squash or
+   direct commit, the pull request title of a merge. A revert is never a fix, and neither is a change whose text
+   a fix pattern matched but an exclude pattern removed because it has a non-fix Conventional Commits type, or the fix was about typos, spelling, lint or formatting:
+   it is counted in `fixesExcluded`. A fix made on a branch before it merged was caught in review, so it is not a regression:
+   it is a fix during review (`reviewFixes`) and never a fix. A commit that created the file counts as one revision of each of its functions
    and never as a fix.
 
 | Field | Meaning |
 |---|---|
-| `fixCommits` | Fix changes that changed a line of the function |
-| `unitRevisions` | All changes that changed a line of the function, fixes included |
+| `fixCommits` | Landed fix changes that changed a line of the function |
+| `unitRevisions` | All landed changes that changed a line of the function, fixes included |
 | `fixShare` | `fixCommits` over `unitRevisions`, 3 decimals |
 | `cognitive` | The function's cognitive complexity now. Null for a deleted function |
 | `labels` | `low evidence` when the function has fewer than `fixes.minRevisions` (3) revisions in the window |
-| `evidence` | The fix commits, newest first, up to `--evidence`: `sha`, `date`, `subject`, `pattern`, `matchedIn`. `evidenceOmitted` counts the rest |
+| `reviewFixes` | Fix-like commits made on a branch before it merged that changed a line of the function. Caught in review, so not in `fixCommits` |
+| `evidence` | The fix changes, newest first, up to `--evidence`: `sha`, `date`, `subject`, `pattern`, `matchedIn`. `evidenceOmitted` counts the rest |
+| `reviewEvidence` | The fixes during review in the same fields, with `reviewEvidenceOmitted` |
 
 Rows are the functions with at least one fix, sorted by `fixCommits`, then functions with enough revisions before `low evidence` ones, then `fixShare`. Functions deleted since are in
 `deleted` (counted in `deleted.units`, listed up to `deleted.limit`, `deleted.omitted` more), because they cannot be acted on
@@ -39,11 +44,12 @@ but they show where fixes were needed. `summary` counts every function the windo
 
 ## Read the header before the rows
 
-- `fixConvention` says whether the repository's commit messages follow a convention the patterns can use. When `note` is not
-  null, the counts are of the commits the patterns happened to match, and a function with no fix may simply have fixes
+- `fixConvention` says whether the landed titles use a recognisable fix form (Conventional Commits types, a leading Fix or
+  Fixes, issue references), with `forms` counting each and `share` (fixes over landed changes) beside them as information.
+  When `note` is not null, no form was seen, the counts are of the changes the patterns happened to match, and a function with no fix may simply have fixes
   nobody labelled. Say so when you report the rows. The default patterns match fix words at the start of the subject or
   after "to", and `bug`, `hotfix` and `defect` anywhere, so read the `evidence` subjects before quoting a count.
-- `fixesExcluded` counts the changes a fix pattern matched and `history.fixExcludePatterns` removed (a non-fix Conventional Commits type, typos, spelling, lint, formatting, review-comment follow-ups), by the excluding pattern, with the first of them. If a real fix is in the list, the exclude
+- `fixesExcluded` counts the changes a fix pattern matched and `history.fixExcludePatterns` removed (a non-fix Conventional Commits type, typos, spelling, lint, formatting), by the excluding pattern, with the first of them. If a real fix is in the list, the exclude
   pattern is too broad for this repository.
 - `commits` says how many commits were analysed and how many were skipped, by cause: `maxCommits` (older commits beyond
   `--max-commits`, default `complexity.fixes.maxCommits`, null, which analyses the whole window; newest first), `oversized` (changes with more files than

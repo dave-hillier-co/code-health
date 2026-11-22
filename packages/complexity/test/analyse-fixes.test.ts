@@ -40,7 +40,7 @@ test("--with-fixes adds the fix columns from the same computation as `fixes`, an
     ]),
   );
   expect(document.fixes.commits).toMatchObject({ analysed: 11, skipped: 0 });
-  expect(document.fixes.fixConvention.followsConvention).toBe(false);
+  expect(document.fixes.fixConvention).toMatchObject({ followsConvention: true, note: null });
 
   const fixes = JSON.parse((await runComplexity(repo.path, ["fixes", "--json", "--limit", "all"])).stdout).results as Row[];
   for (const row of fixes) expect(rows.find((candidate) => candidate.id === row.id)).toMatchObject({ fixCommits: row.fixCommits, unitRevisions: row.unitRevisions, fixShare: row.fixShare });

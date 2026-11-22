@@ -43,6 +43,9 @@
             "low evidence"
           ],
           "path": "src/orders.ts",
+          "reviewEvidence": [],
+          "reviewEvidenceOmitted": 0,
+          "reviewFixes": 0,
           "role": "production",
           "score": 1.2,
           "unit": "legacy",
@@ -64,15 +67,14 @@
     },
     "fixConvention": {
       "fixes": 6,
-      "followsConvention": false,
-      "guidelines": {
-        "maxShare": 0.6,
-        "minChanges": 30,
-        "minShare": 0.02,
-        "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+      "followsConvention": true,
+      "forms": {
+        "conventionalCommits": 0,
+        "fixVerb": 6,
+        "issueReference": 0
       },
-      "logicalChanges": 11,
-      "note": "The commit messages probably do not follow a convention this can use: there are 11 logical changes in the window, fewer than 30.",
+      "landedChanges": 11,
+      "note": null,
       "share": 0.545
     },
     "fixesExcluded": {
@@ -80,7 +82,7 @@
       "commits": [],
       "excludePatterns": "history.fixExcludePatterns",
       "fixes": 0,
-      "note": "Changes that a fix pattern matched and an exclude pattern removed because the commit has a non-fix Conventional Commits type, the fix target is typos, spelling, lint or formatting, or it follows up review comments. They are not counted as fixes.",
+      "note": "Landed changes that a fix pattern matched and an exclude pattern removed because the change has a non-fix Conventional Commits type or the fix target is typos, spelling, lint or formatting. They are not counted as fixes.",
       "omitted": 0
     },
     "lowEvidence": {
@@ -197,6 +199,7 @@
         "nesting": 0.75,
         "parameters": 0.5
       },
+      "reviewFixes": 0,
       "role": "production",
       "score": 8,
       "source": "structural",
@@ -235,6 +238,7 @@
         "nesting": 0.25,
         "parameters": 0.5
       },
+      "reviewFixes": 0,
       "role": "production",
       "score": 1,
       "source": "structural",

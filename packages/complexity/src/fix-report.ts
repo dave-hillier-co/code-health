@@ -42,6 +42,7 @@ export function fixFigures(fixes: UnitFixes | undefined) {
     fixCommits: fixes?.fixCommits ?? 0,
     unitRevisions: fixes?.revisions ?? 0,
     fixShare: fixes?.fixShare ?? null,
+    reviewFixes: fixes?.reviewFixes ?? 0,
   };
 }
 
@@ -68,6 +69,8 @@ export function fixRow(fixes: UnitFixes, minRevisions: number, isTest: (path: st
     labels: low ? [LOW_EVIDENCE] : [],
     evidence: fixes.evidence,
     evidenceOmitted: fixes.evidenceOmitted,
+    reviewEvidence: fixes.reviewEvidence,
+    reviewEvidenceOmitted: fixes.reviewEvidenceOmitted,
     earlierIds: fixes.earlierIds,
   };
 }
@@ -79,7 +82,7 @@ export function fixHeader(stats: FixStatistics, request: FixOptions, settings: C
     window: { months: stats.window.months, since: iso(stats.window.since), until: iso(stats.window.until) },
     shallow: stats.shallow,
     fixConvention: stats.convention,
-    fixesExcluded: { ...stats.excluded, excludePatterns: "history.fixExcludePatterns", note: "Changes that a fix pattern matched and an exclude pattern removed because the commit has a non-fix Conventional Commits type, the fix target is typos, spelling, lint or formatting, or it follows up review comments. They are not counted as fixes." },
+    fixesExcluded: { ...stats.excluded, excludePatterns: "history.fixExcludePatterns", note: "Landed changes that a fix pattern matched and an exclude pattern removed because the change has a non-fix Conventional Commits type or the fix target is typos, spelling, lint or formatting. They are not counted as fixes." },
     lowEvidence: { minRevisions: stats.minRevisions, rule: `A function with fewer than ${stats.minRevisions} revisions in the analysed window is labelled "${LOW_EVIDENCE}" and sorts after the others with the same fix count.` },
     commits: { ...stats.commits, maxCommits: request.maxCommits },
     files: stats.files,
@@ -122,7 +125,7 @@ export function fixNotices(stats: FixStatistics, request: FixOptions): string[] 
   ];
   if (stats.convention.note !== null) notices.unshift(stats.convention.note.replace(/\.$/, ""));
   if (stats.excluded.fixes > 0) {
-    notices.push(`${stats.excluded.fixes} changes matched a fix pattern and were left out because the commit has a non-fix Conventional Commits type, or is about typos, spelling, lint or formatting, or follows up review comments (history.fixExcludePatterns): ${stats.excluded.byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`);
+    notices.push(`${stats.excluded.fixes} changes matched a fix pattern and were left out because the commit has a non-fix Conventional Commits type, or is about typos, spelling, lint or formatting (history.fixExcludePatterns): ${stats.excluded.byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`);
   }
   if (stats.shallow) notices.push("The clone is shallow, so history before its boundary is missing");
   return notices;

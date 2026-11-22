@@ -24,8 +24,8 @@ export function factsOf(change: MergedChange): ChangeFacts {
   };
 }
 
-/** The fix a merged change is under the shared definition, with the pattern that matched, or null. A revert is not a fix. */
-export const fixOf = (change: MergedChange, fix: FixClassifier): FixMatch | null => findFix(fix, change.id, change.messages);
+/** The fix a merged change is under the shared definition, classified by its own text (the pull request title of a merge), with the pattern that matched, or null. A revert is not a fix, and a fix made on the branch before it merged does not make the change one. */
+export const fixOf = (change: MergedChange, fix: FixClassifier): FixMatch | null => findFix(fix, change.id, [change.text]);
 
 export interface PassOptions {
   windowMonths: number;
