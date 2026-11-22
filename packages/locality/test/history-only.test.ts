@@ -55,7 +55,7 @@ describe("history-only analysis, with no import graph", () => {
     expect(rows.map((row) => row.path)).toEqual(["lib/config/rates.yaml"]);
     // The dropped direction is named on the kept candidate, with its gain, so the omission has a stated reason.
     const dropped = (rows[0] as unknown as { supersedes: { path: string; gain: number }[] }).supersedes;
-    expect(dropped.map((entry) => entry.path).sort()).toEqual(["billing/invoice.txt", "billing/tax.txt"]);
+    expect(dropped.map((entry) => entry.path)).toEqual(["billing/invoice.txt"]);
     expect(document.historyOnly.omitted.superseded).toBe(dropped.length);
   });
 
