@@ -35,8 +35,7 @@ A file type with no profile can be mapped to one in `code-health.json`, as `"lan
 
 Per-function lexical values are released only for a profile whose recorded agreement with the structural layer
 reaches `agreementBar` (default 0.9) on exact function boundaries. Every supported language clears it at its recorded rate. A profile with no
-structural adapter has no agreement measured, so its functions are not reported and the file gets file-level metrics
-only. A language mapped to a profile by config is marked `unverified`.
+structural adapter has no agreement measured. GLSL (`.glsl`, `.vert`, `.frag`, `.comp` and the other shader stages) is the one built in: its functions are reported and marked `unverified`, like those of a language mapped to a profile by config. Conditional compilation is read as written, so a function header repeated by `#if` and `#else` reads as nested blocks.
 
 File-level metrics work for any text file: `complexity` (the indentation complexity, shared with the cochange plugin),
 line counts and, with a profile, `keywordComplexity`.
@@ -85,6 +84,7 @@ The `complexity` section of `code-health.json`. Missing keys take the defaults, 
 | `mainBranch` | `null` | The branch `check` forks from. `null` tries `origin/main`, `main`, `origin/master`, `master`. |
 | `delta` | `0` | How much a metric above its guideline may rise before `check` exits with 1. |
 | `agreementBar` | `0.9` | Agreement a lexer profile needs for per-function lexical metrics. |
+| `syntaxErrorPercent` | `5` | `analyse` prints a notice when more than this percent of the files a grammar read have syntax errors. `parseCoverage` in the output always gives the share. |
 | `moveSimilarity` | `0.8` | Body similarity at which a function that disappeared and one that appeared are one function moved or renamed. |
 | `analyseTests` | `true` | Analyse test files. They are ranked among themselves, never against production code. |
 | `fixes` | `{ "maxCommits": 500, "evidence": 3 }` | `fixes` and `analyse --with-fixes`: the most commits of the history window to parse, newest first (the output says how many were left out), and the fix commits listed per function. |

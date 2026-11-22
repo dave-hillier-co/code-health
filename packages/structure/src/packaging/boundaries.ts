@@ -22,7 +22,7 @@ export function deepImports(context: FindingContext, reuse: ReuseAnalysis): Find
   const excluded = compileGlobs(model.settings.exclude);
   const found = new Map<string, Imports>();
   for (const edge of model.project.analysis.importEdges) {
-    if (excluded(edge.from) || excluded(edge.to) || isTestPath(edge.to)) continue;
+    if (edge.pairing === true || excluded(edge.from) || excluded(edge.to) || isTestPath(edge.to)) continue;
     const consumer = model.index.owner(edge.from);
     const owner = model.index.owner(edge.to);
     if (consumer === undefined || owner === undefined || consumer === owner) continue;

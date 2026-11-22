@@ -3,6 +3,9 @@ import { analyseTree, type ProjectAnalysis } from "@code-health/parse/analyse-tr
 import { discoverBoundaries, hasAdapter, isTestPath } from "@code-health/parse/languages";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { treeFromRef, type SourceTree } from "@code-health/parse/source-tree";
+import { recordRunNote } from "@code-health/cli-kit/run-notes";
+import { readBuildConfigs } from "@code-health/parse/build-configs";
+import { describeIncludeResolution } from "@code-health/parse/include-resolution";
 import type { LocalitySettings } from "./config.ts";
 
 /** Everything read from the analysed revision: the parsed project and the text of its production files. */
@@ -38,7 +41,11 @@ export function countLines(text: string): number {
 /** Parses the revision (through the shared parse cache) and reads the production files. */
 export async function loadProject(root: string, ref: string, settings: LocalitySettings): Promise<Project> {
   const tree = withoutExcluded(await treeFromRef(root, ref), settings.exclude);
-  const analysis = await analyseTree(tree, { cache: await ParseCache.forRepository(root) });
+  const analysis = await analyseTree(tree, { cache: await ParseCache.forRepository(root), extraConfigs: readBuildConfigs(root, tree), includeRoots: settings.includeRoots });
+  if (analysis.includeResolution !== undefined) {
+    const report = describeIncludeResolution(analysis.includeResolution, settings.unresolvedIncludePercent, "locality");
+    recordRunNote({ key: "includeResolution", value: report.section, ...(report.notice === undefined ? {} : { notice: report.notice }), ...(report.warning === undefined ? {} : { warning: report.warning }) });
+  }
   const generated = new Set(analysis.generatedFiles);
   const production = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !generated.has(path));
   const texts = await tree.readMany(production);

@@ -4,7 +4,8 @@ import type { FileFacts } from "../../facts.ts";
 import type { ResolveInput } from "../../language-adapter.ts";
 import { resolveBySymbols } from "../../symbol-model.ts";
 import { isHeader, isSource, stemOf } from "./extensions.ts";
-import { includePathsOf } from "./include-paths.ts";
+import type { IncludeResolution } from "../../resolved-dependencies.ts";
+import { includePathsOf, inferIncludeRoots } from "./include-paths.ts";
 
 /**
  * C++ dependencies. `#include` is import-like, so it is resolved here against the include paths of
@@ -42,31 +43,62 @@ export function locateInclude(from: string, specifier: string, dirs: readonly st
 
 export const resolveInclude = (from: string, specifier: string, dirs: readonly string[], files: ReadonlySet<string>): string | undefined => locateInclude(from, specifier, dirs, files)?.path;
 
+interface IncludePass {
+  includes: Map<string, string[]>;
+  unresolved: Unresolved[];
+  externals: ExternalImport[];
+  /** Includes that look for a file of the repository: every quoted one, and each angle one that resolved. */
+  considered: number;
+}
+
 export function resolveCpp(input: ResolveInput): ResolvedDependencies {
   const files = new Set(input.paths);
-  const includePaths = includePathsOf(input.paths, input.configs);
+  const includePaths = includePathsOf(input.paths, input.configs, { includeRoots: input.includeRoots ?? [], untracked: input.untrackedConfigs ?? new Set() });
 
-  const includes = new Map<string, string[]>();
-  const unresolved: Unresolved[] = [];
-  const externals: ExternalImport[] = [];
-  for (const [path, facts] of input.facts) {
-    const dirs = includePaths.dirsFor(path);
-    const direct = new Set<string>();
-    for (const imported of facts.imports) {
-      if (imported.specifier === null) continue;
-      const target = resolveInclude(path, imported.specifier, dirs, files);
-      if (target !== undefined) {
-        if (target !== path) direct.add(target);
-      } else if (imported.specifier.startsWith("<")) {
-        const name = imported.specifier.slice(1, -1);
-        const head = name.split("/")[0]!;
-        if (name.includes("/") && !systemDirectories.has(head)) externals.push({ from: path, packageName: head, typeOnly: false });
-      } else {
-        unresolved.push({ from: path, line: imported.line, specifier: imported.specifier, reason: "not-found" });
+  const pass = (inferred: readonly string[]): IncludePass => {
+    const includes = new Map<string, string[]>();
+    const unresolved: Unresolved[] = [];
+    const externals: ExternalImport[] = [];
+    let considered = 0;
+    for (const [path, facts] of input.facts) {
+      const dirs = includePaths.dirsFor(path, inferred);
+      const direct = new Set<string>();
+      for (const imported of facts.imports) {
+        if (imported.specifier === null) continue;
+        const target = resolveInclude(path, imported.specifier, dirs, files);
+        if (target !== undefined) {
+          considered++;
+          if (target !== path) direct.add(target);
+        } else if (imported.specifier.startsWith("<")) {
+          const name = imported.specifier.slice(1, -1);
+          const head = name.split("/")[0]!;
+          if (name.includes("/") && !systemDirectories.has(head)) externals.push({ from: path, packageName: head, typeOnly: false });
+        } else {
+          considered++;
+          unresolved.push({ from: path, line: imported.line, specifier: imported.specifier, reason: "not-found" });
+        }
       }
+      includes.set(path, [...direct].sort());
     }
-    includes.set(path, [...direct].sort());
+    return { includes, unresolved, externals, considered };
+  };
+
+  // Without a compile_commands.json or a configured root, the directories the includes were written against are inferred from where the files they name are.
+  let inferredRoots: string[] = [];
+  let found = pass(inferredRoots);
+  if (includePaths.compileCommands === null && includePaths.configuredRoots.length === 0 && found.unresolved.length > 0) {
+    inferredRoots = inferIncludeRoots(found.unresolved.map((entry) => ({ specifier: entry.specifier! })), input.paths);
+    if (inferredRoots.length > 0) found = pass(inferredRoots);
   }
+  const { includes, unresolved, externals } = found;
+  const includeResolution: IncludeResolution = {
+    compileCommands: includePaths.compileCommands,
+    configuredRoots: includePaths.configuredRoots,
+    inferredRoots,
+    includes: found.considered,
+    unresolved: unresolved.length,
+    unresolvedShare: found.considered === 0 ? 0 : Math.round((unresolved.length / found.considered) * 10000) / 10000,
+  };
 
   // A header and the source file that implements it.
   const implementations = new Map<string, string[]>();
@@ -156,7 +188,12 @@ export function resolveCpp(input: ResolveInput): ResolvedDependencies {
       if (!fileEdges.has(key)) fileEdges.set(key, { from, to, kind: input.isTestPath(from) ? "test" : "reference", calls: 0, references: 0 });
     }
   }
-  for (const [header, sources] of implementations) for (const source of sources) addImport(header, source);
+  for (const [header, sources] of implementations) {
+    for (const source of sources) {
+      const key = `${header}\0${source}`;
+      if (!importEdges.has(key)) importEdges.set(key, { from: header, to: source, kind: "import", typeOnly: false, pairing: true });
+    }
+  }
 
   return {
     importEdges: [...importEdges.values()],
@@ -166,5 +203,6 @@ export function resolveCpp(input: ResolveInput): ResolvedDependencies {
     exports: byName.exports,
     externalImports: externals,
     unresolved,
+    includeResolution,
   };
 }

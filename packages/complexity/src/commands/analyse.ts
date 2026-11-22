@@ -54,6 +54,17 @@ export const command: Command = {
       }
     }
 
+    // A file a grammar read has its interface shape; one it could not parse cleanly still has one, with syntax errors flagged.
+    const parsedFiles = measurement.files.filter((file) => file.interfaces !== undefined).length;
+    const filesWithSyntaxErrors = measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => file.path);
+    const syntaxErrorShare = parsedFiles === 0 ? 0 : filesWithSyntaxErrors.length / parsedFiles;
+    const syntaxErrorNotices =
+      parsedFiles > 0 && syntaxErrorShare * 100 > settings.syntaxErrorPercent
+        ? [
+            `${filesWithSyntaxErrors.length} of ${parsedFiles} parsed files (${(syntaxErrorShare * 100).toFixed(1)}%) have syntax errors, above the complexity.syntaxErrorPercent guideline of ${settings.syntaxErrorPercent}%, so their units may be incomplete or missing; filesWithSyntaxErrors lists them`,
+          ]
+        : [];
+
     const output = {
       inputs: {
         tree: current.kind,
@@ -74,12 +85,19 @@ export const command: Command = {
         layers,
         agreement,
         skipped,
-        filesWithSyntaxErrors: measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => file.path),
+        parseCoverage: {
+          parsedFiles,
+          filesWithSyntaxErrors: filesWithSyntaxErrors.length,
+          syntaxErrorShare: Math.round(syntaxErrorShare * 10000) / 10000,
+          guideline: settings.syntaxErrorPercent,
+          aboveGuideline: syntaxErrorNotices.length > 0,
+        },
+        filesWithSyntaxErrors,
         skippedFiles: measurement.skippedFiles,
         ...(fixes === undefined ? {} : { fixes: fixHeader(fixes.stats, fixes.request) }),
       },
       results: rows,
-      ...(fixes === undefined ? {} : { notices: fixNotices(fixes.stats, fixes.request) }),
+      ...(fixes === undefined && syntaxErrorNotices.length === 0 ? {} : { notices: [...syntaxErrorNotices, ...(fixes === undefined ? [] : fixNotices(fixes.stats, fixes.request))] }),
       columns: [
         "path",
         "unit",

@@ -132,6 +132,10 @@ export interface ResolveInput {
   /** Text of the files `isConfigPath` accepts. */
   configs: ReadonlyMap<string, string>;
   isTestPath(path: string): boolean;
+  /** Paths among `configs` that were read from disk and are not in the tree. */
+  untrackedConfigs?: ReadonlySet<string>;
+  /** The config `includeRoots`: repo-relative directories `#include` is also tried against. Read by C and C++ only. */
+  includeRoots?: readonly string[];
 }
 
 interface DependencyCommon {

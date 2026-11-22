@@ -3,6 +3,7 @@ import { cppBoundaries } from "./boundaries.ts";
 import { extractFileCensus } from "./census.ts";
 import { headerExtensions, inlineExtensions, sourceExtensions } from "./extensions.ts";
 import { extractFacts } from "./extract-facts.ts";
+import { cppRepairs } from "./grammar-repair.ts";
 import { cppMetricRules } from "./metric-rules.ts";
 import { resolveCpp } from "./resolve.ts";
 
@@ -20,8 +21,8 @@ export const adapter: LanguageAdapter = {
   tier: 1,
   support: "supported",
   lexerProfile: "cpp",
-  grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm" }, extensions: claimed }],
-  extractorVersion: 2,
+  grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm", repairs: cppRepairs }, extensions: claimed }],
+  extractorVersion: 3,
   extract: extractFacts,
   isTestPath: (path) =>
     /(^|\/)(tests?|unittests?|gtest|testing)\//i.test(path) ||

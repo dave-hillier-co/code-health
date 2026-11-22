@@ -259,6 +259,16 @@
                   "additionalProperties": false
                 }
               },
+              "confidence": {
+                "description": "Present only when the unit's result rests on C or C++ includes that found no file: one of its files has such an include, or an include elsewhere names one of its files and found none, so a dependency or a consumer may be missing. What the result says about consumers is then a lower bound.",
+                "type": "object",
+                "properties": {
+                  "level": { "const": "low" },
+                  "reason": { "type": "string" }
+                },
+                "required": ["level", "reason"],
+                "additionalProperties": false
+              },
               "cohesion": {
                 "type": "object",
                 "properties": {

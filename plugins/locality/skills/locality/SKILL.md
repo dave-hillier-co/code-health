@@ -31,6 +31,7 @@ Read the envelope before the rows:
 - `inputs.entrySource` is `config` when the repository's `code-health.json` lists `entryPoints`, and `detected` when the CLI treated every file nothing imports as an entry. Detected entries are a guess. If the repository has dynamic entry points (a DI container, a plugin registry, framework file conventions), ask the user for them and add them to `entryPoints` before trusting the results.
 - `unreachable` lists files no entry point reaches. They are dead code or a missing entry point, and they take no part in the analysis.
 - `filesWithSyntaxErrors` and `unresolved` say where the graph may be incomplete. Say so when a recommendation rests on one of those files.
+- In a C or C++ repository, `includeResolution` says which `compile_commands.json` the include directories came from (and whether git tracks it), the `includeRoots` configured or inferred, and what share of includes found no file. Above the `unresolvedIncludePercent` guideline the CLI warns on stderr: consumers are missing, so "no production consumers" and the moves are lower bounds. Ask for the build directory's `compile_commands.json` (`CMAKE_EXPORT_COMPILE_COMMANDS=ON`) or the include directories for `includeRoots` before trusting the rows. A row with `confidence: { level: "low" }` rests on an include that found no file; say so beside its recommendation.
 
 ## Read a candidate
 

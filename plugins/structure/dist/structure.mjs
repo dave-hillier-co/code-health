@@ -188,11 +188,12 @@ var sharedDefaults = {
   exclude: [],
   languages: {},
   entryPoints: [],
+  includeRoots: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults
 };
-var stringLists = ["exclude", "entryPoints", "vagueNames"];
+var stringLists = ["exclude", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
 function rejectUnknownKeys(document, plugin) {
@@ -340,11 +341,11 @@ function removedHint(path) {
   const moved = removedSettings[path];
   return moved === void 0 ? "" : `; it moved to ${moved}, which cochange.${moved.slice("history.".length)} may override`;
 }
-function flatten(value, path, visit) {
+function flatten(value, path, visit2) {
   if (isPlainObject(value) && Object.keys(value).length > 0) {
-    for (const key of Object.keys(value)) flatten(value[key], path === "" ? key : `${path}.${key}`, visit);
+    for (const key of Object.keys(value)) flatten(value[key], path === "" ? key : `${path}.${key}`, visit2);
   } else {
-    visit(path, value);
+    visit2(path, value);
   }
 }
 function isPlainObject(value) {
@@ -471,6 +472,18 @@ function byScoreThenPath(a, b) {
   return Buffer.compare(Buffer.from(String(a.path ?? "")), Buffer.from(String(b.path ?? "")));
 }
 
+// packages/cli-kit/src/run-notes.ts
+var notes = /* @__PURE__ */ new Map();
+function recordRunNote(note) {
+  notes.set(note.key, note);
+}
+function resetRunNotes() {
+  notes.clear();
+}
+function runNotes() {
+  return [...notes.values()];
+}
+
 // packages/cli-kit/src/table.ts
 function renderTable(rows, columns, truncated) {
   if (rows.length === 0) return "No results.\n";
@@ -540,10 +553,14 @@ async function execute(cli2, io) {
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args2.positionals, values: args2.values };
   resetBuiltinOmissions();
+  resetRunNotes();
   const output = await command12.run(context);
+  const noted = runNotes();
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
+`);
+  for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns });
@@ -557,7 +574,7 @@ async function execute(cli2, io) {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: { ...output.extra, ...omittedByBuiltin },
+          extra: { ...output.extra, ...Object.fromEntries(noted.map((note) => [note.key, note.value])), ...omittedByBuiltin },
           results,
           truncated,
           meta: {
@@ -573,6 +590,8 @@ async function execute(cli2, io) {
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results, args2.fields ?? columns, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
+`);
+    for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
 `);
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
@@ -7191,11 +7210,11 @@ function lastName(node) {
 }
 function annotation(node) {
   const names = /* @__PURE__ */ new Set();
-  const visit = (current) => {
+  const visit2 = (current) => {
     if (current.type === "type_identifier") names.add(current.text);
-    for (const child2 of current.namedChildren) visit(child2);
+    for (const child2 of current.namedChildren) visit2(child2);
   };
-  if (node !== null) visit(node);
+  if (node !== null) visit2(node);
   return { callback: false, names: [...names].sort() };
 }
 function parametersOf(list3) {
@@ -7231,7 +7250,7 @@ function importOf(node) {
 }
 function extractFileCensus(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit = (node, className) => {
+  const visit2 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -7304,9 +7323,9 @@ function extractFileCensus(root) {
       }
       default:
     }
-    for (const child2 of node.children) visit(child2, nextClass);
+    for (const child2 of node.children) visit2(child2, nextClass);
   };
-  visit(root, null);
+  visit2(root, null);
   return facts;
 }
 
@@ -7477,12 +7496,12 @@ var bindingParents = /* @__PURE__ */ new Set([
 function modifierWords(node) {
   const modifiers = node.namedChildren.find((child2) => child2.type === "modifiers");
   const words = /* @__PURE__ */ new Set();
-  const visit = (current) => {
+  const visit2 = (current) => {
     if (current.type === "annotation") return;
     if (current.childCount === 0 && !current.isNamed) words.add(current.type);
-    for (const child2 of current.children) visit(child2);
+    for (const child2 of current.children) visit2(child2);
   };
-  if (modifiers !== void 0) visit(modifiers);
+  if (modifiers !== void 0) visit2(modifiers);
   return words;
 }
 function startRow2(node) {
@@ -7787,12 +7806,12 @@ function lastName2(node) {
 function annotation2(node) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit = (current) => {
+  const visit2 = (current) => {
     if (current.type === "user_type") for (const name13 of identifiersOf(current).slice(-1)) names.add(name13);
     if (current.type === "function_type") callback = true;
-    for (const child2 of current.namedChildren) visit(child2);
+    for (const child2 of current.namedChildren) visit2(child2);
   };
-  if (node !== null) visit(node);
+  if (node !== null) visit2(node);
   return { callback, names: [...names].sort() };
 }
 function typeOf(parameter) {
@@ -7820,7 +7839,7 @@ function heritageOf2(node) {
 }
 function extractFileCensus2(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit = (node, className) => {
+  const visit2 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -7887,9 +7906,9 @@ function extractFileCensus2(root) {
       }
       default:
     }
-    for (const child2 of node.children) visit(child2, nextClass);
+    for (const child2 of node.children) visit2(child2, nextClass);
   };
-  visit(root, null);
+  visit2(root, null);
   return facts;
 }
 
@@ -8036,13 +8055,13 @@ function lastName3(node) {
 function annotation3(node) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit = (current, insideObject) => {
+  const visit2 = (current, insideObject) => {
     if (current.type === "type_identifier") names.add(current.text);
     if (current.type === "function_type" && !insideObject) callback = true;
     const nested = insideObject || current.type === "object_type";
-    for (const child2 of current.namedChildren) visit(child2, nested);
+    for (const child2 of current.namedChildren) visit2(child2, nested);
   };
-  if (node) visit(node, false);
+  if (node) visit2(node, false);
   return { callback, names: [...names].sort() };
 }
 function parametersOf3(list3) {
@@ -8082,7 +8101,7 @@ function heritageOf3(node) {
 }
 function extractFileCensus3(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit = (node, className) => {
+  const visit2 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -8181,9 +8200,9 @@ function extractFileCensus3(root) {
         break;
       }
     }
-    for (const child2 of node.children) visit(child2, nextClass);
+    for (const child2 of node.children) visit2(child2, nextClass);
   };
-  visit(root, null);
+  visit2(root, null);
   return facts;
 }
 
@@ -8922,7 +8941,7 @@ var statementWords = /* @__PURE__ */ new Set(["abstract", "as", "satisfies"]);
 var afterStatementWord = /^\s*(\+\+|--|[-+*/%&|^]?=|\*\*=|\.|\(|\[|,|;|\)|$)/;
 function typescriptRepairs(root, source) {
   const offsets = /* @__PURE__ */ new Set();
-  const visit = (node) => {
+  const visit2 = (node) => {
     if (!node.hasError) return;
     if (node.type === "ERROR") {
       const start2 = node.startIndex;
@@ -8934,9 +8953,9 @@ function typescriptRepairs(root, source) {
         else if (statementWords.has(word) && afterStatementWord.test(rest)) offsets.add(start2);
       }
     }
-    for (const child2 of node.children) visit(child2);
+    for (const child2 of node.children) visit2(child2);
   };
-  visit(root);
+  visit2(root);
   return [...offsets].sort((a, b) => a - b).map((offset) => ({ offset, character: "_" }));
 }
 
@@ -10107,7 +10126,7 @@ function extractFileCensus4(root) {
     if (declared.type === "event_declaration") events.add(declared.childForFieldName("name")?.text ?? "");
     else for (const declarator of declared.descendantsOfType("variable_declarator")) events.add(declarator.childForFieldName("name")?.text ?? "");
   }
-  const visit = (node, className) => {
+  const visit2 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -10173,9 +10192,9 @@ function extractFileCensus4(root) {
       }
       default:
     }
-    for (const child2 of node.namedChildren) visit(child2, nextClass);
+    for (const child2 of node.namedChildren) visit2(child2, nextClass);
   };
-  visit(root, null);
+  visit2(root, null);
   return facts;
 }
 function isDictionary(node, type) {
@@ -10691,15 +10710,15 @@ function lastName4(node) {
 function typeFact(type, functionPointer) {
   const names = /* @__PURE__ */ new Set();
   let callback = functionPointer;
-  const visit = (current) => {
+  const visit2 = (current) => {
     if (current.type === "type_identifier") {
       names.add(current.text);
       if (current.text === "function" && current.parent?.type === "template_type") callback = true;
     }
     if (current.type === "abstract_function_declarator" || current.type === "function_declarator") callback = true;
-    for (const child2 of current.namedChildren) visit(child2);
+    for (const child2 of current.namedChildren) visit2(child2);
   };
-  if (type !== null) visit(type);
+  if (type !== null) visit2(type);
   return { callback, names: [...names].sort() };
 }
 function parameterFacts(list3) {
@@ -10741,7 +10760,7 @@ function isFunctionTypeAlias(type) {
 }
 function extractFileCensus5(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit = (node, className, atFileLevel) => {
+  const visit2 = (node, className, atFileLevel) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     let nextFileLevel = atFileLevel;
@@ -10862,7 +10881,7 @@ function extractFileCensus5(root) {
       default:
         nextFileLevel = false;
     }
-    for (const child2 of node.children) visit(child2, nextClass, nextFileLevel);
+    for (const child2 of node.children) visit2(child2, nextClass, nextFileLevel);
   };
   const collectMap = (node, line) => {
     const type = field3(node, "type");
@@ -10875,7 +10894,7 @@ function extractFileCensus5(root) {
       if (current !== null && registryName5.test(current.text)) facts.keyedMaps.push({ line, name: current.text });
     }
   };
-  visit(root, null, true);
+  visit2(root, null, true);
   return facts;
 }
 
@@ -11559,6 +11578,96 @@ function extractFacts5(root, options2) {
   return new Extractor5(explain2, classes).extract(root);
 }
 
+// packages/parse/src/languages/cpp/grammar-repair.ts
+function cppRepairs(root, source) {
+  const edits = /* @__PURE__ */ new Map();
+  const overwrite = (start2, text2) => {
+    for (let i2 = 0; i2 < text2.length; i2++) if (source[start2 + i2] !== text2[i2]) edits.set(start2 + i2, text2[i2]);
+  };
+  visit(root, source, overwrite);
+  return [...edits].map(([offset, character]) => ({ offset, character }));
+}
+var blanks = (text2) => text2.replace(/[^\r\n]/g, " ");
+var identifierText = (text2) => text2.replace(/[^A-Za-z0-9_]/g, "_").replace(/^[0-9]/, "_");
+function visit(node, source, overwrite) {
+  if (!node.hasError && !node.isMissing) return;
+  if (node.type === "expression_statement") {
+    if (testMacro(node, source, overwrite)) return;
+  } else if (node.type === "compound_literal_expression") {
+    if (untypedBraces(node, source, overwrite)) return;
+  } else if (node.isMissing && node.type === "field_identifier") {
+    memberPointerUse(node, source, overwrite);
+  } else if (node.type === "ERROR") {
+    memberPointerDeclarator(node, source, overwrite);
+  }
+  for (const child2 of node.children) visit(child2, source, overwrite);
+}
+var suiteName = /SUITE|NAMESPACE/i;
+function macroWithBlock(statement) {
+  const missingSemicolon = statement.children.some((child2) => child2.isMissing && child2.type === ";");
+  const call = statement.namedChildren.find((child2) => child2.type === "call_expression");
+  const callee = call?.childForFieldName("function");
+  if (!missingSemicolon || call === void 0 || callee?.type !== "identifier" || statement.nextNamedSibling?.type !== "compound_statement") return void 0;
+  return { call, callee };
+}
+function holdsDeclarations(statement) {
+  const parent = statement.parent;
+  if (parent?.type === "translation_unit" || parent?.type === "declaration_list") return true;
+  if (parent?.type !== "compound_statement") return false;
+  const opener = parent.previousNamedSibling;
+  const suite = opener?.type === "expression_statement" ? macroWithBlock(opener) : void 0;
+  return suite !== void 0 && suiteName.test(suite.callee.text) && holdsDeclarations(opener);
+}
+function testMacro(statement, source, overwrite) {
+  const macro = macroWithBlock(statement);
+  if (macro === void 0) return false;
+  const { call, callee } = macro;
+  const start2 = call.startIndex;
+  const text2 = source.slice(start2, call.endIndex);
+  const topLevel = holdsDeclarations(statement);
+  const lineBreak = text2.search(/[\r\n]/);
+  if (!topLevel) {
+    overwrite(start2, blanks(text2));
+    return true;
+  }
+  if (suiteName.test(callee.text)) {
+    const head2 = "namespace ";
+    const identifierEnd2 = lineBreak === -1 ? text2.length : lineBreak;
+    if (identifierEnd2 <= head2.length) return false;
+    overwrite(start2, head2 + identifierText(text2.slice(head2.length, identifierEnd2)) + blanks(text2.slice(identifierEnd2)));
+    return true;
+  }
+  const head = "void ";
+  const identifierEnd = lineBreak === -1 ? text2.length - 2 : lineBreak - 1;
+  if (identifierEnd <= head.length) return false;
+  const rest = lineBreak === -1 ? "()" : `(${blanks(text2.slice(identifierEnd + 1, -1))})`;
+  overwrite(start2, head + identifierText(text2.slice(head.length, identifierEnd)) + rest);
+  return true;
+}
+function untypedBraces(literal, source, overwrite) {
+  if (!literal.children.some((child2) => child2.isMissing && child2.type === "type_identifier")) return false;
+  const braces = literal.children.find((child2) => child2.type === "initializer_list");
+  if (braces === void 0) return false;
+  const text2 = source.slice(braces.startIndex, braces.endIndex);
+  overwrite(braces.startIndex, `0${blanks(text2.slice(1))}`);
+  return true;
+}
+function memberPointerUse(missing, source, overwrite) {
+  const at = missing.startIndex;
+  const star = source[at] === "*" ? at : source[at - 1] === "*" ? at - 1 : -1;
+  if (star < 0) return;
+  if (source[star - 1] === ".") overwrite(star - 1, " ");
+  else if (source[star - 1] === ">" && source[star - 2] === "-") overwrite(star - 2, "  ");
+}
+function memberPointerDeclarator(error, source, overwrite) {
+  const lineStart = source.lastIndexOf("\n", error.startIndex - 1) + 1;
+  const lineEnd = Math.max(error.endIndex, source.indexOf("\n", error.endIndex) === -1 ? source.length : source.indexOf("\n", error.endIndex));
+  const region = source.slice(lineStart, lineEnd);
+  for (const found of region.matchAll(/[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*::(?=\*\s*[A-Za-z_])/g)) {
+    overwrite(lineStart + found.index, blanks(found[0]));
+  }
+}
+
 // packages/parse/src/languages/cpp/resolve.ts
 import { posix as posix9 } from "node:path";
 
@@ -11628,7 +11737,11 @@ function includeDirectories(flags2) {
   }
   return dirs;
 }
-function includePathsOf(paths, configs) {
+var normaliseRoot = (root) => {
+  const cleaned = posix8.normalize(root.replaceAll("\\", "/")).replace(/\/+$/, "");
+  return cleaned === "." ? "" : cleaned;
+};
+function includePathsOf(paths, configs, options2 = {}) {
   const files = new Set(paths);
   const directories = /* @__PURE__ */ new Set([""]);
   for (const path of paths) {
@@ -11653,8 +11766,10 @@ function includePathsOf(paths, configs) {
   };
   const forFile = /* @__PURE__ */ new Map();
   const everyEntry = [];
+  const compileCommandPaths = [];
   for (const [path, text2] of configs) {
     if (posix8.basename(path) !== "compile_commands.json") continue;
+    compileCommandPaths.push(path);
     const base = posix8.dirname(path) === "." ? "" : posix8.dirname(path);
     for (const entry of entriesOf(text2)) {
       const directory = entry.directory === "" ? base : entry.directory;
@@ -11688,17 +11803,58 @@ function includePathsOf(paths, configs) {
     const resolved = [...own, ...linked];
     if (resolved.length > 0) cmake.set(directory, resolved);
   }
+  const configuredRoots = [...new Set((options2.includeRoots ?? []).map(normaliseRoot))];
+  const untracked = options2.untracked ?? /* @__PURE__ */ new Set();
   return {
-    dirsFor(file) {
-      const dirs = [...forFile.get(file) ?? (forFile.size > 0 ? everyEntry : [])];
+    compileCommands: compileCommandPaths.length === 0 ? null : { paths: compileCommandPaths, tracked: compileCommandPaths.every((path) => !untracked.has(path)) },
+    configuredRoots,
+    dirsFor(file, inferred = []) {
+      const dirs = [...forFile.get(file) ?? (forFile.size > 0 ? everyEntry : []), ...configuredRoots];
       for (let dir = posix8.dirname(file) === "." ? "" : posix8.dirname(file); ; dir = posix8.dirname(dir) === "." ? "" : posix8.dirname(dir)) {
         dirs.push(...cmake.get(dir) ?? []);
         if (dir === "") break;
       }
-      dirs.push("");
+      dirs.push(...inferred, "");
       return [...new Set(dirs)];
     }
   };
+}
+var MIN_INFERRED_COVERAGE = 2;
+function inferIncludeRoots(unresolved, paths) {
+  const byBasename = /* @__PURE__ */ new Map();
+  for (const path of paths) {
+    const name13 = posix8.basename(path);
+    byBasename.set(name13, [...byBasename.get(name13) ?? [], path]);
+  }
+  const wanted = /* @__PURE__ */ new Map();
+  for (const { specifier } of unresolved) {
+    if (specifier.startsWith("<")) continue;
+    const name13 = specifier;
+    wanted.set(name13, (wanted.get(name13) ?? 0) + 1);
+  }
+  const rootsOf = /* @__PURE__ */ new Map();
+  for (const name13 of wanted.keys()) {
+    const normal = posix8.normalize(name13);
+    const found = [];
+    for (const path of byBasename.get(posix8.basename(normal)) ?? []) {
+      if (path === normal) continue;
+      if (path.endsWith(`/${normal}`)) found.push(path.slice(0, path.length - normal.length - 1));
+    }
+    if (found.length > 0) rootsOf.set(name13, found);
+  }
+  const chosen = [];
+  const covered = /* @__PURE__ */ new Set();
+  for (; ; ) {
+    const gain = /* @__PURE__ */ new Map();
+    for (const [name13, roots] of rootsOf) {
+      if (covered.has(name13)) continue;
+      for (const root of new Set(roots)) gain.set(root, (gain.get(root) ?? 0) + (wanted.get(name13) ?? 0));
+    }
+    const best = [...gain].sort(([a, x], [b, y]) => y - x || a.split("/").length - b.split("/").length || (a < b ? -1 : a > b ? 1 : 0))[0];
+    if (best === void 0 || best[1] < MIN_INFERRED_COVERAGE) return chosen;
+    chosen.push(best[0]);
+    for (const [name13, roots] of rootsOf) if (roots.includes(best[0])) covered.add(name13);
+  }
 }
 
 // packages/parse/src/languages/cpp/resolve.ts
@@ -11717,28 +11873,49 @@ function locateInclude(from, specifier, dirs, files) {
 var resolveInclude = (from, specifier, dirs, files) => locateInclude(from, specifier, dirs, files)?.path;
 function resolveCpp(input) {
   const files = new Set(input.paths);
-  const includePaths = includePathsOf(input.paths, input.configs);
-  const includes2 = /* @__PURE__ */ new Map();
-  const unresolved = [];
-  const externals = [];
-  for (const [path, facts] of input.facts) {
-    const dirs = includePaths.dirsFor(path);
-    const direct = /* @__PURE__ */ new Set();
-    for (const imported of facts.imports) {
-      if (imported.specifier === null) continue;
-      const target2 = resolveInclude(path, imported.specifier, dirs, files);
-      if (target2 !== void 0) {
-        if (target2 !== path) direct.add(target2);
-      } else if (imported.specifier.startsWith("<")) {
-        const name13 = imported.specifier.slice(1, -1);
-        const head = name13.split("/")[0];
-        if (name13.includes("/") && !systemDirectories.has(head)) externals.push({ from: path, packageName: head, typeOnly: false });
-      } else {
-        unresolved.push({ from: path, line: imported.line, specifier: imported.specifier, reason: "not-found" });
+  const includePaths = includePathsOf(input.paths, input.configs, { includeRoots: input.includeRoots ?? [], untracked: input.untrackedConfigs ?? /* @__PURE__ */ new Set() });
+  const pass = (inferred) => {
+    const includes3 = /* @__PURE__ */ new Map();
+    const unresolved2 = [];
+    const externals2 = [];
+    let considered = 0;
+    for (const [path, facts] of input.facts) {
+      const dirs = includePaths.dirsFor(path, inferred);
+      const direct = /* @__PURE__ */ new Set();
+      for (const imported of facts.imports) {
+        if (imported.specifier === null) continue;
+        const target2 = resolveInclude(path, imported.specifier, dirs, files);
+        if (target2 !== void 0) {
+          considered++;
+          if (target2 !== path) direct.add(target2);
+        } else if (imported.specifier.startsWith("<")) {
+          const name13 = imported.specifier.slice(1, -1);
+          const head = name13.split("/")[0];
+          if (name13.includes("/") && !systemDirectories.has(head)) externals2.push({ from: path, packageName: head, typeOnly: false });
+        } else {
+          considered++;
+          unresolved2.push({ from: path, line: imported.line, specifier: imported.specifier, reason: "not-found" });
+        }
       }
+      includes3.set(path, [...direct].sort());
     }
-    includes2.set(path, [...direct].sort());
+    return { includes: includes3, unresolved: unresolved2, externals: externals2, considered };
+  };
+  let inferredRoots = [];
+  let found = pass(inferredRoots);
+  if (includePaths.compileCommands === null && includePaths.configuredRoots.length === 0 && found.unresolved.length > 0) {
+    inferredRoots = inferIncludeRoots(found.unresolved.map((entry) => ({ specifier: entry.specifier })), input.paths);
+    if (inferredRoots.length > 0) found = pass(inferredRoots);
   }
+  const { includes: includes2, unresolved, externals } = found;
+  const includeResolution = {
+    compileCommands: includePaths.compileCommands,
+    configuredRoots: includePaths.configuredRoots,
+    inferredRoots,
+    includes: found.considered,
+    unresolved: unresolved.length,
+    unresolvedShare: found.considered === 0 ? 0 : Math.round(unresolved.length / found.considered * 1e4) / 1e4
+  };
   const implementations = /* @__PURE__ */ new Map();
   const pairedWith = /* @__PURE__ */ new Map();
   const paired = (a, b) => pairedWith.get(a) === b || pairedWith.get(b) === a;
@@ -11817,7 +11994,12 @@ function resolveCpp(input) {
       if (!fileEdges.has(key)) fileEdges.set(key, { from, to, kind: input.isTestPath(from) ? "test" : "reference", calls: 0, references: 0 });
     }
   }
-  for (const [header, sources] of implementations) for (const source of sources) addImport(header, source);
+  for (const [header, sources] of implementations) {
+    for (const source of sources) {
+      const key = `${header}\0${source}`;
+      if (!importEdges.has(key)) importEdges.set(key, { from: header, to: source, kind: "import", typeOnly: false, pairing: true });
+    }
+  }
   return {
     importEdges: [...importEdges.values()],
     consumers,
@@ -11825,7 +12007,8 @@ function resolveCpp(input) {
     barrels: [],
     exports: byName.exports,
     externalImports: externals,
-    unresolved
+    unresolved,
+    includeResolution
   };
 }
 
@@ -11837,8 +12020,8 @@ var adapter5 = {
   tier: 1,
   support: "supported",
   lexerProfile: "cpp",
-  grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm" }, extensions: claimed }],
-  extractorVersion: 2,
+  grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm", repairs: cppRepairs }, extensions: claimed }],
+  extractorVersion: 3,
   extract: extractFacts5,
   isTestPath: (path) => /(^|\/)(tests?|unittests?|gtest|testing)\//i.test(path) || /(^|\/)(test_[^/]+|[^/]+_(test|tests|unittest|unittests)|[^/]+Tests?|[^/]+\.(test|spec))\.[^/.]+$/.test(path),
   metrics: cppMetricRules,
@@ -12794,14 +12977,14 @@ function receiverName2(node) {
 function annotation4(node) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit = (current) => {
+  const visit2 = (current) => {
     if (current.type === "identifier") {
       names.add(current.text);
       if (current.text === "Callable") callback = true;
     }
-    for (const child2 of current.namedChildren) visit(child2);
+    for (const child2 of current.namedChildren) visit2(child2);
   };
-  if (node !== null) visit(node);
+  if (node !== null) visit2(node);
   return { callback, names: [...names].sort() };
 }
 function parametersOf5(fn) {
@@ -12843,7 +13026,7 @@ function isFunctionType(value) {
 }
 function extractFileCensus6(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit = (node, owner) => {
+  const visit2 = (node, owner) => {
     const line = node.startPosition.row + 1;
     let nextOwner = owner;
     switch (node.type) {
@@ -12921,9 +13104,9 @@ function extractFileCensus6(root) {
       }
       default:
     }
-    for (const child2 of node.children) visit(child2, nextOwner);
+    for (const child2 of node.children) visit2(child2, nextOwner);
   };
-  visit(root, null);
+  visit2(root, null);
   return facts;
 }
 
@@ -13392,13 +13575,13 @@ function lastName6(node) {
 function annotation5(node) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit = (current, inside) => {
+  const visit2 = (current, inside) => {
     if (current.type === "type_identifier") names.add(current.text);
     if (current.type === "function_type" && !inside) callback = true;
     const nested = inside || current.type === "struct_type" || current.type === "interface_type";
-    for (const child2 of current.namedChildren) visit(child2, nested);
+    for (const child2 of current.namedChildren) visit2(child2, nested);
   };
-  if (node !== null) visit(node, false);
+  if (node !== null) visit2(node, false);
   return { callback, names: [...names].sort() };
 }
 function parametersOf6(list3) {
@@ -13448,7 +13631,7 @@ function extractFileCensus7(root) {
     const name13 = child2.childForFieldName("name")?.text ?? "";
     if (name13.startsWith("New")) constructors.set(name13, parametersOf6(child2.childForFieldName("parameters")).flatMap((parameter) => parameter.type.names));
   }
-  const visit = (node) => {
+  const visit2 = (node) => {
     const line = node.startPosition.row + 1;
     switch (node.type) {
       case "import_spec": {
@@ -13521,9 +13704,9 @@ function extractFileCensus7(root) {
       }
       default:
     }
-    for (const child2 of node.namedChildren) visit(child2);
+    for (const child2 of node.namedChildren) visit2(child2);
   };
-  visit(root);
+  visit2(root);
   return facts;
 }
 
@@ -14142,24 +14325,24 @@ var Extractor7 = class {
     const type = node.childForFieldName("type");
     if (type !== null) this.walk(type, context, node, "type");
     const keysAreValues = type !== null && ["map_type", "slice_type", "array_type", "implicit_length_array_type"].includes(type.type);
-    const visit = (literal) => {
+    const visit2 = (literal) => {
       for (const element2 of literal.namedChildren) {
         if (element2.type === "keyed_element") {
           const key = element2.childForFieldName("key");
           const value = element2.childForFieldName("value");
           const bareKey = key?.namedChildren.length === 1 && key.namedChildren[0]?.type === "identifier";
-          if (key !== null && (keysAreValues || !bareKey)) this.walkElement(key, context, visit);
-          if (value !== null) this.walkElement(value, context, visit);
-        } else this.walkElement(element2, context, visit);
+          if (key !== null && (keysAreValues || !bareKey)) this.walkElement(key, context, visit2);
+          if (value !== null) this.walkElement(value, context, visit2);
+        } else this.walkElement(element2, context, visit2);
       }
     };
     const body2 = node.childForFieldName("body");
-    if (body2 !== null) visit(body2);
+    if (body2 !== null) visit2(body2);
   }
-  walkElement(element2, context, visit) {
+  walkElement(element2, context, visit2) {
     const inner2 = element2.type === "literal_element" ? element2.namedChildren : [element2];
     for (const child2 of inner2) {
-      if (child2.type === "literal_value") visit(child2);
+      if (child2.type === "literal_value") visit2(child2);
       else this.walk(child2, context, element2, null);
     }
   }
@@ -15301,15 +15484,15 @@ function nameOf2(node) {
 function annotation6(node, callbackParameters) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit = (current) => {
+  const visit2 = (current) => {
     if (current.type === "type_identifier") {
       names.add(current.text);
       if (callbackParameters.has(current.text)) callback = true;
     }
     if (current.type === "function_type") callback = true;
-    for (const child2 of current.namedChildren) visit(child2);
+    for (const child2 of current.namedChildren) visit2(child2);
   };
-  if (node !== null) visit(node);
+  if (node !== null) visit2(node);
   return { callback, names: [...names].sort() };
 }
 function callbackGenerics(fn) {
@@ -15344,7 +15527,7 @@ function attributeNames(attribute2) {
 function extractFileCensus8(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
   const constructors = /* @__PURE__ */ new Map();
-  const visit = (node, owner) => {
+  const visit2 = (node, owner) => {
     const line = node.startPosition.row + 1;
     let nextOwner = owner;
     switch (node.type) {
@@ -15446,9 +15629,9 @@ function extractFileCensus8(root) {
       }
       default:
     }
-    for (const child2 of node.children) visit(child2, nextOwner);
+    for (const child2 of node.children) visit2(child2, nextOwner);
   };
-  visit(root, null);
+  visit2(root, null);
   for (const klass of facts.classes) {
     if (klass.heritage.length === 0) klass.constructorTypes = [...new Set(constructors.get(klass.name) ?? [])].sort();
   }
@@ -16027,11 +16210,19 @@ async function analyseTree(tree, options2 = {}) {
     if (fileFacts) facts.set(path, fileFacts);
   }
   const configs = await tree.readMany(sortedPaths.filter((path) => isConfigPath4(path, adapters)));
+  const untrackedConfigs = /* @__PURE__ */ new Set();
+  const baseName = (path) => path.slice(path.lastIndexOf("/") + 1);
+  const trackedNames = new Set([...configs.keys()].map(baseName));
+  for (const [path, text2] of options2.extraConfigs ?? []) {
+    if (trackedNames.has(baseName(path)) || tree.files.has(path) || !isConfigPath4(path, adapters)) continue;
+    configs.set(path, text2);
+    untrackedConfigs.add(path);
+  }
   const resolved = [];
   for (const group of dependencyGroups(new Set(owners.values()))) {
     const members2 = new Set(group.map((adapter9) => adapter9.id));
     const groupFacts = new Map([...facts].filter(([path]) => members2.has(owners.get(path).id)));
-    const input = { facts: groupFacts, paths: sortedPaths, configs, isTestPath: isTest };
+    const input = { facts: groupFacts, paths: sortedPaths, configs, isTestPath: isTest, untrackedConfigs, includeRoots: options2.includeRoots ?? [] };
     const dependencies = group[0].dependencies;
     resolved.push(
       dependencies.model === "import-based" ? new ImportModel(groupFacts, dependencies.createResolver(sortedPaths, configs), isTest).build() : dependencies.resolve?.(input) ?? resolveBySymbols(input)
@@ -16084,7 +16275,8 @@ function assemble(facts, resolved) {
     unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
     filesWithSyntaxErrors,
     filesWithMacroCode,
-    generatedFiles
+    generatedFiles,
+    ...resolved.some((group) => group.includeResolution !== void 0) ? { includeResolution: resolved.find((group) => group.includeResolution !== void 0).includeResolution } : {}
   };
 }
 function compareUtf8(a, b) {
@@ -16385,6 +16577,69 @@ var ParseCache = class _ParseCache {
     return join9(this.directory, key, blobSha.slice(0, 2), `${blobSha}.json`);
   }
 };
+
+// packages/parse/src/build-configs.ts
+import { existsSync as existsSync8, readdirSync as readdirSync2, readFileSync as readFileSync6, statSync as statSync2 } from "node:fs";
+import { join as join10 } from "node:path";
+function readBuildConfigs(root, tree) {
+  const found = /* @__PURE__ */ new Map();
+  for (const path of tree.files.keys()) if (path === "compile_commands.json" || path.endsWith("/compile_commands.json")) return found;
+  for (const directory of candidateDirectories(root)) {
+    const path = directory === "" ? "compile_commands.json" : `${directory}/compile_commands.json`;
+    const text2 = readIfCompileCommands(join10(root, path));
+    if (text2 !== void 0) {
+      found.set(path, text2);
+      return found;
+    }
+  }
+  return found;
+}
+function subdirectories(root, directory) {
+  try {
+    return readdirSync2(join10(root, directory), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+  } catch {
+    return [];
+  }
+}
+function candidateDirectories(root) {
+  const directories = ["", "build", "out"];
+  directories.push(...subdirectories(root, "").filter((name13) => name13.startsWith("cmake-build-")));
+  for (const parent of ["build", "out"]) {
+    for (const child2 of subdirectories(root, parent)) {
+      directories.push(`${parent}/${child2}`);
+      if (parent === "out" && child2 === "build") for (const preset of subdirectories(root, "out/build")) directories.push(`out/build/${preset}`);
+    }
+  }
+  return directories;
+}
+function readIfCompileCommands(file) {
+  try {
+    if (!existsSync8(file) || !statSync2(file).isFile()) return void 0;
+    const text2 = readFileSync6(file, "utf8");
+    const parsed = JSON.parse(text2);
+    return Array.isArray(parsed) && parsed.length > 0 ? text2 : void 0;
+  } catch {
+    return void 0;
+  }
+}
+
+// packages/parse/src/include-resolution.ts
+import { posix as posix16 } from "node:path";
+function exceedsUnresolvedGuideline(resolution, guidelinePercent) {
+  return resolution.includes > 0 && resolution.unresolvedShare * 100 > guidelinePercent;
+}
+function describeIncludeResolution(resolution, guidelinePercent, plugin) {
+  const above = exceedsUnresolvedGuideline(resolution, guidelinePercent);
+  const share2 = `${resolution.unresolved} of ${resolution.includes} includes (${(resolution.unresolvedShare * 100).toFixed(1)}%) found no file`;
+  const source = resolution.compileCommands !== null ? `include directories from ${resolution.compileCommands.paths.join(", ")}${resolution.compileCommands.tracked ? "" : " (not tracked by git)"}` : resolution.configuredRoots.length > 0 ? `include directories from the includeRoots setting` : resolution.inferredRoots.length > 0 ? `no compile_commands.json and no includeRoots setting, so ${resolution.inferredRoots.length} include directories were inferred` : "no compile_commands.json and no includeRoots setting, and no include directory could be inferred";
+  const advice = `${plugin}: set includeRoots in code-health.json, or generate a compile_commands.json (CMAKE_EXPORT_COMPILE_COMMANDS=ON) at the repository root or in build/`;
+  const text2 = `${share2}, above the ${plugin}.unresolvedIncludePercent guideline of ${guidelinePercent}% (${source}), so dependencies, consumers and the results that rest on them are incomplete and the affected units are marked low confidence`;
+  return {
+    section: { ...resolution, guideline: guidelinePercent, aboveGuideline: above },
+    notice: above ? text2 : void 0,
+    warning: above ? `Warning: ${text2}. ${advice}` : void 0
+  };
+}
 
 // packages/structure/src/packaging/discovery.ts
 var dirOf = (path) => path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ".";
@@ -16874,11 +17129,15 @@ function folderOf(path) {
 }
 async function loadProject(root, headSha, options2) {
   const tree = await treeFromRef(root, headSha);
-  return projectFromTree(tree, headSha, options2, await ParseCache.forRepository(root));
+  return projectFromTree(tree, headSha, { ...options2, extraConfigs: readBuildConfigs(root, tree) }, await ParseCache.forRepository(root));
 }
 async function projectFromTree(tree, headSha, options2, cache) {
   const excluded = compileGlobs(options2.exclude);
-  const analysed = await analyseTree(tree, cache === void 0 ? {} : { cache });
+  const analysed = await analyseTree(tree, { ...cache === void 0 ? {} : { cache }, ...options2.extraConfigs === void 0 ? {} : { extraConfigs: options2.extraConfigs }, includeRoots: options2.includeRoots ?? [] });
+  if (analysed.includeResolution !== void 0) {
+    const report = describeIncludeResolution(analysed.includeResolution, options2.unresolvedIncludePercent ?? 20, "structure");
+    recordRunNote({ key: "includeResolution", value: report.section, ...report.notice === void 0 ? {} : { notice: report.notice }, ...report.warning === void 0 ? {} : { warning: report.warning } });
+  }
   const analysis = { ...analysed, externalImports: analysed.externalImports.filter((external) => !excluded(external.from)) };
   const generated = new Set(analysis.generatedFiles);
   const files = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !excluded(path) && !generated.has(path)).sort(compareUtf8);
@@ -16886,7 +17145,7 @@ async function projectFromTree(tree, headSha, options2, cache) {
   const imports = /* @__PURE__ */ new Map();
   const adjacency = new Map(files.map((path) => [path, []]));
   for (const edge of analysis.importEdges) {
-    if (!inProject.has(edge.from) || !inProject.has(edge.to)) continue;
+    if (edge.pairing === true || !inProject.has(edge.from) || !inProject.has(edge.to)) continue;
     const key = edgeKey(edge.from, edge.to);
     imports.set(key, [...imports.get(key) ?? [], edge]);
     adjacency.get(edge.from).push(edge.to);
@@ -17714,6 +17973,8 @@ var structureConfig = {
      * on itself and exactly the layers named.
      */
     layers: [],
+    /** Guideline (a judgement call): when more than this percent of the C and C++ includes found no file, a warning is printed on stderr and a notice goes in the output, because the include graph, and every result drawn from it, is incomplete. The share is always reported and nothing is hidden. */
+    unresolvedIncludePercent: 20,
     /** The branch `check` compares against when no base is given: the base is the merge base of the analysed commit with it. */
     mainBranch: "main",
     /** The revision `check` compares against, replacing the merge base with mainBranch. null uses the merge base. */
@@ -17790,6 +18051,8 @@ function readSettings(config) {
     hubMinAppendShare: percent3("hubMinAppendShare"),
     hubContentionDays: positive("hubContentionDays"),
     hubMinAuthors: positive("hubMinAuthors"),
+    unresolvedIncludePercent: percent3("unresolvedIncludePercent"),
+    includeRoots: config.effective.includeRoots,
     layers: readLayerRules(section.layers, at("layers")),
     mainBranch,
     base,
@@ -17808,9 +18071,9 @@ function withVagueNames(packages, vagueNames) {
 
 // packages/history/src/reports.ts
 import { mkdirSync as mkdirSync2, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join10 } from "node:path";
+import { join as join11 } from "node:path";
 function reportPath(root, tool, command12) {
-  return join10(root, ".cache", "code-health", "reports", `${tool}.${command12}.json`);
+  return join11(root, ".cache", "code-health", "reports", `${tool}.${command12}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
@@ -17838,8 +18101,8 @@ async function writeReport(context, identity, command12, output, analysedHead) {
   });
   const file = reportPath(context.repo.root, identity.tool, command12);
   const location = await locateCache(context.repo.root);
-  ensureCacheDir({ ...location, cacheDir: join10(context.repo.root, ".cache", "code-health") });
-  mkdirSync2(join10(file, ".."), { recursive: true });
+  ensureCacheDir({ ...location, cacheDir: join11(context.repo.root, ".cache", "code-health") });
+  mkdirSync2(join11(file, ".."), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
   writeFileSync2(temporary, serialise(document));
   renameSync2(temporary, file);
@@ -18202,19 +18465,19 @@ function stampOf(input) {
 }
 
 // packages/structure/src/incidental.ts
-import { existsSync as existsSync9 } from "node:fs";
+import { existsSync as existsSync10 } from "node:fs";
 
 // packages/transcripts/src/measure-repo.ts
-import { existsSync as existsSync8, readFileSync as readFileSync6, readdirSync as readdirSync2 } from "node:fs";
-import { join as join11 } from "node:path";
+import { existsSync as existsSync9, readFileSync as readFileSync7, readdirSync as readdirSync3 } from "node:fs";
+import { join as join12 } from "node:path";
 
 // packages/transcripts/src/repo-path.ts
-import { posix as posix16 } from "node:path";
+import { posix as posix17 } from "node:path";
 function normalise4(path) {
   const converted = path.replaceAll("\\", "/");
   const drive = /^[A-Za-z]:\//.exec(converted);
-  if (drive === null) return posix16.normalize(converted);
-  return drive[0] + posix16.normalize(converted.slice(drive[0].length));
+  if (drive === null) return posix17.normalize(converted);
+  return drive[0] + posix17.normalize(converted.slice(drive[0].length));
 }
 function isAbsolute(path) {
   return path.startsWith("/") || /^[A-Za-z]:\//.test(path);
@@ -18269,7 +18532,7 @@ function toRepoPath(path, roots) {
 }
 
 // packages/transcripts/src/shell-command.ts
-import { posix as posix17 } from "node:path";
+import { posix as posix18 } from "node:path";
 var LITERAL_DOLLAR = "";
 var plain2 = (word) => word.text.replaceAll(LITERAL_DOLLAR, "$");
 var OPERATORS = ["&>>", "<<<", "<<-", "&&", "||", "|&", ";;", "<<", ">>", ">&", ">|", "&>", "<&", ";", "|", "&", "(", ")", ">", "<"];
@@ -18583,7 +18846,7 @@ var Interpretation = class {
       this.fail();
       return null;
     }
-    return this.cwd === void 0 ? text2 : posix17.join(this.cwd, text2);
+    return this.cwd === void 0 ? text2 : posix18.join(this.cwd, text2);
   }
   substitute(word) {
     if (!word.dynamic || !word.text.includes("$")) return word;
@@ -18789,7 +19052,7 @@ function moveLike(name13, args2, run3) {
     sources = all;
     const directory = run3.resolve(targetOption.value ?? "");
     if (directory === null) return;
-    targets = all.filter((w) => !w.dynamic).map((w) => posix17.join(directory, posix17.basename(plain2(w))));
+    targets = all.filter((w) => !w.dynamic).map((w) => posix18.join(directory, posix18.basename(plain2(w))));
   } else {
     sources = all.slice(0, -1);
     const last = all.at(-1);
@@ -18798,7 +19061,7 @@ function moveLike(name13, args2, run3) {
     if (sources.length > 1 || endsLikeDirectory(lastText)) {
       const directory = run3.resolve(lastText);
       if (directory === null) return;
-      targets = sources.filter((w) => !w.dynamic).map((w) => posix17.join(directory, posix17.basename(plain2(w))));
+      targets = sources.filter((w) => !w.dynamic).map((w) => posix18.join(directory, posix18.basename(plain2(w))));
     } else {
       const target2 = run3.resolve(lastText);
       if (target2 !== null) targets = [target2];
@@ -18869,7 +19132,7 @@ function execute2(command12, run3, piped) {
   }
   const head = words[0];
   if (head.dynamic) return run3.fail();
-  const name13 = posix17.basename(plain2(head));
+  const name13 = posix18.basename(plain2(head));
   const args2 = words.slice(1);
   const hasInput = command12.redirects.some((r) => r.op === "<" || r.op === "<<<") || command12.heredoc;
   if (HIDING_COMMANDS.has(name13)) return run3.fail();
@@ -19311,20 +19574,20 @@ function summariseTasks(tasks) {
 }
 function agentFilesUnder(dir) {
   const found = [];
-  for (const entry of readdirSync2(dir, { withFileTypes: true })) {
-    const path = join11(dir, entry.name);
+  for (const entry of readdirSync3(dir, { withFileTypes: true })) {
+    const path = join12(dir, entry.name);
     if (entry.isDirectory()) found.push(...agentFilesUnder(path));
     else if (entry.isFile() && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) found.push(path);
   }
   return found;
 }
 function subagentFiles(projectsDir, root) {
-  const dir = join11(projectsDir, encodeProjectDir(root));
-  if (!existsSync8(dir)) return [];
+  const dir = join12(projectsDir, encodeProjectDir(root));
+  if (!existsSync9(dir)) return [];
   const files = [];
-  for (const entry of readdirSync2(dir, { withFileTypes: true })) {
-    const subagents = join11(dir, entry.name, "subagents");
-    if (!entry.isDirectory() || !existsSync8(subagents)) continue;
+  for (const entry of readdirSync3(dir, { withFileTypes: true })) {
+    const subagents = join12(dir, entry.name, "subagents");
+    if (!entry.isDirectory() || !existsSync9(subagents)) continue;
     for (const path of agentFilesUnder(subagents)) {
       const name13 = path.slice(path.lastIndexOf("/") + 1);
       files.push({ sessionId: entry.name, agentId: name13.slice("agent-".length, -".jsonl".length), path });
@@ -19337,7 +19600,7 @@ function stringField(value) {
 }
 function readMeta2(transcriptPath) {
   try {
-    const parsed = JSON.parse(readFileSync6(`${transcriptPath.slice(0, -".jsonl".length)}.meta.json`, "utf8"));
+    const parsed = JSON.parse(readFileSync7(`${transcriptPath.slice(0, -".jsonl".length)}.meta.json`, "utf8"));
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
     const meta = parsed;
     return { agentType: stringField(meta["agentType"]), description: stringField(meta["description"]), worktreePath: stringField(meta["worktreePath"]) };
@@ -19346,9 +19609,9 @@ function readMeta2(transcriptPath) {
   }
 }
 function sessionFiles(projectsDir, root) {
-  const dir = join11(projectsDir, encodeProjectDir(root));
-  if (!existsSync8(dir)) return [];
-  return readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join11(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
+  const dir = join12(projectsDir, encodeProjectDir(root));
+  if (!existsSync9(dir)) return [];
+  return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join12(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
 }
 function measureRepo(options2) {
   const { projectsDir, repoRoots, window: window2 } = options2;
@@ -19366,7 +19629,7 @@ function measureRepo(options2) {
         seen.add(file.path);
         let text2;
         try {
-          text2 = readFileSync6(file.path, "utf8");
+          text2 = readFileSync7(file.path, "utf8");
         } catch {
           continue;
         }
@@ -19389,7 +19652,7 @@ function measureRepo(options2) {
       seen.add(file.path);
       let text2;
       try {
-        text2 = readFileSync6(file.path, "utf8");
+        text2 = readFileSync7(file.path, "utf8");
       } catch {
         continue;
       }
@@ -19502,7 +19765,7 @@ function layerRuleOf(model, from, to, settings) {
 // packages/structure/src/incidental.ts
 var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 function readAgentTasks(repoRoots, projectsDir, window2) {
-  if (!existsSync9(projectsDir)) throw environmentError("no-projects-dir", `${projectsDir} does not exist`);
+  if (!existsSync10(projectsDir)) throw environmentError("no-projects-dir", `${projectsDir} does not exist`);
   const parsed = parseWindow(day(window2.since), day(window2.until + 86400));
   return measureRepo({ projectsDir, repoRoots, window: parsed }).tasks;
 }
@@ -19737,15 +20000,15 @@ function connectedPairs(graph) {
 }
 
 // packages/structure/src/locality-report.ts
-import { existsSync as existsSync10, readFileSync as readFileSync7 } from "node:fs";
+import { existsSync as existsSync11, readFileSync as readFileSync8 } from "node:fs";
 var LOCALITY_REPORT = { tool: "locality", command: "analyse" };
 var RECOGNISED_LOCALITY_SCHEMA_VERSIONS = [1];
 function readLocalityUnblocks(context, head) {
   const file = reportPath2(context.repo.root, LOCALITY_REPORT.command, LOCALITY_REPORT.tool);
-  if (!existsSync10(file)) return void 0;
+  if (!existsSync11(file)) return void 0;
   let document;
   try {
-    document = JSON.parse(readFileSync7(file, "utf8"));
+    document = JSON.parse(readFileSync8(file, "utf8"));
   } catch {
     return void 0;
   }
@@ -21091,7 +21354,7 @@ function assemblePackageModel(headSha, history, tree, project) {
     }
   }
   for (const imported of project.analysis.importEdges) {
-    if (excluded(imported.from) || excluded(imported.to)) continue;
+    if (imported.pairing === true || excluded(imported.from) || excluded(imported.to)) continue;
     const from = index.owner(imported.from);
     const to = index.owner(imported.to);
     if (from === void 0 || to === void 0 || from === to) continue;
@@ -21970,7 +22233,7 @@ function deepImports(context, reuse) {
   const excluded = compileGlobs(model.settings.exclude);
   const found = /* @__PURE__ */ new Map();
   for (const edge of model.project.analysis.importEdges) {
-    if (excluded(edge.from) || excluded(edge.to) || isTestPath(edge.to)) continue;
+    if (edge.pairing === true || excluded(edge.from) || excluded(edge.to) || isTestPath(edge.to)) continue;
     const consumer = model.index.owner(edge.from);
     const owner = model.index.owner(edge.to);
     if (consumer === void 0 || owner === void 0 || consumer === owner) continue;
@@ -23701,7 +23964,7 @@ var list2 = {
 };
 
 // packages/structure/src/packaging/outcome.ts
-import { existsSync as existsSync11 } from "node:fs";
+import { existsSync as existsSync12 } from "node:fs";
 var median2 = (values) => {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -23835,7 +24098,7 @@ async function measureOutcome2(root, settings, changes, anchor, options2) {
   const repoRoots = options2.projectsDir === void 0 ? [root] : await checkouts(root);
   const effort = () => {
     const projectsDir = options2.projectsDir;
-    if (projectsDir === void 0 || !existsSync11(projectsDir)) {
+    if (projectsDir === void 0 || !existsSync12(projectsDir)) {
       return { status: "not-measured", reason: projectsDir === void 0 ? "no --projects-dir was given" : `${projectsDir} does not exist` };
     }
     const windowOf = (from, to) => parseWindow(day2(from), day2(to));

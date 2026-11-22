@@ -35,6 +35,8 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    such as `cognitive-high` or `bumpy-road`. Read `layers` and `skipped` first: a language with no structural adapter,
    and no lexical profile with measured agreement, gets file-level numbers only, and the output says so. Do not
    present a lexical value as exact. The `agreement` section carries the rate that released it.
+   `parseCoverage` gives the share of parsed files with syntax errors, and a notice says when it is above the
+   `syntaxErrorPercent` guideline: those files' functions may be incomplete, so say so before ranking from them.
 
 2. The ranking is by percentile within the repository, weighted by how often the file changed in the window
    (`ranking.changeWeighted` is true). Each row carries `revisions`, `changeWeight` and `complexityScore`, the percentile

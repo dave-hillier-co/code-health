@@ -255,6 +255,28 @@ const cpp: LexerProfile = {
   functionHeaders: [cMethodHeader, "\\]\\s*(?:\\([^]*\\))?\\s*(?:mutable|noexcept|->\\s*[^{;]+)*\\s*$"],
 };
 
+/**
+ * GLSL, the C-family shading language of OpenGL and Vulkan: C comments, `#` preprocessor lines, `struct`
+ * declarations and C-style function definitions. It has no string or character literals (a quoted `#include` is a
+ * preprocessor line), no classes and no `catch`, and `^^` is the logical exclusive or. A uniform or buffer block
+ * (`uniform Lights { ... }`) is a block with no function header. There is no structural adapter, so nothing measures
+ * the profile's agreement and its per-function values are unverified (see `profilesWithoutAdapter`).
+ */
+const glsl: LexerProfile = {
+  name: "glsl",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [{ ...doubleQuote }],
+  branchKeywords: ["if", "for", "while", "case"],
+  shortCircuitOperators: ["&&", "\\|\\|", "\\^\\^"],
+  bumpOpeners: ["if", "for", "while", "case", "else", "do", "default", "switch"],
+  headerNoise: ["^#.*$"],
+  controlHeader,
+  typeHeaders: ["\\bstruct\\s+(?<name>\\w+)"],
+  functionHeaders: [cMethodHeader],
+};
+
 const java: LexerProfile = {
   name: "java",
   blocks: "braces",
@@ -383,12 +405,19 @@ export const profiles: Record<string, LexerProfile> = {
   typescript,
   csharp,
   cpp,
+  glsl,
   java,
   kotlin,
   rust,
   go,
   python,
 };
+
+/**
+ * Profiles with no structural adapter behind them, so no agreement with a structural layer can be measured. A file read
+ * with one has its per-function values released as unverified, as a profile mapped by config is.
+ */
+export const profilesWithoutAdapter: ReadonlySet<string> = new Set(["glsl"]);
 
 /** Extension to profile name. Anything missing here has no profile. */
 export const extensionProfiles: Record<string, string> = {
@@ -409,6 +438,21 @@ export const extensionProfiles: Record<string, string> = {
   hh: "cpp",
   hpp: "cpp",
   hxx: "cpp",
+  // Shader stages as glslang names them by extension, and the extension of an include file.
+  glsl: "glsl",
+  vert: "glsl",
+  frag: "glsl",
+  geom: "glsl",
+  tesc: "glsl",
+  tese: "glsl",
+  comp: "glsl",
+  mesh: "glsl",
+  rgen: "glsl",
+  rint: "glsl",
+  rahit: "glsl",
+  rchit: "glsl",
+  rmiss: "glsl",
+  rcall: "glsl",
   java: "java",
   kt: "kotlin",
   kts: "kotlin",
@@ -419,7 +463,7 @@ export const extensionProfiles: Record<string, string> = {
 
 export interface ProfileSelection {
   profile: LexerProfile;
-  /** True when config mapped the extension, so no agreement measurement stands behind it. */
+  /** True when config mapped the extension, or the profile has no structural adapter, so no agreement measurement stands behind it. */
   mapped: boolean;
 }
 
@@ -443,5 +487,5 @@ export function selectProfile(
   }
   const builtIn = extensionProfiles[extension];
   const profile = builtIn === undefined ? undefined : profiles[builtIn];
-  return profile === undefined ? undefined : { profile, mapped: false };
+  return profile === undefined ? undefined : { profile, mapped: profilesWithoutAdapter.has(profile.name) };
 }

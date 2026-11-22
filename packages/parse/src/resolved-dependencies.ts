@@ -5,6 +5,11 @@ export interface ImportEdge {
   to: string;
   kind: "import" | "reexport" | "require";
   typeOnly: boolean;
+  /**
+   * C++ only: the edge from a header to the source file that implements it. It stands for the pair being one unit, and is
+   * no dependency of the header on the source, so a view of what depends on what (cycles, package dependencies) leaves it out.
+   */
+  pairing?: true;
 }
 
 export type ConsumerKind = "call" | "reference" | "test";
@@ -68,6 +73,25 @@ export interface ExternalImport {
   typeOnly: boolean;
 }
 
+/**
+ * How `#include` was resolved for the C and C++ files of a tree, so that a reader knows whether the include graph
+ * can be trusted: where the include directories came from, and how many includes still found no file.
+ */
+export interface IncludeResolution {
+  /** The `compile_commands.json` the directories came from, or null when none was read. `tracked` is false for one read from disk that git does not track. */
+  compileCommands: { paths: string[]; tracked: boolean } | null;
+  /** The directories the config `includeRoots` named, repo-relative, "" for the root. */
+  configuredRoots: string[];
+  /** The directories inferred from where the unresolved includes' files are, which happens only when there is neither a `compile_commands.json` nor a configured root. */
+  inferredRoots: string[];
+  /** Includes that name a file of the repository or look for one: every quoted include, and every angle include that resolved. */
+  includes: number;
+  /** Quoted includes that found no file. They make no edge. */
+  unresolved: number;
+  /** `unresolved` over `includes`, 0 to 1, rounded to four decimals. 0 when there are no includes. */
+  unresolvedShare: number;
+}
+
 /** What a dependency model derives from the facts: everything in a `ProjectAnalysis` that resolution decides. */
 export interface ResolvedDependencies {
   /** Static import and re-export statements between files of the tree. */
@@ -82,4 +106,6 @@ export interface ResolvedDependencies {
   /** Imports of packages outside the tree. Node's own modules are not among them. */
   externalImports: ExternalImport[];
   unresolved: Unresolved[];
+  /** C and C++ only: where the include directories came from and how many includes found no file. Absent for other languages. */
+  includeResolution?: IncludeResolution;
 }

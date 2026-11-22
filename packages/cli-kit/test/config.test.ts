@@ -45,6 +45,7 @@ test("missing file gives defaults for shared keys and the plugin section", () =>
     exclude: [],
     languages: {},
     entryPoints: [],
+    includeRoots: [],
     components: {},
     vagueNames: ["utils", "helpers", "common", "misc"],
     history: historyDefaults,
@@ -62,6 +63,13 @@ test("file values override defaults, merging objects key by key", () => {
   expect(file).toBe(join(root, "code-health.json"));
   expect(effective.exclude).toEqual(["dist/**"]);
   expect(effective.cochange).toEqual({ ...section, windowMonths: 6, bots: { patterns: ["svc-"] } });
+});
+
+test("includeRoots is a shared list of directories, and anything else fails", () => {
+  writeConfig({ includeRoots: ["src", "third_party/include"] });
+  expect(load().effective.includeRoots).toEqual(["src", "third_party/include"]);
+  writeConfig({ includeRoots: "src" });
+  expect(() => load()).toThrow(/includeRoots must be an array of strings/);
 });
 
 test("sections of other plugins are ignored and do not affect the hash", () => {
@@ -85,7 +93,7 @@ test("hash is the first 16 hex digits of the SHA-256 of the serialised effective
   writeConfig({ exclude: ["dist"], cochange: { windowMonths: 3 } });
   const config = load();
   expect(config.hash).toBe(createHash("sha256").update(serialise(config.effective)).digest("hex").slice(0, 16));
-  expect(config.hash).toBe("1dc606928da9b6a8");
+  expect(config.hash).toBe("1e0a7cd0cfa4603f");
 });
 
 const reading: PluginConfigSpec = { plugin: "cochange", section: { minSupport: 5 }, history: ["windowMonths", "botPatterns", "evidence", "branch"] };

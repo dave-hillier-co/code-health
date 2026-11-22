@@ -128,7 +128,7 @@ export function assemblePackageModel(
     }
   }
   for (const imported of project.analysis.importEdges) {
-    if (excluded(imported.from) || excluded(imported.to)) continue;
+    if (imported.pairing === true || excluded(imported.from) || excluded(imported.to)) continue;
     const from = index.owner(imported.from);
     const to = index.owner(imported.to);
     if (from === undefined || to === undefined || from === to) continue;
