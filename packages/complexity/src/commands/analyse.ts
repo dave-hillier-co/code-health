@@ -3,6 +3,7 @@ import { readChangeWeights } from "../change-weights.ts";
 import { cachedAnalysis, layerOption, measureCurrent, metricsOption, noCacheHelp, noCacheOption, parseLayer, parseMetrics } from "../analysis.ts";
 import { normalisePaths, pathSelector } from "../current-tree.ts";
 import { fixFigures, fixHeader, fixNotices, fixOptionHelp, fixOptions, measureFixesFor } from "../fix-report.ts";
+import { readSettings } from "../config.ts";
 import { metricIds } from "../metrics.ts";
 import { usageError } from "@code-health/cli-kit/errors";
 import { defaultRankBy, rankByValues, rankUnits, sortKeys, sortRanked, type RankBy } from "../ranking.ts";
@@ -35,7 +36,12 @@ export const command: Command = {
     const paths = normalisePaths(context.positionals);
     const stated = { layer: values.layer, metrics: values.metrics, by: values.by, includeTests: wantsTests(context) ? true : undefined, paths: paths.length === 0 ? undefined : paths };
     // Fixes read the history of earlier revisions, which a stored result is not keyed by.
-    return cachedAnalysis(context, name, stated, () => compute(context, paths), values["with-fixes"] !== true);
+    // A run that could not read the history (a shallow clone, say) has no change weights, and the same commit may have them once it can.
+    const withoutWeights = (output: CommandOutput) =>
+      readSettings(context.config).changeWeighting && (output.extra?.ranking as { changeWeightsAvailable?: boolean } | undefined)?.changeWeightsAvailable !== true
+        ? "the change weights could not be read from the history, which the same commit may allow later"
+        : undefined;
+    return cachedAnalysis(context, name, stated, () => compute(context, paths), values["with-fixes"] !== true, withoutWeights);
   },
 };
 

@@ -3,7 +3,7 @@ import { restoreBuiltinOmissions } from "@code-health/cli-kit/builtin-excludes";
 import { restoreDropped } from "@code-health/cli-kit/dropped-files";
 import type { OptionSpec } from "@code-health/cli-kit/args";
 import type { CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
-import { reportPath, variantOf, writeReport, type ReportIdentity } from "./reports.ts";
+import { reportPath, skipReport, variantOf, writeReport, type ReportIdentity } from "./reports.ts";
 
 /**
  * Results computed on demand and kept in `.cache/code-health/reports/`. A stored result is reused when it was
@@ -125,6 +125,8 @@ export async function cachedOutput(
   stored: StoredResult | undefined,
   compute: () => Promise<CommandOutput>,
   notStored: (context: CommandContext) => void,
+  /** Why a computed output must not be stored, such as lacking history the commit has but this run could not read. Undefined to store it. */
+  notStorableBecause: (output: CommandOutput) => string | undefined = () => undefined,
 ): Promise<CommandOutput> {
   if (stored === undefined) {
     const output = await compute();
@@ -136,6 +138,8 @@ export async function cachedOutput(
     if (hit !== undefined) return hit;
   }
   const output = await compute();
-  await storeCached(context, stored, output);
+  const reason = notStorableBecause(output);
+  if (reason === undefined) await storeCached(context, stored, output);
+  else skipReport(context, reason);
   return output;
 }

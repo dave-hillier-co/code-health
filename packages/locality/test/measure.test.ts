@@ -348,3 +348,12 @@ test("measure needs a subcommand", async () => {
   const { run } = await measure(repo, sessions, []);
   expect(run.code).toBe(ExitCode.Usage);
 }, 60_000);
+
+describe("measure with a stray word", () => {
+  test.each(["baseline", "compare", "premise"])("%s followed by another word is a usage error", async (subcommand) => {
+    const { repo, sessions } = fresh();
+    const run = await runLocality(repo.path, ["measure", subcommand, "extra", "--projects-dir", sessions.directory, "--json"]);
+    expect(run.code).toBe(ExitCode.Usage);
+    expect(JSON.parse(run.stderr).error.message).toBe(`measure ${subcommand} takes no arguments after the subcommand, got "extra"`);
+  });
+});

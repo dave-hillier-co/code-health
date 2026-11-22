@@ -5273,6 +5273,9 @@ var command3 = {
     if (subcommand !== "baseline" && subcommand !== "compare" && subcommand !== "premise") {
       throw usageError("measure takes one subcommand: baseline or compare");
     }
+    if (context.positionals.length > 1) {
+      throw usageError(`measure ${subcommand} takes no arguments after the subcommand, got "${context.positionals[1]}"`);
+    }
     const settings = readSettings(context.config);
     if (subcommand === "premise") return premise(context, settings);
     return subcommand === "baseline" ? baseline(context, settings) : compare(context, settings);

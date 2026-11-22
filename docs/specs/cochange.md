@@ -97,7 +97,7 @@ Applied at query time, not ingestion, so changing config never needs a rebuild:
 
 | Command | Output |
 |---|---|
-| `cochange refresh` | Updates the cache. Reports commits added. |
+| `cochange refresh` | Updates the cache. Reports commits added. Takes no arguments: a stray word is a usage error. |
 | `cochange hotspots [--by file\|component] [--all-files] [--include-tests] [--limit N]` | Ranked hotspots (production code files, or all with `--all-files`; the test files, by the language conventions and the shared `testPatterns`, are left out and counted in `dropped.tests` unless `--include-tests` lists them with a `role`, and the percentiles are taken among the files listed) with frequency, churn, complexity, age, score, and `fixes` with `fixShare`, counted as `fixes` counts them. The output carries `fixConvention`. |
 | `cochange coupling [--file PATH] [--min-degree D] [--min-support S]` | Coupled pairs, each side labelled `code` or `non-code` (`pathKind`, `withKind`), with degree, confidence in both directions, support and distance. The degree (`minDegree`, `--min-degree`) is a guideline: pairs under it are listed after the others with `aboveGuideline` false, and none is left out for its degree. The support floor (`minSupport`, `--min-support`) is the only cut. With `--file`, the files that change with that one. |
 | `cochange clusters [--min-degree D] [--min-support S]` | Groups of mutually coupled files, with their spread. A pair joins a group when it reaches both the support floor and the degree: this is the one place `minDegree` is a cut, because a group has to be defined by its links. Candidates for co-location. |

@@ -63,9 +63,10 @@ export async function cachedAnalysis(
   stated: Record<string, unknown>,
   compute: () => Promise<CommandOutput>,
   cacheable = true,
+  notStorableBecause: (output: CommandOutput) => string | undefined = () => undefined,
 ): Promise<CommandOutput> {
   if (!cacheable) return cachedOutput(context, undefined, compute, (run) => skipReport(run, "the run read the history of earlier revisions"));
   const uncommitted = await hasUncommittedWork(context);
   const stored = uncommitted ? undefined : { identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION }, command, head: context.repo.head, stated };
-  return cachedOutput(context, stored, compute, (run) => skipReport(run, "the run did not analyse HEAD"));
+  return cachedOutput(context, stored, compute, (run) => skipReport(run, "the run did not analyse HEAD"), notStorableBecause);
 }

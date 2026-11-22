@@ -60,3 +60,10 @@ test("outside a git repository it is an environment error", async () => {
   expect(code).toBe(ExitCode.Environment);
   expect(JSON.parse(stderr).error.code).toBe("not-a-git-repo");
 });
+
+test("refresh with a stray word is a usage error and reads no history", async () => {
+  const { code, stderr, stdout } = await runCochange(repo.path, ["refresh", "backtest"]);
+  expect(code).toBe(ExitCode.Usage);
+  expect(stderr).toContain('refresh takes no arguments, got "backtest"');
+  expect(stdout).toBe("");
+});

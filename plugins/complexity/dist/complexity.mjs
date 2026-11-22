@@ -2362,7 +2362,7 @@ function storeCached(context, stored, output) {
     replayable: true
   });
 }
-async function cachedOutput(context, stored, compute3, notStored) {
+async function cachedOutput(context, stored, compute3, notStored, notStorableBecause = () => void 0) {
   if (stored === void 0) {
     const output2 = await compute3();
     notStored(context);
@@ -2373,7 +2373,9 @@ async function cachedOutput(context, stored, compute3, notStored) {
     if (hit !== void 0) return hit;
   }
   const output = await compute3();
-  await storeCached(context, stored, output);
+  const reason = notStorableBecause(output);
+  if (reason === void 0) await storeCached(context, stored, output);
+  else skipReport(context, reason);
   return output;
 }
 
@@ -18148,11 +18150,11 @@ async function measureCurrent(context, layer) {
 function storeReport(context, command9, output) {
   return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command9, output, context.repo.head);
 }
-async function cachedAnalysis(context, command9, stated, compute3, cacheable = true) {
+async function cachedAnalysis(context, command9, stated, compute3, cacheable = true, notStorableBecause = () => void 0) {
   if (!cacheable) return cachedOutput(context, void 0, compute3, (run3) => skipReport(run3, "the run read the history of earlier revisions"));
   const uncommitted = await hasUncommittedWork(context);
   const stored = uncommitted ? void 0 : { identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command: command9, head: context.repo.head, stated };
-  return cachedOutput(context, stored, compute3, (run3) => skipReport(run3, "the run did not analyse HEAD"));
+  return cachedOutput(context, stored, compute3, (run3) => skipReport(run3, "the run did not analyse HEAD"), notStorableBecause);
 }
 
 // packages/complexity/src/fix-ranges.ts
@@ -18996,7 +18998,8 @@ var command = {
     const { values } = context;
     const paths = normalisePaths(context.positionals);
     const stated = { layer: values.layer, metrics: values.metrics, by: values.by, includeTests: wantsTests(context) ? true : void 0, paths: paths.length === 0 ? void 0 : paths };
-    return cachedAnalysis(context, name2, stated, () => compute(context, paths), values["with-fixes"] !== true);
+    const withoutWeights = (output) => readSettings(context.config).changeWeighting && output.extra?.ranking?.changeWeightsAvailable !== true ? "the change weights could not be read from the history, which the same commit may allow later" : void 0;
+    return cachedAnalysis(context, name2, stated, () => compute(context, paths), values["with-fixes"] !== true, withoutWeights);
   }
 };
 async function compute(context, paths) {

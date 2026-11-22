@@ -1,3 +1,6 @@
+import { execFileSync } from "node:child_process";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeEach, expect, test } from "vitest";
@@ -88,4 +91,19 @@ test("a stored result keeps saying how many files were left out", async () => {
   expect(warm.inputs.resultsCache).toHaveLength(1);
   expect(warm.dropped).toEqual(cold.dropped);
   expect(warm.omittedByBuiltinExcludes).toEqual(cold.omittedByBuiltinExcludes);
+});
+
+test("a run that could not read the history for change weights stores nothing, because the same commit may allow it later", async () => {
+  const clone = mkdtempSync(join(tmpdir(), "shallow-"));
+  try {
+    const target = join(clone, "repo");
+    execFileSync("git", ["clone", "--quiet", "--depth", "1", `file://${repo.path}`, target]);
+    const first = await runComplexity(target, ["analyse", "--json", "--limit", "all"]);
+    expect(JSON.parse(first.stdout).ranking.changeWeightsAvailable).toBe(false);
+    expect(JSON.parse(first.stdout).meta.report).toMatchObject({ stored: false });
+    const second = await runComplexity(target, ["analyse", "--json", "--limit", "all"]);
+    expect(JSON.parse(second.stdout).inputs.resultsCache).toBeUndefined();
+  } finally {
+    rmSync(clone, { recursive: true, force: true });
+  }
 });
