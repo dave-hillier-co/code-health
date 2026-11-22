@@ -86,7 +86,7 @@ test("incremental blame output is read by header lines only", () => {
   expect(into.get(sha)).toBe(3);
 });
 
-test("identities whose commits were signed with one SSH key are linked by it, and one with another key is not", async () => {
+test("identities whose commits were signed with one SSH key share that key as evidence, which alone links no one", async () => {
   const keys = mkdtempSync(join(tmpdir(), "signing-keys-"));
   for (const name of ["one", "two"]) execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-C", name, "-f", join(keys, name)]);
   const repo = GitFixture.build([{ type: "commit", message: "base", date: "2024-01-01T10:00:00Z", changes: [{ op: "add", path: "a.txt", content: "a\n" }] }]);
@@ -107,5 +107,5 @@ test("identities whose commits were signed with one SSH key are linked by it, an
   expect([...byEmail.get("jo@corp.com")!][0]).toMatch(/^ssh:SHA256:/);
 
   const links = findLinks(buildNodes(facts.raws), facts.raws, facts.pairing);
-  expect(links.map((link) => [link.strength, link.signals.map((s) => s.signal)])).toEqual([["strong", ["same-signing-key"]]]);
+  expect(links.map((link) => [link.strength, link.signals.map((s) => s.signal)])).toEqual([]);
 });

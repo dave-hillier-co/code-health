@@ -1,4 +1,4 @@
-import { normaliseName } from "./identity-names.ts";
+import { normaliseName, type Address } from "./identity-names.ts";
 import { InvalidPatternError } from "./noise.ts";
 
 export type NonPersonKind = "bot" | "service" | "agent";
@@ -61,6 +61,22 @@ export const BUILTIN_SERVICE_NAMES: readonly string[] = [
   "service account",
 ];
 
+/**
+ * Coding agents known by the identity they commit as, matched against `Name <email>`: the Anthropic,
+ * GitHub Copilot, Cursor and Devin addresses. A commit authored as one of them is the agent's, whatever
+ * the name says. These are narrower than the trailer patterns below, which would also match a person
+ * named Devin.
+ */
+export const BUILTIN_AGENT_IDENTITY_PATTERNS: readonly string[] = [
+  "<[^>]*@anthropic\\.com>",
+  "^copilot(-swe-agent)?(\\[bot\\])?\\s*<",
+  "<copilot@github\\.com>",
+  "\\+copilot(-swe-agent)?(\\[bot\\])?@users\\.noreply\\.github\\.com>",
+  "<cursoragent@cursor\\.com>",
+  "devin-ai-integration",
+  "^devin ai\\b",
+];
+
 /** AI agents named in a `Co-Authored-By` trailer. */
 export const BUILTIN_AGENT_PATTERNS: readonly string[] = [
   "\\bclaude\\b",
@@ -94,7 +110,16 @@ export interface NonPersonRulesApplied {
 
 export interface NonPersonMatcher {
   classify(name: string, email: string): Classification | null;
+  /**
+   * True for a bot or a service, whose commits are dropped as noise. An agent is not here: its commits are
+   * real changes, and only its lines belong to nobody (`classify` returns `agent`).
+   */
   isNonPerson(name: string, email: string): boolean;
+  /**
+   * The first `Co-Authored-By` trailer of a message that names a person (not a coding agent), or null.
+   * A commit authored by an agent is attributed to this person.
+   */
+  humanCoAuthor(message: string): Address | null;
   applied: NonPersonRulesApplied;
 }
 
@@ -114,8 +139,10 @@ export function createNonPersonMatcher(rules: NonPersonRules): NonPersonMatcher 
     ...rules.botPatterns.map((p) => ({ kind: "bot" as const, pattern: p, re: compilePattern(p) })),
     ...rules.servicePatterns.map((p) => ({ kind: "service" as const, pattern: p, re: compilePattern(p) })),
   ];
+  const builtinAgents = BUILTIN_AGENT_IDENTITY_PATTERNS.map((p) => ({ kind: "agent" as const, pattern: p, re: compilePattern(p) }));
   const builtin = BUILTIN_BOT_PATTERNS.map((p) => ({ kind: "bot" as const, pattern: p, re: compilePattern(p) }));
   const serviceNames = new Set(BUILTIN_SERVICE_NAMES);
+  const trailerAgents = [...BUILTIN_AGENT_PATTERNS, ...rules.agentPatterns].map((p) => ({ re: compilePattern(p) }));
 
   const classify = (name: string, email: string): Classification | null => {
     const decision = decisions.get(email.trim().toLowerCase());
@@ -125,6 +152,8 @@ export function createNonPersonMatcher(rules: NonPersonRules): NonPersonMatcher 
     const text = `${name} <${email}>`;
     const fromConfig = config.find((c) => c.re.test(text));
     if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
+    const agent = builtinAgents.find((c) => c.re.test(text));
+    if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern };
     const bot = builtin.find((c) => c.re.test(text));
     if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
     const normalised = normaliseName(name);
@@ -133,7 +162,22 @@ export function createNonPersonMatcher(rules: NonPersonRules): NonPersonMatcher 
   };
   return {
     classify,
-    isNonPerson: (name, email) => classify(name, email) !== null,
+    isNonPerson: (name, email) => {
+      const found = classify(name, email);
+      return found !== null && found.kind !== "agent";
+    },
+    humanCoAuthor: (message) => {
+      for (const line of message.replace(/\r\n/g, "\n").split("\n")) {
+        const match = /^co-authored-by[ \t]*:[ \t]*(.+?)[ \t]*<([^<>]*)>[ \t]*$/i.exec(line);
+        if (!match) continue;
+        const address = { name: match[1]!.trim(), email: match[2]!.trim() };
+        if (address.name === "" || address.email === "") continue;
+        if (classify(address.name, address.email) !== null) continue;
+        if (trailerAgents.some((p) => p.re.test(line.replace(/^[^:]*:\s*/, "")))) continue;
+        return address;
+      }
+      return null;
+    },
     applied: {
       builtinBotPatterns: [...BUILTIN_BOT_PATTERNS],
       builtinServiceNames: [...BUILTIN_SERVICE_NAMES],

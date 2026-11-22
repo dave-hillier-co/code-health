@@ -22,7 +22,7 @@ All commands run as `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs identities <co
 
 1. **Check.** Run `identities check`. If it exits 0 and `measurement.needsIdentityReview` is false, the mapping is settled: say so, with the mapped share, and stop. Exit 1 means conflicts: read each finding before going on.
 2. **Gather.** Run `identities propose --limit all` and `identities classify`.
-3. **Strong links: accept without asking.** A cluster whose `strength` is `strong` is joined by an identical address, a shared GitHub noreply username or id, or one signing key. Add it to the decisions you prepare and list it in your summary. Never ask the user about a strong link.
+3. **Strong links: accept without asking.** A cluster whose `strength` is `strong` is joined by an identical address, a shared GitHub noreply username or id, the same name beside a matching GitHub login or the same email local part, or a shared signing key beside a medium signal. A signing key alone links no one. Add it to the decisions you prepare and list it in your summary. Never ask the user about a strong link.
 4. **Medium links: judge.** Accept a medium cluster when several independent signals agree (for example a derivable name, a shared local part and a handover in time) and `counterEvidence` is false. Otherwise ask. Read [references/evidence.md](references/evidence.md) for what each signal is worth and when it misleads.
 5. **Ask about the rest**, in batches. One question per ambiguous cluster, showing the evidence: both names and emails, active dates and areas. Offer the options "same person", "different people" and "not sure, leave separate". Never guess on a lone same-name pair, and never merge a cluster that has counter-evidence on your own judgement. A `chain` is never one cluster: ask about each link separately.
 6. **Record rejections.** When the user says two identities are different people, put the pair in `rejectedMerges`, so it is not proposed again.
@@ -44,7 +44,7 @@ After that, the choice is found from the files present. To pin it, set `cochange
 
 - **bot**: a `[bot]` suffix or a known bot address (dependabot, renovate, github-actions), or a configured pattern.
 - **service**: a generic name such as `build`, `jenkins` or `release`, or an account whose commits are only version bumps or merges.
-- **agent**: a `Co-Authored-By` trailer naming an AI agent. The human author or committer stays the person of record. The trailer is only recorded.
+- **agent**: a coding agent, by default and with no decision needed: the Anthropic, GitHub Copilot, Cursor and Devin addresses, and `Co-Authored-By` trailers that name an agent. Agents are not developers. A commit an agent authored with a trailer naming a person is attributed to that person. A decision of kind `person` overrides the default.
 
 Bots, services and agents are left out of the population of people and out of every proposal. Bot patterns are the shared `history.botPatterns` setting in `code-health.json` (`cochange.botPatterns` overrides it for cochange), and service patterns are `cochange.identities.servicePatterns`. Cochange's noise filters read both together with the decisions file.
 

@@ -1818,6 +1818,15 @@ var BUILTIN_SERVICE_NAMES = [
   "azure pipelines",
   "service account"
 ];
+var BUILTIN_AGENT_IDENTITY_PATTERNS = [
+  "<[^>]*@anthropic\\.com>",
+  "^copilot(-swe-agent)?(\\[bot\\])?\\s*<",
+  "<copilot@github\\.com>",
+  "\\+copilot(-swe-agent)?(\\[bot\\])?@users\\.noreply\\.github\\.com>",
+  "<cursoragent@cursor\\.com>",
+  "devin-ai-integration",
+  "^devin ai\\b"
+];
 var BUILTIN_AGENT_PATTERNS = [
   "\\bclaude\\b",
   "@anthropic\\.com",
@@ -1847,8 +1856,10 @@ function createNonPersonMatcher(rules10) {
     ...rules10.botPatterns.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) })),
     ...rules10.servicePatterns.map((p) => ({ kind: "service", pattern: p, re: compilePattern(p) }))
   ];
+  const builtinAgents = BUILTIN_AGENT_IDENTITY_PATTERNS.map((p) => ({ kind: "agent", pattern: p, re: compilePattern(p) }));
   const builtin = BUILTIN_BOT_PATTERNS.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) }));
   const serviceNames = new Set(BUILTIN_SERVICE_NAMES);
+  const trailerAgents = [...BUILTIN_AGENT_PATTERNS, ...rules10.agentPatterns].map((p) => ({ re: compilePattern(p) }));
   const classify2 = (name16, email) => {
     const decision = decisions.get(email.trim().toLowerCase());
     if (decision) {
@@ -1857,6 +1868,8 @@ function createNonPersonMatcher(rules10) {
     const text = `${name16} <${email}>`;
     const fromConfig = config.find((c) => c.re.test(text));
     if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
+    const agent = builtinAgents.find((c) => c.re.test(text));
+    if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern };
     const bot = builtin.find((c) => c.re.test(text));
     if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
     const normalised = normaliseName(name16);
@@ -1865,7 +1878,22 @@ function createNonPersonMatcher(rules10) {
   };
   return {
     classify: classify2,
-    isNonPerson: (name16, email) => classify2(name16, email) !== null,
+    isNonPerson: (name16, email) => {
+      const found = classify2(name16, email);
+      return found !== null && found.kind !== "agent";
+    },
+    humanCoAuthor: (message) => {
+      for (const line of message.replace(/\r\n/g, "\n").split("\n")) {
+        const match = /^co-authored-by[ \t]*:[ \t]*(.+?)[ \t]*<([^<>]*)>[ \t]*$/i.exec(line);
+        if (!match) continue;
+        const address2 = { name: match[1].trim(), email: match[2].trim() };
+        if (address2.name === "" || address2.email === "") continue;
+        if (classify2(address2.name, address2.email) !== null) continue;
+        if (trailerAgents.some((p) => p.re.test(line.replace(/^[^:]*:\s*/, "")))) continue;
+        return address2;
+      }
+      return null;
+    },
     applied: {
       builtinBotPatterns: [...BUILTIN_BOT_PATTERNS],
       builtinServiceNames: [...BUILTIN_SERVICE_NAMES],
@@ -2051,8 +2079,12 @@ var KNOWLEDGE_DEFAULTS = {
   horizonPeriods: 4,
   /** A file is abandoned when at least this percentage of the lines held by people belong to people who have left. */
   abandonmentGuideline: 90,
-  /** Per-period turnover, as a percentage. null estimates it from history. */
+  /** Per-period turnover, as a percentage (15 is 15 percent, not 0.15). null estimates it from history. */
   turnoverRate: null,
+  /** A turnover rate estimated from fewer observed periods than this is called a weak estimate. A judgement call. */
+  minTurnoverPeriods: 4,
+  /** Results are labelled as depending on unmapped identities when settled identities hold less than this percentage of the lines held by people. A judgement call. */
+  mappedShareGuideline: 80,
   trials: 1e4,
   /** Percentiles of the loss distribution reported as knowledge at risk. */
   alphas: [95, 99],
@@ -2094,6 +2126,9 @@ function readKnowledgeSettings(effective) {
     horizonPeriods: whole("horizonPeriods", 1),
     abandonmentGuideline: whole("abandonmentGuideline", 1, 100),
     turnoverRate: rate === null ? null : rate / 100,
+    turnoverRatePercent: rate === null ? null : rate,
+    minTurnoverPeriods: whole("minTurnoverPeriods", 0),
+    mappedShareGuideline: whole("mappedShareGuideline", 0, 100),
     trials: whole("trials", 1, 1e7),
     alphas: [...alphas].sort((a, b) => a - b),
     seed: whole("seed", 0, 4294967295),
@@ -2866,8 +2901,16 @@ function parseKey(key) {
 
 // packages/cochange/src/abandonment/activity.ts
 async function readActivity(root, commits, options) {
+  const authorOf = (c) => {
+    const author = { name: c.authorName, email: c.authorEmail };
+    const agent = options.matcher?.classify(author.name, author.email)?.kind === "agent";
+    return (agent ? options.matcher?.humanCoAuthor?.(c.message) : null) ?? author;
+  };
   const raws = /* @__PURE__ */ new Map();
-  for (const c of commits) raws.set(identityKey({ name: c.authorName, email: c.authorEmail }), { name: c.authorName, email: c.authorEmail });
+  for (const c of commits) {
+    const author = authorOf(c);
+    raws.set(identityKey(author), author);
+  }
   const mapped = await mapThroughMailmap(root, [...raws.values()], options.localMailmap);
   const person = /* @__PURE__ */ new Map();
   for (const [raw, author] of raws) {
@@ -2876,7 +2919,7 @@ async function readActivity(root, commits, options) {
   }
   const byPerson = /* @__PURE__ */ new Map();
   for (const c of commits) {
-    const key = person.get(identityKey({ name: c.authorName, email: c.authorEmail }));
+    const key = person.get(identityKey(authorOf(c)));
     if (key === null || key === void 0) continue;
     const times = byPerson.get(key) ?? [];
     times.push(c.committerDate);
@@ -2922,156 +2965,575 @@ function estimateTurnover(activity, asOf, options) {
   return { periods, atRisk, departed, rate: atRisk === 0 ? null : departed / atRisk };
 }
 
-// packages/history/src/blame-owners.ts
-async function resolveOwners(root, shas, options = {}) {
-  const unique = [...new Set(shas)].sort();
-  const owners = /* @__PURE__ */ new Map();
-  if (unique.length === 0) return owners;
-  const out = await runGit(root, ["log", "--no-walk=unsorted", "--stdin", "--format=%H%x1f%an%x1f%ae"], { input: unique.join("\n") + "\n" });
-  const authors = /* @__PURE__ */ new Map();
-  for (const line of out.split("\n")) {
-    const [sha, name16, email] = line.split("");
-    if (sha !== void 0 && name16 !== void 0 && email !== void 0) authors.set(sha, { name: name16, email });
-  }
-  const mapped = await mapThroughMailmap(root, [...authors.values()], options.localMailmap);
-  for (const [sha, author] of authors) {
-    const to = mapped.get(identityKey(author)) ?? author;
-    const found = options.matcher?.classify(to.name, to.email) ?? null;
-    owners.set(sha, { key: identityKey(to), name: to.name, email: to.email, kind: found?.kind ?? "person" });
-  }
-  return owners;
+// packages/history/src/identity-evidence.ts
+var GENERIC_LOCAL_PARTS = /* @__PURE__ */ new Set([
+  "noreply",
+  "no-reply",
+  "root",
+  "admin",
+  "git",
+  "dev",
+  "info",
+  "support",
+  "mail",
+  "user",
+  "ci",
+  "build",
+  "bot",
+  "me",
+  "none",
+  "unknown",
+  "nobody"
+]);
+var DAY2 = 86400;
+var WEEK = 7 * DAY2;
+var HANDOVER_MAX_GAP_DAYS = 90;
+var HANDOVER_MAX_OVERLAP_DAYS = 14;
+var PAIRING_MIN_COMMITS = 3;
+var COUNTER_MIN_WEEKS = 2;
+var weekOf = (seconds) => Math.floor(seconds / WEEK);
+function areaOf(path) {
+  const parts = path.split("/");
+  return parts.length === 1 ? "." : parts.slice(0, Math.min(2, parts.length - 1)).join("/");
 }
-function lineShares(ranges, owners) {
-  const shares = { total: 0, people: 0, nonPerson: 0, unattributed: 0, byOwner: /* @__PURE__ */ new Map() };
-  for (const { sha, count: count2 } of ranges) {
-    shares.total += count2;
-    const owner = owners.get(sha);
-    if (!owner) shares.unattributed += count2;
-    else if (owner.kind !== "person") shares.nonPerson += count2;
-    else {
-      shares.people += count2;
-      shares.byOwner.set(owner.key, (shares.byOwner.get(owner.key) ?? 0) + count2);
+function buildNodes(raws) {
+  const nodes = /* @__PURE__ */ new Map();
+  for (const raw of raws) {
+    const key = identityKey({ name: raw.mappedName, email: raw.mappedEmail });
+    let node = nodes.get(key);
+    if (!node) {
+      node = {
+        key,
+        name: raw.mappedName,
+        email: raw.mappedEmail,
+        aliases: [],
+        commits: 0,
+        first: raw.first,
+        last: raw.last,
+        files: /* @__PURE__ */ new Set(),
+        weeks: /* @__PURE__ */ new Map(),
+        areaCounts: /* @__PURE__ */ new Map(),
+        signingKeys: /* @__PURE__ */ new Set()
+      };
+      nodes.set(key, node);
+    }
+    node.aliases.push({ name: raw.name, email: raw.email });
+    node.commits += raw.commits;
+    node.first = Math.min(node.first, raw.first);
+    node.last = Math.max(node.last, raw.last);
+    for (const file of raw.files) node.files.add(file);
+    for (const [week, areas] of raw.weeks) {
+      const into = node.weeks.get(week) ?? /* @__PURE__ */ new Set();
+      for (const area of areas) into.add(area);
+      node.weeks.set(week, into);
+    }
+    for (const signingKey of raw.signingKeys ?? []) node.signingKeys.add(signingKey);
+    for (const [area, count2] of raw.areaCounts) node.areaCounts.set(area, (node.areaCounts.get(area) ?? 0) + count2);
+  }
+  const sorted = [...nodes.values()].sort((x, y) => x.key < y.key ? -1 : x.key > y.key ? 1 : 0);
+  for (const node of sorted) node.aliases.sort((x, y) => compare2(identityKey(x), identityKey(y)));
+  return sorted;
+}
+var compare2 = (x, y) => x < y ? -1 : x > y ? 1 : 0;
+var MAX_IDENTITIES_PER_SIGNING_KEY = 3;
+function factsOf(node) {
+  const addresses = [{ name: node.name, email: node.email }, ...node.aliases];
+  const emails = /* @__PURE__ */ new Set();
+  const locals = /* @__PURE__ */ new Set();
+  const noreplies = /* @__PURE__ */ new Map();
+  const names = /* @__PURE__ */ new Set();
+  const derived = /* @__PURE__ */ new Set();
+  const flattened = /* @__PURE__ */ new Set();
+  for (const { name: name16, email } of addresses) {
+    const noreply = parseNoreply(email);
+    if (noreply) noreplies.set(`${noreply.id ?? ""}+${noreply.username}`, noreply);
+    const local = emailLocalPart(email);
+    if (!noreply && !GENERIC_LOCAL_PARTS.has(local)) {
+      emails.add(normaliseEmail(email));
+      locals.add(local);
+    }
+    if (nameTokens(name16).length >= 2) {
+      names.add(normaliseName(name16));
+      for (const d of derivedLocalParts(name16)) derived.add(d);
+      for (const f of flattenedNames(name16)) flattened.add(f);
     }
   }
-  return shares;
-}
-function commitsInSnapshot(snapshot) {
-  const shas = /* @__PURE__ */ new Set();
-  for (const file of snapshot.files.values()) for (const range of file.ranges) shas.add(range.sha);
-  return shas;
-}
-function shareHeldBy(shares, ownerKeys) {
-  if (shares.people === 0) return null;
-  let held = 0;
-  for (const key of ownerKeys) held += shares.byOwner.get(key) ?? 0;
-  return held / shares.people;
-}
-
-// packages/cochange/src/active-developers.ts
-var SECONDS_PER_MONTH2 = 2629800;
-var windowSecondsOf = (settings) => settings.activityWindowMonths * SECONDS_PER_MONTH2;
-function activeAt(times, asOf, windowSeconds) {
-  let last;
-  for (const t of times) {
-    if (t > asOf) break;
-    last = t;
-  }
-  return last !== void 0 && last > asOf - windowSeconds;
-}
-function isActiveDeveloper(key, times, asOf, rule) {
-  if (rule.overrides.inactive.has(key)) return false;
-  if (rule.overrides.active.has(key)) return true;
-  return activeAt(times, asOf, rule.windowSeconds);
-}
-var emailOf2 = (identity) => (/<([^>]*)>$/.exec(identity)?.[1] ?? "").toLowerCase();
-async function readActiveDevelopers(context, history, asOf) {
-  const { root } = context.repo;
-  const settings = readKnowledgeSettings(context.config.effective);
-  const rule = { windowSeconds: windowSecondsOf(settings), overrides: readOverrides(root) };
-  const activity = await readActivity(root, history.view.commits, { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher });
-  const active = /* @__PURE__ */ new Set();
-  for (const [key, times] of activity.commits) if (isActiveDeveloper(key, times, asOf, rule)) active.add(emailOf2(key));
-  return { has: (email) => active.has(email.toLowerCase()) };
-}
-
-// packages/cochange/src/abandonment/knowledge-model.ts
-var compareBytes2 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
-function buildKnowledgeModel(input) {
-  const { snapshot, owners, activity, asOf, windowSeconds, overrides } = input;
-  const rule = { windowSeconds, overrides: overrides ?? { active: /* @__PURE__ */ new Set(), inactive: /* @__PURE__ */ new Set() } };
-  const keys = new Set(activity.commits.keys());
-  for (const owner of owners.values()) if (owner.kind === "person") keys.add(owner.key);
-  const sorted = [...keys].sort(compareBytes2);
-  const index2 = new Map(sorted.map((key, i) => [key, i]));
-  const developers = sorted.map((key) => {
-    return { key, active: isActiveDeveloper(key, activity.commits.get(key) ?? [], asOf, rule) };
-  });
-  const files = [];
-  for (const file of snapshot.files.values()) {
-    const shares = lineShares(file.ranges, owners);
-    if (shares.people === 0) continue;
-    const holders = [...shares.byOwner].map(([key, lines]) => ({ dev: index2.get(key), lines })).sort((a, b) => a.dev - b.dev);
-    files.push({ path: file.path, people: shares.people, nonPerson: shares.nonPerson, unattributed: shares.unattributed, holders });
-  }
-  files.sort((a, b) => compareBytes2(a.path, b.path));
-  return { asOf, developers, files, missing: snapshot.missing };
-}
-var reachesGuideline = (goneLines, people, guidelinePercent) => people > 0 && 100 * goneLines >= guidelinePercent * people;
-function goneLinesOf(file, developers) {
-  let lines = 0;
-  for (const h of file.holders) if (!developers[h.dev].active) lines += h.lines;
-  return lines;
-}
-
-// packages/cochange/src/abandonment/current.ts
-var round4 = (value) => Math.round(value * 1e4) / 1e4;
-function measureCurrent(model, guidelinePercent) {
-  return model.files.map((file) => {
-    const gone = goneLinesOf(file, model.developers);
-    const former = file.holders.filter((h) => !model.developers[h.dev].active).length;
-    return {
-      path: file.path,
-      peopleLines: file.people,
-      abandonedLines: gone,
-      abandonedShare: round4(gone / file.people),
-      abandoned: reachesGuideline(gone, file.people, guidelinePercent),
-      activeAuthors: file.holders.length - former,
-      formerAuthors: former,
-      nonPersonLines: file.nonPerson
-    };
-  });
-}
-function groupByComponent(files, components2) {
-  const groups = /* @__PURE__ */ new Map();
-  for (const f of files) {
-    const name16 = componentOf(components2, f.path);
-    const g = groups.get(name16) ?? { path: name16, files: 0, abandonedFiles: 0, peopleLines: 0, abandonedLines: 0, abandonedShare: 0 };
-    g.files++;
-    if (f.abandoned) g.abandonedFiles++;
-    g.peopleLines += f.peopleLines;
-    g.abandonedLines += f.abandonedLines;
-    groups.set(name16, g);
-  }
-  return [...groups.values()].map((g) => ({ ...g, abandonedShare: g.peopleLines === 0 ? 0 : round4(g.abandonedLines / g.peopleLines) }));
-}
-function summariseCurrent(files, unattributed) {
-  const abandoned = files.filter((f) => f.abandoned).length;
-  const people = files.reduce((sum, f) => sum + f.peopleLines, 0);
-  const gone = files.reduce((sum, f) => sum + f.abandonedLines, 0);
   return {
-    files: { measured: files.length, abandoned, share: files.length === 0 ? 0 : round4(abandoned / files.length) },
-    lines: {
-      people,
-      abandoned: gone,
-      share: people === 0 ? 0 : round4(gone / people),
-      nonPerson: files.reduce((sum, f) => sum + f.nonPersonLines, 0),
-      unattributed
+    node,
+    emails: [...emails].sort(),
+    locals: [...locals].sort(),
+    noreplies: [...noreplies.values()].sort((x, y) => compare2(x.username, y.username)),
+    names: [...names].sort(),
+    derived: [...derived].sort(),
+    flattened: [...flattened].sort(),
+    signingKeys: [...node.signingKeys].sort()
+  };
+}
+function pairKey2(x, y) {
+  return x < y ? [x, y] : [y, x];
+}
+function addSignal(candidates, x, y, signal) {
+  if (x.node.key === y.node.key) return;
+  const [a, b] = pairKey2(x.node.key, y.node.key);
+  const key = `${a}\0${b}`;
+  const signals = candidates.get(key) ?? /* @__PURE__ */ new Map();
+  signals.set(`${signal.signal}:${signal.detail}`, signal);
+  candidates.set(key, signals);
+}
+function index(facts, values) {
+  const map = /* @__PURE__ */ new Map();
+  for (const f of facts) {
+    for (const value of values(f)) {
+      const list = map.get(value) ?? [];
+      list.push(f);
+      map.set(value, list);
     }
+  }
+  return map;
+}
+function eachPair(map, visit) {
+  for (const [value, list] of [...map].sort(([p], [q]) => compare2(p, q))) {
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) visit(value, list[i], list[j]);
+  }
+}
+function findLinks(nodes, raws, pairing, rejections = []) {
+  const facts = nodes.map(factsOf);
+  const candidates = /* @__PURE__ */ new Map();
+  eachPair(
+    index(facts, (f) => f.emails),
+    (email, x, y) => addSignal(candidates, x, y, { signal: "exact-email", strength: "strong", detail: email })
+  );
+  const byKey = index(facts, (f) => f.signingKeys);
+  for (const [key, holders] of byKey) if (holders.length > MAX_IDENTITIES_PER_SIGNING_KEY) byKey.delete(key);
+  eachPair(byKey, (key, x, y) => addSignal(candidates, x, y, { signal: "same-signing-key", strength: "supporting", detail: key }));
+  eachPair(
+    index(facts, (f) => f.noreplies.flatMap((n) => [`user:${n.username}`, ...n.id ? [`id:${n.id}`] : []])),
+    (value, x, y) => addSignal(candidates, x, y, { signal: "noreply-same-user", strength: "strong", detail: value })
+  );
+  eachPair(
+    index(facts, (f) => f.names),
+    (name16, x, y) => addSignal(candidates, x, y, { signal: "same-name", strength: "medium", detail: name16 })
+  );
+  eachPair(index(facts, (f) => f.locals), (local, x, y) => {
+    if (x.emails.some((e) => y.emails.includes(e))) return;
+    addSignal(candidates, x, y, { signal: "same-local-part", strength: "medium", detail: local });
+  });
+  const byLocal = index(facts, (f) => f.locals);
+  const byFlat = index(facts, (f) => f.flattened);
+  for (const f of facts) {
+    for (const variant of f.derived) {
+      for (const other of byLocal.get(variant) ?? []) {
+        addSignal(candidates, f, other, { signal: "name-from-email", strength: "medium", detail: variant });
+      }
+    }
+    for (const { username } of f.noreplies) {
+      for (const other of byLocal.get(username) ?? []) {
+        addSignal(candidates, f, other, { signal: "noreply-matches-identity", strength: "medium", detail: username });
+      }
+      for (const other of byFlat.get(username) ?? []) {
+        addSignal(candidates, f, other, { signal: "noreply-matches-identity", strength: "medium", detail: username });
+      }
+    }
+  }
+  const nodeOfEmail = /* @__PURE__ */ new Map();
+  const nodeByKey = new Map(nodes.map((n) => [n.key, n]));
+  for (const raw of raws) nodeOfEmail.set(raw.email.toLowerCase(), identityKey({ name: raw.mappedName, email: raw.mappedEmail }));
+  const factsByKey = new Map(facts.map((f) => [f.node.key, f]));
+  for (const [author, committers] of [...pairing.committersOfAuthor].sort(([p], [q]) => compare2(p, q))) {
+    if (committers.size !== 1) continue;
+    const [[committer, count2]] = [...committers];
+    if (count2 < PAIRING_MIN_COMMITS || committer === author) continue;
+    const authorsOfCommitter = pairing.authorsOfCommitter.get(committer);
+    if (!authorsOfCommitter || [...authorsOfCommitter].some((a) => a !== author && a !== committer)) continue;
+    const x = nodeOfEmail.get(author);
+    const y = nodeOfEmail.get(committer);
+    if (x === void 0 || y === void 0) continue;
+    addSignal(candidates, factsByKey.get(x), factsByKey.get(y), {
+      signal: "exclusive-pairing",
+      strength: "supporting",
+      detail: `${author} authored ${count2} commits, all committed by ${committer}`
+    });
+  }
+  const rejected = new Set(
+    rejections.flatMap((r) => {
+      const [x, y] = r.identities.map((i) => i.toLowerCase());
+      return [`${x}\0${y}`, `${y}\0${x}`];
+    })
+  );
+  const links = [];
+  for (const [key, signals] of [...candidates].sort(([p], [q]) => compare2(p, q))) {
+    const [a, b] = key.split("\0");
+    const x = nodeByKey.get(a);
+    const y = nodeByKey.get(b);
+    if (x.aliases.some((p) => y.aliases.some((q) => rejected.has(`${identityKey(p).toLowerCase()}\0${identityKey(q).toLowerCase()}`)))) {
+      continue;
+    }
+    const list = [...signals.values()];
+    if (!list.some((s) => s.strength === "strong" || s.strength === "medium")) continue;
+    const handover = handoverSignal(x, y);
+    if (handover) list.push(handover);
+    const strong = list.some((s) => s.strength === "strong") || corroborated(list);
+    const counter = strong ? void 0 : counterSignal(x, y);
+    if (counter) list.push(counter);
+    list.sort((s, t) => compare2(rank(s) + s.signal + s.detail, rank(t) + t.signal + t.detail));
+    links.push({ a, b, strength: strong ? "strong" : "medium", signals: list, counterEvidence: counter !== void 0 });
+  }
+  return links;
+}
+function corroborated(signals) {
+  const has = (name16) => signals.some((s) => s.signal === name16);
+  if (has("same-name") && (has("noreply-matches-identity") || has("same-local-part"))) return true;
+  return has("same-signing-key") && signals.some((s) => s.strength === "medium");
+}
+var rank = (s) => ({ strong: "0", medium: "1", supporting: "2", counter: "3" })[s.strength];
+function handoverSignal(x, y) {
+  const [earlier, later] = x.last <= y.last ? [x, y] : [y, x];
+  const gapDays = (later.first - earlier.last) / DAY2;
+  if (gapDays < -HANDOVER_MAX_OVERLAP_DAYS || gapDays > HANDOVER_MAX_GAP_DAYS) return void 0;
+  const shared = [...earlier.files].filter((f) => later.files.has(f)).length;
+  if (shared === 0) return void 0;
+  return {
+    signal: "handover",
+    strength: "supporting",
+    detail: `${earlier.email} stops ${isoDay(earlier.last)}, ${later.email} starts ${isoDay(later.first)}, ${shared} shared files`
+  };
+}
+function counterSignal(x, y) {
+  const weeks = [...x.weeks.keys()].filter((w) => y.weeks.has(w)).sort((p, q) => p - q);
+  if (weeks.length < COUNTER_MIN_WEEKS) return void 0;
+  const areasX = new Set(weeks.flatMap((w) => [...x.weeks.get(w)]));
+  const areasY = new Set(weeks.flatMap((w) => [...y.weeks.get(w)]));
+  if ([...areasX].some((a) => areasY.has(a))) return void 0;
+  return {
+    signal: "simultaneous-disjoint-areas",
+    strength: "counter",
+    detail: `both active in ${weeks.length} of the same weeks, never in the same area`
+  };
+}
+function isoDay(seconds) {
+  return new Date(seconds * 1e3).toISOString().slice(0, 10);
+}
+var Groups = class {
+  parent = /* @__PURE__ */ new Map();
+  find(x) {
+    const p = this.parent.get(x) ?? x;
+    if (p === x) return x;
+    const root = this.find(p);
+    this.parent.set(x, root);
+    return root;
+  }
+  union(x, y) {
+    const [a, b] = pairKey2(this.find(x), this.find(y));
+    if (a !== b) this.parent.set(b, a);
+  }
+};
+function buildProposals(links) {
+  const groups = new Groups();
+  for (const link of links) if (link.strength === "strong") groups.union(link.a, link.b);
+  const all = new Set(links.flatMap((l) => [l.a, l.b]));
+  const allRoots = new Set([...all].map((n) => groups.find(n)));
+  const meta = new Groups();
+  for (const link of links) if (link.strength === "medium") meta.union(groups.find(link.a), groups.find(link.b));
+  const components2 = /* @__PURE__ */ new Map();
+  for (const root of allRoots) {
+    const c = meta.find(root);
+    const set = components2.get(c) ?? /* @__PURE__ */ new Set();
+    set.add(root);
+    components2.set(c, set);
+  }
+  const proposals = [];
+  for (const rootSet of components2.values()) {
+    const nodes = [...all].filter((n) => rootSet.has(groups.find(n))).sort(compare2);
+    const inside2 = links.filter((l) => nodes.includes(l.a) && nodes.includes(l.b));
+    const linked = (x, y) => inside2.some((l) => groups.find(l.a) === x && groups.find(l.b) === y || groups.find(l.a) === y && groups.find(l.b) === x);
+    const roots = [...rootSet];
+    const complete = roots.every((x, i) => roots.slice(i + 1).every((y) => linked(x, y)));
+    const singleGroup = rootSet.size === 1;
+    proposals.push({
+      kind: singleGroup || complete ? "cluster" : "chain",
+      strength: singleGroup ? "strong" : complete ? "medium" : "chain",
+      members: nodes,
+      links: inside2,
+      counterEvidence: inside2.some((l) => l.counterEvidence)
+    });
+  }
+  const order = { strong: 0, medium: 1, chain: 2 };
+  return proposals.sort((p, q) => order[p.strength] - order[q.strength] || compare2(p.members[0], q.members[0]));
+}
+function counterEvidenceWithin(group) {
+  const nodes = buildNodes(group.map((r) => ({ ...r, mappedName: r.name, mappedEmail: r.email })));
+  const found = [];
+  nodes.forEach((x, i) => {
+    for (const y of nodes.slice(i + 1)) {
+      const signal = counterSignal(x, y);
+      if (signal) found.push({ a: x.key, b: y.key, signal });
+    }
+  });
+  return found;
+}
+
+// packages/history/src/signing-keys.ts
+import { createHash as createHash4 } from "node:crypto";
+var PLATFORM_KEYS = /* @__PURE__ */ new Set(["gpg:B5690EEEBB952194"]);
+var isPlatformKey = (key) => PLATFORM_KEYS.has(key);
+function armoredBody(text, kind) {
+  const begin = text.indexOf(`-----BEGIN ${kind}-----`);
+  const end = text.indexOf(`-----END ${kind}-----`);
+  if (begin === -1 || end === -1 || end < begin) return void 0;
+  const lines = text.slice(begin + `-----BEGIN ${kind}-----`.length, end).split("\n").map((line) => line.trim());
+  const blank = lines.indexOf("");
+  const body = (blank > 0 ? lines.slice(blank + 1) : lines).filter((line) => line !== "" && !line.startsWith("="));
+  const bytes = Buffer.from(body.join(""), "base64");
+  return bytes.length === 0 ? void 0 : bytes;
+}
+function sshKey(text) {
+  const bytes = armoredBody(text, "SSH SIGNATURE");
+  if (bytes === void 0 || bytes.length < 14 || bytes.subarray(0, 6).toString("latin1") !== "SSHSIG") return void 0;
+  const length = bytes.readUInt32BE(10);
+  if (length === 0 || 14 + length > bytes.length) return void 0;
+  const fingerprint = createHash4("sha256").update(bytes.subarray(14, 14 + length)).digest("base64").replace(/=+$/, "");
+  return `ssh:SHA256:${fingerprint}`;
+}
+function issuerOf(packet) {
+  if (packet.length < 6 || packet[0] !== 4 && packet[0] !== 5) return void 0;
+  let fingerprint;
+  let keyId;
+  let offset = 4;
+  for (let area = 0; area < 2; area++) {
+    if (offset + 2 > packet.length) break;
+    const size2 = packet.readUInt16BE(offset);
+    let at = offset + 2;
+    const end = Math.min(packet.length, at + size2);
+    while (at < end) {
+      let length = packet[at];
+      at++;
+      if (length >= 192 && length < 255) {
+        length = (length - 192 << 8) + (packet[at] ?? 0) + 192;
+        at++;
+      } else if (length === 255) {
+        length = packet.readUInt32BE(at);
+        at += 4;
+      }
+      const type = (packet[at] ?? 0) & 127;
+      const data = packet.subarray(at + 1, at + length);
+      if (type === 33 && data.length > 1) fingerprint = data.subarray(1).toString("hex").toUpperCase();
+      if (type === 16 && data.length === 8) keyId = data.toString("hex").toUpperCase();
+      at += length;
+    }
+    offset = end;
+  }
+  return fingerprint !== void 0 ? fingerprint.slice(-16) : keyId;
+}
+function pgpKey(text) {
+  const bytes = armoredBody(text, "PGP SIGNATURE");
+  if (bytes === void 0) return void 0;
+  const first = bytes[0];
+  if ((first & 128) === 0) return void 0;
+  let tag;
+  let length;
+  let at = 1;
+  if (first & 64) {
+    tag = first & 63;
+    const octet = bytes[at++] ?? 0;
+    if (octet < 192) length = octet;
+    else if (octet < 224) length = (octet - 192 << 8) + (bytes[at++] ?? 0) + 192;
+    else if (octet === 255) {
+      length = bytes.readUInt32BE(at);
+      at += 4;
+    } else return void 0;
+  } else {
+    tag = first >> 2 & 15;
+    const kind = first & 3;
+    if (kind === 0) length = bytes[at++] ?? 0;
+    else if (kind === 1) {
+      length = bytes.readUInt16BE(at);
+      at += 2;
+    } else if (kind === 2) {
+      length = bytes.readUInt32BE(at);
+      at += 4;
+    } else return void 0;
+  }
+  if (tag !== 2) return void 0;
+  const issuer = issuerOf(bytes.subarray(at, at + length));
+  return issuer === void 0 ? void 0 : `gpg:${issuer}`;
+}
+function signingKeyOf(signature) {
+  try {
+    return signature.includes("BEGIN SSH SIGNATURE") ? sshKey(signature) : signature.includes("BEGIN PGP SIGNATURE") ? pgpKey(signature) : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function signaturesIn(raw) {
+  const keys = /* @__PURE__ */ new Map();
+  let sha;
+  let signature;
+  let inHeaders = false;
+  const finish = () => {
+    if (sha !== void 0 && signature !== void 0) {
+      const key = signingKeyOf(signature.join("\n"));
+      if (key !== void 0) keys.set(sha, key);
+    }
+    signature = void 0;
+  };
+  for (const line of raw.split("\n")) {
+    if (line.startsWith("commit ") && !inHeaders) {
+      finish();
+      sha = line.slice(7, 47);
+      inHeaders = true;
+      continue;
+    }
+    if (!inHeaders) continue;
+    if (line === "") {
+      finish();
+      inHeaders = false;
+    } else if (line.startsWith("gpgsig ")) {
+      signature = [line.slice(7)];
+    } else if (line.startsWith(" ") && signature !== void 0) {
+      signature.push(line.slice(1));
+    } else {
+      finish();
+    }
+  }
+  finish();
+  return keys;
+}
+
+// packages/history/src/identity-log.ts
+var MAX_PATHS_FOR_EVIDENCE = 100;
+var isPlatform = (name16, email) => email.toLowerCase() === "noreply@github.com" || name16.toLowerCase() === "github" || name16.toLowerCase() === "github enterprise";
+async function readCommitters(root, ref) {
+  const out = await runGit(root, ["log", "--format=%H%x1f%cn%x1f%ce", "--no-abbrev", ref]);
+  const committers = /* @__PURE__ */ new Map();
+  for (const line of out.split("\n")) {
+    if (line === "") continue;
+    const [sha, name16, email] = line.split("");
+    if (sha !== void 0) committers.set(sha, { name: name16 ?? "", email: email ?? "" });
+  }
+  return committers;
+}
+async function readSigningKeys(root, ref) {
+  return signaturesIn(await runGit(root, ["log", "--format=raw", "--no-abbrev", "--no-merges", ref]));
+}
+async function gatherIdentityFacts(root, view, options) {
+  const committers = await readCommitters(root, view.headSha);
+  const signingKeys = await readSigningKeys(root, view.headSha);
+  const raws = /* @__PURE__ */ new Map();
+  const windowCommits = /* @__PURE__ */ new Map();
+  const subjects = /* @__PURE__ */ new Map();
+  const agents = /* @__PURE__ */ new Map();
+  const authorOfCommit = /* @__PURE__ */ new Map();
+  const committersOfAuthor = /* @__PURE__ */ new Map();
+  const authorsOfCommitter = /* @__PURE__ */ new Map();
+  for (const commit of view.commits) {
+    const author = { name: commit.authorName, email: commit.authorEmail };
+    const key = identityKey(author);
+    const agentAuthored = options.matcher?.classify(author.name, author.email)?.kind === "agent";
+    authorOfCommit.set(commit.sha, (agentAuthored ? options.matcher?.humanCoAuthor(commit.message) : null) ?? author);
+    let raw = raws.get(key);
+    if (!raw) {
+      raw = {
+        ...author,
+        mappedName: author.name,
+        mappedEmail: author.email,
+        commits: 0,
+        first: commit.authorDate,
+        last: commit.authorDate,
+        files: /* @__PURE__ */ new Set(),
+        weeks: /* @__PURE__ */ new Map(),
+        areaCounts: /* @__PURE__ */ new Map(),
+        signingKeys: /* @__PURE__ */ new Set()
+      };
+      raws.set(key, raw);
+    }
+    const signingKey = signingKeys.get(commit.sha);
+    if (signingKey !== void 0 && !isPlatformKey(signingKey)) raw.signingKeys.add(signingKey);
+    raw.commits++;
+    raw.first = Math.min(raw.first, commit.authorDate);
+    raw.last = Math.max(raw.last, commit.authorDate);
+    if (commit.committerDate >= options.windowSince) windowCommits.set(key, (windowCommits.get(key) ?? 0) + 1);
+    if (commit.changes.length <= MAX_PATHS_FOR_EVIDENCE) {
+      const week = weekOf(commit.authorDate);
+      const areas = raw.weeks.get(week) ?? /* @__PURE__ */ new Set();
+      for (const change2 of commit.changes) {
+        raw.files.add(change2.path);
+        const area = areaOf(change2.path);
+        areas.add(area);
+        raw.areaCounts.set(area, (raw.areaCounts.get(area) ?? 0) + 1);
+      }
+      if (areas.size > 0) raw.weeks.set(week, areas);
+    }
+    const subject = commit.message.split("\n", 1)[0] ?? "";
+    const list = subjects.get(key) ?? [];
+    list.push(subject);
+    subjects.set(key, list);
+    for (const trailer of findAgentTrailers(commit.message, options.agentPatterns ?? [])) {
+      const use = agents.get(trailer.value) ?? { value: trailer.value, pattern: trailer.pattern, commits: 0 };
+      use.commits++;
+      agents.set(trailer.value, use);
+    }
+    const committer = committers.get(commit.sha);
+    if (committer && !isPlatform(committer.name, committer.email)) {
+      const a = author.email.toLowerCase();
+      const c = committer.email.toLowerCase();
+      const counts = committersOfAuthor.get(a) ?? /* @__PURE__ */ new Map();
+      counts.set(c, (counts.get(c) ?? 0) + 1);
+      committersOfAuthor.set(a, counts);
+      const authors = authorsOfCommitter.get(c) ?? /* @__PURE__ */ new Set();
+      authors.add(a);
+      authorsOfCommitter.set(c, authors);
+    }
+  }
+  const compare6 = (x, y) => x < y ? -1 : x > y ? 1 : 0;
+  return {
+    raws: [...raws.entries()].sort(([p], [q]) => compare6(p, q)).map(([, r]) => r),
+    pairing: { committersOfAuthor, authorsOfCommitter },
+    windowCommits,
+    subjects,
+    agents: [...agents.values()].sort((p, q) => compare6(p.value, q.value)),
+    authorOfCommit
   };
 }
 
+// packages/cochange/src/identities/analysis.ts
+async function analyseIdentities(context, options) {
+  const history = await loadHistory(context, { noRefresh: options.noRefresh, wholeHistory: true });
+  const { settings, identities } = history;
+  const windowSince = monthsBefore(history.view.headDate, settings.windowMonths);
+  const facts = await gatherIdentityFacts(context.repo.root, history.view, {
+    windowSince,
+    agentPatterns: settings.identities.agentTrailerPatterns,
+    matcher: identities.matcher
+  });
+  const mapped = await mapThroughMailmap(context.repo.root, facts.raws, identities.localMailmap);
+  const raws = facts.raws.map((raw) => {
+    const to = mapped.get(identityKey(raw)) ?? raw;
+    return { ...raw, mappedName: to.name, mappedEmail: to.email };
+  });
+  const nodes = buildNodes(raws);
+  const nodeOfRaw = new Map(raws.map((r) => [identityKey(r), identityKey({ name: r.mappedName, email: r.mappedEmail })]));
+  const nonPerson = /* @__PURE__ */ new Map();
+  for (const node of nodes) {
+    const own = identities.matcher.classify(node.name, node.email);
+    const everyAliasNonPerson = node.aliases.length > 0 && node.aliases.every((a) => identities.matcher.classify(a.name, a.email) !== null);
+    const found = own ?? (everyAliasNonPerson ? identities.matcher.classify(node.aliases[0].name, node.aliases[0].email) : null);
+    if (found) nonPerson.set(node.key, found);
+  }
+  const people = nodes.filter((n) => !nonPerson.has(n.key));
+  const personKeys = new Set(people.map((n) => n.key));
+  const personRaws = raws.filter((r) => personKeys.has(identityKey({ name: r.mappedName, email: r.mappedEmail })));
+  const links = findLinks(people, personRaws, facts.pairing, identities.decisions.rejectedMerges);
+  const proposals = buildProposals(links);
+  const unresolved = new Set(proposals.flatMap((p) => p.members));
+  return { history, facts, raws, nodes, nodeOfRaw, nonPerson, links, proposals, unresolved, windowSince };
+}
+var isoDay2 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+function topAreas(node, limit = 3) {
+  return [...node.areaCounts.entries()].sort(([p, x], [q, y]) => y - x || (p < q ? -1 : p > q ? 1 : 0)).slice(0, limit).map(([area]) => area);
+}
+
 // packages/history/src/blame-options.ts
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 var DEFAULT_IGNORE_REVS_FILE = ".git-blame-ignore-revs";
 async function resolveBlameOptions(root, sha, settings = {}) {
   const copyDetection = settings.copyDetection ?? true;
@@ -3086,7 +3548,7 @@ async function resolveBlameOptions(root, sha, settings = {}) {
   }
   const sorted = [...ignoreRevs].sort();
   const canonical = JSON.stringify({ v: 1, w: true, M: true, C: copyDetection, ignore: sorted });
-  return { id: createHash4("sha256").update(canonical).digest("hex").slice(0, 12), copyDetection, ignoreRevs: sorted };
+  return { id: createHash5("sha256").update(canonical).digest("hex").slice(0, 12), copyDetection, ignoreRevs: sorted };
 }
 
 // packages/history/src/blame-lines.ts
@@ -3312,6 +3774,53 @@ async function readBlame(repoPath, options = {}) {
   }
 }
 
+// packages/history/src/blame-owners.ts
+async function resolveOwners(root, shas, options = {}) {
+  const unique = [...new Set(shas)].sort();
+  const owners = /* @__PURE__ */ new Map();
+  if (unique.length === 0) return owners;
+  const out = await runGit(root, ["log", "--no-walk=unsorted", "--stdin", "--format=%H%x1f%an%x1f%ae%x1f%B%x1e"], { input: unique.join("\n") + "\n" });
+  const authors = /* @__PURE__ */ new Map();
+  for (const record of out.split("")) {
+    const [sha, name16, email, message] = record.replace(/^\n/, "").split("");
+    if (sha === void 0 || name16 === void 0 || email === void 0) continue;
+    const agent = options.matcher?.classify(name16, email)?.kind === "agent";
+    authors.set(sha, (agent ? options.matcher?.humanCoAuthor?.(message ?? "") : null) ?? { name: name16, email });
+  }
+  const mapped = await mapThroughMailmap(root, [...authors.values()], options.localMailmap);
+  for (const [sha, author] of authors) {
+    const to = mapped.get(identityKey(author)) ?? author;
+    const found = options.matcher?.classify(to.name, to.email) ?? null;
+    owners.set(sha, { key: identityKey(to), name: to.name, email: to.email, kind: found?.kind ?? "person" });
+  }
+  return owners;
+}
+function lineShares(ranges, owners) {
+  const shares = { total: 0, people: 0, nonPerson: 0, unattributed: 0, byOwner: /* @__PURE__ */ new Map() };
+  for (const { sha, count: count2 } of ranges) {
+    shares.total += count2;
+    const owner = owners.get(sha);
+    if (!owner) shares.unattributed += count2;
+    else if (owner.kind !== "person") shares.nonPerson += count2;
+    else {
+      shares.people += count2;
+      shares.byOwner.set(owner.key, (shares.byOwner.get(owner.key) ?? 0) + count2);
+    }
+  }
+  return shares;
+}
+function commitsInSnapshot(snapshot) {
+  const shas = /* @__PURE__ */ new Set();
+  for (const file of snapshot.files.values()) for (const range of file.ranges) shas.add(range.sha);
+  return shas;
+}
+function shareHeldBy(shares, ownerKeys) {
+  if (shares.people === 0) return null;
+  let held = 0;
+  for (const key of ownerKeys) held += shares.byOwner.get(key) ?? 0;
+  return held / shares.people;
+}
+
 // packages/history/src/blame-refresh.ts
 import { rmSync as rmSync4, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join7 } from "node:path";
@@ -3406,6 +3915,62 @@ async function refreshBlame(repoPath, options = {}) {
   );
 }
 
+// packages/cochange/src/active-developers.ts
+var SECONDS_PER_MONTH2 = 2629800;
+var windowSecondsOf = (settings) => settings.activityWindowMonths * SECONDS_PER_MONTH2;
+function activeAt(times, asOf, windowSeconds) {
+  let last;
+  for (const t of times) {
+    if (t > asOf) break;
+    last = t;
+  }
+  return last !== void 0 && last > asOf - windowSeconds;
+}
+function isActiveDeveloper(key, times, asOf, rule) {
+  if (rule.overrides.inactive.has(key)) return false;
+  if (rule.overrides.active.has(key)) return true;
+  return activeAt(times, asOf, rule.windowSeconds);
+}
+var emailOf2 = (identity) => (/<([^>]*)>$/.exec(identity)?.[1] ?? "").toLowerCase();
+async function readActiveDevelopers(context, history, asOf) {
+  const { root } = context.repo;
+  const settings = readKnowledgeSettings(context.config.effective);
+  const rule = { windowSeconds: windowSecondsOf(settings), overrides: readOverrides(root) };
+  const activity = await readActivity(root, history.view.commits, { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher });
+  const active = /* @__PURE__ */ new Set();
+  for (const [key, times] of activity.commits) if (isActiveDeveloper(key, times, asOf, rule)) active.add(emailOf2(key));
+  return { has: (email) => active.has(email.toLowerCase()) };
+}
+
+// packages/cochange/src/abandonment/knowledge-model.ts
+var compareBytes2 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
+function buildKnowledgeModel(input) {
+  const { snapshot, owners, activity, asOf, windowSeconds, overrides } = input;
+  const rule = { windowSeconds, overrides: overrides ?? { active: /* @__PURE__ */ new Set(), inactive: /* @__PURE__ */ new Set() } };
+  const keys = new Set(activity.commits.keys());
+  for (const owner of owners.values()) if (owner.kind === "person") keys.add(owner.key);
+  const sorted = [...keys].sort(compareBytes2);
+  const index2 = new Map(sorted.map((key, i) => [key, i]));
+  const developers = sorted.map((key) => {
+    return { key, active: isActiveDeveloper(key, activity.commits.get(key) ?? [], asOf, rule) };
+  });
+  const files = [];
+  for (const file of snapshot.files.values()) {
+    const shares = lineShares(file.ranges, owners);
+    if (shares.people === 0) continue;
+    const holders = [...shares.byOwner].map(([key, lines]) => ({ dev: index2.get(key), lines })).sort((a, b) => a.dev - b.dev);
+    files.push({ path: file.path, people: shares.people, nonPerson: shares.nonPerson, unattributed: shares.unattributed, holders });
+  }
+  files.sort((a, b) => compareBytes2(a.path, b.path));
+  return { asOf, developers, files, missing: snapshot.missing };
+}
+var reachesGuideline = (goneLines, people, guidelinePercent) => people > 0 && 100 * goneLines >= guidelinePercent * people;
+function goneLinesOf(file, developers) {
+  let lines = 0;
+  for (const h of file.holders) if (!developers[h.dev].active) lines += h.lines;
+  return lines;
+}
+
 // packages/cochange/src/abandonment/load.ts
 var periodSecondsOf = (settings) => settings.periodMonths * SECONDS_PER_MONTH2;
 function blameOptions(history, settings) {
@@ -3427,6 +3992,134 @@ async function loadKnowledge(context, history, settings, options) {
   const windowSeconds = windowSecondsOf(settings);
   const model = buildKnowledgeModel({ snapshot, owners, activity, asOf: target.asOf, windowSeconds, overrides });
   return { model, activity, overrides, refreshed, windowSeconds, periodSeconds: periodSecondsOf(settings) };
+}
+
+// packages/cochange/src/identities/measure.ts
+var percent2 = (part, whole) => whole === 0 ? 0 : Math.round(part / whole * 1e3) / 10;
+function share(byNode, analysis) {
+  let total = 0;
+  let nonPerson = 0;
+  let unmapped = 0;
+  for (const [node, count2] of byNode) {
+    total += count2;
+    if (analysis.nonPerson.has(node)) nonPerson += count2;
+    else if (analysis.unresolved.has(node)) unmapped += count2;
+  }
+  const people = total - nonPerson;
+  return { total, nonPerson, people, unmapped, mappedShare: people === 0 ? 100 : Math.round((100 - percent2(unmapped, people)) * 10) / 10 };
+}
+async function measureMapping(context, analysis, options) {
+  const { history, facts, nodeOfRaw } = analysis;
+  const settings = readKnowledgeSettings(context.config.effective);
+  const sha = history.view.headSha;
+  if (!options.noRefresh) await refreshBlameFor(context, history, settings, sha);
+  const snapshot = await readBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings) });
+  const bySha = /* @__PURE__ */ new Map();
+  for (const file of snapshot.files.values()) {
+    for (const range of file.ranges) bySha.set(range.sha, (bySha.get(range.sha) ?? 0) + range.count);
+  }
+  const linesByNode = /* @__PURE__ */ new Map();
+  let unattributed = 0;
+  for (const [sha2, lines] of bySha) {
+    const author = facts.authorOfCommit.get(sha2);
+    const node = author && nodeOfRaw.get(identityKey(author));
+    if (!node) unattributed += lines;
+    else linesByNode.set(node, (linesByNode.get(node) ?? 0) + lines);
+  }
+  const windowCommitsByNode = /* @__PURE__ */ new Map();
+  for (const [raw, count2] of facts.windowCommits) {
+    const node = nodeOfRaw.get(raw);
+    if (node) windowCommitsByNode.set(node, (windowCommitsByNode.get(node) ?? 0) + count2);
+  }
+  const headLines = { ...share(linesByNode, analysis), unattributed, unknownFiles: snapshot.missing.length };
+  const guideline = history.settings.identities.unmappedShareGuideline;
+  return {
+    measurement: {
+      headLines,
+      windowCommits: share(windowCommitsByNode, analysis),
+      unmappedShareGuideline: guideline,
+      needsIdentityReview: headLines.people > 0 && percent2(headLines.unmapped, headLines.people) > guideline
+    },
+    linesByNode,
+    windowCommitsByNode
+  };
+}
+
+// packages/cochange/src/abandonment/notices.ts
+function turnoverRateHint(settings) {
+  return `set cochange.knowledge.turnoverRate in code-health.json to the percentage of developers who leave in one ${settings.periodMonths}-month period (a number from 0 to 100, for example 15 for 15 percent)`;
+}
+async function mappedShareNotices(context, settings) {
+  const analysis = await analyseIdentities(context, { noRefresh: true });
+  const { measurement: measurement3 } = await measureMapping(context, analysis, { noRefresh: true });
+  const share3 = measurement3.headLines.mappedShare;
+  if (measurement3.headLines.people === 0 || share3 >= settings.mappedShareGuideline) return [];
+  return [
+    `Identities that are settled hold ${share3}% of the lines held by people, under the guideline of ${settings.mappedShareGuideline}% (cochange.knowledge.mappedShareGuideline), so these results depend on unmapped identities; run cochange identities propose to review them`
+  ];
+}
+function turnoverNotices(settings, turnover, usesHistory) {
+  const notices = [];
+  if (settings.turnoverRate !== null && settings.turnoverRate > 0 && settings.turnoverRate < 0.01) {
+    notices.push(
+      `cochange.knowledge.turnoverRate is ${round(settings.turnoverRate * 100)}, which is ${round(settings.turnoverRate * 100)} percent of developers leaving per ${settings.periodMonths}-month period; it is a percentage, so 30 means 30 percent`
+    );
+  }
+  if (usesHistory && turnover.periods.length < settings.minTurnoverPeriods) {
+    notices.push(
+      `The leaver probabilities come from ${turnover.periods.length} observed ${settings.periodMonths}-month period(s), under the guideline of ${settings.minTurnoverPeriods} (cochange.knowledge.minTurnoverPeriods), so they are a weak estimate; set cochange.knowledge.turnoverRate to replace them`
+    );
+  }
+  return notices;
+}
+var noticesSection = (notices) => notices.length === 0 ? {} : { notices: [...notices] };
+var round = (value) => Math.round(value * 1e4) / 1e4;
+
+// packages/cochange/src/abandonment/current.ts
+var round4 = (value) => Math.round(value * 1e4) / 1e4;
+function measureCurrent(model, guidelinePercent) {
+  return model.files.map((file) => {
+    const gone = goneLinesOf(file, model.developers);
+    const former = file.holders.filter((h) => !model.developers[h.dev].active).length;
+    return {
+      path: file.path,
+      peopleLines: file.people,
+      abandonedLines: gone,
+      abandonedShare: round4(gone / file.people),
+      abandoned: reachesGuideline(gone, file.people, guidelinePercent),
+      activeAuthors: file.holders.length - former,
+      formerAuthors: former,
+      nonPersonLines: file.nonPerson
+    };
+  });
+}
+function groupByComponent(files, components2) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const f of files) {
+    const name16 = componentOf(components2, f.path);
+    const g = groups.get(name16) ?? { path: name16, files: 0, abandonedFiles: 0, peopleLines: 0, abandonedLines: 0, abandonedShare: 0 };
+    g.files++;
+    if (f.abandoned) g.abandonedFiles++;
+    g.peopleLines += f.peopleLines;
+    g.abandonedLines += f.abandonedLines;
+    groups.set(name16, g);
+  }
+  return [...groups.values()].map((g) => ({ ...g, abandonedShare: g.peopleLines === 0 ? 0 : round4(g.abandonedLines / g.peopleLines) }));
+}
+function summariseCurrent(files, unattributed) {
+  const abandoned = files.filter((f) => f.abandoned).length;
+  const people = files.reduce((sum, f) => sum + f.peopleLines, 0);
+  const gone = files.reduce((sum, f) => sum + f.abandonedLines, 0);
+  return {
+    files: { measured: files.length, abandoned, share: files.length === 0 ? 0 : round4(abandoned / files.length) },
+    lines: {
+      people,
+      abandoned: gone,
+      share: people === 0 ? 0 : round4(gone / people),
+      nonPerson: files.reduce((sum, f) => sum + f.nonPersonLines, 0),
+      unattributed
+    }
+  };
 }
 
 // packages/cochange/src/abandonment/selection.ts
@@ -3456,12 +4149,12 @@ function chooseSelection(sim, settings, turnover) {
     return { selection: { mode: "k-leavers", k: sim.k }, source: "k-leavers" };
   }
   if (sim.mode === "historical") {
-    if (turnover.periods.length === 0) throw usageError("historical mode needs at least one period of observed turnover, and the history is too short for one; use --mode rate with cochange.knowledge.turnoverRate");
+    if (turnover.periods.length === 0) throw usageError(`historical mode needs at least one period of observed turnover, and the history is too short for one; use --mode rate and ${turnoverRateHint(settings)}`);
     return { selection: { mode: "historical", rates: turnover.periods.map((p) => p.rate), periods: sim.horizonPeriods }, source: "history" };
   }
   const rate = settings.turnoverRate ?? turnover.rate;
   if (rate === null) {
-    throw usageError("the history is too short to estimate turnover; set cochange.knowledge.turnoverRate, or use --mode k-leavers");
+    throw usageError(`the history is too short to estimate turnover; ${turnoverRateHint(settings)}, or use --mode k-leavers`);
   }
   return { selection: { mode: "rate", rate, periods: sim.horizonPeriods }, source: settings.turnoverRate === null ? "history" : "configured" };
 }
@@ -3653,10 +4346,10 @@ function simulate(model, options) {
 
 // packages/cochange/src/abandonment/backtest.ts
 var SECONDS_PER_DAY = 86400;
-var isoDay = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+var isoDay3 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 function parseAt(value) {
   const seconds = Date.parse(`${value}T23:59:59Z`) / 1e3;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(seconds) || isoDay(seconds) !== value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(seconds) || isoDay3(seconds) !== value) {
     throw usageError(`--at must be a date as YYYY-MM-DD, not "${value}"`);
   }
   return seconds;
@@ -3693,18 +4386,18 @@ async function backtestCommand(context) {
   const requested = context.values.at;
   const at = requested === void 0 ? latest : parseAt(String(requested));
   if (at > latest) {
-    throw usageError(`a backtest needs a whole horizon of ${sim.horizonPeriods} period(s) after the date to compare with; the latest date is ${isoDay(latest - SECONDS_PER_DAY + 1)}`);
+    throw usageError(`a backtest needs a whole horizon of ${sim.horizonPeriods} period(s) after the date to compare with; the latest date is ${isoDay3(latest - SECONDS_PER_DAY + 1)}`);
   }
   const outcomeAt = at + horizonSeconds;
   const startSha = commitAt(history, at);
   const outcomeSha = commitAt(history, outcomeAt);
-  if (startSha === null || outcomeSha === null) throw usageError(`the history has no commit at or before ${isoDay(at)}`);
+  if (startSha === null || outcomeSha === null) throw usageError(`the history has no commit at or before ${isoDay3(at)}`);
   const identity = { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher };
   const activity = await readActivity(root, history.view.commits, identity);
   const turnover = estimateTurnover(activity, at, { windowSeconds, periodSeconds });
   const rate = settings.turnoverRate ?? turnover.rate;
   if (rate === null) {
-    throw usageError(`the history before ${isoDay(at)} is too short to estimate turnover; set cochange.knowledge.turnoverRate, or choose a later date`);
+    throw usageError(`the history before ${isoDay3(at)} is too short to estimate turnover; ${turnoverRateHint(settings)}, or choose a later date`);
   }
   const before = await loadKnowledge(context, history, settings, { noRefresh, target: { sha: startSha, asOf: at }, activity });
   const after = await loadKnowledge(context, history, settings, { noRefresh, target: { sha: outcomeSha, asOf: outcomeAt }, activity });
@@ -3739,7 +4432,7 @@ async function backtestCommand(context) {
   return {
     inputs: {
       subcommand: "backtest",
-      at: isoDay(at),
+      at: isoDay3(at),
       trials: sim.trials,
       horizonPeriods: sim.horizonPeriods,
       seed: sim.seed,
@@ -3749,13 +4442,13 @@ async function backtestCommand(context) {
       activityWindowMonths: settings.activityWindowMonths,
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,
-      turnoverRate: settings.turnoverRate === null ? null : round4(settings.turnoverRate),
+      turnoverRatePercent: settings.turnoverRatePercent,
       ...identityStamps(history)
     },
     extra: historySections(history),
     results: {
-      at: isoDay(at),
-      outcomeAt: isoDay(outcomeAt),
+      at: isoDay3(at),
+      outcomeAt: isoDay3(outcomeAt),
       commits: { at: startSha, outcome: outcomeSha },
       model: {
         source: settings.turnoverRate === null ? "history" : "configured",
@@ -3808,7 +4501,8 @@ async function prepare(context) {
 `);
   const history = await loadHistory(context, { noRefresh });
   const knowledge = await loadKnowledge(context, history, settings, { noRefresh });
-  return { context, settings, history, knowledge, noRefresh };
+  const notices = await mappedShareNotices(context, settings);
+  return { context, settings, history, knowledge, noRefresh, notices };
 }
 function commonInputs(p, subcommand, more = {}) {
   const { settings, knowledge } = p;
@@ -3832,6 +4526,7 @@ function commonExtra(p, more = {}) {
       inactive: model.developers.filter((d) => !d.active).length
     },
     blame: { unknownFiles: model.missing.length, unattributedLines: model.files.reduce((sum, f) => sum + f.unattributed, 0) },
+    ...noticesSection(p.notices),
     ...more
   };
 }
@@ -5368,17 +6063,17 @@ function summariseRedundancy(files) {
 }
 
 // packages/cochange/src/abandonment/report.ts
-var share = (value, whole) => whole === 0 ? 0 : round4(value / whole);
+var share2 = (value, whole) => whole === 0 ? 0 : round4(value / whole);
 function reportLoss(distribution2, baseline, population) {
   const shifted = (by) => {
     const expected = distribution2.expected + by;
     return {
       expected: round4(expected),
-      expectedShare: share(expected, population),
+      expectedShare: share2(expected, population),
       atRisk: distribution2.atRisk.map((a) => ({
         alpha: a.alpha,
         kar: round4(a.kar + by),
-        karShare: share(a.kar + by, population),
+        karShare: share2(a.kar + by, population),
         // The tail ratio of the total is over the total expected loss, so a baseline dilutes it.
         tailRatio: expected === 0 ? null : round4((a.kar + by) / expected),
         expectedTailLoss: round4(a.expectedTailLoss + by)
@@ -5389,7 +6084,7 @@ function reportLoss(distribution2, baseline, population) {
 }
 
 // packages/cochange/src/abandonment/outcome-run.ts
-var isoDay2 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+var isoDay4 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 var byBytes = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
 async function redundancyCommand(context) {
   const minAuthors = integerOption(context, "min-authors", 2, 1, 1e3);
@@ -5403,6 +6098,7 @@ async function redundancyCommand(context) {
   return {
     inputs: commonInputs(p, "redundancy", { minAuthors, minSharePercent: minShare }),
     extra: commonExtra(p, { summary: summariseRedundancy(files) }),
+    notices: p.notices,
     results: rows,
     columns: ["path", "redundant", "qualifyingAuthors", "activeAuthors", "peopleLines", "hotspotPercentile"]
   };
@@ -5422,7 +6118,7 @@ async function trendCommand(context) {
   const observed = estimateTurnover(activity, anchor, { windowSeconds, periodSeconds });
   const rate = settings.turnoverRate ?? observed.rate;
   if (rate === null) {
-    throw usageError("the history is too short to estimate turnover; set cochange.knowledge.turnoverRate so every point shares one rate");
+    throw usageError(`the history is too short to estimate turnover; ${turnoverRateHint(settings)}, so every point shares one rate`);
   }
   const components2 = readComponents(context.config.effective.components);
   const rows = [];
@@ -5445,7 +6141,7 @@ async function trendCommand(context) {
     });
     const abandoned = measureCurrent(knowledge.model, settings.abandonmentGuideline).filter((f) => f.abandoned).length;
     rows.push({
-      date: isoDay2(at),
+      date: isoDay4(at),
       commit: sha,
       activeDevelopers: result.activeDevelopers,
       files: result.population.files,
@@ -5456,6 +6152,7 @@ async function trendCommand(context) {
   rows.reverse();
   const first = rows[0]?.lines.total.expectedShare;
   const last = rows.at(-1)?.lines.total.expectedShare;
+  const notices = [...await mappedShareNotices(context, settings), ...turnoverNotices(settings, observed, settings.turnoverRate === null)];
   const direction = rows.length < 2 || first === void 0 || last === void 0 ? null : last < first ? "falling" : last > first ? "rising" : "flat";
   return {
     inputs: {
@@ -5469,10 +6166,11 @@ async function trendCommand(context) {
       activityWindowMonths: settings.activityWindowMonths,
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,
-      turnoverRate: settings.turnoverRate === null ? null : round4(settings.turnoverRate),
+      turnoverRatePercent: settings.turnoverRatePercent,
       ...identityStamps(history)
     },
-    extra: historySections(history),
+    extra: { ...historySections(history), ...noticesSection(notices) },
+    notices,
     results: {
       ratePerPeriod: round4(rate),
       rateSource: settings.turnoverRate === null ? "history" : "configured",
@@ -5494,12 +6192,12 @@ async function adoptionCommand(context) {
   const latest = anchor - horizonSeconds;
   const at = context.values.at === void 0 ? latest : parseAt(String(context.values.at));
   if (at > latest) {
-    throw usageError(`adoption needs a whole horizon of ${sim.horizonPeriods} period(s) after the date; the latest date is ${isoDay2(latest - 86400 + 1)}`);
+    throw usageError(`adoption needs a whole horizon of ${sim.horizonPeriods} period(s) after the date; the latest date is ${isoDay4(latest - 86400 + 1)}`);
   }
   const outcomeAt = at + horizonSeconds;
   const startSha = commitAt(history, at);
   const outcomeSha = commitAt(history, outcomeAt);
-  if (startSha === null || outcomeSha === null) throw usageError(`the history has no commit at or before ${isoDay2(at)}`);
+  if (startSha === null || outcomeSha === null) throw usageError(`the history has no commit at or before ${isoDay4(at)}`);
   const identity = { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher };
   const activity = await readActivity(context.repo.root, history.view.commits, identity);
   const before = await loadKnowledge(context, history, settings, { noRefresh, target: { sha: startSha, asOf: at }, activity });
@@ -5518,10 +6216,11 @@ async function adoptionCommand(context) {
     recommended
   });
   const summary = summariseAdoption(files);
+  const notices = await mappedShareNotices(context, settings);
   return {
     inputs: {
       subcommand: "adoption",
-      at: isoDay2(at),
+      at: isoDay4(at),
       successors: recommended,
       horizonPeriods: sim.horizonPeriods,
       abandonmentGuideline: settings.abandonmentGuideline,
@@ -5530,10 +6229,11 @@ async function adoptionCommand(context) {
       copyDetection: settings.copyDetection,
       ...identityStamps(history)
     },
-    extra: historySections(history),
+    extra: { ...historySections(history), ...noticesSection(notices) },
+    notices,
     results: {
-      at: isoDay2(at),
-      outcomeAt: isoDay2(outcomeAt),
+      at: isoDay4(at),
+      outcomeAt: isoDay4(outcomeAt),
       commits: { at: startSha, outcome: outcomeSha },
       ...summary,
       files: files.map((f) => ({ path: f.path, changed: f.changed, adopted: f.adopted, byRecommended: f.byRecommended, byNewcomer: f.byNewcomer })).sort((a, b) => byBytes(a.path, b.path))
@@ -5542,7 +6242,7 @@ async function adoptionCommand(context) {
 }
 
 // packages/cochange/src/abandonment/simulate-run.ts
-var isoDay3 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+var isoDay5 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 function observedTurnover(p) {
   return estimateTurnover(p.knowledge.activity, p.knowledge.model.asOf, {
     windowSeconds: p.knowledge.windowSeconds,
@@ -5560,12 +6260,13 @@ async function turnoverCommand(context) {
   const turnover = observedTurnover(p);
   return {
     inputs: commonInputs(p, "turnover"),
+    notices: p.notices,
     extra: commonExtra(p, {
-      turnover: { ...turnoverSummary(turnover), configuredRate: p.settings.turnoverRate === null ? null : round4(p.settings.turnoverRate) }
+      turnover: { ...turnoverSummary(turnover), configuredRatePercent: p.settings.turnoverRatePercent }
     }),
     results: turnover.periods.map((period) => ({
-      start: isoDay3(period.start),
-      end: isoDay3(period.end),
+      start: isoDay5(period.start),
+      end: isoDay5(period.end),
       developers: period.atRisk,
       departed: period.departed,
       rate: round4(period.rate)
@@ -5635,6 +6336,7 @@ async function simulateCommand(context) {
     };
   }).sort((a, b) => b.expectedLoss - a.expectedLoss || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
   const leaverProbability = round4(result.meanLeaverProbability);
+  const notices = [...p.notices, ...turnoverNotices(settings, turnover, selection.mode === "historical" || selection.mode === "rate" && source === "history")];
   const output = {
     inputs: commonInputs(p, "simulate", {
       mode: sim.mode,
@@ -5644,9 +6346,10 @@ async function simulateCommand(context) {
       seed: sim.seed,
       alphas: settings.alphas,
       rank: rank2,
-      turnoverRate: settings.turnoverRate === null ? null : round4(settings.turnoverRate)
+      turnoverRatePercent: settings.turnoverRatePercent
     }),
-    extra: commonExtra(p, { turnover: turnoverSummary(turnover) }),
+    extra: commonExtra(p, { turnover: turnoverSummary(turnover), ...noticesSection(notices) }),
+    notices,
     results: {
       mode: sim.mode,
       trials: sim.trials,
@@ -5769,7 +6472,10 @@ async function current(context) {
     extra: commonExtra(p, { summary: summariseCurrent(files, unattributed) }),
     results: rows,
     // Only the file view omits rows by a value: files with no lines held by people who have left. Say how many.
-    notices: by === "file" ? [`Omitted ${files.length - rows.length} of ${files.length} measured files that have no lines held by people who have left`] : [],
+    notices: [
+      ...p.notices,
+      ...by === "file" ? [`Omitted ${files.length - rows.length} of ${files.length} measured files that have no lines held by people who have left`] : []
+    ],
     columns: by === "file" ? ["path", "abandoned", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines", "hotspot", "findings"] : ["path", "files", "abandonedFiles", "abandonedShare", "abandonedLines", "peopleLines"]
   };
 }
@@ -6371,566 +7077,6 @@ __export(identities_exports, {
   name: () => name9
 });
 
-// packages/history/src/identity-evidence.ts
-var GENERIC_LOCAL_PARTS = /* @__PURE__ */ new Set([
-  "noreply",
-  "no-reply",
-  "root",
-  "admin",
-  "git",
-  "dev",
-  "info",
-  "support",
-  "mail",
-  "user",
-  "ci",
-  "build",
-  "bot",
-  "me",
-  "none",
-  "unknown",
-  "nobody"
-]);
-var DAY2 = 86400;
-var WEEK = 7 * DAY2;
-var HANDOVER_MAX_GAP_DAYS = 90;
-var HANDOVER_MAX_OVERLAP_DAYS = 14;
-var PAIRING_MIN_COMMITS = 3;
-var COUNTER_MIN_WEEKS = 2;
-var weekOf = (seconds) => Math.floor(seconds / WEEK);
-function areaOf(path) {
-  const parts = path.split("/");
-  return parts.length === 1 ? "." : parts.slice(0, Math.min(2, parts.length - 1)).join("/");
-}
-function buildNodes(raws) {
-  const nodes = /* @__PURE__ */ new Map();
-  for (const raw of raws) {
-    const key = identityKey({ name: raw.mappedName, email: raw.mappedEmail });
-    let node = nodes.get(key);
-    if (!node) {
-      node = {
-        key,
-        name: raw.mappedName,
-        email: raw.mappedEmail,
-        aliases: [],
-        commits: 0,
-        first: raw.first,
-        last: raw.last,
-        files: /* @__PURE__ */ new Set(),
-        weeks: /* @__PURE__ */ new Map(),
-        areaCounts: /* @__PURE__ */ new Map(),
-        signingKeys: /* @__PURE__ */ new Set()
-      };
-      nodes.set(key, node);
-    }
-    node.aliases.push({ name: raw.name, email: raw.email });
-    node.commits += raw.commits;
-    node.first = Math.min(node.first, raw.first);
-    node.last = Math.max(node.last, raw.last);
-    for (const file of raw.files) node.files.add(file);
-    for (const [week, areas] of raw.weeks) {
-      const into = node.weeks.get(week) ?? /* @__PURE__ */ new Set();
-      for (const area of areas) into.add(area);
-      node.weeks.set(week, into);
-    }
-    for (const signingKey of raw.signingKeys ?? []) node.signingKeys.add(signingKey);
-    for (const [area, count2] of raw.areaCounts) node.areaCounts.set(area, (node.areaCounts.get(area) ?? 0) + count2);
-  }
-  const sorted = [...nodes.values()].sort((x, y) => x.key < y.key ? -1 : x.key > y.key ? 1 : 0);
-  for (const node of sorted) node.aliases.sort((x, y) => compare2(identityKey(x), identityKey(y)));
-  return sorted;
-}
-var compare2 = (x, y) => x < y ? -1 : x > y ? 1 : 0;
-var MAX_IDENTITIES_PER_SIGNING_KEY = 3;
-function factsOf(node) {
-  const addresses = [{ name: node.name, email: node.email }, ...node.aliases];
-  const emails = /* @__PURE__ */ new Set();
-  const locals = /* @__PURE__ */ new Set();
-  const noreplies = /* @__PURE__ */ new Map();
-  const names = /* @__PURE__ */ new Set();
-  const derived = /* @__PURE__ */ new Set();
-  const flattened = /* @__PURE__ */ new Set();
-  for (const { name: name16, email } of addresses) {
-    const noreply = parseNoreply(email);
-    if (noreply) noreplies.set(`${noreply.id ?? ""}+${noreply.username}`, noreply);
-    const local = emailLocalPart(email);
-    if (!noreply && !GENERIC_LOCAL_PARTS.has(local)) {
-      emails.add(normaliseEmail(email));
-      locals.add(local);
-    }
-    if (nameTokens(name16).length >= 2) {
-      names.add(normaliseName(name16));
-      for (const d of derivedLocalParts(name16)) derived.add(d);
-      for (const f of flattenedNames(name16)) flattened.add(f);
-    }
-  }
-  return {
-    node,
-    emails: [...emails].sort(),
-    locals: [...locals].sort(),
-    noreplies: [...noreplies.values()].sort((x, y) => compare2(x.username, y.username)),
-    names: [...names].sort(),
-    derived: [...derived].sort(),
-    flattened: [...flattened].sort(),
-    signingKeys: [...node.signingKeys].sort()
-  };
-}
-function pairKey2(x, y) {
-  return x < y ? [x, y] : [y, x];
-}
-function addSignal(candidates, x, y, signal) {
-  if (x.node.key === y.node.key) return;
-  const [a, b] = pairKey2(x.node.key, y.node.key);
-  const key = `${a}\0${b}`;
-  const signals = candidates.get(key) ?? /* @__PURE__ */ new Map();
-  signals.set(`${signal.signal}:${signal.detail}`, signal);
-  candidates.set(key, signals);
-}
-function index(facts, values) {
-  const map = /* @__PURE__ */ new Map();
-  for (const f of facts) {
-    for (const value of values(f)) {
-      const list = map.get(value) ?? [];
-      list.push(f);
-      map.set(value, list);
-    }
-  }
-  return map;
-}
-function eachPair(map, visit) {
-  for (const [value, list] of [...map].sort(([p], [q]) => compare2(p, q))) {
-    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) visit(value, list[i], list[j]);
-  }
-}
-function findLinks(nodes, raws, pairing, rejections = []) {
-  const facts = nodes.map(factsOf);
-  const candidates = /* @__PURE__ */ new Map();
-  eachPair(
-    index(facts, (f) => f.emails),
-    (email, x, y) => addSignal(candidates, x, y, { signal: "exact-email", strength: "strong", detail: email })
-  );
-  const byKey = index(facts, (f) => f.signingKeys);
-  for (const [key, holders] of byKey) if (holders.length > MAX_IDENTITIES_PER_SIGNING_KEY) byKey.delete(key);
-  eachPair(byKey, (key, x, y) => addSignal(candidates, x, y, { signal: "same-signing-key", strength: "strong", detail: key }));
-  eachPair(
-    index(facts, (f) => f.noreplies.flatMap((n) => [`user:${n.username}`, ...n.id ? [`id:${n.id}`] : []])),
-    (value, x, y) => addSignal(candidates, x, y, { signal: "noreply-same-user", strength: "strong", detail: value })
-  );
-  eachPair(
-    index(facts, (f) => f.names),
-    (name16, x, y) => addSignal(candidates, x, y, { signal: "same-name", strength: "medium", detail: name16 })
-  );
-  eachPair(index(facts, (f) => f.locals), (local, x, y) => {
-    if (x.emails.some((e) => y.emails.includes(e))) return;
-    addSignal(candidates, x, y, { signal: "same-local-part", strength: "medium", detail: local });
-  });
-  const byLocal = index(facts, (f) => f.locals);
-  const byFlat = index(facts, (f) => f.flattened);
-  for (const f of facts) {
-    for (const variant of f.derived) {
-      for (const other of byLocal.get(variant) ?? []) {
-        addSignal(candidates, f, other, { signal: "name-from-email", strength: "medium", detail: variant });
-      }
-    }
-    for (const { username } of f.noreplies) {
-      for (const other of byLocal.get(username) ?? []) {
-        addSignal(candidates, f, other, { signal: "noreply-matches-identity", strength: "medium", detail: username });
-      }
-      for (const other of byFlat.get(username) ?? []) {
-        addSignal(candidates, f, other, { signal: "noreply-matches-identity", strength: "medium", detail: username });
-      }
-    }
-  }
-  const nodeOfEmail = /* @__PURE__ */ new Map();
-  const nodeByKey = new Map(nodes.map((n) => [n.key, n]));
-  for (const raw of raws) nodeOfEmail.set(raw.email.toLowerCase(), identityKey({ name: raw.mappedName, email: raw.mappedEmail }));
-  const factsByKey = new Map(facts.map((f) => [f.node.key, f]));
-  for (const [author, committers] of [...pairing.committersOfAuthor].sort(([p], [q]) => compare2(p, q))) {
-    if (committers.size !== 1) continue;
-    const [[committer, count2]] = [...committers];
-    if (count2 < PAIRING_MIN_COMMITS || committer === author) continue;
-    const authorsOfCommitter = pairing.authorsOfCommitter.get(committer);
-    if (!authorsOfCommitter || [...authorsOfCommitter].some((a) => a !== author && a !== committer)) continue;
-    const x = nodeOfEmail.get(author);
-    const y = nodeOfEmail.get(committer);
-    if (x === void 0 || y === void 0) continue;
-    addSignal(candidates, factsByKey.get(x), factsByKey.get(y), {
-      signal: "exclusive-pairing",
-      strength: "supporting",
-      detail: `${author} authored ${count2} commits, all committed by ${committer}`
-    });
-  }
-  const rejected = new Set(
-    rejections.flatMap((r) => {
-      const [x, y] = r.identities.map((i) => i.toLowerCase());
-      return [`${x}\0${y}`, `${y}\0${x}`];
-    })
-  );
-  const links = [];
-  for (const [key, signals] of [...candidates].sort(([p], [q]) => compare2(p, q))) {
-    const [a, b] = key.split("\0");
-    const x = nodeByKey.get(a);
-    const y = nodeByKey.get(b);
-    if (x.aliases.some((p) => y.aliases.some((q) => rejected.has(`${identityKey(p).toLowerCase()}\0${identityKey(q).toLowerCase()}`)))) {
-      continue;
-    }
-    const list = [...signals.values()];
-    if (!list.some((s) => s.strength === "strong" || s.strength === "medium")) continue;
-    const handover = handoverSignal(x, y);
-    if (handover) list.push(handover);
-    const strong = list.some((s) => s.strength === "strong");
-    const counter = strong ? void 0 : counterSignal(x, y);
-    if (counter) list.push(counter);
-    list.sort((s, t) => compare2(rank(s) + s.signal + s.detail, rank(t) + t.signal + t.detail));
-    links.push({ a, b, strength: strong ? "strong" : "medium", signals: list, counterEvidence: counter !== void 0 });
-  }
-  return links;
-}
-var rank = (s) => ({ strong: "0", medium: "1", supporting: "2", counter: "3" })[s.strength];
-function handoverSignal(x, y) {
-  const [earlier, later] = x.last <= y.last ? [x, y] : [y, x];
-  const gapDays = (later.first - earlier.last) / DAY2;
-  if (gapDays < -HANDOVER_MAX_OVERLAP_DAYS || gapDays > HANDOVER_MAX_GAP_DAYS) return void 0;
-  const shared = [...earlier.files].filter((f) => later.files.has(f)).length;
-  if (shared === 0) return void 0;
-  return {
-    signal: "handover",
-    strength: "supporting",
-    detail: `${earlier.email} stops ${isoDay4(earlier.last)}, ${later.email} starts ${isoDay4(later.first)}, ${shared} shared files`
-  };
-}
-function counterSignal(x, y) {
-  const weeks = [...x.weeks.keys()].filter((w) => y.weeks.has(w)).sort((p, q) => p - q);
-  if (weeks.length < COUNTER_MIN_WEEKS) return void 0;
-  const areasX = new Set(weeks.flatMap((w) => [...x.weeks.get(w)]));
-  const areasY = new Set(weeks.flatMap((w) => [...y.weeks.get(w)]));
-  if ([...areasX].some((a) => areasY.has(a))) return void 0;
-  return {
-    signal: "simultaneous-disjoint-areas",
-    strength: "counter",
-    detail: `both active in ${weeks.length} of the same weeks, never in the same area`
-  };
-}
-function isoDay4(seconds) {
-  return new Date(seconds * 1e3).toISOString().slice(0, 10);
-}
-var Groups = class {
-  parent = /* @__PURE__ */ new Map();
-  find(x) {
-    const p = this.parent.get(x) ?? x;
-    if (p === x) return x;
-    const root = this.find(p);
-    this.parent.set(x, root);
-    return root;
-  }
-  union(x, y) {
-    const [a, b] = pairKey2(this.find(x), this.find(y));
-    if (a !== b) this.parent.set(b, a);
-  }
-};
-function buildProposals(links) {
-  const groups = new Groups();
-  for (const link of links) if (link.strength === "strong") groups.union(link.a, link.b);
-  const all = new Set(links.flatMap((l) => [l.a, l.b]));
-  const allRoots = new Set([...all].map((n) => groups.find(n)));
-  const meta = new Groups();
-  for (const link of links) if (link.strength === "medium") meta.union(groups.find(link.a), groups.find(link.b));
-  const components2 = /* @__PURE__ */ new Map();
-  for (const root of allRoots) {
-    const c = meta.find(root);
-    const set = components2.get(c) ?? /* @__PURE__ */ new Set();
-    set.add(root);
-    components2.set(c, set);
-  }
-  const proposals = [];
-  for (const rootSet of components2.values()) {
-    const nodes = [...all].filter((n) => rootSet.has(groups.find(n))).sort(compare2);
-    const inside2 = links.filter((l) => nodes.includes(l.a) && nodes.includes(l.b));
-    const linked = (x, y) => inside2.some((l) => groups.find(l.a) === x && groups.find(l.b) === y || groups.find(l.a) === y && groups.find(l.b) === x);
-    const roots = [...rootSet];
-    const complete = roots.every((x, i) => roots.slice(i + 1).every((y) => linked(x, y)));
-    const singleGroup = rootSet.size === 1;
-    proposals.push({
-      kind: singleGroup || complete ? "cluster" : "chain",
-      strength: singleGroup ? "strong" : complete ? "medium" : "chain",
-      members: nodes,
-      links: inside2,
-      counterEvidence: inside2.some((l) => l.counterEvidence)
-    });
-  }
-  const order = { strong: 0, medium: 1, chain: 2 };
-  return proposals.sort((p, q) => order[p.strength] - order[q.strength] || compare2(p.members[0], q.members[0]));
-}
-function counterEvidenceWithin(group) {
-  const nodes = buildNodes(group.map((r) => ({ ...r, mappedName: r.name, mappedEmail: r.email })));
-  const found = [];
-  nodes.forEach((x, i) => {
-    for (const y of nodes.slice(i + 1)) {
-      const signal = counterSignal(x, y);
-      if (signal) found.push({ a: x.key, b: y.key, signal });
-    }
-  });
-  return found;
-}
-
-// packages/history/src/signing-keys.ts
-import { createHash as createHash5 } from "node:crypto";
-var PLATFORM_KEYS = /* @__PURE__ */ new Set(["gpg:B5690EEEBB952194"]);
-var isPlatformKey = (key) => PLATFORM_KEYS.has(key);
-function armoredBody(text, kind) {
-  const begin = text.indexOf(`-----BEGIN ${kind}-----`);
-  const end = text.indexOf(`-----END ${kind}-----`);
-  if (begin === -1 || end === -1 || end < begin) return void 0;
-  const lines = text.slice(begin + `-----BEGIN ${kind}-----`.length, end).split("\n").map((line) => line.trim());
-  const blank = lines.indexOf("");
-  const body = (blank > 0 ? lines.slice(blank + 1) : lines).filter((line) => line !== "" && !line.startsWith("="));
-  const bytes = Buffer.from(body.join(""), "base64");
-  return bytes.length === 0 ? void 0 : bytes;
-}
-function sshKey(text) {
-  const bytes = armoredBody(text, "SSH SIGNATURE");
-  if (bytes === void 0 || bytes.length < 14 || bytes.subarray(0, 6).toString("latin1") !== "SSHSIG") return void 0;
-  const length = bytes.readUInt32BE(10);
-  if (length === 0 || 14 + length > bytes.length) return void 0;
-  const fingerprint = createHash5("sha256").update(bytes.subarray(14, 14 + length)).digest("base64").replace(/=+$/, "");
-  return `ssh:SHA256:${fingerprint}`;
-}
-function issuerOf(packet) {
-  if (packet.length < 6 || packet[0] !== 4 && packet[0] !== 5) return void 0;
-  let fingerprint;
-  let keyId;
-  let offset = 4;
-  for (let area = 0; area < 2; area++) {
-    if (offset + 2 > packet.length) break;
-    const size2 = packet.readUInt16BE(offset);
-    let at = offset + 2;
-    const end = Math.min(packet.length, at + size2);
-    while (at < end) {
-      let length = packet[at];
-      at++;
-      if (length >= 192 && length < 255) {
-        length = (length - 192 << 8) + (packet[at] ?? 0) + 192;
-        at++;
-      } else if (length === 255) {
-        length = packet.readUInt32BE(at);
-        at += 4;
-      }
-      const type = (packet[at] ?? 0) & 127;
-      const data = packet.subarray(at + 1, at + length);
-      if (type === 33 && data.length > 1) fingerprint = data.subarray(1).toString("hex").toUpperCase();
-      if (type === 16 && data.length === 8) keyId = data.toString("hex").toUpperCase();
-      at += length;
-    }
-    offset = end;
-  }
-  return fingerprint !== void 0 ? fingerprint.slice(-16) : keyId;
-}
-function pgpKey(text) {
-  const bytes = armoredBody(text, "PGP SIGNATURE");
-  if (bytes === void 0) return void 0;
-  const first = bytes[0];
-  if ((first & 128) === 0) return void 0;
-  let tag;
-  let length;
-  let at = 1;
-  if (first & 64) {
-    tag = first & 63;
-    const octet = bytes[at++] ?? 0;
-    if (octet < 192) length = octet;
-    else if (octet < 224) length = (octet - 192 << 8) + (bytes[at++] ?? 0) + 192;
-    else if (octet === 255) {
-      length = bytes.readUInt32BE(at);
-      at += 4;
-    } else return void 0;
-  } else {
-    tag = first >> 2 & 15;
-    const kind = first & 3;
-    if (kind === 0) length = bytes[at++] ?? 0;
-    else if (kind === 1) {
-      length = bytes.readUInt16BE(at);
-      at += 2;
-    } else if (kind === 2) {
-      length = bytes.readUInt32BE(at);
-      at += 4;
-    } else return void 0;
-  }
-  if (tag !== 2) return void 0;
-  const issuer = issuerOf(bytes.subarray(at, at + length));
-  return issuer === void 0 ? void 0 : `gpg:${issuer}`;
-}
-function signingKeyOf(signature) {
-  try {
-    return signature.includes("BEGIN SSH SIGNATURE") ? sshKey(signature) : signature.includes("BEGIN PGP SIGNATURE") ? pgpKey(signature) : void 0;
-  } catch {
-    return void 0;
-  }
-}
-function signaturesIn(raw) {
-  const keys = /* @__PURE__ */ new Map();
-  let sha;
-  let signature;
-  let inHeaders = false;
-  const finish = () => {
-    if (sha !== void 0 && signature !== void 0) {
-      const key = signingKeyOf(signature.join("\n"));
-      if (key !== void 0) keys.set(sha, key);
-    }
-    signature = void 0;
-  };
-  for (const line of raw.split("\n")) {
-    if (line.startsWith("commit ") && !inHeaders) {
-      finish();
-      sha = line.slice(7, 47);
-      inHeaders = true;
-      continue;
-    }
-    if (!inHeaders) continue;
-    if (line === "") {
-      finish();
-      inHeaders = false;
-    } else if (line.startsWith("gpgsig ")) {
-      signature = [line.slice(7)];
-    } else if (line.startsWith(" ") && signature !== void 0) {
-      signature.push(line.slice(1));
-    } else {
-      finish();
-    }
-  }
-  finish();
-  return keys;
-}
-
-// packages/history/src/identity-log.ts
-var MAX_PATHS_FOR_EVIDENCE = 100;
-var isPlatform = (name16, email) => email.toLowerCase() === "noreply@github.com" || name16.toLowerCase() === "github" || name16.toLowerCase() === "github enterprise";
-async function readCommitters(root, ref) {
-  const out = await runGit(root, ["log", "--format=%H%x1f%cn%x1f%ce", "--no-abbrev", ref]);
-  const committers = /* @__PURE__ */ new Map();
-  for (const line of out.split("\n")) {
-    if (line === "") continue;
-    const [sha, name16, email] = line.split("");
-    if (sha !== void 0) committers.set(sha, { name: name16 ?? "", email: email ?? "" });
-  }
-  return committers;
-}
-async function readSigningKeys(root, ref) {
-  return signaturesIn(await runGit(root, ["log", "--format=raw", "--no-abbrev", "--no-merges", ref]));
-}
-async function gatherIdentityFacts(root, view, options) {
-  const committers = await readCommitters(root, view.headSha);
-  const signingKeys = await readSigningKeys(root, view.headSha);
-  const raws = /* @__PURE__ */ new Map();
-  const windowCommits = /* @__PURE__ */ new Map();
-  const subjects = /* @__PURE__ */ new Map();
-  const agents = /* @__PURE__ */ new Map();
-  const authorOfCommit = /* @__PURE__ */ new Map();
-  const committersOfAuthor = /* @__PURE__ */ new Map();
-  const authorsOfCommitter = /* @__PURE__ */ new Map();
-  for (const commit of view.commits) {
-    const author = { name: commit.authorName, email: commit.authorEmail };
-    const key = identityKey(author);
-    authorOfCommit.set(commit.sha, author);
-    let raw = raws.get(key);
-    if (!raw) {
-      raw = {
-        ...author,
-        mappedName: author.name,
-        mappedEmail: author.email,
-        commits: 0,
-        first: commit.authorDate,
-        last: commit.authorDate,
-        files: /* @__PURE__ */ new Set(),
-        weeks: /* @__PURE__ */ new Map(),
-        areaCounts: /* @__PURE__ */ new Map(),
-        signingKeys: /* @__PURE__ */ new Set()
-      };
-      raws.set(key, raw);
-    }
-    const signingKey = signingKeys.get(commit.sha);
-    if (signingKey !== void 0 && !isPlatformKey(signingKey)) raw.signingKeys.add(signingKey);
-    raw.commits++;
-    raw.first = Math.min(raw.first, commit.authorDate);
-    raw.last = Math.max(raw.last, commit.authorDate);
-    if (commit.committerDate >= options.windowSince) windowCommits.set(key, (windowCommits.get(key) ?? 0) + 1);
-    if (commit.changes.length <= MAX_PATHS_FOR_EVIDENCE) {
-      const week = weekOf(commit.authorDate);
-      const areas = raw.weeks.get(week) ?? /* @__PURE__ */ new Set();
-      for (const change2 of commit.changes) {
-        raw.files.add(change2.path);
-        const area = areaOf(change2.path);
-        areas.add(area);
-        raw.areaCounts.set(area, (raw.areaCounts.get(area) ?? 0) + 1);
-      }
-      if (areas.size > 0) raw.weeks.set(week, areas);
-    }
-    const subject = commit.message.split("\n", 1)[0] ?? "";
-    const list = subjects.get(key) ?? [];
-    list.push(subject);
-    subjects.set(key, list);
-    for (const trailer of findAgentTrailers(commit.message, options.agentPatterns ?? [])) {
-      const use = agents.get(trailer.value) ?? { value: trailer.value, pattern: trailer.pattern, commits: 0 };
-      use.commits++;
-      agents.set(trailer.value, use);
-    }
-    const committer = committers.get(commit.sha);
-    if (committer && !isPlatform(committer.name, committer.email)) {
-      const a = author.email.toLowerCase();
-      const c = committer.email.toLowerCase();
-      const counts = committersOfAuthor.get(a) ?? /* @__PURE__ */ new Map();
-      counts.set(c, (counts.get(c) ?? 0) + 1);
-      committersOfAuthor.set(a, counts);
-      const authors = authorsOfCommitter.get(c) ?? /* @__PURE__ */ new Set();
-      authors.add(a);
-      authorsOfCommitter.set(c, authors);
-    }
-  }
-  const compare6 = (x, y) => x < y ? -1 : x > y ? 1 : 0;
-  return {
-    raws: [...raws.entries()].sort(([p], [q]) => compare6(p, q)).map(([, r]) => r),
-    pairing: { committersOfAuthor, authorsOfCommitter },
-    windowCommits,
-    subjects,
-    agents: [...agents.values()].sort((p, q) => compare6(p.value, q.value)),
-    authorOfCommit
-  };
-}
-
-// packages/cochange/src/identities/analysis.ts
-async function analyseIdentities(context, options) {
-  const history = await loadHistory(context, { noRefresh: options.noRefresh, wholeHistory: true });
-  const { settings, identities } = history;
-  const windowSince = monthsBefore(history.view.headDate, settings.windowMonths);
-  const facts = await gatherIdentityFacts(context.repo.root, history.view, {
-    windowSince,
-    agentPatterns: settings.identities.agentTrailerPatterns
-  });
-  const mapped = await mapThroughMailmap(context.repo.root, facts.raws, identities.localMailmap);
-  const raws = facts.raws.map((raw) => {
-    const to = mapped.get(identityKey(raw)) ?? raw;
-    return { ...raw, mappedName: to.name, mappedEmail: to.email };
-  });
-  const nodes = buildNodes(raws);
-  const nodeOfRaw = new Map(raws.map((r) => [identityKey(r), identityKey({ name: r.mappedName, email: r.mappedEmail })]));
-  const nonPerson = /* @__PURE__ */ new Map();
-  for (const node of nodes) {
-    const own = identities.matcher.classify(node.name, node.email);
-    const everyAliasNonPerson = node.aliases.length > 0 && node.aliases.every((a) => identities.matcher.classify(a.name, a.email) !== null);
-    const found = own ?? (everyAliasNonPerson ? identities.matcher.classify(node.aliases[0].name, node.aliases[0].email) : null);
-    if (found) nonPerson.set(node.key, found);
-  }
-  const people = nodes.filter((n) => !nonPerson.has(n.key));
-  const personKeys = new Set(people.map((n) => n.key));
-  const personRaws = raws.filter((r) => personKeys.has(identityKey({ name: r.mappedName, email: r.mappedEmail })));
-  const links = findLinks(people, personRaws, facts.pairing, identities.decisions.rejectedMerges);
-  const proposals = buildProposals(links);
-  const unresolved = new Set(proposals.flatMap((p) => p.members));
-  return { history, facts, raws, nodes, nodeOfRaw, nonPerson, links, proposals, unresolved, windowSince };
-}
-var isoDay5 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
-function topAreas(node, limit = 3) {
-  return [...node.areaCounts.entries()].sort(([p, x], [q, y]) => y - x || (p < q ? -1 : p > q ? 1 : 0)).slice(0, limit).map(([area]) => area);
-}
-
 // packages/cochange/src/identities/apply.ts
 import { createHash as createHash6 } from "node:crypto";
 import { existsSync as existsSync12, mkdirSync as mkdirSync3, readFileSync as readFileSync8, renameSync as renameSync4, writeFileSync as writeFileSync4 } from "node:fs";
@@ -7009,8 +7155,8 @@ function listRows(analysis, onlyUnmapped) {
       name: raw.name,
       email: raw.email,
       commits: raw.commits,
-      firstSeen: isoDay5(raw.first),
-      lastSeen: isoDay5(raw.last),
+      firstSeen: isoDay2(raw.first),
+      lastSeen: isoDay2(raw.last),
       topAreas: topAreas({ ...node, areaCounts: raw.areaCounts }),
       mappedTo: nodeKey === key ? null : nodeKey,
       kind: nonPerson?.kind ?? "person",
@@ -7034,8 +7180,8 @@ function proposeRows(analysis) {
         identity: m.key,
         aliases: m.aliases.map(identityKey).filter((a) => a !== m.key),
         commits: m.commits,
-        firstSeen: isoDay5(m.first),
-        lastSeen: isoDay5(m.last),
+        firstSeen: isoDay2(m.first),
+        lastSeen: isoDay2(m.last),
         topAreas: topAreas(m)
       })),
       links: proposal.links.map((l) => ({
@@ -7073,7 +7219,8 @@ function classifyRows(analysis) {
       commits: agent.commits,
       source: "trailer",
       pattern: agent.pattern,
-      decided: decided.has(emailOf3(agent.value))
+      // Decided by a record, or by a rule that already classifies the trailer's address as an agent.
+      decided: decided.has(emailOf3(agent.value)) || matcher.classify(nameOf(agent.value), emailOf3(agent.value))?.kind === "agent"
     });
   }
   const order = { bot: 0, service: 1, agent: 2 };
@@ -7082,6 +7229,10 @@ function classifyRows(analysis) {
 var emailOf3 = (identity) => {
   const open = identity.lastIndexOf("<");
   return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
+};
+var nameOf = (identity) => {
+  const open = identity.lastIndexOf("<");
+  return (open === -1 ? "" : identity.slice(0, open)).trim();
 };
 
 // packages/cochange/src/identities/apply.ts
@@ -7273,7 +7424,7 @@ function checkMapping(analysis, detail) {
       score: lines,
       kind: "unmapped",
       identities: [node.key],
-      detail: `proposed to be the same person as ${[...new Set(related)].sort(compare5).join("; ")}, last active ${isoDay5(node.last)}`,
+      detail: `proposed to be the same person as ${[...new Set(related)].sort(compare5).join("; ")}, last active ${isoDay2(node.last)}`,
       commits,
       lines,
       linesShare: peopleLines === 0 ? 0 : Math.round(lines / peopleLines * 1e3) / 10,
@@ -7282,57 +7433,6 @@ function checkMapping(analysis, detail) {
   }
   findings.sort((x, y) => y.score - x.score || (y.commits ?? 0) - (x.commits ?? 0) || compare5(x.kind, y.kind) || compare5(x.identities.join(), y.identities.join()));
   return { findings, failed: findings.some((f) => f.kind !== "unmapped") };
-}
-
-// packages/cochange/src/identities/measure.ts
-var percent2 = (part, whole) => whole === 0 ? 0 : Math.round(part / whole * 1e3) / 10;
-function share2(byNode, analysis) {
-  let total = 0;
-  let nonPerson = 0;
-  let unmapped = 0;
-  for (const [node, count2] of byNode) {
-    total += count2;
-    if (analysis.nonPerson.has(node)) nonPerson += count2;
-    else if (analysis.unresolved.has(node)) unmapped += count2;
-  }
-  const people = total - nonPerson;
-  return { total, nonPerson, people, unmapped, mappedShare: people === 0 ? 100 : Math.round((100 - percent2(unmapped, people)) * 10) / 10 };
-}
-async function measureMapping(context, analysis, options) {
-  const { history, facts, nodeOfRaw } = analysis;
-  const settings = readKnowledgeSettings(context.config.effective);
-  const sha = history.view.headSha;
-  if (!options.noRefresh) await refreshBlameFor(context, history, settings, sha);
-  const snapshot = await readBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings) });
-  const bySha = /* @__PURE__ */ new Map();
-  for (const file of snapshot.files.values()) {
-    for (const range of file.ranges) bySha.set(range.sha, (bySha.get(range.sha) ?? 0) + range.count);
-  }
-  const linesByNode = /* @__PURE__ */ new Map();
-  let unattributed = 0;
-  for (const [sha2, lines] of bySha) {
-    const author = facts.authorOfCommit.get(sha2);
-    const node = author && nodeOfRaw.get(identityKey(author));
-    if (!node) unattributed += lines;
-    else linesByNode.set(node, (linesByNode.get(node) ?? 0) + lines);
-  }
-  const windowCommitsByNode = /* @__PURE__ */ new Map();
-  for (const [raw, count2] of facts.windowCommits) {
-    const node = nodeOfRaw.get(raw);
-    if (node) windowCommitsByNode.set(node, (windowCommitsByNode.get(node) ?? 0) + count2);
-  }
-  const headLines = { ...share2(linesByNode, analysis), unattributed, unknownFiles: snapshot.missing.length };
-  const guideline = history.settings.identities.unmappedShareGuideline;
-  return {
-    measurement: {
-      headLines,
-      windowCommits: share2(windowCommitsByNode, analysis),
-      unmappedShareGuideline: guideline,
-      needsIdentityReview: headLines.people > 0 && percent2(headLines.unmapped, headLines.people) > guideline
-    },
-    linesByNode,
-    windowCommitsByNode
-  };
 }
 
 // packages/cochange/src/commands/identities.ts
@@ -9823,7 +9923,7 @@ var HistoryState = class {
 };
 
 // packages/cochange/src/risk/measure.ts
-var round = (value, places = 6) => Math.round(value * 10 ** places) / 10 ** places;
+var round2 = (value, places = 6) => Math.round(value * 10 ** places) / 10 ** places;
 var churnOf = (file) => (file.added ?? 0) + (file.deleted ?? 0);
 var FIRST_ROWS = 5;
 function measurement2(name16, family, layer, kind, source, parts) {
@@ -9856,7 +9956,7 @@ function size(facts) {
 }
 function spread(facts, context) {
   const paths = facts.files.map((file) => file.path);
-  const value = round(changeSpread(paths));
+  const value = round2(changeSpread(paths));
   const folders = new Set(paths.map(folderOf)).size;
   const components2 = context.components.length === 0 ? null : new Set(paths.map((path) => componentOf(context.components, path))).size;
   return measurement2("spread", "size-and-diffusion", "history", "percentile", "history", {
@@ -9867,7 +9967,7 @@ function spread(facts, context) {
 function entropy(facts) {
   const churn = facts.files.map(churnOf).filter((c) => c > 0);
   const total = churn.reduce((sum, c) => sum + c, 0);
-  const value = total === 0 ? 0 : round(churn.reduce((sum, c) => sum - c / total * Math.log2(c / total), 0));
+  const value = total === 0 ? 0 : round2(churn.reduce((sum, c) => sum - c / total * Math.log2(c / total), 0));
   return measurement2("entropy", "size-and-diffusion", "history", "percentile", "history", {
     series: { entropy: value },
     value: { entropy: value, files: churn.length }
@@ -9894,7 +9994,7 @@ function hotspotsTouched(facts, state, context) {
   });
   const total = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
   const inHot = hot.reduce((sum, file) => sum + churnOf(file), 0);
-  const share3 = total === 0 ? 0 : round(inHot / total);
+  const share3 = total === 0 ? 0 : round2(inHot / total);
   return measurement2("hotspots-touched", "history", "history", "percentile", "history", {
     series: { share: share3 },
     value: { share: share3, hotFiles: hot.length },
@@ -9918,7 +10018,7 @@ function defectHistory(facts, state, context) {
     fixes += fixed;
     if (fixed > 0) perFile.push({ file: file.fileId, fixes: fixed, revisions: own.length, commits: matches.slice(-FIX_COMMITS_PER_FILE).reverse(), omitted: Math.max(0, fixed - FIX_COMMITS_PER_FILE) });
   }
-  const share3 = revisions === 0 ? 0 : round(fixes / revisions);
+  const share3 = revisions === 0 ? 0 : round2(fixes / revisions);
   return measurement2("defect-history", "history", "history", "percentile", "history", {
     series: { share: share3 },
     value: { share: share3, fixes, revisions },
@@ -9950,7 +10050,7 @@ function age(facts, state, context) {
   const known = facts.files.filter((file) => state.known(file.fileId) && state.present(file.fileId));
   const stale = known.filter((file) => state.lastChanged(file.fileId) < staleBefore);
   const settling = known.filter((file) => state.lastChanged(file.fileId) >= settlingFrom);
-  const share3 = (n) => known.length === 0 ? 0 : round(n / known.length);
+  const share3 = (n) => known.length === 0 ? 0 : round2(n / known.length);
   return measurement2("age", "history", "history", "percentile", "history", {
     series: { stale: share3(stale.length), settling: share3(settling.length) },
     value: { stale: stale.length, settling: settling.length, known: known.length },
@@ -9969,7 +10069,7 @@ function coupledPartners(facts, state, context) {
     for (const [other, support] of state.partners(file.fileId)) {
       if (support < context.minSupport || 100 * support < context.risk.missingConfidence * revisions) continue;
       if (!state.present(other)) continue;
-      const confidence = round(100 * support / revisions, 1);
+      const confidence = round2(100 * support / revisions, 1);
       const current2 = best.get(other);
       if (!current2 || confidence > current2.confidence || confidence === current2.confidence && file.fileId < current2.towards) {
         best.set(other, { file: other, towards: file.fileId, confidence, support });
@@ -10044,7 +10144,7 @@ function sensitivePaths(facts, context) {
 }
 
 // packages/cochange/src/risk/placement.ts
-var round2 = (value, places = 4) => Math.round(value * 10 ** places) / 10 ** places;
+var round3 = (value, places = 4) => Math.round(value * 10 ** places) / 10 ** places;
 var SECONDS_PER_MONTH3 = 30.4375 * SECONDS_PER_DAY2;
 function isNewIdentity(state, email, time, context) {
   const seen = state.identity(email);
@@ -10109,9 +10209,9 @@ function placeChange(facts, state, context, options = {}) {
       churn: (file.added ?? 0) + (file.deleted ?? 0),
       earlierChanges: stats.earlier,
       recentChanges: stats.recent,
-      familiarity: round2(mine.reduce((sum, revision) => sum + 0.5 ** ((facts.time - revision.time) / halfLife), 0), 2),
+      familiarity: round3(mine.reduce((sum, revision) => sum + 0.5 ** ((facts.time - revision.time) / halfLife), 0), 2),
       neighbourhood: { coupled, folder: nearby, component: sameComponent },
-      authorship: blame?.authorShare === void 0 || blame?.authorShare === null ? null : round2(blame.authorShare)
+      authorship: blame?.authorShare === void 0 || blame?.authorShare === null ? null : round3(blame.authorShare)
     };
   });
   const total = files.reduce((sum, file) => sum + file.churn, 0);
@@ -10119,10 +10219,10 @@ function placeChange(facts, state, context, options = {}) {
   const denominator = total === 0 ? files.length : total;
   const shares = { owner: 0, regular: 0, occasional: 0, "first-touch": 0, unknown: 0 };
   for (const file of files) shares[file.label] += denominator === 0 ? 0 : weight(file) / denominator;
-  for (const label of Object.keys(shares)) shares[label] = round2(shares[label]);
+  for (const label of Object.keys(shares)) shares[label] = round3(shares[label]);
   const distantOwners = files.flatMap((file) => {
     const owner = options.blame?.get(file.file)?.distantOwner;
-    return owner ? [{ file: file.file, name: owner.name, email: owner.email, share: round2(owner.share) }] : [];
+    return owner ? [{ file: file.file, name: owner.name, email: owner.email, share: round3(owner.share) }] : [];
   });
   const noOwnerFiles = files.filter((file) => {
     const blame = options.blame?.get(file.file);
@@ -10552,7 +10652,7 @@ async function outcomesOf(root, tip, changes, risk, headTime) {
   }
   return outcomes;
 }
-var round3 = (value) => Math.round(value * 1e4) / 1e4;
+var round5 = (value) => Math.round(value * 1e4) / 1e4;
 var MIN_LEVEL_CHANGES = 5;
 var MIN_TROUBLED = 3;
 function separationOf(levels, troubled) {
@@ -10607,8 +10707,8 @@ function summarise(scored, all, outcomes, risk) {
       band,
       changes: members.length,
       troubled: troubled2,
-      rate: members.length === 0 ? null : round3(troubled2 / members.length),
-      baseRate: bases.length === 0 ? null : round3(bases.reduce((a, b) => a + b, 0) / bases.length)
+      rate: members.length === 0 ? null : round5(troubled2 / members.length),
+      baseRate: bases.length === 0 ? null : round5(bases.reduce((a, b) => a + b, 0) / bases.length)
     };
   });
   const levels = rows(LEVELS, (s) => s.level);
@@ -10647,20 +10747,20 @@ function summarise(scored, all, outcomes, risk) {
       fixes: fixEvidence(fixMatches),
       reverts: outcomeList.filter((o) => o.reverted).length,
       troubled,
-      rate: known.length === 0 ? null : round3(troubled / known.length)
+      rate: known.length === 0 ? null : round5(troubled / known.length)
     },
     levels,
     impact: rows(["low", "moderate", "high"], (s) => s.impact.band === "unavailable" ? null : s.impact.band),
     placement: rows(["close", "mixed", "distant", "unknown"], (s) => s.placement),
     factors,
-    completeness: { findings: withFinding.length, followed, share: withFinding.length === 0 ? null : round3(followed / withFinding.length) },
-    elevatedShare: withLevel.length === 0 ? null : round3(withLevel.filter((s) => s.level === "elevated").length / withLevel.length),
+    completeness: { findings: withFinding.length, followed, share: withFinding.length === 0 ? null : round5(followed / withFinding.length) },
+    elevatedShare: withLevel.length === 0 ? null : round5(withLevel.filter((s) => s.level === "elevated").length / withLevel.length),
     separation: separationOf(levels, troubled)
   };
 }
 
 // packages/cochange/src/risk/adoption.ts
-var round5 = (value) => Math.round(value * 1e4) / 1e4;
+var round6 = (value) => Math.round(value * 1e4) / 1e4;
 var iso = (seconds) => new Date(seconds * 1e3).toISOString();
 function adoptionOf(all, outcomes, adopted, risk, headTime) {
   const knownUntil = headTime - risk.followUpDays * SECONDS_PER_DAY2;
@@ -10669,21 +10769,21 @@ function adoptionOf(all, outcomes, adopted, risk, headTime) {
   const window = (from, to) => {
     const members = all.filter((change2) => change2.time >= from && change2.time < to && outcomes.get(change2.id)?.censored === false);
     const troubled = members.filter((change2) => outcomes.get(change2.id).reverted || outcomes.get(change2.id).fixed).length;
-    return { from: iso(from), to: iso(to), changes: members.length, troubled, rate: members.length === 0 ? null : round5(troubled / members.length) };
+    return { from: iso(from), to: iso(to), changes: members.length, troubled, rate: members.length === 0 ? null : round6(troubled / members.length) };
   };
   const before = window(adopted - length, adopted);
   const after = window(adopted, adopted + length);
-  const base = { adopted: iso(adopted), windowDays: round5(length / SECONDS_PER_DAY2), before, after };
+  const base = { adopted: iso(adopted), windowDays: round6(length / SECONDS_PER_DAY2), before, after };
   const thin = [before, after].find((side) => side.changes < MIN_LEVEL_CHANGES);
   if (thin !== void 0 || before.rate === null || after.rate === null) {
     return {
       ...base,
-      difference: before.rate === null || after.rate === null ? null : round5(after.rate - before.rate),
+      difference: before.rate === null || after.rate === null ? null : round6(after.rate - before.rate),
       status: "insufficient",
       reason: `a window of ${base.windowDays} days either side of the date holds ${before.changes} changes before and ${after.changes} after with a known outcome, and each side needs at least ${MIN_LEVEL_CHANGES}`
     };
   }
-  const difference = round5(after.rate - before.rate);
+  const difference = round6(after.rate - before.rate);
   const status = difference === 0 ? "unchanged" : difference < 0 ? "lower" : "higher";
   return {
     ...base,
@@ -11135,7 +11235,7 @@ function describeChange(assessed) {
 
 // packages/cochange/src/risk/reviewers.ts
 var REVIEWERS_PER_AREA = 3;
-var round6 = (value) => Math.round(value * 100) / 100;
+var round7 = (value) => Math.round(value * 100) / 100;
 async function reviewersFor(context, assessed, noRefresh) {
   const { change: change2, history, state, risk } = assessed;
   const root = context.repo.root;
@@ -11201,7 +11301,7 @@ async function reviewersFor(context, assessed, noRefresh) {
         }
       }
     }
-    const candidates = [...scores.values()].filter((c) => developers.has(c.email) && !authors.has(c.email.toLowerCase())).map((c) => ({ ...c, authorship: round6(c.authorship) })).sort((a, b) => b.authorship - a.authorship || b.coupledChanges - a.coupledChanges || (a.email < b.email ? -1 : 1));
+    const candidates = [...scores.values()].filter((c) => developers.has(c.email) && !authors.has(c.email.toLowerCase())).map((c) => ({ ...c, authorship: round7(c.authorship) })).sort((a, b) => b.authorship - a.authorship || b.coupledChanges - a.coupledChanges || (a.email < b.email ? -1 : 1));
     return { area, files: files.length, candidates };
   });
   const total = change2.files.length;

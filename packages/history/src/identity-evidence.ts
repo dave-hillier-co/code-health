@@ -261,7 +261,7 @@ export function findLinks(
   // The same key across identities, unless so many share it that it is a platform's (the web-flow key) and not a person's.
   const byKey = index(facts, (f) => f.signingKeys);
   for (const [key, holders] of byKey) if (holders.length > MAX_IDENTITIES_PER_SIGNING_KEY) byKey.delete(key);
-  eachPair(byKey, (key, x, y) => addSignal(candidates, x, y, { signal: "same-signing-key", strength: "strong", detail: key }));
+  eachPair(byKey, (key, x, y) => addSignal(candidates, x, y, { signal: "same-signing-key", strength: "supporting", detail: key }));
   eachPair(
     index(facts, (f) => f.noreplies.flatMap((n) => [`user:${n.username}`, ...(n.id ? [`id:${n.id}`] : [])])),
     (value, x, y) => addSignal(candidates, x, y, { signal: "noreply-same-user", strength: "strong", detail: value }),
@@ -332,13 +332,24 @@ export function findLinks(
     if (!list.some((s) => s.strength === "strong" || s.strength === "medium")) continue;
     const handover = handoverSignal(x, y);
     if (handover) list.push(handover);
-    const strong = list.some((s) => s.strength === "strong");
+    const strong = list.some((s) => s.strength === "strong") || corroborated(list);
     const counter = strong ? undefined : counterSignal(x, y);
     if (counter) list.push(counter);
     list.sort((s, t) => compare(rank(s) + s.signal + s.detail, rank(t) + t.signal + t.detail));
     links.push({ a, b, strength: strong ? "strong" : "medium", signals: list, counterEvidence: counter !== undefined });
   }
   return links;
+}
+
+/**
+ * Medium signals that are strong together. A name is shared by strangers, and so is a local part, but the same
+ * normalised name beside a matching GitHub login or the same local part is not a coincidence. A shared signing key
+ * is only supporting alone, since keys are shared between people, and becomes strong beside any medium signal.
+ */
+function corroborated(signals: readonly Signal[]): boolean {
+  const has = (name: SignalName) => signals.some((s) => s.signal === name);
+  if (has("same-name") && (has("noreply-matches-identity") || has("same-local-part"))) return true;
+  return has("same-signing-key") && signals.some((s) => s.strength === "medium");
 }
 
 const rank = (s: Signal): string => ({ strong: "0", medium: "1", supporting: "2", counter: "3" })[s.strength];

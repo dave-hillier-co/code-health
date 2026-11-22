@@ -87,7 +87,7 @@ test("propose gives clusters and the signals behind every link, strongest first"
   const { stdout } = await identities("propose", "--limit", "all");
   const document = json(stdout);
   const byId = Object.fromEntries(document.results.map((p: { id: string }) => [p.id, p]));
-  expect(document.results.map((p: { strength: string }) => p.strength)).toEqual(["strong", "strong", "medium", "medium", "medium"]);
+  expect(document.results.map((p: { strength: string }) => p.strength)).toEqual(["strong", "strong", "strong", "medium", "medium"]);
   expect(byId.P1.members.map((m: { identity: string }) => m.identity).sort()).toEqual([key(jo1), key(jo2)].sort());
   expect(byId.P1.links[0].signals.map((s: { signal: string }) => s.signal)).toEqual(["exact-email"]);
   expect(byId.P2.links[0].signals[0]).toMatchObject({ signal: "noreply-same-user", strength: "strong" });
@@ -120,7 +120,8 @@ test("classify names bots, services and agent trailers with the pattern that mat
     ["service", key(jenkins)],
     ["agent", "Claude Opus 5.5 <noreply@anthropic.com>"],
   ]);
-  expect(document.results.every((r: { decided: boolean }) => !r.decided)).toBe(true);
+  // No decision records any of them. The agent is already an agent by a built-in rule, so nothing is left to decide for it.
+  expect(document.results.map((r: { kind: string; decided: boolean }) => [r.kind, r.decided])).toEqual([["bot", false], ["service", false], ["agent", true]]);
   expectGolden("identities", "identities.classify", stdout);
 });
 

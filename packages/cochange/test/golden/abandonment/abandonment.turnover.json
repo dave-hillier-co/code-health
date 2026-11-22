@@ -178,7 +178,7 @@
   },
   "turnover": {
     "atRisk": 18,
-    "configuredRate": null,
+    "configuredRatePercent": null,
     "departed": 2,
     "periods": 6,
     "rate": 0.1111

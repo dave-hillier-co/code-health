@@ -45,6 +45,7 @@ export async function analyseIdentities(context: CommandContext, options: Analys
   const facts = await gatherIdentityFacts(context.repo.root, history.view, {
     windowSince,
     agentPatterns: settings.identities.agentTrailerPatterns,
+    matcher: identities.matcher,
   });
 
   const mapped = await mapThroughMailmap(context.repo.root, facts.raws, identities.localMailmap);

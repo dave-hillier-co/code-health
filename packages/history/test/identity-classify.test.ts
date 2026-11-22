@@ -67,3 +67,34 @@ test("an identity whose commits are only version bumps or merges is a service ca
   expect(onlyVersionBumpsOrMerges(["Bump version to 1.2.3", "Fix the parser"])).toBe(false);
   expect(onlyVersionBumpsOrMerges([])).toBe(false);
 });
+
+test.each([
+  ["Claude", "noreply@anthropic.com"],
+  ["Claude Opus 5.5", "noreply@anthropic.com"],
+  ["Copilot", "198982749+Copilot@users.noreply.github.com"],
+  ["copilot-swe-agent[bot]", "198982749+copilot-swe-agent[bot]@users.noreply.github.com"],
+  ["Cursor Agent", "cursoragent@cursor.com"],
+  ["devin-ai-integration[bot]", "158243242+devin-ai-integration[bot]@users.noreply.github.com"],
+])("%s <%s> is a coding agent by default", (name, email) => {
+  expect(createNonPersonMatcher(none).classify(name, email)).toMatchObject({ kind: "agent", source: "builtin" });
+});
+
+test("a person named like an agent is not one, and a decision of person overrides the default", () => {
+  expect(createNonPersonMatcher(none).classify("Devin Patel", "devin@corp.com")).toBeNull();
+  const matcher = createNonPersonMatcher({ ...none, decisions: [{ identity: "Claude <noreply@anthropic.com>", kind: "person" }] });
+  expect(matcher.classify("Claude", "noreply@anthropic.com")).toBeNull();
+});
+
+test("an agent's commits are still changes: only bots and services are dropped as non-person", () => {
+  const matcher = createNonPersonMatcher(none);
+  expect(matcher.isNonPerson("Claude", "noreply@anthropic.com")).toBe(false);
+  expect(matcher.isNonPerson("dependabot[bot]", "49699333+dependabot[bot]@users.noreply.github.com")).toBe(true);
+});
+
+test("the human co-author of a message is the first Co-Authored-By trailer that is not an agent", () => {
+  const matcher = createNonPersonMatcher(none);
+  const message = "Fix it\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nCo-authored-by: Ann Lee <ann@corp.com>\nCo-authored-by: Bo Chen <bo@corp.com>";
+  expect(matcher.humanCoAuthor(message)).toEqual({ name: "Ann Lee", email: "ann@corp.com" });
+  expect(matcher.humanCoAuthor("Fix it\n\nCo-Authored-By: Claude <noreply@anthropic.com>")).toBeNull();
+  expect(matcher.humanCoAuthor("Fix it")).toBeNull();
+});

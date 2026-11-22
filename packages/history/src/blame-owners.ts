@@ -18,12 +18,12 @@ export interface OwnerOptions {
   /** The local-only mailmap, which is read together with the `.mailmap` in the working tree. */
   localMailmap?: string;
   /** The non-person classification, from the identity decisions and config. Without it everyone is a person. */
-  matcher?: Pick<NonPersonMatcher, "classify">;
+  matcher?: Pick<NonPersonMatcher, "classify"> & Partial<Pick<NonPersonMatcher, "humanCoAuthor">>;
 }
 
 /**
  * Who wrote each of these commits, resolved now and never stored: the author as
- * written in the commit, mapped through the working tree's `.mailmap` (and the local
+ * written in the commit (or, for a commit an agent authored, the person a `Co-Authored-By` trailer names), mapped through the working tree's `.mailmap` (and the local
  * one), then classified. Every commit is covered, merges included, because a blame
  * can name a merge that resolved a conflict. A commit that is not in the repository is absent from the result.
  */
@@ -31,11 +31,13 @@ export async function resolveOwners(root: string, shas: Iterable<string>, option
   const unique = [...new Set(shas)].sort();
   const owners = new Map<string, Owner>();
   if (unique.length === 0) return owners;
-  const out = await runGit(root, ["log", "--no-walk=unsorted", "--stdin", "--format=%H%x1f%an%x1f%ae"], { input: unique.join("\n") + "\n" });
+  const out = await runGit(root, ["log", "--no-walk=unsorted", "--stdin", "--format=%H%x1f%an%x1f%ae%x1f%B%x1e"], { input: unique.join("\n") + "\n" });
   const authors = new Map<string, { name: string; email: string }>();
-  for (const line of out.split("\n")) {
-    const [sha, name, email] = line.split("\x1f");
-    if (sha !== undefined && name !== undefined && email !== undefined) authors.set(sha, { name, email });
+  for (const record of out.split("\x1e")) {
+    const [sha, name, email, message] = record.replace(/^\n/, "").split("\x1f");
+    if (sha === undefined || name === undefined || email === undefined) continue;
+    const agent = options.matcher?.classify(name, email)?.kind === "agent";
+    authors.set(sha, (agent ? options.matcher?.humanCoAuthor?.(message ?? "") : null) ?? { name, email });
   }
   const mapped = await mapThroughMailmap(root, [...authors.values()], options.localMailmap);
   for (const [sha, author] of authors) {

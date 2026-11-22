@@ -16,11 +16,20 @@ export interface Activity {
  */
 export async function readActivity(
   root: string,
-  commits: readonly Pick<HistoryCommit, "authorName" | "authorEmail" | "committerDate">[],
-  options: { localMailmap?: string; matcher?: Pick<NonPersonMatcher, "classify"> },
+  commits: readonly Pick<HistoryCommit, "authorName" | "authorEmail" | "committerDate" | "message">[],
+  options: { localMailmap?: string; matcher?: Pick<NonPersonMatcher, "classify"> & Partial<Pick<NonPersonMatcher, "humanCoAuthor">> },
 ): Promise<Activity> {
+  // A commit an agent authored counts as activity of the person a `Co-Authored-By` trailer names.
+  const authorOf = (c: (typeof commits)[number]): { name: string; email: string } => {
+    const author = { name: c.authorName, email: c.authorEmail };
+    const agent = options.matcher?.classify(author.name, author.email)?.kind === "agent";
+    return (agent ? options.matcher?.humanCoAuthor?.(c.message) : null) ?? author;
+  };
   const raws = new Map<string, { name: string; email: string }>();
-  for (const c of commits) raws.set(identityKey({ name: c.authorName, email: c.authorEmail }), { name: c.authorName, email: c.authorEmail });
+  for (const c of commits) {
+    const author = authorOf(c);
+    raws.set(identityKey(author), author);
+  }
   const mapped = await mapThroughMailmap(root, [...raws.values()], options.localMailmap);
   const person = new Map<string, string | null>();
   for (const [raw, author] of raws) {
@@ -29,7 +38,7 @@ export async function readActivity(
   }
   const byPerson = new Map<string, number[]>();
   for (const c of commits) {
-    const key = person.get(identityKey({ name: c.authorName, email: c.authorEmail }));
+    const key = person.get(identityKey(authorOf(c)));
     if (key === null || key === undefined) continue;
     const times = byPerson.get(key) ?? [];
     times.push(c.committerDate);

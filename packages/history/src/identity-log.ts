@@ -1,5 +1,5 @@
 import { areaOf, weekOf, type Pairing, type RawIdentity } from "./identity-evidence.ts";
-import { findAgentTrailers } from "./identity-classify.ts";
+import { findAgentTrailers, type NonPersonMatcher } from "./identity-classify.ts";
 import { identityKey, type Address } from "./identity-names.ts";
 import { runGit } from "./git.ts";
 import { isPlatformKey, signaturesIn } from "./signing-keys.ts";
@@ -58,7 +58,7 @@ async function readSigningKeys(root: string, ref: string): Promise<Map<string, s
 export async function gatherIdentityFacts(
   root: string,
   view: HistoryView,
-  options: { windowSince: number; agentPatterns?: readonly string[] },
+  options: { windowSince: number; agentPatterns?: readonly string[]; matcher?: Pick<NonPersonMatcher, "classify" | "humanCoAuthor"> },
 ): Promise<IdentityFacts> {
   const committers = await readCommitters(root, view.headSha);
   const signingKeys = await readSigningKeys(root, view.headSha);
@@ -73,7 +73,9 @@ export async function gatherIdentityFacts(
   for (const commit of view.commits) {
     const author: Address = { name: commit.authorName, email: commit.authorEmail };
     const key = identityKey(author);
-    authorOfCommit.set(commit.sha, author);
+    // Lines of an agent's commit are attributed to the person a trailer names, as in the knowledge analysis.
+    const agentAuthored = options.matcher?.classify(author.name, author.email)?.kind === "agent";
+    authorOfCommit.set(commit.sha, (agentAuthored ? options.matcher?.humanCoAuthor(commit.message) : null) ?? author);
     let raw = raws.get(key);
     if (!raw) {
       raw = {

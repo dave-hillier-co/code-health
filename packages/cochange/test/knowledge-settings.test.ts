@@ -25,6 +25,9 @@ test("the analysis is off by default and the defaults follow the spec", () => {
     horizonPeriods: 4,
     abandonmentGuideline: 90,
     turnoverRate: null,
+    turnoverRatePercent: null,
+    minTurnoverPeriods: 4,
+    mappedShareGuideline: 80,
     trials: 10_000,
     alphas: [95, 99],
     seed: 1,
@@ -36,7 +39,9 @@ test("the analysis is off by default and the defaults follow the spec", () => {
 });
 
 test("a stated turnover rate is a percentage and is read as a fraction", () => {
-  expect(settingsFor({ cochange: { knowledge: { turnoverRate: 7.5 } } }).turnoverRate).toBe(0.075);
+  const settings = settingsFor({ cochange: { knowledge: { turnoverRate: 7.5 } } });
+  expect(settings.turnoverRate).toBe(0.075);
+  expect(settings.turnoverRatePercent).toBe(7.5);
 });
 
 test("nonsense settings are refused", () => {

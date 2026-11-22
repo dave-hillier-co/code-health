@@ -9,6 +9,7 @@ import { goneLinesOf, reachesGuideline } from "./knowledge-model.ts";
 import { commonExtra, commonInputs, prepare, type Prepared } from "./prepare.ts";
 import { fileFindings, hotspotWeights, rankScore } from "./ranking.ts";
 import { reportLoss } from "./report.ts";
+import { noticesSection, turnoverNotices } from "./notices.ts";
 import { noSuccessorCheck } from "./successors.ts";
 import { chooseSelection, readSimulationSettings } from "./selection.ts";
 import { readRank, requireKnowledge } from "./settings.ts";
@@ -37,8 +38,9 @@ export async function turnoverCommand(context: CommandContext): Promise<CommandO
   const turnover = observedTurnover(p);
   return {
     inputs: commonInputs(p, "turnover"),
+    notices: p.notices,
     extra: commonExtra(p, {
-      turnover: { ...turnoverSummary(turnover), configuredRate: p.settings.turnoverRate === null ? null : round4(p.settings.turnoverRate) },
+      turnover: { ...turnoverSummary(turnover), configuredRatePercent: p.settings.turnoverRatePercent },
     }),
     results: turnover.periods.map((period) => ({
       start: isoDay(period.start),
@@ -123,6 +125,7 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
     .sort((a, b) => b.expectedLoss - a.expectedLoss || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
 
   const leaverProbability = round4(result.meanLeaverProbability);
+  const notices = [...p.notices, ...turnoverNotices(settings, turnover, selection.mode === "historical" || (selection.mode === "rate" && source === "history"))];
   const output: CommandOutput = {
     inputs: commonInputs(p, "simulate", {
       mode: sim.mode,
@@ -132,9 +135,10 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
       seed: sim.seed,
       alphas: settings.alphas,
       rank,
-      turnoverRate: settings.turnoverRate === null ? null : round4(settings.turnoverRate),
+      turnoverRatePercent: settings.turnoverRatePercent,
     }),
-    extra: commonExtra(p, { turnover: turnoverSummary(turnover) }),
+    extra: commonExtra(p, { turnover: turnoverSummary(turnover), ...noticesSection(notices) }),
+    notices,
     results: {
       mode: sim.mode,
       trials: sim.trials,

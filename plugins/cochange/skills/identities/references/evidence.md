@@ -5,7 +5,7 @@
 | Signal | Strength | What it means | When it misleads |
 |---|---|---|---|
 | `exact-email` | strong | The same address apart from case and a `+tag` | A shared mailbox. Generic local parts such as `noreply` and `admin` are never used. |
-| `same-signing-key` | strong | Commits of both identities were signed with one GPG or SSH key, read from the signatures themselves with nothing verified | A key shared by more than three identities is ignored, as is GitHub's web-flow key, which signs every user's web-UI commits. A team key on a shared machine still links people who share the machine. |
+| `same-signing-key` | supporting | Commits of both identities were signed with one GPG or SSH key, read from the signatures themselves with nothing verified. It links no one alone, and makes a link strong beside a medium signal. | A key shared by more than three identities is ignored, as is GitHub's web-flow key, which signs every user's web-UI commits. A team key on a shared machine still carries across the people who share the machine. |
 | `noreply-same-user` | strong | Two GitHub noreply addresses with the same username or numeric id | A username that was released and taken by someone else, which is rare and shows as two different numeric ids |
 | `noreply-matches-identity` | medium | A noreply username equals another identity's local part or flattened name | A common username |
 | `same-name` | medium | The same name apart from case, diacritics, spacing and `Last, First` order | Common names collide. Alone, this is never enough. |
@@ -16,6 +16,8 @@
 | `simultaneous-disjoint-areas` | counter | Both active in the same weeks, never in the same area | Someone with two roles. It still argues for keeping them apart. |
 
 Supporting and counter signals never create a link on their own.
+
+Two medium signals make a link strong when they are the same name with a matching GitHub login (`noreply-matches-identity`), or the same name with the same local part (`same-local-part`). One alone stays medium.
 
 ## Deciding a medium cluster
 
