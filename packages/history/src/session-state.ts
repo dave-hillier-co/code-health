@@ -10,14 +10,14 @@ export type FileMeasurement = Record<string, Record<string, number>>;
  * What a hook remembers about one session. It is the hook's own record,
  * written on each edit it sees: it never reads the transcript, which is
  * written asynchronously and can lag behind the tool call. Each hook has its
- * own file, so what one hook has spoken about never silences another.
+ * own file, so a note one hook printed never stops another hook printing its own.
  */
 export interface SessionState {
   /** Files edited so far, repo-relative, in the order first edited. */
   edited: string[];
-  /** Files the hook has already spoken about. It speaks at most once per file. */
+  /** Files the hook has already printed a note for. It prints at most one note per file. */
   spokenAbout: string[];
-  /** The previous run's outcome and how long it took, for diagnosing a slow or silent hook. */
+  /** The previous run's outcome and how long it took, for diagnosing a slow hook or one that printed nothing. */
   lastRun: { outcome: string; durationMs: number } | null;
   /** The last measurement of each file the hook measured, by repo-relative path. */
   measurements: Record<string, FileMeasurement>;

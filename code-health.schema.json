@@ -114,6 +114,10 @@
               "type": "number",
               "default": 80
             },
+            "maxPartners": {
+              "type": "number",
+              "default": 3
+            },
             "maxCommitsBehind": {
               "type": "number",
               "default": 50
@@ -123,6 +127,7 @@
           "default": {
             "enabled": false,
             "confidence": 80,
+            "maxPartners": 3,
             "maxCommitsBehind": 50
           }
         },

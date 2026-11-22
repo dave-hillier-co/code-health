@@ -135,14 +135,15 @@ The skill instructs the agent to run `cochange brief` on the files it plans to c
 
 ### Change-set completeness hook (opt-in)
 
-A `PostToolUse` hook on `Edit` and `Write` looks up the edited file in the cache (read-only, no refresh, with a time budget of about 200 ms) and, when there are coupled files above a high confidence threshold that have not been edited in this session (from the hook's own session state, [suite.md](suite.md#hooks)), injects a short note:
+A `PostToolUse` hook on `Edit`, `Write` and `MultiEdit` looks up the edited file in the cache (read-only, no refresh, with a time budget of 200 ms) and, when there are coupled files at or above the confidence guideline (`cochange.hook.confidence`, default 80 %) that have not been edited in this session (from the hook's own session state, [suite.md](suite.md#hooks)), injects a short note. The note states each partner's measured confidence and support and the guideline, and suggests looking. It states no rule:
 
-> `src/billing/invoice.ts` usually changes with `src/reports/invoice-summary.ts` (confidence 82 %, 17 changes). Not yet edited in this session.
+> `src/billing/invoice.ts` changed together with `src/reports/invoice-summary.ts` (confidence 82 %, 17 changes). Guideline: confidence 80 %. Not yet edited in this session, so worth a look.
 
 Rules for the hook:
 
-- Silent when the cache is missing, or more than the configured number of commits behind HEAD (default 50). Coupling evidence barely moves over a few commits, and a hook that fell silent after every commit or pull would rarely speak. It never triggers a refresh, never blocks the edit, and never fails loudly.
-- At most one note per file per session. Repeated nagging trains the model to ignore it.
+- Prints nothing when the cache is missing, or more than the configured number of commits behind HEAD (default 50). Coupling evidence barely moves over a few commits, and a hook that printed nothing after every commit or pull would rarely print a note. It never triggers a refresh, never blocks the edit, and never fails loudly.
+- Names at most `cochange.hook.maxPartners` partners (default 3), strongest first, and says how many more qualified.
+- At most one note per file per session, because repeating a note adds tokens and no information.
 - Off by default and enabled per repository in config, because injected context has a token cost.
 
 ## Composition

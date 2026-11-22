@@ -45,15 +45,15 @@ const edit = (file: string, session = "session-1", tool = "Edit") =>
   });
 const note = (stdout: string): string => JSON.parse(stdout).hookSpecificOutput.additionalContext;
 
-describe("when it speaks", () => {
-  test("a file with an unedited partner above the confidence threshold gets one sentence in the hook output format", async () => {
+describe("when it prints a note", () => {
+  test("a file with an unedited partner at or above the confidence guideline gets one note in the hook output format", async () => {
     enable();
     await refresh();
     const stdout = await edit(registry);
     expect(JSON.parse(stdout)).toEqual({
       hookSpecificOutput: {
         hookEventName: "PostToolUse",
-        additionalContext: `\`${registry}\` usually changes with \`${invoice}\` (confidence 100 %, 5 changes). Not yet edited in this session.`,
+        additionalContext: `\`${registry}\` changed together with \`${invoice}\` (confidence 100 %, 5 changes). Guideline: confidence 80 %. Not yet edited in this session, so worth a look.`,
       },
     });
   });
@@ -63,8 +63,17 @@ describe("when it speaks", () => {
     await refresh();
     const text = note(await edit(invoice));
     expect(text).toBe(
-      `\`${invoice}\` usually changes with \`src/billing/invoice.test.ts\` (confidence 37 %, 10 changes), ` +
-        "`src/app/registry.ts` (confidence 19 %, 5 changes) and `src/reporting/summary.ts` (confidence 19 %, 5 changes). Not yet edited in this session.",
+      `\`${invoice}\` changed together with \`src/billing/invoice.test.ts\` (confidence 37 %, 10 changes), ` +
+        "`src/app/registry.ts` (confidence 19 %, 5 changes) and `src/reporting/summary.ts` (confidence 19 %, 5 changes). Guideline: confidence 15 %. Not yet edited in this session, so worth a look.",
+    );
+  });
+
+  test("the partner cap is a setting, and the note counts the partners it did not name", async () => {
+    enable({ confidence: 15, maxPartners: 1 });
+    await refresh();
+    const text = note(await edit(invoice));
+    expect(text).toBe(
+      `\`${invoice}\` changed together with \`src/billing/invoice.test.ts\` (confidence 37 %, 10 changes), and 2 more not named. Guideline: confidence 15 %. Not yet edited in this session, so worth a look.`,
     );
   });
 
@@ -84,7 +93,7 @@ describe("when it speaks", () => {
 });
 
 describe("once per file per session", () => {
-  test("a second edit of the same file is silent, and another session hears it again", async () => {
+  test("a second edit of the same file prints nothing, and another session prints the note again", async () => {
     enable();
     await refresh();
     expect(await edit(registry)).not.toBe("");
@@ -99,7 +108,7 @@ describe("once per file per session", () => {
     expect(await edit(registry)).toBe("");
   });
 
-  test("the state file records the edited files, the files spoken about and the last run", async () => {
+  test("the state file records the edited files, the files a note was printed for and the last run", async () => {
     enable();
     await refresh();
     await edit(invoice);
@@ -107,7 +116,7 @@ describe("once per file per session", () => {
     const state = readSession(repo.path, "session-1", "cochange");
     expect(state.edited).toEqual([invoice, registry]);
     expect(state.spokenAbout).toEqual([]);
-    expect(state.lastRun?.outcome).toMatch(/^silent/);
+    expect(state.lastRun?.outcome).toMatch(/^printed nothing/);
 
     await edit("src/reporting/summary.ts", "session-3");
     expect(readSession(repo.path, "session-3", "cochange").spokenAbout).toEqual(["src/reporting/summary.ts"]);
@@ -122,7 +131,7 @@ describe("once per file per session", () => {
   });
 });
 
-describe("when it stays silent", () => {
+describe("when it prints nothing", () => {
   test("by default, and then it writes nothing", async () => {
     await refresh();
     expect(await edit(registry)).toBe("");
@@ -147,7 +156,7 @@ describe("when it stays silent", () => {
     expect(readFileSync(database).equals(before)).toBe(true);
   });
 
-  test("but within the tolerance it still speaks from the older cache", async () => {
+  test("but within the tolerance it still prints a note from the older cache", async () => {
     enable({ maxCommitsBehind: 3 });
     await refresh();
     for (let i = 0; i < 3; i++) {
@@ -199,7 +208,7 @@ describe("when it stays silent", () => {
       stdin: JSON.stringify({ session_id: "s", cwd: repo.path, tool_name: "Edit", tool_input: { file_path: join(repo.path, registry) } }),
     });
     expect(stdout).toBe("");
-    expect(readSession(repo.path, "s", "cochange").lastRun?.outcome).toBe("silent: over the time budget");
+    expect(readSession(repo.path, "s", "cochange").lastRun?.outcome).toBe("printed nothing: over the time budget");
   });
 });
 

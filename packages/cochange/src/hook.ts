@@ -31,13 +31,11 @@ export interface HookRequest {
 /** Names the hook in its session state, apart from other plugins' hooks. */
 export const HOOK_NAME = "cochange";
 
-/** The most partners one note names. */
-const MAX_PARTNERS_NAMED = 3;
-
 /**
  * The default time budget in milliseconds. Claude Code waits for the hook, so
- * a run that has not finished by then goes silent instead of slowing the
- * session. The hook's own timeout in `hooks.json` is a backstop above it.
+ * a run that has not finished by then prints nothing instead of slowing the
+ * session. The hook's own timeout in `hooks.json` (1 second, the smallest it
+ * takes) is a backstop above it.
  */
 export const DEFAULT_BUDGET_MS = 200;
 
@@ -56,15 +54,25 @@ async function commitsBehind(root: string, dbPath: string, ref: string, limit: n
   }
 }
 
-/** One sentence naming the partners, in the form the spec shows. */
-export function describeNote(file: string, partners: readonly { path: string; confidence: number; support: number }[]): string {
-  const named = partners.map((p) => `\`${p.path}\` (confidence ${Math.round(p.confidence)} %, ${p.support} ${p.support === 1 ? "change" : "changes"})`);
+/**
+ * The note: the measured confidence and support of each partner named, how many more qualified, and the guideline
+ * the confidence is read against. It suggests looking and states no rule.
+ */
+export function describeNote(
+  file: string,
+  partners: readonly { path: string; confidence: number; support: number }[],
+  omitted: number,
+  guideline: number,
+): string {
+  const q = (text: string): string => '`' + text + '`';
+  const named = partners.map((p) => `${q(p.path)} (confidence ${Math.round(p.confidence)} %, ${p.support} ${p.support === 1 ? "change" : "changes"})`);
   const list = named.length <= 1 ? named.join("") : `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}`;
-  return `\`${file}\` usually changes with ${list}. Not yet edited in this session.`;
+  const more = omitted === 0 ? "" : `, and ${omitted} more not named`;
+  return `${q(file)} changed together with ${list}${more}. Guideline: confidence ${guideline} %. Not yet edited in this session, so worth a look.`;
 }
 
 interface Decision {
-  /** The sentence to inject, or null for silence. */
+  /** The sentence to inject, or null to print nothing. */
   note: string | null;
   outcome: string;
 }
@@ -72,7 +80,7 @@ interface Decision {
 async function consider(root: string, file: string, settings: CochangeSettings, state: SessionState): Promise<Decision> {
   const location = await locateCache(root);
   const found = await commitsBehind(root, location.dbPath, settings.ref, settings.hook.maxCommitsBehind);
-  if (!found) return { note: null, outcome: "silent: no cache within tolerance" };
+  if (!found) return { note: null, outcome: "printed nothing: no cache within tolerance" };
 
   // The same filters the commands apply, so the hook's confidence agrees with brief and coupling.
   const identities = loadIdentityState(root, settings);
@@ -99,7 +107,7 @@ async function consider(root: string, file: string, settings: CochangeSettings, 
     identity,
   );
   const edited = new Set(state.edited);
-  const named = partners
+  const qualified = partners
     .map((partner) => ({ path: partner.path, support: partner.support, confidence: confidenceOf(partner.support, changesFocus) }))
     .filter(
       (partner) =>
@@ -108,21 +116,21 @@ async function consider(root: string, file: string, settings: CochangeSettings, 
         !edited.has(partner.path) &&
         existsSync(join(root, partner.path)),
     )
-    .sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
-    .slice(0, MAX_PARTNERS_NAMED);
-  if (named.length === 0) return { note: null, outcome: "silent: no unedited partner above the threshold" };
-  return { note: describeNote(file, named), outcome: "spoke" };
+    .sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  if (qualified.length === 0) return { note: null, outcome: "printed nothing: no unedited partner at or above the guideline" };
+  const named = qualified.slice(0, settings.hook.maxPartners);
+  return { note: describeNote(file, named, qualified.length - named.length, settings.hook.confidence), outcome: "printed a note" };
 }
 
 /**
  * The change-set completeness hook, for a `PostToolUse` event on an edit.
  * Returns what to print on stdout: the `hookSpecificOutput` JSON, or the empty
- * string for silence. It never throws, never refreshes the cache and never
+ * string when there is nothing to print. It never throws, never refreshes the cache and never
  * writes anything except its own session state, so the process can always exit 0.
  *
- * It is silent unless the repository enables it, the edited file is inside the
+ * It prints nothing unless the repository enables it, the edited file is inside the
  * repository, the cache is no further behind than `cochange.hook.maxCommitsBehind`,
- * and the file has not been spoken about already this session.
+ * and no note has been printed for the file already this session.
  */
 export async function runHook(request: HookRequest): Promise<string> {
   const started = request.startedAt ?? performance.now();
@@ -139,10 +147,10 @@ export async function runHook(request: HookRequest): Promise<string> {
     });
 
     const decision: Decision = state.spokenAbout.includes(file)
-      ? { note: null, outcome: "silent: already spoke about this file" }
+      ? { note: null, outcome: "printed nothing: already printed a note for this file" }
       : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state), {
           note: null,
-          outcome: "silent: over the time budget",
+          outcome: "printed nothing: over the time budget",
         });
     updateSession(root, sessionId, HOOK_NAME, (current) => {
       if (decision.note !== null && !current.spokenAbout.includes(file)) current.spokenAbout.push(file);
