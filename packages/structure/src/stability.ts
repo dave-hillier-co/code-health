@@ -82,39 +82,47 @@ export interface AgainstStability {
   /** Which evidence decided. Change evidence outranks structure whenever the depended-on side is active. */
   basis: "change" | "structure";
   /** The structural measure puts the depended-on side as less stable than the dependant. */
-  structuralViolation: boolean;
+  structuralAboveGuideline: boolean;
   /** Null when the depended-on side is not active, so there is no change evidence. */
-  changeViolation: boolean | null;
+  changeAboveGuideline: boolean | null;
   /** Revisions per file of the depended-on side over the dependant's; null when the dependant has none or is not measured. */
   volatilityRatio: number | null;
-  violates: boolean;
+  /**
+   * The depended-on side is less stable than the dependant on the deciding basis, whatever the margin.
+   * Every such dependency is listed; `aboveGuideline` says whether the margin reaches the guideline.
+   */
+  towardsLessStable: boolean;
+  /** The margin on the deciding basis reaches the guideline (`minVolatilityRatio` or `minInstabilityGap`). It orders results and hides none. */
+  aboveGuideline: boolean;
   /** The two measures point opposite ways, which is when change evidence is the one to believe. */
   disagree: boolean;
 }
 
 /**
- * Whether a dependency from `from` onto `to` points against stability (the stable dependencies
- * principle: depend towards the more stable side). Change stability decides when the depended-on
+ * Whether a dependency from `from` onto `to` points towards less stable code (the stable dependencies
+ * principle: depend towards the more stable side), and whether the margin reaches the guideline. Change stability decides when the depended-on
  * side is active; otherwise structure does.
  */
 export function judgeDependency(from: Stability, to: Stability, settings: Pick<StructureSettings, "minVolatilityRatio" | "minInstabilityGap">): AgainstStability {
   const gap = from.structural.instability === null || to.structural.instability === null ? null : to.structural.instability - from.structural.instability;
-  const structuralViolation = gap !== null && gap * 100 >= settings.minInstabilityGap;
+  const structuralAboveGuideline = gap !== null && gap * 100 >= settings.minInstabilityGap;
 
   const volatileTarget = to.change.active && to.change.revisionsPerFile > from.change.revisionsPerFile;
-  const changeViolation = to.change.active
+  const changeAboveGuideline = to.change.active
     ? from.change.revisionsPerFile === 0 || to.change.revisionsPerFile >= settings.minVolatilityRatio * from.change.revisionsPerFile
     : null;
   const volatilityRatio = from.change.revisionsPerFile === 0 ? null : round3(to.change.revisionsPerFile / from.change.revisionsPerFile);
 
   const basis = to.change.active ? "change" : "structure";
-  const violates = basis === "change" ? volatileTarget && changeViolation === true : structuralViolation;
+  const towardsLessStable = basis === "change" ? volatileTarget : gap !== null && gap > 0;
+  const aboveGuideline = basis === "change" ? volatileTarget && changeAboveGuideline === true : structuralAboveGuideline;
   return {
     basis,
-    structuralViolation,
-    changeViolation,
+    structuralAboveGuideline,
+    changeAboveGuideline,
     volatilityRatio,
-    violates,
-    disagree: changeViolation !== null && changeViolation !== structuralViolation,
+    towardsLessStable,
+    aboveGuideline,
+    disagree: changeAboveGuideline !== null && changeAboveGuideline !== structuralAboveGuideline,
   };
 }

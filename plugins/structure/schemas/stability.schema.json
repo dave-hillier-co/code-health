@@ -119,10 +119,11 @@
             "additionalProperties": false
           },
           "basis": true,
-          "structuralViolation": true,
-          "changeViolation": true,
+          "structuralAboveGuideline": true,
+          "changeAboveGuideline": true,
           "volatilityRatio": true,
-          "violates": true,
+          "towardsLessStable": true,
+          "aboveGuideline": true,
           "disagree": true
         },
         "required": [

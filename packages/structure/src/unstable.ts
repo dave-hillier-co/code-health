@@ -38,17 +38,18 @@ export function judgeEdge(model: Model, from: string, to: string, settings: Pick
 }
 
 /**
- * Dependencies that point from more stable towards less stable code. Change evidence outranks
- * structure, so rows decided by change come first, then by how much more volatile the depended-on
- * side is (or, on structure, how much more unstable), then by the number of file imports behind
- * the edge, then by path.
+ * Every dependency that points from more stable towards less stable code, ranked for investigation.
+ * Rows at or past the guideline come first. Within each group, rows decided by change evidence
+ * (change outranks structure) come first, then the larger margin (how much more volatile the
+ * depended-on side is, or on structure how much more unstable), then the number of file imports
+ * behind the edge, then by path. No row is dropped for being under the guideline.
  */
-export function findUnstableDependencies(model: Model, settings: Pick<StructureSettings, "minVolatilityRatio" | "minInstabilityGap">): UnstableDependency[] {
+export function rankDependencies(model: Model, settings: Pick<StructureSettings, "minVolatilityRatio" | "minInstabilityGap">): UnstableDependency[] {
   const rows: UnstableDependency[] = [];
   for (const [from, targets] of model.graph.graph) {
     for (const to of targets) {
       const row = judgeEdge(model, from, to, settings);
-      if (row.violates) rows.push(row);
+      if (row.towardsLessStable) rows.push(row);
     }
   }
   const margin = (row: UnstableDependency) =>
@@ -57,12 +58,18 @@ export function findUnstableDependencies(model: Model, settings: Pick<StructureS
       : round3((row.stability.to.structural.instability ?? 0) - (row.stability.from.structural.instability ?? 0));
   return rows.sort(
     (a, b) =>
+      Number(b.aboveGuideline) - Number(a.aboveGuideline) ||
       Number(b.basis === "change") - Number(a.basis === "change") ||
       margin(b) - margin(a) ||
       b.fileEdges - a.fileEdges ||
       compareIds(a.from, b.from) ||
       compareIds(a.to, b.to),
   );
+}
+
+/** The ranked dependencies whose margin reaches the guideline, for callers that raise findings from them. */
+export function findUnstableDependencies(model: Model, settings: Pick<StructureSettings, "minVolatilityRatio" | "minInstabilityGap">): UnstableDependency[] {
+  return rankDependencies(model, settings).filter((row) => row.aboveGuideline);
 }
 
 /** Every module's stability, the most volatile first. */
