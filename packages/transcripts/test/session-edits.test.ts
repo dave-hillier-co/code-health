@@ -44,3 +44,52 @@ test("a repo's sessions are those whose directory and recorded working directory
     ["b", ["x.ts"]],
   ]);
 });
+
+test("a truncated last line, as a session cut off mid-write leaves, does not lose the edits before it", () => {
+  const session = new SyntheticSession().prompt().assistant("m1", [edit(`${R}src/a.ts`)]).raw('{"type":"assistant","message":{"id":"m2","content":[{"type":"tool_use","na');
+  expect(readSessionEdits(session.toJsonl(), "cut", roots)).toMatchObject({ edits: ["src/a.ts"] });
+});
+
+test("an edit named by a relative path is taken as relative to the repo, as a tool call is, unless it climbs out of it", () => {
+  const session = new SyntheticSession().prompt().assistant("m1", [edit("src/relative.ts"), edit("../outside.ts"), edit(`${R}src/a.ts`)]);
+  expect(readSessionEdits(session.toJsonl(), "relative", roots)?.edits).toEqual(["src/relative.ts", "src/a.ts"]);
+});
+
+test("edits made inside a subagent (a sidechain) are the subagent's, not the session's", () => {
+  const session = new SyntheticSession().prompt().assistant("m1", [edit(`${R}src/a.ts`)]);
+  session.raw(
+    JSON.stringify({
+      type: "assistant",
+      uuid: "side-1",
+      timestamp: "2026-03-01T09:00:30.000Z",
+      sessionId: "session-1",
+      cwd: "/work/repo",
+      isSidechain: true,
+      version: "2.1.330",
+      message: { id: "side", role: "assistant", content: [{ type: "tool_use", id: "t", name: "Edit", input: { file_path: `${R}src/sub.ts` } }], usage: {} },
+    }),
+  );
+  expect(readSessionEdits(session.toJsonl(), "side", roots)?.edits).toEqual(["src/a.ts"]);
+});
+
+test("a repository reached through a symlinked root is the same repository once both spellings are given as roots", () => {
+  const session = new SyntheticSession({ cwd: "/link/repo" }).prompt().assistant("m1", [edit("/link/repo/src/a.ts")]);
+  expect(readSessionEdits(session.toJsonl(), "link", ["/work/repo"])).toBeNull();
+  expect(readSessionEdits(session.toJsonl(), "link", ["/work/repo", "/link/repo"])?.edits).toEqual(["src/a.ts"]);
+});
+
+test("the same session id in two project directories is read once per file, not merged away", () => {
+  const projects = mkdtempSync(join(tmpdir(), "code-health-edits-dup-"));
+  directories.push(projects);
+  for (const root of ["/work/repo", "/work/repo/.claude/worktrees/w"]) {
+    const dir = join(projects, encodeProjectDir(root));
+    mkdirSync(dir, { recursive: true });
+    const session = new SyntheticSession({ cwd: root, sessionId: "dup", start: "2026-03-02T09:00:00.000Z" }).prompt().assistant("m", [edit(`${root}/src/a.ts`)]);
+    writeFileSync(join(dir, "dup.jsonl"), session.toJsonl());
+  }
+  const sessions = readRepoSessionEdits({ projectsDir: projects, repoRoots: ["/work/repo", "/work/repo/.claude/worktrees/w"], window: parseWindow("2026-03-01", "2026-04-01") });
+  expect(sessions.map((s) => [s.sessionId, s.edits])).toEqual([
+    ["dup", ["src/a.ts"]],
+    ["dup", ["src/a.ts"]],
+  ]);
+});
