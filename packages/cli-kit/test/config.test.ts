@@ -4,7 +4,9 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { serialise } from "../src/serialise.ts";
-import { explainConfig, loadConfig } from "../src/config.ts";
+import { readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { explainConfig, loadConfig, PLUGIN_SECTIONS } from "../src/config.ts";
 import { CliError, ExitCode } from "../src/errors.ts";
 
 const section = { windowMonths: 12, firstParent: false, bots: { patterns: ["[bot]"] }, ignored: {} };
@@ -149,4 +151,21 @@ test("unknown keys in the plugin section are config errors", () => {
   expectConfigError(/cochange\.windowMonth\b.*unknown/);
   writeConfig({ cochange: { bots: { pattern: [] } } });
   expectConfigError(/cochange\.bots\.pattern\b.*unknown/);
+});
+
+test("an unknown top-level key is a config error that names the known settings", () => {
+  writeConfig({ exlude: ["dist/**"] });
+  expectConfigError(/exlude is an unknown setting.*cochange.*exclude/);
+  writeConfig({ cochnage: {} });
+  expectConfigError(/cochnage is an unknown setting/);
+});
+
+test("$schema and every plugin's section are known, whichever plugin reads the file", () => {
+  writeConfig({ $schema: "x", locality: {}, structure: {}, complexity: {}, cochange: {} });
+  expect(() => load()).not.toThrow();
+});
+
+test("the known plugin sections are the plugins of this repository", () => {
+  const plugins = readdirSync(fileURLToPath(new URL("../../../plugins", import.meta.url))).sort();
+  expect([...PLUGIN_SECTIONS].sort()).toEqual(plugins);
 });

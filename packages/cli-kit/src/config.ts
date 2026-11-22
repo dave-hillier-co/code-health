@@ -54,10 +54,30 @@ const sharedDefaults: SharedConfig = {
 
 const stringLists = ["exclude", "entryPoints", "vagueNames"];
 
+/**
+ * The plugins whose sections may appear in code-health.json. Every plugin reads the one file, so a plugin
+ * cannot tell another's section from a misspelt key without this list. A test keeps it equal to `plugins/`.
+ */
+export const PLUGIN_SECTIONS: readonly string[] = ["cochange", "complexity", "locality", "structure"];
+
+/** Keys at the top of code-health.json besides the shared settings and the plugin sections. */
+const documentKeys = ["$schema"];
+
+/** A key that is neither shared, a plugin's section nor `$schema` is a typo, and fails the way the schema flags it. */
+function rejectUnknownKeys(document: Record<string, unknown>, plugin: string): void {
+  const known = new Set([...Object.keys(sharedDefaults), ...PLUGIN_SECTIONS, plugin]);
+  for (const key of Object.keys(document)) {
+    if (documentKeys.includes(key) || known.has(key)) continue;
+    throw configError(`${CONFIG_FILE}: ${key} is an unknown setting; known settings are ${[...known].sort().join(", ")}`);
+  }
+}
+
 /** Reads code-health.json at the repo root: shared keys plus the named plugin's section. */
 export function loadConfig(root: string, spec: PluginConfigSpec): LoadedConfig {
   const file = join(root, CONFIG_FILE);
   const document = existsSync(file) ? parseDocument(file) : undefined;
+
+  if (document !== undefined) rejectUnknownKeys(document, spec.plugin);
 
   for (const key of stringLists) {
     const value = document?.[key];
