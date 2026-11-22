@@ -108,6 +108,21 @@ describe("header and source pairing", () => {
     expect(edges).not.toContain("core/config.h -> net/config.cpp");
   });
 
+  it("pairs a C header with its .c file, since the C++ grammar reads C", async () => {
+    const analysis = await analyse({ "a/x.h": "int x();\n", "a/x.c": "int x() { return 1; }\n" });
+    expect(analysis.importEdges.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual(["a/x.h -> a/x.c"]);
+  });
+
+  it("claims extensions in lower case only, so a .C or .H file is neither read nor paired", async () => {
+    const claimed = cpp.grammars.flatMap((binding) => binding.extensions);
+    expect(claimed).toContain(".c");
+    expect(claimed).toContain(".h");
+    expect(claimed).not.toContain(".C");
+    expect(claimed).not.toContain(".H");
+    const analysis = await analyse({ "a/x.H": "int x();\n", "a/x.C": "int x() { return 1; }\n" });
+    expect(analysis.importEdges).toEqual([]);
+  });
+
   it("does not pair files of different stems or folders", async () => {
     const analysis = await analyse({ "a/x.h": "int x();\n", "b/x.cpp": '#include "../a/y.h"\nint x() { return 1; }\n', "a/y.h": "int y();\n" });
     expect(analysis.importEdges.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual(["b/x.cpp -> a/y.h"]);
