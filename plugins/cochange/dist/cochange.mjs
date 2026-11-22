@@ -2297,7 +2297,7 @@ var cochangeConfig = {
     groupingWindowHours: 4,
     maxChangesetSize: DEFAULT_MAX_CHANGESET_SIZE,
     minSupport: 5,
-    /** Minimum coupling degree, as a percentage. */
+    /** Coupling degree guideline, as a percentage (Tornhill's code-maat default). Orders and labels pairs. Only cluster membership cuts on it. */
     minDegree: 30,
     minDistance: 2,
     /**
@@ -2663,7 +2663,7 @@ function countCoupling(changes, thresholds) {
   for (const [a, row2] of together) {
     for (const [b, support] of row2) {
       const pair = { a, b, support, changesA: perFile.get(a), changesB: perFile.get(b) };
-      if (support >= thresholds.minSupport && reachesDegree(pair, thresholds.minDegree)) pairs.push(pair);
+      if (support >= thresholds.minSupport && reachesDegree(pair, thresholds.minDegree ?? 0)) pairs.push(pair);
     }
   }
   pairs.sort((p, q) => compareBytes(p.a, q.a) || compareBytes(p.b, q.b));
@@ -3021,38 +3021,6 @@ function parseBlameRanges(output) {
     else joined.push({ ...range });
   }
   return joined;
-}
-function parseIncrementalBlame(output, into) {
-  let lines = 0;
-  for (const range of parseBlameRanges(output)) {
-    into.set(range.sha, (into.get(range.sha) ?? 0) + range.count);
-    lines += range.count;
-  }
-  return lines;
-}
-async function blameLineCounts(root, sha, options = {}) {
-  const candidates = await authoredFilesAt(root, sha, options.exclude);
-  const text = await textFilesAt(root, sha, candidates.map((c) => c.path));
-  const files = candidates.map((c) => c.path).filter((path) => text.has(path));
-  const ignoreFile = options.ignoreRevsFile ?? ".git-blame-ignore-revs";
-  const ignoreArgs = existsSync8(join6(root, ignoreFile)) ? [`--ignore-revs-file=${join6(root, ignoreFile)}`] : [];
-  const bySha = /* @__PURE__ */ new Map();
-  let lines = 0;
-  let next = 0;
-  let blamed = 0;
-  const worker = async () => {
-    while (next < files.length) {
-      const path = files[next++];
-      try {
-        const out = await runGit(root, ["blame", "--incremental", "-w", ...ignoreArgs, sha, "--", path]);
-        lines += parseIncrementalBlame(out, bySha);
-        blamed++;
-      } catch {
-      }
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(options.concurrency ?? 8, Math.max(files.length, 1)) }, worker));
-  return { bySha, files: blamed, lines };
 }
 
 // packages/history/src/blame-reuse.ts
@@ -3696,10 +3664,35 @@ async function backtestCommand(context) {
   };
 }
 
+// packages/cochange/src/abandonment/overrides-exposure.ts
+import { existsSync as existsSync10 } from "node:fs";
+import { relative } from "node:path";
+async function gitSucceeds(root, args) {
+  try {
+    await runGit(root, args);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function overridesExposure(root) {
+  const file = overridesPath(root);
+  if (!existsSync10(file)) return null;
+  const path = relative(root, file).split("\\").join("/");
+  const tracked = await gitSucceeds(root, ["ls-files", "--error-unmatch", "--", path]);
+  const ignored = await gitSucceeds(root, ["check-ignore", "-q", "--no-index", "--", path]);
+  if (!tracked && ignored) return null;
+  const why = tracked ? "tracked by git" : "not ignored by git";
+  return `warning: ${path} is ${why}. It lists people by name and email and belongs in .code-health/local/, which a .gitignore there excludes. Untrack it or ignore it before committing.`;
+}
+
 // packages/cochange/src/abandonment/prepare.ts
 async function prepare(context) {
   const settings = requireKnowledge(context);
   const noRefresh = context.values["no-refresh"] === true;
+  const exposure = await overridesExposure(context.repo.root);
+  if (exposure !== null) process.stderr.write(`${exposure}
+`);
   const history = await loadHistory(context, { noRefresh });
   const knowledge = await loadKnowledge(context, history, settings, { noRefresh });
   return { context, settings, history, knowledge, noRefresh };
@@ -3746,7 +3739,7 @@ function shareStrictlyAbove(values, value) {
 }
 
 // packages/cochange/src/complexity-source.ts
-import { existsSync as existsSync10, readFileSync as readFileSync7 } from "node:fs";
+import { existsSync as existsSync11, readFileSync as readFileSync7 } from "node:fs";
 
 // packages/lexical/src/agreement.ts
 function exactRate(counts) {
@@ -4217,10 +4210,10 @@ function blockMetrics(lines, block, profile, options = {}) {
     const line = lines[n - 1];
     if (line.kind === "code" || line.kind === "literal") length++;
     if (line.kind !== "code" || line.startsInLiteral) continue;
-    const relative3 = Math.max(0, levelOf(line.text, unit) - base);
-    indentationComplexity2 += relative3;
-    if (n > block.startLine && relative3 > maxRelative) maxRelative = relative3;
-    codeLines.push({ relative: relative3, text: line.code });
+    const relative4 = Math.max(0, levelOf(line.text, unit) - base);
+    indentationComplexity2 += relative4;
+    if (n > block.startLine && relative4 > maxRelative) maxRelative = relative4;
+    codeLines.push({ relative: relative4, text: line.code });
   }
   return {
     length,
@@ -4802,7 +4795,7 @@ var COMPLEXITY_REPORT = { tool: "complexity", command: "files" };
 var COMPLEXITY_FIELD = "complexity";
 function readComplexityReport(root, head) {
   const file = reportPath2(root, COMPLEXITY_REPORT.command, COMPLEXITY_REPORT.tool);
-  if (!existsSync10(file)) return void 0;
+  if (!existsSync11(file)) return void 0;
   let document;
   try {
     document = JSON.parse(readFileSync7(file, "utf8"));
@@ -5085,7 +5078,7 @@ var rules = {
     summary: "An abandoned or at-risk file that no active developer works near",
     explanation: [
       "Raised on an abandoned or at-risk file when no active developer has changed any file that changes with it",
-      "(coupling at the configured minimum support and degree, over the analysis window).",
+      "(coupling at the configured minimum support, weighted by degree, over the analysis window).",
       "",
       "Suggested mitigation: escalate. Nobody is near this code, so adoption has no natural owner."
     ].join("\n")
@@ -5094,14 +5087,14 @@ var rules = {
 
 // packages/cochange/src/abandonment/successors.ts
 function buildSuccessorIndex(history) {
-  const { minSupport, minDegree } = history.settings;
+  const { minSupport } = history.settings;
   const partners = /* @__PURE__ */ new Map();
   const add = (file, other, degree, support) => {
     const list = partners.get(file) ?? [];
     list.push({ path: other, degree, support });
     partners.set(file, list);
   };
-  for (const pair of coupledPairs(history, { minSupport, minDegree }).pairs) {
+  for (const pair of coupledPairs(history, { minSupport }).pairs) {
     const degree = degreeOf(pair);
     add(pair.a, pair.b, degree, pair.support);
     add(pair.b, pair.a, degree, pair.support);
@@ -5581,13 +5574,14 @@ async function current(context) {
   const rank2 = readRank(context, p.settings);
   const weights = by === "file" ? await hotspotWeights(context, p.history) : /* @__PURE__ */ new Map();
   const noSuccessor = noSuccessorCheck(p.history, model);
-  const rows = by === "file" ? files.filter((f) => f.abandoned).map((f) => ({
+  const rows = by === "file" ? files.filter((f) => f.abandonedLines > 0).map((f) => ({
     path: f.path,
+    abandoned: f.abandoned,
     // Ranked by the hotspot percentile weighting the abandoned share, or by the lines lost under --rank abandonment.
     score: rank2 === "hotspot" ? rankScore(rank2, f.abandonedShare, weights.get(f.path)) : f.abandonedLines,
     hotspot: weights.get(f.path)?.hot ?? false,
     hotspotPercentile: round4(weights.get(f.path)?.percentile ?? 0),
-    findings: fileFindings2({ abandoned: true, probability: 1, hot: weights.get(f.path)?.hot ?? false, noSuccessor: () => noSuccessor(f.path) }, p.settings.atRiskProbability),
+    findings: fileFindings2({ abandoned: f.abandoned, probability: f.abandoned ? 1 : 0, hot: weights.get(f.path)?.hot ?? false, noSuccessor: () => noSuccessor(f.path) }, p.settings.atRiskProbability),
     abandonedShare: f.abandonedShare,
     abandonedLines: f.abandonedLines,
     peopleLines: f.peopleLines,
@@ -5599,7 +5593,7 @@ async function current(context) {
     inputs: commonInputs(p, "current", { by, rank: rank2 }),
     extra: commonExtra(p, { summary: summariseCurrent(files, unattributed) }),
     results: rows,
-    columns: by === "file" ? ["path", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines", "hotspot", "findings"] : ["path", "files", "abandonedFiles", "abandonedShare", "abandonedLines", "peopleLines"]
+    columns: by === "file" ? ["path", "abandoned", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines", "hotspot", "findings"] : ["path", "files", "abandonedFiles", "abandonedShare", "abandonedLines", "peopleLines"]
   };
 }
 
@@ -5706,7 +5700,7 @@ __export(brief_exports, {
 
 // packages/history/src/repo-paths.ts
 import { realpathSync } from "node:fs";
-import { basename, dirname, isAbsolute, join as join8, relative, sep } from "node:path";
+import { basename, dirname, isAbsolute, join as join8, relative as relative2, sep } from "node:path";
 function realish(path) {
   try {
     return realpathSync(path);
@@ -5719,7 +5713,7 @@ function realish(path) {
   }
 }
 var inside = (root, path) => {
-  const rel = relative(root, path);
+  const rel = relative2(root, path);
   return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel) ? rel : void 0;
 };
 function repoRelative(root, raw) {
@@ -5973,8 +5967,8 @@ var rules5 = {
   "distant-coupling": {
     summary: "Two files in far-apart folders change together often",
     explanation: [
-      "Raised when a pair's degree, support and tree distance all reach the configured minimums",
-      "(cochange.minDegree, cochange.minSupport, cochange.minDistance), counted over eligible logical",
+      "Raised when a pair's degree, support and tree distance all reach the configured values",
+      "(the guideline cochange.minDegree, the floor cochange.minSupport, the guideline cochange.minDistance), counted over eligible logical",
       "changes only: bulk changes above cochange.maxChangesetSize are left out.",
       "",
       "Handoff: a locality review. Should these files live together? If not, check for information",
@@ -5988,7 +5982,7 @@ var rules5 = {
     summary: "A change to one file usually drags the other along, but not the reverse",
     explanation: [
       `Raised when the confidence from one file to the other is at least ${ASYMMETRY.high} % and the`,
-      `reverse is at most ${ASYMMETRY.low} %, on a pair that reaches the configured minimum degree and support.`,
+      `reverse is at most ${ASYMMETRY.low} %, on a pair that reaches the configured degree guideline and support floor.`,
       "The result names the file whose changes usually include the other as `dependent`.",
       "",
       "Handoff: that file depends on the other implicitly. Check for information leakage, or for",
@@ -6011,22 +6005,22 @@ var command6 = analysisCommand(name6, {
     const { settings } = history;
     const minDegree = integerOption(context, "min-degree", settings.minDegree, 0, 100);
     const minSupport = integerOption(context, "min-support", settings.minSupport, 1, Number.MAX_SAFE_INTEGER);
-    const counts = coupledPairs(history, { minSupport, minDegree });
+    const counts = coupledPairs(history, { minSupport });
     const requested = context.values.file;
     const focus = typeof requested === "string" ? await focusPath(context, history, requested) : void 0;
-    const rows = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings)).sort((x, y) => y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
+    const rows = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings, minDegree)).sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
     return {
-      inputs: { file: focus ?? null, minDegree, minSupport, asymmetry: ASYMMETRY },
+      inputs: { file: focus ?? null, degreeGuideline: minDegree, minSupport, asymmetry: ASYMMETRY },
       results: rows,
-      columns: ["path", "with", "degree", "confidence", "reverseConfidence", "support", "distance", "findings"],
+      columns: ["path", "with", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
       extra: {
         population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
-        note: rows.length === 0 ? `No pair reaches support ${minSupport} and degree ${minDegree} %. The thresholds were not lowered; a young or sparse history has little coupling evidence.` : null
+        note: rows.length === 0 ? `No pair shares at least ${minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.` : null
       }
     };
   }
 });
-function describe(pair, focus, settings) {
+function describe(pair, focus, settings, guideline) {
   const flipped = focus !== void 0 && pair.b === focus;
   const [path, other] = flipped ? [pair.b, pair.a] : [pair.a, pair.b];
   const [changesPath, changesWith] = flipped ? [pair.changesB, pair.changesA] : [pair.changesA, pair.changesB];
@@ -6049,6 +6043,8 @@ function describe(pair, focus, settings) {
     with: other,
     score: round13(degree),
     degree: round13(degree),
+    // The degree guideline orders the listing: pairs under it come after the others.
+    aboveGuideline: reachesDegree(pair, guideline),
     confidence: round13(confidence),
     reverseConfidence: round13(reverseConfidence),
     support: pair.support,
@@ -6690,8 +6686,8 @@ function topAreas(node, limit = 3) {
 
 // packages/cochange/src/identities/apply.ts
 import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync11, mkdirSync as mkdirSync3, readFileSync as readFileSync8, renameSync as renameSync4, writeFileSync as writeFileSync4 } from "node:fs";
-import { dirname as dirname2, isAbsolute as isAbsolute2, relative as relative2, resolve } from "node:path";
+import { existsSync as existsSync12, mkdirSync as mkdirSync3, readFileSync as readFileSync8, renameSync as renameSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { dirname as dirname2, isAbsolute as isAbsolute2, relative as relative3, resolve } from "node:path";
 
 // packages/history/src/identity-mailmap.ts
 var ENTRY = /^\s*(?:([^<#]*?)\s*)?<([^>]*)>(?:\s*(?:([^<#]*?)\s*)?<([^>]*)>)?\s*(?:#.*)?$/;
@@ -6852,7 +6848,7 @@ function address(value, where) {
 }
 function readDecisionsInput(path, root) {
   const file = isAbsolute2(path) ? path : resolve(root, path);
-  if (!existsSync11(file)) throw usageError(`--from: ${path} does not exist`);
+  if (!existsSync12(file)) throw usageError(`--from: ${path} does not exist`);
   const text = readFileSync8(file, "utf8");
   const hash = createHash6("sha256").update(text).digest("hex").slice(0, 16);
   let value;
@@ -6933,15 +6929,15 @@ function planApply(root, location, input, analysis) {
     }
   }
   const mailmapPath = location === "local" ? files.localMailmap : files.mailmap;
-  const before = existsSync11(mailmapPath) ? readFileSync8(mailmapPath, "utf8") : "";
+  const before = existsSync12(mailmapPath) ? readFileSync8(mailmapPath, "utf8") : "";
   const update = addMailmapMappings(before, mappings);
   const decisions = mergeDecisions(existing, input);
   const decisionsPath = decisionsFile(root, location);
   const changes = [
-    ...update.added.map((entry) => ({ target: relative2(root, mailmapPath), change: "add", entry })),
-    ...update.present.map((entry) => ({ target: relative2(root, mailmapPath), change: "present", entry }))
+    ...update.added.map((entry) => ({ target: relative3(root, mailmapPath), change: "add", entry })),
+    ...update.present.map((entry) => ({ target: relative3(root, mailmapPath), change: "present", entry }))
   ];
-  const target = relative2(root, decisionsPath);
+  const target = relative3(root, decisionsPath);
   const hadRejection = new Set(existing.rejectedMerges.map((r) => rejectedPair(...r.identities)));
   const seen = /* @__PURE__ */ new Set();
   for (const r of input.rejectedMerges) {
@@ -6967,13 +6963,13 @@ function planApply(root, location, input, analysis) {
 function writePlan(root, plan) {
   if (!plan.dirty) return;
   if (plan.location === "local") ensureLocalState(root);
-  if (plan.changes.some((c) => c.target === relative2(root, plan.mailmapPath) && c.change === "add")) {
+  if (plan.changes.some((c) => c.target === relative3(root, plan.mailmapPath) && c.change === "add")) {
     mkdirSync3(dirname2(plan.mailmapPath), { recursive: true });
     const temporary = `${plan.mailmapPath}.${process.pid}.tmp`;
     writeFileSync4(temporary, plan.mailmapText);
     renameSync4(temporary, plan.mailmapPath);
   }
-  if (plan.changes.some((c) => c.target === relative2(root, plan.decisionsPath) && c.change === "add")) {
+  if (plan.changes.some((c) => c.target === relative3(root, plan.decisionsPath) && c.change === "add")) {
     writeDecisions(root, plan.location, plan.decisions);
   }
 }
@@ -7055,13 +7051,20 @@ function share2(byNode, analysis) {
   const people = total - nonPerson;
   return { total, nonPerson, people, unmapped, mappedShare: people === 0 ? 100 : Math.round((100 - percent(unmapped, people)) * 10) / 10 };
 }
-async function measureMapping(context, analysis) {
+async function measureMapping(context, analysis, options) {
   const { history, facts, nodeOfRaw } = analysis;
-  const blamed = await blameLineCounts(context.repo.root, history.view.headSha, { exclude: history.settings.exclude });
+  const settings = readKnowledgeSettings(context.config.effective);
+  const sha = history.view.headSha;
+  if (!options.noRefresh) await refreshBlameFor(context, history, settings, sha);
+  const snapshot = await readBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings) });
+  const bySha = /* @__PURE__ */ new Map();
+  for (const file of snapshot.files.values()) {
+    for (const range of file.ranges) bySha.set(range.sha, (bySha.get(range.sha) ?? 0) + range.count);
+  }
   const linesByNode = /* @__PURE__ */ new Map();
   let unattributed = 0;
-  for (const [sha, lines] of blamed.bySha) {
-    const author = facts.authorOfCommit.get(sha);
+  for (const [sha2, lines] of bySha) {
+    const author = facts.authorOfCommit.get(sha2);
     const node = author && nodeOfRaw.get(identityKey(author));
     if (!node) unattributed += lines;
     else linesByNode.set(node, (linesByNode.get(node) ?? 0) + lines);
@@ -7071,7 +7074,7 @@ async function measureMapping(context, analysis) {
     const node = nodeOfRaw.get(raw);
     if (node) windowCommitsByNode.set(node, (windowCommitsByNode.get(node) ?? 0) + count2);
   }
-  const headLines = { ...share2(linesByNode, analysis), unattributed };
+  const headLines = { ...share2(linesByNode, analysis), unattributed, unknownFiles: snapshot.missing.length };
   const threshold = history.settings.identities.unmappedShareThreshold;
   return {
     measurement: {
@@ -7124,7 +7127,7 @@ var command8 = {
       case "classify":
         return { inputs: inputs(), results: classifyRows(analysis), columns: ["kind", "identity", "commits", "source", "pattern", "decided"] };
       case "check": {
-        const detail = await measureMapping(context, analysis);
+        const detail = await measureMapping(context, analysis, { noRefresh: context.values["no-refresh"] === true });
         const { findings, failed } = checkMapping(analysis, detail);
         return {
           inputs: inputs(),
@@ -7165,7 +7168,7 @@ __export(outcome_exports, {
   command: () => command9,
   name: () => name9
 });
-import { existsSync as existsSync16 } from "node:fs";
+import { existsSync as existsSync17 } from "node:fs";
 
 // packages/history/src/checkouts.ts
 async function checkouts(root) {
@@ -7277,7 +7280,7 @@ function differenceOf(actedOn, comparison, minSamples, noisePercent) {
 }
 
 // packages/transcripts/src/session-edits.ts
-import { existsSync as existsSync13, readFileSync as readFileSync11 } from "node:fs";
+import { existsSync as existsSync14, readFileSync as readFileSync11 } from "node:fs";
 
 // packages/transcripts/src/repo-path.ts
 import { posix } from "node:path";
@@ -7294,8 +7297,8 @@ function stripTrailingSlash(path) {
   return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 }
 var EXCLUDED_SEGMENTS = /* @__PURE__ */ new Set([".git", "node_modules"]);
-function isExcluded(relative3) {
-  return relative3.split("/").some((part) => EXCLUDED_SEGMENTS.has(part));
+function isExcluded(relative4) {
+  return relative4.split("/").some((part) => EXCLUDED_SEGMENTS.has(part));
 }
 function comparable(path) {
   return /^[A-Za-z]:\//.test(path) ? path.toLowerCase() : path;
@@ -7319,18 +7322,18 @@ function isWithinRepo(path, roots) {
 function toRepoPath(path, roots) {
   if (path === null || path === "" || path.startsWith("~")) return null;
   const normalised = normalise2(path);
-  let relative3;
+  let relative4;
   if (isAbsolute3(normalised)) {
-    relative3 = relativeToRoots(normalised, roots);
+    relative4 = relativeToRoots(normalised, roots);
   } else {
-    relative3 = normalised === "." || normalised === ".." || normalised.startsWith("../") ? null : normalised;
+    relative4 = normalised === "." || normalised === ".." || normalised.startsWith("../") ? null : normalised;
   }
-  if (relative3 === null || relative3 === "" || isExcluded(relative3)) return null;
-  return relative3;
+  if (relative4 === null || relative4 === "" || isExcluded(relative4)) return null;
+  return relative4;
 }
 
 // packages/transcripts/src/measure-repo.ts
-import { existsSync as existsSync12, readFileSync as readFileSync10, readdirSync } from "node:fs";
+import { existsSync as existsSync13, readFileSync as readFileSync10, readdirSync } from "node:fs";
 import { join as join11 } from "node:path";
 
 // packages/transcripts/src/transcript-format.ts
@@ -7503,7 +7506,7 @@ function compareBytes3(a, b) {
 }
 function sessionFiles(projectsDir, root) {
   const dir = join11(projectsDir, encodeProjectDir(root));
-  if (!existsSync12(dir)) return [];
+  if (!existsSync13(dir)) return [];
   return readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join11(dir, entry.name) })).sort((a, b) => compareBytes3(a.sessionId, b.sessionId));
 }
 
@@ -7530,7 +7533,7 @@ function readRepoSessionEdits(options) {
   const sessions = [];
   for (const root of repoRoots) {
     for (const file of sessionFiles(projectsDir, root)) {
-      if (seen.has(file.path) || !existsSync13(file.path)) continue;
+      if (seen.has(file.path) || !existsSync14(file.path)) continue;
       seen.add(file.path);
       let text;
       try {
@@ -7630,17 +7633,17 @@ function revisionsOf(changes) {
 }
 
 // packages/cochange/src/hook.ts
-import { existsSync as existsSync15 } from "node:fs";
+import { existsSync as existsSync16 } from "node:fs";
 import { join as join13 } from "node:path";
 
 // packages/history/src/hook-event.ts
-import { existsSync as existsSync14 } from "node:fs";
+import { existsSync as existsSync15 } from "node:fs";
 import { dirname as dirname3, join as join12 } from "node:path";
 var WATCHED_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit"]);
 function findRepoRoot(start) {
   let directory = start;
   for (; ; ) {
-    if (existsSync14(join12(directory, ".git"))) return directory;
+    if (existsSync15(join12(directory, ".git"))) return directory;
     const parent = dirname3(directory);
     if (parent === directory) return void 0;
     directory = parent;
@@ -7724,7 +7727,7 @@ async function consider(root, file, settings, state) {
   );
   const edited = new Set(state.edited);
   const qualified = partners.map((partner) => ({ path: partner.path, support: partner.support, confidence: confidenceOf(partner.support, changesFocus) })).filter(
-    (partner) => partner.support >= settings.minSupport && partner.confidence >= settings.hook.confidence && !edited.has(partner.path) && existsSync15(join13(root, partner.path))
+    (partner) => partner.support >= settings.minSupport && partner.confidence >= settings.hook.confidence && !edited.has(partner.path) && existsSync16(join13(root, partner.path))
   ).sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   if (qualified.length === 0) return { note: null, outcome: "printed nothing: no unedited partner at or above the guideline" };
   const named = qualified.slice(0, settings.hook.maxPartners);
@@ -7902,7 +7905,7 @@ async function completeness(context) {
   };
   const found = readRepoSessionEdits({ projectsDir, repoRoots: roots, window });
   const records = found.map((session) => {
-    const holder = roots.find((r) => existsSync16(sessionFile(r, session.sessionId, HOOK_NAME)));
+    const holder = roots.find((r) => existsSync17(sessionFile(r, session.sessionId, HOOK_NAME)));
     const state = holder === void 0 ? null : readSession(holder, session.sessionId, HOOK_NAME);
     return {
       sessionId: session.sessionId,
@@ -8373,10 +8376,10 @@ async function explainFactor(name15, assess) {
 }
 
 // packages/cochange/src/risk/abandonment-report.ts
-import { existsSync as existsSync17, readFileSync as readFileSync12 } from "node:fs";
+import { existsSync as existsSync18, readFileSync as readFileSync12 } from "node:fs";
 function readAbandonmentReport(root, head, config, overridesStamp) {
   const file = reportPath2(root, REPORT);
-  if (!existsSync17(file)) return null;
+  if (!existsSync18(file)) return null;
   try {
     const document = JSON.parse(readFileSync12(file, "utf8"));
     if (document.tool !== "cochange" || document.command !== REPORT) return null;
@@ -8479,7 +8482,7 @@ function measurement(evidence, files, unknown) {
 }
 
 // packages/cochange/src/risk/composition.ts
-import { existsSync as existsSync18, readFileSync as readFileSync14 } from "node:fs";
+import { existsSync as existsSync19, readFileSync as readFileSync14 } from "node:fs";
 import { join as join15 } from "node:path";
 
 // packages/cochange/src/risk/evidence-inputs.ts
@@ -8625,7 +8628,7 @@ function readWorktree(root, path) {
 }
 function readLocalityFanIn(root, head) {
   const file = reportPath2(root, "analyse", "locality");
-  if (!existsSync18(file)) return null;
+  if (!existsSync19(file)) return null;
   try {
     const document = JSON.parse(readFileSync14(file, "utf8"));
     if (document.tool !== "locality" || document.command !== "analyse") return null;
@@ -9708,11 +9711,11 @@ function adoptionOf(all, outcomes, adopted, risk, headTime) {
 }
 
 // packages/cochange/src/risk/stored-backtest.ts
-import { existsSync as existsSync19, readFileSync as readFileSync15 } from "node:fs";
+import { existsSync as existsSync20, readFileSync as readFileSync15 } from "node:fs";
 var BACKTEST_REPORT = "risk-backtest";
 function readStoredBacktest(root, configHash) {
   const file = reportPath2(root, BACKTEST_REPORT);
-  if (!existsSync19(file)) return null;
+  if (!existsSync20(file)) return null;
   try {
     const document = JSON.parse(readFileSync15(file, "utf8"));
     const results = document.results;
@@ -10450,8 +10453,7 @@ var command13 = {
         paths: rows.map((r) => r.path),
         names,
         top,
-        minSupport: p.history.settings.minSupport,
-        minDegree: p.history.settings.minDegree
+        minSupport: p.history.settings.minSupport
       }),
       extra: commonExtra(p),
       results: rows,
