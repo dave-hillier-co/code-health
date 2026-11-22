@@ -40,7 +40,7 @@ export const cochangeConfig: PluginConfigSpec = {
     groupingWindowHours: 4,
     maxChangesetSize: DEFAULT_MAX_CHANGESET_SIZE,
     minSupport: 5,
-    /** Minimum coupling degree, as a percentage. */
+    /** Coupling degree guideline, as a percentage (Tornhill's code-maat default). Orders and labels pairs. Only cluster membership cuts on it. */
     minDegree: 30,
     minDistance: 2,
     /**

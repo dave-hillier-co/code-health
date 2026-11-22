@@ -10,7 +10,7 @@
       "type": "object",
       "properties": { "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" },
         "file": { "type": ["string", "null"], "description": "The file the listing is limited to, resolved through renames to its current path." },
-        "minDegree": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Percentage." },
+        "degreeGuideline": { "type": "integer", "minimum": 0, "maximum": 100, "description": "The degree percentage that pairs are marked against (cochange.minDegree, or --min-degree)." },
         "minSupport": { "type": "integer", "minimum": 1 },
         "asymmetry": {
           "type": "object",
@@ -23,7 +23,7 @@
           "additionalProperties": false
         }
       },
-      "required": ["file", "minDegree", "minSupport", "asymmetry"],
+      "required": ["file", "degreeGuideline", "minSupport", "asymmetry"],
       "additionalProperties": false
     },
     "population": {
@@ -36,7 +36,7 @@
       "required": ["eligibleChanges", "oversizedExcluded"],
       "additionalProperties": false
     },
-    "note": { "type": ["string", "null"], "description": "Set when no pair reaches the thresholds. The thresholds are never lowered." },
+    "note": { "type": ["string", "null"], "description": "Set when no pair reaches the support floor. The floor is never lowered." },
     "results": {
       "type": "array",
       "items": {
@@ -46,6 +46,7 @@
           "with": { "type": "string", "description": "The other file." },
           "score": { "type": "number", "description": "The degree, for ordering." },
           "degree": { "type": "number", "minimum": 0, "maximum": 100, "description": "Symmetric strength in percent: support over the mean of the two files' change counts." },
+          "aboveGuideline": { "type": "boolean", "description": "Degree is at or above the degree guideline. Pairs under it are listed after the others." },
           "confidence": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of changes to `path` that also touch `with`." },
           "reverseConfidence": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of changes to `with` that also touch `path`." },
           "support": { "type": "integer", "minimum": 1, "description": "Eligible logical changes touching both files." },
@@ -65,13 +66,13 @@
               "support": { "type": "integer", "minimum": 1 },
               "changesPath": { "type": "integer", "minimum": 1, "description": "Eligible changes touching `path`." },
               "changesWith": { "type": "integer", "minimum": 1, "description": "Eligible changes touching `with`." },
-              "clearsMinimum": { "type": "boolean", "description": "Support reaches the configured cochange.minSupport, whatever --min-support listed." }
+              "clearsMinimum": { "type": "boolean", "description": "Support reaches the configured cochange.minSupport, whatever --min-support listed. False means low confidence." }
             },
             "required": ["support", "changesPath", "changesWith", "clearsMinimum"],
             "additionalProperties": false
           }
         },
-        "required": ["path", "with", "score", "degree", "confidence", "reverseConfidence", "support", "distance", "findings", "dependent", "evidence"],
+        "required": ["path", "with", "score", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings", "dependent", "evidence"],
         "additionalProperties": false
       }
     }

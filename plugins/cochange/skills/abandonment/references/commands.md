@@ -12,7 +12,7 @@ Brings the blame cache up to date: `git blame -w -M -C` of every authored file w
 
 ## abandonment current [--by file|component] [--rank hotspot|abandonment]
 
-Files already abandoned. Rows: `path`, `score`, `hotspot`, `hotspotPercentile`, `findings`, `abandonedShare`, `abandonedLines`, `peopleLines`, `activeAuthors`, `formerAuthors` (counts of people holding lines), `nonPersonLines`. `score` is the abandoned share times the hotspot percentile, or with `--rank abandonment` the abandoned lines. With `--by component`: `path`, `score`, `files`, `abandonedFiles`, `abandonedShare`, `abandonedLines`, `peopleLines`. The `summary` section gives the files and lines of the whole repository.
+Files with any lines held by people who have left. Rows: `path`, `abandoned` (the share is at or above `abandonmentThreshold`), `score`, `hotspot`, `hotspotPercentile`, `findings`, `abandonedShare`, `abandonedLines`, `peopleLines`, `activeAuthors`, `formerAuthors` (counts of people holding lines), `nonPersonLines`. `score` is the abandoned share times the hotspot percentile, or with `--rank abandonment` the abandoned lines. With `--by component`: `path`, `score`, `files`, `abandonedFiles`, `abandonedShare`, `abandonedLines`, `peopleLines`. The `summary` section gives the files and lines of the whole repository.
 
 ## abandonment turnover
 

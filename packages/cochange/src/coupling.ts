@@ -31,9 +31,13 @@ export interface CouplingCounts {
 }
 
 export interface CouplingThresholds {
+  /** Evidence floor: pairs with fewer shared eligible changes are not counted. */
   minSupport: number;
-  /** Percentage, 0 to 100. */
-  minDegree: number;
+  /**
+   * Percentage, 0 to 100. A cut that only cluster membership asks for. Left out (0), every pair
+   * at the support floor is returned, and the caller labels each against the degree guideline.
+   */
+  minDegree?: number;
 }
 
 export function compareBytes(a: string, b: string): number {
@@ -60,7 +64,7 @@ export function confidenceOf(support: number, changes: number): number {
 
 /**
  * Counts co-changes over eligible changes and keeps the pairs that reach the
- * minimum support and degree. The degree test is exact integer arithmetic, so
+ * support floor and, when given, the degree. The degree test is exact integer arithmetic, so
  * a pair at the threshold is never lost to rounding.
  */
 export function countCoupling(changes: readonly CouplingChange[], thresholds: CouplingThresholds): CouplingCounts {
@@ -88,7 +92,7 @@ export function countCoupling(changes: readonly CouplingChange[], thresholds: Co
   for (const [a, row] of together) {
     for (const [b, support] of row) {
       const pair = { a, b, support, changesA: perFile.get(a)!, changesB: perFile.get(b)! };
-      if (support >= thresholds.minSupport && reachesDegree(pair, thresholds.minDegree)) pairs.push(pair);
+      if (support >= thresholds.minSupport && reachesDegree(pair, thresholds.minDegree ?? 0)) pairs.push(pair);
     }
   }
   pairs.sort((p, q) => compareBytes(p.a, q.a) || compareBytes(p.b, q.b));

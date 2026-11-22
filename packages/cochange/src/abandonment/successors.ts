@@ -34,7 +34,7 @@ export interface Successor {
 }
 
 export interface SuccessorIndex {
-  /** Coupled files by file, over the analysis window and at the configured minimum support and degree. */
+  /** Coupled files by file, over the analysis window with at least the minimum support. A weakly coupled file counts for little because its degree is the weight. */
   partners: Map<string, CoupledFile[]>;
   /** Eligible logical changes per file per author email (lower case). */
   changesBy: Map<string, Map<string, number>>;
@@ -46,14 +46,14 @@ export interface SuccessorIndex {
  * edits count for nothing) and the analysis window's authors.
  */
 export function buildSuccessorIndex(history: LoadedHistory): SuccessorIndex {
-  const { minSupport, minDegree } = history.settings;
+  const { minSupport } = history.settings;
   const partners = new Map<string, CoupledFile[]>();
   const add = (file: string, other: string, degree: number, support: number) => {
     const list = partners.get(file) ?? [];
     list.push({ path: other, degree, support });
     partners.set(file, list);
   };
-  for (const pair of coupledPairs(history, { minSupport, minDegree }).pairs) {
+  for (const pair of coupledPairs(history, { minSupport }).pairs) {
     const degree = degreeOf(pair);
     add(pair.a, pair.b, degree, pair.support);
     add(pair.b, pair.a, degree, pair.support);

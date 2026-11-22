@@ -33,13 +33,13 @@ First-seen and last-changed over all usable history, oldest change first. Fields
 
 ## coupling [--file PATH] [--min-degree D] [--min-support S]
 
-Pairs of files that changed in the same logical change. Fields: `path`, `with`, `degree`, `confidence` (path to with), `reverseConfidence`, `support`, `distance`, `findings` (`distant-coupling`, `asymmetric-coupling`), `dependent` (for an asymmetric pair, the file that depends on the other). With `--file`, the named file leads every row. The output states the eligible population, and a `note` when nothing reaches the thresholds. Lowering `--min-support` lists weaker pairs but never promotes them to findings.
+Pairs of files that changed in the same logical change. Fields: `path`, `with`, `degree`, `aboveGuideline` (degree at or above `cochange.minDegree`; pairs under it come after the others), `confidence` (path to with), `reverseConfidence`, `support`, `distance`, `findings` (`distant-coupling`, `asymmetric-coupling`), `dependent` (for an asymmetric pair, the file that depends on the other). With `--file`, the named file leads every row. The output states the eligible population, and a `note` when no pair reaches the support floor. Lowering `--min-support` lists weaker pairs, marks them low confidence (`evidence.clearsMinimum` false) and never promotes them to findings.
 
 Counts are over eligible logical changes: those at or below `cochange.maxChangesetSize` (default 30 files), after noise filtering. Bulk edits are left out of both sides of every ratio.
 
 ## clusters [--min-degree D] [--min-support S]
 
-Connected components of the coupled-pair graph above the coupling minimums, ranked by score. Per row: `files`, `folders`, `size`, `spread` (mean pairwise tree distance), `meanDegree`, `findings` (`cluster` when the group spans three or more folders), and `magnets`: files in the group that change with many folders whose partners rarely change with each other (`change-magnet`).
+Connected components of the coupled-pair graph, ranked by score. A pair is a link when it reaches both `--min-support` and `--min-degree`: here the degree is a cut, because a group is defined by its links. Per row: `files`, `folders`, `size`, `spread` (mean pairwise tree distance), `meanDegree`, `findings` (`cluster` when the group spans three or more folders), and `magnets`: files in the group that change with many folders whose partners rarely change with each other (`change-magnet`).
 
 ## trend PATH [--samples N]
 
@@ -70,6 +70,6 @@ The `cochange` section of `code-health.json` at the repository root. Run `config
 | `windowMonths`, `recentMonths`, `staleMonths` | 12, 3, 12 | Analysis, recent and stale windows, back from the analysed commit's date. |
 | `branch`, `firstParent` | `null`, `false` | The analysed ref, and whether to follow first parents only. |
 | `maxChangesetSize` | 30 | Larger changes count for frequency but not for coupling or spread. |
-| `minSupport`, `minDegree`, `minDistance` | 5, 30, 2 | Coupling minimums (degree in percent). |
+| `minSupport`, `minDegree`, `minDistance` | 5, 30, 2 | Support is an evidence floor, degree and distance are guidelines (degree in percent). |
 | `hotspotPercentile` | 90 | A hotspot is in the top (100 minus this) percent. |
 | `hook` | disabled | See [hook.md](hook.md). |

@@ -376,10 +376,11 @@
       "additionalProperties": false
     },
     "currentFile": {
-      "description": "A file already abandoned (`--by file`).",
+      "description": "A file with lines held by people who have left (`--by file`).",
       "type": "object",
       "properties": {
         "path": { "type": "string" },
+        "abandoned": { "type": "boolean", "description": "The share reaches the abandonment guideline (cochange.knowledge.abandonmentThreshold)." },
         "score": { "type": "number", "minimum": 0, "description": "What the list is ranked by: the abandoned share weighted by the hotspot percentile, or with --rank abandonment the abandoned lines." },
         "hotspot": { "type": "boolean" },
         "hotspotPercentile": { "$ref": "#/$defs/share", "description": "Rank percentile of the file's hotspot score, 0 when the analysis window saw no change to it." },
@@ -391,7 +392,7 @@
         "formerAuthors": { "$ref": "common.schema.json#/$defs/count" },
         "nonPersonLines": { "$ref": "common.schema.json#/$defs/count" }
       },
-      "required": ["path", "score", "hotspot", "hotspotPercentile", "findings", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines"],
+      "required": ["path", "abandoned", "score", "hotspot", "hotspotPercentile", "findings", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines"],
       "additionalProperties": false
     },
     "currentComponent": {

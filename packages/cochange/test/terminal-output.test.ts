@@ -26,7 +26,7 @@ test("coupling prints an aligned table with its columns in order, not JSON", asy
   expect(stderr).toBe("");
   expect(code).toBe(ExitCode.Success);
   const [header, first, ...rest] = lines(stdout);
-  expect(header!.split(/\s+/)).toEqual(["path", "with", "degree", "confidence", "reverseConfidence", "support", "distance", "findings"]);
+  expect(header!.split(/\s+/)).toEqual(["path", "with", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"]);
   expect(first).toMatch(/^src\/billing\/invoice\.test\.ts\s+src\/billing\/invoice\.ts\s+\d/);
   expect(rest.length).toBeGreaterThan(0);
   expect(stdout).not.toContain("{");

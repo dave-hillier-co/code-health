@@ -94,14 +94,16 @@ async function current(context: CommandContext): Promise<CommandOutput> {
   const rows =
     by === "file"
       ? files
-          .filter((f) => f.abandoned)
+          // The threshold is a guideline: a file with any lines held by people who have left is listed, and `abandoned` marks those at it.
+          .filter((f) => f.abandonedLines > 0)
           .map((f) => ({
             path: f.path,
+            abandoned: f.abandoned,
             // Ranked by the hotspot percentile weighting the abandoned share, or by the lines lost under --rank abandonment.
             score: rank === "hotspot" ? rankScore(rank, f.abandonedShare, weights.get(f.path)) : f.abandonedLines,
             hotspot: weights.get(f.path)?.hot ?? false,
             hotspotPercentile: round4(weights.get(f.path)?.percentile ?? 0),
-            findings: fileFindings({ abandoned: true, probability: 1, hot: weights.get(f.path)?.hot ?? false, noSuccessor: () => noSuccessor(f.path) }, p.settings.atRiskProbability),
+            findings: fileFindings({ abandoned: f.abandoned, probability: f.abandoned ? 1 : 0, hot: weights.get(f.path)?.hot ?? false, noSuccessor: () => noSuccessor(f.path) }, p.settings.atRiskProbability),
             abandonedShare: f.abandonedShare,
             abandonedLines: f.abandonedLines,
             peopleLines: f.peopleLines,
@@ -119,7 +121,7 @@ async function current(context: CommandContext): Promise<CommandOutput> {
     results: rows,
     columns:
       by === "file"
-        ? ["path", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines", "hotspot", "findings"]
+        ? ["path", "abandoned", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines", "hotspot", "findings"]
         : ["path", "files", "abandonedFiles", "abandonedShare", "abandonedLines", "peopleLines"],
   };
 }

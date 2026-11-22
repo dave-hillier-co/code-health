@@ -58,7 +58,6 @@ export const command: Command = {
         names,
         top,
         minSupport: p.history.settings.minSupport,
-        minDegree: p.history.settings.minDegree,
       }),
       extra: commonExtra(p),
       results: rows,

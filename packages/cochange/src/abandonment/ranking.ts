@@ -101,7 +101,7 @@ export const rules: Record<string, Rule> = {
     summary: "An abandoned or at-risk file that no active developer works near",
     explanation: [
       "Raised on an abandoned or at-risk file when no active developer has changed any file that changes with it",
-      "(coupling at the configured minimum support and degree, over the analysis window).",
+      "(coupling at the configured minimum support, weighted by degree, over the analysis window).",
       "",
       "Suggested mitigation: escalate. Nobody is near this code, so adoption has no natural owner.",
     ].join("\n"),

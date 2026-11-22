@@ -113,7 +113,6 @@
     "abandonmentThreshold": 90,
     "activityWindowMonths": 6,
     "copyDetection": true,
-    "minDegree": 30,
     "minSupport": 5,
     "names": false,
     "overrides": {

@@ -32,6 +32,9 @@ const json = async (...args: string[]) => {
   return JSON.parse(stdout);
 };
 const paths = (document: { results: { path: string }[] }) => document.results.map((r) => r.path);
+/** The files at the abandonment guideline, in the order listed. */
+const abandonedRows = (document: { results: { path: string; abandoned: boolean; score: number }[] }) => document.results.filter((r) => r.abandoned);
+const abandonedPaths = (document: { results: { path: string; abandoned: boolean; score: number }[] }) => abandonedRows(document).map((r) => r.path);
 
 test("the analysis is off until the repository opts in, and says how", async () => {
   writeFileSync(join(repo.path, "code-health.json"), "{}");
@@ -43,17 +46,28 @@ test("the analysis is off until the repository opts in, and says how", async () 
 
 test("files whose people have left are abandoned: engine, parser at exactly 90 percent, and what people wrote in the bot's file", async () => {
   const document = await json("current", "--limit", "all");
-  expect(paths(document)).toEqual([engine, parser, deps]);
-  expect(document.results[0]).toMatchObject({ abandonedShare: 1, abandonedLines: 10, peopleLines: 10, activeAuthors: 0, formerAuthors: 1 });
-  expect(document.results[1]).toMatchObject({ abandonedShare: 0.9, abandonedLines: 9, peopleLines: 10, activeAuthors: 1, formerAuthors: 1 });
+  expect(abandonedPaths(document)).toEqual([engine, parser, deps]);
+  const rows = abandonedRows(document);
+  expect(rows[0]).toMatchObject({ abandonedShare: 1, abandonedLines: 10, peopleLines: 10, activeAuthors: 0, formerAuthors: 1 });
+  expect(rows[1]).toMatchObject({ abandonedShare: 0.9, abandonedLines: 9, peopleLines: 10, activeAuthors: 1, formerAuthors: 1 });
   // Bot lines are on neither side of the share, and are reported apart.
-  expect(document.results[2]).toMatchObject({ abandonedShare: 1, abandonedLines: 5, peopleLines: 5, nonPersonLines: 5, formerAuthors: 1 });
+  expect(rows[2]).toMatchObject({ abandonedShare: 1, abandonedLines: 5, peopleLines: 5, nonPersonLines: 5, formerAuthors: 1 });
   expect(document.summary).toEqual({
     files: { measured: 8, abandoned: 3, share: 0.375 },
     lines: { people: 75, abandoned: 32, share: 0.4267, nonPerson: 5, unattributed: 0 },
   });
   expect(document.developers).toEqual({ active: 3, inactive: 2 });
   expect(document.blame).toEqual({ unknownFiles: 0, unattributedLines: 0 });
+});
+
+test("the abandonment threshold is a guideline: a file below it is still listed, marked not abandoned", async () => {
+  const document = await json("current", "--limit", "all");
+  // The lexer is at 80 percent, under the 90 percent guideline, and still listed with its share.
+  const lexerRow = document.results.find((r: { path: string }) => r.path === lexer);
+  expect(lexerRow).toMatchObject({ abandoned: false, abandonedShare: 0.8, abandonedLines: 8, findings: [] });
+  expect(paths(document).sort()).toEqual([engine, lexer, parser, deps].sort());
+  // Files nobody who left has lines in are not listed.
+  expect(paths(document)).not.toContain(auth);
 });
 
 test("the output has developers as counts and never a name or an address", async () => {
@@ -64,9 +78,9 @@ test("the output has developers as counts and never a name or an address", async
 
 test("the threshold is configurable and decides on exact arithmetic", async () => {
   configure({ abandonmentThreshold: 91 });
-  expect(paths(await json("current", "--limit", "all"))).toEqual([engine, deps]);
+  expect(abandonedPaths(await json("current", "--limit", "all"))).toEqual([engine, deps]);
   configure({ abandonmentThreshold: 80 });
-  expect(paths(await json("current", "--limit", "all"))).toEqual([engine, lexer, parser, deps]);
+  expect(abandonedPaths(await json("current", "--limit", "all"))).toEqual([engine, lexer, parser, deps]);
 });
 
 test("components group files, lines and the abandoned share", async () => {
@@ -88,7 +102,7 @@ test("an activity override corrects who counts as active, and stays local", asyn
   );
   const document = await json("current", "--limit", "all");
   // Cy's lines are no longer abandoned. Bob's now are: the lexer is all Di and Bob, and the log is all Bob.
-  expect(paths(document)).toEqual([lexer, deps, log]);
+  expect(abandonedPaths(document)).toEqual([lexer, deps, log]);
   expect(document.inputs.overrides).toMatchObject({ active: 1, inactive: 1 });
   expect(document.inputs.overrides.hash).toMatch(/^[0-9a-f]{16}$/);
   expect(document.developers).toEqual({ active: 3, inactive: 2 });
@@ -104,9 +118,10 @@ test("abandoned files are ranked by the hotspot percentile weighting the abandon
   annHasLeft();
   const document = await json("current", "--limit", "all");
   // Auth is all Ann's and changes every ten days; the others are cold. Cold files tie at 0 and keep path order.
-  expect(paths(document)).toEqual([auth, engine, parser, deps]);
-  expect(document.results[0]).toMatchObject({ hotspot: true, hotspotPercentile: 0.6667, score: 0.6667, findings: ["abandoned"] });
-  expect(document.results[1]).toMatchObject({ hotspot: false, hotspotPercentile: 0, score: 0 });
+  expect(abandonedPaths(document)).toEqual([auth, engine, parser, deps]);
+  const rows = abandonedRows(document);
+  expect(rows[0]).toMatchObject({ hotspot: true, hotspotPercentile: 0.6667, score: 0.6667, findings: ["abandoned"] });
+  expect(rows[1]).toMatchObject({ hotspot: false, hotspotPercentile: 0, score: 0 });
 });
 
 test("--rank abandonment is the raw view: by the lines lost, whatever changes", async () => {
@@ -114,8 +129,8 @@ test("--rank abandonment is the raw view: by the lines lost, whatever changes", 
   const document = await json("current", "--rank", "abandonment", "--limit", "all");
   expect(document.inputs.rank).toBe("abandonment");
   // Auth, engine and parser each lose 10 lines and tie, in path order; the bot file loses 5.
-  expect(paths(document)).toEqual([auth, engine, parser, deps]);
-  expect(document.results.map((r: { score: number }) => r.score)).toEqual([10, 10, 10, 5]);
+  expect(abandonedPaths(document)).toEqual([auth, engine, parser, deps]);
+  expect(abandonedRows(document).map((r) => r.score)).toEqual([10, 10, 10, 5]);
   configure({ rank: "abandonment" });
   expect((await json("current")).inputs.rank).toBe("abandonment");
 });
@@ -148,6 +163,6 @@ test("a mailmap change is applied without a new blame", async () => {
   // Cy's work and Ann's are one person after the mapping, and she is active.
   writeFileSync(join(repo.path, ".mailmap"), "Ann Active <ann@example.com> Cy Gone <cy@example.com>\n");
   const document = await json("current", "--no-refresh", "--limit", "all");
-  expect(paths(document)).toEqual([deps]);
+  expect(abandonedPaths(document)).toEqual([deps]);
   expect(document.blame.unknownFiles).toBe(0);
 });

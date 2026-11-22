@@ -106,8 +106,8 @@
       "high": 80,
       "low": 30
     },
+    "degreeGuideline": 30,
     "file": null,
-    "minDegree": 30,
     "minSupport": 5
   },
   "note": null,
@@ -121,6 +121,7 @@
   },
   "results": [
     {
+      "aboveGuideline": true,
       "confidence": 100,
       "degree": 54.1,
       "dependent": null,
@@ -139,6 +140,7 @@
       "with": "src/billing/invoice.ts"
     },
     {
+      "aboveGuideline": true,
       "confidence": 100,
       "degree": 31.3,
       "dependent": "src/app/registry.ts",

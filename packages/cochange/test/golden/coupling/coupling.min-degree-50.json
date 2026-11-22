@@ -106,8 +106,8 @@
       "high": 80,
       "low": 30
     },
+    "degreeGuideline": 50,
     "file": null,
-    "minDegree": 50,
     "minSupport": 5
   },
   "note": null,
@@ -121,6 +121,7 @@
   },
   "results": [
     {
+      "aboveGuideline": true,
       "confidence": 100,
       "degree": 54.1,
       "dependent": null,
@@ -137,6 +138,50 @@
       "score": 54.1,
       "support": 10,
       "with": "src/billing/invoice.ts"
+    },
+    {
+      "aboveGuideline": false,
+      "confidence": 100,
+      "degree": 31.3,
+      "dependent": "src/app/registry.ts",
+      "distance": 2,
+      "evidence": {
+        "changesPath": 5,
+        "changesWith": 27,
+        "clearsMinimum": true,
+        "support": 5
+      },
+      "findings": [
+        "distant-coupling",
+        "asymmetric-coupling"
+      ],
+      "path": "src/app/registry.ts",
+      "reverseConfidence": 18.5,
+      "score": 31.3,
+      "support": 5,
+      "with": "src/billing/invoice.ts"
+    },
+    {
+      "aboveGuideline": false,
+      "confidence": 18.5,
+      "degree": 30.3,
+      "dependent": "src/reporting/summary.ts",
+      "distance": 2,
+      "evidence": {
+        "changesPath": 27,
+        "changesWith": 6,
+        "clearsMinimum": true,
+        "support": 5
+      },
+      "findings": [
+        "distant-coupling",
+        "asymmetric-coupling"
+      ],
+      "path": "src/billing/invoice.ts",
+      "reverseConfidence": 83.3,
+      "score": 30.3,
+      "support": 5,
+      "with": "src/reporting/summary.ts"
     }
   ],
   "schemaVersion": 1,
@@ -144,7 +189,7 @@
   "truncated": {
     "cut": 0,
     "limit": 20,
-    "total": 1
+    "total": 3
   },
   "window": {
     "since": "2023-12-19T09:00:00.000Z",

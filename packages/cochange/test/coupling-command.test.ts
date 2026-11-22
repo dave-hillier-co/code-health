@@ -86,11 +86,20 @@ test("lowering --min-support lists weaker pairs without turning them into findin
   expect(rowsOf((await coupling()).stdout).some((row) => row.path === "lib/flags/off.ts")).toBe(false);
 });
 
-test("--min-degree removes pairs below it", async () => {
+test("--min-degree moves the guideline: pairs under it are listed after the others, none is dropped", async () => {
   const { stdout } = await coupling("--min-degree", "50");
   expectGolden("coupling", "coupling.min-degree-50", stdout);
   const rows = rowsOf(stdout);
-  expect(rows.map((row) => row.path)).toEqual(["src/billing/invoice.test.ts"]);
+  expect(rows.filter((row) => row.aboveGuideline).map((row) => row.path)).toEqual(["src/billing/invoice.test.ts"]);
+  expect(rows.length).toBe(rowsOf((await coupling()).stdout).length);
+  const flags = rows.map((row) => row.aboveGuideline);
+  expect(flags).toEqual([...flags].sort((x, y) => Number(y) - Number(x)));
+});
+
+test("a pair under the degree guideline is listed with aboveGuideline false and still reaches the support floor", async () => {
+  const rows = rowsOf((await coupling("--min-degree", "100", "--limit", "all")).stdout);
+  expect(rows.some((row) => !row.aboveGuideline && row.support >= 5)).toBe(true);
+  expect(rows.every((row) => row.aboveGuideline === (row.degree >= 100))).toBe(true);
 });
 
 test("a configured minimum distance changes what is distant", async () => {

@@ -48,7 +48,7 @@ Out of scope:
 
 - *Degree*: `n(A∩B) / ((n(A) + n(B)) / 2)`, the symmetric strength, as a percentage.
 - *Confidence A→B*: `n(A∩B) / n(A)`, the probability that a change to A also touches B. Directional, since a small file may always drag a large one along without the reverse holding.
-- *Support*: `n(A∩B)`, the absolute count. Pairs below the minimum support are dropped, because two shared commits out of three is noise.
+- *Support*: `n(A∩B)`, the absolute count. It is an evidence floor (`minSupport`): `coupling` does not list a pair with fewer shared changes unless `--min-support` lowers the floor, and a pair listed under the configured floor is marked low confidence, because two shared commits out of three is noise.
 
 **Coupling distance.** The folder-tree distance between the two files, using the suite's distance function (see [suite.md](suite.md#shared-vocabulary)). High coupling at high distance is the interesting case. High coupling between a file and its sibling test is expected.
 
@@ -97,8 +97,8 @@ Applied at query time, not ingestion, so changing config never needs a rebuild:
 |---|---|
 | `cochange refresh` | Updates the cache. Reports commits added. |
 | `cochange hotspots [--by file\|component] [--limit N]` | Ranked hotspots with frequency, churn, complexity, age, and score. |
-| `cochange coupling [--file PATH] [--min-degree D] [--min-support S]` | Coupled pairs with degree, confidence in both directions, support and distance. With `--file`, the files that change with that one. |
-| `cochange clusters` | Groups of mutually coupled files (connected components above the threshold), with their spread. Candidates for co-location. |
+| `cochange coupling [--file PATH] [--min-degree D] [--min-support S]` | Coupled pairs with degree, confidence in both directions, support and distance. The degree (`minDegree`, `--min-degree`) is a guideline: pairs under it are listed after the others with `aboveGuideline` false, and none is left out for its degree. The support floor (`minSupport`, `--min-support`) is the only cut. With `--file`, the files that change with that one. |
+| `cochange clusters [--min-degree D] [--min-support S]` | Groups of mutually coupled files, with their spread. A pair joins a group when it reaches both the support floor and the degree: this is the one place `minDegree` is a cut, because a group has to be defined by its links. Candidates for co-location. |
 | `cochange spread [--since DATE] [--until DATE] [--bucket week\|month]` | Change-spread distribution per bucket. Used for baselines and outcome comparison. |
 | `cochange age [--by file\|component]` | Last-changed and first-seen per file. |
 | `cochange trend PATH [--samples N]` | Complexity proxy and size of one file sampled across its history, to show whether a hotspot is getting worse. |
@@ -107,7 +107,7 @@ Applied at query time, not ingestion, so changing config never needs a rebuild:
 | `cochange blame refresh`, `cochange abandonment …`, `cochange successors` | Knowledge-loss analysis. Only when enabled. See [abandonment.md](abandonment.md#cli). |
 | `cochange risk …` | Risk of a branch against its base. See [change-risk.md](change-risk.md#cli). |
 
-Every list output is sorted by score, then by path, so ties are deterministic, and is limited by default (20). The JSON includes `window`, `filtersApplied`, `complexitySource` and the suite's `evidence` block ([suite.md](suite.md#evidence-strength)), so a reader always knows what was measured and how much to trust it. Mature codebases give this plugin its strongest results. On a young repository, `coupling` and `clusters` may return few findings that clear minimum support, and they say so rather than lowering the bar.
+Every list output is sorted by score, then by path, so ties are deterministic, and is limited by default (20). The JSON includes `window`, `filtersApplied`, `complexitySource` and the suite's `evidence` block ([suite.md](suite.md#evidence-strength)), so a reader always knows what was measured and how much to trust it. Mature codebases give this plugin its strongest results. On a young repository, `coupling` and `clusters` may return few pairs that reach the support floor, and they say so rather than lowering the floor.
 
 ## Recommendations
 

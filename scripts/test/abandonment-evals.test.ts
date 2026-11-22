@@ -44,7 +44,7 @@ test("the scaffold gives the answers the cases' graders look for", async () => {
   const dir = scaffold("abandonment-scaffold.sh");
 
   const current = JSON.parse((await run(dir, "abandonment", "current")).stdout);
-  expect(current.results.map((r: { path: string }) => r.path).sort()).toEqual(["src/core/engine.ts", "src/core/parser.ts", "src/gen/deps.ts"]);
+  expect(current.results.filter((r: { abandoned: boolean }) => r.abandoned).map((r: { path: string }) => r.path).sort()).toEqual(["src/core/engine.ts", "src/core/parser.ts", "src/gen/deps.ts"]);
   expect(current.developers).toEqual({ active: 3, inactive: 2 });
 
   const simulated = JSON.parse((await run(dir, "abandonment", "simulate", "--trials", "300")).stdout);
