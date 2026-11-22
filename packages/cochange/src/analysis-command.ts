@@ -1,5 +1,6 @@
 import type { OptionSpec } from "@code-health/cli-kit/args";
 import type { Command, CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
+import { skipReport } from "@code-health/history/reports";
 import { loadHistory, type ExplicitWindow, type LoadedHistory } from "./history-access.ts";
 import { writeReport } from "./reports.ts";
 import { readSettings } from "./config.ts";

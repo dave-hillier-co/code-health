@@ -81,13 +81,13 @@ test("wall time, process start included, is recorded for diagnosis and does not 
   const runs = Array.from({ length: 7 }, (_, i) => runHook(editEvent(`timing-${i}`)));
   const times = runs.map((run) => run.wallMs);
   // Every run must have done the work, or the timing would measure an early exit.
-  expect(runs.every((run) => run.stdout.includes("usually changes with"))).toBe(true);
+  expect(runs.every((run) => run.stdout.includes("changed together with"))).toBe(true);
   console.log(`cochange hook wall time over ${times.length} runs (ms): ${times.map((t) => Math.round(t)).join(" ")}; median ${Math.round(median(times))}`);
   // The budget itself is checked by behaviour in hook.test.ts and hook-manifest.test.ts. Wall time depends
   // on the machine, so the figures above are for reading, not for failing a build.
 });
 
-test("with the shipped default budget and no override, a fresh process exits 0 and either speaks the note or stays silent, and the count is recorded", () => {
+test("with the shipped default budget and no override, a fresh process exits 0 and either prints the note or prints nothing, and the count is recorded", () => {
   // Whether a cold start fits 200 ms depends on the machine, and this suite runs beside every other, so how many of
   // five speak is for reading, as the timing test's figures are. The budget is pinned in hook-manifest.test.ts, and
   // the size the hook loads in hook-footprint.test.ts and bundle.test.ts, which are what keep it inside the budget.
@@ -95,8 +95,8 @@ test("with the shipped default budget and no override, a fresh process exits 0 a
     spawnSync("node", [cli, "hook"], { cwd: repo.path, input: editEvent(`default-budget-${i}`), encoding: "utf8" }),
   );
   expect(runs.every((run) => run.status === 0 && run.stderr === "")).toBe(true);
-  expect(runs.every((run) => run.stdout === "" || run.stdout.includes("usually changes with"))).toBe(true);
-  console.log(`cochange hook at its default budget: ${runs.filter((run) => run.stdout !== "").length} of 5 spoke`);
+  expect(runs.every((run) => run.stdout === "" || run.stdout.includes("changed together with"))).toBe(true);
+  console.log(`cochange hook at its default budget: ${runs.filter((run) => run.stdout !== "").length} of 5 printed a note`);
 });
 
 test("when the hook is not enabled it prints nothing and touches no history", () => {
