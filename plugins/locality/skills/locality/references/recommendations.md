@@ -4,7 +4,7 @@ Run `locality explain <rule>` for any rule below. Recommendations are determinis
 
 ## Rules by consumer count
 
-These apply to units whose gain is at least `locality.minDistance`. Consumers are distinct production files that use the unit. Tests never pull a unit towards themselves.
+These apply to units whose gain is at or above the `locality.minDistance` guideline. Every number in this file is a guideline for investigation unless it says floor. Candidates report each value beside its guideline (`guidelines.gain`, `guidelines.fanIn`, with a `ratio` above 1 when past it), and `scoreUnit` says what `score` counts, so compare scores only within one `scoreUnit`. Units under the `minDistance` guideline are counted in `summary.placed` and not listed. Consumers are distinct production files that use the unit. Tests never pull a unit towards themselves.
 
 | Consumers | Size | Rule | Default | Check before acting |
 |---|---|---|---|---|
@@ -57,7 +57,7 @@ In the `locality` section of `code-health.json`:
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `minDistance` | 2 | Smallest net distance a move must save to be reported |
+| `minDistance` | 2 | Guideline: net distance a move saves, below which a unit is counted as placed and not listed |
 | `tinyLines` | 15 | At most this many lines is a tiny unit |
 | `largeLines` | 150 | More than this many lines is a large unit |
 | `inlineHostLines` | 300 | A medium unit is inlined only while its consumer stays within this |

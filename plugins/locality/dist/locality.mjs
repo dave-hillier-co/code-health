@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-EJG3OZLP.mjs";
+} from "./chunk-L7PWPJYW.mjs";
 import {
   GitError,
   gitVersion,
@@ -29,8 +29,8 @@ import {
 } from "./chunk-Z55QIW6L.mjs";
 import {
   analyseTree
-} from "./chunk-A2ZYUZBY.mjs";
-import "./chunk-TF4VDQLH.mjs";
+} from "./chunk-D3Q6TY2C.mjs";
+import "./chunk-T4QZDWJW.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
@@ -2064,6 +2064,9 @@ function vagueSegment(path, vagueNames) {
 }
 
 // packages/locality/src/candidates.ts
+function readAgainst(value, guideline) {
+  return { value, guideline, ratio: Math.round(value / guideline * 100) / 100 };
+}
 function commonFolder(folders) {
   let shared = folders[0].split("/").filter((part) => part !== "");
   for (const folder of folders) {
@@ -2372,9 +2375,12 @@ function analyseProject(project, model, settings, history) {
     const scored = cohesion?.mixed ? cohesion.components.map((component) => scoreComponent(unit.root, component)) : void 0;
     const score = decision.recommendation === "blocked" ? unblocked : decision.recommendation === "split" ? Math.max(choice.gain, (scored ?? []).reduce((sum, component) => sum + component.gain, 0)) : decision.recommendation === "scrutinise" ? consumerFiles.length : choice.gain;
     const ownDeps = targets;
+    const scoreUnit = decision.recommendation === "blocked" ? "unblocked-gain" : decision.recommendation === "split" ? "component-gain" : decision.recommendation === "scrutinise" ? "fan-in" : "gain";
     return {
       path: unit.path,
       score,
+      scoreUnit,
+      guidelines: { gain: readAgainst(choice.gain, settings.minDistance), fanIn: readAgainst(consumerFiles.length, settings.highFanIn) },
       ...decision,
       source: "structural",
       unit: {
@@ -2418,7 +2424,7 @@ function analyseProject(project, model, settings, history) {
   return {
     candidates: reported,
     placed,
-    summary: { files: project.production.length, units: all.length, byRecommendation },
+    summary: { files: project.production.length, units: all.length, placed: placed.length, byRecommendation },
     metrics: {
       totalWeightedDistance: model.edges.filter((edge) => model.reachable.has(edge.from)).reduce((sum, edge) => sum + edge.weight * treeDistance(edge.from, edge.to), 0),
       singleFileFolders: [...folders.values()].filter((count2) => count2 === 1).length,
@@ -2435,37 +2441,37 @@ var SCHEMA_VERSION2 = 1;
 var localityConfig = {
   plugin: TOOL,
   section: {
-    /** Minimum net distance a move must save to be worth reporting, in folder hops. */
+    /** Guideline for the net distance a move saves, in folder hops. Ranks and annotates candidates (`guidelines.gain`); units below it are counted in `summary.placed`, not listed. A judgement call. */
     minDistance: 2,
-    /** A unit of at most this many lines is tiny: its import overhead outweighs its content. */
+    /** Guideline: a unit of at most this many lines is tiny, its import overhead outweighing its content. A judgement call. */
     tinyLines: 15,
-    /** A unit of more than this many lines is large and stays a module of its own. */
+    /** Guideline: a unit of more than this many lines is large and stays a module of its own. A judgement call. */
     largeLines: 150,
-    /** A medium unit is inlined only while its consumer stays within this many lines. */
+    /** Guideline: a medium unit is inlined only while its consumer plus the unit stay within this many lines. A judgement call. */
     inlineHostLines: 300,
-    /** Distinct production consumer files at or above which a unit is scrutinised instead of moved. */
+    /** Guideline for distinct production consumer files: a unit at or above it is worth scrutinising instead of moving. Reported as `guidelines.fanIn`. A judgement call. */
     highFanIn: 8,
-    /** Deepest folder nesting a target may have. */
+    /** Deepest folder nesting a target may have. A judgement call: a depth cap stops code being buried to lower its distance. */
     maxDepth: 6,
     /** Read co-change, age and churn from the history cache, so the history guards and rules can fire. */
     useHistory: true,
-    /** A unit younger than this many days is not inlined or moved: one callsite is only evidence once reuse has had time. */
+    /** Guideline: a unit younger than this many days is reviewed, not inlined or moved, because one callsite is only evidence once reuse has had time. A judgement call. */
     graceDays: 90,
-    /** The window for churn and co-change, back from HEAD's commit date. */
+    /** The window for churn and co-change, back from HEAD's commit date. CodeScene advises 6 to 12 months for hotspot windows. */
     windowMonths: 12,
-    /** Consumers co-changing at or below this degree (percent) look independent: coincidental reuse. */
+    /** Guideline: consumers co-changing at or below this degree (percent) look independent, which suggests coincidental reuse. A judgement call. */
     lowCoChange: 10,
-    /** Consumers co-changing at or above this degree (percent) share a reason to change: the distance is earned. */
+    /** Guideline: consumers co-changing at or above this degree (percent) share a reason to change, so the distance looks earned. Matches the 30 to 50 percent range Tornhill gives for coupling degree. */
     highCoChange: 40,
-    /** Logical changes touching any of the consumers that the co-change rules need before they speak. */
+    /** Floor: logical changes touching any of the consumers that the co-change rules need before they read the degree. A degree from fewer is not meaningful, so it is reported as null. */
     minCoChangeChanges: 6,
-    /** History-only mode: shared logical changes a partner needs before it counts as a consumer. */
-    historyMinSupport: 4,
-    /** History-only mode: percent of a unit's changes that must also touch a partner for it to count as a consumer. */
+    /** History-only floor: shared logical changes a partner needs before it counts as a consumer. 5 matches cochange.minSupport and code-maat's default. A coupling from fewer is not meaningful. */
+    historyMinSupport: 5,
+    /** History-only guideline: percent of a unit's changes that also touch a partner for it to count as a consumer. 30 matches cochange.minDegree and code-maat's default. */
     historyMinConfidence: 30,
-    /** `measure compare` concludes nothing from fewer than this many tasks, or measured changes, in any of its four figures. */
+    /** Floor: `measure compare` concludes nothing from fewer than this many tasks, or measured changes, in any of its four figures, and reports the observed direction as low confidence. A judgement call. */
     measureMinSamples: 10,
-    /** `measure compare` calls a difference no change when it is within this percent of the acted-on files' own starting figure. */
+    /** Guideline: `measure compare` calls a difference no change when it is within this percent of the acted-on files' own starting figure. It reports the percent and its ratio to this guideline. A judgement call. */
     measureNoisePercent: 10,
     /** Globs of files that must not move and folders code may not move into (routes, migrations, app folders). */
     fixedPoints: []
@@ -2930,6 +2936,8 @@ function analyseByHistory(history, files, settings) {
       score: choice.gain,
       ...decision,
       source: "history",
+      guidelines: { gain: readAgainst(choice.gain, settings.minDistance) },
+      supersedes: [],
       unit: { kind: unitFiles.length === 1 ? "file" : "cluster", root, files: unitFiles },
       location: base,
       target: choice.target,
@@ -2945,15 +2953,17 @@ function analyseByHistory(history, files, settings) {
     });
   }
   candidates.sort((a, b) => b.score - a.score || compareIds(a.path, b.path));
-  const claimed = /* @__PURE__ */ new Set();
+  const claimedBy = /* @__PURE__ */ new Map();
   const kept = [];
   for (const candidate of candidates) {
-    if (candidate.unit.files.some((file) => claimed.has(file))) {
+    const winner = candidate.unit.files.map((file) => claimedBy.get(file)).find((other) => other !== void 0);
+    if (winner !== void 0) {
       omitted.superseded++;
+      winner.supersedes.push({ path: candidate.path, gain: candidate.gain });
       continue;
     }
     kept.push(candidate);
-    for (const partner of candidate.consumers) claimed.add(partner.path);
+    for (const partner of candidate.consumers) if (!claimedBy.has(partner.path)) claimedBy.set(partner.path, candidate);
   }
   return { candidates: kept, omitted, reason: null };
 }
@@ -3075,7 +3085,7 @@ var ruleDescriptions = {
     )
   },
   "high-fan-in": {
-    summary: "Fan-in at or above locality.highFanIn: the location is earned, so review the design",
+    summary: "Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design",
     explanation: lines(
       "Many production files depend on the unit, so every flaw in it is multiplied by its consumers.",
       "The unit is not moved. It goes to the review checklist: shallow module, special-general mixture, overexposure,",
@@ -3119,8 +3129,8 @@ var ruleDescriptions = {
   "near-consumers": {
     summary: "Already close to its consumers: nothing to do",
     explanation: lines(
-      "The gain from moving is below locality.minDistance and no blocker would change that.",
-      "Units with this rule are not listed."
+      "The gain from moving is below the locality.minDistance guideline and no blocker would change that.",
+      "Units with this rule are not listed. summary.placed counts them."
     )
   },
   "other-references": {
@@ -3902,12 +3912,19 @@ async function actionsSince(root, view, baseline2, plugin) {
   const listing = await runGit(root, ["rev-list", `${baseline2}..${view.headSha}`]);
   const later = new Set(listing.split("\n").filter((sha) => sha !== ""));
   const actions = [];
+  const untrailered = [];
   let commits = 0;
   let latest2 = null;
   for (const commit of view.commits) {
     if (!later.has(commit.sha)) continue;
     const trailers = codeHealthTrailers(commit.message).filter((trailer) => trailer.plugin === plugin);
-    if (trailers.length === 0) continue;
+    if (trailers.length === 0) {
+      for (const change2 of commit.changes) {
+        if (change2.status === "R" && change2.oldPath !== null) untrailered.push({ sha: commit.sha, rule: "", from: change2.oldPath, to: change2.path, date: commit.committerDate });
+        else if (change2.status === "D") untrailered.push({ sha: commit.sha, rule: "", from: change2.path, to: null, date: commit.committerDate });
+      }
+      continue;
+    }
     commits++;
     latest2 = latest2 === null ? commit.committerDate : Math.max(latest2, commit.committerDate);
     const rule = trailers[0].rule;
@@ -3916,7 +3933,7 @@ async function actionsSince(root, view, baseline2, plugin) {
       else if (change2.status === "D") actions.push({ sha: commit.sha, rule, from: change2.path, to: null, date: commit.committerDate });
     }
   }
-  return { actions, commits, latest: latest2 };
+  return { actions, untrailered, commits, latest: latest2 };
 }
 function countSuiteCommits(view, plugin) {
   return view.commits.filter((commit) => codeHealthTrailers(commit.message).some((trailer) => trailer.plugin === plugin)).length;
@@ -4048,8 +4065,29 @@ function differenceOf(actedOn, comparison, minSamples, noisePercent) {
   }
   return { actedOn: { change: actedChange }, comparison: { change: comparisonChange }, difference, smallestSample, conclusion };
 }
+function guidedDifferenceOf(actedOn, comparison, minSamples, noisePercent) {
+  const base = differenceOf(actedOn, comparison, minSamples, noisePercent);
+  const startingMean = actedOn.before.mean;
+  const start = Math.abs(startingMean ?? 0);
+  let observed = null;
+  if (base.difference !== null) {
+    observed = Math.abs(base.difference) <= start * noisePercent / 100 ? "no-change" : base.difference < 0 ? "lower" : "higher";
+  }
+  const percentOfStart = base.difference === null || start === 0 ? null : 100 * Math.abs(base.difference) / start;
+  return {
+    ...base,
+    observed,
+    startingMean,
+    percentOfStart,
+    noiseGuidelinePercent: noisePercent,
+    ratioToNoiseGuideline: percentOfStart === null || noisePercent === 0 ? null : percentOfStart / noisePercent,
+    minSamples,
+    lowConfidence: base.smallestSample < minSamples
+  };
+}
 
 // packages/locality/src/verdict.ts
+var differenceOf2 = guidedDifferenceOf;
 function effortConclusion(parts) {
   if (parts.every((part) => part === "not-measured")) return "not-measured";
   if (parts.some((part) => part === "insufficient-sample" || part === "not-measured")) return "insufficient-sample";
@@ -4215,6 +4253,8 @@ async function compare(context, settings) {
   const done = await actionsSince(root, view, before.head, TOOL_PLUGIN);
   const moved = new Set(done.actions.map((action) => action.from));
   const actedOn = before.candidates.filter((candidate) => candidate.files.some((file) => moved.has(file)));
+  const movedByHand = new Set(done.untrailered.map((action) => action.from));
+  const untrailered = before.candidates.filter((candidate) => !actedOn.includes(candidate) && candidate.files.some((file) => movedByHand.has(file))).length;
   const common = {
     inputs: { name: name8, baseline: { head: before.head, stamp: before.effort.stamp } }
   };
@@ -4225,7 +4265,7 @@ async function compare(context, settings) {
         name: name8,
         status: "nothing-acted-on",
         baseline: { head: before.head, window: before.window },
-        suite: { commits: done.commits, actedOn: 0 }
+        suite: { commits: done.commits, actedOn: 0, untrailered }
       }
     };
   }
@@ -4271,9 +4311,9 @@ async function compare(context, settings) {
     after: { mean: mean2(a.after.effort[figure]), n: a.after.effort.tasks }
   });
   const { minSamples, noise } = { minSamples: settings.measureMinSamples, noise: settings.measureNoisePercent };
-  const spreadDifference = differenceOf(spreadArm(actedArms), spreadArm(aloneArms), minSamples, noise);
+  const spreadDifference = differenceOf2(spreadArm(actedArms), spreadArm(aloneArms), minSamples, noise);
   const effortDifferences = Object.fromEntries(
-    EFFORT_FIGURES.map((figure) => [figure, differenceOf(effortArm(actedArms, figure), effortArm(aloneArms, figure), minSamples, noise)])
+    EFFORT_FIGURES.map((figure) => [figure, differenceOf2(effortArm(actedArms, figure), effortArm(aloneArms, figure), minSamples, noise)])
   );
   const effort = effortConclusion(EFFORT_FIGURES.map((figure) => effortDifferences[figure].conclusion));
   return {
@@ -4290,7 +4330,7 @@ async function compare(context, settings) {
       spreadReproduced: reproduced(recomputed, before.spread),
       structure,
       after: { ...after, days: windowLength(after), matchingDays: windowLength(before.window) },
-      suite: { commits: done.commits, actedOn: actedOn.length, comparison: comparison.group.length, overlapping: comparison.overlapping },
+      suite: { commits: done.commits, actedOn: actedOn.length, untrailered, comparison: comparison.group.length, overlapping: comparison.overlapping },
       pairs: comparison.pairs,
       actedOn: { candidates: actedOn.map((candidate) => candidate.path), ...actedArms },
       comparison: { candidates: comparison.group.map((candidate) => candidate.path), ...aloneArms },
@@ -4582,7 +4622,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-N3LMGT5M.mjs");
+    const { performMove } = await import("./chunk-46P7AXZH.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -4632,8 +4672,8 @@ var command5 = {
     let typed;
     let results = [];
     if (chosen.length > 0) {
-      const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-OQWBCTM4.mjs");
+      const { scrutinise } = await import("./chunk-SRJUH5IC.mjs");
+      const { buildProject } = await import("./chunk-TQBZ7GMH.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -4853,7 +4893,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-PTME2LGI.mjs");
+    const { verifyMove } = await import("./chunk-MBWEO27V.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;
