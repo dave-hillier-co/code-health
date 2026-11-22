@@ -1803,7 +1803,7 @@ function emailLocalPart(email) {
   return at === -1 ? normalised : normalised.slice(0, at);
 }
 function normaliseName(name16) {
-  let text = name16.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase();
+  let text = name16.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g, " ").replace(/_/g, " ");
   const comma = text.indexOf(",");
   if (comma !== -1 && text.indexOf(",", comma + 1) === -1) text = `${text.slice(comma + 1)} ${text.slice(0, comma)}`;
   return text.replace(/[.,]/g, " ").split(/\s+/).filter((t) => t !== "").join(" ");
@@ -1828,7 +1828,49 @@ function derivedLocalParts(name16) {
 function flattenedNames(name16) {
   const tokens = nameTokens(name16);
   if (tokens.length < 2) return [];
-  return ["", "-", ".", "_"].map((glue) => tokens.join(glue));
+  const first = tokens[0];
+  const last = tokens[tokens.length - 1];
+  return [.../* @__PURE__ */ new Set([...["", "-", ".", "_"].map((glue) => tokens.join(glue)), `${first[0]}${last}`, `${first}${last[0]}`])];
+}
+var MAILBOX_PROVIDERS = /* @__PURE__ */ new Set([
+  "gmail.com",
+  "googlemail.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "yahoo.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "aol.com",
+  "proton.me",
+  "protonmail.com",
+  "pm.me",
+  "gmx.com",
+  "gmx.net",
+  "gmx.de",
+  "web.de",
+  "yandex.ru",
+  "yandex.com",
+  "mail.ru",
+  "qq.com",
+  "163.com",
+  "126.com",
+  "fastmail.com",
+  "zoho.com",
+  "hey.com",
+  "tutanota.com"
+]);
+var SECOND_LEVEL = /* @__PURE__ */ new Set(["co", "com", "org", "net", "ac", "gov", "edu", "ltd", "plc"]);
+function organisationOf(email) {
+  const at = email.lastIndexOf("@");
+  if (at === -1) return null;
+  const labels = email.slice(at + 1).trim().toLowerCase().split(".").filter((l) => l !== "");
+  if (labels.length < 2) return null;
+  const keep = labels.length >= 3 && labels[labels.length - 1].length === 2 && SECOND_LEVEL.has(labels[labels.length - 2]) ? 3 : 2;
+  const domain = labels.slice(-keep).join(".");
+  return MAILBOX_PROVIDERS.has(domain) ? null : domain;
 }
 
 // packages/history/src/identity-classify.ts
@@ -3062,10 +3104,18 @@ function buildNodes(raws) {
   return sorted;
 }
 var compare2 = (x, y) => x < y ? -1 : x > y ? 1 : 0;
+var MIN_ORGANISATIONAL_LOCAL_LENGTH = 5;
+function insideEachOther(a, b) {
+  const [localA, domainA] = [a.slice(0, a.lastIndexOf("@")), a.slice(a.lastIndexOf("@") + 1)];
+  const [localB, domainB] = [b.slice(0, b.lastIndexOf("@")), b.slice(b.lastIndexOf("@") + 1)];
+  if (localA !== localB || domainA === domainB) return false;
+  return domainA.endsWith(`.${domainB}`) || domainB.endsWith(`.${domainA}`);
+}
 var MAX_IDENTITIES_PER_SIGNING_KEY = 3;
 function factsOf(node) {
   const addresses = [{ name: node.name, email: node.email }, ...node.aliases];
   const emails = /* @__PURE__ */ new Set();
+  const organisational = /* @__PURE__ */ new Set();
   const locals = /* @__PURE__ */ new Set();
   const noreplies = /* @__PURE__ */ new Map();
   const names = /* @__PURE__ */ new Set();
@@ -3078,6 +3128,8 @@ function factsOf(node) {
     if (!noreply && !GENERIC_LOCAL_PARTS.has(local)) {
       emails.add(normaliseEmail(email));
       locals.add(local);
+      const organisation = organisationOf(email);
+      if (organisation !== null && local.length >= MIN_ORGANISATIONAL_LOCAL_LENGTH) organisational.add(`${local}@${organisation}`);
     }
     if (nameTokens(name16).length >= 2) {
       names.add(normaliseName(name16));
@@ -3088,6 +3140,7 @@ function factsOf(node) {
   return {
     node,
     emails: [...emails].sort(),
+    organisational: [...organisational].sort(),
     locals: [...locals].sort(),
     noreplies: [...noreplies.values()].sort((x, y) => compare2(x.username, y.username)),
     names: [...names].sort(),
@@ -3130,6 +3183,10 @@ function findLinks(nodes, raws, pairing, rejections = []) {
     index(facts, (f) => f.emails),
     (email, x, y) => addSignal(candidates, x, y, { signal: "exact-email", strength: "strong", detail: email })
   );
+  eachPair(index(facts, (f) => f.organisational), (address2, x, y) => {
+    if (!x.emails.some((e) => y.emails.some((o) => insideEachOther(e, o)))) return;
+    addSignal(candidates, x, y, { signal: "same-organisation-address", strength: "strong", detail: address2 });
+  });
   const byKey = index(facts, (f) => f.signingKeys);
   for (const [key, holders] of byKey) if (holders.length > MAX_IDENTITIES_PER_SIGNING_KEY) byKey.delete(key);
   eachPair(byKey, (key, x, y) => addSignal(candidates, x, y, { signal: "same-signing-key", strength: "supporting", detail: key }));
@@ -3276,6 +3333,14 @@ function buildProposals(links) {
     const roots = [...rootSet];
     const complete = roots.every((x, i) => roots.slice(i + 1).every((y) => linked(x, y)));
     const singleGroup = rootSet.size === 1;
+    if (!singleGroup) {
+      for (const root of [...rootSet].sort(compare2)) {
+        const members = nodes.filter((n) => groups.find(n) === root);
+        if (members.length < 2) continue;
+        const within = inside2.filter((l) => members.includes(l.a) && members.includes(l.b));
+        proposals.push({ kind: "cluster", strength: "strong", members, links: within, counterEvidence: within.some((l) => l.counterEvidence) });
+      }
+    }
     proposals.push({
       kind: singleGroup || complete ? "cluster" : "chain",
       strength: singleGroup ? "strong" : complete ? "medium" : "chain",
@@ -3552,7 +3617,8 @@ async function analyseIdentities(context, options) {
   const links = findLinks(people, personRaws, facts.pairing, identities.decisions.rejectedMerges);
   const proposals = buildProposals(links);
   const unresolved = new Set(proposals.flatMap((p) => p.members));
-  return { history, facts, raws, nodes, nodeOfRaw, nonPerson, links, proposals, unresolved, windowSince };
+  const strongProposed = new Set(proposals.filter((p) => p.strength === "strong").flatMap((p) => p.members));
+  return { history, facts, raws, nodes, nodeOfRaw, nonPerson, links, proposals, unresolved, strongProposed, windowSince };
 }
 var isoDay2 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 function topAreas(node, limit = 3) {
@@ -4036,13 +4102,17 @@ function share(byNode, analysis) {
   let total = 0;
   let nonPerson = 0;
   let unmapped = 0;
+  let unmappedStrong = 0;
   for (const [node, count2] of byNode) {
     total += count2;
     if (analysis.nonPerson.has(node)) nonPerson += count2;
-    else if (analysis.unresolved.has(node)) unmapped += count2;
+    else if (analysis.unresolved.has(node)) {
+      unmapped += count2;
+      if (analysis.strongProposed.has(node)) unmappedStrong += count2;
+    }
   }
   const people = total - nonPerson;
-  return { total, nonPerson, people, unmapped, mappedShare: people === 0 ? 100 : Math.round((100 - percent2(unmapped, people)) * 10) / 10 };
+  return { total, nonPerson, people, unmapped, unmappedStrong, mappedShare: people === 0 ? 100 : Math.round((100 - percent2(unmapped, people)) * 10) / 10 };
 }
 async function measureMapping(context, analysis, options) {
   const { history, facts, nodeOfRaw } = analysis;
@@ -4091,8 +4161,13 @@ async function mappedShareNotices(context, settings) {
   const share3 = measurement3.headLines.mappedShare;
   if (measurement3.headLines.people === 0 || share3 >= settings.mappedShareGuideline) return [];
   return [
-    `Identities that are settled hold ${share3}% of the lines held by people, under the guideline of ${settings.mappedShareGuideline}% (cochange.knowledge.mappedShareGuideline), so these results depend on unmapped identities; run cochange identities propose to review them`
+    `Identities that are settled hold ${share3}% of the lines held by people, under the guideline of ${settings.mappedShareGuideline}% (cochange.knowledge.mappedShareGuideline), so these results depend on unmapped identities; run cochange identities propose to review them${strongClause(measurement3.headLines)}`
   ];
+}
+function strongClause(lines) {
+  if (lines.unmappedStrong === 0) return "";
+  const percent3 = Math.round(lines.unmappedStrong / lines.people * 1e3) / 10;
+  return `; ${percent3}% of the lines held by people are in strong proposals, which the identities skill applies without asking`;
 }
 function turnoverNotices(settings, turnover, usesHistory) {
   const notices = [];
@@ -8977,7 +9052,9 @@ async function resolveRange(root, request) {
     against = await findMainBranch(root, request.mainBranch);
     if (against === null) throw usageError("there is no main branch to take the base from: name one with cochange risk BASE, or set cochange.risk.mainBranch");
   } else if (!await exists(root, against)) {
-    throw usageError(`"${against}" is not a commit in this repository`);
+    throw usageError(
+      parts === null ? `"${against}" is neither a risk subcommand nor a commit in this repository; a branch named like a subcommand is written BASE..HEAD` : `"${against}" is not a commit in this repository`
+    );
   }
   let base;
   try {
@@ -11286,6 +11363,7 @@ var command12 = analysisCommand(name12, {
   partial: () => true,
   async ref(context) {
     const { sub, rest } = parse2(context.positionals);
+    if (sub === "backtest" && rest.length > 0) throw usageError("risk backtest takes no arguments");
     if (sub === "backtest" || sub === "explain" && rest.length === 0) return void 0;
     const risk = readRiskSettings(context.config);
     const range = await resolveRange(context.repo.root, {

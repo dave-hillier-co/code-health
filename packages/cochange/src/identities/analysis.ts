@@ -29,6 +29,8 @@ export interface IdentityAnalysis {
   proposals: Proposal[];
   /** Nodes that appear in a proposal: someone has to decide about them. */
   unresolved: Set<string>;
+  /** Nodes that appear in a strong proposal: the evidence settles them, and the skill accepts those without asking. */
+  strongProposed: Set<string>;
   /** Start of the analysis window, unix seconds. */
   windowSince: number;
 }
@@ -71,8 +73,9 @@ export async function analyseIdentities(context: CommandContext, options: Analys
   const links = findLinks(people, personRaws, facts.pairing, identities.decisions.rejectedMerges);
   const proposals = buildProposals(links);
   const unresolved = new Set(proposals.flatMap((p) => p.members));
+  const strongProposed = new Set(proposals.filter((p) => p.strength === "strong").flatMap((p) => p.members));
 
-  return { history, facts, raws, nodes, nodeOfRaw, nonPerson, links, proposals, unresolved, windowSince };
+  return { history, facts, raws, nodes, nodeOfRaw, nonPerson, links, proposals, unresolved, strongProposed, windowSince };
 }
 
 export const isoDay = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);

@@ -384,3 +384,68 @@ describe("names and addresses", () => {
     expect(signalsOf(links)).toContain("same-name");
   });
 });
+
+describe("shapes found in real histories", () => {
+  const strengthOf = (specs: Spec[]) => analyse(specs).proposals.map((p) => [p.strength, p.members.length]);
+
+  test("git's own host address beside the organisation address is one person: same local part, one domain inside the other", () => {
+    const { links } = analyse([
+      { name: "Sergey Bykov", email: "sbykov@microsoft.com" },
+      { name: "unknown", email: "sbykov@SBYKOV-SF3.redmond.corp.microsoft.com" },
+    ]);
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({ strength: "strong" });
+    expect(signalsOf(links)).toContain("same-organisation-address");
+  });
+
+  test("the same local part at sibling subdomains, at a mailbox provider, or under 5 characters is not the organisation's address", () => {
+    const strong = (a: string, b: string) => analyse([{ name: "One", email: a }, { name: "Two", email: b }]).links.some((l) => l.strength === "strong");
+    expect(strong("sbykov@us.corp.example.com", "sbykov@eu.corp.example.com")).toBe(false);
+    expect(strong("sbykov@gmail.com", "sbykov@mail.gmail.com")).toBe(false);
+    expect(strong("koen@example.com", "koen@host.example.com")).toBe(false);
+    expect(strong("sbykov@example.com", "sbykov@host.other.com")).toBe(false);
+  });
+
+  test("a GitHub login written as first initial and last name or first name and last initial matches the name", () => {
+    for (const login of ["mbadakhshan", "mazdakb"]) {
+      const { links } = analyse([
+        { name: "Mazdak", email: `559628+${login}@users.noreply.github.com` },
+        { name: "Mazdak Badakhshan", email: "mazdak.badakhshan@authzed.com" },
+      ]);
+      expect(signalsOf(links)).toContain("noreply-matches-identity");
+    }
+  });
+
+  test("the same name with an affiliation in brackets, beside a matching login, is strong", () => {
+    const { links } = analyse([
+      { name: "Ningna Dang (Design Laboratory Inc)", email: "NingnaD@users.noreply.github.com" },
+      { name: "Ningna Dang (Design Laboratory Inc)", email: "v-nidang@microsoft.com" },
+    ]);
+    expect(links[0]).toMatchObject({ strength: "strong" });
+  });
+
+  test("a pair of identities that share only a name stay medium, so two people called Attila Hajdrik are not merged", () => {
+    expect(strengthOf([{ name: "Attila Hajdrik", email: "athajdri@microsoft.com" }, { name: "Attila Hajdrik", email: "attila@eyedea.hu" }])).toEqual([["medium", 2]]);
+  });
+
+  test("a settled group is proposed as strong even when a medium link joins it to a lone identity", () => {
+    // The Gabriel Kliot shape: three addresses with one name and local part, and a noreply address that shares only the name.
+    const proposals = analyse([
+      { name: "Gabriel Kliot", email: "gkliot@microsoft.com" },
+      { name: "Gabriel Kliot", email: "gkliot@gmail.com" },
+      { name: "Gabriel Kliot", email: "gkliot@google.com" },
+      { name: "Gabriel Kliot", email: "gabikliot@users.noreply.github.com" },
+    ]).proposals;
+    expect(proposals.map((p) => [p.strength, p.members.length])).toEqual([["strong", 3], ["medium", 4]]);
+    expect(proposals[0]!.members.some((m) => m.includes("noreply"))).toBe(false);
+  });
+
+  test("a chain is not split into strong proposals when no group in it is settled by strong links", () => {
+    const { proposals } = analyse([
+      { name: "Sam Hill", email: "one@x.com" },
+      { name: "Sam Hill", email: "shared@y.com" },
+      { name: "Other Person", email: "shared@z.com" },
+    ]);
+    expect(proposals.map((p) => p.strength)).toEqual(["chain"]);
+  });
+});

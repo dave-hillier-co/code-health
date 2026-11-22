@@ -37,6 +37,10 @@
           "$ref": "common.schema.json#/$defs/count",
           "description": "Held by people a proposal still names."
         },
+        "unmappedStrong": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Part of unmapped held by people a strong proposal names, which the skill applies without asking."
+        },
         "mappedShare": {
           "type": "number",
           "minimum": 0,
@@ -49,6 +53,7 @@
         "nonPerson",
         "people",
         "unmapped",
+        "unmappedStrong",
         "mappedShare"
       ]
     },

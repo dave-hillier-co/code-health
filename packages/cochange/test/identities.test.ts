@@ -138,6 +138,12 @@ test("check fails on counter-evidence, reports unmapped identities and measures 
   expect(document.measurement.needsIdentityReview).toBe(true);
   expect(document.measurement.headLines.nonPerson).toBeGreaterThan(0);
   expect(document.measurement.headLines.total).toBe(document.measurement.headLines.people + document.measurement.headLines.nonPerson);
+  // An author with one address, named by no proposal, is mapped without a mailmap entry: never listed as unmapped.
+  expect(unmapped.some((r: { identities: string[] }) => r.identities.includes("Chris Dee <chris@corp.com>"))).toBe(false);
+  // `unmappedStrong` is the part of the gap that strong proposals settle, so it is a part of `unmapped` and not more.
+  const { headLines } = document.measurement;
+  expect(headLines.unmappedStrong).toBeGreaterThan(0);
+  expect(headLines.unmappedStrong).toBeLessThanOrEqual(headLines.unmapped);
   expectGolden("identities", "identities.check", stdout);
 });
 

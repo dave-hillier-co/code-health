@@ -67,6 +67,11 @@
               "detail": "user:jsmith",
               "signal": "noreply-same-user",
               "strength": "strong"
+            },
+            {
+              "detail": "jsmith",
+              "signal": "noreply-matches-identity",
+              "strength": "medium"
             }
           ],
           "strength": "strong"
