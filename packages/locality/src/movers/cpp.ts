@@ -1,8 +1,8 @@
 import type { MoverLanguage } from "./mover-language.ts";
 
 /**
- * C++ has no codemod. The backend works out the `#include` respellings and the CMake source-list edits a move
- * needs, `--apply` writes them, and clangd confirms that every reference still resolves when it is installed.
+ * The C++ mover is a codemod: its edits are computed deterministically, without a compiler front end. The backend
+ * works out the `#include` respellings and the CMake source-list edits a move needs, `--apply` writes them, and clangd confirms that every reference still resolves when it is installed.
  */
 export const language: MoverLanguage = {
   id: "cpp",

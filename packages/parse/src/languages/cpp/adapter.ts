@@ -36,5 +36,5 @@ export const adapter: LanguageAdapter = {
   census: { extract: extractFileCensus },
   packaging: { ecosystems: ["cmake"], description: "C++" },
   abstractTypes: { typeKinds: ["interface", "abstract-class", "class", "enum"], abstractKinds: ["interface", "abstract-class"] },
-  mover: { kind: "agent", sourceExtensions: [...claimed], confirmation: { name: "clangd", executable: "clangd" } },
+  mover: { kind: "codemod", sourceExtensions: [...claimed], confirmation: { name: "clangd", executable: "clangd" } },
 };

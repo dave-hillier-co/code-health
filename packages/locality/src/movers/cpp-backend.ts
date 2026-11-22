@@ -67,8 +67,8 @@ interface Edit {
 }
 
 /**
- * Applies a move to a tree in memory. C++ has no codemod, so this works out what the agent would have to do,
- * and `--apply` does it:
+ * Applies a move to a tree in memory. The edits are computed deterministically from the includes and the build
+ * files, and `--apply` writes them:
  *
  * - Every `#include` that reached a moved file, and every one inside a moved file, is respelled so it still
  *   reaches the same file. A quoted include beside its includer stays relative to it, and one found through an
