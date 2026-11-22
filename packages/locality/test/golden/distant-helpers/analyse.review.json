@@ -58,6 +58,7 @@
       ],
       "distance": 1,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 2,
       "guidelines": {
         "fanIn": {
@@ -84,6 +85,11 @@
         "src/shared/utils/money.ts"
       ],
       "path": "src/orders/place.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1,
+        "value": 2
+      },
       "recommendation": "review",
       "rule": "scattered-unit",
       "score": 2,

@@ -45,6 +45,7 @@
       "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
       "type": "object",
       "properties": {
+        "schemaVersion": { "const": 1, "description": "Also stored in reports/locality.analyse.json, which the structure plugin reads. A change to the stored document's shape bumps it." },
         "command": { "const": "analyse" },
         "inputs": {
           "type": "object",
@@ -120,8 +121,10 @@
             "type": "object",
             "properties": {
               "path": { "type": "string", "description": "The unit's entry file, or for a sibling-set unit its folder." },
-              "score": { "$ref": "common.schema.json#/$defs/count", "description": "The gain; the unblocked gain for blocked units, the sum of the components' gains for splits, the fan-in for scrutinise. Candidates are ordered by it, so compare scores only within one scoreUnit." },
+              "score": { "$ref": "common.schema.json#/$defs/count", "description": "The gain; the unblocked gain for blocked units, the sum of the components' gains for splits, the fan-in for scrutinise. Compare scores only within one scoreUnit. Candidates are ordered by ranking.ratio, then by score." },
               "scoreUnit": { "enum": ["gain", "unblocked-gain", "component-gain", "fan-in"], "description": "What score counts: folder hops of net distance, or consumer files for fan-in." },
+              "ranking": { "$ref": "common.schema.json#/$defs/guidelineReading", "description": "The score beside the guideline of its scoreUnit: locality.highFanIn for fan-in, locality.minDistance for the others. Candidates are sorted by its ratio, highest first." },
+              "fanInPercentile": { "type": "integer", "minimum": 0, "maximum": 100, "description": "The percentage of the repository's units whose fan-in is at or below this unit's. Information only: no recommendation reads it." },
               "guidelines": {
                 "type": "object",
                 "description": "The unit's gain beside locality.minDistance and its fan-in beside locality.highFanIn.",
@@ -267,7 +270,7 @@
               }
             },
             "required": [
-              "path", "score", "scoreUnit", "guidelines", "recommendation", "rule", "source", "unit", "location", "target", "distance", "gain", "unblockedGain",
+              "path", "score", "scoreUnit", "ranking", "fanInPercentile", "guidelines", "recommendation", "rule", "source", "unit", "location", "target", "distance", "gain", "unblockedGain",
               "netDistance", "directCalls", "otherRefs", "testRefs", "fanIn", "size", "ownDeps", "visibility", "age", "lastChanged",
               "churn", "coChange", "signals", "strays", "blockers"
             ],

@@ -58,6 +58,7 @@
       ],
       "distance": 3,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 3,
       "guidelines": {
         "fanIn": {
@@ -80,6 +81,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/utils/slug.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1.5,
+        "value": 3
+      },
       "recommendation": "inline",
       "rule": "single-consumer-tiny",
       "score": 3,
@@ -137,6 +143,7 @@
       "directCalls": [],
       "distance": 0,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -161,6 +168,11 @@
         "src/billing/charge.ts"
       ],
       "path": "src/billing/index.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 0,
+        "value": 0
+      },
       "recommendation": "inline",
       "rule": "single-consumer-barrel",
       "score": 0,
@@ -219,6 +231,7 @@
       ],
       "distance": 0,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -243,6 +256,11 @@
         "src/shared/log.ts"
       ],
       "path": "src/orders/audit.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 0,
+        "value": 0
+      },
       "recommendation": "inline",
       "rule": "pass-through",
       "score": 0,

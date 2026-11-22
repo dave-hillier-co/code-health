@@ -74,6 +74,7 @@
       ],
       "distance": 0,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -98,6 +99,11 @@
         "src/lib/kernel/core.ts"
       ],
       "path": "src/lib/kernel/tool.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 2,
+        "value": 4
+      },
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 4,
@@ -169,6 +175,7 @@
       ],
       "distance": 0,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -193,6 +200,11 @@
         "src/shared/pair/core.ts"
       ],
       "path": "src/shared/pair/a.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1.5,
+        "value": 3
+      },
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 3,
@@ -264,6 +276,7 @@
       ],
       "distance": 0,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -288,6 +301,11 @@
         "src/shared/pair/core.ts"
       ],
       "path": "src/shared/pair/b.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1.5,
+        "value": 3
+      },
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 3,

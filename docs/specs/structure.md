@@ -136,7 +136,7 @@ These lists are product behaviour and are documented in the mechanisms reference
 
 ## Locality report contract
 
-`structure` reads the output of `locality analyse` only when its tool, command, head commit and clean flag match the analysed commit. It uses rows with a `path` or `id` and blockers with `from`, `path` and `unblockedGain`. There is no schema version on this contract, so the two plugins must be changed together. `misplacement` is computed in `structure` and not from a locality score: a move may remove a dependency when a strict majority of the consumer sites sit on the `from` side.
+`structure` reads the output of `locality analyse` only when its tool, command, head commit and clean flag match the analysed commit. It uses rows with a `path` or `id` and blockers with `from`, `path` and `unblockedGain`. The report carries `schemaVersion`, and `structure` ignores a report whose version is not 1 ([locality.md](locality.md#report-contract)). `misplacement` is computed in `structure` and not from a locality score: a move may remove a dependency when a strict majority of the consumer sites sit on the `from` side.
 
 ## Evidence pack
 

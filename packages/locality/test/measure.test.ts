@@ -128,6 +128,21 @@ describe("measure compare", () => {
     expect(run.run.stderr).toMatch(/measure baseline/);
   });
 
+  test("a baseline records how its candidates were sorted, and one sorted another way is refused", async () => {
+    const file = join(repo.path, ".code-health", "local", "locality.baseline.default.json");
+    const original = readFileSync(file, "utf8");
+    const baseline = JSON.parse(original);
+    expect(baseline.sortMethod).toBe("ratio-to-guideline");
+    writeFileSync(file, JSON.stringify({ ...baseline, sortMethod: "score" }));
+    try {
+      const run = await measure(repo, sessions, ["compare"]);
+      expect(run.run.code).toBe(ExitCode.Usage);
+      expect(run.run.stderr).toMatch(/ranked candidates by score.*ratio-to-guideline.*take a new baseline/);
+    } finally {
+      writeFileSync(file, original);
+    }
+  });
+
   describe("after two helpers were moved", () => {
     beforeAll(() => {
       tidyUp(repo, [1, 2]);

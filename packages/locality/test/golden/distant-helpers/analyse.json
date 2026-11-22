@@ -38,156 +38,6 @@
     {
       "age": 365,
       "blockers": [],
-      "churn": 3,
-      "coChange": {
-        "amongConsumers": null,
-        "consumers": [
-          {
-            "consumerChanges": 1,
-            "degree": 0,
-            "path": "src/features/feature1.ts",
-            "support": 0
-          },
-          {
-            "consumerChanges": 1,
-            "degree": 0,
-            "path": "src/features/feature2.ts",
-            "support": 0
-          },
-          {
-            "consumerChanges": 1,
-            "degree": 0,
-            "path": "src/features/feature3.ts",
-            "support": 0
-          },
-          {
-            "consumerChanges": 1,
-            "degree": 0,
-            "path": "src/features/feature4.ts",
-            "support": 0
-          },
-          {
-            "consumerChanges": 1,
-            "degree": 0,
-            "path": "src/features/feature5.ts",
-            "support": 0
-          },
-          {
-            "consumerChanges": 1,
-            "degree": 0,
-            "path": "src/features/feature6.ts",
-            "support": 0
-          },
-          {
-            "consumerChanges": 1,
-            "degree": 0,
-            "path": "src/features/feature7.ts",
-            "support": 0
-          },
-          {
-            "consumerChanges": 1,
-            "degree": 0,
-            "path": "src/features/feature8.ts",
-            "support": 0
-          }
-        ]
-      },
-      "directCalls": [
-        {
-          "count": 1,
-          "path": "src/features/feature1.ts"
-        },
-        {
-          "count": 1,
-          "path": "src/features/feature2.ts"
-        },
-        {
-          "count": 1,
-          "path": "src/features/feature3.ts"
-        },
-        {
-          "count": 1,
-          "path": "src/features/feature4.ts"
-        },
-        {
-          "count": 1,
-          "path": "src/features/feature5.ts"
-        },
-        {
-          "count": 1,
-          "path": "src/features/feature6.ts"
-        },
-        {
-          "count": 1,
-          "path": "src/features/feature7.ts"
-        },
-        {
-          "count": 1,
-          "path": "src/features/feature8.ts"
-        }
-      ],
-      "distance": 2,
-      "fanIn": 8,
-      "gain": 16,
-      "guidelines": {
-        "fanIn": {
-          "guideline": 8,
-          "ratio": 1,
-          "value": 8
-        },
-        "gain": {
-          "guideline": 2,
-          "ratio": 8,
-          "value": 16
-        }
-      },
-      "lastChanged": "2024-01-01",
-      "location": "src/shared",
-      "netDistance": {
-        "atTarget": 0,
-        "current": 16
-      },
-      "otherRefs": [],
-      "ownDeps": [],
-      "path": "src/shared/format.ts",
-      "recommendation": "scrutinise",
-      "rule": "high-fan-in",
-      "score": 8,
-      "scoreUnit": "fan-in",
-      "signals": [
-        {
-          "detail": "fmt(compact)",
-          "name": "special-general-mixture"
-        }
-      ],
-      "size": {
-        "files": 1,
-        "lines": 3,
-        "units": 1
-      },
-      "source": "structural",
-      "strays": [],
-      "target": "src/features",
-      "testRefs": {
-        "external": [],
-        "owned": []
-      },
-      "unblockedGain": 16,
-      "unit": {
-        "cycle": false,
-        "entries": [],
-        "files": [
-          "src/shared/format.ts"
-        ],
-        "kind": "file",
-        "root": "src/shared/format.ts",
-        "tests": []
-      },
-      "visibility": "exported"
-    },
-    {
-      "age": 365,
-      "blockers": [],
       "churn": 6,
       "coChange": {
         "amongConsumers": null,
@@ -261,6 +111,7 @@
       ],
       "distance": 2,
       "fanIn": 2,
+      "fanInPercentile": 97,
       "gain": 4,
       "guidelines": {
         "fanIn": {
@@ -283,6 +134,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/helpers/mixed.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 3,
+        "value": 6
+      },
       "recommendation": "split",
       "rule": "mixed-exports",
       "score": 6,
@@ -351,6 +207,7 @@
       ],
       "distance": 3,
       "fanIn": 2,
+      "fanInPercentile": 97,
       "gain": 6,
       "guidelines": {
         "fanIn": {
@@ -373,6 +230,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/pair",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 3,
+        "value": 6
+      },
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 6,
@@ -447,6 +309,7 @@
       ],
       "distance": 0,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -471,6 +334,11 @@
         "src/lib/kernel/core.ts"
       ],
       "path": "src/lib/kernel/tool.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 2,
+        "value": 4
+      },
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 4,
@@ -561,6 +429,7 @@
       ],
       "distance": 2,
       "fanIn": 2,
+      "fanInPercentile": 97,
       "gain": 4,
       "guidelines": {
         "fanIn": {
@@ -583,6 +452,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/utils/money.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 2,
+        "value": 4
+      },
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 4,
@@ -645,6 +519,7 @@
       ],
       "distance": 3,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 3,
       "guidelines": {
         "fanIn": {
@@ -667,6 +542,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/cycle/a.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1.5,
+        "value": 3
+      },
       "recommendation": "move",
       "rule": "single-consumer-tiny",
       "score": 3,
@@ -742,6 +622,7 @@
       ],
       "distance": 0,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -766,6 +647,11 @@
         "src/shared/pair/core.ts"
       ],
       "path": "src/shared/pair/a.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1.5,
+        "value": 3
+      },
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 3,
@@ -837,6 +723,7 @@
       ],
       "distance": 0,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -861,6 +748,11 @@
         "src/shared/pair/core.ts"
       ],
       "path": "src/shared/pair/b.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1.5,
+        "value": 3
+      },
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 3,
@@ -916,6 +808,7 @@
       ],
       "distance": 3,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 3,
       "guidelines": {
         "fanIn": {
@@ -938,6 +831,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/utils/invoice.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1.5,
+        "value": 3
+      },
       "recommendation": "move",
       "rule": "single-consumer-large",
       "score": 3,
@@ -996,6 +894,7 @@
       ],
       "distance": 3,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 3,
       "guidelines": {
         "fanIn": {
@@ -1018,6 +917,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/utils/slug.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1.5,
+        "value": 3
+      },
       "recommendation": "inline",
       "rule": "single-consumer-tiny",
       "score": 3,
@@ -1060,6 +964,162 @@
     {
       "age": 365,
       "blockers": [],
+      "churn": 3,
+      "coChange": {
+        "amongConsumers": null,
+        "consumers": [
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/features/feature1.ts",
+            "support": 0
+          },
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/features/feature2.ts",
+            "support": 0
+          },
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/features/feature3.ts",
+            "support": 0
+          },
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/features/feature4.ts",
+            "support": 0
+          },
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/features/feature5.ts",
+            "support": 0
+          },
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/features/feature6.ts",
+            "support": 0
+          },
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/features/feature7.ts",
+            "support": 0
+          },
+          {
+            "consumerChanges": 1,
+            "degree": 0,
+            "path": "src/features/feature8.ts",
+            "support": 0
+          }
+        ]
+      },
+      "directCalls": [
+        {
+          "count": 1,
+          "path": "src/features/feature1.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature2.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature3.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature4.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature5.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature6.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature7.ts"
+        },
+        {
+          "count": 1,
+          "path": "src/features/feature8.ts"
+        }
+      ],
+      "distance": 2,
+      "fanIn": 8,
+      "fanInPercentile": 100,
+      "gain": 16,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 1,
+          "value": 8
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 8,
+          "value": 16
+        }
+      },
+      "lastChanged": "2024-01-01",
+      "location": "src/shared",
+      "netDistance": {
+        "atTarget": 0,
+        "current": 16
+      },
+      "otherRefs": [],
+      "ownDeps": [],
+      "path": "src/shared/format.ts",
+      "ranking": {
+        "guideline": 8,
+        "ratio": 1,
+        "value": 8
+      },
+      "recommendation": "scrutinise",
+      "rule": "high-fan-in",
+      "score": 8,
+      "scoreUnit": "fan-in",
+      "signals": [
+        {
+          "detail": "fmt(compact)",
+          "name": "special-general-mixture"
+        }
+      ],
+      "size": {
+        "files": 1,
+        "lines": 3,
+        "units": 1
+      },
+      "source": "structural",
+      "strays": [],
+      "target": "src/features",
+      "testRefs": {
+        "external": [],
+        "owned": []
+      },
+      "unblockedGain": 16,
+      "unit": {
+        "cycle": false,
+        "entries": [],
+        "files": [
+          "src/shared/format.ts"
+        ],
+        "kind": "file",
+        "root": "src/shared/format.ts",
+        "tests": []
+      },
+      "visibility": "exported"
+    },
+    {
+      "age": 365,
+      "blockers": [],
       "churn": 23,
       "coChange": {
         "amongConsumers": null,
@@ -1080,6 +1140,7 @@
       ],
       "distance": 1,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 2,
       "guidelines": {
         "fanIn": {
@@ -1106,6 +1167,11 @@
         "src/shared/utils/money.ts"
       ],
       "path": "src/orders/place.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1,
+        "value": 2
+      },
       "recommendation": "review",
       "rule": "scattered-unit",
       "score": 2,
@@ -1177,6 +1243,7 @@
       ],
       "distance": 1,
       "fanIn": 2,
+      "fanInPercentile": 97,
       "gain": 2,
       "guidelines": {
         "fanIn": {
@@ -1199,6 +1266,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/log.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1,
+        "value": 2
+      },
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 2,
@@ -1247,6 +1319,7 @@
       "directCalls": [],
       "distance": 0,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -1271,6 +1344,11 @@
         "src/billing/charge.ts"
       ],
       "path": "src/billing/index.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 0,
+        "value": 0
+      },
       "recommendation": "inline",
       "rule": "single-consumer-barrel",
       "score": 0,
@@ -1329,6 +1407,7 @@
       ],
       "distance": 0,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -1353,6 +1432,11 @@
         "src/shared/log.ts"
       ],
       "path": "src/orders/audit.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 0,
+        "value": 0
+      },
       "recommendation": "inline",
       "rule": "pass-through",
       "score": 0,

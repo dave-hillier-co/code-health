@@ -234,7 +234,7 @@ export interface ExternalTool {
 export interface MoverCapability {
   /**
    * `codemod`: a backend rewrites every reference (ts-morph, rope). `file-move`: the move changes no name,
-   * so only the file moves (C# namespaces). `agent`: no deterministic mover, the agent edits and a tool confirms.
+   * so only the file moves (C# namespaces). `agent`: no deterministic mover, so the agent edits and a tool confirms. No registered language uses it.
    */
   kind: "codemod" | "file-move" | "agent";
   /** Extensions, with the dot, of the files the mover reads and rewrites. */

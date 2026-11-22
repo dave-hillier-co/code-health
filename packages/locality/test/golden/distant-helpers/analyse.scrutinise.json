@@ -128,6 +128,7 @@
       ],
       "distance": 2,
       "fanIn": 8,
+      "fanInPercentile": 100,
       "gain": 16,
       "guidelines": {
         "fanIn": {
@@ -150,6 +151,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/format.ts",
+      "ranking": {
+        "guideline": 8,
+        "ratio": 1,
+        "value": 8
+      },
       "recommendation": "scrutinise",
       "rule": "high-fan-in",
       "score": 8,

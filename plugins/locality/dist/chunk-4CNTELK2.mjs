@@ -3,14 +3,14 @@
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
   buildProject
-} from "./chunk-TCJWAWNW.mjs";
+} from "./chunk-I2KPD2OQ.mjs";
 import {
   require_ts_morph
 } from "./chunk-7KKGBP3S.mjs";
 import {
   sourceFilesOf
-} from "./chunk-J6UQKHZO.mjs";
-import "./chunk-OELMQMQG.mjs";
+} from "./chunk-ZEB3GM6O.mjs";
+import "./chunk-VHWJXNCC.mjs";
 import {
   __toESM
 } from "./chunk-OQRLKAKZ.mjs";
@@ -39,6 +39,32 @@ function relativeSpecifier(from, to, old) {
   }
   return relative;
 }
+var MODULE_PATH_CALLS = /* @__PURE__ */ new Set([
+  ...["mock", "doMock", "unmock", "doUnmock", "dontMock", "setMock", "requireActual", "requireMock", "createMockFromModule", "genMockFromModule", "unstable_mockModule"].map((method) => `jest.${method}`),
+  ...["mock", "doMock", "unmock", "doUnmock", "importActual", "importMock"].map((method) => `vi.${method}`),
+  "require.resolve"
+]);
+function modulePaths(file) {
+  const literals = [...file.getImportStringLiterals()];
+  const computed = [];
+  file.forEachDescendant((node) => {
+    if (!import_ts_morph.Node.isCallExpression(node)) return;
+    const call = node.getExpression().getText();
+    const argument = node.getArguments()[0];
+    if (!MODULE_PATH_CALLS.has(call) || argument === void 0) return;
+    if (import_ts_morph.Node.isStringLiteral(argument) || import_ts_morph.Node.isNoSubstitutionTemplateLiteral(argument)) {
+      if (!literals.some((known) => known.getStart() === argument.getStart())) literals.push(argument);
+      return;
+    }
+    const declared = import_ts_morph.Node.isIdentifier(argument) ? file.getVariableDeclaration(argument.getText())?.getInitializer()?.getText() : void 0;
+    computed.push({ line: node.getStartLineNumber(), call, text: `${argument.getText()} ${declared ?? ""}` });
+  });
+  literals.sort((a, b) => a.getStart() - b.getStart());
+  return { literals, computed };
+}
+function stemOf(path) {
+  return posix.basename(path).replace(KNOWN_EXTENSION, "");
+}
 function resolveSpecifier(project, specifier, from) {
   const resolved = import_ts_morph.ts.resolveModuleName(specifier, from.getFilePath(), project.getCompilerOptions(), project.getModuleResolutionHost());
   return resolved.resolvedModule?.resolvedFileName;
@@ -50,7 +76,7 @@ async function performMove(tree, operations) {
   const before = new Map(
     sources.map((file) => [
       relative(file.getFilePath()),
-      file.getImportStringLiterals().map((literal) => ({ specifier: literal.getLiteralValue(), target: resolveSpecifier(project, literal.getLiteralValue(), file) }))
+      modulePaths(file).literals.map((literal) => ({ specifier: literal.getLiteralValue(), target: resolveSpecifier(project, literal.getLiteralValue(), file) }))
     ])
   );
   const origin = /* @__PURE__ */ new Map();
@@ -71,7 +97,13 @@ async function performMove(tree, operations) {
     const path = relative(file.getFilePath());
     const was = before.get(origin.get(path) ?? path);
     if (was === void 0) continue;
-    const literals = file.getImportStringLiterals();
+    const { literals, computed } = modulePaths(file);
+    for (const site of computed) {
+      const referred = [...destination.values()].find((moved) => site.text.includes(stemOf(moved)));
+      if (referred !== void 0) {
+        warnings.push(`${path}:${site.line} ${site.call}(...) takes a computed path that may refer to ${relative(referred)}: check it by hand`);
+      }
+    }
     if (literals.length === was.length) {
       literals.forEach((literal, index) => {
         const old = was[index];
@@ -94,7 +126,7 @@ async function performMove(tree, operations) {
     }
     const text = file.getFullText();
     if (text !== originalText.get(origin.get(path) ?? path)) texts.set(path, text);
-    file.getImportStringLiterals().forEach((literal, index) => {
+    modulePaths(file).literals.forEach((literal, index) => {
       const old = was[index];
       if (old !== void 0 && old.specifier !== literal.getLiteralValue()) {
         rewrites.push({ path, line: literal.getStartLineNumber(), from: old.specifier, to: literal.getLiteralValue() });
@@ -107,7 +139,7 @@ async function performMove(tree, operations) {
 function skeleton(path, text) {
   const project = new import_ts_morph.Project({ useInMemoryFileSystem: true, skipAddingFilesFromTsConfig: true, compilerOptions: { allowJs: true } });
   const file = project.createSourceFile(`/${path}`, text);
-  const literals = file.getImportStringLiterals();
+  const { literals } = modulePaths(file);
   const specifiers = literals.map((literal) => ({ value: literal.getLiteralValue(), line: literal.getStartLineNumber() }));
   let blanked = text;
   for (const literal of [...literals].reverse()) {

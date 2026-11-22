@@ -1,5 +1,5 @@
 import { posix } from "node:path";
-import { Project, ts, type SourceFile } from "ts-morph";
+import { Node, Project, ts, type NoSubstitutionTemplateLiteral, type SourceFile, type StringLiteral } from "ts-morph";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
 import { buildProject } from "../ts-project.ts";
@@ -36,6 +36,46 @@ function relativeSpecifier(from: string, to: string, old: string): string {
   return relative;
 }
 
+/** Calls whose first argument is a module path: the test frameworks' mock and actual-module helpers, and `require.resolve`. */
+const MODULE_PATH_CALLS = new Set([
+  ...["mock", "doMock", "unmock", "doUnmock", "dontMock", "setMock", "requireActual", "requireMock", "createMockFromModule", "genMockFromModule", "unstable_mockModule"].map((method) => `jest.${method}`),
+  ...["mock", "doMock", "unmock", "doUnmock", "importActual", "importMock"].map((method) => `vi.${method}`),
+  "require.resolve",
+]);
+
+type PathLiteral = StringLiteral | NoSubstitutionTemplateLiteral;
+
+interface ModulePaths {
+  /** Every literal that names a module: import specifiers and the literal path arguments of mock calls, in source order. */
+  literals: PathLiteral[];
+  /** Mock calls whose path is computed, with the argument's text and the initialiser's text when the argument is a variable. */
+  computed: { line: number; call: string; text: string }[];
+}
+
+function modulePaths(file: SourceFile): ModulePaths {
+  const literals: PathLiteral[] = [...file.getImportStringLiterals()];
+  const computed: ModulePaths["computed"] = [];
+  file.forEachDescendant((node) => {
+    if (!Node.isCallExpression(node)) return;
+    const call = node.getExpression().getText();
+    const argument = node.getArguments()[0];
+    if (!MODULE_PATH_CALLS.has(call) || argument === undefined) return;
+    if (Node.isStringLiteral(argument) || Node.isNoSubstitutionTemplateLiteral(argument)) {
+      if (!literals.some((known) => known.getStart() === argument.getStart())) literals.push(argument);
+      return;
+    }
+    const declared = Node.isIdentifier(argument) ? file.getVariableDeclaration(argument.getText())?.getInitializer()?.getText() : undefined;
+    computed.push({ line: node.getStartLineNumber(), call, text: `${argument.getText()} ${declared ?? ""}` });
+  });
+  literals.sort((a, b) => a.getStart() - b.getStart());
+  return { literals, computed };
+}
+
+/** The file name without directory or extension, which is what a computed path would still spell out. */
+function stemOf(path: string): string {
+  return posix.basename(path).replace(KNOWN_EXTENSION, "");
+}
+
 function resolveSpecifier(project: Project, specifier: string, from: SourceFile): string | undefined {
   const resolved = ts.resolveModuleName(specifier, from.getFilePath(), project.getCompilerOptions(), project.getModuleResolutionHost());
   return resolved.resolvedModule?.resolvedFileName;
@@ -55,7 +95,7 @@ async function performMove(tree: SourceTree, operations: readonly FileOperation[
   const before = new Map(
     sources.map((file) => [
       relative(file.getFilePath()),
-      file.getImportStringLiterals().map((literal) => ({ specifier: literal.getLiteralValue(), target: resolveSpecifier(project, literal.getLiteralValue(), file) })),
+      modulePaths(file).literals.map((literal) => ({ specifier: literal.getLiteralValue(), target: resolveSpecifier(project, literal.getLiteralValue(), file) })),
     ]),
   );
 
@@ -78,7 +118,13 @@ async function performMove(tree: SourceTree, operations: readonly FileOperation[
     const path = relative(file.getFilePath());
     const was = before.get(origin.get(path) ?? path);
     if (was === undefined) continue;
-    const literals = file.getImportStringLiterals();
+    const { literals, computed } = modulePaths(file);
+    for (const site of computed) {
+      const referred = [...destination.values()].find((moved) => site.text.includes(stemOf(moved)));
+      if (referred !== undefined) {
+        warnings.push(`${path}:${site.line} ${site.call}(...) takes a computed path that may refer to ${relative(referred)}: check it by hand`);
+      }
+    }
     if (literals.length === was.length) {
       literals.forEach((literal, index) => {
         const old = was[index]!;
@@ -101,7 +147,7 @@ async function performMove(tree: SourceTree, operations: readonly FileOperation[
     }
     const text = file.getFullText();
     if (text !== originalText.get(origin.get(path) ?? path)) texts.set(path, text);
-    file.getImportStringLiterals().forEach((literal, index) => {
+    modulePaths(file).literals.forEach((literal, index) => {
       const old = was[index];
       if (old !== undefined && old.specifier !== literal.getLiteralValue()) {
         rewrites.push({ path, line: literal.getStartLineNumber(), from: old.specifier, to: literal.getLiteralValue() });
@@ -116,7 +162,7 @@ async function performMove(tree: SourceTree, operations: readonly FileOperation[
 function skeleton(path: string, text: string): Skeleton {
   const project = new Project({ useInMemoryFileSystem: true, skipAddingFilesFromTsConfig: true, compilerOptions: { allowJs: true } });
   const file = project.createSourceFile(`/${path}`, text);
-  const literals = file.getImportStringLiterals();
+  const { literals } = modulePaths(file);
   const specifiers = literals.map((literal) => ({ value: literal.getLiteralValue(), line: literal.getStartLineNumber() }));
   let blanked = text;
   for (const literal of [...literals].reverse()) {

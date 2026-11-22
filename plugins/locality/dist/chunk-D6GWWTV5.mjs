@@ -3,10 +3,10 @@
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
   GrammarSet
-} from "./chunk-HSHIZHZS.mjs";
+} from "./chunk-5NFRAFXB.mjs";
 import {
   sourceFilesOf
-} from "./chunk-J6UQKHZO.mjs";
+} from "./chunk-ZEB3GM6O.mjs";
 import {
   PackageGraph,
   defaultPackageName,
@@ -16,7 +16,7 @@ import {
   isExported,
   isGoModFile,
   isGoWorkFile
-} from "./chunk-OELMQMQG.mjs";
+} from "./chunk-VHWJXNCC.mjs";
 import "./chunk-OQRLKAKZ.mjs";
 
 // packages/locality/src/movers/go-backend.ts

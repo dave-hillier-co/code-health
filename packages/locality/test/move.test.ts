@@ -423,3 +423,47 @@ test("a unit the analyser does not report and a move it has no reason for are to
   const { code } = await move(shared, "src/shared/utils/nothing-here.ts", "--to", "src/other", "--reason", "x");
   expect(code).toBe(ExitCode.Usage);
 });
+
+test("literal paths in mock calls follow a moved file, and a computed mock path that may refer to it is a warning", async () => {
+  const repo = distantHelpers();
+  try {
+    repo.apply([
+      {
+        type: "commit",
+        message: "Mock money in a test",
+        date: "2025-02-01T09:00:00Z",
+        changes: [
+          {
+            op: "add",
+            path: "src/orders/mocked.test.ts",
+            content: [
+              'import { place } from "./place.ts";',
+              'jest.mock("../shared/utils/money.ts");',
+              'vi.doMock("../shared/utils/money.ts", () => ({}));',
+              'const actual = jest.requireActual("../shared/utils/money.ts");',
+              'const loaded = await vi.importActual("../shared/utils/money.ts");',
+              'jest.mock("lodash");',
+              'const folder = "../shared/utils/";',
+              "jest.mock(folder + `${name}money.ts`);",
+              "export { place, actual, loaded };",
+              "",
+            ].join("\n"),
+          },
+        ],
+      },
+    ]);
+    const { document } = await move(repo, "src/shared/utils/money.ts");
+    const mocked = document.rewrites.filter((rewrite) => rewrite.path === "src/orders/mocked.test.ts");
+    expect(mocked).toEqual([
+      { path: "src/orders/mocked.test.ts", line: 2, from: "../shared/utils/money.ts", to: "../money.ts" },
+      { path: "src/orders/mocked.test.ts", line: 3, from: "../shared/utils/money.ts", to: "../money.ts" },
+      { path: "src/orders/mocked.test.ts", line: 4, from: "../shared/utils/money.ts", to: "../money.ts" },
+      { path: "src/orders/mocked.test.ts", line: 5, from: "../shared/utils/money.ts", to: "../money.ts" },
+    ]);
+    expect((document as unknown as { warnings: string[] }).warnings).toEqual([
+      "src/orders/mocked.test.ts:8 jest.mock(...) takes a computed path that may refer to src/money.ts: check it by hand",
+    ]);
+  } finally {
+    repo.dispose();
+  }
+});

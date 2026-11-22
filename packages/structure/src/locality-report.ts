@@ -51,6 +51,7 @@ export function readLocalityUnblocks(context: CommandContext, head: string): Loc
   } catch {
     return undefined;
   }
+  if (document.schemaVersion !== 1) return undefined;
   if (document.tool !== LOCALITY_REPORT.tool || document.command !== LOCALITY_REPORT.command) return undefined;
   if (typeof document.schemaVersion !== "number" || !RECOGNISED_LOCALITY_SCHEMA_VERSIONS.includes(document.schemaVersion)) {
     const found = document.schemaVersion === undefined ? "has no schemaVersion" : `has schemaVersion ${JSON.stringify(document.schemaVersion)}`;
