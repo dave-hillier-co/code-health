@@ -93,7 +93,7 @@ test("hash is the first 16 hex digits of the SHA-256 of the serialised effective
   writeConfig({ exclude: ["dist"], cochange: { windowMonths: 3 } });
   const config = load();
   expect(config.hash).toBe(createHash("sha256").update(serialise(config.effective)).digest("hex").slice(0, 16));
-  expect(config.hash).toBe("1e0a7cd0cfa4603f");
+  expect(config.hash).toBe("d85831254c549aee");
 });
 
 const reading: PluginConfigSpec = { plugin: "cochange", section: { minSupport: 5 }, history: ["windowMonths", "botPatterns", "evidence", "branch"] };

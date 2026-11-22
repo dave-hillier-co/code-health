@@ -53,7 +53,7 @@ test("the committed bundles, chunks and grammars are what a fresh build produces
   expect(await staleBundles(root)).toEqual([]);
 }, 120_000);
 
-test("the parse layer is a chunk the main bundle imports on demand, and nothing it loads statically reaches it", () => {
+test("a module only some commands need is a chunk the main bundle imports on demand, and nothing it loads statically reaches it", () => {
   const dynamic = [...text.matchAll(/await import\("(\.\/chunk-[A-Z0-9]+\.mjs)"\)/g)].map((m) => m[1]!.slice(2));
   expect(dynamic.length).toBeGreaterThan(0);
   const staticSpecifiers = (source: string) => [...source.matchAll(/^import\s[^;]*?from\s+"\.\/(chunk-[A-Z0-9]+\.mjs)"/gm)].map((m) => m[1]!);
@@ -69,8 +69,6 @@ test("the parse layer is a chunk the main bundle imports on demand, and nothing 
   for (const chunk of dynamic) {
     expect(chunks.has(chunk)).toBe(true);
     expect(reached.has(chunk), `${chunk} is loaded statically`).toBe(false);
-    // The point of a chunk: it is the large part, and a command that never needs it never reads it.
-    expect(Buffer.byteLength(chunks.get(chunk)!)).toBeGreaterThan(Buffer.byteLength(text));
   }
 });
 

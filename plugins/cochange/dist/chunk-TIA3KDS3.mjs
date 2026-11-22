@@ -16,7 +16,7 @@ import {
   recordDropped,
   resolveBySymbols,
   supportedAdapters
-} from "./chunk-LHFWMVTH.mjs";
+} from "./chunk-7PJUILTM.mjs";
 
 // packages/cochange/src/risk/signatures.ts
 import { readFileSync as readFileSync3 } from "node:fs";
@@ -4503,11 +4503,19 @@ async function analyseTree(tree, options = {}) {
     if (fileFacts) facts.set(path, fileFacts);
   }
   const configs = await tree.readMany(sortedPaths.filter((path) => isConfigPath(path, adapters)));
+  const untrackedConfigs = /* @__PURE__ */ new Set();
+  const baseName = (path) => path.slice(path.lastIndexOf("/") + 1);
+  const trackedNames = new Set([...configs.keys()].map(baseName));
+  for (const [path, text] of options.extraConfigs ?? []) {
+    if (trackedNames.has(baseName(path)) || tree.files.has(path) || !isConfigPath(path, adapters)) continue;
+    configs.set(path, text);
+    untrackedConfigs.add(path);
+  }
   const resolved = [];
   for (const group of dependencyGroups(new Set(owners.values()))) {
     const members = new Set(group.map((adapter) => adapter.id));
     const groupFacts = new Map([...facts].filter(([path]) => members.has(owners.get(path).id)));
-    const input = { facts: groupFacts, paths: sortedPaths, configs, isTestPath: isTest };
+    const input = { facts: groupFacts, paths: sortedPaths, configs, isTestPath: isTest, untrackedConfigs, includeRoots: options.includeRoots ?? [] };
     const dependencies = group[0].dependencies;
     resolved.push(
       dependencies.model === "import-based" ? new ImportModel(groupFacts, dependencies.createResolver(sortedPaths, configs), isTest).build() : dependencies.resolve?.(input) ?? resolveBySymbols(input)
@@ -4560,7 +4568,8 @@ function assemble(facts, resolved) {
     unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
     filesWithSyntaxErrors,
     filesWithMacroCode,
-    generatedFiles
+    generatedFiles,
+    ...resolved.some((group) => group.includeResolution !== void 0) ? { includeResolution: resolved.find((group) => group.includeResolution !== void 0).includeResolution } : {}
   };
 }
 function compareUtf8(a, b) {

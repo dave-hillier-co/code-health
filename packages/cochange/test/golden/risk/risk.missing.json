@@ -265,7 +265,7 @@
               {
                 "id": "1e58237e7d6533de0a055288728b97dc7524dd94",
                 "matchedIn": "subject",
-                "pattern": "\\bfix\\b",
+                "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
                 "subject": "Fix tax rounding"
               }
             ],
