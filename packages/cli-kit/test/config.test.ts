@@ -1,7 +1,9 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { afterEach, beforeEach, expect, test } from "vitest";
+import { serialise } from "../src/serialise.ts";
 import { explainConfig, loadConfig } from "../src/config.ts";
 import { CliError, ExitCode } from "../src/errors.ts";
 
@@ -74,6 +76,13 @@ test("hash is stable, short and changes with effective values only", () => {
   expect(load().hash).toBe(defaults);
   writeConfig({ cochange: { windowMonths: 3 } });
   expect(load().hash).not.toBe(defaults);
+});
+
+test("hash is the first 16 hex digits of the SHA-256 of the serialised effective config, which is all the goldens rely on being pinned", () => {
+  writeConfig({ exclude: ["dist"], cochange: { windowMonths: 3 } });
+  const config = load();
+  expect(config.hash).toBe(createHash("sha256").update(serialise(config.effective)).digest("hex").slice(0, 16));
+  expect(config.hash).toBe("65450dcc79f675e3");
 });
 
 test("hash does not depend on key order in the file", () => {

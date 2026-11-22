@@ -1,7 +1,7 @@
 {
   "changedFiles": 2,
   "command": "diff",
-  "config": "63e4c6aa9bed9217",
+  "config": "0000000000000000",
   "inputs": {
     "against": "working-tree",
     "base": {

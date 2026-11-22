@@ -2,7 +2,7 @@
   "applied": false,
   "command": "update-namespaces",
   "commit": null,
-  "config": "fb5d49942351aa37",
+  "config": "0000000000000000",
   "inputs": {
     "apply": false,
     "commit": "843fa41da931aee1159af9d2b6df06a7a7bf7a8d",

@@ -6,7 +6,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { reportPath } from "../src/reports.ts";
-import { expectGolden, withoutMeta } from "./support/golden.ts";
+import { expectGolden, withoutMeta, withoutMetaOnly } from "./support/golden.ts";
 import { probeCli } from "./support/probe-cli.ts";
 import { runCochange } from "./support/run.ts";
 import { steadyHistory } from "./support/scenarios.ts";
@@ -88,7 +88,7 @@ test("a clean whole-repository run stores the complete result as a stamped repor
   expect(report.evidence.grade).toBe("weak");
   expect(readFileSync(join(repo.path, ".cache/code-health/.gitignore"), "utf8")).toBe("*\n");
   // The stored report is the full, unprojected result in the printed format.
-  expect(stored).toBe(withoutMeta((await probe(repo.path, "--limit", "all")).stdout));
+  expect(stored).toBe(withoutMetaOnly((await probe(repo.path, "--limit", "all")).stdout));
 });
 
 test("no report is written on a dirty tree", async () => {

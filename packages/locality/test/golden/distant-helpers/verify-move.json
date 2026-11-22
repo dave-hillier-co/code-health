@@ -5,7 +5,7 @@
     "trailer": true
   },
   "command": "verify-move",
-  "config": "f45c9b4a17afe5b3",
+  "config": "0000000000000000",
   "content": {
     "identical": 4,
     "otherChanges": [],

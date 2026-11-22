@@ -1,8 +1,8 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expectGoldenIn, withoutMeta } from "@code-health/fixtures/cli-testing";
+import { expectGoldenIn, withoutMeta, withoutMetaOnly } from "@code-health/fixtures/cli-testing";
 
-export { withoutMeta };
+export { withoutMeta, withoutMetaOnly };
 
 export const GOLDEN_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "golden");
 

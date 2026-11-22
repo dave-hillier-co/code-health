@@ -1,6 +1,6 @@
 {
   "command": "explain",
-  "config": "25577109d836aa14",
+  "config": "0000000000000000",
   "inputs": {
     "tree": "head",
     "unit": "src/pricing.ts#price"

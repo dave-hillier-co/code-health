@@ -27,10 +27,22 @@ export async function runInProcess(cli: CliDefinition, cwd: string, argv: string
   return { code, stdout, stderr };
 }
 
-/** The output as it is stored: `meta` (timings, timestamps, versions) removed, then serialised byte for byte. */
-export function withoutMeta(stdout: string): string {
+/** What a stored output carries in place of the effective-config hash, so a config default changing does not churn every golden. */
+export const GOLDEN_CONFIG_HASH = "0000000000000000";
+
+/** The output with only `meta` removed, serialised byte for byte: the form a stored report takes, hash included. */
+export function withoutMetaOnly(stdout: string): string {
   const { meta: _meta, ...document } = JSON.parse(stdout);
   return serialise(document);
+}
+
+/**
+ * The output as it is stored: `meta` (timings, timestamps, versions) removed and the effective-config hash
+ * masked, then serialised byte for byte. How the hash is computed is pinned once, in the cli-kit config tests.
+ */
+export function withoutMeta(stdout: string): string {
+  const { meta: _meta, ...document } = JSON.parse(stdout);
+  return serialise("config" in document ? { ...document, config: GOLDEN_CONFIG_HASH } : document);
 }
 
 /**

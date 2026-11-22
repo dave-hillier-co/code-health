@@ -5,7 +5,7 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { reportPath } from "../src/reports.ts";
 import { ruleDescriptions } from "../src/rules.ts";
-import { expectGolden, withoutMeta } from "./support/golden.ts";
+import { expectGolden, withoutMeta, withoutMetaOnly } from "./support/golden.ts";
 import { runLocality } from "./support/run.ts";
 import { distantHelpers } from "./support/scenarios.ts";
 
@@ -180,7 +180,7 @@ test("a whole-repository run on a clean tree stores every result as reports/loca
   expect(report.results.length).toBe(printed.truncated.total);
   expect(report).toMatchObject({ tool: "locality", command: "analyse", repo: { head: printed.repo.head, dirty: false } });
   expect(report.meta).toBeUndefined();
-  expect(stored).toBe(withoutMeta(stored));
+  expect(stored).toBe(withoutMetaOnly(stored));
 });
 
 test("the output is byte for byte reproducible", async () => {
