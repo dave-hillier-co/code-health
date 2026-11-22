@@ -1,6 +1,6 @@
 import { compareIds } from "@code-health/graph/graph";
 import type { Census } from "./census/census.ts";
-import { nearbyMechanisms, type NearbyMechanism } from "./census/nearby.ts";
+import { nearbyMechanisms, nearbyOmitted, type NearbyMechanism } from "./census/nearby.ts";
 import type { Unblock } from "./locality-report.ts";
 import { findCycles, unblocksOf } from "./cycles.ts";
 import { couplingId, judgePair, orientPair, type QuadrantJudgement } from "./coupling.ts";
@@ -70,6 +70,8 @@ export interface EvidencePack {
   unblocks: Unblock[];
   /** Census entries in or next to the two modules, nearest first. See `structure census` for the whole inventory. */
   nearbyMechanisms: NearbyMechanism[];
+  /** Census entries beyond the listed ones, farther away than the last listed. */
+  nearbyMechanismsOmitted: number;
   /** The layer rules the edge's imports break, one entry per pair of layers, or null when it breaks none. */
   layerRule: LayerRuleBreach[] | null;
 }
@@ -158,7 +160,7 @@ export function evidencePack(
     kinds.push("layer-violation");
     for (const breach of rule) for (const edge of breach.fileEdges) findings.push(layerViolationId(edge.from, edge.to));
   }
-  if (verdict.violates) {
+  if (verdict.aboveGuideline) {
     kinds.push("unstable-dependency");
     findings.push(unstableId(level, from, to));
   }
@@ -197,6 +199,7 @@ export function evidencePack(
       (model.graph.filesOf.get(from) ?? []).map(folderOf),
       (model.graph.filesOf.get(to) ?? []).map(folderOf),
     ),
+    nearbyMechanismsOmitted: nearbyOmitted(census),
     layerRule: rule,
   };
 }
@@ -226,6 +229,8 @@ export interface HubEvidencePack {
   unblocks: Unblock[];
   /** Census entries in or next to the hub's folder and its features, nearest first. */
   nearbyMechanisms: NearbyMechanism[];
+  /** Census entries beyond the listed ones, farther away than the last listed. */
+  nearbyMechanismsOmitted: number;
 }
 
 export function hubEvidencePack(model: Model, hub: Hub, census: Census): HubEvidencePack {
@@ -257,5 +262,6 @@ export function hubEvidencePack(model: Model, hub: Hub, census: Census): HubEvid
       [folderOf(hub.file)],
       hub.features.flatMap((feature) => (model.graph.filesOf.get(feature.module) ?? []).map(folderOf)),
     ),
+    nearbyMechanismsOmitted: nearbyOmitted(census),
   };
 }

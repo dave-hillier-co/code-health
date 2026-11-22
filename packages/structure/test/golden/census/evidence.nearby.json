@@ -225,6 +225,7 @@
           "variant": "handler-decorator"
         }
       ],
+      "nearbyMechanismsOmitted": 5,
       "quadrant": {
         "bothActive": false,
         "coChange": {
@@ -275,11 +276,12 @@
         }
       },
       "stabilityVerdict": {
+        "aboveGuideline": false,
         "basis": "structure",
-        "changeViolation": null,
+        "changeAboveGuideline": null,
         "disagree": false,
-        "structuralViolation": false,
-        "violates": false,
+        "structuralAboveGuideline": false,
+        "towardsLessStable": false,
         "volatilityRatio": null
       },
       "to": "src/billing/lines.ts",

@@ -348,6 +348,7 @@
       "level": "folder",
       "module": "src",
       "nearbyMechanisms": [],
+      "nearbyMechanismsOmitted": 0,
       "revisions": 13,
       "signals": {
         "appendShapedEdits": {

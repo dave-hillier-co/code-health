@@ -40,6 +40,16 @@ function distanceTo(folders: readonly string[], sideFolders: readonly string[]):
  * mechanism would be new.
  */
 export function nearbyMechanisms(census: Census, from: readonly string[], to: readonly string[], limit: number = NEARBY_LIMIT): NearbyMechanism[] {
+  return rankNearby(census, from, to).slice(0, limit);
+}
+
+/** How many census entries `nearbyMechanisms` leaves out at the limit, so a capped list says what it left out. */
+export function nearbyOmitted(census: Census, limit: number = NEARBY_LIMIT): number {
+  return Math.max(0, census.occurrences.length - limit);
+}
+
+/** Every census entry ordered by distance from the two sides, nearest first. */
+export function rankNearby(census: Census, from: readonly string[], to: readonly string[]): NearbyMechanism[] {
   return census.occurrences
     .map((o): NearbyMechanism => {
       const toFrom = distanceTo(o.folders, from);
@@ -60,6 +70,5 @@ export function nearbyMechanisms(census: Census, from: readonly string[], to: re
         MECHANISMS.indexOf(a.mechanism) - MECHANISMS.indexOf(b.mechanism) ||
         compareUtf8(a.path, b.path) ||
         (a.line ?? 0) - (b.line ?? 0),
-    )
-    .slice(0, limit);
+    );
 }

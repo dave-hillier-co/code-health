@@ -41,7 +41,7 @@ interface Pack {
   quadrant: { name: string };
   inBreakingSet: boolean | null;
   breakingSet: { symbol: string; sites: number; usedBy: string[] }[];
-  stabilityVerdict: { basis: string; violates: boolean };
+  stabilityVerdict: { basis: string; aboveGuideline: boolean };
   coChange: { shared: number; fromChanges: number; toChanges: number; expected: number; eligibleChanges: number; confidenceFromTo: number };
   misplacement: { symbol: string; mostlyOn: string; moveMayRemoveDependency: boolean; onFromSide: number; onToSide: number; elsewhere: number }[];
   unblocks: { unit: string; unblockedGain: number }[];
@@ -108,7 +108,7 @@ describe("a finding", () => {
     const { document } = await evidence(stability, "unstable:folder:src/stable->src/volatile");
     const [pack] = document.results;
     expect(pack).toMatchObject({ level: "folder", kind: "unstable-dependency", findings: ["unstable:folder:src/stable->src/volatile"], inBreakingSet: null });
-    expect(pack!.stabilityVerdict).toMatchObject({ basis: "change", violates: true });
+    expect(pack!.stabilityVerdict).toMatchObject({ basis: "change", aboveGuideline: true });
   });
 
   test("golden", async () => {
