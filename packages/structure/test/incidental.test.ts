@@ -121,6 +121,30 @@ describe("incidental coupling", () => {
     expectGolden("incidental", "coupling.incidental", stdout);
   });
 
+  test("counts tasks run in a linked worktree of the repository", async () => {
+    const parent = mkdtempSync(join(tmpdir(), "incidental-worktree-"));
+    const sessions = mkdtempSync(join(tmpdir(), "incidental-worktree-sessions-"));
+    try {
+      const linked = join(parent, "linked");
+      repo.git("worktree", "add", "--detach", linked);
+      const root = realpathSync(linked);
+      const directory = join(sessions, encodeProjectDir(root));
+      mkdirSync(directory, { recursive: true });
+      const session = new SyntheticSession({ cwd: root, start: "2024-02-22T10:00:00.000Z", sessionId: "linked" });
+      for (let task = 0; task < 3; task++) {
+        session.prompt();
+        session.assistant(`l${task}`, [read(`${root}/src/burdenlib/callee.ts`), edit(`${root}/src/burden/caller.ts`)], { output: 100 });
+      }
+      writeFileSync(join(directory, "linked.jsonl"), session.toJsonl());
+      const { byId } = await incidental("--projects-dir", sessions);
+      expect(byId("src/burden->src/burdenlib").incidental).toEqual({ rank: "high", reasons: ["agent-reads"], agentReads: 3 });
+    } finally {
+      repo.git("worktree", "remove", "--force", join(parent, "linked"));
+      rmSync(parent, { recursive: true, force: true });
+      rmSync(sessions, { recursive: true, force: true });
+    }
+  });
+
   test("a missing projects directory is an environment problem, not silence", async () => {
     const run = await runStructure(repo.path, ["coupling", "--json", "--projects-dir", join(projects, "absent")]);
     expect(run.code).not.toBe(ExitCode.Success);

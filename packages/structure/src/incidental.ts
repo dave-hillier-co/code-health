@@ -14,11 +14,11 @@ import { edgeKey } from "./project.ts";
 
 const day = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);
 
-/** The agent tasks of the analysis window, from Claude Code session transcripts. Paths and counts only. */
-export function readAgentTasks(root: string, projectsDir: string, window: { since: number; until: number }): TaskEffort[] {
+/** The agent tasks of the analysis window, from Claude Code session transcripts, in any checkout of the repository. Paths and counts only. */
+export function readAgentTasks(repoRoots: readonly string[], projectsDir: string, window: { since: number; until: number }): TaskEffort[] {
   if (!existsSync(projectsDir)) throw environmentError("no-projects-dir", `${projectsDir} does not exist`);
   const parsed = parseWindow(day(window.since), day(window.until + 86_400));
-  return measureRepo({ projectsDir, repoRoots: [root], window: parsed }).tasks;
+  return measureRepo({ projectsDir, repoRoots, window: parsed }).tasks;
 }
 
 /**

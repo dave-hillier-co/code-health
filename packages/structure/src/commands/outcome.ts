@@ -2,6 +2,7 @@ import { usageError } from "@code-health/cli-kit/errors";
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { runGit } from "@code-health/history/git";
 import { monthsBefore } from "@code-health/history/evidence";
+import { checkouts } from "@code-health/history/checkouts";
 import { stampOf } from "@code-health/transcripts/stamp";
 import { readAgentTasks } from "../incidental.ts";
 import { analysisCommand } from "../analysis-command.ts";
@@ -85,7 +86,7 @@ export const command = analysisCommand(name, {
     const tasks =
       projectsDir === undefined
         ? { reason: "no --projects-dir was given" }
-        : { tasks: readAgentTasks(root, projectsDir, { since: date - seconds, until: date + seconds }) };
+        : { tasks: readAgentTasks(await checkouts(root), projectsDir, { since: date - seconds, until: date + seconds }) };
     const measured = measureOutcome(
       {
         level,

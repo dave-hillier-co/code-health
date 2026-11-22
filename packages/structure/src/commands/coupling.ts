@@ -1,6 +1,7 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { usageError } from "@code-health/cli-kit/errors";
 import { analysisCommand, type AnalysisInput } from "../analysis-command.ts";
+import { checkouts } from "@code-health/history/checkouts";
 import { stampOf } from "@code-health/transcripts/stamp";
 import { rankIncidental, readAgentTasks } from "../incidental.ts";
 import { findCoupling, QUADRANTS, type Quadrant } from "../coupling.ts";
@@ -70,7 +71,7 @@ export function parseQuadrant(value: unknown): Quadrant | undefined {
 export async function analyseCoupling({ context, history }: AnalysisInput, level: Level, quadrant: Quadrant | undefined) {
   const model = await buildModel(context, history, level, undefined, { everyPair: true });
   const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : undefined;
-  const tasks = projectsDir === undefined ? undefined : readAgentTasks(context.repo.root, projectsDir, history.window);
+  const tasks = projectsDir === undefined ? undefined : readAgentTasks(await checkouts(context.repo.root), projectsDir, history.window);
   const all = rankIncidental(findCoupling(model, history.settings), model, history.settings, tasks);
   const rows = quadrant === undefined ? all : all.filter((row) => row.quadrant === quadrant);
   return {

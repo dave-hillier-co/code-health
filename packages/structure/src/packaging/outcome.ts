@@ -6,6 +6,7 @@ import { runGit } from "@code-health/history/git";
 import type { LogicalChange } from "@code-health/history/noise";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { measureRepo, summariseTasks, type EffortSummary } from "@code-health/transcripts/measure-repo";
+import { checkouts } from "@code-health/history/checkouts";
 import { stampOf } from "@code-health/transcripts/stamp";
 import { parseWindow } from "@code-health/transcripts/time-window";
 import type { StructureSettings } from "../config.ts";
@@ -229,6 +230,7 @@ export async function measureOutcome(
 
   const dirsOf = (model: PackageModel, ids: ReadonlySet<string>): string[] => model.packages.filter((p) => ids.has(p.id) && p.dir !== null).map((p) => (p.dir === "." ? "" : p.dir!));
   let transcriptStamp: string | null = null;
+  const repoRoots = options.projectsDir === undefined ? [root] : await checkouts(root);
   const effort = (): Outcome["agentEffort"] => {
     const projectsDir = options.projectsDir;
     if (projectsDir === undefined || !existsSync(projectsDir)) {
@@ -236,7 +238,7 @@ export async function measureOutcome(
     }
     const windowOf = (from: number, to: number) => parseWindow(day(from), day(to));
     const touching = <T extends { editedPaths: string[] }>(tasks: T[], dirs: string[]): T[] => tasks.filter((t) => t.editedPaths.some((p) => dirs.some((d) => d === "" || p === d || p.startsWith(`${d}/`))));
-    const measure = (from: number, to: number) => measureRepo({ projectsDir, repoRoots: [root], window: windowOf(from, to) }).tasks;
+    const measure = (from: number, to: number) => measureRepo({ projectsDir, repoRoots, window: windowOf(from, to) }).tasks;
     const beforeTasks = measure(monthsBefore(date, settings.windowMonths), date);
     const afterTasks = measure(date, anchor + 86_400);
     transcriptStamp = stampOf([...beforeTasks, ...afterTasks]);
