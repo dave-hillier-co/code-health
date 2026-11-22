@@ -15,7 +15,7 @@ export const rules: Record<string, Rule> = {
     explanation: [
       "A logical change is a fix when one of its commits matches history.fixPatterns (default: fix, fixes, fixed or fixing at the start of the subject or after 'to', the whole words bug, bugfix, hotfix and defect, a fix: prefix, a merge of a fix branch),",
       "and a revert when one matches history.revertPatterns or says 'This reverts commit'. A revert is counted in its own column and is not a fix.",
-      "A change that a fix pattern matched is left out, and counted in fixesExcluded with the pattern that excluded it, when history.fixExcludePatterns matches the subject (default: the fix target is typos, lint, docs, tests, formatting or CI).",
+      "A change that a fix pattern matched is left out, and counted in fixesExcluded with the pattern that excluded it, when history.fixExcludePatterns matches the subject (default: a non-fix Conventional Commits type such as chore, ci, test or docs, a fix target of typos, spelling, lint or formatting, or a follow-up to review comments).",
       "Bodies are matched only with history.fixMatchBody. The count is per file or component, once per logical change, over the same window and noise filters as hotspots.",
       "",
       "This is a count of commit messages, not of defects. A message such as 'fix the bug report template' matches, and a fix that does not say so does not.",
@@ -26,7 +26,7 @@ export const rules: Record<string, Rule> = {
 };
 
 function excludedNotice(count: number, byPattern: { pattern: string; count: number }[]): string {
-  return `${count} changes matched a fix pattern and were left out because the subject is about formatting, lint, typos, docs or tests (history.fixExcludePatterns): ${byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`;
+  return `${count} changes matched a fix pattern and were left out because the commit has a non-fix Conventional Commits type, or is about typos, spelling, lint or formatting, or follows up review comments (history.fixExcludePatterns): ${byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`;
 }
 
 function evidenceOption(value: unknown): number {

@@ -99,7 +99,9 @@
             "\\bbugs\\b",
             "\\bbugfix\\b",
             "\\bhotfix\\b",
-            "\\bdefect\\b"
+            "\\bdefect\\b",
+            "\\bfix(?:es)?\\s+#\\d+",
+            "^review\\s+fix(?:es)?\\b"
           ]
         },
         "fixExcludePatterns": {
@@ -108,7 +110,9 @@
             "type": "string"
           },
           "default": [
-            "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|lints?|linting|linters?|tests?|testing|flaky|docs?|documentation|readme|formatting|whitespace|ci|prettier|eslint)\\b"
+            "^(?:chore|ci|test|tests|docs|style|build|refactor|perf)(?:\\([^)]*\\))?!?:",
+            "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b",
+            "\\b(?:address(?:es|ed|ing)?\\s+(?:the\\s+)?(?:review\\s+)?comments?|review\\s+(?:comments?|feedback|fixes)|comment\\s+nits?)\\b"
           ]
         },
         "revertPatterns": {

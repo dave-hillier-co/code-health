@@ -31,7 +31,6 @@ describe("the default fix patterns", () => {
     for (const subject of [
       "Add fixed clock",
       "Add a fixed frame budget",
-      "Review fixes for the cache",
       "Describe fix commits in the spec",
       "Parse the issue key",
       "address review issue",
@@ -60,25 +59,91 @@ describe("the default fix patterns", () => {
   });
 });
 
+describe("Conventional Commits types", () => {
+  const typeRule = historyDefaults.fixExcludePatterns[0];
+
+  test("decide: fix and fix(scope) are fixes, including a fix of tests or CI", () => {
+    for (const subject of ["fix: stop crashing", "fix(parser): stop crashing", "fix!: drop the old key", "fix: flaky TestExecuteRepair", "fix(ci): run the benchmarks", "Fix #123 on main: stop the crash"]) {
+      expect(classifier.classify(subject).kind, subject).toBe("fix");
+    }
+  });
+
+  test("decide: chore, ci, test, docs, style, build, refactor and perf are not fixes even when fix appears later, and name the type rule", () => {
+    for (const subject of [
+      "chore: fix testifylint issues",
+      "ci: fix when benchmarks run",
+      "test: fix flaky TestExecuteRepair",
+      "chore: fix docker-composes",
+      "docs(readme): fix the bug report link",
+      "style: fix the layout",
+      "build: fix the bug in the release script",
+      "refactor(parser): fix naming to fix the crash",
+      "perf: fix a defect in the cache",
+    ]) {
+      expect(classifier.classify(subject), subject).toEqual({ kind: "excluded", pattern: typeRule, fixPattern: expect.any(String), matchedIn: "subject" });
+    }
+  });
+
+  test("leave a typed commit that no fix pattern matched as other", () => {
+    expect(classifier.classify("chore: bump the version").kind).toBe("other");
+    expect(classifier.classify("test: add a case for the lexer").kind).toBe("other");
+  });
+
+  test("count a revert type as a revert, before any fix rule", () => {
+    expect(classifier.classify("revert: fix the parser").kind).toBe("revert");
+    expect(classifier.classify("revert(parser): fix: stop crashing").kind).toBe("revert");
+  });
+
+  test("leave a type the list does not name to the rules for a subject without a type", () => {
+    expect(classifier.classify("feat: fix the cache key").kind).toBe("fix");
+  });
+});
+
+describe("subjects without a type prefix", () => {
+  test("match Fix #NNN and Fixes #NNN anywhere in the subject", () => {
+    for (const subject of ["Fix #123 on main: handle empty input", "Fixes #45", "Handle empty input, fixes #45", "Fix #7 on main: add GPU tests"]) {
+      expect(classifier.classify(subject).kind, subject).toBe("fix");
+    }
+  });
+
+  test("count a repair of tests or CI as a fix", () => {
+    for (const subject of ["Fix three GPU test failures that turn CI red without a code change", "Fix flaky test", "Fix tests", "Fix ci", "Fixed the failing test"]) {
+      expect(classifier.classify(subject).kind, subject).toBe("fix");
+    }
+  });
+});
+
 describe("the default fix exclude patterns", () => {
-  test("count a fix whose target is formatting, lint, typos, docs, tests or CI as excluded, with the excluding pattern", () => {
-    for (const subject of ["Fix typo in README", "fix: lints", "Fix lint", "Fix tests", "Fix flaky test", "fix docs", "Fix formatting", "Fix ci", "fix(docs): the link", "Fixed the failing test"]) {
+  test("count a fix whose target is typos, spelling, lint or formatting as excluded, with the excluding pattern", () => {
+    for (const subject of ["Fix typo in README", "fix: lints", "Fix lint", "Fix spelling of the option", "Fix formatting", "fix: fix typos in the docs"]) {
       expect(classifier.classify(subject), subject).toEqual({
         kind: "excluded",
-        pattern: historyDefaults.fixExcludePatterns[0],
+        pattern: historyDefaults.fixExcludePatterns[1],
         fixPattern: expect.any(String),
         matchedIn: "subject",
       });
     }
   });
 
-  test("leave a fix of a defect that merely mentions a test or a doc far from the fix word", () => {
-    expect(classifier.classify("Fix crash when two readers open the file while the tests run").kind).toBe("fix");
+  test("count a review-comment follow-up as excluded, with the excluding pattern", () => {
+    for (const subject of ["fix: address comments", "fix: comment nits", "fix: review comments", "Fix review feedback", "Review fixes", "Fix: address review comments"]) {
+      expect(classifier.classify(subject), subject).toEqual({
+        kind: "excluded",
+        pattern: historyDefaults.fixExcludePatterns[2],
+        fixPattern: expect.any(String),
+        matchedIn: "subject",
+      });
+    }
+  });
+
+  test("leave a fix of a defect that merely mentions a typo or lint far from the fix word", () => {
+    expect(classifier.classify("Fix crash when two readers open the file while the lint step runs").kind).toBe("fix");
     expect(classifier.classify("Fix the parser").kind).toBe("fix");
   });
 
   test("findExcludedFix returns the excluded change, and null when another commit of the change is a fix", () => {
-    expect(findExcludedFix(classifier, "abc", ["Fix typo"])).toEqual({ id: "abc", subject: "Fix typo", pattern: historyDefaults.fixExcludePatterns[0], matchedIn: "subject" });
+    expect(findExcludedFix(classifier, "abc", ["Fix typo"])).toEqual({ id: "abc", subject: "Fix typo", pattern: historyDefaults.fixExcludePatterns[1], matchedIn: "subject" });
+    expect(findExcludedFix(classifier, "abc", ["chore: fix docker-composes"])).toEqual({ id: "abc", subject: "chore: fix docker-composes", pattern: historyDefaults.fixExcludePatterns[0], matchedIn: "subject" });
     expect(findFix(classifier, "abc", ["Fix typo"])).toBeNull();
     expect(findExcludedFix(classifier, "abc", ["Fix typo", "Fix the parser"])).toBeNull();
     expect(findExcludedFix(classifier, "abc", ["Add feature"])).toBeNull();
@@ -144,7 +209,7 @@ describe("checkFixConvention", () => {
   });
 
   test("says the messages probably do not follow a convention under 2 percent, over 60 percent and under 30 changes", () => {
-    expect(checkFixConvention(100, 1).note).toMatch(/under 2%/);
+    expect(checkFixConvention(100, 1).note).toMatch(/fixes are 1% of logical changes, under 2%/);
     expect(checkFixConvention(100, 61).note).toMatch(/over 60%/);
     expect(checkFixConvention(29, 10).note).toMatch(/fewer than 30/);
     expect(checkFixConvention(0, 0)).toMatchObject({ share: null, followsConvention: false });

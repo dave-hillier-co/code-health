@@ -24,7 +24,7 @@ export const REVERT_BODY_PATTERN = "This reverts commit";
 export type CommitClass =
   | { kind: "fix"; pattern: string; matchedIn: "subject" | "body" }
   | { kind: "revert"; pattern: string; matchedIn: "subject" | "body" }
-  /** A fix pattern matched, and the exclude pattern `pattern` says the fix target is formatting, lint, typos, docs or tests. `fixPattern` is the one that matched as a fix. */
+  /** A fix pattern matched, and the exclude pattern `pattern` says the commit is not a defect fix: it has a non-fix Conventional Commits type, or its fix target is typos, spelling, lint or formatting, or it follows up review comments. `fixPattern` is the one that matched as a fix. */
   | { kind: "excluded"; pattern: string; fixPattern: string; matchedIn: "subject" | "body" }
   | { kind: "other" };
 
@@ -152,7 +152,7 @@ const percent = (share: number): string => `${Math.round(share * 1000) / 10}%`;
 /**
  * The repository-level check that commands run before they use a fix count: the share of logical changes in the window that
  * are fixes. A share under 2% or over 60%, or fewer than 30 logical changes, says the commit messages probably do not follow
- * a convention this can use. The counts are still reported, and nothing is removed.
+ * a convention this can use. The share is the logical changes with a commit that matches a fix pattern and is not excluded or a revert, over all logical changes. The counts are still reported, and nothing is removed.
  */
 export function checkFixConvention(logicalChanges: number, fixes: number): FixConvention {
   const { minShare, maxShare, minChanges } = FIX_CONVENTION_GUIDELINES;

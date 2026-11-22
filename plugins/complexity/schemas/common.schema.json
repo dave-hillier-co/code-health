@@ -567,7 +567,7 @@
         },
         "fixesExcluded": {
           "type": "object",
-          "description": "Logical changes of the window that a fix pattern matched and an exclude pattern (history.fixExcludePatterns) removed, because the fix target is formatting, lint, typos, docs, tests or CI. They are not counted as fixes. `byPattern` counts them by the excluding pattern.",
+          "description": "Logical changes of the window that a fix pattern matched and an exclude pattern (history.fixExcludePatterns) removed, because the commit has a non-fix Conventional Commits type, the fix target is typos, spelling, lint or formatting, or it follows up review comments. They are not counted as fixes. `byPattern` counts them by the excluding pattern.",
           "properties": {
             "fixes": { "$ref": "#/$defs/count", "description": "Excluded changes." },
             "byPattern": {
