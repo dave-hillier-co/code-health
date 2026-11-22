@@ -148,7 +148,7 @@ export function placementFactors(placement: Placement, withBlame: boolean): Fact
       {
         coupled: placement.files.reduce((s, f) => s + f.neighbourhood.coupled, 0),
         folder: placement.files.reduce((s, f) => s + f.neighbourhood.folder, 0),
-        component: placement.files.some((f) => f.neighbourhood.component === null) ? null : placement.files.reduce((s, f) => s + (f.neighbourhood.component ?? 0), 0),
+        component: placement.files.every((f) => f.neighbourhood.component === null) ? null : placement.files.reduce((s, f) => s + (f.neighbourhood.component ?? 0), 0),
       },
       placement.files.map((f) => ({ file: f.file, coupled: f.neighbourhood.coupled, folder: f.neighbourhood.folder, component: f.neighbourhood.component })),
     ),

@@ -1,4 +1,4 @@
-import { componentOf } from "../components.ts";
+import { componentOf, UNASSIGNED } from "../components.ts";
 import { folderOf } from "@code-health/graph/tree-distance";
 import { monthsBefore } from "@code-health/history/evidence";
 import type { HistoryState } from "./history-state.ts";
@@ -128,11 +128,12 @@ export function placeChange(
       if (other !== file.fileId) nearby += state.revisionsOf(other).filter(by).length;
     }
     let sameComponent: number | null = null;
-    if (context.components.length > 0) {
+    const home = componentOf(context.components, file.fileId);
+    // Files in no component are not one component: they share nothing, so the figure is not defined for them.
+    if (context.components.length > 0 && home !== UNASSIGNED) {
       sameComponent = 0;
-      const mine = componentOf(context.components, file.fileId);
       for (const other of state.knownFiles()) {
-        if (other !== file.fileId && componentOf(context.components, other) === mine) sameComponent += state.revisionsOf(other).filter(by).length;
+        if (other !== file.fileId && componentOf(context.components, other) === home) sameComponent += state.revisionsOf(other).filter(by).length;
       }
     }
     return {

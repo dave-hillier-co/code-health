@@ -142,6 +142,13 @@ describe("neighbourhood", () => {
     expect(placed.value).toMatchObject({ folder: 0, component: 1 });
     expect(placed.evidence).toEqual([{ file: ledger, coupled: 0, folder: 0, component: 1 }]);
   });
+
+  test("a file in no configured component has no component neighbourhood, not a count of every other unassigned file", async () => {
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ components: { docs: "docs/**" }, cochange: { risk: { newIdentityChanges: 2, placement: "any" } } }));
+    const placed = factor((await place("main..alice")).placement, "neighbourhood");
+    expect(placed.value).toMatchObject({ component: null });
+    expect(placed.evidence).toEqual([{ file: ledger, coupled: 0, folder: 0, component: null }]);
+  });
 });
 
 describe("the blame cache", () => {
