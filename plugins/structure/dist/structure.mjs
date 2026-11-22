@@ -18684,7 +18684,6 @@ function readLocalityUnblocks(context, head) {
   } catch {
     return void 0;
   }
-  if (document.schemaVersion !== 1) return void 0;
   if (document.tool !== LOCALITY_REPORT.tool || document.command !== LOCALITY_REPORT.command) return void 0;
   if (typeof document.schemaVersion !== "number" || !RECOGNISED_LOCALITY_SCHEMA_VERSIONS.includes(document.schemaVersion)) {
     const found = document.schemaVersion === void 0 ? "has no schemaVersion" : `has schemaVersion ${JSON.stringify(document.schemaVersion)}`;
