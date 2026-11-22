@@ -48,7 +48,7 @@ Out of scope:
 
 - *Degree*: `n(A∩B) / ((n(A) + n(B)) / 2)`, the symmetric strength, as a percentage.
 - *Confidence A→B*: `n(A∩B) / n(A)`, the probability that a change to A also touches B. Directional, since a small file may always drag a large one along without the reverse holding.
-- *Support*: `n(A∩B)`, the absolute count. It is an evidence floor (`minSupport`): `coupling` does not list a pair with fewer shared changes unless `--min-support` lowers the floor, and a pair listed under the configured floor is marked low confidence, because two shared commits out of three is noise.
+- *Support*: `n(A∩B)`, the absolute count. It is an evidence floor (`minSupport`): `coupling` does not list a pair with fewer shared changes unless `--min-support` lowers the floor, and a pair listed under the configured floor is marked low confidence, because two shared commits out of three is too little evidence to separate coupling from chance.
 
 **Coupling distance.** The folder-tree distance between the two files, using the suite's distance function (see [suite.md](suite.md#shared-vocabulary)). High coupling at high distance is the interesting case. High coupling between a file and its sibling test is expected.
 

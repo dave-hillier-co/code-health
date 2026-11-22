@@ -22,7 +22,7 @@ How to word results at each grade:
 
 For files A and B, `n(A)` and `n(B)` are the eligible logical changes touching each and `n(A and B)` those touching both.
 
-- `support` is `n(A and B)`. Below `minSupport` a pair is noise.
+- `support` is `n(A and B)`. Below `minSupport` a pair has too little evidence to separate coupling from chance.
 - `confidence` A to B is `n(A and B) / n(A)`: the chance that a change to A also touches B.
 - `degree` is `n(A and B)` over the mean of `n(A)` and `n(B)`: the symmetric strength.
 - A small file can always drag a large one along without the reverse holding. That is `asymmetric-coupling`: confidence high one way (80 percent or more) and low the other (30 or less).

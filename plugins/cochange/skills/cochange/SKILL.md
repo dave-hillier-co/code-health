@@ -30,7 +30,7 @@ Every result has an `evidence` block with a grade: `strong`, `moderate` or `weak
 - `moderate`: report findings, and say how many changes sit behind each.
 - `weak` (young repository, few contributors, few changes): present every finding as tentative, lean on static signals, and never let co-change overturn them. Say plainly when `coupling` returns nothing: the guidelines were not lowered, and a sparse history has little to show.
 
-Always give the support behind a coupling claim ("5 shared changes out of 27"), not just a percentage. Two shared commits out of three is noise. Details and guidelines: [references/reading-results.md](references/reading-results.md).
+Always give the support behind a coupling claim ("5 shared changes out of 27"), not just a percentage. Two shared commits out of three is too little evidence to separate coupling from chance. Details and guidelines: [references/reading-results.md](references/reading-results.md).
 
 These are prompts for investigation, not verdicts. The tool measures code, not people. If asked to judge or rank individuals from this data, decline and say why.
 
