@@ -172,16 +172,23 @@ var historyDefaults = {
     "\\bbugs\\b",
     "\\bbugfix\\b",
     "\\bhotfix\\b",
-    "\\bdefect\\b"
+    "\\bdefect\\b",
+    "\\bfix(?:es)?\\s+#\\d+",
+    "^review\\s+fix(?:es)?\\b"
   ],
   /**
    * Regular expressions, matched case-insensitively against the subject of a commit that a fix pattern matched. A match means the
-   * fix target is formatting, lint, typos, docs, tests or CI, which is not a defect fix, so the commit is counted as excluded with
-   * the pattern that excluded it and not as a fix. A guideline list, a judgement call not calibrated on a corpus: the target
-   * word must follow the fix word within three words.
+   * commit is not a defect fix, so it is counted as excluded with the pattern that excluded it and not as a fix. The first pattern
+   * is the Conventional Commits rule: when a subject has a type prefix, the type decides, so chore, ci, test, docs, style, build,
+   * refactor and perf are not fixes even when "fix" appears later in the subject. The others name fix targets that are not defects
+   * (typos, spelling, lint and formatting, within three words after the fix word) and review-comment follow-ups ("address
+   * comments", "review comments", "comment nits", "review feedback", "review fixes"). Test and CI repairs are fixes. A guideline
+   * list, a judgement call not calibrated on a corpus.
    */
   fixExcludePatterns: [
-    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|lints?|linting|linters?|tests?|testing|flaky|docs?|documentation|readme|formatting|whitespace|ci|prettier|eslint)\\b"
+    "^(?:chore|ci|test|tests|docs|style|build|refactor|perf)(?:\\([^)]*\\))?!?:",
+    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b",
+    "\\b(?:address(?:es|ed|ing)?\\s+(?:the\\s+)?(?:review\\s+)?comments?|review\\s+(?:comments?|feedback|fixes)|comment\\s+nits?)\\b"
   ],
   /** Regular expressions matched against a commit subject that mark a revert. The "This reverts commit" line git writes in the body always marks one. A revert is not counted as a fix. */
   revertPatterns: ["^revert\\b"],
@@ -7056,7 +7063,7 @@ var rules6 = {
     explanation: [
       "A logical change is a fix when one of its commits matches history.fixPatterns (default: fix, fixes, fixed or fixing at the start of the subject or after 'to', the whole words bug, bugfix, hotfix and defect, a fix: prefix, a merge of a fix branch),",
       "and a revert when one matches history.revertPatterns or says 'This reverts commit'. A revert is counted in its own column and is not a fix.",
-      "A change that a fix pattern matched is left out, and counted in fixesExcluded with the pattern that excluded it, when history.fixExcludePatterns matches the subject (default: the fix target is typos, lint, docs, tests, formatting or CI).",
+      "A change that a fix pattern matched is left out, and counted in fixesExcluded with the pattern that excluded it, when history.fixExcludePatterns matches the subject (default: a non-fix Conventional Commits type such as chore, ci, test or docs, a fix target of typos, spelling, lint or formatting, or a follow-up to review comments).",
       "Bodies are matched only with history.fixMatchBody. The count is per file or component, once per logical change, over the same window and noise filters as hotspots.",
       "",
       "This is a count of commit messages, not of defects. A message such as 'fix the bug report template' matches, and a fix that does not say so does not.",
@@ -7066,7 +7073,7 @@ var rules6 = {
   }
 };
 function excludedNotice(count2, byPattern) {
-  return `${count2} changes matched a fix pattern and were left out because the subject is about formatting, lint, typos, docs or tests (history.fixExcludePatterns): ${byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`;
+  return `${count2} changes matched a fix pattern and were left out because the commit has a non-fix Conventional Commits type, or is about typos, spelling, lint or formatting, or follows up review comments (history.fixExcludePatterns): ${byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`;
 }
 function evidenceOption(value) {
   if (value === void 0) return DEFAULT_EVIDENCE;
@@ -9128,7 +9135,7 @@ var FACTOR_DOCS = [
     layer: "history",
     banding: "percentile",
     signal: "Share of each touched file's revisions that were fixes",
-    definition: `Over the touched files' revisions in the analysis window, the share made by a change whose subject matches history.fixPatterns (cochange.fixPatterns when set). A revert is not a fix. Each file lists the commits that matched and the pattern that matched, and the patterns also match subjects that are not defects, such as "fix the bug report template", while a fix of typos, lint, docs or tests is left out by history.fixExcludePatterns. Unavailable when no change in the window matches, since the repository then has no convention to read.`,
+    definition: `Over the touched files' revisions in the analysis window, the share made by a change whose subject matches history.fixPatterns (cochange.fixPatterns when set). A revert is not a fix. Each file lists the commits that matched and the pattern that matched, and the patterns also match subjects that are not defects, such as "fix the bug report template", while a fix of typos, spelling, lint or formatting, a follow-up to review comments, and a commit with a non-fix Conventional Commits type are left out by history.fixExcludePatterns. Unavailable when no change in the window matches, since the repository then has no convention to read.`,
     why: "Code that has needed fixing tends to need it again."
   },
   {

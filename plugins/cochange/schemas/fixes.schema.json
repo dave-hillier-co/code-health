@@ -20,7 +20,7 @@
     "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" },
     "fixesExcluded": {
       "type": "object",
-      "description": "Logical changes of the window that a fix pattern matched and a history.fixExcludePatterns entry removed, because the fix target is formatting, lint, typos, docs, tests or CI. They are not counted as fixes.",
+      "description": "Logical changes of the window that a fix pattern matched and a history.fixExcludePatterns entry removed, because the commit has a non-fix Conventional Commits type, the fix target is typos, spelling, lint or formatting, or it follows up review comments. They are not counted as fixes.",
       "properties": {
         "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Excluded changes." },
         "byPattern": {

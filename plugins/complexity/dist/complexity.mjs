@@ -169,16 +169,23 @@ var historyDefaults = {
     "\\bbugs\\b",
     "\\bbugfix\\b",
     "\\bhotfix\\b",
-    "\\bdefect\\b"
+    "\\bdefect\\b",
+    "\\bfix(?:es)?\\s+#\\d+",
+    "^review\\s+fix(?:es)?\\b"
   ],
   /**
    * Regular expressions, matched case-insensitively against the subject of a commit that a fix pattern matched. A match means the
-   * fix target is formatting, lint, typos, docs, tests or CI, which is not a defect fix, so the commit is counted as excluded with
-   * the pattern that excluded it and not as a fix. A guideline list, a judgement call not calibrated on a corpus: the target
-   * word must follow the fix word within three words.
+   * commit is not a defect fix, so it is counted as excluded with the pattern that excluded it and not as a fix. The first pattern
+   * is the Conventional Commits rule: when a subject has a type prefix, the type decides, so chore, ci, test, docs, style, build,
+   * refactor and perf are not fixes even when "fix" appears later in the subject. The others name fix targets that are not defects
+   * (typos, spelling, lint and formatting, within three words after the fix word) and review-comment follow-ups ("address
+   * comments", "review comments", "comment nits", "review feedback", "review fixes"). Test and CI repairs are fixes. A guideline
+   * list, a judgement call not calibrated on a corpus.
    */
   fixExcludePatterns: [
-    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|lints?|linting|linters?|tests?|testing|flaky|docs?|documentation|readme|formatting|whitespace|ci|prettier|eslint)\\b"
+    "^(?:chore|ci|test|tests|docs|style|build|refactor|perf)(?:\\([^)]*\\))?!?:",
+    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|spelling|lints?|linting|linters?|formatting|whitespace|prettier|eslint|gofmt)\\b",
+    "\\b(?:address(?:es|ed|ing)?\\s+(?:the\\s+)?(?:review\\s+)?comments?|review\\s+(?:comments?|feedback|fixes)|comment\\s+nits?)\\b"
   ],
   /** Regular expressions matched against a commit subject that mark a revert. The "This reverts commit" line git writes in the body always marks one. A revert is not counted as a fix. */
   revertPatterns: ["^revert\\b"],
@@ -18544,7 +18551,7 @@ function fixHeader(stats, request) {
     window: { months: stats.window.months, since: iso(stats.window.since), until: iso(stats.window.until) },
     shallow: stats.shallow,
     fixConvention: stats.convention,
-    fixesExcluded: { ...stats.excluded, excludePatterns: "history.fixExcludePatterns", note: "Changes that a fix pattern matched and an exclude pattern removed because the fix target is formatting, lint, typos, docs, tests or CI. They are not counted as fixes." },
+    fixesExcluded: { ...stats.excluded, excludePatterns: "history.fixExcludePatterns", note: "Changes that a fix pattern matched and an exclude pattern removed because the commit has a non-fix Conventional Commits type, the fix target is typos, spelling, lint or formatting, or it follows up review comments. They are not counted as fixes." },
     lowEvidence: { minRevisions: stats.minRevisions, rule: `A function with fewer than ${stats.minRevisions} revisions in the analysed window is labelled "${LOW_EVIDENCE}" and sorts after the others with the same fix count.` },
     commits: { ...stats.commits, maxCommits: request.maxCommits },
     files: stats.files,
@@ -18583,7 +18590,7 @@ function fixNotices(stats, request) {
   ];
   if (stats.convention.note !== null) notices.unshift(stats.convention.note.replace(/\.$/, ""));
   if (stats.excluded.fixes > 0) {
-    notices.push(`${stats.excluded.fixes} changes matched a fix pattern and were left out because the subject is about formatting, lint, typos, docs or tests (history.fixExcludePatterns): ${stats.excluded.byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`);
+    notices.push(`${stats.excluded.fixes} changes matched a fix pattern and were left out because the commit has a non-fix Conventional Commits type, or is about typos, spelling, lint or formatting, or follows up review comments (history.fixExcludePatterns): ${stats.excluded.byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`);
   }
   if (stats.shallow) notices.push("The clone is shallow, so history before its boundary is missing");
   return notices;

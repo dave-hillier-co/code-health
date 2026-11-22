@@ -20,8 +20,8 @@ computation.
    followed across files.
 5. A logical change is a fix when one of its commits matches the shared definition (`history.fixPatterns`,
    `fixExcludePatterns`, `revertPatterns`, `fixMatchBody`). A revert is never a fix, and neither is a change whose subject
-   a fix pattern matched but an exclude pattern removed because the fix was about formatting, lint, typos, docs, tests or
-   CI: it is counted in `fixesExcluded`. A commit that created the file counts as one revision of each of its functions
+   a fix pattern matched but an exclude pattern removed because the commit has a non-fix Conventional Commits type, or the fix was about typos, spelling, lint or formatting, or followed up review comments:
+   it is counted in `fixesExcluded`. A commit that created the file counts as one revision of each of its functions
    and never as a fix.
 
 | Field | Meaning |
@@ -43,8 +43,7 @@ but they show where fixes were needed. `summary` counts every function the windo
   null, the counts are of the commits the patterns happened to match, and a function with no fix may simply have fixes
   nobody labelled. Say so when you report the rows. The default patterns match fix words at the start of the subject or
   after "to", and `bug`, `hotfix` and `defect` anywhere, so read the `evidence` subjects before quoting a count.
-- `fixesExcluded` counts the changes a fix pattern matched and `history.fixExcludePatterns` removed (typos, lint, docs,
-  tests, formatting, CI), by the excluding pattern, with the first of them. If a real fix is in the list, the exclude
+- `fixesExcluded` counts the changes a fix pattern matched and `history.fixExcludePatterns` removed (a non-fix Conventional Commits type, typos, spelling, lint, formatting, review-comment follow-ups), by the excluding pattern, with the first of them. If a real fix is in the list, the exclude
   pattern is too broad for this repository.
 - `commits` says how many commits were analysed and how many were skipped, by cause: `maxCommits` (older commits beyond
   `--max-commits`, default `complexity.fixes.maxCommits`, null, which analyses the whole window; newest first), `oversized` (changes with more files than
