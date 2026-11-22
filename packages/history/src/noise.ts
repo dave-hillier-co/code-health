@@ -85,7 +85,7 @@ export interface NoiseOptions {
    * configuration and decisions. It is asked about the mapped author and the
    * author as written, and drops the commit when either is a non-person.
    */
-  nonPerson?: { isNonPerson(name: string, email: string): boolean };
+  nonPerson?: { isNonPerson(name: string, email: string): boolean; applied?: NonPersonApplied };
   /** Logical changes with more files than this are flagged oversized. Default 30. */
   maxChangesetSize?: number;
   /** Drop the root commit of an imported history. Default true. */
@@ -126,12 +126,22 @@ export interface LogicalChange {
   suiteCommit: boolean;
 }
 
+/** The non-person rules in effect, beyond the configured `botPatterns`. Empty when no classification was supplied. */
+export interface NonPersonApplied {
+  builtinBotPatterns: string[];
+  builtinServiceNames: string[];
+  servicePatterns: string[];
+  decisions: number;
+}
+
 export interface FiltersApplied {
   excludeGlobs: string[];
   lockfiles: boolean;
   gitattributes: boolean;
   blameIgnoreRevs: string | null;
   botPatterns: string[];
+  /** The built-in and decided rules that also drop commits, counted in `dropped.botCommits`. */
+  nonPerson: NonPersonApplied;
   maxChangesetSize: number;
   excludeImported: boolean;
   excludeSuiteCommits: boolean;
@@ -296,6 +306,7 @@ export async function filterHistory(
       gitattributes: useAttributes,
       blameIgnoreRevs: blameFile === false ? null : blameFile,
       botPatterns: [...botPatterns],
+      nonPerson: options.nonPerson?.applied ?? { builtinBotPatterns: [], builtinServiceNames: [], servicePatterns: [], decisions: 0 },
       maxChangesetSize,
       excludeImported,
       excludeSuiteCommits,

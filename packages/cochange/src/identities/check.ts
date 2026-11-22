@@ -17,6 +17,8 @@ export interface Finding {
   commits: number | null;
   lines: number | null;
   linesShare: number | null;
+  /** Unmapped only: holds lines at HEAD or has at least `significantCommits` commits in the window. A guideline for reading the list: identities below it are listed too, after those above. */
+  aboveGuideline: boolean | null;
 }
 
 const CONFLICT_SCORE = 100;
@@ -24,14 +26,14 @@ const CONFLICT_SCORE = 100;
 const compare = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0);
 
 function conflict(kind: FindingKind, identities: string[], detail: string): Finding {
-  return { score: CONFLICT_SCORE, kind, identities: [...new Set(identities)].sort(compare), detail, commits: null, lines: null, linesShare: null };
+  return { score: CONFLICT_SCORE, kind, identities: [...new Set(identities)].sort(compare), detail, commits: null, lines: null, linesShare: null, aboveGuideline: null };
 }
 
 /**
  * Validates the mapping. Conflicts fail the check: one address belonging to two
  * identities, identities joined by the mailmap that look like different people,
  * a merge the decisions say is wrong, and proposals that carry counter-evidence.
- * Unmapped identities with significant activity are reported but do not fail it.
+ * Every unmapped identity is reported, those holding lines or with many commits first, and none of them fails it.
  */
 export function checkMapping(analysis: IdentityAnalysis, detail: MeasurementDetail): { findings: Finding[]; failed: boolean } {
   const findings: Finding[] = [];
@@ -83,7 +85,6 @@ export function checkMapping(analysis: IdentityAnalysis, detail: MeasurementDeta
   for (const node of analysis.nodes.filter((n) => analysis.unresolved.has(n.key))) {
     const lines = detail.linesByNode.get(node.key) ?? 0;
     const commits = detail.windowCommitsByNode.get(node.key) ?? 0;
-    if (lines === 0 && commits < significantCommits) continue;
     const related = analysis.proposals.filter((p) => p.members.includes(node.key)).flatMap((p) => p.members).filter((m) => m !== node.key);
     findings.push({
       score: lines,
@@ -93,9 +94,10 @@ export function checkMapping(analysis: IdentityAnalysis, detail: MeasurementDeta
       commits,
       lines,
       linesShare: peopleLines === 0 ? 0 : Math.round((lines / peopleLines) * 1000) / 10,
+      aboveGuideline: lines > 0 || commits >= significantCommits,
     });
   }
 
-  findings.sort((x, y) => y.score - x.score || compare(x.kind, y.kind) || compare(x.identities.join(), y.identities.join()));
+  findings.sort((x, y) => y.score - x.score || (y.commits ?? 0) - (x.commits ?? 0) || compare(x.kind, y.kind) || compare(x.identities.join(), y.identities.join()));
   return { findings, failed: findings.some((f) => f.kind !== "unmapped") };
 }

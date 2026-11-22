@@ -102,25 +102,31 @@ export async function backtestCommand(context: CommandContext): Promise<CommandO
     components: readComponents(context.config.effective.components),
   });
 
-  const abandonedBefore = new Set(measureCurrent(before.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => f.path));
-  const abandonedAfter = new Set(measureCurrent(after.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => f.path));
-  const present = new Set(before.model.files.map((f) => f.path));
-  const survivors = new Set(after.model.files.map((f) => f.path));
+  // Files are matched across the two dates by their stable identity, so a file renamed in between is the same file.
+  const positionOf = (sha: string): number => history.view.commits.find((c) => c.sha === sha)!.position;
+  const identityBefore = (path: string): string => history.view.renames.resolve(path, positionOf(startSha));
+  const identityAfter = (path: string): string => history.view.renames.resolve(path, positionOf(outcomeSha));
+  const pathOf = new Map(before.model.files.map((f) => [identityBefore(f.path), f.path]));
+  const abandonedBefore = new Set(measureCurrent(before.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => identityBefore(f.path)));
+  const abandonedAfter = new Set(measureCurrent(after.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => identityAfter(f.path)));
+  const present = new Set(pathOf.keys());
+  const survivors = new Set(after.model.files.map((f) => identityAfter(f.path)));
   // Files that exist at both dates and were not abandoned at the first: the ones a prediction can be right or wrong about.
-  const candidates = [...present].filter((path) => survivors.has(path) && !abandonedBefore.has(path));
-  const probability = new Map(result.fileRisks.map((f) => [f.path, f.probability]));
-  const predicted = new Set(candidates.filter((path) => probability.get(path)! * 100 >= settings.atRiskProbability));
-  const actual = new Set(candidates.filter((path) => abandonedAfter.has(path)));
+  const candidates = [...present].filter((id) => survivors.has(id) && !abandonedBefore.has(id));
+  const probability = new Map(result.fileRisks.map((f) => [identityBefore(f.path), f.probability]));
+  // A file is predicted at or above the at-risk guideline. Precision and recall need that cut, and the rows carry the probability.
+  const predicted = new Set(candidates.filter((id) => probability.get(id)! * 100 >= settings.atRiskProbability));
+  const actual = new Set(candidates.filter((id) => abandonedAfter.has(id)));
   const score = scorePredictions(predicted, actual);
-  const predictedGone = [...present].filter((path) => !abandonedBefore.has(path) && !survivors.has(path) && probability.get(path)! * 100 >= settings.atRiskProbability).length;
+  const predictedGone = [...present].filter((id) => !abandonedBefore.has(id) && !survivors.has(id) && probability.get(id)! * 100 >= settings.atRiskProbability).length;
 
   const rows = candidates
-    .filter((path) => predicted.has(path) || actual.has(path))
-    .map((path) => ({
-      path,
-      score: round4(probability.get(path)!),
-      probability: round4(probability.get(path)!),
-      outcome: predicted.has(path) ? (actual.has(path) ? "hit" : "false-alarm") : "missed",
+    .filter((id) => predicted.has(id) || actual.has(id))
+    .map((id) => ({
+      path: pathOf.get(id)!,
+      score: round4(probability.get(id)!),
+      probability: round4(probability.get(id)!),
+      outcome: predicted.has(id) ? (actual.has(id) ? "hit" : "false-alarm") : "missed",
     }))
     .sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)))
     .slice(0, top);

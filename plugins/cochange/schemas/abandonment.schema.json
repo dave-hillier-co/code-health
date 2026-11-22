@@ -134,11 +134,14 @@
         "path": { "type": "string", "description": "The component, or (unassigned)." },
         "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
         "abandonedLines": { "$ref": "common.schema.json#/$defs/count", "description": "Already abandoned." },
+        "tailRatio": { "type": ["number", "null"], "description": "Tail ratio of the line increment at the lowest alpha. Null when the expected increment is 0." },
+        "guideline": { "type": "number", "description": "The tail ratio the concentrated-component finding is given at (cochange.knowledge.concentratedTailRatio)." },
+        "ratioToGuideline": { "type": ["number", "null"], "description": "tailRatio divided by guideline. Above 1 is above the guideline." },
         "expectedLoss": { "type": "number", "minimum": 0, "description": "Expected increment in abandoned lines." },
         "atRisk": { "$ref": "#/$defs/distribution/properties/atRisk", "description": "Knowledge at risk of the increment, in lines." },
         "findings": { "$ref": "#/$defs/findings" }
       },
-      "required": ["path", "peopleLines", "abandonedLines", "expectedLoss", "atRisk", "findings"],
+      "required": ["path", "peopleLines", "abandonedLines", "tailRatio", "guideline", "ratioToGuideline", "expectedLoss", "atRisk", "findings"],
       "additionalProperties": false
     },
     "simulation": {
@@ -154,9 +157,10 @@
             "source": { "enum": ["history", "configured", "k-leavers"], "description": "Where the turnover rate came from." },
             "ratePerPeriod": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Rate mode only." },
             "leavers": { "type": ["integer", "null"], "minimum": 1, "description": "k-leavers mode only." },
-            "leaverProbability": { "type": "number", "minimum": 0, "maximum": 1, "description": "The mean probability that an active developer leaves over the horizon." }
+            "leaverProbability": { "type": "number", "minimum": 0, "maximum": 1, "description": "The mean probability that an active developer leaves over the horizon." },
+            "configuredRateIgnored": { "type": "boolean", "description": "True in historical mode when a turnover rate is configured: that mode samples the observed rates and does not use it." }
           },
-          "required": ["source", "ratePerPeriod", "leavers", "leaverProbability"],
+          "required": ["source", "ratePerPeriod", "leavers", "leaverProbability", "configuredRateIgnored"],
           "additionalProperties": false
         },
         "population": {

@@ -60,7 +60,7 @@ export const command: Command = {
           inputs: inputs(),
           extra: { measurement: detail.measurement },
           results: findings,
-          columns: ["kind", "identities", "detail", "commits", "lines", "linesShare"],
+          columns: ["kind", "identities", "detail", "commits", "lines", "linesShare", "aboveGuideline"],
           failed,
         } satisfies CommandOutput;
       }

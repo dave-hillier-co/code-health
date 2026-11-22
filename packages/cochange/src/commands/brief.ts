@@ -66,7 +66,7 @@ export const command = analysisCommand(name, {
       const { partners } = partnersOf(couplingChanges, path);
       const alongside = partners
         .filter((partner) => present.has(partner.path) && lastStatus.get(partner.path) !== "D")
-        .filter((partner) => reachesDegree({ a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner }, settings.minDegree))
+        .filter((partner) => partner.support >= settings.minSupport)
         .map((partner) => ({
           path: partner.path,
           degree: round1(
@@ -76,17 +76,20 @@ export const command = analysisCommand(name, {
           reverseConfidence: round1(confidenceOf(partner.support, partner.changesPartner)),
           support: partner.support,
           distance: treeDistance(path, partner.path),
+          // The degree is a guideline: partners under it are listed after those at or above it, not dropped.
+          aboveGuideline: reachesDegree({ a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner }, settings.minDegree),
         }))
-        .filter((partner) => partner.support >= settings.minSupport)
-        .sort((x, y) => y.confidence - x.confidence || y.support - x.support || compareBytes(x.path, y.path));
+        .sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.confidence - x.confidence || y.support - x.support || compareBytes(x.path, y.path));
 
       const note = !exists && dates.length === 0
         ? `"${asked}" is not in the tree at the analysed commit and has no history in the window: a new file, or a wrong path.`
         : dates.length === 0
           ? `No revisions in the ${settings.windowMonths} month window, so there is no co-change evidence for it.`
           : alongside.length === 0
-            ? `Nothing changes with it often enough (support ${settings.minSupport}, degree ${settings.minDegree} %).`
-            : null;
+            ? `Nothing shares at least ${settings.minSupport} changes with it.`
+            : !alongside.some((partner) => partner.aboveGuideline)
+              ? `No partner reaches the degree guideline of ${settings.minDegree} %. The partners listed are below it.`
+              : null;
 
       return {
         path,
@@ -105,7 +108,7 @@ export const command = analysisCommand(name, {
     });
 
     return {
-      inputs: { paths: rows.map((row) => row.requested ?? row.path), partners: limit },
+      inputs: { paths: rows.map((row) => row.requested ?? row.path), partners: limit, degreeGuideline: settings.minDegree },
       results: rows,
       columns: ["path", "frequency", "recentRevisions", "lastChanged", "recommendation", "alongside", "note"],
     };

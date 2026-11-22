@@ -63,7 +63,7 @@ test("simulate in rate mode, byte for byte", async () => {
 test("the rate is the one observed in history, compounded over the horizon", async () => {
   const document = await json("simulate", "--trials", "200");
   // 2 departures in 18 developer-periods is 1/9 a quarter, and over a year 1 - (8/9)^4.
-  expect(document.results.selection).toEqual({ source: "history", ratePerPeriod: 0.1111, leavers: null, leaverProbability: 0.3757 });
+  expect(document.results.selection).toEqual({ source: "history", ratePerPeriod: 0.1111, leavers: null, leaverProbability: 0.3757, configuredRateIgnored: false });
   expect(document.results.horizonPeriods).toBe(4);
   expect(document.results.population).toEqual({ activeDevelopers: 3, files: 8, peopleLines: 75 });
 });
@@ -206,6 +206,22 @@ test("a component whose tail ratio reaches the configured one is concentrated, a
   expect(await flagged()).toEqual(["api", "core"]);
   configure({ concentratedTailRatio: 100 }, { components: { api: "src/api/**", core: "src/core/**" } });
   expect(await flagged()).toEqual([]);
+});
+
+test("components report the tail ratio against the guideline, and rank by expected loss whatever the ratio", async () => {
+  configure({ concentratedTailRatio: 100 }, { components: { api: "src/api/**", core: "src/core/**" } });
+  const document = await json("simulate", "--trials", "2000", "--seed", "8");
+  for (const c of document.results.components) {
+    expect(c.guideline).toBe(100);
+    if (c.tailRatio !== null) expect(c.ratioToGuideline).toBeCloseTo(c.tailRatio / 100, 3);
+  }
+  expect(document.results.components.map((c: { findings: string[] }) => c.findings)).toEqual(document.results.components.map(() => []));
+});
+
+test("historical mode says when it ignored a configured rate", async () => {
+  configure({ turnoverRate: 0.2 });
+  expect((await json("simulate", "--mode", "historical", "--trials", "200")).results.selection.configuredRateIgnored).toBe(true);
+  expect((await json("simulate", "--trials", "200")).results.selection.configuredRateIgnored).toBe(false);
 });
 
 test("the options of each subcommand stay with it", async () => {

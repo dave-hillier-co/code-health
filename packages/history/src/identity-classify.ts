@@ -83,9 +83,19 @@ export function compilePattern(pattern: string): RegExp {
   }
 }
 
+/** What a matcher applies, so a report can list the effective rules next to how many commits they dropped. */
+export interface NonPersonRulesApplied {
+  builtinBotPatterns: string[];
+  builtinServiceNames: string[];
+  servicePatterns: string[];
+  /** Reviewed decisions: identities recorded as a bot, service, agent or person. */
+  decisions: number;
+}
+
 export interface NonPersonMatcher {
   classify(name: string, email: string): Classification | null;
   isNonPerson(name: string, email: string): boolean;
+  applied: NonPersonRulesApplied;
 }
 
 const addressOf = (identity: string): string => {
@@ -121,7 +131,16 @@ export function createNonPersonMatcher(rules: NonPersonRules): NonPersonMatcher 
     if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
     return null;
   };
-  return { classify, isNonPerson: (name, email) => classify(name, email) !== null };
+  return {
+    classify,
+    isNonPerson: (name, email) => classify(name, email) !== null,
+    applied: {
+      builtinBotPatterns: [...BUILTIN_BOT_PATTERNS],
+      builtinServiceNames: [...BUILTIN_SERVICE_NAMES],
+      servicePatterns: [...rules.servicePatterns],
+      decisions: rules.decisions.length,
+    },
+  };
 }
 
 export interface AgentTrailer {

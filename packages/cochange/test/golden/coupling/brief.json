@@ -67,6 +67,7 @@
     "oversizedChanges": 1
   },
   "inputs": {
+    "degreeGuideline": 30,
     "partners": 5,
     "paths": [
       "src/billing/invoice.ts",
@@ -82,6 +83,7 @@
       "ageDays": 242,
       "alongside": [
         {
+          "aboveGuideline": true,
           "confidence": 100,
           "degree": 31.3,
           "distance": 2,
@@ -105,6 +107,7 @@
       "ageDays": 0,
       "alongside": [
         {
+          "aboveGuideline": true,
           "confidence": 37,
           "degree": 54.1,
           "distance": 0,
@@ -113,6 +116,7 @@
           "support": 10
         },
         {
+          "aboveGuideline": true,
           "confidence": 18.5,
           "degree": 31.3,
           "distance": 2,
@@ -121,6 +125,7 @@
           "support": 5
         },
         {
+          "aboveGuideline": true,
           "confidence": 18.5,
           "degree": 30.3,
           "distance": 2,

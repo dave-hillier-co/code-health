@@ -56,9 +56,19 @@ test("the summary says whether the file is getting worse", async () => {
   const { summary } = resultOf((await trend(after)).stdout);
   expect(summary).toEqual({
     direction: "worsening",
+    changeRatio: 63,
+    guideline: 0.2,
+    peak: { complexity: 64, date: expect.any(String), commit: expect.any(String) },
     complexity: { first: 1, last: 64, change: 63 },
     lines: { first: 13, last: 27, change: 14 },
   });
+});
+
+test("the summary reports the measured ratio and the peak next to the direction label", async () => {
+  const { summary } = resultOf((await trend(after, "--samples", "2")).stdout);
+  expect(summary.changeRatio).toBe(63);
+  expect(summary.guideline).toBe(0.2);
+  expect(summary.peak.complexity).toBe(64);
 });
 
 test("a file with one revision has no trend to report", async () => {

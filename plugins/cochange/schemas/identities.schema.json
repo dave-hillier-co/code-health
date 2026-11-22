@@ -388,6 +388,13 @@
           "minimum": 0,
           "maximum": 100,
           "description": "Unmapped only: percentage of people's lines."
+        },
+        "aboveGuideline": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Unmapped only: the identity holds lines at HEAD or has at least the significantCommits guideline of commits in the window. Identities below it are listed after those above."
         }
       },
       "required": [
@@ -397,7 +404,8 @@
         "detail",
         "commits",
         "lines",
-        "linesShare"
+        "linesShare",
+        "aboveGuideline"
       ],
       "additionalProperties": false
     },

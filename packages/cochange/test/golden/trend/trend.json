@@ -68,9 +68,9 @@
     "oversizedChanges": 0
   },
   "inputs": {
+    "guideline": 0.2,
     "path": "src/core/engine.ts",
-    "samples": 4,
-    "threshold": 0.2
+    "samples": 4
   },
   "repo": {
     "dirty": false,
@@ -114,16 +114,23 @@
       }
     ],
     "summary": {
+      "changeRatio": 63,
       "complexity": {
         "change": 63,
         "first": 1,
         "last": 64
       },
       "direction": "worsening",
+      "guideline": 0.2,
       "lines": {
         "change": 14,
         "first": 13,
         "last": 27
+      },
+      "peak": {
+        "commit": "21cc84ff449bedb8665c6378fdf26a50b6c8ca7f",
+        "complexity": 64,
+        "date": "2024-08-01T09:00:00.000Z"
       }
     }
   },

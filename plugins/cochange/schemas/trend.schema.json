@@ -11,9 +11,9 @@
       "properties": {
         "path": { "type": "string", "description": "The file, resolved through renames to its current path." },
         "samples": { "type": "integer", "minimum": 2, "description": "The most samples taken." },
-        "threshold": { "type": "number", "minimum": 0, "description": "Relative change in complexity, first sample to last, beyond which the direction is worsening or improving." }
+        "guideline": { "type": "number", "minimum": 0, "description": "Guideline for the relative change in complexity, first sample to last. The direction label is worsening or improving at or beyond it. The measured ratio is in the summary." }
       },
-      "required": ["path", "samples", "threshold"],
+      "required": ["path", "samples", "guideline"],
       "additionalProperties": false
     },
     "complexitySource": {
@@ -47,10 +47,19 @@
           "type": "object",
           "properties": {
             "direction": { "enum": ["worsening", "improving", "stable", "insufficient"], "description": "From the first sample's complexity to the last. Insufficient with fewer than two samples or no measurable complexity." },
+            "changeRatio": { "type": ["number", "null"], "description": "Relative change in complexity, last sample against first. A zero first sample with a non-zero last is 1. Null when either is not measurable." },
+            "guideline": { "type": "number", "minimum": 0, "description": "The relative change that the direction label is given at." },
+            "peak": {
+              "type": ["object", "null"],
+              "description": "The sample with the highest complexity, so a spike between the first and last samples is visible. Null when no sample is measurable.",
+              "properties": { "complexity": { "type": "integer", "minimum": 0 }, "date": { "type": "string", "format": "date-time" }, "commit": { "type": "string" } },
+              "required": ["complexity", "date", "commit"],
+              "additionalProperties": false
+            },
             "complexity": { "$ref": "#/$defs/change" },
             "lines": { "$ref": "#/$defs/change" }
           },
-          "required": ["direction", "complexity", "lines"],
+          "required": ["direction", "changeRatio", "guideline", "peak", "complexity", "lines"],
           "additionalProperties": false
         }
       },

@@ -10,9 +10,10 @@
       "type": "object",
       "properties": {
         "paths": { "type": "array", "items": { "type": "string" }, "description": "The paths as asked, after removing ./ and making absolute paths repo-relative." },
-        "partners": { "type": "integer", "minimum": 1, "description": "The most partners listed per file." }
+        "partners": { "type": "integer", "minimum": 1, "description": "The most partners listed per file." },
+        "degreeGuideline": { "type": "number", "minimum": 0, "maximum": 100, "description": "The degree percentage that partners are marked against (cochange.minDegree)." }
       },
-      "required": ["paths", "partners"],
+      "required": ["paths", "partners", "degreeGuideline"],
       "additionalProperties": false
     },
     "results": {
@@ -31,7 +32,7 @@
           "recommendation": { "enum": ["hotspot", null] },
           "alongside": {
             "type": "array",
-            "description": "Files that change with this one: support and degree at or above the configured minimums. Strongest confidence first.",
+            "description": "Files that change with this one: support at or above the configured minimum (too few shared changes to mean anything below it). Partners at or above the degree guideline come first, then the rest, each strongest confidence first.",
             "items": {
               "type": "object",
               "properties": {
@@ -40,13 +41,14 @@
                 "confidence": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of changes to the briefed file that also touched this one." },
                 "reverseConfidence": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of changes to this file that also touched the briefed one." },
                 "support": { "type": "integer", "minimum": 1 },
-                "distance": { "type": "integer", "minimum": 0 }
+                "distance": { "type": "integer", "minimum": 0 },
+                "aboveGuideline": { "type": "boolean", "description": "Degree is at or above the degree guideline (cochange.minDegree)." }
               },
-              "required": ["path", "degree", "confidence", "reverseConfidence", "support", "distance"],
+              "required": ["path", "degree", "confidence", "reverseConfidence", "support", "distance", "aboveGuideline"],
               "additionalProperties": false
             }
           },
-          "alongsideNotShown": { "$ref": "common.schema.json#/$defs/count", "description": "Partners that qualified but were cut by --partners." },
+          "alongsideNotShown": { "$ref": "common.schema.json#/$defs/count", "description": "Partners with enough support that were cut by --partners." },
           "note": { "type": ["string", "null"], "description": "Why the briefing is empty, when it is." }
         },
         "required": [

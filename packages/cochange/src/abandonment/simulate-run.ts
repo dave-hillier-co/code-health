@@ -106,9 +106,13 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
     .map((c) => {
       const loss = reportLoss(c.lines, c.baselineLines, c.peopleLines);
       const tailRatio = loss.increment.atRisk[0]!.tailRatio;
-      const concentrated = c.name !== UNASSIGNED && tailRatio !== null && tailRatio >= settings.concentratedTailRatio;
+      const guideline = settings.concentratedTailRatio;
+      const concentrated = c.name !== UNASSIGNED && tailRatio !== null && tailRatio >= guideline;
       return {
         path: c.name,
+        tailRatio,
+        guideline,
+        ratioToGuideline: tailRatio === null ? null : round4(tailRatio / guideline),
         peopleLines: c.peopleLines,
         abandonedLines: c.baselineLines,
         expectedLoss: loss.increment.expected,
@@ -141,6 +145,8 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
         ratePerPeriod: selection.mode === "rate" ? round4(selection.rate) : null,
         leavers: selection.mode === "k-leavers" ? selection.k : null,
         leaverProbability,
+        // Historical mode samples the observed rates, so a configured rate has no effect on it.
+        configuredRateIgnored: sim.mode === "historical" && settings.turnoverRate !== null,
       },
       population: { activeDevelopers: result.activeDevelopers, files: result.population.files, peopleLines: result.population.peopleLines },
       loss: {

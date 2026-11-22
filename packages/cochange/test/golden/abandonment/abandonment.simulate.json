@@ -123,8 +123,11 @@
         ],
         "expectedLoss": 16.5115,
         "findings": [],
+        "guideline": 3,
         "path": "(unassigned)",
-        "peopleLines": 75
+        "peopleLines": 75,
+        "ratioToGuideline": 0.8681,
+        "tailRatio": 2.6042
       }
     ],
     "files": [
@@ -354,6 +357,7 @@
     },
     "seed": 42,
     "selection": {
+      "configuredRateIgnored": false,
       "leaverProbability": 0.3757,
       "leavers": null,
       "ratePerPeriod": 0.1111,

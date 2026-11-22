@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
@@ -86,6 +86,21 @@ test("without a path it is a usage error", async () => {
   const { code, stderr } = await runCochange(repo.path, ["brief", "--json"]);
   expect(code).toBe(ExitCode.Usage);
   expect(stderr).toContain("at least one file path");
+});
+
+test("partners under the degree guideline are listed after those at or above it, and marked", async () => {
+  const file = join(repo.path, "code-health.json");
+  writeFileSync(file, JSON.stringify({ cochange: { minDegree: 50 } }));
+  try {
+    const [row] = rowsOf((await brief(invoice)).stdout);
+    const marks = row.alongside.map((a: any) => a.aboveGuideline);
+    expect(marks).toContain(true);
+    expect(marks).toContain(false);
+    expect(marks).toEqual([...marks].sort((x: boolean, y: boolean) => Number(y) - Number(x)));
+    expect(row.alongside.every((a: any) => a.aboveGuideline === a.degree >= 50)).toBe(true);
+  } finally {
+    rmSync(file, { force: true });
+  }
 });
 
 test("a briefing is never stored as a report", async () => {

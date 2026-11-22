@@ -11,8 +11,12 @@ export const name = "trend";
 export const DEFAULT_SAMPLES = 10;
 export const MAX_SAMPLES = 500;
 
-/** Relative change in complexity, from the first sample to the last, beyond which a file is worsening or improving. */
-export const TREND_THRESHOLD = 0.2;
+/**
+ * Guideline for the relative change in complexity from the first sample to the last. It labels the
+ * direction. The measured ratio and the peak are always reported next to the label. The 20 percent
+ * is a judgement call, as CodeScene documents no trend cut-off.
+ */
+export const TREND_GUIDELINE = 0.2;
 
 interface Revision {
   commit: string;
@@ -30,11 +34,16 @@ export function pickSamples<T>(revisions: readonly T[], count: number): T[] {
 
 type Direction = "worsening" | "improving" | "stable" | "insufficient";
 
-function directionOf(first: number | null, last: number | null, samples: number): Direction {
-  if (samples < 2 || first === null || last === null) return "insufficient";
-  const change = first === 0 ? (last === 0 ? 0 : 1) : (last - first) / first;
-  if (change >= TREND_THRESHOLD) return "worsening";
-  if (change <= -TREND_THRESHOLD) return "improving";
+/** Relative change from the first sample to the last. A zero first sample with a non-zero last counts as +1. */
+function changeRatioOf(first: number | null, last: number | null): number | null {
+  if (first === null || last === null) return null;
+  return first === 0 ? (last === 0 ? 0 : 1) : (last - first) / first;
+}
+
+function directionOf(ratio: number | null, samples: number): Direction {
+  if (samples < 2 || ratio === null) return "insufficient";
+  if (ratio >= TREND_GUIDELINE) return "worsening";
+  if (ratio <= -TREND_GUIDELINE) return "improving";
   return "stable";
 }
 
@@ -82,14 +91,21 @@ export const command = analysisCommand(name, {
 
     const first = rows[0]!;
     const last = rows.at(-1)!;
+    const changeRatio = changeRatioOf(first.complexity, last.complexity);
+    const measured = rows.filter((r) => r.complexity !== null);
+    // The whole series matters, not only its ends: a spike in the middle shows as a peak above both.
+    const peak = measured.reduce<(typeof rows)[number] | null>((best, r) => (best === null || r.complexity! > best.complexity! ? r : best), null);
     return {
-      inputs: { path: file, samples, threshold: TREND_THRESHOLD },
+      inputs: { path: file, samples, guideline: TREND_GUIDELINE },
       results: {
         path: file,
         revisions: revisions.length,
         samples: rows,
         summary: {
-          direction: directionOf(first.complexity, last.complexity, rows.length),
+          direction: directionOf(changeRatio, rows.length),
+          changeRatio: changeRatio === null ? null : Math.round(changeRatio * 10_000) / 10_000,
+          guideline: TREND_GUIDELINE,
+          peak: peak === null ? null : { complexity: peak.complexity, date: peak.date, commit: peak.commit },
           complexity: delta(first.complexity, last.complexity),
           lines: delta(first.lines, last.lines),
         },
