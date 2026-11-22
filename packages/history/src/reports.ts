@@ -16,6 +16,11 @@ export function reportPath(root: string, tool: string, command: string): string 
   return join(root, ".cache", "code-health", "reports", `${tool}.${command}.json`);
 }
 
+/** Records on the context that this run stored no report, and why, so the run prints it. */
+export function skipReport(context: CommandContext, reason: string): void {
+  context.report = { stored: false, reason };
+}
+
 /**
  * Stores the complete result of a command as `reports/<tool>.<command>.json`, stamped with the HEAD SHA
  * and config hash it was computed from (the same envelope the command prints, without `meta`).
@@ -23,7 +28,7 @@ export function reportPath(root: string, tool: string, command: string): string 
  *
  * Only a run over the whole repository on a clean tree may call this. Returns false, writing nothing,
  * on a dirty tree, or when the analysed commit (`analysedHead`) is not HEAD, so a report always
- * describes the commit it is stamped with.
+ * describes the commit it is stamped with. Either way the outcome is left on `context.report`.
  */
 export async function writeReport(
   context: CommandContext,
@@ -32,7 +37,14 @@ export async function writeReport(
   output: CommandOutput,
   analysedHead: string,
 ): Promise<boolean> {
-  if (context.repo.dirty || analysedHead !== context.repo.head) return false;
+  if (context.repo.dirty) {
+    skipReport(context, "the working tree has uncommitted changes");
+    return false;
+  }
+  if (analysedHead !== context.repo.head) {
+    skipReport(context, "the analysed commit is not HEAD");
+    return false;
+  }
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
@@ -54,5 +66,6 @@ export async function writeReport(
   const temporary = `${file}.${process.pid}.tmp`;
   writeFileSync(temporary, serialise(document));
   renameSync(temporary, file);
+  context.report = { stored: true };
   return true;
 }

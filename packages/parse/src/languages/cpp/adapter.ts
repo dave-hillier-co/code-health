@@ -1,18 +1,18 @@
 import type { LanguageAdapter } from "../../language-adapter.ts";
 import { cppBoundaries } from "./boundaries.ts";
 import { extractFileCensus } from "./census.ts";
-import { headerExtensions, sourceExtensions } from "./extensions.ts";
+import { headerExtensions, inlineExtensions, sourceExtensions } from "./extensions.ts";
 import { extractFacts } from "./extract-facts.ts";
 import { cppMetricRules } from "./metric-rules.ts";
 import { resolveCpp } from "./resolve.ts";
 
 /** Extensions are claimed lower case, as the contract says, so `.C` and `.H` files are not read. */
-const claimed = [...new Set([...sourceExtensions, ...headerExtensions, ".ipp", ".inl", ".tpp"].map((extension) => extension.toLowerCase()))];
+const claimed: string[] = [...sourceExtensions, ...headerExtensions, ...inlineExtensions];
 
 /**
  * C++: symbol-based for calls, with `#include` resolved against the include paths of `compile_commands.json`, and
  * a header and its source file one unit. Build targets (CMake) are the boundaries. The preprocessor is not run.
- * `.c` files are not claimed: they are C, and the grammar reads C++.
+ * `.c` and `.h` files are read with the C++ grammar, which parses C. C has no adapter of its own.
  */
 export const adapter: LanguageAdapter = {
   id: "cpp",

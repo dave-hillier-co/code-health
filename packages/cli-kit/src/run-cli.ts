@@ -8,12 +8,21 @@ import { shapeResults } from "./results.ts";
 import { serialise } from "./serialise.ts";
 import { renderTable } from "./table.ts";
 
+/** Whether a command stored its result as a report for other plugins to read, and why not when it did not. */
+export interface ReportStatus {
+  stored: boolean;
+  /** Why nothing was stored. Absent when the report was stored. */
+  reason?: string;
+}
+
 export interface CommandContext {
   repo: RepoState;
   config: LoadedConfig;
   positionals: string[];
   /** Values of the command's own options. */
   values: ParsedArguments["values"];
+  /** Set by a command that may store a report, so the run prints whether it did. Left unset by commands that never do. */
+  report?: ReportStatus;
 }
 
 export interface CommandOutput {
@@ -133,7 +142,8 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
 
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli.config);
-  const output = await command.run({ repo, config, positionals: args.positionals, values: args.values });
+  const context: CommandContext = { repo, config, positionals: args.positionals, values: args.values };
+  const output = await command.run(context);
 
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
@@ -156,12 +166,14 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
             generatedAt: new Date().toISOString(),
             gitVersion: repo.gitVersion,
             node: process.versions.node,
+            ...(context.report === undefined ? {} : { report: context.report }),
           },
         }),
       ),
     );
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results as Record<string, unknown>[], args.fields ?? columns, truncated));
+    if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.\n`);
   } else {
     io.stdout.write(serialise(results));
   }

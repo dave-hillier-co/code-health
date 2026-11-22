@@ -4,13 +4,20 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   analyseTree,
   parseWith
+<<<<<<<< HEAD:plugins/locality/dist/chunk-AUIHUT3O.mjs
 } from "./chunk-D3Q6TY2C.mjs";
 import {
   GrammarSet
 } from "./chunk-T4QZDWJW.mjs";
+========
+} from "./chunk-XZHA3TUN.mjs";
+import {
+  GrammarSet
+} from "./chunk-HSHIZHZS.mjs";
+>>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-JCLPZHG3.mjs
 import {
   adapterById
-} from "./chunk-HYQDVCCA.mjs";
+} from "./chunk-OELMQMQG.mjs";
 import "./chunk-OQRLKAKZ.mjs";
 
 // packages/locality/src/movers/jvm-confirm.ts

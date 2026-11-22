@@ -352,8 +352,9 @@ function resolveBySymbols(input, options = {}) {
 
 // packages/parse/src/languages/cpp/extensions.ts
 import { posix as posix2 } from "node:path";
-var headerExtensions = [".h", ".hh", ".hpp", ".hxx", ".h++", ".H"];
-var sourceExtensions = [".cpp", ".cc", ".cxx", ".c++", ".C"];
+var headerExtensions = [".h", ".hh", ".hpp", ".hxx", ".h++"];
+var sourceExtensions = [".cpp", ".cc", ".cxx", ".c++", ".c"];
+var inlineExtensions = [".ipp", ".inl", ".tpp"];
 var extensionOf = (path) => path.slice(path.lastIndexOf("."));
 var isHeader = (path) => headerExtensions.includes(extensionOf(path));
 var isSource = (path) => sourceExtensions.includes(extensionOf(path));
@@ -7689,7 +7690,7 @@ function extractFacts7(root, options) {
 }
 
 // packages/parse/src/languages/cpp/adapter.ts
-var claimed = [...new Set([...sourceExtensions, ...headerExtensions, ".ipp", ".inl", ".tpp"].map((extension) => extension.toLowerCase()))];
+var claimed = [...sourceExtensions, ...headerExtensions, ...inlineExtensions];
 var adapter5 = {
   id: "cpp",
   name: "C++",

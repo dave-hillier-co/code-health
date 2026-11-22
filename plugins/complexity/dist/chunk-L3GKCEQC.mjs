@@ -5,7 +5,7 @@ import {
 } from "./chunk-VGE2F7S4.mjs";
 import {
   loadConfig
-} from "./chunk-37HBBSFA.mjs";
+} from "./chunk-SHUVV6HF.mjs";
 import {
   analyseSource,
   bumpyRoadLimits,
@@ -283,7 +283,7 @@ async function measurementAtHead(root, file, settings) {
   }
 }
 async function isTestPath(file) {
-  return (await import("./chunk-FFK36TNW.mjs")).isTestPath(file);
+  return (await import("./chunk-GH3WHVC4.mjs")).isTestPath(file);
 }
 function explainCommand(file) {
   if (!hasSupportedExtension(file)) return void 0;

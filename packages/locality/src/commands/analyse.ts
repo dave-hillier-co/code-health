@@ -1,6 +1,7 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { Command, CommandOutput, Rule } from "@code-health/cli-kit/run-cli";
 import { compareIds } from "@code-health/graph/graph";
+import { skipReport } from "@code-health/history/reports";
 import { listTree } from "@code-health/history/tree";
 import { compileGlobs } from "@code-health/history/glob";
 import { analyseProject } from "../candidates.ts";
@@ -82,6 +83,7 @@ export const command: Command = {
       columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"],
     };
     if (!partial) await writeReport(context, name, output);
+    else skipReport(context, "the run was limited by path arguments, --recommendation or --source");
     return output;
   },
 };

@@ -8,7 +8,7 @@ import { buildConfigSchema } from "../src/config-schema.ts";
 
 const section = { windowMonths: 12, firstParent: false, bots: { patterns: ["[bot]"] }, ignored: {}, base: null, tags: ["a"] };
 const spec = { plugin: "cochange", section };
-const schema = buildConfigSchema([spec, { plugin: "another", section: { depth: 2 } }]);
+const schema = buildConfigSchema([spec, { plugin: "locality", section: { depth: 2 } }]);
 const validate = new Ajv2020({ strict: true }).compile(schema);
 
 let root: string;
@@ -27,10 +27,10 @@ test("the schema is valid and names the shared keys and a section per plugin, in
     "entryPoints",
     "components",
     "vagueNames",
-    "another",
     "cochange",
+    "locality",
   ]);
-  expect(buildConfigSchema([{ plugin: "another", section: { depth: 2 } }, spec])).toEqual(schema);
+  expect(buildConfigSchema([{ plugin: "locality", section: { depth: 2 } }, spec])).toEqual(schema);
 });
 
 test("a document the loader accepts validates", () => {
@@ -40,7 +40,7 @@ test("a document the loader accepts validates", () => {
     languages: { zig: "rust" },
     components: { billing: ["src/billing/**"] },
     cochange: { windowMonths: 6, bots: { patterns: ["svc-"] }, ignored: { anything: 1 }, base: "main", tags: ["x", "y"] },
-    another: { depth: 3 },
+    locality: { depth: 3 },
   };
   writeFileSync(join(root, "code-health.json"), JSON.stringify(document));
   expect(() => loadConfig(root, spec)).not.toThrow();

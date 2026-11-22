@@ -30,7 +30,7 @@ test("defaults follow the spec", () => {
     maxChangesetSize: 30,
     botPatterns: [],
     windowStated: false,
-    hook: { enabled: false, confidence: 80, maxCommitsBehind: 50 },
+    hook: { enabled: false, confidence: 80, maxPartners: 3, maxCommitsBehind: 50 },
   });
 });
 
@@ -38,6 +38,7 @@ test("the hook section is read, and a hook that may be a commit behind at most z
   expect(settingsFor({ cochange: { hook: { enabled: true, confidence: 60, maxCommitsBehind: 0 } } }).hook).toEqual({
     enabled: true,
     confidence: 60,
+    maxPartners: 3,
     maxCommitsBehind: 0,
   });
 });
@@ -77,6 +78,7 @@ test.each([
   [{ cochange: { identities: { botPatterns: [1] } } }, "botPatterns"],
   [{ cochange: { hook: { confidence: 0 } } }, "hook.confidence must be a percentage"],
   [{ cochange: { hook: { confidence: 101 } } }, "hook.confidence must be a percentage"],
+  [{ cochange: { hook: { maxPartners: 0 } } }, "hook.maxPartners must be a positive integer"],
   [{ cochange: { hook: { maxCommitsBehind: -1 } } }, "hook.maxCommitsBehind must be a non-negative integer"],
   [{ cochange: { hook: { maxCommitsBehind: 1.5 } } }, "hook.maxCommitsBehind must be a non-negative integer"],
   [{ cochange: { hook: { enabled: "yes" } } }, "must be a boolean"],

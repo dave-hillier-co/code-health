@@ -45,6 +45,17 @@ describe("trees leave out files marked linguist-generated or linguist-vendored",
     expect([...tree.files.keys()]).toEqual([".gitattributes", "src/a.ts"]);
   });
 
+  it("brings a file back when .gitattributes unsets the attribute for it, which is how a false positive is opted back in", async () => {
+    const repo = repoWith({
+      ...files,
+      ".gitattributes": `${attributes}dist/keep.js -linguist-generated\nthird_party/ours.js linguist-vendored=false\n`,
+      "dist/keep.js": "var k=1;\n",
+      "third_party/ours.js": "var o=1;\n",
+    });
+    const tree = await treeFromRef(repo.path, "HEAD");
+    expect([...tree.files.keys()]).toEqual([".gitattributes", "dist/keep.js", "src/a.ts", "third_party/ours.js"]);
+  });
+
   it("keeps everything when the repository has no attributes file", async () => {
     const repo = repoWith({ "src/a.ts": "A", "dist/bundle.js": "B" });
     const tree = await treeFromRef(repo.path, "HEAD");

@@ -126,9 +126,19 @@ var sharedDefaults = {
   vagueNames: ["utils", "helpers", "common", "misc"]
 };
 var stringLists = ["exclude", "entryPoints", "vagueNames"];
+var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
+var documentKeys = ["$schema"];
+function rejectUnknownKeys(document, plugin) {
+  const known = /* @__PURE__ */ new Set([...Object.keys(sharedDefaults), ...PLUGIN_SECTIONS, plugin]);
+  for (const key of Object.keys(document)) {
+    if (documentKeys.includes(key) || known.has(key)) continue;
+    throw configError(`${CONFIG_FILE}: ${key} is an unknown setting; known settings are ${[...known].sort().join(", ")}`);
+  }
+}
 function loadConfig(root, spec) {
   const file = join(root, CONFIG_FILE);
   const document = existsSync(file) ? parseDocument(file) : void 0;
+  if (document !== void 0) rejectUnknownKeys(document, spec.plugin);
   for (const key of stringLists) {
     const value = document?.[key];
     if (value !== void 0 && (!Array.isArray(value) || value.some((item) => typeof item !== "string"))) {
@@ -391,7 +401,8 @@ async function execute(cli2, io) {
   }
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli2.config);
-  const output = await command12.run({ repo, config, positionals: args2.positionals, values: args2.values });
+  const context = { repo, config, positionals: args2.positionals, values: args2.values };
+  const output = await command12.run(context);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns });
   if (args2.json || !io.stdout.isTTY) {
@@ -411,13 +422,16 @@ async function execute(cli2, io) {
             durationMs: Date.now() - started,
             generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
             gitVersion: repo.gitVersion,
-            node: process.versions.node
+            node: process.versions.node,
+            ...context.report === void 0 ? {} : { report: context.report }
           }
         })
       )
     );
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results, args2.fields ?? columns, truncated));
+    if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
+`);
   } else {
     io.stdout.write(serialise(results));
   }
@@ -10231,8 +10245,9 @@ function publicHeaders(dir, file, paths, isHeader2) {
 
 // packages/parse/src/languages/cpp/extensions.ts
 import { posix as posix6 } from "node:path";
-var headerExtensions = [".h", ".hh", ".hpp", ".hxx", ".h++", ".H"];
-var sourceExtensions2 = [".cpp", ".cc", ".cxx", ".c++", ".C"];
+var headerExtensions = [".h", ".hh", ".hpp", ".hxx", ".h++"];
+var sourceExtensions2 = [".cpp", ".cc", ".cxx", ".c++", ".c"];
+var inlineExtensions = [".ipp", ".inl", ".tpp"];
 var extensionOf = (path) => path.slice(path.lastIndexOf("."));
 var isHeader = (path) => headerExtensions.includes(extensionOf(path));
 var isSource = (path) => sourceExtensions2.includes(extensionOf(path));
@@ -11564,7 +11579,7 @@ function resolveCpp(input) {
 }
 
 // packages/parse/src/languages/cpp/adapter.ts
-var claimed = [...new Set([...sourceExtensions2, ...headerExtensions, ".ipp", ".inl", ".tpp"].map((extension) => extension.toLowerCase()))];
+var claimed = [...sourceExtensions2, ...headerExtensions, ...inlineExtensions];
 var adapter5 = {
   id: "cpp",
   name: "C++",
@@ -17151,8 +17166,18 @@ import { join as join9 } from "node:path";
 function reportPath(root, tool, command12) {
   return join9(root, ".cache", "code-health", "reports", `${tool}.${command12}.json`);
 }
+function skipReport(context, reason) {
+  context.report = { stored: false, reason };
+}
 async function writeReport(context, identity, command12, output, analysedHead) {
-  if (context.repo.dirty || analysedHead !== context.repo.head) return false;
+  if (context.repo.dirty) {
+    skipReport(context, "the working tree has uncommitted changes");
+    return false;
+  }
+  if (analysedHead !== context.repo.head) {
+    skipReport(context, "the analysed commit is not HEAD");
+    return false;
+  }
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
@@ -17172,6 +17197,7 @@ async function writeReport(context, identity, command12, output, analysedHead) {
   const temporary = `${file}.${process.pid}.tmp`;
   writeFileSync2(temporary, serialise(document));
   renameSync2(temporary, file);
+  context.report = { stored: true };
   return true;
 }
 
@@ -17443,6 +17469,7 @@ function analysisCommand(name13, spec) {
       };
       const wholeRepository = window2 === void 0 && !spec.partial?.(context);
       if (wholeRepository) await writeReport2(context, name13, finished, history.view.headSha);
+      else skipReport(context, window2 !== void 0 ? "the run was limited to a date window" : "the run chose a view other than the default");
       return finished;
     }
   };

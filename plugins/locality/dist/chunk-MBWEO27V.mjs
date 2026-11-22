@@ -3,15 +3,24 @@
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
   performMove
+<<<<<<<< HEAD:plugins/locality/dist/chunk-MBWEO27V.mjs
 } from "./chunk-TYCDOORR.mjs";
+========
+} from "./chunk-3Z7NTGDN.mjs";
+>>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-UPGHQ42A.mjs
 import {
   hasCodeHealthTrailer
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile,
   moverFor
+<<<<<<<< HEAD:plugins/locality/dist/chunk-MBWEO27V.mjs
 } from "./chunk-L7PWPJYW.mjs";
 import "./chunk-HYQDVCCA.mjs";
+========
+} from "./chunk-R5QMRQUY.mjs";
+import "./chunk-OELMQMQG.mjs";
+>>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-UPGHQ42A.mjs
 import "./chunk-OQRLKAKZ.mjs";
 
 // packages/locality/src/move-verify.ts

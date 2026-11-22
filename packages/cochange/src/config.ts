@@ -43,7 +43,13 @@ export const cochangeConfig: PluginConfigSpec = {
     /** Minimum coupling degree, as a percentage. */
     minDegree: 30,
     minDistance: 2,
-    hook: { enabled: false, confidence: 80, maxCommitsBehind: 50 },
+    /**
+     * The hook prints a note only when it has something worth a look. `confidence` is a guideline (percent), after
+     * the high-confidence couples of Tornhill's Software Design X-Rays, and a judgement call as a default: it decides
+     * whether a partner is named. `maxPartners` caps the partners one note names. `maxCommitsBehind` is how far the
+     * history cache may trail HEAD before the hook prints nothing.
+     */
+    hook: { enabled: false, confidence: 80, maxPartners: 3, maxCommitsBehind: 50 },
     /** The change-risk skill: see risk/settings.ts. */
     risk: riskDefaults,
     identities: {
@@ -101,7 +107,7 @@ export interface CochangeSettings {
   /** True when the config file states the analysis window, which a shallow clone requires. */
   windowStated: boolean;
   /** The opt-in change-set completeness hook. */
-  hook: { enabled: boolean; confidence: number; maxCommitsBehind: number };
+  hook: { enabled: boolean; confidence: number; maxPartners: number; maxCommitsBehind: number };
 }
 
 /** Validates the effective cochange section and returns it typed. Throws a config error (exit 2). */
@@ -132,10 +138,14 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
   const minDegree = positive("minDegree");
   if (minDegree > 100) throw configError(`code-health.json: ${at("minDegree")} is a percentage, at most 100`);
   const evidence = section.evidence as EvidenceThresholds;
-  const hook = section.hook as { enabled: boolean; confidence: unknown; maxCommitsBehind: unknown };
+  const hook = section.hook as { enabled: boolean; confidence: unknown; maxPartners: unknown; maxCommitsBehind: unknown };
   const hookConfidence = hook.confidence;
   if (typeof hookConfidence !== "number" || !Number.isInteger(hookConfidence) || hookConfidence < 1 || hookConfidence > 100) {
     throw configError(`code-health.json: ${at("hook.confidence")} must be a percentage from 1 to 100`);
+  }
+  const maxPartners = hook.maxPartners;
+  if (typeof maxPartners !== "number" || !Number.isInteger(maxPartners) || maxPartners < 1) {
+    throw configError(`code-health.json: ${at("hook.maxPartners")} must be a positive integer`);
   }
   const behind = hook.maxCommitsBehind;
   if (typeof behind !== "number" || !Number.isInteger(behind) || behind < 0) {
@@ -161,7 +171,7 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
     identities,
     evidenceThresholds: evidence,
     windowStated: config.sources[at("windowMonths")] === "file",
-    hook: { enabled: hook.enabled === true, confidence: hookConfidence, maxCommitsBehind: behind },
+    hook: { enabled: hook.enabled === true, confidence: hookConfidence, maxPartners, maxCommitsBehind: behind },
   };
 }
 

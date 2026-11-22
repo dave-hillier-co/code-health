@@ -2,6 +2,7 @@ import type { Command, CommandContext } from "@code-health/cli-kit/run-cli";
 import { layerOption, measureCurrent, parseLayer, storeReport } from "../analysis.ts";
 import { normalisePaths, pathSelector } from "../current-tree.ts";
 import { fileRow } from "../rows.ts";
+import { skipReport } from "@code-health/history/reports";
 
 export const name = "files";
 
@@ -31,6 +32,7 @@ export const command: Command = {
       columns: ["path", "complexity", "functions", "overThreshold", "source", "profile", "test", "codeLines"],
     };
     if (!isPartial(context) && current.kind === "head") await storeReport(context, name, output);
+    else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
     return output;
   },
 };
