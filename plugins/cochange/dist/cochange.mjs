@@ -12,7 +12,6 @@ import {
   compileGlobs,
   cutoffsOf,
   ensureCacheDir,
-  ensureSelfIgnoring,
   gitVersion,
   higherBand,
   listBlobs,
@@ -26,7 +25,7 @@ import {
   readPathAttributes,
   resetBuiltinOmissions,
   runGit
-} from "./chunk-7QD7UKDX.mjs";
+} from "./chunk-K6L2GAU6.mjs";
 
 // packages/cli-kit/src/args.ts
 import { parseArgs } from "node:util";
@@ -70,11 +69,11 @@ var commonOptions = {
   limit: { type: "string" },
   fields: { type: "string" }
 };
-function parseArguments(argv2, commandOptions = {}) {
+function parseArguments(argv, commandOptions = {}) {
   let parsed;
   try {
     parsed = parseArgs({
-      args: argv2,
+      args: argv,
       options: { ...commandOptions, ...commonOptions },
       allowPositionals: true,
       strict: true
@@ -106,8 +105,8 @@ function parseFields(raw) {
   if (fields.some((field) => field === "")) throw usageError("--fields must be a comma separated list of field names");
   return fields;
 }
-function discoverCommand(argv2) {
-  return parseArgs({ args: argv2, options: commonOptions, allowPositionals: true, strict: false }).positionals[0];
+function discoverCommand(argv) {
+  return parseArgs({ args: argv, options: commonOptions, allowPositionals: true, strict: false }).positionals[0];
 }
 
 // packages/cli-kit/src/config.ts
@@ -586,8 +585,8 @@ async function execute(cli2, io) {
   }
   return output.failed ? ExitCode.CheckFailed : ExitCode.Success;
 }
-function discoverPositionals(argv2) {
-  return parseArguments(argv2).positionals;
+function discoverPositionals(argv) {
+  return parseArguments(argv).positionals;
 }
 function explain(cli2, positionals, io) {
   const rules10 = cli2.rules ?? {};
@@ -642,6 +641,7 @@ function commandHelp(cli2, name16, command16, requested) {
     return flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
   };
   const all = Object.entries(command16.options ?? {});
+  const hiddenOptions = new Set(command16.hiddenOptions ?? []);
   if (sub !== void 0) {
     const taken = new Set(sub.options ?? []);
     return [
@@ -655,7 +655,7 @@ function commandHelp(cli2, name16, command16, requested) {
       ""
     ].join("\n");
   }
-  const subcommands = Object.entries(command16.subcommands ?? {});
+  const subcommands = Object.entries(command16.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
   const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
     `Usage: ${cli2.tool} ${name16}${command16.usage === void 0 ? "" : ` ${command16.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
@@ -664,7 +664,7 @@ function commandHelp(cli2, name16, command16, requested) {
     "",
     ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name16} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
-    ...optionLines(all),
+    ...optionLines(all.filter(([option]) => !hiddenOptions.has(option))),
     ...commonOptionHelp,
     ""
   ].join("\n");
@@ -2328,7 +2328,7 @@ function readRiskSettings(config) {
     }
     return value;
   };
-  const strings2 = (key) => {
+  const strings = (key) => {
     const value = section[key];
     if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
       throw configError(`code-health.json: ${at(key)} must be an array of strings`);
@@ -2351,7 +2351,7 @@ function readRiskSettings(config) {
   if (typeof placement !== "string" || !PLACEMENT_MODES.includes(placement)) {
     throw configError(`code-health.json: ${at("placement")} must be "self", "any" or "off"`);
   }
-  const disable = strings2("disable");
+  const disable = strings("disable");
   for (const name16 of disable) {
     if (!FACTOR_NAMES.includes(name16)) {
       throw configError(`code-health.json: ${at("disable")} names unknown factor "${name16}"; factors: ${FACTOR_NAMES.join(", ")}`);
@@ -2380,7 +2380,7 @@ function readRiskSettings(config) {
     recencyHalfLifeMonths: whole("recencyHalfLifeMonths", 1),
     newIdentityDays: whole("newIdentityDays", 0),
     newIdentityChanges: whole("newIdentityChanges", 0),
-    sensitivePaths: strings2("sensitivePaths"),
+    sensitivePaths: strings("sensitivePaths"),
     fix: readFixClassifier(config),
     followUpDays: whole("followUpDays", 1),
     placement,
@@ -2419,13 +2419,6 @@ var cochangeConfig = {
     /** Coupling degree guideline, as a percentage (Tornhill's code-maat default). Orders and labels pairs. Only cluster membership cuts on it. */
     minDegree: 30,
     minDistance: 2,
-    /**
-     * The hook prints a note only when it has something worth a look. `confidence` is a guideline (percent), after
-     * the high-confidence couples of Tornhill's Software Design X-Rays, and a judgement call as a default: it decides
-     * whether a partner is named. `maxPartners` caps the partners one note names. `maxCommitsBehind` is how far the
-     * history cache may trail HEAD before the hook prints nothing.
-     */
-    hook: { enabled: false, confidence: 80, maxPartners: 3, maxCommitsBehind: 50 },
     /** The change-risk skill: see risk/settings.ts. */
     risk: riskDefaults,
     identities: {
@@ -2468,19 +2461,6 @@ function readSettings(config) {
   const minDegree = positive("minDegree");
   if (minDegree > 100) throw configError(`code-health.json: ${at("minDegree")} is a percentage, at most 100`);
   const evidence = section.evidence;
-  const hook = section.hook;
-  const hookConfidence = hook.confidence;
-  if (typeof hookConfidence !== "number" || !Number.isInteger(hookConfidence) || hookConfidence < 1 || hookConfidence > 100) {
-    throw configError(`code-health.json: ${at("hook.confidence")} must be a percentage from 1 to 100`);
-  }
-  const maxPartners = hook.maxPartners;
-  if (typeof maxPartners !== "number" || !Number.isInteger(maxPartners) || maxPartners < 1) {
-    throw configError(`code-health.json: ${at("hook.maxPartners")} must be a positive integer`);
-  }
-  const behind = hook.maxCommitsBehind;
-  if (typeof behind !== "number" || !Number.isInteger(behind) || behind < 0) {
-    throw configError(`code-health.json: ${at("hook.maxCommitsBehind")} must be a non-negative integer`);
-  }
   return {
     ref: branch ?? "HEAD",
     firstParent: section.firstParent === true,
@@ -2499,8 +2479,7 @@ function readSettings(config) {
     botPatterns: section.botPatterns,
     identities,
     evidenceGuidelines: evidence,
-    windowStated: config.sources[at("windowMonths")] === "file",
-    hook: { enabled: hook.enabled === true, confidence: hookConfidence, maxPartners, maxCommitsBehind: behind }
+    windowStated: config.sources[at("windowMonths")] === "file"
   };
 }
 function readGrouping(section, positive) {
@@ -2523,7 +2502,7 @@ function readGrouping(section, positive) {
   throw configError(`code-health.json: ${at("grouping")} must be "off", "issue-key" or "author-window"`);
 }
 function readIdentities(section, at) {
-  const strings2 = (key) => {
+  const strings = (key) => {
     const value = section[key];
     if (!Array.isArray(value) || value.some((p) => typeof p !== "string")) {
       throw configError(`code-health.json: ${at(`identities.${key}`)} must be an array of strings`);
@@ -2543,8 +2522,8 @@ function readIdentities(section, at) {
   };
   return {
     location,
-    servicePatterns: strings2("servicePatterns"),
-    agentTrailerPatterns: strings2("agentTrailerPatterns"),
+    servicePatterns: strings("servicePatterns"),
+    agentTrailerPatterns: strings("agentTrailerPatterns"),
     unmappedShareGuideline: count2("unmappedShareGuideline", 100),
     significantCommits: count2("significantCommits", 1e6)
   };
@@ -5685,18 +5664,18 @@ var SUBCOMMANDS = ["adoption", "backtest", "current", "redundancy", "simulate", 
 var command = {
   subcommands: {
     adoption: { summary: "Files abandoned at a past date and whether an active developer, or a recommended successor, picked them up", options: ["at", "successors", "horizon", "no-refresh"] },
-    backtest: { summary: "At a past date, the predicted at-risk files against the files actually abandoned one horizon later", options: ["at", "trials", "horizon", "seed", "top", "no-refresh"] },
+    backtest: { summary: "At a past date, the predicted at-risk files against the files actually abandoned one horizon later", options: ["at", "trials", "horizon", "seed", "top", "no-refresh"], hidden: true },
     current: { summary: "Files already abandoned, ranked", options: ["by", "rank", "no-refresh"] },
     redundancy: { summary: "Share of hotspot files with enough active authors holding enough of the lines", options: ["min-authors", "min-share", "no-refresh"] },
     simulate: { summary: "Loss distribution of simulated turnover, with the files and components it concentrates in", options: ["mode", "k", "trials", "horizon", "seed", "top", "rank", "no-refresh"] },
     trend: { summary: "Expected loss and knowledge at risk over time, at the same settings and rate", options: ["points", "trials", "horizon", "seed", "no-refresh"] },
     turnover: { summary: "Observed turnover rate per period, with the developer counts behind it", options: ["no-refresh"] }
   },
-  summary: "Knowledge lost when people leave: files already abandoned, simulated turnover, and a backtest of the model",
+  summary: "Knowledge lost when people leave: files already abandoned, simulated turnover and the observed turnover rate",
   options: { ...byOption, ...simulationOptions, top: { type: "string" }, points: { type: "string" }, successors: { type: "string" }, "min-authors": { type: "string" }, "min-share": { type: "string" }, rank: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
     const [sub, ...rest] = context.positionals;
-    if (!SUBCOMMANDS.includes(sub) || rest.length > 0) throw usageError(`usage: abandonment <${SUBCOMMANDS.join("|")}>`);
+    if (!SUBCOMMANDS.includes(sub) || rest.length > 0) throw usageError(`usage: abandonment <${SUBCOMMANDS.filter((s) => s !== "backtest").join("|")}>`);
     const subcommand = sub;
     rejectOptionsOutsideTheirCommand(subcommand, context);
     switch (subcommand) {
@@ -7415,7 +7394,6 @@ __export(outcome_exports, {
   command: () => command10,
   name: () => name10
 });
-import { existsSync as existsSync17 } from "node:fs";
 
 // packages/history/src/checkouts.ts
 async function checkouts(root) {
@@ -7424,89 +7402,15 @@ async function checkouts(root) {
   return [root, ...others.sort()];
 }
 
-// packages/history/src/session-state.ts
-import { createHash as createHash7 } from "node:crypto";
-import { closeSync as closeSync2, mkdirSync as mkdirSync4, openSync as openSync2, readFileSync as readFileSync9, renameSync as renameSync5, rmSync as rmSync5, statSync as statSync2, writeFileSync as writeFileSync5 } from "node:fs";
-import { join as join9 } from "node:path";
-var emptySession = () => ({ edited: [], spokenAbout: [], lastRun: null, measurements: {} });
-function sessionDirectory(root) {
-  return join9(root, ".cache", "code-health", "sessions");
-}
-function sessionFile(root, sessionId, hook) {
-  const safe = /^[A-Za-z0-9_-]{1,128}$/.test(sessionId) ? sessionId : `h-${createHash7("sha256").update(sessionId).digest("hex").slice(0, 32)}`;
-  return join9(sessionDirectory(root), `${safe}.${hook}.json`);
-}
-var strings = (value) => Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
-function readSession(root, sessionId, hook) {
-  try {
-    const parsed = JSON.parse(readFileSync9(sessionFile(root, sessionId, hook), "utf8"));
-    const last = parsed.lastRun;
-    return {
-      edited: strings(parsed.edited),
-      spokenAbout: strings(parsed.spokenAbout),
-      lastRun: last && typeof last.outcome === "string" && typeof last.durationMs === "number" ? { outcome: last.outcome, durationMs: last.durationMs } : null,
-      measurements: typeof parsed.measurements === "object" && parsed.measurements !== null && !Array.isArray(parsed.measurements) ? parsed.measurements : {}
-    };
-  } catch {
-    return emptySession();
-  }
-}
-function writeSession(root, sessionId, hook, state) {
-  const file = sessionFile(root, sessionId, hook);
-  ensureSelfIgnoring(join9(root, ".cache", "code-health"));
-  mkdirSync4(sessionDirectory(root), { recursive: true });
-  const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync5(temporary, JSON.stringify(state) + "\n");
-  renameSync5(temporary, file);
-}
-var STALE_LOCK_MS = 2e3;
-var LOCK_WAIT_MS = 300;
-var sleep2 = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-function withLock2(file, work) {
-  const lock = `${file}.lock`;
-  const deadline = Date.now() + LOCK_WAIT_MS;
-  let held = false;
-  for (; ; ) {
-    try {
-      closeSync2(openSync2(lock, "wx"));
-      held = true;
-      break;
-    } catch {
-      try {
-        if (Date.now() - statSync2(lock).mtimeMs > STALE_LOCK_MS) rmSync5(lock, { force: true });
-      } catch {
-      }
-      if (Date.now() >= deadline) break;
-      sleep2(5);
-    }
-  }
-  try {
-    return work();
-  } finally {
-    if (held) rmSync5(lock, { force: true });
-  }
-}
-function updateSession(root, sessionId, hook, change2) {
-  const file = sessionFile(root, sessionId, hook);
-  ensureSelfIgnoring(join9(root, ".cache", "code-health"));
-  mkdirSync4(sessionDirectory(root), { recursive: true });
-  return withLock2(file, () => {
-    const state = readSession(root, sessionId, hook);
-    change2(state);
-    writeSession(root, sessionId, hook, state);
-    return state;
-  });
-}
-
 // packages/transcripts/src/projects-dir.ts
 import { homedir } from "node:os";
-import { join as join10 } from "node:path";
-var defaultProjectsDirectory = () => join10(homedir(), ".claude", "projects");
+import { join as join9 } from "node:path";
+var defaultProjectsDirectory = () => join9(homedir(), ".claude", "projects");
 
 // packages/transcripts/src/stamp.ts
-import { createHash as createHash8 } from "node:crypto";
+import { createHash as createHash7 } from "node:crypto";
 function stampOf(input) {
-  return createHash8("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
+  return createHash7("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
 }
 
 // packages/transcripts/src/difference.ts
@@ -7527,7 +7431,7 @@ function differenceOf(actedOn, comparison, minSamples, noisePercent) {
 }
 
 // packages/transcripts/src/session-edits.ts
-import { existsSync as existsSync14, readFileSync as readFileSync11 } from "node:fs";
+import { existsSync as existsSync14, readFileSync as readFileSync10 } from "node:fs";
 
 // packages/transcripts/src/repo-path.ts
 import { posix } from "node:path";
@@ -7585,8 +7489,8 @@ function toRepoPath(path, roots) {
 }
 
 // packages/transcripts/src/measure-repo.ts
-import { existsSync as existsSync13, readFileSync as readFileSync10, readdirSync } from "node:fs";
-import { join as join11 } from "node:path";
+import { existsSync as existsSync13, readFileSync as readFileSync9, readdirSync } from "node:fs";
+import { join as join10 } from "node:path";
 
 // packages/transcripts/src/shell-command.ts
 import { posix as posix2 } from "node:path";
@@ -8483,9 +8387,9 @@ function compareBytes3(a, b) {
   return Buffer.compare(Buffer.from(a), Buffer.from(b));
 }
 function sessionFiles(projectsDir, root) {
-  const dir = join11(projectsDir, encodeProjectDir(root));
+  const dir = join10(projectsDir, encodeProjectDir(root));
   if (!existsSync13(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join11(dir, entry.name) })).sort((a, b) => compareBytes3(a.sessionId, b.sessionId));
+  return readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join10(dir, entry.name) })).sort((a, b) => compareBytes3(a.sessionId, b.sessionId));
 }
 
 // packages/transcripts/src/session-edits.ts
@@ -8515,7 +8419,7 @@ function readRepoSessionEdits(options) {
       seen.add(file.path);
       let text;
       try {
-        text = readFileSync11(file.path, "utf8");
+        text = readFileSync10(file.path, "utf8");
       } catch {
         continue;
       }
@@ -8545,8 +8449,7 @@ function findOpportunities(sessions, partnersOf2) {
       found.push({
         sessionId: session.sessionId,
         file,
-        followed: unedited.some((partner) => firstEdit.has(partner)),
-        briefed: session.spokenAbout.has(file)
+        followed: unedited.some((partner) => firstEdit.has(partner))
       });
     }
   }
@@ -8556,13 +8459,6 @@ var rateOf = (items) => {
   const followed = items.filter((o) => o.followed).length;
   return { opportunities: items.length, followed, rate: items.length === 0 ? null : followed / items.length };
 };
-function compareArms(hook, noHook, minSamples, noisePercent) {
-  if (hook.rate === null || noHook.rate === null) return { difference: null, conclusion: "not-measured" };
-  const difference = hook.rate - noHook.rate;
-  if (Math.min(hook.opportunities, noHook.opportunities) < minSamples) return { difference, conclusion: "insufficient-sample" };
-  const noise = noHook.rate * noisePercent / 100;
-  return { difference, conclusion: Math.abs(difference) <= noise ? "no-change" : difference > 0 ? "higher" : "lower" };
-}
 
 // packages/cochange/src/outcome/spread-outcome.ts
 var byBytes2 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
@@ -8610,132 +8506,6 @@ function revisionsOf(changes) {
   return counts;
 }
 
-// packages/cochange/src/hook.ts
-import { existsSync as existsSync16 } from "node:fs";
-import { join as join13 } from "node:path";
-
-// packages/history/src/hook-event.ts
-import { existsSync as existsSync15 } from "node:fs";
-import { dirname as dirname3, join as join12 } from "node:path";
-var WATCHED_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit"]);
-function findRepoRoot(start) {
-  let directory = start;
-  for (; ; ) {
-    if (existsSync15(join12(directory, ".git"))) return directory;
-    const parent = dirname3(directory);
-    if (parent === directory) return void 0;
-    directory = parent;
-  }
-}
-function readEditEvent(stdin, fallbackCwd) {
-  const input = JSON.parse(stdin);
-  const path = input.tool_input?.file_path;
-  if (typeof input.session_id !== "string" || input.session_id === "" || typeof path !== "string") return void 0;
-  if (typeof input.tool_name === "string" && !WATCHED_TOOLS.has(input.tool_name)) return void 0;
-  const cwd = typeof input.cwd === "string" && input.cwd !== "" ? input.cwd : fallbackCwd;
-  const root = findRepoRoot(cwd);
-  if (root === void 0) return void 0;
-  const file = repoRelative(root, path);
-  if (file.startsWith("..") || file.startsWith("/") || file === "") return void 0;
-  return { sessionId: input.session_id, root, file };
-}
-function within(budgetMs2, started, work, silence) {
-  const remaining = Math.max(0, budgetMs2 - (performance.now() - started));
-  return new Promise((resolve2, reject) => {
-    const timer = setTimeout(() => resolve2(silence), remaining);
-    work.then(
-      (answer) => {
-        clearTimeout(timer);
-        resolve2(answer);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
-}
-
-// packages/cochange/src/hook.ts
-var HOOK_NAME = "cochange";
-var DEFAULT_BUDGET_MS = 200;
-async function commitsBehind(root, dbPath, ref, limit) {
-  const recent = (await runGit(root, ["rev-list", `--max-count=${limit + 1}`, ref])).split("\n").filter((sha) => sha !== "");
-  if (recent.length === 0) return void 0;
-  const db = openForRead(dbPath);
-  if (!db) return void 0;
-  try {
-    const find = db.prepare("SELECT 1 AS found FROM commits WHERE sha = ?");
-    const index2 = recent.findIndex((sha) => find.get(sha) !== void 0);
-    return index2 === -1 ? void 0 : { behind: index2, sha: recent[index2] };
-  } finally {
-    db.close();
-  }
-}
-function describeNote(file, partners, omitted, guideline) {
-  const q = (text) => "`" + text + "`";
-  const named = partners.map((p) => `${q(p.path)} (confidence ${Math.round(p.confidence)} %, ${p.support} ${p.support === 1 ? "change" : "changes"})`);
-  const list = named.length <= 1 ? named.join("") : `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}`;
-  const more = omitted === 0 ? "" : `, and ${omitted} more not named`;
-  return `${q(file)} changed together with ${list}${more}. Guideline: confidence ${guideline} %. Not yet edited in this session, so worth a look.`;
-}
-async function consider(root, file, settings, state) {
-  const location = await locateCache(root);
-  const found = await commitsBehind(root, location.dbPath, settings.ref, settings.hook.maxCommitsBehind);
-  if (!found) return { note: null, outcome: "printed nothing: no cache within tolerance" };
-  const identities = loadIdentityState(root, settings);
-  const view = await readHistory2(root, { ref: found.sha, firstParent: settings.firstParent, mailmapFile: identities.localMailmap });
-  const filtered = await filterHistory(root, view, {
-    exclude: settings.exclude,
-    botPatterns: settings.botPatterns,
-    nonPerson: identities.matcher,
-    maxChangesetSize: settings.maxChangesetSize,
-    grouping: settings.grouping,
-    since: monthsBefore(view.headDate, settings.windowMonths),
-    until: view.headDate + 1
-  });
-  const exists2 = await runGit(root, ["cat-file", "-e", `${found.sha}:${file}`]).then(
-    () => true,
-    () => false
-  );
-  const identity = exists2 ? file : view.renames.resolve(file, -1);
-  const { changesFocus, partners } = partnersOf(
-    filtered.changes.map((change2) => ({ files: change2.files.map((f) => f.fileId), oversized: change2.oversized })),
-    identity
-  );
-  const edited = new Set(state.edited);
-  const qualified = partners.map((partner) => ({ path: partner.path, support: partner.support, confidence: confidenceOf(partner.support, changesFocus) })).filter(
-    (partner) => partner.support >= settings.minSupport && partner.confidence >= settings.hook.confidence && !edited.has(partner.path) && existsSync16(join13(root, partner.path))
-  ).sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  if (qualified.length === 0) return { note: null, outcome: "printed nothing: no unedited partner at or above the guideline" };
-  const named = qualified.slice(0, settings.hook.maxPartners);
-  return { note: describeNote(file, named, qualified.length - named.length, settings.hook.confidence), outcome: "printed a note" };
-}
-async function runHook(request) {
-  const started = request.startedAt ?? performance.now();
-  try {
-    const event = readEditEvent(request.stdin, request.cwd);
-    if (event === void 0) return "";
-    const { root, file, sessionId } = event;
-    const settings = readSettings(loadConfig(root, cochangeConfig));
-    if (!settings.hook.enabled) return "";
-    const state = updateSession(root, sessionId, HOOK_NAME, (current2) => {
-      if (!current2.edited.includes(file)) current2.edited.push(file);
-    });
-    const decision = state.spokenAbout.includes(file) ? { note: null, outcome: "printed nothing: already printed a note for this file" } : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state), {
-      note: null,
-      outcome: "printed nothing: over the time budget"
-    });
-    updateSession(root, sessionId, HOOK_NAME, (current2) => {
-      if (decision.note !== null && !current2.spokenAbout.includes(file)) current2.spokenAbout.push(file);
-      current2.lastRun = { outcome: decision.outcome, durationMs: Math.round(performance.now() - started) };
-    });
-    return decision.note === null ? "" : JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: decision.note } });
-  } catch {
-    return "";
-  }
-}
-
 // packages/cochange/src/commands/outcome.ts
 var name10 = "outcome";
 var SUBCOMMANDS3 = ["completeness", "spread"];
@@ -8743,9 +8513,9 @@ var isoDay6 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 var command10 = {
   subcommands: {
     spread: { summary: "Change spread and revisions of the files acted on, against similarly ranked files left alone, either side of a date", options: ["at", "months", "min-samples", "noise", "no-refresh"] },
-    completeness: { summary: "How often an agent's edit is followed by an edit to a coupled file in the same session, with and without the hook", options: ["since", "until", "projects-dir", "min-samples", "noise", "no-refresh"] }
+    completeness: { summary: "How often an agent's edit is followed by an edit to a coupled file in the same session", options: ["since", "until", "projects-dir", "no-refresh"] }
   },
-  summary: "Measure whether acting on findings worked: change spread against untouched files, and agent completeness with and without the hook",
+  summary: "Measure whether acting on findings worked: change spread against untouched files, and how often agents finish a coupled change",
   options: {
     at: { type: "string" },
     months: { type: "string" },
@@ -8856,8 +8626,6 @@ async function completeness(context) {
       throw usageError(error instanceof Error ? error.message : String(error));
     }
   })();
-  const minSamples = integerOption(context, "min-samples", 10, 1, 1e6);
-  const noise = integerOption(context, "noise", 10, 0, 100);
   const projects = context.values["projects-dir"];
   if (projects !== void 0 && (typeof projects !== "string" || projects === "")) throw usageError("--projects-dir needs a value");
   const projectsDir = typeof projects === "string" ? projects : defaultProjectsDirectory();
@@ -8876,53 +8644,38 @@ async function completeness(context) {
     const key = `${known}\0${file}`;
     const cached = cache.get(key);
     if (cached !== void 0) return cached;
-    const { changesFocus, partners } = partnersOf(couplingChanges.slice(0, known), file);
-    const named = partners.filter((p) => p.support >= settings.minSupport && confidenceOf(p.support, changesFocus) >= settings.hook.confidence && present.has(p.path)).map((p) => p.path);
+    const { partners } = partnersOf(couplingChanges.slice(0, known), file);
+    const named = partners.filter(
+      (p) => p.support >= settings.minSupport && present.has(p.path) && reachesDegree({ a: file, b: p.path, support: p.support, changesA: p.changesFocus, changesB: p.changesPartner }, settings.minDegree)
+    ).map((p) => p.path);
     cache.set(key, named);
     return named;
   };
   const found = readRepoSessionEdits({ projectsDir, repoRoots: roots, window });
-  const records = found.map((session) => {
-    const holder = roots.find((r) => existsSync17(sessionFile(r, session.sessionId, HOOK_NAME)));
-    const state = holder === void 0 ? null : readSession(holder, session.sessionId, HOOK_NAME);
-    return {
-      sessionId: session.sessionId,
-      startedAt: Math.floor(Date.parse(session.startedAt) / 1e3),
-      edits: session.edits.map(identityOf),
-      hook: state !== null,
-      spokenAbout: new Set((state?.spokenAbout ?? []).map(identityOf))
-    };
-  });
+  const records = found.map((session) => ({
+    sessionId: session.sessionId,
+    startedAt: Math.floor(Date.parse(session.startedAt) / 1e3),
+    edits: session.edits.map(identityOf)
+  }));
   const opportunities = findOpportunities(records, partnersNamed);
-  const hookSessions = new Set(records.filter((r) => r.hook).map((r) => r.sessionId));
-  const inHook = opportunities.filter((o) => hookSessions.has(o.sessionId));
-  const noHook = opportunities.filter((o) => !hookSessions.has(o.sessionId));
-  const hookRate = rateOf(inHook);
-  const noHookRate = rateOf(noHook);
-  const comparison = compareArms(hookRate, noHookRate, minSamples, noise);
+  const overall = rateOf(opportunities);
   return {
     inputs: {
       subcommand: "completeness",
       since,
       until,
-      minSamples,
-      noisePercent: noise,
       minSupport: settings.minSupport,
-      confidence: settings.hook.confidence,
-      transcriptStamp: stampOf(records.map((r) => ({ ...r, spokenAbout: [...r.spokenAbout].sort(byBytes3) }))),
+      minDegree: settings.minDegree,
+      transcriptStamp: stampOf(records),
       ...identityStamps(history)
     },
     extra: historySections(history),
     results: {
       window: { since, until },
-      sessions: { measured: records.length, withHook: hookSessions.size, withoutHook: records.length - hookSessions.size },
-      withHook: { sessions: hookSessions.size, ...hookRate, briefed: rateOf(inHook.filter((o) => o.briefed)), notBriefed: rateOf(inHook.filter((o) => !o.briefed)) },
-      withoutHook: { sessions: records.length - hookSessions.size, ...noHookRate },
+      sessions: { measured: records.length },
+      ...overall,
       role: "agent outcome",
-      difference: comparison.difference,
-      smallestSample: Math.min(inHook.length, noHook.length),
-      conclusion: comparison.conclusion,
-      caveat: "Sessions were not assigned to the hook at random: a difference may come from the work, the period or the people, so read it as an association."
+      caveat: "The rate depends on the work, the period and the people as well as on any briefing, so read it as a baseline to compare against, not as the effect of a change."
     }
   };
 }
@@ -9321,7 +9074,7 @@ var LEVEL_RULES = [
   },
   {
     id: "backtest",
-    text: "No level is shown until cochange risk backtest has been run on the repository and its stored result shows that the levels separate past changes. Until then the bands, findings and responses stand alone. The level is advice for review, never a gate."
+    text: "A level is shown only where a stored backtest for the repository shows that the levels separate past changes. The suite's maintainers run the backtest; where none is stored, the bands, findings and responses stand alone. The level is advice for review, never a gate."
   }
 ];
 
@@ -9355,12 +9108,12 @@ async function explainFactor(name16, assess) {
 }
 
 // packages/cochange/src/risk/abandonment-report.ts
-import { existsSync as existsSync18, readFileSync as readFileSync12 } from "node:fs";
+import { existsSync as existsSync15, readFileSync as readFileSync11 } from "node:fs";
 function readAbandonmentReport(root, head, config, overridesStamp) {
   const file = reportPath2(root, REPORT);
-  if (!existsSync18(file)) return null;
+  if (!existsSync15(file)) return null;
   try {
-    const document = JSON.parse(readFileSync12(file, "utf8"));
+    const document = JSON.parse(readFileSync11(file, "utf8"));
     if (document.tool !== "cochange" || document.command !== REPORT) return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false || document.config !== config) return null;
     if (document.inputs?.mode !== "rate" || (document.inputs.overrides?.hash ?? null) !== overridesStamp) return null;
@@ -9461,23 +9214,23 @@ function measurement(evidence, files, unknown) {
 }
 
 // packages/cochange/src/risk/composition.ts
-import { existsSync as existsSync19, readFileSync as readFileSync14 } from "node:fs";
-import { join as join15 } from "node:path";
+import { existsSync as existsSync16, readFileSync as readFileSync13 } from "node:fs";
+import { join as join12 } from "node:path";
 
 // packages/cochange/src/risk/evidence-inputs.ts
-import { createHash as createHash9 } from "node:crypto";
-import { readFileSync as readFileSync13 } from "node:fs";
-import { isAbsolute as isAbsolute4, join as join14 } from "node:path";
+import { createHash as createHash8 } from "node:crypto";
+import { readFileSync as readFileSync12 } from "node:fs";
+import { isAbsolute as isAbsolute4, join as join11 } from "node:path";
 var NO_EVIDENCE = { complexity: null, structure: null, stamps: [] };
 function readEvidence(root, files, change2) {
   let complexity = null;
   let structure = null;
   const stamps = [];
   for (const file of files) {
-    const path = isAbsolute4(file) ? file : join14(root, file);
+    const path = isAbsolute4(file) ? file : join11(root, file);
     let text;
     try {
-      text = readFileSync13(path, "utf8");
+      text = readFileSync12(path, "utf8");
     } catch {
       throw usageError(`--evidence ${file}: cannot read it (a relative path is taken from the repository root)`);
     }
@@ -9489,7 +9242,7 @@ function readEvidence(root, files, change2) {
     }
     const tool = String(document.tool ?? "");
     const command16 = String(document.command ?? "");
-    const stamp2 = { tool, command: command16, hash: createHash9("sha256").update(text).digest("hex").slice(0, 16) };
+    const stamp2 = { tool, command: command16, hash: createHash8("sha256").update(text).digest("hex").slice(0, 16) };
     if (!Array.isArray(document.results)) throw usageError(`--evidence ${file}: no results list`);
     checkAgainst(file, document, change2);
     if (tool === "complexity" && command16 === "diff") {
@@ -9600,16 +9353,16 @@ async function complexityDelta(root, change2, risk, evidence) {
 }
 function readWorktree(root, path) {
   try {
-    return readFileSync14(join15(root, path), "utf8");
+    return readFileSync13(join12(root, path), "utf8");
   } catch {
     return void 0;
   }
 }
 function readLocalityFanIn(root, head) {
   const file = reportPath2(root, "analyse", "locality");
-  if (!existsSync19(file)) return null;
+  if (!existsSync16(file)) return null;
   try {
-    const document = JSON.parse(readFileSync14(file, "utf8"));
+    const document = JSON.parse(readFileSync13(file, "utf8"));
     if (document.tool !== "locality" || document.command !== "analyse") return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false) return null;
     if (!Array.isArray(document.results) || typeof document.config !== "string") return null;
@@ -10399,7 +10152,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change2.head);
   const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-GNRQDVMZ.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-7HMSUNX2.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);
@@ -10694,13 +10447,13 @@ function adoptionOf(all, outcomes, adopted, risk, headTime) {
 }
 
 // packages/cochange/src/risk/stored-backtest.ts
-import { existsSync as existsSync20, readFileSync as readFileSync15 } from "node:fs";
+import { existsSync as existsSync17, readFileSync as readFileSync14 } from "node:fs";
 var BACKTEST_REPORT = "risk-backtest";
 function readStoredBacktest(root, configHash) {
   const file = reportPath2(root, BACKTEST_REPORT);
-  if (!existsSync20(file)) return null;
+  if (!existsSync17(file)) return null;
   try {
-    const document = JSON.parse(readFileSync15(file, "utf8"));
+    const document = JSON.parse(readFileSync14(file, "utf8"));
     const results = document.results;
     if (document.tool !== TOOL2 || document.command !== BACKTEST_REPORT || document.config !== configHash) return null;
     if (typeof document.repo?.head !== "string" || results?.kind !== "backtest" || !results.separation) return null;
@@ -10938,7 +10691,7 @@ function levelResult(assessed, placement, stored, behind) {
   const band = placement.placement?.band ?? "unknown";
   const base = { impact: assessed.impact.band, placement: band };
   if (stored === null) {
-    return { ...base, status: "unavailable", value: null, reason: "no stored backtest for this configuration: run cochange risk backtest, and a level is shown if the levels separate past changes", backtest: null };
+    return { ...base, status: "unavailable", value: null, reason: "no stored backtest for this configuration, so no level is shown: a level is shown only where a stored backtest shows that the levels separate past changes", backtest: null };
   }
   const backtest = { head: stored.head, commitsAgo: behind, separation: stored.separation, elevatedShare: stored.elevatedShare, levels: stored.levels };
   if (stored.separation.status !== "separates") {
@@ -11287,7 +11040,7 @@ function rangeOf(rest) {
   return rest[0];
 }
 var command12 = analysisCommand(name12, {
-  summary: "How much a branch puts at risk before it is merged, and how to review it: risk [BASE[..HEAD]] | explain | reviewers | backtest",
+  summary: "How much a branch puts at risk before it is merged, and how to review it: risk [BASE[..HEAD]] | explain | reviewers",
   options: { worktree: { type: "boolean" }, evidence: { type: "string", multiple: true }, names: { type: "boolean" }, since: { type: "string" }, adopted: { type: "string" } },
   wholeHistory: true,
   // A branch is not the repository's own answer, so nothing here is stored as a whole-repository report.
@@ -11568,93 +11321,10 @@ var cli = {
   mapError: mapHistoryError
 };
 
-// packages/history/src/hook-process.ts
-import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
-function readStdin(limitMs) {
-  return new Promise((resolve2) => {
-    if (process.stdin.isTTY) return resolve2("");
-    const chunks = [];
-    const finish = () => {
-      clearTimeout(timer);
-      resolve2(Buffer.concat(chunks).toString("utf8"));
-    };
-    const timer = setTimeout(finish, Math.max(0, limitMs - performance.now()));
-    process.stdin.on("data", (chunk) => chunks.push(chunk));
-    process.stdin.on("end", finish);
-    process.stdin.on("error", finish);
-  });
-}
-function workerEntry(moduleUrl, sourceModule) {
-  return moduleUrl.endsWith(`/${sourceModule}`) ? new URL("./main.ts", moduleUrl) : new URL(moduleUrl);
-}
-function runInWorker(entry, job, budgetMs2) {
-  return new Promise((resolve2) => {
-    let worker;
-    try {
-      worker = new Worker(entry, { workerData: job });
-    } catch {
-      return resolve2("");
-    }
-    const timer = setTimeout(() => resolve2(""), Math.max(0, budgetMs2 - performance.now()));
-    worker.on("message", (output) => {
-      clearTimeout(timer);
-      resolve2(output);
-    });
-    worker.on("error", () => {
-      clearTimeout(timer);
-      resolve2("");
-    });
-    worker.on("exit", () => {
-      clearTimeout(timer);
-      resolve2("");
-    });
-  });
-}
-async function runHookWorker(hook) {
-  const job = workerData;
-  const output = await hook.run({ stdin: job.stdin, cwd: job.cwd, budgetMs: 6e4 });
-  parentPort?.postMessage(output);
-}
-var inHookWorker = (kind) => !isMainThread && workerData?.kind === kind;
-function budgetMs(fallback) {
-  const raw = process.env.CODE_HEALTH_HOOK_BUDGET_MS;
-  if (raw === void 0 || raw.trim() === "") return fallback;
-  const override = Number(raw);
-  return Number.isInteger(override) && override >= 0 ? override : fallback;
-}
-async function runHookProcess(hook) {
-  let output = "";
-  try {
-    const budget = budgetMs(hook.defaultBudgetMs);
-    const stdin = await readStdin(budget);
-    output = await runInWorker(hook.entry, { kind: hook.kind, stdin, cwd: process.cwd() }, budget);
-  } catch {
-  }
-  return new Promise(() => {
-    const exit = () => process.exit(0);
-    if (output === "") exit();
-    process.stdout.write(output + "\n", exit);
-  });
-}
-
-// packages/cochange/src/hook-definition.ts
-var cochangeHook = {
-  kind: "cochange-hook",
-  run: ({ stdin, cwd, budgetMs: budgetMs2 }) => runHook({ stdin, cwd, budgetMs: budgetMs2 }),
-  defaultBudgetMs: DEFAULT_BUDGET_MS,
-  entry: workerEntry(import.meta.url, "hook-definition.ts")
-};
-
 // packages/cochange/src/main.ts
-var argv = process.argv.slice(2);
-if (inHookWorker(cochangeHook.kind)) {
-  await runHookWorker(cochangeHook);
-} else {
-  if (argv[0] === "hook") await runHookProcess(cochangeHook);
-  process.exitCode = await runCli(cli, {
-    argv,
-    cwd: process.cwd(),
-    stdout: process.stdout,
-    stderr: process.stderr
-  });
-}
+process.exitCode = await runCli(cli, {
+  argv: process.argv.slice(2),
+  cwd: process.cwd(),
+  stdout: process.stdout,
+  stderr: process.stderr
+});

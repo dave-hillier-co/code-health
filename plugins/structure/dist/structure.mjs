@@ -642,6 +642,7 @@ function commandHelp(cli2, name13, command12, requested) {
     return flags2.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
   };
   const all = Object.entries(command12.options ?? {});
+  const hiddenOptions = new Set(command12.hiddenOptions ?? []);
   if (sub !== void 0) {
     const taken = new Set(sub.options ?? []);
     return [
@@ -655,7 +656,7 @@ function commandHelp(cli2, name13, command12, requested) {
       ""
     ].join("\n");
   }
-  const subcommands2 = Object.entries(command12.subcommands ?? {});
+  const subcommands2 = Object.entries(command12.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
   const width = Math.max(0, ...subcommands2.map(([sname]) => sname.length));
   return [
     `Usage: ${cli2.tool} ${name13}${command12.usage === void 0 ? "" : ` ${command12.usage}`}${subcommands2.length > 0 ? " <subcommand>" : ""} [options]`,
@@ -664,7 +665,7 @@ function commandHelp(cli2, name13, command12, requested) {
     "",
     ...subcommands2.length > 0 ? ["Subcommands:", ...subcommands2.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name13} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
-    ...optionLines(all),
+    ...optionLines(all.filter(([option]) => !hiddenOptions.has(option))),
     ...commonOptionHelp,
     ""
   ].join("\n");

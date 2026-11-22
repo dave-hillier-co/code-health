@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GitFixture, type Change, type Identity, type Step } from "@code-health/fixtures/git-fixture";
-import { emptySession, writeSession } from "@code-health/history/session-state";
 import { encodeProjectDir } from "@code-health/transcripts/measure-repo";
 import { edit, SyntheticSession } from "../../../transcripts/test/synthetic-transcript.ts";
 
@@ -65,7 +64,7 @@ export function outcomeHistory(): GitFixture {
   return GitFixture.build(dated.map((d) => d.step));
 }
 
-/** A directory of Claude Code sessions for a repository, and the hook's own session state beside the repository. */
+/** A directory of Claude Code sessions for a repository. */
 export class AgentSessions {
   readonly directory: string;
   readonly root: string;
@@ -78,15 +77,11 @@ export class AgentSessions {
     mkdirSync(this.project, { recursive: true });
   }
 
-  /**
-   * One session that edits `files` in order, one turn each, on `day`. With `hook`, the cochange hook ran in it
-   * and spoke about `spoke` files.
-   */
-  session(id: string, day: string, files: string[], hook?: { spoke: string[] }): void {
+  /** One session that edits `files` in order, one turn each, on `day`. */
+  session(id: string, day: string, files: string[]): void {
     const transcript = new SyntheticSession({ cwd: this.root, sessionId: id, start: `${day}T09:00:00.000Z` }).prompt("Make the change");
     files.forEach((file, i) => transcript.assistant(`${id}-m${i}`, [edit(join(this.root, file))]));
     writeFileSync(join(this.project, `${id}.jsonl`), transcript.toJsonl());
-    if (hook !== undefined) writeSession(this.root, id, "cochange", { ...emptySession(), edited: [...new Set(files)], spokenAbout: hook.spoke });
   }
 
   dispose(): void {

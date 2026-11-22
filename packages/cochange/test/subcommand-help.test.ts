@@ -28,6 +28,9 @@ test("each subcommand of abandonment describes itself with only its own options"
 
 test("a command's own help lists its subcommands with a line each", async () => {
   const text = await help("abandonment");
-  for (const sub of ["adoption", "backtest", "current", "redundancy", "simulate", "trend", "turnover"]) expect(text).toMatch(new RegExp(`\\n  ${sub}\\s+\\S`));
+  for (const sub of ["adoption", "current", "redundancy", "simulate", "trend", "turnover"]) expect(text).toMatch(new RegExp(`\\n  ${sub}\\s+\\S`));
+  expect(text).not.toContain("backtest");
+  expect(await help("abandonment", "backtest")).toContain("--trials <trials>");
+  expect(await help("risk")).not.toContain("backtest");
   expect(await help("outcome")).toMatch(/completeness\s+How often/);
 });

@@ -102,13 +102,11 @@
     "oversizedChanges": 0
   },
   "inputs": {
-    "confidence": 80,
-    "minSamples": 2,
+    "minDegree": 30,
     "minSupport": 5,
-    "noisePercent": 10,
     "since": "2026-03-01",
     "subcommand": "completeness",
-    "transcriptStamp": "9123c9923ae62613",
+    "transcriptStamp": "77bb989f8f25df90",
     "until": "2026-04-01"
   },
   "repo": {
@@ -116,41 +114,17 @@
     "head": "e5e6690ba4286df12684f789a01a9b7aa67cb01c"
   },
   "results": {
-    "caveat": "Sessions were not assigned to the hook at random: a difference may come from the work, the period or the people, so read it as an association.",
-    "conclusion": "higher",
-    "difference": 0.3,
+    "caveat": "The rate depends on the work, the period and the people as well as on any briefing, so read it as a baseline to compare against, not as the effect of a change.",
+    "followed": 2,
+    "opportunities": 7,
+    "rate": 0.285714,
     "role": "agent outcome",
     "sessions": {
-      "measured": 6,
-      "withHook": 2,
-      "withoutHook": 4
+      "measured": 6
     },
-    "smallestSample": 2,
     "window": {
       "since": "2026-03-01",
       "until": "2026-04-01"
-    },
-    "withHook": {
-      "briefed": {
-        "followed": 1,
-        "opportunities": 1,
-        "rate": 1
-      },
-      "followed": 1,
-      "notBriefed": {
-        "followed": 0,
-        "opportunities": 1,
-        "rate": 0
-      },
-      "opportunities": 2,
-      "rate": 0.5,
-      "sessions": 2
-    },
-    "withoutHook": {
-      "followed": 1,
-      "opportunities": 5,
-      "rate": 0.2,
-      "sessions": 4
     }
   },
   "schemaVersion": 1,

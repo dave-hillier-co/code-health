@@ -661,6 +661,7 @@ function commandHelp(cli2, name8, command8, requested) {
     return flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
   };
   const all = Object.entries(command8.options ?? {});
+  const hiddenOptions = new Set(command8.hiddenOptions ?? []);
   if (sub !== void 0) {
     const taken = new Set(sub.options ?? []);
     return [
@@ -674,7 +675,7 @@ function commandHelp(cli2, name8, command8, requested) {
       ""
     ].join("\n");
   }
-  const subcommands = Object.entries(command8.subcommands ?? {});
+  const subcommands = Object.entries(command8.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
   const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
     `Usage: ${cli2.tool} ${name8}${command8.usage === void 0 ? "" : ` ${command8.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
@@ -683,7 +684,7 @@ function commandHelp(cli2, name8, command8, requested) {
     "",
     ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name8} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
-    ...optionLines(all),
+    ...optionLines(all.filter(([option]) => !hiddenOptions.has(option))),
     ...commonOptionHelp,
     ""
   ].join("\n");
@@ -5072,16 +5073,16 @@ var DEFAULT_CANDIDATES = 200;
 var HEAT_FILES = 50;
 var TOOL_PLUGIN = "locality";
 var command3 = {
-  summary: "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare); or test from existing history and sessions whether distant files cost more (measure premise)",
-  usage: "baseline | compare | premise",
+  summary: "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare)",
+  usage: "baseline | compare",
+  hiddenOptions: ["until"],
   optionHelp: {
     name: "the name of the baseline to record or compare against (default: default)",
     "projects-dir": "the folder of Claude Code session transcripts read for agent effort (default: ~/.claude/projects)",
     candidates: "how many top candidates the baseline records (default 200)",
-    since: "baseline and compare: start the after window on this date, YYYY-MM-DD (default: the day after the last suite commit); premise: start of the window read",
-    until: "premise: end of the window read, YYYY-MM-DD, exclusive",
-    source: "baseline and premise: which tasks are read, main (main sessions), subagent (subagent transcripts) or all (default all); compare uses the baseline's",
-    effort: "baseline and premise: which calls count toward effort, tools (Read, Grep, Glob, Edit, Write and NotebookEdit calls only) or all (those and the files named in Bash commands) (default all); compare uses the baseline's",
+    since: "baseline and compare: start the after window on this date, YYYY-MM-DD (default: the day after the last suite commit)",
+    source: "baseline: which tasks are read, main (main sessions), subagent (subagent transcripts) or all (default all); compare uses the baseline's",
+    effort: "baseline: which calls count toward effort, tools (Read, Grep, Glob, Edit, Write and NotebookEdit calls only) or all (those and the files named in Bash commands) (default all); compare uses the baseline's",
     force: "replace a baseline of the same name"
   },
   options: {
@@ -5097,7 +5098,7 @@ var command3 = {
   async run(context) {
     const [subcommand] = context.positionals;
     if (subcommand !== "baseline" && subcommand !== "compare" && subcommand !== "premise") {
-      throw usageError("measure takes one subcommand: baseline, compare or premise");
+      throw usageError("measure takes one subcommand: baseline or compare");
     }
     const settings = readSettings(context.config);
     if (subcommand === "premise") return premise(context, settings);

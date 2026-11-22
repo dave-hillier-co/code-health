@@ -27,7 +27,7 @@ The change is `close` when most of its churn is in `owner` or `regular` files, `
 ## What bounds it
 
 - **Self by default.** Placement is computed when the change's authors are the invoking git identity: a self-check before asking for review. It is a default, not an access control. For someone else's branch the CLI withholds it, with the reason. `cochange.risk.placement: "any"` computes it for anyone's, and `"off"` never does. That setting is a team's decision to make together, so do not change it for the user.
-- **One change at a time.** No command lists placement or levels by author. `backtest` reports per factor band and per level, never per person.
+- **One change at a time.** No command lists placement or levels by author. No command reports per person.
 - **Nothing kept.** Placement, the level and the findings that rest on it are not written to `reports/` and are not stored. The impact factors are.
 - **No one is named by a factor.** `owner-distance` counts files with an owner who is not an author. Who that owner is appears only through `reviewers --names`, as someone to ask.
 

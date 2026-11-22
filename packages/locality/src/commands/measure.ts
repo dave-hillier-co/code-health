@@ -31,16 +31,16 @@ const TOOL_PLUGIN = "locality";
 
 export const command: Command = {
   summary:
-    "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare); or test from existing history and sessions whether distant files cost more (measure premise)",
-  usage: "baseline | compare | premise",
+    "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare)",
+  usage: "baseline | compare",
+  hiddenOptions: ["until"],
   optionHelp: {
     name: "the name of the baseline to record or compare against (default: default)",
     "projects-dir": "the folder of Claude Code session transcripts read for agent effort (default: ~/.claude/projects)",
     candidates: "how many top candidates the baseline records (default 200)",
-    since: "baseline and compare: start the after window on this date, YYYY-MM-DD (default: the day after the last suite commit); premise: start of the window read",
-    until: "premise: end of the window read, YYYY-MM-DD, exclusive",
-    source: "baseline and premise: which tasks are read, main (main sessions), subagent (subagent transcripts) or all (default all); compare uses the baseline's",
-    effort: "baseline and premise: which calls count toward effort, tools (Read, Grep, Glob, Edit, Write and NotebookEdit calls only) or all (those and the files named in Bash commands) (default all); compare uses the baseline's",
+    since: "baseline and compare: start the after window on this date, YYYY-MM-DD (default: the day after the last suite commit)",
+    source: "baseline: which tasks are read, main (main sessions), subagent (subagent transcripts) or all (default all); compare uses the baseline's",
+    effort: "baseline: which calls count toward effort, tools (Read, Grep, Glob, Edit, Write and NotebookEdit calls only) or all (those and the files named in Bash commands) (default all); compare uses the baseline's",
     force: "replace a baseline of the same name",
   },
   options: {
@@ -56,7 +56,7 @@ export const command: Command = {
   async run(context): Promise<CommandOutput> {
     const [subcommand] = context.positionals;
     if (subcommand !== "baseline" && subcommand !== "compare" && subcommand !== "premise") {
-      throw usageError("measure takes one subcommand: baseline, compare or premise");
+      throw usageError("measure takes one subcommand: baseline or compare");
     }
     const settings = readSettings(context.config);
     if (subcommand === "premise") return premise(context, settings);

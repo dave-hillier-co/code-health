@@ -50,8 +50,6 @@ export const complexityConfig: PluginConfigSpec = {
     changeWeighting: true,
     /** `{ "paths": [globs], "guidelines": { ...partial guidelines } }`, the last matching entry winning per metric. */
     overrides: [],
-    /** The post-edit hook, off unless a repository turns it on. It uses `guidelines`, `delta`, `analyseTests` and `agreementBar`. */
-    hook: { enabled: false },
     /**
      * `complexity fixes` and `analyse --with-fixes`. `maxCommits` bounds how many commits of the history window are parsed, newest first, and the output says how many were left out:
      * 500 is a judgement call about run time, not calibrated on a corpus. `evidence` is how many fix commits are listed per function.
@@ -85,8 +83,6 @@ export interface ComplexitySettings {
   botPatterns: string[];
   /** The shared definition of a fix commit: `history.fixPatterns`, `revertPatterns` and `fixMatchBody`. */
   fix: FixClassifier;
-  /** The opt-in post-edit hook. */
-  hook: { enabled: boolean };
   /** Defaults of `--max-commits` and `--evidence` for the per-function fix statistics. */
   fixes: { maxCommits: number; evidence: number };
   /** Nodes per interface element below which an exported unit is labelled shallow. */
@@ -149,7 +145,6 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     maxChangesetSize: number(section.maxChangesetSize, at("maxChangesetSize"), 1),
     botPatterns: section.botPatterns as string[],
     fix: readFixClassifier(section),
-    hook: { enabled: (section.hook as { enabled: boolean }).enabled === true },
     fixes: {
       maxCommits: number((section.fixes as { maxCommits: unknown }).maxCommits, at("fixes.maxCommits"), 1),
       evidence: number((section.fixes as { evidence: unknown }).evidence, at("fixes.evidence"), 0),

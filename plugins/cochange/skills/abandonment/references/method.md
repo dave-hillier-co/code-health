@@ -46,7 +46,3 @@ Raw abandonment puts old, stable code first. By default files are ranked by aban
 ## Successors
 
 Coordination requirements (Cataldo et al.). For a file, each active developer scores the sum, over files coupled with it (the suite's coupling at `cochange.minSupport` and `cochange.minDegree`), of the coupling degree as a fraction times the developer's changes to that file in the analysis window, plus their share of the people's lines in the file. Bulk changes above `cochange.maxChangesetSize` count for nothing. The paper recommended the right successor 34 to 48 percent of the time, so treat a successor as a good place to start, and having successors reduced expected loss by up to 15 percent. Most abandoned files were adopted by existing experts, not newcomers.
-
-## Backtest
-
-At a past date (default one horizon before the analysed commit): history up to the date only gives the turnover rate, the blame of the commit then and who was active then. Files present at both dates and not abandoned at the first are the candidates. Those whose probability reaches `atRiskProbability` are predicted. The actual set is the candidates abandoned at the date one horizon later. Precision is the share of predicted files that were abandoned, and recall the share of abandoned files that were predicted. `expectedAbandoned` sets the number the model expected beside the number that happened. Activity overrides are not applied to a past date, and the backtest uses `rate` mode without hotspot weighting.

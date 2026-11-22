@@ -254,6 +254,6 @@ export const LEVEL_RULES: readonly { id: string; text: string }[] = [
   },
   {
     id: "backtest",
-    text: "No level is shown until cochange risk backtest has been run on the repository and its stored result shows that the levels separate past changes. Until then the bands, findings and responses stand alone. The level is advice for review, never a gate.",
+    text: "A level is shown only where a stored backtest for the repository shows that the levels separate past changes. The suite's maintainers run the backtest; where none is stored, the bands, findings and responses stand alone. The level is advice for review, never a gate.",
   },
 ];

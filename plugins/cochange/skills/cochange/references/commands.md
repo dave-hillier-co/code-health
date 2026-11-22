@@ -89,4 +89,3 @@ The settings of the section itself:
 | `recentMonths`, `staleMonths` | 3, 12 | Recent and stale windows, back from the analysed commit's date. |
 | `minSupport`, `minDegree`, `minDistance` | 5, 30, 2 | Support is an evidence floor, degree and distance are guidelines (degree in percent). |
 | `hotspotPercentile` | 90 | A hotspot is in the top (100 minus this) percent. |
-| `hook` | disabled | See [hook.md](hook.md). |

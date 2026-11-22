@@ -81,10 +81,10 @@ async function storeVerdict(status: "separates" | "does-not-separate" | "insuffi
 }
 
 describe("the level is shown only when a backtest has shown that the levels separate", () => {
-  test("with no stored backtest there is no level, and the reason says how to get one", async () => {
+  test("with no stored backtest there is no level, and the reason says a level needs a stored backtest", async () => {
     const { results } = await risk("main..missing");
     expect(results.level).toMatchObject({ status: "unavailable", value: null, backtest: null });
-    expect(results.level.reason).toMatch(/risk backtest/);
+    expect(results.level.reason).toMatch(/only where a stored backtest/);
     // The bands, findings and responses stand alone.
     expect(results.impact.band).not.toBe("unavailable");
     expect(results.findings.length).toBeGreaterThan(0);

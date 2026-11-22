@@ -1,9 +1,7 @@
-import { existsSync } from "node:fs";
 import { usageError } from "@code-health/cli-kit/errors";
 import type { Command, CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { checkouts } from "@code-health/history/checkouts";
 import { monthsBefore } from "@code-health/history/evidence";
-import { readSession, sessionFile } from "@code-health/history/session-state";
 import { listTree } from "@code-health/history/tree";
 import { defaultProjectsDirectory } from "@code-health/transcripts/projects-dir";
 import { stampOf } from "@code-health/transcripts/stamp";
@@ -11,13 +9,12 @@ import { differenceOf, type Arm } from "@code-health/transcripts/difference";
 import { readRepoSessionEdits } from "@code-health/transcripts/session-edits";
 import { parseWindow } from "@code-health/transcripts/time-window";
 import { historySections, identityStamps } from "../analysis-command.ts";
-import { compareArms, findOpportunities, rateOf, type SessionRecord } from "../outcome/completeness.ts";
+import { findOpportunities, rateOf, type SessionRecord } from "../outcome/completeness.ts";
 import { chooseControls, figuresOf, inSpan, revisionsOf, sharingChanges, type Span } from "../outcome/spread-outcome.ts";
-import { confidenceOf, partnersOf } from "../coupling.ts";
+import { partnersOf, reachesDegree } from "../coupling.ts";
 import { integerOption } from "../coupled-pairs.ts";
 import { focusPath } from "../focus-path.ts";
 import { loadHistory } from "../history-access.ts";
-import { HOOK_NAME } from "../hook.ts";
 import { parseDate } from "../spread-measure.ts";
 
 export const name = "outcome";
@@ -31,14 +28,14 @@ const isoDay = (seconds: number): string => new Date(seconds * 1000).toISOString
  * The plugin's own outcome measures. `spread` sets change spread (and revisions) of the files acted on
  * beside similarly ranked files left alone, before and after a date. `completeness` measures, from session
  * transcripts, how often an agent's edit to a file is followed by an edit to a coupled file later in the
- * same session, with and without the completeness hook. Neither writes a report.
+ * same session. Neither writes a report.
  */
 export const command: Command = {
   subcommands: {
     spread: { summary: "Change spread and revisions of the files acted on, against similarly ranked files left alone, either side of a date", options: ["at", "months", "min-samples", "noise", "no-refresh"] },
-    completeness: { summary: "How often an agent's edit is followed by an edit to a coupled file in the same session, with and without the hook", options: ["since", "until", "projects-dir", "min-samples", "noise", "no-refresh"] },
+    completeness: { summary: "How often an agent's edit is followed by an edit to a coupled file in the same session", options: ["since", "until", "projects-dir", "no-refresh"] },
   },
-  summary: "Measure whether acting on findings worked: change spread against untouched files, and agent completeness with and without the hook",
+  summary: "Measure whether acting on findings worked: change spread against untouched files, and how often agents finish a coupled change",
   options: {
     at: { type: "string" },
     months: { type: "string" },
@@ -161,8 +158,6 @@ async function completeness(context: CommandContext): Promise<CommandOutput> {
       throw usageError(error instanceof Error ? error.message : String(error));
     }
   })();
-  const minSamples = integerOption(context, "min-samples", 10, 1, 1_000_000);
-  const noise = integerOption(context, "noise", 10, 0, 100);
   const projects = context.values["projects-dir"];
   if (projects !== undefined && (typeof projects !== "string" || projects === "")) throw usageError("--projects-dir needs a value");
   const projectsDir = typeof projects === "string" ? projects : defaultProjectsDirectory();
@@ -176,8 +171,8 @@ async function completeness(context: CommandContext): Promise<CommandOutput> {
   const dated = [...history.filtered.changes].sort((a, b) => a.committerDate - b.committerDate);
   const couplingChanges = dated.map((c) => ({ files: c.files.map((f) => f.fileId), oversized: c.oversized }));
 
-  // The partners the hook would name for a file: the same support and confidence guidelines, and files that still exist,
-  // from the changes committed before the session began, which is all the hook could have known.
+  // The partners `cochange brief` lists at or above the degree guideline for a file, as of the changes committed before
+  // the session began, which is all the agent could have known. Files that no longer exist are left out.
   const cache = new Map<string, string[]>();
   const partnersNamed = (file: string, session: SessionRecord): string[] => {
     let known = 0;
@@ -185,59 +180,46 @@ async function completeness(context: CommandContext): Promise<CommandOutput> {
     const key = `${known}\u0000${file}`;
     const cached = cache.get(key);
     if (cached !== undefined) return cached;
-    const { changesFocus, partners } = partnersOf(couplingChanges.slice(0, known), file);
+    const { partners } = partnersOf(couplingChanges.slice(0, known), file);
     const named = partners
-      .filter((p) => p.support >= settings.minSupport && confidenceOf(p.support, changesFocus) >= settings.hook.confidence && present.has(p.path))
+      .filter(
+        (p) =>
+          p.support >= settings.minSupport &&
+          present.has(p.path) &&
+          reachesDegree({ a: file, b: p.path, support: p.support, changesA: p.changesFocus, changesB: p.changesPartner }, settings.minDegree),
+      )
       .map((p) => p.path);
     cache.set(key, named);
     return named;
   };
 
   const found = readRepoSessionEdits({ projectsDir, repoRoots: roots, window });
-  const records: SessionRecord[] = found.map((session) => {
-    // The hook ran in a session when it left state for it in one of the repository's checkouts.
-    const holder = roots.find((r) => existsSync(sessionFile(r, session.sessionId, HOOK_NAME)));
-    const state = holder === undefined ? null : readSession(holder, session.sessionId, HOOK_NAME);
-    return {
-      sessionId: session.sessionId,
-      startedAt: Math.floor(Date.parse(session.startedAt) / 1000),
-      edits: session.edits.map(identityOf),
-      hook: state !== null,
-      spokenAbout: new Set((state?.spokenAbout ?? []).map(identityOf)),
-    };
-  });
+  const records: SessionRecord[] = found.map((session) => ({
+    sessionId: session.sessionId,
+    startedAt: Math.floor(Date.parse(session.startedAt) / 1000),
+    edits: session.edits.map(identityOf),
+  }));
 
   const opportunities = findOpportunities(records, partnersNamed);
-  const hookSessions = new Set(records.filter((r) => r.hook).map((r) => r.sessionId));
-  const inHook = opportunities.filter((o) => hookSessions.has(o.sessionId));
-  const noHook = opportunities.filter((o) => !hookSessions.has(o.sessionId));
-  const hookRate = rateOf(inHook);
-  const noHookRate = rateOf(noHook);
-  const comparison = compareArms(hookRate, noHookRate, minSamples, noise);
+  const overall = rateOf(opportunities);
 
   return {
     inputs: {
       subcommand: "completeness",
       since,
       until,
-      minSamples,
-      noisePercent: noise,
       minSupport: settings.minSupport,
-      confidence: settings.hook.confidence,
-      transcriptStamp: stampOf(records.map((r) => ({ ...r, spokenAbout: [...r.spokenAbout].sort(byBytes) }))),
+      minDegree: settings.minDegree,
+      transcriptStamp: stampOf(records),
       ...identityStamps(history),
     },
     extra: historySections(history),
     results: {
       window: { since, until },
-      sessions: { measured: records.length, withHook: hookSessions.size, withoutHook: records.length - hookSessions.size },
-      withHook: { sessions: hookSessions.size, ...hookRate, briefed: rateOf(inHook.filter((o) => o.briefed)), notBriefed: rateOf(inHook.filter((o) => !o.briefed)) },
-      withoutHook: { sessions: records.length - hookSessions.size, ...noHookRate },
+      sessions: { measured: records.length },
+      ...overall,
       role: "agent outcome",
-      difference: comparison.difference,
-      smallestSample: Math.min(inHook.length, noHook.length),
-      conclusion: comparison.conclusion,
-      caveat: "Sessions were not assigned to the hook at random: a difference may come from the work, the period or the people, so read it as an association.",
+      caveat: "The rate depends on the work, the period and the people as well as on any briefing, so read it as a baseline to compare against, not as the effect of a change.",
     },
   };
 }

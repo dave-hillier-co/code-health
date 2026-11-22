@@ -583,7 +583,7 @@
       "backtest": null,
       "impact": "moderate",
       "placement": "unknown",
-      "reason": "no stored backtest for this configuration: run cochange risk backtest, and a level is shown if the levels separate past changes",
+      "reason": "no stored backtest for this configuration, so no level is shown: a level is shown only where a stored backtest shows that the levels separate past changes",
       "status": "unavailable",
       "value": null
     },

@@ -25,10 +25,12 @@ const cli: CliDefinition = {
     },
     grouped: {
       summary: "Subcommands",
-      options: { alpha: { type: "string" }, beta: { type: "boolean" } },
+      options: { alpha: { type: "string" }, beta: { type: "boolean" }, gamma: { type: "string" } },
+      hiddenOptions: ["gamma"],
       subcommands: {
         one: { summary: "First subcommand", options: ["alpha"] },
         two: { summary: "Second subcommand", options: ["beta"] },
+        three: { summary: "Maintainer subcommand", options: ["gamma"], hidden: true },
       },
       run: () => ({ results: [] }),
     },
@@ -274,6 +276,17 @@ test("help for a command with subcommands lists them, and one without lists none
   expect(all.stdout).toContain("--alpha");
   expect(all.stdout).toContain("--beta");
   expect((await run(["list", "--help"])).stdout).not.toContain("Subcommands:");
+});
+
+test("a hidden subcommand and its own options are left out of the command's help, and still run and describe themselves", async () => {
+  const all = await run(["grouped", "--help"]);
+  expect(all.stdout).not.toContain("three");
+  expect(all.stdout).not.toContain("Maintainer subcommand");
+  expect(all.stdout).not.toContain("--gamma");
+  const three = await run(["grouped", "--help", "three"]);
+  expect(three.stdout).toContain("Maintainer subcommand");
+  expect(three.stdout).toContain("--gamma <gamma>");
+  expect((await run(["grouped", "three", "--gamma", "x"])).code).not.toBe(2);
 });
 
 test("no command prints usage to stderr and exits 2", async () => {

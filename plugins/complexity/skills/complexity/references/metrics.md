@@ -25,7 +25,7 @@ For files in other languages, and when `--layer lexical` is given, per-function 
 function blocks by matching headers and counting braces (or indentation), outside strings and comments. Its values are
 approximations and carry `source: "lexical"`.
 
-A file type with no profile can be mapped to one in `code-health.json`, as `"languages": { "zig": "rust" }` (extension without its dot, to a profile name). Its per-function values are reported with `unverified: true`, because no agreement with a structural layer was ever measured for it. State that when quoting them, and do not rank them as firmly as measured ones. The post-edit hook prints nothing for such files.
+A file type with no profile can be mapped to one in `code-health.json`, as `"languages": { "zig": "rust" }` (extension without its dot, to a profile name). Its per-function values are reported with `unverified: true`, because no agreement with a structural layer was ever measured for it. State that when quoting them, and do not rank them as firmly as measured ones.
 
 | Metric | Counted as |
 |---|---|
@@ -89,7 +89,6 @@ The `complexity` section of `code-health.json`. Missing keys take the defaults, 
 | `analyseTests` | `true` | Analyse test files. They are ranked among themselves, never against production code. |
 | `fixes` | `{ "maxCommits": 500, "evidence": 3 }` | `fixes` and `analyse --with-fixes`: the most commits of the history window to parse, newest first (the output says how many were left out), and the fix commits listed per function. |
 | `interfaceDepth` | `{ "shallow": 10 }` | Nodes per interface element below which an exported unit is labelled `shallow`. |
-| `hook` | `{ "enabled": false }` | The post-edit hook, off unless a repository turns it on. See [hook.md](hook.md). |
 | `overrides` | `[]` | `{ "paths": [globs], "guidelines": { ... } }`, applied in order over the defaults. For generated code, fixtures and the like. |
 
 The suite's shared `exclude` globs leave files out entirely.

@@ -211,34 +211,6 @@
           "type": "number",
           "default": 2
         },
-        "hook": {
-          "type": "object",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": false
-            },
-            "confidence": {
-              "type": "number",
-              "default": 80
-            },
-            "maxPartners": {
-              "type": "number",
-              "default": 3
-            },
-            "maxCommitsBehind": {
-              "type": "number",
-              "default": 50
-            }
-          },
-          "additionalProperties": false,
-          "default": {
-            "enabled": false,
-            "confidence": 80,
-            "maxPartners": 3,
-            "maxCommitsBehind": 50
-          }
-        },
         "risk": {
           "type": "object",
           "properties": {
@@ -736,19 +708,6 @@
         "overrides": {
           "type": "array",
           "default": []
-        },
-        "hook": {
-          "type": "object",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": false
-            }
-          },
-          "additionalProperties": false,
-          "default": {
-            "enabled": false
-          }
         },
         "fixes": {
           "type": "object",

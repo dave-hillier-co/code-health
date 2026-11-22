@@ -1,6 +1,6 @@
 ---
 name: complexity
-description: Use when code is hard to understand or follow, a function is too complex, deeply nested or confusing, the user asks what to simplify or where the complexity is, wants cognitive or cyclomatic complexity measured, a bumpy road or tangled function reduced, a refactor of a complicated function planned, shallow modules or pass-through wrapper functions found, a complexity check added to CI or pre-commit, or feedback on complexity wanted as code is edited. Finds the functions that are hardest to understand, explains where each one's complexity comes from, and guides simplifications that make the code easier to read without scattering it into shallow helpers.
+description: Use when code is hard to understand or follow, a function is too complex, deeply nested or confusing, the user asks what to simplify or where the complexity is, wants cognitive or cyclomatic complexity measured, a bumpy road or tangled function reduced, a refactor of a complicated function planned, shallow modules or pass-through wrapper functions found, a complexity check added to CI or pre-commit, or a function about to be changed. Finds the functions that are hardest to understand, explains where each one's complexity comes from, and guides simplifications that make the code easier to read without scattering it into shallow helpers.
 allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs *)
 ---
 
@@ -175,15 +175,12 @@ Run `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs check --json` before committ
 If it exits with 1, look at the function it names and simplify it: do not raise a guideline to make it pass. A raised guideline or a
 per-path override in `code-health.json` is a decision for the owner of the code, with a reason recorded in the commit.
 
-## Feedback while editing
+## Before editing a function
 
-A repository can turn on a post-edit hook (`complexity.hook.enabled` in `code-health.json`, off by default). After each
-`Edit`, `Write` or `MultiEdit` it measures the edited file, and when a function went above a guideline or got worse since
-the session's last measurement (or HEAD) it adds one line naming the function, the metric and the before and after values,
-with the guideline and the `explain` command. It prints at most once per file per session. Treat the line as the cheapest moment to simplify: the code
-is in your context and nothing is built on it yet. Apply the same remedy policy, in place first. Do not respond by
-splitting the function to stop the hook printing. If the user asks why it printed nothing or printed too much, read
-[references/hook.md](references/hook.md).
+Nothing measures a file after an edit, so look before you change. Before you edit a function that `analyse` ranked above a
+guideline, run `explain` on it (see Locate the cost) so you know which lines carry its complexity. The cheapest moment to
+simplify is while the code is in your context and nothing is built on it yet. Apply the same remedy policy, in place first,
+and run `check` before you commit.
 
 ## Reporting
 
@@ -206,7 +203,6 @@ When you finish, report in this order and keep it short:
 
 - [references/metrics.md](references/metrics.md): how each metric is counted, the default guidelines and every config key.
 - [references/remedies.md](references/remedies.md): the remedies with before and after examples, and the gaming patterns to refuse.
-- [references/hook.md](references/hook.md): the opt-in post-edit hook, what it measures, when it prints and how to read its state.
 - [references/outcome.md](references/outcome.md): the `outcome` command, its instruments and how to read them.
 - [references/fixes.md](references/fixes.md): the `fixes` command and `analyse --with-fixes`, how a function's fixes are counted and how to read the header.
 - [references/ci.md](references/ci.md): `check` and `diff` in CI and pre-commit, exit codes, and choosing a base.

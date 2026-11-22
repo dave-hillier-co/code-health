@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "outcome.schema.json",
   "title": "cochange outcome <spread|completeness> --json",
-  "description": "Whether acting on findings worked. `spread` sets the acted-on files beside similarly ranked files left alone, before and after a date. `completeness` compares agent sessions with and without the hook. Paths and counts only. `inputs.subcommand` says which shape `results` takes. Never stored as a report.",
+  "description": "Whether acting on findings worked. `spread` sets the acted-on files beside similarly ranked files left alone, before and after a date. `completeness` gives the share of an agent's first edits to a file with a coupled partner that were followed by an edit to a partner in the same session. Paths and counts only. `inputs.subcommand` says which shape `results` takes. Never stored as a report.",
   "$defs": {
     "nullableNumber": { "type": ["number", "null"] },
     "conclusion": { "enum": ["lower", "higher", "no-change", "insufficient-sample", "not-measured"] },
@@ -135,48 +135,24 @@
       "required": ["opportunities", "followed", "rate"]
     },
     "completeness": {
+      "allOf": [{ "$ref": "#/$defs/rate" }],
       "type": "object",
       "properties": {
         "window": { "$ref": "#/$defs/span" },
         "sessions": {
           "type": "object",
-          "properties": {
-            "measured": { "$ref": "common.schema.json#/$defs/count" },
-            "withHook": { "$ref": "common.schema.json#/$defs/count" },
-            "withoutHook": { "$ref": "common.schema.json#/$defs/count" }
-          },
-          "required": ["measured", "withHook", "withoutHook"],
+          "properties": { "measured": { "$ref": "common.schema.json#/$defs/count" } },
+          "required": ["measured"],
           "additionalProperties": false
         },
-        "withHook": {
-          "allOf": [{ "$ref": "#/$defs/rate" }],
-          "type": "object",
-          "properties": {
-            "sessions": { "$ref": "common.schema.json#/$defs/count" },
-            "briefed": { "$ref": "#/$defs/rate", "description": "Opportunities where the hook spoke about the file." },
-            "notBriefed": { "$ref": "#/$defs/rate" },
-            "opportunities": true,
-            "followed": true,
-            "rate": true
-          },
-          "required": ["sessions", "briefed", "notBriefed"],
-          "unevaluatedProperties": false
-        },
-        "withoutHook": {
-          "allOf": [{ "$ref": "#/$defs/rate" }],
-          "type": "object",
-          "properties": { "sessions": { "$ref": "common.schema.json#/$defs/count" }, "opportunities": true, "followed": true, "rate": true },
-          "required": ["sessions"],
-          "unevaluatedProperties": false
-        },
+        "opportunities": true,
+        "followed": true,
+        "rate": true,
         "role": { "const": "agent outcome" },
-        "difference": { "$ref": "#/$defs/nullableNumber", "description": "The rate with the hook minus the rate without it." },
-        "smallestSample": { "$ref": "common.schema.json#/$defs/count" },
-        "conclusion": { "$ref": "#/$defs/conclusion" },
         "caveat": { "type": "string" }
       },
-      "required": ["window", "sessions", "withHook", "withoutHook", "role", "difference", "smallestSample", "conclusion", "caveat"],
-      "additionalProperties": false
+      "required": ["window", "sessions", "role", "caveat"],
+      "unevaluatedProperties": false
     }
   },
   "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
@@ -195,11 +171,11 @@
         "minSamples": { "type": "integer", "minimum": 1 },
         "noisePercent": { "type": "integer", "minimum": 0, "maximum": 100 },
         "minSupport": { "type": "integer", "minimum": 1 },
-        "confidence": { "type": "integer", "minimum": 1, "maximum": 100 },
-        "transcriptStamp": { "type": "string", "description": "A stamp of the sessions read from the session transcripts and the hook's state for them, so two runs over different session folders are told apart." },
+        "minDegree": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "transcriptStamp": { "type": "string", "description": "A stamp of the sessions read from the session transcripts, so two runs over different session folders are told apart." },
         "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
       },
-      "required": ["subcommand", "minSamples", "noisePercent"],
+      "required": ["subcommand"],
       "additionalProperties": false
     },
     "results": {}
@@ -207,13 +183,13 @@
   "oneOf": [
     {
       "properties": {
-        "inputs": { "type": "object", "properties": { "subcommand": { "const": "spread" }, "at": true, "months": true, "files": true }, "required": ["subcommand", "at", "months", "files"] },
+        "inputs": { "type": "object", "properties": { "subcommand": { "const": "spread" }, "at": true, "months": true, "files": true, "minSamples": true, "noisePercent": true }, "required": ["subcommand", "at", "months", "files", "minSamples", "noisePercent"] },
         "results": { "$ref": "#/$defs/spreadOutcome" }
       }
     },
     {
       "properties": {
-        "inputs": { "type": "object", "properties": { "subcommand": { "const": "completeness" }, "since": true, "until": true, "minSupport": true, "confidence": true, "transcriptStamp": true }, "required": ["subcommand", "since", "until", "minSupport", "confidence", "transcriptStamp"] },
+        "inputs": { "type": "object", "properties": { "subcommand": { "const": "completeness" }, "since": true, "until": true, "minSupport": true, "minDegree": true, "transcriptStamp": true }, "required": ["subcommand", "since", "until", "minSupport", "minDegree", "transcriptStamp"] },
         "results": { "$ref": "#/$defs/completeness" }
       }
     }

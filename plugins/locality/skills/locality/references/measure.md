@@ -2,28 +2,6 @@
 
 The analyser's gain says the tool moved code closer. It does not say anything got cheaper. `measure` does that: it records a baseline before the first tidy-up, then compares against it afterwards.
 
-## Does distance cost anything here?
-
-```
-node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs measure premise --json
-```
-
-Locality is worth the effort only where tasks that edit files further apart really cost more reads and tokens. `premise` tests that from existing history and session transcripts, so it can run before any move and before any baseline. `--since` and `--until` (days, `until` excluded) choose the window, which is the last `locality.windowMonths` back from HEAD otherwise.
-
-Tasks come from main sessions and from subagent transcripts, and `--source main|subagent|all` (default `all`) chooses which are read. `tasks`, `distance`, `figures` and `verdict` are for the tasks read, and `bySource` repeats them for `main` and for `subagent`. `sessions.subagents` counts subagent transcript files measured and not measured. A subagent task is given to it by an orchestrator, so the kind of task is a stronger confounder for subagent tasks: report the two sources apart and say so when they disagree. Paths in a deleted Claude Code worktree (`.claude/worktrees/<name>/`) are mapped to the repo, so work done in a worktree is counted.
-
-`--effort tools|all` (default `all`) chooses what counts. `tools` counts only the Read, Grep, Glob, Edit, Write and NotebookEdit tools. `all` also counts the files named in Bash commands (`cat`, `head`, `sed -n`, `grep` with file operands and the like as reads, and `sed -i`, `perl -pi`, `>`, `>>`, `tee`, `cp`, `mv`, `rm`, here-doc writes and the like as edits), and so also decides which tasks exist and which files each edited, which sets distance. `effort` echoes the mode. `shell` gives `calls`, `unparsed` and `parsedShare`: the Bash calls in the tasks, those whose command could not be parsed (command substitution, `xargs`, `eval`, `bash -c`, `find -exec`, `python3 -c`, loops over globs or variables, `if` and `while`) and contribute no path, and the share that was parsed. A Bash call that is parsed need not have named a file. Say the parsed share when you report a figure. Scripts that edit files by computed paths and reads made inside test runs and builds are not seen, so every figure is a lower bound. When `all` and `tools` disagree, report both: the difference is what the shell added.
-
-Each task's distance is the change spread of the files it edited, and tasks editing a single file have none and are left out (`tasks.singleFile`). Each of `filesRead`, `reReads` and `tokens` is correlated with distance (Spearman), and the conclusion rests on the partial correlation that holds the number of files edited constant, because larger tasks both spread further and read more. `near` and `far` are the means either side of the median distance.
-
-Read `verdict` with `tasks.measured`, `evidence` and `limits`:
-
-- `supported` needs two figures that cost more when distant. `partly-supported` is one. Say how many tasks it rests on.
-- `not-shown` is not evidence that distance is free: say the data shows no relationship.
-- `not-measured` means distance (or cost) never varied across the tasks, for example when every task edited two files of one folder, so nothing could be tested. It is not a finding of no relationship. `tasks.singleFile` says how many one-file tasks were left out, since they have no distance.
-- `insufficient-sample` means fewer tasks than `locality.measureMinSamples`: conclude nothing, and let locality's priority rest on the static signals.
-- The result is an association over tasks nobody assigned to near or far files. It is not a measure of what a move would save. Only `measure compare` after a tidy-up shows that.
-
 ## Before the first move
 
 ```

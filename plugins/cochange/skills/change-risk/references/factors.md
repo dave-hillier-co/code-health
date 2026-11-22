@@ -29,7 +29,7 @@ Factors that measure nearly the same thing form a **family**, and a family count
 | `structure-delta` | structure and content | New cycles and layer violations (needs `structure check`) | Review the new dependency |
 | `sensitive-paths` | structure and content | Migrations, authentication, CI, manifests | Ask a reviewer who knows what they affect |
 
-`complexity-delta`, `structure-delta` and `sensitive-paths` are reported and, where they are events, raise the band, but do not also count in the score. The backtest leaves the structural factors out, because each would need a parse of every past change.
+`complexity-delta`, `structure-delta` and `sensitive-paths` are reported and, where they are events, raise the band, but do not also count in the score.
 
 ## What each source gives
 

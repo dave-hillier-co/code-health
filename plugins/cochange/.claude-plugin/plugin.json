@@ -6,6 +6,6 @@
   "author": { "name": "David Hillier", "email": "dave@hillier.co" },
   "license": "AGPL-3.0-only OR LicenseRef-Commercial",
   "repository": "https://github.com/dave-hillier-co/code-health",
-  "keywords": ["git", "history", "co-change", "hotspots", "coupling", "code-health", "agents", "hook", "turnover", "knowledge-loss"],
+  "keywords": ["git", "history", "co-change", "hotspots", "coupling", "code-health", "agents", "turnover", "knowledge-loss"],
   "engines": { "claude-code": ">=2.1.0" }
 }

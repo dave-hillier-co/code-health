@@ -30,17 +30,11 @@ test("defaults follow the spec", () => {
     maxChangesetSize: 30,
     botPatterns: [],
     windowStated: false,
-    hook: { enabled: false, confidence: 80, maxPartners: 3, maxCommitsBehind: 50 },
   });
 });
 
-test("the hook section is read, and a hook that may be a commit behind at most zero is allowed", () => {
-  expect(settingsFor({ cochange: { hook: { enabled: true, confidence: 60, maxCommitsBehind: 0 } } }).hook).toEqual({
-    enabled: true,
-    confidence: 60,
-    maxPartners: 3,
-    maxCommitsBehind: 0,
-  });
+test("a hook section is an unknown setting, since the suite has no hooks", () => {
+  expect(() => settingsFor({ cochange: { hook: { enabled: true } } })).toThrow("unknown setting");
 });
 
 test("grouping defaults to off, and the other modes carry their own settings", () => {
@@ -85,13 +79,6 @@ test.each([
   [{ cochange: { botPatterns: [1] } }, "cochange.botPatterns"],
   [{ history: { botPatterns: [1] } }, "history.botPatterns"],
   [{ history: { windowMonths: 0 } }, "history.windowMonths must be a positive integer"],
-  [{ cochange: { hook: { confidence: 0 } } }, "hook.confidence must be a percentage"],
-  [{ cochange: { hook: { confidence: 101 } } }, "hook.confidence must be a percentage"],
-  [{ cochange: { hook: { maxPartners: 0 } } }, "hook.maxPartners must be a positive integer"],
-  [{ cochange: { hook: { maxCommitsBehind: -1 } } }, "hook.maxCommitsBehind must be a non-negative integer"],
-  [{ cochange: { hook: { maxCommitsBehind: 1.5 } } }, "hook.maxCommitsBehind must be a non-negative integer"],
-  [{ cochange: { hook: { enabled: "yes" } } }, "must be a boolean"],
-  [{ cochange: { hook: { nonsense: 1 } } }, "unknown setting"],
   [{ cochange: { identities: { location: "cloud" } } }, "identities.location"],
   [{ cochange: { identities: { servicePatterns: "ci" } } }, "servicePatterns"],
   [{ cochange: { identities: { unmappedShareGuideline: 101 } } }, "unmappedShareGuideline"],

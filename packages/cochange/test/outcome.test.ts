@@ -93,12 +93,9 @@ describe("outcome completeness", () => {
   beforeAll(() => {
     sessions = new AgentSessions(repo.path);
   });
-  // The hook's session state lives in the cache, which the outer beforeEach clears.
   beforeEach(() => {
-    // With the hook, which spoke about the page in the first session only.
-    sessions.session("hook-1", "2026-03-02", [pageA, pageB], { spoke: [pageA] });
-    sessions.session("hook-2", "2026-03-03", [pageA], { spoke: [] });
-    // Without it.
+    sessions.session("first-1", "2026-03-02", [pageA, pageB]);
+    sessions.session("first-2", "2026-03-03", [pageA]);
     sessions.session("plain-1", "2026-03-04", [pageA, tax, pageB]);
     sessions.session("plain-2", "2026-03-05", [pageB]);
     sessions.session("plain-3", "2026-03-06", [pageA, pageA]);
@@ -108,23 +105,18 @@ describe("outcome completeness", () => {
   });
   afterAll(() => sessions.dispose());
 
-  const args = () => ["completeness", "--since", "2026-03-01", "--until", "2026-04-01", "--projects-dir", sessions.directory, "--min-samples", "2"];
+  const args = () => ["completeness", "--since", "2026-03-01", "--until", "2026-04-01", "--projects-dir", sessions.directory];
 
-  test("counts edits followed by a coupled file later in the session, with and without the hook, by hand", async () => {
+  test("counts edits followed by a coupled file later in the session, by hand", async () => {
     const { results } = await json(...args());
     // The pages changed together six times (confidence 100). A page's first edit is an opportunity when its partner is not yet edited.
-    expect(results.sessions).toEqual({ measured: 6, withHook: 2, withoutHook: 4 });
-    // hook-1: page A, partner B follows. B comes second and A is already edited. hook-2: A alone.
-    expect(results.withHook).toMatchObject({ sessions: 2, opportunities: 2, followed: 1, rate: 0.5 });
-    expect(results.withHook.briefed).toMatchObject({ opportunities: 1, followed: 1, rate: 1 });
-    expect(results.withHook.notBriefed).toMatchObject({ opportunities: 1, followed: 0, rate: 0 });
+    expect(results.sessions).toEqual({ measured: 6 });
+    // first-1: page A, partner B follows. B comes second and A is already edited. first-2: A alone.
     // The tax module changed with the invoice in the initial commit and four times since: five changes, so it has a partner too.
     // plain-1: A (B follows) and tax (the invoice does not). plain-2: B alone. plain-3: A twice, one opportunity. plain-solo: tax alone.
-    expect(results.withoutHook).toMatchObject({ sessions: 4, opportunities: 5, followed: 1, rate: 0.2 });
-    expect(results.difference).toBeCloseTo(0.3, 5);
-    expect(results.smallestSample).toBe(2);
-    expect(results.conclusion).toBe("higher");
-    expect(results.caveat).toContain("not assigned");
+    expect(results).toMatchObject({ opportunities: 7, followed: 2 });
+    expect(results.rate).toBeCloseTo(2 / 7, 5);
+    expect(results.caveat).toContain("baseline");
   });
 
   test("names the sessions it read in its inputs, so a different session folder is a different input", async () => {
@@ -144,20 +136,15 @@ describe("outcome completeness", () => {
     const early = new AgentSessions(repo.path);
     try {
       // The pages first changed together on 2024-03-03 and six times by 2024-06-07. A session before the third change
-      // could not have been told of a partner, so editing both pages then is no completeness the hook could have prompted.
+      // could not have been told of a partner, so editing both pages then is no completeness the history could have shown.
       early.session("early", "2024-03-04", [pageA, pageB]);
       early.session("late", "2024-06-10", [pageA, pageB]);
-      const { results } = await json("completeness", "--since", "2024-03-01", "--until", "2024-07-01", "--projects-dir", early.directory, "--min-samples", "1");
+      const { results } = await json("completeness", "--since", "2024-03-01", "--until", "2024-07-01", "--projects-dir", early.directory);
       expect(results.sessions.measured).toBe(2);
-      expect(results.withoutHook).toMatchObject({ opportunities: 1, followed: 1 });
+      expect(results).toMatchObject({ opportunities: 1, followed: 1 });
     } finally {
       early.dispose();
     }
-  });
-
-  test("with too few opportunities in an arm nothing is concluded", async () => {
-    const { results } = await json(...args().slice(0, -2));
-    expect(results.conclusion).toBe("insufficient-sample");
   });
 
   test("the output has paths and counts, never what was said, and matches its golden", async () => {
@@ -171,8 +158,7 @@ describe("outcome completeness", () => {
   test("a window without sessions is not measured, not zero", async () => {
     const { results } = await json("completeness", "--since", "2030-01-01", "--until", "2030-02-01", "--projects-dir", sessions.directory);
     expect(results.sessions.measured).toBe(0);
-    expect(results.conclusion).toBe("not-measured");
-    expect(results.withHook.rate).toBeNull();
+    expect(results.rate).toBeNull();
   });
 
   test("it needs a window", async () => {

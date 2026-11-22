@@ -30,10 +30,9 @@ All commands run as `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs abandonment <s
 2. **Check identities.** Run `identities check`. It reports counts and shares only. If `measurement.needsIdentityReview` is true, unmapped identities hold more than `cochange.identities.unmappedShareGuideline` percent of the lines: use the identities skill first, because one person under two emails looks like two half-time contributors and understates what their leaving costs. Report `measurement.headLines.mappedShare` beside the results. Do not repeat any names the check shows.
 3. **Simulate.** Run `abandonment simulate`, which uses `rate` mode: each active developer leaves independently over the horizon (default one year) at the turnover rate observed in history. When `abandonment turnover` shows at least eight periods, also run `abandonment simulate --mode historical`, which samples the repository's own bad quarters and gives fatter tails. If the history is too short to estimate turnover, the command says so: ask the user for a rate (`cochange.knowledge.turnoverRate`) rather than inventing one.
 4. **Say it in plain terms.** From `results.loss.files`: "In a typical year, expect to lose authorship of about M more files (`increment.expected`). In a bad year, one in twenty, around N more (`increment.atRisk[0].kar`). N files are already abandoned." Then the tail ratio (`kar` over `expected`): a high one means knowledge sits with few people, so a bad year is much worse than a typical one. Give the lines as well. Explain knowledge at risk (KaR) as the loss that is only exceeded in the worst 5 percent of years, and expected loss as the average year, because people confuse them. State the horizon, the turnover rate and where it came from (`selection.source`).
-5. **Show the backtest.** Run `abandonment backtest`. Give its `precision` and `recall` with the simulation, so the user knows how well the model has predicted this repository's own past. Null means nothing was predicted or nothing was abandoned, which is not a score. If precision is low, say the ranking is a prompt to look, and that the files predicted were not the ones lost.
-6. **Present the top files with their findings.** `results.files` is ranked by abandonment probability weighted by hotspot percentile, so code that keeps changing comes first. `--rank abandonment` gives the raw view, which puts old stable code first. Give each file's `findings` and the cheapest mitigation for it (below).
-7. **Successors.** For files the user wants to act on, run `successors PATH...`. Without `--names` it gives ranks, scores and the coupling evidence. With the user's go-ahead, add `--names` to name the active developers who could review or pair. Propose assignments, never rankings of people.
-8. **Connect to the rest of the suite and report the limits** (below).
+5. **Present the top files with their findings.** `results.files` is ranked by abandonment probability weighted by hotspot percentile, so code that keeps changing comes first. `--rank abandonment` gives the raw view, which puts old stable code first. Give each file's `findings` and the cheapest mitigation for it (below).
+6. **Successors.** For files the user wants to act on, run `successors PATH...`. Without `--names` it gives ranks, scores and the coupling evidence. With the user's go-ahead, add `--names` to name the active developers who could review or pair. Propose assignments, never rankings of people.
+7. **Connect to the rest of the suite and report the limits** (below).
 
 ## Findings and mitigations
 
@@ -61,8 +60,6 @@ Three commands give the instruments, all counts and no names:
 - `cochange abandonment redundancy` gives the share of hotspot files with at least two active authors each holding at least 10 percent of the lines (`--min-authors`, `--min-share`): redundancy in important code. Run it before and after the mitigation and report the counts behind the share.
 - `cochange abandonment adoption --at DATE` takes the files abandoned at a past date and reports how many were picked up by an active developer within the horizon, and how many by one of the top recommended successors, using only the history before that date. A hit rate below the paper's 34 to 48 percent is a reason to trust `successors` less here, not to drop it.
 
-The backtest tells you whether the model is calibrated for this repository at all.
-
 ## Limits to report
 
 - Inactivity is a proxy. Someone on leave or moved to another repository looks inactive until an override says otherwise.
@@ -70,4 +67,4 @@ The backtest tells you whether the model is calibrated for this repository at al
 - The 90 percent abandonment share is the paper's convention, and the at-risk probability and tail ratio are guidelines that order and label files. Each is configurable, and none hides a file.
 - Turnover is assumed random. Occasional contributors leave at a higher rate than established ones, so one pooled rate can overstate the loss of core authors.
 - Agent-authored lines have no knowledge to lose. How to attribute them is an open policy question, not something to decide silently.
-- Renamed files are followed by blame, but a backtest compares files by path, so heavy renaming lowers its scores.
+- The ranking is a prompt to look. It is not a forecast of which files will be lost.

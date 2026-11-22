@@ -69,7 +69,6 @@ The deterministic CLI does all mining and scoring. The skill decides which quest
 - **Skill** `abandonment`: knowledge-loss risk from Monte Carlo turnover simulation, and successor recommendations ([abandonment.md](abandonment.md)).
 - **Skill** `identities`: an agent-reviewed `.mailmap` merging each person's names and emails and marking bots, which any analysis that counts people relies on ([identities.md](identities.md)).
 - **Skill** `change-risk`: the impact of a branch and its author's placement to the code it touches, with a recommended review response ([change-risk.md](change-risk.md)).
-- **Hook** (opt-in): change-set completeness hints after edits.
 
 There is no parser dependency. This plugin ships no tree-sitter grammars and stays small.
 
@@ -106,7 +105,7 @@ Applied at query time, not ingestion, so changing config never needs a rebuild:
 | `cochange fixes [--by file\|component] [--evidence N]` | Files or components sorted by fix count, then path. Per row: `fixes`, `revisions`, `fixShare` (fixes over revisions), `recentFixes` (inside `cochange.recentMonths`), `lastFix`, `reverts` (a separate column, never counted as fixes) and `evidence`, the matching commits newest first (`sha`, `date`, `subject`, the pattern that matched) up to `--evidence` (default 5) with `omitted` counting the rest. It counts logical changes as `hotspots` does: same window, noise filters, rename following and bot exclusion. The output carries `fixConvention`, the repository-level check on the fix definition, and the table prints it as a `Notice` when the commit messages probably do not follow a convention this can use: fixes under 2 % or over 60 % of logical changes, or fewer than 30 logical changes. Every file is still listed and the counts are still printed. |
 | `cochange age [--by file\|component]` | Last-changed and first-seen per file. |
 | `cochange trend PATH [--samples N]` | Complexity proxy and size of one file sampled across its history, to show whether a hotspot is getting worse. |
-| `cochange outcome spread --at DATE PATH... [--months N]`, `cochange outcome completeness --since DATE --until DATE [--projects-dir DIR]` | The change-spread outcome against matched untouched files, and the agent completeness outcome from session transcripts with and without the hook. See [Measurement](#measurement). |
+| `cochange outcome spread --at DATE PATH... [--months N]`, `cochange outcome completeness --since DATE --until DATE [--projects-dir DIR]` | The change-spread outcome against matched untouched files, and the agent completeness outcome from session transcripts. See [Measurement](#measurement). |
 | `cochange brief PATH...` | A compact pre-change briefing: files usually changed alongside, recent activity, fix count and share for each file, whether the file is a hotspot. Built for agents. |
 | `cochange blame refresh`, `cochange abandonment …`, `cochange successors` | Knowledge-loss analysis. Only when enabled. See [abandonment.md](abandonment.md#cli). |
 | `cochange risk …` | Risk of a branch against its base. See [change-risk.md](change-risk.md#cli). |
@@ -137,18 +136,9 @@ These are prompts for investigation, not verdicts. The skill reviews each findin
 
 The skill instructs the agent to run `cochange brief` on the files it plans to change before starting a non-trivial task. The briefing names the files that usually change alongside, so the agent opens them deliberately instead of discovering them after tests fail.
 
-### Change-set completeness hook (opt-in)
+## Maintainer commands
 
-A `PostToolUse` hook on `Edit`, `Write` and `MultiEdit` looks up the edited file in the cache (read-only, no refresh, with a time budget of 200 ms) and, when there are coupled files at or above the confidence guideline (`cochange.hook.confidence`, default 80 %) that have not been edited in this session (from the hook's own session state, [suite.md](suite.md#hooks)), injects a short note. The note states each partner's measured confidence and support and the guideline, and suggests looking. It states no rule:
-
-> `src/billing/invoice.ts` changed together with `src/reports/invoice-summary.ts` (confidence 82 %, 17 changes). Guideline: confidence 80 %. Not yet edited in this session, so worth a look.
-
-Rules for the hook:
-
-- Prints nothing when the cache is missing, or more than the configured number of commits behind HEAD (default 50). Coupling evidence barely moves over a few commits, and a hook that printed nothing after every commit or pull would rarely print a note. It never triggers a refresh, never blocks the edit, and never fails loudly.
-- Names at most `cochange.hook.maxPartners` partners (default 3), strongest first, and says how many more qualified.
-- At most one note per file per session, because repeating a note adds tokens and no information.
-- Off by default and enabled per repository in config, because injected context has a token cost.
+`cochange risk backtest` ([change-risk.md](change-risk.md#maintainer-commands)) and `cochange abandonment backtest` ([abandonment.md](abandonment.md#maintainer-commands)) are calibration tools run by the suite's maintainers. They are left out of `--help` listings and of the skills.
 
 ## Composition
 
@@ -167,9 +157,9 @@ This plugin supplies the suite's primary outcome measure, change spread. Its own
 | Change spread on files in acted-on findings, before and after, against similarly ranked findings left alone ([suite.md](suite.md#measurement-across-the-suite)) | Changes became more local | Primary outcome |
 | Revisions per hotspot over a matching window | Effort concentration decreased | Secondary outcome |
 | Hotspot score of acted-on files | The file got simpler or less churned | Leading indicator only |
-| Agent edits followed by a coupled file being edited later in the same session, with and without the hook | The briefing and hook prevented missed changes | Agent outcome |
+| Agent edits followed by a coupled file being edited later in the same session | How often agents complete a change set, a baseline to compare a later period against | Agent outcome |
 
-`outcome spread` takes the files acted on and a date. The comparison group is the untouched file of nearest rank for each, ranked by revisions in the before window, since a hotspot score exists only at the analysed commit, and files that changed together with an acted-on file are passed over. `outcome completeness` reads session transcripts for the edits of each session in order, counts a file's first edit as an opportunity when a coupled partner the hook would name is not yet edited, and counts it followed when one is edited later in the session. Sessions are with the hook when it left session state for them. The two arms are not randomised, so the difference is reported as an association. Both read only paths and counts, and neither writes a report.
+`outcome spread` takes the files acted on and a date. The comparison group is the untouched file of nearest rank for each, ranked by revisions in the before window, since a hotspot score exists only at the analysed commit, and files that changed together with an acted-on file are passed over. `outcome completeness` reads session transcripts for the edits of each session in order, counts a file's first edit as an opportunity when a coupled partner is not yet edited, and counts it followed when one is edited later in the session. A partner is a file that shares at least `minSupport` changes with it, reaches the degree guideline (`minDegree`) and still exists, from the changes committed before the session began. It reports the opportunities, the number followed and the rate, and the sessions measured, and gives a null rate when there are no opportunities. The rate depends on the work, the period and the people, so it is a baseline to compare a later window against and not the effect of any change. It reads only paths and counts, and neither it nor `outcome spread` writes a report.
 
 ## Privacy
 
@@ -186,7 +176,6 @@ In the `cochange` section of the suite config:
 - Recent window (default 3 months) and stale window.
 - Logical change grouping: off, by issue-key pattern, or by author and time window.
 - Minimum support, minimum degree, minimum coupling distance.
-- Hook enablement, confidence guideline and staleness tolerance.
 - Identity settings, including service patterns, under `cochange.identities` ([identities.md](identities.md#configuration)).
 - Knowledge analysis settings under `cochange.knowledge` ([abandonment.md](abandonment.md#configuration)).
 - Change risk settings under `cochange.risk` ([change-risk.md](change-risk.md#configuration)).
@@ -210,7 +199,7 @@ In the `cochange` section of the suite config:
 2. `hotspots`, `age` and `coupling` with JSON schemas.
 3. `spread` with bucketing, ready to baseline locality work.
 4. Skill playbooks and plugin packaging.
-5. `brief` and the opt-in completeness hook.
+5. `brief`.
 6. `clusters`, `trend` and complexity-report composition.
 7. Logical change grouping.
 8. Abandonment skill, following its own milestones.

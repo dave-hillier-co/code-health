@@ -31,7 +31,7 @@ In scope:
 - The author's placement: prior authorship and changes in the touched files and their neighbourhood.
 - A deterministic level with every contributing factor shown, and a recommended review response.
 - Reviewer suggestions, from the same evidence as abandonment's successors.
-- Backtesting the factors against the repository's history.
+- Maintainer commands that backtest the factors against a repository's history, which are not for end users.
 
 Out of scope:
 
@@ -145,7 +145,7 @@ The level comes from the two together:
 
 Rules, not fitted weights, set the level, so anyone can see why a change got it.
 
-**No level without a backtest.** Until `cochange risk backtest` has run on the repository and shows that the levels separate past changes, `risk` reports the bands, findings and responses, and no level. Once it has, the output states the backtest result beside the level.
+**No level without a stored backtest.** `cochange risk` shows a level only where a stored backtest for the repository shows that the levels separate past changes. Where none is stored, or the stored one does not show it, `risk` reports the bands, findings and responses, and no level. Where it shows a level, the output states the backtest result beside it. The backtest is a [maintainer command](#maintainer-commands), so an end user never runs it, and the skill neither runs nor offers it.
 
 The level matters less than the response it leads to. Each finding carries a suggested response:
 
@@ -171,49 +171,18 @@ Subcommands of the cochange CLI. Every one supports `--json` with a versioned sc
 | `cochange risk [BASE[..HEAD]] [--worktree] [--evidence FILE...]` | The level (when backtested), the impact and placement bands, every factor with its value, band, evidence and source, and the findings with their responses |
 | `cochange risk explain [FACTOR]` | The rules behind the level, or one factor's definition, guidelines and the files that drove it |
 | `cochange risk reviewers [BASE[..HEAD]] [--names]` | Suggested reviewers per touched area: active developers ranked by authorship and by changes to coupled files |
-| `cochange risk backtest [--since DATE]` | For the baseline population: each history-layer factor's band and the level, against whether the change was later reverted or fixed |
 
 `risk` is advisory and exits 0 whatever the level. It exits non-zero only on usage and environment errors.
 
-## Privacy
+## Maintainer commands
 
-Impact factors are about code and are on by default. Placement is about a person's history, so it is bounded the way the rest of the suite bounds data about people.
+These are calibration tools, run by the suite's maintainers on a corpus of repositories. They stay runnable, but are left out of `--help` listings and of every skill and reference that end users or Claude follow. The stored result of a run is what lets `cochange risk` show a level.
 
-- **Self by default.** Placement is computed when the change's authors match the invoking user's own git identity: a self-check before asking for review. This is a default, not an access control, since anyone can set a git identity. Computing it for someone else's branch needs `cochange.risk.placement: "any"` in the repo config, which is a team's decision to make together.
-- **One change at a time.** There is no command that lists placement or levels by author, and `backtest` reports per factor and per level, never per person.
-- **Nothing kept.** Placement is not written to `reports/` and is not stored. Nor is the level, since placement could be read back from it. The impact factors are.
-- **Reviewer suggestions name active developers only**, as recommended reviewers, under the same rule as `successors --names`. Without `--names`, areas are listed with counts.
-- **Contention and ownership use counts.** No factor's evidence names a person other than the change's own authors and, with `--names`, suggested reviewers.
+| Command | Output |
+|---|---|
+| `cochange risk backtest [--since DATE] [--adopted DATE]` | For the baseline population: each history-layer factor's band and the level, against whether the change was later reverted or fixed. With `--adopted`, the follow-up fix rate before and after that date over windows of equal length |
 
-The skill describes placement as a fact about history. `first-touch` means the author has not changed this file before. It says nothing about their ability, and the skill does not let it. It declines to compare authors, to summarise anyone's levels over time, or to use the results in an assessment of a person, and says why.
-
-## Skill
-
-Skill name `change-risk`, in `plugins/cochange/skills/change-risk/`. It triggers on requests to assess a branch, merge request or pull request before review or merge: "how risky is this change", "what should the reviewer look at", "who should review this", "is this ready for review".
-
-Workflow:
-
-1. Establish the change: the branch, its base, and whether uncommitted edits belong to it. Refresh the history cache if it is behind, and the blame cache if placement will be computed. Run `cochange identities check` for the change's authors and resolve anything unmapped first: an author's second email, left unmapped, makes an owner look like a newcomer.
-2. When the complexity or structure plugin is installed, run `complexity diff` and `structure check` for the branch and pass their JSON with `--evidence`. Run `cochange risk`. Report the level, or the bands where there is no backtested level, in one sentence with the two or three factors that drove it, not the whole table.
-3. Deal with completeness first. For each `missing-co-change` file, open it and judge whether the change needs it. This is the finding most likely to be a real defect.
-4. Propose the responses from the table, cheapest first: complete the change, split it, add tests, then route review.
-5. For review routing, run `reviewers`, and say what each suggested reviewer is being asked to look at.
-6. State the limits: which factors were `unavailable`, the evidence grade, and what the backtest says about how well the levels have separated changes in this repository.
-
-When the author is the user, the skill's stance is a pre-flight check: what to fix before asking for review. When the user is the reviewer, it is a reading guide: where to spend attention. The skill uses the [red-flags](../../shared/red-flags.md) vocabulary where a finding matches one. A missing co-change is usually *information leakage*, and a novel coupling may be the start of it.
-
-## Composition
-
-The skill works from history alone. Results from sibling plugins reach it in two ways, and both are named in `inputs`:
-
-- **Per-branch results are passed in.** `complexity diff` and `structure check` describe one branch, so they are not reports in the suite's sense, which are full runs stamped with HEAD. The skill runs them and hands their JSON to `cochange risk --evidence`. The CLI folds them in as `complexity-delta` and `structure-delta`, and never invokes another plugin itself.
-- **Fan-in comes from a report.** `blast-radius` reads locality's report when it is present and stamped with the current HEAD ([suite.md](suite.md#shared-caches)).
-- **`abandoned-touched` reads abandonment's report.** A configured `abandonment simulate` run on a clean tree stores `reports/cochange.abandonment.simulate.json`: every file with its abandoned flag and probability, never a person. When it is stamped with the change's tip and the current config and overrides, the factor reads it and `inputs.abandonment` names it. Otherwise the factor is measured from the blame cache at the change's base.
-- The blame cache supplies placement.
-
-Without them, the lexical and history fallbacks in the tables apply, or the factor is `unavailable`.
-
-## Measurement
+What it measures:
 
 | Measure | What it shows | Role |
 |---|---|---|
@@ -223,7 +192,7 @@ Without them, the lexical and history fallbacks in the tables apply, or the fact
 | Follow-up fix rate of merged changes over matching windows, before and after adoption | Changes land more complete | Primary outcome |
 | Share of changes at `elevated` | The level is not inflating into noise | Gaming check |
 
-A change counts as followed by trouble when it is reverted, or when a fix commit touches the files it changed within the follow-up window (default 30 days). The file-level test over-counts in busy files, so each level's rate is compared with the base rate for the same files, not with zero. Fix commits are found by commit-message convention, so repositories without one get reverts only, and the backtest says so. If the levels do not separate past changes, the skill reports that and presents the factors as observations, without a level.
+A change counts as followed by trouble when it is reverted, or when a fix commit touches the files it changed within the follow-up window (default 30 days). The file-level test over-counts in busy files, so each level's rate is compared with the base rate for the same files, not with zero. Fix commits are found by commit-message convention, so repositories without one get reverts only, and the backtest says so. If the levels do not separate past changes, `risk` shows no level and the skill presents the factors as observations.
 
 The backtest has three constraints that keep it honest and affordable:
 
@@ -253,6 +222,49 @@ In `cochange.risk`:
 - `placement`: `self` (default), `any` or `off`.
 - Factors to disable.
 
+
+## Privacy
+
+Impact factors are about code and are on by default. Placement is about a person's history, so it is bounded the way the rest of the suite bounds data about people.
+
+- **Self by default.** Placement is computed when the change's authors match the invoking user's own git identity: a self-check before asking for review. This is a default, not an access control, since anyone can set a git identity. Computing it for someone else's branch needs `cochange.risk.placement: "any"` in the repo config, which is a team's decision to make together.
+- **One change at a time.** There is no command that lists placement or levels by author, and no command reports per person.
+- **Nothing kept.** Placement is not written to `reports/` and is not stored. Nor is the level, since placement could be read back from it. The impact factors are.
+- **Reviewer suggestions name active developers only**, as recommended reviewers, under the same rule as `successors --names`. Without `--names`, areas are listed with counts.
+- **Contention and ownership use counts.** No factor's evidence names a person other than the change's own authors and, with `--names`, suggested reviewers.
+
+The skill describes placement as a fact about history. `first-touch` means the author has not changed this file before. It says nothing about their ability, and the skill does not let it. It declines to compare authors, to summarise anyone's levels over time, or to use the results in an assessment of a person, and says why.
+
+## Skill
+
+Skill name `change-risk`, in `plugins/cochange/skills/change-risk/`. It triggers on requests to assess a branch, merge request or pull request before review or merge: "how risky is this change", "what should the reviewer look at", "who should review this", "is this ready for review".
+
+Workflow:
+
+1. Establish the change: the branch, its base, and whether uncommitted edits belong to it. Refresh the history cache if it is behind, and the blame cache if placement will be computed. Run `cochange identities check` for the change's authors and resolve anything unmapped first: an author's second email, left unmapped, makes an owner look like a newcomer.
+2. When the complexity or structure plugin is installed, run `complexity diff` and `structure check` for the branch and pass their JSON with `--evidence`. Run `cochange risk`. Report the level, or the bands where the CLI shows no level, in one sentence with the two or three factors that drove it, not the whole table.
+3. Deal with completeness first. For each `missing-co-change` file, open it and judge whether the change needs it. This is the finding most likely to be a real defect.
+4. Propose the responses from the table, cheapest first: complete the change, split it, add tests, then route review.
+5. For review routing, run `reviewers`, and say what each suggested reviewer is being asked to look at.
+6. State the limits: which factors were `unavailable`, the evidence grade, and, when the CLI shows a level, the stored backtest it states beside the level.
+
+When the author is the user, the skill's stance is a pre-flight check: what to fix before asking for review. When the user is the reviewer, it is a reading guide: where to spend attention. The skill uses the [red-flags](../../shared/red-flags.md) vocabulary where a finding matches one. A missing co-change is usually *information leakage*, and a novel coupling may be the start of it.
+
+## Composition
+
+The skill works from history alone. Results from sibling plugins reach it in two ways, and both are named in `inputs`:
+
+- **Per-branch results are passed in.** `complexity diff` and `structure check` describe one branch, so they are not reports in the suite's sense, which are full runs stamped with HEAD. The skill runs them and hands their JSON to `cochange risk --evidence`. The CLI folds them in as `complexity-delta` and `structure-delta`, and never invokes another plugin itself.
+- **Fan-in comes from a report.** `blast-radius` reads locality's report when it is present and stamped with the current HEAD ([suite.md](suite.md#shared-caches)).
+- **`abandoned-touched` reads abandonment's report.** A configured `abandonment simulate` run on a clean tree stores `reports/cochange.abandonment.simulate.json`: every file with its abandoned flag and probability, never a person. When it is stamped with the change's tip and the current config and overrides, the factor reads it and `inputs.abandonment` names it. Otherwise the factor is measured from the blame cache at the change's base.
+- The blame cache supplies placement.
+
+Without them, the lexical and history fallbacks in the tables apply, or the factor is `unavailable`.
+
+## Measurement
+
+The measures of this skill are those of the [backtest](#maintainer-commands), which is run by the suite's maintainers and not by end users.
+
 ## Defect-history definition
 
 A revision is a fix when the change that made it has a commit whose subject matches `history.fixPatterns` (`cochange.fixPatterns` when set; see [suite.md](suite.md#configuration) for the defaults and `fixMatchBody`). A revert, whether its subject starts with Revert or its body carries git's "This reverts commit" line, is classified apart and is not a fix. The factor lists, for each file, the share, the most recent matching commits (three, with the number omitted beyond them) and the pattern that matched each. The default patterns include the whole word "issue", which also matches commits such as "address review issue", so a share is a prompt to read the matching commits and never a count of defects. The factor is unavailable when no change in the window matches. The backtest prints the repository-level convention check (the share of merged changes that are fixes, with a note when it is under 2 percent or over 60 percent, or there are fewer than 30 merged changes), the fixes by pattern, and the first matching commits with the number omitted.
@@ -261,7 +273,7 @@ A revision is a fix when the change that made it has a commit whose subject matc
 
 Numeric values are **guidelines**: they place a factor in a band and order the findings, and the measured value is always printed next to the band. Defaults come from the repository's own history (percentile bands, which need no outside number), from the research in [Basis](#basis), or are judgement calls, marked below. Where a minimum amount of evidence is needed, it is a floor, and the factor is reported as `unavailable` with the reason, not as `low`.
 
-**Command line.** `risk explain`, `risk reviewers` and `risk backtest` are positional words, so a branch with one of those names is written `BASE..HEAD`. Outputs carry `command: risk` and `results.kind` of `assessment`, `explain`, `backtest` or `reviewers`. `--evidence` is repeated for several files, and relative paths resolve against the repository root.
+**Command line.** `risk explain`, `risk reviewers` and the maintainer command `risk backtest` are positional words, so a branch with one of those names is written `BASE..HEAD`. Outputs carry `command: risk` and `results.kind` of `assessment`, `explain`, `backtest` or `reviewers`. `--evidence` is repeated for several files, and relative paths resolve against the repository root.
 
 **Evidence from other plugins.** Every row of `structure check` counts towards `structure-delta`, because the command lists only findings new against the base. A `complexity diff` unit counts towards `complexity-delta` when it is added or has a positive cognitive delta, and carries a `-warn` or `-high` label, which are the complexity plugin's own bands against its guidelines. Base and tip are read from `inputs.base.sha` and `inputs.head.sha`, or from `inputs.baseSha` and `analysed`. This mirrors CodeScene, which reports only new or worsened code against the base.
 
@@ -310,7 +322,7 @@ Numeric values are **guidelines**: they place a factor in a band and order the f
 
 1. Change extraction against a base, with size, spread, entropy and `missing-co-change`.
 2. The remaining history factors, bands from the repository's own history, and `explain`.
-3. `backtest`, so the factors are checked before a level is shown to anyone.
+3. `backtest`, a maintainer command, so the factors are checked before a level is shown to anyone.
 4. Placement from the blame cache, with the privacy gating.
 5. The level, findings and responses, and `reviewers`.
 6. Skill and evals, including the decline cases.

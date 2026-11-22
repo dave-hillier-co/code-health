@@ -32,7 +32,6 @@ In scope:
 - Interface depth signals: the shallow-module and pass-through red flags.
 - A ratchet for CI against a base revision, so only new or worsened functions make `check` exit with 1.
 - Diff mode, measuring only the functions a change touched.
-- An opt-in post-edit hook giving the agent immediate feedback.
 
 Out of scope:
 
@@ -49,7 +48,7 @@ Each metric has a precise per-language definition, captured in the language adap
 
 These are the lowest common denominator, offered at best effort ([suite.md](suite.md#analysis-layers)). Indentation complexity, nesting and file length work on any text file and any historical blob. Function blocks and the metrics built on them (bumpy road, keyword complexity, per-function length) need a lexer profile. They are the default for tier-0 languages and for trends, and they are reported alongside the structural metrics everywhere. CodeScene applies one code health model to 30+ languages. Here the model is the same shared definitions with a different layer by language: structural for tier 1 and 2, and for any other language only the file-level lexical metrics, with `source` on every row saying which layer measured it.
 
-**Function blocks.** Approximate units found lexically: a line matching the profile's definition shape followed by a block, closed by brace matching (skipping strings and comments) or by indentation returning to the opening level. They are approximate. Their agreement with the structural layer is measured per language ([suite.md](suite.md#testing)), and per-function lexical metrics are reported only where it clears the configured bar (`agreementBar`, default 0.9, a judgement call), with the rate attached. Below the bar a profile's blocks are withheld because a block that does not match its function would attribute a value to the wrong code. That is a measurement floor and not a finding filter. A profile mapped through config has no recorded agreement, so its values are reported with `unverified: true` and the hook does not use them. Lexical blocks are never used for unit identity in `check` and `diff`, which stays structural.
+**Function blocks.** Approximate units found lexically: a line matching the profile's definition shape followed by a block, closed by brace matching (skipping strings and comments) or by indentation returning to the opening level. They are approximate. Their agreement with the structural layer is measured per language ([suite.md](suite.md#testing)), and per-function lexical metrics are reported only where it clears the configured bar (`agreementBar`, default 0.9, a judgement call), with the rate attached. Below the bar a profile's blocks are withheld because a block that does not match its function would attribute a value to the wrong code. That is a measurement floor and not a finding filter. A profile mapped through config has no recorded agreement, so its values are reported with `unverified: true`. Lexical blocks are never used for unit identity in `check` and `diff`, which stays structural.
 
 **Indentation complexity.** The sum of logical indentation levels over non-blank lines, leaving out comment lines where a lexer profile identifies them, normalised by the detected indent unit. Lines inside a multi-line string are left out. It is a file-level proxy in Tornhill's sense (*Your Code as a Crime Scene*), not a per-function metric, and `files` rows carry it as `complexity`. It is one definition, implemented once in the shared `lexical` package and used by cochange too.
 
@@ -188,23 +187,11 @@ The figures are guidelines for where to look. A function that is the extension p
 
 ## Agent integration
 
-### Post-edit feedback hook (opt-in)
+### On-request explanation
 
-A `PostToolUse` hook on `Edit` and `Write` for any language with a lexer profile (bumpy road, nesting and keyword complexity), with structural metrics where an adapter exists:
+The skill tells the agent to run `complexity explain FILE#UNIT` on a function before it changes it, and `complexity check` before it commits work that adds or changes functions. This is the cheapest point to fix complexity: the agent has the code in context and has not yet built on it.
 
-- Measures only the edited file. Each run is a fresh process, so nothing is incremental: the budget has to cover process start, the worker, reading the file and the file at HEAD. The default budget is 150 ms (`DEFAULT_BUDGET_MS`), with a 1 second backstop in `hooks.json`. A run that has not finished by the budget prints nothing and records `printed nothing: over the time budget`. The hook uses the lexical layer only, because a structural run measured about 130 ms, which is most of the budget, and loading the WASM runtime and one grammar alone takes about as long. Lexical values are less accurate than structural ones, and the hook trades that for speed. This follows CodeScene's pre-commit feedback, which is fast and runs on the static source of the changed file only.
-- Compares the file's units against the last measurement of the file in the hook's session state ([suite.md](suite.md#hooks)), or against the values at HEAD when the session has none. The measurement is stored even when nothing is printed, so the next edit is compared with what the previous one left. CodeScene's delta compares against the committed version and matches moved code by similarity. The hook compares unit names only, because it has no bodies to match, so a renamed unit is treated as a new one and is printed if it is above a guideline. The message says `a new or renamed unit` so the agent can tell. A name used twice in a file gets `~2`, `~3` in order, and a block with no name is left out.
-- Prints only when a unit went above a guideline in this edit or was above it and rose by more than the configured delta. A guideline decides whether to print, to keep the token cost down. It does not hide anything from `analyse`, which lists every unit. When it prints, it gives one sentence with the unit, the metric, the before and after values, the guideline and the ratio of the value to it, and `Worth a look: run <command> for the breakdown`. With several findings it names the one furthest above its guideline and counts the rest (`and N more findings in this file`). The message states values and does not state a rule.
-- The pointer is `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs explain FILE#UNIT` when the host sets `CLAUDE_PLUGIN_ROOT`, else `complexity explain FILE#UNIT`. It is left out for a file type with no structural grammar, because `explain` cannot read it. The form of the pointer is part of the output contract.
-- The lexical values it compares are nesting (against `guidelines.nesting`), keyword complexity (read as cyclomatic complexity minus one, against `guidelines.cyclomatic.warn`, so the hook and `check` agree on where a function sits) and the bumpy road. Cognitive complexity needs the syntax tree, so `check` and `analyse` have it and the hook does not. The hook and `check` can therefore disagree on a function that is above the cognitive guideline and under the others.
-- It prints for a language only where the lexical agreement with the structural layer clears `agreementBar` and the profile was not mapped by config. For any other file it prints nothing and records the reason in the session state (`printed nothing: no per-function metrics (<reason>)`), which is where a user finds out why a language gets no feedback.
-- It prints at most once per file per session.
-- The hook's process, worker and session state are shared with the other plugins' hooks (`packages/history`), and each hook keeps its own state file.
-- Never blocks, and always exits with 0.
-
-This is the cheapest point to fix complexity: the agent has the code in context and has not yet built on it.
-
-### Skill guidance
+## Skill guidance
 
 The skill holds the remedy policy, which is the main point of the plugin:
 
@@ -232,9 +219,8 @@ In the `complexity` section of the suite config:
 - Enabled metrics and the guideline of each metric (`guidelines`), with optional per-glob overrides (generated code, tests). Guidelines are configurable because they are defaults for investigation, and a repository that disagrees changes them.
 - Shared history settings that the change weighting and `outcome` read, from the top-level `history` section of the suite config ([suite.md](suite.md#configuration)), overridable here under the same names: `windowMonths` (default 12), `maxChangesetSize` and `botPatterns`.
 - Cyclomatic `switch` mode.
-- Base revision for `check`, and the worsening delta it and the hook share.
+- Base revision for `check`, and the worsening delta `check` and `diff` share.
 - The agreement bar for per-function lexical metrics.
-- Hook enablement (`hook.enabled`, off by default).
 - The shallow guideline of the interface depth label (`interfaceDepth.shallow`).
 - The defaults of `--max-commits` and `--evidence` for the fix statistics (`fixes.maxCommits`, `fixes.evidence`).
 - Whether tests are analysed (default: analysed, but ranked separately).
@@ -258,7 +244,6 @@ The plugin supports every supported language of the suite (tier 1: TypeScript/Ja
 - Whether symbol-level co-change, from mapping diff hunks onto function ranges, belongs here (this plugin already parses) or in cochange.
 - Whether Rust's wildcard `match` arm should stop counting as a case, for consistency with the other languages.
 - Whether `complexity depth` rows should rank by a corpus-calibrated figure instead of the judgement-call guideline.
-- Whether the hook should also report *improvements*. That would be positive feedback for the agent, at a token cost.
 
 ## Milestones
 
@@ -268,6 +253,5 @@ The plugin supports every supported language of the suite (tier 1: TypeScript/Ja
 4. `check` and `diff` against a base revision, for CI.
 5. Skill remedy policy and plugin packaging.
 6. Change-weighted ranking from the shared history cache.
-7. Post-edit hook.
-8. Interface depth and pass-through signals.
-9. C#, then C++, then the tier-2 languages.
+7. Interface depth and pass-through signals.
+8. C#, then C++, then the tier-2 languages.

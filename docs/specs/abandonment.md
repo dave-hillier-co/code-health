@@ -29,7 +29,7 @@ In scope:
 - Simulated abandonment: loss distribution, expected loss, KaR and tail ratio, per file and per component.
 - Risk weighted by importance: abandonment probability combined with hotspot score, so cold code ranks below code that changes.
 - Successor recommendations for at-risk files.
-- Backtesting the model against the repository's own history.
+- Maintainer commands that calibrate the model against a repository's own history, which are not for end users (see [Maintainer commands](#maintainer-commands)).
 
 Out of scope:
 
@@ -104,10 +104,19 @@ Subcommands of the cochange CLI. Every one supports `--json` with a versioned sc
 | `cochange abandonment simulate [--mode rate\|historical\|k-leavers] [--k N] [--trials N] [--horizon P] [--seed S]` | Loss distribution summary, plus top at-risk files and components |
 | `cochange abandonment turnover` | Estimated turnover rate per period, with the developer counts behind it (no names) |
 | `cochange successors PATH... [--names]` | Ranked successors per file, with the coupling evidence |
-| `cochange abandonment backtest [--at DATE]` | At a past date, the predicted at-risk files against the files actually abandoned one horizon later |
 | `cochange abandonment redundancy [--min-authors N] [--min-share PERCENT]` | Share of hotspot files with at least N active authors (default 2) each holding at least the share of lines (default 10 %), with the counts behind it |
 | `cochange abandonment trend [--points N]` | Expected loss and KaR at dates one period apart, each from the history and blame then, with one turnover rate and the same settings at every point |
 | `cochange abandonment adoption [--at DATE] [--successors N]` | Of the files abandoned at a past date, how many an active developer picked up within the horizon, and how many by one of the top recommended successors using only the history before the date |
+
+## Maintainer commands
+
+These are calibration tools, run by the suite's maintainers on a corpus of repositories to check the model. They stay runnable, but are left out of `--help` listings and of every skill and reference that end users or Claude follow, and the abandonment skill does not run them.
+
+| Command | Output |
+|---|---|
+| `cochange abandonment backtest [--at DATE] [--horizon P] [--trials N] [--seed S] [--top N]` | At a past date, the predicted at-risk files against the files actually abandoned one horizon later, with precision and recall |
+
+**Backtest.** `--at` is the end of that day in UTC, and the default is one horizon before the analysed commit. The state is taken at the last non-merge commit at or before it. Candidates are files present at both dates and not abandoned at the first. A file is matched across the two dates by its stable file identity, as everywhere else in the suite, so a file renamed in between is the same file. A file is predicted when its probability is at or above `atRiskProbability`: precision and recall need that cut, and every row carries its probability. Files predicted and gone are counted in `goneByOutcome` and not scored. Overrides and hotspot weighting are not applied to the past. Precision and recall are null when their denominator is zero, which is not a score. Renamed files are followed by blame, but the backtest compares files by path, so heavy renaming lowers its scores.
 
 ## Privacy
 
@@ -129,7 +138,7 @@ Skill name `abandonment`, in `plugins/cochange/skills/abandonment/`. It triggers
 Workflow:
 
 1. Check enablement and cache freshness, and refresh history and blame if needed. Run `cochange identities check`, and if unmapped identities hold more than the configured share of lines, use the identities skill first. Report the mapped share alongside the results.
-2. Run `simulate` in `rate` mode, and in `historical` when there are at least eight quarters of history. Report expected loss, KaR and the tail ratio in plain terms ("in a bad year, expect to lose authorship of around N files; the typical year is M"). Give the backtest's precision and recall with them, so the user knows how well the model has predicted this repository's own past.
+2. Run `simulate` in `rate` mode, and in `historical` when there are at least eight quarters of history. Report expected loss, KaR and the tail ratio in plain terms ("in a bad year, expect to lose authorship of around N files; the typical year is M").
 3. Present the top-ranked at-risk files with their findings.
 4. For files the user wants to act on, run `successors` and propose mitigations from the table, preferring the cheapest that works: assign reviews to successors on the next changes, pair on the next change to a hotspot, and write characterisation tests or a short design note for cold code.
 5. Note interactions with the rest of the suite. Simplifying an at-risk complex file (complexity plugin) reduces the knowledge needed to adopt it. Co-locating scattered code (locality plugin) reduces how much someone must know to change it safely.
@@ -143,7 +152,6 @@ The skill's references include the paper's definitions and the [red-flags](../..
 |---|---|---|
 | Expected loss and KaR over time, at the same settings | Knowledge is spreading or concentrating | Primary outcome |
 | Share of hotspot files with ≥ 2 active authors holding ≥ 10 % of lines each | Important code has redundancy | Primary outcome |
-| Backtest precision and recall at a past date | The model is calibrated for this repository | Model validity |
 | Adoption of abandoned files by recommended successors | Recommendations are taken up | Secondary |
 
 A falling KaR after reviewer rotation, with no change in turnover rate, is the evidence that mitigation worked.
@@ -203,8 +211,6 @@ Where the sections above leave a definition open, these apply. Constants marked 
 
 **Successors.** A candidate's score is the sum over coupled files of (degree / 100) times the candidate's eligible changes in the window, plus the candidate's share of lines in the file as a fraction from 0 to 1. The share breaks ties between candidates with the same coupled changes. A file with no coupled files, or none that an active developer has changed, is `no-successor`: the tool has no coordination evidence for it, which is a statement about the evidence and not about ownership. Names are printed only with `--names`, and only for active developers.
 
-**Backtest.** `--at` is the end of that day in UTC, and the default is one horizon before the analysed commit. The state is taken at the last non-merge commit at or before it. Candidates are files present at both dates and not abandoned at the first. A file is matched across the two dates by its stable file identity, as everywhere else in the suite, so a file renamed in between is the same file. A file is predicted when its probability is at or above `atRiskProbability`: precision and recall need that cut, and every row carries its probability. Files predicted and gone are counted in `goneByOutcome` and not scored. Overrides and hotspot weighting are not applied to the past.
-
 **Stored report.** Abandonment output is stored only as `reports/cochange.abandonment.simulate.json`, from a run that takes everything from config. It holds files, components and probabilities, and no identity. `abandoned-touched` in [change-risk](change-risk.md) uses it only when the stamp, config hash, mode and overrides match, and not for changes in the worktree.
 
 ## Decisions
@@ -216,7 +222,7 @@ Where the sections above leave a definition open, these apply. Constants marked 
 ## Open questions
 
 - Whether to weight lines by complexity, so that knowledge of complex code counts for more than knowledge of boilerplate.
-- Whether to estimate and apply the turnover rate within tenure bands. Occasional contributors leave at a far higher rate than established ones, so one pooled rate overstates the loss of core authors. Bands describe groups, not people, but the backtest should show the pooled rate is miscalibrated before the model gains that complexity.
+- Whether to estimate and apply the turnover rate within tenure bands. Occasional contributors leave at a far higher rate than established ones, so one pooled rate overstates the loss of core authors. Bands describe groups, not people, but a backtest should show the pooled rate is miscalibrated before the model gains that complexity.
 - Whether authorship should decay with time since the author last touched the file, since knowledge fades even without turnover.
 - How to treat code authored by agents, which have no knowledge to lose. One option is to attribute agent-authored lines to the reviewing or committing human. The identities skill already records agent trailers, so this is a policy choice rather than a detection problem.
 
@@ -224,7 +230,7 @@ Where the sections above leave a definition open, these apply. Constants marked 
 
 1. Identities skill ([identities.md](identities.md)), then the blame cache with `-M -C`, ignore-revs and mailmap, and `abandonment current`.
 2. Turnover estimation and `simulate` in `rate` and `k-leavers` modes, deterministic.
-3. `backtest`, so the model is checked against this repository's own past before anything presents its numbers.
+3. `backtest`, a maintainer command that checks the model against a repository's own past.
 4. `historical` mode, KaR, tail ratio and expected tail loss.
 5. Hotspot-weighted ranking and findings.
 6. `successors` from coupling.

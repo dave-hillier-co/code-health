@@ -48,6 +48,8 @@ export interface SubcommandHelp {
   summary: string;
   /** Names of the command's options that this subcommand takes. */
   options?: readonly string[];
+  /** A maintainer command: runnable, and described by `<subcommand> --help`, but left out of the command's own `--help` listing. */
+  hidden?: boolean;
 }
 
 export interface Command {
@@ -59,6 +61,8 @@ export interface Command {
   optionHelp?: Record<string, string>;
   /** The subcommands the command dispatches to, so `--help` can describe each with only its own options. */
   subcommands?: Record<string, SubcommandHelp>;
+  /** Names of options that only hidden subcommands take, left out of the command's `--help` listing. */
+  hiddenOptions?: readonly string[];
   run(context: CommandContext): CommandOutput | Promise<CommandOutput>;
 }
 
@@ -251,6 +255,7 @@ function commandHelp(cli: CliDefinition, name: string, command: Command, request
     return flags.map(([flag, description]) => (description === "" ? `  ${flag}` : `  ${flag.padEnd(width)}  ${description}`));
   };
   const all = Object.entries(command.options ?? {});
+  const hiddenOptions = new Set(command.hiddenOptions ?? []);
   if (sub !== undefined) {
     const taken = new Set(sub.options ?? []);
     return [
@@ -264,7 +269,7 @@ function commandHelp(cli: CliDefinition, name: string, command: Command, request
       "",
     ].join("\n");
   }
-  const subcommands = Object.entries(command.subcommands ?? {});
+  const subcommands = Object.entries(command.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
   const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
     `Usage: ${cli.tool} ${name}${command.usage === undefined ? "" : ` ${command.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
@@ -273,7 +278,7 @@ function commandHelp(cli: CliDefinition, name: string, command: Command, request
     "",
     ...(subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli.tool} ${name} <subcommand> --help for the options of one.`, ""] : []),
     "Options:",
-    ...optionLines(all),
+    ...optionLines(all.filter(([option]) => !hiddenOptions.has(option))),
     ...commonOptionHelp,
     "",
   ].join("\n");

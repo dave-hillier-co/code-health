@@ -1,6 +1,6 @@
 schema_version: "1.0"
 name: abandonment-explains-kar
-description: The skill simulates turnover, reports expected loss and knowledge at risk in plain terms, explains the difference, and shows the backtest beside them. Needs `--scaffold` and `--allow-tools Bash,Read,Grep,Glob` (see CONTRIBUTING.md).
+description: The skill simulates turnover, reports expected loss and knowledge at risk in plain terms, and explains the difference. Needs `--scaffold` and `--allow-tools Bash,Read,Grep,Glob` (see CONTRIBUTING.md).
 tags: [behaviour, abandonment]
 plugins: [cochange]
 context:
@@ -17,12 +17,6 @@ graders:
     name: simulates-turnover
     tool: Bash
     input_match: "cochange\\.mjs abandonment simulate"
-    min: 1
-    arm: with-only
-  - type: tool_used
-    name: backtests-the-model
-    tool: Bash
-    input_match: "cochange\\.mjs abandonment backtest"
     min: 1
     arm: with-only
   - type: tool_used
@@ -45,11 +39,10 @@ graders:
     focus: last_message
     arm: with-only
   - type: llm
-    name: gives-the-backtest-beside-the-result
+    name: reports-the-identity-check
     criteria: >-
-      The final message states the backtest's precision and recall (or says plainly that one is undefined and why) and
-      says how far the simulation can be trusted for this repository because of them. It also reports the share of lines
-      that identities have settled, or says that the identity check was clean.
+      The final message reports the share of lines that identities have settled, or says that the identity check was
+      clean, and says the simulation assumes departures are random.
     focus: last_message
     arm: with-only
   - type: llm

@@ -30,10 +30,6 @@ One row per usable period: `start`, `end`, `developers` (on the team at its star
 
 `--k` needs `--mode k-leavers` and cannot exceed the active developers. `--mode historical` needs at least one usable period and ignores a configured rate. Rate mode with no usable period and no configured rate stops and asks for one.
 
-## abandonment backtest [--at YYYY-MM-DD] [--horizon P] [--trials N] [--seed S] [--top N]
-
-`results`: `at` and `outcomeAt`, `commits`, `model` (the rate, its source and the departures behind it), `candidates`, `predicted` (`files`, and `goneByOutcome` for predicted files that no longer exist), `actual.files`, `truePositives`, `precision`, `recall` (null when the denominator is zero), `expectedAbandoned`, and `files` (each `hit`, `false-alarm` or `missed`). The date must leave a whole horizon before the analysed commit. It ends the day, UTC.
-
 ## successors PATH... [--names] [--top N]
 
 One row per path: `abandoned`, `coupledFiles` (`path`, `degree`, `support`), `candidates` (active developers with a score), `noSuccessor`, and `successors` (the top N, default 5): `rank`, `score`, `coupledChanges`, `ownShare`, `evidence` (coupled files they changed, with `degree` and `changes`). `--names` adds `developer` to each. Only active developers are candidates.

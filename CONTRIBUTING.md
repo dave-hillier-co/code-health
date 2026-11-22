@@ -58,7 +58,7 @@ A command may group subcommands that share its setup, as `structure packages <li
 
 ### Modules loaded on demand
 
-A module a command loads with `await import("./x.ts")` is built into `plugins/<p>/dist/chunk-<hash>.mjs`, with whatever only it uses, and is read only when the command runs. Use it for a heavy dependency that most commands never need, as locality does for ts-morph. A module that holds shared state, or the hook worker's entry (`workerEntry` in `packages/history/src/hook-process.ts`), must stay in the main bundle: a chunk is another file, so it would not be the same module. `npm run build` writes the chunks and removes ones that are no longer produced, and `npm run check:dist` compares them.
+A module a command loads with `await import("./x.ts")` is built into `plugins/<p>/dist/chunk-<hash>.mjs`, with whatever only it uses, and is read only when the command runs. Use it for a heavy dependency that most commands never need, as locality does for ts-morph. A module that holds shared state must stay in the main bundle: a chunk is another file, so it would not be the same module. `npm run build` writes the chunks and removes ones that are no longer produced, and `npm run check:dist` compares them.
 
 ### Plugins that parse
 
@@ -68,18 +68,28 @@ A plugin parses when its bundle includes `packages/parse/src/grammars.ts`, direc
 - The `dist/grammars/` files are committed, and `npm run check:dist` fails when they differ from a fresh build or exist for a plugin that does not parse.
 - `scripts/test/new-plugin.test.ts` shows the check to copy for a new parsing plugin: build, copy `dist/` to a directory with no `node_modules`, run the bundled CLI there to parse a file.
 
-### Plugins with a hook
-
-The hook rules are in `docs/specs/suite.md`. A plugin's hook is the `hook` argument of its own bundle, and the machinery is shared, so a hook is only its decision. `cochange` and `complexity` are the two to copy:
-
-- `@code-health/history/hook-process` runs the process: it reads stdin, starts the plugin's entry point on a worker thread so the time budget is enforced, and exits 0 on every path. A plugin describes itself with a `HookDefinition` in `src/hook-definition.ts`, and its `main.ts` calls `inHookWorker`, `runHookWorker` and `runHookProcess` before it starts the CLI.
-- `@code-health/history/hook-event` parses the event (`readEditEvent`) and gives the time budget (`within`).
-- `@code-health/history/session-state` keeps the hook's own state for the session, one file per hook, including the last measurement of each file.
-- `hooks/hooks.json` is exec form with `${CLAUDE_PLUGIN_ROOT}`, and a plugin tests it. Hook tests call the plugin's `runHook` in process, and the process tests run both `src/main.ts` and the committed bundle.
-
 ### Bundles
 
 Bundles import only Node builtins and install without `npm install`. Do not add runtime dependencies that cannot be bundled, and do not read files by repository-relative path at run time: anything a bundle needs ships in `dist/` and is found through `import.meta.url`.
+
+## Maintainer commands
+
+Three commands calibrate or evaluate the suite on a corpus of repositories. They are for the suite's maintainers and not for end users. They stay runnable, but are marked `hidden` in their command definition (`hidden: true` on a `SubcommandHelp`, `hiddenOptions` for options only they take), so they are left out of `--help` listings, and no skill or reference mentions them. Each plugin's spec describes its own in a "Maintainer commands" section. `<command> <subcommand> --help` still describes one.
+
+| Command | What it checks | Notes |
+|---|---|---|
+| `cochange risk backtest [--since DATE] [--adopted DATE]` | Whether the change-risk levels separate past changes that were later reverted or fixed | A run on a clean tree with no `--since` or `--adopted` stores its result under `.cache/code-health/reports/`. `cochange risk` shows a level only where that stored result says the levels separate |
+| `cochange abandonment backtest [--at DATE] [--horizon P] [--trials N] [--seed S] [--top N]` | At a past date, the predicted at-risk files against the files abandoned one horizon later | Needs `cochange.knowledge.enabled` set to `true` in the corpus repository's `code-health.json`, and prints precision and recall without storing them |
+| `locality measure premise [--since DATE] [--until DATE] [--source main\|subagent\|all] [--effort tools\|all]` | Whether tasks that edit files further apart cost an agent more reads and tokens | Reads Claude Code session transcripts, from `--projects-dir` or `~/.claude/projects` |
+
+To run them on a corpus:
+
+1. Build first with `npm run build`, so `plugins/*/dist` is current.
+2. For each repository, use a full clone (a shallow clone has truncated history), on a clean working tree, and put `code-health.json` there when a command needs a setting such as `cochange.knowledge.enabled` or `history.windowMonths`. Do not commit the file to the repository under test.
+3. Run `node plugins/<plugin>/dist/<plugin>.mjs <command> <subcommand> [options] --json` from inside the clone, for example `node /path/to/code-health/plugins/cochange/dist/cochange.mjs risk backtest --json`. Pipe the JSON to a file outside the clone. The first run of a large repository is slow, because it refreshes the history cache, and blame for abandonment.
+4. Read `evidence.grade` first. Read `risk backtest` by `separation`, `abandonment backtest` by `precision` and `recall` (null means a zero denominator, which is not a score), and `locality measure premise` by `verdict` with `tasks.measured`. State the sample size next to each figure.
+
+The outcome commands (`cochange outcome`, `complexity outcome`, `structure packages outcome`, `locality measure baseline` and `compare`) measure what a user acted on and stay user-facing.
 
 ## Shared blame cache
 

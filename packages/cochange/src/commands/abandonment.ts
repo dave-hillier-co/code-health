@@ -27,18 +27,18 @@ type Subcommand = (typeof SUBCOMMANDS)[number];
 export const command: Command = {
   subcommands: {
     adoption: { summary: "Files abandoned at a past date and whether an active developer, or a recommended successor, picked them up", options: ["at", "successors", "horizon", "no-refresh"] },
-    backtest: { summary: "At a past date, the predicted at-risk files against the files actually abandoned one horizon later", options: ["at", "trials", "horizon", "seed", "top", "no-refresh"] },
+    backtest: { summary: "At a past date, the predicted at-risk files against the files actually abandoned one horizon later", options: ["at", "trials", "horizon", "seed", "top", "no-refresh"], hidden: true },
     current: { summary: "Files already abandoned, ranked", options: ["by", "rank", "no-refresh"] },
     redundancy: { summary: "Share of hotspot files with enough active authors holding enough of the lines", options: ["min-authors", "min-share", "no-refresh"] },
     simulate: { summary: "Loss distribution of simulated turnover, with the files and components it concentrates in", options: ["mode", "k", "trials", "horizon", "seed", "top", "rank", "no-refresh"] },
     trend: { summary: "Expected loss and knowledge at risk over time, at the same settings and rate", options: ["points", "trials", "horizon", "seed", "no-refresh"] },
     turnover: { summary: "Observed turnover rate per period, with the developer counts behind it", options: ["no-refresh"] },
   },
-  summary: "Knowledge lost when people leave: files already abandoned, simulated turnover, and a backtest of the model",
+  summary: "Knowledge lost when people leave: files already abandoned, simulated turnover and the observed turnover rate",
   options: { ...byOption, ...simulationOptions, top: { type: "string" }, points: { type: "string" }, successors: { type: "string" }, "min-authors": { type: "string" }, "min-share": { type: "string" }, rank: { type: "string" }, at: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
     const [sub, ...rest] = context.positionals;
-    if (!SUBCOMMANDS.includes(sub as Subcommand) || rest.length > 0) throw usageError(`usage: abandonment <${SUBCOMMANDS.join("|")}>`);
+    if (!SUBCOMMANDS.includes(sub as Subcommand) || rest.length > 0) throw usageError(`usage: abandonment <${SUBCOMMANDS.filter((s) => s !== "backtest").join("|")}>`);
     const subcommand = sub as Subcommand;
     rejectOptionsOutsideTheirCommand(subcommand, context);
     switch (subcommand) {

@@ -69,47 +69,8 @@ test("the parse layer is a chunk the main bundle imports on demand, and nothing 
   for (const chunk of dynamic) {
     expect(chunks.has(chunk)).toBe(true);
     expect(reached.has(chunk), `${chunk} is loaded statically`).toBe(false);
-    // The point of a chunk: it is the large part, and the part the hook must not pay for.
+    // The point of a chunk: it is the large part, and a command that never needs it never reads it.
     expect(Buffer.byteLength(chunks.get(chunk)!)).toBeGreaterThan(Buffer.byteLength(text));
-  }
-});
-
-test("a hook process never reads the on-demand chunk, which is what keeps it inside its budget", () => {
-  const dynamic = [...text.matchAll(/await import\("\.\/(chunk-[A-Z0-9]+\.mjs)"\)/g)].map((m) => m[1]!);
-  const trace = join(work, "loaded.txt");
-  writeFileSync(
-    join(work, "trace-hooks.mjs"),
-    `import { appendFileSync } from "node:fs";\nexport async function load(url, context, next) {\n  appendFileSync(${JSON.stringify(trace)}, url + "\\n");\n  return next(url, context);\n}\n`,
-  );
-  writeFileSync(
-    join(work, "trace-register.mjs"),
-    `import { register } from "node:module";\nregister("./trace-hooks.mjs", import.meta.url);\n`,
-  );
-  // Its own repository, so the cache these runs leave is not the one the later tests expect to find empty.
-  const traced = GitFixture.build([
-    { type: "commit", message: "one", date: "2024-01-01T00:00:00Z", changes: [{ op: "add", path: "src/a.ts", content: "a\n" }, { op: "add", path: "code-health.json", content: JSON.stringify({ cochange: { hook: { enabled: true } } }) }] },
-    { type: "commit", message: "two", date: "2024-01-02T00:00:00Z", changes: [{ op: "modify", path: "src/a.ts", content: "b\n" }] },
-  ]);
-  try {
-    const event = JSON.stringify({ session_id: "trace", cwd: traced.path, tool_name: "Edit", tool_input: { file_path: join(traced.path, "src", "a.ts") } });
-    const result = spawnSync(process.execPath, ["--import", join(work, "trace-register.mjs"), join(work, "cochange.mjs"), "hook"], {
-      cwd: traced.path,
-      input: event,
-      encoding: "utf8",
-      env: { ...process.env, CODE_HEALTH_HOOK_BUDGET_MS: "60000" },
-    });
-    expect(result.status).toBe(0);
-    const loaded = readFileSync(trace, "utf8");
-    // The trace works: the bundle itself was loaded through it.
-    expect(loaded).toContain("cochange.mjs");
-    for (const chunk of dynamic) expect(loaded).not.toContain(chunk);
-    // The control: a command that does need signatures loads it through the same trace.
-    rmSync(trace, { force: true });
-    const risk = spawnSync(process.execPath, ["--import", join(work, "trace-register.mjs"), join(work, "cochange.mjs"), "risk", "HEAD~1..HEAD", "--json"], { cwd: traced.path, encoding: "utf8" });
-    expect(risk.status).toBe(0);
-    for (const chunk of dynamic) expect(readFileSync(trace, "utf8")).toContain(chunk);
-  } finally {
-    traced.dispose();
   }
 });
 

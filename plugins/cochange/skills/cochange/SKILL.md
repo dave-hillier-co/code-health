@@ -55,7 +55,7 @@ Run this before a non-trivial task, on the files you expect to edit. Skip it for
 
 Partners are evidence of what usually changed, not a requirement. A partner you leave alone should be a decision you can state.
 
-When the repository enables the completeness hook, a one-sentence note may appear after an edit naming a usual partner you have not touched. Treat it as the same kind of prompt. How the hook works and how to enable it: [references/hook.md](references/hook.md).
+Run `brief` again when the plan grows to files you did not brief, before you edit them. Nothing runs after an edit on its own, so the check is yours to make.
 
 ## Hotspot review
 
@@ -95,7 +95,7 @@ Use this when someone acted on findings and asks whether it helped. Change sprea
 5. Spread falls by construction when files that change together are moved together. Say so, and treat it as a leading indicator, not proof that work got cheaper.
 6. If the data cannot show an effect, say that. Do not claim one.
 
-To ask whether the completeness hook helped agents, run `outcome completeness --since DATE --until DATE`. It reads the session transcripts on this machine (paths and counts only) and reports, with and without the hook, how often an edit to a file with unedited coupled partners was followed by an edit to one of them later in the same session. Sessions were not assigned to the hook at random, so report the difference as an association, with its sample sizes, and say when `conclusion` is `insufficient-sample`.
+To ask how often agents finish a coupled change, run `outcome completeness --since DATE --until DATE`. It reads the session transcripts on this machine (paths and counts only) and reports how often an edit to a file with unedited coupled partners was followed by an edit to one of them later in the same session, with `opportunities`, `followed` and `rate`. The rate depends on the work, the period and the people, so report it as a baseline to compare another window against, with its sample size, and say when `rate` is null because there were no opportunities.
 
 Commits made through the suite's skills carry a `Code-Health:` trailer. `spread` leaves those out and reports how many in `excludedByTrailer`.
 

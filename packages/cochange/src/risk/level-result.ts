@@ -32,7 +32,7 @@ export function levelResult(assessed: Assessed, placement: PlacementOutcome, sto
   const band: PlacementBand = placement.placement?.band ?? "unknown";
   const base = { impact: assessed.impact.band, placement: band };
   if (stored === null) {
-    return { ...base, status: "unavailable", value: null, reason: "no stored backtest for this configuration: run cochange risk backtest, and a level is shown if the levels separate past changes", backtest: null };
+    return { ...base, status: "unavailable", value: null, reason: "no stored backtest for this configuration, so no level is shown: a level is shown only where a stored backtest shows that the levels separate past changes", backtest: null };
   }
   const backtest = { head: stored.head, commitsAgo: behind, separation: stored.separation, elevatedShare: stored.elevatedShare, levels: stored.levels };
   if (stored.separation.status !== "separates") {

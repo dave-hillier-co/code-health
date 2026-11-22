@@ -348,7 +348,6 @@ export {
   readPathAttributes,
   locateCache,
   ensureCacheDir,
-  ensureSelfIgnoring,
   higherBand,
   raiseBand,
   cutoffsOf,
