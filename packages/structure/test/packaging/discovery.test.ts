@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
-import { treeFromRef } from "@code-health/parse/source-tree";
+import { treeFromRef, treeFromTexts } from "@code-health/parse/source-tree";
 import { discoverPackages, indexPackages, type DiscoveredPackage } from "../../src/packaging/discovery.ts";
 import { manifestsRepository } from "./support/scenarios.ts";
 
@@ -75,9 +75,41 @@ test("Rust crates resolve path dependencies and publish = false", () => {
   expect(byId("crates/b").private).toBeNull();
 });
 
-test("Go modules resolve require lines through replace directives", () => {
-  expect(byId("go/app")).toMatchObject({ ecosystem: "go", name: "example.com/acme/app" });
-  expect(internal("go/app")).toEqual(["go/lib:runtime"]);
+describe("Go packages", () => {
+  const go = async () =>
+    discoverPackages(
+      treeFromTexts({
+        "go/app/go.mod": "module example.com/acme/app\n\nrequire example.com/acme/lib v0.0.0\n\nreplace example.com/acme/lib => ../lib\n",
+        "go/app/main.go": "package main\n\nfunc main() {}\n",
+        "go/app/internal/cfg/cfg.go": "package cfg\n\nconst Name = 1\n",
+        "go/app/testdata/skip.go": "package skip\n",
+        "go/lib/go.mod": "module example.com/acme/lib\n",
+        "go/lib/lib.go": "package lib\n\nfunc Lib() int { return 1 }\n",
+        "go/lib/store/store.go": "package store\n\nfunc Open() int { return 1 }\n",
+      }),
+      { ignore: [], extra: [], components: [], exclude: [] },
+    );
+
+  test("are the directories with Go files, grouped under their module, and testdata is not one", async () => {
+    expect((await go()).map((p) => [p.id, p.name, p.module])).toEqual([
+      ["go/app", "example.com/acme/app", "example.com/acme/app"],
+      ["go/app/internal/cfg", "example.com/acme/app/internal/cfg", "example.com/acme/app"],
+      ["go/lib", "example.com/acme/lib", "example.com/acme/lib"],
+      ["go/lib/store", "example.com/acme/lib/store", "example.com/acme/lib"],
+    ]);
+  });
+
+  test("take the manifest of their module, and a package under internal/ is private", async () => {
+    const found = await go();
+    expect(found.find((p) => p.id === "go/app")).toMatchObject({ entry: true, private: null, manifest: "go/app/go.mod" });
+    expect(found.find((p) => p.id === "go/app/internal/cfg")).toMatchObject({ private: true, manifest: "go/app/go.mod", entry: false });
+  });
+
+  test("a file belongs to the package of its directory", async () => {
+    const index = indexPackages(await go());
+    expect(index.owner("go/lib/store/store.go")).toBe("go/lib/store");
+    expect(index.owner("go/app/main.go")).toBe("go/app");
+  });
 });
 
 describe("which package owns a file", () => {

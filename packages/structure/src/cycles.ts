@@ -2,7 +2,7 @@ import { breakingSets } from "@code-health/graph/feedback-arc-set";
 import { compareIds } from "@code-health/graph/graph";
 import type { StructureSettings } from "./config.ts";
 import type { Model } from "./model.ts";
-import { describeEdge, type EdgeDetail } from "./modules.ts";
+import { describeEdge, importGraph, type EdgeDetail } from "./modules.ts";
 import { edgeKey } from "./project.ts";
 import type { Unblock } from "./locality-report.ts";
 
@@ -75,7 +75,9 @@ export function breakingEdge(model: Model, from: string, to: string, limit = SYM
  * by co-change across it, then by id. Breaking-set ties go to the edge whose sides co-change least.
  */
 export function findCycles(model: Model, settings: Pick<StructureSettings, "exactLimit">): CycleRow[] {
-  const sets = breakingSets(model.graph.graph, {
+  const graph = importGraph(model.graph);
+  const files = new Set(model.project.files);
+  const sets = breakingSets(graph, {
     exactLimit: settings.exactLimit,
     weight: (edge) => model.activity.shared(edge.from, edge.to),
   });
@@ -83,9 +85,9 @@ export function findCycles(model: Model, settings: Pick<StructureSettings, "exac
     const inCycle = new Set(cycle.nodes);
     let coChangeAcross = 0;
     for (const from of cycle.nodes) {
-      for (const to of model.graph.graph.get(from) ?? []) {
+      for (const to of graph.get(from) ?? []) {
         // a pair that depends on each other both ways is one pair
-        if (inCycle.has(to) && (compareIds(from, to) < 0 || !model.graph.graph.get(to)?.includes(from))) {
+        if (inCycle.has(to) && (compareIds(from, to) < 0 || !graph.get(to)?.includes(from))) {
           coChangeAcross += model.activity.shared(from, to);
         }
       }
@@ -96,7 +98,7 @@ export function findCycles(model: Model, settings: Pick<StructureSettings, "exac
       level: model.graph.level,
       size: cycle.nodes.length,
       nodes: [...cycle.nodes],
-      nested: isNestedFolderCycle(model.graph.level, cycle.nodes),
+      nested: isNestedFolderCycle(model.graph.level === "default" && cycle.nodes.every((node) => !files.has(node)) ? "folder" : model.graph.level, cycle.nodes),
       method: cycle.method,
       breakingSet,
       coChangeAcross,

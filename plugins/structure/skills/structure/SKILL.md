@@ -22,7 +22,7 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/structure.mjs evidence "src/a.ts->src/b.ts" --js
 
 Run them from the repository root. They analyse `HEAD`. Useful options:
 
-- `cycles --level file|folder|package` chooses what a cycle is made of. Start with `file`, then `folder`. A folder cycle between a folder and its own sub-folders has `nested: true` and is listed after the others. A package is what `packages` discovers from manifests, at every command.
+- `cycles --level default|file|folder|package` chooses what a cycle is made of. The default is a Go package for Go, a folder for C# and a file for every other language, because files of one Go package or one C# project reference each other without imports. Then try `folder`. A folder cycle between a folder and its own sub-folders has `nested: true` and is listed after the others. A package is what `packages` discovers from manifests, at every command.
 - `stability --by folder|component` lists every dependency that points towards less stable code, those above the guideline first (`aboveGuideline`).
 - `census` lists the decoupling mechanisms the codebase already uses, with counts, folders and examples. It reads no history. Run it before choosing a remedy: it is how you know what is already here and what would be new.
 - `layers` lists imports the layer rules in `code-health.json` (`layers`) do not allow, with the symbols that cross. `check [--base REV]` exits 1 on cycles or layer violations new since the base and reads no history, so it suits CI.
@@ -36,7 +36,7 @@ In a C or C++ repository, check `includeResolution` first: it names the `compile
 
 Read the envelope before the rows. The top-level `evidence.grade` is how far to trust history: with `weak`, rely on the static signals and present co-change as tentative. `inputs.locality` names the locality report that ranked the cycles, and is null when none was usable, in which case cycles are ranked by size and co-change alone.
 
-Questions about whether the packages themselves are the right ones (too many, a boundary in the wrong place, whether to add a package) belong to the packaging skill, which reads the same graph at package level and adds cohesion evidence. `cycles --level package` here groups files by their nearest `package.json`. The packaging skill's `packages coupling` reads packages from every manifest and adds hidden cycles.
+Questions about whether the packages themselves are the right ones (too many, a boundary in the wrong place, whether to add a package) belong to the packaging skill, which reads the same graph at package level and adds cohesion evidence. `cycles --level package` here groups files by the package that owns them (the nearest `package.json`, a C# project, a Go package, a crate and the like). The packaging skill's `packages coupling` reads packages from every manifest and adds hidden cycles.
 
 The census covers TypeScript, JavaScript, C#, C++, Python, Java, Kotlin, Go and Rust: for any other language, search the code for the mechanisms listed in `references/mechanisms.md` and say that you did.
 

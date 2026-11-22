@@ -2601,6 +2601,10 @@
             "component"
           ]
         },
+        "module": {
+          "type": "string",
+          "description": "The Go module the package is grouped under. Absent for packages of other ecosystems."
+        },
         "kind": {
           "enum": [
             "internal",

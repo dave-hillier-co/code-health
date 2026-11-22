@@ -162,7 +162,7 @@ Only cyclomatic, cognitive, nesting and parameters have a guideline that `check`
 | `complexity check [--base REV]` | Compares units against a base revision (default: the merge base with the configured main branch). This is a gate the user chooses to run, so it is the one command that exits with 1: when a new unit is above a guideline, or an existing unit is above a guideline and worsened by more than the configured delta (default 0, so any rise counts). Only cyclomatic, cognitive, nesting and parameters count. Length and the bumpy road do not. A unit that stays under its guidelines never makes it exit with 1, which matches CodeScene gating on a regression and not on absolute values. Built for CI and pre-commit. |
 | `complexity explain UNIT` | Line-by-line breakdown of where each increment came from. Lets the agent target the exact construct. |
 | `complexity fixes [PATHS] [--max-commits N] [--evidence N]` | Per-function fix statistics over the history window, from the fix definition shared with the rest of the suite. See [Per-function fix statistics](#per-function-fix-statistics). Never stored as a report. |
-| `complexity depth [PATHS]` | Exported functions, classes and modules by interface depth, and every pass-through, with labels. A full run writes the `complexity.depth` report. |
+| `complexity depth [PATHS]` | Exported functions, classes and modules by interface depth, and every pass-through whether or not it is exported (a row states `exported`), with labels. A full run writes the `complexity.depth` report. |
 
 ## Per-function fix statistics
 

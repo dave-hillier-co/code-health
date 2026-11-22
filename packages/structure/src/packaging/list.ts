@@ -8,6 +8,8 @@ export interface PackageRow {
   id: string;
   name: string;
   ecosystem: string;
+  /** The module a Go package is grouped under. Absent for packages of other ecosystems. */
+  module?: string;
   kind: "internal" | "published";
   purpose: Purpose | null;
   /** An application or tool, which nothing is expected to depend on. */
@@ -57,6 +59,7 @@ export function packageRows(model: PackageModel, abstractness: ReadonlyMap<strin
         id: pkg.id,
         name: pkg.name,
         ecosystem: pkg.ecosystem,
+        ...(pkg.module === null ? {} : { module: pkg.module }),
         kind: isPublished(model, pkg) ? "published" : "internal",
         purpose: purposeOf(model, pkg),
         entry: pkg.entry,

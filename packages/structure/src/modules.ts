@@ -2,11 +2,21 @@ import { usageError } from "@code-health/cli-kit/errors";
 import { readComponents, type Component } from "@code-health/cochange/components";
 import type { Edge } from "@code-health/graph/feedback-arc-set";
 import { groupGraph, type GroupedGraph } from "@code-health/graph/group";
-import { compareIds } from "@code-health/graph/graph";
+import { compareIds, type Graph } from "@code-health/graph/graph";
 import { edgeKey, folderOf, type Project } from "./project.ts";
 
-/** What a dependency is counted between: single files, their folders, their packages, or configured components. */
-export type Level = "file" | "folder" | "package" | "component";
+/**
+ * What a dependency is counted between: single files, their folders, their packages, or configured components.
+ * `default` is the level each file's language is judged at for cycles: a Go package (its directory), a C# folder,
+ * and a file for every other language.
+ */
+export type Level = "file" | "folder" | "package" | "component" | "default";
+
+const isGoFile = (path: string): boolean => path.endsWith(".go");
+const isCSharpFile = (path: string): boolean => path.endsWith(".cs");
+
+/** Whether two files are in one Go package: the same directory. They reference each other without imports, so the edge between them is not an import. */
+export const inOneGoPackage = (from: string, to: string): boolean => isGoFile(from) && isGoFile(to) && folderOf(from) === folderOf(to);
 
 export function readLevel(flag: string, value: unknown, allowed: readonly Level[], fallback: Level): Level {
   if (value === undefined) return fallback;
@@ -22,6 +32,8 @@ export function moduleOfFile(level: Level, project: Project, componentsConfig: R
   switch (level) {
     case "file":
       return (path) => path;
+    case "default":
+      return (path) => (isGoFile(path) || isCSharpFile(path) ? folderOf(path) : path);
     case "folder":
       return folderOf;
     case "package":
@@ -116,4 +128,13 @@ export function describeEdge(project: Project, graph: ModuleGraph, from: string,
     }))
     .sort((a, b) => b.sites - a.sites || compareIds(a.symbol, b.symbol));
   return { fileEdges: members.length, importStatements, typeOnly: members.length > 0 && typeOnly, symbols };
+}
+
+/**
+ * The graph cycles are found in. At file level an edge between two files of one Go package is not an import
+ * (files of a package reference each other freely, and Go forbids cycles only between packages), so it is left out.
+ */
+export function importGraph(module: ModuleGraph): Graph {
+  if (module.level !== "file") return module.graph;
+  return new Map([...module.graph].map(([from, targets]) => [from, targets.filter((to) => !inOneGoPackage(from, to))]));
 }

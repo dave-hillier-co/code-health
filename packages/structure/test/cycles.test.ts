@@ -125,9 +125,10 @@ describe("package level", () => {
   });
 });
 
-test("the default level is file", async () => {
+test("the default level is a file for TypeScript", async () => {
   const { document } = await cycles(repo);
-  expect(document.inputs.level).toBe("file");
+  expect(document.inputs.level).toBe("default");
+  expect(document.results.filter((r) => !r.nested).map((r) => r.nodes[0])).toContain("src/c.ts");
 });
 
 test("a repository with no cycle reports none", async () => {

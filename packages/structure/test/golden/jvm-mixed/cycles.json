@@ -74,7 +74,7 @@
   },
   "inputs": {
     "exactLimit": 16,
-    "level": "file",
+    "level": "default",
     "locality": null
   },
   "population": {
@@ -107,8 +107,8 @@
         }
       ],
       "coChangeAcross": 1,
-      "id": "cycle:file:src/main/java/acme/Order.java",
-      "level": "file",
+      "id": "cycle:default:src/main/java/acme/Order.java",
+      "level": "default",
       "method": "exact",
       "nested": false,
       "nodes": [
