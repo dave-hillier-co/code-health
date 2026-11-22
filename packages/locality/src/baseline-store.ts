@@ -17,6 +17,8 @@ export interface BaselineCandidate {
   rank: number;
   path: string;
   score: number;
+  /** The score as a ratio to the guideline of its unit, which is what the ranking sorts by. */
+  ratio: number;
   recommendation: string;
   rule: string;
   /** The unit's files, as they were named at the baseline. */
@@ -51,6 +53,8 @@ export interface Baseline {
   readHeat: Heat[];
   /** Total weighted import distance, single-file folders and maximum depth at the baseline. Absent in baselines written before they were recorded. */
   structure?: StructureMetrics;
+  /** How `candidates` were ordered (`SORT_METHOD` when recorded). Ranks from different methods are not comparable, so `measure compare` refuses a baseline whose method is not the current one. */
+  sortMethod: string;
   /** The ranked candidates, from which the comparison group is later drawn. */
   candidates: BaselineCandidate[];
   /** All candidates the analysis ranked, of which `candidates` holds the first ones. */

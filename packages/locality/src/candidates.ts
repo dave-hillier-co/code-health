@@ -82,11 +82,29 @@ export function readAgainst(value: number, guideline: number): GuidelineReading 
 /** What `score` counts: folder hops of net distance for most recommendations, consumer files for `scrutinise`. */
 export type ScoreUnit = "gain" | "unblocked-gain" | "component-gain" | "fan-in";
 
+/** How candidates are ordered: by `ranking.ratio` descending, then `score` descending, then path. Recorded in a baseline, so a comparison knows how its ranks were made. */
+export const SORT_METHOD = "ratio-to-guideline";
+
+/** The guideline a score is read against: `highFanIn` for fan-in, `minDistance` for every kind of gain. */
+function guidelineFor(scoreUnit: ScoreUnit, settings: { minDistance: number; highFanIn: number }): number {
+  return scoreUnit === "fan-in" ? settings.highFanIn : settings.minDistance;
+}
+
+/** The percentage of `values` that are at or below `value`, rounded to a whole number. Information only. */
+export function percentileRank(value: number, values: readonly number[]): number {
+  if (values.length === 0) return 0;
+  return Math.round((values.filter((other) => other <= value).length / values.length) * 100);
+}
+
 export interface Candidate {
   path: string;
   score: number;
   /** The unit of `score`. Scores order candidates within one unit and are not comparable across units. */
   scoreUnit: ScoreUnit;
+  /** The score beside the guideline of its unit. Candidates are sorted by how far past it they are (`ratio`), which makes different units comparable. */
+  ranking: GuidelineReading;
+  /** The percentage of the repository's units whose fan-in is at or below this unit's. Information only: no decision reads it. */
+  fanInPercentile: number;
   /** The unit's gain and fan-in beside the `minDistance` and `highFanIn` guidelines. */
   guidelines: { gain: GuidelineReading; fanIn: GuidelineReading };
   recommendation: Decision["recommendation"];
@@ -505,6 +523,8 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       path: unit.path,
       score,
       scoreUnit,
+      ranking: readAgainst(score, guidelineFor(scoreUnit, settings)),
+      fanInPercentile: 0,
       guidelines: { gain: readAgainst(choice.gain, settings.minDistance), fanIn: readAgainst(consumerFiles.length, settings.highFanIn) },
       ...decision,
       source: "structural",
@@ -543,8 +563,10 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   const all = model.units.map(candidateFor);
   const reported = all
     .filter((candidate) => candidate.rule !== "near-consumers")
-    .sort((a, b) => b.score - a.score || compareIds(a.path, b.path));
+    .sort((a, b) => b.ranking.ratio - a.ranking.ratio || b.score - a.score || compareIds(a.path, b.path));
   const placed = all.filter((candidate) => candidate.rule === "near-consumers").sort((a, b) => compareIds(a.path, b.path));
+  const fanIns = all.map((candidate) => candidate.fanIn);
+  for (const candidate of all) candidate.fanInPercentile = percentileRank(candidate.fanIn, fanIns);
   const byRecommendation: Record<string, number> = {};
   for (const candidate of reported) byRecommendation[candidate.recommendation] = (byRecommendation[candidate.recommendation] ?? 0) + 1;
 

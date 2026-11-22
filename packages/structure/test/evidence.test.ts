@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
@@ -247,6 +247,7 @@ describe("a locality report", () => {
     writeFileSync(
       join(directory, "locality.analyse.json"),
       JSON.stringify({
+        schemaVersion: 1,
         tool: "locality",
         command: "analyse",
         repo: { head, dirty },
@@ -279,6 +280,15 @@ describe("a locality report", () => {
 
   test("a report for another commit is ignored", async () => {
     writeLocalityReport(cycles, "0".repeat(40), false, { from: "src/e.ts", to: "src/c.ts" });
+    const { document } = await evidence(cycles, "src/e.ts->src/c.ts");
+    expect(document.results[0]!.unblocks).toEqual([]);
+    expect(document.inputs.locality).toBeNull();
+  });
+
+  test("a report of a schemaVersion other than 1 is ignored", async () => {
+    writeLocalityReport(cycles, head(), false, { from: "src/e.ts", to: "src/c.ts" });
+    const file = join(cycles.path, ".cache", "code-health", "reports", "locality.analyse.json");
+    writeFileSync(file, readFileSync(file, "utf8").replace('"schemaVersion":1', '"schemaVersion":2'));
     const { document } = await evidence(cycles, "src/e.ts->src/c.ts");
     expect(document.results[0]!.unblocks).toEqual([]);
     expect(document.inputs.locality).toBeNull();

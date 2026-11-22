@@ -68,6 +68,7 @@
       ],
       "distance": 3,
       "fanIn": 2,
+      "fanInPercentile": 97,
       "gain": 6,
       "guidelines": {
         "fanIn": {
@@ -90,6 +91,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/pair",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 3,
+        "value": 6
+      },
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 6,
@@ -183,6 +189,7 @@
       ],
       "distance": 2,
       "fanIn": 2,
+      "fanInPercentile": 97,
       "gain": 4,
       "guidelines": {
         "fanIn": {
@@ -205,6 +212,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/utils/money.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 2,
+        "value": 4
+      },
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 4,
@@ -267,6 +279,7 @@
       ],
       "distance": 3,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 3,
       "guidelines": {
         "fanIn": {
@@ -289,6 +302,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/cycle/a.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1.5,
+        "value": 3
+      },
       "recommendation": "move",
       "rule": "single-consumer-tiny",
       "score": 3,
@@ -348,6 +366,7 @@
       ],
       "distance": 3,
       "fanIn": 1,
+      "fanInPercentile": 73,
       "gain": 3,
       "guidelines": {
         "fanIn": {
@@ -370,6 +389,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/utils/invoice.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1.5,
+        "value": 3
+      },
       "recommendation": "move",
       "rule": "single-consumer-large",
       "score": 3,
@@ -438,6 +462,7 @@
       ],
       "distance": 1,
       "fanIn": 2,
+      "fanInPercentile": 97,
       "gain": 2,
       "guidelines": {
         "fanIn": {
@@ -460,6 +485,11 @@
       "otherRefs": [],
       "ownDeps": [],
       "path": "src/shared/log.ts",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 1,
+        "value": 2
+      },
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 2,

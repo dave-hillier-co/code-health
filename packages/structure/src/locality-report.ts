@@ -41,12 +41,13 @@ interface Blocker {
 export function readLocalityUnblocks(context: CommandContext, head: string): LocalityUnblocks | undefined {
   const file = reportPath(context.repo.root, LOCALITY_REPORT.command, LOCALITY_REPORT.tool);
   if (!existsSync(file)) return undefined;
-  let document: { tool?: unknown; command?: unknown; repo?: { head?: unknown; dirty?: unknown }; config?: unknown; results?: unknown };
+  let document: { schemaVersion?: unknown; tool?: unknown; command?: unknown; repo?: { head?: unknown; dirty?: unknown }; config?: unknown; results?: unknown };
   try {
     document = JSON.parse(readFileSync(file, "utf8"));
   } catch {
     return undefined;
   }
+  if (document.schemaVersion !== 1) return undefined;
   if (document.tool !== LOCALITY_REPORT.tool || document.command !== LOCALITY_REPORT.command) return undefined;
   if (document.repo?.head !== head || document.repo?.dirty !== false) return undefined;
   if (!Array.isArray(document.results) || typeof document.config !== "string") return undefined;

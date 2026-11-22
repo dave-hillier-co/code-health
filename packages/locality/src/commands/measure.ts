@@ -6,7 +6,7 @@ import { compareIds } from "@code-health/graph/graph";
 import { listTree } from "@code-health/history/tree";
 import { summariseTasks } from "@code-health/transcripts/measure-repo";
 import type { TaskEffort } from "@code-health/transcripts/agent-effort";
-import { analyseProject } from "../candidates.ts";
+import { analyseProject, SORT_METHOD } from "../candidates.ts";
 import { baselineExists, baselinePath, footprintOf, readBaseline, writeBaseline, type Baseline, type BaselineCandidate } from "../baseline-store.ts";
 import { chooseComparison } from "../comparison-group.ts";
 import { readSettings, type LocalitySettings } from "../config.ts";
@@ -106,6 +106,7 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
       rank: index + 1,
       path: candidate.path,
       score: candidate.score,
+      ratio: candidate.ranking.ratio,
       recommendation: candidate.recommendation,
       rule: candidate.rule,
       files: [...candidate.unit.files].sort(compareIds),
@@ -133,6 +134,7 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
     effort: { sessions: effort.sessions, summary: effort.summary, tasks: effort.tasks, stamp: stampOf(effort.tasks) },
     readHeat: readHeat(effort.tasks, HEAT_FILES),
     structure: analysed.metrics,
+    sortMethod: SORT_METHOD,
     candidates,
     candidateCount: ranked.length,
     priorSuiteCommits: prior,
@@ -190,6 +192,11 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
   const { root } = context.repo;
   const name = measureName(context);
   const before = readBaseline(root, name);
+  if (before.sortMethod !== SORT_METHOD) {
+    throw usageError(
+      `the baseline "${name}" ranked candidates by ${before.sortMethod ?? "an earlier method"} and this version ranks by ${SORT_METHOD}, so the ranks are not comparable: take a new baseline with --name`,
+    );
+  }
   const analysis = await readMeasureHistory(root, settings);
   const { view } = analysis;
   if (!(await isAncestor(root, before.head, view.headSha))) {

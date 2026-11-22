@@ -151,14 +151,17 @@ test("files the entry point cannot reach are reported, and do not count as consu
   expect(document.inputs).toMatchObject({ entrySource: "config", entries: ["src/main.ts"] });
 });
 
-test("results are ranked by score, then path", async () => {
+test("results are ranked by ratio to the guideline, then score, then path", async () => {
   const { rows, document } = await analyse();
   expect(document.results.length).toBe(rows.length);
-  const scored = document.results as { score: number; path: string }[];
+  const scored = document.results as { score: number; path: string; ranking: { ratio: number } }[];
   for (let i = 1; i < scored.length; i++) {
     const a = scored[i - 1]!;
     const b = scored[i]!;
-    expect(a.score > b.score || (a.score === b.score && a.path < b.path)).toBe(true);
+    const ordered =
+      a.ranking.ratio > b.ranking.ratio ||
+      (a.ranking.ratio === b.ranking.ratio && (a.score > b.score || (a.score === b.score && a.path < b.path)));
+    expect(ordered).toBe(true);
   }
 });
 
@@ -181,6 +184,34 @@ test("a whole-repository run on a clean tree stores every result as reports/loca
   expect(report).toMatchObject({ tool: "locality", command: "analyse", repo: { head: printed.repo.head, dirty: false } });
   expect(report.meta).toBeUndefined();
   expect(stored).toBe(withoutMetaOnly(stored));
+});
+
+test("the stored report names its schemaVersion, which the structure plugin reads", async () => {
+  await runLocality(repo.path, ["analyse", "--limit", "1"]);
+  const report = JSON.parse(readFileSync(reportPath(repo.path, "analyse"), "utf8"));
+  expect(report.schemaVersion).toBe(1);
+});
+
+test("candidates sort by how far each is past its own guideline, and a fan-in is read against highFanIn", async () => {
+  const { rows } = await analyse();
+  type Ranked = Row & { score: number; scoreUnit: string; ranking: { value: number; guideline: number; ratio: number } };
+  const ranked = rows as Ranked[];
+  const ratios = ranked.map((candidate) => candidate.ranking.ratio);
+  expect(ratios).toEqual([...ratios].sort((a, b) => b - a));
+  for (const candidate of ranked) {
+    expect(candidate.ranking.value).toBe(candidate.score);
+    expect(candidate.ranking.guideline).toBe(candidate.scoreUnit === "fan-in" ? 8 : 2);
+  }
+  expect(new Set(ranked.map((candidate) => candidate.scoreUnit)).size).toBeGreaterThan(1);
+});
+
+test("each unit shows its fan-in percentile among the repository's units, and the most used unit is at 100", async () => {
+  const { rows } = await analyse();
+  const percentiles = rows.map((candidate) => ({ fanIn: candidate.fanIn, percentile: (candidate as Row & { fanInPercentile: number }).fanInPercentile }));
+  const sorted = [...percentiles].sort((a, b) => a.fanIn - b.fanIn);
+  for (let index = 1; index < sorted.length; index++) expect(sorted[index]!.percentile).toBeGreaterThanOrEqual(sorted[index - 1]!.percentile);
+  expect(sorted.at(-1)!.percentile).toBe(100);
+  expect(percentiles.every((entry) => Number.isInteger(entry.percentile) && entry.percentile >= 0 && entry.percentile <= 100)).toBe(true);
 });
 
 test("the output is byte for byte reproducible", async () => {

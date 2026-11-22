@@ -17,7 +17,7 @@ export interface ShapeOptions {
 
 type Row = Record<string, unknown>;
 
-/** Sorts list results by score then path, cuts to the limit, and projects fields. */
+/** Sorts list results by ranking ratio (when a row has one), then score, then path, cuts to the limit, and projects fields. */
 export function shapeResults(results: unknown, options: ShapeOptions): { results: unknown; truncated: Truncation } {
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
 
@@ -42,7 +42,18 @@ export function shapeResults(results: unknown, options: ShapeOptions): { results
   };
 }
 
+/** How far past its guideline a row is: `ranking.ratio`, or 0 for a row without one, which then sorts by score alone. */
+function ratioOf(row: Row): number {
+  const ranking = row.ranking;
+  if (typeof ranking !== "object" || ranking === null) return 0;
+  const ratio = (ranking as Row).ratio;
+  return typeof ratio === "number" ? ratio : 0;
+}
+
 function byScoreThenPath(a: Row, b: Row): number {
+  const ratioA = ratioOf(a);
+  const ratioB = ratioOf(b);
+  if (ratioA !== ratioB) return ratioB - ratioA;
   const scoreA = typeof a.score === "number" ? a.score : 0;
   const scoreB = typeof b.score === "number" ? b.score : 0;
   if (scoreA !== scoreB) return scoreB - scoreA;
