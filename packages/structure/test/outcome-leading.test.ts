@@ -6,7 +6,7 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { encodeProjectDir } from "@code-health/transcripts/measure-repo";
 import { SyntheticSession, edit, read } from "../../transcripts/test/synthetic-transcript.ts";
-import { expectGolden } from "./support/golden.ts";
+import { expectGolden, withoutMeta } from "./support/golden.ts";
 import { leadingRepository } from "./support/leading-scenarios.ts";
 import { runStructure } from "./support/run.ts";
 
@@ -100,6 +100,7 @@ describe("structure outcome, leading indicators and agent effort", () => {
     expect(effort.comparison).toMatchObject({ pair: ["src/misc", "src/util"], before: { tasks: 1, filesRead: { mean: 1 } }, after: { tasks: 1, filesRead: { mean: 2 } } });
     expect(effort.difference.filesRead).toBe(-3);
     expectGolden("leading", "outcome.leading", stdout);
+    expect(withoutMeta((await outcome("--projects-dir", projects)).stdout)).toBe(withoutMeta(stdout));
   });
 
   test("the session that made the break is in neither window", async () => {

@@ -7,7 +7,7 @@ import { GitFixture, type Step } from "@code-health/fixtures/git-fixture";
 import { encodeProjectDir } from "@code-health/transcripts/measure-repo";
 import { edit, read, SyntheticSession } from "../../transcripts/test/synthetic-transcript.ts";
 import type { Outcome } from "../src/outcome.ts";
-import { expectGolden } from "./support/golden.ts";
+import { expectGolden, withoutMeta } from "./support/golden.ts";
 import { buildOutcomeRepo, outcomeSteps, splitHot } from "./support/outcome-scenario.ts";
 import { runComplexity } from "./support/run.ts";
 
@@ -90,6 +90,8 @@ describe("complexity outcome", () => {
 
       const { result, stdout } = await outcome("--projects-dir", projects);
       expectGolden("outcome", "outcome.measured", stdout);
+      // Reproducible: the same inputs give the same bytes, whatever order the session files are read in.
+      expect(withoutMeta((await outcome("--projects-dir", projects)).stdout)).toBe(withoutMeta(stdout));
       const inputs = JSON.parse(stdout).inputs;
       expect(inputs.transcriptStamp).toMatch(/^[0-9a-f]{16}$/);
       const none = mkdtempSync(join(tmpdir(), "no-sessions-"));

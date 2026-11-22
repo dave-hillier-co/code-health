@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
-import { expectGolden } from "./support/golden.ts";
+import { expectGolden, withoutMeta } from "./support/golden.ts";
 import { AgentSessions, invoice, invoiceTest, order, orderTest, outcomeHistory, pageA, pageB, tax } from "./support/outcome-scenario.ts";
 import { reportPath } from "../src/reports.ts";
 import { runCochange } from "./support/run.ts";
@@ -165,6 +165,7 @@ describe("outcome completeness", () => {
     expect(stdout).not.toContain("synthetic");
     expect(stdout).not.toContain(sessions.directory);
     expectGolden("outcome", "outcome.completeness", stdout);
+    expect(withoutMeta((await outcome(...args())).stdout)).toBe(withoutMeta(stdout));
   });
 
   test("a window without sessions is not measured, not zero", async () => {

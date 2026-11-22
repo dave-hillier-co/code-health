@@ -147,7 +147,8 @@ describe("incidental coupling", () => {
 
   test("a missing projects directory is an environment problem, not silence", async () => {
     const run = await runStructure(repo.path, ["coupling", "--json", "--projects-dir", join(projects, "absent")]);
-    expect(run.code).not.toBe(ExitCode.Success);
+    expect(run.code).toBe(ExitCode.Environment);
+    expect(JSON.parse(run.stderr).error.code).toBe("no-projects-dir");
     expect(run.stderr).toContain("absent");
   });
 });
