@@ -1,5 +1,4 @@
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
-import { readComponents } from "@code-health/cochange/components";
 import { compareIds, normalise, type Graph } from "@code-health/graph/graph";
 import { groupGraph } from "@code-health/graph/group";
 import { compileGlobs } from "@code-health/history/glob";
@@ -14,7 +13,7 @@ import type { ModuleGraph } from "../modules.ts";
 import { edgeKey, loadProject, type Project } from "../project.ts";
 import { changeStability, round3, type StructuralStability } from "../stability.ts";
 import { measurePackages, packageChanges, type PackageActivity, type PackageChange } from "./changes.ts";
-import { discoverPackages, indexPackages, type DeclaredDependency, type DiscoveredPackage, type PackageIndex } from "./discovery.ts";
+import type { DeclaredDependency, DiscoveredPackage, PackageIndex } from "./discovery.ts";
 import type { PackageOverride, Purpose } from "./settings.ts";
 
 const DAY = 86_400;
@@ -85,28 +84,19 @@ export async function buildPackageModel(context: CommandContext, history: Loaded
   const root = context.repo.root;
   const headSha = history.view.headSha;
   const tree = await treeFromRef(root, headSha);
-  const components = readComponents(settings.components);
-  const packages = await discoverPackages(tree, {
-    ignore: settings.packages.ignore,
-    extra: settings.packages.extra,
-    components,
-    exclude: settings.exclude,
-    entryPoints: settings.entryPoints,
-  });
-  return assemblePackageModel(headSha, history, tree, packages, components, await loadProject(root, headSha, settings.exclude));
+  return assemblePackageModel(headSha, history, tree, await loadProject(root, headSha, settings));
 }
 
-/** Builds the model for a commit whose tree, packages and project are already read. */
+/** Builds the model for a commit whose tree and project are already read. The project holds the packages and who owns each file. */
 export function assemblePackageModel(
   headSha: string,
   history: Pick<LoadedHistory, "settings" | "filtered" | "window">,
   tree: SourceTree,
-  packages: readonly DiscoveredPackage[],
-  components: Parameters<typeof indexPackages>[1],
   project: Project,
 ): PackageModel {
   const { settings } = history;
-  const index = indexPackages(packages, components);
+  const { packages } = project;
+  const index = project.packageIndex;
   const excluded = compileGlobs(settings.exclude);
   const byId = new Map(packages.map((p) => [p.id, p]));
 

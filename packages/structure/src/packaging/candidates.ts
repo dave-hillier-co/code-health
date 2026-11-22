@@ -3,7 +3,7 @@ import { stronglyConnectedComponents } from "@code-health/graph/scc";
 import { round3 } from "../stability.ts";
 import type { PackageAnalysis } from "./analysis.ts";
 import { independenceTail } from "./changes.ts";
-import type { Finding } from "./findings.ts";
+import { reachingGuideline, type Finding } from "./findings.ts";
 import { consumerPackages, isPublished, isYoung, purposeOf, type PackageModel } from "./model.ts";
 import { deployablesOf } from "./release.ts";
 import type { ExportComponent, ReuseAnalysis } from "./reuse-profile.ts";
@@ -142,7 +142,15 @@ function togetherComponents(model: PackageModel, id: string, parts: readonly Exp
   return found;
 }
 
-export function buildCandidates(model: PackageModel, analysis: PackageAnalysis): Candidates {
+export function buildCandidates(model: PackageModel, listed: PackageAnalysis): Candidates {
+  // a finding below its guideline is listed but is not a reason to propose a change
+  const analysis: PackageAnalysis = {
+    ...listed,
+    cohesion: reachingGuideline(listed.cohesion),
+    coupling: reachingGuideline(listed.coupling),
+    boundaries: reachingGuideline(listed.boundaries),
+    all: reachingGuideline(listed.all),
+  };
   const { reuse } = analysis;
   const found = new Map<string, Candidate>();
   const withheld: Withheld[] = [];

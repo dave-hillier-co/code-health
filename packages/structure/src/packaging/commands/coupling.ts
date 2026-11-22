@@ -15,7 +15,7 @@ export const coupling: Subcommand = {
         minInstabilityGap: model.settings.minInstabilityGap,
       },
       results: found,
-      columns: ["id", "principle", "changeCost", "priority", "tentative", "summary"],
+      columns: ["id", "principle", "changeCost", "priority", "aboveGuideline", "tentative", "summary"],
     };
   },
 };

@@ -18,6 +18,8 @@ interface Finding {
   evidence: Record<string, any>;
   changeCost: number;
   priority: string;
+  aboveGuideline: boolean;
+  summary: string;
 }
 
 async function coupling(): Promise<Finding[]> {
@@ -67,9 +69,11 @@ describe("hidden-cycle", () => {
     expect(hidden.some((f) => f.packages.includes("packages/p1"))).toBe(false);
   });
 
-  test("low priority findings come last", async () => {
+  test("low priority findings come after the normal ones that reach their guideline, and findings below it come last", async () => {
     const found = await coupling();
-    expect(found.at(-1)!.priority).toBe("low");
+    const reaching = found.filter((f) => f.aboveGuideline);
+    expect(reaching.at(-1)!.priority).toBe("low");
+    expect(found.slice(reaching.length).every((f) => !f.aboveGuideline)).toBe(true);
   });
 });
 
@@ -85,8 +89,9 @@ describe("against-stability", () => {
   });
 
   test("a dependency towards the more volatile side is not raised when the dependant is the more volatile", async () => {
-    const ids = ofKind(await coupling(), "against-stability").map((f) => f.id);
-    expect(ids).not.toContain("against-stability:packages/app->packages/shared");
+    const row = ofKind(await coupling(), "against-stability").find((f) => f.id === "against-stability:packages/app->packages/shared");
+    // listed only as a row below the guideline, if at all
+    expect(row?.aboveGuideline ?? false).toBe(false);
   });
 
   test("thresholds are structure's own, from the structure section of the config", async () => {

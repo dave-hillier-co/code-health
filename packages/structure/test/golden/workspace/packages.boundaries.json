@@ -76,12 +76,14 @@
     "package": null,
     "subcommand": "boundaries"
   },
+  "notSupported": [],
   "repo": {
     "dirty": false,
     "head": "d3939fbaccd21c7ccf9d72fb86bbfa9eaad7e7de"
   },
   "results": [
     {
+      "aboveGuideline": true,
       "changeCost": 0,
       "evidence": {
         "entries": [
@@ -107,6 +109,7 @@
       "unit": null
     },
     {
+      "aboveGuideline": true,
       "changeCost": 0,
       "evidence": {
         "declaredAtRoot": [
@@ -131,6 +134,7 @@
       "unit": null
     },
     {
+      "aboveGuideline": true,
       "changeCost": 0,
       "evidence": {
         "declaredAtRoot": [],
@@ -157,6 +161,7 @@
       "unit": null
     },
     {
+      "aboveGuideline": true,
       "changeCost": 0,
       "evidence": {
         "declaredAtRoot": [],
@@ -181,6 +186,7 @@
       "unit": null
     },
     {
+      "aboveGuideline": true,
       "changeCost": 0,
       "evidence": {
         "dependencies": [
@@ -202,6 +208,7 @@
       "unit": null
     },
     {
+      "aboveGuideline": true,
       "changeCost": 0,
       "evidence": {
         "dependencies": [
@@ -221,6 +228,7 @@
       "unit": null
     },
     {
+      "aboveGuideline": true,
       "changeCost": 0,
       "evidence": {
         "dependencies": [

@@ -36,7 +36,7 @@ describe.each(ids)("%s: the census fixtures", (id) => {
     it("finds the hand-counted mechanisms, in a fixed order", async () => {
       const expected = readExpected<CensusExpected>(fixture);
       const tree = await treeFromDirectory(fixture.directory);
-      const project = await projectFromTree(tree, "fixture", []);
+      const project = await projectFromTree(tree, "fixture", { exclude: [] });
       const census = await buildCensus(tree, project, settings);
       expect({
         files: census.files,

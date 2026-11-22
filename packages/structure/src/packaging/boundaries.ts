@@ -4,7 +4,7 @@ import { isTestPath } from "@code-health/parse/languages";
 import { edgeKey } from "../project.ts";
 import { raise, type Finding, type FindingContext } from "./findings.ts";
 import { packagingLanguages } from "./language.ts";
-import { consumerPackages, purposeOf } from "./model.ts";
+import { consumerPackages, purposeOf, type PackageModel } from "./model.ts";
 import type { ReuseAnalysis } from "./reuse-profile.ts";
 
 interface Imports {
@@ -56,6 +56,44 @@ export async function manifestChecks(context: FindingContext, reuse: ReuseAnalys
   const findings: Finding[] = [];
   for (const language of packagingLanguages) findings.push(...(await language.manifestChecks(context, reuse)));
   return findings;
+}
+
+export interface NotSupported {
+  ecosystem: string;
+  check: "undeclared-dependency" | "unused-dependency";
+  /** The packages of that ecosystem in the analysed commit, which this check did not look at. */
+  packages: string[];
+  notice: string;
+}
+
+/**
+ * The dependency checks no packaging language makes for an ecosystem present in the repository, so that
+ * the absence of a finding is not read as a clean result. Sorted by ecosystem, then check.
+ */
+export function unsupportedChecks(model: Pick<PackageModel, "packages">): NotSupported[] {
+  const supported = new Map<string, { undeclared: boolean; unused: boolean }>();
+  for (const language of packagingLanguages) {
+    for (const check of language.checks) {
+      const known = supported.get(check.ecosystem) ?? { undeclared: false, unused: false };
+      supported.set(check.ecosystem, { undeclared: known.undeclared || check.undeclared, unused: known.unused || check.unused });
+    }
+  }
+  const byEcosystem = new Map<string, string[]>();
+  for (const pkg of model.packages) byEcosystem.set(pkg.ecosystem, [...(byEcosystem.get(pkg.ecosystem) ?? []), pkg.id]);
+  const rows: NotSupported[] = [];
+  for (const [ecosystem, packages] of [...byEcosystem].sort(([a], [b]) => compareIds(a, b))) {
+    for (const check of ["undeclared-dependency", "unused-dependency"] as const) {
+      const has = supported.get(ecosystem)?.[check === "undeclared-dependency" ? "undeclared" : "unused"] === true;
+      if (has) continue;
+      rows.push({
+        ecosystem,
+        check,
+        packages: packages.sort(compareIds),
+        notice: `${check} is not supported for the ${ecosystem} ecosystem: ${packages.length} package${packages.length === 1 ? "" : "s"} not checked, so the absence of a finding says nothing about them`,
+      });
+    }
+  }
+  return rows;
 }
 
 /** The evidence contradicts the reason a package was declared to exist. */

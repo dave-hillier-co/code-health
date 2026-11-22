@@ -18,6 +18,8 @@ interface Finding {
   evidence: Record<string, number | string | boolean | null | string[]>;
   changeCost: number;
   tentative: boolean;
+  aboveGuideline: boolean;
+  summary: string;
 }
 
 async function findings(...args: string[]): Promise<Finding[]> {
@@ -99,9 +101,12 @@ describe("wide-change", () => {
     expect(wide!.evidence.mostOften).toEqual(["packages/app", "packages/helper", "packages/shared"]);
   });
 
-  test("below the configured share nothing is raised", async () => {
+  test("below the configured share it is still listed, after the others, labelled with the share and the guideline", async () => {
     const found = await withPackageSettings(repo, { wideChangeShare: 0.5 }, () => findings());
-    expect(byKind(found, "wide-change")).toEqual([]);
+    const [wide] = byKind(found, "wide-change");
+    expect(wide).toMatchObject({ id: "wide-change:repository", aboveGuideline: false });
+    expect(wide!.summary).toMatch(/\(below the guideline: \d+% of changes against 50%\)$/);
+    expect(found.at(-1)!.id).toBe("wide-change:repository");
   });
 });
 

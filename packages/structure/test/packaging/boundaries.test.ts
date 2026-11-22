@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import { runInProcess } from "@code-health/fixtures/cli-testing";
+import { cli } from "../../src/cli.ts";
 import { expectGolden } from "../support/golden.ts";
 import { packages, packagesRun, withPackageSettings } from "./support/run.ts";
 import { manifestsRepository } from "./support/scenarios.ts";
@@ -131,6 +133,33 @@ test("packages the structural layer cannot read are listed as unavailable", asyn
     const { document } = await packages(fixture, "boundaries");
     expect(document.results).toEqual([]);
     expect((document.unavailable as { package: string; findings: string[] }[]).find((u) => u.package === "crates/a")!.findings).toEqual(["deep-import", "undeclared-dependency", "unused-dependency"]);
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test("an ecosystem whose dependency check is not supported gets a notice naming the ecosystem and the check", async () => {
+  const fixture = manifestsRepository();
+  try {
+    const { document } = await packages(fixture, "boundaries");
+    const rows = document.notSupported as { ecosystem: string; check: string; packages: string[]; notice: string }[];
+    const dotnet = rows.filter((row) => row.ecosystem === "dotnet");
+    // only the undeclared check is missing for .NET, which has the unused check
+    expect(dotnet.map((row) => row.check)).toEqual(["undeclared-dependency"]);
+    expect(dotnet[0]!.packages).toEqual(["dotnet/Core", "dotnet/Core.Tests", "dotnet/Web"]);
+    expect(dotnet[0]!.notice).toContain("undeclared-dependency is not supported for the dotnet ecosystem");
+    // npm has both checks
+    expect(rows.some((row) => row.ecosystem === "npm")).toBe(false);
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test("a table run prints each notice as a line", async () => {
+  const fixture = manifestsRepository();
+  try {
+    const run = await runInProcess(cli, fixture.path, ["packages", "boundaries", "--limit", "all"], true);
+    expect(run.stdout).toContain("Notice: undeclared-dependency is not supported for the dotnet ecosystem");
   } finally {
     fixture.dispose();
   }

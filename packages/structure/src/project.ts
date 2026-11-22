@@ -2,9 +2,11 @@ import { normalise, type Graph } from "@code-health/graph/graph";
 import { compileGlobs } from "@code-health/history/glob";
 import { analyseTree, compareUtf8, type ProjectAnalysis } from "@code-health/parse/analyse-tree";
 import type { Consumer, ImportEdge } from "@code-health/parse/resolved-dependencies";
-import { discoverBoundaries, hasAdapter, isTestPath } from "@code-health/parse/languages";
+import { readComponents } from "@code-health/cochange/components";
+import { hasAdapter, isTestPath } from "@code-health/parse/languages";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { treeFromRef, type SourceTree } from "@code-health/parse/source-tree";
+import { discoverPackages, indexPackages, type DiscoveredPackage, type PackageIndex } from "./packaging/discovery.ts";
 
 export const edgeKey = (from: string, to: string): string => `${from}\u0000${to}`;
 
@@ -20,8 +22,22 @@ export interface Project {
   imports: ReadonlyMap<string, readonly ImportEdge[]>;
   /** Uses of what a file defines, by `edgeKey(consumer, defining file)`, tests left out. */
   consumers: ReadonlyMap<string, readonly Consumer[]>;
-  /** Directory of the nearest package boundary (a manifest of any supported language) at or above the file, "." when there is none. */
+  /** The packages discovered from manifests (or the configured components where there are none), sorted by id. */
+  packages: readonly DiscoveredPackage[];
+  /** Which package owns a file. Built once here, so every command and level agrees on what a package is. */
+  packageIndex: PackageIndex;
+  /** Id of the package that owns the file, as `structure packages` reports it, "." when no package does. */
   packageOf(path: string): string;
+}
+
+/** What loading a project reads from the settings. `StructureSettings` satisfies it. */
+export interface ProjectOptions {
+  /** The suite's `exclude` globs. */
+  exclude: readonly string[];
+  /** The suite's `components`, as written. They stand in as packages where no manifest is found. */
+  components?: Record<string, unknown>;
+  entryPoints?: readonly string[];
+  packages?: { ignore: readonly string[]; extra: readonly string[] };
 }
 
 /** Folder of a file, "." for the repository root. */
@@ -31,14 +47,14 @@ export function folderOf(path: string): string {
 }
 
 /** Analyses the tree of a commit, so the answer never depends on the working directory's state. */
-export async function loadProject(root: string, headSha: string, exclude: readonly string[]): Promise<Project> {
+export async function loadProject(root: string, headSha: string, options: ProjectOptions): Promise<Project> {
   const tree = await treeFromRef(root, headSha);
-  return projectFromTree(tree, headSha, exclude, await ParseCache.forRepository(root));
+  return projectFromTree(tree, headSha, options, await ParseCache.forRepository(root));
 }
 
 /** The same for a tree already read, which the conformance suites build from a fixture directory. */
-export async function projectFromTree(tree: SourceTree, headSha: string, exclude: readonly string[], cache?: ParseCache): Promise<Project> {
-  const excluded = compileGlobs(exclude);
+export async function projectFromTree(tree: SourceTree, headSha: string, options: ProjectOptions, cache?: ParseCache): Promise<Project> {
+  const excluded = compileGlobs(options.exclude);
   const analysed = await analyseTree(tree, cache === undefined ? {} : { cache });
   // what an excluded file imports from outside the repository is not the repository's need
   const analysis: ProjectAnalysis = { ...analysed, externalImports: analysed.externalImports.filter((external) => !excluded(external.from)) };
@@ -65,13 +81,16 @@ export async function projectFromTree(tree: SourceTree, headSha: string, exclude
     consumers.set(key, [...(consumers.get(key) ?? []), consumer]);
   }
 
-  const packageRoots = new Set((await discoverBoundaries(tree)).map((boundary) => boundary.dir));
-  const packageOf = (path: string): string => {
-    for (let folder = folderOf(path); ; folder = folderOf(folder)) {
-      if (packageRoots.has(folder)) return folder;
-      if (folder === ".") return ".";
-    }
-  };
+  const components = readComponents(options.components ?? {});
+  const packages = await discoverPackages(tree, {
+    ignore: options.packages?.ignore ?? [],
+    extra: options.packages?.extra ?? [],
+    components,
+    exclude: options.exclude,
+    entryPoints: options.entryPoints ?? [],
+  });
+  const packageIndex = indexPackages(packages, components);
+  const packageOf = (path: string): string => packageIndex.owner(path) ?? ".";
 
-  return { headSha, files, graph: normalise(adjacency), analysis, imports, consumers, packageOf };
+  return { headSha, files, graph: normalise(adjacency), analysis, imports, consumers, packages, packageIndex, packageOf };
 }

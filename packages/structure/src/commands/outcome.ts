@@ -73,14 +73,14 @@ export const command = analysisCommand(name, {
     }
     const date = Number((await runGit(root, ["log", "-1", "--format=%ct", sha])).trim());
 
-    const projectAfter = await loadProject(root, history.view.headSha, settings.exclude);
+    const projectAfter = await loadProject(root, history.view.headSha, settings);
     const level = context.values.level === undefined ? inferLevel(projectAfter, from, to) : readLevel("level", context.values.level, allLevels, "folder");
     const model = await buildModel(context, history, level, projectAfter);
     for (const side of [from, to]) {
       if (!model.graph.filesOf.has(side)) throw usageError(`"${side}" is not a ${level} of the analysed commit`);
     }
 
-    const projectBefore = await loadProject(root, parent, settings.exclude);
+    const projectBefore = await loadProject(root, parent, settings);
     const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : undefined;
     const seconds = Math.min(date - monthsBefore(date, settings.windowMonths), history.window.until - date);
     const tasks =

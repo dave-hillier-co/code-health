@@ -170,4 +170,4 @@ async function manifestChecks(context: FindingContext, reuse: ReuseAnalysis): Pr
 }
 
 /** Cargo packages: crates, with entries read from `pub mod` and manifest checks against the crates their code names. */
-export const language: PackagingLanguage = { id: "rust", readEntries, manifestChecks };
+export const language: PackagingLanguage = { id: "rust", checks: [{ ecosystem: "cargo", undeclared: true, unused: true }], readEntries, manifestChecks };

@@ -1,7 +1,7 @@
 import { compareIds } from "@code-health/graph/graph";
 import { round3 } from "../stability.ts";
 import { measureClosure } from "./closure.ts";
-import type { Finding, Principle } from "./findings.ts";
+import { reachingGuideline, type Finding, type Principle } from "./findings.ts";
 import { consumerPackages, isPublished, isYoung, type PackageModel } from "./model.ts";
 import { deployablesOf, versionChanges } from "./release.ts";
 import type { ReuseAnalysis } from "./reuse-profile.ts";
@@ -44,7 +44,7 @@ export async function balances(model: PackageModel, findings: readonly Finding[]
     const changes = model.activity.revisions(pkg.id);
     const young = isYoung(model, pkg.id);
     const matters: Force = young ? "tentative" : changes > median && consumers.length <= 2 ? "closure" : consumers.length >= 3 && changes <= median ? "reuse" : "mixed";
-    const mine = findings.filter((f) => f.packages.includes(pkg.id));
+    const mine = reachingGuideline(findings).filter((f) => f.packages.includes(pkg.id));
     const profile = reuse.profiles.get(pkg.id);
     const partners = [...model.activity.partners(pkg.id)].sort(([ia, a], [ib, b]) => b - a || compareIds(ia, ib)).slice(0, 3).map(([id]) => id);
     const figures = closure.get(pkg.id)!;
