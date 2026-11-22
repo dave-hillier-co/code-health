@@ -167,6 +167,30 @@ var historyDefaults = {
   maxChangesetSize: 30,
   /** Regular expressions matched against `Name <email>` of an author; their commits are left out of history. */
   botPatterns: [],
+  /**
+   * Regular expressions, matched case-insensitively against a commit subject, that mark a fix. The defaults are whole words
+   * (fix, fixes, fixed, fixing, bug, bugs, bugfix, hotfix, defect, issue), a Conventional Commits `fix:` or `fix(scope):` prefix,
+   * and a merge of a fix/, hotfix/ or bugfix/ branch. They are a judgement call, and "issue" also matches subjects such as
+   * "address review issue", so every count of fixes keeps the commits that matched.
+   */
+  fixPatterns: [
+    "^fix(\\([^)]*\\))?!?:",
+    "^merge .*\\b(fix|hotfix|bugfix)[/-]",
+    "\\bfix\\b",
+    "\\bfixes\\b",
+    "\\bfixed\\b",
+    "\\bfixing\\b",
+    "\\bbug\\b",
+    "\\bbugs\\b",
+    "\\bbugfix\\b",
+    "\\bhotfix\\b",
+    "\\bdefect\\b",
+    "\\bissue\\b"
+  ],
+  /** Regular expressions matched against a commit subject that mark a revert. The "This reverts commit" line git writes in the body always marks one. A revert is not counted as a fix. */
+  revertPatterns: ["^revert\\b"],
+  /** Also match `fixPatterns` against the commit body. Off, because "Fixes #123" trailers close any kind of issue. */
+  fixMatchBody: false,
   /** Guidelines that grade the evidence a history gives (months of history, logical changes, contributors). */
   evidence: {
     strong: { months: 24, logicalChanges: 300, contributors: 5 },
@@ -252,12 +276,17 @@ function readHistory(history, where) {
   positive("renameLimit");
   positive("windowMonths");
   positive("maxChangesetSize");
-  const { branch, botPatterns } = history;
+  const { branch, botPatterns, fixPatterns, revertPatterns } = history;
   if (branch !== void 0 && branch !== null && (typeof branch !== "string" || branch === "")) {
     throw configError(`${CONFIG_FILE}: ${where}.branch must be a branch name or null`);
   }
   if (botPatterns !== void 0 && (!Array.isArray(botPatterns) || botPatterns.some((pattern) => typeof pattern !== "string"))) {
     throw configError(`${CONFIG_FILE}: ${where}.botPatterns must be an array of strings`);
+  }
+  for (const [key, value] of [["fixPatterns", fixPatterns], ["revertPatterns", revertPatterns]]) {
+    if (value !== void 0 && (!Array.isArray(value) || value.some((pattern) => typeof pattern !== "string"))) {
+      throw configError(`${CONFIG_FILE}: ${where}.${key} must be an array of strings`);
+    }
   }
 }
 function readLanguages(value) {
@@ -301,7 +330,7 @@ function merge(defaultValue, fileValue, path, rows) {
       return fileValue;
     }
     for (const key of Object.keys(fileValue)) {
-      if (!(key in defaultValue)) throw configError(`${CONFIG_FILE}: ${path}.${key} is an unknown setting`);
+      if (!(key in defaultValue)) throw configError(`${CONFIG_FILE}: ${path}.${key} is an unknown setting${removedHint(`${path}.${key}`)}`);
     }
     const merged = {};
     for (const key of Object.keys(defaultValue)) {
@@ -314,6 +343,14 @@ function merge(defaultValue, fileValue, path, rows) {
   }
   rows.set(path, { path, value: fileValue, source: "file" });
   return fileValue;
+}
+var removedSettings = {
+  "cochange.risk.fixPatterns": "history.fixPatterns",
+  "cochange.risk.revertPatterns": "history.revertPatterns"
+};
+function removedHint(path) {
+  const moved = removedSettings[path];
+  return moved === void 0 ? "" : `; it moved to ${moved}, which cochange.${moved.slice("history.".length)} may override`;
 }
 function flatten(value, path, visit) {
   if (isPlainObject(value) && Object.keys(value).length > 0) {

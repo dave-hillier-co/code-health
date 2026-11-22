@@ -1,7 +1,8 @@
 import { configError } from "@code-health/cli-kit/errors";
 import type { LoadedConfig } from "@code-health/cli-kit/config";
+import { compileFixClassifier, type FixClassifier } from "@code-health/history/fix-commits";
+import { InvalidPatternError } from "@code-health/history/noise";
 import { TOOL } from "../tool.ts";
-import { defaultFixPatterns } from "./fix-patterns.ts";
 
 export const PLACEMENT_MODES = ["self", "any", "off"] as const;
 export type PlacementMode = (typeof PLACEMENT_MODES)[number];
@@ -82,9 +83,6 @@ export const riskDefaults = {
     "pyproject.toml",
     "requirements.txt",
   ] as string[],
-  /** Commit messages (regular expressions, case-insensitive) that mark a fix, and a revert. */
-  fixPatterns: defaultFixPatterns,
-  revertPatterns: ["^revert\\b"] as string[],
   /** Backtest: a fix that touches a change's files within this many days counts as trouble. */
   followUpDays: 30,
   /** Whose placement `risk` computes: `self`, `any` or `off`. */
@@ -114,14 +112,11 @@ export interface RiskSettings {
   newIdentityDays: number;
   newIdentityChanges: number;
   sensitivePaths: string[];
-  fixPatterns: RegExp[];
-  revertPatterns: RegExp[];
+  /** The shared definition of a fix commit: `history.fixPatterns`, `revertPatterns` and `fixMatchBody`, as `cochange` resolves them. */
+  fix: FixClassifier;
   followUpDays: number;
   placement: PlacementMode;
   disabled: ReadonlySet<string>;
-  /** The configured pattern sources, for `explain`. */
-  fixPatternSources: string[];
-  revertPatternSources: string[];
 }
 
 /** Validates `cochange.risk` and returns it typed. Throws a config error (exit 2). */
@@ -142,14 +137,6 @@ export function readRiskSettings(config: LoadedConfig): RiskSettings {
     }
     return value as string[];
   };
-  const patterns = (key: string): RegExp[] =>
-    strings(key).map((source) => {
-      try {
-        return new RegExp(source, "i");
-      } catch (error) {
-        throw configError(`code-health.json: ${at(key)} has an invalid regular expression "${source}": ${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
 
   const branch = section.mainBranch;
   if (branch !== null && (typeof branch !== "string" || branch === "")) {
@@ -198,12 +185,20 @@ export function readRiskSettings(config: LoadedConfig): RiskSettings {
     newIdentityDays: whole("newIdentityDays", 0),
     newIdentityChanges: whole("newIdentityChanges", 0),
     sensitivePaths: strings("sensitivePaths"),
-    fixPatterns: patterns("fixPatterns"),
-    revertPatterns: patterns("revertPatterns"),
+    fix: readFixClassifier(config),
     followUpDays: whole("followUpDays", 1),
     placement: placement as PlacementMode,
     disabled: new Set(disable),
-    fixPatternSources: strings("fixPatterns"),
-    revertPatternSources: strings("revertPatterns"),
   };
+}
+
+/** The shared fix definition as cochange resolves it: `cochange.fixPatterns` when set, otherwise `history.fixPatterns`. */
+export function readFixClassifier(config: LoadedConfig): FixClassifier {
+  const section = config.effective[TOOL] as { fixPatterns: string[]; revertPatterns: string[]; fixMatchBody: boolean };
+  try {
+    return compileFixClassifier({ fixPatterns: section.fixPatterns, revertPatterns: section.revertPatterns, fixMatchBody: section.fixMatchBody });
+  } catch (error) {
+    if (error instanceof InvalidPatternError) throw configError(`code-health.json: ${error.message}`);
+    throw error;
+  }
 }

@@ -6,6 +6,7 @@ import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { body } from "./support/risk-scenario.ts";
 import { backtestHistory, bob, dateOf, prepare, type Prepared } from "./support/backtest-scenario.ts";
 import { expectGolden } from "./support/golden.ts";
+import { compileFixClassifier } from "@code-health/history/fix-commits";
 import { runCochange } from "./support/run.ts";
 import { outcomesOf, scoreMainline, separationOf, type BandRow, type ScoredChange } from "../src/risk/backtest.ts";
 import { readStoredBacktest } from "../src/risk/stored-backtest.ts";
@@ -98,7 +99,7 @@ describe("bands over a real baseline", () => {
     const { past } = chronologicalPass(prepared.mainline.changes, prepared.context, {
       windowMonths: prepared.windowMonths,
       maxChangesetSize: prepared.maxChangesetSize,
-      fixPatterns: [...prepared.risk.fixPatterns, ...prepared.risk.revertPatterns],
+      fix: prepared.risk.fix,
     });
     const baseline = past.slice(5).map((p) => p.measurements);
     const bander = makeBander(baseline, prepared.risk);
@@ -122,7 +123,7 @@ describe("bands over a real baseline", () => {
     const { past } = chronologicalPass(prepared.mainline.changes, prepared.context, {
       windowMonths: prepared.windowMonths,
       maxChangesetSize: prepared.maxChangesetSize,
-      fixPatterns: [],
+      fix: compileFixClassifier({ fixPatterns: [], revertPatterns: [], fixMatchBody: false }),
     });
     const baseline = past.slice(0, 30).map((p) => p.measurements);
     const bander = makeBander(baseline, prepared.risk);
@@ -220,7 +221,9 @@ describe("the command", () => {
     const results = document.results;
     expect(results.kind).toBe("backtest");
     expect(results.population).toMatchObject({ mergedChanges: 40, scored: 40, censored: 5 });
-    expect(results.outcome).toMatchObject({ followUpDays: 30, fixConvention: true, reverts: 1 });
+    expect(results.outcome).toMatchObject({ followUpDays: 30, reverts: 1 });
+    expect(results.outcome.fixConvention).toMatchObject({ logicalChanges: 40, followsConvention: true });
+    expect(results.outcome.fixes.commits.every((commit: { pattern: string }) => commit.pattern !== "^revert\\b")).toBe(true);
     expect(results.levels.map((l: BandRow) => l.band)).toEqual(["routine", "attention", "elevated"]);
     expect(results.factors.map((f: { name: string }) => f.name)).toContain("size");
     for (const row of results.levels as BandRow[]) expect(row.baseRate === null || row.baseRate >= 0).toBe(true);

@@ -103,7 +103,7 @@ export async function assessBranch(
   const { state, past } = chronologicalPass(mainline.changes, measure, {
     windowMonths: history.settings.windowMonths,
     maxChangesetSize: history.settings.maxChangesetSize,
-    fixPatterns: [...risk.fixPatterns, ...risk.revertPatterns],
+    fix: risk.fix,
     measureWhen: (c, index) => c.time >= since && index >= total - risk.baselineChanges,
   });
 

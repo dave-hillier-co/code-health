@@ -54,8 +54,9 @@ export async function runBacktest(context: CommandContext, history: LoadedHistor
       ...(adopted === undefined || adopted === null ? {} : { adopted: new Date(adopted * 1000).toISOString() }),
       followUpDays: risk.followUpDays,
       baselineChanges: risk.baselineChanges,
-      fixPatterns: risk.fixPatternSources,
-      revertPatterns: risk.revertPatternSources,
+      fixPatterns: risk.fix.settings.fixPatterns,
+      revertPatterns: risk.fix.settings.revertPatterns,
+      fixMatchBody: risk.fix.settings.fixMatchBody,
       mergeStyle: { merges: mainline.merges, direct: mainline.direct },
     },
     results: {

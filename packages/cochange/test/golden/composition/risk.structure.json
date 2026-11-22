@@ -253,7 +253,7 @@
         "guidelines": {},
         "layer": "history",
         "name": "defect-history",
-        "reason": "no change in the window matches a fix or revert pattern, so the commit messages cannot say which revisions were fixes",
+        "reason": "no change in the window matches a fix pattern, so the commit messages cannot say which revisions were fixes",
         "scored": true,
         "source": "history",
         "status": "unavailable",

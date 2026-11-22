@@ -621,8 +621,10 @@
               "minimum": 1
             },
             "fixConvention": {
-              "type": "boolean",
-              "description": "Some change matches a fix pattern. Without one, only reverts count."
+              "$ref": "#/$defs/fixConvention"
+            },
+            "fixes": {
+              "$ref": "#/$defs/fixEvidence"
             },
             "reverts": {
               "$ref": "#/$defs/count"
@@ -642,6 +644,7 @@
           "required": [
             "followUpDays",
             "fixConvention",
+            "fixes",
             "reverts",
             "troubled",
             "rate"
@@ -1288,6 +1291,142 @@
         "perArea",
         "areas",
         "note"
+      ],
+      "additionalProperties": false
+    },
+    "fixConvention": {
+      "type": "object",
+      "description": "The repository-level check on the fix definition: the share of logical changes in the window that are fixes. A note says the commit messages probably do not follow a convention this can use. The counts are reported either way.",
+      "properties": {
+        "logicalChanges": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fixes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "share": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "followsConvention": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "guidelines": {
+          "type": "object",
+          "properties": {
+            "minShare": {
+              "type": "number"
+            },
+            "maxShare": {
+              "type": "number"
+            },
+            "minChanges": {
+              "type": "integer"
+            },
+            "provenance": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "minShare",
+            "maxShare",
+            "minChanges",
+            "provenance"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "logicalChanges",
+        "fixes",
+        "share",
+        "followsConvention",
+        "note",
+        "guidelines"
+      ],
+      "additionalProperties": false
+    },
+    "fixEvidence": {
+      "type": "object",
+      "description": "The commits behind a count of fixes. The default patterns match whole words such as fix, bug and issue in the subject, so a commit such as \"address review issue\" is a match: read the commits.",
+      "properties": {
+        "fixes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byPattern": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "pattern",
+              "count"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "commits": {
+          "type": "array",
+          "description": "The first matches, up to a limit. `omitted` counts the rest.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "matchedIn": {
+                "enum": [
+                  "subject",
+                  "body"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "subject",
+              "pattern",
+              "matchedIn"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "omitted": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "fixes",
+        "byPattern",
+        "commits",
+        "omitted"
       ],
       "additionalProperties": false
     }

@@ -78,7 +78,7 @@ Each row is a factor. The history and lexical layers supply most of them, so the
 | Factor | Signal | Why it matters |
 |---|---|---|
 | `hotspots-touched` | Share of the change's churn landing in files in the top hotspot percentile | Hotspots are where complexity and change meet, and where defects concentrate |
-| `defect-history` | Share of each touched file's revisions that were fixes or reverts, where commit-message conventions allow it | Code that has needed fixing tends to need it again |
+| `defect-history` | Share of each touched file's revisions that were fixes, where commit-message conventions allow it (reverts are not fixes) | Code that has needed fixing tends to need it again |
 | `contention` | Distinct authors who changed the touched files in the recent window, by count only | Concurrent work raises the chance of semantic conflicts that a clean merge does not show |
 | `age` | Touched files not changed within the stale window, and files changed within the last few days | Old code has lost its context. Very recent code is still settling. |
 | `abandoned-touched` | Touched files already abandoned, or with high abandonment probability, when knowledge analysis is enabled | Nobody is left who can review these with first-hand knowledge |
@@ -249,9 +249,13 @@ In `cochange.risk`:
 - Confidence guideline and support floor for `missing-co-change`.
 - Ownership shares for `owner` and `regular`, the recency weighting, and what counts as a new identity.
 - Sensitive path globs.
-- Fix and revert commit-message patterns, and the follow-up window.
+- The follow-up window. Fix and revert commit-message patterns are not in `cochange.risk`: they are `history.fixPatterns`, `history.revertPatterns` and `history.fixMatchBody`, which `cochange` may override.
 - `placement`: `self` (default), `any` or `off`.
 - Factors to disable.
+
+## Defect-history definition
+
+A revision is a fix when the change that made it has a commit whose subject matches `history.fixPatterns` (`cochange.fixPatterns` when set; see [suite.md](suite.md#configuration) for the defaults and `fixMatchBody`). A revert, whether its subject starts with Revert or its body carries git's "This reverts commit" line, is classified apart and is not a fix. The factor lists, for each file, the share, the most recent matching commits (three, with the number omitted beyond them) and the pattern that matched each. The default patterns include the whole word "issue", which also matches commits such as "address review issue", so a share is a prompt to read the matching commits and never a count of defects. The factor is unavailable when no change in the window matches. The backtest prints the repository-level convention check (the share of merged changes that are fixes, with a note when it is under 2 percent or over 60 percent, or there are fewer than 30 merged changes), the fixes by pattern, and the first matching commits with the number omitted.
 
 ## Resolved definitions
 

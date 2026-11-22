@@ -1,6 +1,8 @@
 import { configError } from "@code-health/cli-kit/errors";
 import type { LoadedConfig, PluginConfigSpec } from "@code-health/cli-kit/config";
+import { compileFixClassifier, type FixClassifier } from "@code-health/history/fix-commits";
 import { compileGlobs } from "@code-health/history/glob";
+import { InvalidPatternError } from "@code-health/history/noise";
 import { profiles } from "@code-health/lexical/profile";
 import { defaultGuidelines, isMetricId, metricIds, type MetricId, type Guidelines } from "./metrics.ts";
 import { TOOL } from "./tool.ts";
@@ -11,7 +13,7 @@ import { TOOL } from "./tool.ts";
  */
 export const complexityConfig: PluginConfigSpec = {
   plugin: TOOL,
-  history: ["windowMonths", "maxChangesetSize", "botPatterns"],
+  history: ["windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "revertPatterns", "fixMatchBody"],
   section: {
     /** Metrics reported and ranked. `--metrics` narrows them for one run. */
     metrics: [...metricIds],
@@ -76,6 +78,8 @@ export interface ComplexitySettings {
   windowMonths: number;
   maxChangesetSize: number;
   botPatterns: string[];
+  /** The shared definition of a fix commit: `history.fixPatterns`, `revertPatterns` and `fixMatchBody`. */
+  fix: FixClassifier;
   /** The opt-in post-edit hook. */
   hook: { enabled: boolean };
   /** Nodes per interface element below which an exported unit is labelled shallow. */
@@ -137,11 +141,25 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     windowMonths: number(section.windowMonths, at("windowMonths"), 1),
     maxChangesetSize: number(section.maxChangesetSize, at("maxChangesetSize"), 1),
     botPatterns: section.botPatterns as string[],
+    fix: readFixClassifier(section),
     hook: { enabled: (section.hook as { enabled: boolean }).enabled === true },
     shallowDepth: number((section.interfaceDepth as { shallow: unknown }).shallow, at("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
     languageProfiles: readLanguageProfiles(config.effective.languages),
   };
+}
+
+function readFixClassifier(section: Record<string, unknown>): FixClassifier {
+  try {
+    return compileFixClassifier({
+      fixPatterns: section.fixPatterns as string[],
+      revertPatterns: section.revertPatterns as string[],
+      fixMatchBody: section.fixMatchBody === true,
+    });
+  } catch (error) {
+    if (error instanceof InvalidPatternError) throw configError(`code-health.json: ${error.message}`);
+    throw error;
+  }
 }
 
 function readLanguageProfiles(languages: Record<string, string>): Record<string, string> {

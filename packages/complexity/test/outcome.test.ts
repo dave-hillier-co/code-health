@@ -6,7 +6,7 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import { GitFixture, type Step } from "@code-health/fixtures/git-fixture";
 import { encodeProjectDir } from "@code-health/transcripts/measure-repo";
 import { edit, read, SyntheticSession } from "../../transcripts/test/synthetic-transcript.ts";
-import { isFixSubject, type Outcome } from "../src/outcome.ts";
+import type { Outcome } from "../src/outcome.ts";
 import { expectGolden, withoutMeta } from "./support/golden.ts";
 import { buildOutcomeRepo, outcomeSteps, splitHot } from "./support/outcome-scenario.ts";
 import { runComplexity } from "./support/run.ts";
@@ -32,16 +32,21 @@ describe("complexity outcome", () => {
     expect(result.actedOn.files).toEqual([{ path: "src/hot.ts", earlierPath: "src/hot.ts" }]);
     expect(result.comparison.files).toEqual(["src/warm.ts"]);
     // Four changes before (the first adds the file), then one: the simplification's own commit is left out of both windows.
-    expect(result.changeCost.actedOn).toEqual({
+    expect(result.changeCost.actedOn).toMatchObject({
       before: { changes: 4, linesChurnedPerChange: 7, fixCommitRate: 0.25 },
       after: { changes: 1, linesChurnedPerChange: 4, fixCommitRate: 0 },
     });
-    expect(result.changeCost.comparison).toEqual({
+    expect(result.changeCost.comparison).toMatchObject({
       before: { changes: 4, linesChurnedPerChange: 7, fixCommitRate: 0.25 },
       after: { changes: 4, linesChurnedPerChange: 4, fixCommitRate: 0.5 },
     });
     // The comparison group's movement is taken off, so what both groups did alike is not credited to the simplification.
     expect(result.difference).toMatchObject({ linesChurnedPerChange: 0, fixCommitRate: -0.5, changes: -3 });
+    // Every fix rate keeps the commits behind it, each with the pattern that matched.
+    expect(result.changeCost.actedOn.before.fixCommits).toMatchObject({ fixes: 1, omitted: 0, byPattern: [{ count: 1 }] });
+    expect(result.changeCost.actedOn.before.fixCommits.commits).toHaveLength(1);
+    expect(result.fixConvention).toMatchObject({ followsConvention: false });
+    expect(result.fixConvention.note).toMatch(/probably do not follow a convention/);
     expectGolden("outcome", "outcome", stdout);
   });
 
@@ -203,14 +208,5 @@ describe("complexity outcome", () => {
     const first = repo.git("rev-list", "--max-parents=0", "HEAD").trim();
     const root = await runComplexity(repo.path, ["outcome", "--json", first]);
     expect(root.code).toBe(ExitCode.Usage);
-  });
-});
-
-describe("what counts as a fix commit", () => {
-  test("is the suite's fix patterns, the same as cochange's risk factors read", () => {
-    expect(isFixSubject("Fix the parser")).toBe(true);
-    expect(isFixSubject("fixes crash, closes #123")).toBe(true);
-    expect(isFixSubject("Merge branch 'hotfix/login'")).toBe(true);
-    expect(isFixSubject("Add a prefix option")).toBe(false);
   });
 });

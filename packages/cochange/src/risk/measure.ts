@@ -1,4 +1,5 @@
 import { folderOf, treeDistance } from "@code-health/graph/tree-distance";
+import type { FixMatch } from "@code-health/history/fix-commits";
 import { monthsBefore } from "@code-health/history/evidence";
 import { compileGlobs } from "@code-health/history/glob";
 import type { HistoryChange } from "@code-health/history/read";
@@ -159,20 +160,24 @@ function hotspotsTouched(facts: ChangeFacts, state: HistoryState, context: Measu
   });
 }
 
+/** The most recent matching commits each file of `defect-history` lists, with how many more matched. */
+const FIX_COMMITS_PER_FILE = 3;
+
 function defectHistory(facts: ChangeFacts, state: HistoryState, context: MeasureContext): Measurement {
   if (state.windowSummary().fixes === 0) {
-    return unavailable("defect-history", "history", "history", "percentile", "history", "no change in the window matches a fix or revert pattern, so the commit messages cannot say which revisions were fixes");
+    return unavailable("defect-history", "history", "history", "percentile", "history", "no change in the window matches a fix pattern, so the commit messages cannot say which revisions were fixes");
   }
   const since = facts.time - context.windowMonths * 30.4375 * SECONDS_PER_DAY;
   let revisions = 0;
   let fixes = 0;
-  const perFile: { file: string; fixes: number; revisions: number }[] = [];
+  const perFile: { file: string; fixes: number; revisions: number; commits: FixMatch[]; omitted: number }[] = [];
   for (const file of facts.files) {
     const own = state.revisionsSince(file.fileId, since);
-    const fixed = own.filter((revision) => revision.fix).length;
+    const matches = own.flatMap((revision) => revision.fix ?? []);
+    const fixed = matches.length;
     revisions += own.length;
     fixes += fixed;
-    if (fixed > 0) perFile.push({ file: file.fileId, fixes: fixed, revisions: own.length });
+    if (fixed > 0) perFile.push({ file: file.fileId, fixes: fixed, revisions: own.length, commits: matches.slice(-FIX_COMMITS_PER_FILE).reverse(), omitted: Math.max(0, fixed - FIX_COMMITS_PER_FILE) });
   }
   const share = revisions === 0 ? 0 : round(fixes / revisions);
   return measurement("defect-history", "history", "history", "percentile", "history", {

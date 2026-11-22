@@ -71,6 +71,39 @@
           "type": "array",
           "default": []
         },
+        "fixPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "^fix(\\([^)]*\\))?!?:",
+            "^merge .*\\b(fix|hotfix|bugfix)[/-]",
+            "\\bfix\\b",
+            "\\bfixes\\b",
+            "\\bfixed\\b",
+            "\\bfixing\\b",
+            "\\bbug\\b",
+            "\\bbugs\\b",
+            "\\bbugfix\\b",
+            "\\bhotfix\\b",
+            "\\bdefect\\b",
+            "\\bissue\\b"
+          ]
+        },
+        "revertPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "^revert\\b"
+          ]
+        },
+        "fixMatchBody": {
+          "type": "boolean",
+          "default": false
+        },
         "evidence": {
           "type": "object",
           "properties": {
@@ -308,28 +341,6 @@
                 "requirements.txt"
               ]
             },
-            "fixPatterns": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "default": [
-                "^fix(es|ed)?\\b",
-                "^bugfix",
-                "^hotfix",
-                "\\bfix(es|ed)?\\b.*#\\d+",
-                "^merge .*\\b(fix|hotfix|bugfix)[/-]"
-              ]
-            },
-            "revertPatterns": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "default": [
-                "^revert\\b"
-              ]
-            },
             "followUpDays": {
               "type": "number",
               "default": 30
@@ -381,16 +392,6 @@
               "build.gradle",
               "pyproject.toml",
               "requirements.txt"
-            ],
-            "fixPatterns": [
-              "^fix(es|ed)?\\b",
-              "^bugfix",
-              "^hotfix",
-              "\\bfix(es|ed)?\\b.*#\\d+",
-              "^merge .*\\b(fix|hotfix|bugfix)[/-]"
-            ],
-            "revertPatterns": [
-              "^revert\\b"
             ],
             "followUpDays": 30,
             "placement": "self",
@@ -536,6 +537,24 @@
         "botPatterns": {
           "type": "array",
           "description": "Overrides history.botPatterns for the cochange plugin."
+        },
+        "fixPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Overrides history.fixPatterns for the cochange plugin."
+        },
+        "revertPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Overrides history.revertPatterns for the cochange plugin."
+        },
+        "fixMatchBody": {
+          "type": "boolean",
+          "description": "Overrides history.fixMatchBody for the cochange plugin."
         },
         "evidence": {
           "type": "object",
@@ -755,6 +774,24 @@
         "botPatterns": {
           "type": "array",
           "description": "Overrides history.botPatterns for the complexity plugin."
+        },
+        "fixPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Overrides history.fixPatterns for the complexity plugin."
+        },
+        "revertPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Overrides history.revertPatterns for the complexity plugin."
+        },
+        "fixMatchBody": {
+          "type": "boolean",
+          "description": "Overrides history.fixMatchBody for the complexity plugin."
         }
       },
       "additionalProperties": false,

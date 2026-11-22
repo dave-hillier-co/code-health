@@ -31,11 +31,35 @@
         "after": {
           "changes": 1,
           "fixCommitRate": 0,
+          "fixCommits": {
+            "byPattern": [],
+            "commits": [],
+            "fixes": 0,
+            "omitted": 0
+          },
           "linesChurnedPerChange": 4
         },
         "before": {
           "changes": 4,
           "fixCommitRate": 0.25,
+          "fixCommits": {
+            "byPattern": [
+              {
+                "count": 1,
+                "pattern": "\\bfix\\b"
+              }
+            ],
+            "commits": [
+              {
+                "id": "f57b2727e0b10447545aff47b8ae753df3a22ac5",
+                "matchedIn": "subject",
+                "pattern": "\\bfix\\b",
+                "subject": "Fix crash in hot"
+              }
+            ],
+            "fixes": 1,
+            "omitted": 0
+          },
           "linesChurnedPerChange": 7
         }
       },
@@ -43,11 +67,53 @@
         "after": {
           "changes": 4,
           "fixCommitRate": 0.5,
+          "fixCommits": {
+            "byPattern": [
+              {
+                "count": 2,
+                "pattern": "\\bfix\\b"
+              }
+            ],
+            "commits": [
+              {
+                "id": "c685726a12c5225f95b6cbcf439468d469e8b4e0",
+                "matchedIn": "subject",
+                "pattern": "\\bfix\\b",
+                "subject": "Fix off-by-one in warm"
+              },
+              {
+                "id": "7143fdb2837d8aa755c67a42b6066f33df520e60",
+                "matchedIn": "subject",
+                "pattern": "\\bfix\\b",
+                "subject": "Fix rounding in warm"
+              }
+            ],
+            "fixes": 2,
+            "omitted": 0
+          },
           "linesChurnedPerChange": 4
         },
         "before": {
           "changes": 4,
           "fixCommitRate": 0.25,
+          "fixCommits": {
+            "byPattern": [
+              {
+                "count": 1,
+                "pattern": "\\bfix\\b"
+              }
+            ],
+            "commits": [
+              {
+                "id": "5b5f58dee6d79599044aec5715cdf22d1f3d891c",
+                "matchedIn": "subject",
+                "pattern": "\\bfix\\b",
+                "subject": "Fix crash in warm"
+              }
+            ],
+            "fixes": 1,
+            "omitted": 0
+          },
           "linesChurnedPerChange": 7
         }
       }
@@ -63,6 +129,19 @@
       "fixCommitRate": -0.5,
       "linesChurnedPerChange": 0,
       "meanScore": -0.312
+    },
+    "fixConvention": {
+      "fixes": 4,
+      "followsConvention": false,
+      "guidelines": {
+        "maxShare": 0.6,
+        "minChanges": 30,
+        "minShare": 0.02,
+        "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+      },
+      "logicalChanges": 12,
+      "note": "The commit messages probably do not follow a convention this can use: there are 12 logical changes in the window, fewer than 30.",
+      "share": 0.333
     },
     "gamingCheck": {
       "actedOn": {

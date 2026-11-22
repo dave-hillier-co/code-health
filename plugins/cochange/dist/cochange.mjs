@@ -148,6 +148,30 @@ var historyDefaults = {
   maxChangesetSize: 30,
   /** Regular expressions matched against `Name <email>` of an author; their commits are left out of history. */
   botPatterns: [],
+  /**
+   * Regular expressions, matched case-insensitively against a commit subject, that mark a fix. The defaults are whole words
+   * (fix, fixes, fixed, fixing, bug, bugs, bugfix, hotfix, defect, issue), a Conventional Commits `fix:` or `fix(scope):` prefix,
+   * and a merge of a fix/, hotfix/ or bugfix/ branch. They are a judgement call, and "issue" also matches subjects such as
+   * "address review issue", so every count of fixes keeps the commits that matched.
+   */
+  fixPatterns: [
+    "^fix(\\([^)]*\\))?!?:",
+    "^merge .*\\b(fix|hotfix|bugfix)[/-]",
+    "\\bfix\\b",
+    "\\bfixes\\b",
+    "\\bfixed\\b",
+    "\\bfixing\\b",
+    "\\bbug\\b",
+    "\\bbugs\\b",
+    "\\bbugfix\\b",
+    "\\bhotfix\\b",
+    "\\bdefect\\b",
+    "\\bissue\\b"
+  ],
+  /** Regular expressions matched against a commit subject that mark a revert. The "This reverts commit" line git writes in the body always marks one. A revert is not counted as a fix. */
+  revertPatterns: ["^revert\\b"],
+  /** Also match `fixPatterns` against the commit body. Off, because "Fixes #123" trailers close any kind of issue. */
+  fixMatchBody: false,
   /** Guidelines that grade the evidence a history gives (months of history, logical changes, contributors). */
   evidence: {
     strong: { months: 24, logicalChanges: 300, contributors: 5 },
@@ -233,12 +257,17 @@ function readHistory(history, where) {
   positive("renameLimit");
   positive("windowMonths");
   positive("maxChangesetSize");
-  const { branch, botPatterns } = history;
+  const { branch, botPatterns, fixPatterns, revertPatterns } = history;
   if (branch !== void 0 && branch !== null && (typeof branch !== "string" || branch === "")) {
     throw configError(`${CONFIG_FILE}: ${where}.branch must be a branch name or null`);
   }
   if (botPatterns !== void 0 && (!Array.isArray(botPatterns) || botPatterns.some((pattern) => typeof pattern !== "string"))) {
     throw configError(`${CONFIG_FILE}: ${where}.botPatterns must be an array of strings`);
+  }
+  for (const [key, value] of [["fixPatterns", fixPatterns], ["revertPatterns", revertPatterns]]) {
+    if (value !== void 0 && (!Array.isArray(value) || value.some((pattern) => typeof pattern !== "string"))) {
+      throw configError(`${CONFIG_FILE}: ${where}.${key} must be an array of strings`);
+    }
   }
 }
 function readLanguages(value) {
@@ -282,7 +311,7 @@ function merge(defaultValue, fileValue, path, rows) {
       return fileValue;
     }
     for (const key of Object.keys(fileValue)) {
-      if (!(key in defaultValue)) throw configError(`${CONFIG_FILE}: ${path}.${key} is an unknown setting`);
+      if (!(key in defaultValue)) throw configError(`${CONFIG_FILE}: ${path}.${key} is an unknown setting${removedHint(`${path}.${key}`)}`);
     }
     const merged = {};
     for (const key of Object.keys(defaultValue)) {
@@ -295,6 +324,14 @@ function merge(defaultValue, fileValue, path, rows) {
   }
   rows.set(path, { path, value: fileValue, source: "file" });
   return fileValue;
+}
+var removedSettings = {
+  "cochange.risk.fixPatterns": "history.fixPatterns",
+  "cochange.risk.revertPatterns": "history.revertPatterns"
+};
+function removedHint(path) {
+  const moved = removedSettings[path];
+  return moved === void 0 ? "" : `; it moved to ${moved}, which cochange.${moved.slice("history.".length)} may override`;
 }
 function flatten(value, path, visit) {
   if (isPlainObject(value) && Object.keys(value).length > 0) {
@@ -2175,12 +2212,87 @@ function readRank(context, settings) {
   return value;
 }
 
+// packages/history/src/fix-commits.ts
+var defaultFixSettings = {
+  fixPatterns: historyDefaults.fixPatterns,
+  revertPatterns: historyDefaults.revertPatterns,
+  fixMatchBody: historyDefaults.fixMatchBody
+};
+var REVERT_BODY_PATTERN = "This reverts commit";
+var REVERT_BODY = /^This reverts commit [0-9a-f]{7,40}/m;
+var subjectOf = (message) => message.split("\n", 1)[0].trim();
+function compile(pattern, flags, kind) {
+  try {
+    return new RegExp(pattern, flags);
+  } catch (error) {
+    throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error), kind);
+  }
+}
+function compileFixClassifier(settings) {
+  const fixes = settings.fixPatterns.map((source) => ({ source, subject: compile(source, "i", "fix pattern"), body: compile(source, "im", "fix pattern") }));
+  const reverts = settings.revertPatterns.map((source) => ({ source, subject: compile(source, "i", "revert pattern") }));
+  const classify = (message) => {
+    const normalised = message.replace(/\r\n/g, "\n");
+    const subject = subjectOf(normalised);
+    const body = normalised.slice(normalised.indexOf("\n") === -1 ? normalised.length : normalised.indexOf("\n") + 1);
+    const revert = reverts.find((entry) => entry.subject.test(subject));
+    if (revert) return { kind: "revert", pattern: revert.source, matchedIn: "subject" };
+    if (REVERT_BODY.test(body)) return { kind: "revert", pattern: REVERT_BODY_PATTERN, matchedIn: "body" };
+    const fix = fixes.find((entry) => entry.subject.test(subject));
+    if (fix) return { kind: "fix", pattern: fix.source, matchedIn: "subject" };
+    if (settings.fixMatchBody) {
+      const inBody = fixes.find((entry) => entry.body.test(body));
+      if (inBody) return { kind: "fix", pattern: inBody.source, matchedIn: "body" };
+    }
+    return { kind: "other" };
+  };
+  return { settings, classify };
+}
+function findFix(classifier, id, messages) {
+  for (const message of messages) {
+    const found = classifier.classify(message);
+    if (found.kind === "fix") return { id, subject: subjectOf(message), pattern: found.pattern, matchedIn: found.matchedIn };
+  }
+  return null;
+}
+var FIX_EVIDENCE_LIMIT = 20;
+function fixEvidence(matches, limit = FIX_EVIDENCE_LIMIT) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const match of matches) counts.set(match.pattern, (counts.get(match.pattern) ?? 0) + 1);
+  return {
+    fixes: matches.length,
+    byPattern: [...counts].map(([pattern, count2]) => ({ pattern, count: count2 })).sort((a, b) => b.count - a.count || (a.pattern < b.pattern ? -1 : 1)),
+    commits: matches.slice(0, limit),
+    omitted: Math.max(0, matches.length - limit)
+  };
+}
+var FIX_CONVENTION_GUIDELINES = {
+  minShare: 0.02,
+  maxShare: 0.6,
+  minChanges: 30,
+  provenance: "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+};
+var percent = (share3) => `${Math.round(share3 * 1e3) / 10}%`;
+function checkFixConvention(logicalChanges, fixes) {
+  const { minShare, maxShare, minChanges } = FIX_CONVENTION_GUIDELINES;
+  const share3 = logicalChanges === 0 ? null : Math.round(fixes / logicalChanges * 1e3) / 1e3;
+  const reasons = [];
+  if (logicalChanges < minChanges) reasons.push(`there are ${logicalChanges} logical changes in the window, fewer than ${minChanges}`);
+  if (share3 !== null && share3 < minShare) reasons.push(`fixes are ${percent(share3)} of logical changes, under ${percent(minShare)}`);
+  if (share3 !== null && share3 > maxShare) reasons.push(`fixes are ${percent(share3)} of logical changes, over ${percent(maxShare)}`);
+  return {
+    logicalChanges,
+    fixes,
+    share: share3,
+    followsConvention: reasons.length === 0,
+    note: reasons.length === 0 ? null : `The commit messages probably do not follow a convention this can use: ${reasons.join("; ")}.`,
+    guidelines: { minShare, maxShare, minChanges, provenance: FIX_CONVENTION_GUIDELINES.provenance }
+  };
+}
+
 // packages/cochange/src/tool.ts
 var TOOL2 = "cochange";
 var SCHEMA_VERSION2 = 1;
-
-// packages/cochange/src/risk/fix-patterns.ts
-var defaultFixPatterns = ["^fix(es|ed)?\\b", "^bugfix", "^hotfix", "\\bfix(es|ed)?\\b.*#\\d+", "^merge .*\\b(fix|hotfix|bugfix)[/-]"];
 
 // packages/cochange/src/risk/settings.ts
 var PLACEMENT_MODES = ["self", "any", "off"];
@@ -2257,9 +2369,6 @@ var riskDefaults = {
     "pyproject.toml",
     "requirements.txt"
   ],
-  /** Commit messages (regular expressions, case-insensitive) that mark a fix, and a revert. */
-  fixPatterns: defaultFixPatterns,
-  revertPatterns: ["^revert\\b"],
   /** Backtest: a fix that touches a change's files within this many days counts as trouble. */
   followUpDays: 30,
   /** Whose placement `risk` computes: `self`, `any` or `off`. */
@@ -2284,13 +2393,6 @@ function readRiskSettings(config) {
     }
     return value;
   };
-  const patterns = (key) => strings2(key).map((source) => {
-    try {
-      return new RegExp(source, "i");
-    } catch (error) {
-      throw configError(`code-health.json: ${at(key)} has an invalid regular expression "${source}": ${error instanceof Error ? error.message : String(error)}`);
-    }
-  });
   const branch = section.mainBranch;
   if (branch !== null && (typeof branch !== "string" || branch === "")) {
     throw configError(`code-health.json: ${at("mainBranch")} must be a branch name or null`);
@@ -2337,20 +2439,26 @@ function readRiskSettings(config) {
     newIdentityDays: whole("newIdentityDays", 0),
     newIdentityChanges: whole("newIdentityChanges", 0),
     sensitivePaths: strings2("sensitivePaths"),
-    fixPatterns: patterns("fixPatterns"),
-    revertPatterns: patterns("revertPatterns"),
+    fix: readFixClassifier(config),
     followUpDays: whole("followUpDays", 1),
     placement,
-    disabled: new Set(disable),
-    fixPatternSources: strings2("fixPatterns"),
-    revertPatternSources: strings2("revertPatterns")
+    disabled: new Set(disable)
   };
+}
+function readFixClassifier(config) {
+  const section = config.effective[TOOL2];
+  try {
+    return compileFixClassifier({ fixPatterns: section.fixPatterns, revertPatterns: section.revertPatterns, fixMatchBody: section.fixMatchBody });
+  } catch (error) {
+    if (error instanceof InvalidPatternError) throw configError(`code-health.json: ${error.message}`);
+    throw error;
+  }
 }
 
 // packages/cochange/src/config.ts
 var cochangeConfig = {
   plugin: TOOL2,
-  history: ["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "evidence"],
+  history: ["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "revertPatterns", "fixMatchBody", "evidence"],
   section: {
     recentMonths: 3,
     staleMonths: 12,
@@ -3456,7 +3564,7 @@ function distributionOf(values, alphas) {
     })
   };
 }
-function compile(model, guidelinePercent, components2) {
+function compile2(model, guidelinePercent, components2) {
   const pool = [];
   const poolIndex = /* @__PURE__ */ new Map();
   model.developers.forEach((d, i) => {
@@ -3529,7 +3637,7 @@ function draw(selection, poolSize, rng, leave) {
 }
 function simulate(model, options) {
   const { selection, trials, seed, alphas, guidelinePercent } = options;
-  const compiled = compile(model, guidelinePercent, options.components ?? []);
+  const compiled = compile2(model, guidelinePercent, options.components ?? []);
   const { poolSize, relevant } = compiled;
   if (selection.mode === "k-leavers" && (selection.k < 1 || selection.k > poolSize)) {
     throw new RangeError(`k must be from 1 to ${poolSize}, the active developers`);
@@ -3918,7 +4026,7 @@ function lengthMetrics(lines) {
 
 // packages/lexical/src/blocks.ts
 var compiledProfiles = /* @__PURE__ */ new WeakMap();
-function compile2(profile) {
+function compile3(profile) {
   let compiled = compiledProfiles.get(profile);
   if (compiled === void 0) {
     compiled = {
@@ -3934,7 +4042,7 @@ function compile2(profile) {
   return compiled;
 }
 function classifyHeader(segments, profile) {
-  const { noise, control, types, functions } = compile2(profile);
+  const { noise, control, types, functions } = compile3(profile);
   const kept = segments.filter((segment) => {
     const trimmed = segment.text.trim();
     return trimmed !== "" && !noise.some((pattern) => pattern.test(trimmed));
@@ -4000,7 +4108,7 @@ function findBracedBlocks(lines, profile) {
   let parenDepth = 0;
   let arrow;
   let inDeclaration = false;
-  const { statementEnd } = compile2(profile);
+  const { statementEnd } = compile3(profile);
   const endsLineWithoutSemicolon = (line) => {
     const code = line.code.trimEnd();
     if (statementEnd === void 0 || code === "") return false;
@@ -4039,7 +4147,7 @@ function findBracedBlocks(lines, profile) {
     const text = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
     let name15;
     let matched = false;
-    const members = compile2(profile).members;
+    const members = compile3(profile).members;
     if (members !== void 0) {
       const found = members.map((pattern) => pattern.exec(text)).find((match) => match !== null);
       if (found === void 0) return false;
@@ -7106,7 +7214,7 @@ function checkMapping(analysis, detail) {
 }
 
 // packages/cochange/src/identities/measure.ts
-var percent = (part, whole) => whole === 0 ? 0 : Math.round(part / whole * 1e3) / 10;
+var percent2 = (part, whole) => whole === 0 ? 0 : Math.round(part / whole * 1e3) / 10;
 function share2(byNode, analysis) {
   let total = 0;
   let nonPerson = 0;
@@ -7117,7 +7225,7 @@ function share2(byNode, analysis) {
     else if (analysis.unresolved.has(node)) unmapped += count2;
   }
   const people = total - nonPerson;
-  return { total, nonPerson, people, unmapped, mappedShare: people === 0 ? 100 : Math.round((100 - percent(unmapped, people)) * 10) / 10 };
+  return { total, nonPerson, people, unmapped, mappedShare: people === 0 ? 100 : Math.round((100 - percent2(unmapped, people)) * 10) / 10 };
 }
 async function measureMapping(context, analysis, options) {
   const { history, facts, nodeOfRaw } = analysis;
@@ -7149,7 +7257,7 @@ async function measureMapping(context, analysis, options) {
       headLines,
       windowCommits: share2(windowCommitsByNode, analysis),
       unmappedShareGuideline: guideline,
-      needsIdentityReview: headLines.people > 0 && percent(headLines.unmapped, headLines.people) > guideline
+      needsIdentityReview: headLines.people > 0 && percent2(headLines.unmapped, headLines.people) > guideline
     },
     linesByNode,
     windowCommitsByNode
@@ -8225,8 +8333,8 @@ var FACTOR_DOCS = [
     family: "history",
     layer: "history",
     banding: "percentile",
-    signal: "Share of each touched file's revisions that were fixes or reverts",
-    definition: "Over the touched files' revisions in the analysis window, the share made by a change whose messages match cochange.risk.fixPatterns or revertPatterns. Unavailable when no change in the window matches, since the repository then has no convention to read.",
+    signal: "Share of each touched file's revisions that were fixes",
+    definition: `Over the touched files' revisions in the analysis window, the share made by a change whose subject matches history.fixPatterns (cochange.fixPatterns when set). A revert is not a fix. Each file lists the commits that matched and the pattern that matched, and "issue" also matches subjects such as "address review issue". Unavailable when no change in the window matches, since the repository then has no convention to read.`,
     why: "Code that has needed fixing tends to need it again."
   },
   {
@@ -8786,7 +8894,7 @@ var HistoryState = class {
       if (inFolder) inFolder.add(id);
       else this.folders.set(folder, /* @__PURE__ */ new Set([id]));
     }
-    const entry = { time: change2.time, files: ids, eligible, fix };
+    const entry = { time: change2.time, files: ids, eligible, fix: fix !== null };
     this.queue.push(entry);
     this.apply(entry, 1);
   }
@@ -8990,9 +9098,10 @@ function hotspotsTouched(facts, state, context) {
     evidence: hot.map((file) => ({ file: file.fileId, revisions: state.revisionsInWindow(file.fileId) })).sort((a, b) => b.revisions - a.revisions || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS)
   });
 }
+var FIX_COMMITS_PER_FILE = 3;
 function defectHistory(facts, state, context) {
   if (state.windowSummary().fixes === 0) {
-    return unavailable2("defect-history", "history", "history", "percentile", "history", "no change in the window matches a fix or revert pattern, so the commit messages cannot say which revisions were fixes");
+    return unavailable2("defect-history", "history", "history", "percentile", "history", "no change in the window matches a fix pattern, so the commit messages cannot say which revisions were fixes");
   }
   const since = facts.time - context.windowMonths * 30.4375 * SECONDS_PER_DAY2;
   let revisions = 0;
@@ -9000,10 +9109,11 @@ function defectHistory(facts, state, context) {
   const perFile = [];
   for (const file of facts.files) {
     const own = state.revisionsSince(file.fileId, since);
-    const fixed = own.filter((revision) => revision.fix).length;
+    const matches = own.flatMap((revision) => revision.fix ?? []);
+    const fixed = matches.length;
     revisions += own.length;
     fixes += fixed;
-    if (fixed > 0) perFile.push({ file: file.fileId, fixes: fixed, revisions: own.length });
+    if (fixed > 0) perFile.push({ file: file.fileId, fixes: fixed, revisions: own.length, commits: matches.slice(-FIX_COMMITS_PER_FILE).reverse(), omitted: Math.max(0, fixed - FIX_COMMITS_PER_FILE) });
   }
   const share3 = revisions === 0 ? 0 : round(fixes / revisions);
   return measurement2("defect-history", "history", "history", "percentile", "history", {
@@ -9240,7 +9350,7 @@ function factsOf2(change2) {
     moved: change2.files.filter((file) => file.status === "R").length
   };
 }
-var isFix = (change2, patterns) => change2.subjects.some((subject) => patterns.some((pattern) => pattern.test(subject)));
+var fixOf = (change2, fix) => findFix(fix, change2.id, change2.messages);
 function chronologicalPass(changes, context, options) {
   const state = new HistoryState({ windowSeconds: Math.round(options.windowMonths * SECONDS_PER_MONTH4), maxChangesetSize: options.maxChangesetSize });
   const past = [];
@@ -9254,19 +9364,19 @@ function chronologicalPass(changes, context, options) {
         placement: options.placement ? placeChange(facts, state, context) : null
       });
     }
-    state.add(change2, isFix(change2, options.fixPatterns));
+    state.add(change2, fixOf(change2, options.fix));
   }
   return { state, past };
 }
 
 // packages/cochange/src/risk/merged-changes.ts
 async function readGraph(root, tip) {
-  const out = await runGit(root, ["log", "--format=%H%x1f%P%x1f%ct%x1f%s", tip]);
+  const out = await runGit(root, ["log", "--format=%H%x1f%P%x1f%ct%x1f%B%x1e", tip]);
   const graph = /* @__PURE__ */ new Map();
-  for (const line of out.split("\n")) {
-    if (line === "") continue;
-    const [sha, parents, time, ...subject] = line.split("");
-    graph.set(sha, { sha, parents: parents === "" ? [] : parents.split(" "), time: Number(time), subject: subject.join("") });
+  for (const record of out.split("")) {
+    if (record.trim() === "") continue;
+    const [sha, parents, time, ...message] = record.replace(/^\n/, "").split("");
+    graph.set(sha, { sha, parents: parents === "" ? [] : parents.split(" "), time: Number(time), message: message.join("").trim() });
   }
   return graph;
 }
@@ -9288,7 +9398,7 @@ async function mergedChanges(root, view, changes, tip) {
   for (const entry of line) {
     clock = Math.max(clock, entry.time);
     const members = [];
-    const subjects = [entry.subject];
+    const messages = [entry.message];
     if (entry.parents.length > 1) {
       merges++;
       const stack = entry.parents.slice(1);
@@ -9306,7 +9416,7 @@ async function mergedChanges(root, view, changes, tip) {
       for (const commit of found) {
         if (commit.parents.length < 2) {
           members.push(commit.sha);
-          subjects.push(commit.subject);
+          messages.push(commit.message);
         }
       }
     } else {
@@ -9330,7 +9440,7 @@ async function mergedChanges(root, view, changes, tip) {
       shas: members.filter((sha) => commits.has(sha)),
       authors: [...new Set(distinct.flatMap((c) => c.authors))].sort(),
       files,
-      subjects: [...new Set(subjects)],
+      messages: [...new Set(messages)],
       how: entry.parents.length > 1 ? "merge" : "direct"
     });
   }
@@ -9466,7 +9576,7 @@ async function assessBranch(context, history, request) {
   const { state, past } = chronologicalPass(mainline.changes, measure, {
     windowMonths: history.settings.windowMonths,
     maxChangesetSize: history.settings.maxChangesetSize,
-    fixPatterns: [...risk.fixPatterns, ...risk.revertPatterns],
+    fix: risk.fix,
     measureWhen: (c, index2) => c.time >= since && index2 >= total - risk.baselineChanges
   });
   const facts = {
@@ -9556,7 +9666,7 @@ function scoreMainline(changes, context, options) {
   const { past } = chronologicalPass(changes, context, {
     windowMonths: options.windowMonths,
     maxChangesetSize: options.maxChangesetSize,
-    fixPatterns: [...risk.fixPatterns, ...risk.revertPatterns],
+    fix: risk.fix,
     placement: true
   });
   const scored = [];
@@ -9623,7 +9733,7 @@ async function outcomesOf(root, tip, changes, risk, headTime) {
     }
   }
   const window = risk.followUpDays * SECONDS_PER_DAY2;
-  const fix = changes.map((change2) => isFix(change2, risk.fixPatterns));
+  const fix = changes.map((change2) => fixOf(change2, risk.fix) !== null);
   const outcomes = /* @__PURE__ */ new Map();
   for (const [index2, change2] of changes.entries()) {
     let fixed = false;
@@ -9719,6 +9829,7 @@ function summarise(scored, all, outcomes, risk) {
     return false;
   }).length;
   const withLevel = scored.filter((s) => s.level !== null);
+  const fixMatches = all.flatMap((change2) => fixOf(change2, risk.fix) ?? []);
   return {
     population: {
       mergedChanges: all.length,
@@ -9729,7 +9840,8 @@ function summarise(scored, all, outcomes, risk) {
     },
     outcome: {
       followUpDays: risk.followUpDays,
-      fixConvention: all.some((change2) => isFix(change2, risk.fixPatterns)),
+      fixConvention: checkFixConvention(all.length, fixMatches.length),
+      fixes: fixEvidence(fixMatches),
       reverts: outcomeList.filter((o) => o.reverted).length,
       troubled,
       rate: known.length === 0 ? null : round3(troubled / known.length)
@@ -9837,8 +9949,9 @@ async function runBacktest(context, history) {
       ...adopted === void 0 || adopted === null ? {} : { adopted: new Date(adopted * 1e3).toISOString() },
       followUpDays: risk.followUpDays,
       baselineChanges: risk.baselineChanges,
-      fixPatterns: risk.fixPatternSources,
-      revertPatterns: risk.revertPatternSources,
+      fixPatterns: risk.fix.settings.fixPatterns,
+      revertPatterns: risk.fix.settings.revertPatterns,
+      fixMatchBody: risk.fix.settings.fixMatchBody,
       mergeStyle: { merges: mainline.merges, direct: mainline.direct }
     },
     results: {

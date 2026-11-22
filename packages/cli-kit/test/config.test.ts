@@ -85,7 +85,7 @@ test("hash is the first 16 hex digits of the SHA-256 of the serialised effective
   writeConfig({ exclude: ["dist"], cochange: { windowMonths: 3 } });
   const config = load();
   expect(config.hash).toBe(createHash("sha256").update(serialise(config.effective)).digest("hex").slice(0, 16));
-  expect(config.hash).toBe("8dd22b3a545cd25c");
+  expect(config.hash).toBe("1dc606928da9b6a8");
 });
 
 const reading: PluginConfigSpec = { plugin: "cochange", section: { minSupport: 5 }, history: ["windowMonths", "botPatterns", "evidence", "branch"] };
@@ -103,11 +103,34 @@ test("the history section holds defaults for the settings every plugin reading h
     windowMonths: 12,
     maxChangesetSize: 30,
     botPatterns: [],
+    fixPatterns: historyDefaults.fixPatterns,
+    revertPatterns: ["^revert\\b"],
+    fixMatchBody: false,
     evidence: {
       strong: { months: 24, logicalChanges: 300, contributors: 5 },
       moderate: { months: 6, logicalChanges: 50, contributors: 2 },
     },
   });
+});
+
+test("the default fix patterns are whole words and a fix: prefix, and are listed as history keys a plugin may override", () => {
+  expect(historyDefaults.fixPatterns).toContain("\\bissue\\b");
+  writeConfig({ history: { fixPatterns: ["\\bpatch\\b"], fixMatchBody: true }, cochange: { revertPatterns: ["^undo\\b"] } });
+  const cochange = loadConfig(root, { ...reading, history: [...reading.history!, "fixPatterns", "revertPatterns", "fixMatchBody"] }).effective.cochange;
+  expect(cochange).toMatchObject({ fixPatterns: ["\\bpatch\\b"], revertPatterns: ["^undo\\b"], fixMatchBody: true });
+});
+
+test("cochange.risk.fixPatterns moved to history.fixPatterns, and the error says so", () => {
+  writeConfig({ cochange: { risk: { fixPatterns: ["x"] } } });
+  const spec: PluginConfigSpec = { plugin: "cochange", section: { risk: { followUpDays: 30 } } };
+  expect(() => loadConfig(root, spec)).toThrowError(/cochange\.risk\.fixPatterns is an unknown setting; it moved to history\.fixPatterns/);
+});
+
+test("fix settings that are not an array of strings or a boolean name the path", () => {
+  writeConfig({ history: { fixPatterns: [1] } });
+  expect(() => loadReading()).toThrowError(/history\.fixPatterns must be an array of strings/);
+  writeConfig({ history: { fixMatchBody: "yes" } });
+  expect(() => loadReading()).toThrowError(/history\.fixMatchBody must be a boolean/);
 });
 
 test("a plugin takes the shared history value, and its own section overrides it", () => {

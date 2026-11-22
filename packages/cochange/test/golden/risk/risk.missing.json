@@ -261,8 +261,17 @@
         "band": null,
         "evidence": [
           {
+            "commits": [
+              {
+                "id": "1e58237e7d6533de0a055288728b97dc7524dd94",
+                "matchedIn": "subject",
+                "pattern": "\\bfix\\b",
+                "subject": "Fix tax rounding"
+              }
+            ],
             "file": "src/billing/invoice.ts",
             "fixes": 1,
+            "omitted": 0,
             "revisions": 7
           }
         ],

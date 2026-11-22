@@ -66,8 +66,8 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     family: "history",
     layer: "history",
     banding: "percentile",
-    signal: "Share of each touched file's revisions that were fixes or reverts",
-    definition: "Over the touched files' revisions in the analysis window, the share made by a change whose messages match cochange.risk.fixPatterns or revertPatterns. Unavailable when no change in the window matches, since the repository then has no convention to read.",
+    signal: "Share of each touched file's revisions that were fixes",
+    definition: "Over the touched files' revisions in the analysis window, the share made by a change whose subject matches history.fixPatterns (cochange.fixPatterns when set). A revert is not a fix. Each file lists the commits that matched and the pattern that matched, and \"issue\" also matches subjects such as \"address review issue\". Unavailable when no change in the window matches, since the repository then has no convention to read.",
     why: "Code that has needed fixing tends to need it again.",
   },
   {

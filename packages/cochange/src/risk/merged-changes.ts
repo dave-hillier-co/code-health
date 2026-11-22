@@ -19,8 +19,8 @@ export interface MergedChange {
   authors: string[];
   /** Files left after the noise filters, one entry per file, as the change leaves them. */
   files: HistoryChange[];
-  /** First lines of the messages of the main-line commit and of the commits it brought in. */
-  subjects: string[];
+  /** The full messages of the main-line commit and of the commits it brought in. */
+  messages: string[];
   /** How it came in: a merge commit, or one commit on the main line. */
   how: "merge" | "direct";
 }
@@ -36,16 +36,16 @@ interface CommitLine {
   sha: string;
   parents: string[];
   time: number;
-  subject: string;
+  message: string;
 }
 
 async function readGraph(root: string, tip: string): Promise<Map<string, CommitLine>> {
-  const out = await runGit(root, ["log", "--format=%H%x1f%P%x1f%ct%x1f%s", tip]);
+  const out = await runGit(root, ["log", "--format=%H%x1f%P%x1f%ct%x1f%B%x1e", tip]);
   const graph = new Map<string, CommitLine>();
-  for (const line of out.split("\n")) {
-    if (line === "") continue;
-    const [sha, parents, time, ...subject] = line.split("\x1f");
-    graph.set(sha!, { sha: sha!, parents: parents === "" ? [] : parents!.split(" "), time: Number(time), subject: subject.join("\x1f") });
+  for (const record of out.split("\x1e")) {
+    if (record.trim() === "") continue;
+    const [sha, parents, time, ...message] = record.replace(/^\n/, "").split("\x1f");
+    graph.set(sha!, { sha: sha!, parents: parents === "" ? [] : parents!.split(" "), time: Number(time), message: message.join("\x1f").trim() });
   }
   return graph;
 }
@@ -80,7 +80,7 @@ export async function mergedChanges(
   for (const entry of line) {
     clock = Math.max(clock, entry.time);
     const members: string[] = [];
-    const subjects = [entry.subject];
+    const messages = [entry.message];
     if (entry.parents.length > 1) {
       merges++;
       // Everything the merge brought in, oldest first, and not already part of an earlier change.
@@ -99,7 +99,7 @@ export async function mergedChanges(
       for (const commit of found) {
         if (commit.parents.length < 2) {
           members.push(commit.sha);
-          subjects.push(commit.subject);
+          messages.push(commit.message);
         }
       }
     } else {
@@ -124,7 +124,7 @@ export async function mergedChanges(
       shas: members.filter((sha) => commits.has(sha)),
       authors: [...new Set(distinct.flatMap((c) => c.authors))].sort(),
       files,
-      subjects: [...new Set(subjects)],
+      messages: [...new Set(messages)],
       how: entry.parents.length > 1 ? "merge" : "direct",
     });
   }

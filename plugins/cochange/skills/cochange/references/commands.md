@@ -73,6 +73,7 @@ The history settings are shared. Set them once in the top-level `history` sectio
 | `branch`, `firstParent` | `null`, `false` | The analysed ref, and whether to follow first parents only. |
 | `maxChangesetSize` | 30 | Larger changes count for frequency but not for coupling or spread. |
 | `botPatterns` | `[]` | Regular expressions matched against `Name <email>`. Commits by matching authors are left out. |
+| `fixPatterns`, `revertPatterns`, `fixMatchBody` | see the schema, `false` | What counts as a fix commit (whole words in the subject such as fix, bug, hotfix, defect and issue, a `fix:` prefix, a merge of a fix branch) and as a revert. Commit bodies are matched only with `fixMatchBody`. "issue" also matches subjects such as "address review issue", so counts list the matching commits. |
 | `renameSimilarity`, `renameLimit` | 50, 1000 | Rename detection for git's `-M`. |
 | `evidence` | see the schema | Guidelines that grade the evidence of a history. |
 

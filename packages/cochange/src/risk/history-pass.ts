@@ -1,3 +1,4 @@
+import { findFix, type FixClassifier, type FixMatch } from "@code-health/history/fix-commits";
 import { HistoryState } from "./history-state.ts";
 import { measureHistoryLayer, type ChangeFacts, type Measurement, type MeasureContext } from "./measure.ts";
 import type { MergedChange } from "./merged-changes.ts";
@@ -23,14 +24,14 @@ export function factsOf(change: MergedChange): ChangeFacts {
   };
 }
 
-export const isFix = (change: MergedChange, patterns: readonly RegExp[]): boolean =>
-  change.subjects.some((subject) => patterns.some((pattern) => pattern.test(subject)));
+/** The fix a merged change is under the shared definition, with the pattern that matched, or null. A revert is not a fix. */
+export const fixOf = (change: MergedChange, fix: FixClassifier): FixMatch | null => findFix(fix, change.id, change.messages);
 
 export interface PassOptions {
   windowMonths: number;
   maxChangesetSize: number;
-  /** Patterns marking a fix or a revert, which feed `defect-history`. */
-  fixPatterns: readonly RegExp[];
+  /** The shared definition of a fix commit, which feeds `defect-history`. */
+  fix: FixClassifier;
   /** Only changes for which this is true are measured. Every change is still added to the state. */
   measureWhen?: (change: MergedChange, index: number) => boolean;
   /** Also place each change's authors, by change familiarity and neighbourhood (the backtest does). */
@@ -58,7 +59,7 @@ export function chronologicalPass(
         placement: options.placement ? placeChange(facts, state, context) : null,
       });
     }
-    state.add(change, isFix(change, options.fixPatterns));
+    state.add(change, fixOf(change, options.fix));
   }
   return { state, past };
 }

@@ -1,11 +1,13 @@
 import { folderOf } from "@code-health/graph/tree-distance";
+import type { FixMatch } from "@code-health/history/fix-commits";
 import type { MergedChange } from "./merged-changes.ts";
 
 /** One revision of a file by a merged change. */
 export interface Revision {
   time: number;
   authors: readonly string[];
-  fix: boolean;
+  /** The fix this revision was, with the pattern that matched. Null when it was not a fix. */
+  fix: FixMatch | null;
 }
 
 interface FileRecord {
@@ -63,7 +65,7 @@ export class HistoryState {
   }
 
   /** Adds a change. Call `advance(change.time)` first, and add changes oldest first. */
-  add(change: MergedChange, fix: boolean): void {
+  add(change: MergedChange, fix: FixMatch | null): void {
     const ids = change.files.map((file) => file.fileId);
     const eligible = ids.length <= this.options.maxChangesetSize;
     const ordinal = this.ordinal++;
@@ -89,7 +91,7 @@ export class HistoryState {
       if (inFolder) inFolder.add(id);
       else this.folders.set(folder, new Set([id]));
     }
-    const entry: Windowed = { time: change.time, files: ids, eligible, fix };
+    const entry: Windowed = { time: change.time, files: ids, eligible, fix: fix !== null };
     this.queue.push(entry);
     this.apply(entry, 1);
   }

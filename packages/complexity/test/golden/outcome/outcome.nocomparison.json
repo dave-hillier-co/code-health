@@ -31,11 +31,35 @@
         "after": {
           "changes": 1,
           "fixCommitRate": 0,
+          "fixCommits": {
+            "byPattern": [],
+            "commits": [],
+            "fixes": 0,
+            "omitted": 0
+          },
           "linesChurnedPerChange": 4
         },
         "before": {
           "changes": 4,
           "fixCommitRate": 0.25,
+          "fixCommits": {
+            "byPattern": [
+              {
+                "count": 1,
+                "pattern": "\\bfix\\b"
+              }
+            ],
+            "commits": [
+              {
+                "id": "31b364c5b3a01209862efa2e39dadf5ec37c5b65",
+                "matchedIn": "subject",
+                "pattern": "\\bfix\\b",
+                "subject": "Fix crash in hot"
+              }
+            ],
+            "fixes": 1,
+            "omitted": 0
+          },
           "linesChurnedPerChange": 7
         }
       },
@@ -43,11 +67,23 @@
         "after": {
           "changes": 0,
           "fixCommitRate": null,
+          "fixCommits": {
+            "byPattern": [],
+            "commits": [],
+            "fixes": 0,
+            "omitted": 0
+          },
           "linesChurnedPerChange": null
         },
         "before": {
           "changes": 0,
           "fixCommitRate": null,
+          "fixCommits": {
+            "byPattern": [],
+            "commits": [],
+            "fixes": 0,
+            "omitted": 0
+          },
           "linesChurnedPerChange": null
         }
       }
@@ -61,6 +97,19 @@
       "fixCommitRate": null,
       "linesChurnedPerChange": null,
       "meanScore": null
+    },
+    "fixConvention": {
+      "fixes": 1,
+      "followsConvention": false,
+      "guidelines": {
+        "maxShare": 0.6,
+        "minChanges": 30,
+        "minShare": 0.02,
+        "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+      },
+      "logicalChanges": 5,
+      "note": "The commit messages probably do not follow a convention this can use: there are 5 logical changes in the window, fewer than 30.",
+      "share": 0.2
     },
     "gamingCheck": {
       "actedOn": {

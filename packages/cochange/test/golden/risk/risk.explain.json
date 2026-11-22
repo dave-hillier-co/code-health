@@ -150,7 +150,7 @@
         "family": "history",
         "layer": "history",
         "name": "defect-history",
-        "signal": "Share of each touched file's revisions that were fixes or reverts"
+        "signal": "Share of each touched file's revisions that were fixes"
       },
       {
         "banding": "percentile",

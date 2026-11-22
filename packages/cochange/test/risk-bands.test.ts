@@ -69,7 +69,7 @@ test("a count is banded on fixed guidelines, not on a distribution", () => {
   expect([0, 1, 2, 3, 9].map((n) => bandCount(n, guidelines))).toEqual(["low", "moderate", "moderate", "high", "high"]);
 });
 
-const settings = { ...riskDefaults, fixPatterns: [], revertPatterns: [], disabled: new Set<string>(), minBaseline: 10 } as unknown as RiskSettings;
+const settings = { ...riskDefaults, disabled: new Set<string>(), minBaseline: 10 } as unknown as RiskSettings;
 
 function measured(name: string, family: Measurement["family"], value: number): Measurement {
   return { name, family, layer: "history", kind: "percentile", unavailable: null, series: { value }, value: { value }, evidence: [], source: "history" };

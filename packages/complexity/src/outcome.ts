@@ -1,8 +1,8 @@
-import { defaultFixPatterns } from "@code-health/cochange/risk/fix-patterns";
 import { existsSync } from "node:fs";
 import { usageError } from "@code-health/cli-kit/errors";
 import { checkouts } from "@code-health/history/checkouts";
 import { analyseHistory, monthsBefore } from "@code-health/history/evidence";
+import { checkFixConvention, fixEvidence, findFix, type FixClassifier, type FixConvention, type FixEvidence, type FixMatch } from "@code-health/history/fix-commits";
 import { runGit } from "@code-health/history/git";
 import type { LogicalChange } from "@code-health/history/noise";
 import { ParseCache } from "@code-health/parse/parse-cache";
@@ -22,8 +22,10 @@ export interface ChangeFigures {
   changes: number;
   /** Mean lines added plus deleted in the files per such change. Null with no change. */
   linesChurnedPerChange: number | null;
-  /** Share of those changes whose subject says they fix something. Null with no change. */
+  /** Share of those changes with a commit that matches the shared fix definition (`history.fixPatterns`). Null with no change. */
   fixCommitRate: number | null;
+  /** The commits behind `fixCommitRate`, with the pattern that matched each. "issue" also matches subjects such as "address review issue". */
+  fixCommits: FixEvidence;
 }
 
 /** The weighted rank of a set of files' functions at one moment. */
@@ -64,6 +66,11 @@ export interface Outcome {
    * end when that comes first, and `complete` says whether it ran its full length.
    */
   windows: { before: { since: string; until: string }; after: { since: string; until: string; complete: boolean } };
+  /**
+   * The repository-level check on the fix definition, over every logical change in the two windows. When it says the commit
+   * messages probably do not follow a convention, read `fixCommitRate` with that in mind.
+   */
+  fixConvention: FixConvention;
   /** Primary outcome: what changing the code cost afterwards, with the fix rate beside it as the secondary one. */
   changeCost: { actedOn: Group<ChangeFigures>; comparison: Group<ChangeFigures> };
   /** Leading indicator only: the same measure the tool ranks by. */
@@ -81,9 +88,14 @@ const round3 = (value: number): number => Math.round(value * 1000) / 1000;
 
 const mean = (values: number[]): number | null => (values.length === 0 ? null : round3(values.reduce((sum, value) => sum + value, 0) / values.length));
 
-/** A subject matching the suite's default fix patterns, the same definition of a defect fix that cochange's risk factors use. */
-const FIX_SUBJECTS = defaultFixPatterns.map((pattern) => new RegExp(pattern, "i"));
-export const isFixSubject = (subject: string): boolean => FIX_SUBJECTS.some((pattern) => pattern.test(subject));
+/** The first commit of a logical change that matches the shared fix definition, from `@code-health/history/fix-commits`. */
+function fixOfChange(change: LogicalChange, fix: FixClassifier, messageOf: (sha: string) => string): FixMatch | null {
+  for (const sha of change.shas) {
+    const found = findFix(fix, sha, [messageOf(sha)]);
+    if (found !== null) return found;
+  }
+  return null;
+}
 
 const day = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);
 const iso = (seconds: number): string => new Date(seconds * 1000).toISOString();
@@ -119,20 +131,23 @@ async function changedFiles(root: string, earlier: string, later: string): Promi
 function changeFigures(
   changes: readonly LogicalChange[],
   members: ReadonlySet<string>,
-  subjectOf: (sha: string) => string,
+  fix: FixClassifier,
+  messageOf: (sha: string) => string,
 ): ChangeFigures {
   const churn: number[] = [];
-  let fixes = 0;
+  const fixes: FixMatch[] = [];
   for (const change of changes) {
     const touched = change.files.filter((file) => members.has(file.path) || members.has(file.fileId));
     if (touched.length === 0) continue;
     churn.push(touched.reduce((sum, file) => sum + (file.added ?? 0) + (file.deleted ?? 0), 0));
-    if (change.shas.some((sha) => isFixSubject(subjectOf(sha)))) fixes++;
+    const found = fixOfChange(change, fix, messageOf);
+    if (found !== null) fixes.push(found);
   }
   return {
     changes: churn.length,
     linesChurnedPerChange: mean(churn),
-    fixCommitRate: churn.length === 0 ? null : round3(fixes / churn.length),
+    fixCommitRate: churn.length === 0 ? null : round3(fixes.length / churn.length),
+    fixCommits: fixEvidence(fixes),
   };
 }
 
@@ -219,8 +234,8 @@ export async function measureOutcome(
   // Matching windows: the after window is as long as the before window, or ends where the history does.
   const fullEnd = monthsBefore(date, -settings.windowMonths);
   const anchor = Math.min(fullEnd, headDate);
-  const subjects = new Map(history.view.commits.map((commit) => [commit.sha, commit.message.split("\n")[0] ?? ""] as const));
-  const subjectOf = (sha: string): string => subjects.get(sha) ?? "";
+  const messages = new Map(history.view.commits.map((commit) => [commit.sha, commit.message] as const));
+  const messageOf = (sha: string): string => messages.get(sha) ?? "";
   const eligible = history.filtered.changes.filter((change) => !change.shas.some((sha) => series.has(sha)));
   const beforeChanges = eligible.filter((change) => change.committerDate >= monthsBefore(date, settings.windowMonths) && change.committerDate < date);
   const afterChanges = eligible.filter((change) => change.committerDate > date && change.committerDate <= anchor);
@@ -250,7 +265,9 @@ export async function measureOutcome(
   );
   const controlSet = new Set(control);
 
-  const figures = (changes: readonly LogicalChange[], members: ReadonlySet<string>) => changeFigures(changes, members, subjectOf);
+  const figures = (changes: readonly LogicalChange[], members: ReadonlySet<string>) => changeFigures(changes, members, settings.fix, messageOf);
+  const inWindows = [...beforeChanges, ...afterChanges];
+  const fixConvention = checkFixConvention(inWindows.length, inWindows.filter((change) => fixOfChange(change, settings.fix, messageOf) !== null).length);
   const changeCost: Outcome["changeCost"] = {
     actedOn: { before: figures(beforeChanges, actedEarlier), after: figures(afterChanges, actedLater) },
     comparison: { before: figures(beforeChanges, controlSet), after: figures(afterChanges, controlSet) },
@@ -316,6 +333,7 @@ export async function measureOutcome(
       before: { since: iso(monthsBefore(date, settings.windowMonths)), until: iso(date) },
       after: { since: iso(date), until: iso(anchor), complete: fullEnd <= headDate },
     },
+    fixConvention,
     changeCost,
     rank,
     gamingCheck: { actedOn: shape, suspected },

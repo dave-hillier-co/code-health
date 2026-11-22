@@ -13,7 +13,7 @@ import { TOOL } from "./tool.ts";
  */
 export const cochangeConfig: PluginConfigSpec = {
   plugin: TOOL,
-  history: ["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "evidence"],
+  history: ["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "revertPatterns", "fixMatchBody", "evidence"],
   section: {
     recentMonths: 3,
     staleMonths: 12,

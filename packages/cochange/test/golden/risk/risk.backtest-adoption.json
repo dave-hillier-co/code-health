@@ -104,12 +104,20 @@
   "inputs": {
     "adopted": "2024-05-20T00:00:00.000Z",
     "baselineChanges": 200,
+    "fixMatchBody": false,
     "fixPatterns": [
-      "^fix(es|ed)?\\b",
-      "^bugfix",
-      "^hotfix",
-      "\\bfix(es|ed)?\\b.*#\\d+",
-      "^merge .*\\b(fix|hotfix|bugfix)[/-]"
+      "^fix(\\([^)]*\\))?!?:",
+      "^merge .*\\b(fix|hotfix|bugfix)[/-]",
+      "\\bfix\\b",
+      "\\bfixes\\b",
+      "\\bfixed\\b",
+      "\\bfixing\\b",
+      "\\bbug\\b",
+      "\\bbugs\\b",
+      "\\bbugfix\\b",
+      "\\bhotfix\\b",
+      "\\bdefect\\b",
+      "\\bissue\\b"
     ],
     "followUpDays": 30,
     "mergeStyle": {
@@ -293,16 +301,16 @@
         "bands": [
           {
             "band": "low",
-            "baseRate": 0.0762,
-            "changes": 20,
-            "rate": 0.1,
+            "baseRate": 0.0805,
+            "changes": 21,
+            "rate": 0.0952,
             "troubled": 2
           },
           {
             "band": "moderate",
-            "baseRate": 0.627,
-            "changes": 3,
-            "rate": 0.6667,
+            "baseRate": 0.8571,
+            "changes": 2,
+            "rate": 1,
             "troubled": 2
           },
           {
@@ -535,7 +543,67 @@
       "Results are per factor band and per level, never per person."
     ],
     "outcome": {
-      "fixConvention": true,
+      "fixConvention": {
+        "fixes": 6,
+        "followsConvention": true,
+        "guidelines": {
+          "maxShare": 0.6,
+          "minChanges": 30,
+          "minShare": 0.02,
+          "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+        },
+        "logicalChanges": 40,
+        "note": null,
+        "share": 0.15
+      },
+      "fixes": {
+        "byPattern": [
+          {
+            "count": 6,
+            "pattern": "\\bfix\\b"
+          }
+        ],
+        "commits": [
+          {
+            "id": "753e88e031b799bf47bac9938a4c7ec3f7127e9d",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "subject": "Fix the wide modules 6"
+          },
+          {
+            "id": "24464346e7557bac877667ff8e983b03a2af32c8",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "subject": "Fix the wide modules 12"
+          },
+          {
+            "id": "400db50e32e6f0c556d9a0879569bffb3d509bb1",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "subject": "Fix the wide modules 18"
+          },
+          {
+            "id": "26642c2f5114a93b05703d5ebf7aa52c0b32d1ac",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "subject": "Fix the wide modules 24"
+          },
+          {
+            "id": "b7daf141732e198a03e50c5a66d9cb4c209f1a07",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "subject": "Fix the wide modules 30"
+          },
+          {
+            "id": "28677c89fd7fd62ae061fc5c545a659dc682d223",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "subject": "Fix the wide modules 36"
+          }
+        ],
+        "fixes": 6,
+        "omitted": 0
+      },
       "followUpDays": 30,
       "rate": 0.1714,
       "reverts": 1,

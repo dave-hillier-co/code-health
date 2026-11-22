@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial. Third-party licences: THIRD_PARTY_NOTICES.md.
 import {
   usageError
-} from "./chunk-Q2L3NSZB.mjs";
+} from "./chunk-733Y5EPL.mjs";
 
 // packages/cli-kit/src/document.ts
 var ENVELOPE_KEYS = [

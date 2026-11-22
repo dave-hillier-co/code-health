@@ -1,7 +1,8 @@
+import { checkFixConvention, fixEvidence, type FixConvention, type FixEvidence } from "@code-health/history/fix-commits";
 import { monthsBefore } from "@code-health/history/evidence";
 import { runGit } from "@code-health/history/git";
 import { SECONDS_PER_DAY } from "../units.ts";
-import { chronologicalPass, isFix, type PastChange } from "./history-pass.ts";
+import { chronologicalPass, fixOf, type PastChange } from "./history-pass.ts";
 import { levelOf, LEVELS, type Level } from "./level.ts";
 import type { MeasureContext } from "./measure.ts";
 import type { MergedChange } from "./merged-changes.ts";
@@ -41,7 +42,7 @@ export function scoreMainline(changes: readonly MergedChange[], context: Measure
   const { past } = chronologicalPass(changes, context, {
     windowMonths: options.windowMonths,
     maxChangesetSize: options.maxChangesetSize,
-    fixPatterns: [...risk.fixPatterns, ...risk.revertPatterns],
+    fix: risk.fix,
     placement: true,
   });
   const scored: ScoredChange[] = [];
@@ -134,7 +135,7 @@ export async function outcomesOf(
     }
   }
   const window = risk.followUpDays * SECONDS_PER_DAY;
-  const fix = changes.map((change) => isFix(change, risk.fixPatterns));
+  const fix = changes.map((change) => fixOf(change, risk.fix) !== null);
   const outcomes = new Map<string, Outcome>();
   for (const [index, change] of changes.entries()) {
     let fixed = false;
@@ -171,7 +172,7 @@ export interface FactorRow {
 
 export interface BacktestSummary {
   population: { mergedChanges: number; scored: number; withLevel: number; censored: number; unscored: number };
-  outcome: { followUpDays: number; fixConvention: boolean; reverts: number; troubled: number; rate: number | null };
+  outcome: { followUpDays: number; fixConvention: FixConvention; fixes: FixEvidence; reverts: number; troubled: number; rate: number | null };
   levels: BandRow[];
   impact: BandRow[];
   placement: BandRow[];
@@ -281,6 +282,7 @@ export function summarise(
   }).length;
   const withLevel = scored.filter((s) => s.level !== null);
 
+  const fixMatches = all.flatMap((change) => fixOf(change, risk.fix) ?? []);
   return {
     population: {
       mergedChanges: all.length,
@@ -291,7 +293,8 @@ export function summarise(
     },
     outcome: {
       followUpDays: risk.followUpDays,
-      fixConvention: all.some((change) => isFix(change, risk.fixPatterns)),
+      fixConvention: checkFixConvention(all.length, fixMatches.length),
+      fixes: fixEvidence(fixMatches),
       reverts: outcomeList.filter((o) => o.reverted).length,
       troubled,
       rate: known.length === 0 ? null : round(troubled / known.length),

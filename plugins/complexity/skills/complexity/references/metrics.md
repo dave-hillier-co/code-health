@@ -93,6 +93,6 @@ The `complexity` section of `code-health.json`. Missing keys take the defaults, 
 
 The suite's shared `exclude` globs leave files out entirely.
 
-The change window (`windowMonths`, default 12), `maxChangesetSize` and `botPatterns` come from the shared top-level `history` section, and a `complexity` key of the same name overrides one of them.
+The change window (`windowMonths`, default 12), `maxChangesetSize`, `botPatterns` and the fix definition (`fixPatterns`, `revertPatterns`, `fixMatchBody`) come from the shared top-level `history` section, and a `complexity` key of the same name overrides one of them.
 
 `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs config explain` prints the effective config and where each value came from.

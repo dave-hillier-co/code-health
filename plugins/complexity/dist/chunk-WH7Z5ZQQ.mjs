@@ -12,10 +12,13 @@ import {
   TOOL,
   analyseSource,
   bumpyRoadLimits,
-  compileGlobs,
+  checkFixConvention,
   complexityConfig,
   ensureCacheDir,
   exceeded,
+  filterHistory,
+  findFix,
+  fixEvidence,
   gitVersion,
   guidelinesFor,
   isBumpyRoad,
@@ -24,19 +27,20 @@ import {
   limitOf,
   locateCache,
   metricIds,
+  readPathAttributes,
   readSettings,
   runGit,
   structuralValues
-} from "./chunk-V5PIVW5V.mjs";
+} from "./chunk-BG5YXG6B.mjs";
 import {
   buildDocument,
   shapeResults
-} from "./chunk-ZR2UVP4G.mjs";
+} from "./chunk-YGCAS6UG.mjs";
 import {
   historyDefaults,
   serialise,
   usageError
-} from "./chunk-Q2L3NSZB.mjs";
+} from "./chunk-733Y5EPL.mjs";
 import {
   __export
 } from "./chunk-NYIILDEN.mjs";
@@ -59,322 +63,6 @@ function midRankPercentiles(values) {
     count2.set(value, (count2.get(value) ?? 0) + 1);
   });
   return values.map((value) => (first.get(value) + count2.get(value) / 2) / values.length);
-}
-
-// packages/history/src/grouping.ts
-var DEFAULT_ISSUE_PATTERN = "[A-Z][A-Z0-9]+-\\d+";
-var NOT_ISSUE_PREFIXES = /* @__PURE__ */ new Set(["UTF", "SHA", "MD", "ISO", "RFC", "TLS", "SSL", "AES", "RSA", "CVE", "PEP", "WCAG", "IPV", "ES", "HTTP", "TCP", "UDP"]);
-var ISSUE_KEY_WINDOW_SECONDS = 90 * 86400;
-function groupCommits(items, grouping, compilePattern) {
-  if (grouping.mode === "off") return items.map((_, index) => [index]);
-  const groups = [];
-  if (grouping.mode === "issue-key") {
-    const pattern = compilePattern(grouping.pattern);
-    const open = /* @__PURE__ */ new Map();
-    items.forEach((item, index) => {
-      const match = pattern.exec(item.message);
-      let key = match === null ? void 0 : match[1] ?? match[0];
-      if (key !== void 0 && grouping.pattern === DEFAULT_ISSUE_PATTERN && NOT_ISSUE_PREFIXES.has(key.slice(0, key.lastIndexOf("-")))) key = void 0;
-      if (key === void 0 || key === "") return void groups.push([index]);
-      let group = open.get(key);
-      if (group === void 0 || item.date - items[group.at(-1)].date > ISSUE_KEY_WINDOW_SECONDS) {
-        group = [];
-        open.set(key, group);
-        groups.push(group);
-      }
-      group.push(index);
-    });
-  } else {
-    const open = /* @__PURE__ */ new Map();
-    items.forEach((item, index) => {
-      const group = open.get(item.author);
-      const last = group === void 0 ? void 0 : items[group.at(-1)].date;
-      if (group !== void 0 && Math.abs(item.date - last) <= grouping.windowSeconds) {
-        group.push(index);
-      } else {
-        const fresh = [index];
-        open.set(item.author, fresh);
-        groups.push(fresh);
-      }
-    });
-  }
-  return groups.sort((a, b) => a.at(-1) - b.at(-1));
-}
-function mergeFileChanges(changes) {
-  const first = changes[0];
-  const last = changes.at(-1);
-  if (changes.length === 1) return first;
-  const total = (pick2) => {
-    const counted = changes.map(pick2).filter((n) => n !== null);
-    return counted.length === 0 ? null : counted.reduce((a, b) => a + b, 0);
-  };
-  return {
-    ...last,
-    // A file created inside the group is an addition of the change, however often it was edited after.
-    status: first.status === "A" && last.status !== "D" ? "A" : last.status,
-    oldPath: first.oldPath,
-    similarity: first.similarity,
-    added: total((c) => c.added),
-    deleted: total((c) => c.deleted),
-    binary: changes.some((c) => c.binary)
-  };
-}
-
-// packages/history/src/imported.ts
-function detectImportedHistory(view, treeFiles, options = {}) {
-  const { share = 0.5, minFiles = 20 } = options;
-  if (treeFiles.length < minFiles) return [];
-  const current = new Set(treeFiles);
-  const found = [];
-  let addedBefore = 0;
-  for (const commit of view.commits) {
-    const atStart = commit.parentCount === 0 || addedBefore < minFiles;
-    addedBefore += commit.changes.filter((c) => c.status === "A").length;
-    if (!atStart || commit.boundary) continue;
-    const kept = new Set(
-      commit.changes.filter((c) => c.status === "A" && current.has(c.fileId)).map((c) => c.fileId)
-    );
-    const ratio = kept.size / treeFiles.length;
-    if (ratio >= share) {
-      found.push({ sha: commit.sha, files: kept.size, share: ratio, committerDate: commit.committerDate });
-    }
-  }
-  return found;
-}
-
-// packages/history/src/trailers.ts
-function hasCodeHealthTrailer(message) {
-  const paragraphs = message.replace(/\r\n/g, "\n").trim().split(/\n[ \t]*\n/);
-  if (paragraphs.length < 2) return false;
-  return paragraphs[paragraphs.length - 1].split("\n").some((line) => /^code-health[ \t]*:/i.test(line));
-}
-
-// packages/history/src/tree.ts
-async function listTree(repoPath, ref) {
-  const out2 = await runGit(repoPath, ["ls-tree", "-r", "--name-only", "-z", "--full-tree", ref]);
-  return out2.split("\0").filter((p) => p !== "").sort();
-}
-async function readBlobAt(repoPath, ref, path) {
-  try {
-    return await runGit(repoPath, ["cat-file", "blob", `${ref}:${path}`]);
-  } catch {
-    return void 0;
-  }
-}
-function parseBlameIgnoreRevs(text) {
-  const revs = [];
-  for (const line of text.split("\n")) {
-    const token = line.replace(/#.*/, "").trim().split(/\s+/)[0] ?? "";
-    if (/^[0-9a-f]{7,40}$/i.test(token)) revs.push(token.toLowerCase());
-  }
-  return revs;
-}
-async function readBlameIgnoreRevs(repoPath, ref, file) {
-  const text = await readBlobAt(repoPath, ref, file);
-  return text === void 0 ? [] : parseBlameIgnoreRevs(text);
-}
-var isSet = (value) => value === "set" || value === "true";
-async function readPathAttributes(repoPath, ref, paths, treeFiles) {
-  const result = { generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set() };
-  const hasAttributes = treeFiles.some((p) => p === ".gitattributes" || p.endsWith("/.gitattributes"));
-  if (!hasAttributes || paths.length === 0) return result;
-  const input = paths.join("\0") + "\0";
-  const base = ["check-attr", "-z", "--stdin"];
-  const names = ["linguist-generated", "linguist-vendored"];
-  let out2;
-  try {
-    out2 = await runGit(repoPath, ref === void 0 ? [...base, ...names] : [...base, `--source=${ref}`, ...names], { input });
-  } catch {
-    out2 = await runGit(repoPath, [...base, ...names], { input });
-  }
-  const tokens = out2.split("\0");
-  for (let i2 = 0; i2 + 2 < tokens.length; i2 += 3) {
-    const [path, attribute, value] = [tokens[i2], tokens[i2 + 1], tokens[i2 + 2]];
-    if (!isSet(value)) continue;
-    if (attribute === "linguist-generated") result.generated.add(path);
-    else if (attribute === "linguist-vendored") result.vendored.add(path);
-  }
-  return result;
-}
-
-// packages/history/src/noise.ts
-var DEFAULT_LOCKFILES = [
-  "package-lock.json",
-  "npm-shrinkwrap.json",
-  "yarn.lock",
-  "pnpm-lock.yaml",
-  "bun.lock",
-  "bun.lockb",
-  "Cargo.lock",
-  "Gemfile.lock",
-  "Pipfile.lock",
-  "poetry.lock",
-  "uv.lock",
-  "composer.lock",
-  "go.sum",
-  "packages.lock.json",
-  "gradle.lockfile",
-  "Podfile.lock",
-  "pubspec.lock",
-  "mix.lock",
-  "flake.lock"
-];
-var InvalidPatternError = class extends Error {
-  pattern;
-  constructor(pattern, reason, kind = "bot pattern") {
-    super(`invalid ${kind} "${pattern}": ${reason}`);
-    this.name = "InvalidPatternError";
-    this.pattern = pattern;
-  }
-};
-function compileBotPattern(pattern) {
-  try {
-    return new RegExp(pattern, "i");
-  } catch (error) {
-    throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error));
-  }
-}
-function mergeAcrossCommits(perCommit) {
-  const byFile = /* @__PURE__ */ new Map();
-  for (const files of perCommit) {
-    for (const file of files) {
-      const entries = byFile.get(file.fileId);
-      if (entries) entries.push(file);
-      else byFile.set(file.fileId, [file]);
-    }
-  }
-  return [...byFile.values()].map(mergeFileChanges);
-}
-function compileIssuePattern(pattern) {
-  try {
-    return new RegExp(pattern);
-  } catch (error) {
-    throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error), "issue pattern");
-  }
-}
-var DEFAULT_MAX_CHANGESET_SIZE = historyDefaults.maxChangesetSize;
-var isPureRename = (c) => c.status === "R" && c.similarity === 100 && (c.added ?? 0) === 0 && (c.deleted ?? 0) === 0;
-async function filterHistory(repoPath, view, options = {}) {
-  const maxChangesetSize = options.maxChangesetSize ?? DEFAULT_MAX_CHANGESET_SIZE;
-  const lockfileNames = options.lockfiles === false ? [] : options.lockfiles ?? DEFAULT_LOCKFILES;
-  const lockfileSet = new Set(lockfileNames);
-  const useAttributes = options.gitattributes ?? true;
-  const blameFile = options.blameIgnoreRevs === void 0 ? ".git-blame-ignore-revs" : options.blameIgnoreRevs;
-  const botPatterns = options.botPatterns ?? [];
-  const excludeImported = options.excludeImported ?? true;
-  const excludeSuiteCommits = options.excludeSuiteCommits ?? false;
-  const grouping = options.grouping ?? { mode: "off" };
-  const excluded = compileGlobs(options.exclude ?? []);
-  const bots = botPatterns.map(compileBotPattern);
-  const treeFiles = await listTree(repoPath, view.headSha);
-  const imported = detectImportedHistory(view, treeFiles, options.importDetection);
-  const importedShas = new Set(excludeImported ? imported.map((i2) => i2.sha) : []);
-  const ignoredRevs = blameFile === false ? [] : await readBlameIgnoreRevs(repoPath, view.headSha, blameFile);
-  const attributes = useAttributes ? await readPathAttributes(
-    repoPath,
-    view.headSha,
-    [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort(),
-    treeFiles
-  ) : { generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set() };
-  const dropped = {
-    outsideWindow: 0,
-    shallowBoundaryCommits: 0,
-    importedCommits: 0,
-    blameIgnoredCommits: 0,
-    botCommits: 0,
-    suiteCommits: 0,
-    pureRenames: 0,
-    excludedByGlob: 0,
-    lockfiles: 0,
-    generated: 0,
-    vendored: 0,
-    emptyAfterFiltering: 0
-  };
-  const changes = [];
-  const commitDropped = (commit) => {
-    if (options.since !== void 0 && commit.committerDate < options.since) return countOut("outsideWindow");
-    if (options.until !== void 0 && commit.committerDate >= options.until) return countOut("outsideWindow");
-    if (commit.boundary) return countOut("shallowBoundaryCommits");
-    if (importedShas.has(commit.sha)) return countOut("importedCommits");
-    if (ignoredRevs.some((rev) => commit.sha.startsWith(rev))) return countOut("blameIgnoredCommits");
-    const author = `${commit.mappedName} <${commit.mappedEmail}>`;
-    if (bots.some((re) => re.test(author))) return countOut("botCommits");
-    if (options.nonPerson?.isNonPerson(commit.mappedName, commit.mappedEmail) || options.nonPerson?.isNonPerson(commit.authorName, commit.authorEmail)) {
-      return countOut("botCommits");
-    }
-    if (excludeSuiteCommits && hasCodeHealthTrailer(commit.message)) return countOut("suiteCommits");
-    return false;
-  };
-  function countOut(key) {
-    dropped[key]++;
-    return true;
-  }
-  const survivors = [];
-  for (const commit of view.commits) {
-    if (commitDropped(commit)) continue;
-    const files = [];
-    for (const change of commit.changes) {
-      if (isPureRename(change)) {
-        dropped.pureRenames++;
-      } else if (excluded(change.path)) {
-        dropped.excludedByGlob++;
-      } else if (lockfileSet.has(change.path.slice(change.path.lastIndexOf("/") + 1))) {
-        dropped.lockfiles++;
-      } else if (attributes.generated.has(change.path)) {
-        dropped.generated++;
-      } else if (attributes.vendored.has(change.path)) {
-        dropped.vendored++;
-      } else {
-        files.push(change);
-      }
-    }
-    if (files.length === 0) {
-      dropped.emptyAfterFiltering++;
-      continue;
-    }
-    survivors.push({ commit, files });
-  }
-  const groups = groupCommits(
-    survivors.map(({ commit }) => ({ message: commit.message, author: commit.mappedEmail, date: commit.committerDate })),
-    grouping,
-    compileIssuePattern
-  );
-  for (const group of groups) {
-    const members = group.map((index) => survivors[index]);
-    const files = members.length === 1 ? members[0].files : mergeAcrossCommits(members.map((m) => m.files));
-    changes.push({
-      id: members[0].commit.sha,
-      shas: members.map(({ commit }) => commit.sha),
-      committerDate: Math.max(...members.map(({ commit }) => commit.committerDate)),
-      authors: [...new Set(members.map(({ commit }) => commit.mappedEmail))],
-      files,
-      oversized: files.length > maxChangesetSize,
-      suiteCommit: members.some(({ commit }) => hasCodeHealthTrailer(commit.message))
-    });
-  }
-  return {
-    changes,
-    imported,
-    filtersApplied: {
-      excludeGlobs: [...options.exclude ?? []],
-      lockfiles: lockfileNames.length > 0,
-      gitattributes: useAttributes,
-      blameIgnoreRevs: blameFile === false ? null : blameFile,
-      botPatterns: [...botPatterns],
-      nonPerson: options.nonPerson?.applied ?? { builtinBotPatterns: [], builtinServiceNames: [], servicePatterns: [], decisions: 0 },
-      maxChangesetSize,
-      excludeImported,
-      excludeSuiteCommits,
-      grouping: {
-        mode: grouping.mode,
-        issuePattern: grouping.mode === "issue-key" ? grouping.pattern : null,
-        windowSeconds: grouping.mode === "author-window" ? grouping.windowSeconds : grouping.mode === "issue-key" ? ISSUE_KEY_WINDOW_SECONDS : null,
-        mergedCommits: survivors.length - changes.length
-      },
-      dropped,
-      oversizedChanges: changes.filter((c) => c.oversized).length
-    }
-  };
 }
 
 // packages/history/src/read.ts
@@ -6621,9 +6309,6 @@ __export(outcome_exports, {
   name: () => name8
 });
 
-// packages/cochange/src/risk/fix-patterns.ts
-var defaultFixPatterns = ["^fix(es|ed)?\\b", "^bugfix", "^hotfix", "\\bfix(es|ed)?\\b.*#\\d+", "^merge .*\\b(fix|hotfix|bugfix)[/-]"];
-
 // packages/complexity/src/outcome.ts
 import { existsSync as existsSync6 } from "node:fs";
 
@@ -7016,8 +6701,13 @@ function stampOf(input) {
 // packages/complexity/src/outcome.ts
 var round3 = (value) => Math.round(value * 1e3) / 1e3;
 var mean = (values) => values.length === 0 ? null : round3(values.reduce((sum, value) => sum + value, 0) / values.length);
-var FIX_SUBJECTS = defaultFixPatterns.map((pattern) => new RegExp(pattern, "i"));
-var isFixSubject = (subject) => FIX_SUBJECTS.some((pattern) => pattern.test(subject));
+function fixOfChange(change, fix, messageOf) {
+  for (const sha of change.shas) {
+    const found = findFix(fix, sha, [messageOf(sha)]);
+    if (found !== null) return found;
+  }
+  return null;
+}
 var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 var iso = (seconds) => new Date(seconds * 1e3).toISOString();
 async function resolveRevision2(root, rev) {
@@ -7045,19 +6735,21 @@ async function changedFiles(root, earlier, later) {
   }
   return files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
-function changeFigures(changes, members, subjectOf) {
+function changeFigures(changes, members, fix, messageOf) {
   const churn = [];
-  let fixes = 0;
+  const fixes = [];
   for (const change of changes) {
     const touched = change.files.filter((file) => members.has(file.path) || members.has(file.fileId));
     if (touched.length === 0) continue;
     churn.push(touched.reduce((sum, file) => sum + (file.added ?? 0) + (file.deleted ?? 0), 0));
-    if (change.shas.some((sha) => isFixSubject(subjectOf(sha)))) fixes++;
+    const found = fixOfChange(change, fix, messageOf);
+    if (found !== null) fixes.push(found);
   }
   return {
     changes: churn.length,
     linesChurnedPerChange: mean(churn),
-    fixCommitRate: churn.length === 0 ? null : round3(fixes / churn.length)
+    fixCommitRate: churn.length === 0 ? null : round3(fixes.length / churn.length),
+    fixCommits: fixEvidence(fixes)
   };
 }
 function shapeFigures(files) {
@@ -7115,8 +6807,8 @@ async function measureOutcome(root, settings, exclude, options) {
   const headDate = history.view.headDate;
   const fullEnd = monthsBefore(date, -settings.windowMonths);
   const anchor = Math.min(fullEnd, headDate);
-  const subjects = new Map(history.view.commits.map((commit) => [commit.sha, commit.message.split("\n")[0] ?? ""]));
-  const subjectOf = (sha) => subjects.get(sha) ?? "";
+  const messages = new Map(history.view.commits.map((commit) => [commit.sha, commit.message]));
+  const messageOf = (sha) => messages.get(sha) ?? "";
   const eligible = history.filtered.changes.filter((change) => !change.shas.some((sha) => series.has(sha)));
   const beforeChanges = eligible.filter((change) => change.committerDate >= monthsBefore(date, settings.windowMonths) && change.committerDate < date);
   const afterChanges = eligible.filter((change) => change.committerDate > date && change.committerDate <= anchor);
@@ -7140,7 +6832,9 @@ async function measureOutcome(root, settings, exclude, options) {
     scores
   );
   const controlSet = new Set(control);
-  const figures = (changes, members) => changeFigures(changes, members, subjectOf);
+  const figures = (changes, members) => changeFigures(changes, members, settings.fix, messageOf);
+  const inWindows = [...beforeChanges, ...afterChanges];
+  const fixConvention = checkFixConvention(inWindows.length, inWindows.filter((change) => fixOfChange(change, settings.fix, messageOf) !== null).length);
   const changeCost = {
     actedOn: { before: figures(beforeChanges, actedEarlier), after: figures(afterChanges, actedLater) },
     comparison: { before: figures(beforeChanges, controlSet), after: figures(afterChanges, controlSet) }
@@ -7197,6 +6891,7 @@ async function measureOutcome(root, settings, exclude, options) {
       before: { since: iso(monthsBefore(date, settings.windowMonths)), until: iso(date) },
       after: { since: iso(date), until: iso(anchor), complete: fullEnd <= headDate }
     },
+    fixConvention,
     changeCost,
     rank,
     gamingCheck: { actedOn: shape, suspected },
