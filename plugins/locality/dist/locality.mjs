@@ -1153,6 +1153,7 @@ async function filterHistory(repoPath, view, options = {}) {
       gitattributes: useAttributes,
       blameIgnoreRevs: blameFile === false ? null : blameFile,
       botPatterns: [...botPatterns],
+      nonPerson: options.nonPerson?.applied ?? { builtinBotPatterns: [], builtinServiceNames: [], servicePatterns: [], decisions: 0 },
       maxChangesetSize,
       excludeImported,
       excludeSuiteCommits,

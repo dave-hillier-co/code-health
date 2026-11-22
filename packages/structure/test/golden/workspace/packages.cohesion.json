@@ -532,6 +532,12 @@
     },
     "lockfiles": true,
     "maxChangesetSize": 30,
+    "nonPerson": {
+      "builtinBotPatterns": [],
+      "builtinServiceNames": [],
+      "decisions": 0,
+      "servicePatterns": []
+    },
     "oversizedChanges": 0
   },
   "inputs": {

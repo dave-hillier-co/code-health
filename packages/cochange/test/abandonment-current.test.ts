@@ -58,7 +58,7 @@ test("files whose people have left are abandoned: engine, parser at exactly 90 p
 
 test("the output has developers as counts and never a name or an address", async () => {
   const { stdout } = await abandonment("current", "--limit", "all");
-  for (const hidden of ["example.com", "Ann", "Bob", "Cy", "Di ", "Eve", "dependabot"]) expect(stdout).not.toContain(hidden);
+  for (const hidden of ["example.com", "Ann", "Bob", "Cy", "Di ", "Eve", "dependabot[bot]"]) expect(stdout).not.toContain(hidden);
   expectGolden("abandonment", "abandonment.current", stdout);
 });
 

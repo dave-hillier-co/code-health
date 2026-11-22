@@ -957,6 +957,7 @@ async function filterHistory(repoPath, view, options = {}) {
       gitattributes: useAttributes,
       blameIgnoreRevs: blameFile === false ? null : blameFile,
       botPatterns: [...botPatterns],
+      nonPerson: options.nonPerson?.applied ?? { builtinBotPatterns: [], builtinServiceNames: [], servicePatterns: [], decisions: 0 },
       maxChangesetSize,
       excludeImported,
       excludeSuiteCommits,
@@ -1750,7 +1751,16 @@ function createNonPersonMatcher(rules9) {
     if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
     return null;
   };
-  return { classify, isNonPerson: (name15, email) => classify(name15, email) !== null };
+  return {
+    classify,
+    isNonPerson: (name15, email) => classify(name15, email) !== null,
+    applied: {
+      builtinBotPatterns: [...BUILTIN_BOT_PATTERNS],
+      builtinServiceNames: [...BUILTIN_SERVICE_NAMES],
+      servicePatterns: [...rules9.servicePatterns],
+      decisions: rules9.decisions.length
+    }
+  };
 }
 function findAgentTrailers(message, extraPatterns) {
   const patterns = [...BUILTIN_AGENT_PATTERNS, ...extraPatterns].map((p) => ({ pattern: p, re: compilePattern(p) }));
@@ -3586,21 +3596,25 @@ async function backtestCommand(context) {
     thresholdPercent: settings.abandonmentThreshold,
     components: readComponents(context.config.effective.components)
   });
-  const abandonedBefore = new Set(measureCurrent(before.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => f.path));
-  const abandonedAfter = new Set(measureCurrent(after.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => f.path));
-  const present = new Set(before.model.files.map((f) => f.path));
-  const survivors = new Set(after.model.files.map((f) => f.path));
-  const candidates = [...present].filter((path) => survivors.has(path) && !abandonedBefore.has(path));
-  const probability = new Map(result.fileRisks.map((f) => [f.path, f.probability]));
-  const predicted = new Set(candidates.filter((path) => probability.get(path) * 100 >= settings.atRiskProbability));
-  const actual = new Set(candidates.filter((path) => abandonedAfter.has(path)));
+  const positionOf = (sha) => history.view.commits.find((c) => c.sha === sha).position;
+  const identityBefore = (path) => history.view.renames.resolve(path, positionOf(startSha));
+  const identityAfter = (path) => history.view.renames.resolve(path, positionOf(outcomeSha));
+  const pathOf2 = new Map(before.model.files.map((f) => [identityBefore(f.path), f.path]));
+  const abandonedBefore = new Set(measureCurrent(before.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => identityBefore(f.path)));
+  const abandonedAfter = new Set(measureCurrent(after.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => identityAfter(f.path)));
+  const present = new Set(pathOf2.keys());
+  const survivors = new Set(after.model.files.map((f) => identityAfter(f.path)));
+  const candidates = [...present].filter((id) => survivors.has(id) && !abandonedBefore.has(id));
+  const probability = new Map(result.fileRisks.map((f) => [identityBefore(f.path), f.probability]));
+  const predicted = new Set(candidates.filter((id) => probability.get(id) * 100 >= settings.atRiskProbability));
+  const actual = new Set(candidates.filter((id) => abandonedAfter.has(id)));
   const score = scorePredictions(predicted, actual);
-  const predictedGone = [...present].filter((path) => !abandonedBefore.has(path) && !survivors.has(path) && probability.get(path) * 100 >= settings.atRiskProbability).length;
-  const rows = candidates.filter((path) => predicted.has(path) || actual.has(path)).map((path) => ({
-    path,
-    score: round4(probability.get(path)),
-    probability: round4(probability.get(path)),
-    outcome: predicted.has(path) ? actual.has(path) ? "hit" : "false-alarm" : "missed"
+  const predictedGone = [...present].filter((id) => !abandonedBefore.has(id) && !survivors.has(id) && probability.get(id) * 100 >= settings.atRiskProbability).length;
+  const rows = candidates.filter((id) => predicted.has(id) || actual.has(id)).map((id) => ({
+    path: pathOf2.get(id),
+    score: round4(probability.get(id)),
+    probability: round4(probability.get(id)),
+    outcome: predicted.has(id) ? actual.has(id) ? "hit" : "false-alarm" : "missed"
   })).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))).slice(0, top);
   return {
     inputs: {
@@ -5402,9 +5416,13 @@ async function simulateCommand(context) {
   const componentRows = result.componentRisks.map((c) => {
     const loss = reportLoss(c.lines, c.baselineLines, c.peopleLines);
     const tailRatio = loss.increment.atRisk[0].tailRatio;
-    const concentrated = c.name !== UNASSIGNED && tailRatio !== null && tailRatio >= settings.concentratedTailRatio;
+    const guideline = settings.concentratedTailRatio;
+    const concentrated = c.name !== UNASSIGNED && tailRatio !== null && tailRatio >= guideline;
     return {
       path: c.name,
+      tailRatio,
+      guideline,
+      ratioToGuideline: tailRatio === null ? null : round4(tailRatio / guideline),
       peopleLines: c.peopleLines,
       abandonedLines: c.baselineLines,
       expectedLoss: loss.increment.expected,
@@ -5434,7 +5452,9 @@ async function simulateCommand(context) {
         source,
         ratePerPeriod: selection.mode === "rate" ? round4(selection.rate) : null,
         leavers: selection.mode === "k-leavers" ? selection.k : null,
-        leaverProbability
+        leaverProbability,
+        // Historical mode samples the observed rates, so a configured rate has no effect on it.
+        configuredRateIgnored: sim.mode === "historical" && settings.turnoverRate !== null
       },
       population: { activeDevelopers: result.activeDevelopers, files: result.population.files, peopleLines: result.population.peopleLines },
       loss: {
@@ -5716,7 +5736,7 @@ var command4 = analysisCommand(name4, {
       const lastChanged = dates.length === 0 ? null : Math.max(...dates);
       const hotspot = rankedBy.get(path);
       const { partners } = partnersOf(couplingChanges, path);
-      const alongside = partners.filter((partner) => present.has(partner.path) && lastStatus.get(partner.path) !== "D").filter((partner) => reachesDegree({ a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner }, settings.minDegree)).map((partner) => ({
+      const alongside = partners.filter((partner) => present.has(partner.path) && lastStatus.get(partner.path) !== "D").filter((partner) => partner.support >= settings.minSupport).map((partner) => ({
         path: partner.path,
         degree: round1(
           degreeOf({ a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner })
@@ -5724,9 +5744,11 @@ var command4 = analysisCommand(name4, {
         confidence: round1(confidenceOf(partner.support, partner.changesFocus)),
         reverseConfidence: round1(confidenceOf(partner.support, partner.changesPartner)),
         support: partner.support,
-        distance: treeDistance(path, partner.path)
-      })).filter((partner) => partner.support >= settings.minSupport).sort((x, y) => y.confidence - x.confidence || y.support - x.support || compareBytes(x.path, y.path));
-      const note = !exists2 && dates.length === 0 ? `"${asked}" is not in the tree at the analysed commit and has no history in the window: a new file, or a wrong path.` : dates.length === 0 ? `No revisions in the ${settings.windowMonths} month window, so there is no co-change evidence for it.` : alongside.length === 0 ? `Nothing changes with it often enough (support ${settings.minSupport}, degree ${settings.minDegree} %).` : null;
+        distance: treeDistance(path, partner.path),
+        // The degree is a guideline: partners under it are listed after those at or above it, not dropped.
+        aboveGuideline: reachesDegree({ a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner }, settings.minDegree)
+      })).sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.confidence - x.confidence || y.support - x.support || compareBytes(x.path, y.path));
+      const note = !exists2 && dates.length === 0 ? `"${asked}" is not in the tree at the analysed commit and has no history in the window: a new file, or a wrong path.` : dates.length === 0 ? `No revisions in the ${settings.windowMonths} month window, so there is no co-change evidence for it.` : alongside.length === 0 ? `Nothing shares at least ${settings.minSupport} changes with it.` : !alongside.some((partner) => partner.aboveGuideline) ? `No partner reaches the degree guideline of ${settings.minDegree} %. The partners listed are below it.` : null;
       return {
         path,
         requested: asked === path ? null : asked,
@@ -5743,7 +5765,7 @@ var command4 = analysisCommand(name4, {
       };
     });
     return {
-      inputs: { paths: rows.map((row2) => row2.requested ?? row2.path), partners: limit },
+      inputs: { paths: rows.map((row2) => row2.requested ?? row2.path), partners: limit, degreeGuideline: settings.minDegree },
       results: rows,
       columns: ["path", "frequency", "recentRevisions", "lastChanged", "recommendation", "alongside", "note"]
     };
@@ -6921,7 +6943,7 @@ function writePlan(root, plan) {
 var CONFLICT_SCORE = 100;
 var compare5 = (x, y) => x < y ? -1 : x > y ? 1 : 0;
 function conflict(kind, identities, detail) {
-  return { score: CONFLICT_SCORE, kind, identities: [...new Set(identities)].sort(compare5), detail, commits: null, lines: null, linesShare: null };
+  return { score: CONFLICT_SCORE, kind, identities: [...new Set(identities)].sort(compare5), detail, commits: null, lines: null, linesShare: null, aboveGuideline: null };
 }
 function checkMapping(analysis, detail) {
   const findings = [];
@@ -6964,7 +6986,6 @@ function checkMapping(analysis, detail) {
   for (const node of analysis.nodes.filter((n) => analysis.unresolved.has(n.key))) {
     const lines = detail.linesByNode.get(node.key) ?? 0;
     const commits = detail.windowCommitsByNode.get(node.key) ?? 0;
-    if (lines === 0 && commits < significantCommits) continue;
     const related = analysis.proposals.filter((p) => p.members.includes(node.key)).flatMap((p) => p.members).filter((m) => m !== node.key);
     findings.push({
       score: lines,
@@ -6973,10 +6994,11 @@ function checkMapping(analysis, detail) {
       detail: `proposed to be the same person as ${[...new Set(related)].sort(compare5).join("; ")}, last active ${isoDay5(node.last)}`,
       commits,
       lines,
-      linesShare: peopleLines === 0 ? 0 : Math.round(lines / peopleLines * 1e3) / 10
+      linesShare: peopleLines === 0 ? 0 : Math.round(lines / peopleLines * 1e3) / 10,
+      aboveGuideline: lines > 0 || commits >= significantCommits
     });
   }
-  findings.sort((x, y) => y.score - x.score || compare5(x.kind, y.kind) || compare5(x.identities.join(), y.identities.join()));
+  findings.sort((x, y) => y.score - x.score || (y.commits ?? 0) - (x.commits ?? 0) || compare5(x.kind, y.kind) || compare5(x.identities.join(), y.identities.join()));
   return { findings, failed: findings.some((f) => f.kind !== "unmapped") };
 }
 
@@ -7069,7 +7091,7 @@ var command8 = {
           inputs: inputs(),
           extra: { measurement: detail.measurement },
           results: findings,
-          columns: ["kind", "identities", "detail", "commits", "lines", "linesShare"],
+          columns: ["kind", "identities", "detail", "commits", "lines", "linesShare", "aboveGuideline"],
           failed
         };
       }
@@ -10402,7 +10424,7 @@ var trend_exports = {};
 __export(trend_exports, {
   DEFAULT_SAMPLES: () => DEFAULT_SAMPLES,
   MAX_SAMPLES: () => MAX_SAMPLES,
-  TREND_THRESHOLD: () => TREND_THRESHOLD,
+  TREND_GUIDELINE: () => TREND_GUIDELINE,
   command: () => command14,
   name: () => name14,
   pickSamples: () => pickSamples
@@ -10410,17 +10432,20 @@ __export(trend_exports, {
 var name14 = "trend";
 var DEFAULT_SAMPLES = 10;
 var MAX_SAMPLES = 500;
-var TREND_THRESHOLD = 0.2;
+var TREND_GUIDELINE = 0.2;
 function pickSamples(revisions, count2) {
   if (revisions.length <= count2) return [...revisions];
   const last = revisions.length - 1;
   return Array.from({ length: count2 }, (_, i) => revisions[Math.round(i * last / (count2 - 1))]);
 }
-function directionOf(first, last, samples) {
-  if (samples < 2 || first === null || last === null) return "insufficient";
-  const change2 = first === 0 ? last === 0 ? 0 : 1 : (last - first) / first;
-  if (change2 >= TREND_THRESHOLD) return "worsening";
-  if (change2 <= -TREND_THRESHOLD) return "improving";
+function changeRatioOf(first, last) {
+  if (first === null || last === null) return null;
+  return first === 0 ? last === 0 ? 0 : 1 : (last - first) / first;
+}
+function directionOf(ratio, samples) {
+  if (samples < 2 || ratio === null) return "insufficient";
+  if (ratio >= TREND_GUIDELINE) return "worsening";
+  if (ratio <= -TREND_GUIDELINE) return "improving";
   return "stable";
 }
 var delta = (first, last) => ({
@@ -10462,14 +10487,20 @@ var command14 = analysisCommand(name14, {
     );
     const first = rows[0];
     const last = rows.at(-1);
+    const changeRatio = changeRatioOf(first.complexity, last.complexity);
+    const measured = rows.filter((r) => r.complexity !== null);
+    const peak = measured.reduce((best, r) => best === null || r.complexity > best.complexity ? r : best, null);
     return {
-      inputs: { path: file, samples, threshold: TREND_THRESHOLD },
+      inputs: { path: file, samples, guideline: TREND_GUIDELINE },
       results: {
         path: file,
         revisions: revisions.length,
         samples: rows,
         summary: {
-          direction: directionOf(first.complexity, last.complexity, rows.length),
+          direction: directionOf(changeRatio, rows.length),
+          changeRatio: changeRatio === null ? null : Math.round(changeRatio * 1e4) / 1e4,
+          guideline: TREND_GUIDELINE,
+          peak: peak === null ? null : { complexity: peak.complexity, date: peak.date, commit: peak.commit },
           complexity: delta(first.complexity, last.complexity),
           lines: delta(first.lines, last.lines)
         }

@@ -30,7 +30,7 @@ const everyCommand = [
   ["abandonment", "backtest", "--at", "2024-02-29"],
   ["successors", auth],
 ];
-const identities = /Ann Active|Bob Builder|Cy Gone|Di Departed|Eve Newer|example\.com|dependabot/;
+const identities = /Ann Active|Bob Builder|Cy Gone|Di Departed|Eve Newer|example\.com|dependabot\[bot\]|49699333/;
 
 test("every command that reasons about people refuses until the repository opts in, and leaves nothing behind", async () => {
   configure(null);

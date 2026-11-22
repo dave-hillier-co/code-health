@@ -144,6 +144,17 @@
             "type": "string"
           }
         },
+        "nonPerson": {
+          "type": "object",
+          "properties": {
+            "builtinBotPatterns": { "type": "array", "items": { "type": "string" } },
+            "builtinServiceNames": { "type": "array", "items": { "type": "string" } },
+            "servicePatterns": { "type": "array", "items": { "type": "string" } },
+            "decisions": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["builtinBotPatterns", "builtinServiceNames", "servicePatterns", "decisions"],
+          "additionalProperties": false
+        },
         "maxChangesetSize": {
           "type": "integer",
           "minimum": 1
@@ -259,6 +270,7 @@
         "gitattributes",
         "blameIgnoreRevs",
         "botPatterns",
+        "nonPerson",
         "maxChangesetSize",
         "excludeImported",
         "excludeSuiteCommits",

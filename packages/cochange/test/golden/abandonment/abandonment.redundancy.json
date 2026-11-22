@@ -72,6 +72,41 @@
     },
     "lockfiles": true,
     "maxChangesetSize": 30,
+    "nonPerson": {
+      "builtinBotPatterns": [
+        "\\[bot\\]",
+        "^dependabot",
+        "^renovate",
+        "^github-actions",
+        "^greenkeeper",
+        "^snyk-bot",
+        "^mergify",
+        "^imgbot",
+        "^allcontributors",
+        "^pre-commit-ci",
+        "<bot@renovateapp\\.com>"
+      ],
+      "builtinServiceNames": [
+        "build",
+        "builds",
+        "buildbot",
+        "jenkins",
+        "release",
+        "releases",
+        "ci",
+        "deploy",
+        "deployer",
+        "automation",
+        "teamcity",
+        "travis",
+        "circleci",
+        "gitlab ci",
+        "azure pipelines",
+        "service account"
+      ],
+      "decisions": 0,
+      "servicePatterns": []
+    },
     "oversizedChanges": 0
   },
   "inputs": {
