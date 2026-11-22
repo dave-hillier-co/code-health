@@ -17,6 +17,11 @@ export function sessionsWhereDistanceCosts(sessions: Sessions): void {
   sessions.tasks(START, distanceCostsSpecs());
 }
 
+/** The tasks of `sessionsWhereDistanceCosts`, done entirely through Bash calls, each task also making one call that cannot be parsed. */
+export function shellSessionsWhereDistanceCosts(sessions: Sessions): void {
+  sessions.shellTasks(START, distanceCostsSpecs(), 1);
+}
+
 /**
  * The same tasks as `sessionsWhereDistanceCosts`, each run by a subagent in a worktree that has since been deleted:
  * its paths are `<worktree>/src/...` and only map to the repo through the worktree rule.

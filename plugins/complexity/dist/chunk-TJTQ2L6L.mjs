@@ -6848,6 +6848,711 @@ function folderOf(path) {
   return slash === -1 ? "" : path.slice(0, slash);
 }
 
+// packages/transcripts/src/shell-command.ts
+import { posix as posix2 } from "node:path";
+var LITERAL_DOLLAR = "";
+var plain = (word) => word.text.replaceAll(LITERAL_DOLLAR, "$");
+var OPERATORS = ["&>>", "<<<", "<<-", "&&", "||", "|&", ";;", "<<", ">>", ">&", ">|", "&>", "<&", ";", "|", "&", "(", ")", ">", "<"];
+function tokenize(source) {
+  const tokens = [];
+  const pending = [];
+  let expectDelimiter = null;
+  let text = "";
+  let unquoted = "";
+  let inWord = false;
+  let dynamic = false;
+  let glob = false;
+  let quoted = false;
+  let i2 = 0;
+  const flush = () => {
+    if (!inWord) return;
+    const hasBrace = /\{[^{}]*(,|\.\.)[^{}]*\}/.test(unquoted);
+    const word = { t: "word", text, dynamic: dynamic || hasBrace, glob, quoted };
+    if (!word.dynamic) word.text = plain(word);
+    if (expectDelimiter !== null) {
+      pending.push({ delimiter: plain(word), strip: expectDelimiter.strip });
+      expectDelimiter = null;
+    } else {
+      tokens.push(word);
+    }
+    text = "";
+    unquoted = "";
+    inWord = false;
+    dynamic = false;
+    glob = false;
+    quoted = false;
+  };
+  const add = (char, isQuoted) => {
+    inWord = true;
+    text += char;
+    if (!isQuoted) unquoted += char;
+    else quoted = true;
+  };
+  const dollar = (insideDouble) => {
+    const next = source[i2 + 1];
+    if (next === "(") return false;
+    if (next === "'" && !insideDouble) {
+      dynamic = true;
+      inWord = true;
+      text += "$";
+      i2++;
+      return true;
+    }
+    inWord = true;
+    if (next === "{") {
+      dynamic = true;
+      const end = source.indexOf("}", i2);
+      if (end === -1) return false;
+      text += source.slice(i2, end + 1);
+      i2 = end + 1;
+      return true;
+    }
+    const name10 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i2 + 1));
+    if (name10 !== null) {
+      dynamic = true;
+      text += `$${name10[0]}`;
+      i2 += 1 + name10[0].length;
+      return true;
+    }
+    if (next === void 0 || /\s|["'`]/.test(next)) {
+      text += LITERAL_DOLLAR;
+      i2++;
+      return true;
+    }
+    dynamic = true;
+    text += `$${next}`;
+    i2 += 2;
+    return true;
+  };
+  while (i2 < source.length) {
+    const char = source[i2];
+    if (char === "\\" && source[i2 + 1] === "\n") {
+      i2 += 2;
+      continue;
+    }
+    if (char === " " || char === "	" || char === "\r") {
+      flush();
+      i2++;
+      continue;
+    }
+    if (char === "\n") {
+      flush();
+      tokens.push({ t: "op", op: "\n" });
+      i2++;
+      for (const heredoc of pending.splice(0)) {
+        while (i2 < source.length) {
+          let end = source.indexOf("\n", i2);
+          if (end === -1) end = source.length;
+          const line = source.slice(i2, end);
+          i2 = Math.min(end + 1, source.length);
+          if ((heredoc.strip ? line.replace(/^\t+/, "") : line) === heredoc.delimiter) break;
+        }
+      }
+      continue;
+    }
+    if (char === "#" && !inWord) {
+      while (i2 < source.length && source[i2] !== "\n") i2++;
+      continue;
+    }
+    if (char === "'") {
+      const end = source.indexOf("'", i2 + 1);
+      if (end === -1) return null;
+      inWord = true;
+      quoted = true;
+      text += source.slice(i2 + 1, end).replaceAll("$", LITERAL_DOLLAR);
+      i2 = end + 1;
+      continue;
+    }
+    if (char === '"') {
+      inWord = true;
+      quoted = true;
+      i2++;
+      let closed = false;
+      while (i2 < source.length) {
+        const c = source[i2];
+        if (c === '"') {
+          closed = true;
+          i2++;
+          break;
+        }
+        if (c === "`") return null;
+        if (c === "\\" && i2 + 1 < source.length) {
+          const escaped = source[i2 + 1];
+          if (escaped === "\n") {
+            i2 += 2;
+          } else if ('"\\$`'.includes(escaped)) {
+            text += escaped === "$" ? LITERAL_DOLLAR : escaped;
+            i2 += 2;
+          } else {
+            text += `\\${escaped}`;
+            i2 += 2;
+          }
+          continue;
+        }
+        if (c === "$") {
+          if (!dollar(true)) return null;
+          continue;
+        }
+        text += c;
+        i2++;
+      }
+      if (!closed) return null;
+      continue;
+    }
+    if (char === "\\") {
+      if (i2 + 1 >= source.length) return null;
+      add(source[i2 + 1] === "$" ? LITERAL_DOLLAR : source[i2 + 1], true);
+      i2 += 2;
+      continue;
+    }
+    if (char === "`") return null;
+    if (char === "$") {
+      if (!dollar(false)) return null;
+      continue;
+    }
+    const operator = OPERATORS.find((candidate) => source.startsWith(candidate, i2));
+    if (operator !== void 0) {
+      if ((operator === "<" || operator === ">") && source[i2 + 1] === "(") return null;
+      const redirect = /^[0-9<>&|]/.test(operator) && operator !== "&&" && operator !== "||" && operator !== "|" && operator !== "|&" && operator !== "&";
+      if (redirect && inWord && /^[0-9]+$/.test(text) && unquoted === text) {
+        text = "";
+        unquoted = "";
+        inWord = false;
+        quoted = false;
+      }
+      flush();
+      if (operator === "<<" || operator === "<<-") expectDelimiter = { strip: operator === "<<-" };
+      tokens.push({ t: "op", op: operator });
+      i2 += operator.length;
+      continue;
+    }
+    if (char === "*" || char === "?" || char === "[") glob = true;
+    add(char, false);
+    i2++;
+  }
+  flush();
+  return tokens;
+}
+var SEPARATORS = /* @__PURE__ */ new Set(["&&", "||", ";", "|", "|&", "&", "\n"]);
+var REDIRECTS = /* @__PURE__ */ new Set([">", ">>", ">|", "&>", "&>>", ">&", "<", "<&", "<<", "<<-", "<<<"]);
+function segment(tokens) {
+  const commands2 = [];
+  let current = { words: [], redirects: [], heredoc: false, separator: "", marker: null };
+  let awaiting = null;
+  const end = (separator) => {
+    if (current.words.length > 0 || current.redirects.length > 0) {
+      current.separator = separator;
+      commands2.push(current);
+    } else if (separator !== "\n" && separator !== ";" && commands2.length > 0) {
+      commands2.at(-1).separator = separator;
+    }
+    current = { words: [], redirects: [], heredoc: false, separator: "", marker: null };
+  };
+  for (const token of tokens) {
+    if (token.t === "word") {
+      if (awaiting !== null) {
+        awaiting.target = token;
+        awaiting = null;
+      } else {
+        current.words.push(token);
+      }
+      continue;
+    }
+    if (awaiting !== null && !awaiting.op.startsWith("<<")) return null;
+    if (REDIRECTS.has(token.op)) {
+      if (token.op === "<<" || token.op === "<<-") {
+        current.heredoc = true;
+        continue;
+      }
+      awaiting = { op: token.op, target: null };
+      current.redirects.push(awaiting);
+      if (token.op === "<<<") current.heredoc = true;
+    } else if (token.op === "(" || token.op === ")") {
+      end("");
+      commands2.push({ words: [], redirects: [], heredoc: false, separator: "", marker: token.op });
+    } else if (SEPARATORS.has(token.op)) {
+      end(token.op);
+    } else {
+      return null;
+    }
+  }
+  if (awaiting !== null) return null;
+  end("");
+  return commands2;
+}
+var SKIPPED_KEYWORDS = /* @__PURE__ */ new Set(["do", "{", "}", "!"]);
+var UNPARSED_KEYWORDS = /* @__PURE__ */ new Set(["if", "elif", "else", "fi", "then", "while", "until", "case", "esac", "select", "function", "coproc", "in"]);
+var HIDING_COMMANDS = /* @__PURE__ */ new Set(["eval", "xargs", "source", ".", "exec", "parallel", "watch", "nohup", "setsid", "timeout"]);
+var SHELLS = /* @__PURE__ */ new Set(["sh", "bash", "zsh", "dash", "ksh", "fish"]);
+var INTERPRETERS = /* @__PURE__ */ new Set(["python", "python3", "node", "ruby", "tsx", "ts-node", "deno", "bun"]);
+var WRAPPERS = /* @__PURE__ */ new Set(["time", "command", "env", "sudo", "builtin"]);
+var READERS = /* @__PURE__ */ new Set(["cat", "tac", "head", "tail", "less", "more", "wc", "nl", "od", "xxd", "bat"]);
+function parseArgs(args2, spec) {
+  const flags2 = /* @__PURE__ */ new Set();
+  const values = [];
+  const operands = [];
+  let ended = false;
+  for (let k = 0; k < args2.length; k++) {
+    const word = args2[k];
+    const text = plain(word);
+    if (ended || word.quoted || !text.startsWith("-") || text === "-") {
+      operands.push(word);
+      continue;
+    }
+    if (word.dynamic) return null;
+    if (text === "--") {
+      ended = true;
+    } else if (text.startsWith("--")) {
+      const equals = text.indexOf("=");
+      const name10 = equals === -1 ? text : text.slice(0, equals);
+      flags2.add(name10);
+      if (equals !== -1) {
+        values.push({ name: name10, value: text.slice(equals + 1) });
+      } else if (spec.valueLong?.includes(name10)) {
+        const next = args2[k + 1];
+        if (next === void 0) return null;
+        values.push({ name: name10, value: plain(next) });
+        k++;
+      }
+    } else {
+      for (let c = 1; c < text.length; c++) {
+        const char = text[c];
+        flags2.add(char);
+        if (spec.suffixShort === char) break;
+        if (spec.valueShort?.includes(char)) {
+          const rest = text.slice(c + 1);
+          if (rest !== "") {
+            values.push({ name: char, value: rest });
+          } else {
+            const next = args2[k + 1];
+            if (next === void 0) return null;
+            values.push({ name: char, value: plain(next) });
+            k++;
+          }
+          break;
+        }
+      }
+    }
+  }
+  return { flags: flags2, values, operands };
+}
+var GREP_VALUE_LONG = ["--regexp", "--file", "--max-count", "--after-context", "--before-context", "--context", "--include", "--exclude", "--exclude-dir", "--exclude-from", "--label", "--directories", "--devices", "--binary-files"];
+var RG_VALUE_LONG = ["--regexp", "--file", "--glob", "--iglob", "--type", "--type-not", "--max-count", "--after-context", "--before-context", "--context", "--threads", "--max-columns", "--max-depth", "--replace", "--ignore-file", "--pre", "--sort", "--sortr", "--encoding", "--type-add"];
+var looksLikeFile = (text) => {
+  const last = text.split("/").at(-1) ?? "";
+  return last !== "" && last !== "." && last !== ".." && last.includes(".") && !last.endsWith(".");
+};
+var endsLikeDirectory = (text) => text.endsWith("/");
+var Interpretation = class {
+  access = { reads: [], searches: [], edits: [] };
+  ok = true;
+  /** The working directory: a path, undefined when none was recorded (relative paths stay relative), null when lost. */
+  cwd;
+  stack = [];
+  variables = /* @__PURE__ */ new Map();
+  constructor(cwd) {
+    this.cwd = cwd === null ? void 0 : cwd;
+  }
+  fail() {
+    this.ok = false;
+  }
+  /** The path a literal word names, resolved against the working directory. Null (and the line is unparsed) when it cannot be. */
+  resolve(text) {
+    if (text.startsWith("/") || text.startsWith("~") || /^[A-Za-z]:[\\/]/.test(text)) return text;
+    if (this.cwd === null) {
+      this.fail();
+      return null;
+    }
+    return this.cwd === void 0 ? text : posix2.join(this.cwd, text);
+  }
+  substitute(word) {
+    if (!word.dynamic || !word.text.includes("$")) return word;
+    const replaced = word.text.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g, (whole, braced, bare) => {
+      const value = this.variables.get(braced ?? bare);
+      return value === void 0 ? whole : value.replaceAll("$", LITERAL_DOLLAR);
+    });
+    const dynamic = replaced.includes("$");
+    return { ...word, text: dynamic ? replaced : replaced.replaceAll(LITERAL_DOLLAR, "$"), dynamic };
+  }
+  /** A path operand of a command that reads or edits: dynamic words make the line unparsed. */
+  operand(word) {
+    if (word.dynamic) {
+      this.fail();
+      return null;
+    }
+    const path = this.resolve(plain(word));
+    return path === null ? null : { path, glob: word.glob && !word.quoted };
+  }
+  read(word) {
+    const operand = this.operand(word);
+    if (operand === null || plain(word) === "-") return;
+    if (operand.glob) this.access.searches.push(operand.path);
+    else this.access.reads.push(operand.path);
+  }
+  search(word) {
+    if (word === null) {
+      if (this.cwd === null) this.fail();
+      else this.access.searches.push(this.cwd ?? null);
+      return;
+    }
+    const operand = this.operand(word);
+    if (operand !== null) this.access.searches.push(operand.path);
+  }
+  edit(word) {
+    const operand = this.operand(word);
+    if (operand === null) return;
+    if (operand.glob) this.fail();
+    else this.access.edits.push(operand.path);
+  }
+};
+function redirections(command9, run3) {
+  for (const { op, target } of command9.redirects) {
+    if (target === null || op === "<<<") continue;
+    const text = plain(target);
+    if ((op === ">&" || op === "<&") && (/^[0-9]+$/.test(text) || text === "-")) continue;
+    if (target.dynamic) {
+      run3.fail();
+      continue;
+    }
+    if (text.startsWith("/dev/")) continue;
+    if (op === "<" || op === "<&") run3.read(target);
+    else run3.edit(target);
+  }
+}
+function sedLike(args2, run3) {
+  const parsed = parseArgs(args2, { valueShort: "efl", suffixShort: "i", valueLong: ["--expression", "--file", "--line-length"] });
+  if (parsed === null) return run3.fail();
+  const inPlace = parsed.flags.has("i") || parsed.flags.has("--in-place");
+  const hasScript = parsed.values.some((v) => v.name === "e" || v.name === "f" || v.name === "--expression" || v.name === "--file");
+  let operands = parsed.operands.filter((word) => !(inPlace && plain(word) === "" && word.quoted && !hasScript));
+  if (!hasScript) operands = operands.slice(1);
+  for (const word of operands) {
+    if (inPlace) run3.edit(word);
+    else run3.read(word);
+  }
+}
+function perlLike(args2, run3) {
+  let inPlace = false;
+  let hasScript = false;
+  const rest = [];
+  for (let k = 0; k < args2.length; k++) {
+    const word = args2[k];
+    const text = plain(word);
+    if (word.quoted || !text.startsWith("-") || text === "-") {
+      rest.push(...args2.slice(k));
+      break;
+    }
+    if (word.dynamic) return run3.fail();
+    if (text === "--") {
+      rest.push(...args2.slice(k + 1));
+      break;
+    }
+    for (let c = 1; c < text.length; c++) {
+      const char = text[c];
+      if (char === "i") {
+        inPlace = true;
+        break;
+      }
+      if (char === "e" || char === "E") {
+        hasScript = true;
+        if (text.slice(c + 1) === "") k++;
+        break;
+      }
+      if ("IMmx".includes(char)) {
+        if (text.slice(c + 1) === "") k++;
+        break;
+      }
+    }
+  }
+  const files = hasScript ? rest : rest.slice(1);
+  if (!hasScript && rest[0] !== void 0) run3.read(rest[0]);
+  for (const word of files) {
+    if (inPlace) run3.edit(word);
+    else run3.read(word);
+  }
+}
+function awkLike(args2, run3) {
+  const parsed = parseArgs(args2, { valueShort: "Fvf", valueLong: ["--field-separator", "--assign", "--file"] });
+  if (parsed === null) return run3.fail();
+  const hasScript = parsed.values.some((v) => v.name === "f" || v.name === "--file");
+  const operands = hasScript ? parsed.operands : parsed.operands.slice(1);
+  for (const word of operands) {
+    if (!word.dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(word))) continue;
+    run3.read(word);
+  }
+}
+function grepLike(name10, args2, run3, piped, hasInput) {
+  const ripgrep = name10 === "rg";
+  const parsed = parseArgs(args2, {
+    valueShort: ripgrep ? "efgtTABCmjMEdr" : "efmABCdD",
+    valueLong: ripgrep ? RG_VALUE_LONG : GREP_VALUE_LONG
+  });
+  if (parsed === null) return run3.fail();
+  const files = parsed.flags.has("--files");
+  const patternGiven = parsed.values.some((v) => v.name === "e" || v.name === "f" || v.name === "--regexp" || v.name === "--file") && !(ripgrep && parsed.values.every((v) => v.name === "r" || v.name === "--replace"));
+  const operands = files || patternGiven ? parsed.operands : parsed.operands.slice(1);
+  const recursive = ripgrep || parsed.flags.has("r") || parsed.flags.has("R") || parsed.flags.has("--recursive") || parsed.flags.has("--dereference-recursive");
+  if (operands.length === 0) {
+    if (recursive && !piped && !hasInput) run3.search(null);
+    return;
+  }
+  for (const word of operands) {
+    if (word.dynamic) {
+      run3.fail();
+    } else if (word.glob && !word.quoted) {
+      run3.search(word);
+    } else if (recursive && (!looksLikeFile(plain(word)) || endsLikeDirectory(plain(word)))) {
+      run3.search(word);
+    } else {
+      run3.read(word);
+    }
+  }
+}
+function diffLike(args2, run3) {
+  const parsed = parseArgs(args2, { valueShort: "UCxIFLW", valueLong: ["--unified", "--context", "--exclude", "--ignore-matching-lines", "--label", "--width", "--from-file", "--to-file"] });
+  if (parsed === null) return run3.fail();
+  const recursive = parsed.flags.has("r") || parsed.flags.has("--recursive");
+  for (const word of parsed.operands) {
+    if (recursive && (word.dynamic || !looksLikeFile(plain(word)) || endsLikeDirectory(plain(word)))) run3.search(word);
+    else run3.read(word);
+  }
+}
+function gitLike(args2, run3) {
+  const saved = run3.cwd;
+  let k = 0;
+  while (k < args2.length) {
+    const text = plain(args2[k]);
+    if (args2[k].dynamic) return run3.fail();
+    if (text === "-C") {
+      const dir = args2[k + 1];
+      if (dir === void 0 || dir.dynamic) return run3.fail();
+      run3.cwd = run3.resolve(plain(dir));
+      k += 2;
+    } else if (text === "-c" || text === "--git-dir" || text === "--work-tree" || text === "--namespace") {
+      k += 2;
+    } else if (text.startsWith("-")) {
+      k++;
+    } else {
+      break;
+    }
+  }
+  const sub = args2[k] === void 0 ? "" : plain(args2[k]);
+  const rest = args2.slice(k + 1);
+  if (sub === "show") {
+    for (const word of rest) {
+      if (word.dynamic) return run3.fail();
+      const text = plain(word);
+      const colon = text.indexOf(":");
+      if (!text.startsWith("-") && colon > 0 && colon < text.length - 1) run3.access.reads.push(text.slice(colon + 1));
+    }
+  } else if (sub === "mv" || sub === "rm") {
+    moveLike(sub === "mv" ? "mv" : "rm", rest, run3);
+  }
+  run3.cwd = saved;
+}
+function moveLike(name10, args2, run3) {
+  const parsed = parseArgs(args2, { valueShort: "tS", valueLong: ["--target-directory", "--suffix"] });
+  if (parsed === null) return run3.fail();
+  const recursive = parsed.flags.has("r") || parsed.flags.has("R") || parsed.flags.has("d") || parsed.flags.has("--recursive") || parsed.flags.has("a");
+  const operands = parsed.operands.filter((word) => !endsLikeDirectory(plain(word)) || word.dynamic);
+  if (name10 === "rm") {
+    if (recursive) return;
+    for (const word of operands) run3.edit(word);
+    return;
+  }
+  const targetOption = parsed.values.find((v) => v.name === "t" || v.name === "--target-directory");
+  const all = parsed.operands;
+  if (all.length === 0) return;
+  let sources;
+  let targets = [];
+  if (targetOption !== void 0) {
+    sources = all;
+    const directory = run3.resolve(targetOption.value ?? "");
+    if (directory === null) return;
+    targets = all.filter((w) => !w.dynamic).map((w) => posix2.join(directory, posix2.basename(plain(w))));
+  } else {
+    sources = all.slice(0, -1);
+    const last = all.at(-1);
+    if (last.dynamic || last.glob) return run3.fail();
+    const lastText = plain(last);
+    if (sources.length > 1 || endsLikeDirectory(lastText)) {
+      const directory = run3.resolve(lastText);
+      if (directory === null) return;
+      targets = sources.filter((w) => !w.dynamic).map((w) => posix2.join(directory, posix2.basename(plain(w))));
+    } else {
+      const target = run3.resolve(lastText);
+      if (target !== null) targets = [target];
+    }
+  }
+  for (const word of sources) {
+    if (word.dynamic || word.glob && !word.quoted) return run3.fail();
+  }
+  if (name10 === "mv") {
+    for (const word of sources) if (!recursive && !endsLikeDirectory(plain(word))) run3.edit(word);
+  }
+  if (recursive && name10 === "cp") return;
+  run3.access.edits.push(...targets);
+}
+function interpreterLike(args2, command9, run3, name10) {
+  if (command9.heredoc) return run3.fail();
+  const parsed = parseArgs(args2, {
+    valueShort: name10.startsWith("python") ? "WXmc" : "rCeEpr",
+    valueLong: ["--require", "--import", "--loader", "--eval", "--print", "--experimental-loader"]
+  });
+  if (parsed === null) return run3.fail();
+  const inline = ["c", "e", "E", "p", "--eval", "--print"].some((flag) => parsed.flags.has(flag));
+  if (inline) return run3.fail();
+  if (parsed.values.some((v) => v.name === "m")) return;
+  const script = parsed.operands[0];
+  if (script === void 0) return;
+  if (plain(script) === "-") return run3.fail();
+  if (!script.dynamic && !looksLikeFile(plain(script))) return;
+  run3.read(script);
+}
+function findLike(args2, run3) {
+  const paths = [];
+  for (const word of args2) {
+    const text = plain(word);
+    if (!word.quoted && (text.startsWith("-") || text === "(" || text === "!")) break;
+    paths.push(word);
+  }
+  for (const word of args2) {
+    if (["-exec", "-execdir", "-ok", "-okdir", "-delete", "-fprint", "-fprintf", "-fls"].includes(plain(word)) && !word.quoted) return run3.fail();
+  }
+  if (paths.length === 0) run3.search(null);
+  for (const word of paths) run3.search(word);
+}
+function execute(command9, run3, piped) {
+  let words = command9.words.map((word) => run3.substitute(word));
+  const redirects = command9.redirects.map((r) => ({ ...r, target: r.target === null ? null : run3.substitute(r.target) }));
+  const substituted = { ...command9, words, redirects };
+  while (words[0] !== void 0 && !words[0].quoted && !words[0].dynamic && SKIPPED_KEYWORDS.has(plain(words[0]))) words = words.slice(1);
+  if (words[0] !== void 0 && !words[0].quoted && UNPARSED_KEYWORDS.has(plain(words[0]))) return run3.fail();
+  while (words[0] !== void 0 && !words[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words[0]))) {
+    const text = plain(words[0]);
+    const equals = text.indexOf("=");
+    const name11 = text.slice(0, equals);
+    if (words[0].glob) run3.variables.delete(name11);
+    else run3.variables.set(name11, text.slice(equals + 1));
+    words = words.slice(1);
+  }
+  redirections(substituted, run3);
+  if (words.length === 0) return;
+  for (; ; ) {
+    const head2 = words[0];
+    if (head2.dynamic) return run3.fail();
+    const text = plain(head2);
+    if (!WRAPPERS.has(text)) break;
+    words = words.slice(1);
+    while (words[0] !== void 0 && (plain(words[0]).startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words[0])))) words = words.slice(1);
+    if (words.length === 0) return;
+  }
+  const head = words[0];
+  if (head.dynamic) return run3.fail();
+  const name10 = posix2.basename(plain(head));
+  const args2 = words.slice(1);
+  const hasInput = command9.redirects.some((r) => r.op === "<" || r.op === "<<<") || command9.heredoc;
+  if (HIDING_COMMANDS.has(name10)) return run3.fail();
+  if (SHELLS.has(name10)) {
+    const parsed = parseArgs(args2, { valueShort: "co" });
+    if (parsed === null || parsed.flags.has("c") || command9.heredoc) return run3.fail();
+    const script = parsed.operands[0];
+    if (script !== void 0 && !(script.dynamic === false && !looksLikeFile(plain(script)))) run3.read(script);
+    return;
+  }
+  if (name10 === "cd") {
+    const target = args2.find((word) => !/^-[A-Za-z]+$/.test(plain(word)) || word.quoted);
+    if (target === void 0) run3.cwd = "~";
+    else if (target.dynamic || plain(target) === "-") run3.cwd = null;
+    else run3.cwd = run3.resolve(plain(target));
+    return;
+  }
+  if (name10 === "pushd" || name10 === "popd") {
+    run3.cwd = null;
+    return;
+  }
+  if (READERS.has(name10)) {
+    const parsed = parseArgs(args2, { valueShort: name10 === "head" || name10 === "tail" ? "nc" : "", valueLong: ["--lines", "--bytes", "--files0-from"] });
+    if (parsed === null) return run3.fail();
+    for (const word of parsed.operands) run3.read(word);
+    return;
+  }
+  if (name10 === "sed") return sedLike(args2, run3);
+  if (name10 === "perl") return perlLike(args2, run3);
+  if (name10 === "awk" || name10 === "gawk" || name10 === "mawk") return awkLike(args2, run3);
+  if (name10 === "grep" || name10 === "egrep" || name10 === "fgrep" || name10 === "rg") return grepLike(name10 === "rg" ? "rg" : "grep", args2, run3, piped, hasInput);
+  if (name10 === "diff") return diffLike(args2, run3);
+  if (name10 === "git") return gitLike(args2, run3);
+  if (name10 === "tee") {
+    const parsed = parseArgs(args2, {});
+    if (parsed === null) return run3.fail();
+    for (const word of parsed.operands) if (plain(word) !== "-" && !plain(word).startsWith("/dev/")) run3.edit(word);
+    return;
+  }
+  if (name10 === "cp" || name10 === "mv" || name10 === "rm") return moveLike(name10, args2, run3);
+  if (name10 === "find") return findLike(args2, run3);
+  if (INTERPRETERS.has(name10)) return interpreterLike(args2, command9, run3, name10);
+}
+var headOf = (command9) => {
+  const word = command9.words.find((candidate) => candidate.quoted || !SKIPPED_KEYWORDS.has(plain(candidate)));
+  return word === void 0 || word.quoted ? null : plain(word);
+};
+function run2(commands2, from, to, interpretation) {
+  let i2 = from;
+  while (i2 < to && interpretation.ok) {
+    const command9 = commands2[i2];
+    if (command9.marker === "(") {
+      interpretation.stack.push(interpretation.cwd);
+      i2++;
+      continue;
+    }
+    if (command9.marker === ")") {
+      if (interpretation.stack.length === 0) return interpretation.fail();
+      interpretation.cwd = interpretation.stack.pop();
+      i2++;
+      continue;
+    }
+    const head = headOf(command9);
+    if (head === "done") return interpretation.fail();
+    if (head === "for") {
+      let depth = 1;
+      let j = i2 + 1;
+      for (; j < to; j++) {
+        const inner = headOf(commands2[j]);
+        if (inner === "for") depth++;
+        else if (inner === "done" && --depth === 0) break;
+      }
+      if (j >= to) return interpretation.fail();
+      const start2 = command9.words.findIndex((word) => !word.quoted && plain(word) === "for");
+      const words = command9.words.slice(start2 + 1).map((word) => interpretation.substitute(word));
+      const [variable, keyword, ...items] = words;
+      if (variable === void 0 || keyword === void 0 || plain(keyword) !== "in" || variable.dynamic) return interpretation.fail();
+      if (items.some((item) => item.dynamic || item.glob && !item.quoted)) return interpretation.fail();
+      if (commands2[j].redirects.length > 0) return interpretation.fail();
+      for (const item of items) {
+        interpretation.variables.set(plain(variable), plain(item));
+        run2(commands2, i2 + 1, j, interpretation);
+      }
+      interpretation.variables.delete(plain(variable));
+      i2 = j + 1;
+      continue;
+    }
+    const previous = i2 > from ? commands2[i2 - 1].separator : "";
+    execute(command9, interpretation, previous === "|" || previous === "|&");
+    i2++;
+  }
+}
+function shellAccess(command9, cwd) {
+  const tokens = tokenize(command9);
+  if (tokens === null) return null;
+  const commands2 = segment(tokens);
+  if (commands2 === null) return null;
+  const interpretation = new Interpretation(cwd);
+  run2(commands2, 0, commands2.length, interpretation);
+  if (interpretation.ok && interpretation.stack.length > 0) interpretation.fail();
+  return interpretation.ok ? interpretation.access : null;
+}
+
 // packages/transcripts/src/transcript-format.ts
 var RECOGNISED_VERSION = /^2\.1\.\d+$/;
 var READ_TOOLS = /* @__PURE__ */ new Set(["Read"]);
@@ -6869,10 +7574,22 @@ function actionOf(block) {
   const name10 = asString(block["name"]);
   if (name10 === null) return null;
   const input = isObject(block["input"]) ? block["input"] : {};
-  if (READ_TOOLS.has(name10)) return { kind: "read", path: pathOf(input) };
-  if (SEARCH_TOOLS.has(name10)) return { kind: "search", path: pathOf(input) };
-  if (EDIT_TOOLS.has(name10)) return { kind: "edit", path: pathOf(input) };
+  if (READ_TOOLS.has(name10)) return { kind: "read", origin: "tool", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name10)) return { kind: "search", origin: "tool", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name10)) return { kind: "edit", origin: "tool", path: pathOf(input) };
   return null;
+}
+var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash"]);
+function shellActionsOf(block, cwd) {
+  const input = isObject(block["input"]) ? block["input"] : {};
+  const command9 = asString(input["command"]);
+  const access = command9 === null ? null : shellAccess(command9, cwd);
+  if (access === null) return null;
+  return [
+    ...access.reads.map((path) => ({ kind: "read", origin: "shell", path })),
+    ...access.searches.map((path) => ({ kind: "search", origin: "shell", path })),
+    ...access.edits.map((path) => ({ kind: "edit", origin: "shell", path }))
+  ];
 }
 var INTERRUPT_MARKER = "[Request interrupted by user";
 function isHumanText(text) {
@@ -6967,7 +7684,8 @@ function parseTranscript(text, scope = "main") {
         timestamp,
         messageId: id,
         tokens: { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 },
-        actions: []
+        actions: [],
+        shell: { calls: 0, unparsed: 0 }
       };
       turnsById.set(id, turn);
       events.push(turn);
@@ -6983,6 +7701,14 @@ function parseTranscript(text, scope = "main") {
     }
     for (const block of message["content"]) {
       if (!isObject(block) || block["type"] !== "tool_use") continue;
+      const name10 = asString(block["name"]);
+      if (name10 !== null && SHELL_TOOLS.has(name10)) {
+        const actions = shellActionsOf(block, asString(line["cwd"]));
+        turn.shell.calls++;
+        if (actions === null) turn.shell.unparsed++;
+        else turn.actions.push(...actions);
+        continue;
+      }
       const action = actionOf(block);
       if (action !== null) turn.actions.push(action);
     }
@@ -6997,7 +7723,7 @@ function compareBytes(a, b) {
 function sortedBytes(values) {
   return [...values].sort(compareBytes);
 }
-function segment(events) {
+function segment2(events) {
   const tasks = [];
   for (const event of events) {
     if (event.kind === "prompt") tasks.push({ startedAt: event.timestamp, turns: [] });
@@ -7005,58 +7731,83 @@ function segment(events) {
   }
   return tasks;
 }
-function measureTask(origin, taskIndex, startedAt, turns, roots) {
+function tally(actions, origins, roots) {
   const readCounts = /* @__PURE__ */ new Map();
   const edited = /* @__PURE__ */ new Set();
   let searches = 0;
   let edits = 0;
+  for (const action of actions) {
+    if (!origins.includes(action.origin)) continue;
+    const path = toRepoPath(action.path, roots);
+    if (action.kind === "search") {
+      if (isWithinRepo(action.path, roots)) searches++;
+    } else if (path === null) {
+      continue;
+    } else if (action.kind === "read") {
+      readCounts.set(path, (readCounts.get(path) ?? 0) + 1);
+    } else {
+      edits++;
+      edited.add(path);
+    }
+  }
+  const reads = [...readCounts.values()].reduce((sum, n) => sum + n, 0);
+  return { readCounts, edited, searches, edits, reads };
+}
+function originCounts(result) {
+  return {
+    reads: result.reads,
+    filesRead: result.readCounts.size,
+    reReads: result.reads - result.readCounts.size,
+    searches: result.searches,
+    edits: result.edits
+  };
+}
+function measureTask(origin, taskIndex, startedAt, turns, roots, effortMode) {
   const tokens = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
+  const actions = [];
+  let shellCalls = 0;
+  let unparsedShellCalls = 0;
   for (const turn of turns) {
     tokens.input += turn.tokens.input;
     tokens.output += turn.tokens.output;
     tokens.cacheRead += turn.tokens.cacheRead;
     tokens.cacheCreation += turn.tokens.cacheCreation;
-    for (const action of turn.actions) {
-      const path = toRepoPath(action.path, roots);
-      if (action.kind === "search") {
-        if (isWithinRepo(action.path, roots)) searches++;
-      } else if (path === null) {
-        continue;
-      } else if (action.kind === "read") {
-        readCounts.set(path, (readCounts.get(path) ?? 0) + 1);
-      } else {
-        edits++;
-        edited.add(path);
-      }
-    }
+    actions.push(...turn.actions);
+    shellCalls += turn.shell.calls;
+    unparsedShellCalls += turn.shell.unparsed;
   }
-  const reads = [...readCounts.values()].reduce((sum, n) => sum + n, 0);
+  const counted = tally(actions, effortMode === "all" ? ["tool", "shell"] : ["tool"], roots);
   const folders = /* @__PURE__ */ new Set();
-  for (const path of [...readCounts.keys(), ...edited]) folders.add(folderOf(path));
+  for (const path of [...counted.readCounts.keys(), ...counted.edited]) folders.add(folderOf(path));
   return {
     ...origin,
     taskIndex,
     startedAt,
-    reads,
-    filesRead: readCounts.size,
-    reReads: reads - readCounts.size,
-    searches,
+    effortMode,
+    reads: counted.reads,
+    filesRead: counted.readCounts.size,
+    reReads: counted.reads - counted.readCounts.size,
+    searches: counted.searches,
     foldersVisited: folders.size,
-    edits,
-    filesEdited: edited.size,
+    edits: counted.edits,
+    filesEdited: counted.edited.size,
+    tool: originCounts(tally(actions, ["tool"], roots)),
+    shell: originCounts(tally(actions, ["shell"], roots)),
+    shellCalls,
+    unparsedShellCalls,
     tokens: {
       ...tokens,
       total: tokens.input + tokens.output + tokens.cacheRead + tokens.cacheCreation
     },
-    readPaths: sortedBytes(readCounts.keys()),
-    editedPaths: sortedBytes(edited),
+    readPaths: sortedBytes(counted.readCounts.keys()),
+    editedPaths: sortedBytes(counted.edited),
     folders: sortedBytes(folders)
   };
 }
 function mainOrigin(sessionId) {
   return { sessionId, source: "main", agentId: null, agentType: null, description: null };
 }
-function measureSubagent(text, sessionId, agentId, roots, meta) {
+function measureSubagent(text, sessionId, agentId, roots, meta, effortMode = "all") {
   const parsed = parseTranscript(text, "sidechain");
   if (parsed.status === "not-measured") {
     return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
@@ -7073,15 +7824,15 @@ function measureSubagent(text, sessionId, agentId, roots, meta) {
     agentType: meta?.agentType ?? null,
     description: meta?.description ?? null
   };
-  const task = start2 === void 0 ? null : measureTask(origin, 0, start2.timestamp, turns, mapRoots);
+  const task = start2 === void 0 ? null : measureTask(origin, 0, start2.timestamp, turns, mapRoots, effortMode);
   return { status: "measured", sessionId, version: parsed.version, tasks: task === null || task.edits === 0 ? [] : [task], cwds: parsed.cwds };
 }
-function measureSession(text, sessionId, roots) {
+function measureSession(text, sessionId, roots, effortMode = "all") {
   const parsed = parseTranscript(text);
   if (parsed.status === "not-measured") {
     return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
   }
-  const tasks = segment(parsed.events).map((task, index) => measureTask(mainOrigin(sessionId), index, task.startedAt, task.turns, roots)).filter((task) => task.edits > 0);
+  const tasks = segment2(parsed.events).map((task, index) => measureTask(mainOrigin(sessionId), index, task.startedAt, task.turns, roots, effortMode)).filter((task) => task.edits > 0);
   return { status: "measured", sessionId, version: parsed.version, tasks, cwds: parsed.cwds };
 }
 
@@ -7122,6 +7873,11 @@ function distribution(values) {
   const mean2 = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
   return { mean: round2(mean2), median: round2(median2) };
 }
+function summariseShell(tasks) {
+  const calls = tasks.reduce((sum, task) => sum + (task.shellCalls ?? 0), 0);
+  const unparsed = tasks.reduce((sum, task) => sum + (task.unparsedShellCalls ?? 0), 0);
+  return { calls, unparsed, parsedShare: calls === 0 ? null : Number(((calls - unparsed) / calls).toFixed(3)) };
+}
 function summariseTasks(tasks) {
   return {
     tasks: tasks.length,
@@ -7129,7 +7885,8 @@ function summariseTasks(tasks) {
     foldersVisited: distribution(tasks.map((t) => t.foldersVisited)),
     reReads: distribution(tasks.map((t) => t.reReads)),
     edits: distribution(tasks.map((t) => t.edits)),
-    tokens: distribution(tasks.map((t) => t.tokens.total))
+    tokens: distribution(tasks.map((t) => t.tokens.total)),
+    shell: summariseShell(tasks)
   };
 }
 function agentFilesUnder(dir) {
@@ -7176,6 +7933,7 @@ function sessionFiles(projectsDir, root) {
 function measureRepo(options) {
   const { projectsDir, repoRoots, window: window2 } = options;
   const source = options.source ?? "all";
+  const effort = options.effort ?? "all";
   const seen = /* @__PURE__ */ new Set();
   const tasks = [];
   const notMeasured = [];
@@ -7193,7 +7951,7 @@ function measureRepo(options) {
           continue;
         }
         const meta = readMeta2(file.path);
-        const result = measureSubagent(text, file.sessionId, file.agentId, repoRoots, meta);
+        const result = measureSubagent(text, file.sessionId, file.agentId, repoRoots, meta, effort);
         const places = meta?.worktreePath == null ? repoRoots : [...repoRoots, meta.worktreePath];
         if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, places))) continue;
         if (result.status === "not-measured") {
@@ -7215,7 +7973,7 @@ function measureRepo(options) {
       } catch {
         continue;
       }
-      const result = measureSession(text, file.sessionId, repoRoots);
+      const result = measureSession(text, file.sessionId, repoRoots, effort);
       if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;
       if (result.status === "not-measured") {
         if (result.startedAt !== null && inWindow(window2, result.startedAt)) {

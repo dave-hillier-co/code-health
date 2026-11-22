@@ -1,5 +1,6 @@
 import { changeSpread, percentile } from "@code-health/cochange/spread-measure";
 import type { TaskEffort } from "@code-health/transcripts/agent-effort";
+import { summariseShell, type ShellSummary } from "@code-health/transcripts/measure-repo";
 
 /** The cost figures tested against distance. `foldersVisited` is left out: it is distance by another name. */
 export const PREMISE_FIGURES = ["filesRead", "reReads", "tokens"] as const;
@@ -33,6 +34,8 @@ export interface PremiseResult {
   tasks: { inWindow: number; measured: number; singleFile: number };
   distance: { mean: number | null; median: number | null; max: number | null };
   figures: Record<PremiseFigure, FigureResult>;
+  /** Bash calls over the tasks in window, and the share parsed. Reported whatever the effort mode, so a reader sees how much of the shell the figures could see. */
+  shell: ShellSummary;
   verdict: PremiseVerdict;
 }
 
@@ -151,6 +154,7 @@ export function testPremise(tasks: readonly TaskEffort[], minSamples: number): P
     tasks: { inWindow: tasks.length, measured: measured.length, singleFile: tasks.length - measured.length },
     distance: { mean: mean(distances), median, max: distances.length === 0 ? null : Math.max(...distances) },
     figures,
+    shell: summariseShell(tasks),
     verdict: verdictOf(PREMISE_FIGURES.map((figure) => figures[figure].conclusion)),
   };
 }

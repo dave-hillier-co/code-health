@@ -6,7 +6,7 @@ import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { partialSpearman, ranks, spearman } from "../src/premise.ts";
 import { expectGolden, withoutMeta } from "./support/golden.ts";
 import { relocationApp, Sessions } from "./support/measure-scenarios.ts";
-import { sessionsWhereDistanceCosts, sessionsWhereDistanceDoesNotCost, sessionsWhereDistanceNeverVaries, subagentsInDeletedWorktree } from "./support/premise-scenarios.ts";
+import { sessionsWhereDistanceCosts, shellSessionsWhereDistanceCosts,sessionsWhereDistanceDoesNotCost, sessionsWhereDistanceNeverVaries, subagentsInDeletedWorktree } from "./support/premise-scenarios.ts";
 import { runLocality } from "./support/run.ts";
 
 const disposables: Array<{ dispose(): void }> = [];
@@ -66,6 +66,48 @@ describe("measure premise", () => {
     expect(results.limits.join(" ")).toMatch(/not a measure of what a move would save/);
     expect(run.document.inputs.transcripts.tasks).toBe(16);
     expectGolden("measure", "measure.premise", run.run.stdout);
+  }, 60_000);
+
+  test("counts the files named in Bash commands with --effort all, and none of them with --effort tools", async () => {
+    const { repo, sessions } = fresh();
+    shellSessionsWhereDistanceCosts(sessions);
+
+    const all = await premise(repo, sessions);
+    expect(all.run.code).toBe(ExitCode.Success);
+    expect(all.document.results.effort).toBe("all");
+    expect(all.document.results.tasks).toEqual({ inWindow: 16, measured: 16, singleFile: 0 });
+    expect(all.document.results.figures.filesRead).toMatchObject({ n: 16, conclusion: "costlier-when-distant" });
+    expect(all.document.results.verdict).toBe("supported");
+    expect(all.document.results.shell.calls).toBeGreaterThan(16 * 4);
+    expect(all.document.results.shell.unparsed).toBe(16);
+    expect(all.document.results.shell.parsedShare).toBeGreaterThan(0.75);
+    expect(all.document.results.bySource.main.shell).toEqual(all.document.results.shell);
+
+    const defaulted = await premise(repo, sessions, ["--effort", "all"]);
+    expect(defaulted.document.results).toEqual(all.document.results);
+    expect(defaulted.document.inputs).toEqual(all.document.inputs);
+
+    const tools = await premise(repo, sessions, ["--effort", "tools"]);
+    expect(tools.document.results.effort).toBe("tools");
+    expect(tools.document.results.tasks).toEqual({ inWindow: 0, measured: 0, singleFile: 0 });
+    expect(tools.document.results.verdict).toBe("insufficient-sample");
+    expect(tools.document.results.shell).toEqual({ calls: 0, unparsed: 0, parsedShare: null });
+  }, 60_000);
+
+  test("prints the parsed share on stderr when the tasks made Bash calls, and prints nothing when they made none", async () => {
+    const { repo, sessions } = fresh();
+    shellSessionsWhereDistanceCosts(sessions);
+    const all = await premise(repo, sessions);
+    expect(all.run.stderr).toMatch(/^Shell: \d+ Bash calls in these tasks, 16 not parsed, parsed share 87\.3%\.\n$/);
+    const tools = await premise(repo, sessions, ["--effort", "tools"]);
+    expect(tools.run.stderr).toBe("");
+  }, 60_000);
+
+  test("rejects an --effort that is neither tools nor all", async () => {
+    const { repo, sessions } = fresh();
+    const { run } = await premise(repo, sessions, ["--effort", "some"]);
+    expect(run.code).toBe(ExitCode.Usage);
+    expect(run.stderr).toMatch(/--effort must be tools or all/);
   }, 60_000);
 
   test("claims nothing when cost does not follow distance", async () => {

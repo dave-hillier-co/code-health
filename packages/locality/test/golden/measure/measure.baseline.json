@@ -11,7 +11,7 @@
   "inputs": {
     "name": "default",
     "transcripts": {
-      "stamp": "52ef01f36214d0cb",
+      "stamp": "e5957ca027531793",
       "tasks": 24
     }
   },
@@ -37,6 +37,7 @@
         "mean": 2,
         "median": 2
       },
+      "mode": "all",
       "reReads": {
         "mean": 1,
         "median": 1
@@ -48,6 +49,11 @@
           "measured": 0,
           "notMeasured": 0
         }
+      },
+      "shell": {
+        "calls": 0,
+        "parsedShare": null,
+        "unparsed": 0
       },
       "source": "all",
       "tasks": 24,

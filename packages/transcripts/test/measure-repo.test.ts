@@ -120,6 +120,7 @@ test("an empty selection summarises to a sample size of zero and no statistics",
     reReads: null,
     edits: null,
     tokens: null,
+    shell: { calls: 0, unparsed: 0, parsedShare: null },
   });
 });
 

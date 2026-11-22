@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import type { EffortMode } from "./agent-effort.ts";
 import { isWithinRepo, toRepoPath } from "./repo-path.ts";
 import { compareBytes, sessionFiles } from "./measure-repo.ts";
 import { parseTranscript } from "./transcript-format.ts";
@@ -13,15 +14,15 @@ export interface SessionEdits {
   edits: string[];
 }
 
-/** The edits of one transcript, or null when its format is not recognised or it has no edit to a repo file. */
-export function readSessionEdits(text: string, sessionId: string, roots: readonly string[]): SessionEdits | null {
+/** The edits of one transcript, from tool calls and (for `all`, the default) the files edited by Bash commands, or null when its format is not recognised or it has no edit to a repo file. */
+export function readSessionEdits(text: string, sessionId: string, roots: readonly string[], effort: EffortMode = "all"): SessionEdits | null {
   const parsed = parseTranscript(text);
   if (parsed.status !== "recognised") return null;
   const edits: string[] = [];
   for (const event of parsed.events) {
     if (event.kind !== "agent-turn") continue;
     for (const action of event.actions) {
-      if (action.kind !== "edit") continue;
+      if (action.kind !== "edit" || (effort === "tools" && action.origin === "shell")) continue;
       const path = toRepoPath(action.path, roots);
       if (path !== null) edits.push(path);
     }
@@ -35,6 +36,8 @@ export interface ReadEditsOptions {
   projectsDir: string;
   repoRoots: readonly string[];
   window: TimeWindow;
+  /** Which calls count as edits. Default `all`. */
+  effort?: EffortMode;
 }
 
 /** The sessions of a repo that started in the window and edited at least one of its files, in session id order. */
@@ -55,7 +58,7 @@ export function readRepoSessionEdits(options: ReadEditsOptions): SessionEdits[] 
       const parsed = parseTranscript(text);
       // The recorded working directory decides whether the session belongs to this repo, as in measureRepo.
       if (parsed.cwds.length > 0 && !parsed.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;
-      const result = readSessionEdits(text, file.sessionId, repoRoots);
+      const result = readSessionEdits(text, file.sessionId, repoRoots, options.effort ?? "all");
       if (result !== null && inWindow(window, result.startedAt)) sessions.push(result);
     }
   }

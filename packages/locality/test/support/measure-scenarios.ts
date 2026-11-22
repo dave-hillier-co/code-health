@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GitFixture, type Change, type Identity, type Step } from "@code-health/fixtures/git-fixture";
 import { encodeProjectDir } from "@code-health/transcripts/measure-repo";
-import { edit, read, SyntheticSession } from "../../../transcripts/test/synthetic-transcript.ts";
+import { bash, edit, read, SyntheticSession } from "../../../transcripts/test/synthetic-transcript.ts";
 
 const ada: Identity = { name: "Ada", email: "ada@example.com" };
 const grace: Identity = { name: "Grace", email: "grace@example.com" };
@@ -151,6 +151,24 @@ export class Sessions {
     specs.forEach((spec, index) => {
       session.prompt(`Task ${index}`);
       const calls = [...spec.reads.map((path) => read(join(this.root, path))), ...spec.edits.map((path) => edit(join(this.root, path)))];
+      session.assistant(`m${this.count}-${index}`, calls, { input: spec.tokens });
+    });
+    writeFileSync(join(this.project, `session-${this.count}.jsonl`), session.toJsonl());
+  }
+
+  /**
+   * As `tasks`, but every read is a `cat` and every edit a `sed -i` in a Bash call, with paths relative to the
+   * working directory, and each task also makes `unparsed` calls whose command cannot be parsed.
+   */
+  shellTasks(start: string, specs: ReadonlyArray<{ reads: string[]; edits: string[]; tokens: number }>, unparsed = 0): void {
+    const session = new SyntheticSession({ cwd: this.root, sessionId: `session-${++this.count}`, start });
+    specs.forEach((spec, index) => {
+      session.prompt(`Task ${index}`);
+      const calls = [
+        ...spec.reads.map((path) => bash(`cat ${path}`)),
+        ...spec.edits.map((path) => bash(`sed -i 's/a/b/' ${path}`)),
+        ...Array.from({ length: unparsed }, () => bash("cat $(git ls-files | head -1)")),
+      ];
       session.assistant(`m${this.count}-${index}`, calls, { input: spec.tokens });
     });
     writeFileSync(join(this.project, `session-${this.count}.jsonl`), session.toJsonl());

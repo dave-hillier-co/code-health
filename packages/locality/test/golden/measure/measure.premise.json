@@ -11,7 +11,7 @@
   "inputs": {
     "since": null,
     "transcripts": {
-      "stamp": "a5548ee360e4ae9f",
+      "stamp": "6469dc76b4899632",
       "tasks": 16
     },
     "until": null
@@ -75,6 +75,11 @@
             "z": 4.312001
           }
         },
+        "shell": {
+          "calls": 0,
+          "parsedShare": null,
+          "unparsed": 0
+        },
         "tasks": {
           "inWindow": 16,
           "measured": 16,
@@ -135,6 +140,11 @@
             "z": null
           }
         },
+        "shell": {
+          "calls": 0,
+          "parsedShare": null,
+          "unparsed": 0
+        },
         "tasks": {
           "inWindow": 0,
           "measured": 0,
@@ -148,6 +158,7 @@
       "mean": 1.25,
       "median": 1
     },
+    "effort": "all",
     "figures": {
       "filesRead": {
         "conclusion": "costlier-when-distant",
@@ -206,8 +217,8 @@
     },
     "limits": [
       "Observational: tasks were not assigned to near or far files, so what the task was is a confounder the data cannot remove.",
-      "Distance is that of the files a task edited. Tasks editing a single file have none and are left out.",
-      "Effort is read from the transcripts of main sessions and of subagents. Reads made through the shell are not counted, so every figure is a lower bound.",
+      "Distance is that of the files a task edited, from the Edit, Write and NotebookEdit tools and, with --effort all, from the files named in Bash commands. Tasks editing a single file have none and are left out.",
+      "Effort is read from the transcripts of main sessions and of subagents. With --effort all, files named in the commands of Bash calls count as reads and edits, but only for the calls that were parsed (shell.parsedShare is their share): scripts that edit files by computed paths, reads made inside test runs and builds, and unparsed commands are not seen, so every figure is a lower bound. With --effort tools, no Bash call counts.",
       "A subagent task is given to it by an orchestrator, which writes its prompt and sets its scope, so the kind of task is a stronger confounder for subagent tasks than for main-session tasks. A subagent starts with none of the context the main session had, and that alone can raise its reads.",
       "A main-session task that delegated work to a subagent is counted without that work, and the subagent's work is a task of its own, so the two halves of one piece of work are measured apart.",
       "A correlation here is not a measure of what a move would save."
@@ -221,6 +232,11 @@
         "measured": 0,
         "notMeasured": 0
       }
+    },
+    "shell": {
+      "calls": 0,
+      "parsedShare": null,
+      "unparsed": 0
     },
     "source": "all",
     "status": "premise",

@@ -5,7 +5,7 @@ import { roundFloat } from "@code-health/cli-kit/serialise";
 import { compareIds } from "@code-health/graph/graph";
 import { listTree } from "@code-health/history/tree";
 import { summariseTasks, type EffortSource } from "@code-health/transcripts/measure-repo";
-import type { TaskEffort } from "@code-health/transcripts/agent-effort";
+import type { EffortMode, TaskEffort } from "@code-health/transcripts/agent-effort";
 import { analyseProject, SORT_METHOD } from "../candidates.ts";
 import { baselineExists, baselinePath, footprintOf, readBaseline, writeBaseline, type Baseline, type BaselineCandidate } from "../baseline-store.ts";
 import { chooseComparison } from "../comparison-group.ts";
@@ -40,6 +40,7 @@ export const command: Command = {
     since: "baseline and compare: start the after window on this date, YYYY-MM-DD (default: the day after the last suite commit); premise: start of the window read",
     until: "premise: end of the window read, YYYY-MM-DD, exclusive",
     source: "baseline and premise: which tasks are read, main (main sessions), subagent (subagent transcripts) or all (default all); compare uses the baseline's",
+    effort: "baseline and premise: which calls count toward effort, tools (Read, Grep, Glob, Edit, Write and NotebookEdit calls only) or all (those and the files named in Bash commands) (default all); compare uses the baseline's",
     force: "replace a baseline of the same name",
   },
   options: {
@@ -49,6 +50,7 @@ export const command: Command = {
     since: { type: "string" },
     until: { type: "string" },
     source: { type: "string" },
+    effort: { type: "string" },
     force: { type: "boolean" },
   },
   async run(context): Promise<CommandOutput> {
@@ -83,6 +85,16 @@ function sourceOption(context: CommandContext): EffortSource | undefined {
   return source;
 }
 
+const EFFORT_MODES: readonly EffortMode[] = ["tools", "all"];
+
+function effortOption(context: CommandContext): EffortMode | undefined {
+  const value = stringOption(context, "effort");
+  if (value === undefined) return undefined;
+  const mode = EFFORT_MODES.find((candidate) => candidate === value);
+  if (mode === undefined) throw usageError("--effort must be tools or all");
+  return mode;
+}
+
 function measureName(context: CommandContext): string {
   return stringOption(context, "name") ?? DEFAULT_NAME;
 }
@@ -108,7 +120,8 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
   const spread = summariseSpread(changesBetween(analysis.filtered.changes, seconds.since, seconds.until));
 
   const source = sourceOption(context) ?? "all";
-  const effort = readEffort(projectsDirectory(context), await checkouts(root), window, source);
+  const mode = effortOption(context) ?? "all";
+  const effort = readEffort(projectsDirectory(context), await checkouts(root), window, source, mode);
 
   const project = await loadProject(root, "HEAD", settings);
   const history = settings.useHistory ? await readHistory(context, settings) : undefined;
@@ -144,7 +157,7 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
       shallow: analysis.evidence.truncated.shallow,
     },
     spread,
-    effort: { sessions: effort.sessions, source, summary: effort.summary, tasks: effort.tasks, stamp: stampOf(effort.tasks) },
+    effort: { sessions: effort.sessions, source, mode, summary: effort.summary, tasks: effort.tasks, stamp: stampOf(effort.tasks) },
     readHeat: readHeat(effort.tasks, HEAT_FILES),
     structure: analysed.metrics,
     sortMethod: SORT_METHOD,
@@ -154,6 +167,7 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
   };
   writeBaseline(root, record);
 
+  noticeShell(context, effort.summary.shell);
   return {
     inputs: { name, transcripts: { tasks: effort.tasks.length, stamp: record.effort.stamp } },
     extra: { evidence: record.evidence },
@@ -166,6 +180,7 @@ async function baseline(context: CommandContext, settings: LocalitySettings): Pr
       structure: analysed.metrics,
       effort: {
         source,
+        mode,
         sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length, subagents: effort.sessions.subagents },
         ...effort.summary,
       },
@@ -277,7 +292,13 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
   if (requestedSource !== undefined && requestedSource !== recordedSource) {
     throw usageError(`the baseline "${name}" read ${recordedSource} tasks, so the comparison reads them too: drop --source or take a new baseline with --name`);
   }
-  const afterEffort = readEffort(projectsDirectory(context), await checkouts(root), after, recordedSource);
+  // Likewise for what counts as effort: a baseline from before shell commands were read counted tool calls only.
+  const recordedMode = before.effort.mode ?? "tools";
+  const requestedMode = effortOption(context);
+  if (requestedMode !== undefined && requestedMode !== recordedMode) {
+    throw usageError(`the baseline "${name}" counted ${recordedMode} for effort, so the comparison counts the same: drop --effort or take a new baseline with --name`);
+  }
+  const afterEffort = readEffort(projectsDirectory(context), await checkouts(root), after, recordedSource, recordedMode);
   const arms = (g: Group) => ({
     before: describeArm(summariseSpread(changesTouching(beforeChanges, g.identities)), tasksTouching(before.effort.tasks, g.baselineFiles)),
     after: describeArm(summariseSpread(changesTouching(afterChanges, g.identities)), tasksTouching(afterEffort.tasks, g.existing)),
@@ -325,10 +346,16 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
   };
 }
 
+/** Prints, on stderr, the summary line of how much of the shell was read: Bash calls in the tasks, those not parsed, and the parsed share. Prints nothing when the tasks made no Bash call. */
+function noticeShell(context: CommandContext, shell: { calls: number; unparsed: number; parsedShare: number | null }): void {
+  if (shell.parsedShare === null) return;
+  (context.stderrNotices ??= []).push(`Shell: ${shell.calls} Bash calls in these tasks, ${shell.unparsed} not parsed, parsed share ${(shell.parsedShare * 100).toFixed(1)}%.`);
+}
+
 const PREMISE_LIMITS = [
   "Observational: tasks were not assigned to near or far files, so what the task was is a confounder the data cannot remove.",
-  "Distance is that of the files a task edited. Tasks editing a single file have none and are left out.",
-  "Effort is read from the transcripts of main sessions and of subagents. Reads made through the shell are not counted, so every figure is a lower bound.",
+  "Distance is that of the files a task edited, from the Edit, Write and NotebookEdit tools and, with --effort all, from the files named in Bash commands. Tasks editing a single file have none and are left out.",
+  "Effort is read from the transcripts of main sessions and of subagents. With --effort all, files named in the commands of Bash calls count as reads and edits, but only for the calls that were parsed (shell.parsedShare is their share): scripts that edit files by computed paths, reads made inside test runs and builds, and unparsed commands are not seen, so every figure is a lower bound. With --effort tools, no Bash call counts.",
   "A subagent task is given to it by an orchestrator, which writes its prompt and sets its scope, so the kind of task is a stronger confounder for subagent tasks than for main-session tasks. A subagent starts with none of the context the main session had, and that alone can raise its reads.",
   "A main-session task that delegated work to a subagent is counted without that work, and the subagent's work is a task of its own, so the two halves of one piece of work are measured apart.",
   "A correlation here is not a measure of what a move would save.",
@@ -370,7 +397,8 @@ async function premise(context: CommandContext, settings: LocalitySettings): Pro
   const spread = summariseSpread(changesBetween(analysis.filtered.changes, seconds.since, seconds.until));
 
   const source = sourceOption(context) ?? "all";
-  const effort = readEffort(projectsDirectory(context), await checkouts(context.repo.root), window, source);
+  const mode = effortOption(context) ?? "all";
+  const effort = readEffort(projectsDirectory(context), await checkouts(context.repo.root), window, source, mode);
   const result = testPremise(effort.tasks, settings.measureMinSamples);
   const bySource = Object.fromEntries(
     (["main", "subagent"] as const)
@@ -378,6 +406,7 @@ async function premise(context: CommandContext, settings: LocalitySettings): Pro
       .map((each) => [each, testPremise(effort.tasks.filter((task) => task.source === each), settings.measureMinSamples)]),
   );
 
+  noticeShell(context, result.shell);
   return {
     inputs: {
       transcripts: { tasks: effort.tasks.length, stamp: stampOf(effort.tasks) },
@@ -397,6 +426,7 @@ async function premise(context: CommandContext, settings: LocalitySettings): Pro
       status: "premise",
       window,
       source,
+      effort: mode,
       sessions: { measured: effort.sessions.measured, notMeasured: effort.sessions.notMeasured.length, subagents: effort.sessions.subagents },
       minSamples: settings.measureMinSamples,
       history: { spread },
