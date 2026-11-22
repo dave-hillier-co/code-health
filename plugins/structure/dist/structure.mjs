@@ -358,6 +358,26 @@ function article(kind) {
   return kind === "array" || kind === "object" ? `an ${kind}` : `a ${kind}`;
 }
 
+// packages/cli-kit/src/dropped-files.ts
+var DROPPED_KINDS = ["generated", "vendored", "nonCode"];
+var dropped = /* @__PURE__ */ new Map();
+function recordDropped(kind, path) {
+  const paths = dropped.get(kind);
+  if (paths === void 0) dropped.set(kind, /* @__PURE__ */ new Set([path]));
+  else paths.add(path);
+}
+function resetDropped() {
+  dropped.clear();
+}
+function droppedCounts() {
+  const counts = {};
+  for (const kind of DROPPED_KINDS) {
+    const paths = dropped.get(kind);
+    if (paths !== void 0 && paths.size > 0) counts[kind] = paths.size;
+  }
+  return counts;
+}
+
 // packages/cli-kit/src/document.ts
 var ENVELOPE_KEYS = [
   "schemaVersion",
@@ -540,9 +560,12 @@ async function execute(cli2, io) {
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args2.positionals, values: args2.values };
   resetBuiltinOmissions();
+  resetDropped();
   const output = await command12.run(context);
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
+  const leftOut = droppedCounts();
+  const droppedFiles = Object.keys(leftOut).length === 0 ? {} : { dropped: leftOut };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
@@ -557,7 +580,7 @@ async function execute(cli2, io) {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: { ...output.extra, ...omittedByBuiltin },
+          extra: { ...output.extra, ...omittedByBuiltin, ...droppedFiles },
           results,
           truncated,
           meta: {
@@ -577,6 +600,12 @@ async function execute(cli2, io) {
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
       io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count2]) => `${count2} ${count2 === 1 ? "file" : "files"} (${entry})`).join(", ")}.
+`);
+    }
+    const left = Object.entries(leftOut);
+    if (left.length > 0) {
+      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code" };
+      io.stdout.write(`Notice: omitted ${left.map(([kind, count2]) => `${count2} ${names[kind]} ${count2 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
@@ -825,6 +854,9 @@ function safeToken(raw) {
   }
 }
 
+// packages/history/src/file-class.ts
+import { spawn as spawn2 } from "node:child_process";
+
 // packages/history/src/builtin-excludes.ts
 import { existsSync as existsSync2 } from "node:fs";
 import { join as join2 } from "node:path";
@@ -939,6 +971,237 @@ function builtinExcluder(root, gitlinks = [], options2 = {}) {
   };
 }
 
+// packages/history/src/tree.ts
+async function readEntries(repoPath, ref) {
+  const out2 = await runGit(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref]);
+  const entries = [];
+  const gitlinks = [];
+  for (const record4 of out2.split("\0")) {
+    const tab = record4.indexOf("	");
+    if (tab === -1) continue;
+    const [mode, type, oid] = record4.slice(0, tab).split(" ");
+    const path = record4.slice(tab + 1);
+    if (type === "commit") gitlinks.push(path);
+    if (mode !== void 0 && oid !== void 0) entries.push({ mode, oid, path });
+  }
+  return { entries, gitlinks };
+}
+async function listGitlinks(repoPath, ref) {
+  return (await readEntries(repoPath, ref)).gitlinks;
+}
+async function listBlobs(repoPath, ref) {
+  const { entries, gitlinks } = await readEntries(repoPath, ref);
+  const omitted2 = builtinExcluder(repoPath, gitlinks);
+  const blobs = entries.filter(({ mode, path }) => mode !== "160000" && mode !== "120000" && !omitted2(path)).map(({ oid, path }) => ({ path, blob: oid }));
+  return blobs.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+}
+async function readBlobAt(repoPath, ref, path) {
+  try {
+    return await runGit(repoPath, ["cat-file", "blob", `${ref}:${path}`]);
+  } catch {
+    return void 0;
+  }
+}
+function parseBlameIgnoreRevs(text2) {
+  const revs = [];
+  for (const line of text2.split("\n")) {
+    const token = line.replace(/#.*/, "").trim().split(/\s+/)[0] ?? "";
+    if (/^[0-9a-f]{7,40}$/i.test(token)) revs.push(token.toLowerCase());
+  }
+  return revs;
+}
+async function readBlameIgnoreRevs(repoPath, ref, file) {
+  const text2 = await readBlobAt(repoPath, ref, file);
+  return text2 === void 0 ? [] : parseBlameIgnoreRevs(text2);
+}
+var isSet = (value) => value === "set" || value === "true";
+var isUnset = (value) => value === "unset" || value === "false";
+async function readPathAttributes(repoPath, ref, paths, treeFiles) {
+  const result = { generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set(), notGenerated: /* @__PURE__ */ new Set(), notVendored: /* @__PURE__ */ new Set() };
+  const hasAttributes = treeFiles.some((p) => p === ".gitattributes" || p.endsWith("/.gitattributes"));
+  if (!hasAttributes || paths.length === 0) return result;
+  const input = paths.join("\0") + "\0";
+  const base = ["check-attr", "-z", "--stdin"];
+  const names = ["linguist-generated", "linguist-vendored"];
+  let out2;
+  try {
+    out2 = await runGit(repoPath, ref === void 0 ? [...base, ...names] : [...base, `--source=${ref}`, ...names], { input });
+  } catch {
+    out2 = await runGit(repoPath, [...base, ...names], { input });
+  }
+  const tokens2 = out2.split("\0");
+  for (let i2 = 0; i2 + 2 < tokens2.length; i2 += 3) {
+    const [path, attribute2, value] = [tokens2[i2], tokens2[i2 + 1], tokens2[i2 + 2]];
+    if (isSet(value)) (attribute2 === "linguist-generated" ? result.generated : result.vendored).add(path);
+    else if (isUnset(value)) (attribute2 === "linguist-generated" ? result.notGenerated : result.notVendored).add(path);
+  }
+  return result;
+}
+
+// packages/history/src/file-class.ts
+var HEADER_LINES = 20;
+var HEADER_BYTES = 4096;
+var COMMENT_LEADER = /^\s*(?:\/\/|\/\*|\*|#|--|;|%|<!--|')/;
+var MARKERS = [
+  { name: "<auto-generated", test: /<auto-generated/i },
+  { name: "Code generated ... DO NOT EDIT", test: /Code generated\b.*\bDO NOT EDIT/ },
+  { name: "@generated", test: /@generated\b/ },
+  { name: "Generated by", test: /\bGenerated by\b/ },
+  { name: "DO NOT EDIT", test: /\bDO NOT EDIT\b/ }
+];
+function generatedHeaderMarker(text2) {
+  for (const line of text2.split("\n", HEADER_LINES)) {
+    if (!COMMENT_LEADER.test(line)) continue;
+    for (const marker of MARKERS) if (marker.test.test(line)) return marker.name;
+  }
+  return void 0;
+}
+var VENDOR_DIRECTORIES = ["vendor", "third_party"];
+function isInVendorDirectory(path) {
+  const parts2 = path.split("/");
+  parts2.pop();
+  return parts2.some((part) => VENDOR_DIRECTORIES.includes(part));
+}
+var verdicts = /* @__PURE__ */ new Map();
+async function readBlobHeads(repoPath, blobs) {
+  const heads = /* @__PURE__ */ new Map();
+  const chunkSize = 256;
+  for (let start2 = 0; start2 < blobs.length; start2 += chunkSize) {
+    const chunk = blobs.slice(start2, start2 + chunkSize);
+    const stdout = await catFileBatch(repoPath, `${chunk.join("\n")}
+`);
+    let offset = 0;
+    for (const sha of chunk) {
+      const newline = stdout.indexOf(10, offset);
+      if (newline === -1) break;
+      const header = stdout.toString("utf8", offset, newline).split(" ");
+      if (header[1] !== "blob") {
+        offset = newline + 1;
+        continue;
+      }
+      const size = Number(header[2]);
+      const bodyStart = newline + 1;
+      heads.set(sha, stdout.toString("utf8", bodyStart, bodyStart + Math.min(size, HEADER_BYTES)));
+      offset = bodyStart + size + 1;
+    }
+  }
+  return heads;
+}
+function catFileBatch(cwd, input) {
+  return new Promise((resolve, reject) => {
+    const child2 = spawn2("git", ["cat-file", "--batch"], {
+      cwd,
+      env: { ...process.env, LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" },
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    const out2 = [];
+    child2.stdout.on("data", (chunk) => out2.push(chunk));
+    child2.on("error", reject);
+    child2.stdin.on("error", () => {
+    });
+    child2.on("close", (code) => code === 0 ? resolve(Buffer.concat(out2)) : reject(new Error(`git cat-file --batch failed (${code})`)));
+    child2.stdin.end(input);
+  });
+}
+async function generatedByHeader(repoPath, sources, read) {
+  const reader = read ?? ((missing2) => readBlobHeads(repoPath, [...new Set(missing2.map((m) => m.blob))]));
+  const missing = sources.filter((source) => !verdicts.has(source.blob));
+  if (missing.length > 0) {
+    const heads = await reader(missing);
+    for (const source of missing) {
+      const head = heads.get(source.blob);
+      if (head !== void 0) verdicts.set(source.blob, generatedHeaderMarker(head) !== void 0);
+    }
+  }
+  return new Set(sources.filter((source) => verdicts.get(source.blob) === true).map((source) => source.path));
+}
+var BINARY_EXTENSIONS = /* @__PURE__ */ new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "bmp",
+  "ico",
+  "webp",
+  "avif",
+  "tif",
+  "tiff",
+  "psd",
+  "pdf",
+  "zip",
+  "gz",
+  "tgz",
+  "bz2",
+  "xz",
+  "zst",
+  "7z",
+  "tar",
+  "jar",
+  "war",
+  "wasm",
+  "bin",
+  "dll",
+  "exe",
+  "so",
+  "dylib",
+  "a",
+  "o",
+  "obj",
+  "class",
+  "pyc",
+  "safetensors",
+  "onnx",
+  "pt",
+  "pth",
+  "ckpt",
+  "npy",
+  "npz",
+  "glb",
+  "ttf",
+  "otf",
+  "woff",
+  "woff2",
+  "eot",
+  "mp3",
+  "mp4",
+  "mov",
+  "avi",
+  "ogg",
+  "wav",
+  "flac",
+  "webm",
+  "mkv",
+  "sqlite",
+  "db",
+  "lockb"
+]);
+function maybeText(path) {
+  const name13 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name13.lastIndexOf(".");
+  return dot <= 0 || !BINARY_EXTENSIONS.has(name13.slice(dot + 1).toLowerCase());
+}
+var noAttributes = () => ({ generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set(), notGenerated: /* @__PURE__ */ new Set(), notVendored: /* @__PURE__ */ new Set() });
+async function classifyFiles(repoPath, ref, entries, treeFiles, options2 = {}) {
+  const paths = entries.map((entry) => entry.path);
+  let attributes;
+  try {
+    attributes = await readPathAttributes(repoPath, ref, paths, treeFiles);
+  } catch {
+    attributes = noAttributes();
+  }
+  const vendored = new Set(attributes.vendored);
+  for (const path of paths) if (isInVendorDirectory(path) && !attributes.notVendored.has(path)) vendored.add(path);
+  const generated = new Set(attributes.generated);
+  const candidate = options2.headerCandidate ?? maybeText;
+  const toRead = [];
+  for (const { path, blob } of entries) {
+    if (generated.has(path) || vendored.has(path) || attributes.notGenerated.has(path)) continue;
+    if (typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
+  }
+  for (const path of await generatedByHeader(repoPath, toRead, options2.read)) generated.add(path);
+  return { generated, vendored };
+}
+
 // packages/history/src/grouping.ts
 var DEFAULT_ISSUE_PATTERN = "[A-Z][A-Z0-9]+-\\d+";
 var NOT_ISSUE_PREFIXES = /* @__PURE__ */ new Set(["UTF", "SHA", "MD", "ISO", "RFC", "TLS", "SSL", "AES", "RSA", "CVE", "PEP", "WCAG", "IPV", "ES", "HTTP", "TCP", "UDP"]);
@@ -1027,72 +1290,6 @@ function hasCodeHealthTrailer(message) {
   return paragraphs[paragraphs.length - 1].split("\n").some((line) => /^code-health[ \t]*:/i.test(line));
 }
 
-// packages/history/src/tree.ts
-async function readEntries(repoPath, ref) {
-  const out2 = await runGit(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref]);
-  const entries = [];
-  const gitlinks = [];
-  for (const record4 of out2.split("\0")) {
-    const tab = record4.indexOf("	");
-    if (tab === -1) continue;
-    const [mode, type, oid] = record4.slice(0, tab).split(" ");
-    const path = record4.slice(tab + 1);
-    if (type === "commit") gitlinks.push(path);
-    if (mode !== void 0 && oid !== void 0) entries.push({ mode, oid, path });
-  }
-  return { entries, gitlinks };
-}
-async function listGitlinks(repoPath, ref) {
-  return (await readEntries(repoPath, ref)).gitlinks;
-}
-async function listTree(repoPath, ref) {
-  const { entries, gitlinks } = await readEntries(repoPath, ref);
-  const omitted2 = builtinExcluder(repoPath, gitlinks);
-  return entries.map((entry) => entry.path).filter((path) => !omitted2(path)).sort();
-}
-async function readBlobAt(repoPath, ref, path) {
-  try {
-    return await runGit(repoPath, ["cat-file", "blob", `${ref}:${path}`]);
-  } catch {
-    return void 0;
-  }
-}
-function parseBlameIgnoreRevs(text2) {
-  const revs = [];
-  for (const line of text2.split("\n")) {
-    const token = line.replace(/#.*/, "").trim().split(/\s+/)[0] ?? "";
-    if (/^[0-9a-f]{7,40}$/i.test(token)) revs.push(token.toLowerCase());
-  }
-  return revs;
-}
-async function readBlameIgnoreRevs(repoPath, ref, file) {
-  const text2 = await readBlobAt(repoPath, ref, file);
-  return text2 === void 0 ? [] : parseBlameIgnoreRevs(text2);
-}
-var isSet = (value) => value === "set" || value === "true";
-async function readPathAttributes(repoPath, ref, paths, treeFiles) {
-  const result = { generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set() };
-  const hasAttributes = treeFiles.some((p) => p === ".gitattributes" || p.endsWith("/.gitattributes"));
-  if (!hasAttributes || paths.length === 0) return result;
-  const input = paths.join("\0") + "\0";
-  const base = ["check-attr", "-z", "--stdin"];
-  const names = ["linguist-generated", "linguist-vendored"];
-  let out2;
-  try {
-    out2 = await runGit(repoPath, ref === void 0 ? [...base, ...names] : [...base, `--source=${ref}`, ...names], { input });
-  } catch {
-    out2 = await runGit(repoPath, [...base, ...names], { input });
-  }
-  const tokens2 = out2.split("\0");
-  for (let i2 = 0; i2 + 2 < tokens2.length; i2 += 3) {
-    const [path, attribute2, value] = [tokens2[i2], tokens2[i2 + 1], tokens2[i2 + 2]];
-    if (!isSet(value)) continue;
-    if (attribute2 === "linguist-generated") result.generated.add(path);
-    else if (attribute2 === "linguist-vendored") result.vendored.add(path);
-  }
-  return result;
-}
-
 // packages/history/src/noise.ts
 var DEFAULT_LOCKFILES = [
   "package-lock.json",
@@ -1162,18 +1359,21 @@ async function filterHistory(repoPath, view, options2 = {}) {
   const grouping = options2.grouping ?? { mode: "off" };
   const excluded = compileGlobs(options2.exclude ?? []);
   const bots = botPatterns.map(compileBotPattern);
-  const treeFiles = await listTree(repoPath, view.headSha);
+  const blobs = await listBlobs(repoPath, view.headSha);
+  const treeFiles = blobs.map((entry) => entry.path);
+  const blobOf = new Map(blobs.map((entry) => [entry.path, entry.blob]));
   const builtinExcluded = builtinExcluder(repoPath, await listGitlinks(repoPath, view.headSha));
   const imported = detectImportedHistory(view, treeFiles, options2.importDetection);
   const importedShas = new Set(excludeImported ? imported.map((i2) => i2.sha) : []);
   const ignoredRevs = blameFile === false ? [] : await readBlameIgnoreRevs(repoPath, view.headSha, blameFile);
-  const attributes = useAttributes ? await readPathAttributes(
+  const touchedPaths = [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort();
+  const attributes = useAttributes ? await classifyFiles(
     repoPath,
     view.headSha,
-    [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort(),
+    touchedPaths.map((path) => ({ path, blob: blobOf.get(path) ?? null })),
     treeFiles
   ) : { generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set() };
-  const dropped = {
+  const dropped2 = {
     outsideWindow: 0,
     shallowBoundaryCommits: 0,
     importedCommits: 0,
@@ -1203,7 +1403,7 @@ async function filterHistory(repoPath, view, options2 = {}) {
     return false;
   };
   function countOut(key) {
-    dropped[key]++;
+    dropped2[key]++;
     return true;
   }
   const survivors = [];
@@ -1212,22 +1412,24 @@ async function filterHistory(repoPath, view, options2 = {}) {
     const files = [];
     for (const change of commit.changes) {
       if (isPureRename(change)) {
-        dropped.pureRenames++;
+        dropped2.pureRenames++;
       } else if (builtinExcluded(change.path)) {
       } else if (excluded(change.path)) {
-        dropped.excludedByGlob++;
+        dropped2.excludedByGlob++;
       } else if (lockfileSet.has(change.path.slice(change.path.lastIndexOf("/") + 1))) {
-        dropped.lockfiles++;
+        dropped2.lockfiles++;
       } else if (attributes.generated.has(change.path)) {
-        dropped.generated++;
+        dropped2.generated++;
+        recordDropped("generated", change.path);
       } else if (attributes.vendored.has(change.path)) {
-        dropped.vendored++;
+        dropped2.vendored++;
+        recordDropped("vendored", change.path);
       } else {
         files.push(change);
       }
     }
     if (files.length === 0) {
-      dropped.emptyAfterFiltering++;
+      dropped2.emptyAfterFiltering++;
       continue;
     }
     survivors.push({ commit, files });
@@ -1269,7 +1471,7 @@ async function filterHistory(repoPath, view, options2 = {}) {
         windowSeconds: grouping.mode === "author-window" ? grouping.windowSeconds : grouping.mode === "issue-key" ? ISSUE_KEY_WINDOW_SECONDS : null,
         mergedCommits: survivors.length - changes.length
       },
-      dropped,
+      dropped: dropped2,
       oversizedChanges: changes.filter((c) => c.oversized).length
     }
   };
@@ -1887,7 +2089,7 @@ __export(census_exports, {
 });
 
 // packages/parse/src/source-tree.ts
-import { spawn as spawn2 } from "node:child_process";
+import { spawn as spawn3 } from "node:child_process";
 import { createHash as createHash2 } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync as readFileSync4 } from "node:fs";
 import { join as join5 } from "node:path";
@@ -1896,7 +2098,7 @@ function sortedMap(entries) {
 }
 function git2(cwd, args2, input) {
   return new Promise((resolve, reject) => {
-    const child2 = spawn2("git", args2, {
+    const child2 = spawn3("git", args2, {
       cwd,
       env: {
         ...process.env,
@@ -1944,15 +2146,36 @@ async function readBlobs(cwd, shas) {
   }
   return out2;
 }
-async function withoutMarkedPaths(repoPath, ref, entries) {
+async function withoutGeneratedAndVendored(repoPath, ref, entries) {
   const paths = entries.map(([path]) => path);
-  let marked;
-  try {
-    marked = await readPathAttributes(repoPath, ref, paths, paths);
-  } catch {
-    return entries;
+  const classes = await classifyFiles(
+    repoPath,
+    ref,
+    entries.map(([path, blob]) => ({ path, blob })),
+    paths,
+    ref === void 0 ? { read: (missing) => readHeadsFromDisk(repoPath, missing) } : {}
+  );
+  return entries.filter(([path]) => {
+    if (classes.generated.has(path)) {
+      recordDropped("generated", path);
+      return false;
+    }
+    if (classes.vendored.has(path)) {
+      recordDropped("vendored", path);
+      return false;
+    }
+    return true;
+  });
+}
+async function readHeadsFromDisk(repoPath, missing) {
+  const heads = /* @__PURE__ */ new Map();
+  for (const { path, blob } of missing) {
+    try {
+      heads.set(blob, readFileSync4(join5(repoPath, path)).subarray(0, 4096).toString("utf8"));
+    } catch {
+    }
   }
-  return entries.filter(([path]) => !marked.generated.has(path) && !marked.vendored.has(path));
+  return heads;
 }
 async function treeFromRef(repoPath, ref) {
   const listing = (await git2(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref])).toString("utf8");
@@ -1969,7 +2192,7 @@ async function treeFromRef(repoPath, ref) {
   const omitted2 = builtinExcluder(repoPath, gitlinks);
   const kept = entries.filter(([path]) => !omitted2(path));
   for (const path of gitlinks) omitted2(path);
-  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, kept));
+  const files = sortedMap(await withoutGeneratedAndVendored(repoPath, ref, kept));
   const readMany = async (wanted) => {
     const known = wanted.filter((path) => files.has(path));
     const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path)))]);
@@ -20710,15 +20933,15 @@ function measureOutcome(inputs, from, to) {
   const beforeChanges = inputs.changes.filter((c) => outsideBreak(c) && c.committerDate >= point.date - seconds && c.committerDate < point.date);
   const afterChanges = inputs.changes.filter((c) => outsideBreak(c) && c.committerDate >= point.date && c.committerDate <= point.date + seconds);
   const graphBefore = buildModuleGraph(level, inputs.projectBefore, settings.components);
-  const dropped = droppedPairs(graphBefore, inputs.graphAfter);
-  const wanted = [[from, to], ...dropped];
+  const dropped2 = droppedPairs(graphBefore, inputs.graphAfter);
+  const wanted = [[from, to], ...dropped2];
   const activityBefore = measureActivity(beforeChanges, inputs.graphAfter, wanted);
   const activityAfter = measureActivity(afterChanges, inputs.graphAfter, wanted);
   const judge = (project, graph, activity, a, b) => judgePair(project, graph, activity, a, b, settings);
   const before = sideOf(judge(inputs.projectBefore, graphBefore, activityBefore, from, to));
   const after = sideOf(judge(inputs.projectAfter, inputs.graphAfter, activityAfter, from, to));
   const hiddenCreated = [];
-  for (const [a, b] of dropped) {
+  for (const [a, b] of dropped2) {
     const was = judge(inputs.projectBefore, graphBefore, activityBefore, a, b);
     const is = judge(inputs.projectAfter, inputs.graphAfter, activityAfter, a, b);
     if (!was.coChange.high || !is.coChange.high) continue;
@@ -20756,7 +20979,7 @@ function measureOutcome(inputs, from, to) {
       after,
       verdict: verdictOf(before, after),
       leading,
-      agentEffort: agentEffortOf(inputs, graphBefore, from, to, seconds, controlPair(inputs, graphBefore, dropped, [from, to], before.staticCoupling.sites))
+      agentEffort: agentEffortOf(inputs, graphBefore, from, to, seconds, controlPair(inputs, graphBefore, dropped2, [from, to], before.staticCoupling.sites))
     },
     hiddenCreated
   };
@@ -20776,8 +20999,8 @@ function droppedPairs(before, after) {
   }
   return pairs.sort((a, b) => compareIds(a[0], b[0]) || compareIds(a[1], b[1]));
 }
-function controlPair(inputs, graphBefore, dropped, target2, sites) {
-  const droppedKeys = new Set(dropped.map(([a, b]) => `${a}\0${b}`));
+function controlPair(inputs, graphBefore, dropped2, target2, sites) {
+  const droppedKeys = new Set(dropped2.map(([a, b]) => `${a}\0${b}`));
   let best = null;
   const seen = /* @__PURE__ */ new Set();
   for (const [from, targets] of graphBefore.graph) {

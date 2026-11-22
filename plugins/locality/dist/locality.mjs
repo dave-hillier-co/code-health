@@ -17,22 +17,26 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-XDZ3NWLM.mjs";
+} from "./chunk-HRDHML6R.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
   builtinExcluder,
   builtinOmissions,
+  classifyFiles,
   compileGlobs,
+  droppedCounts,
   gitVersion,
+  listBlobs,
   listGitlinks,
   listTree,
   readBlameIgnoreRevs,
-  readPathAttributes,
+  recordDropped,
   resetBuiltinOmissions,
+  resetDropped,
   runGit,
   treeFromRef
-} from "./chunk-QHLSRXYC.mjs";
+} from "./chunk-XYM3TEG5.mjs";
 import {
   analyseTree
 } from "./chunk-X2MAPTZB.mjs";
@@ -559,9 +563,12 @@ async function execute(cli2, io) {
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args.positionals, values: args.values };
   resetBuiltinOmissions();
+  resetDropped();
   const output = await command8.run(context);
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
+  const leftOut = droppedCounts();
+  const droppedFiles = Object.keys(leftOut).length === 0 ? {} : { dropped: leftOut };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
@@ -576,7 +583,7 @@ async function execute(cli2, io) {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: { ...output.extra, ...omittedByBuiltin },
+          extra: { ...output.extra, ...omittedByBuiltin, ...droppedFiles },
           results,
           truncated,
           meta: {
@@ -596,6 +603,12 @@ async function execute(cli2, io) {
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
       io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count2]) => `${count2} ${count2 === 1 ? "file" : "files"} (${entry})`).join(", ")}.
+`);
+    }
+    const left = Object.entries(leftOut);
+    if (left.length > 0) {
+      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code" };
+      io.stdout.write(`Notice: omitted ${left.map(([kind, count2]) => `${count2} ${names[kind]} ${count2 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
@@ -1171,15 +1184,18 @@ async function filterHistory(repoPath, view, options = {}) {
   const grouping = options.grouping ?? { mode: "off" };
   const excluded = compileGlobs(options.exclude ?? []);
   const bots = botPatterns.map(compileBotPattern);
-  const treeFiles = await listTree(repoPath, view.headSha);
+  const blobs = await listBlobs(repoPath, view.headSha);
+  const treeFiles = blobs.map((entry) => entry.path);
+  const blobOf = new Map(blobs.map((entry) => [entry.path, entry.blob]));
   const builtinExcluded = builtinExcluder(repoPath, await listGitlinks(repoPath, view.headSha));
   const imported = detectImportedHistory(view, treeFiles, options.importDetection);
   const importedShas = new Set(excludeImported ? imported.map((i) => i.sha) : []);
   const ignoredRevs = blameFile === false ? [] : await readBlameIgnoreRevs(repoPath, view.headSha, blameFile);
-  const attributes = useAttributes ? await readPathAttributes(
+  const touchedPaths = [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort();
+  const attributes = useAttributes ? await classifyFiles(
     repoPath,
     view.headSha,
-    [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort(),
+    touchedPaths.map((path) => ({ path, blob: blobOf.get(path) ?? null })),
     treeFiles
   ) : { generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set() };
   const dropped = {
@@ -1229,8 +1245,10 @@ async function filterHistory(repoPath, view, options = {}) {
         dropped.lockfiles++;
       } else if (attributes.generated.has(change2.path)) {
         dropped.generated++;
+        recordDropped("generated", change2.path);
       } else if (attributes.vendored.has(change2.path)) {
         dropped.vendored++;
+        recordDropped("vendored", change2.path);
       } else {
         files.push(change2);
       }
@@ -5641,7 +5659,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-EFYWWGTQ.mjs");
+    const { performMove } = await import("./chunk-EAED36FV.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -5912,7 +5930,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-5UWH4CMC.mjs");
+    const { verifyMove } = await import("./chunk-AL5M6URW.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

@@ -97,5 +97,5 @@ test("the stored report is what the cochange plugin reads: a path and a numeric 
     expect(typeof row.path).toBe("string");
     expect(typeof row.complexity).toBe("number");
   }
-  expect(document.results).toHaveLength(6);
+  expect(document.results).toHaveLength(4);
 });

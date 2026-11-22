@@ -3,19 +3,21 @@
 import {
   buildDocument,
   shapeResults
-} from "./chunk-JQWY4I27.mjs";
+} from "./chunk-KFI6GTEH.mjs";
 import {
   CliError,
   ExitCode,
   builtinOmissions,
+  droppedCounts,
   environmentError,
   explainConfig,
   loadConfig,
   resetBuiltinOmissions,
+  resetDropped,
   roundFloat,
   serialise,
   usageError
-} from "./chunk-GATX7OYR.mjs";
+} from "./chunk-3A7GT64J.mjs";
 import "./chunk-NYIILDEN.mjs";
 
 // packages/cli-kit/src/args.ts
@@ -181,9 +183,12 @@ async function execute(cli, io) {
   const config = loadConfig(repo.root, cli.config);
   const context = { repo, config, positionals: args.positionals, values: args.values };
   resetBuiltinOmissions();
+  resetDropped();
   const output = await command.run(context);
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
+  const leftOut = droppedCounts();
+  const droppedFiles = Object.keys(leftOut).length === 0 ? {} : { dropped: leftOut };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
@@ -198,7 +203,7 @@ async function execute(cli, io) {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: { ...output.extra, ...omittedByBuiltin },
+          extra: { ...output.extra, ...omittedByBuiltin, ...droppedFiles },
           results,
           truncated,
           meta: {
@@ -218,6 +223,12 @@ async function execute(cli, io) {
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
       io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count]) => `${count} ${count === 1 ? "file" : "files"} (${entry})`).join(", ")}.
+`);
+    }
+    const left = Object.entries(leftOut);
+    if (left.length > 0) {
+      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code" };
+      io.stdout.write(`Notice: omitted ${left.map(([kind, count]) => `${count} ${names[kind]} ${count === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.

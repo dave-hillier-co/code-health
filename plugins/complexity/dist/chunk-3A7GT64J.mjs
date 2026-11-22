@@ -300,6 +300,26 @@ function article(kind) {
   return kind === "array" || kind === "object" ? `an ${kind}` : `a ${kind}`;
 }
 
+// packages/cli-kit/src/dropped-files.ts
+var DROPPED_KINDS = ["generated", "vendored", "nonCode"];
+var dropped = /* @__PURE__ */ new Map();
+function recordDropped(kind, path) {
+  const paths = dropped.get(kind);
+  if (paths === void 0) dropped.set(kind, /* @__PURE__ */ new Set([path]));
+  else paths.add(path);
+}
+function resetDropped() {
+  dropped.clear();
+}
+function droppedCounts() {
+  const counts = {};
+  for (const kind of DROPPED_KINDS) {
+    const paths = dropped.get(kind);
+    if (paths !== void 0 && paths.size > 0) counts[kind] = paths.size;
+  }
+  return counts;
+}
+
 export {
   BUILTIN_EXCLUDE_GLOBS,
   NESTED_CHECKOUT_ENTRY,
@@ -315,5 +335,8 @@ export {
   roundFloat,
   historyDefaults,
   loadConfig,
-  explainConfig
+  explainConfig,
+  recordDropped,
+  resetDropped,
+  droppedCounts
 };

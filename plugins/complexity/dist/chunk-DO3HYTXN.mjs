@@ -4,6 +4,7 @@ import {
   adapterById,
   adapterForPath,
   bindingForPath,
+  hasAdapter,
   isTestPath
 } from "./chunk-OO2LLI7D.mjs";
 import {
@@ -14,6 +15,7 @@ import {
   builtinExcluder,
   bumpyRoadLimits,
   checkFixConvention,
+  classifyFiles,
   complexityConfig,
   ensureCacheDir,
   exceeded,
@@ -28,20 +30,21 @@ import {
   limitOf,
   locateCache,
   metricIds,
-  readPathAttributes,
   readSettings,
   runGit,
+  selectProfile,
   structuralValues
-} from "./chunk-GPAGPCI6.mjs";
+} from "./chunk-SEACSS73.mjs";
 import {
   buildDocument,
   shapeResults
-} from "./chunk-JQWY4I27.mjs";
+} from "./chunk-KFI6GTEH.mjs";
 import {
   historyDefaults,
+  recordDropped,
   serialise,
   usageError
-} from "./chunk-GATX7OYR.mjs";
+} from "./chunk-3A7GT64J.mjs";
 import {
   __export
 } from "./chunk-NYIILDEN.mjs";
@@ -928,7 +931,7 @@ async function treeFromWorkingTree(repoPath) {
     } catch {
     }
   }
-  const files = sortedMap(await withoutMarkedPaths(repoPath, void 0, entries));
+  const files = sortedMap(await withoutGeneratedAndVendored(repoPath, void 0, entries));
   const read = async (path) => files.has(path) ? readFileSync3(join4(repoPath, path), "utf8") : void 0;
   return {
     files,
@@ -1027,15 +1030,36 @@ async function readBlobs(cwd, shas) {
   }
   return out2;
 }
-async function withoutMarkedPaths(repoPath, ref, entries) {
+async function withoutGeneratedAndVendored(repoPath, ref, entries) {
   const paths = entries.map(([path]) => path);
-  let marked;
-  try {
-    marked = await readPathAttributes(repoPath, ref, paths, paths);
-  } catch {
-    return entries;
+  const classes = await classifyFiles(
+    repoPath,
+    ref,
+    entries.map(([path, blob]) => ({ path, blob })),
+    paths,
+    ref === void 0 ? { read: (missing) => readHeadsFromDisk(repoPath, missing) } : {}
+  );
+  return entries.filter(([path]) => {
+    if (classes.generated.has(path)) {
+      recordDropped("generated", path);
+      return false;
+    }
+    if (classes.vendored.has(path)) {
+      recordDropped("vendored", path);
+      return false;
+    }
+    return true;
+  });
+}
+async function readHeadsFromDisk(repoPath, missing) {
+  const heads = /* @__PURE__ */ new Map();
+  for (const { path, blob } of missing) {
+    try {
+      heads.set(blob, readFileSync3(join4(repoPath, path)).subarray(0, 4096).toString("utf8"));
+    } catch {
+    }
   }
-  return entries.filter(([path]) => !marked.generated.has(path) && !marked.vendored.has(path));
+  return heads;
 }
 async function treeFromRef(repoPath, ref) {
   const listing = (await git(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref])).toString("utf8");
@@ -1052,7 +1076,7 @@ async function treeFromRef(repoPath, ref) {
   const omitted = builtinExcluder(repoPath, gitlinks);
   const kept = entries.filter(([path]) => !omitted(path));
   for (const path of gitlinks) omitted(path);
-  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, kept));
+  const files = sortedMap(await withoutGeneratedAndVendored(repoPath, ref, kept));
   const readMany = async (wanted) => {
     const known = wanted.filter((path) => files.has(path));
     const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path)))]);
@@ -6736,6 +6760,18 @@ __export(files_exports, {
   command: () => command6,
   name: () => name7
 });
+
+// packages/parse/src/code-files.ts
+function isCodePath(path, mappings = {}) {
+  if (hasAdapter(path)) return true;
+  try {
+    return selectProfile(path, { ...mappings }) !== void 0;
+  } catch {
+    return false;
+  }
+}
+
+// packages/complexity/src/commands/files.ts
 var name7 = "files";
 function isPartial3(context) {
   return context.positionals.length > 0 || context.values.layer !== void 0;
@@ -6748,7 +6784,11 @@ var command6 = {
     const { settings, current, measurement } = await measureCurrent(context, layer);
     const paths = normalisePaths(context.positionals);
     const inPaths = pathSelector(paths);
-    const rows = measurement.files.filter((file) => inPaths(file.path)).map((file) => fileRow(file, settings));
+    const rows = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
+      if (isCodePath(file.path, settings.languageProfiles)) return true;
+      recordDropped("nonCode", file.path);
+      return false;
+    }).map((file) => fileRow(file, settings));
     const output = {
       inputs: { tree: current.kind, layer, paths },
       extra: { skippedFiles: measurement.skippedFiles },

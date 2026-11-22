@@ -9,11 +9,14 @@ import {
   blobSize,
   builtinExcluder,
   builtinOmissions,
+  classifyFiles,
   compileGlobs,
   cutoffsOf,
+  droppedCounts,
   ensureCacheDir,
   ensureSelfIgnoring,
   gitVersion,
+  hasAdapter,
   higherBand,
   listBlobs,
   listGitlinks,
@@ -23,10 +26,11 @@ import {
   readBlameIgnoreRevs,
   readBlob,
   readBlobAt,
-  readPathAttributes,
+  recordDropped,
   resetBuiltinOmissions,
+  resetDropped,
   runGit
-} from "./chunk-7QD7UKDX.mjs";
+} from "./chunk-LHFWMVTH.mjs";
 
 // packages/cli-kit/src/args.ts
 import { parseArgs } from "node:util";
@@ -540,9 +544,12 @@ async function execute(cli2, io) {
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args.positionals, values: args.values };
   resetBuiltinOmissions();
+  resetDropped();
   const output = await command16.run(context);
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
+  const leftOut = droppedCounts();
+  const droppedFiles = Object.keys(leftOut).length === 0 ? {} : { dropped: leftOut };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
@@ -557,7 +564,7 @@ async function execute(cli2, io) {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: { ...output.extra, ...omittedByBuiltin },
+          extra: { ...output.extra, ...omittedByBuiltin, ...droppedFiles },
           results,
           truncated,
           meta: {
@@ -577,6 +584,12 @@ async function execute(cli2, io) {
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
       io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count2]) => `${count2} ${count2 === 1 ? "file" : "files"} (${entry})`).join(", ")}.
+`);
+    }
+    const left = Object.entries(leftOut);
+    if (left.length > 0) {
+      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code" };
+      io.stdout.write(`Notice: omitted ${left.map(([kind, count2]) => `${count2} ${names[kind]} ${count2 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
@@ -934,15 +947,18 @@ async function filterHistory(repoPath, view, options = {}) {
   const grouping = options.grouping ?? { mode: "off" };
   const excluded = compileGlobs(options.exclude ?? []);
   const bots = botPatterns.map(compileBotPattern);
-  const treeFiles = await listTree(repoPath, view.headSha);
+  const blobs = await listBlobs(repoPath, view.headSha);
+  const treeFiles = blobs.map((entry) => entry.path);
+  const blobOf = new Map(blobs.map((entry) => [entry.path, entry.blob]));
   const builtinExcluded = builtinExcluder(repoPath, await listGitlinks(repoPath, view.headSha));
   const imported = detectImportedHistory(view, treeFiles, options.importDetection);
   const importedShas = new Set(excludeImported ? imported.map((i) => i.sha) : []);
   const ignoredRevs = blameFile === false ? [] : await readBlameIgnoreRevs(repoPath, view.headSha, blameFile);
-  const attributes = useAttributes ? await readPathAttributes(
+  const touchedPaths = [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort();
+  const attributes = useAttributes ? await classifyFiles(
     repoPath,
     view.headSha,
-    [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort(),
+    touchedPaths.map((path) => ({ path, blob: blobOf.get(path) ?? null })),
     treeFiles
   ) : { generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set() };
   const dropped = {
@@ -992,8 +1008,10 @@ async function filterHistory(repoPath, view, options = {}) {
         dropped.lockfiles++;
       } else if (attributes.generated.has(change2.path)) {
         dropped.generated++;
+        recordDropped("generated", change2.path);
       } else if (attributes.vendored.has(change2.path)) {
         dropped.vendored++;
+        recordDropped("vendored", change2.path);
       } else {
         files.push(change2);
       }
@@ -3115,10 +3133,19 @@ async function authoredFilesAt(root, sha, exclude = []) {
   const lockfiles = new Set(DEFAULT_LOCKFILES);
   const blobs = await listBlobs(root, sha);
   const paths = blobs.map((b) => b.path);
-  const attributes = await readPathAttributes(root, sha, paths, paths);
-  return blobs.filter(
-    ({ path }) => !excluded(path) && !lockfiles.has(path.slice(path.lastIndexOf("/") + 1)) && !attributes.generated.has(path) && !attributes.vendored.has(path)
-  );
+  const classes = await classifyFiles(root, sha, blobs, paths);
+  return blobs.filter(({ path }) => {
+    if (excluded(path) || lockfiles.has(path.slice(path.lastIndexOf("/") + 1))) return false;
+    if (classes.generated.has(path)) {
+      recordDropped("generated", path);
+      return false;
+    }
+    if (classes.vendored.has(path)) {
+      recordDropped("vendored", path);
+      return false;
+    }
+    return true;
+  });
 }
 function parseBlameRanges(output) {
   const ranges = [];
@@ -3851,6 +3878,330 @@ function shareStrictlyAbove(values, value) {
   return values.filter((other) => other > value).length / values.length;
 }
 
+// packages/lexical/src/profile.ts
+var doubleQuote = {
+  kind: "delimited",
+  triggers: '"',
+  open: '"',
+  close: '"',
+  escape: "\\",
+  multiline: false
+};
+var singleQuote = {
+  kind: "delimited",
+  triggers: "'",
+  open: "'",
+  close: "'",
+  escape: "\\",
+  multiline: false
+};
+var charLiteral = {
+  kind: "whole",
+  triggers: "'",
+  pattern: "'(?:\\\\[^'\\n]*|[^\\\\'\\n])'"
+};
+var cBranchKeywords = ["if", "for", "while", "case", "catch"];
+var cBumpOpeners = [...cBranchKeywords, "else", "do", "default", "switch", "try", "finally"];
+var controlHeader = "^(?:else\\s+if|else|if|for|foreach|while|do|switch|catch|try|finally|with|using|lock|synchronized|unsafe|checked|fixed|match|loop|unless)\\b";
+var typeHeader = "\\b(?:class|struct|interface|enum|namespace|trait|object|record|union)\\s+(?<name>[\\w.:$]+)";
+var cTypeHeaders = [typeHeader];
+var annotationNoise = ["^\\[.*\\]$", "^@\\w[\\w.]*(?:\\(.*\\))?$", "^#.*$"];
+var cMethodHeader = "(?<![\\w.])(?<name>~?[\\w:.$<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:(?:const|noexcept|override|final|volatile|mutable|throws\\s+[\\w.,\\s]+|where\\s+[^{;]+|&&|&)\\s*)*(?:->\\s*[^{;]+)?(?::\\s*[^{;]*)?$";
+var regexLiteral = {
+  kind: "whole",
+  triggers: "/",
+  pattern: "/(?![*/])(?:\\\\.|\\[(?:\\\\.|[^\\]\\\\\\n])*\\]|[^/\\\\\\[\\n])+/[a-z]*",
+  after: "(?:[(,=:\\[!&|?{};<>~^%]|\\b(?:return|typeof|case|in|of|delete|void|throw|new|else|do|yield|await))\\s*$"
+};
+var typescript = {
+  name: "typescript",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    doubleQuote,
+    singleQuote,
+    {
+      kind: "delimited",
+      triggers: "`",
+      open: "`",
+      close: "`",
+      escape: "\\",
+      multiline: true,
+      interpolation: { open: "${", close: "}" }
+    },
+    regexLiteral
+  ],
+  branchKeywords: cBranchKeywords,
+  shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],
+  bumpOpeners: cBumpOpeners,
+  headerNoise: ["^@\\w[\\w.]*(?:\\(.*\\))?$"],
+  controlHeader,
+  typeHeaders: cTypeHeaders,
+  functionHeaders: [
+    "\\bfunction\\b\\s*\\*?\\s*(?<name>[\\w$]+)?\\s*(?:<[^>]*>)?\\s*\\([^]*\\)(?:[^;{}=]|=>)*$",
+    "^(?:export\\s+(?:default\\s+)?)?(?:(?:const|let|var)\\s+(?<name>[\\w$]+)\\s*(?::[^=]+)?=\\s*)?[^]*=>\\s*(?::[^{;]+)?$",
+    "^(?:(?:public|private|protected|static|async|readonly|get|set|override|abstract|declare)\\s+)*\\*?\\s*(?<name>[#\\w$]+|\\[[^\\]]+\\])\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?::\\s*[^{;]+)?$"
+  ],
+  expressionArrows: true
+};
+var csharp = {
+  name: "csharp",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    // Raw string literals first, they start with three or more quotes.
+    {
+      kind: "delimited",
+      triggers: '$"',
+      open: '\\$*("{3,})',
+      close: "$1",
+      multiline: true
+    },
+    {
+      kind: "delimited",
+      triggers: '@$"',
+      open: '(?:@\\$?|\\$@)"',
+      close: '"',
+      doubledCloseEscapes: true,
+      multiline: true
+    },
+    { ...doubleQuote, triggers: '$"', open: '\\$?"' },
+    charLiteral
+  ],
+  branchKeywords: [...cBranchKeywords, "foreach"],
+  shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],
+  bumpOpeners: [...cBumpOpeners, "foreach"],
+  headerNoise: annotationNoise,
+  controlHeader,
+  // `object` and `record` are not declarations here: `object o` is a parameter.
+  typeHeaders: ["(?:^|\\s)(?:class|struct|interface|enum|namespace|record(?:\\s+(?:class|struct))?)\\s+(?<name>[\\w.]+)"],
+  functionHeaders: [
+    // A method, constructor or operator, with an optional constraint clause and constructor initialiser.
+    "(?:[^]*\\s)?(?<name>(?!(?:base|this)\\b)[\\w.<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    // An accessor with a block body.
+    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$",
+    "=>\\s*$"
+  ],
+  expressionMembers: [
+    // A method or operator: `public int Twice(int x)`, `static bool operator ==(A a, B b)`.
+    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|async|extern|unsafe|new|partial|readonly)\\s+)*[\\w.<>\\[\\]?,()]+\\s+(?<name>[\\w.]+|operator\\s*[^\\s(]+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:where\\s+[^=]+)?$",
+    // A conversion operator, which has no return type of its own: `public static implicit operator int(Money m)`.
+    "^(?:(?:public|static)\\s+)*(?:implicit|explicit)\\s+(?<name>operator\\s+[\\w.<>\\[\\]?]+)\\s*\\([^]*\\)$",
+    // A constructor or finaliser, which has modifiers and no return type: `public Money(decimal amount)`.
+    "^(?:(?:public|private|protected|internal|static)\\s+)+(?<name>~?\\w+)\\s*\\([^]*\\)\\s*(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
+    // A property or indexer: `public int Count`, `public int this[int i]`.
+    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|new|readonly)\\s+)+[\\w.<>\\[\\]?,()]+\\s+(?<name>\\w+|this\\s*\\[[^\\]]*\\])$",
+    // An accessor: `set => value = x;`.
+    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$"
+  ]
+};
+var cpp = {
+  name: "cpp",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    {
+      kind: "delimited",
+      triggers: "R",
+      open: '(?:u8|u|U|L)?R"([^()\\s\\\\]{0,16})\\(',
+      close: ')$1"',
+      multiline: true
+    },
+    { ...doubleQuote },
+    charLiteral
+  ],
+  branchKeywords: cBranchKeywords,
+  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "\\|\\|"],
+  bumpOpeners: cBumpOpeners,
+  // Access specifiers and Qt's `signals:` end in a colon and are not part of the member that follows them.
+  headerNoise: ["^#.*$", "^\\[\\[.*\\]\\]$", "^(?:public|private|protected)(?:\\s+(?:slots|Q_SLOTS))?\\s*:$", "^(?:signals|Q_SIGNALS)\\s*:$"],
+  controlHeader,
+  typeHeaders: [typeHeader],
+  functionHeaders: [cMethodHeader, "\\]\\s*(?:\\([^]*\\))?\\s*(?:mutable|noexcept|->\\s*[^{;]+)*\\s*$"]
+};
+var java = {
+  name: "java",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    { kind: "delimited", triggers: '"', open: '"""', close: '"""', escape: "\\", multiline: true },
+    doubleQuote,
+    charLiteral
+  ],
+  branchKeywords: cBranchKeywords,
+  shortCircuitOperators: ["&&", "\\|\\|"],
+  bumpOpeners: cBumpOpeners,
+  headerNoise: annotationNoise,
+  controlHeader,
+  typeHeaders: [typeHeader],
+  functionHeaders: [cMethodHeader, "->\\s*$"]
+};
+var kotlin = {
+  name: "kotlin",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/", nested: true }],
+  strings: [
+    { kind: "delimited", triggers: '"', open: '"""', close: '"""', multiline: true },
+    doubleQuote,
+    charLiteral
+  ],
+  branchKeywords: [...cBranchKeywords, "when"],
+  // The elvis operator is null-coalescing, not a decision (suite.md, Metric definitions per language).
+  shortCircuitOperators: ["&&", "\\|\\|"],
+  bumpOpeners: [...cBumpOpeners, "when"],
+  headerNoise: annotationNoise,
+  controlHeader,
+  typeHeaders: [typeHeader],
+  functionHeaders: [
+    "\\bfun\\b\\s*(?:<[^>]*>\\s*)?(?:[\\w.<>?]+\\.)?(?<name>[\\w$]+)\\s*\\([^]*\\)\\s*(?::\\s*[^{=]+)?$",
+    "^(?:(?:public|private|protected|internal)\\s+)?constructor\\s*\\([^]*\\)(?:\\s*:\\s*(?:this|super)\\s*\\([^]*\\))?$",
+    "->\\s*$"
+  ],
+  newlineEndsStatements: true,
+  expressionBodies: true
+};
+var rust = {
+  name: "rust",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/", nested: true }],
+  strings: [
+    {
+      kind: "delimited",
+      triggers: "rb",
+      open: '(?<![\\w])b?r(#*)"',
+      close: '"$1',
+      multiline: true
+    },
+    { ...doubleQuote, multiline: true },
+    charLiteral
+  ],
+  branchKeywords: ["if", "for", "while", "loop", "match"],
+  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "(?<!\\bmove)(?<=[\\w)\\]])\\s*\\|\\|"],
+  bumpOpeners: ["if", "for", "while", "loop", "match", "else"],
+  headerNoise: ["^#!?\\[.*\\]$"],
+  controlHeader: "^(?:else\\s+if|else|if|for|while|loop|match|unsafe)\\b",
+  typeHeaders: [
+    "\\b(?:struct|enum|trait|mod|union)\\s+(?<name>\\w+)",
+    "\\bimpl\\b(?:\\s*<[^>]*>)?\\s+(?:[\\w:<>,\\s]+?\\s+for\\s+)?(?<name>\\w+)"
+  ],
+  functionHeaders: [
+    "\\bfn\\s+(?<name>\\w+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:->\\s*[^{;]+)?(?:where\\s+[^{;]+)?$",
+    "\\|[^|]*\\|\\s*(?:->\\s*[^{;]+)?$"
+  ]
+};
+var go = {
+  name: "go",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [
+    // Raw strings take no escapes and can span lines.
+    { kind: "delimited", triggers: "`", open: "`", close: "`", multiline: true },
+    doubleQuote,
+    charLiteral
+  ],
+  // `if err != nil` is an ordinary `if`. `case` covers expression, type and select cases. `defer` and `go` do not branch.
+  branchKeywords: ["if", "for", "case"],
+  shortCircuitOperators: ["&&", "\\|\\|"],
+  bumpOpeners: ["if", "else", "for", "switch", "select", "case", "default"],
+  headerNoise: ["^//go:.*$"],
+  // `package`, `import`, `const`, `var` and `type` declarations end at the line break, and so does any statement.
+  statementEnd: "(?:[\\w)\\]}]|\\+\\+|--)$|^\\s*(?:case\\b.*|default|\\w+):$",
+  controlHeader: "^(?:else\\s+if|else|if|for|switch|select)\\b",
+  typeHeaders: ["\\btype\\s+(?<name>\\w+)(?:\\s*\\[[^\\]]*\\])?\\s+(?:struct|interface)\\b"],
+  functionHeaders: [
+    // A declaration, with an optional receiver and type parameters.
+    "^func\\s+(?:\\([^)]*\\)\\s*)?(?<name>\\w+)\\s*(?:\\[[^\\]]*\\]\\s*)?\\([^]*\\)[^;{}]*$",
+    // A function literal, alone or as an argument, a value or the operand of `go` and `defer`.
+    "\\bfunc\\s*\\([^]*\\)[^;{}]*$"
+  ]
+};
+var python = {
+  name: "python",
+  blocks: "indentation",
+  lineComments: ["#"],
+  blockComments: [],
+  strings: [
+    { kind: "delimited", triggers: '"', open: '"""', close: '"""', escape: "\\", multiline: true },
+    { kind: "delimited", triggers: "'", open: "'''", close: "'''", escape: "\\", multiline: true },
+    doubleQuote,
+    singleQuote
+  ],
+  branchKeywords: ["if", "elif", "for", "while", "except", "case"],
+  shortCircuitOperators: ["\\band\\b", "\\bor\\b"],
+  bumpOpeners: ["if", "elif", "else", "for", "while", "try", "except", "finally", "with", "match", "case"],
+  headerNoise: ["^@.*$"],
+  controlHeader: "^(?:if|elif|else|for|while|try|except|finally|with|match|case)\\b",
+  typeHeaders: ["^class\\s+(?<name>\\w+)"],
+  functionHeaders: ["^(?:async\\s+)?def\\s+(?<name>\\w+)"]
+};
+var profiles = {
+  typescript,
+  csharp,
+  cpp,
+  java,
+  kotlin,
+  rust,
+  go,
+  python
+};
+var extensionProfiles = {
+  ts: "typescript",
+  tsx: "typescript",
+  mts: "typescript",
+  cts: "typescript",
+  js: "typescript",
+  jsx: "typescript",
+  mjs: "typescript",
+  cjs: "typescript",
+  cs: "csharp",
+  c: "cpp",
+  h: "cpp",
+  cc: "cpp",
+  cpp: "cpp",
+  cxx: "cpp",
+  hh: "cpp",
+  hpp: "cpp",
+  hxx: "cpp",
+  java: "java",
+  kt: "kotlin",
+  kts: "kotlin",
+  rs: "rust",
+  go: "go",
+  py: "python"
+};
+function selectProfile(path, mappings = {}) {
+  const name16 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name16.lastIndexOf(".");
+  if (dot <= 0) return void 0;
+  const extension = name16.slice(dot + 1).toLowerCase();
+  const mappedName = mappings[extension];
+  if (mappedName !== void 0) {
+    const profile2 = profiles[mappedName];
+    if (profile2 === void 0) throw new Error(`unknown lexer profile "${mappedName}"`);
+    return { profile: profile2, mapped: true };
+  }
+  const builtIn = extensionProfiles[extension];
+  const profile = builtIn === void 0 ? void 0 : profiles[builtIn];
+  return profile === void 0 ? void 0 : { profile, mapped: false };
+}
+
+// packages/parse/src/code-files.ts
+function isCodePath(path, mappings = {}) {
+  if (hasAdapter(path)) return true;
+  try {
+    return selectProfile(path, { ...mappings }) !== void 0;
+  } catch {
+    return false;
+  }
+}
+
 // packages/cochange/src/file-statistics.ts
 function fileUnits(changes, present) {
   const units = /* @__PURE__ */ new Map();
@@ -3924,6 +4275,8 @@ function componentUnits(changes, present, components2) {
 var SECONDS_PER_DAY2 = 86400;
 var isoDate = (unixSeconds) => new Date(unixSeconds * 1e3).toISOString();
 var byOption = { by: { type: "string" } };
+var allFilesOption = { "all-files": { type: "boolean" } };
+var wantsAllFiles = (context) => context.values["all-files"] === true;
 function readBy(context) {
   const value = context.values.by;
   if (value === void 0) return "file";
@@ -3934,6 +4287,15 @@ var isGrouped = (context) => readBy(context) !== "file";
 async function loadUnits(context, history, by = readBy(context)) {
   const present = new Set(await listTree(context.repo.root, history.view.headSha));
   const { changes } = history.filtered;
+  if (!wantsAllFiles(context)) {
+    const languages = context.config.effective.languages;
+    const touched = new Set(changes.flatMap((change2) => change2.files.map((file) => file.fileId)));
+    for (const path of [...present]) {
+      if (isCodePath(path, languages)) continue;
+      present.delete(path);
+      if (touched.has(path)) recordDropped("nonCode", path);
+    }
+  }
   return by === "file" ? fileUnits(changes, present) : componentUnits(changes, present, readComponents(context.config.effective.components));
 }
 
@@ -4518,320 +4880,6 @@ function isBumpyRoad(metrics, guidelines = {}) {
   const { bumps = 3, deepBumps = 2, nesting = 4 } = guidelines;
   if (metrics.bumps >= bumps) return true;
   return metrics.bumps >= deepBumps && metrics.bumpDepth > nesting;
-}
-
-// packages/lexical/src/profile.ts
-var doubleQuote = {
-  kind: "delimited",
-  triggers: '"',
-  open: '"',
-  close: '"',
-  escape: "\\",
-  multiline: false
-};
-var singleQuote = {
-  kind: "delimited",
-  triggers: "'",
-  open: "'",
-  close: "'",
-  escape: "\\",
-  multiline: false
-};
-var charLiteral = {
-  kind: "whole",
-  triggers: "'",
-  pattern: "'(?:\\\\[^'\\n]*|[^\\\\'\\n])'"
-};
-var cBranchKeywords = ["if", "for", "while", "case", "catch"];
-var cBumpOpeners = [...cBranchKeywords, "else", "do", "default", "switch", "try", "finally"];
-var controlHeader = "^(?:else\\s+if|else|if|for|foreach|while|do|switch|catch|try|finally|with|using|lock|synchronized|unsafe|checked|fixed|match|loop|unless)\\b";
-var typeHeader = "\\b(?:class|struct|interface|enum|namespace|trait|object|record|union)\\s+(?<name>[\\w.:$]+)";
-var cTypeHeaders = [typeHeader];
-var annotationNoise = ["^\\[.*\\]$", "^@\\w[\\w.]*(?:\\(.*\\))?$", "^#.*$"];
-var cMethodHeader = "(?<![\\w.])(?<name>~?[\\w:.$<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:(?:const|noexcept|override|final|volatile|mutable|throws\\s+[\\w.,\\s]+|where\\s+[^{;]+|&&|&)\\s*)*(?:->\\s*[^{;]+)?(?::\\s*[^{;]*)?$";
-var regexLiteral = {
-  kind: "whole",
-  triggers: "/",
-  pattern: "/(?![*/])(?:\\\\.|\\[(?:\\\\.|[^\\]\\\\\\n])*\\]|[^/\\\\\\[\\n])+/[a-z]*",
-  after: "(?:[(,=:\\[!&|?{};<>~^%]|\\b(?:return|typeof|case|in|of|delete|void|throw|new|else|do|yield|await))\\s*$"
-};
-var typescript = {
-  name: "typescript",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/" }],
-  strings: [
-    doubleQuote,
-    singleQuote,
-    {
-      kind: "delimited",
-      triggers: "`",
-      open: "`",
-      close: "`",
-      escape: "\\",
-      multiline: true,
-      interpolation: { open: "${", close: "}" }
-    },
-    regexLiteral
-  ],
-  branchKeywords: cBranchKeywords,
-  shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],
-  bumpOpeners: cBumpOpeners,
-  headerNoise: ["^@\\w[\\w.]*(?:\\(.*\\))?$"],
-  controlHeader,
-  typeHeaders: cTypeHeaders,
-  functionHeaders: [
-    "\\bfunction\\b\\s*\\*?\\s*(?<name>[\\w$]+)?\\s*(?:<[^>]*>)?\\s*\\([^]*\\)(?:[^;{}=]|=>)*$",
-    "^(?:export\\s+(?:default\\s+)?)?(?:(?:const|let|var)\\s+(?<name>[\\w$]+)\\s*(?::[^=]+)?=\\s*)?[^]*=>\\s*(?::[^{;]+)?$",
-    "^(?:(?:public|private|protected|static|async|readonly|get|set|override|abstract|declare)\\s+)*\\*?\\s*(?<name>[#\\w$]+|\\[[^\\]]+\\])\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?::\\s*[^{;]+)?$"
-  ],
-  expressionArrows: true
-};
-var csharp = {
-  name: "csharp",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/" }],
-  strings: [
-    // Raw string literals first, they start with three or more quotes.
-    {
-      kind: "delimited",
-      triggers: '$"',
-      open: '\\$*("{3,})',
-      close: "$1",
-      multiline: true
-    },
-    {
-      kind: "delimited",
-      triggers: '@$"',
-      open: '(?:@\\$?|\\$@)"',
-      close: '"',
-      doubledCloseEscapes: true,
-      multiline: true
-    },
-    { ...doubleQuote, triggers: '$"', open: '\\$?"' },
-    charLiteral
-  ],
-  branchKeywords: [...cBranchKeywords, "foreach"],
-  shortCircuitOperators: ["&&", "\\|\\|", "\\?\\?"],
-  bumpOpeners: [...cBumpOpeners, "foreach"],
-  headerNoise: annotationNoise,
-  controlHeader,
-  // `object` and `record` are not declarations here: `object o` is a parameter.
-  typeHeaders: ["(?:^|\\s)(?:class|struct|interface|enum|namespace|record(?:\\s+(?:class|struct))?)\\s+(?<name>[\\w.]+)"],
-  functionHeaders: [
-    // A method, constructor or operator, with an optional constraint clause and constructor initialiser.
-    "(?:[^]*\\s)?(?<name>(?!(?:base|this)\\b)[\\w.<>]+|operator\\s*[^\\s(]+)\\s*\\([^]*\\)\\s*(?:where\\s+[^{;]+)?(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
-    // An accessor with a block body.
-    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$",
-    "=>\\s*$"
-  ],
-  expressionMembers: [
-    // A method or operator: `public int Twice(int x)`, `static bool operator ==(A a, B b)`.
-    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|async|extern|unsafe|new|partial|readonly)\\s+)*[\\w.<>\\[\\]?,()]+\\s+(?<name>[\\w.]+|operator\\s*[^\\s(]+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:where\\s+[^=]+)?$",
-    // A conversion operator, which has no return type of its own: `public static implicit operator int(Money m)`.
-    "^(?:(?:public|static)\\s+)*(?:implicit|explicit)\\s+(?<name>operator\\s+[\\w.<>\\[\\]?]+)\\s*\\([^]*\\)$",
-    // A constructor or finaliser, which has modifiers and no return type: `public Money(decimal amount)`.
-    "^(?:(?:public|private|protected|internal|static)\\s+)+(?<name>~?\\w+)\\s*\\([^]*\\)\\s*(?::\\s*(?:base|this)\\s*\\([^]*\\))?$",
-    // A property or indexer: `public int Count`, `public int this[int i]`.
-    "^(?:\\[[^\\]]*\\]\\s*)*(?:(?:public|private|protected|internal|static|virtual|override|abstract|sealed|new|readonly)\\s+)+[\\w.<>\\[\\]?,()]+\\s+(?<name>\\w+|this\\s*\\[[^\\]]*\\])$",
-    // An accessor: `set => value = x;`.
-    "^(?:(?:public|private|protected|internal)\\s+)*(?<name>get|set|init|add|remove)$"
-  ]
-};
-var cpp = {
-  name: "cpp",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/" }],
-  strings: [
-    {
-      kind: "delimited",
-      triggers: "R",
-      open: '(?:u8|u|U|L)?R"([^()\\s\\\\]{0,16})\\(',
-      close: ')$1"',
-      multiline: true
-    },
-    { ...doubleQuote },
-    charLiteral
-  ],
-  branchKeywords: cBranchKeywords,
-  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "\\|\\|"],
-  bumpOpeners: cBumpOpeners,
-  // Access specifiers and Qt's `signals:` end in a colon and are not part of the member that follows them.
-  headerNoise: ["^#.*$", "^\\[\\[.*\\]\\]$", "^(?:public|private|protected)(?:\\s+(?:slots|Q_SLOTS))?\\s*:$", "^(?:signals|Q_SIGNALS)\\s*:$"],
-  controlHeader,
-  typeHeaders: [typeHeader],
-  functionHeaders: [cMethodHeader, "\\]\\s*(?:\\([^]*\\))?\\s*(?:mutable|noexcept|->\\s*[^{;]+)*\\s*$"]
-};
-var java = {
-  name: "java",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/" }],
-  strings: [
-    { kind: "delimited", triggers: '"', open: '"""', close: '"""', escape: "\\", multiline: true },
-    doubleQuote,
-    charLiteral
-  ],
-  branchKeywords: cBranchKeywords,
-  shortCircuitOperators: ["&&", "\\|\\|"],
-  bumpOpeners: cBumpOpeners,
-  headerNoise: annotationNoise,
-  controlHeader,
-  typeHeaders: [typeHeader],
-  functionHeaders: [cMethodHeader, "->\\s*$"]
-};
-var kotlin = {
-  name: "kotlin",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/", nested: true }],
-  strings: [
-    { kind: "delimited", triggers: '"', open: '"""', close: '"""', multiline: true },
-    doubleQuote,
-    charLiteral
-  ],
-  branchKeywords: [...cBranchKeywords, "when"],
-  // The elvis operator is null-coalescing, not a decision (suite.md, Metric definitions per language).
-  shortCircuitOperators: ["&&", "\\|\\|"],
-  bumpOpeners: [...cBumpOpeners, "when"],
-  headerNoise: annotationNoise,
-  controlHeader,
-  typeHeaders: [typeHeader],
-  functionHeaders: [
-    "\\bfun\\b\\s*(?:<[^>]*>\\s*)?(?:[\\w.<>?]+\\.)?(?<name>[\\w$]+)\\s*\\([^]*\\)\\s*(?::\\s*[^{=]+)?$",
-    "^(?:(?:public|private|protected|internal)\\s+)?constructor\\s*\\([^]*\\)(?:\\s*:\\s*(?:this|super)\\s*\\([^]*\\))?$",
-    "->\\s*$"
-  ],
-  newlineEndsStatements: true,
-  expressionBodies: true
-};
-var rust = {
-  name: "rust",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/", nested: true }],
-  strings: [
-    {
-      kind: "delimited",
-      triggers: "rb",
-      open: '(?<![\\w])b?r(#*)"',
-      close: '"$1',
-      multiline: true
-    },
-    { ...doubleQuote, multiline: true },
-    charLiteral
-  ],
-  branchKeywords: ["if", "for", "while", "loop", "match"],
-  shortCircuitOperators: ["(?<=\\s)&&(?=\\s)", "(?<!\\bmove)(?<=[\\w)\\]])\\s*\\|\\|"],
-  bumpOpeners: ["if", "for", "while", "loop", "match", "else"],
-  headerNoise: ["^#!?\\[.*\\]$"],
-  controlHeader: "^(?:else\\s+if|else|if|for|while|loop|match|unsafe)\\b",
-  typeHeaders: [
-    "\\b(?:struct|enum|trait|mod|union)\\s+(?<name>\\w+)",
-    "\\bimpl\\b(?:\\s*<[^>]*>)?\\s+(?:[\\w:<>,\\s]+?\\s+for\\s+)?(?<name>\\w+)"
-  ],
-  functionHeaders: [
-    "\\bfn\\s+(?<name>\\w+)\\s*(?:<[^>]*>)?\\s*\\([^]*\\)\\s*(?:->\\s*[^{;]+)?(?:where\\s+[^{;]+)?$",
-    "\\|[^|]*\\|\\s*(?:->\\s*[^{;]+)?$"
-  ]
-};
-var go = {
-  name: "go",
-  blocks: "braces",
-  lineComments: ["//"],
-  blockComments: [{ open: "/*", close: "*/" }],
-  strings: [
-    // Raw strings take no escapes and can span lines.
-    { kind: "delimited", triggers: "`", open: "`", close: "`", multiline: true },
-    doubleQuote,
-    charLiteral
-  ],
-  // `if err != nil` is an ordinary `if`. `case` covers expression, type and select cases. `defer` and `go` do not branch.
-  branchKeywords: ["if", "for", "case"],
-  shortCircuitOperators: ["&&", "\\|\\|"],
-  bumpOpeners: ["if", "else", "for", "switch", "select", "case", "default"],
-  headerNoise: ["^//go:.*$"],
-  // `package`, `import`, `const`, `var` and `type` declarations end at the line break, and so does any statement.
-  statementEnd: "(?:[\\w)\\]}]|\\+\\+|--)$|^\\s*(?:case\\b.*|default|\\w+):$",
-  controlHeader: "^(?:else\\s+if|else|if|for|switch|select)\\b",
-  typeHeaders: ["\\btype\\s+(?<name>\\w+)(?:\\s*\\[[^\\]]*\\])?\\s+(?:struct|interface)\\b"],
-  functionHeaders: [
-    // A declaration, with an optional receiver and type parameters.
-    "^func\\s+(?:\\([^)]*\\)\\s*)?(?<name>\\w+)\\s*(?:\\[[^\\]]*\\]\\s*)?\\([^]*\\)[^;{}]*$",
-    // A function literal, alone or as an argument, a value or the operand of `go` and `defer`.
-    "\\bfunc\\s*\\([^]*\\)[^;{}]*$"
-  ]
-};
-var python = {
-  name: "python",
-  blocks: "indentation",
-  lineComments: ["#"],
-  blockComments: [],
-  strings: [
-    { kind: "delimited", triggers: '"', open: '"""', close: '"""', escape: "\\", multiline: true },
-    { kind: "delimited", triggers: "'", open: "'''", close: "'''", escape: "\\", multiline: true },
-    doubleQuote,
-    singleQuote
-  ],
-  branchKeywords: ["if", "elif", "for", "while", "except", "case"],
-  shortCircuitOperators: ["\\band\\b", "\\bor\\b"],
-  bumpOpeners: ["if", "elif", "else", "for", "while", "try", "except", "finally", "with", "match", "case"],
-  headerNoise: ["^@.*$"],
-  controlHeader: "^(?:if|elif|else|for|while|try|except|finally|with|match|case)\\b",
-  typeHeaders: ["^class\\s+(?<name>\\w+)"],
-  functionHeaders: ["^(?:async\\s+)?def\\s+(?<name>\\w+)"]
-};
-var profiles = {
-  typescript,
-  csharp,
-  cpp,
-  java,
-  kotlin,
-  rust,
-  go,
-  python
-};
-var extensionProfiles = {
-  ts: "typescript",
-  tsx: "typescript",
-  mts: "typescript",
-  cts: "typescript",
-  js: "typescript",
-  jsx: "typescript",
-  mjs: "typescript",
-  cjs: "typescript",
-  cs: "csharp",
-  c: "cpp",
-  h: "cpp",
-  cc: "cpp",
-  cpp: "cpp",
-  cxx: "cpp",
-  hh: "cpp",
-  hpp: "cpp",
-  hxx: "cpp",
-  java: "java",
-  kt: "kotlin",
-  kts: "kotlin",
-  rs: "rust",
-  go: "go",
-  py: "python"
-};
-function selectProfile(path, mappings = {}) {
-  const name16 = path.slice(path.lastIndexOf("/") + 1);
-  const dot = name16.lastIndexOf(".");
-  if (dot <= 0) return void 0;
-  const extension = name16.slice(dot + 1).toLowerCase();
-  const mappedName = mappings[extension];
-  if (mappedName !== void 0) {
-    const profile2 = profiles[mappedName];
-    if (profile2 === void 0) throw new Error(`unknown lexer profile "${mappedName}"`);
-    return { profile: profile2, mapped: true };
-  }
-  const builtIn = extensionProfiles[extension];
-  const profile = builtIn === void 0 ? void 0 : profiles[builtIn];
-  return profile === void 0 ? void 0 : { profile, mapped: false };
 }
 
 // packages/lexical/src/strip.ts
@@ -5796,9 +5844,9 @@ var rules3 = {
 };
 var command2 = analysisCommand(name2, {
   summary: "First-seen and last-changed per file or component, oldest change first",
-  options: byOption,
+  options: { ...byOption, ...allFilesOption },
   wholeHistory: true,
-  partial: isGrouped,
+  partial: (context) => isGrouped(context) || wantsAllFiles(context),
   async analyse({ context, history }) {
     const by = readBy(context);
     const anchor = history.view.headDate;
@@ -5818,7 +5866,7 @@ var command2 = analysisCommand(name2, {
       };
     });
     return {
-      inputs: { by },
+      inputs: { by, allFiles: wantsAllFiles(context) },
       results: rows,
       columns: ["path", "score", ...by === "component" ? ["files"] : [], "ageDays", "firstSeen", "lastChanged", "revisions", "recommendation"]
     };
@@ -6187,13 +6235,14 @@ var command6 = analysisCommand(name6, {
     const minDegree = integerOption(context, "min-degree", settings.minDegree, 0, 100);
     const minSupport = integerOption(context, "min-support", settings.minSupport, 1, Number.MAX_SAFE_INTEGER);
     const counts = coupledPairs(history, { minSupport });
+    const languages = context.config.effective.languages;
     const requested = context.values.file;
     const focus = typeof requested === "string" ? await focusPath(context, history, requested) : void 0;
-    const rows = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings, minDegree)).sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
+    const rows = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings, minDegree, (path) => isCodePath(path, languages) ? "code" : "non-code")).sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
     return {
       inputs: { file: focus ?? null, degreeGuideline: minDegree, minSupport, asymmetry: ASYMMETRY },
       results: rows,
-      columns: ["path", "with", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
+      columns: ["path", "pathKind", "with", "withKind", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
       extra: {
         population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
         note: rows.length === 0 ? `No pair shares at least ${minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.` : null
@@ -6201,7 +6250,7 @@ var command6 = analysisCommand(name6, {
     };
   }
 });
-function describe(pair, focus, settings, guideline) {
+function describe(pair, focus, settings, guideline, kindOf2) {
   const flipped = focus !== void 0 && pair.b === focus;
   const [path, other] = flipped ? [pair.b, pair.a] : [pair.a, pair.b];
   const [changesPath, changesWith] = flipped ? [pair.changesB, pair.changesA] : [pair.changesA, pair.changesB];
@@ -6221,7 +6270,10 @@ function describe(pair, focus, settings, guideline) {
   if (dependent !== null) findings.push("asymmetric-coupling");
   return {
     path,
+    // Coupling includes files that are not code, such as a lockfile that changes with its manifest, and labels them.
+    pathKind: kindOf2(path),
     with: other,
+    withKind: kindOf2(other),
     score: round13(degree),
     degree: round13(degree),
     // The degree guideline orders the listing: pairs under it come after the others.
@@ -6266,8 +6318,8 @@ function evidenceOption(value) {
 }
 var command7 = analysisCommand(name7, {
   summary: "Rank files or components by how many of their changes were fixes, with the matching commits",
-  options: { ...byOption, evidence: { type: "string" } },
-  partial: (context) => isGrouped(context) || context.values.evidence !== void 0,
+  options: { ...byOption, ...allFilesOption, evidence: { type: "string" } },
+  partial: (context) => isGrouped(context) || wantsAllFiles(context) || context.values.evidence !== void 0,
   async analyse({ context, history }) {
     const by = readBy(context);
     const evidenceLimit = evidenceOption(context.values.evidence);
@@ -6290,7 +6342,7 @@ var command7 = analysisCommand(name7, {
     });
     const { convention } = reading;
     return {
-      inputs: { by, evidenceLimit },
+      inputs: { by, allFiles: wantsAllFiles(context), evidenceLimit },
       results: rows,
       columns: ["path", ...by === "component" ? ["files"] : [], "fixes", "revisions", "fixShare", "recentFixes", "lastFix", "reverts", "evidence"],
       extra: { fixConvention: convention },
@@ -6336,13 +6388,13 @@ var rules7 = {
 };
 var command8 = analysisCommand(name8, {
   summary: "Rank files or components by change frequency weighted by complexity",
-  options: byOption,
-  partial: isGrouped,
+  options: { ...byOption, ...allFilesOption },
+  partial: (context) => isGrouped(context) || wantsAllFiles(context),
   async analyse({ context, history }) {
     const by = readBy(context);
     const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
     return {
-      inputs: { by, complexityReport: complexity.input },
+      inputs: { by, allFiles: wantsAllFiles(context), complexityReport: complexity.input },
       results: rows,
       columns: [
         "path",
@@ -9046,15 +9098,26 @@ async function extractChange(root, view, range, worktree, options) {
   const raw = await rawDiff(root, range.base, worktree ? null : range.head, options.similarity);
   const excluded = compileGlobs(options.exclude);
   const lockfiles = new Set(DEFAULT_LOCKFILES);
-  const tree = await listTree(root, range.head);
+  const blobs = await listBlobs(root, range.head);
+  const tree = blobs.map((entry) => entry.path);
+  const blobOf = new Map(blobs.map((entry) => [entry.path, entry.blob]));
   const builtinExcluded = builtinExcluder(root, await listGitlinks(root, range.head));
-  const attributes = await readPathAttributes(root, range.head, raw.map((file) => file.path).sort(), tree);
+  const classes = await classifyFiles(
+    root,
+    range.head,
+    raw.map((file) => ({ path: file.path, blob: blobOf.get(file.path) ?? null })),
+    tree
+  );
   let moved = 0;
   let filtered = 0;
   const files = [];
   for (const file of raw) {
     const pureRename = file.status === "R" && file.similarity === 100 && (file.added ?? 0) === 0 && (file.deleted ?? 0) === 0;
-    const dropped = builtinExcluded(file.path) || excluded(file.path) || lockfiles.has(file.path.slice(file.path.lastIndexOf("/") + 1)) || attributes.generated.has(file.path) || attributes.vendored.has(file.path);
+    const generated = classes.generated.has(file.path);
+    const vendored = !generated && classes.vendored.has(file.path);
+    if (generated) recordDropped("generated", file.path);
+    if (vendored) recordDropped("vendored", file.path);
+    const dropped = builtinExcluded(file.path) || excluded(file.path) || lockfiles.has(file.path.slice(file.path.lastIndexOf("/") + 1)) || generated || vendored;
     if (dropped) {
       filtered++;
       continue;
@@ -10399,7 +10462,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change2.head);
   const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-GNRQDVMZ.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-HIF7ZJOG.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);

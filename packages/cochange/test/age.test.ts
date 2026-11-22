@@ -20,12 +20,13 @@ beforeEach(() => {
 });
 
 const age = (...args: string[]) => runCochange(repo.path, ["age", ...args]);
+const ageAll = (...args: string[]) => age("--all-files", ...args);
 const json = (stdout: string) => JSON.parse(stdout);
 const config = (document: unknown) => writeFileSync(join(repo.path, "code-health.json"), JSON.stringify(document));
 type Row = { path: string };
 
 test("files are listed oldest last change first, with first-seen and last-changed over all history", async () => {
-  const { code, stdout, stderr } = await age();
+  const { code, stdout, stderr } = await ageAll();
   expect(stderr).toBe("");
   expect(code).toBe(ExitCode.Success);
   const document = json(stdout);
@@ -57,7 +58,7 @@ test("files are listed oldest last change first, with first-seen and last-change
 test("cold is measured against the stale window back from the head commit", async () => {
   // Stale after 6 months: before 2023-12-15, so legacy (October 2023) joins guide.md.
   config({ cochange: { staleMonths: 6 } });
-  const cold = json((await age()).stdout)
+  const cold = json((await ageAll()).stdout)
     .results.filter((r: { recommendation: string | null }) => r.recommendation === "cold")
     .map((r: Row) => r.path);
   expect(cold).toEqual(["docs/guide.md", "src/legacy/old.ts"]);
@@ -65,7 +66,7 @@ test("cold is measured against the stale window back from the head commit", asyn
 
 test("--by component takes the latest and earliest dates across a component's files", async () => {
   config({ components: { core: ["src/core/**"], legacy: ["src/legacy/**"], ui: ["src/ui/**"] } });
-  const { stdout } = await age("--by", "component");
+  const { stdout } = await ageAll("--by", "component");
   const document = json(stdout);
   expect(document.results.map((r: Row) => r.path)).toEqual(["(unassigned)", "legacy", "ui", "core"]);
   expect(document.results[3]).toMatchObject({ files: 2, revisions: 6, firstSeen: "2023-01-05T09:00:00.000Z" });
@@ -87,13 +88,13 @@ test("a file that was moved keeps its first-seen date from before the move", asy
 
 test("a repository with only a window stated in config still shows the whole history", async () => {
   config({ cochange: { windowMonths: 2 } });
-  const paths = json((await age()).stdout).results.map((r: Row) => r.path);
+  const paths = json((await ageAll()).stdout).results.map((r: Row) => r.path);
   expect(paths).toContain("docs/guide.md");
 });
 
 test("the report is stored in full on a clean tree, but a component view is not stored", async () => {
   await age("--limit", "1");
-  expect(json(readFileSync(reportPath(repo.path, "age"), "utf8")).results).toHaveLength(5);
+  expect(json(readFileSync(reportPath(repo.path, "age"), "utf8")).results).toHaveLength(4);
   rmSync(join(repo.path, ".cache"), { recursive: true, force: true });
   config({ components: { core: ["src/core/**"] } });
   await age("--by", "component");
@@ -112,4 +113,11 @@ test("explain describes both recommendation rules", async () => {
     expect(code).toBe(ExitCode.Success);
     expect(stdout).toContain(rule);
   }
+});
+
+test("without --all-files the documents are left out and counted, and with it they are listed", async () => {
+  const code = json((await age()).stdout);
+  expect(code.results.map((r: Row) => r.path)).not.toContain("docs/guide.md");
+  expect(code.dropped.nonCode).toBeGreaterThanOrEqual(1);
+  expect(json((await ageAll()).stdout).results.map((r: Row) => r.path)).toContain("docs/guide.md");
 });

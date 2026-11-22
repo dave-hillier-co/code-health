@@ -116,6 +116,7 @@
     "share": 0
   },
   "inputs": {
+    "allFiles": false,
     "by": "file",
     "complexityReport": {
       "config": "0000000000000000",

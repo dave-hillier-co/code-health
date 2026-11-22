@@ -136,10 +136,12 @@
         "distant-coupling"
       ],
       "path": "src/model/order.ts",
+      "pathKind": "code",
       "reverseConfidence": 100,
       "score": 100,
       "support": 6,
-      "with": "ui/order-view.ts"
+      "with": "ui/order-view.ts",
+      "withKind": "code"
     }
   ],
   "schemaVersion": 1,
