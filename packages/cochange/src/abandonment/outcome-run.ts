@@ -15,6 +15,7 @@ import { hotspotWeights } from "./ranking.ts";
 import { measureRedundancy, summariseRedundancy } from "./redundancy.ts";
 import { reportLoss } from "./report.ts";
 import { readSimulationSettings } from "./selection.ts";
+import { mappedShareNotices, noticesSection, turnoverNotices, turnoverRateHint } from "./notices.ts";
 import { requireKnowledge } from "./settings.ts";
 import { simulate } from "./simulate.ts";
 import { buildSuccessorIndex } from "./successors.ts";
@@ -38,6 +39,7 @@ export async function redundancyCommand(context: CommandContext): Promise<Comman
   return {
     inputs: commonInputs(p, "redundancy", { minAuthors, minSharePercent: minShare }),
     extra: commonExtra(p, { summary: summariseRedundancy(files) }),
+    notices: p.notices,
     results: rows,
     columns: ["path", "redundant", "qualifyingAuthors", "activeAuthors", "peopleLines", "hotspotPercentile"],
   };
@@ -64,7 +66,7 @@ export async function trendCommand(context: CommandContext): Promise<CommandOutp
   const observed = estimateTurnover(activity, anchor, { windowSeconds, periodSeconds });
   const rate = settings.turnoverRate ?? observed.rate;
   if (rate === null) {
-    throw usageError("the history is too short to estimate turnover; set cochange.knowledge.turnoverRate so every point shares one rate");
+    throw usageError(`the history is too short to estimate turnover; ${turnoverRateHint(settings)}, so every point shares one rate`);
   }
   const components = readComponents(context.config.effective.components);
 
@@ -99,6 +101,7 @@ export async function trendCommand(context: CommandContext): Promise<CommandOutp
   rows.reverse();
   const first = rows[0]?.lines.total.expectedShare;
   const last = rows.at(-1)?.lines.total.expectedShare;
+  const notices = [...(await mappedShareNotices(context, settings)), ...turnoverNotices(settings, observed, settings.turnoverRate === null)];
   const direction = rows.length < 2 || first === undefined || last === undefined ? null : last < first ? "falling" : last > first ? "rising" : "flat";
   return {
     inputs: {
@@ -112,10 +115,11 @@ export async function trendCommand(context: CommandContext): Promise<CommandOutp
       activityWindowMonths: settings.activityWindowMonths,
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,
-      turnoverRate: settings.turnoverRate === null ? null : round4(settings.turnoverRate),
+      turnoverRatePercent: settings.turnoverRatePercent,
       ...identityStamps(history),
     },
-    extra: historySections(history),
+    extra: { ...historySections(history), ...noticesSection(notices) },
+    notices,
     results: {
       ratePerPeriod: round4(rate),
       rateSource: settings.turnoverRate === null ? "history" : "configured",
@@ -173,6 +177,7 @@ export async function adoptionCommand(context: CommandContext): Promise<CommandO
     recommended,
   });
   const summary = summariseAdoption(files);
+  const notices = await mappedShareNotices(context, settings);
   return {
     inputs: {
       subcommand: "adoption",
@@ -185,7 +190,8 @@ export async function adoptionCommand(context: CommandContext): Promise<CommandO
       copyDetection: settings.copyDetection,
       ...identityStamps(history),
     },
-    extra: historySections(history),
+    extra: { ...historySections(history), ...noticesSection(notices) },
+    notices,
     results: {
       at: isoDay(at),
       outcomeAt: isoDay(outcomeAt),

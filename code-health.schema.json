@@ -435,6 +435,14 @@
             "turnoverRate": {
               "default": null
             },
+            "minTurnoverPeriods": {
+              "type": "number",
+              "default": 4
+            },
+            "mappedShareGuideline": {
+              "type": "number",
+              "default": 80
+            },
             "trials": {
               "type": "number",
               "default": 10000
@@ -478,6 +486,8 @@
             "horizonPeriods": 4,
             "abandonmentGuideline": 90,
             "turnoverRate": null,
+            "minTurnoverPeriods": 4,
+            "mappedShareGuideline": 80,
             "trials": 10000,
             "alphas": [
               95,

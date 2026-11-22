@@ -116,7 +116,7 @@
     "seed": 3,
     "subcommand": "backtest",
     "trials": 2000,
-    "turnoverRate": 0.1
+    "turnoverRatePercent": 10
   },
   "repo": {
     "dirty": false,

@@ -16,7 +16,7 @@ Files with any lines held by people who have left. Rows: `path`, `abandoned` (th
 
 ## abandonment turnover
 
-One row per usable period: `start`, `end`, `developers` (on the team at its start), `departed`, `rate`. The `turnover` section pools them: `rate`, `atRisk`, `departed`, `periods`, and `configuredRate` when the config states one. Counts only.
+One row per usable period: `start`, `end`, `developers` (on the team at its start), `departed`, `rate`. The `turnover` section pools them: `rate`, `atRisk`, `departed`, `periods`, and `configuredRatePercent` (as written in the config, a percentage) when the config states one. Counts only.
 
 ## abandonment simulate [--mode rate|historical|k-leavers] [--k N] [--trials N] [--horizon P] [--seed S] [--rank R] [--top N]
 
@@ -36,6 +36,6 @@ One row per path: `abandoned`, `coupledFiles` (`path`, `degree`, `support`), `ca
 
 ## Configuration (`cochange.knowledge`)
 
-`enabled` (false), `activityWindowMonths` (6), `periodMonths` (3), `horizonPeriods` (4), `abandonmentGuideline` (90), `turnoverRate` (null, a percentage per period), `trials` (10000), `alphas` ([95, 99]), `seed` (1), `rank` (`hotspot`), `copyDetection` (true), `atRiskProbability` (10), `concentratedTailRatio` (3).
+`enabled` (false), `activityWindowMonths` (6), `periodMonths` (3), `horizonPeriods` (4), `abandonmentGuideline` (90), `turnoverRate` (null, a percentage per period from 0 to 100: 15 is 15 percent), `minTurnoverPeriods` (4), `mappedShareGuideline` (80), `trials` (10000), `alphas` ([95, 99]), `seed` (1), `rank` (`hotspot`), `copyDetection` (true), `atRiskProbability` (10), `concentratedTailRatio` (3).
 
 Local, never committed: `.code-health/local/knowledge-overrides.json`, `{ "schemaVersion": 1, "active": ["Name <email>"], "inactive": ["Name <email>"] }`.

@@ -98,8 +98,62 @@
       "suggestedCanonical": "John Smith <jsmith@users.noreply.github.com>"
     },
     {
-      "counterEvidence": true,
+      "counterEvidence": false,
       "id": "P3",
+      "kind": "cluster",
+      "links": [
+        {
+          "a": "Sam Ro <sam@corp.com>",
+          "b": "Sam Ro <sam@home.net>",
+          "counterEvidence": false,
+          "signals": [
+            {
+              "detail": "sam",
+              "signal": "same-local-part",
+              "strength": "medium"
+            },
+            {
+              "detail": "sam ro",
+              "signal": "same-name",
+              "strength": "medium"
+            },
+            {
+              "detail": "sam@home.net authored 4 commits, all committed by sam@corp.com",
+              "signal": "exclusive-pairing",
+              "strength": "supporting"
+            }
+          ],
+          "strength": "strong"
+        }
+      ],
+      "members": [
+        {
+          "aliases": [],
+          "commits": 2,
+          "firstSeen": "2024-03-25",
+          "identity": "Sam Ro <sam@corp.com>",
+          "lastSeen": "2024-04-01",
+          "topAreas": [
+            "src/sam"
+          ]
+        },
+        {
+          "aliases": [],
+          "commits": 4,
+          "firstSeen": "2024-01-22",
+          "identity": "Sam Ro <sam@home.net>",
+          "lastSeen": "2024-03-04",
+          "topAreas": [
+            "src/sam"
+          ]
+        }
+      ],
+      "strength": "strong",
+      "suggestedCanonical": "Sam Ro <sam@corp.com>"
+    },
+    {
+      "counterEvidence": true,
+      "id": "P4",
       "kind": "cluster",
       "links": [
         {
@@ -153,7 +207,7 @@
     },
     {
       "counterEvidence": false,
-      "id": "P4",
+      "id": "P5",
       "kind": "cluster",
       "links": [
         {
@@ -204,60 +258,6 @@
       ],
       "strength": "medium",
       "suggestedCanonical": "María López <mlopez@gmail.com>"
-    },
-    {
-      "counterEvidence": false,
-      "id": "P5",
-      "kind": "cluster",
-      "links": [
-        {
-          "a": "Sam Ro <sam@corp.com>",
-          "b": "Sam Ro <sam@home.net>",
-          "counterEvidence": false,
-          "signals": [
-            {
-              "detail": "sam",
-              "signal": "same-local-part",
-              "strength": "medium"
-            },
-            {
-              "detail": "sam ro",
-              "signal": "same-name",
-              "strength": "medium"
-            },
-            {
-              "detail": "sam@home.net authored 4 commits, all committed by sam@corp.com",
-              "signal": "exclusive-pairing",
-              "strength": "supporting"
-            }
-          ],
-          "strength": "medium"
-        }
-      ],
-      "members": [
-        {
-          "aliases": [],
-          "commits": 2,
-          "firstSeen": "2024-03-25",
-          "identity": "Sam Ro <sam@corp.com>",
-          "lastSeen": "2024-04-01",
-          "topAreas": [
-            "src/sam"
-          ]
-        },
-        {
-          "aliases": [],
-          "commits": 4,
-          "firstSeen": "2024-01-22",
-          "identity": "Sam Ro <sam@home.net>",
-          "lastSeen": "2024-03-04",
-          "topAreas": [
-            "src/sam"
-          ]
-        }
-      ],
-      "strength": "medium",
-      "suggestedCanonical": "Sam Ro <sam@corp.com>"
     }
   ],
   "schemaVersion": 1,

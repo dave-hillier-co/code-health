@@ -5,6 +5,7 @@ import { integerOption } from "../coupled-pairs.ts";
 import { readComponents } from "../components.ts";
 import { loadHistory, type LoadedHistory } from "../history-access.ts";
 import { estimateTurnover, readActivity } from "./activity.ts";
+import { turnoverRateHint } from "./notices.ts";
 import { measureCurrent, round4 } from "./current.ts";
 import { windowSecondsOf } from "../active-developers.ts";
 import { loadKnowledge, periodSecondsOf } from "./load.ts";
@@ -87,7 +88,7 @@ export async function backtestCommand(context: CommandContext): Promise<CommandO
   const turnover = estimateTurnover(activity, at, { windowSeconds, periodSeconds });
   const rate = settings.turnoverRate ?? turnover.rate;
   if (rate === null) {
-    throw usageError(`the history before ${isoDay(at)} is too short to estimate turnover; set cochange.knowledge.turnoverRate, or choose a later date`);
+    throw usageError(`the history before ${isoDay(at)} is too short to estimate turnover; ${turnoverRateHint(settings)}, or choose a later date`);
   }
 
   const before = await loadKnowledge(context, history, settings, { noRefresh, target: { sha: startSha, asOf: at }, activity });
@@ -144,7 +145,7 @@ export async function backtestCommand(context: CommandContext): Promise<CommandO
       activityWindowMonths: settings.activityWindowMonths,
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,
-      turnoverRate: settings.turnoverRate === null ? null : round4(settings.turnoverRate),
+      turnoverRatePercent: settings.turnoverRatePercent,
       ...identityStamps(history),
     },
     extra: historySections(history),

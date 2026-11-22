@@ -115,7 +115,7 @@
     "seed": 1,
     "subcommand": "trend",
     "trials": 200,
-    "turnoverRate": null
+    "turnoverRatePercent": null
   },
   "repo": {
     "dirty": false,

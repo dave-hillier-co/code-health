@@ -44,7 +44,7 @@ test("turnover is departures over the people on the team at each period's start,
     [3, 1],
     [2, 0],
   ]);
-  expect(document.turnover).toEqual({ rate: 0.1111, atRisk: 18, departed: 2, periods: 6, configuredRate: null });
+  expect(document.turnover).toEqual({ rate: 0.1111, atRisk: 18, departed: 2, periods: 6, configuredRatePercent: null });
   expect(JSON.stringify(document)).not.toMatch(/example\.com|Ann|Bob|Cy|Eve/);
   expectGolden("abandonment", "abandonment.turnover", (await abandonment("turnover", "--limit", "all")).stdout);
 });
@@ -52,7 +52,7 @@ test("turnover is departures over the people on the team at each period's start,
 test("a configured turnover rate is reported beside the estimate and is the one simulation uses", async () => {
   configure({ turnoverRate: 5 });
   const document = await json("turnover");
-  expect(document.turnover).toMatchObject({ rate: 0.1111, configuredRate: 0.05 });
+  expect(document.turnover).toMatchObject({ rate: 0.1111, configuredRatePercent: 5 });
 });
 
 test("simulate in rate mode, byte for byte", async () => {

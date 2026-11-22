@@ -27,7 +27,7 @@
     },
     {
       "commits": 1,
-      "decided": false,
+      "decided": true,
       "identity": "Claude Opus 5.5 <noreply@anthropic.com>",
       "kind": "agent",
       "pattern": "\\bclaude\\b",

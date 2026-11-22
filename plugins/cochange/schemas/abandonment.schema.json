@@ -22,7 +22,7 @@
         "horizonPeriods": { "type": "integer", "minimum": 1 },
         "seed": { "type": "integer", "minimum": 0 },
         "alphas": { "type": "array", "items": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 100 }, "minItems": 1 },
-        "turnoverRate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "The configured per-period rate as a fraction, or null when it is estimated." },
+        "turnoverRatePercent": { "type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "The configured per-period rate as a percentage (15 is 15 percent), as written in cochange.knowledge.turnoverRate, or null when it is estimated." },
         "activityWindowMonths": { "type": "integer", "minimum": 1 },
         "periodMonths": { "type": "integer", "minimum": 1 },
         "abandonmentGuideline": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Percentage of a file's lines held by people who have left at which it is abandoned." },
@@ -93,7 +93,7 @@
         "atRisk": { "$ref": "common.schema.json#/$defs/count", "description": "Developer-periods: developers on the team at the start of each usable period, summed." },
         "departed": { "$ref": "common.schema.json#/$defs/count" },
         "periods": { "$ref": "common.schema.json#/$defs/count" },
-        "configuredRate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Only with `turnover`: the rate the config states, which simulation uses instead of the estimate." }
+        "configuredRatePercent": { "type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Only with `turnover`: the percentage the config states, which simulation uses instead of the estimate." }
       },
       "required": ["rate", "atRisk", "departed", "periods"],
       "additionalProperties": false
@@ -434,6 +434,12 @@
     },
     "summary": { "oneOf": [{ "$ref": "#/$defs/currentSummary" }, { "$ref": "#/$defs/redundancySummary" }] },
     "turnover": { "$ref": "#/$defs/turnoverSummary" },
+    "notices": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Present only when there is something to say about how far to trust the results: settled identities hold less than `cochange.knowledge.mappedShareGuideline` of the lines held by people, the leaver probabilities come from fewer observed periods than `cochange.knowledge.minTurnoverPeriods`, or a configured turnover rate is below one percent. Results are printed in full either way."
+    },
     "results": {}
   },
   "oneOf": [
@@ -469,8 +475,8 @@
       "properties": {
         "inputs": {
           "type": "object",
-          "properties": { "subcommand": { "const": "simulate" }, "overrides": true, "rank": true, "mode": true, "k": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
-          "required": ["subcommand", "overrides", "rank", "mode", "k", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
+          "properties": { "subcommand": { "const": "simulate" }, "overrides": true, "rank": true, "mode": true, "k": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRatePercent": true },
+          "required": ["subcommand", "overrides", "rank", "mode", "k", "trials", "horizonPeriods", "seed", "alphas", "turnoverRatePercent"]
         },
         "results": { "$ref": "#/$defs/simulation" },
         "turnover": true,
@@ -483,8 +489,8 @@
       "properties": {
         "inputs": {
           "type": "object",
-          "properties": { "subcommand": { "const": "backtest" }, "at": true, "atRiskProbability": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
-          "required": ["subcommand", "at", "atRiskProbability", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
+          "properties": { "subcommand": { "const": "backtest" }, "at": true, "atRiskProbability": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRatePercent": true },
+          "required": ["subcommand", "at", "atRiskProbability", "trials", "horizonPeriods", "seed", "alphas", "turnoverRatePercent"]
         },
         "results": { "$ref": "#/$defs/backtest" }
       },
@@ -508,8 +514,8 @@
       "properties": {
         "inputs": {
           "type": "object",
-          "properties": { "subcommand": { "const": "trend" }, "points": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRate": true },
-          "required": ["subcommand", "points", "trials", "horizonPeriods", "seed", "alphas", "turnoverRate"]
+          "properties": { "subcommand": { "const": "trend" }, "points": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRatePercent": true },
+          "required": ["subcommand", "points", "trials", "horizonPeriods", "seed", "alphas", "turnoverRatePercent"]
         },
         "results": { "$ref": "#/$defs/trend" }
       },

@@ -89,7 +89,8 @@ export function classifyRows(analysis: IdentityAnalysis) {
       commits: agent.commits,
       source: "trailer",
       pattern: agent.pattern,
-      decided: decided.has(emailOf(agent.value)),
+      // Decided by a record, or by a rule that already classifies the trailer's address as an agent.
+      decided: decided.has(emailOf(agent.value)) || matcher.classify(nameOf(agent.value), emailOf(agent.value))?.kind === "agent",
     });
   }
   const order = { bot: 0, service: 1, agent: 2 };
@@ -99,4 +100,9 @@ export function classifyRows(analysis: IdentityAnalysis) {
 export const emailOf = (identity: string): string => {
   const open = identity.lastIndexOf("<");
   return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
+};
+
+const nameOf = (identity: string): string => {
+  const open = identity.lastIndexOf("<");
+  return (open === -1 ? "" : identity.slice(0, open)).trim();
 };

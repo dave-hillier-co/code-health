@@ -3,6 +3,7 @@ import { historySections, identityStamps } from "../analysis-command.ts";
 import { loadHistory, type LoadedHistory } from "../history-access.ts";
 import { overridesExposure } from "./overrides-exposure.ts";
 import { loadKnowledge, type LoadedKnowledge } from "./load.ts";
+import { mappedShareNotices, noticesSection } from "./notices.ts";
 import { requireKnowledge, type KnowledgeSettings } from "./settings.ts";
 
 /** What every subcommand of the abandonment analysis starts from. */
@@ -13,6 +14,8 @@ export interface Prepared {
   knowledge: LoadedKnowledge;
   /** The blame cache was not refreshed, so files it holds nothing right for are unknown. */
   noRefresh: boolean;
+  /** Printed with the results: the mapped share is under its guideline. */
+  notices: string[];
 }
 
 /**
@@ -26,7 +29,8 @@ export async function prepare(context: CommandContext): Promise<Prepared> {
   if (exposure !== null) process.stderr.write(`${exposure}\n`);
   const history = await loadHistory(context, { noRefresh });
   const knowledge = await loadKnowledge(context, history, settings, { noRefresh });
-  return { context, settings, history, knowledge, noRefresh };
+  const notices = await mappedShareNotices(context, settings);
+  return { context, settings, history, knowledge, noRefresh, notices };
 }
 
 /** The `inputs` every subcommand reports: what its results depend on beyond the repository and history. Counts only, never identities. */
@@ -54,6 +58,7 @@ export function commonExtra(p: Prepared, more: Record<string, unknown> = {}): No
       inactive: model.developers.filter((d) => !d.active).length,
     },
     blame: { unknownFiles: model.missing.length, unattributedLines: model.files.reduce((sum, f) => sum + f.unattributed, 0) },
+    ...noticesSection(p.notices),
     ...more,
   };
 }

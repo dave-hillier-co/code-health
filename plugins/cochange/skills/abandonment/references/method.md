@@ -3,7 +3,7 @@
 ## Definitions (Rigby, Zhu, Donadelli and Mockus, ICSE 2016)
 
 - **Author of a line.** The commit that last introduced the line at the analysed commit, from `git blame -w -M -C`, ignoring revisions in `.git-blame-ignore-revs`. `-w` ignores whitespace, `-M` and `-C` make moved and copied lines keep their original author, and the ignore-revs file covers formatting sweeps. The blame cache stores the commit behind each line range and never an identity, so a mailmap change never needs a new blame.
-- **Developer.** A person after the reviewed `.mailmap`. Bots, services and agents are not in the population. Their lines belong to nobody and are on neither side of a file's abandoned share. They are reported apart as `nonPersonLines`.
+- **Developer.** A person after the reviewed `.mailmap`. Bots, services and agents are not in the population. Their lines belong to nobody and are on neither side of a file's abandoned share. They are reported apart as `nonPersonLines`. A commit an agent authored with a `Co-Authored-By` trailer naming a person counts as that person's.
 - **Active.** At least one commit in the activity window (`cochange.knowledge.activityWindowMonths`, default 6) ending at the analysed commit. Inactive developers are treated as having left. Overrides in `.code-health/local/knowledge-overrides.json` correct this: `active` for people on leave, `inactive` for people who have gone.
 - **Abandoned line.** Its last author is not active.
 - **Abandoned file.** At least `cochange.knowledge.abandonmentGuideline` percent (default 90) of the lines held by people are abandoned. The test is exact integer arithmetic: 9 of 10 is abandoned at 90.

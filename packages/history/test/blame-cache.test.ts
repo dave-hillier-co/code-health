@@ -317,6 +317,22 @@ test("owners are resolved at query time through the mailmap and the classificati
   expect(lineShares(all, reviewed)).toMatchObject({ people: 7, nonPerson: 3 });
 });
 
+test("lines an agent authored belong to the human its trailer names, and to nobody when no human is named", async () => {
+  const claude: Identity = { name: "Claude", email: "noreply@anthropic.com" };
+  const f = GitFixture.build([
+    { type: "commit", message: "agent with a human\n\nCo-Authored-By: Ana A <ana@home.net>", date: "2024-01-01T10:00:00Z", author: claude, changes: [{ op: "add", path: "a.ts", content: "a1\na2\n" }] },
+    { type: "commit", message: "agent alone", date: "2024-01-02T10:00:00Z", author: claude, changes: [{ op: "add", path: "b.ts", content: "b1\n" }] },
+  ]);
+  fixtures.push(f);
+  await refreshBlame(f.path);
+  const snapshot = await readBlame(f.path);
+  const matcher = createNonPersonMatcher({ botPatterns: [], servicePatterns: [], agentPatterns: [], decisions: [] });
+  const owners = await resolveOwners(f.path, commitsInSnapshot(snapshot), { matcher });
+  const shares = lineShares([...snapshot.files.values()].flatMap((file) => file.ranges), owners);
+  expect(shares).toMatchObject({ total: 3, people: 2, nonPerson: 1 });
+  expect(shares.byOwner).toEqual(new Map([["Ana A <ana@home.net>", 2]]));
+});
+
 test("lines whose commit is not among the owners are unattributed, and a file without people has no share", () => {
   const owners = new Map([["a".repeat(40), { key: "Ana A <ana@corp.com>", name: "Ana A", email: "ana@corp.com", kind: "person" as const }]]);
   const shares = lineShares([{ start: 1, count: 3, sha: "a".repeat(40) }, { start: 4, count: 2, sha: "b".repeat(40) }], owners);

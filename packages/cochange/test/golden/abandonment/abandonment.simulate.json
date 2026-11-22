@@ -130,7 +130,7 @@
     "seed": 42,
     "subcommand": "simulate",
     "trials": 2000,
-    "turnoverRate": null
+    "turnoverRatePercent": null
   },
   "repo": {
     "dirty": false,

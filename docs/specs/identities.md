@@ -36,8 +36,16 @@ The CLI computes link evidence between pairs of raw identities. Each link carrie
 | Same email local part, different domains | `jsmith@corp.com` / `jsmith@gmail.com` | Medium |
 | Handover in time: one identity stops as the other starts, on overlapping files | Personal email until March, work email from March | Supporting |
 | Exclusive pairing as author and committer: each identity appears on commits only with the other | Author `jo@home`, committer `jo@corp`, neither ever paired with anyone else | Supporting. Plain co-occurrence is not evidence, because a maintainer who applies, rebases or merges a patch is the committer on someone else's commit. Platform committers such as `GitHub <noreply@github.com>` are ignored. |
-| Same signing key across identities, where commits are signed | GPG or SSH key fingerprint | Strong, except for platform keys. GitHub's web-flow key signs every user's web-UI commits, so a key seen on many otherwise unlinked identities is ignored. |
+| Same signing key across identities, where commits are signed | GPG or SSH key fingerprint | Supporting alone: it links no one by itself, because one key can sit on a shared machine or a team account. Strong beside any medium signal. A key held by more than three identities is ignored, and so is a platform key: GitHub's web-flow key signs every user's web-UI commits. |
 | Simultaneous activity on disjoint areas with the same name | Two `Alex Kim`s active in the same week in unrelated folders | Counter-evidence |
+
+Some medium signals are strong together. These pairs are proposed as strong:
+
+- the same normalised name and a GitHub noreply login that matches the other identity (its local part or its name written as a username);
+- the same normalised name and the same email local part on different domains;
+- a shared signing key and any medium signal.
+
+A name alone, a local part alone and a login alone stay medium.
 
 Clusters are built from links, but **never transitively merged on weak links alone**. A chain of medium links (A~B by name, B~C by local part) is shown as a chain for review, not as one cluster.
 
@@ -45,7 +53,7 @@ Clusters are built from links, but **never transitively merged on weak links alo
 
 - **Bots**: `[bot]` suffix, known bot emails (dependabot, renovate, github-actions), and configurable patterns.
 - **Service and CI accounts**: generic names (`build`, `jenkins`, `release`), and commits that are only version bumps or merges.
-- **Agent-authored commits**: commits with `Co-Authored-By` trailers naming an AI agent. The human author or committer is the person of record, and the trailer is recorded so the abandonment analysis can treat those lines as the open question there decides.
+- **Coding agents**: classified as kind `agent` by default, with no decision needed. A commit authored as `Claude <noreply@anthropic.com>` (any address at `anthropic.com`), a GitHub Copilot, Cursor or Devin identity (the Copilot and `devin-ai-integration` noreply addresses, `cursoragent@cursor.com`) is an agent's. A `Co-Authored-By` trailer that names an agent is listed by `classify` as an agent, already decided when its address matches one of those. A decision of kind `person` overrides the default. Agents are not developers: they are not in the population of people, they are not counted in knowledge loss, and the lines they hold belong to nobody. A commit an agent authored whose message has a `Co-Authored-By` trailer naming a person (not an agent) is attributed to that person, for lines and for activity. The first such trailer is used. An agent's commits are still changes: they are not dropped from change grouping.
 
 ## Output
 
@@ -134,13 +142,13 @@ Numbers here are guidelines or floors, as in [cochange.md](cochange.md#resolved-
 
 **Mapped share.** An identity is unmapped while any proposal that is not rejected names it. `mappedShare` is the share of people's lines held by identities no such proposal names, with bots, services and agents left out of the denominator. A proposal that is pending and wrong therefore counts as unresolved. `needsIdentityReview` is true when the unmapped share exceeds `unmappedShareGuideline` (default 5 percent, a judgement call). It is a guideline for deciding whether to use this skill first, and the measured share is printed beside it.
 
-**Evidence constants.** A handover is a gap of at most 90 days or an overlap of at most 14 days between one identity's last commit and the other's first. Counter-evidence is computed only for links without a strong signal, since a strong signal outranks it. Simultaneous activity is compared by week, in areas given by the first two folders of each path. A shared signing key is a strong signal, and platform keys are ignored as in the table. Both day counts are judgement calls. They decide which proposals the agent is shown, and never which are applied.
+**Evidence constants.** A handover is a gap of at most 90 days or an overlap of at most 14 days between one identity's last commit and the other's first. Counter-evidence is computed only for links without a strong signal, since a strong signal outranks it. Simultaneous activity is compared by week, in areas given by the first two folders of each path. A shared signing key is a supporting signal that makes a link strong only beside a medium signal, and platform keys are ignored as in the table. Both day counts are judgement calls. They decide which proposals the agent is shown, and never which are applied.
 
 **Canonical identity.** `apply` never picks one. Each merge in the approved decisions file names its canonical identity and its aliases. Rejections and classifications are matched on the identity as written, ignoring case.
 
 **Mailmap source.** Identity commands read the working-tree `.mailmap` and the local mailmap through `git check-mailmap`, so an uncommitted mapping shows at once. Every other command reads the `.mailmap` blob at the analysed ref plus the local mailmap, so reports stay reproducible at a commit. Where a decision is written follows `--location`, then config, then the files present. With none of those, `apply` refuses and tells the agent to ask the user.
 
-**Non-person filtering.** `filtersApplied.botPatterns` lists the configured patterns. `filtersApplied.nonPerson` lists the built-in bot patterns and service names, the configured service patterns and the number of reviewed decisions. Commits dropped by any of them are counted in `dropped.botCommits`.
+**Non-person filtering.** `filtersApplied.botPatterns` lists the configured patterns. `filtersApplied.nonPerson` lists the built-in bot patterns and service names, the configured service patterns and the number of reviewed decisions. Commits dropped by any of them are counted in `dropped.botCommits`. Commits by agents are not dropped.
 
 ## Open questions
 

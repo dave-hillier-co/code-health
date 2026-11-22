@@ -25,8 +25,12 @@ export const KNOWLEDGE_DEFAULTS = {
   horizonPeriods: 4,
   /** A file is abandoned when at least this percentage of the lines held by people belong to people who have left. */
   abandonmentGuideline: 90,
-  /** Per-period turnover, as a percentage. null estimates it from history. */
+  /** Per-period turnover, as a percentage (15 is 15 percent, not 0.15). null estimates it from history. */
   turnoverRate: null as number | null,
+  /** A turnover rate estimated from fewer observed periods than this is called a weak estimate. A judgement call. */
+  minTurnoverPeriods: 4,
+  /** Results are labelled as depending on unmapped identities when settled identities hold less than this percentage of the lines held by people. A judgement call. */
+  mappedShareGuideline: 80,
   trials: 10_000,
   /** Percentiles of the loss distribution reported as knowledge at risk. */
   alphas: [95, 99],
@@ -47,8 +51,13 @@ export interface KnowledgeSettings {
   horizonPeriods: number;
   /** Percentage, 1 to 100. */
   abandonmentGuideline: number;
-  /** Per-period turnover as a fraction (0 to 1), or null to estimate it from history. */
+  /** Per-period turnover as a fraction (0 to 1), or null to estimate it from history. The configured percentage divided by 100. */
   turnoverRate: number | null;
+  /** The configured percentage as written, 0 to 100, or null. */
+  turnoverRatePercent: number | null;
+  minTurnoverPeriods: number;
+  /** Percentage, 0 to 100. */
+  mappedShareGuideline: number;
   trials: number;
   alphas: number[];
   seed: number;
@@ -89,6 +98,9 @@ export function readKnowledgeSettings(effective: Record<string, unknown>): Knowl
     horizonPeriods: whole("horizonPeriods", 1),
     abandonmentGuideline: whole("abandonmentGuideline", 1, 100),
     turnoverRate: rate === null ? null : (rate as number) / 100,
+    turnoverRatePercent: rate === null ? null : (rate as number),
+    minTurnoverPeriods: whole("minTurnoverPeriods", 0),
+    mappedShareGuideline: whole("mappedShareGuideline", 0, 100),
     trials: whole("trials", 1, 10_000_000),
     alphas: [...(alphas as number[])].sort((a, b) => a - b),
     seed: whole("seed", 0, 0xffffffff),

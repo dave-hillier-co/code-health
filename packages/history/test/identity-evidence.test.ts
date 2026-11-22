@@ -245,23 +245,57 @@ test("output order does not depend on input order", () => {
   expect(analyse([...specs].reverse())).toEqual(analyse(specs));
 });
 
-test("the same signing key across identities with nothing else in common is a strong link", () => {
+test("the same signing key across identities with nothing else in common is not a link", () => {
   const { links, proposals } = analyse([
     { name: "Jo Bloggs", email: "jo@corp.com", signingKeys: ["ssh:SHA256:abc"] },
     { name: "Pat Quill", email: "pat@home.net", signingKeys: ["ssh:SHA256:abc"] },
     { name: "Sam Reed", email: "sam@else.org", signingKeys: ["ssh:SHA256:other"] },
   ]);
+  expect(links).toEqual([]);
+  expect(proposals).toEqual([]);
+});
+
+test("the same signing key beside a medium signal is a strong link", () => {
+  const { links } = analyse([
+    { name: "Ann Lee", email: "ann@home.net", signingKeys: ["ssh:SHA256:abc"] },
+    { name: "Ann Lee", email: "ax@corp.com", signingKeys: ["ssh:SHA256:abc"] },
+  ]);
   expect(links).toHaveLength(1);
-  expect(links[0]).toMatchObject({ strength: "strong", signals: [{ signal: "same-signing-key", strength: "strong", detail: "ssh:SHA256:abc" }] });
-  expect(proposals).toHaveLength(1);
+  expect(links[0]).toMatchObject({ strength: "strong" });
+  expect(signalsOf(links)).toEqual(["same-name", "same-signing-key"]);
+});
+
+test("the same normalised name beside a matching GitHub noreply login is a strong link", () => {
+  const { links, proposals } = analyse([
+    { name: "Jo Smith", email: "1234+josmith@users.noreply.github.com" },
+    { name: "jo smith", email: "josmith@corp.com" },
+  ]);
+  expect(links[0]).toMatchObject({ strength: "strong" });
+  expect(proposals[0]).toMatchObject({ kind: "cluster", strength: "strong" });
+});
+
+test("the same name and the same email local part on different domains is a strong link", () => {
+  const { links } = analyse([
+    { name: "Dee Park", email: "dpark@home.net" },
+    { name: "Dee Park", email: "dpark@corp.com" },
+  ]);
+  expect(links[0]).toMatchObject({ strength: "strong" });
+});
+
+test("the same name alone stays a medium link", () => {
+  const { links } = analyse([
+    { name: "Dee Park", email: "one@home.net" },
+    { name: "Dee Park", email: "two@corp.com" },
+  ]);
+  expect(links[0]).toMatchObject({ strength: "medium" });
 });
 
 test.each([
   [3, true],
   [4, false],
 ])("a key on %i identities is %s as evidence, since one shared by many is a platform's or a team's", (holders, linked) => {
-  const specs = Array.from({ length: holders }, (_, index) => ({ name: `Person ${index} Surname${index}`, email: `p${index}@domain${index}.org`, signingKeys: ["gpg:CAFEBABECAFEBABE"] }));
-  expect(analyse(specs).links.length > 0).toBe(linked);
+  const specs = Array.from({ length: holders }, (_, index) => ({ name: "Ann Lee", email: `p${index}@domain${index}.org`, signingKeys: ["gpg:CAFEBABECAFEBABE"] }));
+  expect(signalsOf(analyse(specs).links).includes("same-signing-key")).toBe(linked);
 });
 
 test("identities that share no key and nothing else are not linked by their keys", () => {

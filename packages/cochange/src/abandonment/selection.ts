@@ -3,6 +3,7 @@ import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import { integerOption } from "../coupled-pairs.ts";
 import type { Turnover } from "./activity.ts";
 import type { Selection } from "./simulate.ts";
+import { turnoverRateHint } from "./notices.ts";
 import type { KnowledgeSettings } from "./settings.ts";
 
 export const MODES = ["rate", "historical", "k-leavers"] as const;
@@ -49,12 +50,12 @@ export function chooseSelection(sim: SimulationSettings, settings: KnowledgeSett
     return { selection: { mode: "k-leavers", k: sim.k }, source: "k-leavers" };
   }
   if (sim.mode === "historical") {
-    if (turnover.periods.length === 0) throw usageError("historical mode needs at least one period of observed turnover, and the history is too short for one; use --mode rate with cochange.knowledge.turnoverRate");
+    if (turnover.periods.length === 0) throw usageError(`historical mode needs at least one period of observed turnover, and the history is too short for one; use --mode rate and ${turnoverRateHint(settings)}`);
     return { selection: { mode: "historical", rates: turnover.periods.map((p) => p.rate), periods: sim.horizonPeriods }, source: "history" };
   }
   const rate = settings.turnoverRate ?? turnover.rate;
   if (rate === null) {
-    throw usageError("the history is too short to estimate turnover; set cochange.knowledge.turnoverRate, or use --mode k-leavers");
+    throw usageError(`the history is too short to estimate turnover; ${turnoverRateHint(settings)}, or use --mode k-leavers`);
   }
   return { selection: { mode: "rate", rate, periods: sim.horizonPeriods }, source: settings.turnoverRate === null ? "history" : "configured" };
 }

@@ -43,6 +43,12 @@ Out of scope:
 
 **Developer identity.** Resolved through a reviewed `.mailmap`, built with the [identities](identities.md) skill. Bot and service authors (from the identities classification) are excluded from the population, and their lines count as owned by nobody. Those lines are left out of both sides of a file's abandoned share, and are reported separately rather than treated as abandoned.
 
+**Notices.** Every subcommand but `backtest` prints results in full and adds a `notices` list to the document (and `Notice:` lines in a table) when there is something to say about how far to trust them. The results are never withheld by these guidelines:
+
+- Settled identities hold less than `mappedShareGuideline` of the lines held by people, with the measured share (the `identities check` figure). One person under several identities counts as several people, so who has left, and what leaving costs, is overstated.
+- `simulate` and `trend` take the leaver probability from history, and fewer than `minTurnoverPeriods` periods were observed. The notice gives the number of periods.
+- `turnoverRate` is below one percent: it is a percentage, so 0.3 is 0.3 percent, and 30 means 30 percent.
+
 **Active developer.** A developer with at least one commit in the activity window (default 6 months). Inactive developers are treated as having left. That is a proxy: people on leave or moved to another repo look inactive. A local overrides file corrects it (see [Privacy](#privacy)).
 
 **Departure.** A developer has left, as of their last commit, when no further commit follows within the activity window. This is the same test as *active*, so someone who commits every few months stays active throughout and never counts as a leaver in a period with few commits. Departures in the most recent activity window cannot be known yet, so those periods are left out of rate estimation.
@@ -194,7 +200,9 @@ Where the sections above leave a definition open, these apply. Constants marked 
 | `atRiskProbability` | 10 (percent) | *Guideline.* Judgement call |
 | `activityWindowMonths` | 6 | Judgement call. CodeScene documents no inactivity period (ex-developers are configured by hand), so this is the suite's own |
 | `periodMonths`, `horizonPeriods` | 3, 4 | Judgement call. One year of quarters |
-| `turnoverRate` | null (estimated from history) | Estimated, never invented |
+| `turnoverRate` | null (estimated from history) | Estimated, never invented. A percentage of developers leaving per period, 0 to 100: `15` is 15 percent, and `0.3` is 0.3 percent. Output echoes it as `turnoverRatePercent`, as written. Without it, a history too short to estimate turnover is a usage error that names the key and the units. |
+| `minTurnoverPeriods` | 4 | *Guideline.* Judgement call. A rate estimated from fewer observed periods is labelled a weak estimate |
+| `mappedShareGuideline` | 80 (percent of lines held by people) | *Guideline.* Judgement call. Results are labelled as depending on unmapped identities below it |
 | `trials`, `alphas`, `seed` | 10000, [95, 99], 1 | Rigby et al. for the alphas; the rest are judgement calls |
 
 **Active developer.** Active means a committer date within the activity window before the analysed commit, with a month of 30.4375 days. Committer date is used because it is when the work reached the history, and it is the date the suite anchors every window to. Identities go through the mailmap (working tree and local), and bots, services and agents are excluded. It does not depend on the opt-in, and the history `windowMonths` does not govern it.
@@ -224,7 +232,7 @@ Where the sections above leave a definition open, these apply. Constants marked 
 - Whether to weight lines by complexity, so that knowledge of complex code counts for more than knowledge of boilerplate.
 - Whether to estimate and apply the turnover rate within tenure bands. Occasional contributors leave at a far higher rate than established ones, so one pooled rate overstates the loss of core authors. Bands describe groups, not people, but a backtest should show the pooled rate is miscalibrated before the model gains that complexity.
 - Whether authorship should decay with time since the author last touched the file, since knowledge fades even without turnover.
-- How to treat code authored by agents, which have no knowledge to lose. One option is to attribute agent-authored lines to the reviewing or committing human. The identities skill already records agent trailers, so this is a policy choice rather than a detection problem.
+- Whether agent-authored lines with no human co-author should be attributed to the committer. Today they belong to nobody, as the [identities spec](identities.md) says: agents are not developers, and a commit an agent authored with a `Co-Authored-By` trailer naming a person counts as that person's.
 
 ## Milestones
 
