@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-XDZ3NWLM.mjs";
+} from "./chunk-EU7N25OU.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -35,14 +35,15 @@ import {
 } from "./chunk-QHLSRXYC.mjs";
 import {
   analyseTree
-} from "./chunk-X2MAPTZB.mjs";
-import "./chunk-4LMITZN4.mjs";
+} from "./chunk-SRLZQP4X.mjs";
+import "./chunk-VLPHGRP2.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
+  isCppPath,
   isTestPath
-} from "./chunk-YMZXGKUW.mjs";
+} from "./chunk-TWINSX43.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -207,11 +208,12 @@ var sharedDefaults = {
   exclude: [],
   languages: {},
   entryPoints: [],
+  includeRoots: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults
 };
-var stringLists = ["exclude", "entryPoints", "vagueNames"];
+var stringLists = ["exclude", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
 function rejectUnknownKeys(document, plugin) {
@@ -490,6 +492,18 @@ function byScoreThenPath(a, b) {
   return Buffer.compare(Buffer.from(String(a.path ?? "")), Buffer.from(String(b.path ?? "")));
 }
 
+// packages/cli-kit/src/run-notes.ts
+var notes = /* @__PURE__ */ new Map();
+function recordRunNote(note) {
+  notes.set(note.key, note);
+}
+function resetRunNotes() {
+  notes.clear();
+}
+function runNotes() {
+  return [...notes.values()];
+}
+
 // packages/cli-kit/src/table.ts
 function renderTable(rows, columns, truncated) {
   if (rows.length === 0) return "No results.\n";
@@ -559,10 +573,14 @@ async function execute(cli2, io) {
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args.positionals, values: args.values };
   resetBuiltinOmissions();
+  resetRunNotes();
   const output = await command8.run(context);
+  const noted = runNotes();
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
+`);
+  for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
@@ -576,7 +594,7 @@ async function execute(cli2, io) {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: { ...output.extra, ...omittedByBuiltin },
+          extra: { ...output.extra, ...Object.fromEntries(noted.map((note) => [note.key, note.value])), ...omittedByBuiltin },
           results,
           truncated,
           meta: {
@@ -592,6 +610,8 @@ async function execute(cli2, io) {
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results, args.fields ?? columns, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
+`);
+    for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
 `);
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
@@ -848,6 +868,45 @@ function expandComponent(condensation, componentId) {
   return condensation.members.get(componentId) ?? [];
 }
 
+// packages/parse/src/include-resolution.ts
+import { posix } from "node:path";
+function exceedsUnresolvedGuideline(resolution, guidelinePercent) {
+  return resolution.includes > 0 && resolution.unresolvedShare * 100 > guidelinePercent;
+}
+function describeIncludeResolution(resolution, guidelinePercent, plugin) {
+  const above = exceedsUnresolvedGuideline(resolution, guidelinePercent);
+  const share = `${resolution.unresolved} of ${resolution.includes} includes (${(resolution.unresolvedShare * 100).toFixed(1)}%) found no file`;
+  const source = resolution.compileCommands !== null ? `include directories from ${resolution.compileCommands.paths.join(", ")}${resolution.compileCommands.tracked ? "" : " (not tracked by git)"}` : resolution.configuredRoots.length > 0 ? `include directories from the includeRoots setting` : resolution.inferredRoots.length > 0 ? `no compile_commands.json and no includeRoots setting, so ${resolution.inferredRoots.length} include directories were inferred` : "no compile_commands.json and no includeRoots setting, and no include directory could be inferred";
+  const advice = `${plugin}: set includeRoots in code-health.json, or generate a compile_commands.json (CMAKE_EXPORT_COMPILE_COMMANDS=ON) at the repository root or in build/`;
+  const text = `${share}, above the ${plugin}.unresolvedIncludePercent guideline of ${guidelinePercent}% (${source}), so dependencies, consumers and the results that rest on them are incomplete and the affected units are marked low confidence`;
+  return {
+    section: { ...resolution, guideline: guidelinePercent, aboveGuideline: above },
+    notice: above ? text : void 0,
+    warning: above ? `Warning: ${text}. ${advice}` : void 0
+  };
+}
+function lowConfidenceReader(unresolved) {
+  const own = /* @__PURE__ */ new Map();
+  const named = /* @__PURE__ */ new Map();
+  for (const entry of unresolved) {
+    if (entry.specifier === null || entry.specifier.startsWith("<") || !isCppPath(entry.from)) continue;
+    own.set(entry.from, (own.get(entry.from) ?? 0) + 1);
+    const name8 = posix.basename(entry.specifier);
+    named.set(name8, (named.get(name8) ?? 0) + 1);
+  }
+  return (path) => {
+    if (!isCppPath(path)) return void 0;
+    const ownCount = own.get(path) ?? 0;
+    const namedCount = named.get(posix.basename(path)) ?? 0;
+    if (ownCount === 0 && namedCount === 0) return void 0;
+    const parts = [
+      ...ownCount > 0 ? [`${ownCount} of its own includes found no file`] : [],
+      ...namedCount > 0 ? [`${namedCount} includes of a file named ${posix.basename(path)} found no file, so a consumer may be missing`] : []
+    ];
+    return parts.join("; ");
+  };
+}
+
 // packages/parse/src/parse-cache.ts
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
@@ -888,6 +947,51 @@ var ParseCache = class _ParseCache {
   }
 };
 
+// packages/parse/src/build-configs.ts
+import { existsSync as existsSync3, readdirSync, readFileSync as readFileSync2, statSync } from "node:fs";
+import { join as join5 } from "node:path";
+function readBuildConfigs(root, tree) {
+  const found = /* @__PURE__ */ new Map();
+  for (const path of tree.files.keys()) if (path === "compile_commands.json" || path.endsWith("/compile_commands.json")) return found;
+  for (const directory of candidateDirectories(root)) {
+    const path = directory === "" ? "compile_commands.json" : `${directory}/compile_commands.json`;
+    const text = readIfCompileCommands(join5(root, path));
+    if (text !== void 0) {
+      found.set(path, text);
+      return found;
+    }
+  }
+  return found;
+}
+function subdirectories(root, directory) {
+  try {
+    return readdirSync(join5(root, directory), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+  } catch {
+    return [];
+  }
+}
+function candidateDirectories(root) {
+  const directories = ["", "build", "out"];
+  directories.push(...subdirectories(root, "").filter((name8) => name8.startsWith("cmake-build-")));
+  for (const parent of ["build", "out"]) {
+    for (const child of subdirectories(root, parent)) {
+      directories.push(`${parent}/${child}`);
+      if (parent === "out" && child === "build") for (const preset of subdirectories(root, "out/build")) directories.push(`out/build/${preset}`);
+    }
+  }
+  return directories;
+}
+function readIfCompileCommands(file) {
+  try {
+    if (!existsSync3(file) || !statSync(file).isFile()) return void 0;
+    const text = readFileSync2(file, "utf8");
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) && parsed.length > 0 ? text : void 0;
+  } catch {
+    return void 0;
+  }
+}
+
 // packages/locality/src/project.ts
 function withoutExcluded(tree, exclude) {
   if (exclude.length === 0) return tree;
@@ -906,7 +1010,11 @@ function countLines(text) {
 }
 async function loadProject(root, ref, settings) {
   const tree = withoutExcluded(await treeFromRef(root, ref), settings.exclude);
-  const analysis = await analyseTree(tree, { cache: await ParseCache.forRepository(root) });
+  const analysis = await analyseTree(tree, { cache: await ParseCache.forRepository(root), extraConfigs: readBuildConfigs(root, tree), includeRoots: settings.includeRoots });
+  if (analysis.includeResolution !== void 0) {
+    const report = describeIncludeResolution(analysis.includeResolution, settings.unresolvedIncludePercent, "locality");
+    recordRunNote({ key: "includeResolution", value: report.section, ...report.notice === void 0 ? {} : { notice: report.notice }, ...report.warning === void 0 ? {} : { warning: report.warning } });
+  }
   const generated = new Set(analysis.generatedFiles);
   const production = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !generated.has(path));
   const texts = await tree.readMany(production);
@@ -1285,15 +1393,15 @@ async function filterHistory(repoPath, view, options = {}) {
 }
 
 // packages/history/src/read.ts
-import { existsSync as existsSync5 } from "node:fs";
+import { existsSync as existsSync6 } from "node:fs";
 
 // packages/history/src/refresh.ts
-import { existsSync as existsSync4, readFileSync as readFileSync3 } from "node:fs";
-import { join as join5 } from "node:path";
+import { existsSync as existsSync5, readFileSync as readFileSync4 } from "node:fs";
+import { join as join6 } from "node:path";
 
 // packages/history/src/lock.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { closeSync, openSync, readFileSync as readFileSync2, renameSync as renameSync2, rmSync, statSync, utimesSync, writeSync, linkSync } from "node:fs";
+import { closeSync, openSync, readFileSync as readFileSync3, renameSync as renameSync2, rmSync, statSync as statSync2, utimesSync, writeSync, linkSync } from "node:fs";
 import { hostname } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 var LockTimeoutError = class extends Error {
@@ -1304,14 +1412,14 @@ var LockTimeoutError = class extends Error {
 };
 function readRaw(path) {
   try {
-    return readFileSync2(path, "utf8");
+    return readFileSync3(path, "utf8");
   } catch {
     return void 0;
   }
 }
 function fileAge(path) {
   try {
-    return Date.now() - statSync(path).mtimeMs;
+    return Date.now() - statSync2(path).mtimeMs;
   } catch {
     return 0;
   }
@@ -1506,7 +1614,7 @@ function parseRecord(record) {
 }
 
 // packages/history/src/store.ts
-import { existsSync as existsSync3, rmSync as rmSync2 } from "node:fs";
+import { existsSync as existsSync4, rmSync as rmSync2 } from "node:fs";
 
 // packages/history/src/sqlite.ts
 var SqliteUnavailableError = class extends Error {
@@ -1603,7 +1711,7 @@ function create(path, settings) {
 }
 function openForWrite(path, settings) {
   loadSqlite();
-  if (existsSync3(path)) {
+  if (existsSync4(path)) {
     try {
       const db = createDatabase(path, { timeout: 3e4 });
       configure(db);
@@ -1618,7 +1726,7 @@ function openForWrite(path, settings) {
 }
 function openForRead(path) {
   loadSqlite();
-  if (!existsSync3(path)) return void 0;
+  if (!existsSync4(path)) return void 0;
   try {
     const db = createDatabase(path, { readOnly: true, timeout: 3e4 });
     const version = db.prepare("PRAGMA user_version").get().user_version;
@@ -1697,8 +1805,8 @@ async function readShallowInfo(repoPath) {
   const out = (await runGit(repoPath, ["rev-parse", "--is-shallow-repository", "--path-format=absolute", "--git-common-dir"])).trim().split("\n");
   const isShallow = out[0] === "true";
   if (!isShallow) return { isShallow: false, boundary: [] };
-  const file = join5(out[1] ?? "", "shallow");
-  const boundary = existsSync4(file) ? readFileSync3(file, "utf8").split("\n").map((l) => l.trim()).filter((l) => l !== "") : [];
+  const file = join6(out[1] ?? "", "shallow");
+  const boundary = existsSync5(file) ? readFileSync4(file, "utf8").split("\n").map((l) => l.trim()).filter((l) => l !== "") : [];
   return { isShallow, boundary: boundary.sort() };
 }
 var RefNotFoundError = class extends Error {
@@ -1819,7 +1927,7 @@ async function readHistory2(repoPath, options = {}) {
   }
 }
 async function applyMailmap(repoRoot, view, mailmapFile) {
-  const file = mailmapFile !== void 0 && existsSync5(mailmapFile) ? mailmapFile : "";
+  const file = mailmapFile !== void 0 && existsSync6(mailmapFile) ? mailmapFile : "";
   let blob = "";
   try {
     await runGit(repoRoot, ["cat-file", "-e", `${view.headSha}:.mailmap`]);
@@ -2246,6 +2354,7 @@ function unitCoChange(history, unitFiles, consumers, minChanges) {
 var MAX_COMPARED_CONSUMERS = 7;
 function analyseProject(project, model, settings, history) {
   const { analysis } = project;
+  const lowConfidence = lowConfidenceReader(analysis.unresolved);
   const isFixed = compileGlobs(settings.fixedPoints);
   const forbidden = (folder) => settings.fixedPoints.length > 0 && isFixed(folder === "" ? "_" : `${folder}/_`);
   const guidelines = {
@@ -2495,6 +2604,7 @@ function analyseProject(project, model, settings, history) {
     const decision = recommend(input);
     const scored = cohesion?.mixed ? cohesion.components.map((component) => scoreComponent(unit.root, component)) : void 0;
     const score = decision.recommendation === "blocked" ? unblocked : decision.recommendation === "split" ? Math.max(choice.gain, (scored ?? []).reduce((sum, component) => sum + component.gain, 0)) : decision.recommendation === "scrutinise" ? consumerFiles.length : choice.gain;
+    const unresolvedReason = files.flatMap((file) => lowConfidence(file) ?? []).sort(compareIds)[0];
     const ownDeps = targets;
     const scoreUnit = decision.recommendation === "blocked" ? "unblocked-gain" : decision.recommendation === "split" ? "component-gain" : decision.recommendation === "scrutinise" ? "fan-in" : "gain";
     return {
@@ -2534,6 +2644,7 @@ function analyseProject(project, model, settings, history) {
       signals,
       strays: blockers.filter((blocker) => blocker.kind === "stray").map((blocker) => blocker.path).sort(compareIds),
       blockers,
+      ...unresolvedReason === void 0 ? {} : { confidence: { level: "low", reason: unresolvedReason } },
       ...cohesion ? { cohesion: { components: scored ?? cohesion.components, mixed: cohesion.mixed } } : {}
     };
   }
@@ -2597,6 +2708,8 @@ var localityConfig = {
     measureMinSamples: 10,
     /** Guideline: `measure compare` calls a difference no change when it is within this percent of the acted-on files' own starting figure. It reports the percent and its ratio to this guideline. A judgement call. */
     measureNoisePercent: 10,
+    /** Guideline (a judgement call): when more than this percent of the C and C++ includes found no file, a warning is printed on stderr and a notice goes in the output, because consumers, and every result drawn from them, are incomplete. Units whose results rest on an include that found no file are marked low confidence whatever the share. Nothing is hidden. */
+    unresolvedIncludePercent: 20,
     /** Globs of files that must not move and folders code may not move into (routes, migrations, app folders). */
     fixedPoints: []
   }
@@ -2652,6 +2765,8 @@ function readSettings(config) {
     historyMinConfidence: percent("historyMinConfidence"),
     measureMinSamples: positive("measureMinSamples"),
     measureNoisePercent: percent("measureNoisePercent"),
+    unresolvedIncludePercent: percent("unresolvedIncludePercent"),
+    includeRoots: config.effective.includeRoots,
     entryPoints: config.effective.entryPoints,
     exclude: config.effective.exclude,
     vagueNames: config.effective.vagueNames
@@ -3440,16 +3555,16 @@ __export(measure_exports, {
 import { relative as relative2 } from "node:path";
 
 // packages/transcripts/src/measure-repo.ts
-import { existsSync as existsSync6, readFileSync as readFileSync4, readdirSync } from "node:fs";
-import { join as join6 } from "node:path";
+import { existsSync as existsSync7, readFileSync as readFileSync5, readdirSync as readdirSync2 } from "node:fs";
+import { join as join7 } from "node:path";
 
 // packages/transcripts/src/repo-path.ts
-import { posix } from "node:path";
+import { posix as posix2 } from "node:path";
 function normalise3(path) {
   const converted = path.replaceAll("\\", "/");
   const drive = /^[A-Za-z]:\//.exec(converted);
-  if (drive === null) return posix.normalize(converted);
-  return drive[0] + posix.normalize(converted.slice(drive[0].length));
+  if (drive === null) return posix2.normalize(converted);
+  return drive[0] + posix2.normalize(converted.slice(drive[0].length));
 }
 function isAbsolute(path) {
   return path.startsWith("/") || /^[A-Za-z]:\//.test(path);
@@ -3504,7 +3619,7 @@ function toRepoPath(path, roots) {
 }
 
 // packages/transcripts/src/shell-command.ts
-import { posix as posix2 } from "node:path";
+import { posix as posix3 } from "node:path";
 var LITERAL_DOLLAR = "";
 var plain = (word) => word.text.replaceAll(LITERAL_DOLLAR, "$");
 var OPERATORS = ["&>>", "<<<", "<<-", "&&", "||", "|&", ";;", "<<", ">>", ">&", ">|", "&>", "<&", ";", "|", "&", "(", ")", ">", "<"];
@@ -3818,7 +3933,7 @@ var Interpretation = class {
       this.fail();
       return null;
     }
-    return this.cwd === void 0 ? text : posix2.join(this.cwd, text);
+    return this.cwd === void 0 ? text : posix3.join(this.cwd, text);
   }
   substitute(word) {
     if (!word.dynamic || !word.text.includes("$")) return word;
@@ -4024,7 +4139,7 @@ function moveLike(name8, args, run2) {
     sources2 = all;
     const directory = run2.resolve(targetOption.value ?? "");
     if (directory === null) return;
-    targets = all.filter((w) => !w.dynamic).map((w) => posix2.join(directory, posix2.basename(plain(w))));
+    targets = all.filter((w) => !w.dynamic).map((w) => posix3.join(directory, posix3.basename(plain(w))));
   } else {
     sources2 = all.slice(0, -1);
     const last = all.at(-1);
@@ -4033,7 +4148,7 @@ function moveLike(name8, args, run2) {
     if (sources2.length > 1 || endsLikeDirectory(lastText)) {
       const directory = run2.resolve(lastText);
       if (directory === null) return;
-      targets = sources2.filter((w) => !w.dynamic).map((w) => posix2.join(directory, posix2.basename(plain(w))));
+      targets = sources2.filter((w) => !w.dynamic).map((w) => posix3.join(directory, posix3.basename(plain(w))));
     } else {
       const target = run2.resolve(lastText);
       if (target !== null) targets = [target];
@@ -4104,7 +4219,7 @@ function execute2(command8, run2, piped) {
   }
   const head = words[0];
   if (head.dynamic) return run2.fail();
-  const name8 = posix2.basename(plain(head));
+  const name8 = posix3.basename(plain(head));
   const args = words.slice(1);
   const hasInput = command8.redirects.some((r) => r.op === "<" || r.op === "<<<") || command8.heredoc;
   if (HIDING_COMMANDS.has(name8)) return run2.fail();
@@ -4546,20 +4661,20 @@ function summariseTasks(tasks) {
 }
 function agentFilesUnder(dir) {
   const found = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join6(dir, entry.name);
+  for (const entry of readdirSync2(dir, { withFileTypes: true })) {
+    const path = join7(dir, entry.name);
     if (entry.isDirectory()) found.push(...agentFilesUnder(path));
     else if (entry.isFile() && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) found.push(path);
   }
   return found;
 }
 function subagentFiles(projectsDir, root) {
-  const dir = join6(projectsDir, encodeProjectDir(root));
-  if (!existsSync6(dir)) return [];
+  const dir = join7(projectsDir, encodeProjectDir(root));
+  if (!existsSync7(dir)) return [];
   const files = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const subagents = join6(dir, entry.name, "subagents");
-    if (!entry.isDirectory() || !existsSync6(subagents)) continue;
+  for (const entry of readdirSync2(dir, { withFileTypes: true })) {
+    const subagents = join7(dir, entry.name, "subagents");
+    if (!entry.isDirectory() || !existsSync7(subagents)) continue;
     for (const path of agentFilesUnder(subagents)) {
       const name8 = path.slice(path.lastIndexOf("/") + 1);
       files.push({ sessionId: entry.name, agentId: name8.slice("agent-".length, -".jsonl".length), path });
@@ -4572,7 +4687,7 @@ function stringField(value) {
 }
 function readMeta2(transcriptPath) {
   try {
-    const parsed = JSON.parse(readFileSync4(`${transcriptPath.slice(0, -".jsonl".length)}.meta.json`, "utf8"));
+    const parsed = JSON.parse(readFileSync5(`${transcriptPath.slice(0, -".jsonl".length)}.meta.json`, "utf8"));
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
     const meta = parsed;
     return { agentType: stringField(meta["agentType"]), description: stringField(meta["description"]), worktreePath: stringField(meta["worktreePath"]) };
@@ -4581,9 +4696,9 @@ function readMeta2(transcriptPath) {
   }
 }
 function sessionFiles(projectsDir, root) {
-  const dir = join6(projectsDir, encodeProjectDir(root));
-  if (!existsSync6(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join6(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
+  const dir = join7(projectsDir, encodeProjectDir(root));
+  if (!existsSync7(dir)) return [];
+  return readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join7(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
 }
 function measureRepo(options) {
   const { projectsDir, repoRoots, window } = options;
@@ -4601,7 +4716,7 @@ function measureRepo(options) {
         seen.add(file.path);
         let text;
         try {
-          text = readFileSync4(file.path, "utf8");
+          text = readFileSync5(file.path, "utf8");
         } catch {
           continue;
         }
@@ -4624,7 +4739,7 @@ function measureRepo(options) {
       seen.add(file.path);
       let text;
       try {
-        text = readFileSync4(file.path, "utf8");
+        text = readFileSync5(file.path, "utf8");
       } catch {
         continue;
       }
@@ -4654,27 +4769,27 @@ function measureRepo(options) {
 }
 
 // packages/locality/src/baseline-store.ts
-import { existsSync as existsSync8, readFileSync as readFileSync6, renameSync as renameSync4, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join8 } from "node:path";
+import { existsSync as existsSync9, readFileSync as readFileSync7, renameSync as renameSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { join as join9 } from "node:path";
 
 // packages/history/src/identity-decisions.ts
-import { existsSync as existsSync7, mkdirSync as mkdirSync3, readFileSync as readFileSync5, renameSync as renameSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join7 } from "node:path";
+import { existsSync as existsSync8, mkdirSync as mkdirSync3, readFileSync as readFileSync6, renameSync as renameSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join8 } from "node:path";
 function identityFiles(root) {
-  const localDir = join7(root, ".code-health", "local");
+  const localDir = join8(root, ".code-health", "local");
   return {
-    mailmap: join7(root, ".mailmap"),
-    localMailmap: join7(localDir, "mailmap"),
-    committedDecisions: join7(root, ".code-health", "identity-decisions.json"),
-    localDecisions: join7(localDir, "identity-decisions.json"),
+    mailmap: join8(root, ".mailmap"),
+    localMailmap: join8(localDir, "mailmap"),
+    committedDecisions: join8(root, ".code-health", "identity-decisions.json"),
+    localDecisions: join8(localDir, "identity-decisions.json"),
     localDir
   };
 }
 function ensureLocalState(root) {
   const { localDir } = identityFiles(root);
   mkdirSync3(localDir, { recursive: true });
-  const ignore = join7(localDir, ".gitignore");
-  if (!existsSync7(ignore)) writeFileSync3(ignore, "*\n");
+  const ignore = join8(localDir, ".gitignore");
+  if (!existsSync8(ignore)) writeFileSync3(ignore, "*\n");
 }
 
 // packages/locality/src/baseline-store.ts
@@ -4682,9 +4797,9 @@ var footprintOf = (candidate) => [.../* @__PURE__ */ new Set([...candidate.files
 var NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 function baselinePath(root, name8) {
   if (!NAME.test(name8)) throw usageError(`--name must be letters, digits, dots, dashes and underscores, not "${name8}"`);
-  return join8(identityFiles(root).localDir, `${TOOL}.baseline.${name8}.json`);
+  return join9(identityFiles(root).localDir, `${TOOL}.baseline.${name8}.json`);
 }
-var baselineExists = (root, name8) => existsSync8(baselinePath(root, name8));
+var baselineExists = (root, name8) => existsSync9(baselinePath(root, name8));
 function writeBaseline(root, baseline2) {
   ensureLocalState(root);
   const path = baselinePath(root, baseline2.name);
@@ -4695,12 +4810,12 @@ function writeBaseline(root, baseline2) {
 }
 function readBaseline(root, name8) {
   const path = baselinePath(root, name8);
-  if (!existsSync8(path)) {
+  if (!existsSync9(path)) {
     throw usageError(`no baseline named "${name8}": run \`locality measure baseline\` before the first tidy-up`);
   }
   let value;
   try {
-    value = JSON.parse(readFileSync6(path, "utf8"));
+    value = JSON.parse(readFileSync7(path, "utf8"));
   } catch {
     throw configError(`${path} is not valid JSON`);
   }
@@ -4749,8 +4864,8 @@ async function checkouts(root) {
 
 // packages/transcripts/src/projects-dir.ts
 import { homedir } from "node:os";
-import { join as join9 } from "node:path";
-var defaultProjectsDirectory = () => join9(homedir(), ".claude", "projects");
+import { join as join10 } from "node:path";
+var defaultProjectsDirectory = () => join10(homedir(), ".claude", "projects");
 
 // packages/transcripts/src/stamp.ts
 import { createHash as createHash2 } from "node:crypto";
@@ -5431,7 +5546,7 @@ __export(move_exports, {
 // packages/locality/src/move-apply.ts
 import { execFile } from "node:child_process";
 import { mkdirSync as mkdirSync4, writeFileSync as writeFileSync5 } from "node:fs";
-import { dirname as dirname3, join as join10 } from "node:path";
+import { dirname as dirname3, join as join11 } from "node:path";
 import { promisify } from "node:util";
 var execFileAsync = promisify(execFile);
 async function git2(root, args, env = {}) {
@@ -5484,13 +5599,13 @@ async function hasIdentity(root) {
 }
 async function applyMove(root, plan, result, message, commit) {
   for (const operation of plan.operations) {
-    mkdirSync4(dirname3(join10(root, operation.to)), { recursive: true });
+    mkdirSync4(dirname3(join11(root, operation.to)), { recursive: true });
     await git2(root, ["mv", operation.from, operation.to]);
   }
   return commitTexts(root, result.texts, message, commit);
 }
 async function commitTexts(root, texts, message, commit) {
-  for (const [path, text] of texts) writeFileSync5(join10(root, path), text);
+  for (const [path, text] of texts) writeFileSync5(join11(root, path), text);
   if (texts.size > 0) await git2(root, ["add", "--", ...texts.keys()]);
   if (!commit) return null;
   const identity = await hasIdentity(root) ? {} : { GIT_AUTHOR_NAME: "code-health", GIT_AUTHOR_EMAIL: "code-health@localhost", GIT_COMMITTER_NAME: "code-health", GIT_COMMITTER_EMAIL: "code-health@localhost" };
@@ -5499,28 +5614,28 @@ async function commitTexts(root, texts, message, commit) {
 }
 
 // packages/locality/src/move-plan.ts
-import { posix as posix3 } from "node:path";
+import { posix as posix4 } from "node:path";
 function relativeTo(folder, base) {
   if (folder === base) return "";
   return base === "" ? folder : folder.slice(base.length + 1);
 }
 function normaliseFolder(folder) {
-  const normal = posix3.normalize(folder === "" ? "." : folder).replace(/\/+$/, "");
+  const normal = posix4.normalize(folder === "" ? "." : folder).replace(/\/+$/, "");
   if (normal === "." || normal === "") return "";
   if (normal.startsWith("/") || normal === ".." || normal.startsWith("../")) return void 0;
   return normal;
 }
 function packageRoot(path, boundaries) {
-  let folder = posix3.dirname(path);
+  let folder = posix4.dirname(path);
   for (; ; ) {
     const dir = folder === "." ? "" : folder;
     if (boundaries.has(dir)) return dir;
     if (dir === "") return "";
-    folder = posix3.dirname(folder);
+    folder = posix4.dirname(folder);
   }
 }
 function internalScopes(path) {
-  const folders = posix3.dirname(path).split("/");
+  const folders = posix4.dirname(path).split("/");
   return folders.flatMap((folder, index) => folder === "internal" ? [folders.slice(0, index + 1).join("/")] : []);
 }
 function planMove(candidate, settings, tree, request = {}) {
@@ -5560,17 +5675,17 @@ function planMove(candidate, settings, tree, request = {}) {
   }
   const operations = [];
   for (const file of candidate.unit.files) {
-    const offset = relativeTo(posix3.dirname(file) === "." ? "" : posix3.dirname(file), base);
-    operations.push({ from: file, to: posix3.join(destination, offset, posix3.basename(file)), role: "unit" });
+    const offset = relativeTo(posix4.dirname(file) === "." ? "" : posix4.dirname(file), base);
+    operations.push({ from: file, to: posix4.join(destination, offset, posix4.basename(file)), role: "unit" });
   }
   for (const test of candidate.unit.tests) {
-    const folder = posix3.dirname(test) === "." ? "" : posix3.dirname(test);
+    const folder = posix4.dirname(test) === "." ? "" : posix4.dirname(test);
     const inside = base === "" || folder === base || folder.startsWith(`${base}/`);
     const offset = inside ? relativeTo(folder, base) : "";
-    operations.push({ from: test, to: posix3.join(destination, offset, posix3.basename(test)), role: "test" });
+    operations.push({ from: test, to: posix4.join(destination, offset, posix4.basename(test)), role: "test" });
   }
   operations.sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
-  const manifests = new Set([...tree].filter((path) => isBoundaryManifest(path)).map((path) => posix3.dirname(path) === "." ? "" : posix3.dirname(path)));
+  const manifests = new Set([...tree].filter((path) => isBoundaryManifest(path)).map((path) => posix4.dirname(path) === "." ? "" : posix4.dirname(path)));
   const leaving = new Set(operations.map((operation) => operation.from));
   const landing = /* @__PURE__ */ new Set();
   for (const operation of operations) {
@@ -5641,7 +5756,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-EFYWWGTQ.mjs");
+    const { performMove } = await import("./chunk-6TDB7JCE.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -5692,7 +5807,7 @@ var command5 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-BZW54HNT.mjs");
+      const { buildProject } = await import("./chunk-72E67IXK.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -5714,10 +5829,10 @@ __export(update_namespaces_exports, {
 });
 
 // packages/locality/src/movers/csharp-namespaces.ts
-import { posix as posix4 } from "node:path";
+import { posix as posix5 } from "node:path";
 var declaration = /^(\s*namespace\s+)([\w.]+)(\s*[;{]?)/;
 var segmentsOf = (folder) => folder === "." || folder === "" ? [] : folder.split("/");
-var directoryOf = (path) => posix4.dirname(path);
+var directoryOf = (path) => posix5.dirname(path);
 function namespaceAfterMove(namespace, from, to) {
   const before = segmentsOf(directoryOf(from));
   const after = segmentsOf(directoryOf(to));
@@ -5912,7 +6027,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-5UWH4CMC.mjs");
+    const { verifyMove } = await import("./chunk-UD6E6RCR.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

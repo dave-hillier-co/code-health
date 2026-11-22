@@ -1,25 +1,6 @@
 import { posix } from "node:path";
-import type { Unresolved } from "./resolved-dependencies.ts";
+import type { IncludeResolution, Unresolved } from "./resolved-dependencies.ts";
 import { isCppPath } from "./languages/cpp/extensions.ts";
-
-/**
- * How `#include` was resolved for the C and C++ files of a tree, so that a reader knows whether the include graph
- * can be trusted: where the include directories came from, and how many includes still found no file.
- */
-export interface IncludeResolution {
-  /** The `compile_commands.json` the directories came from, or null when none was read. `tracked` is false for one read from disk that git does not track. */
-  compileCommands: { paths: string[]; tracked: boolean } | null;
-  /** The directories the config `includeRoots` named, repo-relative, "" for the root. */
-  configuredRoots: string[];
-  /** The directories inferred from where the unresolved includes' files are, which happens only when there is neither a `compile_commands.json` nor a configured root. */
-  inferredRoots: string[];
-  /** Includes that name a file of the repository or look for one: every quoted include, and every angle include that resolved. */
-  includes: number;
-  /** Quoted includes that found no file. They make no edge. */
-  unresolved: number;
-  /** `unresolved` over `includes`, 0 to 1, rounded to four decimals. 0 when there are no includes. */
-  unresolvedShare: number;
-}
 
 /** The share, as a percent, and whether it is above a guideline given in percent. */
 export function exceedsUnresolvedGuideline(resolution: IncludeResolution, guidelinePercent: number): boolean {

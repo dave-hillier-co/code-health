@@ -4,7 +4,7 @@ import type { FileFacts } from "../../facts.ts";
 import type { ResolveInput } from "../../language-adapter.ts";
 import { resolveBySymbols } from "../../symbol-model.ts";
 import { isHeader, isSource, stemOf } from "./extensions.ts";
-import type { IncludeResolution } from "../../include-resolution.ts";
+import type { IncludeResolution } from "../../resolved-dependencies.ts";
 import { includePathsOf, inferIncludeRoots } from "./include-paths.ts";
 
 /**

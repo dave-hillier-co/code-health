@@ -95,6 +95,16 @@ const expectations: Record<string, Expected> = {
   },
 };
 
+// GLSL has no structural adapter, so its sample is counted here with the others and nothing records an agreement for it.
+expectations["sample.frag"] = {
+  profile: "glsl",
+  file: { lineCount: 34, nonBlankLines: 29, codeLines: 29, indentUnit: 4, indentationComplexity: 21, maxIndent: 3, keywordComplexity: 5 },
+  blocks: [
+    ["attenuate", 18, 24, 7, 6, 1, 2, 1, 2, 1],
+    ["main", 26, 34, 9, 11, 2, 3, 1, 3, 3],
+  ],
+};
+
 test("every lexer profile that an adapter's agreement is recorded for has a hand-counted sample here", () => {
   const sampled = new Set(Object.values(expectations).map((expected) => expected.profile));
   expect(Object.keys(recordedAgreement).filter((profile) => !sampled.has(profile))).toEqual([]);
@@ -230,4 +240,39 @@ test("per-function metrics stay gated below the bar, without a measurement and w
 test("the recorded agreement is the default measurement, so a zero bar releases it", () => {
   const { functions } = analyseSource("sample.ts", read("sample.ts"), { agreementBar: 0 });
   expect(functions.gated).toBe(false);
+});
+
+test("shader files of every stage are read with the GLSL profile, whose per-function values are unverified", () => {
+  for (const name of ["a.glsl", "a.vert", "a.frag", "a.geom", "a.tesc", "a.tese", "a.comp", "a.mesh", "a.rgen", "a.rchit", "a.rmiss"]) {
+    const analysis = analyseSource(name, read("sample.frag"));
+    expect(analysis.profile, name).toBe("glsl");
+    expect(analysis.unverified, name).toBe(true);
+    expect(analysis.skipped, name).toEqual([]);
+  }
+});
+
+test("GLSL per-function values are released without an agreement and say so", () => {
+  const { functions } = analyseSource("sample.frag", read("sample.frag"));
+  expect(functions.gated).toBe(false);
+  if (!functions.gated) {
+    expect(functions.gate).toBe("config");
+    expect(functions.blocks.map((block) => block.qualifiedName)).toEqual(["attenuate", "main"]);
+    expect("agreement" in functions).toBe(false);
+  }
+});
+
+test("a GLSL uniform block, a struct and a preprocessor line are no function, and `^^` and a comment are read as they are", () => {
+  const source = [
+    "#define STEP(x) ((x) > 0.5 ? 1.0 : 0.0)",
+    "uniform Lights { vec3 dir; } lights;",
+    "struct S { float a; };",
+    "bool flip(bool a, bool b) {",
+    "  // if (hidden) while (hidden)",
+    "  return a ^^ b;",
+    "}",
+    "",
+  ].join("\n");
+  const analysis = analyseSource("flip.comp", source);
+  expect(analysis.functions.blocks.map((block) => block.qualifiedName)).toEqual(["flip"]);
+  expect(analysis.file.keywordComplexity).toBe(1);
 });

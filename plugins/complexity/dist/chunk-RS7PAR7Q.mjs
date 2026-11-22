@@ -5,7 +5,7 @@ import {
   adapterForPath,
   bindingForPath,
   isTestPath
-} from "./chunk-OO2LLI7D.mjs";
+} from "./chunk-KQOHUF3U.mjs";
 import {
   GitError,
   SCHEMA_VERSION,
@@ -32,16 +32,16 @@ import {
   readSettings,
   runGit,
   structuralValues
-} from "./chunk-GPAGPCI6.mjs";
+} from "./chunk-EWEA3XDJ.mjs";
 import {
   buildDocument,
   shapeResults
-} from "./chunk-JQWY4I27.mjs";
+} from "./chunk-GWCGB3XY.mjs";
 import {
   historyDefaults,
   serialise,
   usageError
-} from "./chunk-GATX7OYR.mjs";
+} from "./chunk-FMORUD47.mjs";
 import {
   __export
 } from "./chunk-NYIILDEN.mjs";
@@ -6220,6 +6220,12 @@ var command = {
         skipped[generic] = (skipped[generic] ?? 0) + 1;
       }
     }
+    const parsedFiles = measurement.files.filter((file) => file.interfaces !== void 0).length;
+    const filesWithSyntaxErrors = measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => file.path);
+    const syntaxErrorShare = parsedFiles === 0 ? 0 : filesWithSyntaxErrors.length / parsedFiles;
+    const syntaxErrorNotices = parsedFiles > 0 && syntaxErrorShare * 100 > settings.syntaxErrorPercent ? [
+      `${filesWithSyntaxErrors.length} of ${parsedFiles} parsed files (${(syntaxErrorShare * 100).toFixed(1)}%) have syntax errors, above the complexity.syntaxErrorPercent guideline of ${settings.syntaxErrorPercent}%, so their units may be incomplete or missing; filesWithSyntaxErrors lists them`
+    ] : [];
     const output = {
       inputs: {
         tree: current.kind,
@@ -6237,12 +6243,19 @@ var command = {
         layers,
         agreement,
         skipped,
-        filesWithSyntaxErrors: measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => file.path),
+        parseCoverage: {
+          parsedFiles,
+          filesWithSyntaxErrors: filesWithSyntaxErrors.length,
+          syntaxErrorShare: Math.round(syntaxErrorShare * 1e4) / 1e4,
+          guideline: settings.syntaxErrorPercent,
+          aboveGuideline: syntaxErrorNotices.length > 0
+        },
+        filesWithSyntaxErrors,
         skippedFiles: measurement.skippedFiles,
         ...fixes === void 0 ? {} : { fixes: fixHeader(fixes.stats, fixes.request) }
       },
       results: rows,
-      ...fixes === void 0 ? {} : { notices: fixNotices(fixes.stats, fixes.request) },
+      ...fixes === void 0 && syntaxErrorNotices.length === 0 ? {} : { notices: [...syntaxErrorNotices, ...fixes === void 0 ? [] : fixNotices(fixes.stats, fixes.request)] },
       columns: [
         "path",
         "unit",

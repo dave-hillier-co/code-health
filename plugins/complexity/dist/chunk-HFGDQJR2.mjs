@@ -3,7 +3,7 @@
 import {
   buildDocument,
   shapeResults
-} from "./chunk-JQWY4I27.mjs";
+} from "./chunk-GWCGB3XY.mjs";
 import {
   CliError,
   ExitCode,
@@ -15,7 +15,7 @@ import {
   roundFloat,
   serialise,
   usageError
-} from "./chunk-GATX7OYR.mjs";
+} from "./chunk-FMORUD47.mjs";
 import "./chunk-NYIILDEN.mjs";
 
 // packages/cli-kit/src/args.ts
@@ -112,6 +112,15 @@ function git(cwd, ...args) {
   }).trim();
 }
 
+// packages/cli-kit/src/run-notes.ts
+var notes = /* @__PURE__ */ new Map();
+function resetRunNotes() {
+  notes.clear();
+}
+function runNotes() {
+  return [...notes.values()];
+}
+
 // packages/cli-kit/src/table.ts
 function renderTable(rows, columns, truncated) {
   if (rows.length === 0) return "No results.\n";
@@ -181,10 +190,14 @@ async function execute(cli, io) {
   const config = loadConfig(repo.root, cli.config);
   const context = { repo, config, positionals: args.positionals, values: args.values };
   resetBuiltinOmissions();
+  resetRunNotes();
   const output = await command.run(context);
+  const noted = runNotes();
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
+`);
+  for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
@@ -198,7 +211,7 @@ async function execute(cli, io) {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: { ...output.extra, ...omittedByBuiltin },
+          extra: { ...output.extra, ...Object.fromEntries(noted.map((note) => [note.key, note.value])), ...omittedByBuiltin },
           results,
           truncated,
           meta: {
@@ -214,6 +227,8 @@ async function execute(cli, io) {
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results, args.fields ?? columns, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
+`);
+    for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
 `);
     const counted = Object.entries(builtin);
     if (counted.length > 0) {

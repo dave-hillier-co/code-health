@@ -165,6 +165,7 @@ Each candidate carries:
 | `gain` | Net distance saved by moving to the target, as things stand |
 | `score` / `scoreUnit` | The ranking figure and what it counts: `gain`, `unblocked-gain` (blocked), `component-gain` (split, the larger of the file's gain and the components' summed gains) or `fan-in` (scrutinise). A score is comparable only within one `scoreUnit`, so candidates sort by `ranking.ratio` descending, then score descending, then path. `ranking` reads the score against the guideline of its unit (`highFanIn` for `fan-in`, `minDistance` for the others), so a candidate that is twice past its guideline sorts above one that is 1.5 times past it whatever they count. `fanInPercentile` is the percentage of the repository's units whose fan-in is at or below the unit's, shown for information and read by nothing. `--recommendation` lists one kind |
 | `guidelines` | `gain` beside `minDistance` and `fanIn` beside `highFanIn`, each as `value`, `guideline` and `ratio` (value divided by guideline). A ratio above 1 is past the guideline |
+| `confidence` | Present only for C and C++ units whose result rests on an include that found no file: `{ "level": "low", "reason" }`. One of the unit's files has an include of its own that found no file, so a dependency may be missing, or an include elsewhere names one of its files and found none, so a consumer may be missing. What the result says about consumers, "no production consumers" included, is then a lower bound. The key is absent otherwise. The output's `includeResolution` section and the `unresolvedIncludePercent` guideline (default 20 percent, a judgement call) are described in suite.md |
 | `blockers` | Edges that prevent or shrink the gain, each with its kind (dependency or stray), co-change with the unit, and unblocked gain |
 | `cohesion` | For files: export component count, and the consumer folders of each component |
 | `recommendation` | `inline`, `move`, `split`, `blocked`, `keep`, `scrutinise` or `review`, with the rule that fired |
@@ -185,6 +186,7 @@ A floor is a minimum amount of evidence below which a statistic is meaningless, 
 |---|---|---|---|
 | `minDistance` | 2 | Guideline | Judgement call: one hop is within the unit's own neighbourhood |
 | `tinyLines`, `largeLines`, `inlineHostLines` | 15, 150, 300 | Guidelines | Judgement calls. CodeScene's Large Method warning is 70 lines, so `largeLines` is looser because it picks a remedy and does not flag a smell |
+| `unresolvedIncludePercent` | 20 | Guideline | Judgement call. Above it, C and C++ runs warn on stderr and print a notice. The share is reported whatever it is, and no unit is hidden |
 | `highFanIn` | 8 | Guideline | Judgement call. It is absolute, not relative: a percentile of fan-in would flag the top few units in every repository |
 | `graceDays` | 90 | Guideline | Judgement call |
 | `lowCoChange`, `highCoChange` | 10, 40 percent | Guidelines | Tornhill's coupling-degree range of about 30 to 50 percent |

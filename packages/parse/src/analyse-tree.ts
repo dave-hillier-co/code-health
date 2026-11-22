@@ -1,5 +1,5 @@
 import type { UnitShape } from "@code-health/lexical/unit";
-import type { IncludeResolution } from "./include-resolution.ts";
+import type { IncludeResolution } from "./resolved-dependencies.ts";
 import { exportedUnitNames } from "./exported-units.ts";
 import { parseWith } from "./file-facts.ts";
 import type { FileFacts, UnitKind, UnitMetrics } from "./facts.ts";

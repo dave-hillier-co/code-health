@@ -130,11 +130,12 @@ var sharedDefaults = {
   exclude: [],
   languages: {},
   entryPoints: [],
+  includeRoots: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults
 };
-var stringLists = ["exclude", "entryPoints", "vagueNames"];
+var stringLists = ["exclude", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
 function rejectUnknownKeys(document, plugin) {

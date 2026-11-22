@@ -188,11 +188,12 @@ var sharedDefaults = {
   exclude: [],
   languages: {},
   entryPoints: [],
+  includeRoots: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults
 };
-var stringLists = ["exclude", "entryPoints", "vagueNames"];
+var stringLists = ["exclude", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
 function rejectUnknownKeys(document, plugin) {
@@ -471,6 +472,15 @@ function byScoreThenPath(a, b) {
   return Buffer.compare(Buffer.from(String(a.path ?? "")), Buffer.from(String(b.path ?? "")));
 }
 
+// packages/cli-kit/src/run-notes.ts
+var notes = /* @__PURE__ */ new Map();
+function resetRunNotes() {
+  notes.clear();
+}
+function runNotes() {
+  return [...notes.values()];
+}
+
 // packages/cli-kit/src/table.ts
 function renderTable(rows, columns, truncated) {
   if (rows.length === 0) return "No results.\n";
@@ -540,10 +550,14 @@ async function execute(cli2, io) {
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args.positionals, values: args.values };
   resetBuiltinOmissions();
+  resetRunNotes();
   const output = await command16.run(context);
+  const noted = runNotes();
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
+`);
+  for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
@@ -557,7 +571,7 @@ async function execute(cli2, io) {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: { ...output.extra, ...omittedByBuiltin },
+          extra: { ...output.extra, ...Object.fromEntries(noted.map((note) => [note.key, note.value])), ...omittedByBuiltin },
           results,
           truncated,
           meta: {
@@ -573,6 +587,8 @@ async function execute(cli2, io) {
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results, args.fields ?? columns, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
+`);
+    for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
 `);
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
@@ -4664,6 +4680,20 @@ var cpp = {
   typeHeaders: [typeHeader],
   functionHeaders: [cMethodHeader, "\\]\\s*(?:\\([^]*\\))?\\s*(?:mutable|noexcept|->\\s*[^{;]+)*\\s*$"]
 };
+var glsl = {
+  name: "glsl",
+  blocks: "braces",
+  lineComments: ["//"],
+  blockComments: [{ open: "/*", close: "*/" }],
+  strings: [{ ...doubleQuote }],
+  branchKeywords: ["if", "for", "while", "case"],
+  shortCircuitOperators: ["&&", "\\|\\|", "\\^\\^"],
+  bumpOpeners: ["if", "for", "while", "case", "else", "do", "default", "switch"],
+  headerNoise: ["^#.*$"],
+  controlHeader,
+  typeHeaders: ["\\bstruct\\s+(?<name>\\w+)"],
+  functionHeaders: [cMethodHeader]
+};
 var java = {
   name: "java",
   blocks: "braces",
@@ -4787,12 +4817,14 @@ var profiles = {
   typescript,
   csharp,
   cpp,
+  glsl,
   java,
   kotlin,
   rust,
   go,
   python
 };
+var profilesWithoutAdapter = /* @__PURE__ */ new Set(["glsl"]);
 var extensionProfiles = {
   ts: "typescript",
   tsx: "typescript",
@@ -4811,6 +4843,21 @@ var extensionProfiles = {
   hh: "cpp",
   hpp: "cpp",
   hxx: "cpp",
+  // Shader stages as glslang names them by extension, and the extension of an include file.
+  glsl: "glsl",
+  vert: "glsl",
+  frag: "glsl",
+  geom: "glsl",
+  tesc: "glsl",
+  tese: "glsl",
+  comp: "glsl",
+  mesh: "glsl",
+  rgen: "glsl",
+  rint: "glsl",
+  rahit: "glsl",
+  rchit: "glsl",
+  rmiss: "glsl",
+  rcall: "glsl",
   java: "java",
   kt: "kotlin",
   kts: "kotlin",
@@ -4831,7 +4878,7 @@ function selectProfile(path, mappings = {}) {
   }
   const builtIn = extensionProfiles[extension];
   const profile = builtIn === void 0 ? void 0 : profiles[builtIn];
-  return profile === void 0 ? void 0 : { profile, mapped: false };
+  return profile === void 0 ? void 0 : { profile, mapped: profilesWithoutAdapter.has(profile.name) };
 }
 
 // packages/lexical/src/strip.ts
@@ -10399,7 +10446,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change2.head);
   const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-GNRQDVMZ.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-4ASCVEWW.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);
