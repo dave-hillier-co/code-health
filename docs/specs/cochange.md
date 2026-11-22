@@ -18,6 +18,7 @@ In scope:
 - Temporal coupling: pairs and clusters of files that change together, with direction and strength.
 - Change spread: how far apart the files touched by a single change are. This is the suite's primary outcome measure.
 - Complexity trends of hotspot files over their history.
+- Fix counts per file and component, from commit messages under the suite's shared fix definition ([suite.md](suite.md#configuration)).
 - Change-set completeness hints: telling an agent which files usually change with the one it is editing.
 - Knowledge distribution and turnover-induced abandonment risk, off by default. It is a separate skill in this plugin, specified in [abandonment.md](abandonment.md).
 - Risk of a branch before merge: its impact on the codebase and its author's placement to the code. Also a separate skill, specified in [change-risk.md](change-risk.md).
@@ -41,6 +42,8 @@ Out of scope:
 **Churn.** Lines added plus lines deleted within the window, taken from `--numstat`.
 
 **Complexity proxy.** Indentation complexity: the sum of logical indentation levels across a file's non-blank lines, leaving out comment lines where a lexer profile identifies them, with tabs and spaces normalised using the file's own detected indent unit. The definition is implemented once, in the shared `lexical` package, and the complexity plugin uses the same one. It is language-agnostic, needs no parser and can be computed for any historical blob cheaply. It correlates well with structural complexity measures and is enough for ranking. When a complexity report from the complexity plugin is present (see [Composition](#composition)), its file-level values are used instead and the output says which source was used.
+
+**Fix commit.** A logical change in which a commit message matches `history.fixPatterns`, under the single definition in the shared history package that change-risk and the complexity outcome also use. A logical change in which a commit message matches `history.revertPatterns` or says `This reverts commit` is a revert, counted apart and never as a fix. A change is counted once per file or component it touches, as a revision is. A count of fixes is a count of commit messages, not of defects: the default patterns match whole words such as `fix`, `bug` and `issue` in the subject, so `address review issue` is a match, and a fix that does not say so is missed. The commit behind each count is listed as evidence. Because history is read without merge commits, the default `merge of a fix branch` pattern matches only through the messages of the merged commits.
 
 **Hotspot score.** `normalise(changeFrequency) × normalise(complexity)`, where normalise is the rank percentile within the repository. Percentiles avoid the score being dominated by one outlier and keep it comparable across repositories.
 
@@ -96,14 +99,15 @@ Applied at query time, not ingestion, so changing config never needs a rebuild:
 | Command | Output |
 |---|---|
 | `cochange refresh` | Updates the cache. Reports commits added. |
-| `cochange hotspots [--by file\|component] [--limit N]` | Ranked hotspots with frequency, churn, complexity, age, and score. |
+| `cochange hotspots [--by file\|component] [--limit N]` | Ranked hotspots with frequency, churn, complexity, age, score, and `fixes` with `fixShare`, counted as `fixes` counts them. The output carries `fixConvention`. |
 | `cochange coupling [--file PATH] [--min-degree D] [--min-support S]` | Coupled pairs with degree, confidence in both directions, support and distance. The degree (`minDegree`, `--min-degree`) is a guideline: pairs under it are listed after the others with `aboveGuideline` false, and none is left out for its degree. The support floor (`minSupport`, `--min-support`) is the only cut. With `--file`, the files that change with that one. |
 | `cochange clusters [--min-degree D] [--min-support S]` | Groups of mutually coupled files, with their spread. A pair joins a group when it reaches both the support floor and the degree: this is the one place `minDegree` is a cut, because a group has to be defined by its links. Candidates for co-location. |
 | `cochange spread [--since DATE] [--until DATE] [--bucket week\|month]` | Change-spread distribution per bucket. Used for baselines and outcome comparison. |
+| `cochange fixes [--by file\|component] [--evidence N]` | Files or components sorted by fix count, then path. Per row: `fixes`, `revisions`, `fixShare` (fixes over revisions), `recentFixes` (inside `cochange.recentMonths`), `lastFix`, `reverts` (a separate column, never counted as fixes) and `evidence`, the matching commits newest first (`sha`, `date`, `subject`, the pattern that matched) up to `--evidence` (default 5) with `omitted` counting the rest. It counts logical changes as `hotspots` does: same window, noise filters, rename following and bot exclusion. The output carries `fixConvention`, the repository-level check on the fix definition, and the table prints it as a `Notice` when the commit messages probably do not follow a convention this can use: fixes under 2 % or over 60 % of logical changes, or fewer than 30 logical changes. Every file is still listed and the counts are still printed. |
 | `cochange age [--by file\|component]` | Last-changed and first-seen per file. |
 | `cochange trend PATH [--samples N]` | Complexity proxy and size of one file sampled across its history, to show whether a hotspot is getting worse. |
 | `cochange outcome spread --at DATE PATH... [--months N]`, `cochange outcome completeness --since DATE --until DATE [--projects-dir DIR]` | The change-spread outcome against matched untouched files, and the agent completeness outcome from session transcripts with and without the hook. See [Measurement](#measurement). |
-| `cochange brief PATH...` | A compact pre-change briefing: files usually changed alongside, recent activity, whether the file is a hotspot. Built for agents. |
+| `cochange brief PATH...` | A compact pre-change briefing: files usually changed alongside, recent activity, fix count and share for each file, whether the file is a hotspot. Built for agents. |
 | `cochange blame refresh`, `cochange abandonment …`, `cochange successors` | Knowledge-loss analysis. Only when enabled. See [abandonment.md](abandonment.md#cli). |
 | `cochange risk …` | Risk of a branch against its base. See [change-risk.md](change-risk.md#cli). |
 

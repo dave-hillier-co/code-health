@@ -28,6 +28,8 @@
           "recentRevisions": { "$ref": "common.schema.json#/$defs/count", "description": "Of those, changes inside the recent window." },
           "lastChanged": { "type": ["string", "null"], "format": "date-time" },
           "ageDays": { "type": ["integer", "null"], "minimum": 0 },
+          "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes touching the file in the window whose commit message is a fix, as in hotspots." },
+          "fixShare": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "fixes over frequency. null with no revisions." },
           "hotspotScore": { "type": ["number", "null"], "description": "Rank percentile of frequency times rank percentile of complexity, as in hotspots." },
           "recommendation": { "enum": ["hotspot", null] },
           "alongside": {
@@ -57,6 +59,8 @@
           "exists",
           "frequency",
           "recentRevisions",
+          "fixes",
+          "fixShare",
           "lastChanged",
           "ageDays",
           "hotspotScore",
@@ -67,7 +71,9 @@
         ],
         "additionalProperties": false
       }
-    }
+    },
+    "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" }
   },
+  "required": ["fixConvention"],
   "unevaluatedProperties": false
 }

@@ -1,0 +1,218 @@
+{
+  "command": "fixes",
+  "config": "0000000000000000",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "guidelines": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "importedHistory": [],
+    "logicalChangesInWindow": 11,
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 9.5,
+    "window": {
+      "months": 12,
+      "since": 1686819600,
+      "until": 1718442000
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "nonPerson": {
+      "builtinBotPatterns": [
+        "\\[bot\\]",
+        "^dependabot",
+        "^renovate",
+        "^github-actions",
+        "^greenkeeper",
+        "^snyk-bot",
+        "^mergify",
+        "^imgbot",
+        "^allcontributors",
+        "^pre-commit-ci",
+        "<bot@renovateapp\\.com>"
+      ],
+      "builtinServiceNames": [
+        "build",
+        "builds",
+        "buildbot",
+        "jenkins",
+        "release",
+        "releases",
+        "ci",
+        "deploy",
+        "deployer",
+        "automation",
+        "teamcity",
+        "travis",
+        "circleci",
+        "gitlab ci",
+        "azure pipelines",
+        "service account"
+      ],
+      "decisions": 0,
+      "servicePatterns": []
+    },
+    "oversizedChanges": 0
+  },
+  "fixConvention": {
+    "fixes": 4,
+    "followsConvention": false,
+    "guidelines": {
+      "maxShare": 0.6,
+      "minChanges": 30,
+      "minShare": 0.02,
+      "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+    },
+    "logicalChanges": 11,
+    "note": "The commit messages probably do not follow a convention this can use: there are 11 logical changes in the window, fewer than 30.",
+    "share": 0.364
+  },
+  "inputs": {
+    "by": "file",
+    "evidenceLimit": 5
+  },
+  "repo": {
+    "dirty": false,
+    "head": "7c0225b8e2e7fb9e2578d015a7dd28d0e1746160"
+  },
+  "results": [
+    {
+      "evidence": {
+        "commits": [
+          {
+            "date": "2024-02-10T09:00:00.000Z",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "sha": "8968457520b80951b0fe08ce90c3cf3d93f0f2d4",
+            "subject": "Fix tax on credit notes"
+          },
+          {
+            "date": "2023-10-10T09:00:00.000Z",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "sha": "957763ea4c136d4fd066c545b0dbba6c24c49826",
+            "subject": "Fix rounding of totals"
+          }
+        ],
+        "omitted": 0
+      },
+      "fixShare": 0.4,
+      "fixes": 2,
+      "lastFix": "2024-02-10T09:00:00.000Z",
+      "path": "src/billing/invoice.ts",
+      "recentFixes": 0,
+      "reverts": 0,
+      "revisions": 5,
+      "score": 2
+    },
+    {
+      "evidence": {
+        "commits": [
+          {
+            "date": "2024-05-10T09:00:00.000Z",
+            "matchedIn": "subject",
+            "pattern": "\\bbug\\b",
+            "sha": "9dde0e4d89fdf17fee9f835a27291eb32d48d53f",
+            "subject": "Bug: tax is negative"
+          },
+          {
+            "date": "2024-02-10T09:00:00.000Z",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "sha": "8968457520b80951b0fe08ce90c3cf3d93f0f2d4",
+            "subject": "Fix tax on credit notes"
+          }
+        ],
+        "omitted": 0
+      },
+      "fixShare": 0.4,
+      "fixes": 2,
+      "lastFix": "2024-05-10T09:00:00.000Z",
+      "path": "src/billing/tax.ts",
+      "recentFixes": 1,
+      "reverts": 1,
+      "revisions": 5,
+      "score": 2
+    },
+    {
+      "evidence": {
+        "commits": [
+          {
+            "date": "2024-06-15T09:00:00.000Z",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "sha": "7c0225b8e2e7fb9e2578d015a7dd28d0e1746160",
+            "subject": "Fix the page title"
+          }
+        ],
+        "omitted": 0
+      },
+      "fixShare": 0.2,
+      "fixes": 1,
+      "lastFix": "2024-06-15T09:00:00.000Z",
+      "path": "src/web/page.ts",
+      "recentFixes": 1,
+      "reverts": 0,
+      "revisions": 5,
+      "score": 1
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 3
+  },
+  "window": {
+    "since": "2023-06-15T09:00:00.000Z",
+    "until": "2024-06-15T09:00:00.000Z"
+  }
+}

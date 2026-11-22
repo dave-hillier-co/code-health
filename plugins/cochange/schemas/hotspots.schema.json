@@ -30,6 +30,7 @@
       "required": ["by", "complexityReport"],
       "additionalProperties": false
     },
+    "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" },
     "complexitySource": {
       "description": "Where the complexity column came from: the complexity plugin's file report, or indentation complexity computed from the files at the analysed commit.",
       "enum": ["complexity-report", "indentation"]
@@ -52,6 +53,8 @@
           "complexity": { "type": ["number", "null"], "minimum": 0, "description": "Summed over a component's files." },
           "ageDays": { "$ref": "common.schema.json#/$defs/count", "description": "Whole days from the last revision to the analysed commit." },
           "lastChanged": { "type": "string", "format": "date-time" },
+          "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes in the window whose commit message is a fix under history.fixPatterns, counted once per file or component. A count of messages, not of defects." },
+          "fixShare": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "fixes over frequency. null with no revisions." },
           "recommendation": { "enum": ["hotspot", null] },
           "siblingTest": { "type": ["string", "null"], "description": "The test beside the file at the analysed commit, or null. Only with --by file." },
           "findings": {
@@ -61,11 +64,11 @@
             "uniqueItems": true
           }
         },
-        "required": ["path", "score", "frequency", "churn", "complexity", "ageDays", "lastChanged", "recommendation"],
+        "required": ["path", "score", "frequency", "churn", "complexity", "ageDays", "lastChanged", "fixes", "fixShare", "recommendation"],
         "additionalProperties": false
       }
     }
   },
-  "required": ["complexitySource"],
+  "required": ["complexitySource", "fixConvention"],
   "unevaluatedProperties": false
 }

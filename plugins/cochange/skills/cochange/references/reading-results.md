@@ -29,6 +29,19 @@ For files A and B, `n(A)` and `n(B)` are the eligible logical changes touching e
 
 Always quote the support: "changed together 5 times of 27" says more than "19 %".
 
+## Fix counts
+
+`fixes` counts logical changes whose commit message matches the fix patterns (whole words such as fix, bug and issue in the subject, a `fix:` prefix, a merge of a fix branch). It counts messages, not defects.
+
+- **Read the evidence first.** Open the `evidence` commits of the top rows. A subject such as "address review issue" or "fix typo in comment" matches and is not a defect fix. A defect fixed in a commit titled "Update billing" is not counted. The count can be too high or too low, and the patterns in `history.fixPatterns` are the thing to change when it is.
+- **Read `fixConvention` before the counts.** When `followsConvention` is false (fixes under 2 % or over 60 % of logical changes, or fewer than 30 logical changes) the repository probably does not say in its messages which changes are fixes, and the counts are weak evidence. Say so and prefer `hotspots` and `coupling`.
+- **Fix share against fix count.** A high count in a file that changes constantly is expected. A high `fixShare` says most of the work in the file was repair. `recentFixes` and `lastFix` say whether it is still being repaired.
+- **Reverts** are their own column. A file with reverts and few fixes was backed out more than repaired.
+- **With hotspots.** A hotspot with a high fix share is complex code that is being repaired, a stronger prompt for a complexity review than frequency alone. A hotspot with a low fix share is more likely feature work.
+- **With complexity.** Run the complexity plugin on the files with the most fixes. Complex code with many fixes is where simplifying is most likely to pay. Simple code with many fixes points at unclear requirements or a coupled partner (`coupling --file`), not at the code's own complexity.
+
+Fix counts sort and label. They are not a verdict on the code, and they say nothing about the people who wrote it.
+
 ## Findings and where they hand off
 
 | Finding | Meaning | Handoff |

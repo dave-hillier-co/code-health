@@ -48,7 +48,7 @@ These are prompts for investigation, not verdicts. The tool measures code, not p
 Run this before a non-trivial task, on the files you expect to edit. Skip it for a typo or a one-line fix.
 
 1. `brief PATH...` with every file you plan to change.
-2. For each file, read `alongside`. Each entry names a file that changed in the same logical change `confidence` percent of the time (`reverseConfidence` is the other direction), with its `support` and tree `distance`.
+2. For each file, read `fixes` and `fixShare` (how many of its changes were repairs) and `alongside`. Each entry names a file that changed in the same logical change `confidence` percent of the time (`reverseConfidence` is the other direction), with its `support` and tree `distance`.
 3. Open the strongest partners deliberately, before editing, and decide whether this change needs them. A sibling test is expected. A distant partner is the interesting one.
 4. If `recommendation` is `hotspot`, say so: the file is complex and changes often, so keep the change small and check its tests first.
 5. If `note` is set, the file has no evidence (new file, a file with no revisions in the window, wrong path). Say that and go on.
@@ -64,8 +64,9 @@ When the repository enables the completeness hook, a one-sentence note may appea
 3. `age` shows which of them are `cold` (not changed within the stale window). Cold code is the cheapest to leave alone, so it is the lowest priority.
 4. For each hotspot, read the file's worst functions. Then name the red flag you judge present, or say none applies. The vocabulary is in [references/red-flags.md](references/red-flags.md). Nonobvious code, shallow modules and special-general mixtures are the common ones in a hotspot.
 5. `trend PATH` shows whether a hotspot's complexity is worsening, improving or stable over its history. A file whose complexity is improving needs less urgent attention than one that is worsening.
-6. `test-drift` on a row means a frequently changed source file whose sibling test never changes with it: check whether behaviour is changing without tests.
-7. Report a short ranked list: file, why it is a hotspot (frequency, complexity, recency), the red flag, and the suggested handoff, which is a complexity review of its worst functions.
+6. `fixes --limit 20` shows where changes were repairs. Read its `fixConvention` first, and read the `evidence` commits of the top rows before relying on a count: the patterns match words, not defects. Read a hotspot with a high `fixShare` as complex code that is being repaired. How to read it: [references/reading-results.md](references/reading-results.md#fix-counts).
+7. `test-drift` on a row means a frequently changed source file whose sibling test never changes with it: check whether behaviour is changing without tests.
+8. Report a short ranked list: file, why it is a hotspot (frequency, complexity, recency, fix share), the red flag, and the suggested handoff, which is a complexity review of its worst functions.
 
 A hotspot with no red flag and no outcome evidence is a candidate for dismissal. Say so and record why.
 

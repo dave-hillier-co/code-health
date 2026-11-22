@@ -15,6 +15,7 @@ A compact briefing for the files about to be changed. One row per file, in path 
 | `path` | The file at the analysed commit. A path that was renamed away is followed to its current name, and `requested` keeps what was asked. |
 | `exists` | The path is in the tree at the analysed commit. |
 | `frequency`, `recentRevisions` | Logical changes in the analysis window, and in the recent window. |
+| `fixes`, `fixShare` | Logical changes in the window whose commit message is a fix, and their share of `frequency`, as `fixes` counts them. A count of messages, not of defects. |
 | `lastChanged`, `ageDays` | Last revision, and days from it to the analysed commit. |
 | `hotspotScore`, `recommendation` | The score `hotspots` gives the file, and `hotspot` when it is one. |
 | `alongside` | Files that change with it: `confidence` (percent of changes to this file that also touched the partner), `reverseConfidence`, `degree`, `support`, `distance`, and `aboveGuideline` (degree at or above `cochange.minDegree`). Partners at or above the guideline come first, then the rest, each strongest confidence first. |
@@ -25,7 +26,11 @@ A partner is listed when its support reaches `cochange.minSupport` (below that t
 
 ## hotspots [--by file|component]
 
-Files (or components, which needs `components` in `code-health.json`) ranked by `score`: rank percentile of change frequency times rank percentile of complexity. Fields: `path`, `score`, `frequency`, `churn`, `complexity`, `ageDays`, `lastChanged`, `recommendation` (`hotspot` or null). The output names `complexitySource`: `indentation` (the proxy) or `complexity-report` (the complexity plugin's file report, used when it is current).
+Files (or components, which needs `components` in `code-health.json`) ranked by `score`: rank percentile of change frequency times rank percentile of complexity. Fields: `path`, `score`, `frequency`, `churn`, `complexity`, `ageDays`, `lastChanged`, `fixes`, `fixShare`, `recommendation` (`hotspot` or null). The output names `complexitySource`: `indentation` (the proxy) or `complexity-report` (the complexity plugin's file report, used when it is current), and carries `fixConvention`. `fixes` and `fixShare` do not change the score.
+
+## fixes [--by file|component] [--evidence N]
+
+Files (or components) sorted by fix count, then path. Fields: `fixes`, `revisions`, `fixShare`, `recentFixes` (inside `cochange.recentMonths`), `lastFix`, `reverts`, and `evidence`: the matching commits newest first (`sha`, `date`, `subject`, `pattern`, `matchedIn`), at most `--evidence N` (default 5), with `omitted` counting the rest. A revert is its own column and is not a fix. A fix is defined once for the suite by `history.fixPatterns`, `history.revertPatterns` and `history.fixMatchBody` (or `cochange.` overrides). The output carries `fixConvention`: the share of logical changes in the window that are fixes, `followsConvention`, and a `note` when fixes are under 2 % or over 60 % of logical changes or there are fewer than 30. The table prints the note as a `Notice`. Every file is listed whatever its count, and `--limit` reports how many rows it cut. A run with `--by component` or `--evidence` is not stored as a report.
 
 ## age [--by file|component]
 
