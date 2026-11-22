@@ -4256,6 +4256,10 @@ function stringLeaves(value, out) {
   else if (Array.isArray(value)) for (const item of value) stringLeaves(item, out);
   else if (typeof value === "object" && value !== null) for (const item of Object.values(value)) stringLeaves(item, out);
 }
+function patternMatcher(path) {
+  const source = path.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*");
+  return new RegExp(`^${source}$`);
+}
 var isManifest2 = (path) => path === "package.json" || path.endsWith("/package.json");
 var typescriptBoundaries = {
   isManifest: isManifest2,
@@ -4279,9 +4283,11 @@ var typescriptBoundaries = {
         const targets = [];
         for (const key of ["main", "module", "types", "typings", "bin", "exports"]) stringLeaves(manifest[key], targets);
         for (const target2 of targets) {
-          if (target2.includes("*")) continue;
           const resolved = posix8.normalize(directory === "." ? target2 : posix8.join(directory, target2));
-          if (tree.files.has(resolved)) entries.add(resolved);
+          if (target2.includes("*")) {
+            const matches = patternMatcher(resolved);
+            for (const file of tree.files.keys()) if (matches.test(file)) entries.add(file);
+          } else if (tree.files.has(resolved)) entries.add(resolved);
         }
       }
       boundaries.push({
@@ -7711,7 +7717,7 @@ var adapter5 = {
   census: { extract: extractFileCensus5 },
   packaging: { ecosystems: ["cmake"], description: "C++" },
   abstractTypes: { typeKinds: ["interface", "abstract-class", "class", "enum"], abstractKinds: ["interface", "abstract-class"] },
-  mover: { kind: "agent", sourceExtensions: [...claimed], confirmation: { name: "clangd", executable: "clangd" } }
+  mover: { kind: "codemod", sourceExtensions: [...claimed], confirmation: { name: "clangd", executable: "clangd" } }
 };
 
 // packages/parse/src/languages/python/boundaries.ts

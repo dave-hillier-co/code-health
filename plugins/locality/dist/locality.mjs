@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-R5QMRQUY.mjs";
+} from "./chunk-UX46N4MT.mjs";
 import {
   GitError,
   gitVersion,
@@ -29,14 +29,14 @@ import {
 } from "./chunk-Z55QIW6L.mjs";
 import {
   analyseTree
-} from "./chunk-XZHA3TUN.mjs";
-import "./chunk-HSHIZHZS.mjs";
+} from "./chunk-IYL4AGKA.mjs";
+import "./chunk-5NFRAFXB.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isTestPath
-} from "./chunk-OELMQMQG.mjs";
+} from "./chunk-VHWJXNCC.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -362,7 +362,16 @@ function shapeResults(results, options) {
     }
   };
 }
+function ratioOf(row) {
+  const ranking = row.ranking;
+  if (typeof ranking !== "object" || ranking === null) return 0;
+  const ratio = ranking.ratio;
+  return typeof ratio === "number" ? ratio : 0;
+}
 function byScoreThenPath(a, b) {
+  const ratioA = ratioOf(a);
+  const ratioB = ratioOf(b);
+  if (ratioA !== ratioB) return ratioB - ratioA;
   const scoreA = typeof a.score === "number" ? a.score : 0;
   const scoreB = typeof b.score === "number" ? b.score : 0;
   if (scoreA !== scoreB) return scoreB - scoreA;
@@ -2123,6 +2132,14 @@ function vagueSegment(path, vagueNames) {
 function readAgainst(value, guideline) {
   return { value, guideline, ratio: Math.round(value / guideline * 100) / 100 };
 }
+var SORT_METHOD = "ratio-to-guideline";
+function guidelineFor(scoreUnit, settings) {
+  return scoreUnit === "fan-in" ? settings.highFanIn : settings.minDistance;
+}
+function percentileRank(value, values) {
+  if (values.length === 0) return 0;
+  return Math.round(values.filter((other) => other <= value).length / values.length * 100);
+}
 function commonFolder(folders) {
   let shared = folders[0].split("/").filter((part) => part !== "");
   for (const folder of folders) {
@@ -2436,6 +2453,8 @@ function analyseProject(project, model, settings, history) {
       path: unit.path,
       score,
       scoreUnit,
+      ranking: readAgainst(score, guidelineFor(scoreUnit, settings)),
+      fanInPercentile: 0,
       guidelines: { gain: readAgainst(choice.gain, settings.minDistance), fanIn: readAgainst(consumerFiles.length, settings.highFanIn) },
       ...decision,
       source: "structural",
@@ -2471,8 +2490,10 @@ function analyseProject(project, model, settings, history) {
     };
   }
   const all = model.units.map(candidateFor);
-  const reported = all.filter((candidate) => candidate.rule !== "near-consumers").sort((a, b) => b.score - a.score || compareIds(a.path, b.path));
+  const reported = all.filter((candidate) => candidate.rule !== "near-consumers").sort((a, b) => b.ranking.ratio - a.ranking.ratio || b.score - a.score || compareIds(a.path, b.path));
   const placed = all.filter((candidate) => candidate.rule === "near-consumers").sort((a, b) => compareIds(a.path, b.path));
+  const fanIns = all.map((candidate) => candidate.fanIn);
+  for (const candidate of all) candidate.fanInPercentile = percentileRank(candidate.fanIn, fanIns);
   const byRecommendation = {};
   for (const candidate of reported) byRecommendation[candidate.recommendation] = (byRecommendation[candidate.recommendation] ?? 0) + 1;
   const folders = /* @__PURE__ */ new Map();
@@ -4207,6 +4228,7 @@ async function baseline(context, settings) {
       rank: index + 1,
       path: candidate.path,
       score: candidate.score,
+      ratio: candidate.ranking.ratio,
       recommendation: candidate.recommendation,
       rule: candidate.rule,
       files: [...candidate.unit.files].sort(compareIds),
@@ -4233,6 +4255,7 @@ async function baseline(context, settings) {
     effort: { sessions: effort.sessions, summary: effort.summary, tasks: effort.tasks, stamp: stampOf(effort.tasks) },
     readHeat: readHeat(effort.tasks, HEAT_FILES),
     structure: analysed.metrics,
+    sortMethod: SORT_METHOD,
     candidates,
     candidateCount: ranked.length,
     priorSuiteCommits: prior
@@ -4272,6 +4295,11 @@ async function compare(context, settings) {
   const { root } = context.repo;
   const name8 = measureName(context);
   const before = readBaseline(root, name8);
+  if (before.sortMethod !== SORT_METHOD) {
+    throw usageError(
+      `the baseline "${name8}" ranked candidates by ${before.sortMethod ?? "an earlier method"} and this version ranks by ${SORT_METHOD}, so the ranks are not comparable: take a new baseline with --name`
+    );
+  }
   const analysis = await readMeasureHistory(root, settings);
   const { view } = analysis;
   if (!await isAncestor(root, before.head, view.headSha)) {
@@ -4649,7 +4677,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-PQGKNRUT.mjs");
+    const { performMove } = await import("./chunk-LLSUTCJQ.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -4700,7 +4728,7 @@ var command5 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-TALHXDYP.mjs");
+      const { buildProject } = await import("./chunk-BDHMQTOE.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -4920,7 +4948,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-UPGHQ42A.mjs");
+    const { verifyMove } = await import("./chunk-4URYIISW.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

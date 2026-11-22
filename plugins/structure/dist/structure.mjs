@@ -327,7 +327,16 @@ function shapeResults(results, options2) {
     }
   };
 }
+function ratioOf(row) {
+  const ranking = row.ranking;
+  if (typeof ranking !== "object" || ranking === null) return 0;
+  const ratio = ranking.ratio;
+  return typeof ratio === "number" ? ratio : 0;
+}
 function byScoreThenPath(a, b) {
+  const ratioA = ratioOf(a);
+  const ratioB = ratioOf(b);
+  if (ratioA !== ratioB) return ratioB - ratioA;
   const scoreA = typeof a.score === "number" ? a.score : 0;
   const scoreB = typeof b.score === "number" ? b.score : 0;
   if (scoreA !== scoreB) return scoreB - scoreA;
@@ -7748,6 +7757,10 @@ function stringLeaves(value, out2) {
   else if (Array.isArray(value)) for (const item of value) stringLeaves(item, out2);
   else if (typeof value === "object" && value !== null) for (const item of Object.values(value)) stringLeaves(item, out2);
 }
+function patternMatcher(path) {
+  const source = path.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*");
+  return new RegExp(`^${source}$`);
+}
 var isManifest2 = (path) => path === "package.json" || path.endsWith("/package.json");
 var typescriptBoundaries = {
   isManifest: isManifest2,
@@ -7771,9 +7784,11 @@ var typescriptBoundaries = {
         const targets = [];
         for (const key of ["main", "module", "types", "typings", "bin", "exports"]) stringLeaves(manifest[key], targets);
         for (const target2 of targets) {
-          if (target2.includes("*")) continue;
           const resolved = posix2.normalize(directory === "." ? target2 : posix2.join(directory, target2));
-          if (tree.files.has(resolved)) entries.add(resolved);
+          if (target2.includes("*")) {
+            const matches = patternMatcher(resolved);
+            for (const file of tree.files.keys()) if (matches.test(file)) entries.add(file);
+          } else if (tree.files.has(resolved)) entries.add(resolved);
         }
       }
       boundaries2.push({
@@ -11600,7 +11615,7 @@ var adapter5 = {
   census: { extract: extractFileCensus5 },
   packaging: { ecosystems: ["cmake"], description: "C++" },
   abstractTypes: { typeKinds: ["interface", "abstract-class", "class", "enum"], abstractKinds: ["interface", "abstract-class"] },
-  mover: { kind: "agent", sourceExtensions: [...claimed], confirmation: { name: "clangd", executable: "clangd" } }
+  mover: { kind: "codemod", sourceExtensions: [...claimed], confirmation: { name: "clangd", executable: "clangd" } }
 };
 
 // packages/parse/src/languages/python/boundaries.ts
@@ -18176,6 +18191,7 @@ function readLocalityUnblocks(context, head) {
   } catch {
     return void 0;
   }
+  if (document.schemaVersion !== 1) return void 0;
   if (document.tool !== LOCALITY_REPORT.tool || document.command !== LOCALITY_REPORT.command) return void 0;
   if (document.repo?.head !== head || document.repo?.dirty !== false) return void 0;
   if (!Array.isArray(document.results) || typeof document.config !== "string") return void 0;

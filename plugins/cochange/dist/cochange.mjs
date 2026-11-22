@@ -343,7 +343,16 @@ function shapeResults(results, options) {
     }
   };
 }
+function ratioOf(row2) {
+  const ranking = row2.ranking;
+  if (typeof ranking !== "object" || ranking === null) return 0;
+  const ratio = ranking.ratio;
+  return typeof ratio === "number" ? ratio : 0;
+}
 function byScoreThenPath(a, b) {
+  const ratioA = ratioOf(a);
+  const ratioB = ratioOf(b);
+  if (ratioA !== ratioB) return ratioB - ratioA;
   const scoreA = typeof a.score === "number" ? a.score : 0;
   const scoreB = typeof b.score === "number" ? b.score : 0;
   if (scoreA !== scoreB) return scoreB - scoreA;
@@ -9415,7 +9424,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change2.head);
   const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-2S3J7RMQ.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-HDP4XSTG.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);

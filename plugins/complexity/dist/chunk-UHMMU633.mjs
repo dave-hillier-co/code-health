@@ -283,7 +283,7 @@ async function measurementAtHead(root, file, settings) {
   }
 }
 async function isTestPath(file) {
-  return (await import("./chunk-GH3WHVC4.mjs")).isTestPath(file);
+  return (await import("./chunk-2YE7QK3Y.mjs")).isTestPath(file);
 }
 function explainCommand(file) {
   if (!hasSupportedExtension(file)) return void 0;

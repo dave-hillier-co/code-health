@@ -56,7 +56,16 @@ function shapeResults(results, options) {
     }
   };
 }
+function ratioOf(row) {
+  const ranking = row.ranking;
+  if (typeof ranking !== "object" || ranking === null) return 0;
+  const ratio = ranking.ratio;
+  return typeof ratio === "number" ? ratio : 0;
+}
 function byScoreThenPath(a, b) {
+  const ratioA = ratioOf(a);
+  const ratioB = ratioOf(b);
+  if (ratioA !== ratioB) return ratioB - ratioA;
   const scoreA = typeof a.score === "number" ? a.score : 0;
   const scoreB = typeof b.score === "number" ? b.score : 0;
   if (scoreA !== scoreB) return scoreB - scoreA;
