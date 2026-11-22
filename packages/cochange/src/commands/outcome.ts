@@ -173,18 +173,23 @@ async function completeness(context: CommandContext): Promise<CommandOutput> {
   const { settings } = history;
   const present = new Set(await listTree(root, history.view.headSha));
   const identityOf = (path: string) => (present.has(path) ? path : history.view.renames.resolve(path, -1));
-  const couplingChanges = history.filtered.changes.map((c) => ({ files: c.files.map((f) => f.fileId), oversized: c.oversized }));
+  const dated = [...history.filtered.changes].sort((a, b) => a.committerDate - b.committerDate);
+  const couplingChanges = dated.map((c) => ({ files: c.files.map((f) => f.fileId), oversized: c.oversized }));
 
-  // The partners the hook would name for a file: the same support and confidence thresholds, and files that still exist.
+  // The partners the hook would name for a file: the same support and confidence thresholds, and files that still exist,
+  // from the changes committed before the session began, which is all the hook could have known.
   const cache = new Map<string, string[]>();
-  const partnersNamed = (file: string): string[] => {
-    const known = cache.get(file);
-    if (known !== undefined) return known;
-    const { changesFocus, partners } = partnersOf(couplingChanges, file);
+  const partnersNamed = (file: string, session: SessionRecord): string[] => {
+    let known = 0;
+    while (known < dated.length && dated[known]!.committerDate < session.startedAt) known++;
+    const key = `${known}\u0000${file}`;
+    const cached = cache.get(key);
+    if (cached !== undefined) return cached;
+    const { changesFocus, partners } = partnersOf(couplingChanges.slice(0, known), file);
     const named = partners
       .filter((p) => p.support >= settings.minSupport && confidenceOf(p.support, changesFocus) >= settings.hook.confidence && present.has(p.path))
       .map((p) => p.path);
-    cache.set(file, named);
+    cache.set(key, named);
     return named;
   };
 
@@ -195,6 +200,7 @@ async function completeness(context: CommandContext): Promise<CommandOutput> {
     const state = holder === undefined ? null : readSession(holder, session.sessionId, HOOK_NAME);
     return {
       sessionId: session.sessionId,
+      startedAt: Math.floor(Date.parse(session.startedAt) / 1000),
       edits: session.edits.map(identityOf),
       hook: state !== null,
       spokenAbout: new Set((state?.spokenAbout ?? []).map(identityOf)),

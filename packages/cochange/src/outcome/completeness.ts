@@ -1,5 +1,7 @@
 export interface SessionRecord {
   sessionId: string;
+  /** Unix seconds of the session's first event: the history the hook could have drawn on ends here. */
+  startedAt: number;
   /** Repo paths in the order edited, one entry per edit call, as identities at the analysed commit. */
   edits: readonly string[];
   /** The hook ran in this session. */
@@ -21,9 +23,10 @@ export interface Opportunity {
  * The agent outcome of the completeness hook: for each file the agent edited that has coupled partners
  * not yet edited in the session, whether one of them was edited later in the same session. A file counts
  * once per session, at its first edit. Partners already edited before that point are not an opportunity,
- * since the hook only names partners not yet edited.
+ * since the hook only names partners not yet edited. `partnersOf` is asked for the session's own moment, so
+ * the changes the session went on to commit cannot have made a partner it is then counted as following.
  */
-export function findOpportunities(sessions: readonly SessionRecord[], partnersOf: (file: string) => readonly string[]): Opportunity[] {
+export function findOpportunities(sessions: readonly SessionRecord[], partnersOf: (file: string, session: SessionRecord) => readonly string[]): Opportunity[] {
   const found: Opportunity[] = [];
   for (const session of sessions) {
     const firstEdit = new Map<string, number>();
@@ -31,7 +34,7 @@ export function findOpportunities(sessions: readonly SessionRecord[], partnersOf
       if (!firstEdit.has(file)) firstEdit.set(file, position);
     });
     for (const [file, position] of firstEdit) {
-      const unedited = partnersOf(file).filter((partner) => {
+      const unedited = partnersOf(file, session).filter((partner) => {
         const at = firstEdit.get(partner);
         return at === undefined || at > position;
       });

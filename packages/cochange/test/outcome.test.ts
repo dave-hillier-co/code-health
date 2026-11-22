@@ -140,6 +140,21 @@ describe("outcome completeness", () => {
     }
   });
 
+  test("partners are those the history named before the session began, not ones its own commits went on to create", async () => {
+    const early = new AgentSessions(repo.path);
+    try {
+      // The pages first changed together on 2024-03-03 and six times by 2024-06-07. A session before the third change
+      // could not have been told of a partner, so editing both pages then is no completeness the hook could have prompted.
+      early.session("early", "2024-03-04", [pageA, pageB]);
+      early.session("late", "2024-06-10", [pageA, pageB]);
+      const { results } = await json("completeness", "--since", "2024-03-01", "--until", "2024-07-01", "--projects-dir", early.directory, "--min-samples", "1");
+      expect(results.sessions.measured).toBe(2);
+      expect(results.withoutHook).toMatchObject({ opportunities: 1, followed: 1 });
+    } finally {
+      early.dispose();
+    }
+  });
+
   test("with too few opportunities in an arm nothing is concluded", async () => {
     const { results } = await json(...args().slice(0, -2));
     expect(results.conclusion).toBe("insufficient-sample");
