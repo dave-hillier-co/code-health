@@ -124,7 +124,7 @@ export async function assessBranch(
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change.head);
   const touched = change.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  // The parse layer is loaded when a change needs it, so the hook's bundle never carries the grammar loader.
+  // The parse layer is loaded when a change needs it, so a run that needs no signatures never loads the grammar loader.
   const { changedSignatures, withSignatures } = await import("./signatures.ts");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change);
   const factors = banded.map(({ m, result }) => {

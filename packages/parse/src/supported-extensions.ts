@@ -1,7 +1,7 @@
 /**
  * The extensions, with the dot, that the supported adapters claim. It answers "can the structural layer
- * read this path" without importing the adapters, which are most of a bundle's size: a post-edit hook
- * that must start within a time budget asks it. A test keeps it equal to what the adapters declare.
+ * read this path" without importing the adapters, which are most of a bundle's size: a command
+ * that must start quickly asks it. A test keeps it equal to what the adapters declare.
  */
 export const supportedExtensions: ReadonlySet<string> = new Set([
   ".cs",

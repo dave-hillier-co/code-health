@@ -62,13 +62,13 @@ export const BUILTIN_SERVICE_NAMES: readonly string[] = [
 ];
 
 /**
- * Coding agents known by the identity they commit as, matched against `Name <email>`: the Anthropic,
+ * Coding agents known by the identity they commit as, matched against `Name <email>`: the Claude noreply address,
  * GitHub Copilot, Cursor and Devin addresses. A commit authored as one of them is the agent's, whatever
  * the name says. These are narrower than the trailer patterns below, which would also match a person
  * named Devin.
  */
 export const BUILTIN_AGENT_IDENTITY_PATTERNS: readonly string[] = [
-  "<[^>]*@anthropic\\.com>",
+  "<noreply@anthropic\\.com>",
   "^copilot(-swe-agent)?(\\[bot\\])?\\s*<",
   "<copilot@github\\.com>",
   "\\+copilot(-swe-agent)?(\\[bot\\])?@users\\.noreply\\.github\\.com>",
@@ -80,7 +80,7 @@ export const BUILTIN_AGENT_IDENTITY_PATTERNS: readonly string[] = [
 /** AI agents named in a `Co-Authored-By` trailer. */
 export const BUILTIN_AGENT_PATTERNS: readonly string[] = [
   "\\bclaude\\b",
-  "@anthropic\\.com",
+  "noreply@anthropic\\.com",
   "copilot",
   "\\bchatgpt\\b",
   "\\bopenai\\b",

@@ -1864,7 +1864,7 @@ var BUILTIN_SERVICE_NAMES = [
   "service account"
 ];
 var BUILTIN_AGENT_IDENTITY_PATTERNS = [
-  "<[^>]*@anthropic\\.com>",
+  "<noreply@anthropic\\.com>",
   "^copilot(-swe-agent)?(\\[bot\\])?\\s*<",
   "<copilot@github\\.com>",
   "\\+copilot(-swe-agent)?(\\[bot\\])?@users\\.noreply\\.github\\.com>",
@@ -1874,7 +1874,7 @@ var BUILTIN_AGENT_IDENTITY_PATTERNS = [
 ];
 var BUILTIN_AGENT_PATTERNS = [
   "\\bclaude\\b",
-  "@anthropic\\.com",
+  "noreply@anthropic\\.com",
   "copilot",
   "\\bchatgpt\\b",
   "\\bopenai\\b",
@@ -4012,8 +4012,8 @@ var periodSecondsOf = (settings) => settings.periodMonths * SECONDS_PER_MONTH2;
 function blameOptions(history, settings) {
   return { exclude: history.settings.exclude, copyDetection: settings.copyDetection };
 }
-function refreshBlameFor(context, history, settings, sha, hooks = {}) {
-  return refreshBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings), ...hooks });
+function refreshBlameFor(context, history, settings, sha, callbacks = {}) {
+  return refreshBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings), ...callbacks });
 }
 async function loadKnowledge(context, history, settings, options) {
   const { root } = context.repo;

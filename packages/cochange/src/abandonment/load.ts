@@ -38,9 +38,9 @@ export function refreshBlameFor(
   history: LoadedHistory,
   settings: KnowledgeSettings,
   sha: string,
-  hooks: { onProgress?: (progress: { done: number; total: number }) => void; signal?: AbortSignal } = {},
+  callbacks: { onProgress?: (progress: { done: number; total: number }) => void; signal?: AbortSignal } = {},
 ): Promise<BlameRefreshResult> {
-  return refreshBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings), ...hooks });
+  return refreshBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings), ...callbacks });
 }
 
 /**

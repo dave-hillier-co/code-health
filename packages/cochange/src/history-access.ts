@@ -52,7 +52,6 @@ export interface LoadedHistory extends HistoryAnalysis {
  * incremental refresh with nothing new costs one `git rev-list`, and a stale
  * answer silently describes an older repository. `noRefresh` skips it for
  * callers that must not write; a missing cache is then an environment error.
- * Hooks never come through here, since they never refresh (suite spec, Hooks).
  *
  * A shallow clone's history is truncated, so it needs a stated window, either
  * on the command line or as `cochange.windowMonths` in the config file.

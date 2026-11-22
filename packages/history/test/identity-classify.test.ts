@@ -79,6 +79,12 @@ test.each([
   expect(createNonPersonMatcher(none).classify(name, email)).toMatchObject({ kind: "agent", source: "builtin" });
 });
 
+test("a person with an address at anthropic.com is not an agent, as author or as co-author", () => {
+  const matcher = createNonPersonMatcher(none);
+  expect(matcher.classify("Ann Lee", "ann@anthropic.com")).toBeNull();
+  expect(matcher.humanCoAuthor("Fix it\n\nCo-authored-by: Ann Lee <ann@anthropic.com>")).toEqual({ name: "Ann Lee", email: "ann@anthropic.com" });
+});
+
 test("a person named like an agent is not one, and a decision of person overrides the default", () => {
   expect(createNonPersonMatcher(none).classify("Devin Patel", "devin@corp.com")).toBeNull();
   const matcher = createNonPersonMatcher({ ...none, decisions: [{ identity: "Claude <noreply@anthropic.com>", kind: "person" }] });

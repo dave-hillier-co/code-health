@@ -119,7 +119,7 @@ export interface Partners {
 /**
  * The same counts as `countCoupling`, restricted to the pairs that include one
  * file and without any guideline. It never builds the pair table of the whole
- * repository, which keeps it cheap enough for a hook.
+ * repository, so its cost depends on the changes that touch the file.
  */
 export function partnersOf(changes: readonly CouplingChange[], focus: string): Partners {
   const perFile = new Map<string, number>();

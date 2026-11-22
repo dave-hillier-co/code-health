@@ -20,7 +20,7 @@ The heuristics come from research on change-level risk, adapted to what git alon
 - **Rigby et al.** (2016), as used in [abandonment](abandonment.md): code whose authors have left has nobody to review it with first-hand knowledge.
 - **Tornhill**: hotspots and temporal coupling as the places where change concentrates and where files are forgotten.
 
-These studies report associations in the projects they examined. Whether the factors separate risky changes from safe ones in a given repository is an empirical question, so the skill backtests them against that repository's own history (see [Measurement](#measurement)).
+These studies report associations in the projects they examined. Whether the factors separate risky changes from safe ones in a given repository is an empirical question, so the suite's maintainers backtest them against that repository's own history, and a level is shown only where that backtest supports it (see [Measurement](#measurement)).
 
 ## Scope
 
@@ -246,7 +246,7 @@ Workflow:
 3. Deal with completeness first. For each `missing-co-change` file, open it and judge whether the change needs it. This is the finding most likely to be a real defect.
 4. Propose the responses from the table, cheapest first: complete the change, split it, add tests, then route review.
 5. For review routing, run `reviewers`, and say what each suggested reviewer is being asked to look at.
-6. State the limits: which factors were `unavailable`, the evidence grade, and, when the CLI shows a level, the stored backtest it states beside the level.
+6. State the limits: which factors were `unavailable`, the evidence grade, and, when the CLI shows a level, the evidence it states beside the level.
 
 When the author is the user, the skill's stance is a pre-flight check: what to fix before asking for review. When the user is the reviewer, it is a reading guide: where to spend attention. The skill uses the [red-flags](../../shared/red-flags.md) vocabulary where a finding matches one. A missing co-change is usually *information leakage*, and a novel coupling may be the start of it.
 
