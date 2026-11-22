@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { environmentError } from "@code-health/cli-kit/errors";
+import type { Edge } from "@code-health/graph/feedback-arc-set";
 import { compareIds } from "@code-health/graph/graph";
 import { measureRepo } from "@code-health/transcripts/measure-repo";
 import { parseWindow } from "@code-health/transcripts/time-window";
@@ -9,6 +10,7 @@ import type { StructureSettings } from "./config.ts";
 import { findCycles, unblocksOf } from "./cycles.ts";
 import { layerRuleOf } from "./layer-rule.ts";
 import type { Model } from "./model.ts";
+import { edgeKey } from "./project.ts";
 
 const day = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);
 
@@ -19,16 +21,21 @@ export function readAgentTasks(root: string, projectsDir: string, window: { sinc
   return measureRepo({ projectsDir, repoRoots: [root], window: parsed }).tasks;
 }
 
-/** Tasks that edited files of one side and read files of the other side without editing them. */
-export function agentReadsAcross(tasks: readonly TaskEffort[], from: readonly string[], to: readonly string[]): number {
+/**
+ * Tasks that edited files of one side and read, without editing it, a file of the other side that one of the edited
+ * files imports or is imported by: the reads that follow the dependency. A read of a file the edited files have no
+ * import edge to is not counted, whatever the reason for it.
+ */
+export function agentReadsAcross(tasks: readonly TaskEffort[], from: readonly string[], to: readonly string[], fileEdges: readonly Edge[]): number {
   const sideFrom = new Set(from);
   const sideTo = new Set(to);
-  const touches = (paths: readonly string[], side: ReadonlySet<string>): boolean => paths.some((path) => side.has(path));
-  return tasks.filter((task) => {
-    const editsFrom = touches(task.editedPaths, sideFrom);
-    const editsTo = touches(task.editedPaths, sideTo);
-    return (editsFrom && !editsTo && touches(task.readPaths, sideTo)) || (editsTo && !editsFrom && touches(task.readPaths, sideFrom));
-  }).length;
+  const linked = new Set(fileEdges.flatMap((edge) => [edgeKey(edge.from, edge.to), edgeKey(edge.to, edge.from)]));
+  const follows = (task: TaskEffort, edited: ReadonlySet<string>, other: ReadonlySet<string>): boolean => {
+    const editedHere = task.editedPaths.filter((path) => edited.has(path));
+    if (editedHere.length === 0 || task.editedPaths.some((path) => other.has(path))) return false;
+    return task.readPaths.some((read) => other.has(read) && editedHere.some((path) => linked.has(edgeKey(path, read))));
+  };
+  return tasks.filter((task) => follows(task, sideFrom, sideTo) || follows(task, sideTo, sideFrom)).length;
 }
 
 /**
@@ -49,7 +56,12 @@ export function rankIncidental(
     if (unblocksOf(model, row.from, row.to).length + unblocksOf(model, row.to, row.from).length > 0) reasons.push("blocks-locality-move");
     if (cycles.some((cycle) => cycle.nodes.includes(row.from) && cycle.nodes.includes(row.to))) reasons.push("in-cycle");
     if (layerRuleOf(model, row.from, row.to, settings) !== null || layerRuleOf(model, row.to, row.from, settings) !== null) reasons.push("layer-violation");
-    const agentReads = tasks === undefined ? null : agentReadsAcross(tasks, model.graph.filesOf.get(row.from) ?? [], model.graph.filesOf.get(row.to) ?? []);
+    const agentReads = tasks === undefined ? null : agentReadsAcross(
+            tasks,
+            model.graph.filesOf.get(row.from) ?? [],
+            model.graph.filesOf.get(row.to) ?? [],
+            [...(model.graph.members.get(edgeKey(row.from, row.to)) ?? []), ...(model.graph.members.get(edgeKey(row.to, row.from)) ?? [])],
+          );
     if (agentReads !== null && agentReads >= settings.minSupport) reasons.push("agent-reads");
     return { ...row, incidental: { rank: reasons.length > 0 ? "high" : "low", reasons, agentReads } };
   });

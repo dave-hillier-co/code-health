@@ -33,6 +33,7 @@ export const files: Record<string, File> = {
   "src/ui/view.ts": { exports: ["p", "q", "r"] },
   "src/burden/caller.ts": { exports: ["caller"], imports: [{ from: "../burdenlib/callee.ts", names: ["f", "g", "h"] }] },
   "src/burdenlib/callee.ts": { exports: ["f", "g", "h"] },
+  "src/burdenlib/unrelated.ts": { exports: ["u"] },
   "src/blocked/user.ts": { exports: ["user"], imports: [{ from: "../blockedlib/dep.ts", names: ["m", "n", "o"] }] },
   "src/blockedlib/dep.ts": { exports: ["m", "n", "o"] },
 };

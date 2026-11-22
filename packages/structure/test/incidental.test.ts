@@ -26,6 +26,13 @@ beforeAll(() => {
     session.assistant(`m${task}`, [read(`${root}/src/burdenlib/callee.ts`), edit(`${root}/src/burden/caller.ts`)], { output: 100 });
   }
   writeFileSync(join(directory, "burden.jsonl"), session.toJsonl());
+  // Tasks that edit the caller and open a file of the other side that nothing imports are not following the dependency.
+  const wander = new SyntheticSession({ cwd: root, start: "2024-02-21T10:00:00.000Z", sessionId: "wander" });
+  for (let task = 0; task < 4; task++) {
+    wander.prompt();
+    wander.assistant(`w${task}`, [read(`${root}/src/burdenlib/unrelated.ts`), edit(`${root}/src/burden/caller.ts`)], { output: 100 });
+  }
+  writeFileSync(join(directory, "wander.jsonl"), wander.toJsonl());
 });
 afterAll(() => {
   repo.dispose();

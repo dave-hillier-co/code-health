@@ -10,7 +10,7 @@
     },
     "grade": "weak",
     "importedHistory": [],
-    "logicalChangesInWindow": 41,
+    "logicalChangesInWindow": 45,
     "thresholds": {
       "moderate": {
         "contributors": 2,
@@ -28,11 +28,11 @@
       "boundaryCommits": 0,
       "shallow": false
     },
-    "usableHistoryMonths": 2.7,
+    "usableHistoryMonths": 2.9,
     "window": {
       "months": 12,
-      "since": 1679821200,
-      "until": 1711443600
+      "since": 1680512400,
+      "until": 1712134800
     }
   },
   "filtersApplied": {
@@ -73,11 +73,11 @@
     "minSupport": 3,
     "quadrant": "incidental",
     "significanceLevel": 0.01,
-    "transcriptStamp": "84116245cb2431bf",
+    "transcriptStamp": "1b06cbf47c69f9a7",
     "transcripts": true
   },
   "population": {
-    "eligibleChanges": 41,
+    "eligibleChanges": 45,
     "modules": 10
   },
   "quadrants": {
@@ -90,16 +90,16 @@
   },
   "repo": {
     "dirty": false,
-    "head": "8350c2f19e750d8c42fb9900148cc7ff2f1be454"
+    "head": "d15ece2c7c78f9132bd04e89ca351ee569e51638"
   },
   "results": [
     {
       "bothActive": true,
       "coChange": {
-        "expected": 0.61,
+        "expected": 0.556,
         "fromChanges": 5,
         "high": false,
-        "pValue": 0.49694,
+        "pValue": 0.461426,
         "shared": 1,
         "toChanges": 5
       },
@@ -126,10 +126,10 @@
     {
       "bothActive": true,
       "coChange": {
-        "expected": 0.61,
+        "expected": 0.556,
         "fromChanges": 5,
         "high": false,
-        "pValue": 0.49694,
+        "pValue": 0.461426,
         "shared": 1,
         "toChanges": 5
       },
@@ -156,12 +156,12 @@
     {
       "bothActive": true,
       "coChange": {
-        "expected": 0.61,
+        "expected": 1,
         "fromChanges": 5,
         "high": false,
-        "pValue": 0.49694,
+        "pValue": 0.691435,
         "shared": 1,
-        "toChanges": 5
+        "toChanges": 9
       },
       "from": "src/burden",
       "id": "coupling:folder:src/burden->src/burdenlib",
@@ -186,10 +186,10 @@
     {
       "bothActive": true,
       "coChange": {
-        "expected": 0.61,
+        "expected": 0.556,
         "fromChanges": 5,
         "high": false,
-        "pValue": 0.49694,
+        "pValue": 0.461426,
         "shared": 1,
         "toChanges": 5
       },
@@ -216,10 +216,10 @@
     {
       "bothActive": true,
       "coChange": {
-        "expected": 0.61,
+        "expected": 0.556,
         "fromChanges": 5,
         "high": false,
-        "pValue": 0.49694,
+        "pValue": 0.461426,
         "shared": 1,
         "toChanges": 5
       },
@@ -250,7 +250,7 @@
     "total": 5
   },
   "window": {
-    "since": "2023-03-26T09:00:00.000Z",
-    "until": "2024-03-26T09:00:00.000Z"
+    "since": "2023-04-03T09:00:00.000Z",
+    "until": "2024-04-03T09:00:00.000Z"
   }
 }
