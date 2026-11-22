@@ -12,7 +12,7 @@ Every history-based output carries `evidence`: `usableHistoryMonths`, `logicalCh
 
 Usable history leaves out an imported history's bulk first commit and anything beyond a shallow clone's boundary. A `commitSize.shifted: true` means the median files per change at least doubled or halved between the earlier and later half of history, which usually means the team moved to or from squash merges. A commit then means something different, so offer a window inside one policy.
 
-How to speak at each grade:
+How to word results at each grade:
 
 - strong: findings are reliable enough to act on after you read the code.
 - moderate: say how many changes sit behind each finding.

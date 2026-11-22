@@ -50,13 +50,13 @@ Bots, services and agents are left out of the population of people and out of ev
 
 ## Reading the measurement
 
-`check` reports how much of the code the mapping has settled: the share of lines at HEAD and of commits in the analysis window held by identities that no proposal still names, with bots and services counted separately. It should be close to 100 percent before any abandonment result is trusted. Report it alongside whatever you do next. When `needsIdentityReview` is true, unmapped identities hold more than `cochange.identities.unmappedShareThreshold` percent of the lines.
+`check` reports how much of the code the mapping has settled: the share of lines at HEAD and of commits in the analysis window held by identities that no proposal still names, with bots and services counted separately. It should be close to 100 percent before any abandonment result is trusted. Report it alongside whatever you do next. When `needsIdentityReview` is true, unmapped identities hold more than the guideline `cochange.identities.unmappedShareThreshold` percent of the lines. The measured share is printed beside it. Below the guideline the unmapped identities are still listed.
 
 ## Commands
 
 | Command | Use |
 |---|---|
-| `identities check` | Conflicts, unmapped identities with significant activity, and the measurement. Exit 1 on conflicts. |
+| `identities check` | Conflicts, every unmapped identity (those holding lines or with many commits first, marked `aboveGuideline`), and the measurement. Exit 1 on conflicts only. |
 | `identities list [--unmapped]` | Every identity as written, with commits, dates, top areas and current mapping. |
 | `identities propose` | Clusters and chains with each link's signals and strength. Recorded rejections are left out. |
 | `identities classify` | Bot, service and agent candidates with the pattern that matched. |

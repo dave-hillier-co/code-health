@@ -1,4 +1,4 @@
-# The method, and every threshold
+# The method, and every guideline
 
 ## Definitions (Rigby, Zhu, Donadelli and Mockus, ICSE 2016)
 
@@ -30,7 +30,7 @@ Per trial the loss is lines and files abandoned once the leavers and everyone al
 - **Tail ratio** is KaR over expected loss. The paper found losses more than three times the expected loss in the tail, and more than five times under historical simulation.
 - **Expected tail loss** is the mean of the losses at or beyond KaR. It shows how bad the tail is, not only where it starts. This is an extension to the paper.
 
-Loss is reported as the **increment** over what is already abandoned, which is the only part that can still be prevented, and as the **total**, which adds the baseline back. The tail ratio of the total is over the total expected loss, so a large baseline lowers it.
+Loss is reported as the **increment** over what is already abandoned, which is the only part that can still be prevented, and as the **total**, which adds the baseline back. The tail ratio of the total is over the total expected loss, so a large baseline lowers it. Read the ratio on the increment.
 
 Per file: the **probability** of being abandoned (the share of trials), and the **tail share**, the share of the worst trials (by files lost, at the lowest alpha) in which it is lost. A file with several holders is lost mostly in bad scenarios, so its tail share is far above its probability.
 
@@ -40,7 +40,7 @@ Raw abandonment puts old, stable code first. By default files are ranked by aban
 
 - `abandoned`: already abandoned.
 - `at-risk-hot` and `at-risk-cold`: probability at least `cochange.knowledge.atRiskProbability` percent (default 10), for a file that is or is not a hotspot.
-- `concentrated-component`: tail ratio of the component's increment in lines, at the lowest alpha, at least `cochange.knowledge.concentratedTailRatio` (default 3). Needs `components` in the config, and the unassigned group is never flagged.
+- `concentrated-component`: tail ratio of the component's increment in lines, at the lowest alpha, at or above the guideline `cochange.knowledge.concentratedTailRatio` (default 3, from the paper's finding that tail losses exceed three times the expected loss). Each component row prints `tailRatio`, `guideline` and `ratioToGuideline`, so a ratio just under the guideline is visible. Needs `components` in the config. The unassigned group is listed with its size and never given the finding.
 - `no-successor`: an abandoned or at-risk file where no active developer has changed any file that changes with it.
 
 ## Successors

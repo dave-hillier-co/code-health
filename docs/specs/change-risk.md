@@ -87,7 +87,7 @@ Each row is a factor. The history and lexical layers supply most of them, so the
 
 | Factor | Signal | Why it matters |
 |---|---|---|
-| `missing-co-change` | Files with confidence at or above the threshold towards a touched file, with support above the minimum, that the change does not touch | The strongest single completeness signal: these files have needed changing every other time |
+| `missing-co-change` | Files with confidence at or above the confidence guideline towards a touched file, with support above the minimum, that the change does not touch | The strongest single completeness signal: these files have needed changing every other time |
 | `novel-coupling` | Pairs of touched files at high tree distance that have never changed together before | The change may be introducing a dependency between areas that were independent |
 | `test-evidence` | Source files changed without the test files that usually change with them, and test deletions | Behaviour may have changed without tests following |
 
@@ -96,7 +96,7 @@ Each row is a factor. The history and lexical layers supply most of them, so the
 | Factor | Signal | Why it matters |
 |---|---|---|
 | `blast-radius` | Fan-in of the touched files, and of touched exported symbols whose signature changed (*structural*). Without an adapter: the number of files with high co-change confidence towards the touched files. | A flaw in widely used code is inherited by every consumer |
-| `complexity-delta` | Units that are new and over a threshold, or over a threshold and worse, from `complexity diff`. Without the complexity plugin: the change in indentation complexity of touched files. | The change is adding code that is hard to understand |
+| `complexity-delta` | Units that are new and above a guideline, or above one and worse, from `complexity diff`. Without the complexity plugin: the change in indentation complexity of touched files. | The change is adding code that is hard to understand |
 | `structure-delta` | New cycles and layer violations, from `structure check` (*structural*) | The change makes later changes more expensive |
 | `sensitive-paths` | Touched files matching configured globs: migrations, authentication, build and CI configuration, public API, dependency manifests | Some paths carry consequences that no history signal captures |
 
@@ -245,13 +245,45 @@ The backtest has three constraints that keep it honest and affordable:
 In `cochange.risk`:
 
 - Main branch for the default base.
-- Percentiles for the `moderate` and `high` bands, and thresholds for the count-based factors.
-- Confidence and support thresholds for `missing-co-change`.
+- Percentiles for the `moderate` and `high` bands, and guidelines for the count-based factors.
+- Confidence guideline and support floor for `missing-co-change`.
 - Ownership shares for `owner` and `regular`, the recency weighting, and what counts as a new identity.
 - Sensitive path globs.
 - Fix and revert commit-message patterns, and the follow-up window.
 - `placement`: `self` (default), `any` or `off`.
 - Factors to disable.
+
+## Resolved definitions
+
+Numeric values are **guidelines**: they place a factor in a band and order the findings, and the measured value is always printed next to the band. Defaults come from the repository's own history (percentile bands, which need no outside number), from the research in [Basis](#basis), or are judgement calls, marked below. Where a minimum amount of evidence is needed, it is a floor, and the factor is reported as `unavailable` with the reason, not as `low`.
+
+**Command line.** `risk explain`, `risk reviewers` and `risk backtest` are positional words, so a branch with one of those names is written `BASE..HEAD`. Outputs carry `command: risk` and `results.kind` of `assessment`, `explain`, `backtest` or `reviewers`. `--evidence` is repeated for several files, and relative paths resolve against the repository root.
+
+**Evidence from other plugins.** Every row of `structure check` counts towards `structure-delta`, because the command lists only findings new against the base. A `complexity diff` unit counts towards `complexity-delta` when it is added or has a positive cognitive delta, and carries a `-warn` or `-high` label, which are the complexity plugin's own bands against its guidelines. Base and tip are read from `inputs.base.sha` and `inputs.head.sha`, or from `inputs.baseSha` and `analysed`. This mirrors CodeScene, which reports only new or worsened code against the base.
+
+**Hotspots inside risk.** `hotspots-touched` uses change frequency alone: files whose frequency in the window is at or above the hotspot percentile guideline and that changed within `recentMonths`. It does not use complexity, so it differs from the `hotspots` command, which multiplies frequency by complexity as CodeScene does. The reason is that the live run and the backtest must measure the same thing at every past commit. `risk explain hotspots-touched` states this definition.
+
+**Bands.** Percentile factors are placed with nearest-rank percentiles over the baseline, so at most a quarter of baseline changes are `moderate` or above. Count factors (`mixed-purpose`, `missing-co-change`, `novel-coupling`, `test-evidence`, `complexity-delta`, `structure-delta`, `sensitive-paths`) are `moderate` at 1 and `high` at 3. Both are guidelines, and the value is printed with the band. `sensitive-paths`, `structure-delta` and `complexity-delta` raise the impact band as events, and are left out of the family score. The score is therefore history-only, which keeps backtests comparable. `risk explain` states this.
+
+**Baseline and unavailable.** The baseline is the most recent `baselineChanges` (default 200) merged changes in the analysis window before the base, each measured as of its own time, with the merge style read per main-line commit. Fewer than `minBaseline` (default 10) comparable changes is a floor: impact is `unavailable` even at score 0, because a band against so few changes means nothing. A factor with a non-zero value that cannot be placed is `unavailable`, never `low`. 10 and 200 are judgement calls, and CodeScene documents no equivalent.
+
+**Blast radius.** With a locality report, the band is the higher of the co-change band and a fan-in band placed against all units in that report, so the report can only raise it. They are different scales, and the maximum is the choice that cannot understate the radius.
+
+**Structural pass.** A signature change is a difference in kind, parameter count, option count or interface size of an exported top-level unit. A type-only change with the same counts is not seen. Fan-in is measured on the base tree, leaves out test consumers, and is banded with the same percentile cutoffs and `minBaseline`. The pass applies only when a touched file has an adapter and a signature changed. Otherwise the history factor stands, and the source reads `co-change and parse` when the pass applied.
+
+**Placement identity.** Placement is computed for the invoking identity: `GIT_AUTHOR_EMAIL`, else `git config user.email`, mapped through the mailmap, compared with the change's authors. With `--worktree` the invoker is an author. With no identity configured placement is withheld. `placement: off` disables it. This is the only place the suite reads personal git config.
+
+**History-only labels.** Without blame, `owner` needs at least `ownerShare` (50 %) of the window's changes to the file and at least `regularChanges` (3) of the change authors' changes. `regular` needs `regularChanges` recent changes, or `regularShare` (10 %) with at least 2 changes. `occasional` is any change before, and `first-touch` none. A new file or new identity is `unknown`. These shares are guidelines. They are configurable. They follow the main-author and minor-contributor split in CodeScene's knowledge analysis, which sets no numeric cut-off. The numbers here are judgement calls.
+
+**Backtest verdict.** The levels are said to separate when the follow-up rates do not decrease across levels, each level has at least 5 changes (floor), the top level's rate exceeds the same-files base rate, and there are at least 3 troubled changes (floor). Below a floor the verdict is `insufficient`, not a guess. Changes whose `followUpDays` (30) window runs past the analysed commit are censored. The same-files rate is the rate for the files the change touched, taken from their earlier changes.
+
+**Stored report.** `reports/cochange.risk.json` holds the change, impact and factors only, written for default-range, non-worktree runs on a clean tree. It omits placement, level and findings, since placement could be read back from them.
+
+**Findings.** `sensitive-paths` suggests asking a reviewer who knows what those paths affect. The default globs are migrations, authentication, workflows, Dockerfile and dependency manifests, and are configurable. `distant-placement` is raised when the author has no history in hotspot or wide-reach files. CodeScene leaves such lists to configuration, so the defaults are a judgement call.
+
+**Reviewers.** An area is a configured component, or the touched file's folder. Candidates are active developers who are not excluded and not the change's authors, ranked by blame share of the touched files, then by changes to coupled files, at most 3 per area. This does not depend on the `placement` setting.
+
+**Adoption comparisons.** `--adopted` runs are not stored. The `adoption` property appears only with the flag. The two windows are equal in length, only changes with a known outcome count, and the output states that concurrent changes are not controlled for.
 
 ## Decisions
 

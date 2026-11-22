@@ -115,8 +115,8 @@ The tool classifies findings, and the skill turns the classifications into actio
 
 | Finding | Condition | Suggested handoff |
 |---|---|---|
-| `hotspot` | Score in the top configured percentile and changed within the recent window | Complexity review of the file's worst functions |
-| `distant-coupling` | Degree ≥ threshold, support ≥ minimum, distance ≥ minimum | Locality review: should these live together? Otherwise check for *information leakage*, where one design decision is encoded in both files. |
+| `hotspot` | Score at or above the hotspot percentile guideline and changed within the recent window | Complexity review of the file's worst functions |
+| `distant-coupling` | Degree at or above the degree guideline, support at least the minimum, distance at least the minimum | Locality review: should these live together? Otherwise check for *information leakage*, where one design decision is encoded in both files. |
 | `change-magnet` | A file that co-changes with many folders, which rarely co-change with each other (a star shape) | Likely a registration hub. See [structure](structure.md#concepts) for confirmation and the inversion remedy. |
 | `asymmetric-coupling` | Confidence A→B high, B→A low | A depends on B implicitly. Check for *information leakage* or *temporal decomposition* (code split by when it runs rather than by what it knows). |
 | `cluster` | Coupled component spanning ≥ 3 folders | Candidate for co-location or a module boundary |
@@ -135,14 +135,14 @@ The skill instructs the agent to run `cochange brief` on the files it plans to c
 
 ### Change-set completeness hook (opt-in)
 
-A `PostToolUse` hook on `Edit` and `Write` looks up the edited file in the cache (read-only, no refresh, with a time budget of about 200 ms) and, when there are coupled files above a high confidence threshold that have not been edited in this session (from the hook's own session state, [suite.md](suite.md#hooks)), injects a short note:
+A `PostToolUse` hook on `Edit` and `Write` looks up the edited file in the cache (read-only, no refresh, with a time budget of about 200 ms) and, when there are coupled files at or above the confidence guideline that have not been edited in this session (from the hook's own session state, [suite.md](suite.md#hooks)), injects a short note:
 
 > `src/billing/invoice.ts` usually changes with `src/reports/invoice-summary.ts` (confidence 82 %, 17 changes). Not yet edited in this session.
 
 Rules for the hook:
 
-- Silent when the cache is missing, or more than the configured number of commits behind HEAD (default 50). Coupling evidence barely moves over a few commits, and a hook that fell silent after every commit or pull would rarely speak. It never triggers a refresh, never blocks the edit, and never fails loudly.
-- At most one note per file per session. Repeated nagging trains the model to ignore it.
+- Prints nothing when the cache is missing, or more than the configured number of commits behind HEAD (default 50). Coupling evidence barely moves over a few commits, and a hook that printed nothing after every commit or pull would rarely print anything. It never triggers a refresh, never blocks the edit, and never prints an error.
+- At most one note per file per session. Repeating a note adds tokens and teaches the model to skip it.
 - Off by default and enabled per repository in config, because injected context has a token cost.
 
 ## Composition
@@ -165,6 +165,26 @@ This plugin supplies the suite's primary outcome measure, change spread. Its own
 | Agent edits followed by a coupled file being edited later in the same session, with and without the hook | The briefing and hook prevented missed changes | Agent outcome |
 
 `outcome spread` takes the files acted on and a date. The comparison group is the untouched file of nearest rank for each, ranked by revisions in the before window, since a hotspot score exists only at the analysed commit, and files that changed together with an acted-on file are passed over. `outcome completeness` reads session transcripts for the edits of each session in order, counts a file's first edit as an opportunity when a coupled partner the hook would name is not yet edited, and counts it followed when one is edited later in the session. Sessions are with the hook when it left session state for them. The two arms are not randomised, so the difference is reported as an association. Both read only paths and counts, and neither writes a report.
+
+## Resolved definitions
+
+Numeric values here are **guidelines** unless called a floor. A guideline labels and orders results, and the measured value is printed beside it. It does not remove a result. A floor is a minimum amount of evidence below which a statistic means nothing (coupling from one shared change), and it is reported as such. Output is capped by explicit limits (`--limit`, `--partners`, `--top`) that say how many results were left out.
+
+**Where the defaults come from.** CodeScene documents no default for coupling thresholds, hotspot windows or trend direction. The coupling constants follow Tornhill's code-maat defaults and the examples in CodeScene's change-coupling documentation (minimum shared revisions 5, degree 30 %, changeset size 30). The rest are judgement calls and are recorded as such below.
+
+**Clusters and change magnets.** A cluster needs at least three folders, which is its definition in the table above. A change magnet is a file whose coupled neighbours sit in at least three folders and where at most 25 % of the cross-folder neighbour pairs are themselves coupled: a star, not a clique. The folder count and the 25 % are guidelines and judgement calls. Magnets are reported on their cluster. A cluster's score is folders times spread times mean degree divided by 100, and the output is sorted by it, then path. A star over four folders therefore ranks above a tight pair in two. Ranking by degree alone, as CodeScene's change-coupling view does, would put the tight pair first.
+
+**Test drift.** A file with a sibling test (by naming convention, or in a `__tests__` folder) that has at least `minSupport` revisions and no change shared with its test gets `test-drift`. `minSupport` is the floor: under it there are too few changes to say the test never follows. The change that created the test does not count as shared. Files only.
+
+**Complexity trend.** `trend` samples up to `--samples` revisions (default 10, at least 2) of the indentation proxy. The summary prints the first and last values, the relative `changeRatio`, the `guideline` (0.2, a judgement call) and the `peak` sample, so a spike between the ends is visible. The direction label is `worsening` at or above the guideline, `improving` at or below its negative, `stable` between, and `insufficient` with fewer than two samples or a binary file. A zero first sample with a non-zero last counts as a ratio of 1. It is never stored.
+
+**Logical change grouping.** Issue-key grouping uses the pattern `[A-Z][A-Z0-9]+-\d+`, skips the prefixes `UTF`, `SHA` and `ISO`, and chains commits only within 90 days of the previous commit of the key. Author-window grouping defaults to 4 hours. Grouping is applied after filters. A grouped change sums line counts and takes path, blob and status from its last commit. The default is `off`, because the wrong grouping invents coupling. CodeScene's equivalents are its author-and-time and ticket-ID aggregations, and it prefers ticket IDs.
+
+**Commits made through the suite.** A commit that ends with a `Code-Health:` trailer counts in hotspots, coupling and spread by default, since the code it changed did change. Each change carries `suiteCommit`. `excludeSuiteCommits` drops them and counts them in `dropped.suiteCommits`. CodeScene has no such concept.
+
+**Brief.** `brief` lists a file's partners with at least the minimum support, with partners at or above the degree guideline first, then the others, each by confidence, then support, then path. Each partner carries `aboveGuideline`, and `--partners` caps the list with a count of what was left out. The rows carry `hotspotScore`, so the briefing is always partial and is never stored. It computes the whole-repository hotspot ranking, reading every blob unless a current complexity report exists.
+
+**Outcome controls.** Each acted-on file is paired with the untouched file nearest in rank by revisions in the before window. The hotspot score exists only at the analysed commit, so it cannot rank a past window.
 
 ## Privacy
 

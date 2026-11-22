@@ -45,7 +45,7 @@ Out of scope:
 
 **Active developer.** A developer with at least one commit in the activity window (default 6 months). Inactive developers are treated as having left. That is a proxy: people on leave or moved to another repo look inactive. A local overrides file corrects it (see [Privacy](#privacy)).
 
-**Departure.** A developer has left, as of their last commit, when no further commit follows within the activity window. This is the same test as *active*, so someone who commits every few months stays active throughout and never counts as a leaver in a quiet period. Departures in the most recent activity window cannot be known yet, so those periods are left out of rate estimation.
+**Departure.** A developer has left, as of their last commit, when no further commit follows within the activity window. This is the same test as *active*, so someone who commits every few months stays active throughout and never counts as a leaver in a period with few commits. Departures in the most recent activity window cannot be known yet, so those periods are left out of rate estimation.
 
 **Turnover rate.** Per period (default quarter): the developers whose departure falls in that period, over the developers active at its start. It is estimated from history, or set explicitly in config.
 
@@ -162,12 +162,50 @@ In `cochange.knowledge`:
 
 - `enabled` (default false).
 - Activity window, period length, horizon.
-- Abandonment threshold (default 0.9).
+- Abandonment threshold (default 90, as a percentage).
 - Turnover rate override.
 - Trials, α values, seed.
 - Ranking mode.
 
 Local, never committed: `.code-health/local/knowledge-overrides.json`, holding activity overrides by identity.
+
+## Resolved definitions
+
+Where the sections above leave a definition open, these apply. Constants marked *guideline* label and order results and are reported next to the measured value. They never hide a result.
+
+**Blame options and cache.** Authorship is blamed with `-w -M -C` and `--ignore-revs-file` built from `.git-blame-ignore-revs` in the tree at the analysed ref, the same options CodeScene's knowledge analysis relies on (it follows moved code and credits original authors). The cache is keyed by blob, and each row records the commit it was made at and the blame options it was made with (the `-C` setting and the ignore-revs list), so a change to either re-blames. Identities are never stored, so a mailmap change needs no re-blame. `blame refresh` is not behind the opt-in because it stores commit SHAs and line counts only.
+
+**Opt-in.** Every `abandonment` subcommand and `successors` exits 2 with code `knowledge-disabled` when `knowledge.enabled` is false, before it reads history. The overrides file is `{schemaVersion, active, inactive}`, which the CLI only reads. An identity in both lists is a config error. The file holds identities, so it belongs in `.code-health/local/`, which is git-ignored ([suite.md](suite.md#local-state)).
+
+**Configuration units and defaults.** Percentages are numbers from 0 to 100, periods are counted in months.
+
+| Setting | Default | Source |
+|---|---|---|
+| `abandonmentThreshold` | 90 (percent of lines) | Rigby et al. |
+| `concentratedTailRatio` | 3 | *Guideline.* Rigby et al.: tail losses more than three times the expected loss |
+| `atRiskProbability` | 10 (percent) | *Guideline.* Judgement call |
+| `activityWindowMonths` | 6 | Judgement call. CodeScene documents no inactivity period (ex-developers are configured by hand), so this is the suite's own |
+| `periodMonths`, `horizonPeriods` | 3, 4 | Judgement call. One year of quarters |
+| `turnoverRate` | null (estimated from history) | Estimated, never invented |
+| `trials`, `alphas`, `seed` | 10000, [95, 99], 1 | Rigby et al. for the alphas; the rest are judgement calls |
+
+**Active developer.** Active means a committer date within the activity window before the analysed commit, with a month of 30.4375 days. Committer date is used because it is when the work reached the history, and it is the date the suite anchors every window to. Identities go through the mailmap (working tree and local), and bots, services and agents are excluded. It does not depend on the opt-in, and the history `windowMonths` does not govern it.
+
+**Departure and turnover rate.** A tenure ends at a developer's last commit only when the next commit is at least a window later, or when a full window has passed since the last commit. A developer who returns starts a new tenure, so a returner counts as a new hire. The rate for a period is departures over tenures active at its start. Periods that end within the last window, and periods with nobody at risk, are left out. With no usable period the rate is null and commands ask for a configured rate. The tool does not guess one.
+
+**Loss, knowledge at risk and tail ratio.** Loss is measured in lines, with files reported alongside, as an increment over the baseline and as a total. KaR is the nearest-rank percentile of the trials. Expected tail loss is the mean of the trials at or beyond KaR. The headline tail ratio is the one on the increment, since a large baseline dilutes the ratio on the total. Both are printed.
+
+**Per-file tail share and concentration.** `tailShare` is the share of the tail trials in which the file is lost. A tail trial is one whose files lost reach KaR at the lowest alpha. A component's `tailRatio` is the tail ratio of its line increment at the lowest alpha. Each component row prints `tailRatio`, the `guideline` and `ratioToGuideline`. The `concentrated-component` finding is added when the ratio is at or above the guideline, and the finding is a label for investigation. Components are sorted by expected loss, not by the ratio. The `(unassigned)` group is a row like any other, with its size, and is never given the finding, because it is not a unit anyone owns.
+
+**Simulation modes.** `rate` draws one uniform number per developer per trial, so loss never decreases as the rate rises. `historical` resamples the horizon's worth of observed per-period rates with replacement and compounds them. It ignores a configured rate, and `selection.configuredRateIgnored` is true when there was one. It exits 2 when there is no usable period. `k-leavers` needs `--k`, at most the number of active developers.
+
+**Ranking.** A file's rank score is its abandonment probability times its hotspot percentile. The percentile is the mid-rank percentile of the score `cochange hotspots` gives the file, so the word hotspot means the same here as in that command. A file the analysis window never saw change has percentile 0. Ties are broken by probability, then path. The `current` view uses the abandoned share times the percentile, or abandoned lines with `--rank abandonment`. A file is at risk when its probability is at or above `atRiskProbability` and it is not already abandoned. Files below the guideline are still listed, lower down, and `--top N` limits the list with a count of what was left out.
+
+**Successors.** A candidate's score is the sum over coupled files of (degree / 100) times the candidate's eligible changes in the window, plus the candidate's share of lines in the file as a fraction from 0 to 1. The share breaks ties between candidates with the same coupled changes. A file with no coupled files, or none that an active developer has changed, is `no-successor`: the tool has no coordination evidence for it, which is a statement about the evidence and not about ownership. Names are printed only with `--names`, and only for active developers.
+
+**Backtest.** `--at` is the end of that day in UTC, and the default is one horizon before the analysed commit. The state is taken at the last non-merge commit at or before it. Candidates are files present at both dates and not abandoned at the first. A file is matched across the two dates by its stable file identity, as everywhere else in the suite, so a file renamed in between is the same file. A file is predicted when its probability is at or above `atRiskProbability`: precision and recall need that cut, and every row carries its probability. Files predicted and gone are counted in `goneByOutcome` and not scored. Overrides and hotspot weighting are not applied to the past.
+
+**Stored report.** Abandonment output is stored only as `reports/cochange.abandonment.simulate.json`, from a run that takes everything from config. It holds files, components and probabilities, and no identity. `abandoned-touched` in [change-risk](change-risk.md) uses it only when the stamp, config hash, mode and overrides match, and not for changes in the worktree.
 
 ## Decisions
 

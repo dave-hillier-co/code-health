@@ -71,13 +71,13 @@ Subcommands of the cochange CLI. Every one supports `--json`.
 | `cochange identities propose` | Proposed clusters and chains, each link with its signals and strength. Excludes recorded rejections. Deterministic ordering. |
 | `cochange identities classify` | Proposed bot, service and agent classifications with the pattern that matched |
 | `cochange identities apply --from FILE` | Writes `.mailmap` entries and decisions from an agent-prepared, user-approved decisions JSON. Dry run by default, `--apply` to write. |
-| `cochange identities check` | Validates the mapping: unmapped identities with significant activity, emails mapped to two people, and clusters with counter-evidence. Exits 1 on conflicts. |
+| `cochange identities check` | Validates the mapping: unmapped identities with significant activity, emails mapped to two people, and clusters with counter-evidence. Exits 1 on conflicts, not on unmapped identities. |
 
 `apply` preserves existing `.mailmap` entries and comments, sorts new entries deterministically and never removes a line without the user asking.
 
 ## Skill
 
-Skill name `identities`, in `plugins/cochange/skills/identities/`. It triggers on mailmap, duplicate authors and contributor lists. The abandonment skill invokes it when `identities check` reports significant unmapped or conflicting identities. Its threshold is unmapped identities holding more than a configured share of lines at HEAD.
+Skill name `identities`, in `plugins/cochange/skills/identities/`. It triggers on mailmap, duplicate authors and contributor lists. The abandonment skill invokes it when `identities check` reports significant unmapped or conflicting identities. Its guideline is unmapped identities holding more than a configured share of lines at HEAD.
 
 Workflow:
 
@@ -121,8 +121,24 @@ In `cochange.identities`:
 
 - Mapping location (committed or local).
 - Bot and service patterns. This is the one place they are configured. Cochange's noise filters and the abandonment skill read them from here, together with the classifications in the decisions file.
-- The unmapped-share threshold that makes the abandonment skill invoke this one.
+- The unmapped-share guideline (`unmappedShareThreshold`) above which the abandonment skill uses this one first, and the `significantCommits` guideline.
 - Agent trailer patterns.
+
+## Resolved definitions
+
+Numbers here are guidelines or floors, as in [cochange.md](cochange.md#resolved-definitions). They order and label evidence and are printed with it. None of them removes an identity from a report. CodeScene maps identities from an explicit `.mailmap` or a hand-merged alias list and never merges automatically, so the defaults are conservative: a missed merge costs a review, a wrong merge corrupts results.
+
+**What `check` does with each finding.** Exit 1 is for conflicts, which are what the table above lists: an address under two mapped identities, a merge a recorded decision rejects, and joined identities (or pending proposals) with counter-evidence. These are errors in the mapping that the user asked `check` to validate, so `check` gates on them. Unmapped identities are never a failure. They are all listed, ordered by lines at HEAD, then window commits, with `aboveGuideline` set when the identity holds lines or has at least `significantCommits` (default 3, a judgement call) commits in the window. CodeScene treats unresolved aliases as a data-quality warning, and this matches it.
+
+**Mapped share.** An identity is unmapped while any proposal that is not rejected names it. `mappedShare` is the share of people's lines held by identities no such proposal names, with bots, services and agents left out of the denominator. A proposal that is pending and wrong therefore counts as unresolved. `needsIdentityReview` is true when the unmapped share exceeds `unmappedShareThreshold` (default 5 percent, a judgement call). It is a guideline for deciding whether to use this skill first, and the measured share is printed beside it.
+
+**Evidence constants.** A handover is a gap of at most 90 days or an overlap of at most 14 days between one identity's last commit and the other's first. Counter-evidence is computed only for links without a strong signal, since a strong signal outranks it. Simultaneous activity is compared by week, in areas given by the first two folders of each path. A shared signing key is a strong signal, and platform keys are ignored as in the table. Both day counts are judgement calls. They decide which proposals the agent is shown, and never which are applied.
+
+**Canonical identity.** `apply` never picks one. Each merge in the approved decisions file names its canonical identity and its aliases. Rejections and classifications are matched on the identity as written, ignoring case.
+
+**Mailmap source.** Identity commands read the working-tree `.mailmap` and the local mailmap through `git check-mailmap`, so an uncommitted mapping shows at once. Every other command reads the `.mailmap` blob at the analysed ref plus the local mailmap, so reports stay reproducible at a commit. Where a decision is written follows `--location`, then config, then the files present. With none of those, `apply` refuses and tells the agent to ask the user.
+
+**Non-person filtering.** `filtersApplied.botPatterns` lists the configured patterns. `filtersApplied.nonPerson` lists the built-in bot patterns and service names, the configured service patterns and the number of reviewed decisions. Commits dropped by any of them are counted in `dropped.botCommits`.
 
 ## Open questions
 

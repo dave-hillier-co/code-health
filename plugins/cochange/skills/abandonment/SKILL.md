@@ -8,7 +8,7 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs *)
 
 Code whose authors have all left is costlier to change. Their assumptions are gone, reviewers lack context, and nobody remembers why it is the way it is. Turnover is normal, so the question is not whether knowledge will be lost but how much, where, and with what tail risk. This skill measures that across many random scenarios instead of reporting one bus-factor number. The CLI computes the facts. You say what they mean and what to do.
 
-The method is Rigby, Zhu, Donadelli and Mockus (ICSE 2016): a line is abandoned when its last author has left, a file when at least 90 percent of its lines are, and loss is simulated over many turnover scenarios. Definitions and thresholds: [references/method.md](references/method.md). Every command and field: [references/commands.md](references/commands.md).
+The method is Rigby, Zhu, Donadelli and Mockus (ICSE 2016): a line is abandoned when its last author has left, a file when at least 90 percent of its lines are, and loss is simulated over many turnover scenarios. Definitions and guidelines: [references/method.md](references/method.md). Every command and field: [references/commands.md](references/commands.md).
 
 ## Rules about people
 
@@ -67,7 +67,7 @@ The backtest tells you whether the model is calibrated for this repository at al
 
 - Inactivity is a proxy. Someone on leave or moved to another repository looks inactive until an override says otherwise.
 - Blame measures authorship, not understanding. A line's last author may not know why it is there, and a reviewer may know a file well without a line in it.
-- The 90 percent threshold is a convention, and every threshold here is configurable.
+- The 90 percent abandonment share is the paper's convention, and the at-risk probability and tail ratio are guidelines that order and label files. Each is configurable, and none hides a file.
 - Turnover is assumed random. Occasional contributors leave at a higher rate than established ones, so one pooled rate can overstate the loss of core authors.
 - Agent-authored lines have no knowledge to lose. How to attribute them is an open policy question, not something to decide silently.
 - Renamed files are followed by blame, but a backtest compares files by path, so heavy renaming lowers its scores.

@@ -17,11 +17,11 @@ A compact briefing for the files about to be changed. One row per file, in path 
 | `frequency`, `recentRevisions` | Logical changes in the analysis window, and in the recent window. |
 | `lastChanged`, `ageDays` | Last revision, and days from it to the analysed commit. |
 | `hotspotScore`, `recommendation` | The score `hotspots` gives the file, and `hotspot` when it is one. |
-| `alongside` | Files that change with it, strongest confidence first: `confidence` (percent of changes to this file that also touched the partner), `reverseConfidence`, `degree`, `support`, `distance`. |
-| `alongsideNotShown` | Partners that qualified but were cut by `--partners N` (default 5). |
-| `note` | Why a row is empty: a new file or wrong path, no revisions in the window, or no partner reaching the minimums. |
+| `alongside` | Files that change with it: `confidence` (percent of changes to this file that also touched the partner), `reverseConfidence`, `degree`, `support`, `distance`, and `aboveGuideline` (degree at or above `cochange.minDegree`). Partners at or above the guideline come first, then the rest, each strongest confidence first. |
+| `alongsideNotShown` | Partners with enough support that were cut by `--partners N` (default 5). |
+| `note` | Why a row is empty: a new file or wrong path, no revisions in the window, or no partner with enough shared changes, or none at the degree guideline. |
 
-A partner appears only when its support and degree reach `cochange.minSupport` and `cochange.minDegree`, and the partner still exists. `brief` is never stored as a report. It reads absolute paths inside the repository and strips `./`.
+A partner is listed when its support reaches `cochange.minSupport` (below that the shared changes are too few to mean anything) and the partner still exists. `cochange.minDegree` is a guideline: partners under it are listed after the others and marked. `brief` is never stored as a report. It reads absolute paths inside the repository and strips `./`.
 
 ## hotspots [--by file|component]
 
@@ -43,7 +43,7 @@ Connected components of the coupled-pair graph above the coupling minimums, rank
 
 ## trend PATH [--samples N]
 
-One file's indentation complexity, lines and bytes at up to N revisions (default 10, from 2 to 500) spread evenly over its history, the first and the last always included. `direction` is `worsening` or `improving` when complexity moved by at least 20 percent from the first sample to the last, `stable` otherwise, and `insufficient` with fewer than two samples. Samples are read from blobs, so no checkout is needed.
+One file's indentation complexity, lines and bytes at up to N revisions (default 10, from 2 to 500) spread evenly over its history, the first and the last always included. The summary prints `changeRatio` (last against first), the `guideline` of 0.2, and the `peak` sample. `direction` is `worsening` or `improving` when the ratio is at or beyond the guideline in that direction, `stable` otherwise, and `insufficient` with fewer than two samples. Read the ratio and the peak, not only the label. Samples are read from blobs, so no checkout is needed.
 
 ## spread [--since DATE] [--until DATE] [--bucket week|month]
 

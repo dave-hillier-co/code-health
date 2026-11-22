@@ -51,7 +51,7 @@ Run this before a non-trivial task, on the files you expect to edit. Skip it for
 2. For each file, read `alongside`. Each entry names a file that changed in the same logical change `confidence` percent of the time (`reverseConfidence` is the other direction), with its `support` and tree `distance`.
 3. Open the strongest partners deliberately, before editing, and decide whether this change needs them. A sibling test is expected. A distant partner is the interesting one.
 4. If `recommendation` is `hotspot`, say so: the file is complex and changes often, so keep the change small and check its tests first.
-5. If `note` is set, the file has no evidence (new file, quiet file, wrong path). Say that and go on.
+5. If `note` is set, the file has no evidence (new file, a file with no revisions in the window, wrong path). Say that and go on.
 
 Partners are evidence of what usually changed, not a requirement. A partner you leave alone should be a decision you can state.
 
