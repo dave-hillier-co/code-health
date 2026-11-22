@@ -272,8 +272,8 @@ test("identities that share no key and nothing else are not linked by their keys
   expect(links).toEqual([]);
 });
 
-// Each signal's threshold, pinned on both sides of the boundary, so a changed number cannot pass by regenerating a golden.
-describe("thresholds", () => {
+// Each signal's guideline, pinned on both sides of the boundary, so a changed number cannot pass by regenerating a golden.
+describe("guidelines", () => {
   const named = (firstDay: number, lastDay: number, email: string): Spec => ({ name: "Ann Lee", email, firstDay, lastDay, files: ["src/a.ts"] });
 
   test.each([

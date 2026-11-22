@@ -214,7 +214,7 @@ export async function measureOutcome(
   const date = Number((await runGit(root, ["log", "-1", "--format=%ct", at])).trim());
   const startedAt = Number((await runGit(root, ["log", "-1", "--format=%ct", first])).trim());
 
-  const history = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...exclude], excludeSuiteCommits: true } });
+  const history = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize, excludeSuiteCommits: true } });
   const headDate = history.view.headDate;
   // Matching windows: the after window is as long as the before window, or ends where the history does.
   const fullEnd = monthsBefore(date, -settings.windowMonths);

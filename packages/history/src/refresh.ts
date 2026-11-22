@@ -1,3 +1,4 @@
+import { historyDefaults } from "@code-health/cli-kit/config";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ensureCacheDir, locateCache } from "./cache-location.ts";
@@ -44,8 +45,8 @@ export interface RefreshResult {
   gitVersion: string;
 }
 
-export const DEFAULT_SIMILARITY = 50;
-export const DEFAULT_RENAME_LIMIT = 1000;
+export const DEFAULT_SIMILARITY = historyDefaults.renameSimilarity;
+export const DEFAULT_RENAME_LIMIT = historyDefaults.renameLimit;
 
 export async function readShallowInfo(repoPath: string): Promise<ShallowInfo> {
   const out = (await runGit(repoPath, ["rev-parse", "--is-shallow-repository", "--path-format=absolute", "--git-common-dir"]))

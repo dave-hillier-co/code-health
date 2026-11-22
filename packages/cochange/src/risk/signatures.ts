@@ -126,7 +126,7 @@ export function withSignatures(factor: Factor, result: SignatureResult, risk: Ri
     reason: band === null ? factor.reason : null,
     source: joinSources(factor.source, "parse"),
     value: { ...factor.value, signatureChanges: result.changes.length, symbolFanIn: fanIn },
-    thresholds: { ...factor.thresholds, ...(cutoffs === null ? {} : { symbolFanIn: { moderate: cutoffs.moderate, high: cutoffs.high } }) },
+    guidelines: { ...factor.guidelines, ...(cutoffs === null ? {} : { symbolFanIn: { moderate: cutoffs.moderate, high: cutoffs.high } }) },
     evidence: [...factor.evidence, ...rows.slice(0, 5).map((row) => ({ file: row.file, symbol: row.symbol, change: row.change, fanIn: row.fanIn, from: "parse" }))],
   };
 }

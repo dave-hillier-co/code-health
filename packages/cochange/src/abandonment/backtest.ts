@@ -98,7 +98,7 @@ export async function backtestCommand(context: CommandContext): Promise<CommandO
     trials: sim.trials,
     seed: sim.seed,
     alphas: settings.alphas,
-    thresholdPercent: settings.abandonmentThreshold,
+    guidelinePercent: settings.abandonmentGuideline,
     components: readComponents(context.config.effective.components),
   });
 
@@ -107,8 +107,8 @@ export async function backtestCommand(context: CommandContext): Promise<CommandO
   const identityBefore = (path: string): string => history.view.renames.resolve(path, positionOf(startSha));
   const identityAfter = (path: string): string => history.view.renames.resolve(path, positionOf(outcomeSha));
   const pathOf = new Map(before.model.files.map((f) => [identityBefore(f.path), f.path]));
-  const abandonedBefore = new Set(measureCurrent(before.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => identityBefore(f.path)));
-  const abandonedAfter = new Set(measureCurrent(after.model, settings.abandonmentThreshold).filter((f) => f.abandoned).map((f) => identityAfter(f.path)));
+  const abandonedBefore = new Set(measureCurrent(before.model, settings.abandonmentGuideline).filter((f) => f.abandoned).map((f) => identityBefore(f.path)));
+  const abandonedAfter = new Set(measureCurrent(after.model, settings.abandonmentGuideline).filter((f) => f.abandoned).map((f) => identityAfter(f.path)));
   const present = new Set(pathOf.keys());
   const survivors = new Set(after.model.files.map((f) => identityAfter(f.path)));
   // Files that exist at both dates and were not abandoned at the first: the ones a prediction can be right or wrong about.
@@ -140,7 +140,7 @@ export async function backtestCommand(context: CommandContext): Promise<CommandO
       seed: sim.seed,
       alphas: settings.alphas,
       atRiskProbability: settings.atRiskProbability,
-      abandonmentThreshold: settings.abandonmentThreshold,
+      abandonmentGuideline: settings.abandonmentGuideline,
       activityWindowMonths: settings.activityWindowMonths,
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,
@@ -165,7 +165,7 @@ export async function backtestCommand(context: CommandContext): Promise<CommandO
       truePositives: score.hits.length,
       precision: score.precision === null ? null : round4(score.precision),
       recall: score.recall === null ? null : round4(score.recall),
-      // What the model expected against what happened, over every file, whether or not it crossed the threshold.
+      // What the model expected against what happened, over every file, whether or not it crossed the guideline.
       expectedAbandoned: round4(candidates.reduce((sum, path) => sum + probability.get(path)!, 0)),
       files: rows,
     },

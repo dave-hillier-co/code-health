@@ -61,8 +61,8 @@ test("the installed bundle exits 1 when check finds a violation and 0 when it do
   });
   const worse = bundled("check", "--base", "HEAD~1", "--json");
   expect(worse.status).toBe(0);
-  const config = JSON.stringify({ complexity: { thresholds: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } } } });
-  repo.commit({ message: "Configure thresholds", date: "2024-02-02T00:00:00+00:00", changes: [{ op: "add", path: "code-health.json", content: config }] });
+  const config = JSON.stringify({ complexity: { guidelines: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } } } });
+  repo.commit({ message: "Configure guidelines", date: "2024-02-02T00:00:00+00:00", changes: [{ op: "add", path: "code-health.json", content: config }] });
   const failing = bundled("check", "--base", "HEAD~2", "--json");
   expect(failing.status).toBe(1);
   expect(JSON.parse(failing.stdout).results.length).toBeGreaterThan(0);

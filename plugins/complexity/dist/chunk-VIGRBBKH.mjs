@@ -4,18 +4,17 @@ import {
   DEFAULT_BUDGET_MS
 } from "./chunk-VGE2F7S4.mjs";
 import {
-  loadConfig
-} from "./chunk-SHUVV6HF.mjs";
-import {
   analyseSource,
   bumpyRoadLimits,
   complexityConfig,
   ensureSelfIgnoring,
+  guidelinesFor,
   readSettings,
-  runGit,
-  thresholdsFor
-} from "./chunk-NJM4DZV3.mjs";
-import "./chunk-T3PHNALX.mjs";
+  runGit
+} from "./chunk-IQ5YOB6H.mjs";
+import {
+  loadConfig
+} from "./chunk-Q2L3NSZB.mjs";
 import "./chunk-NYIILDEN.mjs";
 
 // packages/complexity/src/hook.ts
@@ -209,7 +208,7 @@ function measureFile(path, text, options) {
   const analysis = analyseSource(path, text, {
     agreementBar: options.agreementBar,
     mappings: options.languageProfiles,
-    bumpyRoad: bumpyRoadLimits(options.thresholds)
+    bumpyRoad: bumpyRoadLimits(options.guidelines)
   });
   if (analysis.functions.gated) return { unmeasured: analysis.functions.reason };
   if (analysis.unverified) return { unmeasured: "the profile was mapped by config, so its per-function values are unverified" };
@@ -229,24 +228,24 @@ function measureFile(path, text, options) {
   }
   return { measurement };
 }
-function limitOf(metric, thresholds) {
-  if (metric === "nesting") return thresholds.nesting;
-  if (metric === "keyword") return thresholds.cyclomatic.warn - 1;
+function limitOf(metric, guidelines) {
+  if (metric === "nesting") return guidelines.nesting;
+  if (metric === "keyword") return guidelines.cyclomatic.warn - 1;
   return void 0;
 }
-var isOver = (metric, values, thresholds) => {
-  const limit = limitOf(metric, thresholds);
+var isOver = (metric, values, guidelines) => {
+  const limit = limitOf(metric, guidelines);
   return limit === void 0 ? values.bumpy === 1 : values[metric] > limit;
 };
-function findingsFor(before, after, thresholds, delta) {
+function findingsFor(before, after, guidelines, delta) {
   const findings = [];
   for (const [unit, values] of Object.entries(after)) {
     const earlier = before[unit];
     for (const metric of hookMetrics) {
-      if (!isOver(metric, values, thresholds)) continue;
+      if (!isOver(metric, values, guidelines)) continue;
       const was = earlier?.[metric];
-      if (earlier !== void 0 && isOver(metric, earlier, thresholds) && values[metric] - (was ?? 0) <= delta) continue;
-      const limit = limitOf(metric, thresholds);
+      if (earlier !== void 0 && isOver(metric, earlier, guidelines) && values[metric] - (was ?? 0) <= delta) continue;
+      const limit = limitOf(metric, guidelines);
       findings.push({
         unit,
         metric,
@@ -276,7 +275,7 @@ var MAX_BYTES = 1e6;
 async function measurementAtHead(root, file, settings) {
   try {
     const text = await runGit(root, ["show", `HEAD:${file}`]);
-    const measured = measureFile(file, text, { ...settings, thresholds: thresholdsFor(settings, file) });
+    const measured = measureFile(file, text, { ...settings, guidelines: guidelinesFor(settings, file) });
     return "measurement" in measured ? measured.measurement : {};
   } catch {
     return {};
@@ -295,10 +294,10 @@ async function consider(root, file, settings, previous) {
   if (!settings.analyseTests && await isTestPath(file)) return { note: null, outcome: "printed nothing: tests are not analysed" };
   const text = readFileSync2(join4(root, file), "utf8");
   if (text.length > MAX_BYTES || text.includes("\0")) return { note: null, outcome: "printed nothing: the file is binary or too large" };
-  const measured = measureFile(file, text, { ...settings, thresholds: thresholdsFor(settings, file) });
+  const measured = measureFile(file, text, { ...settings, guidelines: guidelinesFor(settings, file) });
   if ("unmeasured" in measured) return { note: null, outcome: `printed nothing: no per-function metrics (${measured.unmeasured})` };
   const before = previous ?? await measurementAtHead(root, file, settings);
-  const findings = findingsFor(before, measured.measurement, thresholdsFor(settings, file), settings.delta);
+  const findings = findingsFor(before, measured.measurement, guidelinesFor(settings, file), settings.delta);
   if (findings.length === 0) {
     return { note: null, outcome: "printed nothing: nothing went above a guideline or worsened", measurement: measured.measurement };
   }

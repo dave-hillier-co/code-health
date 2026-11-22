@@ -40,6 +40,6 @@ One row per path: `abandoned`, `coupledFiles` (`path`, `degree`, `support`), `ca
 
 ## Configuration (`cochange.knowledge`)
 
-`enabled` (false), `activityWindowMonths` (6), `periodMonths` (3), `horizonPeriods` (4), `abandonmentThreshold` (90), `turnoverRate` (null, a percentage per period), `trials` (10000), `alphas` ([95, 99]), `seed` (1), `rank` (`hotspot`), `copyDetection` (true), `atRiskProbability` (10), `concentratedTailRatio` (3).
+`enabled` (false), `activityWindowMonths` (6), `periodMonths` (3), `horizonPeriods` (4), `abandonmentGuideline` (90), `turnoverRate` (null, a percentage per period), `trials` (10000), `alphas` ([95, 99]), `seed` (1), `rank` (`hotspot`), `copyDetection` (true), `atRiskProbability` (10), `concentratedTailRatio` (3).
 
 Local, never committed: `.code-health/local/knowledge-overrides.json`, `{ "schemaVersion": 1, "active": ["Name <email>"], "inactive": ["Name <email>"] }`.

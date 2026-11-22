@@ -33,9 +33,9 @@ First-seen and last-changed over all usable history, oldest change first. Fields
 
 ## coupling [--file PATH] [--min-degree D] [--min-support S]
 
-Pairs of files that changed in the same logical change. Fields: `path`, `with`, `degree`, `confidence` (path to with), `reverseConfidence`, `support`, `distance`, `findings` (`distant-coupling`, `asymmetric-coupling`), `dependent` (for an asymmetric pair, the file that depends on the other). With `--file`, the named file leads every row. The output states the eligible population, and a `note` when nothing reaches the thresholds. Lowering `--min-support` lists weaker pairs but never promotes them to findings.
+Pairs of files that changed in the same logical change. Fields: `path`, `with`, `degree`, `confidence` (path to with), `reverseConfidence`, `support`, `distance`, `findings` (`distant-coupling`, `asymmetric-coupling`), `dependent` (for an asymmetric pair, the file that depends on the other). With `--file`, the named file leads every row. The output states the eligible population, and a `note` when nothing reaches the guidelines. Lowering `--min-support` lists weaker pairs but never promotes them to findings.
 
-Counts are over eligible logical changes: those at or below `cochange.maxChangesetSize` (default 30 files), after noise filtering. Bulk edits are left out of both sides of every ratio.
+Counts are over eligible logical changes: those at or below `history.maxChangesetSize` (default 30 files, overridable as `cochange.maxChangesetSize`), after noise filtering. Bulk edits are left out of both sides of every ratio.
 
 ## clusters [--min-degree D] [--min-support S]
 
@@ -65,11 +65,22 @@ Applied when the history is read, so config changes need no rebuild: the shared 
 
 The `cochange` section of `code-health.json` at the repository root. Run `config explain` to see every value and its source.
 
-| Setting | Default | Meaning |
+The history settings are shared. Set them once in the top-level `history` section, and set one under the same name in `cochange` only when cochange needs a different value. `config explain` shows which of the two a value came from.
+
+| Shared setting (`history.<name>`, `cochange.<name>` overrides) | Default | Meaning |
 |---|---|---|
-| `windowMonths`, `recentMonths`, `staleMonths` | 12, 3, 12 | Analysis, recent and stale windows, back from the analysed commit's date. |
+| `windowMonths` | 12 | Analysis window, back from the analysed commit's date. |
 | `branch`, `firstParent` | `null`, `false` | The analysed ref, and whether to follow first parents only. |
 | `maxChangesetSize` | 30 | Larger changes count for frequency but not for coupling or spread. |
+| `botPatterns` | `[]` | Regular expressions matched against `Name <email>`. Commits by matching authors are left out. |
+| `renameSimilarity`, `renameLimit` | 50, 1000 | Rename detection for git's `-M`. |
+| `evidence` | see the schema | Guidelines that grade the evidence of a history. |
+
+The settings of the section itself:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `recentMonths`, `staleMonths` | 3, 12 | Recent and stale windows, back from the analysed commit's date. |
 | `minSupport`, `minDegree`, `minDistance` | 5, 30, 2 | Coupling minimums (degree in percent). |
 | `hotspotPercentile` | 90 | A hotspot is in the top (100 minus this) percent. |
 | `hook` | disabled | See [hook.md](hook.md). |

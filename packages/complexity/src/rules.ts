@@ -13,7 +13,7 @@ export const ruleDescriptions: Record<string, Rule> = {
       "if, ternary, switch, loops and catch, plus the nesting level they sit at. else if, else, a labelled",
       "break or continue, direct recursion and each sequence of like && or || operators cost a flat 1.",
       "?? and ?. are free. Nested functions add to the enclosing function's score.",
-      "Labels: cognitive-warn above the guideline thresholds.cognitive.warn (default 15), cognitive-high above high (25).",
+      "Labels: cognitive-warn above the guideline guidelines.cognitive.warn (default 15), cognitive-high above high (25).",
       "Run `complexity explain path#Unit` to see which construct cost what.",
     ].join("\n"),
   },
@@ -30,7 +30,7 @@ export const ruleDescriptions: Record<string, Rule> = {
     summary: "Nesting depth of control structures",
     explanation: [
       "The deepest nesting of if, loop, switch and try statements in the function. An else if sits at the level of its if.",
-      "Label: nesting-warn above the guideline thresholds.nesting (default 4).",
+      "Label: nesting-warn above the guideline guidelines.nesting (default 4).",
     ].join("\n"),
   },
   parameters: {
@@ -38,7 +38,7 @@ export const ruleDescriptions: Record<string, Rule> = {
     explanation: [
       "Declared parameters. A destructured object parameter counts once, with its properties reported as optionCount,",
       "since option bags are a common route to overexposure.",
-      "Label: parameters-warn above the guideline thresholds.parameters (default 5).",
+      "Label: parameters-warn above the guideline guidelines.parameters (default 5).",
     ].join("\n"),
   },
   length: {
@@ -54,7 +54,7 @@ export const ruleDescriptions: Record<string, Rule> = {
       "Each bump is a separate region of nested logic directly in the function: the body of each branch of an if chain, of a loop, or a whole",
       "switch or try. Structures inside a bump belong to it, and a body that fits on the line that opens it is not one. The lexical layer",
       "measures the same thing as a run of lines nested two levels or more below the function, opened by a branch keyword.",
-      "A function is a bumpy road at thresholds.bumps bumps (default 3), or thresholds.deepBumps (default 2) when its deepest bump is deeper than thresholds.nesting.",
+      "A function is a bumpy road at guidelines.bumps bumps (default 3), or guidelines.deepBumps (default 2) when its deepest bump is deeper than guidelines.nesting.",
       "Each bump is a responsibility that has not been named. Simplify each in place first, with guard clauses or by flattening.",
       "Extract a bump only when it is a distinct responsibility, as a deep, well-named local function.",
     ].join("\n"),

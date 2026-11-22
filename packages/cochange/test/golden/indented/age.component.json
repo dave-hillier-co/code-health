@@ -9,9 +9,7 @@
       "shifted": false
     },
     "grade": "weak",
-    "importedHistory": [],
-    "logicalChangesInWindow": 10,
-    "thresholds": {
+    "guidelines": {
       "moderate": {
         "contributors": 2,
         "logicalChanges": 50,
@@ -23,6 +21,8 @@
         "months": 24
       }
     },
+    "importedHistory": [],
+    "logicalChangesInWindow": 10,
     "truncated": {
       "availableSince": null,
       "boundaryCommits": 0,

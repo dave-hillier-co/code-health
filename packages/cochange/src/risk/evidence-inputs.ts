@@ -9,7 +9,7 @@ import { usageError } from "@code-health/cli-kit/errors";
  * their JSON over, and this CLI never invokes another plugin.
  *
  * Accepted:
- * - `complexity diff --json`, for the change's own base. A unit counts when it is over a threshold
+ * - `complexity diff --json`, for the change's own base. A unit counts when it is over a guideline
  *   (a label ending in `-warn` or `-high`) and either new or worse (a positive cognitive delta).
  * - `structure check --json`: its results are the cycles and layer violations new since the base, each
  *   a row with a `kind` of `cycle` or `layer-violation` and an `id`. Every row counts, since the command
@@ -123,8 +123,8 @@ function checkAgainst(file: string, document: Document, change: { base: string; 
   }
 }
 
-/** Units the complexity diff reports as over a threshold and either new or worse. */
-export function overThreshold(evidence: ComplexityEvidence): ComplexityEvidence["units"] {
+/** Units the complexity diff reports as over a guideline and either new or worse. */
+export function aboveGuideline(evidence: ComplexityEvidence): ComplexityEvidence["units"] {
   return evidence.units.filter((unit) => {
     const over = unit.labels.some((label) => /-(warn|high)$/.test(label));
     return over && (unit.change === "added" || (unit.delta ?? 0) > 0);

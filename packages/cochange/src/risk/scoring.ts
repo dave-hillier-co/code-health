@@ -29,7 +29,7 @@ export interface BandResult {
   band: FactorBand;
   reason: string | null;
   /** For each series, the values above which the factor is moderate and high. Null when no baseline could set them. */
-  thresholds: Record<string, { moderate: number; high: number } | null>;
+  guidelines: Record<string, { moderate: number; high: number } | null>;
 }
 
 /** Places measurements against a baseline population of measurements made the same way, as of their own time. */
@@ -48,18 +48,18 @@ export function makeBander(baseline: readonly (readonly Measurement[])[], settin
   };
 
   return (measurement) => {
-    if (measurement.unavailable !== null) return { band: "unavailable", reason: measurement.unavailable, thresholds: {} };
+    if (measurement.unavailable !== null) return { band: "unavailable", reason: measurement.unavailable, guidelines: {} };
     if (measurement.kind === "count") {
-      const thresholds = { moderate: settings.countModerate, high: settings.countHigh };
+      const guidelines = { moderate: settings.countModerate, high: settings.countHigh };
       const count = Object.values(measurement.series)[0] ?? 0;
-      return { band: bandCount(count, thresholds), reason: null, thresholds: { count: thresholds } };
+      return { band: bandCount(count, guidelines), reason: null, guidelines: { count: guidelines } };
     }
     let band: Band = "low";
     let reason: string | null = null;
-    const thresholds: BandResult["thresholds"] = {};
+    const guidelines: BandResult["guidelines"] = {};
     for (const [series, value] of Object.entries(measurement.series)) {
       const found = cutoffs(measurement.name, series);
-      thresholds[series] = found === null ? null : { moderate: found.moderate, high: found.high };
+      guidelines[series] = found === null ? null : { moderate: found.moderate, high: found.high };
       if (found === null) {
         if (value > 0) reason = `fewer than ${settings.minBaseline} merged changes in the baseline, so a value of ${value} cannot be placed`;
         continue;
@@ -67,8 +67,8 @@ export function makeBander(baseline: readonly (readonly Measurement[])[], settin
       band = higherBand(band, bandAgainst(value, found));
     }
     // A value above zero that could not be placed is unknown, not low. Zero is low whatever the baseline.
-    if (reason !== null && band === "low") return { band: "unavailable", reason, thresholds };
-    return { band, reason: null, thresholds };
+    if (reason !== null && band === "low") return { band: "unavailable", reason, guidelines };
+    return { band, reason: null, guidelines };
   };
 }
 

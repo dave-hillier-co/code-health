@@ -1,3 +1,4 @@
+import { historyDefaults } from "@code-health/cli-kit/config";
 import type { ImportedHistory } from "./imported.ts";
 import { filterHistory, type FilteredHistory, type FiltersApplied, type LogicalChange, type NoiseOptions } from "./noise.ts";
 import { readHistory, type HistoryView, type ReadOptions } from "./read.ts";
@@ -5,7 +6,7 @@ import { readShallowInfo, type ShallowInfo } from "./refresh.ts";
 
 export type Grade = "strong" | "moderate" | "weak";
 
-export interface GradeThreshold {
+export interface GradeGuideline {
   /** Months of usable history. */
   months: number;
   /** Logical changes in the analysis window. */
@@ -14,22 +15,19 @@ export interface GradeThreshold {
   contributors: number;
 }
 
-export interface EvidenceThresholds {
-  strong: GradeThreshold;
-  moderate: GradeThreshold;
+export interface EvidenceGuidelines {
+  strong: GradeGuideline;
+  moderate: GradeGuideline;
 }
 
-export const DEFAULT_EVIDENCE_THRESHOLDS: EvidenceThresholds = {
-  strong: { months: 24, logicalChanges: 300, contributors: 5 },
-  moderate: { months: 6, logicalChanges: 50, contributors: 2 },
-};
+export const DEFAULT_EVIDENCE_GUIDELINES: EvidenceGuidelines = historyDefaults.evidence;
 
-export const DEFAULT_WINDOW_MONTHS = 12;
+export const DEFAULT_WINDOW_MONTHS = historyDefaults.windowMonths;
 
 export interface EvidenceOptions {
   /** Analysis window in months back from the head commit's date. Default 12. */
   windowMonths?: number;
-  thresholds?: EvidenceThresholds;
+  guidelines?: EvidenceGuidelines;
   /** Changes needed in each half before a commit-size shift is reported. Default 20. */
   minChangesForShift?: number;
 }
@@ -63,7 +61,7 @@ export interface Evidence {
   };
   importedHistory: ImportedHistory[];
   commitSize: CommitSize;
-  thresholds: EvidenceThresholds;
+  guidelines: EvidenceGuidelines;
 }
 
 const SECONDS_PER_MONTH = 30.4375 * 86_400;
@@ -97,7 +95,7 @@ function commitSize(changes: readonly LogicalChange[], minChanges: number): Comm
   return { earlierMedian, laterMedian, shifted };
 }
 
-const meets = (t: GradeThreshold, months: number, changes: number, contributors: number) =>
+const meets = (t: GradeGuideline, months: number, changes: number, contributors: number) =>
   months >= t.months && changes >= t.logicalChanges && contributors >= t.contributors;
 
 export function computeEvidence(
@@ -108,7 +106,7 @@ export function computeEvidence(
   options: EvidenceOptions = {},
 ): Evidence {
   const windowMonths = options.windowMonths ?? DEFAULT_WINDOW_MONTHS;
-  const thresholds = options.thresholds ?? DEFAULT_EVIDENCE_THRESHOLDS;
+  const guidelines = options.guidelines ?? DEFAULT_EVIDENCE_GUIDELINES;
   const until = view.headDate;
   const since = monthsBefore(until, windowMonths);
 
@@ -122,9 +120,9 @@ export function computeEvidence(
   const inWindow = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
   const contributors = new Set(inWindow.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
 
-  const grade: Grade = meets(thresholds.strong, usableHistoryMonths, inWindow.length, contributors.size)
+  const grade: Grade = meets(guidelines.strong, usableHistoryMonths, inWindow.length, contributors.size)
     ? "strong"
-    : meets(thresholds.moderate, usableHistoryMonths, inWindow.length, contributors.size)
+    : meets(guidelines.moderate, usableHistoryMonths, inWindow.length, contributors.size)
       ? "moderate"
       : "weak";
 
@@ -141,7 +139,7 @@ export function computeEvidence(
     truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
     importedHistory: [...imported],
     commitSize: commitSize(changes, options.minChangesForShift ?? 20),
-    thresholds,
+    guidelines,
   };
 }
 

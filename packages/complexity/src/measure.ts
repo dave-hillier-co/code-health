@@ -7,7 +7,7 @@ import type { ParseCache } from "@code-health/parse/parse-cache";
 import type { FileFacts, UnitFact } from "@code-health/parse/facts";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { UnitKind } from "@code-health/lexical/unit";
-import { thresholdsFor, type ComplexitySettings } from "./config.ts";
+import { guidelinesFor, type ComplexitySettings } from "./config.ts";
 import { isBumpyRoad } from "@code-health/lexical/metrics";
 import { bumpyRoadLimits, structuralValues, type Values } from "./metrics.ts";
 
@@ -30,7 +30,7 @@ export interface UnitRecord {
   /** Properties destructured from object parameters. Structural only. */
   optionCount?: number;
   statements?: number;
-  /** The unit is a bumpy road at the thresholds that apply to its path. */
+  /** The unit is a bumpy road at the guidelines that apply to its path. */
   bumpyRoad?: boolean;
   /** Lexical blocks only: the profile was mapped by config, so nothing measures the values' accuracy. */
   unverified?: true;
@@ -139,7 +139,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
       const lexical = analyseSource(path, text, {
         agreementBar: settings.agreementBar,
         mappings: settings.languageProfiles,
-        bumpyRoad: bumpyRoadLimits(thresholdsFor(settings, path)),
+        bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path)),
       });
       const language = options.layer === "lexical" ? undefined : await grammars.forPath(path);
       let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean } | undefined;
@@ -183,7 +183,7 @@ function interfaceUnits(path: string, facts: FileFacts): NonNullable<FileRecord[
 
 function structuralUnits(path: string, units: UnitFact[], settings: ComplexitySettings): UnitRecord[] {
   const test = isTestPath(path);
-  const thresholds = thresholdsFor(settings, path);
+  const guidelines = guidelinesFor(settings, path);
   const records: UnitRecord[] = [];
   for (const unit of units) {
     if (unit.metrics === undefined) continue;
@@ -200,7 +200,7 @@ function structuralUnits(path: string, units: UnitFact[], settings: ComplexitySe
       values: structuralValues(unit.metrics, settings.cyclomaticSwitch),
       optionCount: unit.metrics.optionCount,
       statements: unit.metrics.statements,
-      bumpyRoad: isBumpyRoad(unit.metrics, bumpyRoadLimits(thresholds)),
+      bumpyRoad: isBumpyRoad(unit.metrics, bumpyRoadLimits(guidelines)),
       bumpDepth: unit.metrics.bumpDepth,
       bumpSize: unit.metrics.bumpSize,
     });

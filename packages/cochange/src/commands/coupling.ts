@@ -78,7 +78,7 @@ export const command = analysisCommand(name, {
         population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
         note:
           rows.length === 0
-            ? `No pair reaches support ${minSupport} and degree ${minDegree} %. The thresholds were not lowered; a young or sparse history has little coupling evidence.`
+            ? `No pair reaches support ${minSupport} and degree ${minDegree} %. The guidelines were not lowered; a young or sparse history has little coupling evidence.`
             : null,
       },
     };

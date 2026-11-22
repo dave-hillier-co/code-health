@@ -9,16 +9,7 @@
       "shifted": false
     },
     "grade": "weak",
-    "importedHistory": [
-      {
-        "committerDate": 1709283600,
-        "files": 20,
-        "sha": "410687bcc36645be6a9101b3085f3d6b830ec33c",
-        "share": 1
-      }
-    ],
-    "logicalChangesInWindow": 0,
-    "thresholds": {
+    "guidelines": {
       "moderate": {
         "contributors": 2,
         "logicalChanges": 50,
@@ -30,6 +21,15 @@
         "months": 24
       }
     },
+    "importedHistory": [
+      {
+        "committerDate": 1709283600,
+        "files": 20,
+        "sha": "410687bcc36645be6a9101b3085f3d6b830ec33c",
+        "share": 1
+      }
+    ],
+    "logicalChangesInWindow": 0,
     "truncated": {
       "availableSince": null,
       "boundaryCommits": 0,

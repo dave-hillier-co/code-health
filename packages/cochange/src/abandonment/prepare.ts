@@ -34,7 +34,7 @@ export function commonInputs(p: Prepared, subcommand: string, more: Record<strin
     ...more,
     activityWindowMonths: settings.activityWindowMonths,
     periodMonths: settings.periodMonths,
-    abandonmentThreshold: settings.abandonmentThreshold,
+    abandonmentGuideline: settings.abandonmentGuideline,
     copyDetection: settings.copyDetection,
     overrides: { active: knowledge.overrides.active.size, inactive: knowledge.overrides.inactive.size, hash: knowledge.overrides.stamp },
     ...identityStamps(p.history),

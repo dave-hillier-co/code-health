@@ -12,6 +12,7 @@
   },
   "results": [
     {
+      "aboveGuideline": 0,
       "aggregates": {
         "bumps": {
           "max": 1,
@@ -44,7 +45,6 @@
       "interfaceDepth": 37.5,
       "keywordComplexity": 3,
       "lineCount": 13,
-      "overThreshold": 0,
       "passThroughs": 0,
       "path": "src/pricing.ts",
       "profile": "typescript",
@@ -54,6 +54,7 @@
       "unverified": false
     },
     {
+      "aboveGuideline": 0,
       "aggregates": {
         "bumps": {
           "max": 1,
@@ -86,7 +87,6 @@
       "interfaceDepth": null,
       "keywordComplexity": 2,
       "lineCount": 11,
-      "overThreshold": 0,
       "passThroughs": 0,
       "path": "src/total.go",
       "profile": "go",
@@ -96,6 +96,7 @@
       "unverified": false
     },
     {
+      "aboveGuideline": 0,
       "aggregates": null,
       "codeLines": 7,
       "complexity": 6,
@@ -103,7 +104,6 @@
       "interfaceDepth": null,
       "keywordComplexity": null,
       "lineCount": 7,
-      "overThreshold": 0,
       "passThroughs": 0,
       "path": "tools/total.rb",
       "profile": null,
@@ -113,6 +113,7 @@
       "unverified": false
     },
     {
+      "aboveGuideline": 0,
       "aggregates": {
         "bumps": {
           "max": 1,
@@ -145,7 +146,6 @@
       "interfaceDepth": 28,
       "keywordComplexity": 1,
       "lineCount": 7,
-      "overThreshold": 0,
       "passThroughs": 0,
       "path": "test/pricing.test.ts",
       "profile": "typescript",
@@ -155,6 +155,7 @@
       "unverified": false
     },
     {
+      "aboveGuideline": 0,
       "aggregates": null,
       "codeLines": 3,
       "complexity": 1,
@@ -162,7 +163,6 @@
       "interfaceDepth": null,
       "keywordComplexity": null,
       "lineCount": 4,
-      "overThreshold": 0,
       "passThroughs": 0,
       "path": "notes.md",
       "profile": null,
@@ -172,6 +172,7 @@
       "unverified": false
     },
     {
+      "aboveGuideline": 0,
       "aggregates": {
         "bumps": {
           "max": 0,
@@ -204,7 +205,6 @@
       "interfaceDepth": 16,
       "keywordComplexity": 0,
       "lineCount": 3,
-      "overThreshold": 0,
       "passThroughs": 1,
       "path": "src/label.ts",
       "profile": "typescript",

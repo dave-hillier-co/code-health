@@ -48,7 +48,7 @@ describe("complexity diff, as the complexity plugin prints it", () => {
   const file = golden("complexity", "test", "golden", "ratchet-worsened", "diff.json");
   const document = read(file);
 
-  test("units over a threshold that got worse are counted, from its own labels and cognitive delta", () => {
+  test("units over a guideline that got worse are counted, from its own labels and cognitive delta", () => {
     const evidence = readEvidence(scratch, [file], { base: document.inputs.base.sha, head: document.inputs.head.sha, worktree: false });
     expect(evidence.complexity!.units).toEqual([
       { id: "src/pricing.ts#price", path: "src/pricing.ts", change: "changed", cognitive: document.results[0]!.after.cognitive, delta: 1, labels: ["cyclomatic-warn", "cognitive-warn"] },

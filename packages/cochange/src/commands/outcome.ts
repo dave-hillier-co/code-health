@@ -176,7 +176,7 @@ async function completeness(context: CommandContext): Promise<CommandOutput> {
   const dated = [...history.filtered.changes].sort((a, b) => a.committerDate - b.committerDate);
   const couplingChanges = dated.map((c) => ({ files: c.files.map((f) => f.fileId), oversized: c.oversized }));
 
-  // The partners the hook would name for a file: the same support and confidence thresholds, and files that still exist,
+  // The partners the hook would name for a file: the same support and confidence guidelines, and files that still exist,
   // from the changes committed before the session began, which is all the hook could have known.
   const cache = new Map<string, string[]>();
   const partnersNamed = (file: string, session: SessionRecord): string[] => {

@@ -6,7 +6,7 @@ import { reportPath } from "../reports.ts";
 import type { Factor } from "./factor.ts";
 import { bandAgainst, cutoffsOf, higherBand, type Band } from "./bands.ts";
 import type { BranchChange } from "./change.ts";
-import { overThreshold, type EvidenceInputs } from "./evidence-inputs.ts";
+import { aboveGuideline, type EvidenceInputs } from "./evidence-inputs.ts";
 import type { Measurement } from "./measure.ts";
 import type { RiskSettings } from "./settings.ts";
 
@@ -43,7 +43,7 @@ function structureDelta(evidence: EvidenceInputs): Measurement {
 async function complexityDelta(root: string, change: BranchChange, risk: RiskSettings, evidence: EvidenceInputs): Promise<Measurement> {
   const base = { name: "complexity-delta", family: "structure-and-content", kind: "count" } as const;
   if (evidence.complexity !== null) {
-    const units = overThreshold(evidence.complexity);
+    const units = aboveGuideline(evidence.complexity);
     return {
       ...base,
       layer: "structural",
@@ -149,7 +149,7 @@ export function withFanIn(factor: Factor, touched: readonly string[], locality: 
     source: "co-change and locality report",
     reason: band === null ? factor.reason : null,
     value: { ...factor.value, fanIn },
-    thresholds: { ...factor.thresholds, fanIn: cutoffs === null ? null : { moderate: cutoffs.moderate, high: cutoffs.high } },
+    guidelines: { ...factor.guidelines, fanIn: cutoffs === null ? null : { moderate: cutoffs.moderate, high: cutoffs.high } },
     evidence: [...factor.evidence, ...rows.sort((a, b) => b.fanIn - a.fanIn || (a.file < b.file ? -1 : 1)).slice(0, 5).map((row) => ({ ...row, from: "locality" }))],
   };
 }

@@ -92,10 +92,10 @@ describe("analyse", () => {
     expect(only[0]!.score).toBe(everything.find((row) => row.path === "src/label.ts")!.score);
   });
 
-  test("labels units over a threshold", async () => {
+  test("labels units over a guideline", async () => {
     writeFileSync(
       join(repo.path, "code-health.json"),
-      JSON.stringify({ complexity: { thresholds: { cognitive: { warn: 5, high: 7 }, cyclomatic: { warn: 10, high: 20 } } } }),
+      JSON.stringify({ complexity: { guidelines: { cognitive: { warn: 5, high: 7 }, cyclomatic: { warn: 10, high: 20 } } } }),
     );
     try {
       const rows = JSON.parse((await analyse()).stdout).results as Row[];

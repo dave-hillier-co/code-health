@@ -150,7 +150,7 @@ function findBumps(
   return { bumps, bumpDepth, bumpSize };
 }
 
-export interface BumpyRoadThresholds {
+export interface BumpyRoadGuidelines {
   /** Bumps that make a bumpy road. Default 3. */
   bumps?: number;
   /** Bumps that make one when any bump is deeper than `nesting`. Default 2. */
@@ -159,8 +159,8 @@ export interface BumpyRoadThresholds {
   nesting?: number;
 }
 
-export function isBumpyRoad(metrics: Pick<BlockMetrics, "bumps" | "bumpDepth">, thresholds: BumpyRoadThresholds = {}): boolean {
-  const { bumps = 3, deepBumps = 2, nesting = 4 } = thresholds;
+export function isBumpyRoad(metrics: Pick<BlockMetrics, "bumps" | "bumpDepth">, guidelines: BumpyRoadGuidelines = {}): boolean {
+  const { bumps = 3, deepBumps = 2, nesting = 4 } = guidelines;
   if (metrics.bumps >= bumps) return true;
   return metrics.bumps >= deepBumps && metrics.bumpDepth > nesting;
 }

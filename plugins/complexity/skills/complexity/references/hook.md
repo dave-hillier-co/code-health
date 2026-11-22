@@ -12,7 +12,7 @@ It is off by default, because injected context costs tokens. Enable it per repos
 }
 ```
 
-It uses settings that already exist: `thresholds` (guidelines for investigation, not rules), `delta` (how much a function above a guideline may rise before the hook prints), `analyseTests`, `agreementBar`, `overrides` and the shared `exclude`.
+It uses settings that already exist: `guidelines` (the per-metric guidelines, which are not rules), `delta` (how much a function above a guideline may rise before the hook prints), `analyseTests`, `agreementBar`, `overrides` and the shared `exclude`.
 
 ## What it does
 
@@ -28,8 +28,8 @@ The lexical layer, because loading the WASM runtime and a grammar costs about th
 
 | Lexical value | Above its guideline when |
 |---|---|
-| `nesting` | above `thresholds.nesting` |
-| `keyword` (decision points, an approximation of cyclomatic complexity) | cyclomatic complexity would be above `thresholds.cyclomatic.warn`, that is `keyword + 1 > warn` |
+| `nesting` | above `guidelines.nesting` |
+| `keyword` (decision points, an approximation of cyclomatic complexity) | cyclomatic complexity would be above `guidelines.cyclomatic.warn`, that is `keyword + 1 > warn` |
 | `bumps` | the function is a bumpy road. The sentence reads `above guideline: a bumpy road` in place of a guideline value. |
 
 Cognitive complexity is not measured by the hook: it is structural. `check` and `analyse` still measure it.

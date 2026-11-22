@@ -122,7 +122,7 @@ commitsInSnapshot(snapshot): Set<sha>
 
 A skill lives at `plugins/<p>/skills/<skill>/`. `npm run check:skills` enforces these conventions:
 
-- `SKILL.md` has YAML frontmatter and at most 500 lines. Workflow, decision policy and commit discipline go in `SKILL.md`; thresholds and long explanations go in `references/`.
+- `SKILL.md` has YAML frontmatter and at most 500 lines. Workflow, decision policy and commit discipline go in `SKILL.md`; guidelines and long explanations go in `references/`.
 - `name` equals the folder name.
 - `description` is required, at most 1024 characters, and says when to use the skill in the user's terms ("before refactoring", "code that is hard to change"), not what the CLI does. Trigger evals cover it.
 - `allowed-tools` is exactly one entry, the plugin's own CLI: `Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<p>.mjs *)`. Never anything broader.

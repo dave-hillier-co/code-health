@@ -69,7 +69,7 @@
         "minDegree": { "type": "integer", "minimum": 1, "maximum": 100 },
         "activityWindowMonths": { "type": "integer", "minimum": 1 },
         "periodMonths": { "type": "integer", "minimum": 1 },
-        "abandonmentThreshold": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "abandonmentGuideline": { "type": "integer", "minimum": 1, "maximum": 100 },
         "copyDetection": { "type": "boolean" },
         "overrides": {
           "type": "object",
@@ -83,7 +83,7 @@
         },
         "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
       },
-      "required": ["subcommand", "paths", "names", "top", "minSupport", "minDegree", "activityWindowMonths", "periodMonths", "abandonmentThreshold", "copyDetection", "overrides"],
+      "required": ["subcommand", "paths", "names", "top", "minSupport", "minDegree", "activityWindowMonths", "periodMonths", "abandonmentGuideline", "copyDetection", "overrides"],
       "additionalProperties": false
     },
     "developers": {

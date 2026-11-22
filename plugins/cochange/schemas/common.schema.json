@@ -135,7 +135,7 @@
       ],
       "additionalProperties": false
     },
-    "gradeThreshold": {
+    "gradeGuideline": {
       "type": "object",
       "properties": {
         "months": { "type": "number", "minimum": 0 },
@@ -198,11 +198,11 @@
           "required": ["earlierMedian", "laterMedian", "shifted"],
           "additionalProperties": false
         },
-        "thresholds": {
+        "guidelines": {
           "type": "object",
           "properties": {
-            "strong": { "$ref": "#/$defs/gradeThreshold" },
-            "moderate": { "$ref": "#/$defs/gradeThreshold" }
+            "strong": { "$ref": "#/$defs/gradeGuideline" },
+            "moderate": { "$ref": "#/$defs/gradeGuideline" }
           },
           "required": ["strong", "moderate"],
           "additionalProperties": false
@@ -217,7 +217,7 @@
         "truncated",
         "importedHistory",
         "commitSize",
-        "thresholds"
+        "guidelines"
       ],
       "additionalProperties": false
     },

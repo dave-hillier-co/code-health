@@ -140,9 +140,9 @@ function bandAgainst(value, cutoffs) {
   if (value > cutoffs.moderate) return "moderate";
   return "low";
 }
-function bandCount(count, thresholds) {
-  if (count >= thresholds.high) return "high";
-  if (count >= thresholds.moderate) return "moderate";
+function bandCount(count, guidelines) {
+  if (count >= guidelines.high) return "high";
+  if (count >= guidelines.moderate) return "moderate";
   return "low";
 }
 

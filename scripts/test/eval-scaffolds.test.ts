@@ -38,7 +38,7 @@ describe.each(["complexity", "locality", "structure"])("the %s eval scaffold", (
 });
 
 describe("complexity", () => {
-  test("its scaffold has tests that pass, and a function over the default thresholds that ranks first", async () => {
+  test("its scaffold has tests that pass, and a function over the default guidelines that ranks first", async () => {
     const dir = scaffold("complexity");
     execFileSync("npm", ["test", "--silent"], { cwd: dir, stdio: "pipe" });
     const { results } = await json(complexity, dir, "analyse");

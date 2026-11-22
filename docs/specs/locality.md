@@ -91,7 +91,7 @@ Distance is the heuristic. Consumer evidence picks the default remedy. Judgement
 Determinism goes wherever the operation is mechanical. The agent handles judgement and semantic edits.
 
 - **Analyser** (`locality analyse`): reads the repository and the shared history cache and emits ranked candidates as JSON. It never edits code.
-- **Skill** (`locality`): holds policy, thresholds and commit discipline, and reviews candidates against red flags.
+- **Skill** (`locality`): holds policy, guidelines and commit discipline, and reviews candidates against red flags.
 - **Mover** (`locality move`): relocates a unit and rewrites boundary-crossing imports. It defaults to a dry run and requires `--apply`.
 - **Agent**: performs inlines in their own commits.
 - **Measurement** (`locality measure`): reads history and session transcripts.
@@ -186,7 +186,7 @@ A floor is a minimum amount of evidence below which a statistic is meaningless, 
 | `minCoChangeChanges` | 6 | Floor | Judgement call |
 | `historyMinSupport` | 5 | Floor | code-maat's `min-shared-revs` and `cochange.minSupport` |
 | `historyMinConfidence` | 30 percent | Guideline | code-maat's `min-coupling` and `cochange.minDegree` |
-| `windowMonths` | 12 | Setting | CodeScene advises 6 to 12 months for hotspot windows |
+| `windowMonths` (shared `history.windowMonths`) | 12 | Setting | CodeScene advises 6 to 12 months for hotspot windows |
 | `measureMinSamples` | 10 | Floor | Judgement call. A mean of fewer than ten tasks moves with any one task |
 | `measureNoisePercent` | 10 | Guideline | Judgement call |
 | `maxDepth` | 6 | Setting | Judgement call. A depth cap stops code being buried to lower its distance |
@@ -319,10 +319,11 @@ In the `locality` section of the suite config:
 - Measure sample floor and noise guideline (`measureMinSamples`, `measureNoisePercent`).
 - Fixed points and layer rules.
 - Maximum nesting depth for targets.
+- Shared history settings that the history-reading rules and `measure` use, from the top-level `history` section of the suite config ([suite.md](suite.md#configuration)), overridable here under the same names: `windowMonths`, `maxChangesetSize` and `botPatterns`.
 
 The keys keep their names. [Guidelines and floors](#guidelines-and-floors) says which are guidelines and which are floors, and where each default comes from. Config comments and `locality explain` use the same words.
 
-Entry points (including dynamic ones the parser cannot see), exclusions and history settings live in the suite-wide part of the config.
+Entry points (including dynamic ones the parser cannot see) and exclusions live in the suite-wide part of the config. The history settings are the shared `history` section, and `locality.windowMonths` overrides its window.
 
 ## Decisions
 

@@ -135,7 +135,7 @@ test("paths narrow the rows", async () => {
   expect(run.summary.filesWithoutAdapter).toBe(0);
 });
 
-test("the shallow threshold is configurable", async () => {
+test("the shallow guideline is configurable", async () => {
   writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ complexity: { interfaceDepth: { shallow: 20 } } }));
   try {
     const all = await rows();

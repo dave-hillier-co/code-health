@@ -85,7 +85,7 @@ async function current(context: CommandContext): Promise<CommandOutput> {
   const by = readBy(context);
   const p = await prepare(context);
   const { model } = p.knowledge;
-  const files = measureCurrent(model, p.settings.abandonmentThreshold);
+  const files = measureCurrent(model, p.settings.abandonmentGuideline);
   const unattributed = model.files.reduce((sum, f) => sum + f.unattributed, 0);
 
   const rank = readRank(context, p.settings);

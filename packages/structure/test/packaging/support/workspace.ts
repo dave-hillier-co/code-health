@@ -217,7 +217,7 @@ const appIndex = (extra: [string, string][] = []): string =>
 /**
  * The workspace over a year. Every package is added one day apart from 2023-06-01, then a hundred and four
  * changes follow every three days, then `young` is added in May 2024. Every package except `young` is
- * older than the grace period at the end. The config relaxes two thresholds, so a hundred changes are enough.
+ * older than the grace period at the end. The config relaxes two guidelines, so a hundred changes are enough.
  */
 export function workspaceRepository(): GitFixture {
   const revision = new Map<string, number>();

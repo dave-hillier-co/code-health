@@ -28,7 +28,7 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs measure baseline --json
 
 Run it on the commit you are about to tidy, before any move. It writes `.code-health/local/locality.baseline.<name>.json` (`--name` picks the name, `default` otherwise). The file is outside the cache because it cannot be regenerated once the code has moved, so the command refuses to replace one unless you pass `--force`. Check `priorSuiteCommits`: above 0 means commits with a `Code-Health: locality` trailer already exist and the baseline was taken after the first tidy-up.
 
-It records, over the twelve months (`locality.windowMonths`) back from HEAD's commit date:
+It records, over the twelve months (`history.windowMonths`, or `locality.windowMonths`) back from HEAD's commit date:
 
 - **Change spread**: the mean pairwise tree distance of the files of each logical change, each file at its path as of that change. The suite's own commits are left out.
 - **Agent effort**: per task, from Claude Code session transcripts in `~/.claude/projects/` (`--projects-dir` names another), for this checkout and its worktrees: files read, folders visited, re-reads, edits and tokens. Only paths and counts are kept. Tasks with no edits are left out. Sessions in a transcript format the tool does not recognise are counted as `notMeasured`.

@@ -23,8 +23,8 @@ export interface Measurement {
   };
   windowCommits: Share;
   /** The configured percentage of lines that unmapped identities may hold before the identities skill is needed. */
-  unmappedShareThreshold: number;
-  /** Unmapped identities hold more than the threshold of people's lines. */
+  unmappedShareGuideline: number;
+  /** Unmapped identities hold more than the guideline of people's lines. */
   needsIdentityReview: boolean;
 }
 
@@ -73,13 +73,13 @@ export async function measureMapping(context: CommandContext, analysis: Identity
   }
 
   const headLines = { ...share(linesByNode, analysis), unattributed };
-  const threshold = history.settings.identities.unmappedShareThreshold;
+  const guideline = history.settings.identities.unmappedShareGuideline;
   return {
     measurement: {
       headLines,
       windowCommits: share(windowCommitsByNode, analysis),
-      unmappedShareThreshold: threshold,
-      needsIdentityReview: headLines.people > 0 && percent(headLines.unmapped, headLines.people) > threshold,
+      unmappedShareGuideline: guideline,
+      needsIdentityReview: headLines.people > 0 && percent(headLines.unmapped, headLines.people) > guideline,
     },
     linesByNode,
     windowCommitsByNode,

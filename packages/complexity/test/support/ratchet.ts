@@ -1,13 +1,13 @@
 import { GitFixture, type Change } from "@code-health/fixtures/git-fixture";
 
-/** Thresholds low enough that the functions below are over them: cognitive 6 and cyclomatic 4. */
-export const lowThresholds = JSON.stringify({
-  complexity: { thresholds: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } } },
+/** Guidelines low enough that the functions below are over them: cognitive 6 and cyclomatic 4. */
+export const lowGuidelines = JSON.stringify({
+  complexity: { guidelines: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } } },
 });
 
 const orderType = "{ items: number[]; vip: boolean; coupon?: string }";
 
-/** Cognitive 8, cyclomatic 5: over both thresholds above. `extra` goes before the return. */
+/** Cognitive 8, cyclomatic 5: over both guidelines above. `extra` goes before the return. */
 export function priceFunction(name = "price", extra = ""): string {
   return `export function ${name}(order: ${orderType}): number {
   let total = 0;
@@ -28,7 +28,7 @@ export const oneMoreBranch = "  if (order.items.length > 50) total = 0;\n";
 
 export const simpleFunction = "export function simple(a: number): number {\n  return a + 1;\n}\n";
 
-/** Four nested ifs: cognitive 1 + 2 + 3 + 4 = 10, cyclomatic 5, nesting 4. Over the cognitive and cyclomatic thresholds. */
+/** Four nested ifs: cognitive 1 + 2 + 3 + 4 = 10, cyclomatic 5, nesting 4. Over the cognitive and cyclomatic guidelines. */
 export const riskyFunction = `export function risky(a: number, b: number, c: number, d: number): number {
   if (a > 0) {
     if (b > 0) {
@@ -46,11 +46,11 @@ export const riskyFunction = `export function risky(a: number, b: number, c: num
 const date = (day: number) => `2024-01-${String(day).padStart(2, "0")}T00:00:00+00:00`;
 
 /**
- * A repository whose main branch holds the base: a configured threshold, `src/pricing.ts` with the over-threshold
- * function `price`, and `src/stable.ts`, over a threshold too and never touched afterwards. A `feature` branch
+ * A repository whose main branch holds the base: a configured guideline, `src/pricing.ts` with the over-guideline
+ * function `price`, and `src/stable.ts`, over a guideline too and never touched afterwards. A `feature` branch
  * then adds one commit with `changes`, and stays checked out.
  */
-export function repoWithFeature(changes: Change[], configuration = lowThresholds): GitFixture {
+export function repoWithFeature(changes: Change[], configuration = lowGuidelines): GitFixture {
   return GitFixture.build([
     {
       type: "commit",

@@ -71,7 +71,7 @@ describe("follower", () => {
     expect(found.some((f) => f.packages.includes("packages/helper"))).toBe(false);
   });
 
-  test("thresholds come from config", async () => {
+  test("guidelines come from config", async () => {
     const strict = await withPackageSettings(repo, { minLift: 2 }, () => findings());
     expect(byKind(strict, "follower")).toEqual([]);
   });

@@ -68,7 +68,7 @@ beforeAll(() => {
       message: "Base",
       date: "2024-01-01T00:00:00+00:00",
       changes: [
-        { op: "add", path: "code-health.json", content: JSON.stringify({ complexity: { thresholds: { nesting: 2 }, hook: { enabled: true } } }) },
+        { op: "add", path: "code-health.json", content: JSON.stringify({ complexity: { guidelines: { nesting: 2 }, hook: { enabled: true } } }) },
         { op: "add", path: "src/knot.ts", content: "export const knot = 1;\n" },
       ],
     },
@@ -126,7 +126,7 @@ for (const [label, entry] of entries) {
     test("is silent and writes no session state when the repository has not opted in", () => {
       const config = join(repo.path, "code-health.json");
       const enabled = readFileSync(config, "utf8");
-      writeFileSync(config, JSON.stringify({ complexity: { thresholds: { nesting: 2 }, hook: { enabled: false } } }));
+      writeFileSync(config, JSON.stringify({ complexity: { guidelines: { nesting: 2 }, hook: { enabled: false } } }));
       writeFileSync(join(repo.path, "src", "knot.ts"), deep);
       try {
         const result = hook(event(`${label}-off`));

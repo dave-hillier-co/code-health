@@ -5,7 +5,7 @@ import { readEditEvent, within } from "@code-health/history/hook-event";
 import { runGit } from "@code-health/history/git";
 import { updateSession, type FileMeasurement } from "@code-health/history/session-state";
 import { hasSupportedExtension } from "@code-health/parse/supported-extensions";
-import { complexityConfig, readSettings, thresholdsFor, type ComplexitySettings } from "./config.ts";
+import { complexityConfig, readSettings, guidelinesFor, type ComplexitySettings } from "./config.ts";
 import { DEFAULT_BUDGET_MS } from "./hook-budget.ts";
 import { describeFindings, findingsFor, measureFile } from "./hook-findings.ts";
 
@@ -42,7 +42,7 @@ interface Decision {
 async function measurementAtHead(root: string, file: string, settings: ComplexitySettings): Promise<FileMeasurement> {
   try {
     const text = await runGit(root, ["show", `HEAD:${file}`]);
-    const measured = measureFile(file, text, { ...settings, thresholds: thresholdsFor(settings, file) });
+    const measured = measureFile(file, text, { ...settings, guidelines: guidelinesFor(settings, file) });
     return "measurement" in measured ? measured.measurement : {};
   } catch {
     return {};
@@ -72,11 +72,11 @@ async function consider(
   const text = readFileSync(join(root, file), "utf8");
   if (text.length > MAX_BYTES || text.includes("\0")) return { note: null, outcome: "printed nothing: the file is binary or too large" };
 
-  const measured = measureFile(file, text, { ...settings, thresholds: thresholdsFor(settings, file) });
+  const measured = measureFile(file, text, { ...settings, guidelines: guidelinesFor(settings, file) });
   if ("unmeasured" in measured) return { note: null, outcome: `printed nothing: no per-function metrics (${measured.unmeasured})` };
 
   const before = previous ?? (await measurementAtHead(root, file, settings));
-  const findings = findingsFor(before, measured.measurement, thresholdsFor(settings, file), settings.delta);
+  const findings = findingsFor(before, measured.measurement, guidelinesFor(settings, file), settings.delta);
   if (findings.length === 0) {
     return { note: null, outcome: "printed nothing: nothing went above a guideline or worsened", measurement: measured.measurement };
   }

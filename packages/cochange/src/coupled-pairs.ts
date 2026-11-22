@@ -14,18 +14,18 @@ export function integerOption(context: CommandContext, option: string, fallback:
 }
 
 /**
- * Pairs reaching the thresholds over the eligible logical changes. A file deleted at the end of the
+ * Pairs reaching the guidelines over the eligible logical changes. A file deleted at the end of the
  * window is no use to co-locate, so pairs with one are left out. Counts for the surviving files are
  * unchanged: only the pair is dropped.
  */
-export function coupledPairs(history: LoadedHistory, thresholds: { minSupport: number; minDegree: number }): CouplingCounts {
+export function coupledPairs(history: LoadedHistory, guidelines: { minSupport: number; minDegree: number }): CouplingCounts {
   const lastStatus = new Map<string, string>();
   for (const change of history.filtered.changes) {
     for (const file of change.files) lastStatus.set(file.fileId, file.status);
   }
   const counts = countCoupling(
     history.filtered.changes.map((change) => ({ files: change.files.map((file) => file.fileId), oversized: change.oversized })),
-    thresholds,
+    guidelines,
   );
   const gone = (id: string) => lastStatus.get(id) === "D";
   return { ...counts, pairs: counts.pairs.filter((pair) => !gone(pair.a) && !gone(pair.b)) };

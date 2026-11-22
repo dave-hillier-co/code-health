@@ -88,7 +88,7 @@ export async function prepare(path: string, config: Record<string, unknown> = {}
   const analysis = await analyseHistory(path, {
     ref: "HEAD",
     noise: { exclude: settings.exclude, maxChangesetSize: settings.maxChangesetSize },
-    evidence: { windowMonths: settings.windowMonths, thresholds: settings.evidenceThresholds },
+    evidence: { windowMonths: settings.windowMonths, guidelines: settings.evidenceGuidelines },
   });
   const mainline = await mergedChanges(path, analysis.view, analysis.filtered.changes, analysis.view.headSha);
   return {

@@ -39,7 +39,7 @@ const model: KnowledgeModel = {
 const ACTIVE_LINES = 16 + 17 + 10;
 
 const run = (selection: Selection, more: { trials?: number; seed?: number } = {}) =>
-  simulate(model, { selection, trials: more.trials ?? 2000, seed: more.seed ?? 7, alphas: [95, 99], thresholdPercent: 90 });
+  simulate(model, { selection, trials: more.trials ?? 2000, seed: more.seed ?? 7, alphas: [95, 99], guidelinePercent: 90 });
 const rate = (percent: number): Selection => ({ mode: "rate", rate: percent / 100, periods: 1 });
 
 test("the loss of a series: mean, nearest-rank percentile, tail ratio and the mean of the tail, by hand", () => {
@@ -140,7 +140,7 @@ test("k-leavers refuses a k that cannot be drawn", () => {
 
 test("components split the lines, and their expected losses add up to the whole", () => {
   const components = [{ name: "api", matches: (p: string) => p.startsWith("src/api/") }];
-  const result = simulate(model, { selection: rate(30), trials: 3000, seed: 3, alphas: [95], thresholdPercent: 90, components });
+  const result = simulate(model, { selection: rate(30), trials: 3000, seed: 3, alphas: [95], guidelinePercent: 90, components });
   const byName = Object.fromEntries(result.componentRisks.map((c) => [c.name, c]));
   expect(Object.keys(byName).sort()).toEqual(["(unassigned)", "api"]);
   expect(byName.api).toMatchObject({ peopleLines: 20, baselineLines: 0 });

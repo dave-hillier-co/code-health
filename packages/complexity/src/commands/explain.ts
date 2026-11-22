@@ -2,7 +2,7 @@ import { usageError } from "@code-health/cli-kit/errors";
 import type { Command } from "@code-health/cli-kit/run-cli";
 import { parseWith } from "@code-health/parse/file-facts";
 import { GrammarSet } from "@code-health/parse/grammars";
-import { readSettings, thresholdsFor } from "../config.ts";
+import { readSettings, guidelinesFor } from "../config.ts";
 import { currentTree } from "../current-tree.ts";
 import { explainRule } from "../language.ts";
 import { labelsFor, structuralValues } from "../metrics.ts";
@@ -79,7 +79,7 @@ export const command: Command = {
           startLine: unit.startLine,
           endLine: unit.endLine,
           metrics: values,
-          labels: labelsFor(values, thresholdsFor(settings, path)),
+          labels: labelsFor(values, guidelinesFor(settings, path)),
           cyclomaticSwitch: settings.cyclomaticSwitch,
         },
       },

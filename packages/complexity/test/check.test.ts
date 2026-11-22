@@ -36,7 +36,7 @@ async function check(repo: GitFixture, ...args: string[]) {
 }
 
 describe("a function that existed at the base", () => {
-  test("fails when it is over a threshold and got worse, naming each metric that rose", async () => {
+  test("fails when it is over a guideline and got worse, naming each metric that rose", async () => {
     const repo = repoWith([{ op: "modify", path: "src/pricing.ts", content: priceFunction("price", oneMoreBranch) }]);
     const run = await check(repo);
     expect(run.code).toBe(ExitCode.CheckFailed);
@@ -47,7 +47,7 @@ describe("a function that existed at the base", () => {
     ]);
   });
 
-  test("passes when it is over a threshold and did not get worse, or got better", async () => {
+  test("passes when it is over a guideline and did not get worse, or got better", async () => {
     const same = repoWith([{ op: "modify", path: "src/pricing.ts", content: `// reformatted\n${priceFunction()}` }]);
     expect((await check(same)).code).toBe(ExitCode.Success);
 
@@ -63,14 +63,14 @@ describe("a function that existed at the base", () => {
     expect(run.findings).toEqual([]);
   });
 
-  test("passes a function that stays under its thresholds however much it changed", async () => {
+  test("passes a function that stays under its guidelines however much it changed", async () => {
     const repo = repoWith([{ op: "modify", path: "src/label.ts", content: "export const label = (n: string): string => (n ? n.trim() : n);\n" }]);
     expect((await check(repo)).code).toBe(ExitCode.Success);
   });
 
   test("allows a worsening up to the configured delta", async () => {
     const relaxed = JSON.stringify({
-      complexity: { delta: 1, thresholds: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } } },
+      complexity: { delta: 1, guidelines: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } } },
     });
     const repo = repoWith([{ op: "modify", path: "src/pricing.ts", content: priceFunction("price", oneMoreBranch) }], relaxed);
     expect((await check(repo)).code).toBe(ExitCode.Success);
@@ -86,7 +86,7 @@ describe("a function that existed at the base", () => {
 });
 
 describe("a function that is new", () => {
-  test("fails when it is over a threshold, and passes when it is not", async () => {
+  test("fails when it is over a guideline, and passes when it is not", async () => {
     const repo = repoWith([
       { op: "add", path: "src/risky.ts", content: riskyFunction },
       { op: "add", path: "src/simple.ts", content: simpleFunction },
@@ -181,7 +181,7 @@ describe("the base", () => {
 
   test("is complexity.base when the config names one", async () => {
     const configured = JSON.stringify({
-      complexity: { base: "HEAD", thresholds: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } } },
+      complexity: { base: "HEAD", guidelines: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } } },
     });
     const repo = repoWith([{ op: "modify", path: "src/pricing.ts", content: priceFunction("price", oneMoreBranch) }], configured);
     expect((await check(repo)).code).toBe(ExitCode.Success);
@@ -210,11 +210,11 @@ describe("uncommitted work", () => {
   });
 });
 
-test("the config can raise thresholds for some paths", async () => {
+test("the config can raise guidelines for some paths", async () => {
   const lenient = JSON.stringify({
     complexity: {
-      thresholds: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } },
-      overrides: [{ paths: ["src/generated/**"], thresholds: { cognitive: { warn: 50, high: 60 }, cyclomatic: { warn: 50, high: 60 } } }],
+      guidelines: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } },
+      overrides: [{ paths: ["src/generated/**"], guidelines: { cognitive: { warn: 50, high: 60 }, cyclomatic: { warn: 50, high: 60 } } }],
     },
   });
   const repo = repoWith(
@@ -230,7 +230,7 @@ test("the config can raise thresholds for some paths", async () => {
   expectGolden("ratchet-override", "check", run.stdout);
 });
 
-test("without config the thresholds are the defaults (cognitive 15, cyclomatic 10), which risky is under", async () => {
+test("without config the guidelines are the defaults (cognitive 15, cyclomatic 10), which risky is under", async () => {
   const repo = repoWith([{ op: "add", path: "src/risky.ts", content: riskyFunction }], "{}");
   expect((await check(repo)).code).toBe(ExitCode.Success);
 });
@@ -238,8 +238,8 @@ test("without config the thresholds are the defaults (cognitive 15, cyclomatic 1
 test.each([
   ["high below warn", { cognitive: { warn: 40, high: 3 } }],
   ["only warn raised above the configured high", { cognitive: { warn: 40 } }],
-])("an override with %s is a config error, as the global thresholds are", async (_name, thresholds) => {
-  const repo = repoWith([{ op: "add", path: "src/risky.ts", content: riskyFunction }], JSON.stringify({ complexity: { overrides: [{ paths: ["src/**"], thresholds }] } }));
+])("an override with %s is a config error, as the global guidelines are", async (_name, guidelines) => {
+  const repo = repoWith([{ op: "add", path: "src/risky.ts", content: riskyFunction }], JSON.stringify({ complexity: { overrides: [{ paths: ["src/**"], guidelines }] } }));
   const run = await check(repo);
   expect(run.code).toBe(ExitCode.Usage);
   expect(run.stderr).toContain("high must not be below warn");

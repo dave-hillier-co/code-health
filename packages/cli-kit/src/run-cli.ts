@@ -34,7 +34,7 @@ export interface CommandOutput {
   results: unknown;
   /** Table columns, and the valid values for --fields. Defaults to the keys of the first row. */
   columns?: string[];
-  /** The command's check failed (findings over threshold or a regression): exit 1. */
+  /** The command's check failed (findings above guideline or a regression): exit 1. */
   failed?: boolean;
 }
 

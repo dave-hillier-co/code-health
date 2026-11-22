@@ -20,7 +20,7 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs <command> [options] --json
 
 `${CLAUDE_PLUGIN_ROOT}` is replaced in this text before you see it. Use the full path as written, since the variable is not set in the shell. Commands refresh the history cache first (cheap when nothing is new). Lists default to 20 rows. Pass `--limit N`, `--limit all` or `--fields a,b` when you need other. Details of every command and field are in [references/commands.md](references/commands.md).
 
-If a command reports a shallow clone, tell the user history is truncated. Do not work around it unless the repository's `code-health.json` states a window (`cochange.windowMonths`) or they ask for one.
+If a command reports a shallow clone, tell the user history is truncated. Do not work around it unless the repository's `code-health.json` states a window (`history.windowMonths`, or `cochange.windowMonths`) or they ask for one.
 
 ## Read the evidence first
 
@@ -28,9 +28,9 @@ Every result has an `evidence` block with a grade: `strong`, `moderate` or `weak
 
 - `strong`: co-change is the best evidence you have. Where it disagrees with what the imports suggest, trust the history.
 - `moderate`: report findings, and say how many changes sit behind each.
-- `weak` (young repository, few contributors, few changes): present every finding as tentative, lean on static signals, and never let co-change overturn them. Say plainly when `coupling` returns nothing: the thresholds were not lowered, and a sparse history has little to show.
+- `weak` (young repository, few contributors, few changes): present every finding as tentative, lean on static signals, and never let co-change overturn them. Say plainly when `coupling` returns nothing: the guidelines were not lowered, and a sparse history has little to show.
 
-Always give the support behind a coupling claim ("5 shared changes out of 27"), not just a percentage. Two shared commits out of three is noise. Details and thresholds: [references/reading-results.md](references/reading-results.md).
+Always give the support behind a coupling claim ("5 shared changes out of 27"), not just a percentage. Two shared commits out of three is noise. Details and guidelines: [references/reading-results.md](references/reading-results.md).
 
 These are prompts for investigation, not verdicts. The tool measures code, not people. If asked to judge or rank individuals from this data, decline and say why.
 
@@ -105,6 +105,6 @@ Report what you acted on and what you dismissed, each with the reason. When a fi
 ## What not to do
 
 - Do not run `refresh` on its own. Analysis commands refresh when they need to.
-- Do not edit `code-health.json` to make a finding appear or vanish. To tune thresholds, show the user the setting and let them decide.
+- Do not edit `code-health.json` to make a finding appear or vanish. To tune guidelines, show the user the setting and let them decide.
 - Do not quote author names or emails from history. Default outputs carry none, and a request to evaluate individuals is out of scope.
 - Do not read a hotspot as a verdict, or a coupling as a defect.

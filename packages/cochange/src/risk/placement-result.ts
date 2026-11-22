@@ -120,7 +120,7 @@ const row = (name: string, value: Record<string, number | null>, evidence: Recor
   band: null,
   scored: false,
   value: unavailable === null ? value : {},
-  thresholds: {},
+  guidelines: {},
   evidence: unavailable === null ? evidence : [],
   source: name === "authorship" || name === "owner-distance" || name === "no-owner" ? "blame" : "history",
   reason: unavailable,

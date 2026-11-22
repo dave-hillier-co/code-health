@@ -99,7 +99,7 @@ function isMagnet(file: string, neighbours: ReadonlyMap<string, ReadonlySet<stri
 }
 
 export const command = analysisCommand(name, {
-  summary: "Groups of mutually coupled files (connected components above the coupling thresholds) with their spread",
+  summary: "Groups of mutually coupled files (connected components above the coupling guidelines) with their spread",
   options: { "min-degree": { type: "string" }, "min-support": { type: "string" } },
   partial: ({ values }) => values["min-degree"] !== undefined || values["min-support"] !== undefined,
   analyse({ context, history }) {
@@ -149,7 +149,7 @@ export const command = analysisCommand(name, {
         population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
         note:
           rows.length === 0
-            ? `No cluster: no pair reaches support ${minSupport} and degree ${minDegree} %. The thresholds were not lowered; a young or sparse history has little coupling evidence.`
+            ? `No cluster: no pair reaches support ${minSupport} and degree ${minDegree} %. The guidelines were not lowered; a young or sparse history has little coupling evidence.`
             : null,
       },
     };

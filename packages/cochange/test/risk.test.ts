@@ -26,7 +26,7 @@ interface Factor {
   band: string | null;
   scored: boolean;
   value: Record<string, unknown>;
-  thresholds: Record<string, unknown>;
+  guidelines: Record<string, unknown>;
   evidence: Record<string, unknown>[];
   reason: string | null;
 }
@@ -80,7 +80,7 @@ test("size, spread and entropy are computed from the change's own churn and path
 test("a change much larger than the repository's merged changes is high on size, spread and entropy", async () => {
   const { document } = await risk("main..bulk");
   for (const name of ["size", "spread", "entropy"]) expect(factor(document.results, name).band, name).toBe("high");
-  expect(factor(document.results, "size").thresholds).toEqual({ lines: { moderate: expect.any(Number), high: expect.any(Number) } });
+  expect(factor(document.results, "size").guidelines).toEqual({ lines: { moderate: expect.any(Number), high: expect.any(Number) } });
 });
 
 test("a change that leaves out the files that always change with its file reports each as missing", async () => {
@@ -102,7 +102,7 @@ test("a complete change has nothing missing", async () => {
   expect(missing.band).toBe("low");
 });
 
-test("missing files are counted at the configured confidence, and a threshold above the observed one finds none", async () => {
+test("missing files are counted at the configured confidence, and a guideline above the observed one finds none", async () => {
   writeFileSync(join(repo.path, "code-health.json"), '{"cochange":{"risk":{"missingConfidence":90}}}\n');
   const { document } = await risk("main..missing");
   expect(factor(document.results, "missing-co-change").value).toEqual({ count: 0 });
@@ -230,13 +230,13 @@ test("explain prints the rules behind the level and the factors, without reading
   expect(results.settings).toMatchObject({ moderatePercentile: 75, highPercentile: 90, countModerate: 1, countHigh: 3 });
 });
 
-test("explain of a factor gives its definition, thresholds and the files that drove it on the branch", async () => {
+test("explain of a factor gives its definition, guidelines and the files that drove it on the branch", async () => {
   repo.git("checkout", "--quiet", "missing");
   const { document } = await risk("explain", "missing-co-change");
   const results = document.results as unknown as { topic: string; doc: { definition: string }; branch: Factor };
   expect(results.topic).toBe("missing-co-change");
   expect(results.doc.definition).toMatch(/confidence/);
-  expect(results.branch.thresholds).toEqual({ count: { moderate: 1, high: 3 } });
+  expect(results.branch.guidelines).toEqual({ count: { moderate: 1, high: 3 } });
   expect(results.branch.evidence.map((e) => e.file)).toEqual([invoiceTest, tax]);
 });
 

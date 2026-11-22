@@ -9,7 +9,7 @@ import {
   locateCache,
   readBlobAt,
   readPathAttributes
-} from "./chunk-6EEA5ZVL.mjs";
+} from "./chunk-QY7HQ5YQ.mjs";
 
 // packages/cochange/src/risk/signatures.ts
 import { readFileSync as readFileSync3 } from "node:fs";
@@ -14303,7 +14303,7 @@ function withSignatures(factor, result, risk) {
     reason: band === null ? factor.reason : null,
     source: joinSources(factor.source, "parse"),
     value: { ...factor.value, signatureChanges: result.changes.length, symbolFanIn: fanIn },
-    thresholds: { ...factor.thresholds, ...cutoffs === null ? {} : { symbolFanIn: { moderate: cutoffs.moderate, high: cutoffs.high } } },
+    guidelines: { ...factor.guidelines, ...cutoffs === null ? {} : { symbolFanIn: { moderate: cutoffs.moderate, high: cutoffs.high } } },
     evidence: [...factor.evidence, ...rows.slice(0, 5).map((row) => ({ file: row.file, symbol: row.symbol, change: row.change, fanIn: row.fanIn, from: "parse" }))]
   };
 }

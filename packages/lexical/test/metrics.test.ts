@@ -119,7 +119,7 @@ test("a single-line function has no nesting and one line", () => {
   expect(m).toMatchObject({ length: 1, indentationComplexity: 0, maxNesting: 0, bumps: 0 });
 });
 
-test("bumpy road thresholds: three bumps, or two when one is deeper than the nesting threshold", () => {
+test("bumpy road guidelines: three bumps, or two when one is deeper than the nesting guideline", () => {
   expect(isBumpyRoad({ bumps: 3, bumpDepth: 2 })).toBe(true);
   expect(isBumpyRoad({ bumps: 2, bumpDepth: 4 })).toBe(false);
   expect(isBumpyRoad({ bumps: 2, bumpDepth: 5 })).toBe(true);

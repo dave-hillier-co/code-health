@@ -64,7 +64,7 @@ export function toFactor(measurement: Measurement, banded: BandResult, risk: Ris
     band: disabled ? null : banded.band === "unavailable" ? null : banded.band,
     scored: SCORED_FACTORS.has(measurement.name) && !disabled,
     value: disabled ? {} : measurement.value,
-    thresholds: disabled ? {} : banded.thresholds,
+    guidelines: disabled ? {} : banded.guidelines,
     evidence: disabled ? [] : measurement.evidence,
     source: measurement.source,
     reason: disabled ? "switched off by cochange.risk.disable" : (measurement.unavailable ?? banded.reason),

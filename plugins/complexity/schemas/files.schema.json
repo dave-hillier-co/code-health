@@ -242,9 +242,9 @@
               }
             ]
           },
-          "overThreshold": {
+          "aboveGuideline": {
             "$ref": "common.schema.json#/$defs/count",
-            "description": "Functions over a warn threshold."
+            "description": "Functions over a warn guideline."
           },
           "interfaceDepth": {
             "description": "Mean interface depth, in syntax nodes per interface element, over the file's exported top-level functions and classes. null when it exports none or has no structural adapter.",
@@ -276,7 +276,7 @@
           "keywordComplexity",
           "functions",
           "aggregates",
-          "overThreshold",
+          "aboveGuideline",
           "interfaceDepth",
           "passThroughs"
         ],

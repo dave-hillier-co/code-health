@@ -2,7 +2,7 @@ import { configError } from "@code-health/cli-kit/errors";
 import type { LoadedConfig, PluginConfigSpec } from "@code-health/cli-kit/config";
 import { compileGlobs } from "@code-health/history/glob";
 import { profiles } from "@code-health/lexical/profile";
-import { defaultThresholds, isMetricId, metricIds, type MetricId, type Thresholds } from "./metrics.ts";
+import { defaultGuidelines, isMetricId, metricIds, type MetricId, type Guidelines } from "./metrics.ts";
 import { TOOL } from "./tool.ts";
 
 /**
@@ -11,23 +11,24 @@ import { TOOL } from "./tool.ts";
  */
 export const complexityConfig: PluginConfigSpec = {
   plugin: TOOL,
+  history: ["windowMonths", "maxChangesetSize", "botPatterns"],
   section: {
     /** Metrics reported and ranked. `--metrics` narrows them for one run. */
     metrics: [...metricIds],
     /**
-     * Guidelines for investigation, named `thresholds` in the config. A metric is above its guideline when its value is above it, and `high` marks a second band. They label and order results and
+     * Guidelines for investigation. A metric is above its guideline when its value is above it, and `high` marks a second band. They label and order results and
      * hide nothing. Only `check` turns them into an exit code, and only for new or worsened units. Defaults: cyclomatic 10 and 20, cognitive 15 and 25, nesting 4 and parameters 5 are judgement calls
      * (CodeScene's default for cyclomatic is 9 and for parameters 4); bumps 3 and deepBumps 2 are judgement calls beside CodeScene's 2 bumps at depth 2.
      */
-    thresholds: {
-      cyclomatic: { ...defaultThresholds.cyclomatic },
-      cognitive: { ...defaultThresholds.cognitive },
-      nesting: defaultThresholds.nesting,
-      parameters: defaultThresholds.parameters,
+    guidelines: {
+      cyclomatic: { ...defaultGuidelines.cyclomatic },
+      cognitive: { ...defaultGuidelines.cognitive },
+      nesting: defaultGuidelines.nesting,
+      parameters: defaultGuidelines.parameters,
       /** A function with this many bumps or more is labelled a bumpy road. */
-      bumps: defaultThresholds.bumps,
+      bumps: defaultGuidelines.bumps,
       /** The count that makes a bumpy road when the deepest bump is deeper than `nesting`. */
-      deepBumps: defaultThresholds.deepBumps,
+      deepBumps: defaultGuidelines.deepBumps,
     },
     /** `case` counts every case of a switch toward cyclomatic complexity, `modified` counts one per switch. */
     cyclomaticSwitch: "case",
@@ -45,26 +46,24 @@ export const complexityConfig: PluginConfigSpec = {
     analyseTests: true,
     /** Weight the ranking by how often each file changed in the window, so code that never changes ranks last. */
     changeWeighting: true,
-    /** The window for change frequency, back from HEAD's commit date. */
-    windowMonths: 12,
-    /** `{ "paths": [globs], "thresholds": { ...partial thresholds } }`, the last matching entry winning per metric. */
+    /** `{ "paths": [globs], "guidelines": { ...partial guidelines } }`, the last matching entry winning per metric. */
     overrides: [],
-    /** The post-edit hook, off unless a repository turns it on. It uses the `thresholds` guidelines, `delta`, `analyseTests` and `agreementBar`. */
+    /** The post-edit hook, off unless a repository turns it on. It uses `guidelines`, `delta`, `analyseTests` and `agreementBar`. */
     hook: { enabled: false },
     /** `shallow`: a guideline of 10, a judgement call not calibrated on a corpus. An exported function, class or module with fewer syntax nodes than this per element of its interface is labelled shallow. Rows are ordered by depth whatever the guideline. */
     interfaceDepth: { shallow: 10 },
   },
 };
 
-export interface ThresholdOverride {
+export interface GuidelineOverride {
   matches: (path: string) => boolean;
-  thresholds: unknown;
+  guidelines: unknown;
 }
 
 export interface ComplexitySettings {
   metrics: MetricId[];
-  thresholds: Thresholds;
-  overrides: ThresholdOverride[];
+  guidelines: Guidelines;
+  overrides: GuidelineOverride[];
   cyclomaticSwitch: "case" | "modified";
   base: string | null;
   mainBranch: string | null;
@@ -73,7 +72,10 @@ export interface ComplexitySettings {
   moveSimilarity: number;
   analyseTests: boolean;
   changeWeighting: boolean;
+  /** The shared history settings: the window, the largest changeset kept and the author patterns left out. */
   windowMonths: number;
+  maxChangesetSize: number;
+  botPatterns: string[];
   /** The opt-in post-edit hook. */
   hook: { enabled: boolean };
   /** Nodes per interface element below which an exported unit is labelled shallow. */
@@ -117,12 +119,12 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     throw configError(`code-health.json: ${at("cyclomaticSwitch")} must be "case" or "modified"`);
   }
 
-  const thresholds = readThresholds(section.thresholds, at("thresholds"), number);
-  const overrides = readOverrides(section.overrides, at("overrides"), number, thresholds);
+  const guidelines = readGuidelines(section.guidelines, at("guidelines"), number);
+  const overrides = readOverrides(section.overrides, at("overrides"), number, guidelines);
 
   return {
     metrics,
-    thresholds,
+    guidelines,
     overrides,
     cyclomaticSwitch: section.cyclomaticSwitch,
     base: optionalString("base"),
@@ -133,6 +135,8 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     analyseTests: section.analyseTests === true,
     changeWeighting: section.changeWeighting === true,
     windowMonths: number(section.windowMonths, at("windowMonths"), 1),
+    maxChangesetSize: number(section.maxChangesetSize, at("maxChangesetSize"), 1),
+    botPatterns: section.botPatterns as string[],
     hook: { enabled: (section.hook as { enabled: boolean }).enabled === true },
     shallowDepth: number((section.interfaceDepth as { shallow: unknown }).shallow, at("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
@@ -151,8 +155,8 @@ function readLanguageProfiles(languages: Record<string, string>): Record<string,
 
 type NumberReader = (value: unknown, key: string, min: number, max?: number) => number;
 
-function readThresholds(value: unknown, where: string, number: NumberReader): Thresholds {
-  const source = value as Thresholds;
+function readGuidelines(value: unknown, where: string, number: NumberReader): Guidelines {
+  const source = value as Guidelines;
   const level = (name: "cyclomatic" | "cognitive") => {
     const { warn, high } = source[name];
     const checked = { warn: number(warn, `${where}.${name}.warn`, 0), high: number(high, `${where}.${name}.high`, 0) };
@@ -169,28 +173,28 @@ function readThresholds(value: unknown, where: string, number: NumberReader): Th
   };
 }
 
-function readOverrides(value: unknown, where: string, number: NumberReader, global: Thresholds): ThresholdOverride[] {
+function readOverrides(value: unknown, where: string, number: NumberReader, global: Guidelines): GuidelineOverride[] {
   if (!Array.isArray(value)) throw configError(`code-health.json: ${where} must be an array`);
   return value.map((entry, index) => {
     const here = `${where}[${index}]`;
     if (!isRecord(entry) || !Array.isArray(entry.paths) || entry.paths.some((glob) => typeof glob !== "string")) {
-      throw configError(`code-health.json: ${here} needs "paths", an array of globs, and "thresholds"`);
+      throw configError(`code-health.json: ${here} needs "paths", an array of globs, and "guidelines"`);
     }
-    if (!isRecord(entry.thresholds)) throw configError(`code-health.json: ${here}.thresholds must be an object`);
-    // Validate the shape now by merging over the global thresholds, so a typo or a high below warn fails at load time and not mid-run.
-    const merged = mergeThresholds(global, entry.thresholds, `${here}.thresholds`, number);
+    if (!isRecord(entry.guidelines)) throw configError(`code-health.json: ${here}.guidelines must be an object`);
+    // Validate the shape now by merging over the global guidelines, so a typo or a high below warn fails at load time and not mid-run.
+    const merged = mergeGuidelines(global, entry.guidelines, `${here}.guidelines`, number);
     for (const name of ["cyclomatic", "cognitive"] as const) {
       if (merged[name].high < merged[name].warn) {
-        throw configError(`code-health.json: ${here}.thresholds.${name}.high must not be below warn (${merged[name].warn}); set both when raising warn`);
+        throw configError(`code-health.json: ${here}.guidelines.${name}.high must not be below warn (${merged[name].warn}); set both when raising warn`);
       }
     }
-    return { matches: compileGlobs(entry.paths as string[]), thresholds: entry.thresholds };
+    return { matches: compileGlobs(entry.paths as string[]), guidelines: entry.guidelines };
   });
 }
 
-function mergeThresholds(base: Thresholds, patch: unknown, where: string, number: NumberReader): Thresholds {
+function mergeGuidelines(base: Guidelines, patch: unknown, where: string, number: NumberReader): Guidelines {
   if (!isRecord(patch)) throw configError(`code-health.json: ${where} must be an object`);
-  const merged: Thresholds = { cyclomatic: { ...base.cyclomatic }, cognitive: { ...base.cognitive }, nesting: base.nesting, parameters: base.parameters, bumps: base.bumps, deepBumps: base.deepBumps };
+  const merged: Guidelines = { cyclomatic: { ...base.cyclomatic }, cognitive: { ...base.cognitive }, nesting: base.nesting, parameters: base.parameters, bumps: base.bumps, deepBumps: base.deepBumps };
   for (const [key, entry] of Object.entries(patch)) {
     if (key === "cyclomatic" || key === "cognitive") {
       if (!isRecord(entry)) throw configError(`code-health.json: ${where}.${key} must be an object with warn and high`);
@@ -209,11 +213,11 @@ function mergeThresholds(base: Thresholds, patch: unknown, where: string, number
   return merged;
 }
 
-/** The thresholds for a path: the defaults of the config with every matching override applied in order. */
-export function thresholdsFor(settings: ComplexitySettings, path: string): Thresholds {
-  let thresholds = settings.thresholds;
+/** The guidelines for a path: the defaults of the config with every matching override applied in order. */
+export function guidelinesFor(settings: ComplexitySettings, path: string): Guidelines {
+  let guidelines = settings.guidelines;
   for (const override of settings.overrides) {
-    if (override.matches(path)) thresholds = mergeThresholds(thresholds, override.thresholds, "override", (value) => value as number);
+    if (override.matches(path)) guidelines = mergeGuidelines(guidelines, override.guidelines, "override", (value) => value as number);
   }
-  return thresholds;
+  return guidelines;
 }

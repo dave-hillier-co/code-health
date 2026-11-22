@@ -7,7 +7,7 @@ import {
   isBumpyRoad,
   keywordComplexity,
   type BlockMetrics,
-  type BumpyRoadThresholds,
+  type BumpyRoadGuidelines,
 } from "./metrics.ts";
 import { selectProfile } from "./profile.ts";
 import { stripSource } from "./strip.ts";
@@ -23,7 +23,7 @@ export interface AnalyseOptions {
   /** Config mapping from file extension (no dot) to a profile name. */
   mappings?: Record<string, string>;
   bumpDepth?: number;
-  bumpyRoad?: BumpyRoadThresholds;
+  bumpyRoad?: BumpyRoadGuidelines;
 }
 
 export type FileMetrics = IndentationMetrics &

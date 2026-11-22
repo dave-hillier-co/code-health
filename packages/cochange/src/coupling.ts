@@ -30,7 +30,7 @@ export interface CouplingCounts {
   pairs: PairCount[];
 }
 
-export interface CouplingThresholds {
+export interface CouplingGuidelines {
   minSupport: number;
   /** Percentage, 0 to 100. */
   minDegree: number;
@@ -63,7 +63,7 @@ export function confidenceOf(support: number, changes: number): number {
  * minimum support and degree. The degree test is exact integer arithmetic, so
  * a pair at the threshold is never lost to rounding.
  */
-export function countCoupling(changes: readonly CouplingChange[], thresholds: CouplingThresholds): CouplingCounts {
+export function countCoupling(changes: readonly CouplingChange[], guidelines: CouplingGuidelines): CouplingCounts {
   const perFile = new Map<string, number>();
   const together = new Map<string, Map<string, number>>();
   let eligibleChanges = 0;
@@ -88,7 +88,7 @@ export function countCoupling(changes: readonly CouplingChange[], thresholds: Co
   for (const [a, row] of together) {
     for (const [b, support] of row) {
       const pair = { a, b, support, changesA: perFile.get(a)!, changesB: perFile.get(b)! };
-      if (support >= thresholds.minSupport && reachesDegree(pair, thresholds.minDegree)) pairs.push(pair);
+      if (support >= guidelines.minSupport && reachesDegree(pair, guidelines.minDegree)) pairs.push(pair);
     }
   }
   pairs.sort((p, q) => compareBytes(p.a, q.a) || compareBytes(p.b, q.b));

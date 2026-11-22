@@ -17,6 +17,7 @@ import {
   ensureCacheDir,
   exceeded,
   gitVersion,
+  guidelinesFor,
   isBumpyRoad,
   isMetricId,
   labelsFor,
@@ -25,17 +26,17 @@ import {
   metricIds,
   readSettings,
   runGit,
-  structuralValues,
-  thresholdsFor
-} from "./chunk-NJM4DZV3.mjs";
+  structuralValues
+} from "./chunk-IQ5YOB6H.mjs";
 import {
   buildDocument,
   shapeResults
-} from "./chunk-TE54Z34H.mjs";
+} from "./chunk-BJBUV5QH.mjs";
 import {
+  historyDefaults,
   serialise,
   usageError
-} from "./chunk-T3PHNALX.mjs";
+} from "./chunk-Q2L3NSZB.mjs";
 import {
   __export
 } from "./chunk-NYIILDEN.mjs";
@@ -251,7 +252,7 @@ function compileIssuePattern(pattern) {
     throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error), "issue pattern");
   }
 }
-var DEFAULT_MAX_CHANGESET_SIZE = 30;
+var DEFAULT_MAX_CHANGESET_SIZE = historyDefaults.maxChangesetSize;
 var isPureRename = (c) => c.status === "R" && c.similarity === 100 && (c.added ?? 0) === 0 && (c.deleted ?? 0) === 0;
 async function filterHistory(repoPath, view, options = {}) {
   const maxChangesetSize = options.maxChangesetSize ?? DEFAULT_MAX_CHANGESET_SIZE;
@@ -783,8 +784,8 @@ function insertCommits(db, commits, boundary) {
 }
 
 // packages/history/src/refresh.ts
-var DEFAULT_SIMILARITY = 50;
-var DEFAULT_RENAME_LIMIT = 1e3;
+var DEFAULT_SIMILARITY = historyDefaults.renameSimilarity;
+var DEFAULT_RENAME_LIMIT = historyDefaults.renameLimit;
 async function readShallowInfo(repoPath) {
   const out2 = (await runGit(repoPath, ["rev-parse", "--is-shallow-repository", "--path-format=absolute", "--git-common-dir"])).trim().split("\n");
   const isShallow = out2[0] === "true";
@@ -1035,11 +1036,8 @@ function topologicalOrder(rows, parents) {
 }
 
 // packages/history/src/evidence.ts
-var DEFAULT_EVIDENCE_THRESHOLDS = {
-  strong: { months: 24, logicalChanges: 300, contributors: 5 },
-  moderate: { months: 6, logicalChanges: 50, contributors: 2 }
-};
-var DEFAULT_WINDOW_MONTHS = 12;
+var DEFAULT_EVIDENCE_GUIDELINES = historyDefaults.evidence;
+var DEFAULT_WINDOW_MONTHS = historyDefaults.windowMonths;
 var SECONDS_PER_MONTH = 30.4375 * 86400;
 function monthsBefore(anchor, months) {
   const date = new Date(anchor * 1e3);
@@ -1069,7 +1067,7 @@ function commitSize(changes, minChanges) {
 var meets = (t, months, changes, contributors) => months >= t.months && changes >= t.logicalChanges && contributors >= t.contributors;
 function computeEvidence(view, changes, shallow, imported, options = {}) {
   const windowMonths = options.windowMonths ?? DEFAULT_WINDOW_MONTHS;
-  const thresholds = options.thresholds ?? DEFAULT_EVIDENCE_THRESHOLDS;
+  const guidelines = options.guidelines ?? DEFAULT_EVIDENCE_GUIDELINES;
   const until = view.headDate;
   const since = monthsBefore(until, windowMonths);
   const afterImport = imported.reduce((max, i2) => Math.max(max, i2.committerDate), -Infinity);
@@ -1077,7 +1075,7 @@ function computeEvidence(view, changes, shallow, imported, options = {}) {
   const usableHistoryMonths = first === null ? 0 : Math.round((until - first) / SECONDS_PER_MONTH * 10) / 10;
   const inWindow2 = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
   const contributors = new Set(inWindow2.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
-  const grade = meets(thresholds.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(thresholds.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
+  const grade = meets(guidelines.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(guidelines.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
   const available = view.commits.reduce(
     (min, c) => min === null || c.committerDate < min ? c.committerDate : min,
     null
@@ -1091,7 +1089,7 @@ function computeEvidence(view, changes, shallow, imported, options = {}) {
     truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
     importedHistory: [...imported],
     commitSize: commitSize(changes, options.minChangesForShift ?? 20),
-    thresholds
+    guidelines
   };
 }
 async function analyseHistory(repoPath, options = {}) {
@@ -1111,7 +1109,7 @@ async function readChangeWeights(context, settings) {
     const shallow = await readShallowInfo(root);
     if (shallow.isShallow) return void 0;
     await refresh(root, { ref: "HEAD" });
-    const analysis = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...context.config.effective.exclude] } });
+    const analysis = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...context.config.effective.exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize } });
     const until = analysis.view.headDate;
     return weightsFromChanges(analysis.filtered.changes, monthsBefore(until, settings.windowMonths), until, settings.windowMonths);
   } catch {
@@ -5562,7 +5560,7 @@ async function measureTree(tree, options) {
       const lexical = analyseSource(path, text, {
         agreementBar: settings.agreementBar,
         mappings: settings.languageProfiles,
-        bumpyRoad: bumpyRoadLimits(thresholdsFor(settings, path))
+        bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path))
       });
       const language9 = options.layer === "lexical" ? void 0 : await grammars.forPath(path);
       let structural;
@@ -5603,7 +5601,7 @@ function interfaceUnits(path, facts) {
 }
 function structuralUnits(path, units, settings) {
   const test = isTestPath(path);
-  const thresholds = thresholdsFor(settings, path);
+  const guidelines = guidelinesFor(settings, path);
   const records = [];
   for (const unit of units) {
     if (unit.metrics === void 0) continue;
@@ -5620,7 +5618,7 @@ function structuralUnits(path, units, settings) {
       values: structuralValues(unit.metrics, settings.cyclomaticSwitch),
       optionCount: unit.metrics.optionCount,
       statements: unit.metrics.statements,
-      bumpyRoad: isBumpyRoad(unit.metrics, bumpyRoadLimits(thresholds)),
+      bumpyRoad: isBumpyRoad(unit.metrics, bumpyRoadLimits(guidelines)),
       bumpDepth: unit.metrics.bumpDepth,
       bumpSize: unit.metrics.bumpSize
     });
@@ -5757,7 +5755,7 @@ var ruleDescriptions = {
       "if, ternary, switch, loops and catch, plus the nesting level they sit at. else if, else, a labelled",
       "break or continue, direct recursion and each sequence of like && or || operators cost a flat 1.",
       "?? and ?. are free. Nested functions add to the enclosing function's score.",
-      "Labels: cognitive-warn above the guideline thresholds.cognitive.warn (default 15), cognitive-high above high (25).",
+      "Labels: cognitive-warn above the guideline guidelines.cognitive.warn (default 15), cognitive-high above high (25).",
       "Run `complexity explain path#Unit` to see which construct cost what."
     ].join("\n")
   },
@@ -5774,7 +5772,7 @@ var ruleDescriptions = {
     summary: "Nesting depth of control structures",
     explanation: [
       "The deepest nesting of if, loop, switch and try statements in the function. An else if sits at the level of its if.",
-      "Label: nesting-warn above the guideline thresholds.nesting (default 4)."
+      "Label: nesting-warn above the guideline guidelines.nesting (default 4)."
     ].join("\n")
   },
   parameters: {
@@ -5782,7 +5780,7 @@ var ruleDescriptions = {
     explanation: [
       "Declared parameters. A destructured object parameter counts once, with its properties reported as optionCount,",
       "since option bags are a common route to overexposure.",
-      "Label: parameters-warn above the guideline thresholds.parameters (default 5)."
+      "Label: parameters-warn above the guideline guidelines.parameters (default 5)."
     ].join("\n")
   },
   length: {
@@ -5798,7 +5796,7 @@ var ruleDescriptions = {
       "Each bump is a separate region of nested logic directly in the function: the body of each branch of an if chain, of a loop, or a whole",
       "switch or try. Structures inside a bump belong to it, and a body that fits on the line that opens it is not one. The lexical layer",
       "measures the same thing as a run of lines nested two levels or more below the function, opened by a branch keyword.",
-      "A function is a bumpy road at thresholds.bumps bumps (default 3), or thresholds.deepBumps (default 2) when its deepest bump is deeper than thresholds.nesting.",
+      "A function is a bumpy road at guidelines.bumps bumps (default 3), or guidelines.deepBumps (default 2) when its deepest bump is deeper than guidelines.nesting.",
       "Each bump is a responsibility that has not been named. Simplify each in place first, with guard clauses or by flattening.",
       "Extract a bump only when it is a distinct responsibility, as a deep, well-named local function."
     ].join("\n")
@@ -5930,7 +5928,7 @@ function pick(values, selected) {
   return out2;
 }
 function unitLabels(unit, settings) {
-  return labelsFor(unit.values, thresholdsFor(settings, unit.path), unit.bumpyRoad === true);
+  return labelsFor(unit.values, guidelinesFor(settings, unit.path), unit.bumpyRoad === true);
 }
 function unitName(unit) {
   return unit.name ?? "<anonymous>";
@@ -5977,7 +5975,7 @@ function fileRow(file, settings) {
     const values = top.flatMap((unit) => unit.values[metric] === void 0 ? [] : [unit.values[metric]]);
     if (values.length > 0) aggregates[metric] = { sum: values.reduce((a, b) => a + b, 0), max: Math.max(...values) };
   }
-  const thresholds = thresholdsFor(settings, file.path);
+  const guidelines = guidelinesFor(settings, file.path);
   return {
     path: file.path,
     score: file.indentationComplexity,
@@ -5991,7 +5989,7 @@ function fileRow(file, settings) {
     keywordComplexity: file.keywordComplexity ?? null,
     functions: file.units.length,
     aggregates: file.units.length === 0 ? null : aggregates,
-    overThreshold: file.units.filter((unit) => exceeded(unit.values, thresholds).length > 0).length,
+    aboveGuideline: file.units.filter((unit) => exceeded(unit.values, guidelines).length > 0).length,
     interfaceDepth: meanDepth(file),
     passThroughs: passThroughCount(file)
   };
@@ -6204,11 +6202,11 @@ var command2 = {
       if (match.moved) summary.moved++;
       if (before === void 0) summary.added++;
       else if (match.changed) summary.changed++;
-      const thresholds = thresholdsFor(settings, after.path);
-      for (const metric of exceeded(after.values, thresholds)) {
+      const guidelines = guidelinesFor(settings, after.path);
+      for (const metric of exceeded(after.values, guidelines)) {
         const now = after.values[metric];
         const was = before?.values[metric];
-        const limit = limitOf(thresholds, metric);
+        const limit = limitOf(guidelines, metric);
         if (before !== void 0 && now - (was ?? 0) <= settings.delta) continue;
         rows.push({
           path: after.path,
@@ -6327,7 +6325,7 @@ var command4 = {
         summary.unchanged++;
         continue;
       }
-      const thresholds = thresholdsFor(settings, after.path);
+      const guidelines = guidelinesFor(settings, after.path);
       rows.push({
         path: after.path,
         unit: unitName(after),
@@ -6340,7 +6338,7 @@ var command4 = {
         after: pick(after.values, metricIds),
         delta: before === void 0 ? null : delta(before.values, after.values),
         score: (after.values.cognitive ?? 0) - (before?.values.cognitive ?? 0),
-        labels: labelsFor(after.values, thresholds)
+        labels: labelsFor(after.values, guidelines)
       });
     }
     return {
@@ -6575,7 +6573,7 @@ var command5 = {
           startLine: unit.startLine,
           endLine: unit.endLine,
           metrics: values,
-          labels: labelsFor(values, thresholdsFor(settings, path)),
+          labels: labelsFor(values, guidelinesFor(settings, path)),
           cyclomaticSwitch: settings.cyclomaticSwitch
         }
       },
@@ -6608,7 +6606,7 @@ var command6 = {
       inputs: { tree: current.kind, layer, paths },
       extra: { skippedFiles: measurement.skippedFiles },
       results: rows,
-      columns: ["path", "complexity", "functions", "overThreshold", "source", "profile", "test", "codeLines"]
+      columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "test", "codeLines"]
     };
     if (!isPartial3(context) && current.kind === "head") await storeReport(context, name7, output);
     else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
@@ -7113,7 +7111,7 @@ async function measureOutcome(root, settings, exclude, options) {
   if (series.size === 0 || !series.has(first)) throw usageError(`--from ${options.from} is not an ancestor of ${options.at}`);
   const date = Number((await runGit(root, ["log", "-1", "--format=%ct", at])).trim());
   const startedAt = Number((await runGit(root, ["log", "-1", "--format=%ct", first])).trim());
-  const history = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...exclude], excludeSuiteCommits: true } });
+  const history = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize, excludeSuiteCommits: true } });
   const headDate = history.view.headDate;
   const fullEnd = monthsBefore(date, -settings.windowMonths);
   const anchor = Math.min(fullEnd, headDate);

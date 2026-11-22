@@ -162,16 +162,16 @@ describe("structural bumps", () => {
   });
 });
 
-describe("the bumpy road thresholds", () => {
-  const measureWith = async (thresholds: object) => {
-    writeFileSync(join(directory, "code-health.json"), JSON.stringify({ complexity: { thresholds } }));
+describe("the bumpy road guidelines", () => {
+  const measureWith = async (guidelines: object) => {
+    writeFileSync(join(directory, "code-health.json"), JSON.stringify({ complexity: { guidelines } }));
     const settings = readSettings(loadConfig(directory, complexityConfig));
     const measurement = await measureTree(await treeFromDirectory(directory), { settings, layer: "structural" });
     rmSync(join(directory, "code-health.json"));
     return Object.fromEntries(measurement.files.flatMap((file) => file.units).map((unit) => [unit.id, unit.bumpyRoad]));
   };
 
-  test("are configurable: the bump count, and the deeper-bump count against thresholds.nesting", async () => {
+  test("are configurable: the bump count, and the deeper-bump count against guidelines.nesting", async () => {
     expect(await measureWith({ bumps: 5 })).toMatchObject({ "tangled.ts#tangled": false, "tangled.ts#deep": true });
     expect(await measureWith({ bumps: 5, nesting: 5 })).toMatchObject({ "tangled.ts#tangled": false, "tangled.ts#deep": false });
     expect(await measureWith({ bumps: 2 })).toMatchObject({ "tangled.ts#flat": false, "tangled.ts#deep": true });
@@ -179,7 +179,7 @@ describe("the bumpy road thresholds", () => {
   });
 
   test("reject a value that is not a count", async () => {
-    await expect(measureWith({ bumps: 0 })).rejects.toThrow(/thresholds.bumps/);
+    await expect(measureWith({ bumps: 0 })).rejects.toThrow(/guidelines.bumps/);
   });
 });
 
@@ -216,8 +216,8 @@ describe("the bumpy road through the CLI", () => {
     }
   });
 
-  test("thresholds.bumps from the repository's configuration decides which functions are labelled", async () => {
-    const strict = repoWith({ complexity: { thresholds: { bumps: 5 } } });
+  test("guidelines.bumps from the repository's configuration decides which functions are labelled", async () => {
+    const strict = repoWith({ complexity: { guidelines: { bumps: 5 } } });
     const lax = repoWith();
     try {
       const labelled = async (repo: GitFixture) => (await analyse(repo)).rows.filter((row) => JSON.stringify(row).includes("bumpy")).map((row) => row.id);

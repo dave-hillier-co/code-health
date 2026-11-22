@@ -76,9 +76,9 @@ export function buildKnowledgeModel(input: ModelInput): KnowledgeModel {
   return { asOf, developers, files, missing: snapshot.missing };
 }
 
-/** True when `goneLines` of `people` reaches the threshold percentage, in exact integer arithmetic. */
-export const reachesThreshold = (goneLines: number, people: number, thresholdPercent: number): boolean =>
-  people > 0 && 100 * goneLines >= thresholdPercent * people;
+/** True when `goneLines` of `people` reaches the guideline percentage, in exact integer arithmetic. */
+export const reachesGuideline = (goneLines: number, people: number, guidelinePercent: number): boolean =>
+  people > 0 && 100 * goneLines >= guidelinePercent * people;
 
 /** Lines of a file held by developers who have left, as the model stands. */
 export function goneLinesOf(file: FileKnowledge, developers: readonly Developer[]): number {

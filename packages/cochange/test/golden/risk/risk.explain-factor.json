@@ -9,9 +9,7 @@
       "shifted": false
     },
     "grade": "weak",
-    "importedHistory": [],
-    "logicalChangesInWindow": 17,
-    "thresholds": {
+    "guidelines": {
       "moderate": {
         "contributors": 2,
         "logicalChanges": 50,
@@ -23,6 +21,8 @@
         "months": 24
       }
     },
+    "importedHistory": [],
+    "logicalChangesInWindow": 17,
     "truncated": {
       "availableSince": null,
       "boundaryCommits": 0,
@@ -127,18 +127,18 @@
         }
       ],
       "family": "completeness",
+      "guidelines": {
+        "count": {
+          "high": 3,
+          "moderate": 1
+        }
+      },
       "layer": "history",
       "name": "missing-co-change",
       "reason": null,
       "scored": true,
       "source": "history",
       "status": "ok",
-      "thresholds": {
-        "count": {
-          "high": 3,
-          "moderate": 1
-        }
-      },
       "value": {
         "count": 2
       }

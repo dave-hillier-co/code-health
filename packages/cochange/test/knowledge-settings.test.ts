@@ -23,7 +23,7 @@ test("the analysis is off by default and the defaults follow the spec", () => {
     activityWindowMonths: 6,
     periodMonths: 3,
     horizonPeriods: 4,
-    abandonmentThreshold: 90,
+    abandonmentGuideline: 90,
     turnoverRate: null,
     trials: 10_000,
     alphas: [95, 99],
@@ -40,7 +40,7 @@ test("a stated turnover rate is a percentage and is read as a fraction", () => {
 });
 
 test("nonsense settings are refused", () => {
-  expect(() => settingsFor({ cochange: { knowledge: { abandonmentThreshold: 0 } } })).toThrow(/abandonmentThreshold/);
+  expect(() => settingsFor({ cochange: { knowledge: { abandonmentGuideline: 0 } } })).toThrow(/abandonmentGuideline/);
   expect(() => settingsFor({ cochange: { knowledge: { turnoverRate: 120 } } })).toThrow(/turnoverRate/);
   expect(() => settingsFor({ cochange: { knowledge: { alphas: [100] } } })).toThrow(/alphas/);
   expect(() => settingsFor({ cochange: { knowledge: { rank: "people" } } })).toThrow(/rank/);

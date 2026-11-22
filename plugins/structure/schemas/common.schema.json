@@ -280,7 +280,7 @@
       ],
       "additionalProperties": false
     },
-    "gradeThreshold": {
+    "gradeGuideline": {
       "type": "object",
       "properties": {
         "months": {
@@ -418,14 +418,14 @@
           ],
           "additionalProperties": false
         },
-        "thresholds": {
+        "guidelines": {
           "type": "object",
           "properties": {
             "strong": {
-              "$ref": "#/$defs/gradeThreshold"
+              "$ref": "#/$defs/gradeGuideline"
             },
             "moderate": {
-              "$ref": "#/$defs/gradeThreshold"
+              "$ref": "#/$defs/gradeGuideline"
             }
           },
           "required": [
@@ -444,7 +444,7 @@
         "truncated",
         "importedHistory",
         "commitSize",
-        "thresholds"
+        "guidelines"
       ],
       "additionalProperties": false
     },

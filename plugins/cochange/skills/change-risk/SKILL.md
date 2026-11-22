@@ -38,7 +38,7 @@ When the author is the user, your stance is a pre-flight check: what to fix befo
 | Command | Use |
 |---|---|
 | `risk [BASE[..HEAD]] [--worktree] [--evidence FILE]...` | The impact band, placement when allowed, the level when earned, every factor with its value, band and evidence, and the findings with their responses |
-| `risk explain [FACTOR]` | The rules behind the level, or one factor's definition, thresholds and the files that drove it |
+| `risk explain [FACTOR]` | The rules behind the level, or one factor's definition, guidelines and the files that drove it |
 | `risk reviewers [BASE[..HEAD]] [--names]` | Active developers per touched area, ranked by authorship and by changes to coupled files |
 | `risk backtest [--since DATE] [--adopted DATE]` | Every merged change scored as of itself against whether it was reverted or fixed, per level and per factor band. With `--adopted`, the follow-up fix rate before and after that date over windows of equal length |
 

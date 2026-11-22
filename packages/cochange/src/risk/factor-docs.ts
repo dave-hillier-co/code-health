@@ -94,7 +94,7 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     layer: "history",
     banding: "count",
     signal: "Touched files already abandoned, or with high abandonment probability",
-    definition: "Needs the knowledge analysis (cochange.knowledge.enabled), and is unavailable without it. Counts the touched files that existed at the base and are abandoned there (at least cochange.knowledge.abandonmentThreshold percent of the lines held by people belong to people who have left, judged at the tip's date), or whose simulated probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. Banded on the count. Computed from the blame cache and never stored, and the evidence names files, not people.",
+    definition: "Needs the knowledge analysis (cochange.knowledge.enabled), and is unavailable without it. Counts the touched files that existed at the base and are abandoned there (at least cochange.knowledge.abandonmentGuideline percent of the lines held by people belong to people who have left, judged at the tip's date), or whose simulated probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. Banded on the count. Computed from the blame cache and never stored, and the evidence names files, not people.",
     why: "Nobody is left who can review these with first-hand knowledge.",
   },
   {
@@ -130,7 +130,7 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     layer: "history",
     banding: "percentile",
     signal: "Files with high co-change confidence towards the touched files",
-    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change thresholds towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base, placed against every exported symbol's fan-in. The band is the highest of these.",
+    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change guidelines towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base, placed against every exported symbol's fan-in. The band is the highest of these.",
     why: "A flaw in widely used code is inherited by every consumer.",
   },
   {
@@ -138,8 +138,8 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     family: "structure-and-content",
     layer: "lexical",
     banding: "count",
-    signal: "Units that are new and over a threshold, or over a threshold and worse",
-    definition: "With the complexity plugin's diff passed in: the units it reports as new and over its threshold, or over it and worse. Without it: the touched code files (those a lexer profile reads, so not prose or licence text) whose indentation complexity rose by at least cochange.risk.complexityRise. Banded on the count, and not counted in the score.",
+    signal: "Units that are new and over a guideline, or over a guideline and worse",
+    definition: "With the complexity plugin's diff passed in: the units it reports as new and over its guideline, or over it and worse. Without it: the touched code files (those a lexer profile reads, so not prose or licence text) whose indentation complexity rose by at least cochange.risk.complexityRise. Banded on the count, and not counted in the score.",
     why: "The change is adding code that is hard to understand.",
   },
   {
@@ -184,7 +184,7 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     layer: "placement",
     banding: "none",
     signal: "The authors' earlier changes to files coupled with the touched files, to the same folder, and to the same configured component",
-    definition: "The authors' earlier changes to the files that changed with the touched file at the missing-co-change thresholds, to files in its folder, and to files in its component when cochange components are configured.",
+    definition: "The authors' earlier changes to the files that changed with the touched file at the missing-co-change guidelines, to files in its folder, and to files in its component when cochange components are configured.",
     why: "Someone who knows the surroundings is better placed than a file-level count shows.",
   },
   {

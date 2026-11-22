@@ -54,7 +54,7 @@ test("grouping defaults to off, and the other modes carry their own settings", (
 test("the file overrides defaults, and stating the window is remembered", () => {
   const settings = settingsFor({
     exclude: ["dist/**"],
-    cochange: { branch: "develop", windowMonths: 6, firstParent: true, identities: { botPatterns: ["bot$"] } },
+    cochange: { branch: "develop", windowMonths: 6, firstParent: true, botPatterns: ["bot$"] },
   });
   expect(settings).toMatchObject({
     ref: "develop",
@@ -66,6 +66,13 @@ test("the file overrides defaults, and stating the window is remembered", () => 
   });
 });
 
+test("the shared history section sets the analysis window, and the cochange section overrides it", () => {
+  const shared = settingsFor({ history: { windowMonths: 6, maxChangesetSize: 10, botPatterns: ["ci$"], branch: "develop", renameSimilarity: 60 } });
+  expect(shared).toMatchObject({ windowMonths: 6, maxChangesetSize: 10, botPatterns: ["ci$"], ref: "develop", renameSimilarity: 60, windowStated: true });
+  const overridden = settingsFor({ history: { windowMonths: 6, maxChangesetSize: 10 }, cochange: { windowMonths: 3 } });
+  expect(overridden).toMatchObject({ windowMonths: 3, maxChangesetSize: 10 });
+});
+
 test.each([
   [{ cochange: { windowMonths: 0 } }, "windowMonths must be a positive integer"],
   [{ cochange: { windowMonths: 1.5 } }, "windowMonths must be a positive integer"],
@@ -75,7 +82,9 @@ test.each([
   [{ cochange: { branch: "" } }, "branch"],
   [{ cochange: { branch: 3 } }, "branch"],
   [{ cochange: { grouping: "weekly" } }, "grouping"],
-  [{ cochange: { identities: { botPatterns: [1] } } }, "botPatterns"],
+  [{ cochange: { botPatterns: [1] } }, "cochange.botPatterns"],
+  [{ history: { botPatterns: [1] } }, "history.botPatterns"],
+  [{ history: { windowMonths: 0 } }, "history.windowMonths must be a positive integer"],
   [{ cochange: { hook: { confidence: 0 } } }, "hook.confidence must be a percentage"],
   [{ cochange: { hook: { confidence: 101 } } }, "hook.confidence must be a percentage"],
   [{ cochange: { hook: { maxPartners: 0 } } }, "hook.maxPartners must be a positive integer"],
@@ -85,7 +94,7 @@ test.each([
   [{ cochange: { hook: { nonsense: 1 } } }, "unknown setting"],
   [{ cochange: { identities: { location: "cloud" } } }, "identities.location"],
   [{ cochange: { identities: { servicePatterns: "ci" } } }, "servicePatterns"],
-  [{ cochange: { identities: { unmappedShareThreshold: 101 } } }, "unmappedShareThreshold"],
+  [{ cochange: { identities: { unmappedShareGuideline: 101 } } }, "unmappedShareGuideline"],
   [{ cochange: { identities: { significantCommits: -1 } } }, "significantCommits"],
   [{ cochange: { nonsense: true } }, "unknown setting"],
   [{ cochange: { grouping: "issue-key", issuePattern: "(" } }, "issuePattern"],
@@ -95,13 +104,12 @@ test.each([
   expect(() => settingsFor(document)).toThrowError(message);
 });
 
-test("identity settings default to an undecided location and a 5 percent unmapped threshold", () => {
+test("identity settings default to an undecided location and a 5 percent unmapped guideline", () => {
   expect(settingsFor({}).identities).toEqual({
     location: null,
-    botPatterns: [],
     servicePatterns: [],
     agentTrailerPatterns: [],
-    unmappedShareThreshold: 5,
+    unmappedShareGuideline: 5,
     significantCommits: 3,
   });
   expect(settingsFor({ cochange: { identities: { location: "local", servicePatterns: ["deploy"] } } }).identities).toMatchObject({

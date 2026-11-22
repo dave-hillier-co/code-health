@@ -5,7 +5,7 @@ import { writeReport } from "../reports.ts";
 import { UNASSIGNED, readComponents } from "../components.ts";
 import { estimateTurnover, type Turnover } from "./activity.ts";
 import { round4 } from "./current.ts";
-import { goneLinesOf, reachesThreshold } from "./knowledge-model.ts";
+import { goneLinesOf, reachesGuideline } from "./knowledge-model.ts";
 import { commonExtra, commonInputs, prepare, type Prepared } from "./prepare.ts";
 import { fileFindings, hotspotWeights, rankScore } from "./ranking.ts";
 import { reportLoss } from "./report.ts";
@@ -71,7 +71,7 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
     trials: sim.trials,
     seed: sim.seed,
     alphas: settings.alphas,
-    thresholdPercent: settings.abandonmentThreshold,
+    guidelinePercent: settings.abandonmentGuideline,
     components,
   });
 
@@ -84,7 +84,7 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
     .map((f) => {
       const file = byPath.get(f.path)!;
       const former = file.holders.filter((h) => !model.developers[h.dev]!.active).length;
-      const abandoned = reachesThreshold(goneLinesOf(file, model.developers), file.people, settings.abandonmentThreshold);
+      const abandoned = reachesGuideline(goneLinesOf(file, model.developers), file.people, settings.abandonmentGuideline);
       const weight = weights.get(f.path);
       return {
         path: f.path,

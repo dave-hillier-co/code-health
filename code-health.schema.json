@@ -41,7 +41,7 @@
       },
       "description": "Folder and file names that say nothing about their content."
     },
-    "cochange": {
+    "history": {
       "type": "object",
       "properties": {
         "branch": {
@@ -63,6 +63,85 @@
           "type": "number",
           "default": 12
         },
+        "maxChangesetSize": {
+          "type": "number",
+          "default": 30
+        },
+        "botPatterns": {
+          "type": "array",
+          "default": []
+        },
+        "evidence": {
+          "type": "object",
+          "properties": {
+            "strong": {
+              "type": "object",
+              "properties": {
+                "months": {
+                  "type": "number",
+                  "default": 24
+                },
+                "logicalChanges": {
+                  "type": "number",
+                  "default": 300
+                },
+                "contributors": {
+                  "type": "number",
+                  "default": 5
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "months": 24,
+                "logicalChanges": 300,
+                "contributors": 5
+              }
+            },
+            "moderate": {
+              "type": "object",
+              "properties": {
+                "months": {
+                  "type": "number",
+                  "default": 6
+                },
+                "logicalChanges": {
+                  "type": "number",
+                  "default": 50
+                },
+                "contributors": {
+                  "type": "number",
+                  "default": 2
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "months": 6,
+                "logicalChanges": 50,
+                "contributors": 2
+              }
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "strong": {
+              "months": 24,
+              "logicalChanges": 300,
+              "contributors": 5
+            },
+            "moderate": {
+              "months": 6,
+              "logicalChanges": 50,
+              "contributors": 2
+            }
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "How history is read, for every plugin that reads it. A plugin section may override any key it lists, and the plugin's own value wins over this one."
+    },
+    "cochange": {
+      "type": "object",
+      "properties": {
         "recentMonths": {
           "type": "number",
           "default": 3
@@ -86,10 +165,6 @@
         "groupingWindowHours": {
           "type": "number",
           "default": 4
-        },
-        "maxChangesetSize": {
-          "type": "number",
-          "default": 30
         },
         "minSupport": {
           "type": "number",
@@ -328,10 +403,6 @@
             "location": {
               "default": null
             },
-            "botPatterns": {
-              "type": "array",
-              "default": []
-            },
             "servicePatterns": {
               "type": "array",
               "default": []
@@ -340,7 +411,7 @@
               "type": "array",
               "default": []
             },
-            "unmappedShareThreshold": {
+            "unmappedShareGuideline": {
               "type": "number",
               "default": 5
             },
@@ -352,10 +423,9 @@
           "additionalProperties": false,
           "default": {
             "location": null,
-            "botPatterns": [],
             "servicePatterns": [],
             "agentTrailerPatterns": [],
-            "unmappedShareThreshold": 5,
+            "unmappedShareGuideline": 5,
             "significantCommits": 3
           }
         },
@@ -378,7 +448,7 @@
               "type": "number",
               "default": 4
             },
-            "abandonmentThreshold": {
+            "abandonmentGuideline": {
               "type": "number",
               "default": 90
             },
@@ -426,7 +496,7 @@
             "activityWindowMonths": 6,
             "periodMonths": 3,
             "horizonPeriods": 4,
-            "abandonmentThreshold": 90,
+            "abandonmentGuideline": 90,
             "turnoverRate": null,
             "trials": 10000,
             "alphas": [
@@ -439,6 +509,33 @@
             "atRiskProbability": 10,
             "concentratedTailRatio": 3
           }
+        },
+        "branch": {
+          "description": "Overrides history.branch for the cochange plugin."
+        },
+        "firstParent": {
+          "type": "boolean",
+          "description": "Overrides history.firstParent for the cochange plugin."
+        },
+        "renameSimilarity": {
+          "type": "number",
+          "description": "Overrides history.renameSimilarity for the cochange plugin."
+        },
+        "renameLimit": {
+          "type": "number",
+          "description": "Overrides history.renameLimit for the cochange plugin."
+        },
+        "windowMonths": {
+          "type": "number",
+          "description": "Overrides history.windowMonths for the cochange plugin."
+        },
+        "maxChangesetSize": {
+          "type": "number",
+          "description": "Overrides history.maxChangesetSize for the cochange plugin."
+        },
+        "botPatterns": {
+          "type": "array",
+          "description": "Overrides history.botPatterns for the cochange plugin."
         },
         "evidence": {
           "type": "object",
@@ -491,18 +588,7 @@
             }
           },
           "additionalProperties": false,
-          "default": {
-            "strong": {
-              "months": 24,
-              "logicalChanges": 300,
-              "contributors": 5
-            },
-            "moderate": {
-              "months": 6,
-              "logicalChanges": 50,
-              "contributors": 2
-            }
-          }
+          "description": "Overrides history.evidence for the cochange plugin."
         }
       },
       "additionalProperties": false,
@@ -526,7 +612,7 @@
             "bumps"
           ]
         },
-        "thresholds": {
+        "guidelines": {
           "type": "object",
           "properties": {
             "cyclomatic": {
@@ -628,10 +714,6 @@
           "type": "boolean",
           "default": true
         },
-        "windowMonths": {
-          "type": "number",
-          "default": 12
-        },
         "overrides": {
           "type": "array",
           "default": []
@@ -661,6 +743,18 @@
           "default": {
             "shallow": 10
           }
+        },
+        "windowMonths": {
+          "type": "number",
+          "description": "Overrides history.windowMonths for the complexity plugin."
+        },
+        "maxChangesetSize": {
+          "type": "number",
+          "description": "Overrides history.maxChangesetSize for the complexity plugin."
+        },
+        "botPatterns": {
+          "type": "array",
+          "description": "Overrides history.botPatterns for the complexity plugin."
         }
       },
       "additionalProperties": false,
@@ -701,10 +795,6 @@
           "type": "number",
           "default": 90
         },
-        "windowMonths": {
-          "type": "number",
-          "default": 12
-        },
         "lowCoChange": {
           "type": "number",
           "default": 10
@@ -736,6 +826,18 @@
         "fixedPoints": {
           "type": "array",
           "default": []
+        },
+        "windowMonths": {
+          "type": "number",
+          "description": "Overrides history.windowMonths for the locality plugin."
+        },
+        "maxChangesetSize": {
+          "type": "number",
+          "description": "Overrides history.maxChangesetSize for the locality plugin."
+        },
+        "botPatterns": {
+          "type": "array",
+          "description": "Overrides history.botPatterns for the locality plugin."
         }
       },
       "additionalProperties": false,
@@ -744,33 +846,6 @@
     "structure": {
       "type": "object",
       "properties": {
-        "branch": {
-          "default": null
-        },
-        "firstParent": {
-          "type": "boolean",
-          "default": false
-        },
-        "renameSimilarity": {
-          "type": "number",
-          "default": 50
-        },
-        "renameLimit": {
-          "type": "number",
-          "default": 1000
-        },
-        "windowMonths": {
-          "type": "number",
-          "default": 12
-        },
-        "maxChangesetSize": {
-          "type": "number",
-          "default": 30
-        },
-        "botPatterns": {
-          "type": "array",
-          "default": []
-        },
         "exactLimit": {
           "type": "number",
           "default": 16
@@ -865,70 +940,6 @@
         },
         "base": {
           "default": null
-        },
-        "evidence": {
-          "type": "object",
-          "properties": {
-            "strong": {
-              "type": "object",
-              "properties": {
-                "months": {
-                  "type": "number",
-                  "default": 24
-                },
-                "logicalChanges": {
-                  "type": "number",
-                  "default": 300
-                },
-                "contributors": {
-                  "type": "number",
-                  "default": 5
-                }
-              },
-              "additionalProperties": false,
-              "default": {
-                "months": 24,
-                "logicalChanges": 300,
-                "contributors": 5
-              }
-            },
-            "moderate": {
-              "type": "object",
-              "properties": {
-                "months": {
-                  "type": "number",
-                  "default": 6
-                },
-                "logicalChanges": {
-                  "type": "number",
-                  "default": 50
-                },
-                "contributors": {
-                  "type": "number",
-                  "default": 2
-                }
-              },
-              "additionalProperties": false,
-              "default": {
-                "months": 6,
-                "logicalChanges": 50,
-                "contributors": 2
-              }
-            }
-          },
-          "additionalProperties": false,
-          "default": {
-            "strong": {
-              "months": 24,
-              "logicalChanges": 300,
-              "contributors": 5
-            },
-            "moderate": {
-              "months": 6,
-              "logicalChanges": 50,
-              "contributors": 2
-            }
-          }
         },
         "packages": {
           "type": "object",
@@ -1090,6 +1101,86 @@
             "volatileInterfaceShare": 0.3,
             "zoneDistance": 0.5
           }
+        },
+        "branch": {
+          "description": "Overrides history.branch for the structure plugin."
+        },
+        "firstParent": {
+          "type": "boolean",
+          "description": "Overrides history.firstParent for the structure plugin."
+        },
+        "renameSimilarity": {
+          "type": "number",
+          "description": "Overrides history.renameSimilarity for the structure plugin."
+        },
+        "renameLimit": {
+          "type": "number",
+          "description": "Overrides history.renameLimit for the structure plugin."
+        },
+        "windowMonths": {
+          "type": "number",
+          "description": "Overrides history.windowMonths for the structure plugin."
+        },
+        "maxChangesetSize": {
+          "type": "number",
+          "description": "Overrides history.maxChangesetSize for the structure plugin."
+        },
+        "botPatterns": {
+          "type": "array",
+          "description": "Overrides history.botPatterns for the structure plugin."
+        },
+        "evidence": {
+          "type": "object",
+          "properties": {
+            "strong": {
+              "type": "object",
+              "properties": {
+                "months": {
+                  "type": "number",
+                  "default": 24
+                },
+                "logicalChanges": {
+                  "type": "number",
+                  "default": 300
+                },
+                "contributors": {
+                  "type": "number",
+                  "default": 5
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "months": 24,
+                "logicalChanges": 300,
+                "contributors": 5
+              }
+            },
+            "moderate": {
+              "type": "object",
+              "properties": {
+                "months": {
+                  "type": "number",
+                  "default": 6
+                },
+                "logicalChanges": {
+                  "type": "number",
+                  "default": 50
+                },
+                "contributors": {
+                  "type": "number",
+                  "default": 2
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "months": 6,
+                "logicalChanges": 50,
+                "contributors": 2
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Overrides history.evidence for the structure plugin."
         }
       },
       "additionalProperties": false,

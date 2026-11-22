@@ -87,7 +87,7 @@ A bad extraction, which the review rejects:
   data (a mapping from value to value, or to a name) and the logic is shared. It is not one when each entry is its own code.
 - **Named booleans used once.** `const isEligible = a && b && c;` followed by a single `if (isEligible)` splits one
   sequence across two lines. It reads better only when the name says something the expression does not.
-- **Splitting to pass a threshold.** A function cut in two at an arbitrary line, with the second half taking all of the
+- **Splitting to pass a guideline.** A function cut in two at an arbitrary line, with the second half taking all of the
   first half's locals, scores lower and reads worse.
 - **Chained helpers.** `a()` calls `b()` calls `c()`, each doing a third of the work, makes a reader hold three functions
   to understand one.
@@ -99,7 +99,7 @@ If the branching is still there, so is the complexity. Say so in the review.
 
 Carmack and Blow: code read straight down, with its state and order visible, is often clearer than a chain of single-use
 calls. Inline a function that is called from one place, that forwards its arguments, or that exists only to give a
-threshold a lower number. After inlining, check whether the caller got worse: if it did, the helper was earning its
+guideline a lower number. After inlining, check whether the caller got worse: if it did, the helper was earning its
 place.
 
 ## When to leave it

@@ -62,10 +62,10 @@ test("the output has developers as counts and never a name or an address", async
   expectGolden("abandonment", "abandonment.current", stdout);
 });
 
-test("the threshold is configurable and decides on exact arithmetic", async () => {
-  configure({ abandonmentThreshold: 91 });
+test("the guideline is configurable and decides on exact arithmetic", async () => {
+  configure({ abandonmentGuideline: 91 });
   expect(paths(await json("current", "--limit", "all"))).toEqual([engine, deps]);
-  configure({ abandonmentThreshold: 80 });
+  configure({ abandonmentGuideline: 80 });
   expect(paths(await json("current", "--limit", "all"))).toEqual([engine, lexer, parser, deps]);
 });
 

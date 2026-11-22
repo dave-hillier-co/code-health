@@ -169,7 +169,7 @@ Subcommands of the cochange CLI. Every one supports `--json` with a versioned sc
 | Command | Output |
 |---|---|
 | `cochange risk [BASE[..HEAD]] [--worktree] [--evidence FILE...]` | The level (when backtested), the impact and placement bands, every factor with its value, band, evidence and source, and the findings with their responses |
-| `cochange risk explain [FACTOR]` | The rules behind the level, or one factor's definition, thresholds and the files that drove it |
+| `cochange risk explain [FACTOR]` | The rules behind the level, or one factor's definition, guidelines and the files that drove it |
 | `cochange risk reviewers [BASE[..HEAD]] [--names]` | Suggested reviewers per touched area: active developers ranked by authorship and by changes to coupled files |
 | `cochange risk backtest [--since DATE]` | For the baseline population: each history-layer factor's band and the level, against whether the change was later reverted or fixed |
 
@@ -290,7 +290,7 @@ Numeric values are **guidelines**: they place a factor in a band and order the f
 - **In the cochange plugin, as a skill.** Almost every factor is a history query the plugin already answers. It triggers in a different situation from the other skills (a branch about to merge), so it is its own skill.
 - **Advice, not a gate.** A level that blocks merges gets gamed, and the cheapest way to lower it is to split a change into pieces that hide the same risk. The response table is the product.
 - **Rules before weights.** A fitted model would predict better and explain worse. The backtest keeps the rules honest, and a factor that carries no signal in a repository can be turned off.
-- **Relative bands, against merged changes.** Absolute thresholds for size or spread do not transfer between repositories, and a branch is only comparable with past branches.
+- **Relative bands, against merged changes.** Absolute guidelines for size or spread do not transfer between repositories, and a branch is only comparable with past branches.
 - **Families, and a banded score.** Counting correlated factors separately, or raising the level when any one of many factors is high, would put most changes at the top level. A level most changes share tells a reviewer nothing.
 - **Placement is self by default.** The most useful and least invasive use is an author checking their own change. Using it on colleagues' branches is a team choice, not a default.
 - **Unavailable is not low.** A factor the tool could not compute must not make a change look safer.

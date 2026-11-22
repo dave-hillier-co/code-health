@@ -25,7 +25,7 @@ export async function readChangeWeights(context: CommandContext, settings: Compl
     const shallow = await readShallowInfo(root);
     if (shallow.isShallow) return undefined;
     await refresh(root, { ref: "HEAD" });
-    const analysis = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...context.config.effective.exclude] } });
+    const analysis = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...context.config.effective.exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize } });
     const until = analysis.view.headDate;
     return weightsFromChanges(analysis.filtered.changes, monthsBefore(until, settings.windowMonths), until, settings.windowMonths);
   } catch {

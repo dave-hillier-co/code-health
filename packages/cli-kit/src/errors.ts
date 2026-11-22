@@ -1,6 +1,6 @@
 export const ExitCode = {
   Success: 0,
-  /** Findings over threshold or a regression. */
+  /** Findings above guideline or a regression. */
   CheckFailed: 1,
   /** Bad arguments or invalid config. */
   Usage: 2,

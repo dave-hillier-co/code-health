@@ -1,7 +1,7 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { Command } from "@code-health/cli-kit/run-cli";
 import { compareToBase } from "../comparison.ts";
-import { readSettings, thresholdsFor } from "../config.ts";
+import { readSettings, guidelinesFor } from "../config.ts";
 import { labelsFor, metricIds, type Values } from "../metrics.ts";
 import { resolveRevision } from "../revisions.ts";
 import { pick, unitName } from "../rows.ts";
@@ -57,7 +57,7 @@ export const command: Command = {
         summary.unchanged++;
         continue;
       }
-      const thresholds = thresholdsFor(settings, after.path);
+      const guidelines = guidelinesFor(settings, after.path);
       rows.push({
         path: after.path,
         unit: unitName(after),
@@ -70,7 +70,7 @@ export const command: Command = {
         after: pick(after.values, metricIds),
         delta: before === undefined ? null : delta(before.values, after.values),
         score: (after.values.cognitive ?? 0) - (before?.values.cognitive ?? 0),
-        labels: labelsFor(after.values, thresholds),
+        labels: labelsFor(after.values, guidelines),
       });
     }
 

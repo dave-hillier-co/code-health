@@ -6,6 +6,34 @@ import { serialise } from "./serialise.ts";
 
 export const CONFIG_FILE = "code-health.json";
 
+/**
+ * The history-reading settings every plugin that reads history shares. They are the top-level `history` section of
+ * code-health.json, and a plugin section may override any key it lists in its spec's `history`.
+ */
+export const historyDefaults = {
+  /** Analysed branch. null analyses HEAD. */
+  branch: null as string | null,
+  /** Follow only first parents, for repositories that merge long-lived feature branches. */
+  firstParent: false,
+  /** Rename similarity percentage for git's -M. Changing it rebuilds the cache. */
+  renameSimilarity: 50,
+  renameLimit: 1000,
+  /** Analysis window in months, back from the analysed commit's date. */
+  windowMonths: 12,
+  /** Commits touching more files than this are left out of co-change, as bulk changes. */
+  maxChangesetSize: 30,
+  /** Regular expressions matched against `Name <email>` of an author; their commits are left out of history. */
+  botPatterns: [] as string[],
+  /** Guidelines that grade the evidence a history gives (months of history, logical changes, contributors). */
+  evidence: {
+    strong: { months: 24, logicalChanges: 300, contributors: 5 },
+    moderate: { months: 6, logicalChanges: 50, contributors: 2 },
+  },
+};
+
+export type HistoryKey = keyof typeof historyDefaults;
+export type HistoryConfig = typeof historyDefaults;
+
 export interface SharedConfig {
   exclude: string[];
   /** File extension (no dot, lower case) to lexer profile name: file types the suite has no profile for. */
@@ -13,6 +41,8 @@ export interface SharedConfig {
   entryPoints: string[];
   components: Record<string, unknown>;
   vagueNames: string[];
+  /** The shared history settings, as written in the `history` section. */
+  history: HistoryConfig;
 }
 
 export type EffectiveConfig = SharedConfig & Record<string, unknown>;
@@ -25,6 +55,12 @@ export interface PluginConfigSpec {
    * values must keep the type of their default, and an empty object `{}` accepts any keys.
    */
   section: Record<string, unknown>;
+  /**
+   * The keys of the shared `history` section this plugin reads. Its section accepts each of them as an override, and
+   * its effective section holds the resolved value: the plugin's own when the file sets one, otherwise the shared one.
+   * `section` must not list them.
+   */
+  history?: readonly HistoryKey[];
 }
 
 export interface LoadedConfig {
@@ -50,6 +86,7 @@ const sharedDefaults: SharedConfig = {
   entryPoints: [],
   components: {},
   vagueNames: ["utils", "helpers", "common", "misc"],
+  history: historyDefaults,
 };
 
 const stringLists = ["exclude", "entryPoints", "vagueNames"];
@@ -88,17 +125,70 @@ export function loadConfig(root: string, spec: PluginConfigSpec): LoadedConfig {
 
   if (document !== undefined && document.languages !== undefined) document.languages = readLanguages(document.languages);
 
-  const defaults: Record<string, unknown> = { ...sharedDefaults, [spec.plugin]: spec.section };
+  const historyKeys = spec.history ?? [];
+  for (const key of historyKeys) {
+    if (key in spec.section) throw new Error(`the ${spec.plugin} section lists ${key}, which it takes from history`);
+  }
+  const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
+  const defaults: Record<string, unknown> = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
   const rows = new Map<string, ConfigRow>();
   const effective: Record<string, unknown> = {};
   for (const key of Object.keys(defaults)) {
     effective[key] = merge(defaults[key], document?.[key], key, rows);
+  }
+  readHistory(effective.history as HistoryConfig, "history");
+  const pluginDocument = document?.[spec.plugin] as Record<string, unknown> | undefined;
+  const override = Object.fromEntries(historyKeys.filter((key) => pluginDocument?.[key] !== undefined).map((key) => [key, pluginDocument![key]]));
+  readHistory(override as Partial<HistoryConfig>, spec.plugin);
+  const section = effective[spec.plugin] as Record<string, unknown>;
+  for (const key of historyKeys) {
+    section[key] = overlay((effective.history as HistoryConfig)[key], pluginDocument?.[key]);
+    inheritSources(rows, spec.plugin, key);
   }
 
   const sources: Record<string, ConfigSource> = {};
   for (const row of rows.values()) sources[row.path] = row.source;
   const hash = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective: effective as EffectiveConfig, hash, sources };
+}
+
+/** The shared value, with whatever the plugin's own section sets laid over it, key by key through objects. */
+function overlay(shared: unknown, own: unknown): unknown {
+  if (own === undefined) return shared;
+  if (isPlainObject(shared) && isPlainObject(own)) {
+    return Object.fromEntries(Object.keys(shared).map((key) => [key, overlay(shared[key], own[key])]));
+  }
+  return own;
+}
+
+/** A plugin value that its own section does not set comes from `history`, and `config explain` says where from. */
+function inheritSources(rows: Map<string, ConfigRow>, plugin: string, key: string): void {
+  const own = `${plugin}.${key}`;
+  for (const row of [...rows.values()]) {
+    if (row.path !== own && !row.path.startsWith(`${own}.`)) continue;
+    if (row.source === "file") continue;
+    const shared = rows.get(`history${row.path.slice(plugin.length)}`);
+    if (shared !== undefined) rows.set(row.path, { ...row, source: shared.source });
+  }
+}
+
+/** Range checks of the history settings, with the path the offending value was written at. */
+function readHistory(history: Partial<HistoryConfig>, where: string): void {
+  const positive = (key: "renameSimilarity" | "renameLimit" | "windowMonths" | "maxChangesetSize"): void => {
+    const value = history[key];
+    if (value !== undefined && (!Number.isInteger(value) || value < 1)) throw configError(`${CONFIG_FILE}: ${where}.${key} must be a positive integer`);
+  };
+  positive("renameSimilarity");
+  positive("renameLimit");
+  positive("windowMonths");
+  positive("maxChangesetSize");
+  const { branch, botPatterns } = history;
+  if (branch !== undefined && branch !== null && (typeof branch !== "string" || branch === "")) {
+    throw configError(`${CONFIG_FILE}: ${where}.branch must be a branch name or null`);
+  }
+  if (botPatterns !== undefined && (!Array.isArray(botPatterns) || botPatterns.some((pattern) => typeof pattern !== "string"))) {
+    throw configError(`${CONFIG_FILE}: ${where}.botPatterns must be an array of strings`);
+  }
 }
 
 /** `languages` maps extensions to lexer profile names. Whether a profile exists is the analysing plugin's to say. */

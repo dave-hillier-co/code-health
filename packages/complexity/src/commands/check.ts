@@ -1,6 +1,6 @@
 import type { Command } from "@code-health/cli-kit/run-cli";
 import { compareToBase } from "../comparison.ts";
-import { readSettings, thresholdsFor } from "../config.ts";
+import { readSettings, guidelinesFor } from "../config.ts";
 import { exceeded, limitOf } from "../metrics.ts";
 import { hasUncommittedWork } from "../current-tree.ts";
 import { defaultBase, resolveRevision } from "../revisions.ts";
@@ -42,11 +42,11 @@ export const command: Command = {
       if (match.moved) summary.moved++;
       if (before === undefined) summary.added++;
       else if (match.changed) summary.changed++;
-      const thresholds = thresholdsFor(settings, after.path);
-      for (const metric of exceeded(after.values, thresholds)) {
+      const guidelines = guidelinesFor(settings, after.path);
+      for (const metric of exceeded(after.values, guidelines)) {
         const now = after.values[metric]!;
         const was = before?.values[metric];
-        const limit = limitOf(thresholds, metric);
+        const limit = limitOf(guidelines, metric);
         if (before !== undefined && now - (was ?? 0) <= settings.delta) continue;
         rows.push({
           path: after.path,

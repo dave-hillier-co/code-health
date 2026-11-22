@@ -1,10 +1,8 @@
 import { configError } from "@code-health/cli-kit/errors";
 import type { LoadedConfig, PluginConfigSpec } from "@code-health/cli-kit/config";
 import { DEFAULT_ISSUE_PATTERN, type Grouping } from "@code-health/history/grouping";
-import { DEFAULT_EVIDENCE_THRESHOLDS, type EvidenceThresholds } from "@code-health/history/evidence";
+import type { EvidenceGuidelines } from "@code-health/history/evidence";
 import type { MappingLocation } from "@code-health/history/identity-decisions";
-import { DEFAULT_MAX_CHANGESET_SIZE } from "@code-health/history/noise";
-import { DEFAULT_RENAME_LIMIT, DEFAULT_SIMILARITY } from "@code-health/history/refresh";
 import { KNOWLEDGE_DEFAULTS } from "./abandonment/settings.ts";
 import { riskDefaults } from "./risk/settings.ts";
 import { TOOL } from "./tool.ts";
@@ -15,16 +13,8 @@ import { TOOL } from "./tool.ts";
  */
 export const cochangeConfig: PluginConfigSpec = {
   plugin: TOOL,
+  history: ["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "evidence"],
   section: {
-    /** Analysed branch. null analyses HEAD. */
-    branch: null,
-    /** Follow only first parents, for repositories that merge long-lived feature branches. */
-    firstParent: false,
-    /** Rename similarity percentage for git's -M. Changing it rebuilds the cache. */
-    renameSimilarity: DEFAULT_SIMILARITY,
-    renameLimit: DEFAULT_RENAME_LIMIT,
-    /** Analysis window, back from the analysed commit's date. */
-    windowMonths: 12,
     recentMonths: 3,
     staleMonths: 12,
     /** A hotspot's score must be in the top (100 - this) percent of scored files. */
@@ -38,7 +28,6 @@ export const cochangeConfig: PluginConfigSpec = {
     issuePattern: DEFAULT_ISSUE_PATTERN,
     /** For "author-window": the longest pause, in hours, between commits of one change. */
     groupingWindowHours: 4,
-    maxChangesetSize: DEFAULT_MAX_CHANGESET_SIZE,
     minSupport: 5,
     /** Minimum coupling degree, as a percentage. */
     minDegree: 30,
@@ -55,31 +44,25 @@ export const cochangeConfig: PluginConfigSpec = {
     identities: {
       /** Where the mapping lives: "committed" or "local". null decides from the files present, and the identities skill asks when there are none. */
       location: null,
-      /** The one place bot and service patterns are configured. Regular expressions matched against `Name <email>`. */
-      botPatterns: [],
+      /** Regular expressions matched against `Name <email>`. Bot patterns are the `history.botPatterns` setting, which this section may override as `cochange.botPatterns`. */
       servicePatterns: [],
       /** Extra patterns for a Co-Authored-By trailer naming an AI agent, beside the built-in ones. */
       agentTrailerPatterns: [],
       /** Unmapped identities holding more than this percentage of lines at HEAD make the abandonment skill run the identities skill. */
-      unmappedShareThreshold: 5,
+      unmappedShareGuideline: 5,
       /** Commits in the analysis window that make an unmapped identity significant, whether or not it holds lines. */
       significantCommits: 3,
     },
     /** The abandonment analysis. Off until `enabled` is true. */
     knowledge: { ...KNOWLEDGE_DEFAULTS, alphas: [...KNOWLEDGE_DEFAULTS.alphas] },
-    evidence: {
-      strong: { ...DEFAULT_EVIDENCE_THRESHOLDS.strong },
-      moderate: { ...DEFAULT_EVIDENCE_THRESHOLDS.moderate },
-    },
   },
 };
 
 export interface IdentitySettings {
   location: MappingLocation | null;
-  botPatterns: string[];
   servicePatterns: string[];
   agentTrailerPatterns: string[];
-  unmappedShareThreshold: number;
+  unmappedShareGuideline: number;
   significantCommits: number;
 }
 
@@ -103,7 +86,7 @@ export interface CochangeSettings {
   exclude: string[];
   botPatterns: string[];
   identities: IdentitySettings;
-  evidenceThresholds: EvidenceThresholds;
+  evidenceGuidelines: EvidenceGuidelines;
   /** True when the config file states the analysis window, which a shallow clone requires. */
   windowStated: boolean;
   /** The opt-in change-set completeness hook. */
@@ -137,7 +120,7 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
   const identities = readIdentities(section.identities as Record<string, unknown>, at);
   const minDegree = positive("minDegree");
   if (minDegree > 100) throw configError(`code-health.json: ${at("minDegree")} is a percentage, at most 100`);
-  const evidence = section.evidence as EvidenceThresholds;
+  const evidence = section.evidence as EvidenceGuidelines;
   const hook = section.hook as { enabled: boolean; confidence: unknown; maxPartners: unknown; maxCommitsBehind: unknown };
   const hookConfidence = hook.confidence;
   if (typeof hookConfidence !== "number" || !Number.isInteger(hookConfidence) || hookConfidence < 1 || hookConfidence > 100) {
@@ -167,9 +150,9 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
     minDegree,
     minDistance: positive("minDistance"),
     exclude: config.effective.exclude,
-    botPatterns: identities.botPatterns,
+    botPatterns: section.botPatterns as string[],
     identities,
-    evidenceThresholds: evidence,
+    evidenceGuidelines: evidence,
     windowStated: config.sources[at("windowMonths")] === "file",
     hook: { enabled: hook.enabled === true, confidence: hookConfidence, maxPartners, maxCommitsBehind: behind },
   };
@@ -216,10 +199,9 @@ function readIdentities(section: Record<string, unknown>, at: (key: string) => s
   };
   return {
     location,
-    botPatterns: strings("botPatterns"),
     servicePatterns: strings("servicePatterns"),
     agentTrailerPatterns: strings("agentTrailerPatterns"),
-    unmappedShareThreshold: count("unmappedShareThreshold", 100),
+    unmappedShareGuideline: count("unmappedShareGuideline", 100),
     significantCommits: count("significantCommits", 1_000_000),
   };
 }

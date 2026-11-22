@@ -36,7 +36,7 @@
       "required": ["eligibleChanges", "oversizedExcluded"],
       "additionalProperties": false
     },
-    "note": { "type": ["string", "null"], "description": "Set when no cluster forms. The thresholds are never lowered." },
+    "note": { "type": ["string", "null"], "description": "Set when no cluster forms. The guidelines are never lowered." },
     "results": {
       "type": "array",
       "items": {

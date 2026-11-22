@@ -18,7 +18,7 @@ The method follows Rigby, Zhu, Donadelli and Mockus, *Quantifying and Mitigating
 - **Successors** are recommended from coordination requirements (Cataldo et al.): people who work on related files. The paper recommended the right successor 34–48 % of the time, and having successors reduced expected loss by up to 15 %.
 - Most abandoned files were adopted by existing experts, not newcomers.
 
-The paper's thresholds are defaults here, and every one is configurable.
+The paper's guidelines are defaults here, and every one is configurable.
 
 ## Scope
 
@@ -87,7 +87,7 @@ Findings:
 
 | Finding | Condition | Suggested mitigation |
 |---|---|---|
-| `abandoned` | Already ≥ threshold abandoned at HEAD | Adoption: assign the top successor; prioritise if it is also a hotspot |
+| `abandoned` | Already ≥ guideline abandoned at HEAD | Adoption: assign the top successor; prioritise if it is also a hotspot |
 | `at-risk-hot` | High abandonment probability and hotspot | Knowledge transfer now: pairing, reviews by successors, a walkthrough |
 | `at-risk-cold` | High abandonment probability, rarely changed | Lightweight capture: a short design note, characterisation tests |
 | `concentrated-component` | Component with a high tail ratio | Rotate reviewers within the component |
@@ -133,7 +133,7 @@ Workflow:
 3. Present the top-ranked at-risk files with their findings.
 4. For files the user wants to act on, run `successors` and propose mitigations from the table, preferring the cheapest that works: assign reviews to successors on the next changes, pair on the next change to a hotspot, and write characterisation tests or a short design note for cold code.
 5. Note interactions with the rest of the suite. Simplifying an at-risk complex file (complexity plugin) reduces the knowledge needed to adopt it. Co-locating scattered code (locality plugin) reduces how much someone must know to change it safely.
-6. Report the limits: inactivity is a proxy, blame measures authorship rather than understanding, and the 90 % threshold is a convention.
+6. Report the limits: inactivity is a proxy, blame measures authorship rather than understanding, and the 90 % guideline is a convention.
 
 The skill's references include the paper's definitions and the [red-flags](../../shared/red-flags.md) shared reference. *Nonobvious code* and *hard to describe* in at-risk files increase the case for capture before adoption.
 
@@ -162,7 +162,7 @@ In `cochange.knowledge`:
 
 - `enabled` (default false).
 - Activity window, period length, horizon.
-- Abandonment threshold (default 90, as a percentage).
+- Abandonment guideline (default 90, as a percentage).
 - Turnover rate override.
 - Trials, α values, seed.
 - Ranking mode.
@@ -181,7 +181,7 @@ Where the sections above leave a definition open, these apply. Constants marked 
 
 | Setting | Default | Source |
 |---|---|---|
-| `abandonmentThreshold` | 90 (percent of lines) | Rigby et al. |
+| `abandonmentGuideline` | 90 (percent of lines) | Rigby et al. |
 | `concentratedTailRatio` | 3 | *Guideline.* Rigby et al.: tail losses more than three times the expected loss |
 | `atRiskProbability` | 10 (percent) | *Guideline.* Judgement call |
 | `activityWindowMonths` | 6 | Judgement call. CodeScene documents no inactivity period (ex-developers are configured by hand), so this is the suite's own |

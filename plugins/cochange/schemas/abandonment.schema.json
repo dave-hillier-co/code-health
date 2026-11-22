@@ -25,7 +25,7 @@
         "turnoverRate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "The configured per-period rate as a fraction, or null when it is estimated." },
         "activityWindowMonths": { "type": "integer", "minimum": 1 },
         "periodMonths": { "type": "integer", "minimum": 1 },
-        "abandonmentThreshold": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Percentage of a file's lines held by people who have left at which it is abandoned." },
+        "abandonmentGuideline": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Percentage of a file's lines held by people who have left at which it is abandoned." },
         "copyDetection": { "type": "boolean" },
         "overrides": {
           "type": "object",
@@ -40,7 +40,7 @@
         },
         "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
       },
-      "required": ["subcommand", "activityWindowMonths", "periodMonths", "abandonmentThreshold", "copyDetection"],
+      "required": ["subcommand", "activityWindowMonths", "periodMonths", "abandonmentGuideline", "copyDetection"],
       "additionalProperties": false
     },
     "share": { "type": "number", "minimum": 0 },
@@ -223,8 +223,8 @@
         "predicted": {
           "type": "object",
           "properties": {
-            "files": { "$ref": "common.schema.json#/$defs/count", "description": "Candidates whose abandonment probability reached the at-risk threshold." },
-            "goneByOutcome": { "$ref": "common.schema.json#/$defs/count", "description": "Files over the threshold that no longer exist at the outcome date, and so were not scored." }
+            "files": { "$ref": "common.schema.json#/$defs/count", "description": "Candidates whose abandonment probability reached the at-risk guideline." },
+            "goneByOutcome": { "$ref": "common.schema.json#/$defs/count", "description": "Files above the guideline that no longer exist at the outcome date, and so were not scored." }
           },
           "required": ["files", "goneByOutcome"],
           "additionalProperties": false

@@ -31,7 +31,7 @@ export async function readHistory(context: CommandContext, settings: LocalitySet
   try {
     if ((await readShallowInfo(root)).isShallow) return undefined;
     await refresh(root, { ref: "HEAD" });
-    const analysis = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...settings.exclude] }, evidence: { windowMonths: settings.windowMonths } });
+    const analysis = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...settings.exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize }, evidence: { windowMonths: settings.windowMonths } });
     const until = analysis.view.headDate;
     const since = monthsBefore(until, settings.windowMonths);
     const firstSeen = new Map<string, number>();
