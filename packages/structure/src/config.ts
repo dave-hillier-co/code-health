@@ -9,6 +9,9 @@ import { readLayerRules, type LayerRule } from "./layers.ts";
 import { packagesDefaults, readPackageSettings, type PackageSettings } from "./packaging/settings.ts";
 import { TOOL } from "./tool.ts";
 
+/** Folder names the census always treats as ports and adapters. The configured names add to them. */
+export const BUILT_IN_FOLDER_NAMES: readonly string[] = ["ports", "adapters", "infrastructure"];
+
 /**
  * The `structure` section of code-health.json. These defaults define its shape:
  * unknown keys are rejected and values keep the type of their default.
@@ -29,19 +32,19 @@ export const structureConfig: PluginConfigSpec = {
     botPatterns: [] as string[],
     /** Cycles whose strongly connected component has at most this many nodes get a minimum breaking set. */
     exactLimit: DEFAULT_EXACT_LIMIT,
-    /** A side is "active" when it has at least this many revisions in the window, so a low co-change is evidence and not absence of data. */
+    /** Evidence floor (a judgement call): a side is "active" when it has at least this many revisions in the window, so a low co-change is evidence and not absence of data. Below it the pair is reported as insufficient evidence. */
     minRevisions: 3,
-    /** A dependency points against change stability when the depended-on side's revisions per file are at least this multiple of the dependant's. */
+    /** Guideline (a judgement call): a dependency is above the guideline for change stability when the depended-on side's revisions per file are at least this multiple of the dependant's. It orders and annotates rows and hides none. */
     minVolatilityRatio: 2,
-    /** A dependency points against structural stability when the depended-on side's instability exceeds the dependant's by at least this many percentage points. */
+    /** Guideline (a judgement call): a dependency is above the guideline for structural stability when the depended-on side's instability exceeds the dependant's by at least this many percentage points. It orders and annotates rows and hides none. */
     minInstabilityGap: 20,
     /**
-     * The mechanism census. The call lists add to what is built in. Names are matched exactly:
+     * The mechanism census. Every list adds to what is built in. Names are matched exactly:
      * folder names against a folder's own name, call names against the called method on any receiver.
      */
     census: {
-      /** Folders whose name marks ports and adapters. This is the whole list: stating it replaces the default. */
-      folderNames: ["ports", "adapters", "infrastructure"] as string[],
+      /** Folders whose name marks ports and adapters, beyond ports, adapters and infrastructure. */
+      folderNames: [] as string[],
       /** Methods that publish or subscribe to events, beyond emit, on, subscribe, publish, dispatch and the like. */
       eventCalls: [] as string[],
       /** Methods that register or dispatch to handlers, beyond send and execute on a mediator or command bus. */
@@ -49,13 +52,13 @@ export const structureConfig: PluginConfigSpec = {
       /** Methods that register into a registry, beyond those named register*. */
       registerCalls: [] as string[],
     },
-    /** Static coupling is "high" when this many reference sites of the other side's symbols sit across the boundary, counted both ways. */
+    /** Guideline (a judgement call): static coupling is "high" when this many reference sites of the other side's symbols sit across the boundary, counted both ways. The measured count is always reported. */
     minStaticCoupling: 3,
-    /** Co-change is "high" only with at least this many shared changes, and significantly above what independence predicts. */
+    /** Evidence floor: co-change is "high" only with at least this many shared changes, and significantly above what independence predicts. A coupling from fewer shared changes is not meaningful. */
     minSupport: 3,
     /** The level of the one-sided exact test for high co-change, between 0 and 1 exclusive. */
     significanceLevel: 0.01,
-    /** A registration hub needs at least this many distinct features co-changing with it. */
+    /** Guideline (a judgement call, after CodeScene's co-change hotspots): a registration hub has at least this many distinct features co-changing with it. */
     hubMinFeatures: 3,
     /** Percent of a feature's changes that also touch the hub, for the feature to feed it. */
     hubMinConfidence: 50,
@@ -212,7 +215,7 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     exclude: config.effective.exclude,
     entryPoints: config.effective.entryPoints,
     components: config.effective.components,
-    census: { folderNames: names("folderNames"), eventCalls: names("eventCalls"), handlerCalls: names("handlerCalls"), registerCalls: names("registerCalls") },
+    census: { folderNames: [...new Set([...BUILT_IN_FOLDER_NAMES, ...names("folderNames")])], eventCalls: names("eventCalls"), handlerCalls: names("handlerCalls"), registerCalls: names("registerCalls") },
     evidenceThresholds: section.evidence as EvidenceThresholds,
     packages: withVagueNames(readPackageSettings(section.packages as Record<string, unknown>, at("packages")), config.effective.vagueNames),
     windowStated: config.sources[at("windowMonths")] === "file",

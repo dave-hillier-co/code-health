@@ -23,9 +23,9 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/structure.mjs evidence "src/a.ts->src/b.ts" --js
 Run them from the repository root. They analyse `HEAD`. Useful options:
 
 - `cycles --level file|folder|package` chooses what a cycle is made of. Start with `file`, then `folder`.
-- `stability --by folder|component` lists dependencies that point against stability.
+- `stability --by folder|component` lists every dependency that points towards less stable code, those above the guideline first (`aboveGuideline`).
 - `census` lists the decoupling mechanisms the codebase already uses, with counts, folders and examples. It reads no history. Run it before choosing a remedy: it is how you know what is already here and what would be new.
-- `layers` lists imports that break the layer rules in `code-health.json` (`layers`), with the symbols that cross. `check [--base REV]` exits 1 on cycles or layer violations new since the base and reads no history, so it suits CI.
+- `layers` lists imports the layer rules in `code-health.json` (`layers`) do not allow, with the symbols that cross. `check [--base REV]` exits 1 on cycles or layer violations new since the base and reads no history, so it suits CI.
 - `coupling [--quadrant Q] [--by file|folder|component] [--projects-dir DIR]` places each pair as real, incidental, stable, hidden, independent or insufficient-evidence from static coupling and co-change. `hidden` lists only the hidden pairs, where code changes together with no import between it. An incidental pair ranks low on its own and carries `incidental.rank`: `high` when it blocks a locality move, is part of a cycle, violates a layer rule or, with `--projects-dir ~/.claude/projects`, burdens agents with reads (tasks that edited one side and opened the other only to follow the dependency). `incidental.reasons` says which.
 - `hubs` lists registration hubs: files that many features append to. Read `references/registration-hubs.md` before proposing an inversion.
 - `outcome FROM->TO --at REV [--projects-dir DIR]` compares co-change before and after a break, and says whether it was broken or only hidden. It also reports the cycle count and layer violations before and after (leading indicators), and, with transcripts, agent effort on tasks touching either side.
