@@ -33,6 +33,11 @@
         "inputs": { "type": "object" },
         "results": {},
         "truncated": { "$ref": "#/$defs/truncated" },
+        "omittedByBuiltinExcludes": {
+          "description": "Present only when a built-in exclude omitted files: the number of files each built-in entry omitted (.claude/**, .cache/**, .code-health/**, or a directory below the repository root that is its own git checkout). Entries that omitted nothing are not listed.",
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
         "meta": {
           "description": "Wall-clock facts. Absent from reports and ignored by golden comparisons.",
           "type": "object"

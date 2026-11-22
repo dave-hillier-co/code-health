@@ -6,6 +6,142 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
+// packages/history/src/builtin-excludes.ts
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+// packages/cli-kit/src/builtin-excludes.ts
+var BUILTIN_EXCLUDE_GLOBS = [".claude/**", ".cache/**", ".code-health/**"];
+var NESTED_CHECKOUT_ENTRY = "<directory below the repo root that contains .git>";
+var BUILTIN_EXCLUDE_ENTRIES = [...BUILTIN_EXCLUDE_GLOBS, NESTED_CHECKOUT_ENTRY];
+var omitted = /* @__PURE__ */ new Map();
+function recordBuiltinOmission(entry, path) {
+  const paths = omitted.get(entry);
+  if (paths === void 0) omitted.set(entry, /* @__PURE__ */ new Set([path]));
+  else paths.add(path);
+}
+function resetBuiltinOmissions() {
+  omitted.clear();
+}
+function builtinOmissions() {
+  const counts = {};
+  for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
+    const paths = omitted.get(entry);
+    if (paths !== void 0 && paths.size > 0) counts[entry] = paths.size;
+  }
+  return counts;
+}
+
+// packages/history/src/glob.ts
+function escape(ch) {
+  return /[.+^${}()|[\]\\]/.test(ch) ? `\\${ch}` : ch;
+}
+function hasClosingBrace(pattern, start) {
+  let depth = 0;
+  for (let i = start; i < pattern.length; i++) {
+    if (pattern[i] === "{") depth++;
+    else if (pattern[i] === "}" && --depth === 0) return true;
+  }
+  return false;
+}
+function toRegExp(pattern) {
+  let out = "";
+  let braces = 0;
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i];
+    if (ch === "*") {
+      if (pattern[i + 1] === "*") {
+        i++;
+        if (pattern[i + 1] === "/") {
+          i++;
+          out += "(?:.*/)?";
+        } else {
+          out += ".*";
+        }
+      } else {
+        out += "[^/]*";
+      }
+    } else if (ch === "?") {
+      out += "[^/]";
+    } else if (ch === "{" && hasClosingBrace(pattern, i)) {
+      braces++;
+      out += "(?:";
+    } else if (ch === "}" && braces > 0) {
+      braces--;
+      out += ")";
+    } else if (ch === "," && braces > 0) {
+      out += "|";
+    } else if (ch === "[") {
+      const end = pattern.indexOf("]", i + 1);
+      if (end === -1) {
+        out += "\\[";
+      } else {
+        const body = pattern.slice(i + 1, end).replace(/^!/, "^").replace(/\\/g, "\\\\");
+        out += `[${body}]`;
+        i = end;
+      }
+    } else {
+      out += escape(ch);
+    }
+  }
+  return new RegExp(`^${out}$`);
+}
+function compileGlobs(patterns) {
+  const compiled = patterns.map((p) => p.trim()).filter((p) => p !== "" && !p.startsWith("#")).map((raw) => {
+    const pattern = raw.replace(/\/+$/, "");
+    const anchored = pattern.includes("/");
+    return { anchored, regex: toRegExp(anchored ? pattern.replace(/^\//, "") : pattern) };
+  });
+  return (path) => {
+    const segments = path.split("/");
+    for (const { anchored, regex } of compiled) {
+      if (anchored) {
+        for (let n = 1; n <= segments.length; n++) {
+          if (regex.test(segments.slice(0, n).join("/"))) return true;
+        }
+      } else if (segments.some((s) => regex.test(s))) {
+        return true;
+      }
+    }
+    return false;
+  };
+}
+
+// packages/history/src/builtin-excludes.ts
+var matchers = BUILTIN_EXCLUDE_GLOBS.map((glob) => ({ glob, matches: compileGlobs([glob]) }));
+function builtinExcluder(root, gitlinks = [], options = {}) {
+  const record = options.record ?? true;
+  const links = new Set(gitlinks);
+  const checkouts = /* @__PURE__ */ new Map();
+  const isCheckout = (directory) => {
+    let answer = checkouts.get(directory);
+    if (answer === void 0) {
+      answer = links.has(directory) || existsSync(join(root, directory, ".git"));
+      checkouts.set(directory, answer);
+    }
+    return answer;
+  };
+  return (path) => {
+    for (const { glob, matches } of matchers) {
+      if (matches(path)) {
+        if (record) recordBuiltinOmission(glob, path);
+        return true;
+      }
+    }
+    if (links.has(path)) {
+      if (record) recordBuiltinOmission(NESTED_CHECKOUT_ENTRY, path);
+      return true;
+    }
+    for (let slash = path.indexOf("/"); slash !== -1; slash = path.indexOf("/", slash + 1)) {
+      if (isCheckout(path.slice(0, slash))) {
+        if (record) recordBuiltinOmission(NESTED_CHECKOUT_ENTRY, path);
+        return true;
+      }
+    }
+    return false;
+  };
+}
+
 // packages/history/src/git.ts
 import { spawn } from "node:child_process";
 var GitError = class extends Error {
@@ -55,19 +191,32 @@ async function gitVersion(cwd) {
 }
 
 // packages/history/src/tree.ts
-async function listTree(repoPath, ref) {
-  const out = await runGit(repoPath, ["ls-tree", "-r", "--name-only", "-z", "--full-tree", ref]);
-  return out.split("\0").filter((p) => p !== "").sort();
-}
-async function listBlobs(repoPath, ref) {
+async function readEntries(repoPath, ref) {
   const out = await runGit(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref]);
-  const blobs = [];
+  const entries = [];
+  const gitlinks = [];
   for (const record of out.split("\0")) {
     const tab = record.indexOf("	");
     if (tab === -1) continue;
     const [mode, type, oid] = record.slice(0, tab).split(" ");
-    if (type === "blob" && mode !== "120000" && oid !== void 0) blobs.push({ path: record.slice(tab + 1), blob: oid });
+    const path = record.slice(tab + 1);
+    if (type === "commit") gitlinks.push(path);
+    if (mode !== void 0 && oid !== void 0) entries.push({ mode, oid, path });
   }
+  return { entries, gitlinks };
+}
+async function listGitlinks(repoPath, ref) {
+  return (await readEntries(repoPath, ref)).gitlinks;
+}
+async function listTree(repoPath, ref) {
+  const { entries, gitlinks } = await readEntries(repoPath, ref);
+  const omitted2 = builtinExcluder(repoPath, gitlinks);
+  return entries.map((entry) => entry.path).filter((path) => !omitted2(path)).sort();
+}
+async function listBlobs(repoPath, ref) {
+  const { entries, gitlinks } = await readEntries(repoPath, ref);
+  const omitted2 = builtinExcluder(repoPath, gitlinks);
+  const blobs = entries.filter(({ mode, path }) => mode !== "160000" && mode !== "120000" && !omitted2(path)).map(({ oid, path }) => ({ path, blob: oid }));
   return blobs.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 async function readBlobAt(repoPath, ref, path) {
@@ -147,8 +296,8 @@ function bandCount(count, guidelines) {
 }
 
 // packages/history/src/cache-location.ts
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { existsSync as existsSync2, mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, join as join2 } from "node:path";
 async function locateCache(repoPath) {
   const out = await runGit(repoPath, [
     "rev-parse",
@@ -159,15 +308,15 @@ async function locateCache(repoPath) {
   const [repoRoot, gitDir] = out.split("\n");
   if (!repoRoot || !gitDir) throw new Error(`Not a git working tree: ${repoPath}`);
   const cacheRoot = basename(gitDir) === ".git" ? dirname(gitDir) : repoRoot;
-  const cacheDir = join(cacheRoot, ".cache", "code-health");
+  const cacheDir = join2(cacheRoot, ".cache", "code-health");
   return {
     repoRoot,
     gitDir,
     cacheDir,
-    dbPath: join(cacheDir, "history.sqlite"),
-    lockPath: join(cacheDir, "history.lock"),
-    blamePath: join(cacheDir, "blame.sqlite"),
-    blameLockPath: join(cacheDir, "blame.lock")
+    dbPath: join2(cacheDir, "history.sqlite"),
+    lockPath: join2(cacheDir, "history.lock"),
+    blamePath: join2(cacheDir, "blame.sqlite"),
+    blameLockPath: join2(cacheDir, "blame.lock")
   };
 }
 function ensureCacheDir(location) {
@@ -175,15 +324,21 @@ function ensureCacheDir(location) {
 }
 function ensureSelfIgnoring(directory) {
   mkdirSync(directory, { recursive: true });
-  const ignore = join(directory, ".gitignore");
-  if (!existsSync(ignore)) writeFileSync(ignore, "*\n");
+  const ignore = join2(directory, ".gitignore");
+  if (!existsSync2(ignore)) writeFileSync(ignore, "*\n");
 }
 
 export {
   __export,
+  BUILTIN_EXCLUDE_ENTRIES,
+  resetBuiltinOmissions,
+  builtinOmissions,
   GitError,
   runGit,
   gitVersion,
+  compileGlobs,
+  builtinExcluder,
+  listGitlinks,
   listTree,
   listBlobs,
   readBlobAt,

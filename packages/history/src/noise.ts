@@ -1,10 +1,11 @@
 import { historyDefaults } from "@code-health/cli-kit/config";
+import { builtinExcluder } from "./builtin-excludes.ts";
 import { compileGlobs } from "./glob.ts";
 import { groupCommits, ISSUE_KEY_WINDOW_SECONDS, mergeFileChanges, type Grouping } from "./grouping.ts";
 import { detectImportedHistory, type ImportDetectionOptions, type ImportedHistory } from "./imported.ts";
 import type { HistoryChange, HistoryCommit, HistoryView } from "./read.ts";
 import { hasCodeHealthTrailer } from "./trailers.ts";
-import { listTree, readBlameIgnoreRevs, readPathAttributes } from "./tree.ts";
+import { listGitlinks, listTree, readBlameIgnoreRevs, readPathAttributes } from "./tree.ts";
 
 export const DEFAULT_LOCKFILES: readonly string[] = [
   "package-lock.json",
@@ -202,6 +203,7 @@ export async function filterHistory(
   const bots = botPatterns.map(compileBotPattern);
 
   const treeFiles = await listTree(repoPath, view.headSha);
+  const builtinExcluded = builtinExcluder(repoPath, await listGitlinks(repoPath, view.headSha));
   const imported = detectImportedHistory(view, treeFiles, options.importDetection);
   const importedShas = new Set(excludeImported ? imported.map((i) => i.sha) : []);
   const ignoredRevs = blameFile === false ? [] : await readBlameIgnoreRevs(repoPath, view.headSha, blameFile);
@@ -259,6 +261,8 @@ export async function filterHistory(
     for (const change of commit.changes) {
       if (isPureRename(change)) {
         dropped.pureRenames++;
+      } else if (builtinExcluded(change.path)) {
+        // counted by built-in entry in the omissions the command reports
       } else if (excluded(change.path)) {
         dropped.excludedByGlob++;
       } else if (lockfileSet.has(change.path.slice(change.path.lastIndexOf("/") + 1))) {

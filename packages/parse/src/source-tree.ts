@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { builtinExcluder } from "@code-health/history/builtin-excludes";
 import { readPathAttributes } from "@code-health/history/tree";
 
 /**
@@ -41,8 +42,10 @@ function walk(root: string, relative: string, out: string[]): void {
 
 /** A tree over the files currently on disk, for conformance fixtures and uncommitted work. */
 export async function treeFromDirectory(directory: string): Promise<SourceTree> {
-  const paths: string[] = [];
-  walk(directory, "", paths);
+  const walked: string[] = [];
+  walk(directory, "", walked);
+  const omitted = builtinExcluder(directory);
+  const paths = walked.filter((path) => !omitted(path));
   const shas: [string, string][] = paths.map((path) => [path, gitBlobSha(readFileSync(join(directory, path)))]);
   const known = new Set(paths);
   const read = async (path: string) => (known.has(path) ? readFileSync(join(directory, path), "utf8") : undefined);
@@ -68,9 +71,16 @@ export async function treeFromWorkingTree(repoPath: string): Promise<SourceTree>
   const listing = (await git(repoPath, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"])).toString("utf8");
   const entries: [string, string][] = [];
   const seen = new Set<string>();
+  const omitted = builtinExcluder(repoPath);
   for (const path of listing.split("\0")) {
     if (path === "" || seen.has(path)) continue;
     seen.add(path);
+    if (path.endsWith("/")) {
+      // git lists a directory that is its own checkout as one entry: count the files it holds.
+      for (const inner of await filesOfCheckout(repoPath, path)) omitted(`${path}${inner}`);
+      continue;
+    }
+    if (omitted(path)) continue;
     try {
       if (!lstatSync(join(repoPath, path)).isFile()) continue;
       entries.push([path, gitBlobSha(readFileSync(join(repoPath, path)))]);
@@ -92,6 +102,36 @@ export async function treeFromWorkingTree(repoPath: string): Promise<SourceTree>
       return out;
     },
   };
+}
+
+/** The tracked files, and the untracked files that are not ignored, of a checkout inside the repository. */
+async function filesOfCheckout(repoPath: string, directory: string): Promise<string[]> {
+  try {
+    const listing = (await git(join(repoPath, directory), ["ls-files", "-z", "--cached", "--others", "--exclude-standard"])).toString("utf8");
+    return listing.split("\0").filter((path) => path !== "");
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The untracked files that are not ignored, repo-relative POSIX, in git's order, without the built-in excludes.
+ * A directory that is its own checkout (git lists it as one entry) is read as the files it holds, so that each
+ * built-in entry reports how many files it omitted.
+ */
+export async function untrackedFiles(repoPath: string): Promise<string[]> {
+  const listing = (await git(repoPath, ["ls-files", "-z", "--others", "--exclude-standard"])).toString("utf8");
+  const omitted = builtinExcluder(repoPath);
+  const kept: string[] = [];
+  for (const path of listing.split("\0")) {
+    if (path === "") continue;
+    if (path.endsWith("/")) {
+      for (const inner of await filesOfCheckout(repoPath, path)) omitted(`${path}${inner}`);
+    } else if (!omitted(path)) {
+      kept.push(path);
+    }
+  }
+  return kept;
 }
 
 /** A view of a tree holding only some of its files, for comparing the files a change touched. */
@@ -179,14 +219,19 @@ async function withoutMarkedPaths(repoPath: string, ref: string | undefined, ent
 export async function treeFromRef(repoPath: string, ref: string): Promise<SourceTree> {
   const listing = (await git(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref])).toString("utf8");
   const entries: [string, string][] = [];
+  const gitlinks: string[] = [];
   for (const record of listing.split("\0")) {
     if (record === "") continue;
     const tab = record.indexOf("\t");
     const [mode, type, sha] = record.slice(0, tab).split(" ");
+    if (type === "commit") gitlinks.push(record.slice(tab + 1));
     if (type !== "blob" || mode === "120000" || !sha) continue;
     entries.push([record.slice(tab + 1), sha]);
   }
-  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, entries));
+  const omitted = builtinExcluder(repoPath, gitlinks);
+  const kept = entries.filter(([path]) => !omitted(path));
+  for (const path of gitlinks) omitted(path);
+  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, kept));
   const readMany = async (wanted: readonly string[]) => {
     const known = wanted.filter((path) => files.has(path));
     const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path) as string))]);

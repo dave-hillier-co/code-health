@@ -1,9 +1,36 @@
+import { builtinExcluder } from "./builtin-excludes.ts";
 import { runGit } from "./git.ts";
 
-/** Files in the tree of `ref`, repo-relative POSIX paths, sorted. */
+/** Every entry of the tree of `ref` as git records it, with the submodule paths (commit entries) set apart. */
+async function readEntries(repoPath: string, ref: string): Promise<{ entries: { mode: string; oid: string; path: string }[]; gitlinks: string[] }> {
+  const out = await runGit(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref]);
+  const entries: { mode: string; oid: string; path: string }[] = [];
+  const gitlinks: string[] = [];
+  // Records are `<mode> SP <type> SP <oid> TAB <path>`.
+  for (const record of out.split("\0")) {
+    const tab = record.indexOf("\t");
+    if (tab === -1) continue;
+    const [mode, type, oid] = record.slice(0, tab).split(" ");
+    const path = record.slice(tab + 1);
+    if (type === "commit") gitlinks.push(path);
+    if (mode !== undefined && oid !== undefined) entries.push({ mode, oid, path });
+  }
+  return { entries, gitlinks };
+}
+
+/** The paths of the tree at `ref` that are submodules (commit entries), whose files belong to another repository. */
+export async function listGitlinks(repoPath: string, ref: string): Promise<string[]> {
+  return (await readEntries(repoPath, ref)).gitlinks;
+}
+
+/**
+ * Files in the tree of `ref`, repo-relative POSIX paths, sorted. The built-in excludes are left out: `.claude`,
+ * `.cache`, `.code-health` and directories that are their own git checkout.
+ */
 export async function listTree(repoPath: string, ref: string): Promise<string[]> {
-  const out = await runGit(repoPath, ["ls-tree", "-r", "--name-only", "-z", "--full-tree", ref]);
-  return out.split("\0").filter((p) => p !== "").sort();
+  const { entries, gitlinks } = await readEntries(repoPath, ref);
+  const omitted = builtinExcluder(repoPath, gitlinks);
+  return entries.map((entry) => entry.path).filter((path) => !omitted(path)).sort();
 }
 
 export interface TreeBlob {
@@ -17,15 +44,11 @@ export interface TreeBlob {
  * Symbolic links and submodules are left out: neither has content to blame.
  */
 export async function listBlobs(repoPath: string, ref: string): Promise<TreeBlob[]> {
-  const out = await runGit(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref]);
-  const blobs: TreeBlob[] = [];
-  // Records are `<mode> SP <type> SP <oid> TAB <path>`.
-  for (const record of out.split("\0")) {
-    const tab = record.indexOf("\t");
-    if (tab === -1) continue;
-    const [mode, type, oid] = record.slice(0, tab).split(" ");
-    if (type === "blob" && mode !== "120000" && oid !== undefined) blobs.push({ path: record.slice(tab + 1), blob: oid });
-  }
+  const { entries, gitlinks } = await readEntries(repoPath, ref);
+  const omitted = builtinExcluder(repoPath, gitlinks);
+  const blobs: TreeBlob[] = entries
+    .filter(({ mode, path }) => mode !== "160000" && mode !== "120000" && !omitted(path))
+    .map(({ oid, path }) => ({ path, blob: oid }));
   return blobs.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 

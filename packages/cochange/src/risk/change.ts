@@ -5,7 +5,8 @@ import { findAgentTrailers } from "@code-health/history/identity-classify";
 import { DEFAULT_LOCKFILES } from "@code-health/history/noise";
 import type { ChangeStatus } from "@code-health/history/log-parser";
 import type { HistoryChange, HistoryView } from "@code-health/history/read";
-import { listTree, readPathAttributes } from "@code-health/history/tree";
+import { builtinExcluder } from "@code-health/history/builtin-excludes";
+import { listGitlinks, listTree, readPathAttributes } from "@code-health/history/tree";
 import { resolveOwners, type Owner, type OwnerOptions } from "@code-health/history/blame-owners";
 
 /** The change under review, before any factor is read from it. */
@@ -163,6 +164,7 @@ export async function extractChange(
   const excluded = compileGlobs(options.exclude);
   const lockfiles = new Set(DEFAULT_LOCKFILES);
   const tree = await listTree(root, range.head);
+  const builtinExcluded = builtinExcluder(root, await listGitlinks(root, range.head));
   const attributes = await readPathAttributes(root, range.head, raw.map((file) => file.path).sort(), tree);
 
   let moved = 0;
@@ -171,6 +173,7 @@ export async function extractChange(
   for (const file of raw) {
     const pureRename = file.status === "R" && file.similarity === 100 && (file.added ?? 0) === 0 && (file.deleted ?? 0) === 0;
     const dropped =
+      builtinExcluded(file.path) ||
       excluded(file.path) ||
       lockfiles.has(file.path.slice(file.path.lastIndexOf("/") + 1)) ||
       attributes.generated.has(file.path) ||

@@ -93,6 +93,28 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+// packages/cli-kit/src/builtin-excludes.ts
+var BUILTIN_EXCLUDE_GLOBS = [".claude/**", ".cache/**", ".code-health/**"];
+var NESTED_CHECKOUT_ENTRY = "<directory below the repo root that contains .git>";
+var BUILTIN_EXCLUDE_ENTRIES = [...BUILTIN_EXCLUDE_GLOBS, NESTED_CHECKOUT_ENTRY];
+var omitted = /* @__PURE__ */ new Map();
+function recordBuiltinOmission(entry, path) {
+  const paths = omitted.get(entry);
+  if (paths === void 0) omitted.set(entry, /* @__PURE__ */ new Set([path]));
+  else paths.add(path);
+}
+function resetBuiltinOmissions() {
+  omitted.clear();
+}
+function builtinOmissions() {
+  const counts = {};
+  for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
+    const paths = omitted.get(entry);
+    if (paths !== void 0 && paths.size > 0) counts[entry] = paths.size;
+  }
+  return counts;
+}
+
 // packages/cli-kit/src/serialise.ts
 var FLOAT_PRECISION = 6;
 function serialise(value) {
@@ -271,6 +293,7 @@ function explainConfig(config) {
   flatten(config.effective, "", (path, value) => {
     rows.push({ path, value, source: config.sources[path] ?? "default" });
   });
+  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
   return rows.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 function parseDocument(file) {
@@ -516,7 +539,10 @@ async function execute(cli2, io) {
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args2.positionals, values: args2.values };
+  resetBuiltinOmissions();
   const output = await command12.run(context);
+  const builtin = builtinOmissions();
+  const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
@@ -531,7 +557,7 @@ async function execute(cli2, io) {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: output.extra,
+          extra: { ...output.extra, ...omittedByBuiltin },
           results,
           truncated,
           meta: {
@@ -548,6 +574,11 @@ async function execute(cli2, io) {
     io.stdout.write(renderTable(results, args2.fields ?? columns, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
 `);
+    const counted = Object.entries(builtin);
+    if (counted.length > 0) {
+      io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count2]) => `${count2} ${count2 === 1 ? "file" : "files"} (${entry})`).join(", ")}.
+`);
+    }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
 `);
   } else {
@@ -794,6 +825,10 @@ function safeToken(raw) {
   }
 }
 
+// packages/history/src/builtin-excludes.ts
+import { existsSync as existsSync2 } from "node:fs";
+import { join as join2 } from "node:path";
+
 // packages/history/src/glob.ts
 function escape(ch) {
   return /[.+^${}()|[\]\\]/.test(ch) ? `\\${ch}` : ch;
@@ -862,6 +897,41 @@ function compileGlobs(patterns) {
           if (regex.test(segments2.slice(0, n).join("/"))) return true;
         }
       } else if (segments2.some((s) => regex.test(s))) {
+        return true;
+      }
+    }
+    return false;
+  };
+}
+
+// packages/history/src/builtin-excludes.ts
+var matchers = BUILTIN_EXCLUDE_GLOBS.map((glob) => ({ glob, matches: compileGlobs([glob]) }));
+function builtinExcluder(root, gitlinks = [], options2 = {}) {
+  const record4 = options2.record ?? true;
+  const links = new Set(gitlinks);
+  const checkouts2 = /* @__PURE__ */ new Map();
+  const isCheckout = (directory) => {
+    let answer = checkouts2.get(directory);
+    if (answer === void 0) {
+      answer = links.has(directory) || existsSync2(join2(root, directory, ".git"));
+      checkouts2.set(directory, answer);
+    }
+    return answer;
+  };
+  return (path) => {
+    for (const { glob, matches } of matchers) {
+      if (matches(path)) {
+        if (record4) recordBuiltinOmission(glob, path);
+        return true;
+      }
+    }
+    if (links.has(path)) {
+      if (record4) recordBuiltinOmission(NESTED_CHECKOUT_ENTRY, path);
+      return true;
+    }
+    for (let slash = path.indexOf("/"); slash !== -1; slash = path.indexOf("/", slash + 1)) {
+      if (isCheckout(path.slice(0, slash))) {
+        if (record4) recordBuiltinOmission(NESTED_CHECKOUT_ENTRY, path);
         return true;
       }
     }
@@ -958,9 +1028,27 @@ function hasCodeHealthTrailer(message) {
 }
 
 // packages/history/src/tree.ts
+async function readEntries(repoPath, ref) {
+  const out2 = await runGit(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref]);
+  const entries = [];
+  const gitlinks = [];
+  for (const record4 of out2.split("\0")) {
+    const tab = record4.indexOf("	");
+    if (tab === -1) continue;
+    const [mode, type, oid] = record4.slice(0, tab).split(" ");
+    const path = record4.slice(tab + 1);
+    if (type === "commit") gitlinks.push(path);
+    if (mode !== void 0 && oid !== void 0) entries.push({ mode, oid, path });
+  }
+  return { entries, gitlinks };
+}
+async function listGitlinks(repoPath, ref) {
+  return (await readEntries(repoPath, ref)).gitlinks;
+}
 async function listTree(repoPath, ref) {
-  const out2 = await runGit(repoPath, ["ls-tree", "-r", "--name-only", "-z", "--full-tree", ref]);
-  return out2.split("\0").filter((p) => p !== "").sort();
+  const { entries, gitlinks } = await readEntries(repoPath, ref);
+  const omitted2 = builtinExcluder(repoPath, gitlinks);
+  return entries.map((entry) => entry.path).filter((path) => !omitted2(path)).sort();
 }
 async function readBlobAt(repoPath, ref, path) {
   try {
@@ -1075,6 +1163,7 @@ async function filterHistory(repoPath, view, options2 = {}) {
   const excluded = compileGlobs(options2.exclude ?? []);
   const bots = botPatterns.map(compileBotPattern);
   const treeFiles = await listTree(repoPath, view.headSha);
+  const builtinExcluded = builtinExcluder(repoPath, await listGitlinks(repoPath, view.headSha));
   const imported = detectImportedHistory(view, treeFiles, options2.importDetection);
   const importedShas = new Set(excludeImported ? imported.map((i2) => i2.sha) : []);
   const ignoredRevs = blameFile === false ? [] : await readBlameIgnoreRevs(repoPath, view.headSha, blameFile);
@@ -1124,6 +1213,7 @@ async function filterHistory(repoPath, view, options2 = {}) {
     for (const change of commit.changes) {
       if (isPureRename(change)) {
         dropped.pureRenames++;
+      } else if (builtinExcluded(change.path)) {
       } else if (excluded(change.path)) {
         dropped.excludedByGlob++;
       } else if (lockfileSet.has(change.path.slice(change.path.lastIndexOf("/") + 1))) {
@@ -1186,11 +1276,11 @@ async function filterHistory(repoPath, view, options2 = {}) {
 }
 
 // packages/history/src/read.ts
-import { existsSync as existsSync5 } from "node:fs";
+import { existsSync as existsSync6 } from "node:fs";
 
 // packages/history/src/cache-location.ts
-import { existsSync as existsSync2, mkdirSync, writeFileSync } from "node:fs";
-import { basename, dirname, join as join2 } from "node:path";
+import { existsSync as existsSync3, mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, join as join3 } from "node:path";
 async function locateCache(repoPath) {
   const out2 = await runGit(repoPath, [
     "rev-parse",
@@ -1201,15 +1291,15 @@ async function locateCache(repoPath) {
   const [repoRoot, gitDir] = out2.split("\n");
   if (!repoRoot || !gitDir) throw new Error(`Not a git working tree: ${repoPath}`);
   const cacheRoot = basename(gitDir) === ".git" ? dirname(gitDir) : repoRoot;
-  const cacheDir = join2(cacheRoot, ".cache", "code-health");
+  const cacheDir = join3(cacheRoot, ".cache", "code-health");
   return {
     repoRoot,
     gitDir,
     cacheDir,
-    dbPath: join2(cacheDir, "history.sqlite"),
-    lockPath: join2(cacheDir, "history.lock"),
-    blamePath: join2(cacheDir, "blame.sqlite"),
-    blameLockPath: join2(cacheDir, "blame.lock")
+    dbPath: join3(cacheDir, "history.sqlite"),
+    lockPath: join3(cacheDir, "history.lock"),
+    blamePath: join3(cacheDir, "blame.sqlite"),
+    blameLockPath: join3(cacheDir, "blame.lock")
   };
 }
 function ensureCacheDir(location) {
@@ -1217,13 +1307,13 @@ function ensureCacheDir(location) {
 }
 function ensureSelfIgnoring(directory) {
   mkdirSync(directory, { recursive: true });
-  const ignore = join2(directory, ".gitignore");
-  if (!existsSync2(ignore)) writeFileSync(ignore, "*\n");
+  const ignore = join3(directory, ".gitignore");
+  if (!existsSync3(ignore)) writeFileSync(ignore, "*\n");
 }
 
 // packages/history/src/refresh.ts
-import { existsSync as existsSync4, readFileSync as readFileSync3 } from "node:fs";
-import { join as join3 } from "node:path";
+import { existsSync as existsSync5, readFileSync as readFileSync3 } from "node:fs";
+import { join as join4 } from "node:path";
 
 // packages/history/src/log-parser.ts
 var RS = "@@code-health:record:8c1f6e2a-5b7d-4a90-b3e1@@";
@@ -1333,7 +1423,7 @@ function parseRecord(record4) {
 }
 
 // packages/history/src/store.ts
-import { existsSync as existsSync3, rmSync as rmSync2 } from "node:fs";
+import { existsSync as existsSync4, rmSync as rmSync2 } from "node:fs";
 
 // packages/history/src/sqlite.ts
 var SqliteUnavailableError = class extends Error {
@@ -1430,7 +1520,7 @@ function create(path, settings) {
 }
 function openForWrite(path, settings) {
   loadSqlite();
-  if (existsSync3(path)) {
+  if (existsSync4(path)) {
     try {
       const db = createDatabase(path, { timeout: 3e4 });
       configure(db);
@@ -1445,7 +1535,7 @@ function openForWrite(path, settings) {
 }
 function openForRead(path) {
   loadSqlite();
-  if (!existsSync3(path)) return void 0;
+  if (!existsSync4(path)) return void 0;
   try {
     const db = createDatabase(path, { readOnly: true, timeout: 3e4 });
     const version = db.prepare("PRAGMA user_version").get().user_version;
@@ -1524,8 +1614,8 @@ async function readShallowInfo(repoPath) {
   const out2 = (await runGit(repoPath, ["rev-parse", "--is-shallow-repository", "--path-format=absolute", "--git-common-dir"])).trim().split("\n");
   const isShallow = out2[0] === "true";
   if (!isShallow) return { isShallow: false, boundary: [] };
-  const file = join3(out2[1] ?? "", "shallow");
-  const boundary = existsSync4(file) ? readFileSync3(file, "utf8").split("\n").map((l) => l.trim()).filter((l) => l !== "") : [];
+  const file = join4(out2[1] ?? "", "shallow");
+  const boundary = existsSync5(file) ? readFileSync3(file, "utf8").split("\n").map((l) => l.trim()).filter((l) => l !== "") : [];
   return { isShallow, boundary: boundary.sort() };
 }
 var RefNotFoundError = class extends Error {
@@ -1646,7 +1736,7 @@ async function readHistory2(repoPath, options2 = {}) {
   }
 }
 async function applyMailmap(repoRoot, view, mailmapFile) {
-  const file = mailmapFile !== void 0 && existsSync5(mailmapFile) ? mailmapFile : "";
+  const file = mailmapFile !== void 0 && existsSync6(mailmapFile) ? mailmapFile : "";
   let blob = "";
   try {
     await runGit(repoRoot, ["cat-file", "-e", `${view.headSha}:.mailmap`]);
@@ -1800,7 +1890,7 @@ __export(census_exports, {
 import { spawn as spawn2 } from "node:child_process";
 import { createHash as createHash2 } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync as readFileSync4 } from "node:fs";
-import { join as join4 } from "node:path";
+import { join as join5 } from "node:path";
 function sortedMap(entries) {
   return new Map(entries.sort(([a], [b]) => Buffer.compare(Buffer.from(a), Buffer.from(b))));
 }
@@ -1867,14 +1957,19 @@ async function withoutMarkedPaths(repoPath, ref, entries) {
 async function treeFromRef(repoPath, ref) {
   const listing = (await git2(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref])).toString("utf8");
   const entries = [];
+  const gitlinks = [];
   for (const record4 of listing.split("\0")) {
     if (record4 === "") continue;
     const tab = record4.indexOf("	");
     const [mode, type, sha] = record4.slice(0, tab).split(" ");
+    if (type === "commit") gitlinks.push(record4.slice(tab + 1));
     if (type !== "blob" || mode === "120000" || !sha) continue;
     entries.push([record4.slice(tab + 1), sha]);
   }
-  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, entries));
+  const omitted2 = builtinExcluder(repoPath, gitlinks);
+  const kept = entries.filter(([path]) => !omitted2(path));
+  for (const path of gitlinks) omitted2(path);
+  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, kept));
   const readMany = async (wanted) => {
     const known = wanted.filter((path) => files.has(path));
     const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path)))]);
@@ -1904,9 +1999,9 @@ function exportedUnitNames(facts) {
 
 // packages/parse/src/grammars.ts
 import { createHash as createHash3 } from "node:crypto";
-import { existsSync as existsSync6, readFileSync as readFileSync5 } from "node:fs";
+import { existsSync as existsSync7, readFileSync as readFileSync5 } from "node:fs";
 import { createRequire } from "node:module";
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // node_modules/web-tree-sitter/web-tree-sitter.js
@@ -8912,7 +9007,7 @@ var emittedExtensions = {
   ".cjs": [".cts"]
 };
 var builtins = new Set(builtinModules);
-function join5(directory, relative) {
+function join6(directory, relative) {
   const joined = posix3.normalize(directory === "" ? relative : `${directory}/${relative}`);
   if (joined === ".." || joined.startsWith("../") || joined.startsWith("/")) return void 0;
   return joined === "." ? "" : joined.replace(/\/$/, "");
@@ -8945,7 +9040,7 @@ var SpecifierResolver = class {
   }
   resolve(from, specifier) {
     if (specifier.startsWith("./") || specifier.startsWith("../") || specifier === "." || specifier === "..") {
-      const target2 = join5(directoryOf(from), specifier);
+      const target2 = join6(directoryOf(from), specifier);
       const file = target2 === void 0 ? void 0 : this.resolveFile(target2);
       return file === void 0 ? { kind: "not-found" } : { kind: "file", path: file };
     }
@@ -8957,14 +9052,14 @@ var SpecifierResolver = class {
       if (star === void 0) continue;
       pathsMatched = true;
       for (const target2 of targets) {
-        const resolved = join5(options2?.paths?.base ?? "", target2.replace("*", star));
+        const resolved = join6(options2?.paths?.base ?? "", target2.replace("*", star));
         const file = resolved === void 0 ? void 0 : this.resolveFile(resolved);
         if (file !== void 0) return { kind: "file", path: file };
       }
       break;
     }
     if (options2?.baseUrl !== void 0) {
-      const resolved = join5(options2.baseUrl, specifier);
+      const resolved = join6(options2.baseUrl, specifier);
       const file = resolved === void 0 ? void 0 : this.resolveFile(resolved);
       if (file !== void 0) return { kind: "file", path: file };
     }
@@ -9018,10 +9113,10 @@ var SpecifierResolver = class {
       return this.resolveExportTarget(pkg.dir, target3);
     }
     if (subpath === ".") {
-      const entry = pkg.entry === void 0 ? void 0 : join5(pkg.dir, pkg.entry);
+      const entry = pkg.entry === void 0 ? void 0 : join6(pkg.dir, pkg.entry);
       return (entry === void 0 ? void 0 : this.resolveFile(entry)) ?? this.resolveFile(pkg.dir);
     }
-    const target2 = join5(pkg.dir, subpath);
+    const target2 = join6(pkg.dir, subpath);
     return target2 === void 0 ? void 0 : this.resolveFile(target2);
   }
   /**
@@ -9031,13 +9126,13 @@ var SpecifierResolver = class {
    */
   resolveExportTarget(dir, target2) {
     if (typeof target2 === "string") {
-      const resolved = join5(dir, target2);
+      const resolved = join6(dir, target2);
       if (resolved === void 0) return void 0;
       const built = this.resolveFile(resolved);
       if (built !== void 0) return built;
-      const relative = join5("", target2);
+      const relative = join6("", target2);
       const fromSource = relative?.replace(/^(dist|build|out|lib)\//, "src/");
-      const sourced = fromSource === void 0 || fromSource === relative ? void 0 : join5(dir, fromSource);
+      const sourced = fromSource === void 0 || fromSource === relative ? void 0 : join6(dir, fromSource);
       return sourced === void 0 ? void 0 : this.resolveFile(sourced);
     }
     if (Array.isArray(target2)) {
@@ -9079,7 +9174,7 @@ var SpecifierResolver = class {
     const dir = directoryOf(config);
     const referenced = [];
     for (const reference of references) {
-      const target2 = typeof asRecord(reference)?.path === "string" ? join5(dir, asRecord(reference).path) : void 0;
+      const target2 = typeof asRecord(reference)?.path === "string" ? join6(dir, asRecord(reference).path) : void 0;
       if (target2 === void 0) continue;
       const path = [target2, `${target2}.json`, `${target2}/tsconfig.json`].find((candidate) => this.tsconfigTexts.has(candidate));
       if (path !== void 0) referenced.push({ path, json: asRecord(parseJsonc(this.tsconfigTexts.get(path))) });
@@ -9103,7 +9198,7 @@ var SpecifierResolver = class {
       const extended = json.extends;
       for (const parent of Array.isArray(extended) ? extended : extended === void 0 ? [] : [extended]) {
         if (typeof parent !== "string" || !parent.startsWith(".")) continue;
-        const target2 = join5(dir, parent);
+        const target2 = join6(dir, parent);
         const candidates2 = target2 === void 0 ? [] : [target2, `${target2}.json`];
         const found = candidates2.find((candidate) => this.tsconfigTexts.has(candidate));
         const options2 = found === void 0 ? void 0 : this.loadOptions(found, /* @__PURE__ */ new Set([...seen, config]));
@@ -9112,7 +9207,7 @@ var SpecifierResolver = class {
       }
       const compilerOptions = asRecord(json.compilerOptions);
       if (typeof compilerOptions?.baseUrl === "string") {
-        const baseUrl = join5(dir, compilerOptions.baseUrl);
+        const baseUrl = join6(dir, compilerOptions.baseUrl);
         if (baseUrl !== void 0) inherited.baseUrl = baseUrl;
       }
       const paths = asRecord(compilerOptions?.paths);
@@ -9141,7 +9236,7 @@ function includes(config, json, file) {
   if (patterns === void 0) return dir === "" || file.startsWith(`${dir}/`);
   return patterns.some((pattern) => {
     const literal = pattern.split("/").filter((part, index, parts2) => !/[*?]/.test(part) && parts2.slice(0, index).every((p) => !/[*?]/.test(p)));
-    const base = join5(dir, literal.join("/"));
+    const base = join6(dir, literal.join("/"));
     if (base === void 0) return false;
     const last = pattern.split("/").at(-1) ?? "";
     const isFile = !/[*?]/.test(pattern) && /\.[a-z]+$/.test(last);
@@ -14233,7 +14328,7 @@ var underscored = (name13) => name13.replaceAll("-", "_");
 var table2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
 var text = (value) => typeof value === "string" ? value : void 0;
 var list = (value) => Array.isArray(value) ? value.filter((entry) => typeof entry === "object" && entry !== null && !Array.isArray(entry)) : [];
-function join6(dir, path) {
+function join7(dir, path) {
   return posix14.normalize(dir === "." ? path : posix14.join(dir, path));
 }
 var rootOfDirectory = (dir, base, tree, targets) => {
@@ -14278,28 +14373,28 @@ function readCrates(paths, configs) {
     const name13 = text(pkg.name) ?? null;
     const lib = table2(toml.lib);
     const libName2 = name13 === null ? null : text(lib.name) ?? underscored(name13);
-    const libPath = join6(dir, text(lib.path) ?? "src/lib.rs");
+    const libPath = join7(dir, text(lib.path) ?? "src/lib.rs");
     const libRoot = name13 !== null && tree.has(libPath) ? libPath : void 0;
     const bins = /* @__PURE__ */ new Set();
     for (const bin of list(toml.bin)) {
       const binName = text(bin.name) ?? name13 ?? "";
       const declared = text(bin.path);
-      const candidates2 = declared === void 0 ? [join6(dir, `src/bin/${binName}.rs`), join6(dir, `src/bin/${binName}/main.rs`), join6(dir, "src/main.rs")] : [join6(dir, declared)];
+      const candidates2 = declared === void 0 ? [join7(dir, `src/bin/${binName}.rs`), join7(dir, `src/bin/${binName}/main.rs`), join7(dir, "src/main.rs")] : [join7(dir, declared)];
       const found = candidates2.find((candidate) => tree.has(candidate));
       if (found !== void 0) bins.add(found);
     }
     if (name13 !== null) {
-      if (tree.has(join6(dir, "src/main.rs"))) bins.add(join6(dir, "src/main.rs"));
+      if (tree.has(join7(dir, "src/main.rs"))) bins.add(join7(dir, "src/main.rs"));
       rootOfDirectory(dir, "src/bin", tree, bins);
     }
     const others = /* @__PURE__ */ new Set();
     if (name13 !== null) {
-      if (tree.has(join6(dir, "build.rs"))) others.add(join6(dir, "build.rs"));
+      if (tree.has(join7(dir, "build.rs"))) others.add(join7(dir, "build.rs"));
       for (const folder of ["tests", "examples", "benches"]) rootOfDirectory(dir, folder, tree, others);
       for (const key of ["test", "example", "bench"]) {
         for (const target2 of list(toml[key])) {
           const declared = text(target2.path);
-          if (declared !== void 0 && tree.has(join6(dir, declared))) others.add(join6(dir, declared));
+          if (declared !== void 0 && tree.has(join7(dir, declared))) others.add(join7(dir, declared));
         }
       }
     }
@@ -14309,7 +14404,7 @@ function readCrates(paths, configs) {
         const spec = table2(value);
         const local = text(spec.path);
         const inherited = spec.workspace === true ? workspaceDependency(manifest, key) : void 0;
-        const target2 = local !== void 0 ? join6(dir, local) : inherited === void 0 ? void 0 : join6(inherited.dir, inherited.path);
+        const target2 = local !== void 0 ? join7(dir, local) : inherited === void 0 ? void 0 : join7(inherited.dir, inherited.path);
         if (target2 !== void 0) dependencies.set(underscored(key), target2);
       }
     }
@@ -15498,12 +15593,12 @@ var loaded = /* @__PURE__ */ new Map();
 var runtimeInit;
 function locate(file, packageName, grammarDir) {
   if (grammarDir !== void 0) {
-    const explicit = join7(grammarDir, file);
-    if (!existsSync6(explicit)) throw new Error(`Grammar file not found: ${explicit}`);
+    const explicit = join8(grammarDir, file);
+    if (!existsSync7(explicit)) throw new Error(`Grammar file not found: ${explicit}`);
     return explicit;
   }
   const bundled = fileURLToPath(new URL(`./grammars/${file}`, import.meta.url));
-  if (existsSync6(bundled)) return bundled;
+  if (existsSync7(bundled)) return bundled;
   try {
     return require2.resolve(`${packageName}/${file}`);
   } catch {
@@ -16253,7 +16348,7 @@ function readComponents(value) {
 // packages/parse/src/parse-cache.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname as dirname2, join as join8 } from "node:path";
+import { dirname as dirname2, join as join9 } from "node:path";
 var ParseCache = class _ParseCache {
   directory;
   constructor(directory) {
@@ -16263,7 +16358,7 @@ var ParseCache = class _ParseCache {
   static async forRepository(repoPath) {
     const location = await locateCache(repoPath);
     ensureCacheDir(location);
-    return new _ParseCache(join8(location.cacheDir, "parse"));
+    return new _ParseCache(join9(location.cacheDir, "parse"));
   }
   async get(blobSha, key) {
     try {
@@ -16286,7 +16381,7 @@ var ParseCache = class _ParseCache {
   }
   /** The key is a loaded grammar's `cacheKey`: its version and the extractor's, so changed extraction rules never read old facts. */
   entryPath(blobSha, key) {
-    return join8(this.directory, key, blobSha.slice(0, 2), `${blobSha}.json`);
+    return join9(this.directory, key, blobSha.slice(0, 2), `${blobSha}.json`);
   }
 };
 
@@ -16753,7 +16848,7 @@ function indexPackages(packages, components = []) {
   const owners = /* @__PURE__ */ new Map();
   for (const pkg of packages) if (pkg.dir !== null && !owners.has(pkg.dir)) owners.set(pkg.dir, pkg.id);
   const componentIds = new Set(packages.filter((p) => p.ecosystem === "component" && p.dir === null).map((p) => p.id));
-  const matchers = components.filter((c) => componentIds.has(c.name));
+  const matchers2 = components.filter((c) => componentIds.has(c.name));
   const cache = /* @__PURE__ */ new Map();
   const ownerOfDir = (dir) => {
     if (cache.has(dir)) return cache.get(dir);
@@ -16763,7 +16858,7 @@ function indexPackages(packages, components = []) {
   };
   return {
     owner(path) {
-      const matched = matchers.find((c) => c.matches(path));
+      const matched = matchers2.find((c) => c.matches(path));
       if (matched !== void 0) return matched.name;
       return ownerOfDir(dirOf(path));
     }
@@ -17391,8 +17486,8 @@ function allowedLayers(rules11, layer) {
   return rules11.filter((r, i2) => r.name === layer || (rule2.allow === null ? i2 > index : rule2.allow.includes(r.name))).map((r) => r.name);
 }
 function layerClassifier(rules11) {
-  const matchers = rules11.map((rule2) => ({ name: rule2.name, matches: compileGlobs(rule2.paths) }));
-  return (path) => matchers.find((m) => m.matches(path))?.name;
+  const matchers2 = rules11.map((rule2) => ({ name: rule2.name, matches: compileGlobs(rule2.paths) }));
+  return (path) => matchers2.find((m) => m.matches(path))?.name;
 }
 var layerViolationId = (from, to) => `layer:${from}->${to}`;
 function findLayerViolations(project, rules11) {
@@ -17712,9 +17807,9 @@ function withVagueNames(packages, vagueNames) {
 
 // packages/history/src/reports.ts
 import { mkdirSync as mkdirSync2, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 function reportPath(root, tool, command12) {
-  return join9(root, ".cache", "code-health", "reports", `${tool}.${command12}.json`);
+  return join10(root, ".cache", "code-health", "reports", `${tool}.${command12}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
@@ -17742,8 +17837,8 @@ async function writeReport(context, identity, command12, output, analysedHead) {
   });
   const file = reportPath(context.repo.root, identity.tool, command12);
   const location = await locateCache(context.repo.root);
-  ensureCacheDir({ ...location, cacheDir: join9(context.repo.root, ".cache", "code-health") });
-  mkdirSync2(join9(file, ".."), { recursive: true });
+  ensureCacheDir({ ...location, cacheDir: join10(context.repo.root, ".cache", "code-health") });
+  mkdirSync2(join10(file, ".."), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
   writeFileSync2(temporary, serialise(document));
   renameSync2(temporary, file);
@@ -18106,11 +18201,11 @@ function stampOf(input) {
 }
 
 // packages/structure/src/incidental.ts
-import { existsSync as existsSync8 } from "node:fs";
+import { existsSync as existsSync9 } from "node:fs";
 
 // packages/transcripts/src/measure-repo.ts
-import { existsSync as existsSync7, readFileSync as readFileSync6, readdirSync as readdirSync2 } from "node:fs";
-import { join as join10 } from "node:path";
+import { existsSync as existsSync8, readFileSync as readFileSync6, readdirSync as readdirSync2 } from "node:fs";
+import { join as join11 } from "node:path";
 
 // packages/transcripts/src/repo-path.ts
 import { posix as posix16 } from "node:path";
@@ -18459,19 +18554,19 @@ function summariseTasks(tasks) {
 function agentFilesUnder(dir) {
   const found = [];
   for (const entry of readdirSync2(dir, { withFileTypes: true })) {
-    const path = join10(dir, entry.name);
+    const path = join11(dir, entry.name);
     if (entry.isDirectory()) found.push(...agentFilesUnder(path));
     else if (entry.isFile() && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) found.push(path);
   }
   return found;
 }
 function subagentFiles(projectsDir, root) {
-  const dir = join10(projectsDir, encodeProjectDir(root));
-  if (!existsSync7(dir)) return [];
+  const dir = join11(projectsDir, encodeProjectDir(root));
+  if (!existsSync8(dir)) return [];
   const files = [];
   for (const entry of readdirSync2(dir, { withFileTypes: true })) {
-    const subagents = join10(dir, entry.name, "subagents");
-    if (!entry.isDirectory() || !existsSync7(subagents)) continue;
+    const subagents = join11(dir, entry.name, "subagents");
+    if (!entry.isDirectory() || !existsSync8(subagents)) continue;
     for (const path of agentFilesUnder(subagents)) {
       const name13 = path.slice(path.lastIndexOf("/") + 1);
       files.push({ sessionId: entry.name, agentId: name13.slice("agent-".length, -".jsonl".length), path });
@@ -18493,9 +18588,9 @@ function readMeta2(transcriptPath) {
   }
 }
 function sessionFiles(projectsDir, root) {
-  const dir = join10(projectsDir, encodeProjectDir(root));
-  if (!existsSync7(dir)) return [];
-  return readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join10(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
+  const dir = join11(projectsDir, encodeProjectDir(root));
+  if (!existsSync8(dir)) return [];
+  return readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join11(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
 }
 function measureRepo(options2) {
   const { projectsDir, repoRoots, window: window2 } = options2;
@@ -18648,7 +18743,7 @@ function layerRuleOf(model, from, to, settings) {
 // packages/structure/src/incidental.ts
 var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 function readAgentTasks(repoRoots, projectsDir, window2) {
-  if (!existsSync8(projectsDir)) throw environmentError("no-projects-dir", `${projectsDir} does not exist`);
+  if (!existsSync9(projectsDir)) throw environmentError("no-projects-dir", `${projectsDir} does not exist`);
   const parsed = parseWindow(day(window2.since), day(window2.until + 86400));
   return measureRepo({ projectsDir, repoRoots, window: parsed }).tasks;
 }
@@ -18883,12 +18978,12 @@ function connectedPairs(graph) {
 }
 
 // packages/structure/src/locality-report.ts
-import { existsSync as existsSync9, readFileSync as readFileSync7 } from "node:fs";
+import { existsSync as existsSync10, readFileSync as readFileSync7 } from "node:fs";
 var LOCALITY_REPORT = { tool: "locality", command: "analyse" };
 var RECOGNISED_LOCALITY_SCHEMA_VERSIONS = [1];
 function readLocalityUnblocks(context, head) {
   const file = reportPath2(context.repo.root, LOCALITY_REPORT.command, LOCALITY_REPORT.tool);
-  if (!existsSync9(file)) return void 0;
+  if (!existsSync10(file)) return void 0;
   let document;
   try {
     document = JSON.parse(readFileSync7(file, "utf8"));
@@ -19492,13 +19587,13 @@ async function findHubs({ root, headSha, model, changes, settings }) {
   const { activity, graph, project } = model;
   const histories = fileHistories(model, changes);
   const hubs = [];
-  const omitted = { minSignals: SIGNALS_LISTED, considered: 0, files: 0, withoutDiffs: 0, belowMinRevisions: 0 };
+  const omitted2 = { minSignals: SIGNALS_LISTED, considered: 0, files: 0, withoutDiffs: 0, belowMinRevisions: 0 };
   for (const [file, history] of [...histories].sort((a, b) => compareIds(a[0], b[0]))) {
     if (history.eligible < settings.minRevisions) {
-      omitted.belowMinRevisions++;
+      omitted2.belowMinRevisions++;
       continue;
     }
-    omitted.considered++;
+    omitted2.considered++;
     const features = [];
     for (const [module3, shared] of history.shared) {
       const featureChanges = activity.eligibleRevisions(module3);
@@ -19544,8 +19639,8 @@ async function findHubs({ root, headSha, model, changes, settings }) {
     const contentionReached = maxAuthors >= settings.hubMinAuthors;
     const cheapReached = [starReached, outwardReached, contentionReached].filter(Boolean).length;
     if (cheapReached + 1 < SIGNALS_LISTED) {
-      omitted.files++;
-      omitted.withoutDiffs++;
+      omitted2.files++;
+      omitted2.withoutDiffs++;
       continue;
     }
     const shas = new Set(history.changes.flatMap((change) => change.shas));
@@ -19555,7 +19650,7 @@ async function findHubs({ root, headSha, model, changes, settings }) {
     const appendReached = hunks.length >= settings.minSupport && percent(appended.length, hunks.length) >= settings.hubMinAppendShare;
     const signalsReached = cheapReached + (appendReached ? 1 : 0);
     if (signalsReached < SIGNALS_LISTED) {
-      omitted.files++;
+      omitted2.files++;
       continue;
     }
     if (text2 === "") text2 = await readBlobAt(root, headSha, file) ?? "";
@@ -19594,7 +19689,7 @@ async function findHubs({ root, headSha, model, changes, settings }) {
       }
     });
   }
-  return { hubs: hubs.sort(compareHubs), omitted };
+  return { hubs: hubs.sort(compareHubs), omitted: omitted2 };
 }
 
 // packages/structure/src/commands/evidence.ts
@@ -19748,7 +19843,7 @@ var command7 = analysisCommand(name8, {
     const by = readLevel("by", context.values.by, views3, "folder");
     const model = await buildModel(context, history, by, void 0, { everyPair: true });
     const { settings } = history;
-    const { hubs: rows, omitted } = await findHubs({
+    const { hubs: rows, omitted: omitted2 } = await findHubs({
       root: context.repo.root,
       headSha: history.view.headSha,
       model,
@@ -19772,9 +19867,9 @@ var command7 = analysisCommand(name8, {
       results: rows,
       columns: ["id", "featureCount", "revisions", "signals"],
       notices: [
-        `Omitted ${omitted.files} of ${omitted.considered} files with at least ${settings.minRevisions} changes: each reached fewer than ${omitted.minSignals} of the 4 signals (${omitted.withoutDiffs} of them without reading their diffs, because the other three signals left them unable to reach ${omitted.minSignals}). ${omitted.belowMinRevisions} more files have fewer than ${settings.minRevisions} changes`
+        `Omitted ${omitted2.files} of ${omitted2.considered} files with at least ${settings.minRevisions} changes: each reached fewer than ${omitted2.minSignals} of the 4 signals (${omitted2.withoutDiffs} of them without reading their diffs, because the other three signals left them unable to reach ${omitted2.minSignals}). ${omitted2.belowMinRevisions} more files have fewer than ${settings.minRevisions} changes`
       ],
-      extra: { omitted, population: { modules: model.graph.filesOf.size, eligibleChanges: model.activity.eligibleChanges } }
+      extra: { omitted: omitted2, population: { modules: model.graph.filesOf.size, eligibleChanges: model.activity.eligibleChanges } }
     };
   }
 });
@@ -20376,7 +20471,7 @@ function exportedPackages(descriptor) {
   return exported;
 }
 var packageOfSource = (text2) => /^\s*package\s+([\w.`]+)/m.exec(text2)?.[1]?.replaceAll("`", "") ?? "";
-async function readEntries(model) {
+async function readEntries2(model) {
   const declaring = new Set(model.project.analysis.exports.map((exported) => exported.file));
   const entries = /* @__PURE__ */ new Map();
   for (const pkg of model.packages) {
@@ -20449,10 +20544,10 @@ async function manifestChecks(context, reuse) {
 }
 
 // packages/structure/src/packaging/languages/java.ts
-var language9 = { id: "java", checks: [{ ecosystem: "gradle", undeclared: true, unused: true }, { ecosystem: "maven", undeclared: true, unused: true }], readEntries, manifestChecks };
+var language9 = { id: "java", checks: [{ ecosystem: "gradle", undeclared: true, unused: true }, { ecosystem: "maven", undeclared: true, unused: true }], readEntries: readEntries2, manifestChecks };
 
 // packages/structure/src/packaging/languages/kotlin.ts
-var language10 = { id: "kotlin", checks: [], readEntries, manifestChecks: async () => [] };
+var language10 = { id: "kotlin", checks: [], readEntries: readEntries2, manifestChecks: async () => [] };
 
 // packages/structure/src/packaging/languages/typescript.ts
 var typesName = (name13) => `@types/${name13.startsWith("@") ? name13.slice(1).replace("/", "__") : name13}`;
@@ -20468,7 +20563,7 @@ function patternRegExp(dir, target2) {
   const stem2 = `${dir === "." ? "" : `${dir}/`}${relative}`.replace(/\.[cm]?[jt]sx?$/, "");
   return new RegExp(`^${stem2.split("*").map(escape3).join("(.*)")}\\.[cm]?[jt]sx?$`);
 }
-async function readEntries2(model) {
+async function readEntries3(model) {
   const paths = [...model.tree.files.keys()];
   const configs = await model.tree.readMany(paths.filter(isConfigPath));
   const resolver = new SpecifierResolver(paths, configs);
@@ -20587,10 +20682,10 @@ async function manifestChecks2(context, reuse) {
   }
   return findings;
 }
-var language11 = { id: "typescript", checks: [{ ecosystem: "npm", undeclared: true, unused: true }], readEntries: readEntries2, manifestChecks: manifestChecks2 };
+var language11 = { id: "typescript", checks: [{ ecosystem: "npm", undeclared: true, unused: true }], readEntries: readEntries3, manifestChecks: manifestChecks2 };
 
 // packages/structure/src/packaging/languages/csharp.ts
-async function readEntries3(model) {
+async function readEntries4(model) {
   const exporting = /* @__PURE__ */ new Map();
   for (const exported of model.project.analysis.exports) {
     const owner = model.index.owner(exported.file);
@@ -20628,10 +20723,10 @@ async function manifestChecks3(context, reuse) {
   }
   return findings;
 }
-var language12 = { id: "csharp", checks: [{ ecosystem: "dotnet", undeclared: false, unused: true }], readEntries: readEntries3, manifestChecks: manifestChecks3 };
+var language12 = { id: "csharp", checks: [{ ecosystem: "dotnet", undeclared: false, unused: true }], readEntries: readEntries4, manifestChecks: manifestChecks3 };
 
 // packages/structure/src/packaging/languages/cpp.ts
-async function readEntries4(model) {
+async function readEntries5(model) {
   const paths = [...model.tree.files.keys()];
   const entries = /* @__PURE__ */ new Map();
   for (const pkg of model.packages) {
@@ -20702,7 +20797,7 @@ async function manifestChecks4(context, reuse) {
   }
   return findings;
 }
-var language13 = { id: "cpp", checks: [{ ecosystem: "cmake", undeclared: true, unused: true }], readEntries: readEntries4, manifestChecks: manifestChecks4 };
+var language13 = { id: "cpp", checks: [{ ecosystem: "cmake", undeclared: true, unused: true }], readEntries: readEntries5, manifestChecks: manifestChecks4 };
 
 // packages/structure/src/packaging/languages/python.ts
 var normalise5 = (name13) => name13.toLowerCase().replace(/[-_.]+/g, "_");
@@ -20746,7 +20841,7 @@ function allOf(text2) {
 }
 var isDunder = (segment2) => segment2.startsWith("__") && segment2.endsWith("__");
 var isPrivateSegment = (segment2) => segment2.startsWith("_") && !isDunder(segment2);
-async function readEntries5(model) {
+async function readEntries6(model) {
   const entries = /* @__PURE__ */ new Map();
   const exportedBy = /* @__PURE__ */ new Map();
   for (const exported of model.project.analysis.exports) {
@@ -20868,11 +20963,11 @@ async function manifestChecks5(context, reuse) {
   }
   return findings;
 }
-var language14 = { id: "python", checks: [{ ecosystem: "python", undeclared: true, unused: true }], readEntries: readEntries5, manifestChecks: manifestChecks5 };
+var language14 = { id: "python", checks: [{ ecosystem: "python", undeclared: true, unused: true }], readEntries: readEntries6, manifestChecks: manifestChecks5 };
 
 // packages/structure/src/packaging/languages/go.ts
 var hidden = (relative) => relative.split("/").some((part) => part === "internal" || part === "testdata" || part === "vendor");
-async function readEntries6(model) {
+async function readEntries7(model) {
   const entries = /* @__PURE__ */ new Map();
   for (const pkg of model.packages) {
     if (pkg.ecosystem !== "go" || pkg.manifest === null || (model.codeFiles.get(pkg.id)?.length ?? 0) === 0) continue;
@@ -20957,12 +21052,12 @@ async function manifestChecks6(context, reuse) {
   }
   return findings;
 }
-var language15 = { id: "go", checks: [{ ecosystem: "go", undeclared: true, unused: true }], readEntries: readEntries6, manifestChecks: manifestChecks6 };
+var language15 = { id: "go", checks: [{ ecosystem: "go", undeclared: true, unused: true }], readEntries: readEntries7, manifestChecks: manifestChecks6 };
 
 // packages/structure/src/packaging/languages/rust.ts
 var crateName = (name13) => name13.replaceAll("-", "_");
 var table3 = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-async function readEntries7(model) {
+async function readEntries8(model) {
   const paths = [...model.tree.files.keys()];
   const configs = await model.tree.readMany(paths.filter(isManifestPath));
   const crates = readCrates(paths, configs);
@@ -21098,11 +21193,11 @@ async function manifestChecks7(context, reuse) {
   }
   return findings;
 }
-var language16 = { id: "rust", checks: [{ ecosystem: "cargo", undeclared: true, unused: true }], readEntries: readEntries7, manifestChecks: manifestChecks7 };
+var language16 = { id: "rust", checks: [{ ecosystem: "cargo", undeclared: true, unused: true }], readEntries: readEntries8, manifestChecks: manifestChecks7 };
 
 // packages/structure/src/packaging/language.ts
 var packagingLanguages = Object.values(registered_languages_exports2).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-async function readEntries8(model) {
+async function readEntries9(model) {
   const entries = /* @__PURE__ */ new Map();
   for (const language17 of packagingLanguages) {
     for (const [id, found] of await language17.readEntries(model)) entries.set(id, found);
@@ -21240,7 +21335,7 @@ var UnionFind = class {
   }
 };
 async function analyseReuse(model) {
-  const entries = await readEntries8(model);
+  const entries = await readEntries9(model);
   const unavailable = [];
   const surfaces = /* @__PURE__ */ new Map();
   for (const pkg of model.packages) {
@@ -22847,7 +22942,7 @@ var list2 = {
 };
 
 // packages/structure/src/packaging/outcome.ts
-import { existsSync as existsSync10 } from "node:fs";
+import { existsSync as existsSync11 } from "node:fs";
 var median2 = (values) => {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -22981,7 +23076,7 @@ async function measureOutcome2(root, settings, changes, anchor, options2) {
   const repoRoots = options2.projectsDir === void 0 ? [root] : await checkouts(root);
   const effort = () => {
     const projectsDir = options2.projectsDir;
-    if (projectsDir === void 0 || !existsSync10(projectsDir)) {
+    if (projectsDir === void 0 || !existsSync11(projectsDir)) {
       return { status: "not-measured", reason: projectsDir === void 0 ? "no --projects-dir was given" : `${projectsDir} does not exist` };
     }
     const windowOf = (from, to) => parseWindow(day2(from), day2(to));

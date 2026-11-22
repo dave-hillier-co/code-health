@@ -1,5 +1,6 @@
 import { discoverCommand, parseArguments, type OptionSpec, type ParsedArguments } from "./args.ts";
 import { explainConfig, loadConfig, type LoadedConfig, type PluginConfigSpec } from "./config.ts";
+import { builtinOmissions, resetBuiltinOmissions } from "./builtin-excludes.ts";
 import { buildDocument } from "./document.ts";
 import { assertNodeVersion } from "./environment.ts";
 import { CliError, ExitCode, usageError } from "./errors.ts";
@@ -147,7 +148,10 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli.config);
   const context: CommandContext = { repo, config, positionals: args.positionals, values: args.values };
+  resetBuiltinOmissions();
   const output = await command.run(context);
+  const builtin = builtinOmissions();
+  const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}\n`);
 
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
@@ -163,7 +167,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: output.extra,
+          extra: { ...output.extra, ...omittedByBuiltin },
           results,
           truncated,
           meta: {
@@ -179,6 +183,10 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results as Record<string, unknown>[], args.fields ?? columns, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.\n`);
+    const counted = Object.entries(builtin);
+    if (counted.length > 0) {
+      io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count]) => `${count} ${count === 1 ? "file" : "files"} (${entry})`).join(", ")}.\n`);
+    }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.\n`);
   } else {
     io.stdout.write(serialise(results));

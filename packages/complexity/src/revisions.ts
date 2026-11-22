@@ -1,5 +1,7 @@
 import { usageError } from "@code-health/cli-kit/errors";
+import { builtinExcluder } from "@code-health/history/builtin-excludes";
 import { runGit } from "@code-health/history/git";
+import { untrackedFiles } from "@code-health/parse/source-tree";
 import type { ComplexitySettings } from "./config.ts";
 
 export interface Revision {
@@ -57,6 +59,7 @@ export async function defaultBase(root: string, settings: ComplexitySettings): P
 export async function changedPaths(root: string, base: string, head: string | null): Promise<string[]> {
   const diffArgs = ["diff", "--name-only", "--no-renames", "-z", base];
   const changed = (await runGit(root, head === null ? diffArgs : [...diffArgs, head])).split("\0");
-  if (head === null) changed.push(...(await runGit(root, ["ls-files", "-z", "--others", "--exclude-standard"])).split("\0"));
-  return [...new Set(changed.filter((path) => path !== ""))].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+  if (head === null) changed.push(...(await untrackedFiles(root)));
+  const omitted = builtinExcluder(root, [], { record: false });
+  return [...new Set(changed.filter((path) => path !== "" && !omitted(path)))].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
 }

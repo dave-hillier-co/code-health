@@ -1,6 +1,5 @@
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
-import { runGit } from "@code-health/history/git";
-import { treeFromRef, treeFromWorkingTree, type SourceTree } from "@code-health/parse/source-tree";
+import { treeFromRef, treeFromWorkingTree, untrackedFiles, type SourceTree } from "@code-health/parse/source-tree";
 
 export interface CurrentTree {
   tree: SourceTree;
@@ -14,7 +13,7 @@ export interface CurrentTree {
  */
 export async function hasUncommittedWork(context: CommandContext): Promise<boolean> {
   if (context.repo.dirty) return true;
-  return (await runGit(context.repo.root, ["ls-files", "--others", "--exclude-standard", "-z"])) !== "";
+  return (await untrackedFiles(context.repo.root)).length > 0;
 }
 
 /** The code as it stands: the commit at HEAD when the tree is clean, otherwise the files on disk. */

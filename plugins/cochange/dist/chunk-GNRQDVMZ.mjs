@@ -3,13 +3,14 @@
 import {
   __export,
   bandAgainst,
+  builtinExcluder,
   cutoffsOf,
   ensureCacheDir,
   higherBand,
   locateCache,
   readBlobAt,
   readPathAttributes
-} from "./chunk-QY7HQ5YQ.mjs";
+} from "./chunk-7QD7UKDX.mjs";
 
 // packages/cochange/src/risk/signatures.ts
 import { readFileSync as readFileSync3 } from "node:fs";
@@ -14236,14 +14237,19 @@ async function withoutMarkedPaths(repoPath, ref, entries) {
 async function treeFromRef(repoPath, ref) {
   const listing = (await git(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref])).toString("utf8");
   const entries = [];
+  const gitlinks = [];
   for (const record of listing.split("\0")) {
     if (record === "") continue;
     const tab = record.indexOf("	");
     const [mode, type, sha] = record.slice(0, tab).split(" ");
+    if (type === "commit") gitlinks.push(record.slice(tab + 1));
     if (type !== "blob" || mode === "120000" || !sha) continue;
     entries.push([record.slice(tab + 1), sha]);
   }
-  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, entries));
+  const omitted = builtinExcluder(repoPath, gitlinks);
+  const kept = entries.filter(([path]) => !omitted(path));
+  for (const path of gitlinks) omitted(path);
+  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, kept));
   const readMany = async (wanted) => {
     const known = wanted.filter((path) => files.has(path));
     const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path)))]);

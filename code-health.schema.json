@@ -14,7 +14,7 @@
       "items": {
         "type": "string"
       },
-      "description": "Globs of files no plugin analyses."
+      "description": "Globs of files no plugin analyses. They add to the built-in excludes and do not replace them: .claude/**, .cache/**, .code-health/** and every directory below the repository root that is its own git checkout (it contains a .git file or directory: a linked worktree, a nested clone or a submodule) are always left out of source trees and history. `config explain` prints them with the source built-in, and commands report how many files each omitted."
     },
     "languages": {
       "type": "object",

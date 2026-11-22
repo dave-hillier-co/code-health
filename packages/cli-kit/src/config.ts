@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { BUILTIN_EXCLUDE_ENTRIES } from "./builtin-excludes.ts";
 import { configError } from "./errors.ts";
 import { serialise } from "./serialise.ts";
 
@@ -96,7 +97,7 @@ export interface LoadedConfig {
   sources: Record<string, ConfigSource>;
 }
 
-export type ConfigSource = "default" | "file";
+export type ConfigSource = "default" | "file" | "built-in";
 
 export interface ConfigRow {
   path: string;
@@ -240,6 +241,7 @@ export function explainConfig(config: LoadedConfig): ConfigRow[] {
   flatten(config.effective, "", (path, value) => {
     rows.push({ path, value, source: config.sources[path] ?? "default" });
   });
+  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
   return rows.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 

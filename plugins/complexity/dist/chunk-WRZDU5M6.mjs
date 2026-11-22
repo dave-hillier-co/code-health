@@ -11,6 +11,7 @@ import {
   SCHEMA_VERSION,
   TOOL,
   analyseSource,
+  builtinExcluder,
   bumpyRoadLimits,
   checkFixConvention,
   complexityConfig,
@@ -31,16 +32,16 @@ import {
   readSettings,
   runGit,
   structuralValues
-} from "./chunk-RRQWOX3J.mjs";
+} from "./chunk-GPAGPCI6.mjs";
 import {
   buildDocument,
   shapeResults
-} from "./chunk-YGCAS6UG.mjs";
+} from "./chunk-JQWY4I27.mjs";
 import {
   historyDefaults,
   serialise,
   usageError
-} from "./chunk-733Y5EPL.mjs";
+} from "./chunk-GATX7OYR.mjs";
 import {
   __export
 } from "./chunk-NYIILDEN.mjs";
@@ -912,9 +913,15 @@ async function treeFromWorkingTree(repoPath) {
   const listing = (await git(repoPath, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"])).toString("utf8");
   const entries = [];
   const seen = /* @__PURE__ */ new Set();
+  const omitted = builtinExcluder(repoPath);
   for (const path of listing.split("\0")) {
     if (path === "" || seen.has(path)) continue;
     seen.add(path);
+    if (path.endsWith("/")) {
+      for (const inner of await filesOfCheckout(repoPath, path)) omitted(`${path}${inner}`);
+      continue;
+    }
+    if (omitted(path)) continue;
     try {
       if (!lstatSync(join4(repoPath, path)).isFile()) continue;
       entries.push([path, gitBlobSha(readFileSync3(join4(repoPath, path)))]);
@@ -935,6 +942,28 @@ async function treeFromWorkingTree(repoPath) {
       return out2;
     }
   };
+}
+async function filesOfCheckout(repoPath, directory) {
+  try {
+    const listing = (await git(join4(repoPath, directory), ["ls-files", "-z", "--cached", "--others", "--exclude-standard"])).toString("utf8");
+    return listing.split("\0").filter((path) => path !== "");
+  } catch {
+    return [];
+  }
+}
+async function untrackedFiles(repoPath) {
+  const listing = (await git(repoPath, ["ls-files", "-z", "--others", "--exclude-standard"])).toString("utf8");
+  const omitted = builtinExcluder(repoPath);
+  const kept = [];
+  for (const path of listing.split("\0")) {
+    if (path === "") continue;
+    if (path.endsWith("/")) {
+      for (const inner of await filesOfCheckout(repoPath, path)) omitted(`${path}${inner}`);
+    } else if (!omitted(path)) {
+      kept.push(path);
+    }
+  }
+  return kept;
 }
 function restrictTree(tree, paths) {
   const files = /* @__PURE__ */ new Map();
@@ -1011,14 +1040,19 @@ async function withoutMarkedPaths(repoPath, ref, entries) {
 async function treeFromRef(repoPath, ref) {
   const listing = (await git(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref])).toString("utf8");
   const entries = [];
+  const gitlinks = [];
   for (const record of listing.split("\0")) {
     if (record === "") continue;
     const tab = record.indexOf("	");
     const [mode, type, sha] = record.slice(0, tab).split(" ");
+    if (type === "commit") gitlinks.push(record.slice(tab + 1));
     if (type !== "blob" || mode === "120000" || !sha) continue;
     entries.push([record.slice(tab + 1), sha]);
   }
-  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, entries));
+  const omitted = builtinExcluder(repoPath, gitlinks);
+  const kept = entries.filter(([path]) => !omitted(path));
+  for (const path of gitlinks) omitted(path);
+  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, kept));
   const readMany = async (wanted) => {
     const known = wanted.filter((path) => files.has(path));
     const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path)))]);
@@ -1050,7 +1084,7 @@ function treeFromTexts(texts) {
 // packages/complexity/src/current-tree.ts
 async function hasUncommittedWork(context) {
   if (context.repo.dirty) return true;
-  return await runGit(context.repo.root, ["ls-files", "--others", "--exclude-standard", "-z"]) !== "";
+  return (await untrackedFiles(context.repo.root)).length > 0;
 }
 async function currentTree(context) {
   if (await hasUncommittedWork(context)) return { tree: await treeFromWorkingTree(context.repo.root), kind: "working-tree" };
@@ -6267,8 +6301,9 @@ async function defaultBase(root, settings) {
 async function changedPaths(root, base, head) {
   const diffArgs = ["diff", "--name-only", "--no-renames", "-z", base];
   const changed = (await runGit(root, head === null ? diffArgs : [...diffArgs, head])).split("\0");
-  if (head === null) changed.push(...(await runGit(root, ["ls-files", "-z", "--others", "--exclude-standard"])).split("\0"));
-  return [...new Set(changed.filter((path) => path !== ""))].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+  if (head === null) changed.push(...await untrackedFiles(root));
+  const omitted = builtinExcluder(root, [], { record: false });
+  return [...new Set(changed.filter((path) => path !== "" && !omitted(path)))].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
 }
 
 // packages/complexity/src/comparison.ts

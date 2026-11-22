@@ -17,16 +17,22 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-PO5TQTT7.mjs";
+} from "./chunk-XDZ3NWLM.mjs";
 import {
+  BUILTIN_EXCLUDE_ENTRIES,
   GitError,
+  builtinExcluder,
+  builtinOmissions,
+  compileGlobs,
   gitVersion,
+  listGitlinks,
   listTree,
   readBlameIgnoreRevs,
   readPathAttributes,
+  resetBuiltinOmissions,
   runGit,
   treeFromRef
-} from "./chunk-Z55QIW6L.mjs";
+} from "./chunk-QHLSRXYC.mjs";
 import {
   analyseTree
 } from "./chunk-X2MAPTZB.mjs";
@@ -306,6 +312,7 @@ function explainConfig(config) {
   flatten(config.effective, "", (path, value) => {
     rows.push({ path, value, source: config.sources[path] ?? "default" });
   });
+  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
   return rows.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 function parseDocument(file) {
@@ -551,7 +558,10 @@ async function execute(cli2, io) {
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args.positionals, values: args.values };
+  resetBuiltinOmissions();
   const output = await command8.run(context);
+  const builtin = builtinOmissions();
+  const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
@@ -566,7 +576,7 @@ async function execute(cli2, io) {
           repo: { head: repo.head, dirty: repo.dirty },
           configHash: config.hash,
           inputs: output.inputs,
-          extra: output.extra,
+          extra: { ...output.extra, ...omittedByBuiltin },
           results,
           truncated,
           meta: {
@@ -583,6 +593,11 @@ async function execute(cli2, io) {
     io.stdout.write(renderTable(results, args.fields ?? columns, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
 `);
+    const counted = Object.entries(builtin);
+    if (counted.length > 0) {
+      io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count2]) => `${count2} ${count2 === 1 ? "file" : "files"} (${entry})`).join(", ")}.
+`);
+    }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
 `);
   } else {
@@ -756,81 +771,6 @@ async function writeReport(context, identity, command8, output, analysedHead) {
   renameSync(temporary, file);
   context.report = { stored: true };
   return true;
-}
-
-// packages/history/src/glob.ts
-function escape(ch) {
-  return /[.+^${}()|[\]\\]/.test(ch) ? `\\${ch}` : ch;
-}
-function hasClosingBrace(pattern, start) {
-  let depth = 0;
-  for (let i = start; i < pattern.length; i++) {
-    if (pattern[i] === "{") depth++;
-    else if (pattern[i] === "}" && --depth === 0) return true;
-  }
-  return false;
-}
-function toRegExp(pattern) {
-  let out = "";
-  let braces = 0;
-  for (let i = 0; i < pattern.length; i++) {
-    const ch = pattern[i];
-    if (ch === "*") {
-      if (pattern[i + 1] === "*") {
-        i++;
-        if (pattern[i + 1] === "/") {
-          i++;
-          out += "(?:.*/)?";
-        } else {
-          out += ".*";
-        }
-      } else {
-        out += "[^/]*";
-      }
-    } else if (ch === "?") {
-      out += "[^/]";
-    } else if (ch === "{" && hasClosingBrace(pattern, i)) {
-      braces++;
-      out += "(?:";
-    } else if (ch === "}" && braces > 0) {
-      braces--;
-      out += ")";
-    } else if (ch === "," && braces > 0) {
-      out += "|";
-    } else if (ch === "[") {
-      const end = pattern.indexOf("]", i + 1);
-      if (end === -1) {
-        out += "\\[";
-      } else {
-        const body = pattern.slice(i + 1, end).replace(/^!/, "^").replace(/\\/g, "\\\\");
-        out += `[${body}]`;
-        i = end;
-      }
-    } else {
-      out += escape(ch);
-    }
-  }
-  return new RegExp(`^${out}$`);
-}
-function compileGlobs(patterns) {
-  const compiled = patterns.map((p) => p.trim()).filter((p) => p !== "" && !p.startsWith("#")).map((raw) => {
-    const pattern = raw.replace(/\/+$/, "");
-    const anchored = pattern.includes("/");
-    return { anchored, regex: toRegExp(anchored ? pattern.replace(/^\//, "") : pattern) };
-  });
-  return (path) => {
-    const segments = path.split("/");
-    for (const { anchored, regex } of compiled) {
-      if (anchored) {
-        for (let n = 1; n <= segments.length; n++) {
-          if (regex.test(segments.slice(0, n).join("/"))) return true;
-        }
-      } else if (segments.some((s) => regex.test(s))) {
-        return true;
-      }
-    }
-    return false;
-  };
 }
 
 // packages/graph/src/scc.ts
@@ -1232,6 +1172,7 @@ async function filterHistory(repoPath, view, options = {}) {
   const excluded = compileGlobs(options.exclude ?? []);
   const bots = botPatterns.map(compileBotPattern);
   const treeFiles = await listTree(repoPath, view.headSha);
+  const builtinExcluded = builtinExcluder(repoPath, await listGitlinks(repoPath, view.headSha));
   const imported = detectImportedHistory(view, treeFiles, options.importDetection);
   const importedShas = new Set(excludeImported ? imported.map((i) => i.sha) : []);
   const ignoredRevs = blameFile === false ? [] : await readBlameIgnoreRevs(repoPath, view.headSha, blameFile);
@@ -1281,6 +1222,7 @@ async function filterHistory(repoPath, view, options = {}) {
     for (const change2 of commit.changes) {
       if (isPureRename(change2)) {
         dropped.pureRenames++;
+      } else if (builtinExcluded(change2.path)) {
       } else if (excluded(change2.path)) {
         dropped.excludedByGlob++;
       } else if (lockfileSet.has(change2.path.slice(change2.path.lastIndexOf("/") + 1))) {
@@ -4915,7 +4857,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-NWPNSGK2.mjs");
+    const { performMove } = await import("./chunk-EFYWWGTQ.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -5186,7 +5128,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-CYAFNQLG.mjs");
+    const { verifyMove } = await import("./chunk-5UWH4CMC.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;
