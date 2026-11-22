@@ -3,7 +3,7 @@
 import {
   explainConfig,
   loadConfig
-} from "./chunk-37HBBSFA.mjs";
+} from "./chunk-SHUVV6HF.mjs";
 import {
   buildDocument,
   shapeResults
@@ -179,7 +179,8 @@ async function execute(cli, io) {
   }
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli.config);
-  const output = await command.run({ repo, config, positionals: args.positionals, values: args.values });
+  const context = { repo, config, positionals: args.positionals, values: args.values };
+  const output = await command.run(context);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
   if (args.json || !io.stdout.isTTY) {
@@ -199,13 +200,16 @@ async function execute(cli, io) {
             durationMs: Date.now() - started,
             generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
             gitVersion: repo.gitVersion,
-            node: process.versions.node
+            node: process.versions.node,
+            ...context.report === void 0 ? {} : { report: context.report }
           }
         })
       )
     );
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results, args.fields ?? columns, truncated));
+    if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
+`);
   } else {
     io.stdout.write(serialise(results));
   }

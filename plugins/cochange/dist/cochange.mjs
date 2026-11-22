@@ -142,9 +142,19 @@ var sharedDefaults = {
   vagueNames: ["utils", "helpers", "common", "misc"]
 };
 var stringLists = ["exclude", "entryPoints", "vagueNames"];
+var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
+var documentKeys = ["$schema"];
+function rejectUnknownKeys(document, plugin) {
+  const known = /* @__PURE__ */ new Set([...Object.keys(sharedDefaults), ...PLUGIN_SECTIONS, plugin]);
+  for (const key of Object.keys(document)) {
+    if (documentKeys.includes(key) || known.has(key)) continue;
+    throw configError(`${CONFIG_FILE}: ${key} is an unknown setting; known settings are ${[...known].sort().join(", ")}`);
+  }
+}
 function loadConfig(root, spec) {
   const file = join(root, CONFIG_FILE);
   const document = existsSync(file) ? parseDocument(file) : void 0;
+  if (document !== void 0) rejectUnknownKeys(document, spec.plugin);
   for (const key of stringLists) {
     const value = document?.[key];
     if (value !== void 0 && (!Array.isArray(value) || value.some((item) => typeof item !== "string"))) {
@@ -407,7 +417,8 @@ async function execute(cli2, io) {
   }
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli2.config);
-  const output = await command15.run({ repo, config, positionals: args.positionals, values: args.values });
+  const context = { repo, config, positionals: args.positionals, values: args.values };
+  const output = await command15.run(context);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
   if (args.json || !io.stdout.isTTY) {
@@ -427,13 +438,16 @@ async function execute(cli2, io) {
             durationMs: Date.now() - started,
             generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
             gitVersion: repo.gitVersion,
-            node: process.versions.node
+            node: process.versions.node,
+            ...context.report === void 0 ? {} : { report: context.report }
           }
         })
       )
     );
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results, args.fields ?? columns, truncated));
+    if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
+`);
   } else {
     io.stdout.write(serialise(results));
   }
@@ -1550,6 +1564,47 @@ __export(abandonment_exports, {
   rules: () => rules2
 });
 
+// packages/history/src/reports.ts
+import { mkdirSync, renameSync as renameSync2, writeFileSync } from "node:fs";
+import { join as join3 } from "node:path";
+function reportPath(root, tool, command15) {
+  return join3(root, ".cache", "code-health", "reports", `${tool}.${command15}.json`);
+}
+function skipReport(context, reason) {
+  context.report = { stored: false, reason };
+}
+async function writeReport(context, identity, command15, output, analysedHead) {
+  if (context.repo.dirty) {
+    skipReport(context, "the working tree has uncommitted changes");
+    return false;
+  }
+  if (analysedHead !== context.repo.head) {
+    skipReport(context, "the analysed commit is not HEAD");
+    return false;
+  }
+  const { results, truncated } = shapeResults(output.results, { limit: Infinity });
+  const document = buildDocument({
+    schemaVersion: identity.schemaVersion,
+    tool: identity.tool,
+    command: command15,
+    repo: { head: context.repo.head, dirty: false },
+    configHash: context.config.hash,
+    inputs: output.inputs,
+    extra: output.extra,
+    results,
+    truncated
+  });
+  const file = reportPath(context.repo.root, identity.tool, command15);
+  const location = await locateCache(context.repo.root);
+  ensureCacheDir({ ...location, cacheDir: join3(context.repo.root, ".cache", "code-health") });
+  mkdirSync(join3(file, ".."), { recursive: true });
+  const temporary = `${file}.${process.pid}.tmp`;
+  writeFileSync(temporary, serialise(document));
+  renameSync2(temporary, file);
+  context.report = { stored: true };
+  return true;
+}
+
 // packages/history/src/evidence.ts
 var DEFAULT_EVIDENCE_THRESHOLDS = {
   strong: { months: 24, logicalChanges: 300, contributors: 5 },
@@ -1770,16 +1825,16 @@ function onlyVersionBumpsOrMerges(subjects) {
 }
 
 // packages/history/src/identity-decisions.ts
-import { existsSync as existsSync5, mkdirSync, readFileSync as readFileSync4, renameSync as renameSync2, writeFileSync } from "node:fs";
-import { join as join3 } from "node:path";
+import { existsSync as existsSync5, mkdirSync as mkdirSync2, readFileSync as readFileSync4, renameSync as renameSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join4 } from "node:path";
 var emptyDecisions = () => ({ schemaVersion: 1, rejectedMerges: [], classifications: [] });
 function identityFiles(root) {
-  const localDir = join3(root, ".code-health", "local");
+  const localDir = join4(root, ".code-health", "local");
   return {
-    mailmap: join3(root, ".mailmap"),
-    localMailmap: join3(localDir, "mailmap"),
-    committedDecisions: join3(root, ".code-health", "identity-decisions.json"),
-    localDecisions: join3(localDir, "identity-decisions.json"),
+    mailmap: join4(root, ".mailmap"),
+    localMailmap: join4(localDir, "mailmap"),
+    committedDecisions: join4(root, ".code-health", "identity-decisions.json"),
+    localDecisions: join4(localDir, "identity-decisions.json"),
     localDir
   };
 }
@@ -1792,9 +1847,9 @@ function resolveLocation(root, configured) {
 }
 function ensureLocalState(root) {
   const { localDir } = identityFiles(root);
-  mkdirSync(localDir, { recursive: true });
-  const ignore = join3(localDir, ".gitignore");
-  if (!existsSync5(ignore)) writeFileSync(ignore, "*\n");
+  mkdirSync2(localDir, { recursive: true });
+  const ignore = join4(localDir, ".gitignore");
+  if (!existsSync5(ignore)) writeFileSync2(ignore, "*\n");
 }
 var KINDS = /* @__PURE__ */ new Set(["bot", "service", "agent", "person"]);
 function parse(text, file) {
@@ -1880,10 +1935,10 @@ function decisionsFile(root, location) {
 function writeDecisions(root, location, decisions) {
   if (location === "local") ensureLocalState(root);
   const file = decisionsFile(root, location);
-  mkdirSync(join3(file, ".."), { recursive: true });
+  mkdirSync2(join4(file, ".."), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync(temporary, serialise(normaliseDecisions(decisions)));
-  renameSync2(temporary, file);
+  writeFileSync2(temporary, serialise(normaliseDecisions(decisions)));
+  renameSync3(temporary, file);
 }
 
 // packages/cochange/src/identity-access.ts
@@ -1915,7 +1970,7 @@ function loadIdentityState(root, settings) {
 
 // packages/cochange/src/abandonment/settings.ts
 import { existsSync as existsSync7, readFileSync as readFileSync6 } from "node:fs";
-import { join as join4 } from "node:path";
+import { join as join5 } from "node:path";
 import { createHash as createHash3 } from "node:crypto";
 var TOOL = "cochange";
 var RANK_MODES = ["hotspot", "abandonment"];
@@ -1994,7 +2049,7 @@ function requireKnowledge(context) {
 }
 var OVERRIDES_FILE = "knowledge-overrides.json";
 function overridesPath(root) {
-  return join4(identityFiles(root).localDir, OVERRIDES_FILE);
+  return join5(identityFiles(root).localDir, OVERRIDES_FILE);
 }
 function readOverrides(root) {
   const file = overridesPath(root);
@@ -2232,7 +2287,13 @@ var cochangeConfig = {
     /** Minimum coupling degree, as a percentage. */
     minDegree: 30,
     minDistance: 2,
-    hook: { enabled: false, confidence: 80, maxCommitsBehind: 50 },
+    /**
+     * The hook prints a note only when it has something worth a look. `confidence` is a guideline (percent), after
+     * the high-confidence couples of Tornhill's Software Design X-Rays, and a judgement call as a default: it decides
+     * whether a partner is named. `maxPartners` caps the partners one note names. `maxCommitsBehind` is how far the
+     * history cache may trail HEAD before the hook prints nothing.
+     */
+    hook: { enabled: false, confidence: 80, maxPartners: 3, maxCommitsBehind: 50 },
     /** The change-risk skill: see risk/settings.ts. */
     risk: riskDefaults,
     identities: {
@@ -2285,6 +2346,10 @@ function readSettings(config) {
   if (typeof hookConfidence !== "number" || !Number.isInteger(hookConfidence) || hookConfidence < 1 || hookConfidence > 100) {
     throw configError(`code-health.json: ${at("hook.confidence")} must be a percentage from 1 to 100`);
   }
+  const maxPartners = hook.maxPartners;
+  if (typeof maxPartners !== "number" || !Number.isInteger(maxPartners) || maxPartners < 1) {
+    throw configError(`code-health.json: ${at("hook.maxPartners")} must be a positive integer`);
+  }
   const behind = hook.maxCommitsBehind;
   if (typeof behind !== "number" || !Number.isInteger(behind) || behind < 0) {
     throw configError(`code-health.json: ${at("hook.maxCommitsBehind")} must be a non-negative integer`);
@@ -2308,7 +2373,7 @@ function readSettings(config) {
     identities,
     evidenceThresholds: evidence,
     windowStated: config.sources[at("windowMonths")] === "file",
-    hook: { enabled: hook.enabled === true, confidence: hookConfidence, maxCommitsBehind: behind }
+    hook: { enabled: hook.enabled === true, confidence: hookConfidence, maxPartners, maxCommitsBehind: behind }
   };
 }
 function readGrouping(section, positive) {
@@ -2394,36 +2459,6 @@ async function loadHistory(context, options = {}) {
   });
   const earliest2 = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
   return { ...analysis, settings, window: { since: since ?? earliest2, until: options.window?.until ?? anchor }, refreshed, identities };
-}
-
-// packages/history/src/reports.ts
-import { mkdirSync as mkdirSync2, renameSync as renameSync3, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join5 } from "node:path";
-function reportPath(root, tool, command15) {
-  return join5(root, ".cache", "code-health", "reports", `${tool}.${command15}.json`);
-}
-async function writeReport(context, identity, command15, output, analysedHead) {
-  if (context.repo.dirty || analysedHead !== context.repo.head) return false;
-  const { results, truncated } = shapeResults(output.results, { limit: Infinity });
-  const document = buildDocument({
-    schemaVersion: identity.schemaVersion,
-    tool: identity.tool,
-    command: command15,
-    repo: { head: context.repo.head, dirty: false },
-    configHash: context.config.hash,
-    inputs: output.inputs,
-    extra: output.extra,
-    results,
-    truncated
-  });
-  const file = reportPath(context.repo.root, identity.tool, command15);
-  const location = await locateCache(context.repo.root);
-  ensureCacheDir({ ...location, cacheDir: join5(context.repo.root, ".cache", "code-health") });
-  mkdirSync2(join5(file, ".."), { recursive: true });
-  const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync2(temporary, serialise(document));
-  renameSync3(temporary, file);
-  return true;
 }
 
 // packages/cochange/src/reports.ts
@@ -2568,6 +2603,7 @@ function analysisCommand(name15, spec) {
       };
       const wholeRepository = window === void 0 && !spec.partial?.(context);
       if (wholeRepository) await writeReport2(context, name15, finished, history.view.headSha);
+      else skipReport(context, window !== void 0 ? "the run was limited to a date window" : "the run chose a view other than the default");
       return finished;
     }
   };
@@ -7616,7 +7652,6 @@ function within(budgetMs2, started, work, silence) {
 
 // packages/cochange/src/hook.ts
 var HOOK_NAME = "cochange";
-var MAX_PARTNERS_NAMED = 3;
 var DEFAULT_BUDGET_MS = 200;
 async function commitsBehind(root, dbPath, ref, limit) {
   const recent = (await runGit(root, ["rev-list", `--max-count=${limit + 1}`, ref])).split("\n").filter((sha) => sha !== "");
@@ -7631,15 +7666,17 @@ async function commitsBehind(root, dbPath, ref, limit) {
     db.close();
   }
 }
-function describeNote(file, partners) {
-  const named = partners.map((p) => `\`${p.path}\` (confidence ${Math.round(p.confidence)} %, ${p.support} ${p.support === 1 ? "change" : "changes"})`);
+function describeNote(file, partners, omitted, guideline) {
+  const q = (text) => "`" + text + "`";
+  const named = partners.map((p) => `${q(p.path)} (confidence ${Math.round(p.confidence)} %, ${p.support} ${p.support === 1 ? "change" : "changes"})`);
   const list = named.length <= 1 ? named.join("") : `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}`;
-  return `\`${file}\` usually changes with ${list}. Not yet edited in this session.`;
+  const more = omitted === 0 ? "" : `, and ${omitted} more not named`;
+  return `${q(file)} changed together with ${list}${more}. Guideline: confidence ${guideline} %. Not yet edited in this session, so worth a look.`;
 }
 async function consider(root, file, settings, state) {
   const location = await locateCache(root);
   const found = await commitsBehind(root, location.dbPath, settings.ref, settings.hook.maxCommitsBehind);
-  if (!found) return { note: null, outcome: "silent: no cache within tolerance" };
+  if (!found) return { note: null, outcome: "printed nothing: no cache within tolerance" };
   const identities = loadIdentityState(root, settings);
   const view = await readHistory(root, { ref: found.sha, firstParent: settings.firstParent, mailmapFile: identities.localMailmap });
   const filtered = await filterHistory(root, view, {
@@ -7661,11 +7698,12 @@ async function consider(root, file, settings, state) {
     identity
   );
   const edited = new Set(state.edited);
-  const named = partners.map((partner) => ({ path: partner.path, support: partner.support, confidence: confidenceOf(partner.support, changesFocus) })).filter(
+  const qualified = partners.map((partner) => ({ path: partner.path, support: partner.support, confidence: confidenceOf(partner.support, changesFocus) })).filter(
     (partner) => partner.support >= settings.minSupport && partner.confidence >= settings.hook.confidence && !edited.has(partner.path) && existsSync15(join13(root, partner.path))
-  ).sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)).slice(0, MAX_PARTNERS_NAMED);
-  if (named.length === 0) return { note: null, outcome: "silent: no unedited partner above the threshold" };
-  return { note: describeNote(file, named), outcome: "spoke" };
+  ).sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  if (qualified.length === 0) return { note: null, outcome: "printed nothing: no unedited partner at or above the guideline" };
+  const named = qualified.slice(0, settings.hook.maxPartners);
+  return { note: describeNote(file, named, qualified.length - named.length, settings.hook.confidence), outcome: "printed a note" };
 }
 async function runHook(request) {
   const started = request.startedAt ?? performance.now();
@@ -7678,9 +7716,9 @@ async function runHook(request) {
     const state = updateSession(root, sessionId, HOOK_NAME, (current2) => {
       if (!current2.edited.includes(file)) current2.edited.push(file);
     });
-    const decision = state.spokenAbout.includes(file) ? { note: null, outcome: "silent: already spoke about this file" } : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state), {
+    const decision = state.spokenAbout.includes(file) ? { note: null, outcome: "printed nothing: already printed a note for this file" } : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state), {
       note: null,
-      outcome: "silent: over the time budget"
+      outcome: "printed nothing: over the time budget"
     });
     updateSession(root, sessionId, HOOK_NAME, (current2) => {
       if (decision.note !== null && !current2.spokenAbout.includes(file)) current2.spokenAbout.push(file);
@@ -9352,7 +9390,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change2.head);
   const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-MGHBS6ZP.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-2S3J7RMQ.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);

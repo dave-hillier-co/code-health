@@ -8484,8 +8484,9 @@ function publicHeaders(dir, file, paths, isHeader2) {
 
 // packages/parse/src/languages/cpp/extensions.ts
 import { posix as posix6 } from "node:path";
-var headerExtensions = [".h", ".hh", ".hpp", ".hxx", ".h++", ".H"];
-var sourceExtensions2 = [".cpp", ".cc", ".cxx", ".c++", ".C"];
+var headerExtensions = [".h", ".hh", ".hpp", ".hxx", ".h++"];
+var sourceExtensions2 = [".cpp", ".cc", ".cxx", ".c++", ".c"];
+var inlineExtensions = [".ipp", ".inl", ".tpp"];
 var extensionOf = (path) => path.slice(path.lastIndexOf("."));
 var isHeader = (path) => headerExtensions.includes(extensionOf(path));
 var isSource = (path) => sourceExtensions2.includes(extensionOf(path));
@@ -9817,7 +9818,7 @@ function resolveCpp(input) {
 }
 
 // packages/parse/src/languages/cpp/adapter.ts
-var claimed = [...new Set([...sourceExtensions2, ...headerExtensions, ".ipp", ".inl", ".tpp"].map((extension) => extension.toLowerCase()))];
+var claimed = [...sourceExtensions2, ...headerExtensions, ...inlineExtensions];
 var adapter5 = {
   id: "cpp",
   name: "C++",

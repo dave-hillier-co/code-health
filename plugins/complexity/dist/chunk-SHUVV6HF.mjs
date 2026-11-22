@@ -18,9 +18,19 @@ var sharedDefaults = {
   vagueNames: ["utils", "helpers", "common", "misc"]
 };
 var stringLists = ["exclude", "entryPoints", "vagueNames"];
+var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
+var documentKeys = ["$schema"];
+function rejectUnknownKeys(document, plugin) {
+  const known = /* @__PURE__ */ new Set([...Object.keys(sharedDefaults), ...PLUGIN_SECTIONS, plugin]);
+  for (const key of Object.keys(document)) {
+    if (documentKeys.includes(key) || known.has(key)) continue;
+    throw configError(`${CONFIG_FILE}: ${key} is an unknown setting; known settings are ${[...known].sort().join(", ")}`);
+  }
+}
 function loadConfig(root, spec) {
   const file = join(root, CONFIG_FILE);
   const document = existsSync(file) ? parseDocument(file) : void 0;
+  if (document !== void 0) rejectUnknownKeys(document, spec.plugin);
   for (const key of stringLists) {
     const value = document?.[key];
     if (value !== void 0 && (!Array.isArray(value) || value.some((item) => typeof item !== "string"))) {
