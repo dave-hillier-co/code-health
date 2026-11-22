@@ -101,6 +101,19 @@
     },
     "oversizedChanges": 1
   },
+  "fixConvention": {
+    "fixes": 0,
+    "followsConvention": false,
+    "guidelines": {
+      "maxShare": 0.6,
+      "minChanges": 30,
+      "minShare": 0.02,
+      "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+    },
+    "logicalChanges": 33,
+    "note": "The commit messages probably do not follow a convention this can use: fixes are 0% of logical changes, under 2%.",
+    "share": 0
+  },
   "inputs": {
     "degreeGuideline": 30,
     "partners": 5,
@@ -129,6 +142,8 @@
       ],
       "alongsideNotShown": 0,
       "exists": true,
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 5,
       "hotspotScore": 0.452703,
       "lastChanged": "2024-04-21T09:00:00.000Z",
@@ -171,6 +186,8 @@
       ],
       "alongsideNotShown": 0,
       "exists": true,
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 28,
       "hotspotScore": 0.493243,
       "lastChanged": "2024-12-19T09:00:00.000Z",

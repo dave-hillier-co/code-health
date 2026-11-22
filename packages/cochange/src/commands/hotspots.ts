@@ -40,7 +40,7 @@ export const command = analysisCommand(name, {
   partial: isGrouped,
   async analyse({ context, history }) {
     const by = readBy(context);
-    const { rows, complexity } = await rankHotspots(context, history, by);
+    const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
     return {
       inputs: { by, complexityReport: complexity.input },
       results: rows,
@@ -53,10 +53,13 @@ export const command = analysisCommand(name, {
         "complexity",
         "ageDays",
         "lastChanged",
+        "fixes",
+        "fixShare",
         "recommendation",
         ...(by === "file" ? ["siblingTest", "findings"] : []),
       ],
-      extra: { complexitySource: complexity.source },
+      extra: { complexitySource: complexity.source, fixConvention },
+      notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
     };
   },
 });

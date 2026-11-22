@@ -37,7 +37,7 @@ export const command = analysisCommand(name, {
     const root = context.repo.root;
 
     const present = new Set(await listTree(root, history.view.headSha));
-    const { rows: ranked } = await rankHotspots(context, history, "file");
+    const { rows: ranked, fixConvention } = await rankHotspots(context, history, "file");
     const rankedBy = new Map<string, HotspotRow>(ranked.map((row) => [row.path, row]));
 
     const anchor = history.view.headDate;
@@ -97,6 +97,8 @@ export const command = analysisCommand(name, {
         exists,
         frequency: dates.length,
         recentRevisions: dates.filter((date) => date >= recentSince).length,
+        fixes: hotspot?.fixes ?? 0,
+        fixShare: dates.length === 0 ? null : Math.round(((hotspot?.fixes ?? 0) / dates.length) * 1000) / 1000,
         lastChanged: lastChanged === null ? null : isoDate(lastChanged),
         ageDays: lastChanged === null ? null : Math.floor((anchor - lastChanged) / SECONDS_PER_DAY),
         hotspotScore: hotspot?.score ?? null,
@@ -110,7 +112,9 @@ export const command = analysisCommand(name, {
     return {
       inputs: { paths: rows.map((row) => row.requested ?? row.path), partners: limit, degreeGuideline: settings.minDegree },
       results: rows,
-      columns: ["path", "frequency", "recentRevisions", "lastChanged", "recommendation", "alongside", "note"],
+      extra: { fixConvention },
+      notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
+      columns: ["path", "frequency", "recentRevisions", "fixes", "lastChanged", "recommendation", "alongside", "note"],
     };
   },
 });

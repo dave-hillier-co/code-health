@@ -5,6 +5,7 @@ import * as blame from "./commands/blame.ts";
 import * as brief from "./commands/brief.ts";
 import * as clusters from "./commands/clusters.ts";
 import * as coupling from "./commands/coupling.ts";
+import * as fixes from "./commands/fixes.ts";
 import * as hotspots from "./commands/hotspots.ts";
 import * as identities from "./commands/identities.ts";
 import * as outcome from "./commands/outcome.ts";
@@ -35,6 +36,7 @@ export const commandModules: CommandModule[] = [
   brief,
   clusters,
   coupling,
+  fixes,
   hotspots,
   identities,
   outcome,

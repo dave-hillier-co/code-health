@@ -240,6 +240,70 @@
         "evidence": { "$ref": "#/$defs/evidence" }
       },
       "required": ["window", "filtersApplied", "evidence"]
+    },
+    "fixConvention": {
+      "description": "The repository-level check on the fix definition: the share of logical changes in the window that are fixes. A note says the commit messages probably do not follow a convention this can use. The counts are reported either way.",
+      "type": "object",
+      "properties": {
+        "logicalChanges": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fixes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "share": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "followsConvention": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "guidelines": {
+          "type": "object",
+          "properties": {
+            "minShare": {
+              "type": "number"
+            },
+            "maxShare": {
+              "type": "number"
+            },
+            "minChanges": {
+              "type": "integer"
+            },
+            "provenance": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "minShare",
+            "maxShare",
+            "minChanges",
+            "provenance"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "logicalChanges",
+        "fixes",
+        "share",
+        "followsConvention",
+        "note",
+        "guidelines"
+      ],
+      "additionalProperties": false
     }
   }
 }

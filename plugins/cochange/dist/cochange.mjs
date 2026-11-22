@@ -77,9 +77,9 @@ function parseArguments(argv2, commandOptions = {}) {
     throw usageError(error instanceof Error ? error.message : String(error));
   }
   const { json, help, limit, fields, ...values } = parsed.values;
-  const [command15, ...positionals] = parsed.positionals;
+  const [command16, ...positionals] = parsed.positionals;
   return {
-    command: command15,
+    command: command16,
     positionals,
     json: json === true,
     help: help === true,
@@ -507,8 +507,8 @@ async function runCli(cli2, io) {
 }
 async function execute(cli2, io) {
   const started = Date.now();
-  const name15 = discoverCommand(io.argv);
-  if (name15 === void 0) {
+  const name16 = discoverCommand(io.argv);
+  if (name16 === void 0) {
     if (io.argv.includes("--help")) {
       io.stdout.write(helpText(cli2));
       return ExitCode.Success;
@@ -516,23 +516,23 @@ async function execute(cli2, io) {
     io.stderr.write(helpText(cli2));
     return ExitCode.Usage;
   }
-  if (name15 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
-  const command15 = name15 === "config" ? configExplain : cli2.commands[name15];
-  if (!command15) throw usageError(`unknown command "${name15}"; run with --help to list commands`);
-  const args = parseArguments(io.argv, command15.options);
+  if (name16 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
+  const command16 = name16 === "config" ? configExplain : cli2.commands[name16];
+  if (!command16) throw usageError(`unknown command "${name16}"; run with --help to list commands`);
+  const args = parseArguments(io.argv, command16.options);
   if (args.help) {
-    io.stdout.write(commandHelp(cli2, name15, command15, args.positionals[0]));
+    io.stdout.write(commandHelp(cli2, name16, command16, args.positionals[0]));
     return ExitCode.Success;
   }
-  let commandName = name15;
-  if (name15 === "config") {
+  let commandName = name16;
+  if (name16 === "config") {
     if (args.positionals[0] !== "explain") throw usageError("usage: config explain");
     commandName = "config explain";
   }
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args.positionals, values: args.values };
-  const output = await command15.run(context);
+  const output = await command16.run(context);
   for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
 `);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
@@ -575,17 +575,17 @@ function discoverPositionals(argv2) {
   return parseArguments(argv2).positionals;
 }
 function explain(cli2, positionals, io) {
-  const rules9 = cli2.rules ?? {};
+  const rules10 = cli2.rules ?? {};
   const [id] = positionals;
   if (id === void 0) {
-    const width = Math.max(...Object.keys(rules9).map((r) => r.length));
+    const width = Math.max(...Object.keys(rules10).map((r) => r.length));
     io.stdout.write(
-      [`Rules:`, ...Object.entries(rules9).map(([r, rule2]) => `  ${r.padEnd(width)}  ${rule2.summary}`), ""].join("\n")
+      [`Rules:`, ...Object.entries(rules10).map(([r, rule2]) => `  ${r.padEnd(width)}  ${rule2.summary}`), ""].join("\n")
     );
     return ExitCode.Success;
   }
-  const rule = rules9[id];
-  if (!rule) throw usageError(`unknown rule "${id}"; rules: ${Object.keys(rules9).join(", ")}`);
+  const rule = rules10[id];
+  if (!rule) throw usageError(`unknown rule "${id}"; rules: ${Object.keys(rules10).join(", ")}`);
   io.stdout.write(`${id}: ${rule.summary}
 
 ${rule.explanation}
@@ -600,37 +600,37 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands2 = [
-    ...Object.entries(cli2.commands).map(([name15, command15]) => [name15, command15.summary]),
+    ...Object.entries(cli2.commands).map(([name16, command16]) => [name16, command16.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
-  const width = Math.max(...commands2.map(([name15]) => name15.length));
+  const width = Math.max(...commands2.map(([name16]) => name16.length));
   return [
     `Usage: ${cli2.tool} <command> [options]`,
     "",
     "Commands:",
-    ...commands2.map(([name15, summary]) => `  ${name15.padEnd(width)}  ${summary}`),
+    ...commands2.map(([name16, summary]) => `  ${name16.padEnd(width)}  ${summary}`),
     "",
     "Options:",
     ...commonOptionHelp,
     ""
   ].join("\n");
 }
-function commandHelp(cli2, name15, command15, requested) {
-  const sub = requested === void 0 ? void 0 : command15.subcommands?.[requested];
+function commandHelp(cli2, name16, command16, requested) {
+  const sub = requested === void 0 ? void 0 : command16.subcommands?.[requested];
   const optionLines = (entries) => {
     const flags = entries.map(([option, spec]) => [
       `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
-      command15.optionHelp?.[option] ?? ""
+      command16.optionHelp?.[option] ?? ""
     ]);
     const width2 = Math.max(0, ...flags.map(([flag]) => flag.length));
     return flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
   };
-  const all = Object.entries(command15.options ?? {});
+  const all = Object.entries(command16.options ?? {});
   if (sub !== void 0) {
     const taken = new Set(sub.options ?? []);
     return [
-      `Usage: ${cli2.tool} ${name15} ${requested}${command15.usage === void 0 ? "" : ` ${command15.usage}`} [options]`,
+      `Usage: ${cli2.tool} ${name16} ${requested}${command16.usage === void 0 ? "" : ` ${command16.usage}`} [options]`,
       "",
       sub.summary,
       "",
@@ -640,14 +640,14 @@ function commandHelp(cli2, name15, command15, requested) {
       ""
     ].join("\n");
   }
-  const subcommands = Object.entries(command15.subcommands ?? {});
+  const subcommands = Object.entries(command16.subcommands ?? {});
   const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli2.tool} ${name15}${command15.usage === void 0 ? "" : ` ${command15.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
+    `Usage: ${cli2.tool} ${name16}${command16.usage === void 0 ? "" : ` ${command16.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
-    command15.summary,
+    command16.summary,
     "",
-    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name15} <subcommand> --help for the options of one.`, ""] : [],
+    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name16} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
     ...optionLines(all),
     ...commonOptionHelp,
@@ -1686,13 +1686,13 @@ __export(abandonment_exports, {
 // packages/history/src/reports.ts
 import { mkdirSync, renameSync as renameSync2, writeFileSync } from "node:fs";
 import { join as join3 } from "node:path";
-function reportPath(root, tool, command15) {
-  return join3(root, ".cache", "code-health", "reports", `${tool}.${command15}.json`);
+function reportPath(root, tool, command16) {
+  return join3(root, ".cache", "code-health", "reports", `${tool}.${command16}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
 }
-async function writeReport(context, identity, command15, output, analysedHead) {
+async function writeReport(context, identity, command16, output, analysedHead) {
   if (context.repo.dirty) {
     skipReport(context, "the working tree has uncommitted changes");
     return false;
@@ -1705,7 +1705,7 @@ async function writeReport(context, identity, command15, output, analysedHead) {
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
     tool: identity.tool,
-    command: command15,
+    command: command16,
     repo: { head: context.repo.head, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
@@ -1713,7 +1713,7 @@ async function writeReport(context, identity, command15, output, analysedHead) {
     results,
     truncated
   });
-  const file = reportPath(context.repo.root, identity.tool, command15);
+  const file = reportPath(context.repo.root, identity.tool, command16);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join3(context.repo.root, ".cache", "code-health") });
   mkdirSync(join3(file, ".."), { recursive: true });
@@ -1815,17 +1815,17 @@ function emailLocalPart(email) {
   const at = normalised.lastIndexOf("@");
   return at === -1 ? normalised : normalised.slice(0, at);
 }
-function normaliseName(name15) {
-  let text = name15.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase();
+function normaliseName(name16) {
+  let text = name16.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase();
   const comma = text.indexOf(",");
   if (comma !== -1 && text.indexOf(",", comma + 1) === -1) text = `${text.slice(comma + 1)} ${text.slice(0, comma)}`;
   return text.replace(/[.,]/g, " ").split(/\s+/).filter((t) => t !== "").join(" ");
 }
-function nameTokens(name15) {
-  return normaliseName(name15).split(" ").filter((t) => t !== "");
+function nameTokens(name16) {
+  return normaliseName(name16).split(" ").filter((t) => t !== "");
 }
-function derivedLocalParts(name15) {
-  const tokens = nameTokens(name15);
+function derivedLocalParts(name16) {
+  const tokens = nameTokens(name16);
   if (tokens.length < 2) return [];
   const first = tokens[0];
   const last = tokens[tokens.length - 1];
@@ -1838,8 +1838,8 @@ function derivedLocalParts(name15) {
     `${first[0]}${last}`
   ];
 }
-function flattenedNames(name15) {
-  const tokens = nameTokens(name15);
+function flattenedNames(name16) {
+  const tokens = nameTokens(name16);
   if (tokens.length < 2) return [];
   return ["", "-", ".", "_"].map((glue) => tokens.join(glue));
 }
@@ -1899,36 +1899,36 @@ var addressOf = (identity) => {
   const open = identity.lastIndexOf("<");
   return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
 };
-function createNonPersonMatcher(rules9) {
-  const decisions = new Map(rules9.decisions.map((d) => [addressOf(d.identity), d]));
+function createNonPersonMatcher(rules10) {
+  const decisions = new Map(rules10.decisions.map((d) => [addressOf(d.identity), d]));
   const config = [
-    ...rules9.botPatterns.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) })),
-    ...rules9.servicePatterns.map((p) => ({ kind: "service", pattern: p, re: compilePattern(p) }))
+    ...rules10.botPatterns.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) })),
+    ...rules10.servicePatterns.map((p) => ({ kind: "service", pattern: p, re: compilePattern(p) }))
   ];
   const builtin = BUILTIN_BOT_PATTERNS.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) }));
   const serviceNames = new Set(BUILTIN_SERVICE_NAMES);
-  const classify = (name15, email) => {
+  const classify2 = (name16, email) => {
     const decision = decisions.get(email.trim().toLowerCase());
     if (decision) {
       return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity };
     }
-    const text = `${name15} <${email}>`;
+    const text = `${name16} <${email}>`;
     const fromConfig = config.find((c) => c.re.test(text));
     if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
     const bot = builtin.find((c) => c.re.test(text));
     if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
-    const normalised = normaliseName(name15);
+    const normalised = normaliseName(name16);
     if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
     return null;
   };
   return {
-    classify,
-    isNonPerson: (name15, email) => classify(name15, email) !== null,
+    classify: classify2,
+    isNonPerson: (name16, email) => classify2(name16, email) !== null,
     applied: {
       builtinBotPatterns: [...BUILTIN_BOT_PATTERNS],
       builtinServiceNames: [...BUILTIN_SERVICE_NAMES],
-      servicePatterns: [...rules9.servicePatterns],
-      decisions: rules9.decisions.length
+      servicePatterns: [...rules10.servicePatterns],
+      decisions: rules10.decisions.length
     }
   };
 }
@@ -2231,7 +2231,7 @@ function compile(pattern, flags, kind) {
 function compileFixClassifier(settings) {
   const fixes = settings.fixPatterns.map((source) => ({ source, subject: compile(source, "i", "fix pattern"), body: compile(source, "im", "fix pattern") }));
   const reverts = settings.revertPatterns.map((source) => ({ source, subject: compile(source, "i", "revert pattern") }));
-  const classify = (message) => {
+  const classify2 = (message) => {
     const normalised = message.replace(/\r\n/g, "\n");
     const subject = subjectOf(normalised);
     const body = normalised.slice(normalised.indexOf("\n") === -1 ? normalised.length : normalised.indexOf("\n") + 1);
@@ -2246,7 +2246,7 @@ function compileFixClassifier(settings) {
     }
     return { kind: "other" };
   };
-  return { settings, classify };
+  return { settings, classify: classify2 };
 }
 function findFix(classifier, id, messages) {
   for (const message of messages) {
@@ -2410,9 +2410,9 @@ function readRiskSettings(config) {
     throw configError(`code-health.json: ${at("placement")} must be "self", "any" or "off"`);
   }
   const disable = strings2("disable");
-  for (const name15 of disable) {
-    if (!FACTOR_NAMES.includes(name15)) {
-      throw configError(`code-health.json: ${at("disable")} names unknown factor "${name15}"; factors: ${FACTOR_NAMES.join(", ")}`);
+  for (const name16 of disable) {
+    if (!FACTOR_NAMES.includes(name16)) {
+      throw configError(`code-health.json: ${at("disable")} names unknown factor "${name16}"; factors: ${FACTOR_NAMES.join(", ")}`);
     }
   }
   const ownerShare = whole("ownerShare", 1, 100);
@@ -2646,11 +2646,11 @@ async function loadHistory(context, options = {}) {
 }
 
 // packages/cochange/src/reports.ts
-function reportPath2(root, command15, tool = TOOL2) {
-  return reportPath(root, tool, command15);
+function reportPath2(root, command16, tool = TOOL2) {
+  return reportPath(root, tool, command16);
 }
-function writeReport2(context, command15, output, analysedHead) {
-  return writeReport(context, { tool: TOOL2, schemaVersion: SCHEMA_VERSION2 }, command15, output, analysedHead);
+function writeReport2(context, command16, output, analysedHead) {
+  return writeReport(context, { tool: TOOL2, schemaVersion: SCHEMA_VERSION2 }, command16, output, analysedHead);
 }
 
 // packages/graph/src/tree-distance.ts
@@ -2767,7 +2767,7 @@ var sharedOptions = { "no-refresh": { type: "boolean" } };
 function ownsWindow(spec) {
   return spec.window !== void 0 || spec.wholeHistory === true || spec.options?.since !== void 0 || spec.options?.until !== void 0;
 }
-function analysisCommand(name15, spec) {
+function analysisCommand(name16, spec) {
   return {
     summary: spec.summary,
     options: { ...ownsWindow(spec) ? {} : windowOptions, ...spec.options, ...sharedOptions },
@@ -2786,7 +2786,7 @@ function analysisCommand(name15, spec) {
         extra: { ...historySections(history), ...output.extra }
       };
       const wholeRepository = window === void 0 && !spec.partial?.(context);
-      if (wholeRepository) await writeReport2(context, name15, finished, history.view.headSha);
+      if (wholeRepository) await writeReport2(context, name16, finished, history.view.headSha);
       else skipReport(context, window !== void 0 ? "the run was limited to a date window" : "the run chose a view other than the default");
       return finished;
     }
@@ -2882,15 +2882,15 @@ function coupledPairs(history, guidelines) {
 var UNASSIGNED = "(unassigned)";
 function readComponents(value) {
   const names = Object.keys(value).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
-  return names.map((name15) => {
-    if (name15 === UNASSIGNED) throw configError(`code-health.json: components.${name15} is a reserved name`);
-    const raw = value[name15];
+  return names.map((name16) => {
+    if (name16 === UNASSIGNED) throw configError(`code-health.json: components.${name16} is a reserved name`);
+    const raw = value[name16];
     const globs = typeof raw === "string" ? [raw] : raw;
     if (!Array.isArray(globs) || globs.some((g) => typeof g !== "string")) {
-      throw configError(`code-health.json: components.${name15} must be a glob or an array of globs`);
+      throw configError(`code-health.json: components.${name16} must be a glob or an array of globs`);
     }
-    if (globs.length === 0) throw configError(`code-health.json: components.${name15} must list at least one glob`);
-    return { name: name15, matches: compileGlobs(globs) };
+    if (globs.length === 0) throw configError(`code-health.json: components.${name16} must list at least one glob`);
+    return { name: name16, matches: compileGlobs(globs) };
   });
 }
 function componentOf(components2, path) {
@@ -2988,8 +2988,8 @@ async function resolveOwners(root, shas, options = {}) {
   const out = await runGit(root, ["log", "--no-walk=unsorted", "--stdin", "--format=%H%x1f%an%x1f%ae"], { input: unique.join("\n") + "\n" });
   const authors = /* @__PURE__ */ new Map();
   for (const line of out.split("\n")) {
-    const [sha, name15, email] = line.split("");
-    if (sha !== void 0 && name15 !== void 0 && email !== void 0) authors.set(sha, { name: name15, email });
+    const [sha, name16, email] = line.split("");
+    if (sha !== void 0 && name16 !== void 0 && email !== void 0) authors.set(sha, { name: name16, email });
   }
   const mapped = await mapThroughMailmap(root, [...authors.values()], options.localMailmap);
   for (const [sha, author] of authors) {
@@ -3102,13 +3102,13 @@ function measureCurrent(model, guidelinePercent) {
 function groupByComponent(files, components2) {
   const groups = /* @__PURE__ */ new Map();
   for (const f of files) {
-    const name15 = componentOf(components2, f.path);
-    const g = groups.get(name15) ?? { path: name15, files: 0, abandonedFiles: 0, peopleLines: 0, abandonedLines: 0, abandonedShare: 0 };
+    const name16 = componentOf(components2, f.path);
+    const g = groups.get(name16) ?? { path: name16, files: 0, abandonedFiles: 0, peopleLines: 0, abandonedLines: 0, abandonedShare: 0 };
     g.files++;
     if (f.abandoned) g.abandonedFiles++;
     g.peopleLines += f.peopleLines;
     g.abandonedLines += f.abandonedLines;
-    groups.set(name15, g);
+    groups.set(name16, g);
   }
   return [...groups.values()].map((g) => ({ ...g, abandonedShare: g.peopleLines === 0 ? 0 : round4(g.abandonedLines / g.peopleLines) }));
 }
@@ -3700,8 +3700,8 @@ function simulate(model, options) {
     lines: linesDistribution,
     tailAlpha,
     fileRisks,
-    componentRisks: compiled.componentNames.map((name15, c) => ({
-      name: name15,
+    componentRisks: compiled.componentNames.map((name16, c) => ({
+      name: name16,
       peopleLines: compiled.componentPeopleLines[c],
       baselineLines: compiled.componentBaselineLines[c],
       lines: distributionOf(componentLines[c], alphas)
@@ -3909,6 +3909,147 @@ function shareStrictlyAbove(values, value) {
   return values.filter((other) => other > value).length / values.length;
 }
 
+// packages/cochange/src/file-statistics.ts
+function fileUnits(changes, present) {
+  const units = /* @__PURE__ */ new Map();
+  for (const change2 of changes) {
+    const seen = /* @__PURE__ */ new Set();
+    for (const file of change2.files) {
+      if (!present.has(file.fileId)) continue;
+      const churn = (file.added ?? 0) + (file.deleted ?? 0);
+      const unit = units.get(file.fileId);
+      if (!unit) {
+        units.set(file.fileId, {
+          name: file.fileId,
+          files: 1,
+          revisions: 1,
+          churn,
+          firstSeen: change2.committerDate,
+          lastChanged: change2.committerDate,
+          members: /* @__PURE__ */ new Set([file.fileId])
+        });
+        seen.add(file.fileId);
+      } else {
+        if (!seen.has(file.fileId)) unit.revisions++;
+        seen.add(file.fileId);
+        unit.churn += churn;
+        unit.firstSeen = Math.min(unit.firstSeen, change2.committerDate);
+        unit.lastChanged = Math.max(unit.lastChanged, change2.committerDate);
+      }
+    }
+  }
+  return [...units.values()];
+}
+function componentUnits(changes, present, components2) {
+  if (components2.length === 0) {
+    throw configError('code-health.json: --by component needs "components" to be configured');
+  }
+  const groups = /* @__PURE__ */ new Map();
+  for (const change2 of changes) {
+    const counted = /* @__PURE__ */ new Set();
+    for (const file of change2.files) {
+      if (!present.has(file.fileId)) continue;
+      const name16 = componentOf(components2, file.fileId);
+      const churn = (file.added ?? 0) + (file.deleted ?? 0);
+      let unit = groups.get(name16);
+      if (!unit) {
+        unit = {
+          name: name16,
+          files: 0,
+          revisions: 0,
+          churn: 0,
+          firstSeen: change2.committerDate,
+          lastChanged: change2.committerDate,
+          members: /* @__PURE__ */ new Set()
+        };
+        groups.set(name16, unit);
+      }
+      unit.members.add(file.fileId);
+      unit.files = unit.members.size;
+      if (!counted.has(name16)) {
+        counted.add(name16);
+        unit.revisions++;
+      }
+      unit.churn += churn;
+      unit.firstSeen = Math.min(unit.firstSeen, change2.committerDate);
+      unit.lastChanged = Math.max(unit.lastChanged, change2.committerDate);
+    }
+  }
+  return [...groups.values()];
+}
+
+// packages/cochange/src/units.ts
+var SECONDS_PER_DAY2 = 86400;
+var isoDate = (unixSeconds) => new Date(unixSeconds * 1e3).toISOString();
+var byOption = { by: { type: "string" } };
+function readBy(context) {
+  const value = context.values.by;
+  if (value === void 0) return "file";
+  if (value === "file" || value === "component") return value;
+  throw usageError(`--by must be "file" or "component", not "${String(value)}"`);
+}
+var isGrouped = (context) => readBy(context) !== "file";
+async function loadUnits(context, history, by = readBy(context)) {
+  const present = new Set(await listTree(context.repo.root, history.view.headSha));
+  const { changes } = history.filtered;
+  return by === "file" ? fileUnits(changes, present) : componentUnits(changes, present, readComponents(context.config.effective.components));
+}
+
+// packages/cochange/src/fix-statistics.ts
+function statisticsOf(reading, unit) {
+  const found = reading.statistics.get(unit.name) ?? { fixes: 0, reverts: 0, fixShare: null, recentFixes: 0, lastFix: null, commits: [] };
+  return { ...found, fixShare: unit.revisions === 0 ? null : Math.round(found.fixes / unit.revisions * 1e3) / 1e3 };
+}
+function readFixes(history, units, classifier) {
+  const commits = new Map(history.view.commits.map((commit) => [commit.sha, commit]));
+  const unitOf = /* @__PURE__ */ new Map();
+  for (const unit of units) for (const member of unit.members) unitOf.set(member, unit.name);
+  const recentSince = monthsBefore(history.view.headDate, history.settings.recentMonths);
+  const found = /* @__PURE__ */ new Map();
+  const reverts = /* @__PURE__ */ new Map();
+  let fixChanges = 0;
+  for (const change2 of history.filtered.changes) {
+    const classed = classify(change2.shas, change2.committerDate, commits, classifier);
+    if (classed.fix) fixChanges++;
+    const touched = /* @__PURE__ */ new Set();
+    for (const file of change2.files) {
+      const name16 = unitOf.get(file.fileId);
+      if (name16 !== void 0) touched.add(name16);
+    }
+    for (const name16 of touched) {
+      if (classed.fix) found.set(name16, [...found.get(name16) ?? [], { commit: classed.fix, time: change2.committerDate }]);
+      if (classed.revert) reverts.set(name16, (reverts.get(name16) ?? 0) + 1);
+    }
+  }
+  const statistics = /* @__PURE__ */ new Map();
+  for (const name16 of /* @__PURE__ */ new Set([...found.keys(), ...reverts.keys()])) {
+    const newestFirst = (found.get(name16) ?? []).map((entry, index2) => ({ ...entry, index: index2 })).sort((a, b) => b.time - a.time || b.index - a.index);
+    statistics.set(name16, {
+      fixes: newestFirst.length,
+      reverts: reverts.get(name16) ?? 0,
+      fixShare: null,
+      recentFixes: newestFirst.filter((entry) => entry.time >= recentSince).length,
+      lastFix: newestFirst[0]?.commit.date ?? null,
+      commits: newestFirst.map((entry) => entry.commit)
+    });
+  }
+  return { statistics, convention: checkFixConvention(history.filtered.changes.length, fixChanges) };
+}
+function classify(shas, committerDate, commits, classifier) {
+  let fix = null;
+  let revert = false;
+  for (const sha of shas) {
+    const message = commits.get(sha)?.message;
+    if (message === void 0) continue;
+    const kind = classifier.classify(message);
+    if (kind.kind === "revert") revert = true;
+    if (kind.kind === "fix" && fix === null) {
+      fix = { sha, date: isoDate(committerDate), subject: subjectOf(message), pattern: kind.pattern, matchedIn: kind.matchedIn };
+    }
+  }
+  return { fix, revert };
+}
+
 // packages/cochange/src/complexity-source.ts
 import { existsSync as existsSync11, readFileSync as readFileSync7 } from "node:fs";
 
@@ -4058,21 +4199,21 @@ function classifyHeader(segments, profile) {
   for (const pattern of functions) {
     const match = pattern.exec(text);
     if (match !== null) {
-      const name15 = match.groups?.name;
-      return { kind: "function", name: name15 === void 0 ? void 0 : cleanName(name15), line };
+      const name16 = match.groups?.name;
+      return { kind: "function", name: name16 === void 0 ? void 0 : cleanName(name16), line };
     }
   }
   return { kind: "other" };
 }
-function cleanName(name15) {
-  return name15.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
+function cleanName(name16) {
+  return name16.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
 }
 function findFunctionBlocks(lines, profile) {
   const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines, profile) : findBracedBlocks(lines, profile);
   return blocks.sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
 }
-function qualify(scopes, name15) {
-  return name15 === void 0 ? void 0 : [...scopes, name15].join(".");
+function qualify(scopes, name16) {
+  return name16 === void 0 ? void 0 : [...scopes, name16].join(".");
 }
 var modifiers = "(?:(?:public|private|protected|static|readonly|override|declare|export)\\s+)*";
 var boundArrow = [
@@ -4145,13 +4286,13 @@ function findBracedBlocks(lines, profile) {
     const kept = [...header, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
     if (kept.length === 0) return false;
     const text = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
-    let name15;
+    let name16;
     let matched = false;
     const members = compile3(profile).members;
     if (members !== void 0) {
       const found = members.map((pattern) => pattern.exec(text)).find((match) => match !== null);
       if (found === void 0) return false;
-      name15 = found?.groups?.name;
+      name16 = found?.groups?.name;
       matched = true;
     }
     for (const [i, pattern] of members === void 0 ? [...boundArrow.entries()] : []) {
@@ -4159,15 +4300,15 @@ function findBracedBlocks(lines, profile) {
       if (match === null) continue;
       if (i === 0 && !inDeclaration && !keywordAssignment.test(text) && top?.name === void 0) continue;
       if (i === 1 && (top === void 0 || top.name !== void 0)) continue;
-      name15 = match.groups?.name;
+      name16 = match.groups?.name;
       matched = true;
       break;
     }
     if (!matched) return false;
     const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
     const block = { startLine: kept[0].line, endLine: -1, source: "lexical" };
-    if (name15 !== void 0) {
-      block.name = cleanName(name15);
+    if (name16 !== void 0) {
+      block.name = cleanName(name16);
       block.qualifiedName = qualify(names, block.name);
     }
     arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text) };
@@ -4235,17 +4376,17 @@ function findBracedBlocks(lines, profile) {
         const classification = classifyHeader(header, profile);
         const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
         let block;
-        let name15;
+        let name16;
         if (classification.kind === "function") {
-          name15 = classification.name;
+          name16 = classification.name;
           block = { startLine: classification.line, endLine: -1, source: "lexical" };
-          if (name15 !== void 0) {
-            block.name = name15;
-            block.qualifiedName = qualify(names, name15);
+          if (name16 !== void 0) {
+            block.name = name16;
+            block.qualifiedName = qualify(names, name16);
           }
-        } else if (classification.kind === "type") name15 = classification.name;
+        } else if (classification.kind === "type") name16 = classification.name;
         const typeOnly = /^(?:export\s+)?(?:declare\s+)?(?:interface|type)\b/.test(headerText(""));
-        stack.push({ name: name15, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
+        stack.push({ name: name16, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
         header = [];
         segment = "";
         continue;
@@ -4736,10 +4877,10 @@ var extensionProfiles = {
   py: "python"
 };
 function selectProfile(path, mappings = {}) {
-  const name15 = path.slice(path.lastIndexOf("/") + 1);
-  const dot = name15.lastIndexOf(".");
+  const name16 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name16.lastIndexOf(".");
   if (dot <= 0) return void 0;
-  const extension = name15.slice(dot + 1).toLowerCase();
+  const extension = name16.slice(dot + 1).toLowerCase();
   const mappedName = mappings[extension];
   if (mappedName !== void 0) {
     const profile2 = profiles[mappedName];
@@ -4803,11 +4944,11 @@ function stripSource(rawContent, profile) {
 }
 function maskLiterals(content, profile) {
   const mask = new Uint8Array(content.length);
-  const rules9 = compileRules(profile);
+  const rules10 = compileRules(profile);
   const triggers = /* @__PURE__ */ new Set();
   for (const comment of profile.lineComments) triggers.add(comment[0]);
   for (const comment of profile.blockComments) triggers.add(comment.open[0]);
-  for (const { rule } of rules9) for (const ch of rule.triggers) triggers.add(ch);
+  for (const { rule } of rules10) for (const ch of rule.triggers) triggers.add(ch);
   scan(0, false);
   return mask;
   function scan(from, untilBrace, closer = "}") {
@@ -4843,7 +4984,7 @@ function maskLiterals(content, profile) {
     for (const comment of profile.blockComments) {
       if (content.startsWith(comment.open, i)) return maskBlockComment(i, comment.open, comment.close, comment.nested === true);
     }
-    for (const compiled of rules9) {
+    for (const compiled of rules10) {
       if ("pattern" in compiled) {
         if (compiled.after !== void 0 && !compiled.after.test(content.slice(Math.max(0, i - 16), i))) continue;
         compiled.pattern.lastIndex = i;
@@ -5033,100 +5174,15 @@ function siblingTestOf(path, tree) {
     `${stem}Test${ext}`,
     `${stem}Tests${ext}`
   ];
-  const candidates = [...names.map((name15) => `${folder}${name15}`), ...[...names, `${stem}${ext}`].map((name15) => `${folder}__tests__/${name15}`)];
+  const candidates = [...names.map((name16) => `${folder}${name16}`), ...[...names, `${stem}${ext}`].map((name16) => `${folder}__tests__/${name16}`)];
   return candidates.find((candidate) => tree.has(candidate)) ?? null;
-}
-
-// packages/cochange/src/file-statistics.ts
-function fileUnits(changes, present) {
-  const units = /* @__PURE__ */ new Map();
-  for (const change2 of changes) {
-    const seen = /* @__PURE__ */ new Set();
-    for (const file of change2.files) {
-      if (!present.has(file.fileId)) continue;
-      const churn = (file.added ?? 0) + (file.deleted ?? 0);
-      const unit = units.get(file.fileId);
-      if (!unit) {
-        units.set(file.fileId, {
-          name: file.fileId,
-          files: 1,
-          revisions: 1,
-          churn,
-          firstSeen: change2.committerDate,
-          lastChanged: change2.committerDate,
-          members: /* @__PURE__ */ new Set([file.fileId])
-        });
-        seen.add(file.fileId);
-      } else {
-        if (!seen.has(file.fileId)) unit.revisions++;
-        seen.add(file.fileId);
-        unit.churn += churn;
-        unit.firstSeen = Math.min(unit.firstSeen, change2.committerDate);
-        unit.lastChanged = Math.max(unit.lastChanged, change2.committerDate);
-      }
-    }
-  }
-  return [...units.values()];
-}
-function componentUnits(changes, present, components2) {
-  if (components2.length === 0) {
-    throw configError('code-health.json: --by component needs "components" to be configured');
-  }
-  const groups = /* @__PURE__ */ new Map();
-  for (const change2 of changes) {
-    const counted = /* @__PURE__ */ new Set();
-    for (const file of change2.files) {
-      if (!present.has(file.fileId)) continue;
-      const name15 = componentOf(components2, file.fileId);
-      const churn = (file.added ?? 0) + (file.deleted ?? 0);
-      let unit = groups.get(name15);
-      if (!unit) {
-        unit = {
-          name: name15,
-          files: 0,
-          revisions: 0,
-          churn: 0,
-          firstSeen: change2.committerDate,
-          lastChanged: change2.committerDate,
-          members: /* @__PURE__ */ new Set()
-        };
-        groups.set(name15, unit);
-      }
-      unit.members.add(file.fileId);
-      unit.files = unit.members.size;
-      if (!counted.has(name15)) {
-        counted.add(name15);
-        unit.revisions++;
-      }
-      unit.churn += churn;
-      unit.firstSeen = Math.min(unit.firstSeen, change2.committerDate);
-      unit.lastChanged = Math.max(unit.lastChanged, change2.committerDate);
-    }
-  }
-  return [...groups.values()];
-}
-
-// packages/cochange/src/units.ts
-var SECONDS_PER_DAY2 = 86400;
-var isoDate = (unixSeconds) => new Date(unixSeconds * 1e3).toISOString();
-var byOption = { by: { type: "string" } };
-function readBy(context) {
-  const value = context.values.by;
-  if (value === void 0) return "file";
-  if (value === "file" || value === "component") return value;
-  throw usageError(`--by must be "file" or "component", not "${String(value)}"`);
-}
-var isGrouped = (context) => readBy(context) !== "file";
-async function loadUnits(context, history, by = readBy(context)) {
-  const present = new Set(await listTree(context.repo.root, history.view.headSha));
-  const { changes } = history.filtered;
-  return by === "file" ? fileUnits(changes, present) : componentUnits(changes, present, readComponents(context.config.effective.components));
 }
 
 // packages/cochange/src/hotspot-ranking.ts
 async function rankHotspots(context, history, by) {
   const { settings } = history;
   const units = await loadUnits(context, history, by);
+  const fixReading = readFixes(history, units, readFixClassifier(context.config));
   const paths = [...new Set(units.flatMap((u) => [...u.members]))].sort();
   const complexity = await loadComplexity(context, history.view.headSha, paths);
   const unitComplexity = units.map((unit) => {
@@ -5146,6 +5202,7 @@ async function rankHotspots(context, history, by) {
   const drifting = by === "file" ? await testDrift(context.repo.root, history, units.map((u) => u.name)) : /* @__PURE__ */ new Map();
   const rows = units.map((unit, i) => {
     const score = scores[i];
+    const fixStats = statisticsOf(fixReading, unit);
     const isHotspot = score !== null && shareStrictlyAbove(scored, score) < topShare && unit.lastChanged >= recentSince;
     return {
       path: unit.name,
@@ -5156,11 +5213,13 @@ async function rankHotspots(context, history, by) {
       complexity: unitComplexity[i],
       ageDays: Math.floor((anchor - unit.lastChanged) / SECONDS_PER_DAY2),
       lastChanged: isoDate(unit.lastChanged),
+      fixes: fixStats.fixes,
+      fixShare: fixStats.fixShare,
       recommendation: isHotspot ? "hotspot" : null,
       ...by === "file" ? fileFindings(unit, isHotspot, drifting.get(unit.name) ?? null, settings.minSupport) : {}
     };
   });
-  return { rows, complexity };
+  return { rows, complexity, fixConvention: fixReading.convention };
 }
 async function testDrift(root, history, paths) {
   const tree = new Set(await listTree(root, history.view.headSha));
@@ -5926,7 +5985,7 @@ var command4 = analysisCommand(name4, {
     const { settings } = history;
     const root = context.repo.root;
     const present = new Set(await listTree(root, history.view.headSha));
-    const { rows: ranked } = await rankHotspots(context, history, "file");
+    const { rows: ranked, fixConvention } = await rankHotspots(context, history, "file");
     const rankedBy = new Map(ranked.map((row2) => [row2.path, row2]));
     const anchor = history.view.headDate;
     const recentSince = monthsBefore(anchor, settings.recentMonths);
@@ -5964,6 +6023,8 @@ var command4 = analysisCommand(name4, {
         exists: exists2,
         frequency: dates.length,
         recentRevisions: dates.filter((date) => date >= recentSince).length,
+        fixes: hotspot?.fixes ?? 0,
+        fixShare: dates.length === 0 ? null : Math.round((hotspot?.fixes ?? 0) / dates.length * 1e3) / 1e3,
         lastChanged: lastChanged === null ? null : isoDate(lastChanged),
         ageDays: lastChanged === null ? null : Math.floor((anchor - lastChanged) / SECONDS_PER_DAY2),
         hotspotScore: hotspot?.score ?? null,
@@ -5976,7 +6037,9 @@ var command4 = analysisCommand(name4, {
     return {
       inputs: { paths: rows.map((row2) => row2.requested ?? row2.path), partners: limit, degreeGuideline: settings.minDegree },
       results: rows,
-      columns: ["path", "frequency", "recentRevisions", "lastChanged", "recommendation", "alongside", "note"]
+      extra: { fixConvention },
+      notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
+      columns: ["path", "frequency", "recentRevisions", "fixes", "lastChanged", "recommendation", "alongside", "note"]
     };
   }
 });
@@ -6231,15 +6294,78 @@ function describe(pair, focus, settings, guideline) {
   };
 }
 
-// packages/cochange/src/commands/hotspots.ts
-var hotspots_exports = {};
-__export(hotspots_exports, {
+// packages/cochange/src/commands/fixes.ts
+var fixes_exports = {};
+__export(fixes_exports, {
   command: () => command7,
   name: () => name7,
   rules: () => rules6
 });
-var name7 = "hotspots";
+var name7 = "fixes";
+var DEFAULT_EVIDENCE = 5;
 var rules6 = {
+  "fix-count": {
+    summary: "How many of the changes to a file or component were fixes, by commit message",
+    explanation: [
+      "A logical change is a fix when one of its commits matches history.fixPatterns (default: the whole words fix, bug, issue and similar in the subject, a fix: prefix, a merge of a fix branch),",
+      "and a revert when one matches history.revertPatterns or says 'This reverts commit'. A revert is counted in its own column and is not a fix.",
+      "Bodies are matched only with history.fixMatchBody. The count is per file or component, once per logical change, over the same window and noise filters as hotspots.",
+      "",
+      "This is a count of commit messages, not of defects. A message such as 'address review issue' matches, and a fix that does not say so does not.",
+      "The output carries the convention check as fixConvention: when fixes are under 2 percent or over 60 percent of logical changes, or there are fewer than 30, the commit messages probably do not follow a convention this can use, and the table prints a Notice.",
+      "Read the evidence commits before relying on a count, and read it with hotspots (change frequency) and complexity (what makes the code hard to change)."
+    ].join("\n")
+  }
+};
+function evidenceOption(value) {
+  if (value === void 0) return DEFAULT_EVIDENCE;
+  if (typeof value !== "string" || !/^\d+$/.test(value)) throw usageError(`--evidence must be a whole number, got "${String(value)}"`);
+  return Number(value);
+}
+var command7 = analysisCommand(name7, {
+  summary: "Rank files or components by how many of their changes were fixes, with the matching commits",
+  options: { ...byOption, evidence: { type: "string" } },
+  partial: (context) => isGrouped(context) || context.values.evidence !== void 0,
+  async analyse({ context, history }) {
+    const by = readBy(context);
+    const evidenceLimit = evidenceOption(context.values.evidence);
+    const units = await loadUnits(context, history, by);
+    const reading = readFixes(history, units, readFixClassifier(context.config));
+    const rows = units.map((unit) => {
+      const stats = statisticsOf(reading, unit);
+      return {
+        path: unit.name,
+        score: stats.fixes,
+        ...by === "component" ? { files: unit.files } : {},
+        fixes: stats.fixes,
+        revisions: unit.revisions,
+        fixShare: stats.fixShare,
+        recentFixes: stats.recentFixes,
+        lastFix: stats.lastFix,
+        reverts: stats.reverts,
+        evidence: { commits: stats.commits.slice(0, evidenceLimit), omitted: Math.max(0, stats.commits.length - evidenceLimit) }
+      };
+    });
+    const { convention } = reading;
+    return {
+      inputs: { by, evidenceLimit },
+      results: rows,
+      columns: ["path", ...by === "component" ? ["files"] : [], "fixes", "revisions", "fixShare", "recentFixes", "lastFix", "reverts", "evidence"],
+      extra: { fixConvention: convention },
+      notices: convention.note === null ? [] : [convention.note.replace(/\.$/, "")]
+    };
+  }
+});
+
+// packages/cochange/src/commands/hotspots.ts
+var hotspots_exports = {};
+__export(hotspots_exports, {
+  command: () => command8,
+  name: () => name8,
+  rules: () => rules7
+});
+var name8 = "hotspots";
+var rules7 = {
   hotspot: {
     summary: "Complex code that changes often and changed recently",
     explanation: [
@@ -6266,13 +6392,13 @@ var rules6 = {
     ].join("\n")
   }
 };
-var command7 = analysisCommand(name7, {
+var command8 = analysisCommand(name8, {
   summary: "Rank files or components by change frequency weighted by complexity",
   options: byOption,
   partial: isGrouped,
   async analyse({ context, history }) {
     const by = readBy(context);
-    const { rows, complexity } = await rankHotspots(context, history, by);
+    const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
     return {
       inputs: { by, complexityReport: complexity.input },
       results: rows,
@@ -6285,10 +6411,13 @@ var command7 = analysisCommand(name7, {
         "complexity",
         "ageDays",
         "lastChanged",
+        "fixes",
+        "fixShare",
         "recommendation",
         ...by === "file" ? ["siblingTest", "findings"] : []
       ],
-      extra: { complexitySource: complexity.source }
+      extra: { complexitySource: complexity.source, fixConvention },
+      notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")]
     };
   }
 });
@@ -6296,8 +6425,8 @@ var command7 = analysisCommand(name7, {
 // packages/cochange/src/commands/identities.ts
 var identities_exports = {};
 __export(identities_exports, {
-  command: () => command8,
-  name: () => name8
+  command: () => command9,
+  name: () => name9
 });
 
 // packages/history/src/identity-evidence.ts
@@ -6379,7 +6508,7 @@ function factsOf(node) {
   const names = /* @__PURE__ */ new Set();
   const derived = /* @__PURE__ */ new Set();
   const flattened = /* @__PURE__ */ new Set();
-  for (const { name: name15, email } of addresses) {
+  for (const { name: name16, email } of addresses) {
     const noreply = parseNoreply(email);
     if (noreply) noreplies.set(`${noreply.id ?? ""}+${noreply.username}`, noreply);
     const local = emailLocalPart(email);
@@ -6387,10 +6516,10 @@ function factsOf(node) {
       emails.add(normaliseEmail(email));
       locals.add(local);
     }
-    if (nameTokens(name15).length >= 2) {
-      names.add(normaliseName(name15));
-      for (const d of derivedLocalParts(name15)) derived.add(d);
-      for (const f of flattenedNames(name15)) flattened.add(f);
+    if (nameTokens(name16).length >= 2) {
+      names.add(normaliseName(name16));
+      for (const d of derivedLocalParts(name16)) derived.add(d);
+      for (const f of flattenedNames(name16)) flattened.add(f);
     }
   }
   return {
@@ -6447,7 +6576,7 @@ function findLinks(nodes, raws, pairing, rejections = []) {
   );
   eachPair(
     index(facts, (f) => f.names),
-    (name15, x, y) => addSignal(candidates, x, y, { signal: "same-name", strength: "medium", detail: name15 })
+    (name16, x, y) => addSignal(candidates, x, y, { signal: "same-name", strength: "medium", detail: name16 })
   );
   eachPair(index(facts, (f) => f.locals), (local, x, y) => {
     if (x.emails.some((e) => y.emails.includes(e))) return;
@@ -6731,14 +6860,14 @@ function signaturesIn(raw) {
 
 // packages/history/src/identity-log.ts
 var MAX_PATHS_FOR_EVIDENCE = 100;
-var isPlatform = (name15, email) => email.toLowerCase() === "noreply@github.com" || name15.toLowerCase() === "github" || name15.toLowerCase() === "github enterprise";
+var isPlatform = (name16, email) => email.toLowerCase() === "noreply@github.com" || name16.toLowerCase() === "github" || name16.toLowerCase() === "github enterprise";
 async function readCommitters(root, ref) {
   const out = await runGit(root, ["log", "--format=%H%x1f%cn%x1f%ce", "--no-abbrev", ref]);
   const committers = /* @__PURE__ */ new Map();
   for (const line of out.split("\n")) {
     if (line === "") continue;
-    const [sha, name15, email] = line.split("");
-    if (sha !== void 0) committers.set(sha, { name: name15 ?? "", email: email ?? "" });
+    const [sha, name16, email] = line.split("");
+    if (sha !== void 0) committers.set(sha, { name: name16 ?? "", email: email ?? "" });
   }
   return committers;
 }
@@ -6896,14 +7025,14 @@ function addMailmapMappings(existing, mappings) {
       (e) => same(e.commitEmail, mapping.alias.email) && (e.commitName === void 0 || same(e.commitName, mapping.alias.name))
     );
     if (current2) {
-      const name15 = current2.properName ?? mapping.alias.name;
+      const name16 = current2.properName ?? mapping.alias.name;
       const email = current2.properEmail ?? mapping.alias.email;
-      if (same(name15, mapping.canonical.name) && same(email, mapping.canonical.email)) {
+      if (same(name16, mapping.canonical.name) && same(email, mapping.canonical.email)) {
         present.push(line);
         continue;
       }
       throw usageError(
-        `${identityKey(mapping.alias)} is already mapped to ${identityKey({ name: name15, email })} in the mailmap; edit the file to change it`
+        `${identityKey(mapping.alias)} is already mapped to ${identityKey({ name: name16, email })} in the mailmap; edit the file to change it`
       );
     }
     if (added.includes(line)) continue;
@@ -7265,9 +7394,9 @@ async function measureMapping(context, analysis, options) {
 }
 
 // packages/cochange/src/commands/identities.ts
-var name8 = "identities";
+var name9 = "identities";
 var SUBCOMMANDS2 = ["list", "propose", "classify", "apply", "check"];
-var command8 = {
+var command9 = {
   subcommands: {
     list: { summary: "Every identity in the history with its commits, dates, areas and mapping", options: ["unmapped", "no-refresh"] },
     propose: { summary: "Clusters of identities that look like one person, with the evidence", options: ["no-refresh"] },
@@ -7341,8 +7470,8 @@ function rejectOptionsOutsideTheirCommand2(sub, context) {
 // packages/cochange/src/commands/outcome.ts
 var outcome_exports = {};
 __export(outcome_exports, {
-  command: () => command9,
-  name: () => name9
+  command: () => command10,
+  name: () => name10
 });
 import { existsSync as existsSync17 } from "node:fs";
 
@@ -7530,12 +7659,12 @@ function pathOf(input) {
   return asString(input["file_path"]) ?? asString(input["notebook_path"]) ?? asString(input["path"]);
 }
 function actionOf(block) {
-  const name15 = asString(block["name"]);
-  if (name15 === null) return null;
+  const name16 = asString(block["name"]);
+  if (name16 === null) return null;
   const input = isObject(block["input"]) ? block["input"] : {};
-  if (READ_TOOLS.has(name15)) return { kind: "read", path: pathOf(input) };
-  if (SEARCH_TOOLS.has(name15)) return { kind: "search", path: pathOf(input) };
-  if (EDIT_TOOLS.has(name15)) return { kind: "edit", path: pathOf(input) };
+  if (READ_TOOLS.has(name16)) return { kind: "read", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name16)) return { kind: "search", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name16)) return { kind: "edit", path: pathOf(input) };
   return null;
 }
 var INTERRUPT_MARKER = "[Request interrupted by user";
@@ -7935,10 +8064,10 @@ async function runHook(request) {
 }
 
 // packages/cochange/src/commands/outcome.ts
-var name9 = "outcome";
+var name10 = "outcome";
 var SUBCOMMANDS3 = ["completeness", "spread"];
 var isoDay6 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
-var command9 = {
+var command10 = {
   subcommands: {
     spread: { summary: "Change spread and revisions of the files acted on, against similarly ranked files left alone, either side of a date", options: ["at", "months", "min-samples", "noise", "no-refresh"] },
     completeness: { summary: "How often an agent's edit is followed by an edit to a coupled file in the same session, with and without the hook", options: ["since", "until", "projects-dir", "min-samples", "noise", "no-refresh"] }
@@ -8128,11 +8257,11 @@ async function completeness(context) {
 // packages/cochange/src/commands/refresh.ts
 var refresh_exports = {};
 __export(refresh_exports, {
-  command: () => command10,
-  name: () => name10
+  command: () => command11,
+  name: () => name11
 });
-var name10 = "refresh";
-var command10 = {
+var name11 = "refresh";
+var command11 = {
   summary: "Update the shared history cache and report the commits added",
   async run(context) {
     const settings = readSettings(context.config);
@@ -8153,9 +8282,9 @@ var command10 = {
 // packages/cochange/src/commands/risk.ts
 var risk_exports = {};
 __export(risk_exports, {
-  command: () => command11,
-  name: () => name11,
-  rules: () => rules7
+  command: () => command12,
+  name: () => name12,
+  rules: () => rules8
 });
 
 // packages/cochange/src/risk/change.ts
@@ -8482,7 +8611,7 @@ var FACTOR_DOCS = [
     why: "Neither the author nor any reviewer has first-hand knowledge."
   }
 ];
-var factorDoc = (name15) => FACTOR_DOCS.find((doc) => doc.name === name15);
+var factorDoc = (name16) => FACTOR_DOCS.find((doc) => doc.name === name16);
 var LEVEL_RULES = [
   {
     id: "baseline",
@@ -8537,18 +8666,18 @@ function explainRules(risk) {
       countHigh: risk.countHigh,
       disabled: [...risk.disabled].sort()
     },
-    factors: FACTOR_DOCS.map(({ name: name15, family, layer, banding, signal }) => ({ name: name15, family, layer, banding, signal }))
+    factors: FACTOR_DOCS.map(({ name: name16, family, layer, banding, signal }) => ({ name: name16, family, layer, banding, signal }))
   };
 }
-async function explainFactor(name15, assess) {
-  const doc = factorDoc(name15);
-  if (!doc) throw usageError(`unknown factor "${name15}"; factors: ${FACTOR_DOCS.map((d) => d.name).join(", ")}`);
+async function explainFactor(name16, assess) {
+  const doc = factorDoc(name16);
+  if (!doc) throw usageError(`unknown factor "${name16}"; factors: ${FACTOR_DOCS.map((d) => d.name).join(", ")}`);
   let driven = null;
   if (doc.family !== "placement") {
     const assessed = await assess();
-    driven = assessed.factors.find((factor) => factor.name === name15) ?? null;
+    driven = assessed.factors.find((factor) => factor.name === name16) ?? null;
   }
-  return { kind: "explain", topic: name15, doc: { ...doc }, branch: driven };
+  return { kind: "explain", topic: name16, doc: { ...doc }, branch: driven };
 }
 
 // packages/cochange/src/risk/abandonment-report.ts
@@ -8685,11 +8814,11 @@ function readEvidence(root, files, change2) {
       throw usageError(`--evidence ${file}: not JSON; pass the output of \`complexity diff --json\` or \`structure check --json\``);
     }
     const tool = String(document.tool ?? "");
-    const command15 = String(document.command ?? "");
-    const stamp2 = { tool, command: command15, hash: createHash9("sha256").update(text).digest("hex").slice(0, 16) };
+    const command16 = String(document.command ?? "");
+    const stamp2 = { tool, command: command16, hash: createHash9("sha256").update(text).digest("hex").slice(0, 16) };
     if (!Array.isArray(document.results)) throw usageError(`--evidence ${file}: no results list`);
     checkAgainst(file, document, change2);
-    if (tool === "complexity" && command15 === "diff") {
+    if (tool === "complexity" && command16 === "diff") {
       if (complexity) throw usageError("--evidence names complexity diff twice");
       const raw = document;
       complexity = {
@@ -8704,14 +8833,14 @@ function readEvidence(root, files, change2) {
           labels: Array.isArray(row2.labels) ? row2.labels.map(String) : []
         }))
       };
-    } else if (tool === "structure" && command15 === "check") {
+    } else if (tool === "structure" && command16 === "check") {
       if (structure) throw usageError("--evidence names structure check twice");
       structure = {
         stamp: stamp2,
         findings: document.results.filter((row2) => row2.kind === "cycle" || row2.kind === "layer-violation").map((row2) => ({ kind: String(row2.kind), id: String(row2.id ?? row2.edge ?? row2.path ?? "") }))
       };
     } else {
-      throw usageError(`--evidence ${file}: ${tool}/${command15} is not evidence this command reads; pass \`complexity diff --json\` or \`structure check --json\``);
+      throw usageError(`--evidence ${file}: ${tool}/${command16} is not evidence this command reads; pass \`complexity diff --json\` or \`structure check --json\``);
     }
     stamps.push(stamp2);
   }
@@ -9023,10 +9152,10 @@ var HistoryState = class {
 var round = (value, places = 6) => Math.round(value * 10 ** places) / 10 ** places;
 var churnOf = (file) => (file.added ?? 0) + (file.deleted ?? 0);
 var FIRST_ROWS = 5;
-function measurement2(name15, family, layer, kind, source, parts) {
-  return { name: name15, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts };
+function measurement2(name16, family, layer, kind, source, parts) {
+  return { name: name16, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts };
 }
-var unavailable2 = (name15, family, layer, kind, source, reason) => measurement2(name15, family, layer, kind, source, { unavailable: reason });
+var unavailable2 = (name16, family, layer, kind, source, reason) => measurement2(name16, family, layer, kind, source, { unavailable: reason });
 function measureHistoryLayer(facts, state, context) {
   return [
     size(facts),
@@ -9464,11 +9593,11 @@ var SCORED_FACTORS = /* @__PURE__ */ new Set([
 ]);
 function makeBander(baseline, settings) {
   const cache = /* @__PURE__ */ new Map();
-  const cutoffs = (name15, series) => {
-    const key = `${name15}\0${series}`;
+  const cutoffs = (name16, series) => {
+    const key = `${name16}\0${series}`;
     if (!cache.has(key)) {
       const population = baseline.flatMap((measures) => {
-        const found = measures.find((m) => m.name === name15);
+        const found = measures.find((m) => m.name === name16);
         return found && found.unavailable === null && found.series[series] !== void 0 ? [found.series[series]] : [];
       });
       cache.set(key, population.length < settings.minBaseline ? null : cutoffsOf(population, settings.moderatePercentile, settings.highPercentile));
@@ -9638,7 +9767,7 @@ function authorEmails(change2) {
 }
 function eventsOf(factors) {
   const events = [];
-  const get = (name15) => factors.find((f) => f.name === name15 && f.status === "ok");
+  const get = (name16) => factors.find((f) => f.name === name16 && f.status === "ok");
   if (get("missing-co-change")?.band === "high") events.push("missing-co-change");
   const structure = get("structure-delta");
   if (structure && Number(structure.value.count ?? 0) > 0) events.push("structure-delta");
@@ -9809,13 +9938,13 @@ function summarise(scored, all, outcomes, risk) {
     };
   });
   const levels = rows(LEVELS, (s) => s.level);
-  const factors = [...SCORED_FACTORS].map((name15) => ({
-    name: name15,
+  const factors = [...SCORED_FACTORS].map((name16) => ({
+    name: name16,
     bands: rows(["low", "moderate", "high"], (s) => {
-      const band = s.bands.get(name15);
+      const band = s.bands.get(name16);
       return band === void 0 || band === "unavailable" ? null : band;
     }),
-    unavailable: known.filter((s) => (s.bands.get(name15) ?? "unavailable") === "unavailable").length
+    unavailable: known.filter((s) => (s.bands.get(name16) ?? "unavailable") === "unavailable").length
   }));
   const outcomeList = [...outcomes.values()];
   const troubled = known.filter(troubledOf).length;
@@ -10086,7 +10215,7 @@ function make(id, factor, summary, evidence, fromPlacement = false) {
   };
 }
 function findingsOf(assessed, placement) {
-  const get = (name15) => assessed.factors.find((f) => f.name === name15);
+  const get = (name16) => assessed.factors.find((f) => f.name === name16);
   const found = [];
   const count2 = (factor) => Number(factor.value.count ?? factor.value.files ?? 0);
   const missing = get("missing-co-change");
@@ -10095,10 +10224,10 @@ function findingsOf(assessed, placement) {
   }
   const mixed = get("mixed-purpose");
   if (atLeastModerate(mixed)) found.push(make("mixed-purpose", mixed, `${count2(mixed)} moved or renamed file${count2(mixed) === 1 ? "" : "s"} in a change that also edits content`, mixed.evidence));
-  for (const name15 of ["size", "spread"]) {
-    const factor = get(name15);
+  for (const name16 of ["size", "spread"]) {
+    const factor = get(name16);
     if (factor?.status === "ok" && factor.band === "high") {
-      found.push(make(name15, factor, name15 === "size" ? `${String(factor.value.lines)} lines in ${String(factor.value.files)} files, above the 90th percentile of merged changes` : `spread ${String(factor.value.spread)} across ${String(factor.value.folders)} folders, above the 90th percentile of merged changes`, []));
+      found.push(make(name16, factor, name16 === "size" ? `${String(factor.value.lines)} lines in ${String(factor.value.files)} files, above the 90th percentile of merged changes` : `spread ${String(factor.value.spread)} across ${String(factor.value.folders)} folders, above the 90th percentile of merged changes`, []));
     }
   }
   const tests = get("test-evidence");
@@ -10114,7 +10243,7 @@ function findingsOf(assessed, placement) {
   const sensitive = get("sensitive-paths");
   if (sensitive?.status === "ok" && count2(sensitive) > 0) found.push(make("sensitive-paths", sensitive, `${count2(sensitive)} touched file${count2(sensitive) === 1 ? "" : "s"} on a sensitive path`, sensitive.evidence));
   if (placement?.status === "computed" && placement.placement) {
-    const place = (name15) => placement.factors.find((f) => f.name === name15);
+    const place = (name16) => placement.factors.find((f) => f.name === name16);
     const noOwner = place("no-owner");
     if (noOwner?.status === "ok" && count2(noOwner) > 0) found.push(make("no-owner", noOwner, `${count2(noOwner)} touched file${count2(noOwner) === 1 ? " has" : "s have"} no active developer holding a meaningful share`, noOwner.evidence, true));
     const hot = get("hotspots-touched");
@@ -10158,9 +10287,9 @@ function configValue(root, key) {
 async function invokingUser(root, localMailmap) {
   const email = process.env.GIT_AUTHOR_EMAIL?.trim() || await configValue(root, "user.email");
   if (email === "") return null;
-  const name15 = process.env.GIT_AUTHOR_NAME?.trim() || await configValue(root, "user.name");
-  const mapped = (await mapThroughMailmap(root, [{ name: name15, email }], localMailmap)).get(`${name15} <${email}>`);
-  return mapped ?? { name: name15, email };
+  const name16 = process.env.GIT_AUTHOR_NAME?.trim() || await configValue(root, "user.name");
+  const mapped = (await mapThroughMailmap(root, [{ name: name16, email }], localMailmap)).get(`${name16} <${email}>`);
+  return mapped ?? { name: name16, email };
 }
 
 // packages/cochange/src/risk/placement-result.ts
@@ -10234,8 +10363,8 @@ async function placementFor(context, assessed, noRefresh) {
     blame: { used: blame.facts.size > 0, missing: blame.missing, refreshed: blame.refreshed }
   };
 }
-var row = (name15, value, evidence, unavailable3 = null) => ({
-  name: name15,
+var row = (name16, value, evidence, unavailable3 = null) => ({
+  name: name16,
   family: "placement",
   layer: "placement",
   status: unavailable3 === null ? "ok" : "unavailable",
@@ -10244,7 +10373,7 @@ var row = (name15, value, evidence, unavailable3 = null) => ({
   value: unavailable3 === null ? value : {},
   guidelines: {},
   evidence: unavailable3 === null ? evidence : [],
-  source: name15 === "authorship" || name15 === "owner-distance" || name15 === "no-owner" ? "blame" : "history",
+  source: name16 === "authorship" || name16 === "owner-distance" || name16 === "no-owner" ? "blame" : "history",
   reason: unavailable3
 });
 function placementFactors(placement, withBlame) {
@@ -10376,9 +10505,9 @@ async function reviewersFor(context, assessed, noRefresh) {
   let withBlame = 0;
   const areas = [...byArea].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([area, files]) => {
     const scores = /* @__PURE__ */ new Map();
-    const credit = (email, name15, patch) => {
+    const credit = (email, name16, patch) => {
       const key = email.toLowerCase();
-      const row2 = scores.get(key) ?? { name: name15, email, authorship: 0, coupledChanges: 0 };
+      const row2 = scores.get(key) ?? { name: name16, email, authorship: 0, coupledChanges: 0 };
       scores.set(key, { ...row2, authorship: row2.authorship + (patch.authorship ?? 0), coupledChanges: row2.coupledChanges + (patch.coupledChanges ?? 0) });
     };
     for (const file of files) {
@@ -10472,8 +10601,8 @@ async function runReviewers(context, history, range) {
 }
 
 // packages/cochange/src/commands/risk.ts
-var name11 = "risk";
-var rules7 = findingRules;
+var name12 = "risk";
+var rules8 = findingRules;
 var SUBCOMMANDS4 = ["explain", "reviewers", "backtest"];
 function parse2(positionals) {
   const [first, ...rest] = positionals;
@@ -10483,7 +10612,7 @@ function rangeOf(rest) {
   if (rest.length > 1) throw usageError("usage: risk [BASE[..HEAD]] [--worktree]");
   return rest[0];
 }
-var command11 = analysisCommand(name11, {
+var command12 = analysisCommand(name12, {
   summary: "How much a branch puts at risk before it is merged, and how to review it: risk [BASE[..HEAD]] | explain | reviewers | backtest",
   options: { worktree: { type: "boolean" }, evidence: { type: "string", multiple: true }, names: { type: "boolean" }, since: { type: "string" }, adopted: { type: "string" } },
   wholeHistory: true,
@@ -10521,10 +10650,10 @@ var command11 = analysisCommand(name11, {
 // packages/cochange/src/commands/spread.ts
 var spread_exports = {};
 __export(spread_exports, {
-  command: () => command12,
-  name: () => name12
+  command: () => command13,
+  name: () => name13
 });
-var name12 = "spread";
+var name13 = "spread";
 function distribution(changes, excludedByTrailer) {
   const measured = changes.filter((c) => !c.oversized).map((c) => changeSpread(c.files.map((f) => f.path)));
   const oversized = changes.length - measured.length;
@@ -10548,7 +10677,7 @@ function bucketOption(context) {
   if (value === "week" || value === "month") return value;
   throw usageError(`--bucket must be "week" or "month", not "${String(value)}"`);
 }
-var command12 = analysisCommand(name12, {
+var command13 = analysisCommand(name13, {
   summary: "Change-spread distribution (mean pairwise tree distance per logical change) per week or month",
   options: { since: { type: "string" }, until: { type: "string" }, bucket: { type: "string" } },
   window: (context) => statedWindow(context, readSettings(context.config).windowMonths),
@@ -10592,11 +10721,11 @@ var command12 = analysisCommand(name12, {
 // packages/cochange/src/commands/successors.ts
 var successors_exports = {};
 __export(successors_exports, {
-  command: () => command13,
-  name: () => name13
+  command: () => command14,
+  name: () => name14
 });
-var name13 = "successors";
-var command13 = {
+var name14 = "successors";
+var command14 = {
   summary: "Ranked successors for files at risk, from the files that change with them",
   options: { names: { type: "boolean" }, top: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
@@ -10649,11 +10778,11 @@ __export(trend_exports, {
   DEFAULT_SAMPLES: () => DEFAULT_SAMPLES,
   MAX_SAMPLES: () => MAX_SAMPLES,
   TREND_GUIDELINE: () => TREND_GUIDELINE,
-  command: () => command14,
-  name: () => name14,
+  command: () => command15,
+  name: () => name15,
   pickSamples: () => pickSamples
 });
-var name14 = "trend";
+var name15 = "trend";
 var DEFAULT_SAMPLES = 10;
 var MAX_SAMPLES = 500;
 var TREND_GUIDELINE = 0.2;
@@ -10677,7 +10806,7 @@ var delta = (first, last) => ({
   last,
   change: first === null || last === null ? null : last - first
 });
-var command14 = analysisCommand(name14, {
+var command15 = analysisCommand(name15, {
   summary: "Indentation complexity and size of one file sampled across its history, from blobs",
   options: { samples: { type: "string" } },
   wholeHistory: true,
@@ -10742,6 +10871,7 @@ var commandModules = [
   brief_exports,
   clusters_exports,
   coupling_exports,
+  fixes_exports,
   hotspots_exports,
   identities_exports,
   outcome_exports,
@@ -10752,7 +10882,7 @@ var commandModules = [
   trend_exports
 ];
 var commands = Object.fromEntries(commandModules.map((m) => [m.name, m.command]));
-var rules8 = Object.assign({}, ...commandModules.map((m) => m.rules ?? {}));
+var rules9 = Object.assign({}, ...commandModules.map((m) => m.rules ?? {}));
 
 // packages/cochange/src/cli.ts
 var cli = {
@@ -10760,7 +10890,7 @@ var cli = {
   schemaVersion: SCHEMA_VERSION2,
   config: cochangeConfig,
   commands,
-  rules: Object.keys(rules8).length > 0 ? rules8 : void 0,
+  rules: Object.keys(rules9).length > 0 ? rules9 : void 0,
   mapError: mapHistoryError
 };
 

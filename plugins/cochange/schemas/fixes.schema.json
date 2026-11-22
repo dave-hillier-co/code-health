@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fixes.schema.json",
+  "title": "cochange fixes --json",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/analysisEnvelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "fixes" },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" },
+        "by": { "enum": ["file", "component"] },
+        "evidenceLimit": { "$ref": "common.schema.json#/$defs/count", "description": "The most evidence commits listed per row (--evidence)." }
+      },
+      "required": ["by", "evidenceLimit"],
+      "additionalProperties": false
+    },
+    "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "The file's path, or the component's name with --by component." },
+          "score": { "$ref": "common.schema.json#/$defs/count", "description": "The fix count, so the list runs from the most fixes." },
+          "files": { "type": "integer", "minimum": 1, "description": "Files in the component. Only with --by component." },
+          "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes in the window that are fixes, counted once per file or component. A count of commit messages, not of defects: read the evidence." },
+          "revisions": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes that touched it in the window, the same count as hotspots frequency." },
+          "fixShare": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "fixes over revisions." },
+          "recentFixes": { "$ref": "common.schema.json#/$defs/count", "description": "Fixes inside the recent window (cochange.recentMonths)." },
+          "lastFix": { "type": ["string", "null"], "format": "date-time" },
+          "reverts": { "$ref": "common.schema.json#/$defs/count", "description": "Logical changes that are reverts. Not counted as fixes." },
+          "evidence": {
+            "type": "object",
+            "description": "The matching commits, newest first.",
+            "properties": {
+              "commits": {
+                "type": "array",
+                "description": "Up to the evidence limit.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sha": { "$ref": "common.schema.json#/$defs/sha" },
+                    "date": { "type": "string", "format": "date-time" },
+                    "subject": { "type": "string" },
+                    "pattern": { "type": "string", "description": "The history.fixPatterns entry that matched." },
+                    "matchedIn": { "enum": ["subject", "body"] }
+                  },
+                  "required": ["sha", "date", "subject", "pattern", "matchedIn"],
+                  "additionalProperties": false
+                }
+              },
+              "omitted": { "$ref": "common.schema.json#/$defs/count", "description": "Matching commits beyond the limit." }
+            },
+            "required": ["commits", "omitted"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["path", "score", "fixes", "revisions", "fixShare", "recentFixes", "lastFix", "reverts", "evidence"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["fixConvention"],
+  "unevaluatedProperties": false
+}

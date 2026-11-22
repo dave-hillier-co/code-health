@@ -1,6 +1,9 @@
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import { monthsBefore } from "@code-health/history/evidence";
 import { listTree } from "@code-health/history/tree";
+import type { FixConvention } from "@code-health/history/fix-commits";
+import { readFixes, statisticsOf } from "./fix-statistics.ts";
+import { readFixClassifier } from "./risk/settings.ts";
 import { loadComplexity, type FileComplexity } from "./complexity-source.ts";
 import type { By, Unit } from "./file-statistics.ts";
 import type { LoadedHistory } from "./history-access.ts";
@@ -18,6 +21,9 @@ export interface HotspotRow {
   complexity: number | null;
   ageDays: number;
   lastChanged: string;
+  /** Logical changes in the window whose commit message is a fix, and their share of `frequency`. */
+  fixes: number;
+  fixShare: number | null;
   recommendation: "hotspot" | null;
   /** File views only: the sibling test, and the findings raised on the file. */
   siblingTest?: string | null;
@@ -27,6 +33,7 @@ export interface HotspotRow {
 export interface HotspotRanking {
   rows: HotspotRow[];
   complexity: FileComplexity;
+  fixConvention: FixConvention;
 }
 
 /**
@@ -37,6 +44,7 @@ export interface HotspotRanking {
 export async function rankHotspots(context: CommandContext, history: LoadedHistory, by: By): Promise<HotspotRanking> {
   const { settings } = history;
   const units = await loadUnits(context, history, by);
+  const fixReading = readFixes(history, units, readFixClassifier(context.config));
 
   const paths = [...new Set(units.flatMap((u) => [...u.members]))].sort();
   const complexity = await loadComplexity(context, history.view.headSha, paths);
@@ -61,6 +69,7 @@ export async function rankHotspots(context: CommandContext, history: LoadedHisto
 
   const rows = units.map((unit, i): HotspotRow => {
     const score = scores[i]!;
+    const fixStats = statisticsOf(fixReading, unit);
     const isHotspot = score !== null && shareStrictlyAbove(scored, score) < topShare && unit.lastChanged >= recentSince;
     return {
       path: unit.name,
@@ -71,11 +80,13 @@ export async function rankHotspots(context: CommandContext, history: LoadedHisto
       complexity: unitComplexity[i]!,
       ageDays: Math.floor((anchor - unit.lastChanged) / SECONDS_PER_DAY),
       lastChanged: isoDate(unit.lastChanged),
+      fixes: fixStats.fixes,
+      fixShare: fixStats.fixShare,
       recommendation: isHotspot ? "hotspot" : null,
       ...(by === "file" ? fileFindings(unit, isHotspot, drifting.get(unit.name) ?? null, settings.minSupport) : {}),
     };
   });
-  return { rows, complexity };
+  return { rows, complexity, fixConvention: fixReading.convention };
 }
 
 interface SiblingEvidence {

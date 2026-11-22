@@ -102,6 +102,19 @@
     },
     "oversizedChanges": 0
   },
+  "fixConvention": {
+    "fixes": 0,
+    "followsConvention": false,
+    "guidelines": {
+      "maxShare": 0.6,
+      "minChanges": 30,
+      "minShare": 0.02,
+      "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+    },
+    "logicalChanges": 10,
+    "note": "The commit messages probably do not follow a convention this can use: there are 10 logical changes in the window, fewer than 30; fixes are 0% of logical changes, under 2%.",
+    "share": 0
+  },
   "inputs": {
     "by": "file",
     "complexityReport": null
@@ -118,6 +131,8 @@
       "findings": [
         "hotspot"
       ],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 5,
       "lastChanged": "2024-06-15T09:00:00.000Z",
       "path": "src/core/engine.ts",
@@ -130,6 +145,8 @@
       "churn": 6,
       "complexity": 9,
       "findings": [],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 3,
       "lastChanged": "2023-10-10T09:00:00.000Z",
       "path": "src/legacy/old.ts",
@@ -142,6 +159,8 @@
       "churn": 10,
       "complexity": 0,
       "findings": [],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 5,
       "lastChanged": "2024-06-15T09:00:00.000Z",
       "path": "src/core/util.ts",
@@ -154,6 +173,8 @@
       "churn": 4,
       "complexity": 4,
       "findings": [],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 2,
       "lastChanged": "2024-05-20T09:00:00.000Z",
       "path": "src/ui/page.ts",

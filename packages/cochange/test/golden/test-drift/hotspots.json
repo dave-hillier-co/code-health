@@ -102,6 +102,19 @@
     },
     "oversizedChanges": 0
   },
+  "fixConvention": {
+    "fixes": 0,
+    "followsConvention": false,
+    "guidelines": {
+      "maxShare": 0.6,
+      "minChanges": 30,
+      "minShare": 0.02,
+      "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+    },
+    "logicalChanges": 43,
+    "note": "The commit messages probably do not follow a convention this can use: fixes are 0% of logical changes, under 2%.",
+    "share": 0
+  },
   "inputs": {
     "by": "file",
     "complexityReport": null
@@ -116,6 +129,8 @@
       "churn": 38,
       "complexity": 0,
       "findings": [],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 19,
       "lastChanged": "2024-04-01T09:00:00.000Z",
       "path": "src/app/registry.ts",
@@ -130,6 +145,8 @@
       "findings": [
         "hotspot"
       ],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-05-01T09:00:00.000Z",
       "path": "src/a/x.ts",
@@ -144,6 +161,8 @@
       "findings": [
         "hotspot"
       ],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-05-01T09:00:00.000Z",
       "path": "src/b/y.ts",
@@ -156,6 +175,8 @@
       "churn": 14,
       "complexity": 0,
       "findings": [],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-03-22T09:00:00.000Z",
       "path": "src/billing/plugin.ts",
@@ -170,6 +191,8 @@
       "findings": [
         "hotspot"
       ],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-05-31T09:00:00.000Z",
       "path": "src/c/p.ts",
@@ -184,6 +207,8 @@
       "findings": [
         "hotspot"
       ],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-05-31T09:00:00.000Z",
       "path": "src/c/q.ts",
@@ -198,6 +223,8 @@
       "findings": [
         "hotspot"
       ],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-05-31T09:00:00.000Z",
       "path": "src/c/r.ts",
@@ -213,6 +240,8 @@
         "hotspot",
         "test-drift"
       ],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-06-30T09:00:00.000Z",
       "path": "src/drift/engine.ts",
@@ -225,6 +254,8 @@
       "churn": 14,
       "complexity": 0,
       "findings": [],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-03-27T09:00:00.000Z",
       "path": "src/mail/plugin.ts",
@@ -239,6 +270,8 @@
       "findings": [
         "hotspot"
       ],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-07-30T09:00:00.000Z",
       "path": "src/ok/svc.test.ts",
@@ -253,6 +286,8 @@
       "findings": [
         "hotspot"
       ],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-07-30T09:00:00.000Z",
       "path": "src/ok/svc.ts",
@@ -265,6 +300,8 @@
       "churn": 14,
       "complexity": 0,
       "findings": [],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 7,
       "lastChanged": "2024-04-01T09:00:00.000Z",
       "path": "src/search/plugin.ts",
@@ -277,6 +314,8 @@
       "churn": 2,
       "complexity": 0,
       "findings": [],
+      "fixShare": 0,
+      "fixes": 0,
       "frequency": 1,
       "lastChanged": "2024-01-02T09:00:00.000Z",
       "path": "src/drift/engine.test.ts",
