@@ -1,4 +1,5 @@
 import type { FileRecord, InterfaceUnit } from "./measure.ts";
+import { roleOfTest, type Role } from "./roles.ts";
 
 /**
  * The interface depth signal for the shallow module and pass-through red flags. A unit's depth is its
@@ -19,7 +20,7 @@ export interface DepthRow {
   interface: number;
   depth: number;
   passThrough: string | null;
-  test: boolean;
+  role: Role;
   /** `pass-through`, then `shallow`. */
   labels: string[];
   /** The sort key: pass-throughs rank above everything else, then the shallowest first. */
@@ -29,19 +30,21 @@ export interface DepthRow {
 const round = (value: number, places: number): number => Math.round(value * 10 ** places) / 10 ** places;
 
 /**
- * Whether a unit is part of its file's interface: a top-level unit the file exports, or a method of an
- * exported class. A function nested in an exported function is not.
+ * Whether a unit is part of its file's interface: a top-level unit the file exports (public in C#, Java and
+ * Kotlin, capitalised in Go, `export` in TypeScript, `pub` in Rust, no leading underscore in Python), or a method
+ * of an exported class that the language lets code outside the class call. A function nested in an exported
+ * function is not.
  */
 function exportedUnits(file: FileRecord): Set<string> {
   const known = new Map((file.interfaces?.units ?? []).map((unit) => [unit.name, unit]));
   const exported = new Set<string>();
   for (const unit of known.values()) {
     if (unit.parent === undefined) {
-      if (unit.exported) exported.add(unit.name);
+      if (unit.exported && unit.hidden !== true) exported.add(unit.name);
       continue;
     }
     const owner = known.get(unit.parent);
-    if (unit.kind === "method" && owner?.kind === "class" && owner.parent === undefined && owner.exported) exported.add(unit.name);
+    if (unit.kind === "method" && unit.hidden !== true && owner?.kind === "class" && owner.parent === undefined && owner.exported) exported.add(unit.name);
   }
   return exported;
 }
@@ -52,15 +55,15 @@ function exportedTopLevel(file: FileRecord): InterfaceUnit[] {
 }
 
 /**
- * The rows of one file: its exported functions and classes, its module when it exports anything, and every
- * pass-through whether or not it is exported. A unit is shallow when it is exported, not a method, and
- * its depth is below `shallow`.
+ * The rows of one file: its exported functions and classes, the exported methods that are pass-throughs, and its
+ * module when it exports anything. A unit that is not exported has no row, whether or not it forwards. A unit is
+ * shallow when it is exported, not a method, and its depth is below `shallow`.
  */
 export function depthRows(file: FileRecord, shallow: number): DepthRow[] {
   if (file.interfaces === undefined) return [];
   const exported = exportedUnits(file);
   const rows: DepthRow[] = [];
-  const add = (row: Omit<DepthRow, "depth" | "labels" | "score" | "path" | "test"> & { shallowCandidate: boolean }) => {
+  const add = (row: Omit<DepthRow, "depth" | "labels" | "score" | "path" | "role"> & { shallowCandidate: boolean }) => {
     const { shallowCandidate, ...rest } = row;
     const depth = round(row.nodes / row.interface, 2);
     const labels = [...(row.passThrough === null ? [] : ["pass-through"]), ...(shallowCandidate && row.nodes / row.interface < shallow ? ["shallow"] : [])];
@@ -68,7 +71,7 @@ export function depthRows(file: FileRecord, shallow: number): DepthRow[] {
       path: file.path,
       ...rest,
       depth,
-      test: file.test,
+      role: roleOfTest(file.test),
       labels,
       score: round(row.interface / row.nodes, 4) + (row.passThrough === null ? 0 : 1),
     });
@@ -76,7 +79,7 @@ export function depthRows(file: FileRecord, shallow: number): DepthRow[] {
 
   for (const unit of file.interfaces.units) {
     const isExported = exported.has(unit.name);
-    const listed = (unit.parent === undefined && isExported) || unit.passThrough !== undefined;
+    const listed = isExported && (unit.parent === undefined || unit.passThrough !== undefined);
     if (!listed) continue;
     add({
       unit: unit.name,

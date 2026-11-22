@@ -13,6 +13,8 @@ export interface ShapeOptions {
   fields?: string[];
   /** Valid field names. When given, unknown fields are rejected. */
   columns?: string[];
+  /** The rows are already in the order the command states, so they are cut and projected without sorting. */
+  presorted?: boolean;
 }
 
 type Row = Record<string, unknown>;
@@ -29,7 +31,7 @@ export function shapeResults(results: unknown, options: ShapeOptions): { results
     }
   }
 
-  const sorted = [...(results as Row[])].sort(byScoreThenPath);
+  const sorted = options.presorted === true ? (results as Row[]) : [...(results as Row[])].sort(byScoreThenPath);
   const kept = sorted.slice(0, limit);
   const projected = fields ? kept.map((row) => Object.fromEntries(fields.map((field) => [field, row[field]]))) : kept;
   return {

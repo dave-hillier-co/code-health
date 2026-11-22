@@ -122,7 +122,8 @@
       "config": "0000000000000000",
       "head": "e280410157605ca8c1a5a2f33e70539f4a18188d",
       "report": "complexity.files"
-    }
+    },
+    "includeTests": false
   },
   "repo": {
     "dirty": false,
@@ -142,6 +143,7 @@
       "lastChanged": "2024-06-15T09:00:00.000Z",
       "path": "src/core/util.ts",
       "recommendation": "hotspot",
+      "role": "production",
       "score": 0.65625,
       "siblingTest": null
     },
@@ -156,6 +158,7 @@
       "lastChanged": "2023-10-10T09:00:00.000Z",
       "path": "src/legacy/old.ts",
       "recommendation": null,
+      "role": "production",
       "score": 0.140625,
       "siblingTest": null
     },
@@ -170,6 +173,7 @@
       "lastChanged": "2024-06-15T09:00:00.000Z",
       "path": "src/core/engine.ts",
       "recommendation": null,
+      "role": "production",
       "score": 0.09375,
       "siblingTest": null
     },
@@ -184,6 +188,7 @@
       "lastChanged": "2024-05-20T09:00:00.000Z",
       "path": "src/ui/page.ts",
       "recommendation": null,
+      "role": "production",
       "score": 0.078125,
       "siblingTest": null
     }

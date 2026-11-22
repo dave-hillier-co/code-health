@@ -3,6 +3,7 @@ import { meanDepth, passThroughCount } from "./interface-depth.ts";
 import type { FileRecord, UnitRecord } from "./measure.ts";
 import { exceeded, labelsFor, metricIds, type MetricId, type Values } from "./metrics.ts";
 import type { RankedUnit } from "./ranking.ts";
+import { roleOfTest } from "./roles.ts";
 
 export function pick(values: Values, selected: readonly MetricId[]): Values {
   const out: Values = {};
@@ -34,7 +35,7 @@ export function unitRow(ranked: RankedUnit, selected: readonly MetricId[], setti
     ...(unit.parent === undefined ? {} : { parent: unit.parent }),
     source: unit.source,
     ...(unit.unverified === true ? { unverified: true } : {}),
-    test: unit.test,
+    role: roleOfTest(unit.test),
     score: ranked.score,
     complexityScore: ranked.complexityScore,
     changeWeightedScore: ranked.changeWeightedScore,
@@ -85,7 +86,7 @@ export function fileRow(file: FileRecord, settings: ComplexitySettings) {
     complexity: file.indentationComplexity,
     source: file.source,
     profile: file.profile,
-    test: file.test,
+    role: roleOfTest(file.test),
     unverified: file.unverified,
     lineCount: file.lines.lineCount,
     codeLines: file.lines.codeLines,

@@ -3,6 +3,7 @@ import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import type { ComplexitySettings } from "./config.ts";
 import { normalisePaths, type CurrentTree } from "./current-tree.ts";
 import { isLowEvidence, measureFixes, SECONDARY_LIST_LIMIT, type FixStatistics, type UnitFixes } from "./fix-statistics.ts";
+import { roleOfTest } from "./roles.ts";
 import { unitName } from "./rows.ts";
 
 /** `maxCommits` is null for the whole window. */
@@ -52,13 +53,14 @@ export const LOW_EVIDENCE = "low evidence";
  * then the fix share, so the kit's sort by score gives that order: with the share at most 1 and scaled to 0.4, the low evidence band is
  * 0 to 0.4 and the other band 0.5 to 0.9 above the count.
  */
-export function fixRow(fixes: UnitFixes, minRevisions: number) {
+export function fixRow(fixes: UnitFixes, minRevisions: number, isTest: (path: string) => boolean) {
   const low = isLowEvidence(fixes, minRevisions);
   const unit = fixes.current;
   return {
     path: fixes.path,
     unit: unit === undefined ? fixes.id.slice(fixes.id.indexOf("#") + 1) : unitName(unit),
     id: fixes.id,
+    role: roleOfTest(isTest(fixes.path)),
     ...(unit === undefined ? {} : { kind: unit.kind, startLine: unit.startLine, endLine: unit.endLine }),
     score: fixes.fixCommits + (low ? 0 : 0.5) + (fixes.fixShare ?? 0) * 0.4,
     ...fixFigures(fixes),
@@ -71,7 +73,7 @@ export function fixRow(fixes: UnitFixes, minRevisions: number) {
 }
 
 /** The header of the fix statistics: the window, the convention check, how much history was analysed and what was left out. */
-export function fixHeader(stats: FixStatistics, request: FixOptions) {
+export function fixHeader(stats: FixStatistics, request: FixOptions, settings: ComplexitySettings) {
   const deleted = stats.deleted.filter((unit) => unit.fixCommits > 0);
   return {
     window: { months: stats.window.months, since: iso(stats.window.since), until: iso(stats.window.until) },
@@ -92,7 +94,7 @@ export function fixHeader(stats: FixStatistics, request: FixOptions) {
       withFixes: deleted.length,
       limit: SECONDARY_LIST_LIMIT,
       omitted: Math.max(0, deleted.length - SECONDARY_LIST_LIMIT),
-      rows: deleted.slice(0, SECONDARY_LIST_LIMIT).map((unit) => fixRow(unit, stats.minRevisions)),
+      rows: deleted.slice(0, SECONDARY_LIST_LIMIT).map((unit) => fixRow(unit, stats.minRevisions, settings.isTest)),
     },
     outsideUnits: {
       /** Distinct fix changes with a changed line outside every function, so never more than the fixes of the window. */

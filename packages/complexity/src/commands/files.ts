@@ -3,6 +3,7 @@ import { cachedAnalysis, layerOption, measureCurrent, noCacheHelp, noCacheOption
 import type { Layer } from "../measure.ts";
 import { normalisePaths, pathSelector } from "../current-tree.ts";
 import { fileRow } from "../rows.ts";
+import { includeTestsHelp, includeTestsOption, wantsTests } from "../roles.ts";
 import { recordDropped } from "@code-health/cli-kit/dropped-files";
 import { isCodePath } from "@code-health/parse/code-files";
 
@@ -16,12 +17,17 @@ export const name = "files";
  */
 export const command: Command = {
   summary: "File-level aggregates; a full run writes the complexity.files report other plugins read",
-  options: { ...layerOption, ...noCacheOption },
-  optionHelp: { "no-cache": noCacheHelp },
-  run(context) {
+  options: { ...layerOption, ...includeTestsOption, ...noCacheOption },
+  optionHelp: { "include-tests": includeTestsHelp, "no-cache": noCacheHelp },
+  async run(context) {
     const layer = parseLayer(context.values.layer);
     const paths = normalisePaths(context.positionals);
-    return cachedAnalysis(context, name, { layer: context.values.layer, paths: paths.length === 0 ? undefined : paths }, () => compute(context, layer, paths));
+    // The stored result holds every file, tests included with their role, because cochange reads a complexity for each file it ranks.
+    const all = await cachedAnalysis(context, name, { layer: context.values.layer, paths: paths.length === 0 ? undefined : paths }, () => compute(context, layer, paths));
+    const rows = all.results as Array<{ path: string; role: string }>;
+    const listed = wantsTests(context) ? rows : rows.filter((row) => row.role === "production");
+    if (listed.length < rows.length) for (const row of rows) if (row.role === "test") recordDropped("tests", row.path);
+    return { ...all, inputs: { ...all.inputs, includeTests: wantsTests(context) }, results: listed };
   },
 };
 
@@ -37,9 +43,9 @@ async function compute(context: CommandContext, layer: Layer, paths: string[]): 
     })
     .map((file) => fileRow(file, settings));
   return {
-    inputs: { tree: current.kind, layer, paths },
+    inputs: { tree: current.kind, layer, paths, includeTests: true },
     extra: { skippedFiles: measurement.skippedFiles },
     results: rows,
-    columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "test", "codeLines"],
+    columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "role", "codeLines"],
   };
 }

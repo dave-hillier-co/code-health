@@ -4,6 +4,7 @@ import { compileFixClassifier, type FixClassifier } from "@code-health/history/f
 import { compileGlobs } from "@code-health/history/glob";
 import { InvalidPatternError } from "@code-health/history/noise";
 import { profiles } from "@code-health/lexical/profile";
+import { testClassifier } from "@code-health/parse/test-files";
 import { defaultGuidelines, isMetricId, metricIds, type MetricId, type Guidelines } from "./metrics.ts";
 import { TOOL } from "./tool.ts";
 
@@ -46,7 +47,7 @@ export const complexityConfig: PluginConfigSpec = {
     agreementBar: 0.9,
     /** Body similarity, 0 to 1, at which a unit that disappeared and one that appeared are the same unit moved or renamed. */
     moveSimilarity: 0.8,
-    /** Analyse test files. They are ranked among themselves. */
+    /** Analyse test files. They are ranked among themselves, and the commands that list rows put them after the production rows (`--include-tests` merges them). */
     analyseTests: true,
     /** Weight the ranking by how often each file changed in the window, so code that never changes ranks last. */
     changeWeighting: true,
@@ -92,6 +93,8 @@ export interface ComplexitySettings {
   shallowDepth: number;
   /** The suite's shared `exclude` globs. */
   isExcluded: (path: string) => boolean;
+  /** Whether a file is a test: its language's naming conventions, and the shared `testPatterns` laid over them. */
+  isTest: (path: string) => boolean;
   /** The suite's shared `languages`: file extension to lexer profile name. Per-function values from them are unverified. */
   languageProfiles: Record<string, string>;
 }
@@ -156,6 +159,7 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     },
     shallowDepth: number((section.interfaceDepth as { shallow: unknown }).shallow, at("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
+    isTest: testClassifier(config.effective.testPatterns),
     languageProfiles: readLanguageProfiles(config.effective.languages),
   };
 }

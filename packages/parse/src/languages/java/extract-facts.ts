@@ -304,6 +304,8 @@ class Extractor {
     if (forwarded !== undefined) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (overridesMethod(node)) unit.override = true;
+    const words = modifiersOf(node);
+    if (!context.inInterface && !words.has("public") && !words.has("protected")) unit.hidden = true;
     if (measured.increments !== undefined) unit.increments = measured.increments;
     this.units.push(unit);
     const inside: Context = { ...context, unit: qualifiedName };

@@ -342,6 +342,7 @@ class Extractor {
     if (forwarded !== undefined) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (modifierWords(node).has("override")) unit.override = true;
+    if (context.inType && (modifierWords(node).has("private") || modifierWords(node).has("internal"))) unit.hidden = true;
     if (measured.increments !== undefined) unit.increments = measured.increments;
     this.units.push(unit);
     if (context.topLevel && !isConstructor) {

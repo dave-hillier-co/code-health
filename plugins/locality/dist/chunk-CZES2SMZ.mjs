@@ -1130,7 +1130,7 @@ var memberTypes = /* @__PURE__ */ new Set([
   "index_signature",
   "property_signature"
 ]);
-function isHidden(member) {
+function isHiddenMember(member) {
   if (member.namedChildren.some((child) => child.type === "accessibility_modifier" && child.text === "private")) return true;
   return member.childForFieldName("name")?.type === "private_property_identifier";
 }
@@ -1138,7 +1138,7 @@ function classShape(declaration) {
   const body = declaration.childForFieldName("body");
   let interfaceSize = 0;
   for (const member of body?.namedChildren ?? []) {
-    if (!memberTypes.has(member.type) || isHidden(member)) continue;
+    if (!memberTypes.has(member.type) || isHiddenMember(member)) continue;
     if (member.type === "method_definition" && member.childForFieldName("name")?.text === "constructor") {
       interfaceSize += parameterCounts(member).parameters;
     } else {
@@ -1769,7 +1769,7 @@ function measureFunction(fn, options, rules) {
 }
 
 // packages/parse/src/languages/go/extract-facts.ts
-var extractorVersion = 3;
+var extractorVersion = 4;
 var GENERATED = /^\/\/ Code generated .* DO NOT EDIT\.$/;
 var predeclared = /* @__PURE__ */ new Set([
   "any",
@@ -2017,6 +2017,7 @@ var Extractor = class {
     const forwarded = passThroughOf2(fn);
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
+    if (kind === "method" && methodName2 !== void 0 && !isExported(methodName2)) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const locals = /* @__PURE__ */ new Set([...context.locals, ...declaredIn(fn)]);
@@ -2554,7 +2555,7 @@ var rustMetricRules = {
 };
 
 // packages/parse/src/languages/rust/extract-facts.ts
-var extractorVersion2 = 2;
+var extractorVersion2 = 3;
 function visibilityOf(node) {
   const modifier = node.namedChildren.find((child) => child.type === "visibility_modifier");
   if (modifier === void 0) return "private";
@@ -2570,6 +2571,9 @@ function attributesOf(node) {
 }
 function attributeNamed(node, name) {
   return attributesOf(node).map((item) => item.namedChildren.find((child) => child.type === "attribute")).find((attribute2) => attribute2?.namedChildren[0]?.text === name);
+}
+function isTestItem(node) {
+  return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
 }
 function pathAttribute(node) {
   const value = attributeNamed(node, "path")?.childForFieldName("value");
@@ -2782,6 +2786,7 @@ var Extractor2 = class {
     const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
     const unit = { qualifiedName, kind, startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, source: "structural" };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (context.inTests === true || isTestItem(node)) unit.test = true;
     if (fn === void 0) unit.shape = typeShape2(node);
     else {
       this.codeRows ??= codeRowsOf(this.root, rustMetricRules);
@@ -2792,6 +2797,7 @@ var Extractor2 = class {
       if (forwarded !== void 0) unit.passThrough = forwarded;
       if (measured.recursive) unit.recursive = true;
       if (memberOf !== void 0 && context.implementsTrait === true) unit.override = true;
+      if (memberOf !== void 0 && context.implementsTrait !== true && visibilityOf(node) !== "public") unit.hidden = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
     this.units.push(unit);
@@ -2844,7 +2850,7 @@ var Extractor2 = class {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body = node.childForFieldName("body");
         this.visitChildrenExcept(node, body, { ...context, owner: void 0 });
-        if (body !== null) this.visitScope(body, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
+        if (body !== null) this.visitScope(body, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null, ...isTestItem(node) ? { inTests: true } : {} });
         return;
       }
       case "type_item":
@@ -2940,7 +2946,7 @@ var Extractor2 = class {
     const body = node.childForFieldName("body");
     if (body !== null) {
       this.export(node, name, void 0, "namespace", visibility, context);
-      this.visitScope(body, { ...context, mods: [...context.mods, name], exposed: context.exposed && visibility === "public" });
+      this.visitScope(body, { ...context, mods: [...context.mods, name], exposed: context.exposed && visibility === "public", ...isTestItem(node) ? { inTests: true } : {} });
       return;
     }
     const written = pathAttribute(node);
@@ -3520,6 +3526,8 @@ var Extractor3 = class {
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (overridesMethod(node)) unit.override = true;
+    const words = modifiersOf(node);
+    if (!context.inInterface && !words.has("public") && !words.has("protected")) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const inside = { ...context, unit: qualifiedName };
@@ -3687,7 +3695,7 @@ var adapter = {
   support: "supported",
   lexerProfile: "java",
   grammars: [{ spec: { id: "java", packageName: "tree-sitter-java", file: "tree-sitter-java.wasm" }, extensions: [".java"] }],
-  extractorVersion: 2,
+  extractorVersion: 3,
   extract: extractFacts3,
   isTestPath: (path) => isJvmTestPath(path, /\.java$/),
   metrics: javaMetricRules,
@@ -4103,6 +4111,7 @@ var Extractor4 = class {
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (modifierWords(node).has("override")) unit.override = true;
+    if (context.inType && (modifierWords(node).has("private") || modifierWords(node).has("internal"))) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     if (context.topLevel && !isConstructor2) {
@@ -4312,7 +4321,7 @@ var adapter2 = {
   support: "supported",
   lexerProfile: "kotlin",
   grammars: [{ spec: { id: "kotlin", packageName: "@tree-sitter-grammars/tree-sitter-kotlin", file: "tree-sitter-kotlin.wasm", repairs: kotlinRepairs }, extensions: [".kt"] }],
-  extractorVersion: 3,
+  extractorVersion: 4,
   extract: extractFacts4,
   isTestPath: (path) => isJvmTestPath(path, /\.kt$/),
   metrics: kotlinMetricRules,
@@ -4920,6 +4929,7 @@ var Extractor5 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (kind === "method" && isHiddenMember(node)) unit.hidden = true;
     if (kind === "class") unit.shape = classShape(node);
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root, typescriptMetricRules);
@@ -5646,7 +5656,7 @@ var adapter3 = {
     { spec: { id: "tsx", packageName: "tree-sitter-typescript", file: "tree-sitter-tsx.wasm", repairs: typescriptRepairs }, extensions: [".tsx"] },
     { spec: { id: "javascript", packageName: "tree-sitter-javascript", file: "tree-sitter-javascript.wasm" }, extensions: [".js", ".mjs", ".cjs", ".jsx"] }
   ],
-  extractorVersion: 8,
+  extractorVersion: 9,
   extract: extractFacts5,
   isTestPath: (path) => /(^|\/)(__tests__|__mocks__|tests?)\//.test(path) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(path),
   metrics: typescriptMetricRules,
@@ -5958,7 +5968,7 @@ function passThroughOf6(fn, parameterNames6) {
 }
 
 // packages/parse/src/languages/csharp/extract-facts.ts
-var extractorVersion3 = 3;
+var extractorVersion3 = 4;
 var typeDeclarations3 = /* @__PURE__ */ new Set([
   "class_declaration",
   "struct_declaration",
@@ -6242,6 +6252,7 @@ var Extractor6 = class {
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (modifiersOf2(fn).includes("override")) unit.override = true;
+    if (kind === "method" && isHiddenMember2(fn)) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     return { ...context, unit: qualifiedName };
@@ -6406,6 +6417,13 @@ var Extractor6 = class {
 };
 function extractFacts6(root, options = {}) {
   return new Extractor6(options).extract(root);
+}
+function isHiddenMember2(fn) {
+  const member = fn.type === "accessor_declaration" ? fn.parent?.parent : fn;
+  if (member === void 0 || member === null) return false;
+  if (member.parent?.parent?.type === "interface_declaration") return false;
+  if (member.namedChildren.some((child) => child.type === "explicit_interface_specifier")) return false;
+  return !modifiersOf2(member).some((modifier) => modifier === "public" || modifier === "protected");
 }
 
 // packages/parse/src/languages/csharp/census.ts
@@ -7600,6 +7618,7 @@ var Extractor7 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (kind === "method" && context.scope === "class" && !context.publicMembers) unit.hidden = true;
     const measured = measureFunction(fn, { ...name === void 0 ? {} : { name }, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, cppMetricRules);
     unit.metrics = measured.metrics;
     unit.shape = functionShape5(fn, measured.metrics.parameters);
@@ -7900,7 +7919,7 @@ var adapter5 = {
   support: "supported",
   lexerProfile: "cpp",
   grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm", repairs: cppRepairs }, extensions: claimed }],
-  extractorVersion: 3,
+  extractorVersion: 4,
   extract: extractFacts7,
   isTestPath: (path) => /(^|\/)(tests?|unittests?|gtest|testing)\//i.test(path) || /(^|\/)(test_[^/]+|[^/]+_(test|tests|unittest|unittests)|[^/]+Tests?|[^/]+\.(test|spec))\.[^/.]+$/.test(path),
   metrics: cppMetricRules,
@@ -8341,7 +8360,7 @@ function passThroughOf8(fn) {
 }
 
 // packages/parse/src/languages/python/extract-facts.ts
-var extractorVersion4 = 3;
+var extractorVersion4 = 4;
 var importTypes = /* @__PURE__ */ new Set(["import_statement", "import_from_statement", "future_import_statement"]);
 var targetTypes = /* @__PURE__ */ new Set(["pattern_list", "tuple_pattern", "list_pattern", "list_splat_pattern", "tuple", "list"]);
 var comprehensionTypes = /* @__PURE__ */ new Set(["list_comprehension", "set_comprehension", "dictionary_comprehension", "generator_expression"]);
@@ -8808,6 +8827,7 @@ var Extractor8 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
+    if (name.startsWith("_") && !(name.startsWith("__") && name.endsWith("__"))) unit.hidden = true;
     if (kind === "class") unit.shape = classShape3(extent);
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root, pythonMetricRules);

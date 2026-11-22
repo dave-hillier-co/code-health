@@ -9,7 +9,7 @@ import { rustMetricRules, typeName } from "./metric-rules.ts";
  * Bump when the extraction rules change in a way that alters facts for the same source, so cached facts from
  * older rules are not reused.
  */
-export const extractorVersion = 2;
+export const extractorVersion = 3;
 
 /**
  * How a Rust file is read, in terms the import model understands (see resolve-path.ts for the specifiers).
@@ -42,6 +42,8 @@ interface Context {
   localMods: ReadonlySet<string>;
   /** The node is a member of an `impl Trait for Type` block, so its functions implement the trait's methods. */
   implementsTrait?: boolean;
+  /** An enclosing module or impl block is `#[cfg(test)]`. */
+  inTests?: boolean;
 }
 
 type Visibility = "public" | "restricted" | "private";
@@ -67,6 +69,11 @@ function attributeNamed(node: Node, name: string): Node | undefined {
   return attributesOf(node)
     .map((item) => item.namedChildren.find((child) => child.type === "attribute"))
     .find((attribute) => attribute?.namedChildren[0]?.text === name);
+}
+
+/** The item carries `#[cfg(test)]`, `#[test]` or an async runtime's `::test` attribute, so it is test code wherever its file sits. */
+function isTestItem(node: Node): boolean {
+  return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
 }
 
 function pathAttribute(node: Node): string | undefined {
@@ -320,6 +327,7 @@ class Extractor {
     const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
     const unit: UnitFact = { qualifiedName, kind, startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, source: "structural" };
     if (context.unit !== undefined) unit.parent = context.unit;
+    if (context.inTests === true || isTestItem(node)) unit.test = true;
     if (fn === undefined) unit.shape = typeShape(node);
     else {
       this.codeRows ??= codeRowsOf(this.root!, rustMetricRules);
@@ -330,6 +338,7 @@ class Extractor {
       if (forwarded !== undefined) unit.passThrough = forwarded;
       if (measured.recursive) unit.recursive = true;
       if (memberOf !== undefined && context.implementsTrait === true) unit.override = true;
+      if (memberOf !== undefined && context.implementsTrait !== true && visibilityOf(node) !== "public") unit.hidden = true;
       if (measured.increments !== undefined) unit.increments = measured.increments;
     }
     this.units.push(unit);
@@ -385,7 +394,7 @@ class Extractor {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body = node.childForFieldName("body");
         this.visitChildrenExcept(node, body, { ...context, owner: undefined });
-        if (body !== null) this.visitScope(body, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
+        if (body !== null) this.visitScope(body, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null, ...(isTestItem(node) ? { inTests: true } : {}) });
         return;
       }
       case "type_item":
@@ -485,7 +494,7 @@ class Extractor {
     const body = node.childForFieldName("body");
     if (body !== null) {
       this.export(node, name, undefined, "namespace", visibility, context);
-      this.visitScope(body, { ...context, mods: [...context.mods, name], exposed: context.exposed && visibility === "public" });
+      this.visitScope(body, { ...context, mods: [...context.mods, name], exposed: context.exposed && visibility === "public", ...(isTestItem(node) ? { inTests: true } : {}) });
       return;
     }
     const written = pathAttribute(node);

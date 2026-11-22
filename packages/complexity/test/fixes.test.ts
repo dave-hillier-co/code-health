@@ -189,7 +189,7 @@ test("selects files by path argument", async () => {
 test("prints the header as notices after a table of rows by fix count", async () => {
   const run = await runInProcess(cli, fixRepo().path, ["fixes", "--limit", "all"], true);
   expect(run.code).toBe(ExitCode.Success);
-  expect(run.stdout).toMatch(/priceOrder\s+2\s+5\s+0\.4/);
+  expect(run.stdout).toMatch(/priceOrder\s+production\s+2\s+5\s+0\.4/);
   expect(run.stdout.indexOf("priceOrder")).toBeLessThan(run.stdout.indexOf("describe"));
   expect(run.stdout).toContain("Notice: The commit messages probably do not follow a convention this can use");
   expect(run.stdout).toContain("Notice: Analysed 11 of 11 commits in the 12 month window and skipped 0");

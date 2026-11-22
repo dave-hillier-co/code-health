@@ -43,6 +43,7 @@ test("missing file gives defaults for shared keys and the plugin section", () =>
   expect(config.file).toBeNull();
   expect(config.effective).toEqual({
     exclude: [],
+    testPatterns: [],
     languages: {},
     entryPoints: [],
     includeRoots: [],
@@ -72,6 +73,13 @@ test("includeRoots is a shared list of directories, and anything else fails", ()
   expect(() => load()).toThrow(/includeRoots must be an array of strings/);
 });
 
+test("testPatterns is a shared list of globs, and anything else fails", () => {
+  writeConfig({ testPatterns: ["src/support/**", "!test/real.ts"] });
+  expect(load().effective.testPatterns).toEqual(["src/support/**", "!test/real.ts"]);
+  writeConfig({ testPatterns: "src/support/**" });
+  expect(() => load()).toThrow(/testPatterns must be an array of strings/);
+});
+
 test("sections of other plugins are ignored and do not affect the hash", () => {
   const before = load().hash;
   writeConfig({ locality: { anything: "goes" }, cochange: {} });
@@ -93,7 +101,7 @@ test("hash is the first 16 hex digits of the SHA-256 of the serialised effective
   writeConfig({ exclude: ["dist"], cochange: { windowMonths: 3 } });
   const config = load();
   expect(config.hash).toBe(createHash("sha256").update(serialise(config.effective)).digest("hex").slice(0, 16));
-  expect(config.hash).toBe("d85831254c549aee");
+  expect(config.hash).toBe("a4753e935662a5b4");
 });
 
 const reading: PluginConfigSpec = { plugin: "cochange", section: { minSupport: 5 }, history: ["windowMonths", "botPatterns", "evidence", "branch"] };

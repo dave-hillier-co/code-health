@@ -60,6 +60,10 @@ export interface UnitFact extends UnitShape {
   passThrough?: string;
   /** The function calls itself directly. Absent when it does not. */
   recursive?: true;
+  /** A method, or in Python any unit, that code outside its type or module is not meant to call: private, internal, package-private or underscore-prefixed, by the language's own rule. Absent otherwise. */
+  hidden?: true;
+  /** The unit is test code inside a file that is not a test file by its name: a Rust `#[cfg(test)]` module or `#[test]` function. Absent otherwise. */
+  test?: true;
   /** The method overrides or implements one its type inherits, so it is not a free-standing helper. Absent otherwise. */
   override?: true;
 }

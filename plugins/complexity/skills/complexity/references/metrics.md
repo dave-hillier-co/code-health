@@ -52,8 +52,10 @@ of any supported language. It is never gated.
 | `depth` | `nodes` divided by `interface`, to two places. Higher is deeper. |
 | `passThrough` | The call a function's whole body forwards to. The body is one statement that is a call (`return`, `await`, `as` and `!` do not count as work), and every argument is a parameter, a spread of one, or a literal. A `new`, a computed argument or a second statement is the function doing work. |
 
-Rows are the exported top-level functions and classes, each module that exports something, and every pass-through, exported
-or not (a method of an exported class counts as exported). A row is `shallow` when it is exported, is not a method and has
+Rows are the exported top-level functions and classes, each module that exports something, and the exported pass-throughs
+(a public method of an exported class counts as exported; "exported" follows the language: capitalised in Go, `public` in C#
+and Java, `export` in TypeScript, `pub` in Rust, no leading underscore in Python). A pass-through that is not exported has no
+row and is counted in `summary.passThroughNotExported`. A row is `shallow` when it is exported, is not a method and has
 fewer than `interfaceDepth.shallow` (default 10) nodes per interface element. Pass-throughs sort first, then the shallowest.
 A small helper with one clear purpose is often shallow and right: read before acting. `files` carries `interfaceDepth`, the
 mean depth over a file's exported functions and classes, and `passThroughs`, so a campaign can be checked for splitting.
@@ -86,7 +88,7 @@ The `complexity` section of `code-health.json`. Missing keys take the defaults, 
 | `agreementBar` | `0.9` | Agreement a lexer profile needs for per-function lexical metrics. |
 | `syntaxErrorPercent` | `5` | `analyse` prints a notice when more than this percent of the files a grammar read have syntax errors. `parseCoverage` in the output always gives the share. |
 | `moveSimilarity` | `0.8` | Body similarity at which a function that disappeared and one that appeared are one function moved or renamed. |
-| `analyseTests` | `true` | Analyse test files. They are ranked among themselves, never against production code. |
+| `analyseTests` | `true` | Analyse test files. They are ranked among themselves, never against production code, and listed apart (`tests` section, `--include-tests`). Which files are tests comes from the language conventions and the shared top-level `testPatterns` of `code-health.json`: globs that make a file a test, `!` entries that make it production, the last match winning. |
 | `fixes` | `{ "maxCommits": null, "evidence": 3, "minRevisions": 3 }` | `fixes` and `analyse --with-fixes`: the most commits of the history window to parse, newest first, where null is the whole window (the output says how many were left out), the fix commits listed per function, and the revisions below which a function is labelled `low evidence`. |
 | `interfaceDepth` | `{ "shallow": 10 }` | Nodes per interface element below which an exported unit is labelled `shallow`. |
 | `overrides` | `[]` | `{ "paths": [globs], "guidelines": { ... } }`, applied in order over the defaults. For generated code, fixtures and the like. |

@@ -91,13 +91,44 @@ test("a function whose whole body forwards to one call is a pass-through, named 
   }
 });
 
-test("a pass-through is listed even when it is not exported, and a method of an exported class is exported with it", async () => {
-  const all = await rows();
-  expect(byId(all, "src/shapes.ts#hidden")).toMatchObject({ exported: false, passThrough: "other", labels: ["pass-through"] });
+test("only exported items have a row: a pass-through that is not exported is counted, and a public method of an exported class is listed", async () => {
+  const run = JSON.parse((await depth()).stdout);
+  const all = run.results as Row[];
+  expect(all.every((row) => row.exported)).toBe(true);
+  expect(all.map((row) => row.id)).not.toContain("src/shapes.ts#hidden");
+  expect(run.summary.passThroughNotExported).toBeGreaterThan(0);
   expect(byId(all, "src/shapes.ts#Repo.find")).toMatchObject({ kind: "method", exported: true, passThrough: "this.store.find" });
   // Other unexported units and methods are not part of the signal.
   expect(all.map((row) => row.id)).not.toContain("src/shapes.ts#Repo.secret");
   expect(all.map((row) => row.id)).not.toContain("src/shapes.ts#Repo.size");
+});
+
+test("a private method of an exported class that forwards has no row, in each language that has the notion", async () => {
+  const sources = {
+    "src/Service.cs": "public class Service {\n  private readonly Store store = new Store();\n  public int Find(int id) { return store.Find(id); }\n  internal int Lookup(int id) { return store.Find(id); }\n  private int Hidden(int id) { return store.Find(id); }\n}\ninternal class Local {\n  public int Find(int id) { return Other.Find(id); }\n}\n",
+    "src/Service.java": "public class Service {\n  public int find(int id) { return store.find(id); }\n  int lookup(int id) { return store.find(id); }\n  private int hidden(int id) { return store.find(id); }\n}\nclass Local {\n  public int find(int id) { return other.find(id); }\n}\n",
+    "src/service.go": "package svc\n\ntype Service struct{}\n\nfunc (s *Service) Find(id int) int { return find(id) }\n\nfunc (s *Service) lookup(id int) int { return find(id) }\n\nfunc Exposed(id int) int { return find(id) }\n\nfunc hidden(id int) int { return find(id) }\n\ntype local struct{}\n\nfunc (l local) Find(id int) int { return find(id) }\n",
+    "src/service.py": "class Service:\n    def find(self, id):\n        return store.find(id)\n\n    def _hidden(self, id):\n        return store.find(id)\n\n\ndef exposed(id):\n    return store.find(id)\n\n\ndef _private(id):\n    return store.find(id)\n",
+  };
+  const polyglot = GitFixture.build([
+    { type: "commit", message: "Base", date: "2024-01-01T00:00:00+00:00", changes: Object.entries(sources).map(([path, content]) => ({ op: "add" as const, path, content })) },
+  ]);
+  try {
+    const run = JSON.parse((await runComplexity(polyglot.path, ["depth", "--json", "--limit", "all"])).stdout);
+    const forwarding = (run.results as Row[]).filter((row) => row.passThrough !== null).map((row) => row.id).sort();
+    expect(forwarding).toEqual([
+      "src/Service.cs#Service.Find",
+      "src/Service.java#Service.find",
+      "src/service.go#Exposed",
+      "src/service.go#Service.Find",
+      "src/service.py#Service.find",
+      "src/service.py#exposed",
+    ]);
+    // Hidden, internal and package-private forwards, and every forward in a type that is not exported, are counted and not listed.
+    expect(run.summary.passThroughNotExported).toBe(11);
+  } finally {
+    polyglot.dispose();
+  }
 });
 
 test("an exported unit is shallow below ten nodes per interface element, and a pass-through is not shallow for its size alone", async () => {

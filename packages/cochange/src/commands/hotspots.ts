@@ -4,7 +4,7 @@ import { analysisCommand } from "../analysis-command.ts";
 import { complexityReportInput } from "../complexity-source.ts";
 import type { Derived } from "../derived-results.ts";
 import { rankHotspots } from "../hotspot-ranking.ts";
-import { allFilesOption, byOption, isGrouped, readBy, wantsAllFiles } from "../units.ts";
+import { allFilesOption, byOption, includeTestsOption, isGrouped, readBy, wantsAllFiles, wantsTests } from "../units.ts";
 
 export const name = "hotspots";
 
@@ -43,15 +43,15 @@ export const rules: Record<string, Rule> = {
  */
 export const derived: Derived = {
   command: name,
-  stated: (context) => ({ by: isGrouped(context) ? readBy(context) : undefined, allFiles: wantsAllFiles(context) ? true : undefined }),
+  stated: (context) => ({ by: isGrouped(context) ? readBy(context) : undefined, allFiles: wantsAllFiles(context) ? true : undefined, includeTests: wantsTests(context) ? true : undefined }),
   expect: (context, head) => ({ complexityReport: complexityReportInput(context.repo.root, head) }),
 };
 
 export const command = analysisCommand(name, {
   summary: "Rank files or components by change frequency weighted by complexity",
-  options: { ...byOption, ...allFilesOption },
+  options: { ...byOption, ...allFilesOption, ...includeTestsOption },
   cache: derived,
-  partial: (context) => isGrouped(context) || wantsAllFiles(context),
+  partial: (context) => isGrouped(context) || wantsAllFiles(context) || wantsTests(context),
   analyse: ({ context, history }) => rankedOutput(context, history),
 });
 
@@ -60,10 +60,11 @@ export async function rankedOutput(context: CommandContext, history: LoadedHisto
   const by = readBy(context);
   const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
   return {
-    inputs: { by, allFiles: wantsAllFiles(context), complexityReport: complexity.input },
+    inputs: { by, allFiles: wantsAllFiles(context), includeTests: wantsTests(context), complexityReport: complexity.input },
     results: rows,
     columns: [
       "path",
+      ...(by === "file" ? ["role"] : []),
       "score",
       ...(by === "component" ? ["files"] : []),
       "frequency",

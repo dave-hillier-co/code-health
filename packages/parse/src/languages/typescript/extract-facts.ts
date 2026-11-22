@@ -1,5 +1,5 @@
 import type { Node } from "web-tree-sitter";
-import { classShape, functionShape, nodeCount, passThroughOf } from "./interface-shape.ts";
+import { classShape, functionShape, isHiddenMember, nodeCount, passThroughOf } from "./interface-shape.ts";
 import { codeRowsOf, measureFunction } from "../../unit-metrics.ts";
 import { typescriptMetricRules } from "./metric-rules.ts";
 import type {
@@ -18,7 +18,7 @@ import type {
  * Bump when the extraction rules change in a way that alters facts for the
  * same source, so cached facts from older rules are not reused.
  */
-export const extractorVersion = 6;
+export const extractorVersion = 7;
 
 interface Context {
   /** Qualified name of the innermost enclosing unit; names of nested units are built from it. */
@@ -427,6 +427,7 @@ class Extractor {
       source: "structural",
     };
     if (context.unit !== undefined) unit.parent = context.unit;
+    if (kind === "method" && isHiddenMember(node)) unit.hidden = true;
     if (kind === "class") unit.shape = classShape(node);
     if (fn !== undefined && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root!, typescriptMetricRules);

@@ -12,6 +12,7 @@
         "resultsCache": { "$ref": "common.schema.json#/$defs/resultsCache" },
                 "by": { "enum": ["file", "component"] },
         "allFiles": { "type": "boolean", "description": "True when --all-files ranked the files that are not code as well." },
+        "includeTests": { "type": "boolean", "description": "True when --include-tests ranked the test files with the production code. Otherwise the test files are counted in dropped.tests." },
         "complexityReport": {
           "description": "The complexity plugin's report that supplied the complexity column, or null when the indentation proxy was used.",
           "oneOf": [
@@ -29,7 +30,7 @@
           ]
         }
       },
-      "required": ["by", "allFiles", "complexityReport"],
+      "required": ["by", "allFiles", "includeTests", "complexityReport"],
       "additionalProperties": false
     },
     "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" },
@@ -43,6 +44,7 @@
         "type": "object",
         "properties": {
           "path": { "type": "string", "description": "The file's path, or the component's name with --by component." },
+          "role": { "enum": ["production", "test"], "description": "Whether the file is a test, by its language's naming conventions and the shared testPatterns. Only with --by file." },
           "score": {
             "type": ["number", "null"],
             "minimum": 0,
