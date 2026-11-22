@@ -419,6 +419,8 @@ async function execute(cli2, io) {
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args.positionals, values: args.values };
   const output = await command15.run(context);
+  for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
+`);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
   if (args.json || !io.stdout.isTTY) {
@@ -446,6 +448,8 @@ async function execute(cli2, io) {
     );
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results, args.fields ?? columns, truncated));
+    for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
+`);
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
 `);
   } else {
