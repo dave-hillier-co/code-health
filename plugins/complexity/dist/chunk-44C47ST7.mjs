@@ -5,7 +5,7 @@ import {
   adapterForPath,
   bindingForPath,
   isTestPath
-} from "./chunk-FUKS26Y7.mjs";
+} from "./chunk-A2QHJ7GY.mjs";
 import {
   GitError,
   SCHEMA_VERSION,
@@ -27,7 +27,7 @@ import {
   runGit,
   structuralValues,
   thresholdsFor
-} from "./chunk-NJM4DZV3.mjs";
+} from "./chunk-LGORVN72.mjs";
 import {
   buildDocument,
   shapeResults

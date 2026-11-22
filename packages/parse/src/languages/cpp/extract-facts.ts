@@ -42,6 +42,15 @@ interface Context {
   locals: ReadonlySet<string>;
 }
 
+/**
+ * A unit id: the enclosing namespaces joined with `::`, then `::`, then the class chain and member joined with `.`
+ * (`A::B.m` is member `m` of class `B` in namespace `A`). A unit in the global namespace has no prefix.
+ * An anonymous namespace adds no segment, and an inline namespace adds its own name.
+ */
+function unitId(namespaces: readonly string[], rest: string): string {
+  return namespaces.length === 0 ? rest : `${namespaces.join("::")}::${rest}`;
+}
+
 function startRow(node: Node): number {
   return node.startPosition.row;
 }
@@ -366,7 +375,7 @@ class Extractor {
     }
     const name = plain(nameNode.type === "template_type" ? (nameNode.childForFieldName("name") ?? nameNode) : nameNode);
     const kind: DeclarationKind = classAbstraction(node);
-    const unitName = this.uniqueName(context.unit === undefined ? name : `${context.unit}.${name}`);
+    const unitName = this.uniqueName(context.unit === undefined ? unitId(context.namespaces, name) : `${context.unit}.${name}`);
     const unit: UnitFact = {
       qualifiedName: unitName,
       kind: "class",
@@ -423,7 +432,7 @@ class Extractor {
     const declaration = declarator.parent;
     const sole = declaration?.type === "declaration" && declaration.namedChildren.filter((child) => child.type === "init_declarator").length === 1;
     const extent = sole ? declaration : declarator;
-    const qualifiedName = this.uniqueName(context.unit === undefined ? name : `${context.unit}.${name}`);
+    const qualifiedName = this.uniqueName(context.unit === undefined ? unitId(context.namespaces, name) : `${context.unit}.${name}`);
     this.units.push(this.measuredUnit(qualifiedName, "arrow", lambda, extent, undefined, context));
     this.visitChildren(lambda, { ...context, unit: qualifiedName, scope: "function" });
   }
@@ -439,7 +448,9 @@ class Extractor {
     const insideClass = context.scope === "class";
     const owner = named.qualifier.length > 0 ? named.qualifier.at(-1)! : insideClass ? context.owners.at(-1) : undefined;
     const isMember = owner !== undefined;
-    const base = named.qualifier.length > 0 ? `${named.qualifier.at(-1)}.${named.name}` : context.unit === undefined || !insideClass ? named.name : `${context.unit}.${named.name}`;
+    const base = named.qualifier.length > 0
+      ? unitId([...context.namespaces, ...named.qualifier.slice(0, -1)], `${named.qualifier.at(-1)}.${named.name}`)
+      : context.unit === undefined || !insideClass ? unitId(context.namespaces, named.name) : `${context.unit}.${named.name}`;
     const qualifiedName = this.uniqueName(base);
     const kind: UnitKind = isMember ? "method" : "function";
     const unit = this.measuredUnit(qualifiedName, kind, fn, extent, named.name, context);

@@ -14,7 +14,7 @@ import {
   readSettings,
   runGit,
   thresholdsFor
-} from "./chunk-NJM4DZV3.mjs";
+} from "./chunk-LGORVN72.mjs";
 import "./chunk-T3PHNALX.mjs";
 import "./chunk-NYIILDEN.mjs";
 
@@ -283,7 +283,7 @@ async function measurementAtHead(root, file, settings) {
   }
 }
 async function isTestPath(file) {
-  return (await import("./chunk-GH3WHVC4.mjs")).isTestPath(file);
+  return (await import("./chunk-OQQHKPNO.mjs")).isTestPath(file);
 }
 function explainCommand(file) {
   if (!hasSupportedExtension(file)) return void 0;

@@ -3776,7 +3776,7 @@ var recorded = { units: 107, found: 105, exact: 105, blocks: 115, spurious: 6 };
 var recorded2 = { units: 71, found: 70, exact: 69, blocks: 74, spurious: 2 };
 
 // packages/lexical/src/agreement-rates/cpp.ts
-var recorded3 = { units: 66, found: 65, exact: 65, blocks: 67, spurious: 1 };
+var recorded3 = { units: 71, found: 70, exact: 70, blocks: 72, spurious: 1 };
 
 // packages/lexical/src/agreement-rates/python.ts
 var recorded4 = { units: 70, found: 68, exact: 67, blocks: 67, spurious: 0 };
@@ -9415,7 +9415,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change2.head);
   const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-2S3J7RMQ.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-EAPQ3FBP.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);

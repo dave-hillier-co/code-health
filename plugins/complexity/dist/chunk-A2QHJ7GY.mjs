@@ -4926,6 +4926,9 @@ function passThroughOf5(fn, parameterNames6) {
 // packages/parse/src/languages/cpp/extract-facts.ts
 var smartPointers = /* @__PURE__ */ new Set(["unique_ptr", "shared_ptr", "weak_ptr", "optional", "reference_wrapper", "observer_ptr", "not_null"]);
 var macroName2 = /^[A-Z][A-Z0-9_]{2,}$/;
+function unitId(namespaces, rest) {
+  return namespaces.length === 0 ? rest : `${namespaces.join("::")}::${rest}`;
+}
 function startRow5(node) {
   return node.startPosition.row;
 }
@@ -5220,7 +5223,7 @@ var Extractor5 = class {
     }
     const name = plain(nameNode.type === "template_type" ? nameNode.childForFieldName("name") ?? nameNode : nameNode);
     const kind = classAbstraction(node);
-    const unitName = this.uniqueName(context.unit === void 0 ? name : `${context.unit}.${name}`);
+    const unitName = this.uniqueName(context.unit === void 0 ? unitId(context.namespaces, name) : `${context.unit}.${name}`);
     const unit = {
       qualifiedName: unitName,
       kind: "class",
@@ -5273,7 +5276,7 @@ var Extractor5 = class {
     const declaration = declarator.parent;
     const sole = declaration?.type === "declaration" && declaration.namedChildren.filter((child) => child.type === "init_declarator").length === 1;
     const extent = sole ? declaration : declarator;
-    const qualifiedName = this.uniqueName(context.unit === void 0 ? name : `${context.unit}.${name}`);
+    const qualifiedName = this.uniqueName(context.unit === void 0 ? unitId(context.namespaces, name) : `${context.unit}.${name}`);
     this.units.push(this.measuredUnit(qualifiedName, "arrow", lambda, extent, void 0, context));
     this.visitChildren(lambda, { ...context, unit: qualifiedName, scope: "function" });
   }
@@ -5288,7 +5291,7 @@ var Extractor5 = class {
     const insideClass = context.scope === "class";
     const owner = named.qualifier.length > 0 ? named.qualifier.at(-1) : insideClass ? context.owners.at(-1) : void 0;
     const isMember = owner !== void 0;
-    const base = named.qualifier.length > 0 ? `${named.qualifier.at(-1)}.${named.name}` : context.unit === void 0 || !insideClass ? named.name : `${context.unit}.${named.name}`;
+    const base = named.qualifier.length > 0 ? unitId([...context.namespaces, ...named.qualifier.slice(0, -1)], `${named.qualifier.at(-1)}.${named.name}`) : context.unit === void 0 || !insideClass ? unitId(context.namespaces, named.name) : `${context.unit}.${named.name}`;
     const qualifiedName = this.uniqueName(base);
     const kind = isMember ? "method" : "function";
     const unit = this.measuredUnit(qualifiedName, kind, fn, extent, named.name, context);

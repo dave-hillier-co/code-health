@@ -1,17 +1,23 @@
 {
   "units": {
     "shapes.cpp": [
-      ["plain", "function", 3, 5],
-      ["plain~2", "function", 7, 9],
-      ["Widget", "class", 11, 22],
-      ["Widget.Widget", "method", 13, 13],
-      ["Widget.draw", "method", 14, 14],
-      ["Widget.Part", "class", 18, 21],
-      ["Widget.Part.size", "method", 20, 20],
-      ["Widget.~Widget", "method", 24, 24],
-      ["Widget.make", "method", 26, 29],
-      ["Widget.make.helper", "arrow", 27, 27],
-      ["identity", "function", 31, 34]
+      ["acme::plain", "function", 3, 5],
+      ["acme::plain~2", "function", 7, 9],
+      ["acme::Widget", "class", 11, 22],
+      ["acme::Widget.Widget", "method", 13, 13],
+      ["acme::Widget.draw", "method", 14, 14],
+      ["acme::Widget.Part", "class", 18, 21],
+      ["acme::Widget.Part.size", "method", 20, 20],
+      ["acme::Widget.~Widget", "method", 24, 24],
+      ["acme::Widget.make", "method", 26, 29],
+      ["acme::Widget.make.helper", "arrow", 27, 27],
+      ["acme::identity", "function", 31, 34],
+      ["other::Widget", "class", 40, 43],
+      ["other::Widget.draw", "method", 42, 42],
+      ["hidden", "function", 49, 51],
+      ["v2::version", "function", 57, 59],
+      ["outer::inner::deep", "function", 65, 67],
+      ["acme::Widget.count", "method", 71, 73]
     ]
   },
   "syntaxErrors": []
