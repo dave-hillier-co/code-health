@@ -553,6 +553,35 @@
         },
         "tokens": {
           "$ref": "#/$defs/distribution"
+        },
+        "shell": {
+          "type": "object",
+          "description": "Bash calls over the tasks, whatever the effort mode. A call is parsed when every command in it was understood; a call that is not parsed contributes no path.",
+          "properties": {
+            "calls": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "unparsed": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "parsedShare": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "description": "Parsed calls divided by calls, or null when there were no Bash calls."
+            }
+          },
+          "required": [
+            "calls",
+            "unparsed",
+            "parsedShare"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -561,7 +590,8 @@
         "foldersVisited",
         "reReads",
         "edits",
-        "tokens"
+        "tokens",
+        "shell"
       ],
       "additionalProperties": false
     },
