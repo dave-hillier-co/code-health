@@ -37,11 +37,17 @@ export function withoutMetaOnly(stdout: string): string {
 }
 
 /**
- * The output as it is stored: `meta` (timings, timestamps, versions) removed and the effective-config hash
- * masked, then serialised byte for byte. How the hash is computed is pinned once, in the cli-kit config tests.
+ * The output as it is stored: `meta` (timings, timestamps, versions) removed, the effective-config hash
+ * masked and the note of which inputs came from the results cache (`inputs.resultsCache`) removed, then
+ * serialised byte for byte. The note says how this run got its answer, never what the answer is, so a cold run
+ * and a warm one compare equal. How the hash is computed is pinned once, in the cli-kit config tests.
  */
 export function withoutMeta(stdout: string): string {
   const { meta: _meta, ...document } = JSON.parse(stdout);
+  if (document.inputs !== null && typeof document.inputs === "object") {
+    const { resultsCache: _resultsCache, ...inputs } = document.inputs;
+    document.inputs = inputs;
+  }
   return serialise("config" in document ? { ...document, config: GOLDEN_CONFIG_HASH } : document);
 }
 

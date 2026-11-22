@@ -2,7 +2,7 @@
 
 Invocation: the full command line given in SKILL.md, then `<command> [options] --json`. JSON is also the default whenever stdout is not a terminal. Needs Node 22.13 or newer.
 
-Options every list command takes: `--limit N|all` (default 20), `--fields a,b` to project columns, `--no-refresh` to read the cache as it is (an error when there is no cache). The output always carries `window`, `filtersApplied`, `evidence` and `truncated`, which says how many rows were cut.
+Options every list command takes: `--limit N|all` (default 20), `--fields a,b` to project columns, `--no-refresh` to read the cache as it is (an error when there is no cache). `hotspots`, `coupling` and `brief` print a result stored for the same commit, config and options without reading history, and say so in `inputs.resultsCache`; `--no-cache` computes the result again. The output always carries `window`, `filtersApplied`, `evidence` and `truncated`, which says how many rows were cut.
 
 Exit codes: 0 success, 1 a check failed, 2 usage or config error, 3 environment error (not a git repository, shallow clone without a stated window, Node too old). With `--json`, errors are JSON on stderr.
 
@@ -22,7 +22,7 @@ A compact briefing for the files about to be changed. One row per file, in path 
 | `alongsideNotShown` | Partners with enough support that were cut by `--partners N` (default 5). |
 | `note` | Why a row is empty: a new file or wrong path, no revisions in the window, or no partner with enough shared changes, or none at the degree guideline. |
 
-A partner is listed when its support reaches `cochange.minSupport` (below that the shared changes are too few to mean anything) and the partner still exists. `cochange.minDegree` is a guideline: partners under it are listed after the others and marked. `brief` is never stored as a report. It reads absolute paths inside the repository and strips `./`.
+A partner is listed when its support reaches `cochange.minSupport` (below that the shared changes are too few to mean anything) and the partner still exists. `cochange.minDegree` is a guideline: partners under it are listed after the others and marked. `brief` is computed from the stored hotspot ranking, coupling pairs and per-file activity (the first briefing for a commit stores all three), so a briefing after it is quick; `--no-cache` computes all three again. A briefing is never stored itself. It reads absolute paths inside the repository and strips `./`.
 
 ## hotspots [--by file|component] [--all-files]
 

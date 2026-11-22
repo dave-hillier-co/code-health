@@ -22,14 +22,27 @@ export function recordBuiltinOmission(entry: string, path: string): void {
 /** Forgets the omissions of an earlier run. Each CLI invocation starts from none. */
 export function resetBuiltinOmissions(): void {
   omitted.clear();
+  restored.clear();
+}
+
+const restored = new Map<string, number>();
+
+/** Carries the counts of an earlier run that this run prints from a stored result, in place of what this run recorded. `resetBuiltinOmissions` clears them. */
+export function restoreBuiltinOmissions(counts: Record<string, number>): void {
+  omitted.clear();
+  restored.clear();
+  for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
+    const count = counts[entry];
+    if (typeof count === "number" && count > 0) restored.set(entry, count);
+  }
 }
 
 /** The number of distinct paths each built-in entry omitted during this run. Entries that omitted nothing are not listed. */
 export function builtinOmissions(): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
-    const paths = omitted.get(entry);
-    if (paths !== undefined && paths.size > 0) counts[entry] = paths.size;
+    const total = (omitted.get(entry)?.size ?? 0) + (restored.get(entry) ?? 0);
+    if (total > 0) counts[entry] = total;
   }
   return counts;
 }

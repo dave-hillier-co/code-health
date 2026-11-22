@@ -1,8 +1,9 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
-import { writeReport } from "@code-health/history/reports";
+import { skipReport, writeReport } from "@code-health/history/reports";
+import { cachedOutput, noCacheHelp, noCacheOption } from "@code-health/history/results-cache";
 import { ParseCache } from "@code-health/parse/parse-cache";
-import { currentTree, type CurrentTree } from "./current-tree.ts";
+import { currentTree, hasUncommittedWork, type CurrentTree } from "./current-tree.ts";
 import { readSettings, type ComplexitySettings } from "./config.ts";
 import { measureTree, type Layer, type Measurement } from "./measure.ts";
 import { isMetricId, metricIds, type MetricId } from "./metrics.ts";
@@ -44,4 +45,27 @@ export async function measureCurrent(context: CommandContext, layer: Layer): Pro
 /** Stores a whole-repository result as `reports/complexity.<command>.json` when the tree is clean. */
 export function storeReport(context: CommandContext, command: string, output: CommandOutput): Promise<boolean> {
   return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION }, command, output, context.repo.head);
+}
+
+export { noCacheOption, noCacheHelp };
+
+/**
+ * Prints the result stored for this commit, config and stated inputs, or computes it and stores it as
+ * `reports/complexity.<command>[.<variant>].json`: the default run keeps the plain name other plugins read. A result
+ * describes the commit only on a clean tree, so a run with uncommitted work measures the files on disk and stores
+ * nothing; the parse cache, which keys by file content, still spares it the files that did not change.
+ * `stated` holds the command's own inputs that change the full result, as the run states them, and `cacheable`
+ * is false for a run whose result also depends on something the commit and config do not name.
+ */
+export async function cachedAnalysis(
+  context: CommandContext,
+  command: string,
+  stated: Record<string, unknown>,
+  compute: () => Promise<CommandOutput>,
+  cacheable = true,
+): Promise<CommandOutput> {
+  if (!cacheable) return cachedOutput(context, undefined, compute, (run) => skipReport(run, "the run read the history of earlier revisions"));
+  const uncommitted = await hasUncommittedWork(context);
+  const stored = uncommitted ? undefined : { identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION }, command, head: context.repo.head, stated };
+  return cachedOutput(context, stored, compute, (run) => skipReport(run, "the run did not analyse HEAD"));
 }

@@ -1,5 +1,8 @@
-import type { Rule } from "@code-health/cli-kit/run-cli";
+import type { CommandContext, CommandOutput, Rule } from "@code-health/cli-kit/run-cli";
+import type { LoadedHistory } from "../history-access.ts";
 import { analysisCommand } from "../analysis-command.ts";
+import { complexityReportInput } from "../complexity-source.ts";
+import type { Derived } from "../derived-results.ts";
 import { rankHotspots } from "../hotspot-ranking.ts";
 import { allFilesOption, byOption, isGrouped, readBy, wantsAllFiles } from "../units.ts";
 
@@ -34,32 +37,46 @@ export const rules: Record<string, Rule> = {
   },
 };
 
+/**
+ * The ranking is stored for each view and window. It also depends on whether a complexity report covers the
+ * commit, so the stored `inputs.complexityReport` must be the one a run would read now.
+ */
+export const derived: Derived = {
+  command: name,
+  stated: (context) => ({ by: isGrouped(context) ? readBy(context) : undefined, allFiles: wantsAllFiles(context) ? true : undefined }),
+  expect: (context, head) => ({ complexityReport: complexityReportInput(context.repo.root, head) }),
+};
+
 export const command = analysisCommand(name, {
   summary: "Rank files or components by change frequency weighted by complexity",
   options: { ...byOption, ...allFilesOption },
+  cache: derived,
   partial: (context) => isGrouped(context) || wantsAllFiles(context),
-  async analyse({ context, history }) {
-    const by = readBy(context);
-    const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
-    return {
-      inputs: { by, allFiles: wantsAllFiles(context), complexityReport: complexity.input },
-      results: rows,
-      columns: [
-        "path",
-        "score",
-        ...(by === "component" ? ["files"] : []),
-        "frequency",
-        "churn",
-        "complexity",
-        "ageDays",
-        "lastChanged",
-        "fixes",
-        "fixShare",
-        "recommendation",
-        ...(by === "file" ? ["siblingTest", "findings"] : []),
-      ],
-      extra: { complexitySource: complexity.source, fixConvention },
-      notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
-    };
-  },
+  analyse: ({ context, history }) => rankedOutput(context, history),
 });
+
+/** The complete result of the command for the view the run states. */
+export async function rankedOutput(context: CommandContext, history: LoadedHistory): Promise<CommandOutput> {
+  const by = readBy(context);
+  const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
+  return {
+    inputs: { by, allFiles: wantsAllFiles(context), complexityReport: complexity.input },
+    results: rows,
+    columns: [
+      "path",
+      "score",
+      ...(by === "component" ? ["files"] : []),
+      "frequency",
+      "churn",
+      "complexity",
+      "ageDays",
+      "lastChanged",
+      "fixes",
+      "fixShare",
+      "recommendation",
+      ...(by === "file" ? ["siblingTest", "findings"] : []),
+    ],
+    extra: { complexitySource: complexity.source, fixConvention },
+    notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
+  };
+}

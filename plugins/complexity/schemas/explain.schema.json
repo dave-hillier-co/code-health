@@ -84,6 +84,7 @@
     "inputs": {
       "type": "object",
       "properties": {
+        "resultsCache": { "$ref": "common.schema.json#/$defs/resultsCache" },
         "tree": {
           "$ref": "common.schema.json#/$defs/tree"
         },

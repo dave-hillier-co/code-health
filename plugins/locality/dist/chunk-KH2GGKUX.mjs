@@ -24,12 +24,14 @@ function recordBuiltinOmission(entry, path) {
 }
 function resetBuiltinOmissions() {
   omitted.clear();
+  restored.clear();
 }
+var restored = /* @__PURE__ */ new Map();
 function builtinOmissions() {
   const counts = {};
   for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
-    const paths = omitted.get(entry);
-    if (paths !== void 0 && paths.size > 0) counts[entry] = paths.size;
+    const total = (omitted.get(entry)?.size ?? 0) + (restored.get(entry) ?? 0);
+    if (total > 0) counts[entry] = total;
   }
   return counts;
 }
@@ -154,12 +156,14 @@ function recordDropped(kind, path) {
 }
 function resetDropped() {
   dropped.clear();
+  restored2.clear();
 }
+var restored2 = /* @__PURE__ */ new Map();
 function droppedCounts() {
   const counts = {};
   for (const kind of DROPPED_KINDS) {
-    const paths = dropped.get(kind);
-    if (paths !== void 0 && paths.size > 0) counts[kind] = paths.size;
+    const total = (dropped.get(kind)?.size ?? 0) + (restored2.get(kind) ?? 0);
+    if (total > 0) counts[kind] = total;
   }
   return counts;
 }

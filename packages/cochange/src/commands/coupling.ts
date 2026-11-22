@@ -1,7 +1,9 @@
-import type { Rule } from "@code-health/cli-kit/run-cli";
+import type { CommandContext, CommandOutput, Rule } from "@code-health/cli-kit/run-cli";
 import { treeDistance } from "@code-health/graph/tree-distance";
 import { isCodePath } from "@code-health/parse/code-files";
 import { analysisCommand } from "../analysis-command.ts";
+import type { Derived } from "../derived-results.ts";
+import type { LoadedHistory } from "../history-access.ts";
 import { readSettings } from "../config.ts";
 import { coupledPairs, integerOption } from "../coupled-pairs.ts";
 import { focusPath } from "../focus-path.ts";
@@ -47,8 +49,15 @@ export const rules: Record<string, Rule> = {
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
+/** The pairs are stored for each file focus, listing option and window the run states. */
+export const derived: Derived = {
+  command: name,
+  stated: ({ values }) => ({ file: values.file, minDegree: values["min-degree"], minSupport: values["min-support"] }),
+};
+
 export const command = analysisCommand(name, {
   summary: "Pairs of files that change together, with degree, confidence both ways, support and distance",
+  cache: derived,
   options: {
     file: { type: "string" },
     "min-degree": { type: "string" },
@@ -56,37 +65,40 @@ export const command = analysisCommand(name, {
   },
   partial: ({ values }) =>
     values.file !== undefined || values["min-degree"] !== undefined || values["min-support"] !== undefined,
-  async analyse({ context, history }) {
-    const { settings } = history;
-    const minDegree = integerOption(context, "min-degree", settings.minDegree, 0, 100);
-    const minSupport = integerOption(context, "min-support", settings.minSupport, 1, Number.MAX_SAFE_INTEGER);
-
-    // The degree is a guideline: no pair is dropped for being under it. The support floor is the only cut.
-    const counts = coupledPairs(history, { minSupport });
-
-    const languages = context.config.effective.languages;
-    const requested = context.values.file;
-    const focus = typeof requested === "string" ? await focusPath(context, history, requested) : undefined;
-
-    const rows = counts.pairs
-      .filter((pair) => focus === undefined || pair.a === focus || pair.b === focus)
-      .map((pair) => describe(pair, focus, settings, minDegree, (path) => (isCodePath(path, languages) ? "code" : "non-code")))
-      .sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
-
-    return {
-      inputs: { file: focus ?? null, degreeGuideline: minDegree, minSupport, asymmetry: ASYMMETRY },
-      results: rows,
-      columns: ["path", "pathKind", "with", "withKind", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
-      extra: {
-        population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
-        note:
-          rows.length === 0
-            ? `No pair shares at least ${minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.`
-            : null,
-      },
-    };
-  },
+  analyse: ({ context, history }) => couplingOutput(context, history),
 });
+
+/** The complete result of the command for the focus and listing options the run states. */
+export async function couplingOutput(context: CommandContext, history: LoadedHistory): Promise<CommandOutput> {
+  const { settings } = history;
+  const minDegree = integerOption(context, "min-degree", settings.minDegree, 0, 100);
+  const minSupport = integerOption(context, "min-support", settings.minSupport, 1, Number.MAX_SAFE_INTEGER);
+
+  // The degree is a guideline: no pair is dropped for being under it. The support floor is the only cut.
+  const counts = coupledPairs(history, { minSupport });
+
+  const languages = context.config.effective.languages;
+  const requested = context.values.file;
+  const focus = typeof requested === "string" ? await focusPath(context, history, requested) : undefined;
+
+  const rows = counts.pairs
+    .filter((pair) => focus === undefined || pair.a === focus || pair.b === focus)
+    .map((pair) => describe(pair, focus, settings, minDegree, (path) => (isCodePath(path, languages) ? "code" : "non-code")))
+    .sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
+
+  return {
+    inputs: { file: focus ?? null, degreeGuideline: minDegree, minSupport, asymmetry: ASYMMETRY },
+    results: rows,
+    columns: ["path", "pathKind", "with", "withKind", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
+    extra: {
+      population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
+      note:
+        rows.length === 0
+          ? `No pair shares at least ${minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.`
+          : null,
+    },
+  };
+}
 
 function describe(
   pair: PairCount,

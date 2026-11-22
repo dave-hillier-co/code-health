@@ -1,5 +1,9 @@
 import type { CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
-import { reportPath as sharedReportPath, writeReport as writeSharedReport } from "@code-health/history/reports";
+import {
+  reportPath as sharedReportPath,
+  writeReport as writeSharedReport,
+  type WriteReportOptions,
+} from "@code-health/history/reports";
 import { SCHEMA_VERSION, TOOL } from "./tool.ts";
 
 /** Where a command's report lives. Reports are per worktree, unlike the history cache. */
@@ -16,6 +20,7 @@ export function writeReport(
   command: string,
   output: CommandOutput,
   analysedHead: string,
+  options?: WriteReportOptions,
 ): Promise<boolean> {
-  return writeSharedReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION }, command, output, analysedHead);
+  return writeSharedReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION }, command, output, analysedHead, options);
 }

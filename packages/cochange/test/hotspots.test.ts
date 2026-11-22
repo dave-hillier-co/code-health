@@ -141,13 +141,15 @@ test("--limit cuts the printed list but the stored report keeps every file", asy
   expect(document.truncated).toEqual({ limit: 1, total: 4, cut: 3 });
   const stored = JSON.parse((await import("node:fs")).readFileSync(reportPath(repo.path, "hotspots"), "utf8"));
   expect(stored.results).toHaveLength(4);
-  expect(stored.meta).toBeUndefined();
+  // A stored result carries what a table run prints with it, and no wall-clock facts.
+  expect(Object.keys(stored.meta)).toEqual(["printed"]);
 });
 
-test("a view by component is printed but not stored as the report", async () => {
+test("a view by component is stored under its own name, never as the plain report other plugins read", async () => {
   config({ components: { core: ["src/core/**"] } });
   await hotspots("--by", "component");
   expect((await import("node:fs")).existsSync(reportPath(repo.path, "hotspots"))).toBe(false);
+  expect(JSON.parse((await hotspots("--by", "component")).stdout).inputs.resultsCache).toHaveLength(1);
 });
 
 test("a lower percentile flags more files, but only those changed within the recent window", async () => {
@@ -167,10 +169,13 @@ test("a longer recent window brings the quiet file back in", async () => {
   expect(results.find((r: { path: string }) => r.path === "src/legacy/old.ts").recommendation).toBe("hotspot");
 });
 
-test("output is byte identical between runs apart from meta", async () => {
-  const first = await hotspots();
-  const second = await hotspots();
+test("output is byte identical between runs apart from meta and the note of where the inputs came from", async () => {
+  const first = await hotspots("--no-cache");
+  const second = await hotspots("--no-cache");
   expect(withoutMeta(second.stdout)).toBe(withoutMeta(first.stdout));
+  const cached = await hotspots();
+  expect(JSON.parse(cached.stdout).inputs.resultsCache).toHaveLength(1);
+  expect(withoutMeta(cached.stdout)).toBe(withoutMeta(first.stdout));
 });
 
 test("a repository with no component of any kind still ranks, here on a flat history", async () => {

@@ -144,7 +144,7 @@ The skill instructs the agent to run `cochange brief` on the files it plans to c
 
 The plugin is self-contained. It reads reports produced by sibling plugins when they exist, and never requires them:
 
-- Writes its latest results to `.cache/code-health/reports/cochange.<command>.json`.
+- Stores its results on demand in `.cache/code-health/reports/cochange.<command>[.<variant>].json`, and prints a stored result when its commit, config and inputs match (see [suite.md](suite.md#shared-caches)). `hotspots`, `coupling` and `brief` do this, and `--no-cache` computes again. `brief` is computed from the stored hotspot ranking, coupling pairs and per-file activity, so a briefing reads no history when those are stored.
 - Reads `.cache/code-health/reports/complexity.files.json` when it is present and stamped with the current HEAD, and uses it as the complexity source for hotspots. The output names it in `inputs`.
 - The locality plugin reads coupling and spread from the shared cache directly, using the same bundled history core.
 

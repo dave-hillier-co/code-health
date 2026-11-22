@@ -9,6 +9,8 @@
     "inputs": {
       "type": "object",
       "properties": {
+        "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" },
+        "resultsCache": { "$ref": "common.schema.json#/$defs/resultsCache" },
         "paths": { "type": "array", "items": { "type": "string" }, "description": "The paths as asked, after removing ./ and making absolute paths repo-relative." },
         "partners": { "type": "integer", "minimum": 1, "description": "The most partners listed per file." },
         "degreeGuideline": { "type": "number", "minimum": 0, "maximum": 100, "description": "The degree percentage that partners are marked against (cochange.minDegree)." }

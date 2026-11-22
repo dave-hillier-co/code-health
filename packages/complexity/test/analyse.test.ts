@@ -124,14 +124,15 @@ describe("reports", () => {
     await analyse();
     const document = JSON.parse(readFileSync(reportFile("analyse"), "utf8"));
     expect(document).toMatchObject({ tool: "complexity", command: "analyse", repo: { head: repo.git("rev-parse", "HEAD"), dirty: false } });
-    expect(document.meta).toBeUndefined();
+    // What a table run prints is stored with the result, and no wall-clock facts.
+    expect(Object.keys(document.meta)).toEqual(["printed"]);
     // --limit never cuts what is stored.
     const limited = await runComplexity(repo.path, ["analyse", "--json", "--limit", "1"]);
     expect(JSON.parse(limited.stdout).results).toHaveLength(1);
     expect(JSON.parse(readFileSync(reportFile("analyse"), "utf8")).results.length).toBeGreaterThan(1);
   });
 
-  test("a run over some paths, metrics or one layer is not stored", async () => {
+  test("a run over some paths, metrics or one layer is stored under its own name and leaves the plain report alone", async () => {
     for (const name of ["analyse", "files"]) writeFileSync(reportFile(name), "stale");
     await analyse("src/label.ts");
     await analyse("--metrics", "cognitive");

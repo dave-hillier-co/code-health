@@ -162,6 +162,20 @@
       },
       "additionalProperties": false
     },
+    "resultsCache": {
+      "description": "Present only when the result was read from the results cache rather than computed: the stored results it came from, each as the report that holds it and the commit and config hash it was stamped with. `--no-cache` recomputes.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "report": { "type": "string" },
+          "head": { "$ref": "#/$defs/sha" },
+          "config": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+        },
+        "required": ["report", "head", "config"],
+        "additionalProperties": false
+      }
+    },
     "tree": {
       "description": "What was measured: the commit at HEAD when the tree is clean, otherwise the files on disk.",
       "enum": [

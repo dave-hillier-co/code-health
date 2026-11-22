@@ -9,7 +9,8 @@
     "inputs": {
       "type": "object",
       "properties": { "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" },
-        "file": { "type": ["string", "null"], "description": "The file the listing is limited to, resolved through renames to its current path." },
+        "resultsCache": { "$ref": "common.schema.json#/$defs/resultsCache" },
+                "file": { "type": ["string", "null"], "description": "The file the listing is limited to, resolved through renames to its current path." },
         "degreeGuideline": { "type": "integer", "minimum": 0, "maximum": 100, "description": "The degree percentage that pairs are marked against (cochange.minDegree, or --min-degree)." },
         "minSupport": { "type": "integer", "minimum": 1 },
         "asymmetry": {

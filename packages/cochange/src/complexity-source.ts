@@ -55,6 +55,13 @@ function readComplexityReport(root: string, head: string): { document: ReportDoc
   return { document, rows };
 }
 
+/** The complexity report a ranking at `head` would read, as `inputs` names it, or null when it would use the indentation proxy. */
+export function complexityReportInput(root: string, head: string): ComplexityInput | null {
+  const report = readComplexityReport(root, head);
+  if (report === undefined) return null;
+  return { report: `${COMPLEXITY_REPORT.tool}.${COMPLEXITY_REPORT.command}`, head, config: report.document.config as string };
+}
+
 /**
  * Complexity for files at the head commit. A complexity report that covers the
  * analysed commit is preferred and named in `inputs`. Without one, the file's

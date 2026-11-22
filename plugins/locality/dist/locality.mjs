@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-4ADFWIOL.mjs";
+} from "./chunk-SLCEB2NN.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -36,7 +36,7 @@ import {
   resetDropped,
   runGit,
   treeFromRef
-} from "./chunk-XYM3TEG5.mjs";
+} from "./chunk-KH2GGKUX.mjs";
 import {
   analyseTree
 } from "./chunk-DUZXXCLK.mjs";
@@ -743,7 +743,8 @@ __export(analyse_exports, {
 });
 
 // packages/history/src/reports.ts
-import { mkdirSync as mkdirSync2, renameSync, writeFileSync as writeFileSync2 } from "node:fs";
+import { createHash as createHash2, randomUUID } from "node:crypto";
+import { mkdirSync as mkdirSync2, renameSync, rmSync, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join3 } from "node:path";
 
 // packages/history/src/cache-location.ts
@@ -780,40 +781,59 @@ function ensureSelfIgnoring(directory) {
 }
 
 // packages/history/src/reports.ts
-function reportPath(root, tool, command8) {
-  return join3(root, ".cache", "code-health", "reports", `${tool}.${command8}.json`);
+function reportPath(root, tool, command8, variant) {
+  return join3(root, ".cache", "code-health", "reports", `${tool}.${command8}${variant === void 0 ? "" : `.${variant}`}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
 }
-async function writeReport(context, identity, command8, output, analysedHead) {
-  if (context.repo.dirty) {
-    skipReport(context, "the working tree has uncommitted changes");
-    return false;
-  }
-  if (analysedHead !== context.repo.head) {
-    skipReport(context, "the analysed commit is not HEAD");
-    return false;
+async function writeReport(context, identity, command8, output, analysedHead, options = {}) {
+  if (options.describesCommit !== true) {
+    if (context.repo.dirty) {
+      skipReport(context, "the working tree has uncommitted changes");
+      return false;
+    }
+    if (analysedHead !== context.repo.head) {
+      skipReport(context, "the analysed commit is not HEAD");
+      return false;
+    }
   }
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
+  const dropped = options.replayable === true ? droppedCounts() : {};
+  const builtin = options.replayable === true ? builtinOmissions() : {};
+  const printed = {
+    ...output.columns === void 0 ? {} : { columns: output.columns },
+    ...output.notices === void 0 || output.notices.length === 0 ? {} : { notices: output.notices },
+    ...output.failed === true ? { failed: true } : {}
+  };
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
     tool: identity.tool,
     command: command8,
-    repo: { head: context.repo.head, dirty: false },
+    repo: { head: analysedHead, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
-    extra: output.extra,
+    extra: {
+      ...output.extra,
+      ...Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin },
+      ...Object.keys(dropped).length === 0 ? {} : { dropped }
+    },
     results,
-    truncated
+    truncated,
+    ...options.replayable === true ? { meta: { printed } } : {}
   });
-  const file = reportPath(context.repo.root, identity.tool, command8);
+  const file = reportPath(context.repo.root, identity.tool, command8, options.variant);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join3(context.repo.root, ".cache", "code-health") });
   mkdirSync2(join3(file, ".."), { recursive: true });
-  const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync2(temporary, serialise(document));
-  renameSync(temporary, file);
+  const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    writeFileSync2(temporary, serialise(document));
+    renameSync(temporary, file);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    throw error;
+  }
   context.report = { stored: true };
   return true;
 }
@@ -933,7 +953,7 @@ function lowConfidenceReader(unresolved) {
 }
 
 // packages/parse/src/parse-cache.ts
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname as dirname2, join as join4 } from "node:path";
 var ParseCache = class _ParseCache {
@@ -957,7 +977,7 @@ var ParseCache = class _ParseCache {
   async set(blobSha, key, facts) {
     const path = this.entryPath(blobSha, key);
     await mkdir(dirname2(path), { recursive: true });
-    const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+    const temporary = `${path}.${process.pid}.${randomUUID2()}.tmp`;
     try {
       await writeFile(temporary, JSON.stringify(facts));
       await rename(temporary, path);
@@ -1430,8 +1450,8 @@ import { existsSync as existsSync5, readFileSync as readFileSync4 } from "node:f
 import { join as join6 } from "node:path";
 
 // packages/history/src/lock.ts
-import { randomUUID as randomUUID2 } from "node:crypto";
-import { closeSync, openSync, readFileSync as readFileSync3, renameSync as renameSync2, rmSync, statSync as statSync2, utimesSync, writeSync, linkSync } from "node:fs";
+import { randomUUID as randomUUID3 } from "node:crypto";
+import { closeSync, openSync, readFileSync as readFileSync3, renameSync as renameSync2, rmSync as rmSync2, statSync as statSync2, utimesSync, writeSync, linkSync } from "node:fs";
 import { hostname } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 var LockTimeoutError = class extends Error {
@@ -1485,7 +1505,7 @@ function tryCreate(path, token) {
   }
 }
 function steal(path, judged) {
-  const aside = `${path}.stale-${process.pid}-${randomUUID2()}`;
+  const aside = `${path}.stale-${process.pid}-${randomUUID3()}`;
   try {
     renameSync2(path, aside);
   } catch {
@@ -1497,12 +1517,12 @@ function steal(path, judged) {
     } catch {
     }
   }
-  rmSync(aside, { force: true });
+  rmSync2(aside, { force: true });
 }
 async function withLock(path, fn, options = {}) {
   const { timeoutMs = 12e4, staleMs = 6e5, unreadableMs = 5e3, pollMs = 25 } = options;
   const deadline = Date.now() + timeoutMs;
-  const token = randomUUID2();
+  const token = randomUUID3();
   while (!tryCreate(path, token)) {
     const raw = readRaw(path);
     if (raw !== void 0 && ownerIsGone(path, raw, staleMs, unreadableMs)) {
@@ -1525,7 +1545,7 @@ async function withLock(path, fn, options = {}) {
   } finally {
     clearInterval(heartbeat);
     const raw = readRaw(path);
-    if (raw !== void 0 && safeToken(raw) === token) rmSync(path, { force: true });
+    if (raw !== void 0 && safeToken(raw) === token) rmSync2(path, { force: true });
   }
 }
 function safeToken(raw) {
@@ -1644,7 +1664,7 @@ function parseRecord(record) {
 }
 
 // packages/history/src/store.ts
-import { existsSync as existsSync4, rmSync as rmSync2 } from "node:fs";
+import { existsSync as existsSync4, rmSync as rmSync3 } from "node:fs";
 
 // packages/history/src/sqlite.ts
 var SqliteUnavailableError = class extends Error {
@@ -1714,7 +1734,7 @@ CREATE TABLE changes (
 ) WITHOUT ROWID;
 `;
 function removeDatabase(path) {
-  for (const suffix of ["", "-wal", "-shm", "-journal"]) rmSync2(path + suffix, { force: true });
+  for (const suffix of ["", "-wal", "-shm", "-journal"]) rmSync3(path + suffix, { force: true });
 }
 function configure(db) {
   db.exec("PRAGMA journal_mode = WAL");
@@ -4898,9 +4918,9 @@ import { join as join10 } from "node:path";
 var defaultProjectsDirectory = () => join10(homedir(), ".claude", "projects");
 
 // packages/transcripts/src/stamp.ts
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 function stampOf(input) {
-  return createHash2("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
+  return createHash3("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
 }
 
 // packages/locality/src/measure-effort.ts
@@ -5786,7 +5806,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-QPHQTP33.mjs");
+    const { performMove } = await import("./chunk-5KRNUPRQ.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -6057,7 +6077,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-EQ63Q6DO.mjs");
+    const { verifyMove } = await import("./chunk-TO2G5VAO.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

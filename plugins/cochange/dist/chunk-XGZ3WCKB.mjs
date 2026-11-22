@@ -16,7 +16,7 @@ import {
   recordDropped,
   resolveBySymbols,
   supportedAdapters
-} from "./chunk-7PJUILTM.mjs";
+} from "./chunk-EQOETNH4.mjs";
 
 // packages/cochange/src/risk/signatures.ts
 import { readFileSync as readFileSync3 } from "node:fs";

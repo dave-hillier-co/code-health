@@ -28,8 +28,10 @@ import {
   recordDropped,
   resetBuiltinOmissions,
   resetDropped,
+  restoreBuiltinOmissions,
+  restoreDropped,
   runGit
-} from "./chunk-7PJUILTM.mjs";
+} from "./chunk-EQOETNH4.mjs";
 
 // packages/cli-kit/src/args.ts
 import { parseArgs } from "node:util";
@@ -533,8 +535,8 @@ async function runCli(cli2, io) {
 }
 async function execute(cli2, io) {
   const started = Date.now();
-  const name16 = discoverCommand(io.argv);
-  if (name16 === void 0) {
+  const name17 = discoverCommand(io.argv);
+  if (name17 === void 0) {
     if (io.argv.includes("--help")) {
       io.stdout.write(helpText(cli2));
       return ExitCode.Success;
@@ -542,16 +544,16 @@ async function execute(cli2, io) {
     io.stderr.write(helpText(cli2));
     return ExitCode.Usage;
   }
-  if (name16 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
-  const command16 = name16 === "config" ? configExplain : cli2.commands[name16];
-  if (!command16) throw usageError(`unknown command "${name16}"; run with --help to list commands`);
+  if (name17 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
+  const command16 = name17 === "config" ? configExplain : cli2.commands[name17];
+  if (!command16) throw usageError(`unknown command "${name17}"; run with --help to list commands`);
   const args = parseArguments(io.argv, command16.options);
   if (args.help) {
-    io.stdout.write(commandHelp(cli2, name16, command16, args.positionals[0]));
+    io.stdout.write(commandHelp(cli2, name17, command16, args.positionals[0]));
     return ExitCode.Success;
   }
-  let commandName = name16;
-  if (name16 === "config") {
+  let commandName = name17;
+  if (name17 === "config") {
     if (args.positionals[0] !== "explain") throw usageError("usage: config explain");
     commandName = "config explain";
   }
@@ -654,23 +656,23 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands2 = [
-    ...Object.entries(cli2.commands).map(([name16, command16]) => [name16, command16.summary]),
+    ...Object.entries(cli2.commands).map(([name17, command16]) => [name17, command16.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
-  const width = Math.max(...commands2.map(([name16]) => name16.length));
+  const width = Math.max(...commands2.map(([name17]) => name17.length));
   return [
     `Usage: ${cli2.tool} <command> [options]`,
     "",
     "Commands:",
-    ...commands2.map(([name16, summary]) => `  ${name16.padEnd(width)}  ${summary}`),
+    ...commands2.map(([name17, summary]) => `  ${name17.padEnd(width)}  ${summary}`),
     "",
     "Options:",
     ...commonOptionHelp,
     ""
   ].join("\n");
 }
-function commandHelp(cli2, name16, command16, requested) {
+function commandHelp(cli2, name17, command16, requested) {
   const sub = requested === void 0 ? void 0 : command16.subcommands?.[requested];
   const optionLines = (entries) => {
     const flags = entries.map(([option, spec]) => [
@@ -685,7 +687,7 @@ function commandHelp(cli2, name16, command16, requested) {
   if (sub !== void 0) {
     const taken = new Set(sub.options ?? []);
     return [
-      `Usage: ${cli2.tool} ${name16} ${requested}${command16.usage === void 0 ? "" : ` ${command16.usage}`} [options]`,
+      `Usage: ${cli2.tool} ${name17} ${requested}${command16.usage === void 0 ? "" : ` ${command16.usage}`} [options]`,
       "",
       sub.summary,
       "",
@@ -698,11 +700,11 @@ function commandHelp(cli2, name16, command16, requested) {
   const subcommands = Object.entries(command16.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
   const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli2.tool} ${name16}${command16.usage === void 0 ? "" : ` ${command16.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
+    `Usage: ${cli2.tool} ${name17}${command16.usage === void 0 ? "" : ` ${command16.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
     command16.summary,
     "",
-    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name16} <subcommand> --help for the options of one.`, ""] : [],
+    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name17} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
     ...optionLines(all.filter(([option]) => !hiddenOptions.has(option))),
     ...commonOptionHelp,
@@ -1671,301 +1673,143 @@ __export(abandonment_exports, {
 });
 
 // packages/history/src/reports.ts
-import { mkdirSync, renameSync as renameSync2, writeFileSync } from "node:fs";
+import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+import { mkdirSync, renameSync as renameSync2, rmSync as rmSync3, writeFileSync } from "node:fs";
 import { join as join3 } from "node:path";
-function reportPath(root, tool, command16) {
-  return join3(root, ".cache", "code-health", "reports", `${tool}.${command16}.json`);
+function variantOf(stated) {
+  const entries = Object.entries(stated ?? {}).filter(([, value]) => value !== void 0);
+  if (entries.length === 0) return void 0;
+  return createHash2("sha256").update(canonical(Object.fromEntries(entries))).digest("hex").slice(0, 12);
+}
+function canonical(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const record = value;
+    const keys = Object.keys(record).filter((key) => record[key] !== void 0).sort();
+    return `{${keys.map((key) => `${JSON.stringify(key)}:${canonical(record[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+function reportPath(root, tool, command16, variant) {
+  return join3(root, ".cache", "code-health", "reports", `${tool}.${command16}${variant === void 0 ? "" : `.${variant}`}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
 }
-async function writeReport(context, identity, command16, output, analysedHead) {
-  if (context.repo.dirty) {
-    skipReport(context, "the working tree has uncommitted changes");
-    return false;
-  }
-  if (analysedHead !== context.repo.head) {
-    skipReport(context, "the analysed commit is not HEAD");
-    return false;
+async function writeReport(context, identity, command16, output, analysedHead, options = {}) {
+  if (options.describesCommit !== true) {
+    if (context.repo.dirty) {
+      skipReport(context, "the working tree has uncommitted changes");
+      return false;
+    }
+    if (analysedHead !== context.repo.head) {
+      skipReport(context, "the analysed commit is not HEAD");
+      return false;
+    }
   }
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
+  const dropped = options.replayable === true ? droppedCounts() : {};
+  const builtin = options.replayable === true ? builtinOmissions() : {};
+  const printed = {
+    ...output.columns === void 0 ? {} : { columns: output.columns },
+    ...output.notices === void 0 || output.notices.length === 0 ? {} : { notices: output.notices },
+    ...output.failed === true ? { failed: true } : {}
+  };
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
     tool: identity.tool,
     command: command16,
-    repo: { head: context.repo.head, dirty: false },
+    repo: { head: analysedHead, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
-    extra: output.extra,
+    extra: {
+      ...output.extra,
+      ...Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin },
+      ...Object.keys(dropped).length === 0 ? {} : { dropped }
+    },
     results,
-    truncated
+    truncated,
+    ...options.replayable === true ? { meta: { printed } } : {}
   });
-  const file = reportPath(context.repo.root, identity.tool, command16);
+  const file = reportPath(context.repo.root, identity.tool, command16, options.variant);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join3(context.repo.root, ".cache", "code-health") });
   mkdirSync(join3(file, ".."), { recursive: true });
-  const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync(temporary, serialise(document));
-  renameSync2(temporary, file);
+  const temporary = `${file}.${process.pid}.${randomUUID2()}.tmp`;
+  try {
+    writeFileSync(temporary, serialise(document));
+    renameSync2(temporary, file);
+  } catch (error) {
+    rmSync3(temporary, { force: true });
+    throw error;
+  }
   context.report = { stored: true };
   return true;
 }
 
-// packages/history/src/evidence.ts
-var DEFAULT_EVIDENCE_GUIDELINES = historyDefaults.evidence;
-var DEFAULT_WINDOW_MONTHS = historyDefaults.windowMonths;
-var SECONDS_PER_MONTH = 30.4375 * 86400;
-function monthsBefore(anchor, months) {
-  const date = new Date(anchor * 1e3);
-  const day2 = date.getUTCDate();
-  date.setUTCDate(1);
-  date.setUTCMonth(date.getUTCMonth() - months);
-  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-  date.setUTCDate(Math.min(day2, lastDay));
-  return Math.floor(date.getTime() / 1e3);
-}
-function median(values) {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = sorted.length >> 1;
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-function commitSize(changes, minChanges) {
-  const half = changes.length >> 1;
-  const earlier = changes.slice(0, half).map((c) => c.files.length);
-  const later = changes.slice(half).map((c) => c.files.length);
-  const earlierMedian = median(earlier);
-  const laterMedian = median(later);
-  const enough = earlier.length >= minChanges && later.length >= minChanges;
-  const shifted = enough && earlierMedian > 0 && (laterMedian >= earlierMedian * 2 || laterMedian <= earlierMedian / 2);
-  return { earlierMedian, laterMedian, shifted };
-}
-var meets = (t, months, changes, contributors) => months >= t.months && changes >= t.logicalChanges && contributors >= t.contributors;
-function computeEvidence(view, changes, shallow, imported, options = {}) {
-  const windowMonths = options.windowMonths ?? DEFAULT_WINDOW_MONTHS;
-  const guidelines = options.guidelines ?? DEFAULT_EVIDENCE_GUIDELINES;
-  const until = view.headDate;
-  const since = monthsBefore(until, windowMonths);
-  const afterImport = imported.reduce((max, i) => Math.max(max, i.committerDate), -Infinity);
-  const first = changes.filter((c) => c.committerDate >= afterImport).reduce((min, c) => min === null || c.committerDate < min ? c.committerDate : min, null);
-  const usableHistoryMonths = first === null ? 0 : Math.round((until - first) / SECONDS_PER_MONTH * 10) / 10;
-  const inWindow2 = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
-  const contributors = new Set(inWindow2.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
-  const grade = meets(guidelines.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(guidelines.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
-  const available = view.commits.reduce(
-    (min, c) => min === null || c.committerDate < min ? c.committerDate : min,
-    null
-  );
-  return {
-    usableHistoryMonths,
-    logicalChangesInWindow: inWindow2.length,
-    activeContributors: contributors.size,
-    grade,
-    window: { months: windowMonths, since, until },
-    truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
-    importedHistory: [...imported],
-    commitSize: commitSize(changes, options.minChangesForShift ?? 20),
-    guidelines
-  };
-}
-async function analyseHistory(repoPath, options = {}) {
-  const view = await readHistory2(repoPath, options);
-  const filtered = await filterHistory(repoPath, view, options.noise);
-  const windowed = options.noise?.since !== void 0 || options.noise?.until !== void 0;
-  const whole = windowed ? await filterHistory(repoPath, view, { ...options.noise, since: void 0, until: void 0 }) : filtered;
-  const shallow = await readShallowInfo(repoPath);
-  const evidence = computeEvidence(view, whole.changes, shallow, whole.imported, options.evidence);
-  return { view, filtered, filtersApplied: filtered.filtersApplied, evidence };
-}
-
-// packages/cochange/src/identity-access.ts
-import { createHash as createHash2 } from "node:crypto";
-import { existsSync as existsSync6, readFileSync as readFileSync5 } from "node:fs";
-
-// packages/history/src/identity-names.ts
-var identityKey = (a) => `${a.name} <${a.email}>`;
-var NOREPLY = /^(?:(\d+)\+)?([^@+]+)@users\.noreply\.github\.com$/i;
-function parseNoreply(email) {
-  const match = NOREPLY.exec(email.trim());
-  return match ? { id: match[1] ?? null, username: match[2].toLowerCase() } : null;
-}
-function normaliseEmail(email) {
-  const lower = email.trim().toLowerCase();
-  if (parseNoreply(lower)) return lower;
-  const at = lower.lastIndexOf("@");
-  if (at === -1) return lower;
-  const plus = lower.indexOf("+");
-  return plus !== -1 && plus < at ? lower.slice(0, plus) + lower.slice(at) : lower;
-}
-function emailLocalPart(email) {
-  const normalised = normaliseEmail(email);
-  const at = normalised.lastIndexOf("@");
-  return at === -1 ? normalised : normalised.slice(0, at);
-}
-function normaliseName(name16) {
-  let text = name16.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase();
-  const comma = text.indexOf(",");
-  if (comma !== -1 && text.indexOf(",", comma + 1) === -1) text = `${text.slice(comma + 1)} ${text.slice(0, comma)}`;
-  return text.replace(/[.,]/g, " ").split(/\s+/).filter((t) => t !== "").join(" ");
-}
-function nameTokens(name16) {
-  return normaliseName(name16).split(" ").filter((t) => t !== "");
-}
-function derivedLocalParts(name16) {
-  const tokens = nameTokens(name16);
-  if (tokens.length < 2) return [];
-  const first = tokens[0];
-  const last = tokens[tokens.length - 1];
-  return [
-    `${first}.${last}`,
-    `${first}${last}`,
-    `${first}_${last}`,
-    `${first}-${last}`,
-    `${first[0]}.${last}`,
-    `${first[0]}${last}`
-  ];
-}
-function flattenedNames(name16) {
-  const tokens = nameTokens(name16);
-  if (tokens.length < 2) return [];
-  return ["", "-", ".", "_"].map((glue) => tokens.join(glue));
-}
-
-// packages/history/src/identity-classify.ts
-var BUILTIN_BOT_PATTERNS = [
-  "\\[bot\\]",
-  "^dependabot",
-  "^renovate",
-  "^github-actions",
-  "^greenkeeper",
-  "^snyk-bot",
-  "^mergify",
-  "^imgbot",
-  "^allcontributors",
-  "^pre-commit-ci",
-  "<bot@renovateapp\\.com>"
-];
-var BUILTIN_SERVICE_NAMES = [
-  "build",
-  "builds",
-  "buildbot",
-  "jenkins",
-  "release",
-  "releases",
-  "ci",
-  "deploy",
-  "deployer",
-  "automation",
-  "teamcity",
-  "travis",
-  "circleci",
-  "gitlab ci",
-  "azure pipelines",
-  "service account"
-];
-var BUILTIN_AGENT_IDENTITY_PATTERNS = [
-  "<noreply@anthropic\\.com>",
-  "^copilot(-swe-agent)?(\\[bot\\])?\\s*<",
-  "<copilot@github\\.com>",
-  "\\+copilot(-swe-agent)?(\\[bot\\])?@users\\.noreply\\.github\\.com>",
-  "<cursoragent@cursor\\.com>",
-  "devin-ai-integration",
-  "^devin ai\\b"
-];
-var BUILTIN_AGENT_PATTERNS = [
-  "\\bclaude\\b",
-  "noreply@anthropic\\.com",
-  "copilot",
-  "\\bchatgpt\\b",
-  "\\bopenai\\b",
-  "\\bcodex\\b",
-  "\\bgemini\\b",
-  "\\bcursor\\b",
-  "\\baider\\b",
-  "\\bdevin\\b"
-];
-function compilePattern(pattern) {
+// packages/history/src/results-cache.ts
+import { existsSync as existsSync5, readFileSync as readFileSync4 } from "node:fs";
+var noCacheOption = { "no-cache": { type: "boolean" } };
+var noCacheHelp = "recompute instead of reading the stored result, and store the new one";
+var wantsNoCache = (context) => context.values["no-cache"] === true;
+var ENVELOPE = /* @__PURE__ */ new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta", "dropped", "omittedByBuiltinExcludes"]);
+var same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+function readStored(context, stored) {
+  const file = reportPath(context.repo.root, stored.identity.tool, stored.command, variantOf(stored.stated));
+  if (!existsSync5(file)) return void 0;
+  let document;
   try {
-    return new RegExp(pattern, "i");
-  } catch (error) {
-    throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error));
+    document = JSON.parse(readFileSync4(file, "utf8"));
+  } catch {
+    return void 0;
   }
-}
-var addressOf = (identity) => {
-  const open = identity.lastIndexOf("<");
-  return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
-};
-function createNonPersonMatcher(rules10) {
-  const decisions = new Map(rules10.decisions.map((d) => [addressOf(d.identity), d]));
-  const config = [
-    ...rules10.botPatterns.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) })),
-    ...rules10.servicePatterns.map((p) => ({ kind: "service", pattern: p, re: compilePattern(p) }))
-  ];
-  const builtinAgents = BUILTIN_AGENT_IDENTITY_PATTERNS.map((p) => ({ kind: "agent", pattern: p, re: compilePattern(p) }));
-  const builtin = BUILTIN_BOT_PATTERNS.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) }));
-  const serviceNames = new Set(BUILTIN_SERVICE_NAMES);
-  const trailerAgents = [...BUILTIN_AGENT_PATTERNS, ...rules10.agentPatterns].map((p) => ({ re: compilePattern(p) }));
-  const classify2 = (name16, email) => {
-    const decision = decisions.get(email.trim().toLowerCase());
-    if (decision) {
-      return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity };
-    }
-    const text = `${name16} <${email}>`;
-    const fromConfig = config.find((c) => c.re.test(text));
-    if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
-    const agent = builtinAgents.find((c) => c.re.test(text));
-    if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern };
-    const bot = builtin.find((c) => c.re.test(text));
-    if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
-    const normalised = normaliseName(name16);
-    if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
-    return null;
-  };
+  const repo = document.repo;
+  if (document.tool !== stored.identity.tool || document.command !== stored.command) return void 0;
+  if (document.schemaVersion !== stored.identity.schemaVersion) return void 0;
+  if (repo?.head !== stored.head || repo?.dirty !== false) return void 0;
+  if (document.config !== context.config.hash || !Array.isArray(document.results)) return void 0;
+  const inputs = document.inputs ?? {};
+  for (const [key, value] of Object.entries(stored.expect ?? {})) if (!same(inputs[key], value)) return void 0;
+  const printed = document.meta?.printed ?? {};
+  const input = { report: `${stored.identity.tool}.${stored.command}`, head: stored.head, config: context.config.hash };
   return {
-    classify: classify2,
-    isNonPerson: (name16, email) => {
-      const found = classify2(name16, email);
-      return found !== null && found.kind !== "agent";
+    input,
+    restoreLeftOut() {
+      restoreDropped(document.dropped ?? {});
+      restoreBuiltinOmissions(document.omittedByBuiltinExcludes ?? {});
     },
-    humanCoAuthor: (message) => {
-      for (const line of message.replace(/\r\n/g, "\n").split("\n")) {
-        const match = /^co-authored-by[ \t]*:[ \t]*(.+?)[ \t]*<([^<>]*)>[ \t]*$/i.exec(line);
-        if (!match) continue;
-        const address2 = { name: match[1].trim(), email: match[2].trim() };
-        if (address2.name === "" || address2.email === "") continue;
-        if (classify2(address2.name, address2.email) !== null) continue;
-        if (trailerAgents.some((p) => p.re.test(line.replace(/^[^:]*:\s*/, "")))) continue;
-        return address2;
-      }
-      return null;
-    },
-    applied: {
-      builtinBotPatterns: [...BUILTIN_BOT_PATTERNS],
-      builtinServiceNames: [...BUILTIN_SERVICE_NAMES],
-      servicePatterns: [...rules10.servicePatterns],
-      decisions: rules10.decisions.length
+    output: {
+      inputs,
+      extra: Object.fromEntries(Object.entries(document).filter(([key]) => !ENVELOPE.has(key))),
+      results: document.results,
+      ...printed.columns === void 0 ? {} : { columns: printed.columns },
+      ...printed.notices === void 0 ? {} : { notices: printed.notices },
+      ...printed.failed === true ? { failed: true } : {}
     }
   };
 }
-function findAgentTrailers(message, extraPatterns) {
-  const patterns = [...BUILTIN_AGENT_PATTERNS, ...extraPatterns].map((p) => ({ pattern: p, re: compilePattern(p) }));
-  const found = [];
-  for (const line of message.replace(/\r\n/g, "\n").split("\n")) {
-    const match = /^co-authored-by[ \t]*:[ \t]*(.+?)[ \t]*$/i.exec(line);
-    if (!match) continue;
-    const value = match[1];
-    const hit = patterns.find((p) => p.re.test(value));
-    if (hit) found.push({ value, pattern: hit.pattern });
-  }
-  return found;
+function readCached(context, stored) {
+  const hit = readStored(context, stored);
+  if (hit === void 0) return void 0;
+  hit.restoreLeftOut();
+  context.report = { stored: true };
+  return { ...hit.output, inputs: { ...hit.output.inputs, resultsCache: [hit.input] } };
 }
-var BUMP = /^(bump\b|release\b|version\b|chore\(release\)|chore: release|merge\b|v?\d+\.\d+\.\d+)/i;
-function onlyVersionBumpsOrMerges(subjects) {
-  return subjects.length > 0 && subjects.every((s) => BUMP.test(s.trim()));
+function storeCached(context, stored, output) {
+  return writeReport(context, stored.identity, stored.command, output, stored.head, {
+    variant: variantOf(stored.stated),
+    describesCommit: stored.describesCommit,
+    replayable: true
+  });
 }
+
+// packages/cochange/src/abandonment/settings.ts
+import { existsSync as existsSync7, readFileSync as readFileSync6 } from "node:fs";
+import { join as join5 } from "node:path";
+import { createHash as createHash3 } from "node:crypto";
 
 // packages/history/src/identity-decisions.ts
-import { existsSync as existsSync5, mkdirSync as mkdirSync2, readFileSync as readFileSync4, renameSync as renameSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { existsSync as existsSync6, mkdirSync as mkdirSync2, readFileSync as readFileSync5, renameSync as renameSync3, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join4 } from "node:path";
 var emptyDecisions = () => ({ schemaVersion: 1, rejectedMerges: [], classifications: [] });
 function identityFiles(root) {
@@ -1981,15 +1825,15 @@ function identityFiles(root) {
 function resolveLocation(root, configured) {
   if (configured) return configured;
   const files = identityFiles(root);
-  if (existsSync5(files.localMailmap) || existsSync5(files.localDecisions)) return "local";
-  if (existsSync5(files.mailmap) || existsSync5(files.committedDecisions)) return "committed";
+  if (existsSync6(files.localMailmap) || existsSync6(files.localDecisions)) return "local";
+  if (existsSync6(files.mailmap) || existsSync6(files.committedDecisions)) return "committed";
   return null;
 }
 function ensureLocalState(root) {
   const { localDir } = identityFiles(root);
   mkdirSync2(localDir, { recursive: true });
   const ignore = join4(localDir, ".gitignore");
-  if (!existsSync5(ignore)) writeFileSync2(ignore, "*\n");
+  if (!existsSync6(ignore)) writeFileSync2(ignore, "*\n");
 }
 var KINDS = /* @__PURE__ */ new Set(["bot", "service", "agent", "person"]);
 function parse(text, file) {
@@ -2060,7 +1904,7 @@ function mergeDecisions(existing, additions) {
   });
 }
 function readFile(file) {
-  return existsSync5(file) ? parse(readFileSync4(file, "utf8"), file) : emptyDecisions();
+  return existsSync6(file) ? parse(readFileSync5(file, "utf8"), file) : emptyDecisions();
 }
 function readDecisions(root, location) {
   const files = identityFiles(root);
@@ -2081,37 +1925,7 @@ function writeDecisions(root, location, decisions) {
   renameSync3(temporary, file);
 }
 
-// packages/cochange/src/identity-access.ts
-var stamp = (file) => createHash2("sha256").update(readFileSync5(file)).digest("hex").slice(0, 16);
-function loadIdentityState(root, settings) {
-  const files = identityFiles(root);
-  const location = resolveLocation(root, settings.identities.location);
-  const decisions = readDecisions(root);
-  const stamps = {};
-  const decisionFiles = [files.committedDecisions, files.localDecisions].filter((f) => existsSync6(f));
-  if (decisionFiles.length > 0) {
-    stamps.decisions = createHash2("sha256").update(decisionFiles.map(stamp).join(",")).digest("hex").slice(0, 16);
-  }
-  const localMailmap = existsSync6(files.localMailmap) ? files.localMailmap : void 0;
-  if (localMailmap) stamps.localMailmap = stamp(localMailmap);
-  return {
-    location,
-    decisions,
-    localMailmap,
-    stamps,
-    matcher: createNonPersonMatcher({
-      botPatterns: settings.botPatterns,
-      servicePatterns: settings.identities.servicePatterns,
-      agentPatterns: settings.identities.agentTrailerPatterns,
-      decisions: decisions.classifications
-    })
-  };
-}
-
 // packages/cochange/src/abandonment/settings.ts
-import { existsSync as existsSync7, readFileSync as readFileSync6 } from "node:fs";
-import { join as join5 } from "node:path";
-import { createHash as createHash3 } from "node:crypto";
 var TOOL = "cochange";
 var RANK_MODES = ["hotspot", "abandonment"];
 var KNOWLEDGE_DEFAULTS = {
@@ -2435,9 +2249,9 @@ function readRiskSettings(config) {
     throw configError(`code-health.json: ${at("placement")} must be "self", "any" or "off"`);
   }
   const disable = strings("disable");
-  for (const name16 of disable) {
-    if (!FACTOR_NAMES.includes(name16)) {
-      throw configError(`code-health.json: ${at("disable")} names unknown factor "${name16}"; factors: ${FACTOR_NAMES.join(", ")}`);
+  for (const name17 of disable) {
+    if (!FACTOR_NAMES.includes(name17)) {
+      throw configError(`code-health.json: ${at("disable")} names unknown factor "${name17}"; factors: ${FACTOR_NAMES.join(", ")}`);
     }
   }
   const ownerShare = whole("ownerShare", 1, 100);
@@ -2612,6 +2426,306 @@ function readIdentities(section, at) {
   };
 }
 
+// packages/cochange/src/identity-access.ts
+import { createHash as createHash4 } from "node:crypto";
+import { existsSync as existsSync8, readFileSync as readFileSync7 } from "node:fs";
+
+// packages/history/src/identity-names.ts
+var identityKey = (a) => `${a.name} <${a.email}>`;
+var NOREPLY = /^(?:(\d+)\+)?([^@+]+)@users\.noreply\.github\.com$/i;
+function parseNoreply(email) {
+  const match = NOREPLY.exec(email.trim());
+  return match ? { id: match[1] ?? null, username: match[2].toLowerCase() } : null;
+}
+function normaliseEmail(email) {
+  const lower = email.trim().toLowerCase();
+  if (parseNoreply(lower)) return lower;
+  const at = lower.lastIndexOf("@");
+  if (at === -1) return lower;
+  const plus = lower.indexOf("+");
+  return plus !== -1 && plus < at ? lower.slice(0, plus) + lower.slice(at) : lower;
+}
+function emailLocalPart(email) {
+  const normalised = normaliseEmail(email);
+  const at = normalised.lastIndexOf("@");
+  return at === -1 ? normalised : normalised.slice(0, at);
+}
+function normaliseName(name17) {
+  let text = name17.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase();
+  const comma = text.indexOf(",");
+  if (comma !== -1 && text.indexOf(",", comma + 1) === -1) text = `${text.slice(comma + 1)} ${text.slice(0, comma)}`;
+  return text.replace(/[.,]/g, " ").split(/\s+/).filter((t) => t !== "").join(" ");
+}
+function nameTokens(name17) {
+  return normaliseName(name17).split(" ").filter((t) => t !== "");
+}
+function derivedLocalParts(name17) {
+  const tokens = nameTokens(name17);
+  if (tokens.length < 2) return [];
+  const first = tokens[0];
+  const last = tokens[tokens.length - 1];
+  return [
+    `${first}.${last}`,
+    `${first}${last}`,
+    `${first}_${last}`,
+    `${first}-${last}`,
+    `${first[0]}.${last}`,
+    `${first[0]}${last}`
+  ];
+}
+function flattenedNames(name17) {
+  const tokens = nameTokens(name17);
+  if (tokens.length < 2) return [];
+  return ["", "-", ".", "_"].map((glue) => tokens.join(glue));
+}
+
+// packages/history/src/identity-classify.ts
+var BUILTIN_BOT_PATTERNS = [
+  "\\[bot\\]",
+  "^dependabot",
+  "^renovate",
+  "^github-actions",
+  "^greenkeeper",
+  "^snyk-bot",
+  "^mergify",
+  "^imgbot",
+  "^allcontributors",
+  "^pre-commit-ci",
+  "<bot@renovateapp\\.com>"
+];
+var BUILTIN_SERVICE_NAMES = [
+  "build",
+  "builds",
+  "buildbot",
+  "jenkins",
+  "release",
+  "releases",
+  "ci",
+  "deploy",
+  "deployer",
+  "automation",
+  "teamcity",
+  "travis",
+  "circleci",
+  "gitlab ci",
+  "azure pipelines",
+  "service account"
+];
+var BUILTIN_AGENT_IDENTITY_PATTERNS = [
+  "<noreply@anthropic\\.com>",
+  "^copilot(-swe-agent)?(\\[bot\\])?\\s*<",
+  "<copilot@github\\.com>",
+  "\\+copilot(-swe-agent)?(\\[bot\\])?@users\\.noreply\\.github\\.com>",
+  "<cursoragent@cursor\\.com>",
+  "devin-ai-integration",
+  "^devin ai\\b"
+];
+var BUILTIN_AGENT_PATTERNS = [
+  "\\bclaude\\b",
+  "noreply@anthropic\\.com",
+  "copilot",
+  "\\bchatgpt\\b",
+  "\\bopenai\\b",
+  "\\bcodex\\b",
+  "\\bgemini\\b",
+  "\\bcursor\\b",
+  "\\baider\\b",
+  "\\bdevin\\b"
+];
+function compilePattern(pattern) {
+  try {
+    return new RegExp(pattern, "i");
+  } catch (error) {
+    throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error));
+  }
+}
+var addressOf = (identity) => {
+  const open = identity.lastIndexOf("<");
+  return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
+};
+function createNonPersonMatcher(rules10) {
+  const decisions = new Map(rules10.decisions.map((d) => [addressOf(d.identity), d]));
+  const config = [
+    ...rules10.botPatterns.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) })),
+    ...rules10.servicePatterns.map((p) => ({ kind: "service", pattern: p, re: compilePattern(p) }))
+  ];
+  const builtinAgents = BUILTIN_AGENT_IDENTITY_PATTERNS.map((p) => ({ kind: "agent", pattern: p, re: compilePattern(p) }));
+  const builtin = BUILTIN_BOT_PATTERNS.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) }));
+  const serviceNames = new Set(BUILTIN_SERVICE_NAMES);
+  const trailerAgents = [...BUILTIN_AGENT_PATTERNS, ...rules10.agentPatterns].map((p) => ({ re: compilePattern(p) }));
+  const classify2 = (name17, email) => {
+    const decision = decisions.get(email.trim().toLowerCase());
+    if (decision) {
+      return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity };
+    }
+    const text = `${name17} <${email}>`;
+    const fromConfig = config.find((c) => c.re.test(text));
+    if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
+    const agent = builtinAgents.find((c) => c.re.test(text));
+    if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern };
+    const bot = builtin.find((c) => c.re.test(text));
+    if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
+    const normalised = normaliseName(name17);
+    if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
+    return null;
+  };
+  return {
+    classify: classify2,
+    isNonPerson: (name17, email) => {
+      const found = classify2(name17, email);
+      return found !== null && found.kind !== "agent";
+    },
+    humanCoAuthor: (message) => {
+      for (const line of message.replace(/\r\n/g, "\n").split("\n")) {
+        const match = /^co-authored-by[ \t]*:[ \t]*(.+?)[ \t]*<([^<>]*)>[ \t]*$/i.exec(line);
+        if (!match) continue;
+        const address2 = { name: match[1].trim(), email: match[2].trim() };
+        if (address2.name === "" || address2.email === "") continue;
+        if (classify2(address2.name, address2.email) !== null) continue;
+        if (trailerAgents.some((p) => p.re.test(line.replace(/^[^:]*:\s*/, "")))) continue;
+        return address2;
+      }
+      return null;
+    },
+    applied: {
+      builtinBotPatterns: [...BUILTIN_BOT_PATTERNS],
+      builtinServiceNames: [...BUILTIN_SERVICE_NAMES],
+      servicePatterns: [...rules10.servicePatterns],
+      decisions: rules10.decisions.length
+    }
+  };
+}
+function findAgentTrailers(message, extraPatterns) {
+  const patterns = [...BUILTIN_AGENT_PATTERNS, ...extraPatterns].map((p) => ({ pattern: p, re: compilePattern(p) }));
+  const found = [];
+  for (const line of message.replace(/\r\n/g, "\n").split("\n")) {
+    const match = /^co-authored-by[ \t]*:[ \t]*(.+?)[ \t]*$/i.exec(line);
+    if (!match) continue;
+    const value = match[1];
+    const hit = patterns.find((p) => p.re.test(value));
+    if (hit) found.push({ value, pattern: hit.pattern });
+  }
+  return found;
+}
+var BUMP = /^(bump\b|release\b|version\b|chore\(release\)|chore: release|merge\b|v?\d+\.\d+\.\d+)/i;
+function onlyVersionBumpsOrMerges(subjects) {
+  return subjects.length > 0 && subjects.every((s) => BUMP.test(s.trim()));
+}
+
+// packages/cochange/src/identity-access.ts
+var stamp = (file) => createHash4("sha256").update(readFileSync7(file)).digest("hex").slice(0, 16);
+function loadIdentityState(root, settings) {
+  const files = identityFiles(root);
+  const location = resolveLocation(root, settings.identities.location);
+  const decisions = readDecisions(root);
+  const stamps = {};
+  const decisionFiles = [files.committedDecisions, files.localDecisions].filter((f) => existsSync8(f));
+  if (decisionFiles.length > 0) {
+    stamps.decisions = createHash4("sha256").update(decisionFiles.map(stamp).join(",")).digest("hex").slice(0, 16);
+  }
+  const localMailmap = existsSync8(files.localMailmap) ? files.localMailmap : void 0;
+  if (localMailmap) stamps.localMailmap = stamp(localMailmap);
+  return {
+    location,
+    decisions,
+    localMailmap,
+    stamps,
+    matcher: createNonPersonMatcher({
+      botPatterns: settings.botPatterns,
+      servicePatterns: settings.identities.servicePatterns,
+      agentPatterns: settings.identities.agentTrailerPatterns,
+      decisions: decisions.classifications
+    })
+  };
+}
+
+// packages/cochange/src/derived-results.ts
+async function analysedSha(context, ref) {
+  const analysed = ref ?? readSettings(context.config).ref;
+  return (await runGit(context.repo.root, ["rev-parse", "--verify", `${analysed}^{commit}`])).trim();
+}
+function derivedResult(context, derived4, head, window) {
+  const stamps = loadIdentityState(context.repo.root, readSettings(context.config)).stamps;
+  return {
+    identity: { tool: TOOL2, schemaVersion: SCHEMA_VERSION2 },
+    command: derived4.command,
+    head,
+    stated: { ...derived4.stated(context), ...window === void 0 ? {} : { window } },
+    expect: {
+      identityInputs: Object.keys(stamps).length === 0 ? void 0 : stamps,
+      ...derived4.expect?.(context, head)
+    },
+    describesCommit: true
+  };
+}
+
+// packages/history/src/evidence.ts
+var DEFAULT_EVIDENCE_GUIDELINES = historyDefaults.evidence;
+var DEFAULT_WINDOW_MONTHS = historyDefaults.windowMonths;
+var SECONDS_PER_MONTH = 30.4375 * 86400;
+function monthsBefore(anchor, months) {
+  const date = new Date(anchor * 1e3);
+  const day2 = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() - months);
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(day2, lastDay));
+  return Math.floor(date.getTime() / 1e3);
+}
+function median(values) {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+function commitSize(changes, minChanges) {
+  const half = changes.length >> 1;
+  const earlier = changes.slice(0, half).map((c) => c.files.length);
+  const later = changes.slice(half).map((c) => c.files.length);
+  const earlierMedian = median(earlier);
+  const laterMedian = median(later);
+  const enough = earlier.length >= minChanges && later.length >= minChanges;
+  const shifted = enough && earlierMedian > 0 && (laterMedian >= earlierMedian * 2 || laterMedian <= earlierMedian / 2);
+  return { earlierMedian, laterMedian, shifted };
+}
+var meets = (t, months, changes, contributors) => months >= t.months && changes >= t.logicalChanges && contributors >= t.contributors;
+function computeEvidence(view, changes, shallow, imported, options = {}) {
+  const windowMonths = options.windowMonths ?? DEFAULT_WINDOW_MONTHS;
+  const guidelines = options.guidelines ?? DEFAULT_EVIDENCE_GUIDELINES;
+  const until = view.headDate;
+  const since = monthsBefore(until, windowMonths);
+  const afterImport = imported.reduce((max, i) => Math.max(max, i.committerDate), -Infinity);
+  const first = changes.filter((c) => c.committerDate >= afterImport).reduce((min, c) => min === null || c.committerDate < min ? c.committerDate : min, null);
+  const usableHistoryMonths = first === null ? 0 : Math.round((until - first) / SECONDS_PER_MONTH * 10) / 10;
+  const inWindow2 = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
+  const contributors = new Set(inWindow2.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
+  const grade = meets(guidelines.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(guidelines.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
+  const available = view.commits.reduce(
+    (min, c) => min === null || c.committerDate < min ? c.committerDate : min,
+    null
+  );
+  return {
+    usableHistoryMonths,
+    logicalChangesInWindow: inWindow2.length,
+    activeContributors: contributors.size,
+    grade,
+    window: { months: windowMonths, since, until },
+    truncated: { shallow: shallow.isShallow, boundaryCommits: shallow.boundary.length, availableSince: shallow.isShallow ? available : null },
+    importedHistory: [...imported],
+    commitSize: commitSize(changes, options.minChangesForShift ?? 20),
+    guidelines
+  };
+}
+async function analyseHistory(repoPath, options = {}) {
+  const view = await readHistory2(repoPath, options);
+  const filtered = await filterHistory(repoPath, view, options.noise);
+  const windowed = options.noise?.since !== void 0 || options.noise?.until !== void 0;
+  const whole = windowed ? await filterHistory(repoPath, view, { ...options.noise, since: void 0, until: void 0 }) : filtered;
+  const shallow = await readShallowInfo(repoPath);
+  const evidence = computeEvidence(view, whole.changes, shallow, whole.imported, options.evidence);
+  return { view, filtered, filtersApplied: filtered.filtersApplied, evidence };
+}
+
 // packages/cochange/src/history-access.ts
 async function refreshHistory(context, settings = readSettings(context.config)) {
   return refresh(context.repo.root, {
@@ -2653,8 +2767,8 @@ async function loadHistory(context, options = {}) {
 function reportPath2(root, command16, tool = TOOL2) {
   return reportPath(root, tool, command16);
 }
-function writeReport2(context, command16, output, analysedHead) {
-  return writeReport(context, { tool: TOOL2, schemaVersion: SCHEMA_VERSION2 }, command16, output, analysedHead);
+function writeReport2(context, command16, output, analysedHead, options) {
+  return writeReport(context, { tool: TOOL2, schemaVersion: SCHEMA_VERSION2 }, command16, output, analysedHead, options);
 }
 
 // packages/graph/src/tree-distance.ts
@@ -2754,6 +2868,13 @@ function statedWindow(context, windowMonths) {
 }
 
 // packages/cochange/src/analysis-command.ts
+function finishAnalysis(history, output) {
+  return {
+    ...output,
+    inputs: { ...output.inputs, ...identityStamps(history) },
+    extra: { ...historySections(history), ...output.extra }
+  };
+}
 function historySections(history) {
   return {
     window: {
@@ -2771,26 +2892,40 @@ var sharedOptions = { "no-refresh": { type: "boolean" } };
 function ownsWindow(spec) {
   return spec.window !== void 0 || spec.wholeHistory === true || spec.options?.since !== void 0 || spec.options?.until !== void 0;
 }
-function analysisCommand(name16, spec) {
+function analysisCommand(name17, spec) {
   return {
     summary: spec.summary,
-    options: { ...ownsWindow(spec) ? {} : windowOptions, ...spec.options, ...sharedOptions },
+    options: { ...ownsWindow(spec) ? {} : windowOptions, ...spec.options, ...sharedOptions, ...spec.cache || spec.fromCache ? noCacheOption : {} },
+    optionHelp: spec.cache || spec.fromCache ? { "no-cache": noCacheHelp } : void 0,
     async run(context) {
       const window = ownsWindow(spec) ? spec.window?.(context) : statedWindow(context, readSettings(context.config).windowMonths);
+      const reuse = !wantsNoCache(context);
+      if (reuse && spec.fromCache) {
+        const answered = await spec.fromCache(context, window);
+        if (answered !== void 0) return answered;
+      }
+      const analysedRef = await spec.ref?.(context);
+      const stored = spec.cache ? derivedResult(context, spec.cache, await analysedSha(context, analysedRef), window) : void 0;
+      if (stored !== void 0 && reuse) {
+        const hit = readCached(context, stored);
+        if (hit !== void 0) return hit;
+      }
       const history = await loadHistory(context, {
         noRefresh: context.values["no-refresh"] === true,
         window,
         wholeHistory: spec.wholeHistory,
-        ref: await spec.ref?.(context)
+        ref: analysedRef
       });
       const output = await spec.analyse({ context, history });
-      const finished = {
-        ...output,
-        inputs: { ...output.inputs, ...identityStamps(history) },
-        extra: { ...historySections(history), ...output.extra }
-      };
+      const finished = finishAnalysis(history, output);
+      if (stored !== void 0) {
+        if (context.values["no-refresh"] === true) skipReport(context, "the run read the history cache without refreshing it");
+        else if (stored.head !== history.view.headSha) skipReport(context, "the analysed commit is not the one the ref named");
+        else await storeCached(context, stored, finished);
+        return finished;
+      }
       const wholeRepository = window === void 0 && !spec.partial?.(context);
-      if (wholeRepository) await writeReport2(context, name16, finished, history.view.headSha);
+      if (wholeRepository) await writeReport2(context, name17, finished, history.view.headSha);
       else skipReport(context, window !== void 0 ? "the run was limited to a date window" : "the run chose a view other than the default");
       return finished;
     }
@@ -2886,15 +3021,15 @@ function coupledPairs(history, guidelines) {
 var UNASSIGNED = "(unassigned)";
 function readComponents(value) {
   const names = Object.keys(value).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
-  return names.map((name16) => {
-    if (name16 === UNASSIGNED) throw configError(`code-health.json: components.${name16} is a reserved name`);
-    const raw = value[name16];
+  return names.map((name17) => {
+    if (name17 === UNASSIGNED) throw configError(`code-health.json: components.${name17} is a reserved name`);
+    const raw = value[name17];
     const globs = typeof raw === "string" ? [raw] : raw;
     if (!Array.isArray(globs) || globs.some((g) => typeof g !== "string")) {
-      throw configError(`code-health.json: components.${name16} must be a glob or an array of globs`);
+      throw configError(`code-health.json: components.${name17} must be a glob or an array of globs`);
     }
-    if (globs.length === 0) throw configError(`code-health.json: components.${name16} must list at least one glob`);
-    return { name: name16, matches: compileGlobs(globs) };
+    if (globs.length === 0) throw configError(`code-health.json: components.${name17} must list at least one glob`);
+    return { name: name17, matches: compileGlobs(globs) };
   });
 }
 function componentOf(components2, path) {
@@ -3069,9 +3204,9 @@ function factsOf(node) {
   const locals = /* @__PURE__ */ new Set();
   const noreplies = /* @__PURE__ */ new Map();
   const names = /* @__PURE__ */ new Set();
-  const derived = /* @__PURE__ */ new Set();
+  const derived4 = /* @__PURE__ */ new Set();
   const flattened = /* @__PURE__ */ new Set();
-  for (const { name: name16, email } of addresses) {
+  for (const { name: name17, email } of addresses) {
     const noreply = parseNoreply(email);
     if (noreply) noreplies.set(`${noreply.id ?? ""}+${noreply.username}`, noreply);
     const local = emailLocalPart(email);
@@ -3079,10 +3214,10 @@ function factsOf(node) {
       emails.add(normaliseEmail(email));
       locals.add(local);
     }
-    if (nameTokens(name16).length >= 2) {
-      names.add(normaliseName(name16));
-      for (const d of derivedLocalParts(name16)) derived.add(d);
-      for (const f of flattenedNames(name16)) flattened.add(f);
+    if (nameTokens(name17).length >= 2) {
+      names.add(normaliseName(name17));
+      for (const d of derivedLocalParts(name17)) derived4.add(d);
+      for (const f of flattenedNames(name17)) flattened.add(f);
     }
   }
   return {
@@ -3091,7 +3226,7 @@ function factsOf(node) {
     locals: [...locals].sort(),
     noreplies: [...noreplies.values()].sort((x, y) => compare2(x.username, y.username)),
     names: [...names].sort(),
-    derived: [...derived].sort(),
+    derived: [...derived4].sort(),
     flattened: [...flattened].sort(),
     signingKeys: [...node.signingKeys].sort()
   };
@@ -3139,7 +3274,7 @@ function findLinks(nodes, raws, pairing, rejections = []) {
   );
   eachPair(
     index(facts, (f) => f.names),
-    (name16, x, y) => addSignal(candidates, x, y, { signal: "same-name", strength: "medium", detail: name16 })
+    (name17, x, y) => addSignal(candidates, x, y, { signal: "same-name", strength: "medium", detail: name17 })
   );
   eachPair(index(facts, (f) => f.locals), (local, x, y) => {
     if (x.emails.some((e) => y.emails.includes(e))) return;
@@ -3208,7 +3343,7 @@ function findLinks(nodes, raws, pairing, rejections = []) {
   return links;
 }
 function corroborated(signals) {
-  const has = (name16) => signals.some((s) => s.signal === name16);
+  const has = (name17) => signals.some((s) => s.signal === name17);
   if (has("same-name") && (has("noreply-matches-identity") || has("same-local-part"))) return true;
   return has("same-signing-key") && signals.some((s) => s.strength === "medium");
 }
@@ -3300,7 +3435,7 @@ function counterEvidenceWithin(group) {
 }
 
 // packages/history/src/signing-keys.ts
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 var PLATFORM_KEYS = /* @__PURE__ */ new Set(["gpg:B5690EEEBB952194"]);
 var isPlatformKey = (key) => PLATFORM_KEYS.has(key);
 function armoredBody(text, kind) {
@@ -3318,7 +3453,7 @@ function sshKey(text) {
   if (bytes === void 0 || bytes.length < 14 || bytes.subarray(0, 6).toString("latin1") !== "SSHSIG") return void 0;
   const length = bytes.readUInt32BE(10);
   if (length === 0 || 14 + length > bytes.length) return void 0;
-  const fingerprint = createHash4("sha256").update(bytes.subarray(14, 14 + length)).digest("base64").replace(/=+$/, "");
+  const fingerprint = createHash5("sha256").update(bytes.subarray(14, 14 + length)).digest("base64").replace(/=+$/, "");
   return `ssh:SHA256:${fingerprint}`;
 }
 function issuerOf(packet) {
@@ -3428,14 +3563,14 @@ function signaturesIn(raw) {
 
 // packages/history/src/identity-log.ts
 var MAX_PATHS_FOR_EVIDENCE = 100;
-var isPlatform = (name16, email) => email.toLowerCase() === "noreply@github.com" || name16.toLowerCase() === "github" || name16.toLowerCase() === "github enterprise";
+var isPlatform = (name17, email) => email.toLowerCase() === "noreply@github.com" || name17.toLowerCase() === "github" || name17.toLowerCase() === "github enterprise";
 async function readCommitters(root, ref) {
   const out = await runGit(root, ["log", "--format=%H%x1f%cn%x1f%ce", "--no-abbrev", ref]);
   const committers = /* @__PURE__ */ new Map();
   for (const line of out.split("\n")) {
     if (line === "") continue;
-    const [sha, name16, email] = line.split("");
-    if (sha !== void 0) committers.set(sha, { name: name16 ?? "", email: email ?? "" });
+    const [sha, name17, email] = line.split("");
+    if (sha !== void 0) committers.set(sha, { name: name17 ?? "", email: email ?? "" });
   }
   return committers;
 }
@@ -3560,7 +3695,7 @@ function topAreas(node, limit = 3) {
 }
 
 // packages/history/src/blame-options.ts
-import { createHash as createHash5 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 var DEFAULT_IGNORE_REVS_FILE = ".git-blame-ignore-revs";
 async function resolveBlameOptions(root, sha, settings = {}) {
   const copyDetection = settings.copyDetection ?? true;
@@ -3574,12 +3709,12 @@ async function resolveBlameOptions(root, sha, settings = {}) {
     }
   }
   const sorted = [...ignoreRevs].sort();
-  const canonical = JSON.stringify({ v: 1, w: true, M: true, C: copyDetection, ignore: sorted });
-  return { id: createHash5("sha256").update(canonical).digest("hex").slice(0, 12), copyDetection, ignoreRevs: sorted };
+  const canonical2 = JSON.stringify({ v: 1, w: true, M: true, C: copyDetection, ignore: sorted });
+  return { id: createHash6("sha256").update(canonical2).digest("hex").slice(0, 12), copyDetection, ignoreRevs: sorted };
 }
 
 // packages/history/src/blame-lines.ts
-import { existsSync as existsSync8 } from "node:fs";
+import { existsSync as existsSync9 } from "node:fs";
 import { join as join6 } from "node:path";
 var GREP_CHUNK = 200;
 async function textFilesAt(root, sha, paths) {
@@ -3667,7 +3802,7 @@ async function reusableFiles(root, sha, stored, wanted) {
 }
 
 // packages/history/src/blame-store.ts
-import { existsSync as existsSync9, rmSync as rmSync3 } from "node:fs";
+import { existsSync as existsSync10, rmSync as rmSync4 } from "node:fs";
 var BLAME_SCHEMA_VERSION = 1;
 var DDL2 = `
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID;
@@ -3691,7 +3826,7 @@ CREATE TABLE ranges (
 CREATE TABLE options (id TEXT PRIMARY KEY, description TEXT NOT NULL) WITHOUT ROWID;
 `;
 function removeDatabase2(path) {
-  for (const suffix of ["", "-wal", "-shm", "-journal"]) rmSync3(path + suffix, { force: true });
+  for (const suffix of ["", "-wal", "-shm", "-journal"]) rmSync4(path + suffix, { force: true });
 }
 function configure2(db) {
   db.exec("PRAGMA journal_mode = WAL");
@@ -3707,7 +3842,7 @@ function create2(path) {
 }
 function openBlameForWrite(path) {
   loadSqlite();
-  if (existsSync9(path)) {
+  if (existsSync10(path)) {
     try {
       const db = createDatabase(path, { timeout: 3e4 });
       configure2(db);
@@ -3722,7 +3857,7 @@ function openBlameForWrite(path) {
 }
 function openBlameForRead(path) {
   loadSqlite();
-  if (!existsSync9(path)) return void 0;
+  if (!existsSync10(path)) return void 0;
   try {
     const db = createDatabase(path, { readOnly: true, timeout: 3e4 });
     if (versionOf(db) === BLAME_SCHEMA_VERSION) return db;
@@ -3818,10 +3953,10 @@ async function resolveOwners(root, shas, options = {}) {
   const out = await runGit(root, ["log", "--no-walk=unsorted", "--stdin", "--format=%H%x1f%an%x1f%ae%x1f%B%x1e"], { input: unique.join("\n") + "\n" });
   const authors = /* @__PURE__ */ new Map();
   for (const record of out.split("")) {
-    const [sha, name16, email, message] = record.replace(/^\n/, "").split("");
-    if (sha === void 0 || name16 === void 0 || email === void 0) continue;
-    const agent = options.matcher?.classify(name16, email)?.kind === "agent";
-    authors.set(sha, (agent ? options.matcher?.humanCoAuthor?.(message ?? "") : null) ?? { name: name16, email });
+    const [sha, name17, email, message] = record.replace(/^\n/, "").split("");
+    if (sha === void 0 || name17 === void 0 || email === void 0) continue;
+    const agent = options.matcher?.classify(name17, email)?.kind === "agent";
+    authors.set(sha, (agent ? options.matcher?.humanCoAuthor?.(message ?? "") : null) ?? { name: name17, email });
   }
   const mapped = await mapThroughMailmap(root, [...authors.values()], options.localMailmap);
   for (const [sha, author] of authors) {
@@ -3858,7 +3993,7 @@ function shareHeldBy(shares, ownerKeys) {
 }
 
 // packages/history/src/blame-refresh.ts
-import { rmSync as rmSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { rmSync as rmSync5, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join7 } from "node:path";
 async function refreshBlame(repoPath, options = {}) {
   const location = await locateCache(repoPath);
@@ -3925,7 +4060,7 @@ async function refreshBlame(repoPath, options = {}) {
           await Promise.all(Array.from({ length: Math.min(options.concurrency ?? 8, Math.max(toBlame.length, 1)) }, worker));
         } finally {
           flush();
-          if (ignoreFile) rmSync4(ignoreFile, { force: true });
+          if (ignoreFile) rmSync5(ignoreFile, { force: true });
         }
         let pruned = 0;
         if (wantedPaths === void 0 && !aborted) {
@@ -4132,13 +4267,13 @@ function measureCurrent(model, guidelinePercent) {
 function groupByComponent(files, components2) {
   const groups = /* @__PURE__ */ new Map();
   for (const f of files) {
-    const name16 = componentOf(components2, f.path);
-    const g = groups.get(name16) ?? { path: name16, files: 0, abandonedFiles: 0, peopleLines: 0, abandonedLines: 0, abandonedShare: 0 };
+    const name17 = componentOf(components2, f.path);
+    const g = groups.get(name17) ?? { path: name17, files: 0, abandonedFiles: 0, peopleLines: 0, abandonedLines: 0, abandonedShare: 0 };
     g.files++;
     if (f.abandoned) g.abandonedFiles++;
     g.peopleLines += f.peopleLines;
     g.abandonedLines += f.abandonedLines;
-    groups.set(name16, g);
+    groups.set(name17, g);
   }
   return [...groups.values()].map((g) => ({ ...g, abandonedShare: g.peopleLines === 0 ? 0 : round4(g.abandonedLines / g.peopleLines) }));
 }
@@ -4371,8 +4506,8 @@ function simulate(model, options) {
     lines: linesDistribution,
     tailAlpha,
     fileRisks,
-    componentRisks: compiled.componentNames.map((name16, c) => ({
-      name: name16,
+    componentRisks: compiled.componentNames.map((name17, c) => ({
+      name: name17,
       peopleLines: compiled.componentPeopleLines[c],
       baselineLines: compiled.componentBaselineLines[c],
       lines: distributionOf(componentLines[c], alphas)
@@ -4507,7 +4642,7 @@ async function backtestCommand(context) {
 }
 
 // packages/cochange/src/abandonment/overrides-exposure.ts
-import { existsSync as existsSync10 } from "node:fs";
+import { existsSync as existsSync11 } from "node:fs";
 import { relative } from "node:path";
 async function gitSucceeds(root, args) {
   try {
@@ -4519,7 +4654,7 @@ async function gitSucceeds(root, args) {
 }
 async function overridesExposure(root) {
   const file = overridesPath(root);
-  if (!existsSync10(file)) return null;
+  if (!existsSync11(file)) return null;
   const path = relative(root, file).split("\\").join("/");
   const tracked = await gitSucceeds(root, ["ls-files", "--error-unmatch", "--", path]);
   const ignored = await gitSucceeds(root, ["check-ignore", "-q", "--no-index", "--", path]);
@@ -4912,10 +5047,10 @@ var extensionProfiles = {
   py: "python"
 };
 function selectProfile(path, mappings = {}) {
-  const name16 = path.slice(path.lastIndexOf("/") + 1);
-  const dot = name16.lastIndexOf(".");
+  const name17 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name17.lastIndexOf(".");
   if (dot <= 0) return void 0;
-  const extension = name16.slice(dot + 1).toLowerCase();
+  const extension = name17.slice(dot + 1).toLowerCase();
   const mappedName = mappings[extension];
   if (mappedName !== void 0) {
     const profile2 = profiles[mappedName];
@@ -4977,12 +5112,12 @@ function componentUnits(changes, present, components2) {
     const counted = /* @__PURE__ */ new Set();
     for (const file of change2.files) {
       if (!present.has(file.fileId)) continue;
-      const name16 = componentOf(components2, file.fileId);
+      const name17 = componentOf(components2, file.fileId);
       const churn = (file.added ?? 0) + (file.deleted ?? 0);
-      let unit = groups.get(name16);
+      let unit = groups.get(name17);
       if (!unit) {
         unit = {
-          name: name16,
+          name: name17,
           files: 0,
           revisions: 0,
           churn: 0,
@@ -4990,12 +5125,12 @@ function componentUnits(changes, present, components2) {
           lastChanged: change2.committerDate,
           members: /* @__PURE__ */ new Set()
         };
-        groups.set(name16, unit);
+        groups.set(name17, unit);
       }
       unit.members.add(file.fileId);
       unit.files = unit.members.size;
-      if (!counted.has(name16)) {
-        counted.add(name16);
+      if (!counted.has(name17)) {
+        counted.add(name17);
         unit.revisions++;
       }
       unit.churn += churn;
@@ -5054,20 +5189,20 @@ function readFixes(history, units, classifier) {
     else if (classed.excluded) excludedMatches.push(classed.excluded);
     const touched = /* @__PURE__ */ new Set();
     for (const file of change2.files) {
-      const name16 = unitOf.get(file.fileId);
-      if (name16 !== void 0) touched.add(name16);
+      const name17 = unitOf.get(file.fileId);
+      if (name17 !== void 0) touched.add(name17);
     }
-    for (const name16 of touched) {
-      if (classed.fix) found.set(name16, [...found.get(name16) ?? [], { commit: classed.fix, time: change2.committerDate }]);
-      if (classed.revert) reverts.set(name16, (reverts.get(name16) ?? 0) + 1);
+    for (const name17 of touched) {
+      if (classed.fix) found.set(name17, [...found.get(name17) ?? [], { commit: classed.fix, time: change2.committerDate }]);
+      if (classed.revert) reverts.set(name17, (reverts.get(name17) ?? 0) + 1);
     }
   }
   const statistics = /* @__PURE__ */ new Map();
-  for (const name16 of /* @__PURE__ */ new Set([...found.keys(), ...reverts.keys()])) {
-    const newestFirst = (found.get(name16) ?? []).map((entry, index2) => ({ ...entry, index: index2 })).sort((a, b) => b.time - a.time || b.index - a.index);
-    statistics.set(name16, {
+  for (const name17 of /* @__PURE__ */ new Set([...found.keys(), ...reverts.keys()])) {
+    const newestFirst = (found.get(name17) ?? []).map((entry, index2) => ({ ...entry, index: index2 })).sort((a, b) => b.time - a.time || b.index - a.index);
+    statistics.set(name17, {
       fixes: newestFirst.length,
-      reverts: reverts.get(name16) ?? 0,
+      reverts: reverts.get(name17) ?? 0,
       fixShare: null,
       recentFixes: newestFirst.filter((entry) => entry.time >= recentSince).length,
       lastFix: newestFirst[0]?.commit.date ?? null,
@@ -5097,7 +5232,7 @@ function classify(shas, committerDate, commits, classifier) {
 }
 
 // packages/cochange/src/complexity-source.ts
-import { existsSync as existsSync11, readFileSync as readFileSync7 } from "node:fs";
+import { existsSync as existsSync12, readFileSync as readFileSync8 } from "node:fs";
 
 // packages/lexical/src/agreement.ts
 function exactRate(counts) {
@@ -5245,21 +5380,21 @@ function classifyHeader(segments, profile) {
   for (const pattern of functions) {
     const match = pattern.exec(text);
     if (match !== null) {
-      const name16 = match.groups?.name;
-      return { kind: "function", name: name16 === void 0 ? void 0 : cleanName(name16), line };
+      const name17 = match.groups?.name;
+      return { kind: "function", name: name17 === void 0 ? void 0 : cleanName(name17), line };
     }
   }
   return { kind: "other" };
 }
-function cleanName(name16) {
-  return name16.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
+function cleanName(name17) {
+  return name17.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
 }
 function findFunctionBlocks(lines, profile) {
   const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines, profile) : findBracedBlocks(lines, profile);
   return blocks.sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
 }
-function qualify(scopes, name16) {
-  return name16 === void 0 ? void 0 : [...scopes, name16].join(".");
+function qualify(scopes, name17) {
+  return name17 === void 0 ? void 0 : [...scopes, name17].join(".");
 }
 var modifiers = "(?:(?:public|private|protected|static|readonly|override|declare|export)\\s+)*";
 var boundArrow = [
@@ -5332,13 +5467,13 @@ function findBracedBlocks(lines, profile) {
     const kept = [...header, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
     if (kept.length === 0) return false;
     const text = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
-    let name16;
+    let name17;
     let matched = false;
     const members = compile3(profile).members;
     if (members !== void 0) {
       const found = members.map((pattern) => pattern.exec(text)).find((match) => match !== null);
       if (found === void 0) return false;
-      name16 = found?.groups?.name;
+      name17 = found?.groups?.name;
       matched = true;
     }
     for (const [i, pattern] of members === void 0 ? [...boundArrow.entries()] : []) {
@@ -5346,15 +5481,15 @@ function findBracedBlocks(lines, profile) {
       if (match === null) continue;
       if (i === 0 && !inDeclaration && !keywordAssignment.test(text) && top?.name === void 0) continue;
       if (i === 1 && (top === void 0 || top.name !== void 0)) continue;
-      name16 = match.groups?.name;
+      name17 = match.groups?.name;
       matched = true;
       break;
     }
     if (!matched) return false;
     const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
     const block = { startLine: kept[0].line, endLine: -1, source: "lexical" };
-    if (name16 !== void 0) {
-      block.name = cleanName(name16);
+    if (name17 !== void 0) {
+      block.name = cleanName(name17);
       block.qualifiedName = qualify(names, block.name);
     }
     arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text) };
@@ -5422,17 +5557,17 @@ function findBracedBlocks(lines, profile) {
         const classification = classifyHeader(header, profile);
         const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
         let block;
-        let name16;
+        let name17;
         if (classification.kind === "function") {
-          name16 = classification.name;
+          name17 = classification.name;
           block = { startLine: classification.line, endLine: -1, source: "lexical" };
-          if (name16 !== void 0) {
-            block.name = name16;
-            block.qualifiedName = qualify(names, name16);
+          if (name17 !== void 0) {
+            block.name = name17;
+            block.qualifiedName = qualify(names, name17);
           }
-        } else if (classification.kind === "type") name16 = classification.name;
+        } else if (classification.kind === "type") name17 = classification.name;
         const typeOnly = /^(?:export\s+)?(?:declare\s+)?(?:interface|type)\b/.test(headerText(""));
-        stack.push({ name: name16, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
+        stack.push({ name: name17, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
         header = [];
         segment2 = "";
         continue;
@@ -5839,10 +5974,10 @@ var COMPLEXITY_REPORT = { tool: "complexity", command: "files" };
 var COMPLEXITY_FIELD = "complexity";
 function readComplexityReport(root, head) {
   const file = reportPath2(root, COMPLEXITY_REPORT.command, COMPLEXITY_REPORT.tool);
-  if (!existsSync11(file)) return void 0;
+  if (!existsSync12(file)) return void 0;
   let document;
   try {
-    document = JSON.parse(readFileSync7(file, "utf8"));
+    document = JSON.parse(readFileSync8(file, "utf8"));
   } catch {
     return void 0;
   }
@@ -5855,6 +5990,11 @@ function readComplexityReport(root, head) {
     if (typeof row2.path === "string" && typeof value === "number") rows.set(row2.path, value);
   }
   return { document, rows };
+}
+function complexityReportInput(root, head) {
+  const report = readComplexityReport(root, head);
+  if (report === void 0) return null;
+  return { report: `${COMPLEXITY_REPORT.tool}.${COMPLEXITY_REPORT.command}`, head, config: report.document.config };
 }
 async function loadComplexity(context, headSha, paths) {
   const report = readComplexityReport(context.repo.root, headSha);
@@ -5906,7 +6046,7 @@ function siblingTestOf(path, tree) {
     `${stem}Test${ext}`,
     `${stem}Tests${ext}`
   ];
-  const candidates = [...names.map((name16) => `${folder}${name16}`), ...[...names, `${stem}${ext}`].map((name16) => `${folder}__tests__/${name16}`)];
+  const candidates = [...names.map((name17) => `${folder}${name17}`), ...[...names, `${stem}${ext}`].map((name17) => `${folder}__tests__/${name17}`)];
   return candidates.find((candidate) => tree.has(candidate)) ?? null;
 }
 
@@ -6672,8 +6812,8 @@ var command3 = {
 // packages/cochange/src/commands/brief.ts
 var brief_exports = {};
 __export(brief_exports, {
-  command: () => command4,
-  name: () => name4
+  command: () => command6,
+  name: () => name7
 });
 
 // packages/history/src/repo-paths.ts
@@ -6704,10 +6844,233 @@ function repoRelative(root, raw) {
   return path;
 }
 
-// packages/cochange/src/commands/brief.ts
-var name4 = "brief";
-var DEFAULT_PARTNERS = 5;
+// packages/cochange/src/file-activity.ts
+var name4 = "units";
+var derived = { command: name4, stated: () => ({}) };
+function fileActivity(history) {
+  const recentSince = monthsBefore(history.view.headDate, history.settings.recentMonths);
+  const activity = /* @__PURE__ */ new Map();
+  for (const change2 of history.filtered.changes) {
+    for (const id of new Set(change2.files.map((file) => file.fileId))) {
+      const entry = activity.get(id) ?? { path: id, revisions: 0, recentRevisions: 0, lastChanged: change2.committerDate };
+      entry.revisions++;
+      if (change2.committerDate >= recentSince) entry.recentRevisions++;
+      entry.lastChanged = Math.max(entry.lastChanged, change2.committerDate);
+      activity.set(id, entry);
+    }
+  }
+  return [...activity.values()];
+}
+function activityOutput(history) {
+  return {
+    inputs: { recentMonths: history.settings.recentMonths },
+    results: fileActivity(history),
+    columns: ["path", "revisions", "recentRevisions", "lastChanged"],
+    // Ages are counted from the analysed commit's date, which a stated window's end does not change.
+    extra: { headDate: history.view.headDate }
+  };
+}
+
+// packages/cochange/src/commands/coupling.ts
+var coupling_exports = {};
+__export(coupling_exports, {
+  ASYMMETRY: () => ASYMMETRY,
+  command: () => command4,
+  couplingOutput: () => couplingOutput,
+  derived: () => derived2,
+  name: () => name5,
+  rules: () => rules4
+});
+
+// packages/cochange/src/focus-path.ts
+async function focusPath(context, history, requested) {
+  const present = await listTree(context.repo.root, history.view.headSha);
+  return present.includes(requested) ? requested : history.view.renames.resolve(requested, -1);
+}
+
+// packages/cochange/src/commands/coupling.ts
+var name5 = "coupling";
+var ASYMMETRY = { high: 80, low: 30 };
+var rules4 = {
+  "distant-coupling": {
+    summary: "Two files in far-apart folders change together often",
+    explanation: [
+      "Raised when a pair's degree, support and tree distance all reach the configured values",
+      "(the guideline cochange.minDegree, the floor cochange.minSupport, the guideline cochange.minDistance), counted over eligible logical",
+      "changes only: bulk changes above cochange.maxChangesetSize are left out.",
+      "",
+      "Handoff: a locality review. Should these files live together? If not, check for information",
+      "leakage, where one design decision is encoded in both files. Coupling between a file and its",
+      "sibling test is expected and has distance 0, so it is not raised.",
+      "",
+      "This is a prompt for investigation, not a verdict. Weak evidence makes it tentative."
+    ].join("\n")
+  },
+  "asymmetric-coupling": {
+    summary: "A change to one file usually drags the other along, but not the reverse",
+    explanation: [
+      `Raised when the confidence from one file to the other is at least ${ASYMMETRY.high} % and the`,
+      `reverse is at most ${ASYMMETRY.low} %, on a pair that reaches the configured degree guideline and support floor.`,
+      "The result names the file whose changes usually include the other as `dependent`.",
+      "",
+      "Handoff: that file depends on the other implicitly. Check for information leakage, or for",
+      "temporal decomposition: code split by when it runs rather than by what it knows.",
+      "",
+      "This is a prompt for investigation, not a verdict. Weak evidence makes it tentative."
+    ].join("\n")
+  }
+};
 var round1 = (value) => Math.round(value * 10) / 10;
+var derived2 = {
+  command: name5,
+  stated: ({ values }) => ({ file: values.file, minDegree: values["min-degree"], minSupport: values["min-support"] })
+};
+var command4 = analysisCommand(name5, {
+  summary: "Pairs of files that change together, with degree, confidence both ways, support and distance",
+  cache: derived2,
+  options: {
+    file: { type: "string" },
+    "min-degree": { type: "string" },
+    "min-support": { type: "string" }
+  },
+  partial: ({ values }) => values.file !== void 0 || values["min-degree"] !== void 0 || values["min-support"] !== void 0,
+  analyse: ({ context, history }) => couplingOutput(context, history)
+});
+async function couplingOutput(context, history) {
+  const { settings } = history;
+  const minDegree = integerOption(context, "min-degree", settings.minDegree, 0, 100);
+  const minSupport = integerOption(context, "min-support", settings.minSupport, 1, Number.MAX_SAFE_INTEGER);
+  const counts = coupledPairs(history, { minSupport });
+  const languages = context.config.effective.languages;
+  const requested = context.values.file;
+  const focus = typeof requested === "string" ? await focusPath(context, history, requested) : void 0;
+  const rows = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings, minDegree, (path) => isCodePath(path, languages) ? "code" : "non-code")).sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
+  return {
+    inputs: { file: focus ?? null, degreeGuideline: minDegree, minSupport, asymmetry: ASYMMETRY },
+    results: rows,
+    columns: ["path", "pathKind", "with", "withKind", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
+    extra: {
+      population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
+      note: rows.length === 0 ? `No pair shares at least ${minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.` : null
+    }
+  };
+}
+function describe(pair, focus, settings, guideline, kindOf2) {
+  const flipped = focus !== void 0 && pair.b === focus;
+  const [path, other] = flipped ? [pair.b, pair.a] : [pair.a, pair.b];
+  const [changesPath, changesWith] = flipped ? [pair.changesB, pair.changesA] : [pair.changesA, pair.changesB];
+  const confidence = confidenceOf(pair.support, changesPath);
+  const reverseConfidence = confidenceOf(pair.support, changesWith);
+  const degree = degreeOf(pair);
+  const distance = treeDistance(path, other);
+  const clearsMinimum = pair.support >= settings.minSupport;
+  const strongEnough = clearsMinimum && degree >= settings.minDegree;
+  const findings = [];
+  if (strongEnough && distance >= settings.minDistance) findings.push("distant-coupling");
+  let dependent = null;
+  if (strongEnough) {
+    if (confidence >= ASYMMETRY.high && reverseConfidence <= ASYMMETRY.low) dependent = path;
+    else if (reverseConfidence >= ASYMMETRY.high && confidence <= ASYMMETRY.low) dependent = other;
+  }
+  if (dependent !== null) findings.push("asymmetric-coupling");
+  return {
+    path,
+    // Coupling includes files that are not code, such as a lockfile that changes with its manifest, and labels them.
+    pathKind: kindOf2(path),
+    with: other,
+    withKind: kindOf2(other),
+    score: round1(degree),
+    degree: round1(degree),
+    // The degree guideline orders the listing: pairs under it come after the others.
+    aboveGuideline: reachesDegree(pair, guideline),
+    confidence: round1(confidence),
+    reverseConfidence: round1(reverseConfidence),
+    support: pair.support,
+    distance,
+    findings,
+    dependent,
+    evidence: { support: pair.support, changesPath, changesWith, clearsMinimum }
+  };
+}
+
+// packages/cochange/src/commands/hotspots.ts
+var hotspots_exports = {};
+__export(hotspots_exports, {
+  command: () => command5,
+  derived: () => derived3,
+  name: () => name6,
+  rankedOutput: () => rankedOutput,
+  rules: () => rules5
+});
+var name6 = "hotspots";
+var rules5 = {
+  hotspot: {
+    summary: "Complex code that changes often and changed recently",
+    explanation: [
+      "A hotspot is a file (or component) whose hotspot score is in the top configured percentile of scored files",
+      "(cochange.hotspotPercentile, default 90) and that was changed within the recent window (cochange.recentMonths, default 3).",
+      "The score is the rank percentile of change frequency times the rank percentile of complexity, so one outlier cannot dominate it.",
+      "Complexity is indentation complexity, or the complexity plugin's file report when it covers the current commit.",
+      "",
+      "Suggested handoff: a complexity review of the worst functions in the file. A hotspot is a prompt to look, not a verdict."
+    ].join("\n")
+  },
+  "test-drift": {
+    summary: "A frequently changed source file whose sibling test never changes with it",
+    explanation: [
+      "Raised on a file (never a component) when it has at least cochange.minSupport revisions in the analysis window,",
+      "has a sibling test in the tree at the analysed commit, and no eligible logical change in the window touched both, not counting the one that created the test.",
+      "A sibling test sits beside the file with a test suffix or prefix (x.test.ts, x_test.go, test_x.py, XTest.java),",
+      "or under a __tests__ folder beside it. The result names it as `siblingTest`.",
+      "",
+      "Handoff: behaviour may be changing without the tests following. Check whether the test covers what the changes touch.",
+      "A test added recently has had little chance to co-change, so read the revision count against its age.",
+      "",
+      "This is a prompt for investigation, not a verdict."
+    ].join("\n")
+  }
+};
+var derived3 = {
+  command: name6,
+  stated: (context) => ({ by: isGrouped(context) ? readBy(context) : void 0, allFiles: wantsAllFiles(context) ? true : void 0 }),
+  expect: (context, head) => ({ complexityReport: complexityReportInput(context.repo.root, head) })
+};
+var command5 = analysisCommand(name6, {
+  summary: "Rank files or components by change frequency weighted by complexity",
+  options: { ...byOption, ...allFilesOption },
+  cache: derived3,
+  partial: (context) => isGrouped(context) || wantsAllFiles(context),
+  analyse: ({ context, history }) => rankedOutput(context, history)
+});
+async function rankedOutput(context, history) {
+  const by = readBy(context);
+  const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
+  return {
+    inputs: { by, allFiles: wantsAllFiles(context), complexityReport: complexity.input },
+    results: rows,
+    columns: [
+      "path",
+      "score",
+      ...by === "component" ? ["files"] : [],
+      "frequency",
+      "churn",
+      "complexity",
+      "ageDays",
+      "lastChanged",
+      "fixes",
+      "fixShare",
+      "recommendation",
+      ...by === "file" ? ["siblingTest", "findings"] : []
+    ],
+    extra: { complexitySource: complexity.source, fixConvention },
+    notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")]
+  };
+}
+
+// packages/cochange/src/commands/brief.ts
+var name7 = "brief";
+var DEFAULT_PARTNERS = 5;
+var round12 = (value) => Math.round(value * 10) / 10;
 function partnersOption(context) {
   const raw = context.values.partners;
   if (raw === void 0) return DEFAULT_PARTNERS;
@@ -6716,74 +7079,132 @@ function partnersOption(context) {
   }
   return Number(raw);
 }
-var command4 = analysisCommand(name4, {
+function partnerIndex(pairs) {
+  const index2 = /* @__PURE__ */ new Map();
+  const add = (focus, partner) => {
+    const list = index2.get(focus);
+    if (list === void 0) index2.set(focus, [partner]);
+    else list.push(partner);
+  };
+  for (const pair of pairs) {
+    const { support, changesPath, changesWith } = pair.evidence;
+    add(pair.path, { path: pair.with, support, changesFocus: changesPath, changesPartner: changesWith, distance: pair.distance });
+    add(pair.with, { path: pair.path, support, changesFocus: changesWith, changesPartner: changesPath, distance: pair.distance });
+  }
+  return index2;
+}
+function briefOutput(context, settings, present, sources, resolve2) {
+  const requested = context.positionals;
+  if (requested.length === 0) throw usageError("brief needs at least one file path: cochange brief PATH...");
+  const limit = partnersOption(context);
+  const root = context.repo.root;
+  const rankedBy = new Map(sources.hotspots.results.map((row2) => [row2.path, row2]));
+  const activityOf = new Map(sources.activity.results.map((row2) => [row2.path, row2]));
+  const partnersByFile = partnerIndex(sources.coupling.results);
+  const { fixConvention } = sources.hotspots.extra;
+  const { headDate: anchor } = sources.activity.extra;
+  const rows = [...new Set(requested.map((raw) => repoRelative(root, raw)))].map((asked) => {
+    const path = present.has(asked) ? asked : resolve2(asked);
+    const exists2 = present.has(path);
+    const activity = activityOf.get(path);
+    const frequency = activity?.revisions ?? 0;
+    const hotspot = rankedBy.get(path);
+    const alongside = (partnersByFile.get(path) ?? []).filter((partner) => present.has(partner.path)).map((partner) => {
+      const pair = { a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner };
+      return {
+        path: partner.path,
+        degree: round12(degreeOf(pair)),
+        confidence: round12(confidenceOf(partner.support, partner.changesFocus)),
+        reverseConfidence: round12(confidenceOf(partner.support, partner.changesPartner)),
+        support: partner.support,
+        distance: partner.distance,
+        // The degree is a guideline: partners under it are listed after those at or above it, not dropped.
+        aboveGuideline: reachesDegree(pair, settings.minDegree)
+      };
+    }).sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.confidence - x.confidence || y.support - x.support || compareBytes(x.path, y.path));
+    const note = !exists2 && frequency === 0 ? `"${asked}" is not in the tree at the analysed commit and has no history in the window: a new file, or a wrong path.` : frequency === 0 ? `No revisions in the ${settings.windowMonths} month window, so there is no co-change evidence for it.` : alongside.length === 0 ? `Nothing shares at least ${settings.minSupport} changes with it.` : !alongside.some((partner) => partner.aboveGuideline) ? `No partner reaches the degree guideline of ${settings.minDegree} %. The partners listed are below it.` : null;
+    return {
+      path,
+      requested: asked === path ? null : asked,
+      exists: exists2,
+      frequency,
+      recentRevisions: activity?.recentRevisions ?? 0,
+      fixes: hotspot?.fixes ?? 0,
+      fixShare: frequency === 0 ? null : Math.round((hotspot?.fixes ?? 0) / frequency * 1e3) / 1e3,
+      lastChanged: activity === void 0 ? null : isoDate(activity.lastChanged),
+      ageDays: activity === void 0 ? null : Math.floor((anchor - activity.lastChanged) / SECONDS_PER_DAY2),
+      hotspotScore: hotspot?.score ?? null,
+      recommendation: hotspot?.recommendation ?? null,
+      alongside: alongside.slice(0, limit),
+      alongsideNotShown: Math.max(0, alongside.length - limit),
+      note
+    };
+  });
+  const { window, filtersApplied, evidence } = sources.hotspots.extra;
+  return {
+    inputs: {
+      paths: rows.map((row2) => row2.requested ?? row2.path),
+      partners: limit,
+      degreeGuideline: settings.minDegree,
+      ...sources.hotspots.inputs?.identityInputs === void 0 ? {} : { identityInputs: sources.hotspots.inputs.identityInputs }
+    },
+    results: rows,
+    extra: { window, filtersApplied, evidence, fixConvention },
+    notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
+    columns: ["path", "frequency", "recentRevisions", "fixes", "lastChanged", "recommendation", "alongside", "note"]
+  };
+}
+function storedSources(context, head, window) {
+  return {
+    activity: derivedResult(context, derived, head, window),
+    coupling: derivedResult(context, derived2, head, window),
+    hotspots: derivedResult(context, derived3, head, window)
+  };
+}
+var command6 = analysisCommand(name7, {
   summary: "A compact pre-change briefing for the given files: what usually changes with them, recent activity, hotspot status",
   options: { partners: { type: "string" } },
   // The briefing covers only the files asked about, so it is printed but never stored as a report.
   partial: () => true,
+  /**
+   * With the hotspot ranking, the coupling pairs and the per-file activity stored for this commit, config and
+   * window, the briefing reads them and no history. A file that is not in the tree needs the renames, so it is
+   * answered from history.
+   */
+  async fromCache(context, window) {
+    if (context.positionals.length === 0) return void 0;
+    const head = await analysedSha(context);
+    const stored = storedSources(context, head, window);
+    const activity = readStored(context, stored.activity);
+    const coupling = readStored(context, stored.coupling);
+    const hotspots = readStored(context, stored.hotspots);
+    if (activity === void 0 || coupling === void 0 || hotspots === void 0) return void 0;
+    const present = new Set(await listTree(context.repo.root, head));
+    if (context.positionals.some((raw) => !present.has(repoRelative(context.repo.root, raw)))) return void 0;
+    hotspots.restoreLeftOut();
+    const output = briefOutput(
+      context,
+      readSettings(context.config),
+      present,
+      { hotspots: hotspots.output, coupling: coupling.output, activity: activity.output },
+      (path) => path
+    );
+    const named = [activity, coupling, hotspots].map((hit) => hit.input);
+    return { ...output, inputs: { ...output.inputs, resultsCache: named } };
+  },
   async analyse({ context, history }) {
-    const requested = context.positionals;
-    if (requested.length === 0) throw usageError("brief needs at least one file path: cochange brief PATH...");
-    const limit = partnersOption(context);
-    const { settings } = history;
-    const root = context.repo.root;
-    const present = new Set(await listTree(root, history.view.headSha));
-    const { rows: ranked, fixConvention } = await rankHotspots(context, history, "file");
-    const rankedBy = new Map(ranked.map((row2) => [row2.path, row2]));
-    const anchor = history.view.headDate;
-    const recentSince = monthsBefore(anchor, settings.recentMonths);
-    const couplingChanges = history.filtered.changes.map((change2) => ({
-      files: change2.files.map((file) => file.fileId),
-      oversized: change2.oversized
-    }));
-    const lastStatus = /* @__PURE__ */ new Map();
-    for (const change2 of history.filtered.changes) {
-      for (const file of change2.files) lastStatus.set(file.fileId, file.status);
-    }
-    const rows = [...new Set(requested.map((raw) => repoRelative(root, raw)))].map((asked) => {
-      const path = present.has(asked) ? asked : history.view.renames.resolve(asked, -1);
-      const exists2 = present.has(path);
-      const dates = history.filtered.changes.filter((change2) => change2.files.some((file) => file.fileId === path)).map((change2) => change2.committerDate);
-      const lastChanged = dates.length === 0 ? null : Math.max(...dates);
-      const hotspot = rankedBy.get(path);
-      const { partners } = partnersOf(couplingChanges, path);
-      const alongside = partners.filter((partner) => present.has(partner.path) && lastStatus.get(partner.path) !== "D").filter((partner) => partner.support >= settings.minSupport).map((partner) => ({
-        path: partner.path,
-        degree: round1(
-          degreeOf({ a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner })
-        ),
-        confidence: round1(confidenceOf(partner.support, partner.changesFocus)),
-        reverseConfidence: round1(confidenceOf(partner.support, partner.changesPartner)),
-        support: partner.support,
-        distance: treeDistance(path, partner.path),
-        // The degree is a guideline: partners under it are listed after those at or above it, not dropped.
-        aboveGuideline: reachesDegree({ a: path, b: partner.path, support: partner.support, changesA: partner.changesFocus, changesB: partner.changesPartner }, settings.minDegree)
-      })).sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.confidence - x.confidence || y.support - x.support || compareBytes(x.path, y.path));
-      const note = !exists2 && dates.length === 0 ? `"${asked}" is not in the tree at the analysed commit and has no history in the window: a new file, or a wrong path.` : dates.length === 0 ? `No revisions in the ${settings.windowMonths} month window, so there is no co-change evidence for it.` : alongside.length === 0 ? `Nothing shares at least ${settings.minSupport} changes with it.` : !alongside.some((partner) => partner.aboveGuideline) ? `No partner reaches the degree guideline of ${settings.minDegree} %. The partners listed are below it.` : null;
-      return {
-        path,
-        requested: asked === path ? null : asked,
-        exists: exists2,
-        frequency: dates.length,
-        recentRevisions: dates.filter((date) => date >= recentSince).length,
-        fixes: hotspot?.fixes ?? 0,
-        fixShare: dates.length === 0 ? null : Math.round((hotspot?.fixes ?? 0) / dates.length * 1e3) / 1e3,
-        lastChanged: lastChanged === null ? null : isoDate(lastChanged),
-        ageDays: lastChanged === null ? null : Math.floor((anchor - lastChanged) / SECONDS_PER_DAY2),
-        hotspotScore: hotspot?.score ?? null,
-        recommendation: hotspot?.recommendation ?? null,
-        alongside: alongside.slice(0, limit),
-        alongsideNotShown: Math.max(0, alongside.length - limit),
-        note
-      };
-    });
-    return {
-      inputs: { paths: rows.map((row2) => row2.requested ?? row2.path), partners: limit, degreeGuideline: settings.minDegree },
-      results: rows,
-      extra: { fixConvention },
-      notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
-      columns: ["path", "frequency", "recentRevisions", "fixes", "lastChanged", "recommendation", "alongside", "note"]
+    const window = statedWindow(context, history.settings.windowMonths);
+    const stored = storedSources(context, history.view.headSha, window);
+    const finish = async (computed, result) => {
+      const output = finishAnalysis(history, computed);
+      if (context.values["no-refresh"] !== true) await storeCached(context, result, output);
+      return output;
     };
+    const activity = await finish(activityOutput(history), stored.activity);
+    const coupling = await finish(await couplingOutput(context, history), stored.coupling);
+    const hotspots = await finish(await rankedOutput(context, history), stored.hotspots);
+    const present = new Set(await listTree(context.repo.root, history.view.headSha));
+    return briefOutput(context, history.settings, present, { hotspots, coupling, activity }, (asked) => history.view.renames.resolve(asked, -1));
   }
 });
 
@@ -6792,14 +7213,14 @@ var clusters_exports = {};
 __export(clusters_exports, {
   CLUSTER_MIN_FOLDERS: () => CLUSTER_MIN_FOLDERS,
   MAGNET: () => MAGNET,
-  command: () => command5,
-  name: () => name5,
-  rules: () => rules4
+  command: () => command7,
+  name: () => name8,
+  rules: () => rules6
 });
-var name5 = "clusters";
+var name8 = "clusters";
 var CLUSTER_MIN_FOLDERS = 3;
 var MAGNET = { folders: 3, neighbourCoupling: 25 };
-var rules4 = {
+var rules6 = {
   cluster: {
     summary: "A group of mutually coupled files spanning three or more folders",
     explanation: [
@@ -6828,7 +7249,7 @@ var rules4 = {
     ].join("\n")
   }
 };
-var round12 = (value) => Math.round(value * 10) / 10;
+var round13 = (value) => Math.round(value * 10) / 10;
 function components(pairs) {
   const neighbours = /* @__PURE__ */ new Map();
   const link = (from, to) => {
@@ -6875,7 +7296,7 @@ function isMagnet(file, neighbours) {
   }
   return crossPairs === 0 || 100 * coupled / crossPairs <= MAGNET.neighbourCoupling;
 }
-var command5 = analysisCommand(name5, {
+var command7 = analysisCommand(name8, {
   summary: "Groups of mutually coupled files (connected components above the coupling guidelines) with their spread",
   options: { "min-degree": { type: "string" }, "min-support": { type: "string" } },
   partial: ({ values }) => values["min-degree"] !== void 0 || values["min-support"] !== void 0,
@@ -6903,11 +7324,11 @@ var command5 = analysisCommand(name5, {
       const findings = [...magnets.length > 0 ? ["change-magnet"] : [], ...folders >= CLUSTER_MIN_FOLDERS ? ["cluster"] : []];
       return {
         path: files[0],
-        score: round12(folders * spread2 * meanDegree / 100),
+        score: round13(folders * spread2 * meanDegree / 100),
         size: files.length,
         folders,
-        spread: round12(spread2),
-        meanDegree: round12(meanDegree),
+        spread: round13(spread2),
+        meanDegree: round13(meanDegree),
         files,
         magnets,
         findings,
@@ -6927,130 +7348,16 @@ var command5 = analysisCommand(name5, {
   }
 });
 
-// packages/cochange/src/commands/coupling.ts
-var coupling_exports = {};
-__export(coupling_exports, {
-  ASYMMETRY: () => ASYMMETRY,
-  command: () => command6,
-  name: () => name6,
-  rules: () => rules5
-});
-
-// packages/cochange/src/focus-path.ts
-async function focusPath(context, history, requested) {
-  const present = await listTree(context.repo.root, history.view.headSha);
-  return present.includes(requested) ? requested : history.view.renames.resolve(requested, -1);
-}
-
-// packages/cochange/src/commands/coupling.ts
-var name6 = "coupling";
-var ASYMMETRY = { high: 80, low: 30 };
-var rules5 = {
-  "distant-coupling": {
-    summary: "Two files in far-apart folders change together often",
-    explanation: [
-      "Raised when a pair's degree, support and tree distance all reach the configured values",
-      "(the guideline cochange.minDegree, the floor cochange.minSupport, the guideline cochange.minDistance), counted over eligible logical",
-      "changes only: bulk changes above cochange.maxChangesetSize are left out.",
-      "",
-      "Handoff: a locality review. Should these files live together? If not, check for information",
-      "leakage, where one design decision is encoded in both files. Coupling between a file and its",
-      "sibling test is expected and has distance 0, so it is not raised.",
-      "",
-      "This is a prompt for investigation, not a verdict. Weak evidence makes it tentative."
-    ].join("\n")
-  },
-  "asymmetric-coupling": {
-    summary: "A change to one file usually drags the other along, but not the reverse",
-    explanation: [
-      `Raised when the confidence from one file to the other is at least ${ASYMMETRY.high} % and the`,
-      `reverse is at most ${ASYMMETRY.low} %, on a pair that reaches the configured degree guideline and support floor.`,
-      "The result names the file whose changes usually include the other as `dependent`.",
-      "",
-      "Handoff: that file depends on the other implicitly. Check for information leakage, or for",
-      "temporal decomposition: code split by when it runs rather than by what it knows.",
-      "",
-      "This is a prompt for investigation, not a verdict. Weak evidence makes it tentative."
-    ].join("\n")
-  }
-};
-var round13 = (value) => Math.round(value * 10) / 10;
-var command6 = analysisCommand(name6, {
-  summary: "Pairs of files that change together, with degree, confidence both ways, support and distance",
-  options: {
-    file: { type: "string" },
-    "min-degree": { type: "string" },
-    "min-support": { type: "string" }
-  },
-  partial: ({ values }) => values.file !== void 0 || values["min-degree"] !== void 0 || values["min-support"] !== void 0,
-  async analyse({ context, history }) {
-    const { settings } = history;
-    const minDegree = integerOption(context, "min-degree", settings.minDegree, 0, 100);
-    const minSupport = integerOption(context, "min-support", settings.minSupport, 1, Number.MAX_SAFE_INTEGER);
-    const counts = coupledPairs(history, { minSupport });
-    const languages = context.config.effective.languages;
-    const requested = context.values.file;
-    const focus = typeof requested === "string" ? await focusPath(context, history, requested) : void 0;
-    const rows = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings, minDegree, (path) => isCodePath(path, languages) ? "code" : "non-code")).sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
-    return {
-      inputs: { file: focus ?? null, degreeGuideline: minDegree, minSupport, asymmetry: ASYMMETRY },
-      results: rows,
-      columns: ["path", "pathKind", "with", "withKind", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
-      extra: {
-        population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
-        note: rows.length === 0 ? `No pair shares at least ${minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.` : null
-      }
-    };
-  }
-});
-function describe(pair, focus, settings, guideline, kindOf2) {
-  const flipped = focus !== void 0 && pair.b === focus;
-  const [path, other] = flipped ? [pair.b, pair.a] : [pair.a, pair.b];
-  const [changesPath, changesWith] = flipped ? [pair.changesB, pair.changesA] : [pair.changesA, pair.changesB];
-  const confidence = confidenceOf(pair.support, changesPath);
-  const reverseConfidence = confidenceOf(pair.support, changesWith);
-  const degree = degreeOf(pair);
-  const distance = treeDistance(path, other);
-  const clearsMinimum = pair.support >= settings.minSupport;
-  const strongEnough = clearsMinimum && degree >= settings.minDegree;
-  const findings = [];
-  if (strongEnough && distance >= settings.minDistance) findings.push("distant-coupling");
-  let dependent = null;
-  if (strongEnough) {
-    if (confidence >= ASYMMETRY.high && reverseConfidence <= ASYMMETRY.low) dependent = path;
-    else if (reverseConfidence >= ASYMMETRY.high && confidence <= ASYMMETRY.low) dependent = other;
-  }
-  if (dependent !== null) findings.push("asymmetric-coupling");
-  return {
-    path,
-    // Coupling includes files that are not code, such as a lockfile that changes with its manifest, and labels them.
-    pathKind: kindOf2(path),
-    with: other,
-    withKind: kindOf2(other),
-    score: round13(degree),
-    degree: round13(degree),
-    // The degree guideline orders the listing: pairs under it come after the others.
-    aboveGuideline: reachesDegree(pair, guideline),
-    confidence: round13(confidence),
-    reverseConfidence: round13(reverseConfidence),
-    support: pair.support,
-    distance,
-    findings,
-    dependent,
-    evidence: { support: pair.support, changesPath, changesWith, clearsMinimum }
-  };
-}
-
 // packages/cochange/src/commands/fixes.ts
 var fixes_exports = {};
 __export(fixes_exports, {
-  command: () => command7,
-  name: () => name7,
-  rules: () => rules6
+  command: () => command8,
+  name: () => name9,
+  rules: () => rules7
 });
-var name7 = "fixes";
+var name9 = "fixes";
 var DEFAULT_EVIDENCE = 5;
-var rules6 = {
+var rules7 = {
   "fix-count": {
     summary: "How many of the changes to a file or component were fixes, by commit message",
     explanation: [
@@ -7073,7 +7380,7 @@ function evidenceOption(value) {
   if (typeof value !== "string" || !/^\d+$/.test(value)) throw usageError(`--evidence must be a whole number, got "${String(value)}"`);
   return Number(value);
 }
-var command7 = analysisCommand(name7, {
+var command8 = analysisCommand(name9, {
   summary: "Rank files or components by how many of their changes were fixes, with the matching commits",
   options: { ...byOption, ...allFilesOption, evidence: { type: "string" } },
   partial: (context) => isGrouped(context) || wantsAllFiles(context) || context.values.evidence !== void 0,
@@ -7111,81 +7418,16 @@ var command7 = analysisCommand(name7, {
   }
 });
 
-// packages/cochange/src/commands/hotspots.ts
-var hotspots_exports = {};
-__export(hotspots_exports, {
-  command: () => command8,
-  name: () => name8,
-  rules: () => rules7
-});
-var name8 = "hotspots";
-var rules7 = {
-  hotspot: {
-    summary: "Complex code that changes often and changed recently",
-    explanation: [
-      "A hotspot is a file (or component) whose hotspot score is in the top configured percentile of scored files",
-      "(cochange.hotspotPercentile, default 90) and that was changed within the recent window (cochange.recentMonths, default 3).",
-      "The score is the rank percentile of change frequency times the rank percentile of complexity, so one outlier cannot dominate it.",
-      "Complexity is indentation complexity, or the complexity plugin's file report when it covers the current commit.",
-      "",
-      "Suggested handoff: a complexity review of the worst functions in the file. A hotspot is a prompt to look, not a verdict."
-    ].join("\n")
-  },
-  "test-drift": {
-    summary: "A frequently changed source file whose sibling test never changes with it",
-    explanation: [
-      "Raised on a file (never a component) when it has at least cochange.minSupport revisions in the analysis window,",
-      "has a sibling test in the tree at the analysed commit, and no eligible logical change in the window touched both, not counting the one that created the test.",
-      "A sibling test sits beside the file with a test suffix or prefix (x.test.ts, x_test.go, test_x.py, XTest.java),",
-      "or under a __tests__ folder beside it. The result names it as `siblingTest`.",
-      "",
-      "Handoff: behaviour may be changing without the tests following. Check whether the test covers what the changes touch.",
-      "A test added recently has had little chance to co-change, so read the revision count against its age.",
-      "",
-      "This is a prompt for investigation, not a verdict."
-    ].join("\n")
-  }
-};
-var command8 = analysisCommand(name8, {
-  summary: "Rank files or components by change frequency weighted by complexity",
-  options: { ...byOption, ...allFilesOption },
-  partial: (context) => isGrouped(context) || wantsAllFiles(context),
-  async analyse({ context, history }) {
-    const by = readBy(context);
-    const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
-    return {
-      inputs: { by, allFiles: wantsAllFiles(context), complexityReport: complexity.input },
-      results: rows,
-      columns: [
-        "path",
-        "score",
-        ...by === "component" ? ["files"] : [],
-        "frequency",
-        "churn",
-        "complexity",
-        "ageDays",
-        "lastChanged",
-        "fixes",
-        "fixShare",
-        "recommendation",
-        ...by === "file" ? ["siblingTest", "findings"] : []
-      ],
-      extra: { complexitySource: complexity.source, fixConvention },
-      notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")]
-    };
-  }
-});
-
 // packages/cochange/src/commands/identities.ts
 var identities_exports = {};
 __export(identities_exports, {
   command: () => command9,
-  name: () => name9
+  name: () => name10
 });
 
 // packages/cochange/src/identities/apply.ts
-import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync12, mkdirSync as mkdirSync3, readFileSync as readFileSync8, renameSync as renameSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { createHash as createHash7 } from "node:crypto";
+import { existsSync as existsSync13, mkdirSync as mkdirSync3, readFileSync as readFileSync9, renameSync as renameSync4, writeFileSync as writeFileSync4 } from "node:fs";
 import { dirname as dirname2, isAbsolute as isAbsolute2, relative as relative3, resolve } from "node:path";
 
 // packages/history/src/identity-mailmap.ts
@@ -7208,7 +7450,7 @@ function parseLine(line) {
 function formatMapping(mapping) {
   return `${identityKey(mapping.canonical)} ${identityKey(mapping.alias)}`;
 }
-var same = (x, y) => x !== void 0 && x.toLowerCase() === y.toLowerCase();
+var same2 = (x, y) => x !== void 0 && x.toLowerCase() === y.toLowerCase();
 function addMailmapMappings(existing, mappings) {
   const parsed = existing.split("\n").map(parseLine).filter((e) => e !== void 0);
   const added = [];
@@ -7216,17 +7458,17 @@ function addMailmapMappings(existing, mappings) {
   for (const mapping of [...mappings].sort((p, q) => compare3(formatMapping(p), formatMapping(q)))) {
     const line = formatMapping(mapping);
     const current2 = parsed.find(
-      (e) => same(e.commitEmail, mapping.alias.email) && (e.commitName === void 0 || same(e.commitName, mapping.alias.name))
+      (e) => same2(e.commitEmail, mapping.alias.email) && (e.commitName === void 0 || same2(e.commitName, mapping.alias.name))
     );
     if (current2) {
-      const name16 = current2.properName ?? mapping.alias.name;
+      const name17 = current2.properName ?? mapping.alias.name;
       const email = current2.properEmail ?? mapping.alias.email;
-      if (same(name16, mapping.canonical.name) && same(email, mapping.canonical.email)) {
+      if (same2(name17, mapping.canonical.name) && same2(email, mapping.canonical.email)) {
         present.push(line);
         continue;
       }
       throw usageError(
-        `${identityKey(mapping.alias)} is already mapped to ${identityKey({ name: name16, email })} in the mailmap; edit the file to change it`
+        `${identityKey(mapping.alias)} is already mapped to ${identityKey({ name: name17, email })} in the mailmap; edit the file to change it`
       );
     }
     if (added.includes(line)) continue;
@@ -7352,9 +7594,9 @@ function address(value, where) {
 }
 function readDecisionsInput(path, root) {
   const file = isAbsolute2(path) ? path : resolve(root, path);
-  if (!existsSync12(file)) throw usageError(`--from: ${path} does not exist`);
-  const text = readFileSync8(file, "utf8");
-  const hash = createHash6("sha256").update(text).digest("hex").slice(0, 16);
+  if (!existsSync13(file)) throw usageError(`--from: ${path} does not exist`);
+  const text = readFileSync9(file, "utf8");
+  const hash = createHash7("sha256").update(text).digest("hex").slice(0, 16);
   let value;
   try {
     value = JSON.parse(text);
@@ -7433,7 +7675,7 @@ function planApply(root, location, input, analysis) {
     }
   }
   const mailmapPath = location === "local" ? files.localMailmap : files.mailmap;
-  const before = existsSync12(mailmapPath) ? readFileSync8(mailmapPath, "utf8") : "";
+  const before = existsSync13(mailmapPath) ? readFileSync9(mailmapPath, "utf8") : "";
   const update = addMailmapMappings(before, mappings);
   const decisions = mergeDecisions(existing, input);
   const decisionsPath = decisionsFile(root, location);
@@ -7542,7 +7784,7 @@ function checkMapping(analysis, detail) {
 }
 
 // packages/cochange/src/commands/identities.ts
-var name9 = "identities";
+var name10 = "identities";
 var SUBCOMMANDS2 = ["list", "propose", "classify", "apply", "check"];
 var command9 = {
   subcommands: {
@@ -7619,7 +7861,7 @@ function rejectOptionsOutsideTheirCommand2(sub, context) {
 var outcome_exports = {};
 __export(outcome_exports, {
   command: () => command10,
-  name: () => name10
+  name: () => name11
 });
 
 // packages/history/src/checkouts.ts
@@ -7635,9 +7877,9 @@ import { join as join9 } from "node:path";
 var defaultProjectsDirectory = () => join9(homedir(), ".claude", "projects");
 
 // packages/transcripts/src/stamp.ts
-import { createHash as createHash7 } from "node:crypto";
+import { createHash as createHash8 } from "node:crypto";
 function stampOf(input) {
-  return createHash7("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
+  return createHash8("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
 }
 
 // packages/transcripts/src/difference.ts
@@ -7658,7 +7900,7 @@ function differenceOf(actedOn, comparison, minSamples, noisePercent) {
 }
 
 // packages/transcripts/src/session-edits.ts
-import { existsSync as existsSync14, readFileSync as readFileSync10 } from "node:fs";
+import { existsSync as existsSync15, readFileSync as readFileSync11 } from "node:fs";
 
 // packages/transcripts/src/repo-path.ts
 import { posix } from "node:path";
@@ -7716,7 +7958,7 @@ function toRepoPath(path, roots) {
 }
 
 // packages/transcripts/src/measure-repo.ts
-import { existsSync as existsSync13, readFileSync as readFileSync9, readdirSync } from "node:fs";
+import { existsSync as existsSync14, readFileSync as readFileSync10, readdirSync } from "node:fs";
 import { join as join10 } from "node:path";
 
 // packages/transcripts/src/shell-command.ts
@@ -7778,11 +8020,11 @@ function tokenize(source) {
       i = end + 1;
       return true;
     }
-    const name16 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i + 1));
-    if (name16 !== null) {
+    const name17 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i + 1));
+    if (name17 !== null) {
       dynamic = true;
-      text += `$${name16[0]}`;
-      i += 1 + name16[0].length;
+      text += `$${name17[0]}`;
+      i += 1 + name17[0].length;
       return true;
     }
     if (next === void 0 || /\s|["'`]/.test(next)) {
@@ -7975,14 +8217,14 @@ function parseArgs2(args, spec) {
       ended = true;
     } else if (text.startsWith("--")) {
       const equals = text.indexOf("=");
-      const name16 = equals === -1 ? text : text.slice(0, equals);
-      flags.add(name16);
+      const name17 = equals === -1 ? text : text.slice(0, equals);
+      flags.add(name17);
       if (equals !== -1) {
-        values.push({ name: name16, value: text.slice(equals + 1) });
-      } else if (spec.valueLong?.includes(name16)) {
+        values.push({ name: name17, value: text.slice(equals + 1) });
+      } else if (spec.valueLong?.includes(name17)) {
         const next = args[k + 1];
         if (next === void 0) return null;
-        values.push({ name: name16, value: plain(next) });
+        values.push({ name: name17, value: plain(next) });
         k++;
       }
     } else {
@@ -8152,8 +8394,8 @@ function awkLike(args, run2) {
     run2.read(word);
   }
 }
-function grepLike(name16, args, run2, piped, hasInput) {
-  const ripgrep = name16 === "rg";
+function grepLike(name17, args, run2, piped, hasInput) {
+  const ripgrep = name17 === "rg";
   const parsed = parseArgs2(args, {
     valueShort: ripgrep ? "efgtTABCmjMEdr" : "efmABCdD",
     valueLong: ripgrep ? RG_VALUE_LONG : GREP_VALUE_LONG
@@ -8221,12 +8463,12 @@ function gitLike(args, run2) {
   }
   run2.cwd = saved;
 }
-function moveLike(name16, args, run2) {
+function moveLike(name17, args, run2) {
   const parsed = parseArgs2(args, { valueShort: "tS", valueLong: ["--target-directory", "--suffix"] });
   if (parsed === null) return run2.fail();
   const recursive = parsed.flags.has("r") || parsed.flags.has("R") || parsed.flags.has("d") || parsed.flags.has("--recursive") || parsed.flags.has("a");
   const operands = parsed.operands.filter((word) => !endsLikeDirectory(plain(word)) || word.dynamic);
-  if (name16 === "rm") {
+  if (name17 === "rm") {
     if (recursive) return;
     for (const word of operands) run2.edit(word);
     return;
@@ -8258,16 +8500,16 @@ function moveLike(name16, args, run2) {
   for (const word of sources) {
     if (word.dynamic || word.glob && !word.quoted) return run2.fail();
   }
-  if (name16 === "mv") {
+  if (name17 === "mv") {
     for (const word of sources) if (!recursive && !endsLikeDirectory(plain(word))) run2.edit(word);
   }
-  if (recursive && name16 === "cp") return;
+  if (recursive && name17 === "cp") return;
   run2.access.edits.push(...targets);
 }
-function interpreterLike(args, command16, run2, name16) {
+function interpreterLike(args, command16, run2, name17) {
   if (command16.heredoc) return run2.fail();
   const parsed = parseArgs2(args, {
-    valueShort: name16.startsWith("python") ? "WXmc" : "rCeEpr",
+    valueShort: name17.startsWith("python") ? "WXmc" : "rCeEpr",
     valueLong: ["--require", "--import", "--loader", "--eval", "--print", "--experimental-loader"]
   });
   if (parsed === null) return run2.fail();
@@ -8302,9 +8544,9 @@ function execute2(command16, run2, piped) {
   while (words[0] !== void 0 && !words[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words[0]))) {
     const text = plain(words[0]);
     const equals = text.indexOf("=");
-    const name17 = text.slice(0, equals);
-    if (words[0].glob) run2.variables.delete(name17);
-    else run2.variables.set(name17, text.slice(equals + 1));
+    const name18 = text.slice(0, equals);
+    if (words[0].glob) run2.variables.delete(name18);
+    else run2.variables.set(name18, text.slice(equals + 1));
     words = words.slice(1);
   }
   redirections(substituted, run2);
@@ -8320,49 +8562,49 @@ function execute2(command16, run2, piped) {
   }
   const head = words[0];
   if (head.dynamic) return run2.fail();
-  const name16 = posix2.basename(plain(head));
+  const name17 = posix2.basename(plain(head));
   const args = words.slice(1);
   const hasInput = command16.redirects.some((r) => r.op === "<" || r.op === "<<<") || command16.heredoc;
-  if (HIDING_COMMANDS.has(name16)) return run2.fail();
-  if (SHELLS.has(name16)) {
+  if (HIDING_COMMANDS.has(name17)) return run2.fail();
+  if (SHELLS.has(name17)) {
     const parsed = parseArgs2(args, { valueShort: "co" });
     if (parsed === null || parsed.flags.has("c") || command16.heredoc) return run2.fail();
     const script = parsed.operands[0];
     if (script !== void 0 && !(script.dynamic === false && !looksLikeFile(plain(script)))) run2.read(script);
     return;
   }
-  if (name16 === "cd") {
+  if (name17 === "cd") {
     const target = args.find((word) => !/^-[A-Za-z]+$/.test(plain(word)) || word.quoted);
     if (target === void 0) run2.cwd = "~";
     else if (target.dynamic || plain(target) === "-") run2.cwd = null;
     else run2.cwd = run2.resolve(plain(target));
     return;
   }
-  if (name16 === "pushd" || name16 === "popd") {
+  if (name17 === "pushd" || name17 === "popd") {
     run2.cwd = null;
     return;
   }
-  if (READERS.has(name16)) {
-    const parsed = parseArgs2(args, { valueShort: name16 === "head" || name16 === "tail" ? "nc" : "", valueLong: ["--lines", "--bytes", "--files0-from"] });
+  if (READERS.has(name17)) {
+    const parsed = parseArgs2(args, { valueShort: name17 === "head" || name17 === "tail" ? "nc" : "", valueLong: ["--lines", "--bytes", "--files0-from"] });
     if (parsed === null) return run2.fail();
     for (const word of parsed.operands) run2.read(word);
     return;
   }
-  if (name16 === "sed") return sedLike(args, run2);
-  if (name16 === "perl") return perlLike(args, run2);
-  if (name16 === "awk" || name16 === "gawk" || name16 === "mawk") return awkLike(args, run2);
-  if (name16 === "grep" || name16 === "egrep" || name16 === "fgrep" || name16 === "rg") return grepLike(name16 === "rg" ? "rg" : "grep", args, run2, piped, hasInput);
-  if (name16 === "diff") return diffLike(args, run2);
-  if (name16 === "git") return gitLike(args, run2);
-  if (name16 === "tee") {
+  if (name17 === "sed") return sedLike(args, run2);
+  if (name17 === "perl") return perlLike(args, run2);
+  if (name17 === "awk" || name17 === "gawk" || name17 === "mawk") return awkLike(args, run2);
+  if (name17 === "grep" || name17 === "egrep" || name17 === "fgrep" || name17 === "rg") return grepLike(name17 === "rg" ? "rg" : "grep", args, run2, piped, hasInput);
+  if (name17 === "diff") return diffLike(args, run2);
+  if (name17 === "git") return gitLike(args, run2);
+  if (name17 === "tee") {
     const parsed = parseArgs2(args, {});
     if (parsed === null) return run2.fail();
     for (const word of parsed.operands) if (plain(word) !== "-" && !plain(word).startsWith("/dev/")) run2.edit(word);
     return;
   }
-  if (name16 === "cp" || name16 === "mv" || name16 === "rm") return moveLike(name16, args, run2);
-  if (name16 === "find") return findLike(args, run2);
-  if (INTERPRETERS.has(name16)) return interpreterLike(args, command16, run2, name16);
+  if (name17 === "cp" || name17 === "mv" || name17 === "rm") return moveLike(name17, args, run2);
+  if (name17 === "find") return findLike(args, run2);
+  if (INTERPRETERS.has(name17)) return interpreterLike(args, command16, run2, name17);
 }
 var headOf = (command16) => {
   const word = command16.words.find((candidate) => candidate.quoted || !SKIPPED_KEYWORDS.has(plain(candidate)));
@@ -8442,12 +8684,12 @@ function pathOf(input) {
   return asString(input["file_path"]) ?? asString(input["notebook_path"]) ?? asString(input["path"]);
 }
 function actionOf(block) {
-  const name16 = asString(block["name"]);
-  if (name16 === null) return null;
+  const name17 = asString(block["name"]);
+  if (name17 === null) return null;
   const input = isObject(block["input"]) ? block["input"] : {};
-  if (READ_TOOLS.has(name16)) return { kind: "read", origin: "tool", path: pathOf(input) };
-  if (SEARCH_TOOLS.has(name16)) return { kind: "search", origin: "tool", path: pathOf(input) };
-  if (EDIT_TOOLS.has(name16)) return { kind: "edit", origin: "tool", path: pathOf(input) };
+  if (READ_TOOLS.has(name17)) return { kind: "read", origin: "tool", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name17)) return { kind: "search", origin: "tool", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name17)) return { kind: "edit", origin: "tool", path: pathOf(input) };
   return null;
 }
 var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash"]);
@@ -8572,8 +8814,8 @@ function parseTranscript(text, scope = "main") {
     }
     for (const block of message["content"]) {
       if (!isObject(block) || block["type"] !== "tool_use") continue;
-      const name16 = asString(block["name"]);
-      if (name16 !== null && SHELL_TOOLS.has(name16)) {
+      const name17 = asString(block["name"]);
+      if (name17 !== null && SHELL_TOOLS.has(name17)) {
         const actions = shellActionsOf(block, asString(line["cwd"]));
         turn.shell.calls++;
         if (actions === null) turn.shell.unparsed++;
@@ -8615,7 +8857,7 @@ function compareBytes3(a, b) {
 }
 function sessionFiles(projectsDir, root) {
   const dir = join10(projectsDir, encodeProjectDir(root));
-  if (!existsSync13(dir)) return [];
+  if (!existsSync14(dir)) return [];
   return readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join10(dir, entry.name) })).sort((a, b) => compareBytes3(a.sessionId, b.sessionId));
 }
 
@@ -8642,11 +8884,11 @@ function readRepoSessionEdits(options) {
   const sessions = [];
   for (const root of repoRoots) {
     for (const file of sessionFiles(projectsDir, root)) {
-      if (seen.has(file.path) || !existsSync14(file.path)) continue;
+      if (seen.has(file.path) || !existsSync15(file.path)) continue;
       seen.add(file.path);
       let text;
       try {
-        text = readFileSync10(file.path, "utf8");
+        text = readFileSync11(file.path, "utf8");
       } catch {
         continue;
       }
@@ -8734,7 +8976,7 @@ function revisionsOf(changes) {
 }
 
 // packages/cochange/src/commands/outcome.ts
-var name10 = "outcome";
+var name11 = "outcome";
 var SUBCOMMANDS3 = ["completeness", "spread"];
 var isoDay6 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 var command10 = {
@@ -8911,9 +9153,9 @@ async function completeness(context) {
 var refresh_exports = {};
 __export(refresh_exports, {
   command: () => command11,
-  name: () => name11
+  name: () => name12
 });
-var name11 = "refresh";
+var name12 = "refresh";
 var command11 = {
   summary: "Update the shared history cache and report the commits added",
   async run(context) {
@@ -8936,7 +9178,7 @@ var command11 = {
 var risk_exports = {};
 __export(risk_exports, {
   command: () => command12,
-  name: () => name12,
+  name: () => name13,
   rules: () => rules8
 });
 
@@ -9276,7 +9518,7 @@ var FACTOR_DOCS = [
     why: "Neither the author nor any reviewer has first-hand knowledge."
   }
 ];
-var factorDoc = (name16) => FACTOR_DOCS.find((doc) => doc.name === name16);
+var factorDoc = (name17) => FACTOR_DOCS.find((doc) => doc.name === name17);
 var LEVEL_RULES = [
   {
     id: "baseline",
@@ -9331,27 +9573,27 @@ function explainRules(risk) {
       countHigh: risk.countHigh,
       disabled: [...risk.disabled].sort()
     },
-    factors: FACTOR_DOCS.map(({ name: name16, family, layer, banding, signal }) => ({ name: name16, family, layer, banding, signal }))
+    factors: FACTOR_DOCS.map(({ name: name17, family, layer, banding, signal }) => ({ name: name17, family, layer, banding, signal }))
   };
 }
-async function explainFactor(name16, assess) {
-  const doc = factorDoc(name16);
-  if (!doc) throw usageError(`unknown factor "${name16}"; factors: ${FACTOR_DOCS.map((d) => d.name).join(", ")}`);
+async function explainFactor(name17, assess) {
+  const doc = factorDoc(name17);
+  if (!doc) throw usageError(`unknown factor "${name17}"; factors: ${FACTOR_DOCS.map((d) => d.name).join(", ")}`);
   let driven = null;
   if (doc.family !== "placement") {
     const assessed = await assess();
-    driven = assessed.factors.find((factor) => factor.name === name16) ?? null;
+    driven = assessed.factors.find((factor) => factor.name === name17) ?? null;
   }
-  return { kind: "explain", topic: name16, doc: { ...doc }, branch: driven };
+  return { kind: "explain", topic: name17, doc: { ...doc }, branch: driven };
 }
 
 // packages/cochange/src/risk/abandonment-report.ts
-import { existsSync as existsSync15, readFileSync as readFileSync11 } from "node:fs";
+import { existsSync as existsSync16, readFileSync as readFileSync12 } from "node:fs";
 function readAbandonmentReport(root, head, config, overridesStamp) {
   const file = reportPath2(root, REPORT);
-  if (!existsSync15(file)) return null;
+  if (!existsSync16(file)) return null;
   try {
-    const document = JSON.parse(readFileSync11(file, "utf8"));
+    const document = JSON.parse(readFileSync12(file, "utf8"));
     if (document.tool !== "cochange" || document.command !== REPORT) return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false || document.config !== config) return null;
     if (document.inputs?.mode !== "rate" || (document.inputs.overrides?.hash ?? null) !== overridesStamp) return null;
@@ -9452,12 +9694,12 @@ function measurement(evidence, files, unknown) {
 }
 
 // packages/cochange/src/risk/composition.ts
-import { existsSync as existsSync16, readFileSync as readFileSync13 } from "node:fs";
+import { existsSync as existsSync17, readFileSync as readFileSync14 } from "node:fs";
 import { join as join12 } from "node:path";
 
 // packages/cochange/src/risk/evidence-inputs.ts
-import { createHash as createHash8 } from "node:crypto";
-import { readFileSync as readFileSync12 } from "node:fs";
+import { createHash as createHash9 } from "node:crypto";
+import { readFileSync as readFileSync13 } from "node:fs";
 import { isAbsolute as isAbsolute4, join as join11 } from "node:path";
 var NO_EVIDENCE = { complexity: null, structure: null, stamps: [] };
 function readEvidence(root, files, change2) {
@@ -9468,7 +9710,7 @@ function readEvidence(root, files, change2) {
     const path = isAbsolute4(file) ? file : join11(root, file);
     let text;
     try {
-      text = readFileSync12(path, "utf8");
+      text = readFileSync13(path, "utf8");
     } catch {
       throw usageError(`--evidence ${file}: cannot read it (a relative path is taken from the repository root)`);
     }
@@ -9480,7 +9722,7 @@ function readEvidence(root, files, change2) {
     }
     const tool = String(document.tool ?? "");
     const command16 = String(document.command ?? "");
-    const stamp2 = { tool, command: command16, hash: createHash8("sha256").update(text).digest("hex").slice(0, 16) };
+    const stamp2 = { tool, command: command16, hash: createHash9("sha256").update(text).digest("hex").slice(0, 16) };
     if (!Array.isArray(document.results)) throw usageError(`--evidence ${file}: no results list`);
     checkAgainst(file, document, change2);
     if (tool === "complexity" && command16 === "diff") {
@@ -9591,16 +9833,16 @@ async function complexityDelta(root, change2, risk, evidence) {
 }
 function readWorktree(root, path) {
   try {
-    return readFileSync13(join12(root, path), "utf8");
+    return readFileSync14(join12(root, path), "utf8");
   } catch {
     return void 0;
   }
 }
 function readLocalityFanIn(root, head) {
   const file = reportPath2(root, "analyse", "locality");
-  if (!existsSync16(file)) return null;
+  if (!existsSync17(file)) return null;
   try {
-    const document = JSON.parse(readFileSync13(file, "utf8"));
+    const document = JSON.parse(readFileSync14(file, "utf8"));
     if (document.tool !== "locality" || document.command !== "analyse") return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false) return null;
     if (!Array.isArray(document.results) || typeof document.config !== "string") return null;
@@ -9817,10 +10059,10 @@ var HistoryState = class {
 var round2 = (value, places = 6) => Math.round(value * 10 ** places) / 10 ** places;
 var churnOf = (file) => (file.added ?? 0) + (file.deleted ?? 0);
 var FIRST_ROWS = 5;
-function measurement2(name16, family, layer, kind, source, parts) {
-  return { name: name16, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts };
+function measurement2(name17, family, layer, kind, source, parts) {
+  return { name: name17, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts };
 }
-var unavailable2 = (name16, family, layer, kind, source, reason) => measurement2(name16, family, layer, kind, source, { unavailable: reason });
+var unavailable2 = (name17, family, layer, kind, source, reason) => measurement2(name17, family, layer, kind, source, { unavailable: reason });
 function measureHistoryLayer(facts, state, context) {
   return [
     size(facts),
@@ -10258,11 +10500,11 @@ var SCORED_FACTORS = /* @__PURE__ */ new Set([
 ]);
 function makeBander(baseline, settings) {
   const cache = /* @__PURE__ */ new Map();
-  const cutoffs = (name16, series) => {
-    const key = `${name16}\0${series}`;
+  const cutoffs = (name17, series) => {
+    const key = `${name17}\0${series}`;
     if (!cache.has(key)) {
       const population = baseline.flatMap((measures) => {
-        const found = measures.find((m) => m.name === name16);
+        const found = measures.find((m) => m.name === name17);
         return found && found.unavailable === null && found.series[series] !== void 0 ? [found.series[series]] : [];
       });
       cache.set(key, population.length < settings.minBaseline ? null : cutoffsOf(population, settings.moderatePercentile, settings.highPercentile));
@@ -10390,7 +10632,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change2.head);
   const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-TIA3KDS3.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-XGZ3WCKB.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);
@@ -10432,7 +10674,7 @@ function authorEmails(change2) {
 }
 function eventsOf(factors) {
   const events = [];
-  const get = (name16) => factors.find((f) => f.name === name16 && f.status === "ok");
+  const get = (name17) => factors.find((f) => f.name === name17 && f.status === "ok");
   if (get("missing-co-change")?.band === "high") events.push("missing-co-change");
   const structure = get("structure-delta");
   if (structure && Number(structure.value.count ?? 0) > 0) events.push("structure-delta");
@@ -10603,13 +10845,13 @@ function summarise(scored, all, outcomes, risk) {
     };
   });
   const levels = rows(LEVELS, (s) => s.level);
-  const factors = [...SCORED_FACTORS].map((name16) => ({
-    name: name16,
+  const factors = [...SCORED_FACTORS].map((name17) => ({
+    name: name17,
     bands: rows(["low", "moderate", "high"], (s) => {
-      const band = s.bands.get(name16);
+      const band = s.bands.get(name17);
       return band === void 0 || band === "unavailable" ? null : band;
     }),
-    unavailable: known.filter((s) => (s.bands.get(name16) ?? "unavailable") === "unavailable").length
+    unavailable: known.filter((s) => (s.bands.get(name17) ?? "unavailable") === "unavailable").length
   }));
   const outcomeList = [...outcomes.values()];
   const troubled = known.filter(troubledOf).length;
@@ -10685,13 +10927,13 @@ function adoptionOf(all, outcomes, adopted, risk, headTime) {
 }
 
 // packages/cochange/src/risk/stored-backtest.ts
-import { existsSync as existsSync17, readFileSync as readFileSync14 } from "node:fs";
+import { existsSync as existsSync18, readFileSync as readFileSync15 } from "node:fs";
 var BACKTEST_REPORT = "risk-backtest";
 function readStoredBacktest(root, configHash) {
   const file = reportPath2(root, BACKTEST_REPORT);
-  if (!existsSync17(file)) return null;
+  if (!existsSync18(file)) return null;
   try {
-    const document = JSON.parse(readFileSync14(file, "utf8"));
+    const document = JSON.parse(readFileSync15(file, "utf8"));
     const results = document.results;
     if (document.tool !== TOOL2 || document.command !== BACKTEST_REPORT || document.config !== configHash) return null;
     if (typeof document.repo?.head !== "string" || results?.kind !== "backtest" || !results.separation) return null;
@@ -10881,7 +11123,7 @@ function make(id, factor, summary, evidence, fromPlacement = false) {
   };
 }
 function findingsOf(assessed, placement) {
-  const get = (name16) => assessed.factors.find((f) => f.name === name16);
+  const get = (name17) => assessed.factors.find((f) => f.name === name17);
   const found = [];
   const count2 = (factor) => Number(factor.value.count ?? factor.value.files ?? 0);
   const missing = get("missing-co-change");
@@ -10890,10 +11132,10 @@ function findingsOf(assessed, placement) {
   }
   const mixed = get("mixed-purpose");
   if (atLeastModerate(mixed)) found.push(make("mixed-purpose", mixed, `${count2(mixed)} moved or renamed file${count2(mixed) === 1 ? "" : "s"} in a change that also edits content`, mixed.evidence));
-  for (const name16 of ["size", "spread"]) {
-    const factor = get(name16);
+  for (const name17 of ["size", "spread"]) {
+    const factor = get(name17);
     if (factor?.status === "ok" && factor.band === "high") {
-      found.push(make(name16, factor, name16 === "size" ? `${String(factor.value.lines)} lines in ${String(factor.value.files)} files, above the 90th percentile of merged changes` : `spread ${String(factor.value.spread)} across ${String(factor.value.folders)} folders, above the 90th percentile of merged changes`, []));
+      found.push(make(name17, factor, name17 === "size" ? `${String(factor.value.lines)} lines in ${String(factor.value.files)} files, above the 90th percentile of merged changes` : `spread ${String(factor.value.spread)} across ${String(factor.value.folders)} folders, above the 90th percentile of merged changes`, []));
     }
   }
   const tests = get("test-evidence");
@@ -10909,7 +11151,7 @@ function findingsOf(assessed, placement) {
   const sensitive = get("sensitive-paths");
   if (sensitive?.status === "ok" && count2(sensitive) > 0) found.push(make("sensitive-paths", sensitive, `${count2(sensitive)} touched file${count2(sensitive) === 1 ? "" : "s"} on a sensitive path`, sensitive.evidence));
   if (placement?.status === "computed" && placement.placement) {
-    const place = (name16) => placement.factors.find((f) => f.name === name16);
+    const place = (name17) => placement.factors.find((f) => f.name === name17);
     const noOwner = place("no-owner");
     if (noOwner?.status === "ok" && count2(noOwner) > 0) found.push(make("no-owner", noOwner, `${count2(noOwner)} touched file${count2(noOwner) === 1 ? " has" : "s have"} no active developer holding a meaningful share`, noOwner.evidence, true));
     const hot = get("hotspots-touched");
@@ -10953,9 +11195,9 @@ function configValue(root, key) {
 async function invokingUser(root, localMailmap) {
   const email = process.env.GIT_AUTHOR_EMAIL?.trim() || await configValue(root, "user.email");
   if (email === "") return null;
-  const name16 = process.env.GIT_AUTHOR_NAME?.trim() || await configValue(root, "user.name");
-  const mapped = (await mapThroughMailmap(root, [{ name: name16, email }], localMailmap)).get(`${name16} <${email}>`);
-  return mapped ?? { name: name16, email };
+  const name17 = process.env.GIT_AUTHOR_NAME?.trim() || await configValue(root, "user.name");
+  const mapped = (await mapThroughMailmap(root, [{ name: name17, email }], localMailmap)).get(`${name17} <${email}>`);
+  return mapped ?? { name: name17, email };
 }
 
 // packages/cochange/src/risk/placement-result.ts
@@ -11029,8 +11271,8 @@ async function placementFor(context, assessed, noRefresh) {
     blame: { used: blame.facts.size > 0, missing: blame.missing, refreshed: blame.refreshed }
   };
 }
-var row = (name16, value, evidence, unavailable3 = null) => ({
-  name: name16,
+var row = (name17, value, evidence, unavailable3 = null) => ({
+  name: name17,
   family: "placement",
   layer: "placement",
   status: unavailable3 === null ? "ok" : "unavailable",
@@ -11039,7 +11281,7 @@ var row = (name16, value, evidence, unavailable3 = null) => ({
   value: unavailable3 === null ? value : {},
   guidelines: {},
   evidence: unavailable3 === null ? evidence : [],
-  source: name16 === "authorship" || name16 === "owner-distance" || name16 === "no-owner" ? "blame" : "history",
+  source: name17 === "authorship" || name17 === "owner-distance" || name17 === "no-owner" ? "blame" : "history",
   reason: unavailable3
 });
 function placementFactors(placement, withBlame) {
@@ -11171,9 +11413,9 @@ async function reviewersFor(context, assessed, noRefresh) {
   let withBlame = 0;
   const areas = [...byArea].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([area, files]) => {
     const scores = /* @__PURE__ */ new Map();
-    const credit = (email, name16, patch) => {
+    const credit = (email, name17, patch) => {
       const key = email.toLowerCase();
-      const row2 = scores.get(key) ?? { name: name16, email, authorship: 0, coupledChanges: 0 };
+      const row2 = scores.get(key) ?? { name: name17, email, authorship: 0, coupledChanges: 0 };
       scores.set(key, { ...row2, authorship: row2.authorship + (patch.authorship ?? 0), coupledChanges: row2.coupledChanges + (patch.coupledChanges ?? 0) });
     };
     for (const file of files) {
@@ -11267,7 +11509,7 @@ async function runReviewers(context, history, range) {
 }
 
 // packages/cochange/src/commands/risk.ts
-var name12 = "risk";
+var name13 = "risk";
 var rules8 = findingRules;
 var SUBCOMMANDS4 = ["explain", "reviewers", "backtest"];
 function parse2(positionals) {
@@ -11278,7 +11520,7 @@ function rangeOf(rest) {
   if (rest.length > 1) throw usageError("usage: risk [BASE[..HEAD]] [--worktree]");
   return rest[0];
 }
-var command12 = analysisCommand(name12, {
+var command12 = analysisCommand(name13, {
   summary: "How much a branch puts at risk before it is merged, and how to review it: risk [BASE[..HEAD]] | explain | reviewers",
   options: { worktree: { type: "boolean" }, evidence: { type: "string", multiple: true }, names: { type: "boolean" }, since: { type: "string" }, adopted: { type: "string" } },
   wholeHistory: true,
@@ -11317,9 +11559,9 @@ var command12 = analysisCommand(name12, {
 var spread_exports = {};
 __export(spread_exports, {
   command: () => command13,
-  name: () => name13
+  name: () => name14
 });
-var name13 = "spread";
+var name14 = "spread";
 function distribution(changes, excludedByTrailer) {
   const measured = changes.filter((c) => !c.oversized).map((c) => changeSpread(c.files.map((f) => f.path)));
   const oversized = changes.length - measured.length;
@@ -11343,7 +11585,7 @@ function bucketOption(context) {
   if (value === "week" || value === "month") return value;
   throw usageError(`--bucket must be "week" or "month", not "${String(value)}"`);
 }
-var command13 = analysisCommand(name13, {
+var command13 = analysisCommand(name14, {
   summary: "Change-spread distribution (mean pairwise tree distance per logical change) per week or month",
   options: { since: { type: "string" }, until: { type: "string" }, bucket: { type: "string" } },
   window: (context) => statedWindow(context, readSettings(context.config).windowMonths),
@@ -11388,9 +11630,9 @@ var command13 = analysisCommand(name13, {
 var successors_exports = {};
 __export(successors_exports, {
   command: () => command14,
-  name: () => name14
+  name: () => name15
 });
-var name14 = "successors";
+var name15 = "successors";
 var command14 = {
   summary: "Ranked successors for files at risk, from the files that change with them",
   options: { names: { type: "boolean" }, top: { type: "string" }, "no-refresh": { type: "boolean" } },
@@ -11445,10 +11687,10 @@ __export(trend_exports, {
   MAX_SAMPLES: () => MAX_SAMPLES,
   TREND_GUIDELINE: () => TREND_GUIDELINE,
   command: () => command15,
-  name: () => name15,
+  name: () => name16,
   pickSamples: () => pickSamples
 });
-var name15 = "trend";
+var name16 = "trend";
 var DEFAULT_SAMPLES = 10;
 var MAX_SAMPLES = 500;
 var TREND_GUIDELINE = 0.2;
@@ -11472,7 +11714,7 @@ var delta = (first, last) => ({
   last,
   change: first === null || last === null ? null : last - first
 });
-var command15 = analysisCommand(name15, {
+var command15 = analysisCommand(name16, {
   summary: "Indentation complexity and size of one file sampled across its history, from blobs",
   options: { samples: { type: "string" } },
   wholeHistory: true,

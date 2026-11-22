@@ -22,12 +22,22 @@ function recordBuiltinOmission(entry, path) {
 }
 function resetBuiltinOmissions() {
   omitted.clear();
+  restored.clear();
+}
+var restored = /* @__PURE__ */ new Map();
+function restoreBuiltinOmissions(counts) {
+  omitted.clear();
+  restored.clear();
+  for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
+    const count = counts[entry];
+    if (typeof count === "number" && count > 0) restored.set(entry, count);
+  }
 }
 function builtinOmissions() {
   const counts = {};
   for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
-    const paths = omitted.get(entry);
-    if (paths !== void 0 && paths.size > 0) counts[entry] = paths.size;
+    const total = (omitted.get(entry)?.size ?? 0) + (restored.get(entry) ?? 0);
+    if (total > 0) counts[entry] = total;
   }
   return counts;
 }
@@ -10025,12 +10035,22 @@ function recordDropped(kind, path) {
 }
 function resetDropped() {
   dropped.clear();
+  restored2.clear();
+}
+var restored2 = /* @__PURE__ */ new Map();
+function restoreDropped(counts) {
+  dropped.clear();
+  restored2.clear();
+  for (const kind of DROPPED_KINDS) {
+    const count = counts[kind];
+    if (typeof count === "number" && count > 0) restored2.set(kind, count);
+  }
 }
 function droppedCounts() {
   const counts = {};
   for (const kind of DROPPED_KINDS) {
-    const paths = dropped.get(kind);
-    if (paths !== void 0 && paths.size > 0) counts[kind] = paths.size;
+    const total = (dropped.get(kind)?.size ?? 0) + (restored2.get(kind) ?? 0);
+    if (total > 0) counts[kind] = total;
   }
   return counts;
 }
@@ -10237,9 +10257,11 @@ export {
   __export,
   BUILTIN_EXCLUDE_ENTRIES,
   resetBuiltinOmissions,
+  restoreBuiltinOmissions,
   builtinOmissions,
   recordDropped,
   resetDropped,
+  restoreDropped,
   droppedCounts,
   GitError,
   runGit,

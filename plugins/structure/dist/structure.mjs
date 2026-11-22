@@ -105,12 +105,14 @@ function recordBuiltinOmission(entry, path) {
 }
 function resetBuiltinOmissions() {
   omitted.clear();
+  restored.clear();
 }
+var restored = /* @__PURE__ */ new Map();
 function builtinOmissions() {
   const counts = {};
   for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
-    const paths = omitted.get(entry);
-    if (paths !== void 0 && paths.size > 0) counts[entry] = paths.size;
+    const total = (omitted.get(entry)?.size ?? 0) + (restored.get(entry) ?? 0);
+    if (total > 0) counts[entry] = total;
   }
   return counts;
 }
@@ -375,12 +377,14 @@ function recordDropped(kind, path) {
 }
 function resetDropped() {
   dropped.clear();
+  restored2.clear();
 }
+var restored2 = /* @__PURE__ */ new Map();
 function droppedCounts() {
   const counts = {};
   for (const kind of DROPPED_KINDS) {
-    const paths = dropped.get(kind);
-    if (paths !== void 0 && paths.size > 0) counts[kind] = paths.size;
+    const total = (dropped.get(kind)?.size ?? 0) + (restored2.get(kind) ?? 0);
+    if (total > 0) counts[kind] = total;
   }
   return counts;
 }
@@ -18321,42 +18325,62 @@ function withVagueNames(packages, vagueNames) {
 }
 
 // packages/history/src/reports.ts
-import { mkdirSync as mkdirSync2, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { createHash as createHash4, randomUUID as randomUUID3 } from "node:crypto";
+import { mkdirSync as mkdirSync2, renameSync as renameSync2, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join11 } from "node:path";
-function reportPath(root, tool, command12) {
-  return join11(root, ".cache", "code-health", "reports", `${tool}.${command12}.json`);
+function reportPath(root, tool, command12, variant) {
+  return join11(root, ".cache", "code-health", "reports", `${tool}.${command12}${variant === void 0 ? "" : `.${variant}`}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
 }
-async function writeReport(context, identity, command12, output, analysedHead) {
-  if (context.repo.dirty) {
-    skipReport(context, "the working tree has uncommitted changes");
-    return false;
-  }
-  if (analysedHead !== context.repo.head) {
-    skipReport(context, "the analysed commit is not HEAD");
-    return false;
+async function writeReport(context, identity, command12, output, analysedHead, options2 = {}) {
+  if (options2.describesCommit !== true) {
+    if (context.repo.dirty) {
+      skipReport(context, "the working tree has uncommitted changes");
+      return false;
+    }
+    if (analysedHead !== context.repo.head) {
+      skipReport(context, "the analysed commit is not HEAD");
+      return false;
+    }
   }
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
+  const dropped2 = options2.replayable === true ? droppedCounts() : {};
+  const builtin = options2.replayable === true ? builtinOmissions() : {};
+  const printed = {
+    ...output.columns === void 0 ? {} : { columns: output.columns },
+    ...output.notices === void 0 || output.notices.length === 0 ? {} : { notices: output.notices },
+    ...output.failed === true ? { failed: true } : {}
+  };
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
     tool: identity.tool,
     command: command12,
-    repo: { head: context.repo.head, dirty: false },
+    repo: { head: analysedHead, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
-    extra: output.extra,
+    extra: {
+      ...output.extra,
+      ...Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin },
+      ...Object.keys(dropped2).length === 0 ? {} : { dropped: dropped2 }
+    },
     results,
-    truncated
+    truncated,
+    ...options2.replayable === true ? { meta: { printed } } : {}
   });
-  const file = reportPath(context.repo.root, identity.tool, command12);
+  const file = reportPath(context.repo.root, identity.tool, command12, options2.variant);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join11(context.repo.root, ".cache", "code-health") });
   mkdirSync2(join11(file, ".."), { recursive: true });
-  const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync2(temporary, serialise(document));
-  renameSync2(temporary, file);
+  const temporary = `${file}.${process.pid}.${randomUUID3()}.tmp`;
+  try {
+    writeFileSync2(temporary, serialise(document));
+    renameSync2(temporary, file);
+  } catch (error) {
+    rmSync3(temporary, { force: true });
+    throw error;
+  }
   context.report = { stored: true };
   return true;
 }
@@ -18720,9 +18744,9 @@ async function checkouts(root) {
 }
 
 // packages/transcripts/src/stamp.ts
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 function stampOf(input) {
-  return createHash4("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
+  return createHash5("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
 }
 
 // packages/structure/src/incidental.ts

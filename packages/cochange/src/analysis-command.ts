@@ -1,6 +1,8 @@
 import type { OptionSpec } from "@code-health/cli-kit/args";
 import type { Command, CommandContext, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { skipReport } from "@code-health/history/reports";
+import { noCacheHelp, noCacheOption, readCached, storeCached, wantsNoCache } from "@code-health/history/results-cache";
+import { analysedSha, derivedResult, type Derived } from "./derived-results.ts";
 import { loadHistory, type ExplicitWindow, type LoadedHistory } from "./history-access.ts";
 import { writeReport } from "./reports.ts";
 import { readSettings } from "./config.ts";
@@ -32,12 +34,32 @@ export interface AnalysisSpec {
    */
   partial?(context: CommandContext): boolean;
   /**
+   * Keeps the complete result in the results cache, so a later run for the same commit, config and stated inputs
+   * prints it without reading history (see `Derived`). `--no-cache` computes and stores anew. Such a command
+   * stores every variant of its stated inputs, a date window included, not only the default run.
+   */
+  cache?: Derived;
+  /**
+   * Answers the run from results other commands stored, before any history is read. Returns undefined when
+   * they do not cover this run, and is not tried with `--no-cache`.
+   */
+  fromCache?(context: CommandContext, window: ExplicitWindow | undefined): Promise<CommandOutput | undefined>;
+  /**
    * Computes the complete result. Return every row: the kit applies `--limit`
    * and `--fields` when printing, and the report stores the whole list. Add
    * anything else a result depends on to `inputs`, and command specific
    * sections (such as `complexitySource`) to `extra`.
    */
   analyse(input: AnalysisInput): CommandOutput | Promise<CommandOutput>;
+}
+
+/** What every analysis adds around the command's `analyse`: identity stamps, window, filters and evidence. */
+export function finishAnalysis(history: LoadedHistory, output: CommandOutput): CommandOutput {
+  return {
+    ...output,
+    inputs: { ...output.inputs, ...identityStamps(history) },
+    extra: { ...historySections(history), ...output.extra },
+  };
 }
 
 /** The `window`, `filtersApplied` and `evidence` sections every command that reads history adds to its output. */
@@ -81,21 +103,35 @@ function ownsWindow(spec: AnalysisSpec): boolean {
 export function analysisCommand(name: string, spec: AnalysisSpec): Command {
   return {
     summary: spec.summary,
-    options: { ...(ownsWindow(spec) ? {} : windowOptions), ...spec.options, ...sharedOptions },
+    options: { ...(ownsWindow(spec) ? {} : windowOptions), ...spec.options, ...sharedOptions, ...(spec.cache || spec.fromCache ? noCacheOption : {}) },
+    optionHelp: spec.cache || spec.fromCache ? { "no-cache": noCacheHelp } : undefined,
     async run(context) {
       const window = ownsWindow(spec) ? spec.window?.(context) : statedWindow(context, readSettings(context.config).windowMonths);
+      const reuse = !wantsNoCache(context);
+      if (reuse && spec.fromCache) {
+        const answered = await spec.fromCache(context, window);
+        if (answered !== undefined) return answered;
+      }
+      const analysedRef = await spec.ref?.(context);
+      const stored = spec.cache ? derivedResult(context, spec.cache, await analysedSha(context, analysedRef), window) : undefined;
+      if (stored !== undefined && reuse) {
+        const hit = readCached(context, stored);
+        if (hit !== undefined) return hit;
+      }
       const history = await loadHistory(context, {
         noRefresh: context.values["no-refresh"] === true,
         window,
         wholeHistory: spec.wholeHistory,
-        ref: await spec.ref?.(context),
+        ref: analysedRef,
       });
       const output = await spec.analyse({ context, history });
-      const finished: CommandOutput = {
-        ...output,
-        inputs: { ...output.inputs, ...identityStamps(history) },
-        extra: { ...historySections(history), ...output.extra },
-      };
+      const finished = finishAnalysis(history, output);
+      if (stored !== undefined) {
+        if (context.values["no-refresh"] === true) skipReport(context, "the run read the history cache without refreshing it");
+        else if (stored.head !== history.view.headSha) skipReport(context, "the analysed commit is not the one the ref named");
+        else await storeCached(context, stored, finished);
+        return finished;
+      }
       const wholeRepository = window === undefined && !spec.partial?.(context);
       if (wholeRepository) await writeReport(context, name, finished, history.view.headSha);
       else skipReport(context, window !== undefined ? "the run was limited to a date window" : "the run chose a view other than the default");

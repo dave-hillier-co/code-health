@@ -105,12 +105,22 @@ function recordBuiltinOmission(entry, path) {
 }
 function resetBuiltinOmissions() {
   omitted.clear();
+  restored.clear();
+}
+var restored = /* @__PURE__ */ new Map();
+function restoreBuiltinOmissions(counts) {
+  omitted.clear();
+  restored.clear();
+  for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
+    const count3 = counts[entry];
+    if (typeof count3 === "number" && count3 > 0) restored.set(entry, count3);
+  }
 }
 function builtinOmissions() {
   const counts = {};
   for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
-    const paths = omitted.get(entry);
-    if (paths !== void 0 && paths.size > 0) counts[entry] = paths.size;
+    const total = (omitted.get(entry)?.size ?? 0) + (restored.get(entry) ?? 0);
+    if (total > 0) counts[entry] = total;
   }
   return counts;
 }
@@ -375,12 +385,22 @@ function recordDropped(kind, path) {
 }
 function resetDropped() {
   dropped.clear();
+  restored2.clear();
+}
+var restored2 = /* @__PURE__ */ new Map();
+function restoreDropped(counts) {
+  dropped.clear();
+  restored2.clear();
+  for (const kind of DROPPED_KINDS) {
+    const count3 = counts[kind];
+    if (typeof count3 === "number" && count3 > 0) restored2.set(kind, count3);
+  }
 }
 function droppedCounts() {
   const counts = {};
   for (const kind of DROPPED_KINDS) {
-    const paths = dropped.get(kind);
-    if (paths !== void 0 && paths.size > 0) counts[kind] = paths.size;
+    const total = (dropped.get(kind)?.size ?? 0) + (restored2.get(kind) ?? 0);
+    if (total > 0) counts[kind] = total;
   }
   return counts;
 }
@@ -2203,48 +2223,152 @@ function weightsFromChanges(changes, since, until, months) {
 }
 
 // packages/history/src/reports.ts
-import { mkdirSync as mkdirSync2, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+import { mkdirSync as mkdirSync2, renameSync as renameSync2, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join5 } from "node:path";
-function reportPath(root, tool, command9) {
-  return join5(root, ".cache", "code-health", "reports", `${tool}.${command9}.json`);
+function variantOf(stated) {
+  const entries = Object.entries(stated ?? {}).filter(([, value]) => value !== void 0);
+  if (entries.length === 0) return void 0;
+  return createHash2("sha256").update(canonical(Object.fromEntries(entries))).digest("hex").slice(0, 12);
+}
+function canonical(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const record = value;
+    const keys = Object.keys(record).filter((key) => record[key] !== void 0).sort();
+    return `{${keys.map((key) => `${JSON.stringify(key)}:${canonical(record[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+function reportPath(root, tool, command9, variant) {
+  return join5(root, ".cache", "code-health", "reports", `${tool}.${command9}${variant === void 0 ? "" : `.${variant}`}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
 }
-async function writeReport(context, identity, command9, output, analysedHead) {
-  if (context.repo.dirty) {
-    skipReport(context, "the working tree has uncommitted changes");
-    return false;
-  }
-  if (analysedHead !== context.repo.head) {
-    skipReport(context, "the analysed commit is not HEAD");
-    return false;
+async function writeReport(context, identity, command9, output, analysedHead, options = {}) {
+  if (options.describesCommit !== true) {
+    if (context.repo.dirty) {
+      skipReport(context, "the working tree has uncommitted changes");
+      return false;
+    }
+    if (analysedHead !== context.repo.head) {
+      skipReport(context, "the analysed commit is not HEAD");
+      return false;
+    }
   }
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
+  const dropped2 = options.replayable === true ? droppedCounts() : {};
+  const builtin = options.replayable === true ? builtinOmissions() : {};
+  const printed = {
+    ...output.columns === void 0 ? {} : { columns: output.columns },
+    ...output.notices === void 0 || output.notices.length === 0 ? {} : { notices: output.notices },
+    ...output.failed === true ? { failed: true } : {}
+  };
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
     tool: identity.tool,
     command: command9,
-    repo: { head: context.repo.head, dirty: false },
+    repo: { head: analysedHead, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
-    extra: output.extra,
+    extra: {
+      ...output.extra,
+      ...Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin },
+      ...Object.keys(dropped2).length === 0 ? {} : { dropped: dropped2 }
+    },
     results,
-    truncated
+    truncated,
+    ...options.replayable === true ? { meta: { printed } } : {}
   });
-  const file = reportPath(context.repo.root, identity.tool, command9);
+  const file = reportPath(context.repo.root, identity.tool, command9, options.variant);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join5(context.repo.root, ".cache", "code-health") });
   mkdirSync2(join5(file, ".."), { recursive: true });
-  const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync2(temporary, serialise(document));
-  renameSync2(temporary, file);
+  const temporary = `${file}.${process.pid}.${randomUUID2()}.tmp`;
+  try {
+    writeFileSync2(temporary, serialise(document));
+    renameSync2(temporary, file);
+  } catch (error) {
+    rmSync3(temporary, { force: true });
+    throw error;
+  }
   context.report = { stored: true };
   return true;
 }
 
+// packages/history/src/results-cache.ts
+import { existsSync as existsSync7, readFileSync as readFileSync4 } from "node:fs";
+var noCacheOption = { "no-cache": { type: "boolean" } };
+var noCacheHelp = "recompute instead of reading the stored result, and store the new one";
+var wantsNoCache = (context) => context.values["no-cache"] === true;
+var ENVELOPE = /* @__PURE__ */ new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta", "dropped", "omittedByBuiltinExcludes"]);
+var same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+function readStored(context, stored) {
+  const file = reportPath(context.repo.root, stored.identity.tool, stored.command, variantOf(stored.stated));
+  if (!existsSync7(file)) return void 0;
+  let document;
+  try {
+    document = JSON.parse(readFileSync4(file, "utf8"));
+  } catch {
+    return void 0;
+  }
+  const repo = document.repo;
+  if (document.tool !== stored.identity.tool || document.command !== stored.command) return void 0;
+  if (document.schemaVersion !== stored.identity.schemaVersion) return void 0;
+  if (repo?.head !== stored.head || repo?.dirty !== false) return void 0;
+  if (document.config !== context.config.hash || !Array.isArray(document.results)) return void 0;
+  const inputs = document.inputs ?? {};
+  for (const [key, value] of Object.entries(stored.expect ?? {})) if (!same(inputs[key], value)) return void 0;
+  const printed = document.meta?.printed ?? {};
+  const input = { report: `${stored.identity.tool}.${stored.command}`, head: stored.head, config: context.config.hash };
+  return {
+    input,
+    restoreLeftOut() {
+      restoreDropped(document.dropped ?? {});
+      restoreBuiltinOmissions(document.omittedByBuiltinExcludes ?? {});
+    },
+    output: {
+      inputs,
+      extra: Object.fromEntries(Object.entries(document).filter(([key]) => !ENVELOPE.has(key))),
+      results: document.results,
+      ...printed.columns === void 0 ? {} : { columns: printed.columns },
+      ...printed.notices === void 0 ? {} : { notices: printed.notices },
+      ...printed.failed === true ? { failed: true } : {}
+    }
+  };
+}
+function readCached(context, stored) {
+  const hit = readStored(context, stored);
+  if (hit === void 0) return void 0;
+  hit.restoreLeftOut();
+  context.report = { stored: true };
+  return { ...hit.output, inputs: { ...hit.output.inputs, resultsCache: [hit.input] } };
+}
+function storeCached(context, stored, output) {
+  return writeReport(context, stored.identity, stored.command, output, stored.head, {
+    variant: variantOf(stored.stated),
+    describesCommit: stored.describesCommit,
+    replayable: true
+  });
+}
+async function cachedOutput(context, stored, compute3, notStored) {
+  if (stored === void 0) {
+    const output2 = await compute3();
+    notStored(context);
+    return output2;
+  }
+  if (!wantsNoCache(context)) {
+    const hit = readCached(context, stored);
+    if (hit !== void 0) return hit;
+  }
+  const output = await compute3();
+  await storeCached(context, stored, output);
+  return output;
+}
+
 // packages/parse/src/parse-cache.ts
-import { randomUUID as randomUUID2 } from "node:crypto";
+import { randomUUID as randomUUID3 } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname as dirname2, join as join6 } from "node:path";
 var ParseCache = class _ParseCache {
@@ -2268,7 +2392,7 @@ var ParseCache = class _ParseCache {
   async set(blobSha, key, facts) {
     const path = this.entryPath(blobSha, key);
     await mkdir(dirname2(path), { recursive: true });
-    const temporary = `${path}.${process.pid}.${randomUUID2()}.tmp`;
+    const temporary = `${path}.${process.pid}.${randomUUID3()}.tmp`;
     try {
       await writeFile(temporary, JSON.stringify(facts));
       await rename(temporary, path);
@@ -2285,11 +2409,11 @@ var ParseCache = class _ParseCache {
 
 // packages/parse/src/source-tree.ts
 import { spawn as spawn3 } from "node:child_process";
-import { createHash as createHash2 } from "node:crypto";
-import { lstatSync, readdirSync, readFileSync as readFileSync4 } from "node:fs";
+import { createHash as createHash3 } from "node:crypto";
+import { lstatSync, readdirSync, readFileSync as readFileSync5 } from "node:fs";
 import { join as join7 } from "node:path";
 function gitBlobSha(content) {
-  return createHash2("sha1").update(`blob ${content.length}\0`).update(content).digest("hex");
+  return createHash3("sha1").update(`blob ${content.length}\0`).update(content).digest("hex");
 }
 function sortedMap(entries) {
   return new Map(entries.sort(([a], [b]) => Buffer.compare(Buffer.from(a), Buffer.from(b))));
@@ -2309,12 +2433,12 @@ async function treeFromWorkingTree(repoPath) {
     if (omitted2(path)) continue;
     try {
       if (!lstatSync(join7(repoPath, path)).isFile()) continue;
-      entries.push([path, gitBlobSha(readFileSync4(join7(repoPath, path)))]);
+      entries.push([path, gitBlobSha(readFileSync5(join7(repoPath, path)))]);
     } catch {
     }
   }
   const files = sortedMap(await withoutGeneratedAndVendored(repoPath, void 0, entries));
-  const read = async (path) => files.has(path) ? readFileSync4(join7(repoPath, path), "utf8") : void 0;
+  const read = async (path) => files.has(path) ? readFileSync5(join7(repoPath, path), "utf8") : void 0;
   return {
     files,
     read,
@@ -2437,7 +2561,7 @@ async function readHeadsFromDisk(repoPath, missing) {
   const heads = /* @__PURE__ */ new Map();
   for (const { path, blob } of missing) {
     try {
-      heads.set(blob, readFileSync4(join7(repoPath, path)).subarray(0, 4096).toString("utf8"));
+      heads.set(blob, readFileSync5(join7(repoPath, path)).subarray(0, 4096).toString("utf8"));
     } catch {
     }
   }
@@ -13634,8 +13758,8 @@ function isTestPath(path, adapters) {
 }
 
 // packages/parse/src/grammars.ts
-import { createHash as createHash3 } from "node:crypto";
-import { existsSync as existsSync7, readFileSync as readFileSync5 } from "node:fs";
+import { createHash as createHash4 } from "node:crypto";
+import { existsSync as existsSync8, readFileSync as readFileSync6 } from "node:fs";
 import { createRequire } from "node:module";
 import { join as join10 } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17666,11 +17790,11 @@ var runtimeInit;
 function locate(file, packageName, grammarDir) {
   if (grammarDir !== void 0) {
     const explicit = join10(grammarDir, file);
-    if (!existsSync7(explicit)) throw new Error(`Grammar file not found: ${explicit}`);
+    if (!existsSync8(explicit)) throw new Error(`Grammar file not found: ${explicit}`);
     return explicit;
   }
   const bundled = fileURLToPath(new URL(`./grammars/${file}`, import.meta.url));
-  if (existsSync7(bundled)) return bundled;
+  if (existsSync8(bundled)) return bundled;
   try {
     return require2.resolve(`${packageName}/${file}`);
   } catch {
@@ -17678,7 +17802,7 @@ function locate(file, packageName, grammarDir) {
   }
 }
 function hash(bytes) {
-  return createHash3("sha256").update(bytes).digest("hex").slice(0, 12);
+  return createHash4("sha256").update(bytes).digest("hex").slice(0, 12);
 }
 function initRuntime2(path) {
   runtimeInit ??= Parser.init({ locateFile: () => path });
@@ -17697,14 +17821,14 @@ async function load(spec, grammarDir) {
   const id = spec.id;
   const path = locate(spec.file, spec.packageName, grammarDir);
   const runtimePath = locate(runtimeSpec.file, runtimeSpec.packageName, grammarDir);
-  const bytes = readFileSync5(path);
+  const bytes = readFileSync6(path);
   await initRuntime2(runtimePath);
   const language9 = await Language.load(new Uint8Array(bytes));
   const parser = new Parser();
   parser.setLanguage(language9);
   return {
     id,
-    version: `${id}-${hash(bytes)}+runtime-${hash(readFileSync5(runtimePath))}`,
+    version: `${id}-${hash(bytes)}+runtime-${hash(readFileSync6(runtimePath))}`,
     parse(source) {
       const tree = parser.parse(source);
       if (!tree) throw new Error(`Parsing failed for grammar ${id}`);
@@ -17972,6 +18096,12 @@ async function measureCurrent(context, layer) {
 }
 function storeReport(context, command9, output) {
   return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command9, output, context.repo.head);
+}
+async function cachedAnalysis(context, command9, stated, compute3, cacheable = true) {
+  if (!cacheable) return cachedOutput(context, void 0, compute3, (run3) => skipReport(run3, "the run read the history of earlier revisions"));
+  const uncommitted = await hasUncommittedWork(context);
+  const stored = uncommitted ? void 0 : { identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command: command9, head: context.repo.head, stated };
+  return cachedOutput(context, stored, compute3, (run3) => skipReport(run3, "the run did not analyse HEAD"));
 }
 
 // packages/complexity/src/fix-ranges.ts
@@ -18756,9 +18886,6 @@ var ruleDescriptions = {
 // packages/complexity/src/commands/analyse.ts
 var name2 = "analyse";
 var rules = ruleDescriptions;
-function isPartial(context) {
-  return context.positionals.length > 0 || context.values.metrics !== void 0 || context.values.layer !== void 0 || context.values.by !== void 0 || context.values["with-fixes"] === true;
-}
 function parseBy(value) {
   if (value === void 0) return "complexity";
   if (rankByValues.includes(value)) return value;
@@ -18766,98 +18893,101 @@ function parseBy(value) {
 }
 var command = {
   summary: "Rank the functions that are hardest to understand (highest metric percentile; --by change-weighted for hotspot order), with all selected metrics, percentiles and labels",
-  options: { ...metricsOption, ...layerOption, by: { type: "string" }, "with-fixes": { type: "boolean" }, ...fixOptions },
+  options: { ...metricsOption, ...layerOption, by: { type: "string" }, "with-fixes": { type: "boolean" }, ...fixOptions, ...noCacheOption },
   optionHelp: {
+    "no-cache": noCacheHelp,
     by: "what rows sort on: complexity (default, the highest metric percentile) or change-weighted (that percentile times how often the function's file changed in the window, a hotspot order)",
     "with-fixes": "add fixCommits, unitRevisions and fixShare per function from the history window (see `complexity fixes`); costs a parse of the historical revisions",
     ...fixOptionHelp
   },
-  async run(context) {
-    const layer = parseLayer(context.values.layer);
-    const { settings, current, measurement } = await measureCurrent(context, layer);
-    const selected = parseMetrics(context.values.metrics, settings);
+  run(context) {
+    const { values } = context;
     const paths = normalisePaths(context.positionals);
-    const inPaths = pathSelector(paths);
-    const by = parseBy(context.values.by);
-    const changes = settings.changeWeighting ? await readChangeWeights(context, settings) : void 0;
-    if (by === "change-weighted" && changes === void 0) {
-      throw usageError("--by change-weighted needs change frequency, and there is none: complexity.changeWeighting is off, the clone is shallow, or the repository has no history");
-    }
-    const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected, changes, by);
-    const unitRows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
-    const withFixes = context.values["with-fixes"] === true;
-    const fixes = withFixes ? await measureFixesFor(context, settings, current) : void 0;
-    const rows = fixes === void 0 ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
-    const layers = { structural: 0, lexical: 0, none: 0 };
-    for (const file of measurement.files) layers[file.source ?? "none"]++;
-    const agreement = Object.fromEntries(
-      measurement.files.flatMap((file) => file.agreement === void 0 || file.profile === null ? [] : [[file.profile, file.agreement]])
-    );
-    const skipped = {};
-    for (const file of measurement.files) {
-      for (const reason of file.skipped) {
-        const generic = reason.replace(` for ${file.path}`, "");
-        skipped[generic] = (skipped[generic] ?? 0) + 1;
-      }
-    }
-    const parsedFiles = measurement.files.filter((file) => file.interfaces !== void 0).length;
-    const filesWithSyntaxErrors = measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => file.path);
-    const syntaxErrorShare = parsedFiles === 0 ? 0 : filesWithSyntaxErrors.length / parsedFiles;
-    const syntaxErrorNotices = parsedFiles > 0 && syntaxErrorShare * 100 > settings.syntaxErrorPercent ? [
-      `${filesWithSyntaxErrors.length} of ${parsedFiles} parsed files (${(syntaxErrorShare * 100).toFixed(1)}%) have syntax errors, above the complexity.syntaxErrorPercent guideline of ${settings.syntaxErrorPercent}%, so their units may be incomplete or missing; filesWithSyntaxErrors lists them`
-    ] : [];
-    const output = {
-      inputs: {
-        tree: current.kind,
-        layer,
-        metrics: selected,
-        by,
-        paths,
-        ...fixes === void 0 ? {} : { withFixes: true, maxCommits: fixes.request.maxCommits, evidence: fixes.request.evidence }
-      },
-      extra: {
-        ranking: {
-          by,
-          basis: by === "complexity" ? "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available" : "the highest percentile of any selected metric within the repository, among units measured the same way, times the change weight of the unit's file (fileRevisions counts the file's changes, not the function's)",
-          changeWeighted: by === "change-weighted",
-          changeWeightsAvailable: changes !== void 0,
-          window: changes?.window ?? null
-        },
-        layers,
-        agreement,
-        skipped,
-        parseCoverage: {
-          parsedFiles,
-          filesWithSyntaxErrors: filesWithSyntaxErrors.length,
-          syntaxErrorShare: Math.round(syntaxErrorShare * 1e4) / 1e4,
-          guideline: settings.syntaxErrorPercent,
-          aboveGuideline: syntaxErrorNotices.length > 0
-        },
-        filesWithSyntaxErrors,
-        skippedFiles: measurement.skippedFiles,
-        ...fixes === void 0 ? {} : { fixes: fixHeader(fixes.stats, fixes.request) }
-      },
-      results: rows,
-      ...fixes === void 0 && syntaxErrorNotices.length === 0 ? {} : { notices: [...syntaxErrorNotices, ...fixes === void 0 ? [] : fixNotices(fixes.stats, fixes.request)] },
-      columns: [
-        "path",
-        "unit",
-        "score",
-        "complexityScore",
-        "changeWeightedScore",
-        "fileRevisions",
-        "changeWeight",
-        "dominant",
-        ...metricIds.filter((metric) => selected.includes(metric)),
-        ...fixes === void 0 ? [] : ["fixCommits", "unitRevisions", "fixShare"],
-        "labels"
-      ]
-    };
-    if (!isPartial(context) && current.kind === "head") await storeReport(context, name2, output);
-    else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
-    return output;
+    const stated = { layer: values.layer, metrics: values.metrics, by: values.by, paths: paths.length === 0 ? void 0 : paths };
+    return cachedAnalysis(context, name2, stated, () => compute(context, paths), values["with-fixes"] !== true);
   }
 };
+async function compute(context, paths) {
+  const layer = parseLayer(context.values.layer);
+  const { settings, current, measurement } = await measureCurrent(context, layer);
+  const selected = parseMetrics(context.values.metrics, settings);
+  const inPaths = pathSelector(paths);
+  const by = parseBy(context.values.by);
+  const changes = settings.changeWeighting ? await readChangeWeights(context, settings) : void 0;
+  if (by === "change-weighted" && changes === void 0) {
+    throw usageError("--by change-weighted needs change frequency, and there is none: complexity.changeWeighting is off, the clone is shallow, or the repository has no history");
+  }
+  const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected, changes, by);
+  const unitRows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
+  const withFixes = context.values["with-fixes"] === true;
+  const fixes = withFixes ? await measureFixesFor(context, settings, current) : void 0;
+  const rows = fixes === void 0 ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
+  const layers = { structural: 0, lexical: 0, none: 0 };
+  for (const file of measurement.files) layers[file.source ?? "none"]++;
+  const agreement = Object.fromEntries(
+    measurement.files.flatMap((file) => file.agreement === void 0 || file.profile === null ? [] : [[file.profile, file.agreement]])
+  );
+  const skipped = {};
+  for (const file of measurement.files) {
+    for (const reason of file.skipped) {
+      const generic = reason.replace(` for ${file.path}`, "");
+      skipped[generic] = (skipped[generic] ?? 0) + 1;
+    }
+  }
+  const parsedFiles = measurement.files.filter((file) => file.interfaces !== void 0).length;
+  const filesWithSyntaxErrors = measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => file.path);
+  const syntaxErrorShare = parsedFiles === 0 ? 0 : filesWithSyntaxErrors.length / parsedFiles;
+  const syntaxErrorNotices = parsedFiles > 0 && syntaxErrorShare * 100 > settings.syntaxErrorPercent ? [
+    `${filesWithSyntaxErrors.length} of ${parsedFiles} parsed files (${(syntaxErrorShare * 100).toFixed(1)}%) have syntax errors, above the complexity.syntaxErrorPercent guideline of ${settings.syntaxErrorPercent}%, so their units may be incomplete or missing; filesWithSyntaxErrors lists them`
+  ] : [];
+  return {
+    inputs: {
+      tree: current.kind,
+      layer,
+      metrics: selected,
+      by,
+      paths,
+      ...fixes === void 0 ? {} : { withFixes: true, maxCommits: fixes.request.maxCommits, evidence: fixes.request.evidence }
+    },
+    extra: {
+      ranking: {
+        by,
+        basis: by === "complexity" ? "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available" : "the highest percentile of any selected metric within the repository, among units measured the same way, times the change weight of the unit's file (fileRevisions counts the file's changes, not the function's)",
+        changeWeighted: by === "change-weighted",
+        changeWeightsAvailable: changes !== void 0,
+        window: changes?.window ?? null
+      },
+      layers,
+      agreement,
+      skipped,
+      parseCoverage: {
+        parsedFiles,
+        filesWithSyntaxErrors: filesWithSyntaxErrors.length,
+        syntaxErrorShare: Math.round(syntaxErrorShare * 1e4) / 1e4,
+        guideline: settings.syntaxErrorPercent,
+        aboveGuideline: syntaxErrorNotices.length > 0
+      },
+      filesWithSyntaxErrors,
+      skippedFiles: measurement.skippedFiles,
+      ...fixes === void 0 ? {} : { fixes: fixHeader(fixes.stats, fixes.request) }
+    },
+    results: rows,
+    ...fixes === void 0 && syntaxErrorNotices.length === 0 ? {} : { notices: [...syntaxErrorNotices, ...fixes === void 0 ? [] : fixNotices(fixes.stats, fixes.request)] },
+    columns: [
+      "path",
+      "unit",
+      "score",
+      "complexityScore",
+      "changeWeightedScore",
+      "fileRevisions",
+      "changeWeight",
+      "dominant",
+      ...metricIds.filter((metric) => selected.includes(metric)),
+      ...fixes === void 0 ? [] : ["fixCommits", "unitRevisions", "fixShare"],
+      "labels"
+    ]
+  };
+}
 
 // packages/complexity/src/commands/check.ts
 var check_exports = {};
@@ -18993,7 +19123,7 @@ __export(depth_exports, {
 });
 var name4 = "depth";
 var rules2 = ruleDescriptions;
-function isPartial2(context) {
+function isPartial(context) {
   return context.positionals.length > 0;
 }
 var command3 = {
@@ -19017,7 +19147,7 @@ var command3 = {
       results: rows,
       columns: ["path", "unit", "kind", "exported", "nodes", "interface", "depth", "passThrough", "labels"]
     };
-    if (!isPartial2(context) && current.kind === "head") await storeReport(context, name4, output);
+    if (!isPartial(context) && current.kind === "head") await storeReport(context, name4, output);
     else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
     return output;
   }
@@ -19106,6 +19236,7 @@ __export(explain_exports, {
   command: () => command5,
   name: () => name6
 });
+import { createHash as createHash5 } from "node:crypto";
 
 // packages/complexity/src/registered-languages.ts
 var registered_languages_exports = {};
@@ -19270,6 +19401,8 @@ var name6 = "explain";
 var metricOrder = { cognitive: 0, cyclomatic: 1 };
 var command5 = {
   summary: "Line-by-line breakdown of where a function's complexity comes from, or describe a rule",
+  options: { ...noCacheOption },
+  optionHelp: { "no-cache": noCacheHelp },
   async run(context) {
     const [target2] = context.positionals;
     if (target2 === void 0) {
@@ -19285,49 +19418,59 @@ var command5 = {
     const hash2 = target2.indexOf("#");
     const path = target2.slice(0, hash2);
     const wanted = target2.slice(hash2 + 1);
-    const settings = readSettings(context.config);
     const current = await currentTree(context);
     const text2 = await current.tree.read(path);
     if (text2 === void 0) throw usageError(`${path} is not in the ${current.kind === "head" ? "commit at HEAD" : "working tree"}`);
-    const language9 = await new GrammarSet().forPath(path);
-    if (language9 === void 0) throw usageError(`${path} has no structural adapter, so its functions cannot be broken down`);
-    const facts = parseWith(language9.adapter, language9.grammar, text2, { explain: true });
-    const functions = facts.units.filter((unit2) => unit2.metrics !== void 0);
-    const unit = functions.find((candidate) => candidate.qualifiedName === wanted);
-    if (unit === void 0 || unit.metrics === void 0 || unit.increments === void 0) {
-      const known = functions.slice(0, 20).map((candidate) => candidate.qualifiedName);
-      throw usageError(`${path} has no function "${wanted}"; functions: ${known.join(", ") || "none"}${functions.length > known.length ? ", ..." : ""}`);
-    }
-    const source = text2.split("\n");
-    const rows = unit.increments.filter((increment) => increment.switchMode === void 0 || increment.switchMode === settings.cyclomaticSwitch).map((increment, index) => ({ increment, index })).sort(
-      (a, b) => a.increment.line - b.increment.line || metricOrder[a.increment.metric] - metricOrder[b.increment.metric] || a.index - b.index
-    ).map(({ increment }) => ({
-      line: increment.line,
-      metric: increment.metric,
-      construct: increment.construct,
-      amount: increment.amount,
-      nesting: increment.nesting,
-      code: (source[increment.line - 1] ?? "").trim()
-    }));
-    const values = structuralValues(unit.metrics, settings.cyclomaticSwitch);
-    return {
-      inputs: { tree: current.kind, unit: `${path}#${wanted}` },
-      extra: {
-        unit: {
-          id: `${path}#${wanted}`,
-          kind: unit.kind,
-          startLine: unit.startLine,
-          endLine: unit.endLine,
-          metrics: values,
-          labels: labelsFor(values, guidelinesFor(settings, path)),
-          cyclomaticSwitch: settings.cyclomaticSwitch
-        }
-      },
-      results: rows,
-      columns: ["line", "metric", "construct", "amount", "nesting", "code"]
+    const stored = {
+      identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION2 },
+      command: name6,
+      head: context.repo.head,
+      stated: { path, unit: wanted, tree: current.kind, content: createHash5("sha256").update(text2).digest("hex") },
+      describesCommit: true
     };
+    return cachedOutput(context, stored, () => breakdown(context, current, text2, path, wanted), () => void 0);
   }
 };
+async function breakdown(context, current, text2, path, wanted) {
+  const settings = readSettings(context.config);
+  const language9 = await new GrammarSet().forPath(path);
+  if (language9 === void 0) throw usageError(`${path} has no structural adapter, so its functions cannot be broken down`);
+  const facts = parseWith(language9.adapter, language9.grammar, text2, { explain: true });
+  const functions = facts.units.filter((unit2) => unit2.metrics !== void 0);
+  const unit = functions.find((candidate) => candidate.qualifiedName === wanted);
+  if (unit === void 0 || unit.metrics === void 0 || unit.increments === void 0) {
+    const known = functions.slice(0, 20).map((candidate) => candidate.qualifiedName);
+    throw usageError(`${path} has no function "${wanted}"; functions: ${known.join(", ") || "none"}${functions.length > known.length ? ", ..." : ""}`);
+  }
+  const source = text2.split("\n");
+  const rows = unit.increments.filter((increment) => increment.switchMode === void 0 || increment.switchMode === settings.cyclomaticSwitch).map((increment, index) => ({ increment, index })).sort(
+    (a, b) => a.increment.line - b.increment.line || metricOrder[a.increment.metric] - metricOrder[b.increment.metric] || a.index - b.index
+  ).map(({ increment }) => ({
+    line: increment.line,
+    metric: increment.metric,
+    construct: increment.construct,
+    amount: increment.amount,
+    nesting: increment.nesting,
+    code: (source[increment.line - 1] ?? "").trim()
+  }));
+  const values = structuralValues(unit.metrics, settings.cyclomaticSwitch);
+  return {
+    inputs: { tree: current.kind, unit: `${path}#${wanted}` },
+    extra: {
+      unit: {
+        id: `${path}#${wanted}`,
+        kind: unit.kind,
+        startLine: unit.startLine,
+        endLine: unit.endLine,
+        metrics: values,
+        labels: labelsFor(values, guidelinesFor(settings, path)),
+        cyclomaticSwitch: settings.cyclomaticSwitch
+      }
+    },
+    results: rows,
+    columns: ["line", "metric", "construct", "amount", "nesting", "code"]
+  };
+}
 
 // packages/complexity/src/commands/files.ts
 var files_exports = {};
@@ -19348,33 +19491,31 @@ function isCodePath(path, mappings = {}) {
 
 // packages/complexity/src/commands/files.ts
 var name7 = "files";
-function isPartial3(context) {
-  return context.positionals.length > 0 || context.values.layer !== void 0;
-}
 var command6 = {
   summary: "File-level aggregates; a full run writes the complexity.files report other plugins read",
-  options: { ...layerOption },
-  async run(context) {
+  options: { ...layerOption, ...noCacheOption },
+  optionHelp: { "no-cache": noCacheHelp },
+  run(context) {
     const layer = parseLayer(context.values.layer);
-    const { settings, current, measurement } = await measureCurrent(context, layer);
     const paths = normalisePaths(context.positionals);
-    const inPaths = pathSelector(paths);
-    const rows = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
-      if (isCodePath(file.path, settings.languageProfiles)) return true;
-      recordDropped("nonCode", file.path);
-      return false;
-    }).map((file) => fileRow(file, settings));
-    const output = {
-      inputs: { tree: current.kind, layer, paths },
-      extra: { skippedFiles: measurement.skippedFiles },
-      results: rows,
-      columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "test", "codeLines"]
-    };
-    if (!isPartial3(context) && current.kind === "head") await storeReport(context, name7, output);
-    else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
-    return output;
+    return cachedAnalysis(context, name7, { layer: context.values.layer, paths: paths.length === 0 ? void 0 : paths }, () => compute2(context, layer, paths));
   }
 };
+async function compute2(context, layer, paths) {
+  const { settings, current, measurement } = await measureCurrent(context, layer);
+  const inPaths = pathSelector(paths);
+  const rows = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
+    if (isCodePath(file.path, settings.languageProfiles)) return true;
+    recordDropped("nonCode", file.path);
+    return false;
+  }).map((file) => fileRow(file, settings));
+  return {
+    inputs: { tree: current.kind, layer, paths },
+    extra: { skippedFiles: measurement.skippedFiles },
+    results: rows,
+    columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "test", "codeLines"]
+  };
+}
 
 // packages/complexity/src/commands/fixes.ts
 var fixes_exports = {};
@@ -19413,7 +19554,7 @@ __export(outcome_exports, {
 });
 
 // packages/complexity/src/outcome.ts
-import { existsSync as existsSync9 } from "node:fs";
+import { existsSync as existsSync10 } from "node:fs";
 
 // packages/history/src/checkouts.ts
 async function checkouts(root) {
@@ -19423,7 +19564,7 @@ async function checkouts(root) {
 }
 
 // packages/transcripts/src/measure-repo.ts
-import { existsSync as existsSync8, readFileSync as readFileSync6, readdirSync as readdirSync2 } from "node:fs";
+import { existsSync as existsSync9, readFileSync as readFileSync7, readdirSync as readdirSync2 } from "node:fs";
 import { join as join11 } from "node:path";
 
 // packages/transcripts/src/repo-path.ts
@@ -20550,11 +20691,11 @@ function agentFilesUnder(dir) {
 }
 function subagentFiles(projectsDir, root) {
   const dir = join11(projectsDir, encodeProjectDir(root));
-  if (!existsSync8(dir)) return [];
+  if (!existsSync9(dir)) return [];
   const files = [];
   for (const entry of readdirSync2(dir, { withFileTypes: true })) {
     const subagents = join11(dir, entry.name, "subagents");
-    if (!entry.isDirectory() || !existsSync8(subagents)) continue;
+    if (!entry.isDirectory() || !existsSync9(subagents)) continue;
     for (const path of agentFilesUnder(subagents)) {
       const name10 = path.slice(path.lastIndexOf("/") + 1);
       files.push({ sessionId: entry.name, agentId: name10.slice("agent-".length, -".jsonl".length), path });
@@ -20567,7 +20708,7 @@ function stringField(value) {
 }
 function readMeta2(transcriptPath) {
   try {
-    const parsed = JSON.parse(readFileSync6(`${transcriptPath.slice(0, -".jsonl".length)}.meta.json`, "utf8"));
+    const parsed = JSON.parse(readFileSync7(`${transcriptPath.slice(0, -".jsonl".length)}.meta.json`, "utf8"));
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
     const meta = parsed;
     return { agentType: stringField(meta["agentType"]), description: stringField(meta["description"]), worktreePath: stringField(meta["worktreePath"]) };
@@ -20577,7 +20718,7 @@ function readMeta2(transcriptPath) {
 }
 function sessionFiles(projectsDir, root) {
   const dir = join11(projectsDir, encodeProjectDir(root));
-  if (!existsSync8(dir)) return [];
+  if (!existsSync9(dir)) return [];
   return readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join11(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
 }
 function measureRepo(options) {
@@ -20596,7 +20737,7 @@ function measureRepo(options) {
         seen.add(file.path);
         let text2;
         try {
-          text2 = readFileSync6(file.path, "utf8");
+          text2 = readFileSync7(file.path, "utf8");
         } catch {
           continue;
         }
@@ -20619,7 +20760,7 @@ function measureRepo(options) {
       seen.add(file.path);
       let text2;
       try {
-        text2 = readFileSync6(file.path, "utf8");
+        text2 = readFileSync7(file.path, "utf8");
       } catch {
         continue;
       }
@@ -20649,9 +20790,9 @@ function measureRepo(options) {
 }
 
 // packages/transcripts/src/stamp.ts
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 function stampOf(input) {
-  return createHash4("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
+  return createHash6("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
 }
 
 // packages/complexity/src/outcome.ts
@@ -20819,7 +20960,7 @@ async function measureOutcome(root, settings, exclude, options) {
   let transcriptStamp = null;
   const effort = async () => {
     const { projectsDir } = options;
-    if (projectsDir === void 0 || !existsSync9(projectsDir)) {
+    if (projectsDir === void 0 || !existsSync10(projectsDir)) {
       return { status: "not-measured", reason: projectsDir === void 0 ? "no --projects-dir was given" : `${projectsDir} does not exist` };
     }
     const repoRoots = await checkouts(root);
