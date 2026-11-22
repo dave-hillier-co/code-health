@@ -21,13 +21,14 @@
       "delta": 1,
       "endLine": 12,
       "finding": "worsened",
+      "guideline": 6,
       "id": "src/billing.ts#computePrice",
       "metric": "cognitive",
       "path": "src/billing.ts",
+      "ratio": 1.5,
       "renamedFrom": "src/pricing.ts#price",
       "score": 3,
       "startLine": 1,
-      "threshold": 6,
       "unit": "computePrice"
     },
     {
@@ -36,13 +37,14 @@
       "delta": 1,
       "endLine": 12,
       "finding": "worsened",
+      "guideline": 4,
       "id": "src/billing.ts#computePrice",
       "metric": "cyclomatic",
       "path": "src/billing.ts",
+      "ratio": 1.5,
       "renamedFrom": "src/pricing.ts#price",
       "score": 2,
       "startLine": 1,
-      "threshold": 4,
       "unit": "computePrice"
     }
   ],
@@ -51,9 +53,9 @@
     "added": 0,
     "changed": 1,
     "compared": 1,
+    "findings": 2,
     "moved": 1,
-    "removed": 0,
-    "violations": 2
+    "removed": 0
   },
   "tool": "complexity",
   "truncated": {

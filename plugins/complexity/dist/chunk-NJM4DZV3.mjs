@@ -506,13 +506,17 @@ var complexityConfig = {
   section: {
     /** Metrics reported and ranked. `--metrics` narrows them for one run. */
     metrics: [...metricIds],
-    /** A metric is over its threshold when its value is above it. Only `warn` gates `check`; `high` only labels. */
+    /**
+     * Guidelines for investigation, named `thresholds` in the config. A metric is above its guideline when its value is above it, and `high` marks a second band. They label and order results and
+     * hide nothing. Only `check` turns them into an exit code, and only for new or worsened units. Defaults: cyclomatic 10 and 20, cognitive 15 and 25, nesting 4 and parameters 5 are judgement calls
+     * (CodeScene's default for cyclomatic is 9 and for parameters 4); bumps 3 and deepBumps 2 are judgement calls beside CodeScene's 2 bumps at depth 2.
+     */
     thresholds: {
       cyclomatic: { ...defaultThresholds.cyclomatic },
       cognitive: { ...defaultThresholds.cognitive },
       nesting: defaultThresholds.nesting,
       parameters: defaultThresholds.parameters,
-      /** A function with this many bumps or more is a bumpy road. */
+      /** A function with this many bumps or more is labelled a bumpy road. */
       bumps: defaultThresholds.bumps,
       /** The count that makes a bumpy road when the deepest bump is deeper than `nesting`. */
       deepBumps: defaultThresholds.deepBumps
@@ -523,7 +527,7 @@ var complexityConfig = {
     base: null,
     /** The branch `check` forks from. null tries origin/main, main, origin/master and master. */
     mainBranch: null,
-    /** `check` fails an over-threshold unit that worsened by more than this on a metric over its threshold. */
+    /** `check` exits 1 for a unit above a guideline that worsened by more than this on that metric. `check` is the gate, so this is the only place a guideline becomes an exit code. */
     delta: 0,
     /** Exact-boundary agreement a lexer profile must reach for its per-function metrics to be reported. */
     agreementBar: 0.9,
@@ -537,9 +541,9 @@ var complexityConfig = {
     windowMonths: 12,
     /** `{ "paths": [globs], "thresholds": { ...partial thresholds } }`, the last matching entry winning per metric. */
     overrides: [],
-    /** The post-edit hook, off unless a repository turns it on. It uses `thresholds`, `delta`, `analyseTests` and `agreementBar`. */
+    /** The post-edit hook, off unless a repository turns it on. It uses the `thresholds` guidelines, `delta`, `analyseTests` and `agreementBar`. */
     hook: { enabled: false },
-    /** `shallow`: an exported function, class or module with fewer syntax nodes than this per element of its interface is labelled shallow. */
+    /** `shallow`: a guideline of 10, a judgement call not calibrated on a corpus. An exported function, class or module with fewer syntax nodes than this per element of its interface is labelled shallow. Rows are ordered by depth whatever the guideline. */
     interfaceDepth: { shallow: 10 }
   }
 };

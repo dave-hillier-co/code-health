@@ -108,7 +108,7 @@ for (const [label, entry] of entries) {
       expect(result.stderr).toBe("");
       expect(JSON.parse(result.stdout).hookSpecificOutput).toEqual({
         hookEventName: "PostToolUse",
-        additionalContext: expect.stringContaining("`knot` nesting depth is 3 in a new unit (threshold 2)") as string,
+        additionalContext: expect.stringContaining("`knot` nesting depth is 3 in a new or renamed unit (guideline 2, ratio 1.5)") as string,
       });
     });
 

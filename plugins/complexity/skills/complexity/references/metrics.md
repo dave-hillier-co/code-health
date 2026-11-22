@@ -25,7 +25,7 @@ For files in other languages, and when `--layer lexical` is given, per-function 
 function blocks by matching headers and counting braces (or indentation), outside strings and comments. Its values are
 approximations and carry `source: "lexical"`.
 
-A file type with no profile can be mapped to one in `code-health.json`, as `"languages": { "zig": "rust" }` (extension without its dot, to a profile name). Its per-function values are reported with `unverified: true`, because no agreement with a structural layer was ever measured for it. State that when quoting them, and do not rank them as firmly as measured ones. The post-edit hook stays silent on such files.
+A file type with no profile can be mapped to one in `code-health.json`, as `"languages": { "zig": "rust" }` (extension without its dot, to a profile name). Its per-function values are reported with `unverified: true`, because no agreement with a structural layer was ever measured for it. State that when quoting them, and do not rank them as firmly as measured ones. The post-edit hook prints nothing for such files.
 
 | Metric | Counted as |
 |---|---|
@@ -59,9 +59,9 @@ fewer than `interfaceDepth.shallow` (default 10) nodes per interface element. Pa
 A small helper with one clear purpose is often shallow and right: read before acting. `files` carries `interfaceDepth`, the
 mean depth over a file's exported functions and classes, and `passThroughs`, so a campaign can be checked for splitting.
 
-## Thresholds
+## Guidelines
 
-A metric is over its threshold when its value is **above** it. Only `warn` gates `check`. `high` only changes the label.
+The values are guidelines for investigation, configured under `thresholds`. A metric is above its guideline when its value is **above** it. Output labels it and sorts by how far above, and hides nothing. Only `check` reads `warn` as an exit code, for new or worsened functions. `high` only changes the label. The defaults are McCabe's 10 and SonarSource's 15, CodeScene's nesting 4, and judgement calls for the rest.
 
 | Metric | warn | high |
 |---|---|---|
@@ -70,7 +70,7 @@ A metric is over its threshold when its value is **above** it. Only `warn` gates
 | `nesting` | 4 | |
 | `parameters` | 5 | |
 
-There is no length threshold, on purpose.
+There is no length guideline, on purpose.
 
 ## Configuration
 
@@ -83,7 +83,7 @@ The `complexity` section of `code-health.json`. Missing keys take the defaults, 
 | `cyclomaticSwitch` | `case` | `case` or `modified` |
 | `base` | `null` | Base revision for `check`. `null` is the merge base with the main branch. |
 | `mainBranch` | `null` | The branch `check` forks from. `null` tries `origin/main`, `main`, `origin/master`, `master`. |
-| `delta` | `0` | How much an over-threshold metric may rise before `check` fails it. |
+| `delta` | `0` | How much a metric above its guideline may rise before `check` exits with 1. |
 | `agreementBar` | `0.9` | Agreement a lexer profile needs for per-function lexical metrics. |
 | `moveSimilarity` | `0.8` | Body similarity at which a function that disappeared and one that appeared are one function moved or renamed. |
 | `analyseTests` | `true` | Analyse test files. They are ranked among themselves, never against production code. |

@@ -27,7 +27,7 @@ import {
   runGit,
   structuralValues,
   thresholdsFor
-} from "./chunk-WXSBU4RZ.mjs";
+} from "./chunk-NJM4DZV3.mjs";
 import {
   buildDocument,
   shapeResults
@@ -6171,7 +6171,7 @@ async function compareToBase(context, settings, base, target) {
 // packages/complexity/src/commands/check.ts
 var name3 = "check";
 var command2 = {
-  summary: "Fail when a new function is over a threshold or an existing one over a threshold got worse than a base revision",
+  summary: "Exit with 1 when a new function is above a guideline, or an existing one above a guideline got worse than at a base revision",
   options: { base: { type: "string" } },
   async run(context) {
     const settings = readSettings(context.config);
@@ -6180,7 +6180,7 @@ var command2 = {
     const uncommitted = await hasUncommittedWork(context);
     const target = uncommitted ? { kind: "working-tree" } : { kind: "revision", revision: { rev: "HEAD", sha: context.repo.head } };
     const comparison = await compareToBase(context, settings, base, target);
-    const summary = { compared: 0, added: 0, changed: 0, removed: 0, moved: 0, violations: 0 };
+    const summary = { compared: 0, added: 0, changed: 0, removed: 0, moved: 0, findings: 0 };
     const rows = [];
     for (const match of comparison.matches) {
       const { before, after } = match;
@@ -6206,7 +6206,8 @@ var command2 = {
           metric,
           before: was ?? null,
           after: now,
-          threshold: limit,
+          guideline: limit,
+          ratio: Math.round(now / limit * 100) / 100,
           delta: was === void 0 ? null : now - was,
           startLine: after.startLine,
           endLine: after.endLine,
@@ -6215,12 +6216,12 @@ var command2 = {
         });
       }
     }
-    summary.violations = rows.length;
+    summary.findings = rows.length;
     return {
       inputs: { base, against: uncommitted ? "working-tree" : "head", delta: settings.delta },
       extra: { summary, changedFiles: comparison.changedFiles, unsupportedFiles: comparison.unsupportedFiles },
       results: rows,
-      columns: ["path", "unit", "finding", "metric", "before", "after", "threshold", "delta"],
+      columns: ["path", "unit", "finding", "metric", "before", "after", "guideline", "ratio", "delta"],
       failed: rows.length > 0
     };
   }
@@ -6606,6 +6607,9 @@ __export(outcome_exports, {
   command: () => command7,
   name: () => name8
 });
+
+// packages/cochange/src/risk/fix-patterns.ts
+var defaultFixPatterns = ["^fix(es|ed)?\\b", "^bugfix", "^hotfix", "\\bfix(es|ed)?\\b.*#\\d+", "^merge .*\\b(fix|hotfix|bugfix)[/-]"];
 
 // packages/complexity/src/outcome.ts
 import { existsSync as existsSync6 } from "node:fs";
@@ -6999,7 +7003,8 @@ function stampOf(input) {
 // packages/complexity/src/outcome.ts
 var round3 = (value) => Math.round(value * 1e3) / 1e3;
 var mean = (values) => values.length === 0 ? null : round3(values.reduce((sum, value) => sum + value, 0) / values.length);
-var FIX_SUBJECT = /^(fix|bugfix|hotfix)\b/i;
+var FIX_SUBJECTS = defaultFixPatterns.map((pattern) => new RegExp(pattern, "i"));
+var isFixSubject = (subject) => FIX_SUBJECTS.some((pattern) => pattern.test(subject));
 var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 var iso = (seconds) => new Date(seconds * 1e3).toISOString();
 async function resolveRevision2(root, rev) {
@@ -7034,7 +7039,7 @@ function changeFigures(changes, members, subjectOf) {
     const touched = change.files.filter((file) => members.has(file.path) || members.has(file.fileId));
     if (touched.length === 0) continue;
     churn.push(touched.reduce((sum, file) => sum + (file.added ?? 0) + (file.deleted ?? 0), 0));
-    if (change.shas.some((sha) => FIX_SUBJECT.test(subjectOf(sha)))) fixes++;
+    if (change.shas.some((sha) => isFixSubject(subjectOf(sha)))) fixes++;
   }
   return {
     changes: churn.length,

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "check.schema.json",
   "title": "complexity check --json",
-  "description": "Exit code 1 when `results` is not empty: a new function over a threshold, or an existing one over a threshold that got worse by more than the configured delta.",
+  "description": "Exit code 1 when `results` is not empty: a new function above a guideline, or an existing one above a guideline that got worse by more than the configured delta.",
   "allOf": [
     {
       "$ref": "common.schema.json#/$defs/envelope"
@@ -55,7 +55,7 @@
         "moved": {
           "$ref": "common.schema.json#/$defs/count"
         },
-        "violations": {
+        "findings": {
           "$ref": "common.schema.json#/$defs/count"
         }
       },
@@ -65,7 +65,7 @@
         "changed",
         "removed",
         "moved",
-        "violations"
+        "findings"
       ],
       "additionalProperties": false
     },
@@ -114,9 +114,13 @@
           "after": {
             "type": "integer"
           },
-          "threshold": {
+          "guideline": {
             "type": "integer",
-            "description": "The value the metric must not go above."
+            "description": "The guideline value for the metric: the value it is measured against."
+          },
+          "ratio": {
+            "type": "number",
+            "description": "The measured value divided by the guideline."
           },
           "delta": {
             "type": [
@@ -134,7 +138,7 @@
           },
           "score": {
             "type": "integer",
-            "description": "The sort key: how far above the threshold the metric is."
+            "description": "The sort key: how far above the guideline the metric is."
           },
           "renamedFrom": {
             "type": [
@@ -152,7 +156,8 @@
           "metric",
           "before",
           "after",
-          "threshold",
+          "guideline",
+          "ratio",
           "delta",
           "startLine",
           "endLine",

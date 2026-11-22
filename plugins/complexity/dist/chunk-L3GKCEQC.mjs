@@ -14,7 +14,7 @@ import {
   readSettings,
   runGit,
   thresholdsFor
-} from "./chunk-WXSBU4RZ.mjs";
+} from "./chunk-NJM4DZV3.mjs";
 import "./chunk-T3PHNALX.mjs";
 import "./chunk-NYIILDEN.mjs";
 
@@ -253,7 +253,7 @@ function findingsFor(before, after, thresholds, delta) {
         before: was ?? null,
         after: values[metric],
         overshoot: values[metric] - (limit ?? 0),
-        threshold: limit === void 0 ? "a bumpy road" : `threshold ${limit}`
+        guideline: limit === void 0 ? "above guideline: a bumpy road" : `guideline ${limit}, ratio ${Math.round(values[metric] / limit * 100) / 100}`
       });
     }
   }
@@ -264,10 +264,10 @@ function findingsFor(before, after, thresholds, delta) {
 var labels = { nesting: "nesting depth", keyword: "keyword complexity", bumps: "bumps" };
 function describeFindings(file, findings, explainCommand2) {
   const [worst, ...others] = findings;
-  const change = worst.before === null ? `is ${worst.after} in a new unit` : `rose from ${worst.before} to ${worst.after}`;
+  const change = worst.before === null ? `is ${worst.after} in a new or renamed unit` : `rose from ${worst.before} to ${worst.after}`;
   const more = others.length === 0 ? "" : `, and ${others.length} more ${others.length === 1 ? "finding" : "findings"} in this file`;
-  const pointer = explainCommand2 === void 0 ? "" : ` Run \`${explainCommand2} ${file}#${worst.unit}\` for the breakdown.`;
-  return `${file}: \`${worst.unit}\` ${labels[worst.metric]} ${change} (${worst.threshold})${more}.${pointer}`;
+  const pointer = explainCommand2 === void 0 ? "" : ` Worth a look: run \`${explainCommand2} ${file}#${worst.unit}\` for the breakdown.`;
+  return `${file}: \`${worst.unit}\` ${labels[worst.metric]} ${change} (${worst.guideline})${more}.${pointer}`;
 }
 
 // packages/complexity/src/hook.ts
@@ -291,18 +291,18 @@ function explainCommand(file) {
   return pluginRoot === void 0 || pluginRoot === "" ? "complexity explain" : `node ${pluginRoot}/dist/complexity.mjs explain`;
 }
 async function consider(root, file, settings, previous) {
-  if (settings.isExcluded(file)) return { note: null, outcome: "silent: the file is excluded" };
-  if (!settings.analyseTests && await isTestPath(file)) return { note: null, outcome: "silent: tests are not analysed" };
+  if (settings.isExcluded(file)) return { note: null, outcome: "printed nothing: the file is excluded" };
+  if (!settings.analyseTests && await isTestPath(file)) return { note: null, outcome: "printed nothing: tests are not analysed" };
   const text = readFileSync2(join4(root, file), "utf8");
-  if (text.length > MAX_BYTES || text.includes("\0")) return { note: null, outcome: "silent: the file is binary or too large" };
+  if (text.length > MAX_BYTES || text.includes("\0")) return { note: null, outcome: "printed nothing: the file is binary or too large" };
   const measured = measureFile(file, text, { ...settings, thresholds: thresholdsFor(settings, file) });
-  if ("unmeasured" in measured) return { note: null, outcome: `silent: no per-function metrics (${measured.unmeasured})` };
+  if ("unmeasured" in measured) return { note: null, outcome: `printed nothing: no per-function metrics (${measured.unmeasured})` };
   const before = previous ?? await measurementAtHead(root, file, settings);
   const findings = findingsFor(before, measured.measurement, thresholdsFor(settings, file), settings.delta);
   if (findings.length === 0) {
-    return { note: null, outcome: "silent: nothing crossed a threshold or worsened", measurement: measured.measurement };
+    return { note: null, outcome: "printed nothing: nothing went above a guideline or worsened", measurement: measured.measurement };
   }
-  return { note: describeFindings(file, findings, explainCommand(file)), outcome: "spoke", measurement: measured.measurement };
+  return { note: describeFindings(file, findings, explainCommand(file)), outcome: "printed", measurement: measured.measurement };
 }
 async function runHook(request) {
   const started = request.startedAt ?? performance.now();
@@ -315,10 +315,10 @@ async function runHook(request) {
     const state = updateSession(root, sessionId, HOOK_NAME, (current) => {
       if (!current.edited.includes(file)) current.edited.push(file);
     });
-    const decision = state.spokenAbout.includes(file) ? { note: null, outcome: "silent: already spoke about this file" } : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state.measurements[file]), {
+    const decision = state.spokenAbout.includes(file) ? { note: null, outcome: "printed nothing: already printed for this file" } : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state.measurements[file]), {
       note: null,
-      outcome: "silent: over the time budget"
-    }).catch(() => ({ note: null, outcome: "silent: could not measure the file" }));
+      outcome: "printed nothing: over the time budget"
+    }).catch(() => ({ note: null, outcome: "printed nothing: could not measure the file" }));
     updateSession(root, sessionId, HOOK_NAME, (current) => {
       if (decision.note !== null && !current.spokenAbout.includes(file)) current.spokenAbout.push(file);
       if (decision.measurement !== void 0) current.measurements[file] = decision.measurement;
