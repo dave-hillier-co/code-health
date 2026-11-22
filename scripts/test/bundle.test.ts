@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
-import { bundle, bundleChunks, bundledPlugins } from "../bundle.mjs";
+import { bundle, bundleChunks, bundledPlugins, staleBundles } from "../bundle.mjs";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -47,6 +47,67 @@ test("plugins with a CLI source are bundled", () => {
 
 test("a rebuild is byte identical", async () => {
   expect(await bundle("cochange")).toBe(text);
+});
+
+test("the committed bundles, chunks and grammars are what a fresh build produces", async () => {
+  expect(await staleBundles(root)).toEqual([]);
+}, 120_000);
+
+test("the parse layer is a chunk the main bundle imports on demand, and nothing it loads statically reaches it", () => {
+  const dynamic = [...text.matchAll(/await import\("(\.\/chunk-[A-Z0-9]+\.mjs)"\)/g)].map((m) => m[1]!.slice(2));
+  expect(dynamic.length).toBeGreaterThan(0);
+  const staticSpecifiers = (source: string) => [...source.matchAll(/^import\s[^;]*?from\s+"\.\/(chunk-[A-Z0-9]+\.mjs)"/gm)].map((m) => m[1]!);
+  // Everything reachable by static import from the main bundle.
+  const reached = new Set<string>();
+  const queue = staticSpecifiers(text);
+  while (queue.length > 0) {
+    const name = queue.pop()!;
+    if (reached.has(name)) continue;
+    reached.add(name);
+    queue.push(...staticSpecifiers(chunks.get(name) ?? ""));
+  }
+  for (const chunk of dynamic) {
+    expect(chunks.has(chunk)).toBe(true);
+    expect(reached.has(chunk), `${chunk} is loaded statically`).toBe(false);
+    // The point of a chunk: it is the large part, and the part the hook must not pay for.
+    expect(Buffer.byteLength(chunks.get(chunk)!)).toBeGreaterThan(Buffer.byteLength(text));
+  }
+});
+
+test("a hook process never reads the on-demand chunk, which is what keeps it inside its budget", () => {
+  const dynamic = [...text.matchAll(/await import\("\.\/(chunk-[A-Z0-9]+\.mjs)"\)/g)].map((m) => m[1]!);
+  const trace = join(work, "loaded.txt");
+  writeFileSync(
+    join(work, "trace-hooks.mjs"),
+    `import { appendFileSync } from "node:fs";\nexport async function load(url, context, next) {\n  appendFileSync(${JSON.stringify(trace)}, url + "\\n");\n  return next(url, context);\n}\n`,
+  );
+  writeFileSync(
+    join(work, "trace-register.mjs"),
+    `import { register } from "node:module";\nregister("./trace-hooks.mjs", import.meta.url);\n`,
+  );
+  const config = join(repo.path, "code-health.json");
+  writeFileSync(config, JSON.stringify({ cochange: { hook: { enabled: true } } }));
+  try {
+    const event = JSON.stringify({ session_id: "trace", cwd: repo.path, tool_name: "Edit", tool_input: { file_path: join(repo.path, "src", "a.ts") } });
+    const result = spawnSync(process.execPath, ["--import", join(work, "trace-register.mjs"), join(work, "cochange.mjs"), "hook"], {
+      cwd: repo.path,
+      input: event,
+      encoding: "utf8",
+      env: { ...process.env, CODE_HEALTH_HOOK_BUDGET_MS: "60000" },
+    });
+    expect(result.status).toBe(0);
+    const loaded = readFileSync(trace, "utf8");
+    // The trace works: the bundle itself was loaded through it.
+    expect(loaded).toContain("cochange.mjs");
+    for (const chunk of dynamic) expect(loaded).not.toContain(chunk);
+    // The control: a command that does need signatures loads it through the same trace.
+    rmSync(trace, { force: true });
+    const risk = spawnSync(process.execPath, ["--import", join(work, "trace-register.mjs"), join(work, "cochange.mjs"), "risk", "HEAD~1..HEAD", "--json"], { cwd: repo.path, encoding: "utf8" });
+    expect(risk.status).toBe(0);
+    for (const chunk of dynamic) expect(readFileSync(trace, "utf8")).toContain(chunk);
+  } finally {
+    rmSync(config, { force: true });
+  }
 });
 
 test("the bundle imports only Node builtins and its own chunks, and is ESM", () => {

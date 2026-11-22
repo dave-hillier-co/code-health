@@ -1,12 +1,20 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { adapterSamples } from "@code-health/fixtures/language-samples";
+import { api, signatureHistory } from "../../packages/cochange/test/support/composition-scenario.ts";
+import { adoptionHistory } from "../../packages/cochange/test/support/adoption-scenario.ts";
+import { knowledgeHistory } from "../../packages/cochange/test/support/knowledge-scenario.ts";
+import { invoice, outcomeHistory } from "../../packages/cochange/test/support/outcome-scenario.ts";
+import { buildOutcomeRepo } from "../../packages/complexity/test/support/outcome-scenario.ts";
+import { relocationApp } from "../../packages/locality/test/support/measure-scenarios.ts";
 import { distantHelpers } from "../../packages/locality/test/support/scenarios.ts";
+import { leadingRepository } from "../../packages/structure/test/support/leading-scenarios.ts";
+import { incidentalRepository } from "../../packages/structure/test/support/incidental-scenarios.ts";
 import { manifestsRepository } from "../../packages/structure/test/packaging/support/scenarios.ts";
 import { cyclesRepository } from "../../packages/structure/test/support/scenarios.ts";
 
@@ -61,6 +69,73 @@ describe("every plugin's installed bundle runs its newest commands", () => {
 
   test("complexity: analyse, which loads the grammars from the bundle's folder", () => {
     expect(run("complexity", fixture(distantHelpers).path, ["analyse"])).toMatchObject({ status: 0, stderr: "", document: { command: "analyse" } });
+  });
+});
+
+describe("every plugin's installed bundle runs the commands of the outcome and risk work", () => {
+  const sessions = () => mkdtempSync(join(tmpdir(), "dist-smoke-sessions-"));
+
+  test("cochange: risk loads the on-demand parse chunk and names its evidence as from parse", () => {
+    const repo = fixture(signatureHistory);
+    const { status, stderr, document } = run("cochange", repo.path, ["risk", "main..signature"]);
+    expect({ status, stderr }).toEqual({ status: 0, stderr: "" });
+    const blast = document.results.factors.find((factor: { name: string }) => factor.name === "blast-radius");
+    expect(blast.evidence).toContainEqual(expect.objectContaining({ file: api, change: "signature", from: "parse" }));
+  });
+
+  test("cochange: outcome spread and completeness, and the abandonment trend, redundancy and adoption instruments", () => {
+    const repo = fixture(outcomeHistory);
+    const projects = sessions();
+    try {
+      expect(run("cochange", repo.path, ["outcome", "spread", "--at", "2024-04-01", invoice])).toMatchObject({ status: 0, stderr: "", document: { command: "outcome" } });
+      expect(run("cochange", repo.path, ["outcome", "completeness", "--since", "2024-03-01", "--until", "2024-04-01", "--projects-dir", projects])).toMatchObject({
+        status: 0,
+        stderr: "",
+        document: { command: "outcome", inputs: { subcommand: "completeness" } },
+      });
+    } finally {
+      rmSync(projects, { recursive: true, force: true });
+    }
+    const knowledge = fixture(knowledgeHistory);
+    writeFileSync(join(knowledge.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { enabled: true } } }));
+    for (const subcommand of ["trend", "redundancy"]) {
+      expect(run("cochange", knowledge.path, ["abandonment", subcommand]), subcommand).toMatchObject({ status: 0, stderr: "", document: { command: "abandonment" } });
+    }
+    const adoption = fixture(adoptionHistory);
+    writeFileSync(join(adoption.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { enabled: true } } }));
+    expect(run("cochange", adoption.path, ["abandonment", "adoption", "--at", "2025-02-28", "--horizon", "1"])).toMatchObject({ status: 0, stderr: "", document: { command: "abandonment" } });
+  });
+
+  test("complexity: outcome of a simplification", () => {
+    const repo = fixture(buildOutcomeRepo);
+    const sha = repo.git("log", "--format=%H", "--grep=Flatten hot").trim();
+    const projects = sessions();
+    try {
+      expect(run("complexity", repo.path, ["outcome", sha, "--projects-dir", projects])).toMatchObject({ status: 0, stderr: "", document: { command: "outcome" } });
+    } finally {
+      rmSync(projects, { recursive: true, force: true });
+    }
+  });
+
+  test("structure: incidental coupling, and the outcome of a break", () => {
+    const projects = sessions();
+    try {
+      expect(run("structure", fixture(incidentalRepository).path, ["coupling", "--quadrant", "incidental", "--projects-dir", projects])).toMatchObject({ status: 0, stderr: "", document: { command: "coupling" } });
+      const leading = fixture(leadingRepository);
+      const sha = leading.git("log", "--format=%H", "--grep=Stop the store").trim();
+      expect(run("structure", leading.path, ["outcome", "--at", sha, "src/data->src/ui", "--projects-dir", projects])).toMatchObject({ status: 0, stderr: "", document: { command: "outcome" } });
+    } finally {
+      rmSync(projects, { recursive: true, force: true });
+    }
+  });
+
+  test("locality: the premise check", () => {
+    const projects = sessions();
+    try {
+      expect(run("locality", fixture(relocationApp).path, ["measure", "premise", "--projects-dir", projects])).toMatchObject({ status: 0, stderr: "", document: { command: "measure" } });
+    } finally {
+      rmSync(projects, { recursive: true, force: true });
+    }
   });
 });
 

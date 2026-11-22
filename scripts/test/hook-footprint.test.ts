@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, vi } from "vitest";
-import { bundle, bundledPlugins } from "../bundle.mjs";
+import { bundle, bundleChunks, bundledPlugins } from "../bundle.mjs";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -23,9 +23,35 @@ test("the plugins with hooks are found", () => {
   expect(readdirSync(join(root, "plugins"))).toEqual(expect.arrayContaining(hookPlugins));
 });
 
-test.each(hookPlugins)("the %s bundle, which its hook loads twice, carries no compiler and stays well under a megabyte", async (plugin) => {
+/**
+ * What a hook process can parse: the bundle and every chunk it imports statically. The cochange hook never reads its
+ * on-demand parse chunk (bundle.test.ts traces that), so it is not counted there. The complexity hook does load its
+ * parse chunks, as the one thing it exists to run, so all of its chunks are. Measured with the committed bundles
+ * (about 470 KB and 800 KB); raise a ceiling only knowing what the hook now pays.
+ */
+const CEILING = { cochange: 520_000, complexity: 870_000 } as const;
+
+async function startupBytes(plugin: string): Promise<{ text: string; bytes: number }> {
   const text = await bundle(plugin);
+  const chunks = await bundleChunks(plugin);
+  const staticOf = (source: string) => [...source.matchAll(/^import\s[^;]*?from\s+"\.\/(chunk-[A-Z0-9]+\.mjs)"/gm)].map((m) => m[1]!);
+  const reached = new Set<string>();
+  const queue = staticOf(text);
+  while (queue.length > 0) {
+    const name = queue.pop()!;
+    if (reached.has(name)) continue;
+    reached.add(name);
+    queue.push(...staticOf(chunks.get(name) ?? ""));
+  }
+  const counted = plugin === "complexity" ? [...chunks.keys()] : [...reached];
+  const bytes = Buffer.byteLength(text) + counted.reduce((sum, name) => sum + Buffer.byteLength(chunks.get(name) ?? ""), 0);
+  return { text, bytes };
+}
+
+test.each(hookPlugins)("the %s bundle, which its hook loads twice, carries no compiler and stays within its measured size", async (plugin) => {
+  const { text, bytes } = await startupBytes(plugin);
   expect(text).not.toMatch(/ts-morph|@ts-morph/);
   expect(text).not.toContain("typescript/lib/typescript.js");
-  expect(Buffer.byteLength(text)).toBeLessThan(1_000_000);
+  expect(CEILING).toHaveProperty(plugin);
+  expect(bytes).toBeLessThan(CEILING[plugin as keyof typeof CEILING]);
 });
