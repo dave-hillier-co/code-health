@@ -54,7 +54,7 @@ export const command: Command = {
       case "classify":
         return { inputs: inputs(), results: classifyRows(analysis), columns: ["kind", "identity", "commits", "source", "pattern", "decided"] };
       case "check": {
-        const detail = await measureMapping(context, analysis);
+        const detail = await measureMapping(context, analysis, { noRefresh: context.values["no-refresh"] === true });
         const { findings, failed } = checkMapping(analysis, detail);
         return {
           inputs: inputs(),

@@ -275,3 +275,22 @@ test("a classification decision removes that identity's commits from every analy
   const classes = json((await identities("classify")).stdout).results.map((r: { identity: string }) => r.identity);
   expect(classes).not.toContain(key(jenkins));
 });
+
+test("check counts the lines the shared blame cache holds, so its share cannot differ from abandonment's", async () => {
+  const { readBlame } = await import("@code-health/history/blame-read");
+  const document = json((await identities("check", "--limit", "all")).stdout);
+  const snapshot = await readBlame(repo.path, { ref: "HEAD" });
+  const cached = [...snapshot.files.values()].reduce((sum, file) => sum + file.lines, 0);
+  expect(document.measurement.headLines.unknownFiles).toBe(0);
+  expect(document.measurement.headLines.total + document.measurement.headLines.unattributed).toBe(cached);
+  expect(existsSync(join(repo.path, ".cache", "code-health", "blame.sqlite"))).toBe(true);
+});
+
+test("check with --no-refresh does not blame, and reports the files the cache has nothing for", async () => {
+  await identities("check");
+  rmSync(join(repo.path, ".cache", "code-health", "blame.sqlite"), { force: true });
+  const document = json((await identities("check", "--no-refresh", "--limit", "all")).stdout);
+  expect(document.measurement.headLines.unknownFiles).toBeGreaterThan(0);
+  expect(document.measurement.headLines.total).toBe(0);
+  expect(existsSync(join(repo.path, ".cache", "code-health", "blame.sqlite"))).toBe(false);
+});

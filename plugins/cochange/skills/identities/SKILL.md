@@ -50,7 +50,7 @@ Bots, services and agents are left out of the population of people and out of ev
 
 ## Reading the measurement
 
-`check` reports how much of the code the mapping has settled: the share of lines at HEAD and of commits in the analysis window held by identities that no proposal still names, with bots and services counted separately. It should be close to 100 percent before any abandonment result is trusted. Report it alongside whatever you do next. When `needsIdentityReview` is true, unmapped identities hold more than the guideline `cochange.identities.unmappedShareThreshold` percent of the lines. The measured share is printed beside it. Below the guideline the unmapped identities are still listed.
+`check` reads line ownership from the blame cache with the same options as abandonment, so the two shares agree. It reports how much of the code the mapping has settled: the share of lines at HEAD and of commits in the analysis window held by identities that no proposal still names, with bots and services counted separately. It should be close to 100 percent before any abandonment result is trusted. Report it alongside whatever you do next. When `needsIdentityReview` is true, unmapped identities hold more than the guideline `cochange.identities.unmappedShareThreshold` percent of the lines. The measured share is printed beside it. Below the guideline the unmapped identities are still listed.
 
 ## Commands
 

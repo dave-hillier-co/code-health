@@ -473,10 +473,15 @@
                 "unattributed": {
                   "$ref": "common.schema.json#/$defs/count",
                   "description": "Lines whose commit is outside the analysed history."
+                },
+                "unknownFiles": {
+                  "$ref": "common.schema.json#/$defs/count",
+                  "description": "Authored files the blame cache holds no right blame for, so their lines are not counted. Zero after a refresh."
                 }
               },
               "required": [
-                "unattributed"
+                "unattributed",
+                "unknownFiles"
               ]
             }
           ],

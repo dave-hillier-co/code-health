@@ -1,6 +1,8 @@
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
-import { blameLineCounts } from "@code-health/history/blame-lines";
+import { readBlame } from "@code-health/history/blame-read";
 import { identityKey } from "@code-health/history/identity-names";
+import { blameOptions, refreshBlameFor } from "../abandonment/load.ts";
+import { readKnowledgeSettings } from "../abandonment/settings.ts";
 import type { IdentityAnalysis } from "./analysis.ts";
 
 export interface Share {
@@ -20,6 +22,8 @@ export interface Measurement {
   headLines: Share & {
     /** Lines whose commit is not in the analysed history (for example, a shallow boundary). Not counted. */
     unattributed: number;
+    /** Authored files the blame cache holds no right blame for, so their lines are not counted. Zero after a refresh. */
+    unknownFiles: number;
   };
   windowCommits: Share;
   /** The configured percentage of lines that unmapped identities may hold before the identities skill is needed. */
@@ -51,16 +55,26 @@ function share(byNode: Map<string, number>, analysis: IdentityAnalysis): Share {
 
 /**
  * The share of HEAD lines, and of commits in the analysis window, held by
- * identities the mapping has settled. Lines are blamed at the analysed commit,
- * ignoring whitespace and the ignore-revs file.
+ * identities the mapping has settled. Lines come from the shared blame cache, made
+ * and read with the options the abandonment analysis uses (`-w -M -C`, the
+ * ignore-revs file), so the mapped share here equals the one it reports. The cache
+ * is refreshed first unless `noRefresh`. This does not need the knowledge analysis
+ * to be enabled: it reads only line counts per commit.
  */
-export async function measureMapping(context: CommandContext, analysis: IdentityAnalysis): Promise<MeasurementDetail> {
+export async function measureMapping(context: CommandContext, analysis: IdentityAnalysis, options: { noRefresh: boolean }): Promise<MeasurementDetail> {
   const { history, facts, nodeOfRaw } = analysis;
-  const blamed = await blameLineCounts(context.repo.root, history.view.headSha, { exclude: history.settings.exclude });
+  const settings = readKnowledgeSettings(context.config.effective);
+  const sha = history.view.headSha;
+  if (!options.noRefresh) await refreshBlameFor(context, history, settings, sha);
+  const snapshot = await readBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings) });
+  const bySha = new Map<string, number>();
+  for (const file of snapshot.files.values()) {
+    for (const range of file.ranges) bySha.set(range.sha, (bySha.get(range.sha) ?? 0) + range.count);
+  }
 
   const linesByNode = new Map<string, number>();
   let unattributed = 0;
-  for (const [sha, lines] of blamed.bySha) {
+  for (const [sha, lines] of bySha) {
     const author = facts.authorOfCommit.get(sha);
     const node = author && nodeOfRaw.get(identityKey(author));
     if (!node) unattributed += lines;
@@ -72,7 +86,7 @@ export async function measureMapping(context: CommandContext, analysis: Identity
     if (node) windowCommitsByNode.set(node, (windowCommitsByNode.get(node) ?? 0) + count);
   }
 
-  const headLines = { ...share(linesByNode, analysis), unattributed };
+  const headLines = { ...share(linesByNode, analysis), unattributed, unknownFiles: snapshot.missing.length };
   const threshold = history.settings.identities.unmappedShareThreshold;
   return {
     measurement: {
