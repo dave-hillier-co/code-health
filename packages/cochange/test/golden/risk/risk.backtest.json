@@ -103,20 +103,20 @@
   },
   "inputs": {
     "baselineChanges": 200,
+    "fixExcludePatterns": [
+      "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|lints?|linting|linters?|tests?|testing|flaky|docs?|documentation|readme|formatting|whitespace|ci|prettier|eslint)\\b"
+    ],
     "fixMatchBody": false,
     "fixPatterns": [
       "^fix(\\([^)]*\\))?!?:",
       "^merge .*\\b(fix|hotfix|bugfix)[/-]",
-      "\\bfix\\b",
-      "\\bfixes\\b",
-      "\\bfixed\\b",
-      "\\bfixing\\b",
+      "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
+      "\\bto\\s+fix\\b",
       "\\bbug\\b",
       "\\bbugs\\b",
       "\\bbugfix\\b",
       "\\bhotfix\\b",
-      "\\bdefect\\b",
-      "\\bissue\\b"
+      "\\bdefect\\b"
     ],
     "followUpDays": 30,
     "mergeStyle": {
@@ -538,44 +538,44 @@
         "byPattern": [
           {
             "count": 6,
-            "pattern": "\\bfix\\b"
+            "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b"
           }
         ],
         "commits": [
           {
             "id": "753e88e031b799bf47bac9938a4c7ec3f7127e9d",
             "matchedIn": "subject",
-            "pattern": "\\bfix\\b",
+            "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
             "subject": "Fix the wide modules 6"
           },
           {
             "id": "24464346e7557bac877667ff8e983b03a2af32c8",
             "matchedIn": "subject",
-            "pattern": "\\bfix\\b",
+            "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
             "subject": "Fix the wide modules 12"
           },
           {
             "id": "400db50e32e6f0c556d9a0879569bffb3d509bb1",
             "matchedIn": "subject",
-            "pattern": "\\bfix\\b",
+            "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
             "subject": "Fix the wide modules 18"
           },
           {
             "id": "26642c2f5114a93b05703d5ebf7aa52c0b32d1ac",
             "matchedIn": "subject",
-            "pattern": "\\bfix\\b",
+            "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
             "subject": "Fix the wide modules 24"
           },
           {
             "id": "b7daf141732e198a03e50c5a66d9cb4c209f1a07",
             "matchedIn": "subject",
-            "pattern": "\\bfix\\b",
+            "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
             "subject": "Fix the wide modules 30"
           },
           {
             "id": "28677c89fd7fd62ae061fc5c545a659dc682d223",
             "matchedIn": "subject",
-            "pattern": "\\bfix\\b",
+            "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
             "subject": "Fix the wide modules 36"
           }
         ],

@@ -55,6 +55,7 @@ export async function runBacktest(context: CommandContext, history: LoadedHistor
       followUpDays: risk.followUpDays,
       baselineChanges: risk.baselineChanges,
       fixPatterns: risk.fix.settings.fixPatterns,
+      fixExcludePatterns: risk.fix.settings.fixExcludePatterns,
       revertPatterns: risk.fix.settings.revertPatterns,
       fixMatchBody: risk.fix.settings.fixMatchBody,
       mergeStyle: { merges: mainline.merges, direct: mainline.direct },

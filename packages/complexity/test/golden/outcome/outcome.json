@@ -46,14 +46,14 @@
             "byPattern": [
               {
                 "count": 1,
-                "pattern": "\\bfix\\b"
+                "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b"
               }
             ],
             "commits": [
               {
                 "id": "f57b2727e0b10447545aff47b8ae753df3a22ac5",
                 "matchedIn": "subject",
-                "pattern": "\\bfix\\b",
+                "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
                 "subject": "Fix crash in hot"
               }
             ],
@@ -71,20 +71,20 @@
             "byPattern": [
               {
                 "count": 2,
-                "pattern": "\\bfix\\b"
+                "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b"
               }
             ],
             "commits": [
               {
                 "id": "c685726a12c5225f95b6cbcf439468d469e8b4e0",
                 "matchedIn": "subject",
-                "pattern": "\\bfix\\b",
+                "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
                 "subject": "Fix off-by-one in warm"
               },
               {
                 "id": "7143fdb2837d8aa755c67a42b6066f33df520e60",
                 "matchedIn": "subject",
-                "pattern": "\\bfix\\b",
+                "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
                 "subject": "Fix rounding in warm"
               }
             ],
@@ -100,14 +100,14 @@
             "byPattern": [
               {
                 "count": 1,
-                "pattern": "\\bfix\\b"
+                "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b"
               }
             ],
             "commits": [
               {
                 "id": "5b5f58dee6d79599044aec5715cdf22d1f3d891c",
                 "matchedIn": "subject",
-                "pattern": "\\bfix\\b",
+                "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
                 "subject": "Fix crash in warm"
               }
             ],
@@ -128,7 +128,7 @@
       "changes": -3,
       "fixCommitRate": -0.5,
       "linesChurnedPerChange": 0,
-      "meanScore": -0.312
+      "meanScore": -0.166
     },
     "fixConvention": {
       "fixes": 4,
@@ -161,24 +161,24 @@
         "after": {
           "functions": 1,
           "meanComplexityScore": 0.667,
-          "meanScore": 0.417
+          "meanScore": 0.667
         },
         "before": {
           "functions": 1,
           "meanComplexityScore": 0.667,
-          "meanScore": 0.5
+          "meanScore": 0.667
         }
       },
       "comparison": {
         "after": {
           "functions": 1,
           "meanComplexityScore": 0.833,
-          "meanScore": 0.729
+          "meanScore": 0.833
         },
         "before": {
           "functions": 1,
           "meanComplexityScore": 0.667,
-          "meanScore": 0.5
+          "meanScore": 0.667
         }
       }
     },

@@ -26,24 +26,30 @@ export const historyDefaults = {
   /** Regular expressions matched against `Name <email>` of an author; their commits are left out of history. */
   botPatterns: [] as string[],
   /**
-   * Regular expressions, matched case-insensitively against a commit subject, that mark a fix. The defaults are whole words
-   * (fix, fixes, fixed, fixing, bug, bugs, bugfix, hotfix, defect, issue), a Conventional Commits `fix:` or `fix(scope):` prefix,
-   * and a merge of a fix/, hotfix/ or bugfix/ branch. They are a judgement call, and "issue" also matches subjects such as
-   * "address review issue", so every count of fixes keeps the commits that matched.
+   * Regular expressions, matched case-insensitively against a commit subject, that mark a fix. The defaults are a Conventional
+   * Commits `fix:` or `fix(scope):` prefix, a merge of a fix/, hotfix/ or bugfix/ branch, fix, fixes, fixed or fixing at the start of
+   * the subject (after an optional Conventional Commits type or scope, or a ticket prefix such as "ABC-123:"), "to fix", and the whole
+   * words bug, bugs, bugfix, hotfix and defect anywhere. They are a judgement call, so every count of fixes keeps the commits that matched.
    */
   fixPatterns: [
     "^fix(\\([^)]*\\))?!?:",
     "^merge .*\\b(fix|hotfix|bugfix)[/-]",
-    "\\bfix\\b",
-    "\\bfixes\\b",
-    "\\bfixed\\b",
-    "\\bfixing\\b",
+    "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
+    "\\bto\\s+fix\\b",
     "\\bbug\\b",
     "\\bbugs\\b",
     "\\bbugfix\\b",
     "\\bhotfix\\b",
     "\\bdefect\\b",
-    "\\bissue\\b",
+  ] as string[],
+  /**
+   * Regular expressions, matched case-insensitively against the subject of a commit that a fix pattern matched. A match means the
+   * fix target is formatting, lint, typos, docs, tests or CI, which is not a defect fix, so the commit is counted as excluded with
+   * the pattern that excluded it and not as a fix. A guideline list, a judgement call not calibrated on a corpus: the target
+   * word must follow the fix word within three words.
+   */
+  fixExcludePatterns: [
+    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|lints?|linting|linters?|tests?|testing|flaky|docs?|documentation|readme|formatting|whitespace|ci|prettier|eslint)\\b",
   ] as string[],
   /** Regular expressions matched against a commit subject that mark a revert. The "This reverts commit" line git writes in the body always marks one. A revert is not counted as a fix. */
   revertPatterns: ["^revert\\b"] as string[],
@@ -207,14 +213,14 @@ function readHistory(history: Partial<HistoryConfig>, where: string): void {
   positive("renameLimit");
   positive("windowMonths");
   positive("maxChangesetSize");
-  const { branch, botPatterns, fixPatterns, revertPatterns } = history;
+  const { branch, botPatterns, fixPatterns, fixExcludePatterns, revertPatterns } = history;
   if (branch !== undefined && branch !== null && (typeof branch !== "string" || branch === "")) {
     throw configError(`${CONFIG_FILE}: ${where}.branch must be a branch name or null`);
   }
   if (botPatterns !== undefined && (!Array.isArray(botPatterns) || botPatterns.some((pattern) => typeof pattern !== "string"))) {
     throw configError(`${CONFIG_FILE}: ${where}.botPatterns must be an array of strings`);
   }
-  for (const [key, value] of [["fixPatterns", fixPatterns], ["revertPatterns", revertPatterns]] as const) {
+  for (const [key, value] of [["fixPatterns", fixPatterns], ["fixExcludePatterns", fixExcludePatterns], ["revertPatterns", revertPatterns]] as const) {
     if (value !== undefined && (!Array.isArray(value) || value.some((pattern) => typeof pattern !== "string"))) {
       throw configError(`${CONFIG_FILE}: ${where}.${key} must be an array of strings`);
     }

@@ -37,10 +37,14 @@
           "const": true,
           "description": "Present when --with-fixes added the fix columns."
         },
+        "by": {
+          "enum": ["complexity", "change-weighted"],
+          "description": "What rows sort on: the complexity percentile, or that percentile times the change weight."
+        },
         "maxCommits": {
-          "type": "integer",
+          "type": ["integer", "null"],
           "minimum": 1,
-          "description": "With --with-fixes: the most commits of the history window analysed."
+          "description": "With --with-fixes: the most commits of the history window analysed, or null for the whole window."
         },
         "evidence": {
           "type": "integer",
@@ -52,6 +56,7 @@
         "tree",
         "layer",
         "metrics",
+        "by",
         "paths"
       ],
       "additionalProperties": false
@@ -62,12 +67,20 @@
         "basis": {
           "type": "string"
         },
+        "by": {
+          "enum": ["complexity", "change-weighted"],
+          "description": "What `score` is and rows sort on."
+        },
         "changeWeighted": {
           "type": "boolean",
-          "description": "True when each unit's rank score is its complexity percentile times the change weight of its file. False when change weighting is off or history could not give an honest answer (a shallow clone), and the rank is the percentile alone."
+          "description": "True when each unit's score is its complexity percentile times the change weight of its file (`--by change-weighted`). False when the score is the percentile alone."
+        },
+        "changeWeightsAvailable": {
+          "type": "boolean",
+          "description": "True when rows carry changeWeight, fileRevisions and changeWeightedScore. False when change weighting is off or history could not give an honest answer (a shallow clone)."
         },
         "window": {
-          "description": "The change-frequency window, back from HEAD's commit date, in unix seconds. Null when the ranking is not change-weighted.",
+          "description": "The change-frequency window, back from HEAD's commit date, in unix seconds. Null when change weights are not available.",
           "oneOf": [
             {
               "type": "object",
@@ -85,7 +98,9 @@
       },
       "required": [
         "basis",
+        "by",
         "changeWeighted",
+        "changeWeightsAvailable",
         "window"
       ],
       "additionalProperties": false
@@ -172,24 +187,30 @@
             "type": "number",
             "minimum": 0,
             "maximum": 1,
-            "description": "The rank score: the highest percentile of any selected metric, times changeWeight when the ranking is change-weighted."
+            "description": "The sort key: complexityScore by default, changeWeightedScore with --by change-weighted."
           },
           "complexityScore": {
             "type": "number",
             "minimum": 0,
             "maximum": 1,
-            "description": "The highest percentile of any selected metric, before change weighting."
+            "description": "The highest percentile of any selected metric."
           },
-          "revisions": {
+          "changeWeightedScore": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "complexityScore times changeWeight. Null when change weights are not available."
+          },
+          "fileRevisions": {
             "type": ["integer", "null"],
             "minimum": 0,
-            "description": "Logical changes to the unit's file in the window. Null when the ranking is not change-weighted."
+            "description": "Logical changes to the unit's file in the window, not the function's own (unitRevisions, with --with-fixes, is the function's). Null when change weights are not available."
           },
           "changeWeight": {
             "type": ["number", "null"],
             "minimum": 0,
             "maximum": 1,
-            "description": "0 for a file with no change in the window, otherwise the percentile of its revisions among the files that changed. Null when the ranking is not change-weighted."
+            "description": "0 for a file with no change in the window, otherwise the percentile of its revisions among the files that changed. Null when change weights are not available."
           },
           "dominant": {
             "description": "The metric that gave the score, null for a unit with no selected metric.",
@@ -324,7 +345,8 @@
           "test",
           "score",
           "complexityScore",
-          "revisions",
+          "changeWeightedScore",
+          "fileRevisions",
           "changeWeight",
           "dominant",
           "percentiles",

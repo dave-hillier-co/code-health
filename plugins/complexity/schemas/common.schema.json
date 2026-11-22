@@ -415,6 +415,13 @@
           "minimum": 0,
           "description": "The function's cognitive complexity in the current revision. Null for a deleted function."
         },
+        "labels": {
+          "type": "array",
+          "items": {
+            "const": "low evidence"
+          },
+          "description": "`low evidence` when the function has fewer than `fixes.minRevisions` revisions in the analysed window. Such a row sorts after the others with the same fixCommits."
+        },
         "evidence": {
           "type": "array",
           "description": "The fix commits, newest first, up to --evidence.",
@@ -474,6 +481,7 @@
         "unitRevisions",
         "fixShare",
         "cognitive",
+        "labels",
         "evidence",
         "evidenceOmitted",
         "earlierIds"
@@ -512,6 +520,50 @@
         "fixConvention": {
           "$ref": "#/$defs/fixConvention"
         },
+        "fixesExcluded": {
+          "type": "object",
+          "description": "Logical changes of the window that a fix pattern matched and an exclude pattern (history.fixExcludePatterns) removed, because the fix target is formatting, lint, typos, docs, tests or CI. They are not counted as fixes. `byPattern` counts them by the excluding pattern.",
+          "properties": {
+            "fixes": { "$ref": "#/$defs/count", "description": "Excluded changes." },
+            "byPattern": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": { "pattern": { "type": "string" }, "count": { "$ref": "#/$defs/count" } },
+                "required": ["pattern", "count"],
+                "additionalProperties": false
+              }
+            },
+            "commits": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string" },
+                  "subject": { "type": "string" },
+                  "pattern": { "type": "string", "description": "The exclude pattern." },
+                  "matchedIn": { "enum": ["subject", "body"] }
+                },
+                "required": ["id", "subject", "pattern", "matchedIn"],
+                "additionalProperties": false
+              }
+            },
+            "omitted": { "$ref": "#/$defs/count", "description": "Excluded changes beyond `commits`." },
+            "excludePatterns": { "type": "string" },
+            "note": { "type": "string" }
+          },
+          "required": ["fixes", "byPattern", "commits", "omitted", "excludePatterns", "note"],
+          "additionalProperties": false
+        },
+        "lowEvidence": {
+          "type": "object",
+          "properties": {
+            "minRevisions": { "type": "integer", "minimum": 1 },
+            "rule": { "type": "string" }
+          },
+          "required": ["minRevisions", "rule"],
+          "additionalProperties": false
+        },
         "commits": {
           "type": "object",
           "description": "Commits of the logical changes that touched the selected files. Skipped commits are counted by cause and are not in any row.",
@@ -549,8 +601,9 @@
               "additionalProperties": false
             },
             "maxCommits": {
-              "type": "integer",
-              "minimum": 1
+              "type": ["integer", "null"],
+              "minimum": 1,
+              "description": "The most commits analysed, newest first. Null analyses the whole window."
             }
           },
           "required": [
@@ -681,7 +734,12 @@
           "description": "Fixes that changed lines outside every function count against the file.",
           "properties": {
             "fixCommits": {
-              "$ref": "#/$defs/count"
+              "$ref": "#/$defs/count",
+              "description": "Distinct fix changes with a changed line outside every function. Never more than the fixes of the window."
+            },
+            "fixFileChanges": {
+              "$ref": "#/$defs/count",
+              "description": "The same changes counted once per file they touched, which is the sum of the rows' fixCommits."
             },
             "files": {
               "$ref": "#/$defs/count"
@@ -721,6 +779,7 @@
           },
           "required": [
             "fixCommits",
+            "fixFileChanges",
             "files",
             "limit",
             "omitted",
@@ -733,6 +792,8 @@
         "window",
         "shallow",
         "fixConvention",
+        "fixesExcluded",
+        "lowEvidence",
         "commits",
         "files",
         "cache",

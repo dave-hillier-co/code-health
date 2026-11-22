@@ -13,7 +13,7 @@ import { TOOL } from "./tool.ts";
  */
 export const complexityConfig: PluginConfigSpec = {
   plugin: TOOL,
-  history: ["windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "revertPatterns", "fixMatchBody"],
+  history: ["windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "fixExcludePatterns", "revertPatterns", "fixMatchBody"],
   section: {
     /** Metrics reported and ranked. `--metrics` narrows them for one run. */
     metrics: [...metricIds],
@@ -53,10 +53,9 @@ export const complexityConfig: PluginConfigSpec = {
     /** The post-edit hook, off unless a repository turns it on. It uses `guidelines`, `delta`, `analyseTests` and `agreementBar`. */
     hook: { enabled: false },
     /**
-     * `complexity fixes` and `analyse --with-fixes`. `maxCommits` bounds how many commits of the history window are parsed, newest first, and the output says how many were left out:
-     * 500 is a judgement call about run time, not calibrated on a corpus. `evidence` is how many fix commits are listed per function.
+     * `complexity fixes` and `analyse --with-fixes`. `maxCommits` is null, which analyses every commit of the history window, or a number that bounds how many commits are parsed, newest first, and the output says how many were left out. `evidence` is how many fix commits are listed per function. `minRevisions` is a guideline of 3, a judgement call not calibrated on a corpus: a function with fewer revisions in the window is labelled low evidence and sorts after the others with the same fix count.
      */
-    fixes: { maxCommits: 500, evidence: 3 },
+    fixes: { maxCommits: null, evidence: 3, minRevisions: 3 },
     /** `shallow`: a guideline of 10, a judgement call not calibrated on a corpus. An exported function, class or module with fewer syntax nodes than this per element of its interface is labelled shallow. Rows are ordered by depth whatever the guideline. */
     interfaceDepth: { shallow: 10 },
   },
@@ -83,12 +82,12 @@ export interface ComplexitySettings {
   windowMonths: number;
   maxChangesetSize: number;
   botPatterns: string[];
-  /** The shared definition of a fix commit: `history.fixPatterns`, `revertPatterns` and `fixMatchBody`. */
+  /** The shared definition of a fix commit: `history.fixPatterns`, `fixExcludePatterns`, `revertPatterns` and `fixMatchBody`. */
   fix: FixClassifier;
   /** The opt-in post-edit hook. */
   hook: { enabled: boolean };
   /** Defaults of `--max-commits` and `--evidence` for the per-function fix statistics. */
-  fixes: { maxCommits: number; evidence: number };
+  fixes: { maxCommits: number | null; evidence: number; minRevisions: number };
   /** Nodes per interface element below which an exported unit is labelled shallow. */
   shallowDepth: number;
   /** The suite's shared `exclude` globs. */
@@ -151,8 +150,9 @@ export function readSettings(config: LoadedConfig): ComplexitySettings {
     fix: readFixClassifier(section),
     hook: { enabled: (section.hook as { enabled: boolean }).enabled === true },
     fixes: {
-      maxCommits: number((section.fixes as { maxCommits: unknown }).maxCommits, at("fixes.maxCommits"), 1),
+      maxCommits: (section.fixes as { maxCommits: unknown }).maxCommits === null ? null : number((section.fixes as { maxCommits: unknown }).maxCommits, at("fixes.maxCommits"), 1),
       evidence: number((section.fixes as { evidence: unknown }).evidence, at("fixes.evidence"), 0),
+      minRevisions: number((section.fixes as { minRevisions: unknown }).minRevisions, at("fixes.minRevisions"), 1),
     },
     shallowDepth: number((section.interfaceDepth as { shallow: unknown }).shallow, at("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
@@ -164,6 +164,7 @@ function readFixClassifier(section: Record<string, unknown>): FixClassifier {
   try {
     return compileFixClassifier({
       fixPatterns: section.fixPatterns as string[],
+      fixExcludePatterns: section.fixExcludePatterns as string[],
       revertPatterns: section.revertPatterns as string[],
       fixMatchBody: section.fixMatchBody === true,
     });

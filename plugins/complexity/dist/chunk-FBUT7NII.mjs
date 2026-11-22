@@ -6,7 +6,7 @@ import {
   configError,
   historyDefaults,
   recordBuiltinOmission
-} from "./chunk-GATX7OYR.mjs";
+} from "./chunk-DDJPNAJ3.mjs";
 import {
   __export
 } from "./chunk-NYIILDEN.mjs";
@@ -516,6 +516,7 @@ async function filterHistory(repoPath, view, options = {}) {
 // packages/history/src/fix-commits.ts
 var defaultFixSettings = {
   fixPatterns: historyDefaults.fixPatterns,
+  fixExcludePatterns: historyDefaults.fixExcludePatterns,
   revertPatterns: historyDefaults.revertPatterns,
   fixMatchBody: historyDefaults.fixMatchBody
 };
@@ -531,6 +532,7 @@ function compile(pattern, flags, kind) {
 }
 function compileFixClassifier(settings) {
   const fixes = settings.fixPatterns.map((source) => ({ source, subject: compile(source, "i", "fix pattern"), body: compile(source, "im", "fix pattern") }));
+  const excludes = settings.fixExcludePatterns.map((source) => ({ source, subject: compile(source, "i", "fix exclude pattern") }));
   const reverts = settings.revertPatterns.map((source) => ({ source, subject: compile(source, "i", "revert pattern") }));
   const classify = (message) => {
     const normalised = message.replace(/\r\n/g, "\n");
@@ -540,12 +542,13 @@ function compileFixClassifier(settings) {
     if (revert) return { kind: "revert", pattern: revert.source, matchedIn: "subject" };
     if (REVERT_BODY.test(body)) return { kind: "revert", pattern: REVERT_BODY_PATTERN, matchedIn: "body" };
     const fix = fixes.find((entry) => entry.subject.test(subject));
-    if (fix) return { kind: "fix", pattern: fix.source, matchedIn: "subject" };
-    if (settings.fixMatchBody) {
-      const inBody = fixes.find((entry) => entry.body.test(body));
-      if (inBody) return { kind: "fix", pattern: inBody.source, matchedIn: "body" };
-    }
-    return { kind: "other" };
+    const inBody = fix === void 0 && settings.fixMatchBody ? fixes.find((entry) => entry.body.test(body)) : void 0;
+    const matched = fix ?? inBody;
+    if (matched === void 0) return { kind: "other" };
+    const matchedIn = fix === void 0 ? "body" : "subject";
+    const excluded = excludes.find((entry) => entry.subject.test(subject));
+    if (excluded) return { kind: "excluded", pattern: excluded.source, fixPattern: matched.source, matchedIn };
+    return { kind: "fix", pattern: matched.source, matchedIn };
   };
   return { settings, classify };
 }
@@ -553,6 +556,14 @@ function findFix(classifier, id, messages) {
   for (const message of messages) {
     const found = classifier.classify(message);
     if (found.kind === "fix") return { id, subject: subjectOf(message), pattern: found.pattern, matchedIn: found.matchedIn };
+  }
+  return null;
+}
+function findExcludedFix(classifier, id, messages) {
+  if (findFix(classifier, id, messages) !== null) return null;
+  for (const message of messages) {
+    const found = classifier.classify(message);
+    if (found.kind === "excluded") return { id, subject: subjectOf(message), pattern: found.pattern, matchedIn: found.matchedIn };
   }
   return null;
 }
@@ -960,7 +971,7 @@ function bumpyRoadLimits(guidelines) {
 // packages/complexity/src/config.ts
 var complexityConfig = {
   plugin: TOOL,
-  history: ["windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "revertPatterns", "fixMatchBody"],
+  history: ["windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "fixExcludePatterns", "revertPatterns", "fixMatchBody"],
   section: {
     /** Metrics reported and ranked. `--metrics` narrows them for one run. */
     metrics: [...metricIds],
@@ -1000,10 +1011,9 @@ var complexityConfig = {
     /** The post-edit hook, off unless a repository turns it on. It uses `guidelines`, `delta`, `analyseTests` and `agreementBar`. */
     hook: { enabled: false },
     /**
-     * `complexity fixes` and `analyse --with-fixes`. `maxCommits` bounds how many commits of the history window are parsed, newest first, and the output says how many were left out:
-     * 500 is a judgement call about run time, not calibrated on a corpus. `evidence` is how many fix commits are listed per function.
+     * `complexity fixes` and `analyse --with-fixes`. `maxCommits` is null, which analyses every commit of the history window, or a number that bounds how many commits are parsed, newest first, and the output says how many were left out. `evidence` is how many fix commits are listed per function. `minRevisions` is a guideline of 3, a judgement call not calibrated on a corpus: a function with fewer revisions in the window is labelled low evidence and sorts after the others with the same fix count.
      */
-    fixes: { maxCommits: 500, evidence: 3 },
+    fixes: { maxCommits: null, evidence: 3, minRevisions: 3 },
     /** `shallow`: a guideline of 10, a judgement call not calibrated on a corpus. An exported function, class or module with fewer syntax nodes than this per element of its interface is labelled shallow. Rows are ordered by depth whatever the guideline. */
     interfaceDepth: { shallow: 10 }
   }
@@ -1055,8 +1065,9 @@ function readSettings(config) {
     fix: readFixClassifier(section),
     hook: { enabled: section.hook.enabled === true },
     fixes: {
-      maxCommits: number(section.fixes.maxCommits, at("fixes.maxCommits"), 1),
-      evidence: number(section.fixes.evidence, at("fixes.evidence"), 0)
+      maxCommits: section.fixes.maxCommits === null ? null : number(section.fixes.maxCommits, at("fixes.maxCommits"), 1),
+      evidence: number(section.fixes.evidence, at("fixes.evidence"), 0),
+      minRevisions: number(section.fixes.minRevisions, at("fixes.minRevisions"), 1)
     },
     shallowDepth: number(section.interfaceDepth.shallow, at("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
@@ -1067,6 +1078,7 @@ function readFixClassifier(section) {
   try {
     return compileFixClassifier({
       fixPatterns: section.fixPatterns,
+      fixExcludePatterns: section.fixExcludePatterns,
       revertPatterns: section.revertPatterns,
       fixMatchBody: section.fixMatchBody === true
     });
@@ -1919,6 +1931,7 @@ export {
   readPathAttributes,
   filterHistory,
   findFix,
+  findExcludedFix,
   fixEvidence,
   checkFixConvention,
   metricIds,

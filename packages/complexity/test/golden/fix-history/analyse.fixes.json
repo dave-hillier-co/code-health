@@ -11,7 +11,7 @@
     "commits": {
       "analysed": 11,
       "inWindow": 11,
-      "maxCommits": 500,
+      "maxCommits": null,
       "skipped": 0,
       "skippedBy": {
         "maxCommits": 0,
@@ -30,8 +30,8 @@
             {
               "date": "2024-02-08",
               "matchedIn": "subject",
-              "pattern": "\\bfix\\b",
-              "sha": "73f8c73212fe6de1eb586910e5792c2c3eef295e",
+              "pattern": "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
+              "sha": "202dda384372200bbdc7df1355e4a6b138d2e2dd",
               "subject": "Fix legacy shipping rate"
             }
           ],
@@ -39,8 +39,11 @@
           "fixCommits": 1,
           "fixShare": 0.5,
           "id": "src/orders.ts#legacy",
+          "labels": [
+            "low evidence"
+          ],
           "path": "src/orders.ts",
-          "score": 1.5,
+          "score": 1.2,
           "unit": "legacy",
           "unitRevisions": 2
         }
@@ -71,9 +74,22 @@
       "note": "The commit messages probably do not follow a convention this can use: there are 11 logical changes in the window, fewer than 30.",
       "share": 0.545
     },
+    "fixesExcluded": {
+      "byPattern": [],
+      "commits": [],
+      "excludePatterns": "history.fixExcludePatterns",
+      "fixes": 0,
+      "note": "Changes that a fix pattern matched and an exclude pattern removed because the fix target is formatting, lint, typos, docs, tests or CI. They are not counted as fixes.",
+      "omitted": 0
+    },
+    "lowEvidence": {
+      "minRevisions": 3,
+      "rule": "A function with fewer than 3 revisions in the analysed window is labelled \"low evidence\" and sorts after the others with the same fix count."
+    },
     "outsideUnits": {
       "files": 1,
       "fixCommits": 2,
+      "fixFileChanges": 2,
       "limit": 10,
       "omitted": 0,
       "rows": [
@@ -97,9 +113,10 @@
     }
   },
   "inputs": {
+    "by": "complexity",
     "evidence": 3,
     "layer": "auto",
-    "maxCommits": 500,
+    "maxCommits": null,
     "metrics": [
       "cognitive",
       "cyclomatic",
@@ -119,8 +136,10 @@
     "structural": 1
   },
   "ranking": {
-    "basis": "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
-    "changeWeighted": true,
+    "basis": "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available",
+    "by": "complexity",
+    "changeWeighted": false,
+    "changeWeightsAvailable": true,
     "window": {
       "months": 12,
       "since": 1676116800,
@@ -129,7 +148,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "1fea426f74295b84106396e7ca0b1a81ece5c08b"
+    "head": "ff3b4208d8631f234e71c3f979954c0eb2989f9e"
   },
   "results": [
     {
@@ -137,11 +156,13 @@
       "bumpSize": 5,
       "bumps": 1,
       "changeWeight": 0.75,
+      "changeWeightedScore": 0.5625,
       "cognitive": 8,
       "complexityScore": 0.75,
       "cyclomatic": 5,
       "dominant": "cognitive",
       "endLine": 14,
+      "fileRevisions": 11,
       "fixCommits": 2,
       "fixShare": 0.4,
       "id": "src/billing.ts#priceOrder",
@@ -160,8 +181,7 @@
         "nesting": 0.75,
         "parameters": 0.5
       },
-      "revisions": 11,
-      "score": 0.5625,
+      "score": 0.75,
       "source": "structural",
       "startLine": 4,
       "statements": 6,
@@ -174,11 +194,13 @@
       "bumpSize": 1,
       "bumps": 1,
       "changeWeight": 0.75,
+      "changeWeightedScore": 0.375,
       "cognitive": 1,
       "complexityScore": 0.5,
       "cyclomatic": 2,
       "dominant": "parameters",
       "endLine": 22,
+      "fileRevisions": 11,
       "fixCommits": 1,
       "fixShare": 0.5,
       "id": "src/billing.ts#describe",
@@ -197,8 +219,7 @@
         "nesting": 0.25,
         "parameters": 0.5
       },
-      "revisions": 11,
-      "score": 0.375,
+      "score": 0.5,
       "source": "structural",
       "startLine": 16,
       "statements": 4,

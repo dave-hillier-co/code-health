@@ -18,8 +18,10 @@ computation.
    in git keeps its functions' identities), then by body similarity (`complexity.moveSimilarity`), so a function renamed
    inside its file keeps its history. `earlierIds` lists the earlier names. A function moved to a different file is not
    followed across files.
-5. A logical change is a fix when one of its commits matches the shared definition (`history.fixPatterns`, `revertPatterns`,
-   `fixMatchBody`). A revert is never a fix. A commit that created the file counts as one revision of each of its functions
+5. A logical change is a fix when one of its commits matches the shared definition (`history.fixPatterns`,
+   `fixExcludePatterns`, `revertPatterns`, `fixMatchBody`). A revert is never a fix, and neither is a change whose subject
+   a fix pattern matched but an exclude pattern removed because the fix was about formatting, lint, typos, docs, tests or
+   CI: it is counted in `fixesExcluded`. A commit that created the file counts as one revision of each of its functions
    and never as a fix.
 
 | Field | Meaning |
@@ -28,9 +30,10 @@ computation.
 | `unitRevisions` | All changes that changed a line of the function, fixes included |
 | `fixShare` | `fixCommits` over `unitRevisions`, 3 decimals |
 | `cognitive` | The function's cognitive complexity now. Null for a deleted function |
+| `labels` | `low evidence` when the function has fewer than `fixes.minRevisions` (3) revisions in the window |
 | `evidence` | The fix commits, newest first, up to `--evidence`: `sha`, `date`, `subject`, `pattern`, `matchedIn`. `evidenceOmitted` counts the rest |
 
-Rows are the functions with at least one fix, sorted by `fixCommits`, then `fixShare`. Functions deleted since are in
+Rows are the functions with at least one fix, sorted by `fixCommits`, then functions with enough revisions before `low evidence` ones, then `fixShare`. Functions deleted since are in
 `deleted` (counted in `deleted.units`, listed up to `deleted.limit`, `deleted.omitted` more), because they cannot be acted on
 but they show where fixes were needed. `summary` counts every function the window touched, so the rows are visibly a part.
 
@@ -38,12 +41,16 @@ but they show where fixes were needed. `summary` counts every function the windo
 
 - `fixConvention` says whether the repository's commit messages follow a convention the patterns can use. When `note` is not
   null, the counts are of the commits the patterns happened to match, and a function with no fix may simply have fixes
-  nobody labelled. Say so when you report the rows. The default patterns match whole words such as `fix`, `bug` and `issue`
-  in the subject, so read the `evidence` subjects before quoting a count.
+  nobody labelled. Say so when you report the rows. The default patterns match fix words at the start of the subject or
+  after "to", and `bug`, `hotfix` and `defect` anywhere, so read the `evidence` subjects before quoting a count.
+- `fixesExcluded` counts the changes a fix pattern matched and `history.fixExcludePatterns` removed (typos, lint, docs,
+  tests, formatting, CI), by the excluding pattern, with the first of them. If a real fix is in the list, the exclude
+  pattern is too broad for this repository.
 - `commits` says how many commits were analysed and how many were skipped, by cause: `maxCommits` (older commits beyond
-  `--max-commits`, default `complexity.fixes.maxCommits`, 500, newest first), `oversized` (changes with more files than
+  `--max-commits`, default `complexity.fixes.maxCommits`, null, which analyses the whole window; newest first), `oversized` (changes with more files than
   `history.maxChangesetSize`) and `noSourceFile` (touched no analysed source file). A skipped commit is in no row, so a
-  count from a bounded run is a lower bound.
+  count from a bounded run is a lower bound, and a table run prints a first notice saying how many commits the bound left out.
+  `outsideUnits.fixCommits` counts each fix once; `outsideUnits.fixFileChanges` counts it once per file.
 - `shallow` true means history before the clone's boundary is missing.
 - `cache` says how many blobs were parsed in this run and how many came from the cache.
 

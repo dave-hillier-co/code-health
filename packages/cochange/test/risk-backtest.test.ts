@@ -123,7 +123,7 @@ describe("bands over a real baseline", () => {
     const { past } = chronologicalPass(prepared.mainline.changes, prepared.context, {
       windowMonths: prepared.windowMonths,
       maxChangesetSize: prepared.maxChangesetSize,
-      fix: compileFixClassifier({ fixPatterns: [], revertPatterns: [], fixMatchBody: false }),
+      fix: compileFixClassifier({ fixPatterns: [], fixExcludePatterns: [], revertPatterns: [], fixMatchBody: false }),
     });
     const baseline = past.slice(0, 30).map((p) => p.measurements);
     const bander = makeBander(baseline, prepared.risk);

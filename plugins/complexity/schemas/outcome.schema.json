@@ -304,7 +304,7 @@
   "$defs": {
     "fixEvidence": {
       "type": "object",
-      "description": "The commits behind a count of fixes. The default patterns match whole words such as fix, bug and issue in the subject, so a commit such as \"address review issue\" is a match: read the commits.",
+      "description": "The commits behind a count of fixes. The default patterns match fix words at the start of the subject or after \"to\", and bug, hotfix and defect anywhere, so a commit such as \"fix the bug report template\" is a match: read the commits.",
       "properties": {
         "fixes": {
           "type": "integer",

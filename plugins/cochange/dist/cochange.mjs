@@ -155,24 +155,30 @@ var historyDefaults = {
   /** Regular expressions matched against `Name <email>` of an author; their commits are left out of history. */
   botPatterns: [],
   /**
-   * Regular expressions, matched case-insensitively against a commit subject, that mark a fix. The defaults are whole words
-   * (fix, fixes, fixed, fixing, bug, bugs, bugfix, hotfix, defect, issue), a Conventional Commits `fix:` or `fix(scope):` prefix,
-   * and a merge of a fix/, hotfix/ or bugfix/ branch. They are a judgement call, and "issue" also matches subjects such as
-   * "address review issue", so every count of fixes keeps the commits that matched.
+   * Regular expressions, matched case-insensitively against a commit subject, that mark a fix. The defaults are a Conventional
+   * Commits `fix:` or `fix(scope):` prefix, a merge of a fix/, hotfix/ or bugfix/ branch, fix, fixes, fixed or fixing at the start of
+   * the subject (after an optional Conventional Commits type or scope, or a ticket prefix such as "ABC-123:"), "to fix", and the whole
+   * words bug, bugs, bugfix, hotfix and defect anywhere. They are a judgement call, so every count of fixes keeps the commits that matched.
    */
   fixPatterns: [
     "^fix(\\([^)]*\\))?!?:",
     "^merge .*\\b(fix|hotfix|bugfix)[/-]",
-    "\\bfix\\b",
-    "\\bfixes\\b",
-    "\\bfixed\\b",
-    "\\bfixing\\b",
+    "^(?:(?:[a-z]+(?:\\([^)]*\\))?!?|[a-z][a-z0-9]*-\\d+):\\s*)?(?:fix|fixes|fixed|fixing)\\b",
+    "\\bto\\s+fix\\b",
     "\\bbug\\b",
     "\\bbugs\\b",
     "\\bbugfix\\b",
     "\\bhotfix\\b",
-    "\\bdefect\\b",
-    "\\bissue\\b"
+    "\\bdefect\\b"
+  ],
+  /**
+   * Regular expressions, matched case-insensitively against the subject of a commit that a fix pattern matched. A match means the
+   * fix target is formatting, lint, typos, docs, tests or CI, which is not a defect fix, so the commit is counted as excluded with
+   * the pattern that excluded it and not as a fix. A guideline list, a judgement call not calibrated on a corpus: the target
+   * word must follow the fix word within three words.
+   */
+  fixExcludePatterns: [
+    "\\bfix(?:es|ed|ing)?\\W+(?:\\w+\\W+){0,2}?(?:typos?|typographical|lints?|linting|linters?|tests?|testing|flaky|docs?|documentation|readme|formatting|whitespace|ci|prettier|eslint)\\b"
   ],
   /** Regular expressions matched against a commit subject that mark a revert. The "This reverts commit" line git writes in the body always marks one. A revert is not counted as a fix. */
   revertPatterns: ["^revert\\b"],
@@ -263,14 +269,14 @@ function readHistory(history, where) {
   positive("renameLimit");
   positive("windowMonths");
   positive("maxChangesetSize");
-  const { branch, botPatterns, fixPatterns, revertPatterns } = history;
+  const { branch, botPatterns, fixPatterns, fixExcludePatterns, revertPatterns } = history;
   if (branch !== void 0 && branch !== null && (typeof branch !== "string" || branch === "")) {
     throw configError(`${CONFIG_FILE}: ${where}.branch must be a branch name or null`);
   }
   if (botPatterns !== void 0 && (!Array.isArray(botPatterns) || botPatterns.some((pattern) => typeof pattern !== "string"))) {
     throw configError(`${CONFIG_FILE}: ${where}.botPatterns must be an array of strings`);
   }
-  for (const [key, value] of [["fixPatterns", fixPatterns], ["revertPatterns", revertPatterns]]) {
+  for (const [key, value] of [["fixPatterns", fixPatterns], ["fixExcludePatterns", fixExcludePatterns], ["revertPatterns", revertPatterns]]) {
     if (value !== void 0 && (!Array.isArray(value) || value.some((pattern) => typeof pattern !== "string"))) {
       throw configError(`${CONFIG_FILE}: ${where}.${key} must be an array of strings`);
     }
@@ -2157,6 +2163,7 @@ function readRank(context, settings) {
 // packages/history/src/fix-commits.ts
 var defaultFixSettings = {
   fixPatterns: historyDefaults.fixPatterns,
+  fixExcludePatterns: historyDefaults.fixExcludePatterns,
   revertPatterns: historyDefaults.revertPatterns,
   fixMatchBody: historyDefaults.fixMatchBody
 };
@@ -2172,6 +2179,7 @@ function compile(pattern, flags, kind) {
 }
 function compileFixClassifier(settings) {
   const fixes = settings.fixPatterns.map((source) => ({ source, subject: compile(source, "i", "fix pattern"), body: compile(source, "im", "fix pattern") }));
+  const excludes = settings.fixExcludePatterns.map((source) => ({ source, subject: compile(source, "i", "fix exclude pattern") }));
   const reverts = settings.revertPatterns.map((source) => ({ source, subject: compile(source, "i", "revert pattern") }));
   const classify2 = (message) => {
     const normalised = message.replace(/\r\n/g, "\n");
@@ -2181,12 +2189,13 @@ function compileFixClassifier(settings) {
     if (revert) return { kind: "revert", pattern: revert.source, matchedIn: "subject" };
     if (REVERT_BODY.test(body)) return { kind: "revert", pattern: REVERT_BODY_PATTERN, matchedIn: "body" };
     const fix = fixes.find((entry) => entry.subject.test(subject));
-    if (fix) return { kind: "fix", pattern: fix.source, matchedIn: "subject" };
-    if (settings.fixMatchBody) {
-      const inBody = fixes.find((entry) => entry.body.test(body));
-      if (inBody) return { kind: "fix", pattern: inBody.source, matchedIn: "body" };
-    }
-    return { kind: "other" };
+    const inBody = fix === void 0 && settings.fixMatchBody ? fixes.find((entry) => entry.body.test(body)) : void 0;
+    const matched = fix ?? inBody;
+    if (matched === void 0) return { kind: "other" };
+    const matchedIn = fix === void 0 ? "body" : "subject";
+    const excluded = excludes.find((entry) => entry.subject.test(subject));
+    if (excluded) return { kind: "excluded", pattern: excluded.source, fixPattern: matched.source, matchedIn };
+    return { kind: "fix", pattern: matched.source, matchedIn };
   };
   return { settings, classify: classify2 };
 }
@@ -2390,7 +2399,7 @@ function readRiskSettings(config) {
 function readFixClassifier(config) {
   const section = config.effective[TOOL2];
   try {
-    return compileFixClassifier({ fixPatterns: section.fixPatterns, revertPatterns: section.revertPatterns, fixMatchBody: section.fixMatchBody });
+    return compileFixClassifier({ fixPatterns: section.fixPatterns, fixExcludePatterns: section.fixExcludePatterns, revertPatterns: section.revertPatterns, fixMatchBody: section.fixMatchBody });
   } catch (error) {
     if (error instanceof InvalidPatternError) throw configError(`code-health.json: ${error.message}`);
     throw error;
@@ -2400,7 +2409,7 @@ function readFixClassifier(config) {
 // packages/cochange/src/config.ts
 var cochangeConfig = {
   plugin: TOOL2,
-  history: ["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "revertPatterns", "fixMatchBody", "evidence"],
+  history: ["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "fixExcludePatterns", "revertPatterns", "fixMatchBody", "evidence"],
   section: {
     recentMonths: 3,
     staleMonths: 12,
@@ -3950,9 +3959,11 @@ function readFixes(history, units, classifier) {
   const found = /* @__PURE__ */ new Map();
   const reverts = /* @__PURE__ */ new Map();
   let fixChanges = 0;
+  const excludedMatches = [];
   for (const change2 of history.filtered.changes) {
     const classed = classify(change2.shas, change2.committerDate, commits, classifier);
     if (classed.fix) fixChanges++;
+    else if (classed.excluded) excludedMatches.push(classed.excluded);
     const touched = /* @__PURE__ */ new Set();
     for (const file of change2.files) {
       const name16 = unitOf.get(file.fileId);
@@ -3975,10 +3986,12 @@ function readFixes(history, units, classifier) {
       commits: newestFirst.map((entry) => entry.commit)
     });
   }
-  return { statistics, convention: checkFixConvention(history.filtered.changes.length, fixChanges) };
+  const excluded = fixEvidence(excludedMatches.map((commit) => ({ id: commit.sha, subject: commit.subject, pattern: commit.pattern, matchedIn: commit.matchedIn })));
+  return { statistics, convention: checkFixConvention(history.filtered.changes.length, fixChanges), excluded };
 }
 function classify(shas, committerDate, commits, classifier) {
   let fix = null;
+  let excluded = null;
   let revert = false;
   for (const sha of shas) {
     const message = commits.get(sha)?.message;
@@ -3988,8 +4001,11 @@ function classify(shas, committerDate, commits, classifier) {
     if (kind.kind === "fix" && fix === null) {
       fix = { sha, date: isoDate(committerDate), subject: subjectOf(message), pattern: kind.pattern, matchedIn: kind.matchedIn };
     }
+    if (kind.kind === "excluded" && excluded === null) {
+      excluded = { sha, date: isoDate(committerDate), subject: subjectOf(message), pattern: kind.pattern, matchedIn: kind.matchedIn };
+    }
   }
-  return { fix, revert };
+  return { fix, excluded: fix === null ? excluded : null, revert };
 }
 
 // packages/cochange/src/complexity-source.ts
@@ -6249,16 +6265,20 @@ var rules6 = {
   "fix-count": {
     summary: "How many of the changes to a file or component were fixes, by commit message",
     explanation: [
-      "A logical change is a fix when one of its commits matches history.fixPatterns (default: the whole words fix, bug, issue and similar in the subject, a fix: prefix, a merge of a fix branch),",
+      "A logical change is a fix when one of its commits matches history.fixPatterns (default: fix, fixes, fixed or fixing at the start of the subject or after 'to', the whole words bug, bugfix, hotfix and defect, a fix: prefix, a merge of a fix branch),",
       "and a revert when one matches history.revertPatterns or says 'This reverts commit'. A revert is counted in its own column and is not a fix.",
+      "A change that a fix pattern matched is left out, and counted in fixesExcluded with the pattern that excluded it, when history.fixExcludePatterns matches the subject (default: the fix target is typos, lint, docs, tests, formatting or CI).",
       "Bodies are matched only with history.fixMatchBody. The count is per file or component, once per logical change, over the same window and noise filters as hotspots.",
       "",
-      "This is a count of commit messages, not of defects. A message such as 'address review issue' matches, and a fix that does not say so does not.",
+      "This is a count of commit messages, not of defects. A message such as 'fix the bug report template' matches, and a fix that does not say so does not.",
       "The output carries the convention check as fixConvention: when fixes are under 2 percent or over 60 percent of logical changes, or there are fewer than 30, the commit messages probably do not follow a convention this can use, and the table prints a Notice.",
       "Read the evidence commits before relying on a count, and read it with hotspots (change frequency) and complexity (what makes the code hard to change)."
     ].join("\n")
   }
 };
+function excludedNotice(count2, byPattern) {
+  return `${count2} changes matched a fix pattern and were left out because the subject is about formatting, lint, typos, docs or tests (history.fixExcludePatterns): ${byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`;
+}
 function evidenceOption(value) {
   if (value === void 0) return DEFAULT_EVIDENCE;
   if (typeof value !== "string" || !/^\d+$/.test(value)) throw usageError(`--evidence must be a whole number, got "${String(value)}"`);
@@ -6293,8 +6313,11 @@ var command7 = analysisCommand(name7, {
       inputs: { by, evidenceLimit },
       results: rows,
       columns: ["path", ...by === "component" ? ["files"] : [], "fixes", "revisions", "fixShare", "recentFixes", "lastFix", "reverts", "evidence"],
-      extra: { fixConvention: convention },
-      notices: convention.note === null ? [] : [convention.note.replace(/\.$/, "")]
+      extra: { fixConvention: convention, fixesExcluded: reading.excluded },
+      notices: [
+        ...convention.note === null ? [] : [convention.note.replace(/\.$/, "")],
+        ...reading.excluded.fixes === 0 ? [] : [excludedNotice(reading.excluded.fixes, reading.excluded.byPattern)]
+      ]
     };
   }
 });
@@ -9137,7 +9160,7 @@ var FACTOR_DOCS = [
     layer: "history",
     banding: "percentile",
     signal: "Share of each touched file's revisions that were fixes",
-    definition: `Over the touched files' revisions in the analysis window, the share made by a change whose subject matches history.fixPatterns (cochange.fixPatterns when set). A revert is not a fix. Each file lists the commits that matched and the pattern that matched, and "issue" also matches subjects such as "address review issue". Unavailable when no change in the window matches, since the repository then has no convention to read.`,
+    definition: `Over the touched files' revisions in the analysis window, the share made by a change whose subject matches history.fixPatterns (cochange.fixPatterns when set). A revert is not a fix. Each file lists the commits that matched and the pattern that matched, and the patterns also match subjects that are not defects, such as "fix the bug report template", while a fix of typos, lint, docs or tests is left out by history.fixExcludePatterns. Unavailable when no change in the window matches, since the repository then has no convention to read.`,
     why: "Code that has needed fixing tends to need it again."
   },
   {
@@ -10753,6 +10776,7 @@ async function runBacktest(context, history) {
       followUpDays: risk.followUpDays,
       baselineChanges: risk.baselineChanges,
       fixPatterns: risk.fix.settings.fixPatterns,
+      fixExcludePatterns: risk.fix.settings.fixExcludePatterns,
       revertPatterns: risk.fix.settings.revertPatterns,
       fixMatchBody: risk.fix.settings.fixMatchBody,
       mergeStyle: { merges: mainline.merges, direct: mainline.direct }

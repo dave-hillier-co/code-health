@@ -53,7 +53,8 @@ interface Row {
   path: string;
   score: number;
   complexityScore: number | null;
-  revisions: number | null;
+  changeWeightedScore: number | null;
+  fileRevisions: number | null;
   changeWeight: number | null;
 }
 
@@ -61,29 +62,48 @@ async function analyse(...args: string[]) {
   const run = await runComplexity(repo.path, ["analyse", "--json", "--limit", "all", ...args]);
   expect(run.stderr).toBe("");
   expect(run.code).toBe(ExitCode.Success);
-  return JSON.parse(run.stdout) as { ranking: { changeWeighted: boolean; window: { months: number } | null }; results: Row[] };
+  return JSON.parse(run.stdout) as { ranking: { by: string; changeWeighted: boolean; changeWeightsAvailable: boolean; window: { months: number } | null }; results: Row[] };
 }
 
-describe("change-weighted ranking", () => {
-  test("equally complex functions rank by how often their file changes, and code that has not changed in the window ranks last", async () => {
+describe("ranking by complexity, the default", () => {
+  test("sorts by the complexity percentile alone, so code that has not changed in the window is not pushed down", async () => {
     const { results, ranking } = await analyse();
-    expect(ranking.changeWeighted).toBe(true);
+    expect(ranking).toMatchObject({ by: "complexity", changeWeighted: false, changeWeightsAvailable: true });
+    // The three equally complex functions tie and sort by path, and the simpler function follows whatever its file's history.
+    expect(results.map((row) => row.path)).toEqual(["src/busy.ts", "src/frozen.ts", "src/quiet.ts", "src/plain.ts"]);
+    for (const row of results) expect(row.score).toBe(row.complexityScore);
+    expect(results.find((row) => row.path === "src/frozen.ts")).toMatchObject({ fileRevisions: 0, changeWeight: 0, changeWeightedScore: 0 });
+  });
+
+  test("--by with an unknown value is a usage error", async () => {
+    const run = await runComplexity(repo.path, ["analyse", "--json", "--by", "hotspot"]);
+    expect(run.code).toBe(ExitCode.Usage);
+    expect(run.stderr).toMatch(/--by must be complexity or change-weighted/);
+  });
+});
+
+describe("change-weighted ranking, with --by change-weighted", () => {
+  test("equally complex functions rank by how often their file changes, and code that has not changed in the window ranks last", async () => {
+    const { results, ranking } = await analyse("--by", "change-weighted");
+    expect(ranking).toMatchObject({ by: "change-weighted", changeWeighted: true, changeWeightsAvailable: true });
     expect(ranking.window).toMatchObject({ months: 12 });
     const complexRows = results.filter((row) => row.path !== "src/plain.ts");
     expect(complexRows.map((row) => row.path)).toEqual(["src/busy.ts", "src/quiet.ts", "src/frozen.ts"]);
-    expect(results.find((row) => row.path === "src/frozen.ts")).toMatchObject({ revisions: 0, changeWeight: 0, score: 0 });
+    expect(results.find((row) => row.path === "src/frozen.ts")).toMatchObject({ fileRevisions: 0, changeWeight: 0, score: 0 });
   });
 
   test("each row says how often its file changed, its weight, and the complexity percentile before weighting", async () => {
     const { results } = await analyse();
     const busy = results.find((row) => row.path === "src/busy.ts")!;
-    expect(busy.revisions).toBe(6);
+    expect(busy.fileRevisions).toBe(6);
     const quiet = results.find((row) => row.path === "src/quiet.ts")!;
     expect(busy.changeWeight!).toBeGreaterThan(quiet.changeWeight!);
     expect(quiet.changeWeight!).toBeGreaterThan(0);
     expect(busy.complexityScore).toBeGreaterThan(0);
-    expect(busy.score).toBeCloseTo(busy.complexityScore! * busy.changeWeight!, 3);
-    expect(quiet.revisions).toBe(1);
+    expect(busy.changeWeightedScore).toBeCloseTo(busy.complexityScore! * busy.changeWeight!, 3);
+    expect(quiet.fileRevisions).toBe(1);
+    const weighted = await analyse("--by", "change-weighted");
+    expect(weighted.results.find((row) => row.path === "src/busy.ts")!.score).toBeCloseTo(busy.complexityScore! * busy.changeWeight!, 3);
   });
 
   test("with complexity.changeWeighting off the ranking is by percentile alone", async () => {
@@ -93,8 +113,11 @@ describe("change-weighted ranking", () => {
       writeFileSync(`${off.path}/code-health.json`, JSON.stringify({ complexity: { changeWeighting: false } }));
       const run = await runComplexity(off.path, ["analyse", "--json", "--limit", "all"]);
       const document = JSON.parse(run.stdout);
-      expect(document.ranking.changeWeighted).toBe(false);
-      expect(document.results.every((row: Row) => row.revisions === null && row.changeWeight === null)).toBe(true);
+      expect(document.ranking).toMatchObject({ changeWeighted: false, changeWeightsAvailable: false });
+      expect(document.results.every((row: Row) => row.fileRevisions === null && row.changeWeight === null && row.changeWeightedScore === null)).toBe(true);
+      const refused = await runComplexity(off.path, ["analyse", "--json", "--by", "change-weighted"]);
+      expect(refused.code).toBe(ExitCode.Usage);
+      expect(refused.stderr).toMatch(/needs change frequency/);
     } finally {
       off.dispose();
     }

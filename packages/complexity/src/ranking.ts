@@ -3,14 +3,21 @@ import { metricIds, type MetricId, type Values } from "./metrics.ts";
 import type { ChangeWeights } from "./change-weights.ts";
 import type { UnitRecord } from "./measure.ts";
 
+/** What `score` is: the complexity percentile itself, or that percentile times the change weight of the unit's file. */
+export type RankBy = "complexity" | "change-weighted";
+
+export const rankByValues: readonly RankBy[] = ["complexity", "change-weighted"];
+
 export interface RankedUnit {
   unit: UnitRecord;
-  /** The highest percentile of any selected metric, from 0 to 1, times the change weight when there is one. */
+  /** The sort key: `complexityScore`, or `changeWeightedScore` when the ranking is by change-weighted. */
   score: number;
-  /** The same percentile before weighting. */
+  /** The highest percentile of any selected metric, from 0 to 1. */
   complexityScore: number;
-  /** Logical changes to the unit's file in the window, or null when change frequency was not used. */
-  revisions: number | null;
+  /** `complexityScore` times the change weight, or null when change frequency was not used. */
+  changeWeightedScore: number | null;
+  /** Logical changes to the unit's file in the window, not the function's own, or null when change frequency was not used. */
+  fileRevisions: number | null;
   /** 0 to 1, or null when change frequency was not used. */
   changeWeight: number | null;
   /** The selected metric that gave the score. Ties go to the metric listed first in `metricIds`. */
@@ -21,15 +28,17 @@ export interface RankedUnit {
 /**
  * Ranks units by the percentile of each metric within the units measured the same way, so test code is
  * ranked among tests and a lexical block is never compared with a structural unit. The complexity score is
- * the highest percentile across the selected metrics, and the metric behind it is named as dominant. With
- * change weights the rank score is that percentile times the file's change weight.
+ * the highest percentile across the selected metrics, and the metric behind it is named as dominant. The
+ * change-weighted score is that percentile times the file's change weight. `by` picks which of the two is
+ * the score that rows sort on, and every row carries both when change weights are given.
  */
-export function rankUnits(units: readonly UnitRecord[], selected: readonly MetricId[], changes?: ChangeWeights): RankedUnit[] {
+export function rankUnits(units: readonly UnitRecord[], selected: readonly MetricId[], changes?: ChangeWeights, by: RankBy = "complexity"): RankedUnit[] {
   const ranked: RankedUnit[] = units.map((unit) => ({
     unit,
     score: 0,
     complexityScore: 0,
-    revisions: changes === undefined ? null : (changes.revisions.get(unit.path) ?? 0),
+    changeWeightedScore: null,
+    fileRevisions: changes === undefined ? null : (changes.revisions.get(unit.path) ?? 0),
     changeWeight: changes === undefined ? null : (changes.weights.get(unit.path) ?? 0),
     dominant: null,
     percentiles: {},
@@ -58,7 +67,10 @@ export function rankUnits(units: readonly UnitRecord[], selected: readonly Metri
       });
     }
   }
-  // Complexity in code that never changes costs nothing to live with, so it ranks last.
-  for (const entry of ranked) entry.score = entry.changeWeight === null ? entry.complexityScore : entry.complexityScore * entry.changeWeight;
+  // By change-weighted, complexity in code that never changes costs nothing to live with, so it ranks last.
+  for (const entry of ranked) {
+    entry.changeWeightedScore = entry.changeWeight === null ? null : entry.complexityScore * entry.changeWeight;
+    entry.score = by === "change-weighted" && entry.changeWeightedScore !== null ? entry.changeWeightedScore : entry.complexityScore;
+  }
   return ranked;
 }

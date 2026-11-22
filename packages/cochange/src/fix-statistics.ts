@@ -1,4 +1,4 @@
-import { checkFixConvention, subjectOf, type FixClassifier, type FixConvention } from "@code-health/history/fix-commits";
+import { checkFixConvention, fixEvidence, subjectOf, type FixClassifier, type FixConvention, type FixEvidence } from "@code-health/history/fix-commits";
 import { monthsBefore } from "@code-health/history/evidence";
 import type { Unit } from "./file-statistics.ts";
 import type { LoadedHistory } from "./history-access.ts";
@@ -17,6 +17,8 @@ export interface FixCommit {
 interface ChangeClass {
   /** The first commit of the change that is a fix, or null. */
   fix: FixCommit | null;
+  /** The first commit of the change that a fix pattern matched and an exclude pattern removed. Null when the change is a fix or has none. */
+  excluded: FixCommit | null;
   /** Some commit of the change is a revert. A revert message is never also a fix. */
   revert: boolean;
 }
@@ -40,6 +42,8 @@ export interface FixStatistics {
 export interface FixReading {
   statistics: Map<string, FixStatistics>;
   convention: FixConvention;
+  /** Logical changes in the window that a fix pattern matched and an exclude pattern removed, by the excluding pattern. They are not counted as fixes. */
+  excluded: FixEvidence;
 }
 
 /** The statistics of a unit, all zero for a unit that no fix or revert touched. The share is over the unit's revisions. */
@@ -62,9 +66,11 @@ export function readFixes(history: LoadedHistory, units: readonly Unit[], classi
   const found = new Map<string, { commit: FixCommit; time: number }[]>();
   const reverts = new Map<string, number>();
   let fixChanges = 0;
+  const excludedMatches: FixCommit[] = [];
   for (const change of history.filtered.changes) {
     const classed = classify(change.shas, change.committerDate, commits, classifier);
     if (classed.fix) fixChanges++;
+    else if (classed.excluded) excludedMatches.push(classed.excluded);
     const touched = new Set<string>();
     for (const file of change.files) {
       const name = unitOf.get(file.fileId);
@@ -88,7 +94,8 @@ export function readFixes(history: LoadedHistory, units: readonly Unit[], classi
       commits: newestFirst.map((entry) => entry.commit),
     });
   }
-  return { statistics, convention: checkFixConvention(history.filtered.changes.length, fixChanges) };
+  const excluded = fixEvidence(excludedMatches.map((commit) => ({ id: commit.sha, subject: commit.subject, pattern: commit.pattern, matchedIn: commit.matchedIn })));
+  return { statistics, convention: checkFixConvention(history.filtered.changes.length, fixChanges), excluded };
 }
 
 function classify(
@@ -98,6 +105,7 @@ function classify(
   classifier: FixClassifier,
 ): ChangeClass {
   let fix: FixCommit | null = null;
+  let excluded: FixCommit | null = null;
   let revert = false;
   for (const sha of shas) {
     const message = commits.get(sha)?.message;
@@ -107,6 +115,9 @@ function classify(
     if (kind.kind === "fix" && fix === null) {
       fix = { sha, date: isoDate(committerDate), subject: subjectOf(message), pattern: kind.pattern, matchedIn: kind.matchedIn };
     }
+    if (kind.kind === "excluded" && excluded === null) {
+      excluded = { sha, date: isoDate(committerDate), subject: subjectOf(message), pattern: kind.pattern, matchedIn: kind.matchedIn };
+    }
   }
-  return { fix, revert };
+  return { fix, excluded: fix === null ? excluded : null, revert };
 }

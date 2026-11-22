@@ -85,7 +85,7 @@ test("hash is the first 16 hex digits of the SHA-256 of the serialised effective
   writeConfig({ exclude: ["dist"], cochange: { windowMonths: 3 } });
   const config = load();
   expect(config.hash).toBe(createHash("sha256").update(serialise(config.effective)).digest("hex").slice(0, 16));
-  expect(config.hash).toBe("1dc606928da9b6a8");
+  expect(config.hash).toBe("1cfeca39da50806f");
 });
 
 const reading: PluginConfigSpec = { plugin: "cochange", section: { minSupport: 5 }, history: ["windowMonths", "botPatterns", "evidence", "branch"] };
@@ -104,6 +104,7 @@ test("the history section holds defaults for the settings every plugin reading h
     maxChangesetSize: 30,
     botPatterns: [],
     fixPatterns: historyDefaults.fixPatterns,
+    fixExcludePatterns: historyDefaults.fixExcludePatterns,
     revertPatterns: ["^revert\\b"],
     fixMatchBody: false,
     evidence: {
@@ -113,8 +114,8 @@ test("the history section holds defaults for the settings every plugin reading h
   });
 });
 
-test("the default fix patterns are whole words and a fix: prefix, and are listed as history keys a plugin may override", () => {
-  expect(historyDefaults.fixPatterns).toContain("\\bissue\\b");
+test("the default fix patterns do not include issue, and are listed as history keys a plugin may override", () => {
+  expect(historyDefaults.fixPatterns).not.toContain("\\bissue\\b");
   writeConfig({ history: { fixPatterns: ["\\bpatch\\b"], fixMatchBody: true }, cochange: { revertPatterns: ["^undo\\b"] } });
   const cochange = loadConfig(root, { ...reading, history: [...reading.history!, "fixPatterns", "revertPatterns", "fixMatchBody"] }).effective.cochange;
   expect(cochange).toMatchObject({ fixPatterns: ["\\bpatch\\b"], revertPatterns: ["^undo\\b"], fixMatchBody: true });

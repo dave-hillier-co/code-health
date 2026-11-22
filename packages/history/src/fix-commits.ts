@@ -1,15 +1,18 @@
 import { historyDefaults } from "@code-health/cli-kit/config";
 import { InvalidPatternError } from "./noise.ts";
 
-/** The settings that define a fix commit: the effective `history.fixPatterns`, `revertPatterns` and `fixMatchBody`. */
+/** The settings that define a fix commit: the effective `history.fixPatterns`, `fixExcludePatterns`, `revertPatterns` and `fixMatchBody`. */
 export interface FixSettings {
   fixPatterns: readonly string[];
+  /** Matched against the subject of a commit a fix pattern matched: a match counts the commit as excluded, with that pattern, and not as a fix. */
+  fixExcludePatterns: readonly string[];
   revertPatterns: readonly string[];
   fixMatchBody: boolean;
 }
 
 export const defaultFixSettings: FixSettings = {
   fixPatterns: historyDefaults.fixPatterns,
+  fixExcludePatterns: historyDefaults.fixExcludePatterns,
   revertPatterns: historyDefaults.revertPatterns,
   fixMatchBody: historyDefaults.fixMatchBody,
 };
@@ -21,6 +24,8 @@ export const REVERT_BODY_PATTERN = "This reverts commit";
 export type CommitClass =
   | { kind: "fix"; pattern: string; matchedIn: "subject" | "body" }
   | { kind: "revert"; pattern: string; matchedIn: "subject" | "body" }
+  /** A fix pattern matched, and the exclude pattern `pattern` says the fix target is formatting, lint, typos, docs or tests. `fixPattern` is the one that matched as a fix. */
+  | { kind: "excluded"; pattern: string; fixPattern: string; matchedIn: "subject" | "body" }
   | { kind: "other" };
 
 /** A commit (or merged change) classified as a fix, kept as evidence for a count. */
@@ -53,6 +58,7 @@ function compile(pattern: string, flags: string, kind: string): RegExp {
 /** Compiles the settings once. Throws `InvalidPatternError` for a pattern that is not a regular expression. */
 export function compileFixClassifier(settings: FixSettings): FixClassifier {
   const fixes = settings.fixPatterns.map((source) => ({ source, subject: compile(source, "i", "fix pattern"), body: compile(source, "im", "fix pattern") }));
+  const excludes = settings.fixExcludePatterns.map((source) => ({ source, subject: compile(source, "i", "fix exclude pattern") }));
   const reverts = settings.revertPatterns.map((source) => ({ source, subject: compile(source, "i", "revert pattern") }));
 
   const classify = (message: string): CommitClass => {
@@ -63,12 +69,13 @@ export function compileFixClassifier(settings: FixSettings): FixClassifier {
     if (revert) return { kind: "revert", pattern: revert.source, matchedIn: "subject" };
     if (REVERT_BODY.test(body)) return { kind: "revert", pattern: REVERT_BODY_PATTERN, matchedIn: "body" };
     const fix = fixes.find((entry) => entry.subject.test(subject));
-    if (fix) return { kind: "fix", pattern: fix.source, matchedIn: "subject" };
-    if (settings.fixMatchBody) {
-      const inBody = fixes.find((entry) => entry.body.test(body));
-      if (inBody) return { kind: "fix", pattern: inBody.source, matchedIn: "body" };
-    }
-    return { kind: "other" };
+    const inBody = fix === undefined && settings.fixMatchBody ? fixes.find((entry) => entry.body.test(body)) : undefined;
+    const matched = fix ?? inBody;
+    if (matched === undefined) return { kind: "other" };
+    const matchedIn = fix === undefined ? "body" : "subject";
+    const excluded = excludes.find((entry) => entry.subject.test(subject));
+    if (excluded) return { kind: "excluded", pattern: excluded.source, fixPattern: matched.source, matchedIn };
+    return { kind: "fix", pattern: matched.source, matchedIn };
   };
 
   return { settings, classify };
@@ -79,6 +86,19 @@ export function findFix(classifier: FixClassifier, id: string, messages: readonl
   for (const message of messages) {
     const found = classifier.classify(message);
     if (found.kind === "fix") return { id, subject: subjectOf(message), pattern: found.pattern, matchedIn: found.matchedIn };
+  }
+  return null;
+}
+
+/**
+ * The first message of a change that a fix pattern matched and an exclude pattern removed, as evidence under `id`, with the pattern
+ * that excluded it. Null when none is, or when a message of the change is a fix, because the change then counts as one.
+ */
+export function findExcludedFix(classifier: FixClassifier, id: string, messages: readonly string[]): FixMatch | null {
+  if (findFix(classifier, id, messages) !== null) return null;
+  for (const message of messages) {
+    const found = classifier.classify(message);
+    if (found.kind === "excluded") return { id, subject: subjectOf(message), pattern: found.pattern, matchedIn: found.matchedIn };
   }
   return null;
 }

@@ -4,6 +4,7 @@
   "config": "0000000000000000",
   "filesWithSyntaxErrors": [],
   "inputs": {
+    "by": "complexity",
     "layer": "auto",
     "metrics": [
       "cognitive"
@@ -17,8 +18,10 @@
     "structural": 4
   },
   "ranking": {
-    "basis": "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
-    "changeWeighted": true,
+    "basis": "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available",
+    "by": "complexity",
+    "changeWeighted": false,
+    "changeWeightsAvailable": true,
     "window": {
       "months": 12,
       "since": 1672531200,
@@ -32,10 +35,12 @@
   "results": [
     {
       "changeWeight": 0.5,
+      "changeWeightedScore": 0.4375,
       "cognitive": 8,
       "complexityScore": 0.875,
       "dominant": "cognitive",
       "endLine": 11,
+      "fileRevisions": 1,
       "id": "src/pricing.ts#price",
       "kind": "function",
       "labels": [],
@@ -43,8 +48,7 @@
       "percentiles": {
         "cognitive": 0.875
       },
-      "revisions": 1,
-      "score": 0.4375,
+      "score": 0.875,
       "source": "structural",
       "startLine": 1,
       "test": false,
@@ -52,10 +56,12 @@
     },
     {
       "changeWeight": 0.5,
+      "changeWeightedScore": 0.3125,
       "cognitive": 3,
       "complexityScore": 0.625,
       "dominant": "cognitive",
       "endLine": 11,
+      "fileRevisions": 1,
       "id": "src/total.go#Total",
       "kind": "function",
       "labels": [],
@@ -63,8 +69,7 @@
       "percentiles": {
         "cognitive": 0.625
       },
-      "revisions": 1,
-      "score": 0.3125,
+      "score": 0.625,
       "source": "structural",
       "startLine": 3,
       "test": false,
@@ -72,10 +77,12 @@
     },
     {
       "changeWeight": 0.5,
+      "changeWeightedScore": 0.25,
       "cognitive": 1,
       "complexityScore": 0.5,
       "dominant": "cognitive",
       "endLine": 7,
+      "fileRevisions": 1,
       "id": "test/pricing.test.ts#checksPrice",
       "kind": "function",
       "labels": [],
@@ -83,8 +90,7 @@
       "percentiles": {
         "cognitive": 0.5
       },
-      "revisions": 1,
-      "score": 0.25,
+      "score": 0.5,
       "source": "structural",
       "startLine": 3,
       "test": true,
@@ -92,10 +98,12 @@
     },
     {
       "changeWeight": 0.5,
+      "changeWeightedScore": 0.125,
       "cognitive": 0,
       "complexityScore": 0.25,
       "dominant": "cognitive",
       "endLine": 3,
+      "fileRevisions": 1,
       "id": "src/label.ts#label",
       "kind": "function",
       "labels": [],
@@ -103,8 +111,7 @@
       "percentiles": {
         "cognitive": 0.25
       },
-      "revisions": 1,
-      "score": 0.125,
+      "score": 0.25,
       "source": "structural",
       "startLine": 1,
       "test": false,
@@ -112,10 +119,12 @@
     },
     {
       "changeWeight": 0.5,
+      "changeWeightedScore": 0.125,
       "cognitive": 0,
       "complexityScore": 0.25,
       "dominant": "cognitive",
       "endLine": 13,
+      "fileRevisions": 1,
       "id": "src/pricing.ts#double",
       "kind": "arrow",
       "labels": [],
@@ -123,8 +132,7 @@
       "percentiles": {
         "cognitive": 0.25
       },
-      "revisions": 1,
-      "score": 0.125,
+      "score": 0.25,
       "source": "structural",
       "startLine": 13,
       "test": false,

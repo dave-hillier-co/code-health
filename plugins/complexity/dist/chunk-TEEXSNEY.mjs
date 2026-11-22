@@ -18,6 +18,7 @@ import {
   ensureCacheDir,
   exceeded,
   filterHistory,
+  findExcludedFix,
   findFix,
   fixEvidence,
   gitVersion,
@@ -32,16 +33,16 @@ import {
   readSettings,
   runGit,
   structuralValues
-} from "./chunk-GPAGPCI6.mjs";
+} from "./chunk-FBUT7NII.mjs";
 import {
   buildDocument,
   shapeResults
-} from "./chunk-JQWY4I27.mjs";
+} from "./chunk-A7DOHVGV.mjs";
 import {
   historyDefaults,
   serialise,
   usageError
-} from "./chunk-GATX7OYR.mjs";
+} from "./chunk-DDJPNAJ3.mjs";
 import {
   __export
 } from "./chunk-NYIILDEN.mjs";
@@ -5569,8 +5570,9 @@ var DIFF_BATCH = 200;
 var round3 = (value) => Math.round(value * 1e3) / 1e3;
 var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 var utf8 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
-function byFixes(a, b) {
-  return b.fixCommits - a.fixCommits || (b.fixShare ?? 0) - (a.fixShare ?? 0) || utf8(a.id, b.id);
+var isLowEvidence = (fixes, minRevisions) => fixes.revisions < minRevisions;
+function byFixes(minRevisions) {
+  return (a, b) => b.fixCommits - a.fixCommits || Number(isLowEvidence(a, minRevisions)) - Number(isLowEvidence(b, minRevisions)) || (b.fixShare ?? 0) - (a.fixShare ?? 0) || utf8(a.id, b.id);
 }
 function followUnits(earlier, earlierUnits, later, laterUnits, threshold) {
   const original = /* @__PURE__ */ new Map();
@@ -5603,6 +5605,7 @@ async function measureFixes(root, settings, exclude, current, request) {
   const messages = new Map(history.view.commits.map((commit) => [commit.sha, commit.message]));
   const commitBySha = new Map(history.view.commits.map((commit) => [commit.sha, commit]));
   const fixOf = /* @__PURE__ */ new Map();
+  const excludedMatches = [];
   for (const change of inWindow2) {
     let found = null;
     for (const sha of change.shas) {
@@ -5610,6 +5613,15 @@ async function measureFixes(root, settings, exclude, current, request) {
       if (found !== null) break;
     }
     fixOf.set(change.id, found);
+    if (found === null) {
+      for (const sha of change.shas) {
+        const excluded = findExcludedFix(settings.fix, sha, [messages.get(sha) ?? ""]);
+        if (excluded !== null) {
+          excludedMatches.push(excluded);
+          break;
+        }
+      }
+    }
   }
   const convention = checkFixConvention(inWindow2.length, [...fixOf.values()].filter((found) => found !== null).length);
   const selected = pathSelector(request.paths);
@@ -5621,7 +5633,7 @@ async function measureFixes(root, settings, exclude, current, request) {
   for (const change of [...relevant].sort((a, b) => b.committerDate - a.committerDate || utf8(a.id, b.id))) {
     if (change.oversized) commits.skippedBy.oversized += change.shas.length;
     else if (sourceFiles(change).length === 0) commits.skippedBy.noSourceFile += change.shas.length;
-    else if (commits.analysed > 0 && commits.analysed + change.shas.length > request.maxCommits) commits.skippedBy.maxCommits += change.shas.length;
+    else if (commits.analysed > 0 && commits.analysed + change.shas.length > (request.maxCommits ?? Infinity)) commits.skippedBy.maxCommits += change.shas.length;
     else {
       commits.analysed += change.shas.length;
       analysed.push(change);
@@ -5761,7 +5773,7 @@ async function measureFixes(root, settings, exclude, current, request) {
     if (key.startsWith("c:")) units.set(row.id, row);
     else deleted.push(row);
   }
-  deleted.sort(byFixes);
+  deleted.sort(byFixes(settings.fixes.minRevisions));
   const outsideByFile = /* @__PURE__ */ new Map();
   for (const touch of outsideTouches) {
     const entry = outsideByFile.get(touch.fileId) ?? { changes: /* @__PURE__ */ new Set(), fixes: /* @__PURE__ */ new Set() };
@@ -5774,13 +5786,19 @@ async function measureFixes(root, settings, exclude, current, request) {
   return {
     window: window2,
     convention,
+    excluded: fixEvidence(excludedMatches),
+    minRevisions: settings.fixes.minRevisions,
     shallow,
     commits,
     files: { analysed: analysedFiles, skipped },
     cache: cacheStats,
     units,
     deleted,
-    outside: { fixCommits: outsideFiles.reduce((sum, file) => sum + file.fixCommits, 0), files: outsideFiles },
+    outside: {
+      fixCommits: new Set(outsideTouches.filter((touch) => touch.fix).map((touch) => touch.changeId)).size,
+      fixFileChanges: outsideFiles.reduce((sum, file) => sum + file.fixCommits, 0),
+      files: outsideFiles
+    },
     unitsTouched: all.length,
     unitsWithFixes: all.filter((unit) => unit.fixCommits > 0).length
   };
@@ -5894,7 +5912,8 @@ function unitRow(ranked, selected, settings) {
     test: unit.test,
     score: ranked.score,
     complexityScore: ranked.complexityScore,
-    revisions: ranked.revisions,
+    changeWeightedScore: ranked.changeWeightedScore,
+    fileRevisions: ranked.fileRevisions,
     changeWeight: ranked.changeWeight === null ? null : Math.round(ranked.changeWeight * 1e4) / 1e4,
     dominant: ranked.dominant,
     ...pick(unit.values, selected),
@@ -5944,7 +5963,7 @@ function fileRow(file, settings) {
 // packages/complexity/src/fix-report.ts
 var fixOptions = { "max-commits": { type: "string" }, evidence: { type: "string" } };
 var fixOptionHelp = {
-  "max-commits": "most commits of the history window to analyse, newest first (default complexity.fixes.maxCommits, 500); the output says how many were left out",
+  "max-commits": "most commits of the history window to analyse, newest first, or all for the whole window (default complexity.fixes.maxCommits, null, which is all); the output says how many were left out",
   evidence: "fix commits listed per function (default complexity.fixes.evidence, 3); the output says how many were left out"
 };
 function count(value, option, min, fallback) {
@@ -5955,7 +5974,7 @@ function count(value, option, min, fallback) {
 }
 function parseFixOptions(values, settings) {
   return {
-    maxCommits: count(values["max-commits"], "max-commits", 1, settings.fixes.maxCommits),
+    maxCommits: values["max-commits"] === "all" ? null : count(values["max-commits"], "max-commits", 1, settings.fixes.maxCommits),
     evidence: count(values.evidence, "evidence", 0, settings.fixes.evidence)
   };
 }
@@ -5967,16 +5986,19 @@ function fixFigures(fixes) {
     fixShare: fixes?.fixShare ?? null
   };
 }
-function fixRow(fixes) {
+var LOW_EVIDENCE = "low evidence";
+function fixRow(fixes, minRevisions) {
+  const low = isLowEvidence(fixes, minRevisions);
   const unit = fixes.current;
   return {
     path: fixes.path,
     unit: unit === void 0 ? fixes.id.slice(fixes.id.indexOf("#") + 1) : unitName(unit),
     id: fixes.id,
     ...unit === void 0 ? {} : { kind: unit.kind, startLine: unit.startLine, endLine: unit.endLine },
-    score: fixes.fixCommits + (fixes.fixShare ?? 0),
+    score: fixes.fixCommits + (low ? 0 : 0.5) + (fixes.fixShare ?? 0) * 0.4,
     ...fixFigures(fixes),
     cognitive: unit?.values.cognitive ?? null,
+    labels: low ? [LOW_EVIDENCE] : [],
     evidence: fixes.evidence,
     evidenceOmitted: fixes.evidenceOmitted,
     earlierIds: fixes.earlierIds
@@ -5988,6 +6010,8 @@ function fixHeader(stats, request) {
     window: { months: stats.window.months, since: iso(stats.window.since), until: iso(stats.window.until) },
     shallow: stats.shallow,
     fixConvention: stats.convention,
+    fixesExcluded: { ...stats.excluded, excludePatterns: "history.fixExcludePatterns", note: "Changes that a fix pattern matched and an exclude pattern removed because the fix target is formatting, lint, typos, docs, tests or CI. They are not counted as fixes." },
+    lowEvidence: { minRevisions: stats.minRevisions, rule: `A function with fewer than ${stats.minRevisions} revisions in the analysed window is labelled "${LOW_EVIDENCE}" and sorts after the others with the same fix count.` },
     commits: { ...stats.commits, maxCommits: request.maxCommits },
     files: stats.files,
     cache: stats.cache,
@@ -6001,10 +6025,13 @@ function fixHeader(stats, request) {
       withFixes: deleted.length,
       limit: SECONDARY_LIST_LIMIT,
       omitted: Math.max(0, deleted.length - SECONDARY_LIST_LIMIT),
-      rows: deleted.slice(0, SECONDARY_LIST_LIMIT).map(fixRow)
+      rows: deleted.slice(0, SECONDARY_LIST_LIMIT).map((unit) => fixRow(unit, stats.minRevisions))
     },
     outsideUnits: {
+      /** Distinct fix changes with a changed line outside every function, so never more than the fixes of the window. */
       fixCommits: stats.outside.fixCommits,
+      /** The same changes counted once per file they touched. */
+      fixFileChanges: stats.outside.fixFileChanges,
       files: stats.outside.files.length,
       limit: SECONDARY_LIST_LIMIT,
       omitted: Math.max(0, stats.outside.files.length - SECONDARY_LIST_LIMIT),
@@ -6016,10 +6043,14 @@ function fixNotices(stats, request) {
   const { commits, window: window2 } = stats;
   const deletedWithFixes = stats.deleted.filter((unit) => unit.fixCommits > 0).length;
   const notices = [
-    `Analysed ${commits.analysed} of ${commits.inWindow} commits in the ${window2.months} month window and skipped ${commits.skipped}: ${commits.skippedBy.maxCommits} over --max-commits ${request.maxCommits}, ${commits.skippedBy.oversized} in oversized changes, ${commits.skippedBy.noSourceFile} touching no source file`,
-    `${stats.unitsWithFixes} of the ${stats.unitsTouched} functions touched in the window have a fix, ${deletedWithFixes} of them since deleted; ${stats.outside.fixCommits} fixes changed lines outside any function. The deleted functions and those files are listed in the JSON output`
+    ...commits.skippedBy.maxCommits > 0 ? [`Only the newest ${commits.analysed} of ${commits.inWindow} commits in the window were analysed: ${commits.skippedBy.maxCommits} older commits were left out by --max-commits ${request.maxCommits ?? "all"}, so every figure below covers part of the window. Pass --max-commits all to analyse the whole window`] : [],
+    `Analysed ${commits.analysed} of ${commits.inWindow} commits in the ${window2.months} month window and skipped ${commits.skipped}: ${commits.skippedBy.maxCommits} over --max-commits ${request.maxCommits ?? "all"}, ${commits.skippedBy.oversized} in oversized changes, ${commits.skippedBy.noSourceFile} touching no source file`,
+    `${stats.unitsWithFixes} of the ${stats.unitsTouched} functions touched in the window have a fix, ${deletedWithFixes} of them since deleted; ${stats.outside.fixCommits} fixes changed lines outside any function (${stats.outside.fixFileChanges} counting each file of a fix). The deleted functions and those files are listed in the JSON output`
   ];
   if (stats.convention.note !== null) notices.unshift(stats.convention.note.replace(/\.$/, ""));
+  if (stats.excluded.fixes > 0) {
+    notices.push(`${stats.excluded.fixes} changes matched a fix pattern and were left out because the subject is about formatting, lint, typos, docs or tests (history.fixExcludePatterns): ${stats.excluded.byPattern.map((entry) => `${entry.count} by ${entry.pattern}`).join("; ")}`);
+  }
   if (stats.shallow) notices.push("The clone is shallow, so history before its boundary is missing");
   return notices;
 }
@@ -6031,12 +6062,14 @@ async function measureFixesFor(context, settings, current) {
 }
 
 // packages/complexity/src/ranking.ts
-function rankUnits(units, selected, changes) {
+var rankByValues = ["complexity", "change-weighted"];
+function rankUnits(units, selected, changes, by = "complexity") {
   const ranked = units.map((unit) => ({
     unit,
     score: 0,
     complexityScore: 0,
-    revisions: changes === void 0 ? null : changes.revisions.get(unit.path) ?? 0,
+    changeWeightedScore: null,
+    fileRevisions: changes === void 0 ? null : changes.revisions.get(unit.path) ?? 0,
     changeWeight: changes === void 0 ? null : changes.weights.get(unit.path) ?? 0,
     dominant: null,
     percentiles: {}
@@ -6064,7 +6097,10 @@ function rankUnits(units, selected, changes) {
       });
     }
   }
-  for (const entry of ranked) entry.score = entry.changeWeight === null ? entry.complexityScore : entry.complexityScore * entry.changeWeight;
+  for (const entry of ranked) {
+    entry.changeWeightedScore = entry.changeWeight === null ? null : entry.complexityScore * entry.changeWeight;
+    entry.score = by === "change-weighted" && entry.changeWeightedScore !== null ? entry.changeWeightedScore : entry.complexityScore;
+  }
   return ranked;
 }
 
@@ -6168,14 +6204,14 @@ var ruleDescriptions = {
       "nested in another owns its own lines. A deletion counts for the function that holds the lines either side of it. Each function is then",
       "followed forward to the current revision with the same matcher as `check` (complexity.moveSimilarity), so a renamed or moved function keeps",
       "its history, and a file renamed in git keeps the history of its functions. A function that no longer exists is listed apart, with its count.",
-      "A change is a fix when a commit message matches the shared definition: history.fixPatterns, revertPatterns and fixMatchBody. A change that is",
+      "A change is a fix when a commit message matches the shared definition: history.fixPatterns, fixExcludePatterns, revertPatterns and fixMatchBody. A change that is",
       "a revert is not a fix. Each row lists the commits that matched, with the pattern, newest first, up to --evidence.",
       "fixCommits is the changes that were fixes, unitRevisions is every change that touched the function, and fixShare is the first over the second.",
-      "Rows are sorted by fixCommits, then fixShare. A function in a commit that created its file counts as one revision and never as a fix.",
+      "Rows are sorted by fixCommits, then functions with at least fixes.minRevisions revisions before those labelled low evidence, then fixShare. A function in a commit that created its file counts as one revision and never as a fix.",
       "A fix that changed only lines outside every function counts against the file, not a function, and is listed per file in the output.",
       "Read the header first. fixConvention says whether the repository's messages follow a convention these patterns can use: when it says they",
       "probably do not, the counts are of the commits the patterns happened to match. The header also says how many commits were analysed and how many",
-      "were skipped, by cause. --max-commits analyses the newest commits first and skips the rest, and says so. It costs a parse of every historical",
+      "were skipped, by cause. By default the whole window is analysed. --max-commits N analyses the newest N commits first and skips the rest, and says so first. It costs a parse of every historical",
       "revision of the files touched, which is cached by blob, so a rerun parses nothing it has parsed before.",
       "Limits: a function moved to another file is matched only when its file was renamed, not across files. The counts are guidelines for where to look,",
       "not a ranking of defects: a function that changes often because it is the extension point has many fixes too."
@@ -6187,12 +6223,18 @@ var ruleDescriptions = {
 var name2 = "analyse";
 var rules = ruleDescriptions;
 function isPartial(context) {
-  return context.positionals.length > 0 || context.values.metrics !== void 0 || context.values.layer !== void 0 || context.values["with-fixes"] === true;
+  return context.positionals.length > 0 || context.values.metrics !== void 0 || context.values.layer !== void 0 || context.values.by !== void 0 || context.values["with-fixes"] === true;
+}
+function parseBy(value) {
+  if (value === void 0) return "complexity";
+  if (rankByValues.includes(value)) return value;
+  throw usageError(`--by must be ${rankByValues.join(" or ")}, got "${String(value)}"`);
 }
 var command = {
-  summary: "Rank the functions that are hardest to understand, with all selected metrics, percentiles and labels",
-  options: { ...metricsOption, ...layerOption, "with-fixes": { type: "boolean" }, ...fixOptions },
+  summary: "Rank the functions that are hardest to understand (highest metric percentile; --by change-weighted for hotspot order), with all selected metrics, percentiles and labels",
+  options: { ...metricsOption, ...layerOption, by: { type: "string" }, "with-fixes": { type: "boolean" }, ...fixOptions },
   optionHelp: {
+    by: "what rows sort on: complexity (default, the highest metric percentile) or change-weighted (that percentile times how often the function's file changed in the window, a hotspot order)",
     "with-fixes": "add fixCommits, unitRevisions and fixShare per function from the history window (see `complexity fixes`); costs a parse of the historical revisions",
     ...fixOptionHelp
   },
@@ -6202,8 +6244,12 @@ var command = {
     const selected = parseMetrics(context.values.metrics, settings);
     const paths = normalisePaths(context.positionals);
     const inPaths = pathSelector(paths);
+    const by = parseBy(context.values.by);
     const changes = settings.changeWeighting ? await readChangeWeights(context, settings) : void 0;
-    const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected, changes);
+    if (by === "change-weighted" && changes === void 0) {
+      throw usageError("--by change-weighted needs change frequency, and there is none: complexity.changeWeighting is off, the clone is shallow, or the repository has no history");
+    }
+    const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected, changes, by);
     const unitRows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
     const withFixes = context.values["with-fixes"] === true;
     const fixes = withFixes ? await measureFixesFor(context, settings, current) : void 0;
@@ -6225,13 +6271,16 @@ var command = {
         tree: current.kind,
         layer,
         metrics: selected,
+        by,
         paths,
         ...fixes === void 0 ? {} : { withFixes: true, maxCommits: fixes.request.maxCommits, evidence: fixes.request.evidence }
       },
       extra: {
         ranking: {
-          basis: changes === void 0 ? "percentile within the repository, per metric, among units measured the same way" : "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
-          changeWeighted: changes !== void 0,
+          by,
+          basis: by === "complexity" ? "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available" : "the highest percentile of any selected metric within the repository, among units measured the same way, times the change weight of the unit's file (fileRevisions counts the file's changes, not the function's)",
+          changeWeighted: by === "change-weighted",
+          changeWeightsAvailable: changes !== void 0,
           window: changes?.window ?? null
         },
         layers,
@@ -6247,7 +6296,10 @@ var command = {
         "path",
         "unit",
         "score",
-        "revisions",
+        "complexityScore",
+        "changeWeightedScore",
+        "fileRevisions",
+        "changeWeight",
         "dominant",
         ...metricIds.filter((metric) => selected.includes(metric)),
         ...fixes === void 0 ? [] : ["fixCommits", "unitRevisions", "fixShare"],
@@ -6779,12 +6831,12 @@ var command7 = {
     const settings = readSettings(context.config);
     const current = await currentTree(context);
     const { stats, request, paths } = await measureFixesFor(context, settings, current);
-    const rows = [...stats.units.values()].filter((unit) => unit.fixCommits > 0).map(fixRow);
+    const rows = [...stats.units.values()].filter((unit) => unit.fixCommits > 0).map((unit) => fixRow(unit, stats.minRevisions));
     return {
       inputs: { tree: current.kind, paths, maxCommits: request.maxCommits, evidence: request.evidence },
       extra: fixHeader(stats, request),
       results: rows,
-      columns: ["path", "unit", "fixCommits", "unitRevisions", "fixShare", "cognitive"],
+      columns: ["path", "unit", "fixCommits", "unitRevisions", "fixShare", "cognitive", "labels"],
       notices: fixNotices(stats, request)
     };
   }

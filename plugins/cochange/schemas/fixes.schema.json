@@ -17,6 +17,40 @@
       "additionalProperties": false
     },
     "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" },
+    "fixesExcluded": {
+      "type": "object",
+      "description": "Logical changes of the window that a fix pattern matched and a history.fixExcludePatterns entry removed, because the fix target is formatting, lint, typos, docs, tests or CI. They are not counted as fixes.",
+      "properties": {
+        "fixes": { "$ref": "common.schema.json#/$defs/count", "description": "Excluded changes." },
+        "byPattern": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": { "pattern": { "type": "string", "description": "The exclude pattern." }, "count": { "$ref": "common.schema.json#/$defs/count" } },
+            "required": ["pattern", "count"],
+            "additionalProperties": false
+          }
+        },
+        "commits": {
+          "type": "array",
+          "description": "The first excluded changes.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "description": "The commit." },
+              "subject": { "type": "string" },
+              "pattern": { "type": "string", "description": "The exclude pattern." },
+              "matchedIn": { "enum": ["subject", "body"] }
+            },
+            "required": ["id", "subject", "pattern", "matchedIn"],
+            "additionalProperties": false
+          }
+        },
+        "omitted": { "$ref": "common.schema.json#/$defs/count", "description": "Excluded changes beyond `commits`." }
+      },
+      "required": ["fixes", "byPattern", "commits", "omitted"],
+      "additionalProperties": false
+    },
     "results": {
       "type": "array",
       "items": {
@@ -62,6 +96,6 @@
       }
     }
   },
-  "required": ["fixConvention"],
+  "required": ["fixConvention", "fixesExcluded"],
   "unevaluatedProperties": false
 }

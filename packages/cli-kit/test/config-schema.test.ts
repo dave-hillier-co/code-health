@@ -67,7 +67,7 @@ test("the shared history section and each plugin's overrides of it are in the sc
   const withHistory = buildConfigSchema([reading]);
   const validateHistory = new Ajv2020({ strict: true }).compile(withHistory);
   const properties = withHistory.properties as Record<string, { properties: Record<string, { default?: unknown; description?: string }>; additionalProperties: boolean }>;
-  expect(Object.keys(properties.history!.properties)).toEqual(["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "revertPatterns", "fixMatchBody", "evidence"]);
+  expect(Object.keys(properties.history!.properties)).toEqual(["branch", "firstParent", "renameSimilarity", "renameLimit", "windowMonths", "maxChangesetSize", "botPatterns", "fixPatterns", "fixExcludePatterns", "revertPatterns", "fixMatchBody", "evidence"]);
   expect(properties.history!.properties.windowMonths!.default).toBe(12);
   expect(Object.keys(properties.structure!.properties)).toEqual(["depth", "windowMonths", "botPatterns"]);
   expect(properties.structure!.properties.windowMonths!.description).toBe("Overrides history.windowMonths for the structure plugin.");

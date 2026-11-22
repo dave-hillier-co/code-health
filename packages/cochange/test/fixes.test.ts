@@ -110,6 +110,17 @@ test("history.fixPatterns changes what counts, and reverts follow history.revert
   expect(byPath(document, "src/billing/tax.ts").fixes).toBe(0);
 });
 
+test("history.fixExcludePatterns counts a matched fix as excluded, with the excluding pattern, and not as a fix", async () => {
+  config({ history: { fixExcludePatterns: ["\\bpage title\\b"] } });
+  const document = json((await fixes()).stdout);
+  expect(document.fixConvention.fixes).toBe(3);
+  expect(byPath(document, "src/web/page.ts").fixes).toBe(0);
+  expect(document.fixesExcluded).toMatchObject({ fixes: 1, byPattern: [{ pattern: "\\bpage title\\b", count: 1 }], omitted: 0 });
+  expect(document.fixesExcluded.commits[0]).toMatchObject({ subject: "Fix the page title", pattern: "\\bpage title\\b" });
+  const table = await runCochangeOnTerminal(repo.path, ["fixes"]);
+  expect(table.stdout).toContain("Notice: 1 changes matched a fix pattern and were left out");
+});
+
 test("hotspots carries fixes and fixShare beside frequency", async () => {
   const document = json((await runCochange(repo.path, ["hotspots"])).stdout);
   const tax = document.results.find((row: { path: string }) => row.path === "src/billing/tax.ts");

@@ -1,19 +1,46 @@
 import { describe, expect, test } from "vitest";
 import { historyDefaults } from "@code-health/cli-kit/config";
-import { checkFixConvention, compileFixClassifier, defaultFixSettings, findFix, fixEvidence } from "../src/fix-commits.ts";
+import { checkFixConvention, compileFixClassifier, defaultFixSettings, findExcludedFix, findFix, fixEvidence } from "../src/fix-commits.ts";
 import { InvalidPatternError } from "../src/noise.ts";
 
 const classifier = compileFixClassifier(defaultFixSettings);
 
 describe("the default fix patterns", () => {
-  test("match whole words in the subject", () => {
-    for (const subject of ["Fix the parser", "fixes crash", "Fixed it", "fixing flaky test", "bug in login", "bugs everywhere", "bugfix: login", "hotfix 1.2", "defect in parser", "issue with caching"]) {
+  test("match fix words at the start of the subject, after to, and bug words anywhere", () => {
+    for (const subject of [
+      "Fix the parser",
+      "fixes crash",
+      "Fixed it",
+      "fixing the cache",
+      "feat: fix the cache key",
+      "fix(parser): stop crashing",
+      "ABC-123: fix the crash",
+      "Change the retry loop to fix the crash",
+      "bug in login",
+      "bugs everywhere",
+      "bugfix: login",
+      "hotfix 1.2",
+      "Handle the defect in parser",
+      "Resolve bug 12 in the cache",
+    ]) {
       expect(classifier.classify(subject).kind, subject).toBe("fix");
     }
   });
 
-  test("do not match inside longer words", () => {
-    for (const subject of ["Add a prefix option", "debug logging", "Add a suffix", "reissue token", "Refactor the parser"]) {
+  test("do not match fix words in the middle of the subject, the word issue, or longer words", () => {
+    for (const subject of [
+      "Add fixed clock",
+      "Add a fixed frame budget",
+      "Review fixes for the cache",
+      "Describe fix commits in the spec",
+      "Parse the issue key",
+      "address review issue",
+      "Add a prefix option",
+      "debug logging",
+      "Add a suffix",
+      "reissue token",
+      "Refactor the parser",
+    ]) {
       expect(classifier.classify(subject).kind, subject).toBe("other");
     }
   });
@@ -28,11 +55,39 @@ describe("the default fix patterns", () => {
   });
 
   test("return the pattern that matched", () => {
-    expect(classifier.classify("Fix the parser")).toEqual({ kind: "fix", pattern: "\\bfix\\b", matchedIn: "subject" });
+    expect(classifier.classify("Fix the parser")).toEqual({ kind: "fix", pattern: historyDefaults.fixPatterns[2], matchedIn: "subject" });
+    expect(classifier.classify("Change the loop to fix the crash")).toEqual({ kind: "fix", pattern: "\\bto\\s+fix\\b", matchedIn: "subject" });
+  });
+});
+
+describe("the default fix exclude patterns", () => {
+  test("count a fix whose target is formatting, lint, typos, docs, tests or CI as excluded, with the excluding pattern", () => {
+    for (const subject of ["Fix typo in README", "fix: lints", "Fix lint", "Fix tests", "Fix flaky test", "fix docs", "Fix formatting", "Fix ci", "fix(docs): the link", "Fixed the failing test"]) {
+      expect(classifier.classify(subject), subject).toEqual({
+        kind: "excluded",
+        pattern: historyDefaults.fixExcludePatterns[0],
+        fixPattern: expect.any(String),
+        matchedIn: "subject",
+      });
+    }
   });
 
-  test("also match subjects that are not defects, which is why every count keeps the matching commits", () => {
-    expect(classifier.classify("address review issue")).toMatchObject({ kind: "fix", pattern: "\\bissue\\b" });
+  test("leave a fix of a defect that merely mentions a test or a doc far from the fix word", () => {
+    expect(classifier.classify("Fix crash when two readers open the file while the tests run").kind).toBe("fix");
+    expect(classifier.classify("Fix the parser").kind).toBe("fix");
+  });
+
+  test("findExcludedFix returns the excluded change, and null when another commit of the change is a fix", () => {
+    expect(findExcludedFix(classifier, "abc", ["Fix typo"])).toEqual({ id: "abc", subject: "Fix typo", pattern: historyDefaults.fixExcludePatterns[0], matchedIn: "subject" });
+    expect(findFix(classifier, "abc", ["Fix typo"])).toBeNull();
+    expect(findExcludedFix(classifier, "abc", ["Fix typo", "Fix the parser"])).toBeNull();
+    expect(findExcludedFix(classifier, "abc", ["Add feature"])).toBeNull();
+  });
+
+  test("are configurable, and an empty list excludes nothing", () => {
+    const none = compileFixClassifier({ ...defaultFixSettings, fixExcludePatterns: [] });
+    expect(none.classify("Fix typo").kind).toBe("fix");
+    expect(() => compileFixClassifier({ ...defaultFixSettings, fixExcludePatterns: ["("] })).toThrow(InvalidPatternError);
   });
 });
 
@@ -45,7 +100,7 @@ describe("bodies", () => {
 
   test("are matched with fixMatchBody, and the match says it was in the body", () => {
     const withBody = compileFixClassifier({ ...defaultFixSettings, fixMatchBody: true });
-    expect(withBody.classify(message)).toEqual({ kind: "fix", pattern: "\\bfixes\\b", matchedIn: "body" });
+    expect(withBody.classify(message)).toEqual({ kind: "fix", pattern: historyDefaults.fixPatterns[2], matchedIn: "body" });
   });
 });
 
@@ -61,7 +116,7 @@ describe("reverts", () => {
 
   test("findFix skips a revert and returns null for a change of only reverts", () => {
     expect(findFix(classifier, "abc", ['Revert "Fix the parser"'])).toBeNull();
-    expect(findFix(classifier, "abc", ['Revert "Fix the parser"', "Fix the lexer"])).toEqual({ id: "abc", subject: "Fix the lexer", pattern: "\\bfix\\b", matchedIn: "subject" });
+    expect(findFix(classifier, "abc", ['Revert "Fix the parser"', "Fix the lexer"])).toEqual({ id: "abc", subject: "Fix the lexer", pattern: historyDefaults.fixPatterns[2], matchedIn: "subject" });
   });
 });
 

@@ -4,6 +4,7 @@
   "config": "0000000000000000",
   "filesWithSyntaxErrors": [],
   "inputs": {
+    "by": "complexity",
     "layer": "auto",
     "metrics": [
       "cognitive",
@@ -23,8 +24,10 @@
     "structural": 1
   },
   "ranking": {
-    "basis": "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
-    "changeWeighted": true,
+    "basis": "the highest percentile of any selected metric within the repository, among units measured the same way; the rows also carry changeWeightedScore when history is available",
+    "by": "complexity",
+    "changeWeighted": false,
+    "changeWeightsAvailable": true,
     "window": {
       "months": 12,
       "since": 1672531200,
@@ -41,11 +44,13 @@
       "bumpSize": 0,
       "bumps": 0,
       "changeWeight": 0.5,
+      "changeWeightedScore": 0.375,
       "cognitive": 4,
       "complexityScore": 0.75,
       "cyclomatic": 3,
       "dominant": "cognitive",
       "endLine": 10,
+      "fileRevisions": 1,
       "id": "src/outer.ts#outer",
       "kind": "function",
       "labels": [],
@@ -62,8 +67,7 @@
         "nesting": 0.5,
         "parameters": 0.5
       },
-      "revisions": 1,
-      "score": 0.375,
+      "score": 0.75,
       "source": "structural",
       "startLine": 1,
       "statements": 8,
@@ -75,11 +79,13 @@
       "bumpSize": 0,
       "bumps": 0,
       "changeWeight": 0.5,
+      "changeWeightedScore": 0.25,
       "cognitive": 1,
       "complexityScore": 0.5,
       "cyclomatic": 2,
       "dominant": "nesting",
       "endLine": 5,
+      "fileRevisions": 1,
       "id": "src/outer.ts#outer.named",
       "kind": "arrow",
       "labels": [],
@@ -97,8 +103,7 @@
         "nesting": 0.5,
         "parameters": 0.5
       },
-      "revisions": 1,
-      "score": 0.25,
+      "score": 0.5,
       "source": "structural",
       "startLine": 2,
       "statements": 3,
