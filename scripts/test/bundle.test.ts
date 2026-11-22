@@ -85,12 +85,15 @@ test("a hook process never reads the on-demand chunk, which is what keeps it ins
     join(work, "trace-register.mjs"),
     `import { register } from "node:module";\nregister("./trace-hooks.mjs", import.meta.url);\n`,
   );
-  const config = join(repo.path, "code-health.json");
-  writeFileSync(config, JSON.stringify({ cochange: { hook: { enabled: true } } }));
+  // Its own repository, so the cache these runs leave is not the one the later tests expect to find empty.
+  const traced = GitFixture.build([
+    { type: "commit", message: "one", date: "2024-01-01T00:00:00Z", changes: [{ op: "add", path: "src/a.ts", content: "a\n" }, { op: "add", path: "code-health.json", content: JSON.stringify({ cochange: { hook: { enabled: true } } }) }] },
+    { type: "commit", message: "two", date: "2024-01-02T00:00:00Z", changes: [{ op: "modify", path: "src/a.ts", content: "b\n" }] },
+  ]);
   try {
-    const event = JSON.stringify({ session_id: "trace", cwd: repo.path, tool_name: "Edit", tool_input: { file_path: join(repo.path, "src", "a.ts") } });
+    const event = JSON.stringify({ session_id: "trace", cwd: traced.path, tool_name: "Edit", tool_input: { file_path: join(traced.path, "src", "a.ts") } });
     const result = spawnSync(process.execPath, ["--import", join(work, "trace-register.mjs"), join(work, "cochange.mjs"), "hook"], {
-      cwd: repo.path,
+      cwd: traced.path,
       input: event,
       encoding: "utf8",
       env: { ...process.env, CODE_HEALTH_HOOK_BUDGET_MS: "60000" },
@@ -102,11 +105,11 @@ test("a hook process never reads the on-demand chunk, which is what keeps it ins
     for (const chunk of dynamic) expect(loaded).not.toContain(chunk);
     // The control: a command that does need signatures loads it through the same trace.
     rmSync(trace, { force: true });
-    const risk = spawnSync(process.execPath, ["--import", join(work, "trace-register.mjs"), join(work, "cochange.mjs"), "risk", "HEAD~1..HEAD", "--json"], { cwd: repo.path, encoding: "utf8" });
+    const risk = spawnSync(process.execPath, ["--import", join(work, "trace-register.mjs"), join(work, "cochange.mjs"), "risk", "HEAD~1..HEAD", "--json"], { cwd: traced.path, encoding: "utf8" });
     expect(risk.status).toBe(0);
     for (const chunk of dynamic) expect(readFileSync(trace, "utf8")).toContain(chunk);
   } finally {
-    rmSync(config, { force: true });
+    traced.dispose();
   }
 });
 
