@@ -69,6 +69,28 @@ describe("structure layers", () => {
     expectGolden("layers", "layers", run.stdout);
   });
 
+  test("a type-only import is listed, marked, and after the value imports", async () => {
+    const repo = track(layersRepository());
+    repo.apply([
+      {
+        type: "commit",
+        message: "A type import from data to ui",
+        date: "2024-01-11T09:00:00Z",
+        author: { name: "Alice", email: "alice@example.com" },
+        changes: [
+          { op: "add", path: "src/data/aaa.ts", content: 'import type { View } from "../ui/view.ts";\nexport const aaa = (v: View): number => 0;\n' },
+          { op: "modify", path: "src/ui/view.ts", content: "export type View = () => number;\nexport function view(): number {\n  return 1;\n}\n" },
+        ],
+      },
+    ]);
+    const run = await runStructure(repo.path, ["layers", "--json"]);
+    const rows = JSON.parse(run.stdout).results as { id: string; typeOnly: boolean }[];
+    expect(rows.map((r) => [r.id, r.typeOnly])).toEqual([
+      ["layer:src/data/store.ts->src/domain/rules.ts", false],
+      ["layer:src/data/aaa.ts->src/ui/view.ts", true],
+    ]);
+  });
+
   test("finds nothing when no layers are configured", async () => {
     const repo = track(layersRepository({ config: {} }));
     const run = await runStructure(repo.path, ["layers", "--json"]);
