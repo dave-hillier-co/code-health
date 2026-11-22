@@ -89,8 +89,11 @@ export const inHookWorker = (kind: string): boolean => !isMainThread && (workerD
  * hook says do not depend on how loaded the machine is. Claude Code never sets it.
  */
 function budgetMs(fallback: number): number {
-  const override = Number(process.env.CODE_HEALTH_HOOK_BUDGET_MS);
-  return Number.isInteger(override) && override > 0 ? override : fallback;
+  const raw = process.env.CODE_HEALTH_HOOK_BUDGET_MS;
+  if (raw === undefined || raw.trim() === "") return fallback;
+  // Zero is a budget that is already spent, which tests use to see the hook go silent without racing it.
+  const override = Number(raw);
+  return Number.isInteger(override) && override >= 0 ? override : fallback;
 }
 
 /**

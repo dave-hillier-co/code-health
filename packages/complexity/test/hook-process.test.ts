@@ -114,13 +114,13 @@ for (const [label, entry] of entries) {
 
     test.runIf(label === "the committed bundle")("speaks within the shipped default budget, process start included, with no override", () => {
       writeFileSync(join(repo.path, "src", "knot.ts"), deep);
-      // The bundle must be fast enough to finish inside the shipped budget. A loaded machine can make one
-      // cold start slow, so a few fresh sessions are allowed, and one of them must speak.
+      // The bundle must be fast enough to finish inside the shipped budget. A loaded machine can make a cold
+      // start slow, so the median of five fresh sessions is what counts: at least three must speak.
       const runs = [1, 2, 3, 4, 5].map((n) =>
         spawnSync(process.execPath, [entry(), "hook"], { cwd: repo.path, input: event(`${label}-default-${n}`), encoding: "utf8" }),
       );
       expect(runs.every((run) => run.status === 0 && run.stderr === "")).toBe(true);
-      expect(runs.some((run) => run.stdout.includes("`knot` nesting depth is 3"))).toBe(true);
+      expect(runs.filter((run) => run.stdout.includes("`knot` nesting depth is 3")).length).toBeGreaterThanOrEqual(3);
     });
 
     test("is silent and writes no session state when the repository has not opted in", () => {

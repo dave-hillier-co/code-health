@@ -87,6 +87,15 @@ test("wall time, process start included, is recorded for diagnosis and does not 
   // on the machine, so the figures above are for reading, not for failing a build.
 });
 
+test("with the shipped default budget and no override, most fresh processes still speak", () => {
+  // Wall time depends on the machine, so the median of five is what counts: at least three of five must speak.
+  const runs = Array.from({ length: 5 }, (_, i) =>
+    spawnSync("node", [cli, "hook"], { cwd: repo.path, input: editEvent(`default-budget-${i}`), encoding: "utf8" }),
+  );
+  expect(runs.every((run) => run.status === 0 && run.stderr === "")).toBe(true);
+  expect(runs.filter((run) => run.stdout.includes("usually changes with")).length).toBeGreaterThanOrEqual(3);
+});
+
 test("when the hook is not enabled it prints nothing and touches no history", () => {
   writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { hook: { enabled: false } } }));
   try {
@@ -118,7 +127,7 @@ test("when the budget is spent before the work is done the process is silent and
     cwd: repo.path,
     input: editEvent("budget-spent"),
     encoding: "utf8",
-    env: { ...process.env, CODE_HEALTH_HOOK_BUDGET_MS: "1" },
+    env: { ...process.env, CODE_HEALTH_HOOK_BUDGET_MS: "0" },
   });
   expect(result.status).toBe(0);
   expect(result.stdout).toBe("");

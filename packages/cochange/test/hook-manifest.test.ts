@@ -32,8 +32,8 @@ test("Claude Code's own timeout is a backstop above the hook's time budget", () 
   expect(hook.timeout).toBeLessThanOrEqual(1);
 });
 
-test("the hook's time budget is a few hundred milliseconds, as the spec says", () => {
-  expect(DEFAULT_BUDGET_MS).toBeLessThanOrEqual(300);
+test("the hook's time budget is the spec's 200 milliseconds", () => {
+  expect(DEFAULT_BUDGET_MS).toBe(200);
 });
 
 test("it is off in the shipped plugin: no repository config enables it and the plugin sets no default", () => {

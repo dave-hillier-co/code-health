@@ -39,7 +39,7 @@ const MAX_PARTNERS_NAMED = 3;
  * a run that has not finished by then goes silent instead of slowing the
  * session. The hook's own timeout in `hooks.json` is a backstop above it.
  */
-export const DEFAULT_BUDGET_MS = 250;
+export const DEFAULT_BUDGET_MS = 200;
 
 /** How many commits the cache is behind the ref, or undefined when it is further behind than `limit` or has no usable commit. */
 async function commitsBehind(root: string, dbPath: string, ref: string, limit: number): Promise<{ behind: number; sha: string } | undefined> {
