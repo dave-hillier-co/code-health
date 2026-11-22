@@ -84,8 +84,9 @@
   },
   "results": [
     {
+      "aboveGuideline": true,
       "basis": "change",
-      "changeViolation": true,
+      "changeAboveGuideline": true,
       "disagree": true,
       "fileEdges": 1,
       "from": "steady",
@@ -121,9 +122,9 @@
           }
         }
       },
-      "structuralViolation": false,
+      "structuralAboveGuideline": false,
       "to": "moving",
-      "violates": true,
+      "towardsLessStable": true,
       "volatilityRatio": 6
     }
   ],

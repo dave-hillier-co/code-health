@@ -137,6 +137,7 @@
         }
       ],
       "nearbyMechanisms": [],
+      "nearbyMechanismsOmitted": 0,
       "quadrant": {
         "bothActive": true,
         "coChange": {
@@ -187,11 +188,12 @@
         }
       },
       "stabilityVerdict": {
+        "aboveGuideline": false,
         "basis": "change",
-        "changeViolation": false,
+        "changeAboveGuideline": false,
         "disagree": false,
-        "structuralViolation": false,
-        "violates": false,
+        "structuralAboveGuideline": false,
+        "towardsLessStable": true,
         "volatilityRatio": 1.333
       },
       "to": "src/c.ts",

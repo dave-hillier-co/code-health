@@ -64,6 +64,8 @@ Out of scope:
 
 **Reuse profile.** For each consumer of a package, the share of the package's exported surface it uses. A package whose consumers each use most of it is reused as a whole. A package whose consumers use small, disjoint parts is several packages sharing a name.
 
+**Export surface.** A package's surface is what its entry files export (`exports`, `main`, `module`, wildcard patterns, and build directories mapped back to source), resolved to the definitions. A use is credited to every package whose surface holds the name, so a re-exporter is credited as well as the origin. Export components link two exports when they share consumers or internal references.
+
 **Export components.** Locality's file-cohesion graph, applied to a package's exported surface: link two exports when they share consumers or reference each other, and count the connected components.
 
 **Instability.** Martin's metric from the books, `I = Ce / (Ca + Ce)`, over package dependencies, with change stability beside it, as in [structure](structure.md#concepts).
@@ -74,16 +76,20 @@ Out of scope:
 
 ## Heuristics
 
-Each row is a deterministic finding. As elsewhere in the suite, a finding raises a question for review and never proves a fault.
+Each row is a deterministic finding. As elsewhere in the suite, a finding raises a question for review and never proves a fault. The numbers named in this section are guidelines or evidence floors, as defined in [structure](structure.md#terms-and-guidelines): a guideline orders and annotates, and an evidence floor withholds a verdict that would be meaningless below it. Every finding states the measured value beside the guideline. Each default comes from CodeScene's documentation, Martin's or Tornhill's books, or a judgement call, and the configuration says which.
+
+**Package discovery.** Packages come from manifest discovery. An npm root with `workspaces` is a container and not a package. Edges are runtime dependencies (peer and optional folded in) plus production imports, and development edges are kept apart. `Ca`, `Ce` and `I` count packages. A dependency that is declared and never used does not make its package a consumer. `structure cycles --level package` groups files by the nearest manifest boundary and so can differ from `structure packages` where discovery treats a manifest as a container or applies configured components.
+
+**History scope.** The files of a package are those it owns at `HEAD`, by stable identity, in any language and including tests. Changes that touch no package are dropped. Packaging reads the whole usable history, to follow files by stable identity, and applies `windowMonths` itself, so the window it applies is the one that counts and not the one the envelope reports. Packaging analysis is never stored as a report.
 
 ### Common closure (CCP)
 
 | Finding | Signal | Reading |
 |---|---|---|
-| `low-closure` | Closure in the lowest quartile among packages with a comparable share of changes, with enough changes to judge. Where fewer than five comparable packages exist, the finding is not raised and the count of crossing changes is reported instead. | Changes to this package usually need another package too. The boundary is in the wrong place, or there are too many. |
-| `always-together` | Two packages with significant co-change and high lift in both directions | They are one unit of change, split in two. A candidate to merge. |
-| `follower` | High confidence A→B and low B→A, where A depends on B | Changing A usually means changing B's interface. B's interface is not hiding what it should, or part of B belongs in A. |
-| `crossing-unit` | A file or folder whose co-change partners are mostly in another package | A unit on the wrong side of the boundary. A candidate to move across. |
+| `low-closure` | Closure in the lowest quartile (nearest rank) among packages whose share of changes is within `closureBand` (2, as a ratio) of their own, with at least `minRevisions` changes. Where fewer than `minComparable` (5) comparable packages exist, the quartile is not meaningful, so the package is reported with its closure, its share and the count of crossing changes, and no finding. | Changes to this package usually need another package too. The boundary is in the wrong place, or there are too many. |
+| `always-together` | Two packages with significant co-change (exact test 0.01, support at least 3) and confidence of at least 0.6 in both directions with lift of at least 2 | They are one unit of change, split in two. A candidate to merge. |
+| `follower` | High confidence A→B and a reverse confidence of at most 0.2, where A depends on B | Changing A usually means changing B's interface. B's interface is not hiding what it should, or part of B belongs in A. |
+| `crossing-unit` | A file or folder whose co-change partners are mostly in another package: it is at least `crossingUnitMargin` (0.25) more entangled with the other package than with its own. It is reported apart from `always-together`, so the files of two coupled packages are not all listed. | A unit on the wrong side of the boundary. A candidate to move across. |
 | `wide-change` | Share of logical changes touching three or more packages, as a repository trend | The packages cut across the features. This is layering by kind (`ui`, `domain`, `data`) at package level. |
 
 ### Common reuse (CRP)
@@ -92,7 +98,7 @@ Each row is a deterministic finding. As elsewhere in the suite, a finding raises
 |---|---|---|
 | `partial-use` | Most consumers use a small share of the exported surface | Consumers are made to depend on things they do not use |
 | `disjoint-reuse` | Two or more export components, with consumers that barely overlap | Several packages sharing a name. A candidate to split along the components. |
-| `dumping-ground` | High fan-in, many export components, high change frequency and many contributors, typically named `shared`, `common`, `core` or `utils` | Coincidental cohesion at package level. Every change to it rebuilds and risks everything, and most consumers needed none of it. |
+| `dumping-ground` | At least 3 consumers and 3 export components, revisions above the median and at least `minRevisions`, and at least 3 contributors unless the name is one of `dumpingNames` (`shared`, `common`, `core`, `utils`) | Coincidental cohesion at package level. Every change to it rebuilds and risks everything, and most consumers needed none of it. |
 | `inherited-weight` | A consumer acquires heavy transitive dependencies through a package it uses only a part of, and that part does not need them | The cost CRP exists to prevent: a dependency paid for by code that does not use it |
 | `overexposed` | Exports that no other package uses | The interface is wider than its consumers need. A candidate to narrow. |
 
@@ -105,7 +111,7 @@ Each row is a deterministic finding. As elsewhere in the suite, a finding raises
 | `lockstep` | Packages whose versions always change in the same commits, where that is a choice. Not raised where tooling or policy fixes it: one version for the whole repository, fixed or linked version groups, or internal packages with no real versions. | They are released as one unit already. Separate versions are ceremony. |
 | `one-deployable` | A package that ships in only one deployable, in a repository with more than one | It has no release life of its own |
 | `pass-through-package` | A package whose exports are mostly re-exports of another package's | A shallow module at package level. A candidate to remove. |
-| `tiny` | Size in the lowest percentile of packages, with fixed overhead (manifest, build config, entry point) comparable to its content | The package costs more to have than it contains |
+| `tiny` | File count in the lowest `tinyPercentile` (10) of packages, no more than the manifest, the entry file and one more file, and below the median | The package costs more to have than it contains |
 
 ### Acyclic dependencies (ADP)
 
@@ -118,20 +124,24 @@ Each row is a deterministic finding. As elsewhere in the suite, a finding raises
 
 | Finding | Signal | Reading |
 |---|---|---|
-| `against-stability` | A dependency from a package to one that changes more often than it does | The stable package is made to change with the volatile one |
+| `against-stability` | A dependency from a package to one that changes more often than it does, by at least the structure plugin's `minVolatilityRatio` guideline. The finding carries the measured ratio. | The stable package is made to change with the volatile one |
 | `zone-of-pain` | Low `A`, low `I`, **and** frequent change | Concrete, widely depended on and still changing: every change ripples. Stable concrete packages that rarely change (a string library) are healthy and are not flagged. |
 | `zone-of-uselessness` | High `A`, high `I`: abstractions with few or no dependents | Interfaces written for consumers that never arrived |
 | `volatile-interface` | A package's exported surface changes in a large share of its revisions | The interface is not shielding consumers from change |
 
-`A` is a weak measure in code that is mostly functions or structurally typed, where little is declared abstract. In those codebases `D` is reported with that caveat, and the change-based findings (`against-stability`, `volatile-interface`, `zone-of-pain` by change frequency) carry the judgement.
+`A` is a weak measure in code that is mostly functions or structurally typed, where little is declared abstract. `A` is the exported interfaces and abstract classes over those plus the exported classes and enums, and type aliases are not counted. A package with fewer than `WEAK_BELOW_TYPES` exported types is marked weak and `D` is reported with that caveat. `volatile-interface` is approximated by changes to the files that define the exported surface, which over-reads, and the finding says so. `zone-of-pain` needs at least 2 dependants and revisions above the median. The change-based findings (`against-stability`, `volatile-interface`, `zone-of-pain` by change frequency) carry the judgement. Martin's metrics are weak in function-heavy code, so the numbers are shown beside the change evidence and never alone.
+
+**Name-based prompts.** `dumpingNames` only lowers the contributor requirement. A package is never judged by its name alone, which keeps the finding consistent with CodeScene, which makes no name-based judgements.
 
 ### Boundary quality
 
 | Finding | Signal | Reading |
 |---|---|---|
 | `deep-import` | Consumers importing a package's internals, past its entry point: deep import paths, private headers, `InternalsVisibleTo`, reflection on internal names. A package's own tests are excluded. | The boundary is not real. The declared interface is not the one in use. |
-| `undeclared-dependency` | A package uses another that its manifest does not declare (resolved through hoisting or a transitive path) | The dependency graph the build sees is not the real one |
-| `unused-dependency` | A declared dependency with no use in the package's code | Declared coupling with no purpose, and build weight |
+| `undeclared-dependency` | A package uses another that its manifest does not declare (resolved through hoisting or a transitive path). A dependency declared only at the workspace root counts as undeclared. | The dependency graph the build sees is not the real one |
+| `unused-dependency` | A declared dependency with no use in the package's code. Dev, peer and optional dependencies and `@types` packages are not judged. | Declared coupling with no purpose, and build weight |
+
+Manifest checks differ by language. For external libraries, `undeclared-dependency` and `unused-dependency` are judged for npm only. Go ignores `// indirect` requires, treats an in-repo module as declared when it is required or a `go.work` uses both, and names an external package by the longest required module prefix. Java (not Kotlin) raises manifest findings for in-repo modules only. C# has only unused project references, with no undeclared check and no NuGet check. C++ checks repository CMake targets only. For any other combination the commands produce no finding, which says nothing about whether the dependency is right.
 | `purpose-mismatch` | The evidence contradicts the declared purpose: `reuse` with one consumer, `enforcement` with deep imports through it | The reason the package exists is not being served |
 
 ## The balance
@@ -163,6 +173,8 @@ The CLI combines findings into candidates. Each is a proposal with its evidence,
 | `fix-manifest` | `undeclared-dependency`, `unused-dependency` | None. These are corrections. |
 | `break-dependency` | `package-cycle`, `against-stability`, `zone-of-pain` | Handed to the [structure](structure.md#skill) skill with its evidence pack |
 
+Only a hard cross-check reason blocks a candidate. A declared purpose argues against it softly, unless a `purpose-mismatch` contradicts the purpose. Published packages get no merge, split, move or narrow candidate and are listed under `withheld`. `fix-manifest` is still allowed for them, since it only corrects a manifest.
+
 Every merge candidate is checked for the split it might cause, and every split for the merge it might cause, so the tool cannot recommend a move that its own heuristics would then recommend reversing.
 
 ## CLI
@@ -179,7 +191,7 @@ Subcommands of the structure CLI. Every one supports `--json` with a versioned s
 | `structure packages evidence PACKAGE\|PAIR` | The full evidence for one package or one pair: co-change in both directions, shared changes, reuse profile, export components |
 | `structure packages check` | Exits 1 on new package cycles, deep imports or undeclared dependencies against a base revision, as `structure check` does. For CI. |
 
-Candidates are ranked by the change cost they address: the number of logical changes in the window that crossed the boundary in question, weighted by recency.
+Candidates are ranked by the change cost they address: the number of logical changes in the window that crossed the boundary in question, weighted by recency. The weight falls linearly from 1 for the newest change in the window to 0.5 for the oldest, a judgement call that follows CodeScene's practice of favouring recent change without discarding old change. A candidate takes the greatest cost among its findings, so a change is not counted twice.
 
 ## Skill
 
@@ -212,6 +224,10 @@ The skill uses the [red-flags](../../shared/red-flags.md) vocabulary at package 
 | Reuse profile and export components of merged packages | Merging did not create a dumping ground | Gaming check |
 | Package count, and median distance `D` | Structure moved in the expected direction | Leading indicator only |
 
+**Lockstep and merge direction.** Lockstep is read from `git log -G` on the manifest version, for npm, Cargo, Python and .NET manifests. It is not raised when every published version is identical, when Changesets `fixed` or `linked` groups name the packages (only `*` is a wildcard), or when lerna fixed mode or Nx fixed releases are set, which suppress lockstep for the whole repository. A version of exactly `0.0.0`, or `0.0.0` with a non-numeric suffix, counts as no real version. For a merge, the direction prefers an entry point, then a pass-through source, then the consumer of a single consumer, then the package with more consumers, then the one with more files. The direction is a judgement the user confirms.
+
+**Repackaging outcome.** The outcome takes the last commit of the reshaping, with `--from` the first. Packages that kept their name and took in or gave files are part of the unit on both sides. The two commits of the reshaping are left out of both windows. A unit collapse applies to the earlier window only. Agent effort needs an explicit `--projects-dir`, reads the repository root only, attributes by edited paths and uses the other packages as the control. A missing directory is an environment error, and such a run is never stored. Cycle counts use strongly connected components at the outcome's level, and layer violations are null when no layers are configured. As with a single break, the verdicts report before and after figures over matched windows and do not claim cause.
+
 Merging two packages lowers packages-per-change and raises closure whatever else happens, so for a merge those two show only that the merge took place. Agent effort is the independent test ([suite.md](suite.md#measurement-across-the-suite)). For a split or a moved unit they are real outcomes, because nothing guarantees them. In the earlier window, the packages a reshaping replaced are counted as one unit, so before and after compare like with like.
 
 Closure can be gamed by merging everything into one package, which has perfect closure. The gaming check is the opposing force: a merge that raises closure while the result's consumers use a falling share of it has traded one cost for another, and the skill reports it as such.
@@ -225,7 +241,7 @@ Package discovery reads manifests, so it works in any language the suite has a m
 | TypeScript/JavaScript | Workspace package (`package.json`) | Anything outside `exports` or the entry point | Interfaces and abstract classes. Type aliases are not counted, since they would make any types-heavy package look fully abstract. |
 | C# | Project (`.csproj`) | `internal`, with `InternalsVisibleTo` as the bypass | Interfaces, abstract classes |
 | C++ | Build target | Headers outside the target's public include directory | Classes with pure virtual members |
-| Python | Distribution (`pyproject.toml`) | Leading-underscore modules and names; anything outside `__all__`. Without an `__all__`, a module other than an `__init__.py` does not offer what it imports. | `Protocol` classes (interfaces) and `ABC` classes (abstract classes) |
+| Python | Distribution (`pyproject.toml`) | Leading-underscore modules and names; anything outside `__all__`. Without an `__all__`, underscore names are hidden. A module offers what it imports only when it is a package `__init__.py`. | `Protocol` classes (interfaces) and `ABC` classes (abstract classes) |
 | Java / Kotlin | Gradle or Maven module | Package-private and `internal`; non-exported packages in a module descriptor | Interfaces, abstract classes |
 | Go | Module (`go.mod`) | Unexported (lower-case) identifiers, and packages under `internal/` | Interfaces |
 | Rust | Crate | Anything not `pub` at the crate root: a library's entries are its root and the modules reachable through `pub mod` | Traits |
@@ -236,7 +252,7 @@ In `structure.packages`:
 
 - Package discovery overrides, and components to treat as packages where no manifests exist.
 - Per package: `published`, declared `purpose`, and the deployables it ships in where that cannot be read from manifests.
-- Thresholds: the comparable-share band for closure, significance and lift for `always-together`, the reuse share for `partial-use`, and the size percentile for `tiny`.
+- Guidelines and evidence floors, each named as one in the config schema: the comparable-share band for closure (`closureBand`, `minComparable`), significance, confidence and lift for `always-together` (`minConfidence` 0.6, lift 2, support 3, test 0.01), the follower reverse-confidence ceiling (0.2), `crossingUnitMargin`, the reuse share for `partial-use`, and `tinyPercentile`.
 - The grace period for new packages (default 180 days).
 - Names that prompt the `dumping-ground` check.
 

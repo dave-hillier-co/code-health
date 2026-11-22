@@ -8,6 +8,18 @@ The tool finds dependencies that make change expensive (cycles, layer violations
 
 Detecting a problem dependency is mechanical. Choosing a remedy is not. Depending on the case, the right move might be relocating a misplaced function, passing a callback, inverting a dependency through an interface, or introducing an event or mediator. The best choice depends on the codebase: which mechanisms it already uses, how its teams navigate it, and what the coupling is really about. Patterns emerge from a codebase rather than being imposed on it, so the tool describes the patterns already there and leaves the choice to judgement.
 
+## Terms and guidelines
+
+A **code smell** is Fowler's: a surface indication that usually corresponds to a deeper problem in the system. **Code health** is what the suite quantifies, as CodeScene uses the term: how easily code can be understood and changed, judged from several measures and never reduced to one score. A finding is a heuristic that says where to investigate. It does not prove a fault.
+
+Numbers from CodeScene, from Tornhill's books and from the research cited here are **guidelines**. A guideline orders and annotates results and never hides them:
+
+- Every command reports the measured value, the guideline and where the value sits (`aboveGuideline`, or a ratio such as `volatilityRatio`). Results are sorted by how far past the guideline they are.
+- Commands do not drop a result for being under a guideline. Output is capped by `--limit` (default 20), and the output states how many rows the cap left out.
+- A **minimum-evidence floor** is different: below it the statistic is not meaningful (one shared commit, too few revisions to call a side active, too few samples for a significance test). Items under a floor are reported as `insufficient-evidence` or with low confidence and are not given a verdict.
+- Only commands that gate exit with 1: `check`, and the user's own configured layer rules inside it. Plain findings above a guideline never change the exit code.
+- Guidelines are configurable. Each key below that is a guideline says so in its description in the config schema, with its source: CodeScene's documentation, Martin's or Tornhill's books, or a judgement call.
+
 ## Scope
 
 In scope:
@@ -34,6 +46,8 @@ Out of scope:
 
 **Stability.** Martin's instability, `I = Ce / (Ca + Ce)` (outgoing over total dependencies), is *structural* stability. *Change* stability is revisions per file in the window, from the history cache. When the two disagree, change stability is used, because it shows what actually changes. The stable dependencies principle says dependencies should point towards more stable code. A dependency from a stable module onto a volatile one forces the stable one to change with it.
 
+**Stability listing.** A module is active at `minRevisions` (an evidence floor of 3). When the depended-on side is active, change stability decides: its revisions per file are compared with the dependant's, and the ratio is `volatilityRatio`. A dependant with no revisions has no ratio (null), and a dependency from it onto an active module is above the guideline. When the depended-on side is not active, structure decides, from the instability gap in percentage points. `stability` lists every dependency onto a less stable side. `aboveGuideline` is set when the ratio reaches `minVolatilityRatio` (guideline 2) or the gap reaches `minInstabilityGap` (guideline 20 points). Both comparisons use "reaches", meaning greater than or equal to. Rows above the guideline come first, then rows decided by change, then the larger margin, then the number of file imports behind the edge. Ca and Ce count distinct files outside the module. `extra.units` lists the fifty most volatile modules and `unitsTotal` is the full count. The 2 and the 20 are judgement calls. CodeScene has no stability rule.
+
 **Static coupling.** For a pair of modules, the count of distinct symbols referenced across the boundary, weighted by reference sites. It measures how much one side's code uses the other.
 
 **Coupling quadrants.** Static coupling and co-change measure different things. Together they say what a dependency is costing:
@@ -44,13 +58,20 @@ Out of scope:
 | **High static coupling**, depended-on side rarely changes | **Stable dependency**: healthy. Keep it. | (Cannot occur: a side that rarely changes cannot co-change often.) |
 | **Low static coupling** | **Independent**: nothing to do. | **Hidden**: see below. Make the dependency explicit, or co-locate. |
 
-"Both sides active" means each side has at least the configured minimum revisions in the window, so low co-change is evidence and not just an absence of data. Co-change is judged against what independence would predict, `E = n(A)·n(B)/N` shared changes over *N* logical changes, using cochange's eligible-change counts. Comparing the observed count with *E* directly is not enough. On real histories *E* is usually well below one, so a single shared change would exceed it and almost every pair would look coupled. Instead:
+"Both sides active" means each side has at least the configured minimum revisions in the window (an evidence floor), so low co-change is evidence and not just an absence of data. Co-change is judged against what independence would predict, `E = n(A)·n(B)/N` shared changes over *N* logical changes, using cochange's eligible-change counts. Comparing the observed count with *E* directly is not enough. On real histories *E* is usually well below one, so a single shared change would exceed it and almost every pair would look coupled. Instead:
 
 - **High co-change**: support clears the minimum, and the observed count is significantly above *E* (a one-sided exact test at the configured level, default 0.01).
 - **Low co-change**: both sides are active, and the observed count is not significantly above *E*.
 - **Insufficient evidence**: too little activity to tell. The pair is reported as such and placed in no quadrant.
 
 Incidental means low co-change despite high static coupling.
+
+**Placement.** "High static coupling" means the reference sites across the boundary, both directions summed, reach `minStaticCoupling` (a guideline of 3, a judgement call). The quadrant is a classification for reading the pair. The measured sites, shared changes, expected shared changes and the p-value are always reported beside it, so a reader can see how close to the guideline a pair sits. The rules, in order:
+
+- High static coupling, with the depended-on side inactive: **stable**. With the dependant inactive: `insufficient-evidence`. Otherwise high co-change gives **real** and low co-change gives **incidental**.
+- Low static coupling (fewer sites than the guideline, which includes some pairs that do import each other): high co-change gives **hidden**, both sides active gives **independent**, anything else `insufficient-evidence`.
+
+`from` is the side that uses the other more, and on a tie the earlier path. The p-value is reported to six decimal places, so `0` means the exact value is below that, which is very strong evidence. Support (shared changes of at least `minSupport`, default 3) is an evidence floor. Cochange's own `minSupport` default is 5, a stricter figure chosen for ranking whole-repository pairs. Each plugin states its own value, so a pair can be high co-change in one and not the other. The test here is the stronger one: it compares against what independence predicts, where CodeScene (after Tornhill's code-maat) uses a minimum number of shared revisions and a minimum degree.
 
 Incidental coupling is cheap to break but does not cost change effort directly, so on its own it ranks low. It ranks high when it also blocks a locality move, forms part of a cycle, violates a layer rule, or burdens agents with reads (files opened only to follow the dependency, from transcripts).
 
@@ -60,6 +81,8 @@ Incidental coupling is cheap to break but does not cost change effort directly, 
 - **Outward dependencies.** The hub imports the features, or holds their identifiers (component references, path strings), so the stable mechanism depends on the volatile features.
 - **Append-shaped edits.** Most of the hub's diff hunks add or remove entries in one collection literal (array, object, switch). The lexical layer detects it in any language: hunks that are pure additions or removals of a few lines at a constant indentation, inside the same block, and lexically similar to their neighbours. Where a structural adapter exists, hunks are mapped onto the syntax tree to confirm the collection literal.
 - **Contention.** Many distinct authors edit it within short windows, a proxy for merge conflicts. Only the count is used, never names.
+
+The signals are guidelines (`hubMinFeatures` 3, `hubMinConfidence` 50, `hubMaxFeatureCoupling` 20, `hubMinOutward` 50, `hubMinAppendShare` 60, `hubContentionDays` 14, `hubMinAuthors` 3). They are judgement calls, close in spirit to CodeScene's co-change hotspots that are prioritised by how many developers touch them. A hub row reports each signal with the figures behind it. A hub is reported only when all four signals reach their guidelines, because each alone matches ordinary files (a busy file, a barrel of imports). The append shape is detected lexically: runs of `git -U2` hunks of at most five lines whose Dice similarity to their neighbours is at least 0.7. Structural confirmation that the lines belong to one collection literal is not done in any language, so a hub's append share is an estimate and false positives are possible.
 
 The hub breaks the stable dependencies principle: it is volatile only because it depends on everything that changes. In Ousterhout's terms it is *information leakage*. Each feature's placement in the app is that feature's decision, but it is written down in the hub.
 
@@ -79,6 +102,42 @@ The hub breaks the stable dependencies principle: it is volatile only because it
 
 The census reports counts, folders where each mechanism appears, and a few example locations. It describes; it does not judge which mechanism is good.
 
+**Rows.** Every mechanism has a row, in the fixed order above, with a count of 0 when none was found. A zero row is how the skill knows a mechanism is not in use, so would be new. The output shape does not depend on the repository.
+
+**What is counted.** The detectors are heuristics, in the way CodeScene's smell detectors are, and a count is a lower bound: zero means none found by these rules.
+
+- *Callbacks*: a function with a function-typed parameter that is called from a file in another folder.
+- *Interfaces*: an interface or abstract type that is implemented or subclassed in another folder. The declaration is found through the import graph, including barrels. A match that is ambiguous is skipped and not guessed.
+- *Dependency injection*: a DI decorator from a fixed list, a registration call on a receiver named like `container`, `injector`, `kernel` or `ioc`, or a constructor parameter whose type resolves to an interface declared in another folder. Property and method injection are not counted.
+- *Events*: calls such as `emit`, `on`, `subscribe`, `publish` and `dispatch`, and event-emitter base types. Calls on platform receivers (the DOM and the like) are excluded, and `addEventListener` is excluded on purpose.
+- *Handlers*: handler decorators, and registration or dispatch on a mediator or command bus. A call that matches handlers is not also counted as an event.
+- *Registries*: `register*` calls, and maps from string keys to implementations, as a `Map` or an object.
+- *Ports and adapters*: folders named `ports`, `adapters` or `infrastructure`, plus any in `structure.census.folderNames`. Detection is by folder name only.
+
+These lists are product behaviour and are documented in the mechanisms reference. A convention with other names is taught to the census through `structure.census`. Every list there (`folderNames`, `eventCalls`, `handlerCalls`, `registerCalls`) adds to the built-in vocabulary, and none replaces it. Call names match on any receiver.
+
+**Untyped code.** Detection is per language. Plain JavaScript is read for what needs no type annotation (events, handlers, registries, folders). Callbacks, constructor injection and implementations need declared types, so in untyped code those rows undercount, and a zero there is weaker evidence than a zero in typed code. The skill reads the examples before relying on a zero.
+
+**Nearby mechanisms.** `nearbyMechanisms` lists the ten census entries nearest to the two sides of a dependency (an explicit limit, a judgement call). Distance is the number of steps through the folder tree, up to the common ancestor and down, from the nearest of the entry's folders to the nearest folder of either side. The same folder distance is the locality measure. Entries are ordered by distance, mechanism order, path and line, and each says which side it is `near`. `nearbyMechanismsOmitted` is the number of entries the limit left out. An empty list with nothing omitted means the census is empty.
+
+**Command contract.** `structure census` reads no history. It has no refresh, window or evidence grade, because nothing in it comes from history, and it works in a shallow clone. It extends the plain envelope and writes a report like other commands.
+
+## Graph details
+
+**Cycle levels.** A file-level cycle is a cycle of file imports. A folder is the directory directly containing a file, so a parent folder and its child folder that import each other form a folder cycle and are reported like any other. Cycle rows keep the command's order: locality gain, size, co-change, id. A package is the nearest manifest boundary at or above a file, so `cycles --level package` can group differently from `structure packages`, which uses package discovery (see [packaging.md](packaging.md#concepts)). A component drops files that are in no component. Edges inside one group are dropped. A self-loop is a cycle and is always in its breaking set.
+
+**What enters the graph.** Tests, `exclude` globs and generated files are left out. Type-only imports are edges flagged `typeOnly`, because they bind code at design time, and a reader can discount them. Changes over `maxChangesetSize` files are not counted in activity, as CodeScene ignores very large changesets in coupling. This also covers an import-everything first commit, which is why the initial commit has no special rule.
+
+**Breaking sets.** A component of at most `exactLimit` nodes (default 16, at most 30) gets a minimum set. A larger one gets the heuristic set, pruned to an inclusion-minimal set. Each cycle row states `method` as `exact` or `heuristic`, so a reader can see which advice is a minimum. Ties go to lower co-change, then path order. A **dominator unit** is an entry file's whole cycle plus everything only reachable through it. Files unreachable from the entry are returned separately.
+
+**Language details.** Where a language has no exports map, entry files are the files nothing else imports, plus the language's own marker. A C# project exports its public types. A C++ target exports its `PUBLIC` and `INTERFACE` headers, else every owned header, so nothing is internal. A Go module has no declared entries, and `internal/` marks what is private. C++ treats a header and its paired source file as one unit with an edge from header to source, so pairs are not reported as include cycles, and dependencies only the source has are not visible to header users. C# treats the parts of a partial class as one unit, resolves names within a project and its transitive references, and treats `Box` and `Box<T>` as one declaration. Members are not symbols there, so instance method calls are not resolved, and locality and structure undercount method-level coupling. In Java a single-type import aliases that type only, and wildcard imports add a package scope. In Rust a `mod name;` is an import edge, so a parent and child that use each other form a cycle that is idiomatic in Rust and worth a look and not a fault. `use a::Enum::Variant` imports the first capitalised segment, which misreads lowercase type names. Python entry files are the non-test modules with no leading-underscore path segment. `__all__` governs what a module offers, and a module other than a package `__init__` does not offer what it imports. These are per-language approximations, pinned by the adapters' conformance fixtures.
+
+**Abstract types.** Interface, abstract class and class are mapped per language for abstractness and the census. A Python `Protocol` is an interface and an `ABC` an abstract class. A Rust trait is an interface, including one with default methods, and a struct or union is a class. In C++ an interface is a class with only pure virtual members and no data, and an abstract class has any pure virtual member. Events and callbacks follow each language's own form: C# events are `E?.Invoke(...)` or `E(...)` on an event the file declares and C# callbacks are not detected, and C++ counts `std::function`, function-pointer parameters and `emit`.
+
+## Locality report contract
+
+`structure` reads the output of `locality analyse` only when its tool, command, head commit and clean flag match the analysed commit. It uses rows with a `path` or `id` and blockers with `from`, `path` and `unblockedGain`. There is no schema version on this contract, so the two plugins must be changed together. `misplacement` is computed in `structure` and not from a locality score: a move may remove a dependency when a strict majority of the consumer sites sit on the `from` side.
+
 ## Evidence pack
 
 For each problem dependency the CLI emits:
@@ -90,11 +149,12 @@ For each problem dependency the CLI emits:
 | `from` / `to` | Modules (file, folder or component) and the edge direction |
 | `breakingSet` | The specific symbols used across the boundary that cause the problem |
 | `stability` | Structural and change stability of each side |
+| `stabilityVerdict` | Whether the dependency points towards less stable code, whether the margin is above the guideline, and the measured ratio or gap |
 | `coChange` | Co-change between the sides, in both directions |
 | `misplacement` | Whether a breaking-set symbol's consumers mostly sit on the other side, from a locality score. If so, the dependency may disappear by moving the symbol. |
 | `unblocks` | Locality moves this dependency is blocking, with their unblocked gain, read from the locality report when present |
-| `nearbyMechanisms` | Census entries in or next to the two modules, nearest first |
-| `layerRule` | The rule violated, if any |
+| `nearbyMechanisms` | Up to ten census entries in or next to the two modules, nearest first, with `nearbyMechanismsOmitted` giving how many were left out |
+| `layerRule` | The rule broken, if any |
 
 The pack carries no recommended technique. It carries facts that bear on the choice.
 
@@ -135,14 +195,14 @@ The skill does not default to any named pattern. Patterns such as mediator, obse
 | Command | Output |
 |---|---|
 | `structure cycles [--level file\|folder\|package]` | Cycles with their breaking sets, ranked by locality gain unblocked (when a locality report is present), then size of the cycle and co-change across it |
-| `structure layers` | Violations of the configured layer rules |
-| `structure stability [--by folder\|component]` | Structural and change stability, and dependencies pointing against stability |
+| `structure layers` | Imports the configured layer rules do not allow, value imports first and then type-only imports |
+| `structure stability [--by folder\|component]` | Structural and change stability, and every dependency pointing towards less stable code, with those above the guideline listed first |
 | `structure census` | Decoupling mechanisms in use, with counts and examples |
 | `structure hubs` | Registration hubs, ranked by the number of features feeding them and their revision count, with the signals that fired and the collection literal being appended to |
 | `structure evidence EDGE\|FINDING` | The full evidence pack for one problem dependency |
 | `structure coupling [--quadrant incidental\|real\|stable\|hidden] [--by file\|folder\|component]` | Module pairs placed in the coupling quadrants, ranked within each |
 | `structure hidden` | Pairs with high co-change and no static dependency, the result of earlier indirection. Shorthand for `coupling --quadrant hidden`. |
-| `structure check [--base REV]` | Exits 1 on cycles or layer violations that are new since a base revision (default: the merge base with the configured main branch). For CI. |
+| `structure check [--base REV]` | Exits 1 on cycles or layer violations that are new since a base revision (default: the merge base with the configured main branch). For CI. It is the one gating command, as CodeScene's pull request gate fails only on regressions against the base. Existing debt does not fail it. |
 | `structure outcome FROM->TO --at REV` | Whether the break made at `REV` reduced the coupling of a pair or only hid it: co-change over matching windows before and after, static coupling before and after, and a verdict (`broken`, `hidden-not-broken`, `unchanged`, `co-change-reduced`, `no-baseline`, `insufficient-evidence`). It also lists every other pair that dropped its static dependency across the break and kept its co-change. |
 | `structure packages …` | Package inventory, cohesion, coupling, boundaries and repackaging candidates. See [packaging.md](packaging.md#cli). |
 
@@ -159,15 +219,18 @@ A break succeeded only if it made change cheaper, not merely if the import went 
 
 A broken cycle with unchanged co-change is reported as **hidden, not broken**. The skill presents that as evidence the remedy treated the symptom.
 
+**Outcome verdicts.** Both windows are the shorter of `windowMonths` and the time from the break to the analysed commit, with the break's own change left out of both. Static coupling is measured at the break's parent and at the tip. The verdicts are `no-baseline` (the pair had no earlier history), `hidden-not-broken` (the static edge went and the co-change stayed), `unchanged`, `insufficient-evidence`, `broken` and `co-change-reduced`. They describe what the numbers show and do not claim the break caused them. The agent-effort outcome from the table above is measured only for repackaging (see [packaging.md](packaging.md#measurement)), and is not measured for a single break. This follows CodeScene's practice of presenting trends and deltas with a time window and not as proof.
+
 ## Configuration
 
 In the `structure` section of the suite config:
 
-- Layer rules (`layers`): ordered layers, each with a `name`, `paths` globs and an optional `allow` list. A file belongs to the first layer matching it and files in none are unconstrained. By default a layer may depend on itself and the layers listed after it, and `allow` replaces that with exactly the layers named.
+- Layer rules (`layers`): ordered layers, each with a `name`, `paths` globs and an optional `allow` list. A file belongs to the first layer matching it and files in none are unconstrained. By default a layer may depend on itself and the layers listed after it, and `allow` replaces that with exactly the layers named. Layer rules are the user's own declaration, so they are rules and not guidelines, and `check` gates on them. A type-only import that crosses a disallowed layer is listed, marked `typeOnly` and ranked after value imports. `check` counts it, because a type dependency still binds the layers. CodeScene does not check layer rules, and this follows dependency-cruiser and ArchUnit, which count type imports too.
 - Component boundaries, shared with the suite-wide `components`.
-- Additional census patterns (custom event or handler conventions).
-- Thresholds for static coupling (`minStaticCoupling`, reference sites both ways), minimum support and the significance level for high co-change, minimum revisions for "active", and for registration hubs (`hubMinFeatures`, `hubMinConfidence`, `hubMaxFeatureCoupling`, `hubMinOutward`, `hubMinAppendShare`, `hubContentionDays`, `hubMinAuthors`). Hidden coupling is the low-static-coupling, high-co-change quadrant and uses the same thresholds.
-- Base revision for `check`: `base`, or the merge base with `mainBranch`. `check` counts a cycle as new unless all its nodes sat in one cycle of the base, and a layer violation as new unless the same import violated at the base.
+- Additional census patterns (custom event, handler, registration and folder names). Every list adds to the built-in vocabulary.
+- Guidelines and evidence floors. Guidelines: `minStaticCoupling` (reference sites both ways), `minVolatilityRatio`, `minInstabilityGap`, and for registration hubs (`hubMinFeatures`, `hubMinConfidence`, `hubMaxFeatureCoupling`, `hubMinOutward`, `hubMinAppendShare`, `hubContentionDays`, `hubMinAuthors`. Evidence floors: `minSupport`, `significanceLevel` and `minRevisions` for "active". Hidden coupling is the low-static-coupling, high-co-change quadrant and uses the same values.
+- Base revision for `check`: `base`, or the merge base with `mainBranch`. `check` counts a cycle as new unless all its nodes sat in one cycle of the base, and a layer violation as new unless the same import violated at the base. It checks file, folder and package cycles unless `--level` narrows it. When the base is the analysed commit, the result is empty. With no `base` and no `mainBranch` or `origin/mainBranch` to find a merge base, `check` exits with a usage error asking for `--base`, because a silent default would pass a check that compared nothing. The comparison to a base and the report of regressions only match CodeScene's delta analysis.
+- History settings (`windowMonths`, `maxChangesetSize`, `botPatterns`, `branch`, `firstParent`, rename settings, `exactLimit`) apply to this plugin only. Each plugin reads its own section, so a value set for cochange does not carry over, and the two can disagree for one repository. State both when they should match.
 - Package settings under `structure.packages` ([packaging.md](packaging.md#configuration)).
 
 ## Decisions

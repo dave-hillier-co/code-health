@@ -451,6 +451,11 @@
             "$ref": "#/$defs/nearbyMechanism"
           }
         },
+        "nearbyMechanismsOmitted": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Census entries not listed in nearbyMechanisms because of the limit of ten."
+        },
         "layerRule": {
           "type": [
             "array",
@@ -521,6 +526,7 @@
         "misplacement",
         "unblocks",
         "nearbyMechanisms",
+        "nearbyMechanismsOmitted",
         "layerRule"
       ],
       "additionalProperties": false
@@ -788,6 +794,11 @@
           "items": {
             "$ref": "#/$defs/nearbyMechanism"
           }
+        },
+        "nearbyMechanismsOmitted": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Census entries not listed in nearbyMechanisms because of the limit of ten."
         }
       },
       "required": [
@@ -804,7 +815,8 @@
         "signals",
         "stability",
         "unblocks",
-        "nearbyMechanisms"
+        "nearbyMechanisms",
+        "nearbyMechanismsOmitted"
       ],
       "additionalProperties": false
     }

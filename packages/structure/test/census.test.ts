@@ -151,8 +151,12 @@ test("names stated under structure.census add to the built-in vocabulary", async
   expect(row("events").examples.map((e) => e.detail)).toContain("fire");
   expect(row("handlers").examples.map((e) => e.detail)).toContain("wire");
   expect(row("registries").examples.map((e) => e.detail)).toContain("enrol");
-  // The folder names are the whole list, not an addition: stating gateways drops ports and adapters.
-  expect(row("ports-and-adapters").folders).toEqual([{ folder: "src/gateways", count: 1 }]);
+  // Folder names add as well: stating gateways keeps ports and adapters.
+  expect(row("ports-and-adapters").folders).toEqual([
+    { folder: "src/adapters", count: 1 },
+    { folder: "src/gateways", count: 1 },
+    { folder: "src/ports", count: 1 },
+  ]);
 });
 
 test("plain JavaScript is read for what needs no type annotation", async () => {

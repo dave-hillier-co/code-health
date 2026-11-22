@@ -74,7 +74,7 @@ export interface LayerViolation {
 
 export const layerViolationId = (from: string, to: string): string => `layer:${from}->${to}`;
 
-/** Every import between files of two layers that the rules do not allow, sorted by importing file then imported file. */
+/** Every import between files of two layers that the rules do not allow: value imports first, then type-only imports, each sorted by importing file then imported file. */
 export function findLayerViolations(project: Project, rules: readonly LayerRule[]): LayerViolation[] {
   if (rules.length === 0) return [];
   const layerOf = layerClassifier(rules);
@@ -101,5 +101,5 @@ export function findLayerViolations(project: Project, rules: readonly LayerRule[
       });
     }
   }
-  return rows.sort((a, b) => compareIds(a.from, b.from) || compareIds(a.to, b.to));
+  return rows.sort((a, b) => Number(a.typeOnly) - Number(b.typeOnly) || compareIds(a.from, b.from) || compareIds(a.to, b.to));
 }

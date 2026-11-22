@@ -689,10 +689,10 @@
           ],
           "description": "Change evidence decides whenever the depended-on side is active."
         },
-        "structuralViolation": {
+        "structuralAboveGuideline": {
           "type": "boolean"
         },
-        "changeViolation": {
+        "changeAboveGuideline": {
           "type": [
             "boolean",
             "null"
@@ -706,8 +706,13 @@
           ],
           "description": "Revisions per file of the depended-on side over the dependant's. Null when the dependant has none."
         },
-        "violates": {
-          "type": "boolean"
+        "towardsLessStable": {
+          "type": "boolean",
+          "description": "The depended-on side is less stable than the dependant on the deciding basis."
+        },
+        "aboveGuideline": {
+          "type": "boolean",
+          "description": "The margin reaches the guideline (minVolatilityRatio or minInstabilityGap). It orders rows and hides none."
         },
         "disagree": {
           "type": "boolean",
@@ -716,10 +721,11 @@
       },
       "required": [
         "basis",
-        "structuralViolation",
-        "changeViolation",
+        "structuralAboveGuideline",
+        "changeAboveGuideline",
         "volatilityRatio",
-        "violates",
+        "towardsLessStable",
+        "aboveGuideline",
         "disagree"
       ]
     }

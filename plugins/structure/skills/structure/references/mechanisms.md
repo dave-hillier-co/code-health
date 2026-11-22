@@ -14,7 +14,7 @@ There is one row per mechanism, always in this order, including the ones with a 
 | `events` | `emit`, `on`, `once`, `off`, `subscribe`, `publish`, `dispatch`, `trigger` and listener calls, with the platform's own emitters left out (`process.on`, `window.on`), and classes or `new` expressions of an event-emitter type (`EventEmitter`, `Subject`, `Observable`). | `call`, `base-type` |
 | `handlers` | Decorators ending in `Handler`, classes implementing a `...Handler` type, handler registration calls, and `send`, `execute`, `dispatch` or `query` on a mediator, command bus or query bus. | `handler-decorator`, `handler-type`, `handler-registration`, `dispatch` |
 | `registries` | A map or object named like a registry, handler table, plugin list or strategy table, and `register...` calls that are not container registrations. | `keyed-map`, `register-call` |
-| `ports-and-adapters` | Folders named in `structure.census.folderNames` (by default `ports`, `adapters`, `infrastructure`). Folder entries have no line and do not count as files. | `folder` |
+| `ports-and-adapters` | Folders named `ports`, `adapters` or `infrastructure`, plus any named in `structure.census.folderNames`. Folder entries have no line and do not count as files. | `folder` |
 
 ## Reading it
 

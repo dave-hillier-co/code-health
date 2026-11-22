@@ -787,14 +787,7 @@
           "properties": {
             "folderNames": {
               "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "default": [
-                "ports",
-                "adapters",
-                "infrastructure"
-              ]
+              "default": []
             },
             "eventCalls": {
               "type": "array",
@@ -811,11 +804,7 @@
           },
           "additionalProperties": false,
           "default": {
-            "folderNames": [
-              "ports",
-              "adapters",
-              "infrastructure"
-            ],
+            "folderNames": [],
             "eventCalls": [],
             "handlerCalls": [],
             "registerCalls": []
