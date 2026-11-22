@@ -3,6 +3,7 @@ import { measureCurrent, storeReport } from "../analysis.ts";
 import { normalisePaths, pathSelector } from "../current-tree.ts";
 import { depthRows } from "../interface-depth.ts";
 import { ruleDescriptions } from "../rules.ts";
+import { skipReport } from "@code-health/history/reports";
 
 export const name = "depth";
 
@@ -41,6 +42,7 @@ export const command: Command = {
       columns: ["path", "unit", "kind", "nodes", "interface", "depth", "passThrough", "labels"],
     };
     if (!isPartial(context) && current.kind === "head") await storeReport(context, name, output);
+    else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
     return output;
   },
 };

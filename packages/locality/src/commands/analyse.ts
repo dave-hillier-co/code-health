@@ -82,6 +82,7 @@ export const command: Command = {
       columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"],
     };
     if (!partial) await writeReport(context, name, output);
+    else skipReport(context, "the run was limited by path arguments, --recommendation or --source");
     return output;
   },
 };

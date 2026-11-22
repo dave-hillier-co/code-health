@@ -97,6 +97,7 @@ export function analysisCommand(name: string, spec: AnalysisSpec): Command {
       };
       const wholeRepository = window === undefined && !spec.partial?.(context);
       if (wholeRepository) await writeReport(context, name, finished, history.view.headSha);
+      else skipReport(context, window !== undefined ? "the run was limited to a date window" : "the run chose a view other than the default");
       return finished;
     },
   };

@@ -6,6 +6,7 @@ import { metricIds } from "../metrics.ts";
 import { rankUnits } from "../ranking.ts";
 import { ruleDescriptions } from "../rules.ts";
 import { unitRow } from "../rows.ts";
+import { skipReport } from "@code-health/history/reports";
 
 export const name = "analyse";
 
@@ -74,6 +75,7 @@ export const command: Command = {
       ],
     };
     if (!isPartial(context) && current.kind === "head") await storeReport(context, name, output);
+    else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
     return output;
   },
 };

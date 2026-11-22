@@ -37,6 +37,13 @@ const cli: CliDefinition = {
       run: () => ({ results: [], extra: { evidence: { grade: "weak" } } }),
     },
     clash: { summary: "Clashing extra", run: () => ({ results: [], extra: { results: 1 } }) },
+    skipped: {
+      summary: "A command that stored no report",
+      run: (context) => {
+        context.report = { stored: false, reason: "path arguments were given" };
+        return { results: rows, columns: ["path", "score", "churn"] };
+      },
+    },
     check: { summary: "Fail", run: () => ({ results: [], failed: true }) },
     summary: { summary: "Object result", run: () => ({ results: { verdict: "ok" } }) },
     usage: { summary: "Usage error", run: () => { throw usageError("bad input"); } },
@@ -325,4 +332,12 @@ test("explain with no rule lists them, and an unknown rule is a usage error", as
 test("explain is listed in help only when the CLI has rules", async () => {
   expect((await run(["--help"], { cli: withRules })).stdout).toContain("explain <rule>");
   expect((await run(["--help"])).stdout).not.toContain("explain <rule>");
+});
+
+test("a command that stored no report says why in meta, and the table view says it too", async () => {
+  const json = await run(["skipped"]);
+  expect(JSON.parse(json.stdout).meta.report).toEqual({ stored: false, reason: "path arguments were given" });
+  const table = await run(["skipped"], { tty: true });
+  expect(table.stdout).toContain("No report stored for other plugins: path arguments were given.");
+  expect(JSON.parse((await run(["list"])).stdout).meta).not.toHaveProperty("report");
 });
