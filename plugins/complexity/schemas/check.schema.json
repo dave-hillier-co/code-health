@@ -119,8 +119,8 @@
             "description": "The guideline value for the metric: the value it is measured against."
           },
           "ratio": {
-            "type": "number",
-            "description": "The measured value divided by the guideline."
+            "type": ["number", "null"],
+            "description": "The measured value divided by the guideline. Null when the guideline is 0."
           },
           "delta": {
             "type": [

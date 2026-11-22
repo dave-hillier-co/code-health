@@ -5757,7 +5757,7 @@ var ruleDescriptions = {
       "if, ternary, switch, loops and catch, plus the nesting level they sit at. else if, else, a labelled",
       "break or continue, direct recursion and each sequence of like && or || operators cost a flat 1.",
       "?? and ?. are free. Nested functions add to the enclosing function's score.",
-      "Labels: cognitive-warn above thresholds.cognitive.warn (default 15), cognitive-high above high (25).",
+      "Labels: cognitive-warn above the guideline thresholds.cognitive.warn (default 15), cognitive-high above high (25).",
       "Run `complexity explain path#Unit` to see which construct cost what."
     ].join("\n")
   },
@@ -5774,7 +5774,7 @@ var ruleDescriptions = {
     summary: "Nesting depth of control structures",
     explanation: [
       "The deepest nesting of if, loop, switch and try statements in the function. An else if sits at the level of its if.",
-      "Label: nesting-warn above thresholds.nesting (default 4)."
+      "Label: nesting-warn above the guideline thresholds.nesting (default 4)."
     ].join("\n")
   },
   parameters: {
@@ -5782,7 +5782,7 @@ var ruleDescriptions = {
     explanation: [
       "Declared parameters. A destructured object parameter counts once, with its properties reported as optionCount,",
       "since option bags are a common route to overexposure.",
-      "Label: parameters-warn above thresholds.parameters (default 5)."
+      "Label: parameters-warn above the guideline thresholds.parameters (default 5)."
     ].join("\n")
   },
   length: {
@@ -5804,19 +5804,19 @@ var ruleDescriptions = {
     ].join("\n")
   },
   new: {
-    summary: "check: a new function over a threshold",
+    summary: "check: a new function above a guideline",
     explanation: [
-      "`complexity check` fails when a function that did not exist at the base revision is over a threshold.",
+      "`complexity check` exits with 1 when a function that did not exist at the base revision is above a guideline.",
       "A function that was renamed or moved is matched to the old one by body similarity (complexity.moveSimilarity),",
       "so it is new only when no old function resembles it."
     ].join("\n")
   },
   worsened: {
-    summary: "check: an existing function over a threshold that got worse",
+    summary: "check: an existing function above a guideline that got worse",
     explanation: [
-      "`complexity check` fails when a function that existed at the base revision is over a threshold on a metric",
+      "`complexity check` exits with 1 when a function that existed at the base revision is above a guideline on a metric",
       "and that metric rose by more than complexity.delta (default 0) since. A function that stays under its",
-      "thresholds never fails, and neither does one that is over a threshold and did not get worse."
+      "guidelines never does, and neither does one that is above a guideline and did not get worse."
     ].join("\n")
   },
   shallow: {
@@ -6219,7 +6219,8 @@ var command2 = {
           before: was ?? null,
           after: now,
           guideline: limit,
-          ratio: Math.round(now / limit * 100) / 100,
+          // A guideline of 0 has no ratio: dividing by it would print as null in JSON and Infinity in a table.
+          ratio: limit === 0 ? null : Math.round(now / limit * 100) / 100,
           delta: was === void 0 ? null : now - was,
           startLine: after.startLine,
           endLine: after.endLine,

@@ -96,7 +96,7 @@ export function findingsFor(before: FileMeasurement, after: FileMeasurement, thr
         before: was ?? null,
         after: values[metric]!,
         overshoot: values[metric]! - (limit ?? 0),
-        guideline: limit === undefined ? "above guideline: a bumpy road" : `guideline ${limit}, ratio ${Math.round((values[metric]! / limit) * 100) / 100}`,
+        guideline: limit === undefined ? "above guideline: a bumpy road" : (limit <= 0 ? `guideline ${limit}` : `guideline ${limit}, ratio ${Math.round((values[metric]! / limit) * 100) / 100}`),
       });
     }
   }

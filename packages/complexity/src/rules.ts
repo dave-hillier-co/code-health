@@ -3,7 +3,7 @@ import type { Rule } from "@code-health/cli-kit/run-cli";
 /**
  * What the labels and `check` findings mean, described by `complexity explain <rule>`. The remedy for
  * every one is judgement, and the skill holds that policy: simplify in place first, extract only a deep
- * local unit, and never split a function to pass a threshold.
+ * local unit, and never split a function only to pass a guideline.
  */
 export const ruleDescriptions: Record<string, Rule> = {
   cognitive: {
@@ -13,7 +13,7 @@ export const ruleDescriptions: Record<string, Rule> = {
       "if, ternary, switch, loops and catch, plus the nesting level they sit at. else if, else, a labelled",
       "break or continue, direct recursion and each sequence of like && or || operators cost a flat 1.",
       "?? and ?. are free. Nested functions add to the enclosing function's score.",
-      "Labels: cognitive-warn above thresholds.cognitive.warn (default 15), cognitive-high above high (25).",
+      "Labels: cognitive-warn above the guideline thresholds.cognitive.warn (default 15), cognitive-high above high (25).",
       "Run `complexity explain path#Unit` to see which construct cost what.",
     ].join("\n"),
   },
@@ -30,7 +30,7 @@ export const ruleDescriptions: Record<string, Rule> = {
     summary: "Nesting depth of control structures",
     explanation: [
       "The deepest nesting of if, loop, switch and try statements in the function. An else if sits at the level of its if.",
-      "Label: nesting-warn above thresholds.nesting (default 4).",
+      "Label: nesting-warn above the guideline thresholds.nesting (default 4).",
     ].join("\n"),
   },
   parameters: {
@@ -38,7 +38,7 @@ export const ruleDescriptions: Record<string, Rule> = {
     explanation: [
       "Declared parameters. A destructured object parameter counts once, with its properties reported as optionCount,",
       "since option bags are a common route to overexposure.",
-      "Label: parameters-warn above thresholds.parameters (default 5).",
+      "Label: parameters-warn above the guideline thresholds.parameters (default 5).",
     ].join("\n"),
   },
   length: {
@@ -60,19 +60,19 @@ export const ruleDescriptions: Record<string, Rule> = {
     ].join("\n"),
   },
   new: {
-    summary: "check: a new function over a threshold",
+    summary: "check: a new function above a guideline",
     explanation: [
-      "`complexity check` fails when a function that did not exist at the base revision is over a threshold.",
+      "`complexity check` exits with 1 when a function that did not exist at the base revision is above a guideline.",
       "A function that was renamed or moved is matched to the old one by body similarity (complexity.moveSimilarity),",
       "so it is new only when no old function resembles it.",
     ].join("\n"),
   },
   worsened: {
-    summary: "check: an existing function over a threshold that got worse",
+    summary: "check: an existing function above a guideline that got worse",
     explanation: [
-      "`complexity check` fails when a function that existed at the base revision is over a threshold on a metric",
+      "`complexity check` exits with 1 when a function that existed at the base revision is above a guideline on a metric",
       "and that metric rose by more than complexity.delta (default 0) since. A function that stays under its",
-      "thresholds never fails, and neither does one that is over a threshold and did not get worse.",
+      "guidelines never does, and neither does one that is above a guideline and did not get worse.",
     ].join("\n"),
   },
   shallow: {

@@ -57,7 +57,8 @@ export const command: Command = {
           before: was ?? null,
           after: now,
           guideline: limit,
-          ratio: Math.round((now / limit) * 100) / 100,
+          // A guideline of 0 has no ratio: dividing by it would print as null in JSON and Infinity in a table.
+          ratio: limit === 0 ? null : Math.round((now / limit) * 100) / 100,
           delta: was === undefined ? null : now - was,
           startLine: after.startLine,
           endLine: after.endLine,

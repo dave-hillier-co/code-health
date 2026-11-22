@@ -193,7 +193,7 @@ When you finish, report in this order and keep it short:
 
 - [references/metrics.md](references/metrics.md): how each metric is counted, the default thresholds and every config key.
 - [references/remedies.md](references/remedies.md): the remedies with before and after examples, and the gaming patterns to refuse.
-- [references/hook.md](references/hook.md): the opt-in post-edit hook, what it measures, when it speaks and how to read its state.
+- [references/hook.md](references/hook.md): the opt-in post-edit hook, what it measures, when it prints and how to read its state.
 - [references/outcome.md](references/outcome.md): the `outcome` command, its instruments and how to read them.
 - [references/ci.md](references/ci.md): `check` and `diff` in CI and pre-commit, exit codes, and choosing a base.
 - [references/red-flags.md](references/red-flags.md): the shared design vocabulary.

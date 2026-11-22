@@ -253,7 +253,7 @@ function findingsFor(before, after, thresholds, delta) {
         before: was ?? null,
         after: values[metric],
         overshoot: values[metric] - (limit ?? 0),
-        guideline: limit === void 0 ? "above guideline: a bumpy road" : `guideline ${limit}, ratio ${Math.round(values[metric] / limit * 100) / 100}`
+        guideline: limit === void 0 ? "above guideline: a bumpy road" : limit <= 0 ? `guideline ${limit}` : `guideline ${limit}, ratio ${Math.round(values[metric] / limit * 100) / 100}`
       });
     }
   }
