@@ -750,6 +750,24 @@
             "enabled": false
           }
         },
+        "fixes": {
+          "type": "object",
+          "properties": {
+            "maxCommits": {
+              "type": "number",
+              "default": 500
+            },
+            "evidence": {
+              "type": "number",
+              "default": 3
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "maxCommits": 500,
+            "evidence": 3
+          }
+        },
         "interfaceDepth": {
           "type": "object",
           "properties": {

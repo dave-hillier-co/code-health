@@ -31,7 +31,7 @@ import {
   readSettings,
   runGit,
   structuralValues
-} from "./chunk-BG5YXG6B.mjs";
+} from "./chunk-RRQWOX3J.mjs";
 import {
   buildDocument,
   shapeResults
@@ -57,12 +57,12 @@ __export(analyse_exports, {
 function midRankPercentiles(values) {
   const sorted = [...values].sort((a, b) => a - b);
   const first = /* @__PURE__ */ new Map();
-  const count2 = /* @__PURE__ */ new Map();
+  const count3 = /* @__PURE__ */ new Map();
   sorted.forEach((value, index) => {
     if (!first.has(value)) first.set(value, index);
-    count2.set(value, (count2.get(value) ?? 0) + 1);
+    count3.set(value, (count3.get(value) ?? 0) + 1);
   });
-  return values.map((value) => (first.get(value) + count2.get(value) / 2) / values.length);
+  return values.map((value) => (first.get(value) + count3.get(value) / 2) / values.length);
 }
 
 // packages/history/src/read.ts
@@ -729,11 +729,11 @@ var DEFAULT_WINDOW_MONTHS = historyDefaults.windowMonths;
 var SECONDS_PER_MONTH = 30.4375 * 86400;
 function monthsBefore(anchor, months) {
   const date = new Date(anchor * 1e3);
-  const day2 = date.getUTCDate();
+  const day3 = date.getUTCDate();
   date.setUTCDate(1);
   date.setUTCMonth(date.getUTCMonth() - months);
   const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-  date.setUTCDate(Math.min(day2, lastDay));
+  date.setUTCDate(Math.min(day3, lastDay));
   return Math.floor(date.getTime() / 1e3);
 }
 function median(values) {
@@ -819,13 +819,13 @@ function weightsFromChanges(changes, since, until, months) {
 // packages/history/src/reports.ts
 import { mkdirSync, renameSync as renameSync2, writeFileSync } from "node:fs";
 import { join as join2 } from "node:path";
-function reportPath(root, tool, command8) {
-  return join2(root, ".cache", "code-health", "reports", `${tool}.${command8}.json`);
+function reportPath(root, tool, command9) {
+  return join2(root, ".cache", "code-health", "reports", `${tool}.${command9}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
 }
-async function writeReport(context, identity, command8, output, analysedHead) {
+async function writeReport(context, identity, command9, output, analysedHead) {
   if (context.repo.dirty) {
     skipReport(context, "the working tree has uncommitted changes");
     return false;
@@ -838,7 +838,7 @@ async function writeReport(context, identity, command8, output, analysedHead) {
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
     tool: identity.tool,
-    command: command8,
+    command: command9,
     repo: { head: context.repo.head, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
@@ -846,7 +846,7 @@ async function writeReport(context, identity, command8, output, analysedHead) {
     results,
     truncated
   });
-  const file = reportPath(context.repo.root, identity.tool, command8);
+  const file = reportPath(context.repo.root, identity.tool, command9);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join2(context.repo.root, ".cache", "code-health") });
   mkdirSync(join2(file, ".."), { recursive: true });
@@ -1035,6 +1035,15 @@ async function treeFromRef(repoPath, ref) {
     async read(path) {
       return (await readMany([path])).get(path);
     }
+  };
+}
+function treeFromTexts(texts) {
+  const contents = new Map(Object.entries(texts));
+  const files = sortedMap([...contents].map(([path, text]) => [path, gitBlobSha(Buffer.from(text))]));
+  return {
+    files,
+    read: async (path) => contents.get(path),
+    readMany: async (paths) => new Map(paths.filter((path) => contents.has(path)).map((path) => [path, contents.get(path)]))
   };
 }
 
@@ -1386,12 +1395,12 @@ var Tree = class _Tree {
       throw new TypeError("Argument must be a Tree");
     }
     C._ts_tree_get_changed_ranges_wasm(this[0], other[0]);
-    const count2 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count2);
-    if (count2 > 0) {
+    const result = new Array(count3);
+    if (count3 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count2; i2++) {
+      for (let i2 = 0; i2 < count3; i2++) {
         result[i2] = unmarshalRange(address);
         address += SIZE_OF_RANGE;
       }
@@ -1402,12 +1411,12 @@ var Tree = class _Tree {
   /** Get the included ranges that were used to parse the syntax tree. */
   getIncludedRanges() {
     C._ts_tree_included_ranges_wasm(this[0]);
-    const count2 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count2);
-    if (count2 > 0) {
+    const result = new Array(count3);
+    if (count3 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count2; i2++) {
+      for (let i2 = 0; i2 < count3; i2++) {
         result[i2] = unmarshalRange(address);
         address += SIZE_OF_RANGE;
       }
@@ -1926,12 +1935,12 @@ var Node = class {
   childrenForFieldId(fieldId) {
     marshalNode(this);
     C._ts_node_children_by_field_id_wasm(this.tree[0], fieldId);
-    const count2 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count2);
-    if (count2 > 0) {
+    const result = new Array(count3);
+    if (count3 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count2; i2++) {
+      for (let i2 = 0; i2 < count3; i2++) {
         result[i2] = unmarshalNode(this.tree, address);
         address += SIZE_OF_NODE;
       }
@@ -2003,12 +2012,12 @@ var Node = class {
     if (!this._children) {
       marshalNode(this);
       C._ts_node_children_wasm(this.tree[0]);
-      const count2 = C.getValue(TRANSFER_BUFFER, "i32");
+      const count3 = C.getValue(TRANSFER_BUFFER, "i32");
       const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-      this._children = new Array(count2);
-      if (count2 > 0) {
+      this._children = new Array(count3);
+      if (count3 > 0) {
         let address = buffer;
-        for (let i2 = 0; i2 < count2; i2++) {
+        for (let i2 = 0; i2 < count3; i2++) {
           this._children[i2] = unmarshalNode(this.tree, address);
           address += SIZE_OF_NODE;
         }
@@ -2026,12 +2035,12 @@ var Node = class {
     if (!this._namedChildren) {
       marshalNode(this);
       C._ts_node_named_children_wasm(this.tree[0]);
-      const count2 = C.getValue(TRANSFER_BUFFER, "i32");
+      const count3 = C.getValue(TRANSFER_BUFFER, "i32");
       const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-      this._namedChildren = new Array(count2);
-      if (count2 > 0) {
+      this._namedChildren = new Array(count3);
+      if (count3 > 0) {
         let address = buffer;
-        for (let i2 = 0; i2 < count2; i2++) {
+        for (let i2 = 0; i2 < count3; i2++) {
           this._namedChildren[i2] = unmarshalNode(this.tree, address);
           address += SIZE_OF_NODE;
         }
@@ -2476,12 +2485,12 @@ var Language = class _Language {
    */
   get supertypes() {
     C._ts_language_supertypes_wasm(this[0]);
-    const count2 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count2);
-    if (count2 > 0) {
+    const result = new Array(count3);
+    if (count3 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count2; i2++) {
+      for (let i2 = 0; i2 < count3; i2++) {
         result[i2] = C.getValue(address, "i16");
         address += SIZE_OF_SHORT;
       }
@@ -2493,12 +2502,12 @@ var Language = class _Language {
    */
   subtypes(supertype) {
     C._ts_language_subtypes_wasm(this[0], supertype);
-    const count2 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count2);
-    if (count2 > 0) {
+    const result = new Array(count3);
+    if (count3 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count2; i2++) {
+      for (let i2 = 0; i2 < count3; i2++) {
         result[i2] = C.getValue(address, "i16");
         address += SIZE_OF_SHORT;
       }
@@ -3035,8 +3044,8 @@ async function Module2(moduleArg = {}) {
       } else if (subsectionType === WASM_DYLINK_NEEDED) {
         customSection.neededDynlibs = getStringList();
       } else if (subsectionType === WASM_DYLINK_EXPORT_INFO) {
-        var count2 = getLEB();
-        while (count2--) {
+        var count3 = getLEB();
+        while (count3--) {
           var symname = getString();
           var flags2 = getLEB();
           if (flags2 & WASM_SYMBOL_TLS) {
@@ -3044,8 +3053,8 @@ async function Module2(moduleArg = {}) {
           }
         }
       } else if (subsectionType === WASM_DYLINK_IMPORT_INFO) {
-        var count2 = getLEB();
-        while (count2--) {
+        var count3 = getLEB();
+        while (count3--) {
           var modname = getString();
           var symname = getString();
           var flags2 = getLEB();
@@ -3204,9 +3213,9 @@ async function Module2(moduleArg = {}) {
     }
     return func2;
   }, "getWasmTableEntry");
-  var updateTableMap = /* @__PURE__ */ __name((offset, count2) => {
+  var updateTableMap = /* @__PURE__ */ __name((offset, count3) => {
     if (functionsInTableMap) {
-      for (var i2 = offset; i2 < offset + count2; i2++) {
+      for (var i2 = offset; i2 < offset + count3; i2++) {
         var item = getWasmTableEntry(i2);
         if (item) {
           functionsInTableMap.set(item, i2);
@@ -4381,12 +4390,12 @@ var Parser = class {
   /** Get the ranges of text that the parser will include when parsing. */
   getIncludedRanges() {
     C._ts_parser_included_ranges_wasm(this[0]);
-    const count2 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count2);
-    if (count2 > 0) {
+    const result = new Array(count3);
+    if (count3 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count2; i2++) {
+      for (let i2 = 0; i2 < count3; i2++) {
         result[i2] = unmarshalRange(address);
         address += SIZE_OF_RANGE;
       }
@@ -4962,14 +4971,14 @@ var Query = class {
       matchLimit,
       maxStartDepth
     );
-    const count2 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
     const startAddress = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
     const didExceedMatchLimit = C.getValue(TRANSFER_BUFFER + 2 * SIZE_OF_INT, "i32");
     const result = new Array();
     this.exceededMatchLimit = Boolean(didExceedMatchLimit);
     const captures = new Array();
     let address = startAddress;
-    for (let i2 = 0; i2 < count2; i2++) {
+    for (let i2 = 0; i2 < count3; i2++) {
       const patternIndex = C.getValue(address, "i32");
       address += SIZE_OF_INT;
       const captureCount = C.getValue(address, "i32");
@@ -5139,9 +5148,9 @@ var repairPasses = 4;
 function errorCount(node) {
   if (node.isMissing || node.type === "ERROR") return 1;
   if (!node.hasError) return 0;
-  let count2 = 0;
-  for (const child of node.children) count2 += errorCount(child);
-  return Math.max(count2, 1);
+  let count3 = 0;
+  for (const child of node.children) count3 += errorCount(child);
+  return Math.max(count3, 1);
 }
 function repaired(parser, original, source, repairs) {
   let best = original;
@@ -5225,7 +5234,7 @@ async function measureTree(tree, options) {
     else if (!settings.analyseTests && isTestPath(path)) skippedFiles.tests++;
     else paths.push(path);
   }
-  const grammars = new GrammarSet();
+  const grammars = options.grammars ?? new GrammarSet();
   const stats = { parsed: 0, cached: 0 };
   const files = [];
   for (let start2 = 0; start2 < paths.length; start2 += BATCH) {
@@ -5380,8 +5389,8 @@ function parseLayer(value) {
 }
 function parseMetrics(value, settings) {
   if (value === void 0) return settings.metrics;
-  const names = String(value).split(",").map((name9) => name9.trim());
-  const unknown = names.filter((name9) => !isMetricId(name9));
+  const names = String(value).split(",").map((name10) => name10.trim());
+  const unknown = names.filter((name10) => !isMetricId(name10));
   if (unknown.length > 0) throw usageError(`unknown metric ${unknown.join(", ")}; metrics: ${metricIds.join(", ")}`);
   return metricIds.filter((metric) => names.includes(metric));
 }
@@ -5392,141 +5401,356 @@ async function measureCurrent(context, layer) {
   const measurement = await measureTree(current.tree, { settings, layer, cache });
   return { settings, current, measurement };
 }
-function storeReport(context, command8, output) {
-  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION }, command8, output, context.repo.head);
+function storeReport(context, command9, output) {
+  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION }, command9, output, context.repo.head);
 }
 
-// packages/complexity/src/ranking.ts
-function rankUnits(units, selected, changes) {
-  const ranked = units.map((unit) => ({
-    unit,
-    score: 0,
-    complexityScore: 0,
-    revisions: changes === void 0 ? null : changes.revisions.get(unit.path) ?? 0,
-    changeWeight: changes === void 0 ? null : changes.weights.get(unit.path) ?? 0,
-    dominant: null,
-    percentiles: {}
-  }));
-  const groups = /* @__PURE__ */ new Map();
-  units.forEach((unit, index) => {
-    const key = `${unit.source}|${unit.test}`;
-    const members = groups.get(key);
-    if (members === void 0) groups.set(key, [index]);
-    else members.push(index);
-  });
-  for (const members of groups.values()) {
-    for (const metric of metricIds) {
-      if (!selected.includes(metric)) continue;
-      const having = members.filter((index) => units[index].values[metric] !== void 0);
-      const percentiles = midRankPercentiles(having.map((index) => units[index].values[metric]));
-      having.forEach((index, position) => {
-        const entry = ranked[index];
-        const percentile = percentiles[position];
-        entry.percentiles[metric] = percentile;
-        if (entry.dominant === null || percentile > entry.complexityScore) {
-          entry.complexityScore = percentile;
-          entry.dominant = metric;
-        }
-      });
+// packages/complexity/src/fix-ranges.ts
+var COMMIT_LINE = /^[0-9a-f]{40}$/;
+var HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
+function parseDiffs(output) {
+  const commits = /* @__PURE__ */ new Map();
+  let files;
+  let file;
+  let added = false;
+  for (const line of output.split("\n")) {
+    if (COMMIT_LINE.test(line)) {
+      files = /* @__PURE__ */ new Map();
+      commits.set(line, files);
+      file = void 0;
+    } else if (line.startsWith("diff --git ")) {
+      file = void 0;
+      added = false;
+    } else if (line.startsWith("new file mode")) {
+      added = true;
+    } else if (line.startsWith("+++ ")) {
+      const target = line.slice(4).replace(/\t$/, "");
+      file = void 0;
+      if (files !== void 0 && target.startsWith("b/")) {
+        file = { added, ranges: [] };
+        files.set(target.slice(2), file);
+      }
+    } else if (file !== void 0) {
+      const hunk = HUNK.exec(line);
+      if (hunk !== null) file.ranges.push({ start: Number(hunk[1]), count: hunk[2] === void 0 ? 1 : Number(hunk[2]) });
     }
   }
-  for (const entry of ranked) entry.score = entry.changeWeight === null ? entry.complexityScore : entry.complexityScore * entry.changeWeight;
-  return ranked;
+  return commits;
+}
+function interval(range) {
+  return range.count === 0 ? { from: range.start, to: range.start + 1 } : { from: range.start, to: range.start + range.count - 1 };
+}
+function without(span, taken) {
+  let rest = [span];
+  for (const cut of taken) {
+    rest = rest.flatMap((part) => {
+      if (cut.to < part.from || cut.from > part.to) return [part];
+      const pieces = [];
+      if (cut.from > part.from) pieces.push({ from: part.from, to: cut.from - 1 });
+      if (cut.to < part.to) pieces.push({ from: cut.to + 1, to: part.to });
+      return pieces;
+    });
+  }
+  return rest;
+}
+function touchedUnits(units, ranges) {
+  const touched = /* @__PURE__ */ new Set();
+  let outsideUnits = false;
+  const spans = units.map((unit) => ({ unit, from: unit.startLine, to: unit.endLine }));
+  for (const range of ranges) {
+    const changed = interval(range);
+    const inside = spans.filter((span) => range.count === 0 ? span.from <= changed.from && changed.to <= span.to : span.from <= changed.to && changed.from <= span.to);
+    for (const span of inside) {
+      const nested = inside.filter((other) => other !== span && span.from <= other.from && other.to <= span.to && (span.from < other.from || other.to < span.to));
+      const own = without({ from: Math.max(span.from, changed.from), to: Math.min(span.to, changed.to) }, nested);
+      if (own.length > 0) touched.add(span.unit.id);
+    }
+    const outside = range.count === 0 ? inside.length === 0 : without(changed, inside.map((span) => ({ from: span.from, to: span.to }))).length > 0;
+    if (outside) outsideUnits = true;
+  }
+  return { units: touched, outsideUnits };
 }
 
-// packages/complexity/src/rules.ts
-var ruleDescriptions = {
-  cognitive: {
-    summary: "Cognitive complexity: how hard a function is to read",
-    explanation: [
-      "Follows the SonarSource cognitive complexity specification. Each break in linear flow costs 1:",
-      "if, ternary, switch, loops and catch, plus the nesting level they sit at. else if, else, a labelled",
-      "break or continue, direct recursion and each sequence of like && or || operators cost a flat 1.",
-      "?? and ?. are free. Nested functions add to the enclosing function's score.",
-      "Labels: cognitive-warn above the guideline guidelines.cognitive.warn (default 15), cognitive-high above high (25).",
-      "Run `complexity explain path#Unit` to see which construct cost what."
-    ].join("\n")
-  },
-  cyclomatic: {
-    summary: "Cyclomatic complexity: independent paths through a function",
-    explanation: [
-      "1 plus decision points: if, else if, loops, each case (or one per switch when cyclomaticSwitch is modified),",
-      "catch, the ternary, and && || ?? (also as &&= ||= ??=). Optional chaining is not counted.",
-      "It bounds the number of test paths, so it measures testability more than readability.",
-      "Labels: cyclomatic-warn above 10, cyclomatic-high above 20 by default."
-    ].join("\n")
-  },
-  nesting: {
-    summary: "Nesting depth of control structures",
-    explanation: [
-      "The deepest nesting of if, loop, switch and try statements in the function. An else if sits at the level of its if.",
-      "Label: nesting-warn above the guideline guidelines.nesting (default 4)."
-    ].join("\n")
-  },
-  parameters: {
-    summary: "Parameter count",
-    explanation: [
-      "Declared parameters. A destructured object parameter counts once, with its properties reported as optionCount,",
-      "since option bags are a common route to overexposure.",
-      "Label: parameters-warn above the guideline guidelines.parameters (default 5)."
-    ].join("\n")
-  },
-  length: {
-    summary: "Lines of code in a function",
-    explanation: [
-      "Lines holding code, with blank lines and comments left out. It is reported and ranked but never labelled or gated:",
-      "a long, linear function is often clearer than five shallow fragments."
-    ].join("\n")
-  },
-  "bumpy-road": {
-    summary: "Several separate chunks of nested logic in one function",
-    explanation: [
-      "Each bump is a separate region of nested logic directly in the function: the body of each branch of an if chain, of a loop, or a whole",
-      "switch or try. Structures inside a bump belong to it, and a body that fits on the line that opens it is not one. The lexical layer",
-      "measures the same thing as a run of lines nested two levels or more below the function, opened by a branch keyword.",
-      "A function is a bumpy road at guidelines.bumps bumps (default 3), or guidelines.deepBumps (default 2) when its deepest bump is deeper than guidelines.nesting.",
-      "Each bump is a responsibility that has not been named. Simplify each in place first, with guard clauses or by flattening.",
-      "Extract a bump only when it is a distinct responsibility, as a deep, well-named local function."
-    ].join("\n")
-  },
-  new: {
-    summary: "check: a new function above a guideline",
-    explanation: [
-      "`complexity check` exits with 1 when a function that did not exist at the base revision is above a guideline.",
-      "A function that was renamed or moved is matched to the old one by body similarity (complexity.moveSimilarity),",
-      "so it is new only when no old function resembles it."
-    ].join("\n")
-  },
-  worsened: {
-    summary: "check: an existing function above a guideline that got worse",
-    explanation: [
-      "`complexity check` exits with 1 when a function that existed at the base revision is above a guideline on a metric",
-      "and that metric rose by more than complexity.delta (default 0) since. A function that stays under its",
-      "guidelines never does, and neither does one that is above a guideline and did not get worse."
-    ].join("\n")
-  },
-  shallow: {
-    summary: "Shallow module: an exported unit whose interface is large for what it hides",
-    explanation: [
-      "Depth is the unit's implementation size in syntax nodes divided by its interface size. For a function the interface is",
-      "its parameters (at least 1), for a class its constructor parameters plus the members a user can reach (private and # members",
-      "excluded), for a module the names it exports. A unit is labelled shallow when it is exported, is not a method, and has fewer",
-      "than interfaceDepth.shallow nodes (default 10) per interface element.",
-      "A shallow unit is a candidate for review, not a defect: a small helper with one use is often right. Prefer deepening, by moving the",
-      "decision it should hide inside it, over merging for the number. Never gate on it."
-    ].join("\n")
-  },
-  "pass-through": {
-    summary: "Pass-through: a function whose whole body forwards to one call",
-    explanation: [
-      "The body is one statement that is a call (a return, an await and a type assertion do not count as work), and every argument is a",
-      "parameter of the function, a spread of one, or a literal. The function adds nothing between its caller and the callee, so the",
-      "two interfaces repeat each other. A call with a computed argument, a new, or several statements is the function doing work.",
-      "Remedies: let callers use the callee, or move the behaviour that justified the layer into it. A function that exists to satisfy a",
-      "dependency boundary, or to give a stable name to a changing callee, may be right to keep. Judge it before removing it."
-    ].join("\n")
+// packages/complexity/src/match-units.ts
+function bodiesOf(files) {
+  const bodies = [];
+  for (const file of files) {
+    const lines = (file.text ?? "").split("\n");
+    for (const unit of file.units) {
+      const text = lines.slice(unit.startLine - 1, unit.endLine).join("\n").replace(/\s+/g, " ").trim();
+      const tokens = /* @__PURE__ */ new Map();
+      let size = 0;
+      for (const token of text.match(/[A-Za-z_$][\w$]*|\d+(?:\.\d+)?|"[^"]*"|'[^']*'|`[^`]*`|\S/g) ?? []) {
+        tokens.set(token, (tokens.get(token) ?? 0) + 1);
+        size++;
+      }
+      bodies.push({ unit, text, tokens, size });
+    }
   }
-};
+  return bodies;
+}
+function similarity(a, b) {
+  if (a.size === 0 && b.size === 0) return 1;
+  let shared = 0;
+  for (const [token, count3] of a.tokens) shared += Math.min(count3, b.tokens.get(token) ?? 0);
+  return shared / (a.size + b.size - shared);
+}
+function matchUnits(before, after, threshold) {
+  const oldBodies = new Map(bodiesOf(before).map((body2) => [body2.unit.id, body2]));
+  const newBodies = new Map(bodiesOf(after).map((body2) => [body2.unit.id, body2]));
+  const matches = [];
+  for (const [id, current] of newBodies) {
+    const previous = oldBodies.get(id);
+    if (previous === void 0) continue;
+    matches.push({ before: previous.unit, after: current.unit, moved: false, changed: previous.text !== current.text });
+    oldBodies.delete(id);
+    newBodies.delete(id);
+  }
+  const candidates = [];
+  for (const from of oldBodies.values()) {
+    for (const to of newBodies.values()) {
+      if (Math.min(from.size, to.size) < threshold * Math.max(from.size, to.size)) continue;
+      const score = similarity(from, to);
+      if (score >= threshold) candidates.push({ from, to, score });
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score || compare(a.from.unit.id, b.from.unit.id) || compare(a.to.unit.id, b.to.unit.id));
+  for (const { from, to } of candidates) {
+    if (!oldBodies.has(from.unit.id) || !newBodies.has(to.unit.id)) continue;
+    matches.push({ before: from.unit, after: to.unit, moved: true, changed: from.text !== to.text });
+    oldBodies.delete(from.unit.id);
+    newBodies.delete(to.unit.id);
+  }
+  for (const body2 of newBodies.values()) matches.push({ before: void 0, after: body2.unit, moved: false, changed: true });
+  for (const body2 of oldBodies.values()) matches.push({ before: body2.unit, after: void 0, moved: false, changed: true });
+  return matches.sort((a, b) => compare((a.after ?? a.before).id, (b.after ?? b.before).id));
+}
+function compare(a, b) {
+  return Buffer.compare(Buffer.from(a), Buffer.from(b));
+}
+
+// packages/complexity/src/fix-statistics.ts
+var SECONDARY_LIST_LIMIT = 10;
+var DIFF_BATCH = 200;
+var round3 = (value) => Math.round(value * 1e3) / 1e3;
+var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+var utf8 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
+function byFixes(a, b) {
+  return b.fixCommits - a.fixCommits || (b.fixShare ?? 0) - (a.fixShare ?? 0) || utf8(a.id, b.id);
+}
+function followUnits(earlier, earlierUnits, later, laterUnits, threshold) {
+  const original = /* @__PURE__ */ new Map();
+  const moved = earlierUnits.map((unit) => {
+    const relocated = { ...unit, path: later.path, id: `${later.path}${unit.id.slice(earlier.path.length)}` };
+    original.set(relocated.id, unit);
+    return relocated;
+  });
+  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold);
+  return matches.flatMap((match) => match.before === void 0 ? [] : [{ before: original.get(match.before.id), after: match.after }]);
+}
+async function diffsOf(root, shas) {
+  const diffs = /* @__PURE__ */ new Map();
+  for (let start2 = 0; start2 < shas.length; start2 += DIFF_BATCH) {
+    const input = `${shas.slice(start2, start2 + DIFF_BATCH).join("\n")}
+`;
+    const out2 = await runGit(root, ["-c", "core.quotePath=false", "diff-tree", "--stdin", "-p", "-U0", "-M", "--no-color", "--no-ext-diff", "--root", "-r"], { input });
+    for (const [sha, files] of parseDiffs(out2)) diffs.set(sha, files);
+  }
+  return diffs;
+}
+async function measureFixes(root, settings, exclude, current, request) {
+  await refresh(root, { ref: "HEAD" });
+  const history = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize } });
+  const shallow = (await readShallowInfo(root)).isShallow;
+  const until = history.view.headDate;
+  const since = monthsBefore(until, settings.windowMonths);
+  const window2 = { months: settings.windowMonths, since, until };
+  const inWindow2 = history.filtered.changes.filter((change) => change.committerDate >= since && change.committerDate <= until);
+  const messages = new Map(history.view.commits.map((commit) => [commit.sha, commit.message]));
+  const commitBySha = new Map(history.view.commits.map((commit) => [commit.sha, commit]));
+  const fixOf = /* @__PURE__ */ new Map();
+  for (const change of inWindow2) {
+    let found = null;
+    for (const sha of change.shas) {
+      found = findFix(settings.fix, sha, [messages.get(sha) ?? ""]);
+      if (found !== null) break;
+    }
+    fixOf.set(change.id, found);
+  }
+  const convention = checkFixConvention(inWindow2.length, [...fixOf.values()].filter((found) => found !== null).length);
+  const selected = pathSelector(request.paths);
+  const analysable = (path) => adapterForPath(path) !== void 0 && !settings.isExcluded(path) && (settings.analyseTests || !isTestPath(path));
+  const sourceFiles = (change) => change.files.filter((file) => selected(file.fileId) && analysable(file.path));
+  const relevant = inWindow2.filter((change) => change.files.some((file) => selected(file.fileId)));
+  const commits = { inWindow: relevant.reduce((sum, change) => sum + change.shas.length, 0), analysed: 0, skipped: 0, skippedBy: { maxCommits: 0, oversized: 0, noSourceFile: 0 } };
+  const analysed = [];
+  for (const change of [...relevant].sort((a, b) => b.committerDate - a.committerDate || utf8(a.id, b.id))) {
+    if (change.oversized) commits.skippedBy.oversized += change.shas.length;
+    else if (sourceFiles(change).length === 0) commits.skippedBy.noSourceFile += change.shas.length;
+    else if (commits.analysed > 0 && commits.analysed + change.shas.length > request.maxCommits) commits.skippedBy.maxCommits += change.shas.length;
+    else {
+      commits.analysed += change.shas.length;
+      analysed.push(change);
+    }
+  }
+  commits.skipped = commits.skippedBy.maxCommits + commits.skippedBy.oversized + commits.skippedBy.noSourceFile;
+  const diffs = await diffsOf(root, analysed.flatMap((change) => change.shas));
+  const touches = [];
+  for (const change of analysed) {
+    const fileIds2 = new Set(sourceFiles(change).map((file) => file.fileId));
+    for (const sha of change.shas) {
+      for (const file of commitBySha.get(sha)?.changes ?? []) {
+        if (file.status === "D" || file.binary || file.blob === null || !fileIds2.has(file.fileId)) continue;
+        const diff = diffs.get(sha)?.get(file.path);
+        const added = file.status === "A" || diff?.added === true;
+        if (!added && (diff === void 0 || diff.ranges.length === 0)) continue;
+        touches.push({ changeId: change.id, fileId: file.fileId, path: file.path, blob: file.blob, added, ranges: diff?.ranges ?? [] });
+      }
+    }
+  }
+  const grammars = new GrammarSet();
+  const cache = await ParseCache.forRepository(root);
+  const cacheStats = { parsed: 0, cached: 0 };
+  const skipped = { binary: 0, large: 0, excluded: 0, tests: 0, noAdapter: 0 };
+  const measureOptions = { settings, layer: "structural", cache, keepText: true, grammars };
+  const fileIds = [...new Set(touches.map((touch) => touch.fileId))].sort(utf8);
+  const currentMeasure = await measureTree(restrictTree(current, fileIds), measureOptions);
+  cacheStats.parsed += currentMeasure.stats.parsed;
+  cacheStats.cached += currentMeasure.stats.cached;
+  const currentFiles = new Map(currentMeasure.files.map((file) => [file.path, file]));
+  const currentUnits = new Map(currentMeasure.files.flatMap((file) => file.units).map((unit) => [unit.id, unit]));
+  const pairKey = (path, blob) => `${path}\0${blob}`;
+  const blobsByPath = /* @__PURE__ */ new Map();
+  const touchesByPair = /* @__PURE__ */ new Map();
+  const latestPair = /* @__PURE__ */ new Map();
+  const fileOfPair = /* @__PURE__ */ new Map();
+  for (const touch of touches) {
+    const blobs = blobsByPath.get(touch.path) ?? [];
+    if (!blobs.includes(touch.blob)) blobs.push(touch.blob);
+    blobsByPath.set(touch.path, blobs);
+    const key = pairKey(touch.path, touch.blob);
+    touchesByPair.set(key, [...touchesByPair.get(key) ?? [], touch]);
+    if (!latestPair.has(touch.fileId)) latestPair.set(touch.fileId, key);
+    fileOfPair.set(key, touch.fileId);
+  }
+  const mapping = /* @__PURE__ */ new Map();
+  const retained = /* @__PURE__ */ new Map();
+  const unitTouches = [];
+  const outsideTouches = [];
+  let analysedFiles = 0;
+  const layers = Math.max(0, ...[...blobsByPath.values()].map((blobs) => blobs.length));
+  for (let layer = 0; layer < layers; layer++) {
+    const wanted = [...blobsByPath].flatMap(([path, blobs]) => blobs[layer] === void 0 ? [] : [{ path, blob: blobs[layer] }]);
+    const texts = await readBlobs(root, wanted.map((entry) => entry.blob));
+    const tree = treeFromTexts(Object.fromEntries(wanted.flatMap((entry) => texts.has(entry.blob) ? [[entry.path, texts.get(entry.blob)]] : [])));
+    const measurement = await measureTree(tree, measureOptions);
+    cacheStats.parsed += measurement.stats.parsed;
+    cacheStats.cached += measurement.stats.cached;
+    for (const reason of ["binary", "large", "excluded", "tests"]) skipped[reason] += measurement.skippedFiles[reason];
+    const records = new Map(measurement.files.map((file) => [file.path, file]));
+    for (const { path, blob } of wanted) {
+      const record = records.get(path);
+      if (record === void 0) continue;
+      const key = pairKey(path, blob);
+      const pairTouches = touchesByPair.get(key) ?? [];
+      if (record.source === null) {
+        skipped.noAdapter += pairTouches.length;
+        continue;
+      }
+      analysedFiles += pairTouches.length;
+      const fileId = fileOfPair.get(key);
+      const target = currentFiles.get(fileId);
+      const map = /* @__PURE__ */ new Map();
+      const unmatched = [];
+      if (target === void 0) unmatched.push(...record.units);
+      else {
+        for (const { before, after } of followUnits(record, record.units, target, target.units, settings.moveSimilarity)) {
+          if (after === void 0) unmatched.push(before);
+          else map.set(before.id, `c:${after.id}`);
+        }
+      }
+      mapping.set(key, map);
+      if (unmatched.length > 0) retained.set(key, { record, unmatched });
+      for (const touch of pairTouches) {
+        if (touch.added) {
+          for (const unit of record.units) unitTouches.push({ key, unitId: unit.id, changeId: touch.changeId, fix: false });
+          continue;
+        }
+        const fix = fixOf.get(touch.changeId) !== null;
+        const hit = touchedUnits(record.units, touch.ranges);
+        for (const unitId of hit.units) unitTouches.push({ key, unitId, changeId: touch.changeId, fix });
+        if (hit.outsideUnits) outsideTouches.push({ fileId, changeId: touch.changeId, fix });
+      }
+    }
+  }
+  for (const [key, entry] of retained) {
+    const latest = latestPair.get(fileOfPair.get(key));
+    const later = latest === void 0 || latest === key ? void 0 : retained.get(latest);
+    if (later === void 0) continue;
+    const map = mapping.get(key);
+    for (const { before, after } of followUnits(entry.record, entry.unmatched, later.record, later.unmatched, settings.moveSimilarity)) {
+      if (after !== void 0) map.set(before.id, `d:${after.id}`);
+    }
+  }
+  const aggregates = /* @__PURE__ */ new Map();
+  for (const touch of unitTouches) {
+    const key = mapping.get(touch.key)?.get(touch.unitId) ?? `d:${touch.unitId}`;
+    const entry = aggregates.get(key) ?? { changes: /* @__PURE__ */ new Set(), fixes: /* @__PURE__ */ new Set(), ids: /* @__PURE__ */ new Set() };
+    aggregates.set(key, entry);
+    entry.changes.add(touch.changeId);
+    if (touch.fix) entry.fixes.add(touch.changeId);
+    entry.ids.add(touch.unitId);
+  }
+  const changeById = new Map(analysed.map((change) => [change.id, change]));
+  const build = (key, entry) => {
+    const id = key.slice(2);
+    const newestFirst = [...entry.fixes].sort((a, b) => changeById.get(b).committerDate - changeById.get(a).committerDate || utf8(a, b));
+    const kept = fixEvidence(newestFirst.map((changeId) => fixOf.get(changeId)), request.evidence);
+    const dateOf = new Map(newestFirst.map((changeId) => [fixOf.get(changeId).id, changeById.get(changeId).committerDate]));
+    const unit = key.startsWith("c:") ? currentUnits.get(id) : void 0;
+    return {
+      id,
+      path: unit?.path ?? id.slice(0, id.indexOf("#")),
+      current: unit,
+      fixCommits: entry.fixes.size,
+      revisions: entry.changes.size,
+      fixShare: entry.changes.size === 0 ? null : round3(entry.fixes.size / entry.changes.size),
+      evidence: kept.commits.map((match) => ({ sha: match.id, date: day(dateOf.get(match.id)), subject: match.subject, pattern: match.pattern, matchedIn: match.matchedIn })),
+      evidenceOmitted: kept.omitted,
+      earlierIds: [...entry.ids].filter((earlier) => earlier !== id).sort(utf8)
+    };
+  };
+  const units = /* @__PURE__ */ new Map();
+  const deleted = [];
+  for (const [key, entry] of aggregates) {
+    const row = build(key, entry);
+    if (key.startsWith("c:")) units.set(row.id, row);
+    else deleted.push(row);
+  }
+  deleted.sort(byFixes);
+  const outsideByFile = /* @__PURE__ */ new Map();
+  for (const touch of outsideTouches) {
+    const entry = outsideByFile.get(touch.fileId) ?? { changes: /* @__PURE__ */ new Set(), fixes: /* @__PURE__ */ new Set() };
+    outsideByFile.set(touch.fileId, entry);
+    entry.changes.add(touch.changeId);
+    if (touch.fix) entry.fixes.add(touch.changeId);
+  }
+  const outsideFiles = [...outsideByFile].map(([path, entry]) => ({ path, fixCommits: entry.fixes.size, revisions: entry.changes.size })).filter((file) => file.fixCommits > 0).sort((a, b) => b.fixCommits - a.fixCommits || utf8(a.path, b.path));
+  const all = [...units.values(), ...deleted];
+  return {
+    window: window2,
+    convention,
+    shallow,
+    commits,
+    files: { analysed: analysedFiles, skipped },
+    cache: cacheStats,
+    units,
+    deleted,
+    outside: { fixCommits: outsideFiles.reduce((sum, file) => sum + file.fixCommits, 0), files: outsideFiles },
+    unitsTouched: all.length,
+    unitsWithFixes: all.filter((unit) => unit.fixCommits > 0).length
+  };
+}
 
 // packages/complexity/src/interface-depth.ts
 var round = (value, places) => Math.round(value * 10 ** places) / 10 ** places;
@@ -5683,15 +5907,261 @@ function fileRow(file, settings) {
   };
 }
 
+// packages/complexity/src/fix-report.ts
+var fixOptions = { "max-commits": { type: "string" }, evidence: { type: "string" } };
+var fixOptionHelp = {
+  "max-commits": "most commits of the history window to analyse, newest first (default complexity.fixes.maxCommits, 500); the output says how many were left out",
+  evidence: "fix commits listed per function (default complexity.fixes.evidence, 3); the output says how many were left out"
+};
+function count(value, option, min, fallback) {
+  if (value === void 0) return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min) throw usageError(`--${option} must be an integer of at least ${min}, got "${String(value)}"`);
+  return parsed;
+}
+function parseFixOptions(values, settings) {
+  return {
+    maxCommits: count(values["max-commits"], "max-commits", 1, settings.fixes.maxCommits),
+    evidence: count(values.evidence, "evidence", 0, settings.fixes.evidence)
+  };
+}
+var iso = (seconds) => new Date(seconds * 1e3).toISOString();
+function fixFigures(fixes) {
+  return {
+    fixCommits: fixes?.fixCommits ?? 0,
+    unitRevisions: fixes?.revisions ?? 0,
+    fixShare: fixes?.fixShare ?? null
+  };
+}
+function fixRow(fixes) {
+  const unit = fixes.current;
+  return {
+    path: fixes.path,
+    unit: unit === void 0 ? fixes.id.slice(fixes.id.indexOf("#") + 1) : unitName(unit),
+    id: fixes.id,
+    ...unit === void 0 ? {} : { kind: unit.kind, startLine: unit.startLine, endLine: unit.endLine },
+    score: fixes.fixCommits + (fixes.fixShare ?? 0),
+    ...fixFigures(fixes),
+    cognitive: unit?.values.cognitive ?? null,
+    evidence: fixes.evidence,
+    evidenceOmitted: fixes.evidenceOmitted,
+    earlierIds: fixes.earlierIds
+  };
+}
+function fixHeader(stats, request) {
+  const deleted = stats.deleted.filter((unit) => unit.fixCommits > 0);
+  return {
+    window: { months: stats.window.months, since: iso(stats.window.since), until: iso(stats.window.until) },
+    shallow: stats.shallow,
+    fixConvention: stats.convention,
+    commits: { ...stats.commits, maxCommits: request.maxCommits },
+    files: stats.files,
+    cache: stats.cache,
+    summary: {
+      unitsTouched: stats.unitsTouched,
+      unitsWithFixes: stats.unitsWithFixes,
+      currentUnitsWithFixes: [...stats.units.values()].filter((unit) => unit.fixCommits > 0).length
+    },
+    deleted: {
+      units: stats.deleted.length,
+      withFixes: deleted.length,
+      limit: SECONDARY_LIST_LIMIT,
+      omitted: Math.max(0, deleted.length - SECONDARY_LIST_LIMIT),
+      rows: deleted.slice(0, SECONDARY_LIST_LIMIT).map(fixRow)
+    },
+    outsideUnits: {
+      fixCommits: stats.outside.fixCommits,
+      files: stats.outside.files.length,
+      limit: SECONDARY_LIST_LIMIT,
+      omitted: Math.max(0, stats.outside.files.length - SECONDARY_LIST_LIMIT),
+      rows: stats.outside.files.slice(0, SECONDARY_LIST_LIMIT)
+    }
+  };
+}
+function fixNotices(stats, request) {
+  const { commits, window: window2 } = stats;
+  const deletedWithFixes = stats.deleted.filter((unit) => unit.fixCommits > 0).length;
+  const notices = [
+    `Analysed ${commits.analysed} of ${commits.inWindow} commits in the ${window2.months} month window and skipped ${commits.skipped}: ${commits.skippedBy.maxCommits} over --max-commits ${request.maxCommits}, ${commits.skippedBy.oversized} in oversized changes, ${commits.skippedBy.noSourceFile} touching no source file`,
+    `${stats.unitsWithFixes} of the ${stats.unitsTouched} functions touched in the window have a fix, ${deletedWithFixes} of them since deleted; ${stats.outside.fixCommits} fixes changed lines outside any function. The deleted functions and those files are listed in the JSON output`
+  ];
+  if (stats.convention.note !== null) notices.unshift(stats.convention.note.replace(/\.$/, ""));
+  if (stats.shallow) notices.push("The clone is shallow, so history before its boundary is missing");
+  return notices;
+}
+async function measureFixesFor(context, settings, current) {
+  const paths = normalisePaths(context.positionals);
+  const request = parseFixOptions(context.values, settings);
+  const stats = await measureFixes(context.repo.root, settings, context.config.effective.exclude, current.tree, { paths, ...request });
+  return { stats, request, paths };
+}
+
+// packages/complexity/src/ranking.ts
+function rankUnits(units, selected, changes) {
+  const ranked = units.map((unit) => ({
+    unit,
+    score: 0,
+    complexityScore: 0,
+    revisions: changes === void 0 ? null : changes.revisions.get(unit.path) ?? 0,
+    changeWeight: changes === void 0 ? null : changes.weights.get(unit.path) ?? 0,
+    dominant: null,
+    percentiles: {}
+  }));
+  const groups = /* @__PURE__ */ new Map();
+  units.forEach((unit, index) => {
+    const key = `${unit.source}|${unit.test}`;
+    const members = groups.get(key);
+    if (members === void 0) groups.set(key, [index]);
+    else members.push(index);
+  });
+  for (const members of groups.values()) {
+    for (const metric of metricIds) {
+      if (!selected.includes(metric)) continue;
+      const having = members.filter((index) => units[index].values[metric] !== void 0);
+      const percentiles = midRankPercentiles(having.map((index) => units[index].values[metric]));
+      having.forEach((index, position) => {
+        const entry = ranked[index];
+        const percentile = percentiles[position];
+        entry.percentiles[metric] = percentile;
+        if (entry.dominant === null || percentile > entry.complexityScore) {
+          entry.complexityScore = percentile;
+          entry.dominant = metric;
+        }
+      });
+    }
+  }
+  for (const entry of ranked) entry.score = entry.changeWeight === null ? entry.complexityScore : entry.complexityScore * entry.changeWeight;
+  return ranked;
+}
+
+// packages/complexity/src/rules.ts
+var ruleDescriptions = {
+  cognitive: {
+    summary: "Cognitive complexity: how hard a function is to read",
+    explanation: [
+      "Follows the SonarSource cognitive complexity specification. Each break in linear flow costs 1:",
+      "if, ternary, switch, loops and catch, plus the nesting level they sit at. else if, else, a labelled",
+      "break or continue, direct recursion and each sequence of like && or || operators cost a flat 1.",
+      "?? and ?. are free. Nested functions add to the enclosing function's score.",
+      "Labels: cognitive-warn above the guideline guidelines.cognitive.warn (default 15), cognitive-high above high (25).",
+      "Run `complexity explain path#Unit` to see which construct cost what."
+    ].join("\n")
+  },
+  cyclomatic: {
+    summary: "Cyclomatic complexity: independent paths through a function",
+    explanation: [
+      "1 plus decision points: if, else if, loops, each case (or one per switch when cyclomaticSwitch is modified),",
+      "catch, the ternary, and && || ?? (also as &&= ||= ??=). Optional chaining is not counted.",
+      "It bounds the number of test paths, so it measures testability more than readability.",
+      "Labels: cyclomatic-warn above 10, cyclomatic-high above 20 by default."
+    ].join("\n")
+  },
+  nesting: {
+    summary: "Nesting depth of control structures",
+    explanation: [
+      "The deepest nesting of if, loop, switch and try statements in the function. An else if sits at the level of its if.",
+      "Label: nesting-warn above the guideline guidelines.nesting (default 4)."
+    ].join("\n")
+  },
+  parameters: {
+    summary: "Parameter count",
+    explanation: [
+      "Declared parameters. A destructured object parameter counts once, with its properties reported as optionCount,",
+      "since option bags are a common route to overexposure.",
+      "Label: parameters-warn above the guideline guidelines.parameters (default 5)."
+    ].join("\n")
+  },
+  length: {
+    summary: "Lines of code in a function",
+    explanation: [
+      "Lines holding code, with blank lines and comments left out. It is reported and ranked but never labelled or gated:",
+      "a long, linear function is often clearer than five shallow fragments."
+    ].join("\n")
+  },
+  "bumpy-road": {
+    summary: "Several separate chunks of nested logic in one function",
+    explanation: [
+      "Each bump is a separate region of nested logic directly in the function: the body of each branch of an if chain, of a loop, or a whole",
+      "switch or try. Structures inside a bump belong to it, and a body that fits on the line that opens it is not one. The lexical layer",
+      "measures the same thing as a run of lines nested two levels or more below the function, opened by a branch keyword.",
+      "A function is a bumpy road at guidelines.bumps bumps (default 3), or guidelines.deepBumps (default 2) when its deepest bump is deeper than guidelines.nesting.",
+      "Each bump is a responsibility that has not been named. Simplify each in place first, with guard clauses or by flattening.",
+      "Extract a bump only when it is a distinct responsibility, as a deep, well-named local function."
+    ].join("\n")
+  },
+  new: {
+    summary: "check: a new function above a guideline",
+    explanation: [
+      "`complexity check` exits with 1 when a function that did not exist at the base revision is above a guideline.",
+      "A function that was renamed or moved is matched to the old one by body similarity (complexity.moveSimilarity),",
+      "so it is new only when no old function resembles it."
+    ].join("\n")
+  },
+  worsened: {
+    summary: "check: an existing function above a guideline that got worse",
+    explanation: [
+      "`complexity check` exits with 1 when a function that existed at the base revision is above a guideline on a metric",
+      "and that metric rose by more than complexity.delta (default 0) since. A function that stays under its",
+      "guidelines never does, and neither does one that is above a guideline and did not get worse."
+    ].join("\n")
+  },
+  shallow: {
+    summary: "Shallow module: an exported unit whose interface is large for what it hides",
+    explanation: [
+      "Depth is the unit's implementation size in syntax nodes divided by its interface size. For a function the interface is",
+      "its parameters (at least 1), for a class its constructor parameters plus the members a user can reach (private and # members",
+      "excluded), for a module the names it exports. A unit is labelled shallow when it is exported, is not a method, and has fewer",
+      "than interfaceDepth.shallow nodes (default 10) per interface element.",
+      "A shallow unit is a candidate for review, not a defect: a small helper with one use is often right. Prefer deepening, by moving the",
+      "decision it should hide inside it, over merging for the number. Never gate on it."
+    ].join("\n")
+  },
+  "pass-through": {
+    summary: "Pass-through: a function whose whole body forwards to one call",
+    explanation: [
+      "The body is one statement that is a call (a return, an await and a type assertion do not count as work), and every argument is a",
+      "parameter of the function, a spread of one, or a literal. The function adds nothing between its caller and the callee, so the",
+      "two interfaces repeat each other. A call with a computed argument, a new, or several statements is the function doing work.",
+      "Remedies: let callers use the callee, or move the behaviour that justified the layer into it. A function that exists to satisfy a",
+      "dependency boundary, or to give a stable name to a changing callee, may be right to keep. Judge it before removing it."
+    ].join("\n")
+  },
+  fixes: {
+    summary: "Fix commits per function: which functions the bug fixes of the history window changed",
+    explanation: [
+      "`complexity fixes` takes each logical change of the history window (history.windowMonths) that touched a source file, and maps the lines it",
+      "changed in the new revision (git diff -U0 against the first parent) onto the functions and methods that contain them. A function",
+      "nested in another owns its own lines. A deletion counts for the function that holds the lines either side of it. Each function is then",
+      "followed forward to the current revision with the same matcher as `check` (complexity.moveSimilarity), so a renamed or moved function keeps",
+      "its history, and a file renamed in git keeps the history of its functions. A function that no longer exists is listed apart, with its count.",
+      "A change is a fix when a commit message matches the shared definition: history.fixPatterns, revertPatterns and fixMatchBody. A change that is",
+      "a revert is not a fix. Each row lists the commits that matched, with the pattern, newest first, up to --evidence.",
+      "fixCommits is the changes that were fixes, unitRevisions is every change that touched the function, and fixShare is the first over the second.",
+      "Rows are sorted by fixCommits, then fixShare. A function in a commit that created its file counts as one revision and never as a fix.",
+      "A fix that changed only lines outside every function counts against the file, not a function, and is listed per file in the output.",
+      "Read the header first. fixConvention says whether the repository's messages follow a convention these patterns can use: when it says they",
+      "probably do not, the counts are of the commits the patterns happened to match. The header also says how many commits were analysed and how many",
+      "were skipped, by cause. --max-commits analyses the newest commits first and skips the rest, and says so. It costs a parse of every historical",
+      "revision of the files touched, which is cached by blob, so a rerun parses nothing it has parsed before.",
+      "Limits: a function moved to another file is matched only when its file was renamed, not across files. The counts are guidelines for where to look,",
+      "not a ranking of defects: a function that changes often because it is the extension point has many fixes too."
+    ].join("\n")
+  }
+};
+
 // packages/complexity/src/commands/analyse.ts
 var name2 = "analyse";
 var rules = ruleDescriptions;
 function isPartial(context) {
-  return context.positionals.length > 0 || context.values.metrics !== void 0 || context.values.layer !== void 0;
+  return context.positionals.length > 0 || context.values.metrics !== void 0 || context.values.layer !== void 0 || context.values["with-fixes"] === true;
 }
 var command = {
   summary: "Rank the functions that are hardest to understand, with all selected metrics, percentiles and labels",
-  options: { ...metricsOption, ...layerOption },
+  options: { ...metricsOption, ...layerOption, "with-fixes": { type: "boolean" }, ...fixOptions },
+  optionHelp: {
+    "with-fixes": "add fixCommits, unitRevisions and fixShare per function from the history window (see `complexity fixes`); costs a parse of the historical revisions",
+    ...fixOptionHelp
+  },
   async run(context) {
     const layer = parseLayer(context.values.layer);
     const { settings, current, measurement } = await measureCurrent(context, layer);
@@ -5700,7 +6170,10 @@ var command = {
     const inPaths = pathSelector(paths);
     const changes = settings.changeWeighting ? await readChangeWeights(context, settings) : void 0;
     const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected, changes);
-    const rows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
+    const unitRows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
+    const withFixes = context.values["with-fixes"] === true;
+    const fixes = withFixes ? await measureFixesFor(context, settings, current) : void 0;
+    const rows = fixes === void 0 ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
     const layers = { structural: 0, lexical: 0, none: 0 };
     for (const file of measurement.files) layers[file.source ?? "none"]++;
     const agreement = Object.fromEntries(
@@ -5714,7 +6187,13 @@ var command = {
       }
     }
     const output = {
-      inputs: { tree: current.kind, layer, metrics: selected, paths },
+      inputs: {
+        tree: current.kind,
+        layer,
+        metrics: selected,
+        paths,
+        ...fixes === void 0 ? {} : { withFixes: true, maxCommits: fixes.request.maxCommits, evidence: fixes.request.evidence }
+      },
       extra: {
         ranking: {
           basis: changes === void 0 ? "percentile within the repository, per metric, among units measured the same way" : "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
@@ -5725,9 +6204,11 @@ var command = {
         agreement,
         skipped,
         filesWithSyntaxErrors: measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => file.path),
-        skippedFiles: measurement.skippedFiles
+        skippedFiles: measurement.skippedFiles,
+        ...fixes === void 0 ? {} : { fixes: fixHeader(fixes.stats, fixes.request) }
       },
       results: rows,
+      ...fixes === void 0 ? {} : { notices: fixNotices(fixes.stats, fixes.request) },
       columns: [
         "path",
         "unit",
@@ -5735,6 +6216,7 @@ var command = {
         "revisions",
         "dominant",
         ...metricIds.filter((metric) => selected.includes(metric)),
+        ...fixes === void 0 ? [] : ["fixCommits", "unitRevisions", "fixShare"],
         "labels"
       ]
     };
@@ -5750,64 +6232,6 @@ __export(check_exports, {
   command: () => command2,
   name: () => name3
 });
-
-// packages/complexity/src/match-units.ts
-function bodiesOf(files) {
-  const bodies = [];
-  for (const file of files) {
-    const lines = (file.text ?? "").split("\n");
-    for (const unit of file.units) {
-      const text = lines.slice(unit.startLine - 1, unit.endLine).join("\n").replace(/\s+/g, " ").trim();
-      const tokens = /* @__PURE__ */ new Map();
-      let size = 0;
-      for (const token of text.match(/[A-Za-z_$][\w$]*|\d+(?:\.\d+)?|"[^"]*"|'[^']*'|`[^`]*`|\S/g) ?? []) {
-        tokens.set(token, (tokens.get(token) ?? 0) + 1);
-        size++;
-      }
-      bodies.push({ unit, text, tokens, size });
-    }
-  }
-  return bodies;
-}
-function similarity(a, b) {
-  if (a.size === 0 && b.size === 0) return 1;
-  let shared = 0;
-  for (const [token, count2] of a.tokens) shared += Math.min(count2, b.tokens.get(token) ?? 0);
-  return shared / (a.size + b.size - shared);
-}
-function matchUnits(before, after, threshold) {
-  const oldBodies = new Map(bodiesOf(before).map((body2) => [body2.unit.id, body2]));
-  const newBodies = new Map(bodiesOf(after).map((body2) => [body2.unit.id, body2]));
-  const matches = [];
-  for (const [id, current] of newBodies) {
-    const previous = oldBodies.get(id);
-    if (previous === void 0) continue;
-    matches.push({ before: previous.unit, after: current.unit, moved: false, changed: previous.text !== current.text });
-    oldBodies.delete(id);
-    newBodies.delete(id);
-  }
-  const candidates = [];
-  for (const from of oldBodies.values()) {
-    for (const to of newBodies.values()) {
-      if (Math.min(from.size, to.size) < threshold * Math.max(from.size, to.size)) continue;
-      const score = similarity(from, to);
-      if (score >= threshold) candidates.push({ from, to, score });
-    }
-  }
-  candidates.sort((a, b) => b.score - a.score || compare(a.from.unit.id, b.from.unit.id) || compare(a.to.unit.id, b.to.unit.id));
-  for (const { from, to } of candidates) {
-    if (!oldBodies.has(from.unit.id) || !newBodies.has(to.unit.id)) continue;
-    matches.push({ before: from.unit, after: to.unit, moved: true, changed: from.text !== to.text });
-    oldBodies.delete(from.unit.id);
-    newBodies.delete(to.unit.id);
-  }
-  for (const body2 of newBodies.values()) matches.push({ before: void 0, after: body2.unit, moved: false, changed: true });
-  for (const body2 of oldBodies.values()) matches.push({ before: body2.unit, after: void 0, moved: false, changed: true });
-  return matches.sort((a, b) => compare((a.after ?? a.before).id, (b.after ?? b.before).id));
-}
-function compare(a, b) {
-  return Buffer.compare(Buffer.from(a), Buffer.from(b));
-}
 
 // packages/complexity/src/revisions.ts
 async function resolveRevision(root, rev) {
@@ -6200,8 +6624,8 @@ var complexityLanguages = Object.values(registered_languages_exports).sort((a, b
 function explainRule(rule, explanation) {
   const notes = complexityLanguages.flatMap((language9) => {
     const lines = language9.ruleNotes[rule];
-    const name9 = adapterById(language9.id)?.name ?? language9.id;
-    return lines === void 0 || lines.length === 0 ? [] : [`${name9}: ${lines.join(" ")}`];
+    const name10 = adapterById(language9.id)?.name ?? language9.id;
+    return lines === void 0 || lines.length === 0 ? [] : [`${name10}: ${lines.join(" ")}`];
   });
   return notes.length === 0 ? explanation : `${explanation}
 ${notes.join("\n")}`;
@@ -6302,11 +6726,40 @@ var command6 = {
   }
 };
 
+// packages/complexity/src/commands/fixes.ts
+var fixes_exports = {};
+__export(fixes_exports, {
+  command: () => command7,
+  name: () => name8,
+  rules: () => rules3
+});
+var name8 = "fixes";
+var rules3 = { fixes: ruleDescriptions.fixes };
+var command7 = {
+  summary: "Per function: fix commits in the history window, revisions touching it, fix share and current cognitive complexity, with the evidence commits",
+  usage: "[paths...]",
+  options: { ...fixOptions },
+  optionHelp: { ...fixOptionHelp },
+  async run(context) {
+    const settings = readSettings(context.config);
+    const current = await currentTree(context);
+    const { stats, request, paths } = await measureFixesFor(context, settings, current);
+    const rows = [...stats.units.values()].filter((unit) => unit.fixCommits > 0).map(fixRow);
+    return {
+      inputs: { tree: current.kind, paths, maxCommits: request.maxCommits, evidence: request.evidence },
+      extra: fixHeader(stats, request),
+      results: rows,
+      columns: ["path", "unit", "fixCommits", "unitRevisions", "fixShare", "cognitive"],
+      notices: fixNotices(stats, request)
+    };
+  }
+};
+
 // packages/complexity/src/commands/outcome.ts
 var outcome_exports = {};
 __export(outcome_exports, {
-  command: () => command7,
-  name: () => name8
+  command: () => command8,
+  name: () => name9
 });
 
 // packages/complexity/src/outcome.ts
@@ -6396,19 +6849,19 @@ function isObject(value) {
 function asString(value) {
   return typeof value === "string" ? value : null;
 }
-function count(value) {
+function count2(value) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
 }
 function pathOf(input) {
   return asString(input["file_path"]) ?? asString(input["notebook_path"]) ?? asString(input["path"]);
 }
 function actionOf(block) {
-  const name9 = asString(block["name"]);
-  if (name9 === null) return null;
+  const name10 = asString(block["name"]);
+  if (name10 === null) return null;
   const input = isObject(block["input"]) ? block["input"] : {};
-  if (READ_TOOLS.has(name9)) return { kind: "read", path: pathOf(input) };
-  if (SEARCH_TOOLS.has(name9)) return { kind: "search", path: pathOf(input) };
-  if (EDIT_TOOLS.has(name9)) return { kind: "edit", path: pathOf(input) };
+  if (READ_TOOLS.has(name10)) return { kind: "read", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name10)) return { kind: "search", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name10)) return { kind: "edit", path: pathOf(input) };
   return null;
 }
 var INTERRUPT_MARKER = "[Request interrupted by user";
@@ -6512,10 +6965,10 @@ function parseTranscript(text) {
     if (isObject(message["usage"])) {
       const usage2 = message["usage"];
       turn.tokens = {
-        input: count(usage2["input_tokens"]),
-        output: count(usage2["output_tokens"]),
-        cacheRead: count(usage2["cache_read_input_tokens"]),
-        cacheCreation: count(usage2["cache_creation_input_tokens"])
+        input: count2(usage2["input_tokens"]),
+        output: count2(usage2["output_tokens"]),
+        cacheRead: count2(usage2["cache_read_input_tokens"]),
+        cacheCreation: count2(usage2["cache_creation_input_tokens"])
       };
     }
     for (const block of message["content"]) {
@@ -6699,8 +7152,8 @@ function stampOf(input) {
 }
 
 // packages/complexity/src/outcome.ts
-var round3 = (value) => Math.round(value * 1e3) / 1e3;
-var mean = (values) => values.length === 0 ? null : round3(values.reduce((sum, value) => sum + value, 0) / values.length);
+var round32 = (value) => Math.round(value * 1e3) / 1e3;
+var mean = (values) => values.length === 0 ? null : round32(values.reduce((sum, value) => sum + value, 0) / values.length);
 function fixOfChange(change, fix, messageOf) {
   for (const sha of change.shas) {
     const found = findFix(fix, sha, [messageOf(sha)]);
@@ -6708,8 +7161,8 @@ function fixOfChange(change, fix, messageOf) {
   }
   return null;
 }
-var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
-var iso = (seconds) => new Date(seconds * 1e3).toISOString();
+var day2 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+var iso2 = (seconds) => new Date(seconds * 1e3).toISOString();
 async function resolveRevision2(root, rev) {
   try {
     return (await runGit(root, ["rev-parse", "--verify", `${rev}^{commit}`])).trim();
@@ -6748,7 +7201,7 @@ function changeFigures(changes, members, fix, messageOf) {
   return {
     changes: churn.length,
     linesChurnedPerChange: mean(churn),
-    fixCommitRate: churn.length === 0 ? null : round3(fixes.length / churn.length),
+    fixCommitRate: churn.length === 0 ? null : round32(fixes.length / churn.length),
     fixCommits: fixEvidence(fixes)
   };
 }
@@ -6788,8 +7241,8 @@ function rankFigures(files, members, selected, changes, until, settings) {
     meanComplexityScore: mean(ranked.map((entry) => entry.complexityScore))
   };
 }
-var delta2 = (before, after) => before === null || after === null ? null : round3(after - before);
-var gap = (own, other) => own === null || other === null ? null : round3(own - other);
+var delta2 = (before, after) => before === null || after === null ? null : round32(after - before);
+var gap = (own, other) => own === null || other === null ? null : round32(own - other);
 async function measureOutcome(root, settings, exclude, options) {
   const at = await resolveRevision2(root, options.at);
   const first = options.from === void 0 ? at : await resolveRevision2(root, options.from);
@@ -6867,7 +7320,7 @@ async function measureOutcome(root, settings, exclude, options) {
       return { status: "not-measured", reason: projectsDir === void 0 ? "no --projects-dir was given" : `${projectsDir} does not exist` };
     }
     const repoRoots = await checkouts(root);
-    const measure = (from, to) => measureRepo({ projectsDir, repoRoots, window: parseWindow(day(from), day(to)) }).tasks;
+    const measure = (from, to) => measureRepo({ projectsDir, repoRoots, window: parseWindow(day2(from), day2(to)) }).tasks;
     const touching = (tasks, paths) => tasks.filter((task) => task.editedPaths.some((path) => paths.has(path)));
     const beforeTasks = measure(monthsBefore(date, settings.windowMonths), startedAt).filter((task) => Date.parse(task.startedAt) < startedAt * 1e3);
     const afterTasks = measure(date, anchor + 86400).filter((task) => Date.parse(task.startedAt) > date * 1e3);
@@ -6888,8 +7341,8 @@ async function measureOutcome(root, settings, exclude, options) {
       basis: "unchanged files with functions, matched one to one to the acted-on files by the highest metric percentile of their functions before the change"
     },
     windows: {
-      before: { since: iso(monthsBefore(date, settings.windowMonths)), until: iso(date) },
-      after: { since: iso(date), until: iso(anchor), complete: fullEnd <= headDate }
+      before: { since: iso2(monthsBefore(date, settings.windowMonths)), until: iso2(date) },
+      after: { since: iso2(date), until: iso2(anchor), complete: fullEnd <= headDate }
     },
     fixConvention,
     changeCost,
@@ -6907,9 +7360,9 @@ async function measureOutcome(root, settings, exclude, options) {
 }
 
 // packages/complexity/src/commands/outcome.ts
-var name8 = "outcome";
+var name9 = "outcome";
 var usage = "usage: outcome <rev> [--from <rev>] [--projects-dir <dir>]; <rev> is the last commit of the simplification";
-var command7 = {
+var command8 = {
   summary: "Whether a simplification made code cheaper to change: change cost, fix rate, rank, the function-count gaming check and agent effort, before and after, against files left alone",
   options: { from: { type: "string" }, "projects-dir": { type: "string" } },
   async run(context) {
@@ -6937,10 +7390,11 @@ var commandModules = [
   diff_exports,
   explain_exports,
   files_exports,
+  fixes_exports,
   outcome_exports
 ];
 var commands = Object.fromEntries(commandModules.map((m) => [m.name, m.command]));
-var rules3 = Object.assign({}, ...commandModules.map((m) => m.rules ?? {}));
+var rules4 = Object.assign({}, ...commandModules.map((m) => m.rules ?? {}));
 
 // packages/complexity/src/cli.ts
 var cli = {
@@ -6948,7 +7402,7 @@ var cli = {
   schemaVersion: SCHEMA_VERSION,
   config: complexityConfig,
   commands,
-  rules: Object.keys(rules3).length > 0 ? rules3 : void 0
+  rules: Object.keys(rules4).length > 0 ? rules4 : void 0
 };
 export {
   cli

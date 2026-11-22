@@ -937,6 +937,11 @@ var complexityConfig = {
     overrides: [],
     /** The post-edit hook, off unless a repository turns it on. It uses `guidelines`, `delta`, `analyseTests` and `agreementBar`. */
     hook: { enabled: false },
+    /**
+     * `complexity fixes` and `analyse --with-fixes`. `maxCommits` bounds how many commits of the history window are parsed, newest first, and the output says how many were left out:
+     * 500 is a judgement call about run time, not calibrated on a corpus. `evidence` is how many fix commits are listed per function.
+     */
+    fixes: { maxCommits: 500, evidence: 3 },
     /** `shallow`: a guideline of 10, a judgement call not calibrated on a corpus. An exported function, class or module with fewer syntax nodes than this per element of its interface is labelled shallow. Rows are ordered by depth whatever the guideline. */
     interfaceDepth: { shallow: 10 }
   }
@@ -987,6 +992,10 @@ function readSettings(config) {
     botPatterns: section.botPatterns,
     fix: readFixClassifier(section),
     hook: { enabled: section.hook.enabled === true },
+    fixes: {
+      maxCommits: number(section.fixes.maxCommits, at("fixes.maxCommits"), 1),
+      evidence: number(section.fixes.evidence, at("fixes.evidence"), 0)
+    },
     shallowDepth: number(section.interfaceDepth.shallow, at("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
     languageProfiles: readLanguageProfiles(config.effective.languages)

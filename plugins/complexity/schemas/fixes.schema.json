@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fixes.schema.json",
+  "title": "complexity fixes --json",
+  "description": "Per-function fix statistics over the history window, in the manner of CodeScene's X-Ray: the functions that fix commits changed, followed forward to the current revision, with the evidence commits. Never stored as a report.",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    },
+    {
+      "$ref": "common.schema.json#/$defs/fixHeader"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "fixes"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "tree": {
+          "$ref": "common.schema.json#/$defs/tree"
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxCommits": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evidence": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "tree",
+        "paths",
+        "maxCommits",
+        "evidence"
+      ],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "description": "Functions with at least one fix, sorted by fixCommits, then fixShare.",
+      "items": {
+        "$ref": "common.schema.json#/$defs/fixRow"
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

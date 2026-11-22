@@ -87,6 +87,7 @@ The `complexity` section of `code-health.json`. Missing keys take the defaults, 
 | `agreementBar` | `0.9` | Agreement a lexer profile needs for per-function lexical metrics. |
 | `moveSimilarity` | `0.8` | Body similarity at which a function that disappeared and one that appeared are one function moved or renamed. |
 | `analyseTests` | `true` | Analyse test files. They are ranked among themselves, never against production code. |
+| `fixes` | `{ "maxCommits": 500, "evidence": 3 }` | `fixes` and `analyse --with-fixes`: the most commits of the history window to parse, newest first (the output says how many were left out), and the fix commits listed per function. |
 | `interfaceDepth` | `{ "shallow": 10 }` | Nodes per interface element below which an exported unit is labelled `shallow`. |
 | `hook` | `{ "enabled": false }` | The post-edit hook, off unless a repository turns it on. See [hook.md](hook.md). |
 | `overrides` | `[]` | `{ "paths": [globs], "guidelines": { ... } }`, applied in order over the defaults. For generated code, fixtures and the like. |

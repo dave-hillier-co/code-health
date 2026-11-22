@@ -32,6 +32,20 @@
           "items": {
             "type": "string"
           }
+        },
+        "withFixes": {
+          "const": true,
+          "description": "Present when --with-fixes added the fix columns."
+        },
+        "maxCommits": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "With --with-fixes: the most commits of the history window analysed."
+        },
+        "evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "With --with-fixes: the evidence commits kept per function."
         }
       },
       "required": [
@@ -112,6 +126,10 @@
     },
     "skippedFiles": {
       "$ref": "common.schema.json#/$defs/skippedFiles"
+    },
+    "fixes": {
+      "description": "With --with-fixes: the header of the per-function fix statistics, as `complexity fixes` prints it.",
+      "$ref": "common.schema.json#/$defs/fixHeader"
     },
     "results": {
       "type": "array",
@@ -279,6 +297,20 @@
           "bumps": {
             "type": "integer",
             "minimum": 0
+          },
+          "fixCommits": {
+            "$ref": "common.schema.json#/$defs/count",
+            "description": "With --with-fixes: logical changes in the analysed history window that are fixes and changed a line of the function."
+          },
+          "unitRevisions": {
+            "$ref": "common.schema.json#/$defs/count",
+            "description": "With --with-fixes: logical changes in the analysed window that changed a line of the function, fixes included."
+          },
+          "fixShare": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "With --with-fixes: fixCommits over unitRevisions. Null for a function no analysed change touched."
           }
         },
         "required": [

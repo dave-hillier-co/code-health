@@ -88,6 +88,8 @@ export interface MeasureOptions {
   cache?: ParseCache;
   /** Keep each file's text on its record. */
   keepText?: boolean;
+  /** Grammars to load into and reuse across calls, so measuring many trees loads each language once. */
+  grammars?: GrammarSet;
 }
 
 export interface Measurement {
@@ -115,7 +117,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
     else paths.push(path);
   }
 
-  const grammars = new GrammarSet();
+  const grammars = options.grammars ?? new GrammarSet();
   const stats = { parsed: 0, cached: 0 };
   const files: FileRecord[] = [];
 

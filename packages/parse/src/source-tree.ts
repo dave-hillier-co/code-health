@@ -138,7 +138,7 @@ function git(cwd: string, args: string[], input?: string): Promise<Buffer> {
 const batchSize = 256;
 
 /** Reads blobs through one `git cat-file --batch` process per chunk. */
-async function readBlobs(cwd: string, shas: readonly string[]): Promise<Map<string, string>> {
+export async function readBlobs(cwd: string, shas: readonly string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   for (let start = 0; start < shas.length; start += batchSize) {
     const chunk = shas.slice(start, start + batchSize);
