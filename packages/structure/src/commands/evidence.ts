@@ -27,7 +27,7 @@ function parseTarget(text: string, requested: Level | undefined): Target {
   if (hub) return { kind: "hub", level: requested, id: text };
   const pair = /^coupling:(file|folder|component):(.+)$/.exec(text);
   if (pair) return { ...parseEdge(pair[2]!), level: pair[1] as Level };
-  const cycle = /^cycle:(file|folder|package):(.+)$/.exec(text);
+  const cycle = /^cycle:(default|file|folder|package):(.+)$/.exec(text);
   if (cycle) return { kind: "cycle", level: cycle[1] as Level, id: text };
   const layer = /^layer:(.+)$/.exec(text);
   if (layer) return { ...parseEdge(layer[1]!), level: "file" };

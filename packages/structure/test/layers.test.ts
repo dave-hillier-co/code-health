@@ -108,7 +108,7 @@ describe("structure check", () => {
     const document = JSON.parse(run.stdout);
     // the folder cycle is the file cycle seen from above, and it grows the existing domain and data cycle
     expect(document.results.map((r: { id: string }) => r.id)).toEqual([
-      "cycle:file:src/domain/order.ts",
+      "cycle:default:src/domain/order.ts",
       "cycle:folder:src/data",
       "layer:src/domain/order.ts->src/ui/view.ts",
     ]);

@@ -37,6 +37,8 @@ export interface DiscoveredPackage {
   /** Every name a dependency may use for it, such as CMake aliases. */
   aliases: string[];
   dependencies: DeclaredDependency[];
+  /** The module a Go package is grouped under (the module path of its `go.mod`). Null for every other package. */
+  module: string | null;
 }
 
 export interface ComponentMatcher {
@@ -68,6 +70,7 @@ interface Raw {
   testSupport: boolean;
   aliases: string[];
   dependencies: { name: string; scope: DependencyScope; dir?: string; optional?: boolean }[];
+  module?: string;
 }
 
 type Read = (path: string) => Promise<string | undefined>;
@@ -439,39 +442,53 @@ async function cargoPackages(paths: string[], read: Read, ignored: (dir: string)
 
 // ---- Go ----
 
+/** A directory Go does not build packages from: `testdata`, `vendor`, and names that start with `.` or `_`. */
+const isUnbuiltGoDir = (relative: string): boolean => relative.split("/").some((part) => part === "testdata" || part === "vendor" || part.startsWith(".") || part.startsWith("_"));
+
+/**
+ * The Go packages of the repository: every directory with a Go file, owned by the nearest `go.mod` above it,
+ * and grouped under that module (`module`). A package is named by its import path. A module is not a package:
+ * its manifest checks are made per module over its packages (see the Go packaging language).
+ */
 async function goPackages(paths: string[], read: Read, ignored: (dir: string) => boolean): Promise<Raw[]> {
   const fileSet = new Set(paths);
-  const result: Raw[] = [];
+  const modules = new Map<string, { name: string; manifest: string }>();
   for (const path of paths.filter((p) => baseOf(p) === "go.mod").sort(compareIds)) {
     const dir = dirOf(path);
     if (ignored(dir)) continue;
-    const text = ((await read(path)) ?? "").replace(/\/\/ indirect.*$/gm, "").replace(/\/\/.*$/gm, "");
+    const text = ((await read(path)) ?? "").replace(/\/\/.*$/gm, "");
     const name = /^\s*module\s+(\S+)/m.exec(text)?.[1];
-    if (name === undefined) continue;
-    const replaced = new Map<string, string>();
-    for (const match of text.matchAll(/^\s*(?:replace\s+)?(\S+)(?:\s+\S+)?\s*=>\s*(\.{1,2}\/\S*)\s*$/gm)) {
-      const target = resolveFrom(dir, match[2]!);
-      if (target !== undefined) replaced.set(match[1]!, target);
+    if (name !== undefined) modules.set(dir, { name, manifest: path });
+  }
+  const moduleOf = (dir: string): string | undefined => {
+    for (let at = dir; ; at = dirOf(at)) {
+      if (modules.has(at)) return at;
+      if (at === ".") return undefined;
     }
-    const required = new Set<string>();
-    for (const block of text.matchAll(/\brequire\s*\(([\s\S]*?)\)/g)) {
-      for (const line of block[1]!.split("\n")) {
-        const module = /^\s*(\S+)\s+v\S+/.exec(line)?.[1];
-        if (module !== undefined) required.add(module);
-      }
-    }
-    for (const match of text.matchAll(/^\s*require\s+(\S+)\s+v\S+/gm)) required.add(match[1]!);
+  };
+
+  const dirs = new Set<string>();
+  for (const path of paths) if (path.endsWith(".go")) dirs.add(dirOf(path));
+  const result: Raw[] = [];
+  for (const dir of [...dirs].sort(compareIds)) {
+    const moduleDir = moduleOf(dir);
+    if (moduleDir === undefined || ignored(dir)) continue;
+    const relative = moduleDir === "." ? dir : dir === moduleDir ? "." : dir.slice(moduleDir.length + 1);
+    if (relative !== "." && isUnbuiltGoDir(relative)) continue;
+    const module = modules.get(moduleDir)!;
+    const name = relative === "." ? module.name : `${module.name}/${relative}`;
     result.push({
       name,
       ecosystem: "go",
       dir,
-      manifest: path,
-      private: null,
+      manifest: module.manifest,
+      private: relative.split("/").includes("internal") ? true : null,
       version: null,
-      entry: fileSet.has(child(dir, "main.go")) || [...fileSet].some((f) => f.startsWith(`${child(dir, "cmd")}/`)),
+      entry: fileSet.has(child(dir, "main.go")) || relative === "cmd" || relative.startsWith("cmd/"),
       testSupport: isTestSupport(name, dir),
       aliases: [],
-      dependencies: [...required].sort(compareIds).map((module) => ({ name: module, scope: "runtime" as const, ...(replaced.has(module) ? { dir: replaced.get(module)! } : {}) })),
+      dependencies: [],
+      module: module.name,
     });
   }
   return result;
@@ -565,6 +582,7 @@ export async function discoverPackages(tree: SourceTree, options: DiscoveryOptio
       testSupport: raw.testSupport,
       aliases: raw.aliases,
       dependencies,
+      module: raw.module ?? null,
     };
   });
   markConfiguredEntries(packages, paths, options.entryPoints ?? []);
@@ -583,6 +601,7 @@ export async function discoverPackages(tree: SourceTree, options: DiscoveryOptio
         testSupport: isTestSupport(component.name, ""),
         aliases: [],
         dependencies: [],
+        module: null,
       }))
       .sort((a, b) => compareIds(a.id, b.id));
   }

@@ -11,7 +11,7 @@
       "data"
     ],
     "levels": [
-      "file",
+      "default",
       "folder",
       "package"
     ]
@@ -28,9 +28,9 @@
           "to": "src/ui/view.ts"
         }
       ],
-      "id": "cycle:file:src/domain/order.ts",
+      "id": "cycle:default:src/domain/order.ts",
       "kind": "cycle",
-      "level": "file",
+      "level": "default",
       "nodes": [
         "src/domain/order.ts",
         "src/ui/view.ts"

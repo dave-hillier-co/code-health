@@ -1,11 +1,11 @@
 {
   "packages": {
     "app": { "ecosystem": "go", "exportedTypes": 0, "abstractness": 0, "abstractnessWeak": true, "consumers": [] },
-    "core": { "ecosystem": "go", "exportedTypes": 3, "abstractness": 0.333, "abstractnessWeak": false, "consumers": ["app"] }
+    "core": { "ecosystem": "go", "exportedTypes": 3, "abstractness": 0.333, "abstractnessWeak": false, "consumers": ["app"] },
+    "core/internal/engine": { "ecosystem": "go", "exportedTypes": 1, "abstractness": 0, "abstractnessWeak": true, "consumers": ["app", "core"] }
   },
   "findings": [
-    "deep-import core app | app imports 1 file of core past its entry points: core/internal/engine/engine.go",
-    "undeclared-dependency app | app uses github.com/spf13/cobra without declaring it: the dependency graph the build sees is not the real one",
-    "unused-dependency core | core declares github.com/unused/lib and its code never uses it: coupling with no purpose, and build weight"
+    "undeclared-dependency app | example.com/app uses github.com/spf13/cobra without declaring it: the dependency graph the build sees is not the real one",
+    "unused-dependency core | example.com/core declares github.com/unused/lib and its code never uses it: coupling with no purpose, and build weight"
   ]
 }

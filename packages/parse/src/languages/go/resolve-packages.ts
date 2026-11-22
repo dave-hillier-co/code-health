@@ -175,7 +175,7 @@ export function resolvePackages(input: ResolveInput): ResolvedDependencies {
       result.importEdges.push({ from, to, kind: "import", typeOnly: false });
     }
   }
-  const unmangle = (name: string): string => name.slice(name.indexOf(SEPARATOR) + 1);
+  const unmangle = (name: string): string => name.slice(name.lastIndexOf(SEPARATOR) + 1);
   return {
     ...result,
     consumers: result.consumers.map((consumer) => ({ ...consumer, toExport: unmangle(consumer.toExport) })),

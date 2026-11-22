@@ -20,7 +20,7 @@ function isPartial(context: CommandContext): boolean {
  * A whole-repository run on a clean tree stores `complexity.depth`.
  */
 export const command: Command = {
-  summary: "Rank exported functions, classes and modules by interface depth, and list pass-through functions",
+  summary: "Rank exported functions, classes and modules by interface depth, and list every pass-through function, exported or not",
   async run(context) {
     const { settings, current, measurement } = await measureCurrent(context, "structural");
     const paths = normalisePaths(context.positionals);
@@ -39,7 +39,7 @@ export const command: Command = {
       inputs: { tree: current.kind, paths, shallow: settings.shallowDepth },
       extra: { summary, skippedFiles: measurement.skippedFiles },
       results: rows,
-      columns: ["path", "unit", "kind", "nodes", "interface", "depth", "passThrough", "labels"],
+      columns: ["path", "unit", "kind", "exported", "nodes", "interface", "depth", "passThrough", "labels"],
     };
     if (!isPartial(context) && current.kind === "head") await storeReport(context, name, output);
     else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");

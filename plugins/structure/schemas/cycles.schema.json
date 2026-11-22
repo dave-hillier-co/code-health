@@ -17,6 +17,7 @@
       "properties": {
         "level": {
           "enum": [
+            "default",
             "file",
             "folder",
             "package"
@@ -61,10 +62,11 @@
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^cycle:(file|folder|package):.+"
+            "pattern": "^cycle:(default|file|folder|package):.+"
           },
           "level": {
             "enum": [
+              "default",
               "file",
               "folder",
               "package"

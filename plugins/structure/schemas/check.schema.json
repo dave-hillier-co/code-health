@@ -28,6 +28,7 @@
           "type": "array",
           "items": {
             "enum": [
+              "default",
               "file",
               "folder",
               "package"
@@ -62,10 +63,11 @@
               },
               "id": {
                 "type": "string",
-                "pattern": "^cycle:(file|folder|package):.+"
+                "pattern": "^cycle:(default|file|folder|package):.+"
               },
               "level": {
                 "enum": [
+                  "default",
                   "file",
                   "folder",
                   "package"

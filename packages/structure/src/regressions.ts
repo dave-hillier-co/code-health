@@ -3,10 +3,13 @@ import { breakingSets } from "@code-health/graph/feedback-arc-set";
 import { runGit } from "@code-health/history/git";
 import type { StructureSettings } from "./config.ts";
 import { findLayerViolations, type LayerViolation } from "./layers.ts";
-import { buildModuleGraph, type Level } from "./modules.ts";
+import { buildModuleGraph, importGraph, type Level } from "./modules.ts";
 import { loadProject, type Project } from "./project.ts";
 
-export const CHECK_LEVELS: readonly Level[] = ["file", "folder", "package"];
+export const CHECK_LEVELS: readonly Level[] = ["default", "file", "folder", "package"];
+
+/** The levels `check` runs when none is named: `file` is left out because `default` is the file level for every language that has no coarser one. */
+export const DEFAULT_CHECK_LEVELS: readonly Level[] = ["default", "folder", "package"];
 
 export interface CycleSnapshot {
   id: string;
@@ -62,7 +65,7 @@ export async function resolveBase(root: string, headSha: string, settings: Pick<
 
 function cyclesOf(project: Project, level: Level, settings: Pick<StructureSettings, "exactLimit" | "components">): CycleSnapshot[] {
   const graph = buildModuleGraph(level, project, settings.components);
-  return breakingSets(graph.graph, { exactLimit: settings.exactLimit }).map((cycle) => ({
+  return breakingSets(importGraph(graph), { exactLimit: settings.exactLimit }).map((cycle) => ({
     id: `cycle:${level}:${cycle.nodes[0]}`,
     level,
     nodes: [...cycle.nodes],
@@ -70,12 +73,23 @@ function cyclesOf(project: Project, level: Level, settings: Pick<StructureSettin
   }));
 }
 
+/** A cycle that has the same nodes as one of an earlier level (Go packages are folders and packages too) is listed once, at the first. */
+function withoutRepeats(cycles: CycleSnapshot[]): CycleSnapshot[] {
+  const seen = new Set<string>();
+  return cycles.filter((cycle) => {
+    const key = [...cycle.nodes].sort().join("\n");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /** The cycles at the chosen levels and the layer violations of one commit. */
 export async function snapshotOf(root: string, sha: string, levels: readonly Level[], settings: StructureSettings): Promise<StructureSnapshot> {
   const project = await loadProject(root, sha, settings);
   return {
     sha,
-    cycles: levels.flatMap((level) => cyclesOf(project, level, settings)),
+    cycles: withoutRepeats(levels.flatMap((level) => cyclesOf(project, level, settings))),
     layerViolations: findLayerViolations(project, settings.layers),
   };
 }

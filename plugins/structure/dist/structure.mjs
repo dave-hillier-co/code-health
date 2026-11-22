@@ -14286,7 +14286,7 @@ function resolvePackages(input) {
       result.importEdges.push({ from, to, kind: "import", typeOnly: false });
     }
   }
-  const unmangle = (name13) => name13.slice(name13.indexOf(SEPARATOR) + 1);
+  const unmangle = (name13) => name13.slice(name13.lastIndexOf(SEPARATOR) + 1);
   return {
     ...result,
     consumers: result.consumers.map((consumer) => ({ ...consumer, toExport: unmangle(consumer.toExport) })),
@@ -16709,39 +16709,45 @@ async function cargoPackages(paths, read, ignored) {
   }
   return result;
 }
+var isUnbuiltGoDir = (relative) => relative.split("/").some((part) => part === "testdata" || part === "vendor" || part.startsWith(".") || part.startsWith("_"));
 async function goPackages(paths, read, ignored) {
   const fileSet = new Set(paths);
-  const result = [];
+  const modules = /* @__PURE__ */ new Map();
   for (const path of paths.filter((p) => baseOf(p) === "go.mod").sort(compareIds)) {
     const dir = dirOf(path);
     if (ignored(dir)) continue;
-    const text2 = (await read(path) ?? "").replace(/\/\/ indirect.*$/gm, "").replace(/\/\/.*$/gm, "");
+    const text2 = (await read(path) ?? "").replace(/\/\/.*$/gm, "");
     const name13 = /^\s*module\s+(\S+)/m.exec(text2)?.[1];
-    if (name13 === void 0) continue;
-    const replaced = /* @__PURE__ */ new Map();
-    for (const match of text2.matchAll(/^\s*(?:replace\s+)?(\S+)(?:\s+\S+)?\s*=>\s*(\.{1,2}\/\S*)\s*$/gm)) {
-      const target2 = resolveFrom(dir, match[2]);
-      if (target2 !== void 0) replaced.set(match[1], target2);
+    if (name13 !== void 0) modules.set(dir, { name: name13, manifest: path });
+  }
+  const moduleOf = (dir) => {
+    for (let at = dir; ; at = dirOf(at)) {
+      if (modules.has(at)) return at;
+      if (at === ".") return void 0;
     }
-    const required = /* @__PURE__ */ new Set();
-    for (const block of text2.matchAll(/\brequire\s*\(([\s\S]*?)\)/g)) {
-      for (const line of block[1].split("\n")) {
-        const module3 = /^\s*(\S+)\s+v\S+/.exec(line)?.[1];
-        if (module3 !== void 0) required.add(module3);
-      }
-    }
-    for (const match of text2.matchAll(/^\s*require\s+(\S+)\s+v\S+/gm)) required.add(match[1]);
+  };
+  const dirs = /* @__PURE__ */ new Set();
+  for (const path of paths) if (path.endsWith(".go")) dirs.add(dirOf(path));
+  const result = [];
+  for (const dir of [...dirs].sort(compareIds)) {
+    const moduleDir2 = moduleOf(dir);
+    if (moduleDir2 === void 0 || ignored(dir)) continue;
+    const relative = moduleDir2 === "." ? dir : dir === moduleDir2 ? "." : dir.slice(moduleDir2.length + 1);
+    if (relative !== "." && isUnbuiltGoDir(relative)) continue;
+    const module3 = modules.get(moduleDir2);
+    const name13 = relative === "." ? module3.name : `${module3.name}/${relative}`;
     result.push({
       name: name13,
       ecosystem: "go",
       dir,
-      manifest: path,
-      private: null,
+      manifest: module3.manifest,
+      private: relative.split("/").includes("internal") ? true : null,
       version: null,
-      entry: fileSet.has(child(dir, "main.go")) || [...fileSet].some((f) => f.startsWith(`${child(dir, "cmd")}/`)),
+      entry: fileSet.has(child(dir, "main.go")) || relative === "cmd" || relative.startsWith("cmd/"),
       testSupport: isTestSupport(name13, dir),
       aliases: [],
-      dependencies: [...required].sort(compareIds).map((module3) => ({ name: module3, scope: "runtime", ...replaced.has(module3) ? { dir: replaced.get(module3) } : {} }))
+      dependencies: [],
+      module: module3.name
     });
   }
   return result;
@@ -16816,7 +16822,8 @@ async function discoverPackages(tree, options2) {
       entry: raw.entry,
       testSupport: raw.testSupport,
       aliases: raw.aliases,
-      dependencies
+      dependencies,
+      module: raw.module ?? null
     };
   });
   markConfiguredEntries(packages, paths, options2.entryPoints ?? []);
@@ -16832,7 +16839,8 @@ async function discoverPackages(tree, options2) {
       entry: false,
       testSupport: isTestSupport(component.name, ""),
       aliases: [],
-      dependencies: []
+      dependencies: [],
+      module: null
     })).sort((a, b) => compareIds(a.id, b.id));
   }
   return packages.sort((a, b) => compareIds(a.id, b.id));
@@ -17379,6 +17387,9 @@ function groupGraph(graph, groupOf) {
 }
 
 // packages/structure/src/modules.ts
+var isGoFile = (path) => path.endsWith(".go");
+var isCSharpFile = (path) => path.endsWith(".cs");
+var inOneGoPackage = (from, to) => isGoFile(from) && isGoFile(to) && folderOf(from) === folderOf(to);
 function readLevel(flag, value, allowed, fallback) {
   if (value === void 0) return fallback;
   if (typeof value === "string" && allowed.includes(value)) return value;
@@ -17388,6 +17399,8 @@ function moduleOfFile(level, project, componentsConfig) {
   switch (level) {
     case "file":
       return (path) => path;
+    case "default":
+      return (path) => isGoFile(path) || isCSharpFile(path) ? folderOf(path) : path;
     case "folder":
       return folderOf;
     case "package":
@@ -17446,6 +17459,10 @@ function describeEdge(project, graph, from, to) {
     usedBy: [...entry.usedBy].sort(compareIds)
   })).sort((a, b) => b.sites - a.sites || compareIds(a.symbol, b.symbol));
   return { fileEdges: members2.length, importStatements, typeOnly: members2.length > 0 && typeOnly, symbols };
+}
+function importGraph(module3) {
+  if (module3.level !== "file") return module3.graph;
+  return new Map([...module3.graph].map(([from, targets]) => [from, targets.filter((to) => !inOneGoPackage(from, to))]));
 }
 
 // packages/structure/src/layers.ts
@@ -17908,7 +17925,8 @@ __export(check_exports, {
 });
 
 // packages/structure/src/regressions.ts
-var CHECK_LEVELS = ["file", "folder", "package"];
+var CHECK_LEVELS = ["default", "file", "folder", "package"];
+var DEFAULT_CHECK_LEVELS = ["default", "folder", "package"];
 var commitOf = async (root, rev) => {
   try {
     return (await runGit(root, ["rev-parse", "--verify", "--quiet", `${rev}^{commit}`])).trim() || void 0;
@@ -17939,18 +17957,27 @@ async function resolveBase(root, headSha, settings, flag) {
 }
 function cyclesOf(project, level, settings) {
   const graph = buildModuleGraph(level, project, settings.components);
-  return breakingSets(graph.graph, { exactLimit: settings.exactLimit }).map((cycle) => ({
+  return breakingSets(importGraph(graph), { exactLimit: settings.exactLimit }).map((cycle) => ({
     id: `cycle:${level}:${cycle.nodes[0]}`,
     level,
     nodes: [...cycle.nodes],
     breakingSet: cycle.edges.map((e) => ({ from: e.from, to: e.to }))
   }));
 }
+function withoutRepeats(cycles) {
+  const seen = /* @__PURE__ */ new Set();
+  return cycles.filter((cycle) => {
+    const key = [...cycle.nodes].sort().join("\n");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 async function snapshotOf(root, sha, levels3, settings) {
   const project = await loadProject(root, sha, settings);
   return {
     sha,
-    cycles: levels3.flatMap((level) => cyclesOf(project, level, settings)),
+    cycles: withoutRepeats(levels3.flatMap((level) => cyclesOf(project, level, settings))),
     layerViolations: findLayerViolations(project, settings.layers)
   };
 }
@@ -17968,11 +17995,11 @@ var name3 = "check";
 var command2 = {
   summary: "Exit 1 on import cycles or layer violations that are new since a base revision, for CI",
   options: { base: { type: "string" }, level: { type: "string" } },
-  optionHelp: { base: "the revision to compare against (default: the configured base, else the merge base with the main branch)", level: "check one level only: file, folder or package (default all three)" },
+  optionHelp: { base: "the revision to compare against (default: the configured base, else the merge base with the main branch)", level: "check one level only: default, file, folder or package (default: default, folder and package)" },
   async run(context) {
     const settings = readSettings(context.config);
     const { root } = context.repo;
-    const levels3 = context.values.level === void 0 ? CHECK_LEVELS : [readLevel("level", context.values.level, CHECK_LEVELS, "file")];
+    const levels3 = context.values.level === void 0 ? DEFAULT_CHECK_LEVELS : [readLevel("level", context.values.level, CHECK_LEVELS, "default")];
     const headSha = (await runGit(root, ["rev-parse", "--verify", `${settings.ref}^{commit}`])).trim();
     const base = await resolveBase(root, headSha, settings, context.values.base);
     const [before, after] = await Promise.all([snapshotOf(root, base.sha, levels3, settings), snapshotOf(root, headSha, levels3, settings)]);
@@ -19445,7 +19472,9 @@ function breakingEdge(model, from, to, limit = SYMBOLS_SHOWN) {
   };
 }
 function findCycles(model, settings) {
-  const sets = breakingSets(model.graph.graph, {
+  const graph = importGraph(model.graph);
+  const files = new Set(model.project.files);
+  const sets = breakingSets(graph, {
     exactLimit: settings.exactLimit,
     weight: (edge) => model.activity.shared(edge.from, edge.to)
   });
@@ -19453,8 +19482,8 @@ function findCycles(model, settings) {
     const inCycle = new Set(cycle.nodes);
     let coChangeAcross = 0;
     for (const from of cycle.nodes) {
-      for (const to of model.graph.graph.get(from) ?? []) {
-        if (inCycle.has(to) && (compareIds(from, to) < 0 || !model.graph.graph.get(to)?.includes(from))) {
+      for (const to of graph.get(from) ?? []) {
+        if (inCycle.has(to) && (compareIds(from, to) < 0 || !graph.get(to)?.includes(from))) {
           coChangeAcross += model.activity.shared(from, to);
         }
       }
@@ -19465,7 +19494,7 @@ function findCycles(model, settings) {
       level: model.graph.level,
       size: cycle.nodes.length,
       nodes: [...cycle.nodes],
-      nested: isNestedFolderCycle(model.graph.level, cycle.nodes),
+      nested: isNestedFolderCycle(model.graph.level === "default" && cycle.nodes.every((node) => !files.has(node)) ? "folder" : model.graph.level, cycle.nodes),
       method: cycle.method,
       breakingSet,
       coChangeAcross,
@@ -19900,15 +19929,18 @@ __export(cycles_exports, {
   rules: () => rules3
 });
 var name5 = "cycles";
-var levels = ["file", "folder", "package"];
+var levels = ["default", "file", "folder", "package"];
 var rules3 = {
   "import-cycle": {
     summary: "Modules that import each other, directly or through others",
     explanation: [
-      "Raised for every strongly connected component of the import graph at the chosen level (file,",
-      "folder or package). Folders and packages are the files grouped by their folder or by the nearest",
-      "package boundary (the folder of a package.json, go.mod, Cargo.toml, pom.xml, .csproj or the like), so a",
-      "cycle there can exist with no file cycle behind it.",
+      "Raised for every strongly connected component of the import graph at the chosen level (default, file,",
+      "folder or package). The default level is a Go package (its directory) for Go, a folder for C# and a",
+      "file for every other language, because Go forbids cycles only between packages and C# files in one",
+      "project reference each other without imports. Folders and packages are the files grouped by their",
+      "folder or by the owning package (a workspace package, a C# project, a Go package, a crate and the",
+      "like), so a cycle there can exist with no file cycle behind it. At file level an edge between two",
+      "files of one Go package is not an import and is left out.",
       "",
       "A folder cycle between a folder and its own sub-folders (including a Rust `mod name;` edge from a",
       "parent to a child) is listed with `nested: true` and sorts after the other cycles.",
@@ -19927,10 +19959,12 @@ var rules3 = {
 var command4 = analysisCommand(name5, {
   summary: "Import cycles with their smallest breaking sets, ranked by size and co-change",
   options: { level: { type: "string" } },
-  optionHelp: { level: "what a node is: file, folder or package (default file)" },
-  partial: ({ values }) => values.level !== void 0 && values.level !== "file",
+  optionHelp: {
+    level: "what a node is: file, folder or package, or default, which is a Go package (its directory) for Go, a folder for C# and a file for every other language (default: default). Files of one Go package are never in a file cycle, because they reference each other without imports."
+  },
+  partial: ({ values }) => values.level !== void 0 && values.level !== "default",
   async analyse({ context, history }) {
-    const level = readLevel("level", context.values.level, levels, "file");
+    const level = readLevel("level", context.values.level, levels, "default");
     const model = await buildModel(context, history, level);
     const rows = findCycles(model, history.settings);
     return {
@@ -20459,7 +20493,7 @@ function parseTarget(text2, requested) {
   if (hub) return { kind: "hub", level: requested, id: text2 };
   const pair = /^coupling:(file|folder|component):(.+)$/.exec(text2);
   if (pair) return { ...parseEdge(pair[2]), level: pair[1] };
-  const cycle = /^cycle:(file|folder|package):(.+)$/.exec(text2);
+  const cycle = /^cycle:(default|file|folder|package):(.+)$/.exec(text2);
   if (cycle) return { kind: "cycle", level: cycle[1], id: text2 };
   const layer = /^layer:(.+)$/.exec(text2);
   if (layer) return { ...parseEdge(layer[1]), level: "file" };
@@ -21616,16 +21650,16 @@ async function readEntries6(model) {
       if (!relative.split("/").some(isPrivateSegment)) files.add(path);
     }
     const texts = await model.tree.readMany([...files]);
-    const hidden2 = /* @__PURE__ */ new Set();
+    const hidden = /* @__PURE__ */ new Set();
     for (const file of files) {
       const all = allOf(texts.get(file) ?? "");
       const isPackageInit = file.endsWith("/__init__.py") || file === "__init__.py";
       for (const { name: name13, reexport } of exportedBy.get(file) ?? []) {
         const isHidden2 = all === null ? name13.startsWith("_") || reexport && !isPackageInit : !all.has(name13);
-        if (isHidden2) hidden2.add(`${file}#${name13}`);
+        if (isHidden2) hidden.add(`${file}#${name13}`);
       }
     }
-    entries.set(pkg.id, { id: pkg.id, files: new Set([...files].sort(compareIds)), wildcard: false, hasExportsMap: true, hidden: hidden2 });
+    entries.set(pkg.id, { id: pkg.id, files: new Set([...files].sort(compareIds)), wildcard: false, hasExportsMap: true, hidden });
   }
   return entries;
 }
@@ -21724,19 +21758,18 @@ async function manifestChecks5(context, reuse) {
 var language14 = { id: "python", checks: [{ ecosystem: "python", undeclared: true, unused: true }], readEntries: readEntries6, manifestChecks: manifestChecks5 };
 
 // packages/structure/src/packaging/languages/go.ts
-var hidden = (relative) => relative.split("/").some((part) => part === "internal" || part === "testdata" || part === "vendor");
 async function readEntries7(model) {
   const entries = /* @__PURE__ */ new Map();
   for (const pkg of model.packages) {
-    if (pkg.ecosystem !== "go" || pkg.manifest === null || (model.codeFiles.get(pkg.id)?.length ?? 0) === 0) continue;
-    const dir = pkg.dir ?? ".";
-    const candidates2 = (model.files.get(pkg.id) ?? []).filter((path) => path.endsWith(".go") && !path.endsWith("_test.go") && !hidden(dir === "." ? path : path.slice(dir.length + 1)));
+    if (pkg.ecosystem !== "go" || (model.codeFiles.get(pkg.id)?.length ?? 0) === 0) continue;
+    const candidates2 = (model.files.get(pkg.id) ?? []).filter((path) => path.endsWith(".go") && !path.endsWith("_test.go"));
     const texts = await model.tree.readMany(candidates2);
     const files = candidates2.filter((path) => !/^package\s+main\b/m.test(texts.get(path) ?? "")).sort(compareIds);
     entries.set(pkg.id, { id: pkg.id, files: new Set(files), wildcard: false, hasExportsMap: true });
   }
   return entries;
 }
+var moduleDir = (manifest) => manifest.includes("/") ? manifest.slice(0, manifest.lastIndexOf("/")) : ".";
 async function manifestChecks6(context, reuse) {
   const { model } = context;
   const workspaces = [];
@@ -21744,66 +21777,78 @@ async function manifestChecks6(context, reuse) {
     workspaces.push(parseGoWork(path, await model.tree.read(path) ?? ""));
   }
   const production = new Set(model.project.files);
-  const externalsOf = /* @__PURE__ */ new Map();
-  for (const external of model.project.analysis.externalImports) {
-    const owner = model.index.owner(external.from);
-    if (owner === void 0) continue;
-    const entry = externalsOf.get(owner) ?? { production: /* @__PURE__ */ new Set(), tests: /* @__PURE__ */ new Set() };
-    (production.has(external.from) ? entry.production : entry.tests).add(external.packageName);
-    externalsOf.set(owner, entry);
-  }
-  const findings = [];
+  const modules = /* @__PURE__ */ new Map();
   for (const pkg of model.packages) {
-    if (!reuse.profiles.has(pkg.id) || pkg.ecosystem !== "go" || pkg.manifest === null) continue;
-    const manifest = parseGoMod(pkg.manifest, await model.tree.read(pkg.manifest) ?? "");
+    if (pkg.ecosystem !== "go" || pkg.manifest === null) continue;
+    modules.set(pkg.manifest, [...modules.get(pkg.manifest) ?? [], pkg]);
+  }
+  const packagesOfModule = (name13) => model.packages.filter((other) => other.ecosystem === "go" && other.module === name13);
+  const findings = [];
+  for (const [manifestPath, members2] of [...modules].sort(([a], [b]) => compareIds(a, b))) {
+    if (!members2.some((pkg) => reuse.profiles.has(pkg.id))) continue;
+    const module3 = members2[0].module ?? "";
+    const memberIds = new Set(members2.map((pkg) => pkg.id));
+    const manifest = parseGoMod(manifestPath, await model.tree.read(manifestPath) ?? "");
     const required = new Map(manifest.requires.map((entry) => [entry.path, entry]));
-    const outside = externalsOf.get(pkg.id) ?? { production: /* @__PURE__ */ new Set(), tests: /* @__PURE__ */ new Set() };
-    const inWorkspace = (other) => workspaces.some((dirs) => dirs.includes(pkg.dir ?? ".") && dirs.includes(model.byId.get(other)?.dir ?? ""));
-    const undeclared = [];
-    for (const edge of model.edges.values()) {
-      if (edge.from !== pkg.id) continue;
-      const target2 = model.byId.get(edge.to);
-      if (target2.ecosystem !== "go" || required.has(target2.name) || inWorkspace(edge.to)) continue;
-      if (edge.productionImports > 0) undeclared.push({ name: target2.name, internal: true, via: "production" });
-      else if (edge.testImports > 0) undeclared.push({ name: target2.name, internal: true, via: "tests" });
+    const inWorkspace = (other) => workspaces.some((dirs) => dirs.includes(moduleDir(manifestPath)) && dirs.includes(moduleDir(other.manifest ?? "")));
+    const externals = { production: /* @__PURE__ */ new Map(), tests: /* @__PURE__ */ new Map() };
+    for (const external of model.project.analysis.externalImports) {
+      const owner = model.index.owner(external.from);
+      if (owner === void 0 || !memberIds.has(owner)) continue;
+      const side = production.has(external.from) ? externals.production : externals.tests;
+      side.set(external.packageName, (side.get(external.packageName) ?? /* @__PURE__ */ new Set()).add(owner));
     }
-    for (const [names, via] of [[outside.production, "production"], [outside.tests, "tests"]]) {
-      for (const name13 of [...names].sort(compareIds)) {
-        if (name13 === pkg.name || required.has(name13) || model.packages.some((other) => other.name === name13)) continue;
-        if (via === "tests" && outside.production.has(name13)) continue;
-        undeclared.push({ name: name13, internal: false, via });
+    const undeclared = /* @__PURE__ */ new Map();
+    const note = (name13, internal, via, user) => {
+      const known = undeclared.get(name13) ?? { internal, via, users: /* @__PURE__ */ new Set() };
+      if (via === "production") known.via = "production";
+      known.users.add(user);
+      undeclared.set(name13, known);
+    };
+    for (const edge of model.edges.values()) {
+      if (!memberIds.has(edge.from)) continue;
+      const target2 = model.byId.get(edge.to);
+      if (target2.ecosystem !== "go" || target2.module === module3 || required.has(target2.module ?? "") || inWorkspace(target2)) continue;
+      if (edge.productionImports > 0) note(target2.module ?? target2.name, true, "production", edge.from);
+      else if (edge.testImports > 0) note(target2.module ?? target2.name, true, "tests", edge.from);
+    }
+    for (const [side, via] of [[externals.production, "production"], [externals.tests, "tests"]]) {
+      for (const name13 of [...side.keys()].sort(compareIds)) {
+        if (name13 === module3 || required.has(name13) || model.packages.some((other) => other.ecosystem !== "go" && other.name === name13)) continue;
+        if (via === "tests" && externals.production.has(name13)) continue;
+        for (const user of side.get(name13)) note(name13, false, via, user);
       }
     }
-    if (undeclared.length > 0) {
-      const sorted = undeclared.sort((a, b) => compareIds(a.name, b.name));
+    if (undeclared.size > 0) {
+      const sorted = [...undeclared].sort(([a], [b]) => compareIds(a, b));
+      const users = [...new Set(sorted.flatMap(([, entry]) => [...entry.users]))].sort(compareIds);
       findings.push(
         raise(
           context,
           "undeclared-dependency",
           "boundary",
-          [pkg.id],
-          `${pkg.id} uses ${sorted.map((u) => u.name).join(", ")} without declaring ${sorted.length === 1 ? "it" : "them"}: the dependency graph the build sees is not the real one`,
-          { dependencies: sorted.map((u) => u.name), internal: sorted.filter((u) => u.internal).map((u) => u.name), testsOnly: sorted.filter((u) => u.via === "tests").map((u) => u.name) }
+          users,
+          `${module3} uses ${sorted.map(([name13]) => name13).join(", ")} without declaring ${sorted.length === 1 ? "it" : "them"}: the dependency graph the build sees is not the real one`,
+          { module: module3, dependencies: sorted.map(([name13]) => name13), internal: sorted.filter(([, e]) => e.internal).map(([name13]) => name13), testsOnly: sorted.filter(([, e]) => e.via === "tests").map(([name13]) => name13) },
+          { subjects: [module3] }
         )
       );
     }
-    const unused = manifest.requires.filter((entry) => !entry.indirect).filter((entry) => {
-      const internal = model.packages.find((other) => other.ecosystem === "go" && other.name === entry.path);
-      if (internal !== void 0) {
-        const edge = model.edges.get(edgeKey(pkg.id, internal.id));
-        return (edge?.productionImports ?? 0) + (edge?.testImports ?? 0) === 0;
-      }
-      return !outside.production.has(entry.path) && !outside.tests.has(entry.path);
-    }).map((entry) => entry.path).sort(compareIds);
+    const importsModule = (name13) => {
+      const ids = new Set(packagesOfModule(name13).map((other) => other.id));
+      return [...model.edges.values()].some((edge) => memberIds.has(edge.from) && ids.has(edge.to) && edge.productionImports + edge.testImports > 0);
+    };
+    const unused = manifest.requires.filter((entry) => !entry.indirect).filter((entry) => packagesOfModule(entry.path).length > 0 ? !importsModule(entry.path) : !externals.production.has(entry.path) && !externals.tests.has(entry.path)).map((entry) => entry.path).sort(compareIds);
     if (unused.length > 0) {
       findings.push(
         raise(
           context,
           "unused-dependency",
           "boundary",
-          [pkg.id],
-          `${pkg.id} declares ${unused.join(", ")} and its code never uses ${unused.length === 1 ? "it" : "them"}: coupling with no purpose, and build weight`,
-          { dependencies: unused, internal: unused.filter((name13) => model.packages.some((other) => other.name === name13)) }
+          [members2[0].id],
+          `${module3} declares ${unused.join(", ")} and its code never uses ${unused.length === 1 ? "it" : "them"}: coupling with no purpose, and build weight`,
+          { module: module3, dependencies: unused, internal: unused.filter((name13) => packagesOfModule(name13).length > 0) },
+          { subjects: [module3] }
         )
       );
     }
@@ -23574,6 +23619,7 @@ function packageRows(model, abstractness = /* @__PURE__ */ new Map()) {
       id: pkg.id,
       name: pkg.name,
       ecosystem: pkg.ecosystem,
+      ...pkg.module === null ? {} : { module: pkg.module },
       kind: isPublished(model, pkg) ? "published" : "internal",
       purpose: purposeOf(model, pkg),
       entry: pkg.entry,

@@ -5,7 +5,7 @@ import {
   adapterForPath,
   bindingForPath,
   isTestPath
-} from "./chunk-OO2LLI7D.mjs";
+} from "./chunk-Z34ILMOP.mjs";
 import {
   GitError,
   SCHEMA_VERSION,
@@ -6398,7 +6398,7 @@ function isPartial2(context) {
   return context.positionals.length > 0;
 }
 var command3 = {
-  summary: "Rank exported functions, classes and modules by interface depth, and list pass-through functions",
+  summary: "Rank exported functions, classes and modules by interface depth, and list every pass-through function, exported or not",
   async run(context) {
     const { settings, current, measurement } = await measureCurrent(context, "structural");
     const paths = normalisePaths(context.positionals);
@@ -6416,7 +6416,7 @@ var command3 = {
       inputs: { tree: current.kind, paths, shallow: settings.shallowDepth },
       extra: { summary, skippedFiles: measurement.skippedFiles },
       results: rows,
-      columns: ["path", "unit", "kind", "nodes", "interface", "depth", "passThrough", "labels"]
+      columns: ["path", "unit", "kind", "exported", "nodes", "interface", "depth", "passThrough", "labels"]
     };
     if (!isPartial2(context) && current.kind === "head") await storeReport(context, name4, output);
     else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");

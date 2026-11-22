@@ -8,7 +8,7 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/structure.mjs *)
 
 A misplaced file costs a reader a hop. A misplaced package boundary costs a version, a build step, a published interface, and a change that has to be made in two places and released in order. Packages are easy to create and hard to remove, and they are usually created early from a guess about what will be reused. This skill tests each boundary against the evidence, as the locality skill tests each folder.
 
-A package here is a unit the build delivers: a workspace package, a C# project, a CMake target, a Gradle or Maven module, a Python distribution, a Rust crate, a Go module. It is not a folder. The CLI reports facts and never edits. You judge, say why, and make each step its own commit.
+A package here is a unit the build delivers: a workspace package, a C# project, a CMake target, a Gradle or Maven module, a Python distribution, a Rust crate, a Go package (grouped under its module). It is not a folder. The CLI reports facts and never edits. You judge, say why, and make each step its own commit.
 
 **Fewer packages is the default.** A boundary has to justify itself by reuse, by a declared purpose, or by change evidence. Splitting needs evidence of disjoint reuse or independent change, never anticipation.
 

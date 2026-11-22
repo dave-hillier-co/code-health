@@ -276,12 +276,12 @@ describe("a locality report", () => {
 
   test("it lifts the cycle it unblocks above larger cycles", async () => {
     const before = JSON.parse((await runStructure(cycles.path, ["cycles", "--json"])).stdout).results as { id: string; breakingSet: { from: string; to: string }[] }[];
-    expect(before.map((r) => r.id)).toEqual(["cycle:file:src/c.ts", "cycle:file:src/a.ts"]);
+    expect(before.map((r) => r.id)).toEqual(["cycle:default:src/c.ts", "cycle:default:src/a.ts"]);
     writeLocalityReport(cycles, head(), false, before[1]!.breakingSet[0]!);
     const after = JSON.parse((await runStructure(cycles.path, ["cycles", "--json"])).stdout).results as { id: string; unblockedGain: number | null }[];
     expect(after.map((r) => [r.id, r.unblockedGain])).toEqual([
-      ["cycle:file:src/a.ts", 7],
-      ["cycle:file:src/c.ts", 0],
+      ["cycle:default:src/a.ts", 7],
+      ["cycle:default:src/c.ts", 0],
     ]);
   });
 

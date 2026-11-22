@@ -12309,7 +12309,7 @@ function resolvePackages(input) {
       result.importEdges.push({ from, to, kind: "import", typeOnly: false });
     }
   }
-  const unmangle = (name2) => name2.slice(name2.indexOf(SEPARATOR) + 1);
+  const unmangle = (name2) => name2.slice(name2.lastIndexOf(SEPARATOR) + 1);
   return {
     ...result,
     consumers: result.consumers.map((consumer) => ({ ...consumer, toExport: unmangle(consumer.toExport) })),
