@@ -83,7 +83,12 @@ export async function resolveRange(root: string, request: RangeRequest): Promise
     against = await findMainBranch(root, request.mainBranch);
     if (against === null) throw usageError("there is no main branch to take the base from: name one with cochange risk BASE, or set cochange.risk.mainBranch");
   } else if (!(await exists(root, against))) {
-    throw usageError(`"${against}" is not a commit in this repository`);
+    // A bare word that is no commit may be a subcommand that does not exist, so say both.
+    throw usageError(
+      parts === null
+        ? `"${against}" is neither a risk subcommand nor a commit in this repository; a branch named like a subcommand is written BASE..HEAD`
+        : `"${against}" is not a commit in this repository`,
+    );
   }
   let base: string;
   try {
