@@ -29,7 +29,7 @@ export const command: Command = {
   async run(context) {
     const settings = readSettings(context.config);
     const sha = (await runGit(context.repo.root, ["rev-parse", "--verify", `${settings.ref}^{commit}`])).trim();
-    const project = await loadProject(context.repo.root, sha, settings.exclude);
+    const project = await loadProject(context.repo.root, sha, settings);
     const rows = findLayerViolations(project, settings.layers);
     return {
       inputs: { layers: settings.layers.map((layer) => layer.name), analysed: sha },

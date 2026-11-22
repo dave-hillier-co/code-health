@@ -111,6 +111,13 @@ describe("a finding", () => {
     expect(pack!.stabilityVerdict).toMatchObject({ basis: "change", aboveGuideline: true });
   });
 
+  test("a stability row below the guideline gets no problem kind, and keeps its verdict", async () => {
+    const { document } = await evidence(stability, "unstable:folder:src/app->src/volatile");
+    const [pack] = document.results;
+    expect(pack!.stabilityVerdict).toMatchObject({ aboveGuideline: false });
+    expect(pack).toMatchObject({ kind: null, kinds: [] });
+  });
+
   test("golden", async () => {
     expectGolden("evidence", "evidence.finding", (await evidence(stability, "unstable:folder:src/stable->src/volatile")).stdout);
   });
@@ -241,12 +248,13 @@ describe("misplacement", () => {
 });
 
 describe("a locality report", () => {
-  function writeLocalityReport(fixture: GitFixture, head: string, dirty: boolean, edge: { from: string; to: string }) {
+  function writeLocalityReport(fixture: GitFixture, head: string, dirty: boolean, edge: { from: string; to: string }, schemaVersion: number | null = 1) {
     const directory = join(fixture.path, ".cache", "code-health", "reports");
     mkdirSync(directory, { recursive: true });
     writeFileSync(
       join(directory, "locality.analyse.json"),
       JSON.stringify({
+        ...(schemaVersion === null ? {} : { schemaVersion }),
         tool: "locality",
         command: "analyse",
         repo: { head, dirty },
@@ -282,6 +290,20 @@ describe("a locality report", () => {
     const { document } = await evidence(cycles, "src/e.ts->src/c.ts");
     expect(document.results[0]!.unblocks).toEqual([]);
     expect(document.inputs.locality).toBeNull();
+  });
+
+  test.each([
+    ["a schemaVersion it does not recognise", 2, "has schemaVersion 2"],
+    ["no schemaVersion", null, "has no schemaVersion"],
+  ])("a report with %s is ignored, and a line says so and why", async (_name, schemaVersion, reason) => {
+    writeLocalityReport(cycles, head(), false, { from: "src/e.ts", to: "src/c.ts" }, schemaVersion);
+    const run = await runStructure(cycles.path, ["evidence", "--json", "src/e.ts->src/c.ts"]);
+    expect(run.code).toBe(ExitCode.Success);
+    const document = JSON.parse(run.stdout) as { results: { unblocks: unknown[] }[]; inputs: { locality: unknown } };
+    expect(document.results[0]!.unblocks).toEqual([]);
+    expect(document.inputs.locality).toBeNull();
+    expect(run.stderr).toContain(`structure: ignored locality.analyse.json because it ${reason}`);
+    expect(run.stderr).toContain("reads schemaVersion 1");
   });
 
   test("a report taken on a dirty tree is ignored", async () => {

@@ -206,7 +206,6 @@ function wideChange(context: FindingContext): Finding[] {
   if (total < model.settings.minRevisions) return [];
   const wide = model.activity.touchingAtLeast(wideChangePackages);
   const share = wide / total;
-  if (share < wideChangeShare) return [];
   const midpoint = model.windowSince + (model.anchor - model.windowSince) / 2;
   const half = (later: boolean) => {
     const changes = model.changes.filter((c) => !c.oversized && (c.date >= midpoint) === later);
@@ -222,7 +221,7 @@ function wideChange(context: FindingContext): Finding[] {
     raise(context, "wide-change", "CCP", [],
       `${wide} of ${total} changes (${percent(share)}) touched at least ${wideChangePackages} packages: the packages cut across the features`,
       { wide, changes: total, share: round3(share), packagesPerWideChange: wideChangePackages, earlierShare: half(false), laterShare: half(true), mostOften },
-      { subjects: ["repository"], changeCost: context.cost.wide(wideChangePackages) }),
+      { subjects: ["repository"], changeCost: context.cost.wide(wideChangePackages), ...(share >= wideChangeShare ? {} : { belowGuideline: `${percent(share)} of changes against ${percent(wideChangeShare)}` }) }),
   ];
 }
 

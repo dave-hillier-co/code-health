@@ -403,6 +403,8 @@ async function execute(cli2, io) {
   const config = loadConfig(repo.root, cli2.config);
   const context = { repo, config, positionals: args2.positionals, values: args2.values };
   const output = await command12.run(context);
+  for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
+`);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns });
   if (args2.json || !io.stdout.isTTY) {
@@ -430,6 +432,8 @@ async function execute(cli2, io) {
     );
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results, args2.fields ?? columns, truncated));
+    for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
+`);
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
 `);
   } else {
@@ -812,7 +816,7 @@ function mergeFileChanges(changes) {
 
 // packages/history/src/imported.ts
 function detectImportedHistory(view, treeFiles, options2 = {}) {
-  const { share = 0.5, minFiles = 20 } = options2;
+  const { share: share2 = 0.5, minFiles = 20 } = options2;
   if (treeFiles.length < minFiles) return [];
   const current = new Set(treeFiles);
   const found = [];
@@ -825,7 +829,7 @@ function detectImportedHistory(view, treeFiles, options2 = {}) {
       commit.changes.filter((c) => c.status === "A" && current.has(c.fileId)).map((c) => c.fileId)
     );
     const ratio = kept.size / treeFiles.length;
-    if (ratio >= share) {
+    if (ratio >= share2) {
       found.push({ sha: commit.sha, files: kept.size, share: ratio, committerDate: commit.committerDate });
     }
   }
@@ -15335,13 +15339,6 @@ function describeSupportedCode() {
   const names = supportedAdapters().map((adapter9) => adapter9.packaging.description);
   return names.length <= 1 ? names[0] ?? "source code" : `${names.slice(0, -1).join(", ")} or ${names.at(-1)}`;
 }
-async function discoverBoundaries(tree, adapters = supportedAdapters()) {
-  const byManifest = /* @__PURE__ */ new Map();
-  for (const adapter9 of adapters) {
-    for (const boundary of await adapter9.boundaries.discover(tree)) if (!byManifest.has(boundary.manifest)) byManifest.set(boundary.manifest, boundary);
-  }
-  return [...byManifest.values()].sort((a, b) => a.manifest < b.manifest ? -1 : a.manifest > b.manifest ? 1 : 0);
-}
 
 // packages/parse/src/grammars.ts
 var runtimeSpec = { packageName: "web-tree-sitter", file: "web-tree-sitter.wasm" };
@@ -16086,6 +16083,22 @@ function reachableFrom(graph, roots) {
   return seen;
 }
 
+// packages/cochange/src/components.ts
+var UNASSIGNED = "(unassigned)";
+function readComponents(value) {
+  const names = Object.keys(value).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+  return names.map((name13) => {
+    if (name13 === UNASSIGNED) throw configError(`code-health.json: components.${name13} is a reserved name`);
+    const raw = value[name13];
+    const globs = typeof raw === "string" ? [raw] : raw;
+    if (!Array.isArray(globs) || globs.some((g) => typeof g !== "string")) {
+      throw configError(`code-health.json: components.${name13} must be a glob or an array of globs`);
+    }
+    if (globs.length === 0) throw configError(`code-health.json: components.${name13} must list at least one glob`);
+    return { name: name13, matches: compileGlobs(globs) };
+  });
+}
+
 // packages/parse/src/parse-cache.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
@@ -16126,18 +16139,498 @@ var ParseCache = class _ParseCache {
   }
 };
 
+// packages/structure/src/packaging/discovery.ts
+var dirOf = (path) => path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ".";
+var baseOf = (path) => path.slice(path.lastIndexOf("/") + 1);
+var child = (dir, name13) => dir === "." ? name13 : `${dir}/${name13}`;
+function resolveFrom(dir, relative) {
+  const parts2 = dir === "." ? [] : dir.split("/");
+  for (const part of relative.replaceAll("\\", "/").split("/")) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") {
+      if (parts2.pop() === void 0) return void 0;
+    } else {
+      parts2.push(part);
+    }
+  }
+  return parts2.length === 0 ? "." : parts2.join("/");
+}
+var testName = /(^|[-_.@/:])(tests?|testing|testkit|fixtures?|e2e|mocks?|specs?)([-_.:]|$)/i;
+var testDir = /(^|\/)(tests?|__tests__|e2e|testing)(\/|$)/i;
+function isTestSupport(name13, dir, flagged = false) {
+  return flagged || testName.test(name13) || testDir.test(dir) || /\.tests?$/i.test(name13);
+}
+function parseJson(text2) {
+  if (text2 === void 0) return void 0;
+  try {
+    const value = JSON.parse(text2);
+    return typeof value === "object" && value !== null && !Array.isArray(value) ? value : void 0;
+  } catch {
+    return void 0;
+  }
+}
+var record = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+var strings2 = (value) => Array.isArray(value) ? value.filter((v) => typeof v === "string") : [];
+async function npmPackages(paths, read, ignored) {
+  const manifests = /* @__PURE__ */ new Map();
+  for (const path of paths.filter((p) => baseOf(p) === "package.json" && !p.split("/").includes("node_modules"))) {
+    const json = parseJson(await read(path));
+    if (json) manifests.set(dirOf(path), json);
+  }
+  const root = manifests.get(".");
+  const workspaces = record(root?.workspaces);
+  let globs = [...strings2(root?.workspaces), ...strings2(workspaces.packages)];
+  const pnpm = await read("pnpm-workspace.yaml");
+  if (pnpm !== void 0) globs = [...globs, ...pnpmPackages(pnpm)];
+  let dirs;
+  if (globs.length > 0) {
+    const include = compileGlobs(globs.filter((g) => !g.startsWith("!")).map((g) => g.replace(/^\.\//, "").replace(/\/$/, "")));
+    const drop = compileGlobs(globs.filter((g) => g.startsWith("!")).map((g) => g.slice(1).replace(/\/$/, "")));
+    dirs = [...manifests.keys()].filter((dir) => dir !== "." && include(dir) && !drop(dir));
+  } else {
+    dirs = [...manifests.keys()].filter((dir) => typeof manifests.get(dir).name === "string");
+  }
+  const result = [];
+  for (const dir of dirs.filter((d) => !ignored(d)).sort(compareIds)) {
+    const json = manifests.get(dir);
+    const name13 = typeof json.name === "string" ? json.name : baseOf(dir === "." ? "root" : dir);
+    const dependencies = [];
+    for (const key of ["dependencies", "optionalDependencies", "peerDependencies"]) {
+      for (const dependency of Object.keys(record(json[key]))) dependencies.push({ name: dependency, scope: "runtime", optional: key !== "dependencies" });
+    }
+    for (const dependency of Object.keys(record(json.devDependencies))) dependencies.push({ name: dependency, scope: "dev" });
+    result.push({
+      name: name13,
+      ecosystem: "npm",
+      dir,
+      manifest: child(dir, "package.json"),
+      private: json.private === true ? true : null,
+      version: typeof json.version === "string" ? json.version : null,
+      entry: json.bin !== void 0,
+      testSupport: isTestSupport(name13, dir),
+      aliases: [],
+      dependencies
+    });
+  }
+  return result;
+}
+function pnpmPackages(text2) {
+  const out2 = [];
+  let inPackages = false;
+  for (const line of text2.split("\n")) {
+    if (/^packages\s*:/.test(line)) inPackages = true;
+    else if (/^\S/.test(line)) inPackages = false;
+    else if (inPackages) {
+      const item = /^\s*-\s*["']?([^"'#\s]+)["']?/.exec(line)?.[1];
+      if (item !== void 0) out2.push(item);
+    }
+  }
+  return out2;
+}
+function xmlWithoutComments(text2) {
+  return text2.replace(/<!--[\s\S]*?-->/g, "");
+}
+function xmlAttribute(tag, attribute2) {
+  return new RegExp(`\\b${attribute2}\\s*=\\s*"([^"]*)"`, "i").exec(tag)?.[1] ?? new RegExp(`\\b${attribute2}\\s*=\\s*'([^']*)'`, "i").exec(tag)?.[1];
+}
+function xmlElement(text2, element2) {
+  return new RegExp(`<${element2}>\\s*([^<]*?)\\s*</${element2}>`, "i").exec(text2)?.[1];
+}
+async function dotnetPackages(paths, read, ignored) {
+  const result = [];
+  for (const path of paths.filter((p) => /\.(cs|fs|vb)proj$/.test(p)).sort(compareIds)) {
+    const dir = dirOf(path);
+    if (ignored(dir)) continue;
+    const text2 = xmlWithoutComments(await read(path) ?? "");
+    const name13 = baseOf(path).replace(/\.(cs|fs|vb)proj$/, "");
+    const dependencies = [];
+    for (const tag of text2.match(/<ProjectReference\b[^>]*>/gi) ?? []) {
+      const include = xmlAttribute(tag, "Include");
+      if (include === void 0) continue;
+      const target2 = resolveFrom(dir, include);
+      dependencies.push({ name: baseOf(include.replaceAll("\\", "/")).replace(/\.(cs|fs|vb)proj$/, ""), scope: "runtime", ...target2 === void 0 ? {} : { dir: dirOf(target2) } });
+    }
+    for (const tag of text2.match(/<PackageReference\b[^>]*>/gi) ?? []) {
+      const include = xmlAttribute(tag, "Include");
+      if (include !== void 0) dependencies.push({ name: include, scope: "runtime" });
+    }
+    const outputType = xmlElement(text2, "OutputType");
+    const testSdk = /Microsoft\.NET\.Test\.Sdk/.test(text2) || /<IsTestProject>\s*true/i.test(text2);
+    result.push({
+      name: name13,
+      ecosystem: "dotnet",
+      dir,
+      manifest: path,
+      private: /<IsPackable>\s*false/i.test(text2) ? true : null,
+      version: xmlElement(text2, "Version") ?? xmlElement(text2, "VersionPrefix") ?? null,
+      entry: /^(win)?exe$/i.test(outputType ?? "") || /Sdk\s*=\s*"Microsoft\.NET\.Sdk\.Web"/i.test(text2),
+      testSupport: isTestSupport(name13, dir, testSdk),
+      aliases: [],
+      dependencies
+    });
+  }
+  return result;
+}
+var cmakeKeywords = /* @__PURE__ */ new Set(["PUBLIC", "PRIVATE", "INTERFACE", "DEBUG", "OPTIMIZED", "GENERAL"]);
+async function cmakePackages(paths, read, ignored) {
+  const result = [];
+  for (const path of paths.filter((p) => baseOf(p) === "CMakeLists.txt").sort(compareIds)) {
+    const dir = dirOf(path);
+    if (ignored(dir)) continue;
+    const text2 = (await read(path))?.replace(/#.*$/gm, "") ?? "";
+    const targets = [];
+    for (const match of text2.matchAll(/\badd_(library|executable)\s*\(\s*([^\s)]+)([^)]*)\)/gi)) {
+      const [, kind, name13, rest] = match;
+      if (/\bALIAS\b/i.test(rest ?? "") || /\bIMPORTED\b/i.test(rest ?? "")) continue;
+      targets.push({ name: name13, executable: kind.toLowerCase() === "executable" });
+    }
+    if (targets.length === 0) continue;
+    const aliases = [...text2.matchAll(/\badd_library\s*\(\s*([^\s)]+)\s+ALIAS\b/gi)].map((m) => m[1]);
+    const names = new Set(targets.map((t) => t.name));
+    const dependencies = [];
+    for (const match of text2.matchAll(/\btarget_link_libraries\s*\(\s*([^\s)]+)([^)]*)\)/gi)) {
+      if (!names.has(match[1])) continue;
+      for (const token of (match[2] ?? "").split(/\s+/)) {
+        if (token === "" || cmakeKeywords.has(token.toUpperCase()) || token.startsWith("$<") || token.startsWith("-") || token.startsWith("${")) continue;
+        dependencies.push({ name: token, scope: "runtime" });
+      }
+    }
+    const version = /\bproject\s*\([^)]*\bVERSION\s+([0-9][^\s)]*)/i.exec(text2)?.[1] ?? null;
+    result.push({
+      name: targets[0].name,
+      ecosystem: "cmake",
+      dir,
+      manifest: path,
+      private: null,
+      version,
+      entry: targets.every((t) => t.executable),
+      testSupport: isTestSupport(targets[0].name, dir),
+      aliases: [...targets.map((t) => t.name), ...aliases],
+      dependencies
+    });
+  }
+  return result;
+}
+async function gradlePackages(paths, read, ignored) {
+  const fileSet = new Set(paths);
+  const result = [];
+  for (const settings of paths.filter((p) => /(^|\/)settings\.gradle(\.kts)?$/.test(p)).sort(compareIds)) {
+    const base = dirOf(settings);
+    const text2 = (await read(settings))?.replace(/\/\/.*$/gm, "") ?? "";
+    const projects = /* @__PURE__ */ new Set();
+    for (const statement of text2.matchAll(/\binclude\b\s*\(?((?:\s*["'][^"']+["']\s*,?)+)/g)) {
+      for (const quoted of statement[1].matchAll(/["']([^"']+)["']/g)) projects.add(quoted[1]);
+    }
+    for (const project of [...projects].sort(compareIds)) {
+      const dir = child(base, project.replace(/^:/, "").replaceAll(":", "/"));
+      const buildFile = ["build.gradle.kts", "build.gradle"].map((f) => child(dir, f)).find((f) => fileSet.has(f));
+      if (buildFile === void 0 || ignored(dir)) continue;
+      const build = (await read(buildFile))?.replace(/\/\/.*$/gm, "") ?? "";
+      const dependencies = [];
+      for (const match of build.matchAll(/\b([A-Za-z]+)\s*\(?\s*project\s*\(\s*(?:path\s*[:=]\s*)?["']([^"']+)["']/g)) {
+        const configuration = match[1];
+        const target2 = child(base, match[2].replace(/^:/, "").replaceAll(":", "/"));
+        dependencies.push({ name: match[2], scope: /^(test|androidTest|integrationTest)/i.test(configuration) ? "dev" : "runtime", dir: target2 });
+      }
+      const name13 = project.startsWith(":") ? project : `:${project}`;
+      result.push({
+        name: name13,
+        ecosystem: "gradle",
+        dir,
+        manifest: buildFile,
+        private: null,
+        version: /^\s*version\s*=\s*["']([^"']+)["']/m.exec(build)?.[1] ?? null,
+        entry: /\bapplication\b|com\.android\.application|\bmainClass\b/.test(build),
+        testSupport: isTestSupport(name13, dir),
+        aliases: [],
+        dependencies
+      });
+    }
+  }
+  return result;
+}
+async function mavenPackages(paths, read, ignored) {
+  const result = [];
+  for (const path of paths.filter((p) => baseOf(p) === "pom.xml").sort(compareIds)) {
+    const dir = dirOf(path);
+    if (ignored(dir)) continue;
+    const text2 = xmlWithoutComments(await read(path) ?? "").replace(/<parent>[\s\S]*?<\/parent>/g, "").replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, "").replace(/<build>[\s\S]*?<\/build>/g, "").replace(/<profiles>[\s\S]*?<\/profiles>/g, "");
+    const artifact = xmlElement(text2.replace(/<dependencies>[\s\S]*?<\/dependencies>/g, ""), "artifactId");
+    const packaging = xmlElement(text2, "packaging") ?? "jar";
+    if (artifact === void 0 || packaging === "pom" && /<modules>/.test(text2)) continue;
+    const dependencies = [];
+    for (const block of text2.match(/<dependency>[\s\S]*?<\/dependency>/g) ?? []) {
+      const name13 = xmlElement(block, "artifactId");
+      if (name13 === void 0) continue;
+      dependencies.push({ name: name13, scope: /^test$/i.test(xmlElement(block, "scope") ?? "") ? "dev" : "runtime" });
+    }
+    result.push({
+      name: artifact,
+      ecosystem: "maven",
+      dir,
+      manifest: path,
+      private: null,
+      version: xmlElement(text2.replace(/<dependencies>[\s\S]*?<\/dependencies>/g, ""), "version") ?? null,
+      entry: packaging === "war",
+      testSupport: isTestSupport(artifact, dir),
+      aliases: [],
+      dependencies
+    });
+  }
+  return result;
+}
+var normalisePython = (name13) => name13.toLowerCase().replace(/[-_.]+/g, "-");
+var pythonName = (requirement) => /^[A-Za-z0-9][A-Za-z0-9._-]*/.exec(requirement.trim())?.[0];
+var devExtras = /* @__PURE__ */ new Set(["dev", "test", "tests", "testing", "lint", "docs", "typing"]);
+async function pythonPackages(paths, read, ignored) {
+  const result = [];
+  for (const path of paths.filter((p) => baseOf(p) === "pyproject.toml").sort(compareIds)) {
+    const dir = dirOf(path);
+    if (ignored(dir)) continue;
+    const toml = parseToml(await read(path) ?? "");
+    const project = toml.project ?? {};
+    const poetry = toml.tool?.poetry ?? {};
+    const name13 = project.name ?? poetry.name;
+    if (typeof name13 !== "string") continue;
+    const dependencies = [];
+    for (const requirement of strings2(project.dependencies)) {
+      const dependency = pythonName(requirement);
+      if (dependency !== void 0) dependencies.push({ name: dependency, scope: "runtime" });
+    }
+    for (const [extra, list3] of Object.entries(record(project["optional-dependencies"]))) {
+      for (const requirement of strings2(list3)) {
+        const dependency = pythonName(requirement);
+        if (dependency !== void 0) dependencies.push({ name: dependency, scope: devExtras.has(extra) ? "dev" : "runtime" });
+      }
+    }
+    for (const [dependency, spec] of Object.entries(record(poetry.dependencies))) {
+      if (dependency.toLowerCase() === "python") continue;
+      const path2 = record(spec).path;
+      dependencies.push({ name: dependency, scope: "runtime", ...typeof path2 === "string" && resolveFrom(dir, path2) !== void 0 ? { dir: resolveFrom(dir, path2) } : {} });
+    }
+    for (const group of [record(poetry["dev-dependencies"]), record(record(record(poetry.group).dev).dependencies)]) {
+      for (const dependency of Object.keys(group)) dependencies.push({ name: dependency, scope: "dev" });
+    }
+    const classifiers = strings2(project.classifiers);
+    result.push({
+      name: name13,
+      ecosystem: "python",
+      dir,
+      manifest: path,
+      private: classifiers.includes("Private :: Do Not Upload") ? true : null,
+      version: typeof (project.version ?? poetry.version) === "string" ? project.version ?? poetry.version : null,
+      entry: Object.keys(record(project.scripts)).length > 0 || Object.keys(record(poetry.scripts)).length > 0,
+      testSupport: isTestSupport(name13, dir),
+      aliases: [],
+      dependencies
+    });
+  }
+  return result;
+}
+async function cargoPackages(paths, read, ignored) {
+  const fileSet = new Set(paths);
+  const result = [];
+  for (const path of paths.filter((p) => baseOf(p) === "Cargo.toml").sort(compareIds)) {
+    const dir = dirOf(path);
+    if (ignored(dir)) continue;
+    const toml = parseToml(await read(path) ?? "");
+    const pkg = record(toml.package);
+    if (typeof pkg.name !== "string") continue;
+    const dependencies = [];
+    for (const [table4, scope] of [["dependencies", "runtime"], ["build-dependencies", "runtime"], ["dev-dependencies", "dev"]]) {
+      for (const [name13, spec] of Object.entries(record(toml[table4]))) {
+        const detail = record(spec);
+        const target2 = typeof detail.path === "string" ? resolveFrom(dir, detail.path) : void 0;
+        dependencies.push({
+          name: typeof detail.package === "string" ? detail.package : name13,
+          scope,
+          ...target2 === void 0 ? {} : { dir: target2 }
+        });
+      }
+    }
+    result.push({
+      name: pkg.name,
+      ecosystem: "cargo",
+      dir,
+      manifest: path,
+      private: pkg.publish === false ? true : null,
+      version: typeof pkg.version === "string" ? pkg.version : null,
+      entry: Array.isArray(toml.bin) || fileSet.has(child(dir, "src/main.rs")),
+      testSupport: isTestSupport(pkg.name, dir),
+      aliases: [],
+      dependencies
+    });
+  }
+  return result;
+}
+async function goPackages(paths, read, ignored) {
+  const fileSet = new Set(paths);
+  const result = [];
+  for (const path of paths.filter((p) => baseOf(p) === "go.mod").sort(compareIds)) {
+    const dir = dirOf(path);
+    if (ignored(dir)) continue;
+    const text2 = (await read(path) ?? "").replace(/\/\/ indirect.*$/gm, "").replace(/\/\/.*$/gm, "");
+    const name13 = /^\s*module\s+(\S+)/m.exec(text2)?.[1];
+    if (name13 === void 0) continue;
+    const replaced = /* @__PURE__ */ new Map();
+    for (const match of text2.matchAll(/^\s*(?:replace\s+)?(\S+)(?:\s+\S+)?\s*=>\s*(\.{1,2}\/\S*)\s*$/gm)) {
+      const target2 = resolveFrom(dir, match[2]);
+      if (target2 !== void 0) replaced.set(match[1], target2);
+    }
+    const required = /* @__PURE__ */ new Set();
+    for (const block of text2.matchAll(/\brequire\s*\(([\s\S]*?)\)/g)) {
+      for (const line of block[1].split("\n")) {
+        const module3 = /^\s*(\S+)\s+v\S+/.exec(line)?.[1];
+        if (module3 !== void 0) required.add(module3);
+      }
+    }
+    for (const match of text2.matchAll(/^\s*require\s+(\S+)\s+v\S+/gm)) required.add(match[1]);
+    result.push({
+      name: name13,
+      ecosystem: "go",
+      dir,
+      manifest: path,
+      private: null,
+      version: null,
+      entry: fileSet.has(child(dir, "main.go")) || [...fileSet].some((f) => f.startsWith(`${child(dir, "cmd")}/`)),
+      testSupport: isTestSupport(name13, dir),
+      aliases: [],
+      dependencies: [...required].sort(compareIds).map((module3) => ({ name: module3, scope: "runtime", ...replaced.has(module3) ? { dir: replaced.get(module3) } : {} }))
+    });
+  }
+  return result;
+}
+var readers = [
+  ["npm", npmPackages],
+  ["dotnet", dotnetPackages],
+  ["cmake", cmakePackages],
+  ["gradle", gradlePackages],
+  ["maven", mavenPackages],
+  ["python", pythonPackages],
+  ["cargo", cargoPackages],
+  ["go", goPackages]
+];
+var lookupKey = (ecosystem, name13) => `${ecosystem}\0${ecosystem === "python" ? normalisePython(name13) : name13}`;
+async function discoverPackages(tree, options2) {
+  const excluded = compileGlobs([...options2.exclude]);
+  const ignoredDirs = compileGlobs([...options2.ignore]);
+  const paths = [...tree.files.keys()].filter((p) => !excluded(p) && !p.split("/").includes("node_modules"));
+  const cache = /* @__PURE__ */ new Map();
+  const read = (path) => {
+    if (!cache.has(path)) cache.set(path, tree.read(path));
+    return cache.get(path);
+  };
+  const ignored = (dir) => ignoredDirs(dir) || options2.ignore.some((glob) => dir.startsWith(`${glob}/`));
+  const raws = [];
+  for (const [, readManifests] of readers) raws.push(...await readManifests(paths, read, ignored));
+  for (const dir of [...options2.extra].sort(compareIds)) {
+    if (raws.some((r) => r.dir === dir)) continue;
+    raws.push({ name: baseOf(dir), ecosystem: "component", dir, manifest: "", private: null, version: null, entry: false, testSupport: isTestSupport(baseOf(dir), dir), aliases: [], dependencies: [] });
+  }
+  const idOf = /* @__PURE__ */ new Map();
+  const taken = /* @__PURE__ */ new Map();
+  for (const raw of raws) taken.set(raw.dir, (taken.get(raw.dir) ?? 0) + 1);
+  const seen = /* @__PURE__ */ new Set();
+  for (const raw of raws) {
+    const id = seen.has(raw.dir) ? `${raw.dir}:${raw.ecosystem}` : raw.dir;
+    seen.add(raw.dir);
+    idOf.set(raw, id);
+  }
+  const byName = /* @__PURE__ */ new Map();
+  const byDir = /* @__PURE__ */ new Map();
+  for (const raw of raws) {
+    const id = idOf.get(raw);
+    for (const name13 of [raw.name, ...raw.aliases]) byName.set(lookupKey(raw.ecosystem, name13), id);
+    for (const alias of raw.aliases) {
+      const short = alias.includes("::") ? alias.slice(alias.lastIndexOf("::") + 2) : void 0;
+      if (short !== void 0 && !byName.has(lookupKey(raw.ecosystem, short))) byName.set(lookupKey(raw.ecosystem, short), id);
+    }
+    if (!byDir.has(`${raw.ecosystem}\0${raw.dir}`)) byDir.set(`${raw.ecosystem}\0${raw.dir}`, id);
+  }
+  const packages = raws.map((raw) => {
+    const id = idOf.get(raw);
+    const seenTargets = /* @__PURE__ */ new Set();
+    const dependencies = [];
+    for (const dependency of raw.dependencies) {
+      const target2 = (dependency.dir === void 0 ? void 0 : byDir.get(`${raw.ecosystem}\0${dependency.dir}`)) ?? byName.get(lookupKey(raw.ecosystem, dependency.name)) ?? (dependency.name.includes("::") ? byName.get(lookupKey(raw.ecosystem, dependency.name.slice(dependency.name.lastIndexOf("::") + 2))) : void 0) ?? null;
+      const key = `${dependency.name}\0${dependency.scope}`;
+      if (seenTargets.has(key)) continue;
+      seenTargets.add(key);
+      dependencies.push({ name: dependency.name, scope: dependency.scope, target: target2 === id ? null : target2, optional: dependency.optional === true });
+    }
+    dependencies.sort((a, b) => compareIds(a.name, b.name) || compareIds(a.scope, b.scope));
+    return {
+      id,
+      name: raw.name,
+      ecosystem: raw.ecosystem,
+      dir: raw.dir,
+      manifest: raw.manifest === "" ? null : raw.manifest,
+      private: raw.private,
+      version: raw.version,
+      entry: raw.entry,
+      testSupport: raw.testSupport,
+      aliases: raw.aliases,
+      dependencies
+    };
+  });
+  markConfiguredEntries(packages, paths, options2.entryPoints ?? []);
+  if (packages.length === 0) {
+    return options2.components.map((component) => ({
+      id: component.name,
+      name: component.name,
+      ecosystem: "component",
+      dir: null,
+      manifest: null,
+      private: null,
+      version: null,
+      entry: false,
+      testSupport: isTestSupport(component.name, ""),
+      aliases: [],
+      dependencies: []
+    })).sort((a, b) => compareIds(a.id, b.id));
+  }
+  return packages.sort((a, b) => compareIds(a.id, b.id));
+}
+function markConfiguredEntries(packages, paths, entryPoints) {
+  if (entryPoints.length === 0 || packages.length === 0) return;
+  const isEntryFile = compileGlobs([...entryPoints]);
+  const index = indexPackages(packages);
+  const owners = new Set(paths.filter(isEntryFile).map((path) => index.owner(path)));
+  for (const pkg of packages) if (owners.has(pkg.id)) pkg.entry = true;
+}
+function indexPackages(packages, components = []) {
+  const owners = /* @__PURE__ */ new Map();
+  for (const pkg of packages) if (pkg.dir !== null && !owners.has(pkg.dir)) owners.set(pkg.dir, pkg.id);
+  const componentIds = new Set(packages.filter((p) => p.ecosystem === "component" && p.dir === null).map((p) => p.id));
+  const matchers = components.filter((c) => componentIds.has(c.name));
+  const cache = /* @__PURE__ */ new Map();
+  const ownerOfDir = (dir) => {
+    if (cache.has(dir)) return cache.get(dir);
+    const found = owners.get(dir) ?? (dir === "." ? void 0 : ownerOfDir(dirOf(dir)));
+    cache.set(dir, found);
+    return found;
+  };
+  return {
+    owner(path) {
+      const matched = matchers.find((c) => c.matches(path));
+      if (matched !== void 0) return matched.name;
+      return ownerOfDir(dirOf(path));
+    }
+  };
+}
+
 // packages/structure/src/project.ts
 var edgeKey = (from, to) => `${from}\0${to}`;
 function folderOf(path) {
   const slash = path.lastIndexOf("/");
   return slash < 0 ? "." : path.slice(0, slash);
 }
-async function loadProject(root, headSha, exclude) {
+async function loadProject(root, headSha, options2) {
   const tree = await treeFromRef(root, headSha);
-  return projectFromTree(tree, headSha, exclude, await ParseCache.forRepository(root));
+  return projectFromTree(tree, headSha, options2, await ParseCache.forRepository(root));
 }
-async function projectFromTree(tree, headSha, exclude, cache) {
-  const excluded = compileGlobs(exclude);
+async function projectFromTree(tree, headSha, options2, cache) {
+  const excluded = compileGlobs(options2.exclude);
   const analysed = await analyseTree(tree, cache === void 0 ? {} : { cache });
   const analysis = { ...analysed, externalImports: analysed.externalImports.filter((external) => !excluded(external.from)) };
   const generated = new Set(analysis.generatedFiles);
@@ -16157,14 +16650,17 @@ async function projectFromTree(tree, headSha, exclude, cache) {
     const key = edgeKey(consumer.from, consumer.to);
     consumers.set(key, [...consumers.get(key) ?? [], consumer]);
   }
-  const packageRoots = new Set((await discoverBoundaries(tree)).map((boundary) => boundary.dir));
-  const packageOf = (path) => {
-    for (let folder = folderOf(path); ; folder = folderOf(folder)) {
-      if (packageRoots.has(folder)) return folder;
-      if (folder === ".") return ".";
-    }
-  };
-  return { headSha, files, graph: normalise3(adjacency), analysis, imports, consumers, packageOf };
+  const components = readComponents(options2.components ?? {});
+  const packages = await discoverPackages(tree, {
+    ignore: options2.packages?.ignore ?? [],
+    extra: options2.packages?.extra ?? [],
+    components,
+    exclude: options2.exclude,
+    entryPoints: options2.entryPoints ?? []
+  });
+  const packageIndex = indexPackages(packages, components);
+  const packageOf = (path) => packageIndex.owner(path) ?? ".";
+  return { headSha, files, graph: normalise3(adjacency), analysis, imports, consumers, packages, packageIndex, packageOf };
 }
 
 // packages/structure/src/census/census.ts
@@ -16682,22 +17178,6 @@ function breakingSets(graph, options2 = {}) {
   return results;
 }
 
-// packages/cochange/src/components.ts
-var UNASSIGNED = "(unassigned)";
-function readComponents(value) {
-  const names = Object.keys(value).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
-  return names.map((name13) => {
-    if (name13 === UNASSIGNED) throw configError(`code-health.json: components.${name13} is a reserved name`);
-    const raw = value[name13];
-    const globs = typeof raw === "string" ? [raw] : raw;
-    if (!Array.isArray(globs) || globs.some((g) => typeof g !== "string")) {
-      throw configError(`code-health.json: components.${name13} must be a glob or an array of globs`);
-    }
-    if (globs.length === 0) throw configError(`code-health.json: components.${name13} must list at least one glob`);
-    return { name: name13, matches: compileGlobs(globs) };
-  });
-}
-
 // packages/graph/src/group.ts
 var groupEdgeKey = (from, to) => `${from}\0${to}`;
 function groupGraph(graph, groupOf) {
@@ -17042,6 +17522,8 @@ var structureConfig = {
     minStaticCoupling: 3,
     /** Evidence floor: co-change is "high" only with at least this many shared changes, and significantly above what independence predicts. A coupling from fewer shared changes is not meaningful. */
     minSupport: 3,
+    /** Evidence floor: an incidental pair counts as burdening agents with reads when at least this many tasks edited one side and opened a file of the other only to follow the dependency. Fewer tasks than this is too few to read as a pattern. */
+    minAgentTasks: 3,
     /** The level of the one-sided exact test for high co-change, between 0 and 1 exclusive. */
     significanceLevel: 0.01,
     /** Guideline (a judgement call, after CodeScene's co-change hotspots): a registration hub has at least this many distinct features co-changing with it. */
@@ -17136,6 +17618,7 @@ function readSettings(config) {
     minInstabilityGap,
     minStaticCoupling: positive("minStaticCoupling"),
     minSupport: positive("minSupport"),
+    minAgentTasks: positive("minAgentTasks"),
     significanceLevel,
     hubMinFeatures: positive("hubMinFeatures"),
     hubMinConfidence: percent3("hubMinConfidence"),
@@ -17242,7 +17725,7 @@ var command = {
     const { root } = context.repo;
     const settings = readSettings(context.config);
     const headSha = (await runGit(root, ["rev-parse", "--verify", `${settings.ref}^{commit}`])).trim();
-    const project = await loadProject(root, headSha, settings.exclude);
+    const project = await loadProject(root, headSha, settings);
     const census = await buildCensus(await treeFromRef(root, headSha), project, settings.census);
     const output = {
       inputs: { census: settings.census },
@@ -17302,7 +17785,7 @@ function cyclesOf(project, level, settings) {
   }));
 }
 async function snapshotOf(root, sha, levels3, settings) {
-  const project = await loadProject(root, sha, settings.exclude);
+  const project = await loadProject(root, sha, settings);
   return {
     sha,
     cycles: levels3.flatMap((level) => cyclesOf(project, level, settings)),
@@ -17854,6 +18337,11 @@ function measureRepo(options2) {
 
 // packages/structure/src/cycles.ts
 var SYMBOLS_SHOWN = 10;
+var isAncestorFolder = (ancestor, folder) => ancestor === "." || folder.startsWith(`${ancestor}/`);
+function isNestedFolderCycle(level, nodes) {
+  if (level !== "folder") return false;
+  return nodes.every((a) => nodes.every((b) => a === b || isAncestorFolder(a, b) || isAncestorFolder(b, a)));
+}
 var cycleId = (level, firstNode) => `cycle:${level}:${firstNode}`;
 function unblocksOf(model, from, to) {
   if (!model.locality) return [];
@@ -17895,6 +18383,7 @@ function findCycles(model, settings) {
       level: model.graph.level,
       size: cycle.nodes.length,
       nodes: [...cycle.nodes],
+      nested: isNestedFolderCycle(model.graph.level, cycle.nodes),
       method: cycle.method,
       breakingSet,
       coChangeAcross,
@@ -17902,7 +18391,7 @@ function findCycles(model, settings) {
     };
   });
   return rows.sort(
-    (a, b) => (b.unblockedGain ?? 0) - (a.unblockedGain ?? 0) || b.size - a.size || b.coChangeAcross - a.coChangeAcross || compareIds(a.id, b.id)
+    (a, b) => Number(a.nested) - Number(b.nested) || (b.unblockedGain ?? 0) - (a.unblockedGain ?? 0) || b.size - a.size || b.coChangeAcross - a.coChangeAcross || compareIds(a.id, b.id)
   );
 }
 
@@ -17959,7 +18448,7 @@ function rankIncidental(rows, model, settings, tasks) {
       model.graph.filesOf.get(row.to) ?? [],
       [...model.graph.members.get(edgeKey(row.from, row.to)) ?? [], ...model.graph.members.get(edgeKey(row.to, row.from)) ?? []]
     );
-    if (agentReads !== null && agentReads >= settings.minSupport) reasons.push("agent-reads");
+    if (agentReads !== null && agentReads >= settings.minAgentTasks) reasons.push("agent-reads");
     return { ...row, incidental: { rank: reasons.length > 0 ? "high" : "low", reasons, agentReads } };
   });
   const start2 = ranked.findIndex((row) => row.quadrant === "incidental");
@@ -18167,6 +18656,7 @@ function connectedPairs(graph) {
 // packages/structure/src/locality-report.ts
 import { existsSync as existsSync9, readFileSync as readFileSync7 } from "node:fs";
 var LOCALITY_REPORT = { tool: "locality", command: "analyse" };
+var RECOGNISED_LOCALITY_SCHEMA_VERSIONS = [1];
 function readLocalityUnblocks(context, head) {
   const file = reportPath2(context.repo.root, LOCALITY_REPORT.command, LOCALITY_REPORT.tool);
   if (!existsSync9(file)) return void 0;
@@ -18177,6 +18667,13 @@ function readLocalityUnblocks(context, head) {
     return void 0;
   }
   if (document.tool !== LOCALITY_REPORT.tool || document.command !== LOCALITY_REPORT.command) return void 0;
+  if (typeof document.schemaVersion !== "number" || !RECOGNISED_LOCALITY_SCHEMA_VERSIONS.includes(document.schemaVersion)) {
+    const found = document.schemaVersion === void 0 ? "has no schemaVersion" : `has schemaVersion ${JSON.stringify(document.schemaVersion)}`;
+    (context.stderrNotices ??= []).push(
+      `structure: ignored ${LOCALITY_REPORT.tool}.${LOCALITY_REPORT.command}.json because it ${found}, and this version of structure reads schemaVersion ${RECOGNISED_LOCALITY_SCHEMA_VERSIONS.join(", ")}`
+    );
+    return void 0;
+  }
   if (document.repo?.head !== head || document.repo?.dirty !== false) return void 0;
   if (!Array.isArray(document.results) || typeof document.config !== "string") return void 0;
   const byFileEdge = /* @__PURE__ */ new Map();
@@ -18202,7 +18699,7 @@ function readLocalityUnblocks(context, head) {
 // packages/structure/src/model.ts
 async function buildModel(context, history, level, project, options2 = {}) {
   const { settings } = history;
-  const loaded2 = project ?? await loadProject(context.repo.root, history.view.headSha, settings.exclude);
+  const loaded2 = project ?? await loadProject(context.repo.root, history.view.headSha, settings);
   const graph = buildModuleGraph(level, loaded2, settings.components);
   const activity = measureActivity(history.filtered.changes, graph, options2.everyPair ? "all" : connectedPairs(graph));
   return {
@@ -18248,7 +18745,7 @@ var rules2 = {
       "blocks-locality-move: a locality report for this commit names a move that this dependency holds back.",
       "in-cycle: both sides are in one import cycle at the same level.",
       "layer-violation: an import between the sides breaks a configured layer rule.",
-      "agent-reads: with --projects-dir, at least structure.minSupport tasks in the window edited one side and",
+      "agent-reads: with --projects-dir, at least structure.minAgentTasks tasks in the window edited one side and",
       "opened a file of the other without editing it, so agents read it only to follow the dependency.",
       "Only repo-relative paths and counts are taken from the transcripts.",
       "",
@@ -18283,6 +18780,7 @@ async function analyseCoupling({ context, history }, level, quadrant) {
       quadrant: quadrant ?? null,
       minStaticCoupling: history.settings.minStaticCoupling,
       minSupport: history.settings.minSupport,
+      minAgentTasks: history.settings.minAgentTasks,
       minRevisions: history.settings.minRevisions,
       significanceLevel: history.settings.significanceLevel,
       transcripts: tasks !== void 0,
@@ -18330,6 +18828,9 @@ var rules3 = {
       "package boundary (the folder of a package.json, go.mod, Cargo.toml, pom.xml, .csproj or the like), so a",
       "cycle there can exist with no file cycle behind it.",
       "",
+      "A folder cycle between a folder and its own sub-folders (including a Rust `mod name;` edge from a",
+      "parent to a child) is listed with `nested: true` and sorts after the other cycles.",
+      "",
       "The breaking set is the smallest set of edges whose removal makes the component acyclic. Small",
       "components (structure.exactLimit nodes or fewer) are solved exactly. Larger ones use the",
       "Eades-Lin-Smyth heuristic, pruned to a minimal set, and say so in `method`. Between equally small",
@@ -18353,7 +18854,7 @@ var command4 = analysisCommand(name5, {
     return {
       inputs: { level, exactLimit: history.settings.exactLimit, locality: model.locality?.input ?? null },
       results: rows,
-      columns: ["id", "size", "method", "nodes", "breakingSet", "coChangeAcross", "unblockedGain"],
+      columns: ["id", "size", "method", "nested", "nodes", "breakingSet", "coChangeAcross", "unblockedGain"],
       extra: { population: { modules: model.graph.graph.size, eligibleChanges: model.activity.eligibleChanges } }
     };
   }
@@ -18434,9 +18935,6 @@ function rankDependencies(model, settings) {
   return rows.sort(
     (a, b) => Number(b.aboveGuideline) - Number(a.aboveGuideline) || Number(b.basis === "change") - Number(a.basis === "change") || margin(b) - margin(a) || b.fileEdges - a.fileEdges || compareIds(a.from, b.from) || compareIds(a.to, b.to)
   );
-}
-function findUnstableDependencies(model, settings) {
-  return rankDependencies(model, settings).filter((row) => row.aboveGuideline);
 }
 function unitStabilities(model) {
   return [...model.graph.filesOf.keys()].map((id) => ({ id, ...stabilityOf(model.structural, model.change, id) })).sort((a, b) => b.change.revisionsPerFile - a.change.revisionsPerFile || compareIds(a.id, b.id));
@@ -18570,6 +19068,7 @@ function hubEvidencePack(model, hub, census) {
     featureCount: hub.featureCount,
     revisions: hub.revisions,
     features,
+    signalsReached: hub.signalsReached,
     signals: hub.signals,
     stability: stabilityOfModule(model, hub.module) ?? null,
     unblocks,
@@ -18755,6 +19254,11 @@ function maxAuthorsWithin(changes, windowSeconds) {
   }
   return most;
 }
+var SIGNALS_LISTED = 2;
+var share = (part, whole) => whole === 0 ? 0 : part / whole;
+function compareHubs(a, b) {
+  return b.signalsReached - a.signalsReached || b.featureCount - a.featureCount || share(b.signals.outwardDependencies.referenced, b.signals.outwardDependencies.of) - share(a.signals.outwardDependencies.referenced, a.signals.outwardDependencies.of) || share(b.signals.appendShapedEdits.appendShaped, b.signals.appendShapedEdits.hunks) - share(a.signals.appendShapedEdits.appendShaped, a.signals.appendShapedEdits.hunks) || b.signals.contention.maxAuthors - a.signals.contention.maxAuthors || b.revisions - a.revisions || compareIds(a.file, b.file);
+}
 async function findHubs({ root, headSha, model, changes, settings }) {
   const { activity, graph, project } = model;
   const histories = fileHistories(model, changes);
@@ -18777,7 +19281,6 @@ async function findHubs({ root, headSha, model, changes, settings }) {
         referencedBy: null
       });
     }
-    if (features.length < settings.hubMinFeatures) continue;
     features.sort((a, b) => compareIds(a.module, b.module));
     let classified = 0;
     let high = 0;
@@ -18791,21 +19294,30 @@ async function findHubs({ root, headSha, model, changes, settings }) {
         if (together) high++;
       }
     }
-    if (classified > 0 && percent(high, classified) > settings.hubMaxFeatureCoupling) continue;
-    const text2 = await readBlobAt(root, headSha, file) ?? "";
-    const imported = new Set((project.graph.get(file) ?? []).map((target2) => graph.moduleByFile.get(target2)));
-    for (const feature of features) {
-      feature.referencedBy = imported.has(feature.module) ? "import" : namesInPathString(text2, feature.module) ? "path-string" : null;
+    const starReached = features.length >= settings.hubMinFeatures && !(classified > 0 && percent(high, classified) > settings.hubMaxFeatureCoupling);
+    let text2 = "";
+    let referenced = 0;
+    if (features.length > 0) {
+      text2 = await readBlobAt(root, headSha, file) ?? "";
+      const imported = new Set((project.graph.get(file) ?? []).map((target2) => graph.moduleByFile.get(target2)));
+      for (const feature of features) {
+        feature.referencedBy = imported.has(feature.module) ? "import" : namesInPathString(text2, feature.module) ? "path-string" : null;
+      }
+      referenced = features.filter((f) => f.referencedBy !== null).length;
     }
-    const referenced = features.filter((f) => f.referencedBy !== null).length;
-    if (percent(referenced, features.length) < settings.hubMinOutward) continue;
+    const outwardReached = features.length > 0 && percent(referenced, features.length) >= settings.hubMinOutward;
+    const maxAuthors = maxAuthorsWithin(history.changes, settings.hubContentionDays * 86400);
+    const contentionReached = maxAuthors >= settings.hubMinAuthors;
+    const cheapReached = [starReached, outwardReached, contentionReached].filter(Boolean).length;
+    if (cheapReached === 0) continue;
     const shas = new Set(history.changes.flatMap((change) => change.shas));
     const hunks = await windowHunks(root, headSha, file, shas);
     const shapes = hunks.map((hunk) => ({ hunk, shape: appendShape(hunk) }));
     const appended = shapes.filter((s) => s.shape !== null);
-    if (hunks.length < settings.minSupport || percent(appended.length, hunks.length) < settings.hubMinAppendShare) continue;
-    const maxAuthors = maxAuthorsWithin(history.changes, settings.hubContentionDays * 86400);
-    if (maxAuthors < settings.hubMinAuthors) continue;
+    const appendReached = hunks.length >= settings.minSupport && percent(appended.length, hunks.length) >= settings.hubMinAppendShare;
+    const signalsReached = cheapReached + (appendReached ? 1 : 0);
+    if (signalsReached < SIGNALS_LISTED) continue;
+    if (text2 === "") text2 = await readBlobAt(root, headSha, file) ?? "";
     const lines = text2.split("\n");
     let collection = null;
     for (const { hunk } of appended) {
@@ -18825,21 +19337,23 @@ async function findHubs({ root, headSha, model, changes, settings }) {
       featureCount: features.length,
       revisions: history.changes.length,
       features,
+      signalsReached,
       signals: {
-        starCoChange: { features: features.length, featurePairs: { classified, high } },
-        outwardDependencies: { referenced, of: features.length },
+        starCoChange: { reached: starReached, features: features.length, featurePairs: { classified, high } },
+        outwardDependencies: { reached: outwardReached, referenced, of: features.length },
         appendShapedEdits: {
+          reached: appendReached,
           hunks: hunks.length,
           appendShaped: appended.length,
           additions: shapes.filter((s) => s.shape === "addition").length,
           removals: shapes.filter((s) => s.shape === "removal").length,
           collection
         },
-        contention: { maxAuthors, windowDays: settings.hubContentionDays }
+        contention: { reached: contentionReached, maxAuthors, windowDays: settings.hubContentionDays }
       }
     });
   }
-  return hubs.sort((a, b) => b.featureCount - a.featureCount || b.revisions - a.revisions || compareIds(a.file, b.file));
+  return hubs.sort(compareHubs);
 }
 
 // packages/structure/src/commands/evidence.ts
@@ -18897,7 +19411,7 @@ var command5 = analysisCommand(name6, {
       if (!cycle) throw usageError(`no cycle "${target2.id}" at the analysed commit`);
       edges = cycle.breakingSet.map((e) => [e.from, e.to]);
     } else {
-      const project = await loadProject(context.repo.root, history.view.headSha, settings.exclude);
+      const project = await loadProject(context.repo.root, history.view.headSha, settings);
       const level = target2.level ?? inferLevel(project, target2.from, target2.to);
       model = await buildModel(context, history, level, project);
       const imported = (a, b) => model.graph.graph.get(a)?.includes(b) === true;
@@ -18950,7 +19464,8 @@ var rules4 = {
   "registration-hub": {
     summary: "A central file that every feature has to edit: a route table, menu, handler map or module list",
     explanation: [
-      "Reported only when four signals hold together:",
+      "Four signals describe one. A file is listed when at least two reach their guidelines. Files that\n      reach all four are listed first, then three, then two, and `signalsReached` and each signal's\n      `reached` say which. Within one count, rows sort by the figures behind the signals: features,\n      outward share, append share, authors, then revisions.",
+      "",
       "",
       "1. Star co-change: at least structure.hubMinFeatures folders (or components) co-change with the",
       "   file significantly, and at least structure.hubMinConfidence percent of each one's changes",
@@ -18977,7 +19492,7 @@ var rules4 = {
   }
 };
 var command7 = analysisCommand(name8, {
-  summary: "Registration hubs: files every feature edits by appending an entry, with the signals that fired",
+  summary: "Registration hubs: files every feature edits by appending an entry, with the signals that reached their guidelines",
   options: { by: { type: "string" } },
   optionHelp: { by: "what a module is: folder or component (default folder)" },
   partial: ({ values }) => values.by !== void 0 && values.by !== "folder",
@@ -19042,7 +19557,7 @@ var command8 = {
   async run(context) {
     const settings = readSettings(context.config);
     const sha = (await runGit(context.repo.root, ["rev-parse", "--verify", `${settings.ref}^{commit}`])).trim();
-    const project = await loadProject(context.repo.root, sha, settings.exclude);
+    const project = await loadProject(context.repo.root, sha, settings);
     const rows = findLayerViolations(project, settings.layers);
     return {
       inputs: { layers: settings.layers.map((layer) => layer.name), analysed: sha },
@@ -19261,13 +19776,13 @@ var command9 = analysisCommand(name10, {
       throw usageError(`"${at}" has no parent commit, so there is no code before it to compare with`);
     }
     const date = Number((await runGit(root, ["log", "-1", "--format=%ct", sha])).trim());
-    const projectAfter = await loadProject(root, history.view.headSha, settings.exclude);
+    const projectAfter = await loadProject(root, history.view.headSha, settings);
     const level = context.values.level === void 0 ? inferLevel(projectAfter, from, to) : readLevel("level", context.values.level, allLevels2, "folder");
     const model = await buildModel(context, history, level, projectAfter);
     for (const side of [from, to]) {
       if (!model.graph.filesOf.has(side)) throw usageError(`"${side}" is not a ${level} of the analysed commit`);
     }
-    const projectBefore = await loadProject(root, parent, settings.exclude);
+    const projectBefore = await loadProject(root, parent, settings);
     const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : void 0;
     const seconds = Math.min(date - monthsBefore(date, settings.windowMonths), history.window.until - date);
     const tasks = projectsDir === void 0 ? { reason: "no --projects-dir was given" } : { tasks: readAgentTasks(await checkouts(root), projectsDir, { since: date - seconds, until: date + seconds }) };
@@ -19416,486 +19931,6 @@ function crossingCost(changes, weightOf) {
   };
 }
 
-// packages/structure/src/packaging/discovery.ts
-var dirOf = (path) => path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ".";
-var baseOf = (path) => path.slice(path.lastIndexOf("/") + 1);
-var child = (dir, name13) => dir === "." ? name13 : `${dir}/${name13}`;
-function resolveFrom(dir, relative) {
-  const parts2 = dir === "." ? [] : dir.split("/");
-  for (const part of relative.replaceAll("\\", "/").split("/")) {
-    if (part === "" || part === ".") continue;
-    if (part === "..") {
-      if (parts2.pop() === void 0) return void 0;
-    } else {
-      parts2.push(part);
-    }
-  }
-  return parts2.length === 0 ? "." : parts2.join("/");
-}
-var testName = /(^|[-_.@/:])(tests?|testing|testkit|fixtures?|e2e|mocks?|specs?)([-_.:]|$)/i;
-var testDir = /(^|\/)(tests?|__tests__|e2e|testing)(\/|$)/i;
-function isTestSupport(name13, dir, flagged = false) {
-  return flagged || testName.test(name13) || testDir.test(dir) || /\.tests?$/i.test(name13);
-}
-function parseJson(text2) {
-  if (text2 === void 0) return void 0;
-  try {
-    const value = JSON.parse(text2);
-    return typeof value === "object" && value !== null && !Array.isArray(value) ? value : void 0;
-  } catch {
-    return void 0;
-  }
-}
-var record = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-var strings2 = (value) => Array.isArray(value) ? value.filter((v) => typeof v === "string") : [];
-async function npmPackages(paths, read, ignored) {
-  const manifests = /* @__PURE__ */ new Map();
-  for (const path of paths.filter((p) => baseOf(p) === "package.json" && !p.split("/").includes("node_modules"))) {
-    const json = parseJson(await read(path));
-    if (json) manifests.set(dirOf(path), json);
-  }
-  const root = manifests.get(".");
-  const workspaces = record(root?.workspaces);
-  let globs = [...strings2(root?.workspaces), ...strings2(workspaces.packages)];
-  const pnpm = await read("pnpm-workspace.yaml");
-  if (pnpm !== void 0) globs = [...globs, ...pnpmPackages(pnpm)];
-  let dirs;
-  if (globs.length > 0) {
-    const include = compileGlobs(globs.filter((g) => !g.startsWith("!")).map((g) => g.replace(/^\.\//, "").replace(/\/$/, "")));
-    const drop = compileGlobs(globs.filter((g) => g.startsWith("!")).map((g) => g.slice(1).replace(/\/$/, "")));
-    dirs = [...manifests.keys()].filter((dir) => dir !== "." && include(dir) && !drop(dir));
-  } else {
-    dirs = [...manifests.keys()].filter((dir) => typeof manifests.get(dir).name === "string");
-  }
-  const result = [];
-  for (const dir of dirs.filter((d) => !ignored(d)).sort(compareIds)) {
-    const json = manifests.get(dir);
-    const name13 = typeof json.name === "string" ? json.name : baseOf(dir === "." ? "root" : dir);
-    const dependencies = [];
-    for (const key of ["dependencies", "optionalDependencies", "peerDependencies"]) {
-      for (const dependency of Object.keys(record(json[key]))) dependencies.push({ name: dependency, scope: "runtime", optional: key !== "dependencies" });
-    }
-    for (const dependency of Object.keys(record(json.devDependencies))) dependencies.push({ name: dependency, scope: "dev" });
-    result.push({
-      name: name13,
-      ecosystem: "npm",
-      dir,
-      manifest: child(dir, "package.json"),
-      private: json.private === true ? true : null,
-      version: typeof json.version === "string" ? json.version : null,
-      entry: json.bin !== void 0,
-      testSupport: isTestSupport(name13, dir),
-      aliases: [],
-      dependencies
-    });
-  }
-  return result;
-}
-function pnpmPackages(text2) {
-  const out2 = [];
-  let inPackages = false;
-  for (const line of text2.split("\n")) {
-    if (/^packages\s*:/.test(line)) inPackages = true;
-    else if (/^\S/.test(line)) inPackages = false;
-    else if (inPackages) {
-      const item = /^\s*-\s*["']?([^"'#\s]+)["']?/.exec(line)?.[1];
-      if (item !== void 0) out2.push(item);
-    }
-  }
-  return out2;
-}
-function xmlWithoutComments(text2) {
-  return text2.replace(/<!--[\s\S]*?-->/g, "");
-}
-function xmlAttribute(tag, attribute2) {
-  return new RegExp(`\\b${attribute2}\\s*=\\s*"([^"]*)"`, "i").exec(tag)?.[1] ?? new RegExp(`\\b${attribute2}\\s*=\\s*'([^']*)'`, "i").exec(tag)?.[1];
-}
-function xmlElement(text2, element2) {
-  return new RegExp(`<${element2}>\\s*([^<]*?)\\s*</${element2}>`, "i").exec(text2)?.[1];
-}
-async function dotnetPackages(paths, read, ignored) {
-  const result = [];
-  for (const path of paths.filter((p) => /\.(cs|fs|vb)proj$/.test(p)).sort(compareIds)) {
-    const dir = dirOf(path);
-    if (ignored(dir)) continue;
-    const text2 = xmlWithoutComments(await read(path) ?? "");
-    const name13 = baseOf(path).replace(/\.(cs|fs|vb)proj$/, "");
-    const dependencies = [];
-    for (const tag of text2.match(/<ProjectReference\b[^>]*>/gi) ?? []) {
-      const include = xmlAttribute(tag, "Include");
-      if (include === void 0) continue;
-      const target2 = resolveFrom(dir, include);
-      dependencies.push({ name: baseOf(include.replaceAll("\\", "/")).replace(/\.(cs|fs|vb)proj$/, ""), scope: "runtime", ...target2 === void 0 ? {} : { dir: dirOf(target2) } });
-    }
-    for (const tag of text2.match(/<PackageReference\b[^>]*>/gi) ?? []) {
-      const include = xmlAttribute(tag, "Include");
-      if (include !== void 0) dependencies.push({ name: include, scope: "runtime" });
-    }
-    const outputType = xmlElement(text2, "OutputType");
-    const testSdk = /Microsoft\.NET\.Test\.Sdk/.test(text2) || /<IsTestProject>\s*true/i.test(text2);
-    result.push({
-      name: name13,
-      ecosystem: "dotnet",
-      dir,
-      manifest: path,
-      private: /<IsPackable>\s*false/i.test(text2) ? true : null,
-      version: xmlElement(text2, "Version") ?? xmlElement(text2, "VersionPrefix") ?? null,
-      entry: /^(win)?exe$/i.test(outputType ?? "") || /Sdk\s*=\s*"Microsoft\.NET\.Sdk\.Web"/i.test(text2),
-      testSupport: isTestSupport(name13, dir, testSdk),
-      aliases: [],
-      dependencies
-    });
-  }
-  return result;
-}
-var cmakeKeywords = /* @__PURE__ */ new Set(["PUBLIC", "PRIVATE", "INTERFACE", "DEBUG", "OPTIMIZED", "GENERAL"]);
-async function cmakePackages(paths, read, ignored) {
-  const result = [];
-  for (const path of paths.filter((p) => baseOf(p) === "CMakeLists.txt").sort(compareIds)) {
-    const dir = dirOf(path);
-    if (ignored(dir)) continue;
-    const text2 = (await read(path))?.replace(/#.*$/gm, "") ?? "";
-    const targets = [];
-    for (const match of text2.matchAll(/\badd_(library|executable)\s*\(\s*([^\s)]+)([^)]*)\)/gi)) {
-      const [, kind, name13, rest] = match;
-      if (/\bALIAS\b/i.test(rest ?? "") || /\bIMPORTED\b/i.test(rest ?? "")) continue;
-      targets.push({ name: name13, executable: kind.toLowerCase() === "executable" });
-    }
-    if (targets.length === 0) continue;
-    const aliases = [...text2.matchAll(/\badd_library\s*\(\s*([^\s)]+)\s+ALIAS\b/gi)].map((m) => m[1]);
-    const names = new Set(targets.map((t) => t.name));
-    const dependencies = [];
-    for (const match of text2.matchAll(/\btarget_link_libraries\s*\(\s*([^\s)]+)([^)]*)\)/gi)) {
-      if (!names.has(match[1])) continue;
-      for (const token of (match[2] ?? "").split(/\s+/)) {
-        if (token === "" || cmakeKeywords.has(token.toUpperCase()) || token.startsWith("$<") || token.startsWith("-") || token.startsWith("${")) continue;
-        dependencies.push({ name: token, scope: "runtime" });
-      }
-    }
-    const version = /\bproject\s*\([^)]*\bVERSION\s+([0-9][^\s)]*)/i.exec(text2)?.[1] ?? null;
-    result.push({
-      name: targets[0].name,
-      ecosystem: "cmake",
-      dir,
-      manifest: path,
-      private: null,
-      version,
-      entry: targets.every((t) => t.executable),
-      testSupport: isTestSupport(targets[0].name, dir),
-      aliases: [...targets.map((t) => t.name), ...aliases],
-      dependencies
-    });
-  }
-  return result;
-}
-async function gradlePackages(paths, read, ignored) {
-  const fileSet = new Set(paths);
-  const result = [];
-  for (const settings of paths.filter((p) => /(^|\/)settings\.gradle(\.kts)?$/.test(p)).sort(compareIds)) {
-    const base = dirOf(settings);
-    const text2 = (await read(settings))?.replace(/\/\/.*$/gm, "") ?? "";
-    const projects = /* @__PURE__ */ new Set();
-    for (const statement of text2.matchAll(/\binclude\b\s*\(?((?:\s*["'][^"']+["']\s*,?)+)/g)) {
-      for (const quoted of statement[1].matchAll(/["']([^"']+)["']/g)) projects.add(quoted[1]);
-    }
-    for (const project of [...projects].sort(compareIds)) {
-      const dir = child(base, project.replace(/^:/, "").replaceAll(":", "/"));
-      const buildFile = ["build.gradle.kts", "build.gradle"].map((f) => child(dir, f)).find((f) => fileSet.has(f));
-      if (buildFile === void 0 || ignored(dir)) continue;
-      const build = (await read(buildFile))?.replace(/\/\/.*$/gm, "") ?? "";
-      const dependencies = [];
-      for (const match of build.matchAll(/\b([A-Za-z]+)\s*\(?\s*project\s*\(\s*(?:path\s*[:=]\s*)?["']([^"']+)["']/g)) {
-        const configuration = match[1];
-        const target2 = child(base, match[2].replace(/^:/, "").replaceAll(":", "/"));
-        dependencies.push({ name: match[2], scope: /^(test|androidTest|integrationTest)/i.test(configuration) ? "dev" : "runtime", dir: target2 });
-      }
-      const name13 = project.startsWith(":") ? project : `:${project}`;
-      result.push({
-        name: name13,
-        ecosystem: "gradle",
-        dir,
-        manifest: buildFile,
-        private: null,
-        version: /^\s*version\s*=\s*["']([^"']+)["']/m.exec(build)?.[1] ?? null,
-        entry: /\bapplication\b|com\.android\.application|\bmainClass\b/.test(build),
-        testSupport: isTestSupport(name13, dir),
-        aliases: [],
-        dependencies
-      });
-    }
-  }
-  return result;
-}
-async function mavenPackages(paths, read, ignored) {
-  const result = [];
-  for (const path of paths.filter((p) => baseOf(p) === "pom.xml").sort(compareIds)) {
-    const dir = dirOf(path);
-    if (ignored(dir)) continue;
-    const text2 = xmlWithoutComments(await read(path) ?? "").replace(/<parent>[\s\S]*?<\/parent>/g, "").replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, "").replace(/<build>[\s\S]*?<\/build>/g, "").replace(/<profiles>[\s\S]*?<\/profiles>/g, "");
-    const artifact = xmlElement(text2.replace(/<dependencies>[\s\S]*?<\/dependencies>/g, ""), "artifactId");
-    const packaging = xmlElement(text2, "packaging") ?? "jar";
-    if (artifact === void 0 || packaging === "pom" && /<modules>/.test(text2)) continue;
-    const dependencies = [];
-    for (const block of text2.match(/<dependency>[\s\S]*?<\/dependency>/g) ?? []) {
-      const name13 = xmlElement(block, "artifactId");
-      if (name13 === void 0) continue;
-      dependencies.push({ name: name13, scope: /^test$/i.test(xmlElement(block, "scope") ?? "") ? "dev" : "runtime" });
-    }
-    result.push({
-      name: artifact,
-      ecosystem: "maven",
-      dir,
-      manifest: path,
-      private: null,
-      version: xmlElement(text2.replace(/<dependencies>[\s\S]*?<\/dependencies>/g, ""), "version") ?? null,
-      entry: packaging === "war",
-      testSupport: isTestSupport(artifact, dir),
-      aliases: [],
-      dependencies
-    });
-  }
-  return result;
-}
-var normalisePython = (name13) => name13.toLowerCase().replace(/[-_.]+/g, "-");
-var pythonName = (requirement) => /^[A-Za-z0-9][A-Za-z0-9._-]*/.exec(requirement.trim())?.[0];
-var devExtras = /* @__PURE__ */ new Set(["dev", "test", "tests", "testing", "lint", "docs", "typing"]);
-async function pythonPackages(paths, read, ignored) {
-  const result = [];
-  for (const path of paths.filter((p) => baseOf(p) === "pyproject.toml").sort(compareIds)) {
-    const dir = dirOf(path);
-    if (ignored(dir)) continue;
-    const toml = parseToml(await read(path) ?? "");
-    const project = toml.project ?? {};
-    const poetry = toml.tool?.poetry ?? {};
-    const name13 = project.name ?? poetry.name;
-    if (typeof name13 !== "string") continue;
-    const dependencies = [];
-    for (const requirement of strings2(project.dependencies)) {
-      const dependency = pythonName(requirement);
-      if (dependency !== void 0) dependencies.push({ name: dependency, scope: "runtime" });
-    }
-    for (const [extra, list3] of Object.entries(record(project["optional-dependencies"]))) {
-      for (const requirement of strings2(list3)) {
-        const dependency = pythonName(requirement);
-        if (dependency !== void 0) dependencies.push({ name: dependency, scope: devExtras.has(extra) ? "dev" : "runtime" });
-      }
-    }
-    for (const [dependency, spec] of Object.entries(record(poetry.dependencies))) {
-      if (dependency.toLowerCase() === "python") continue;
-      const path2 = record(spec).path;
-      dependencies.push({ name: dependency, scope: "runtime", ...typeof path2 === "string" && resolveFrom(dir, path2) !== void 0 ? { dir: resolveFrom(dir, path2) } : {} });
-    }
-    for (const group of [record(poetry["dev-dependencies"]), record(record(record(poetry.group).dev).dependencies)]) {
-      for (const dependency of Object.keys(group)) dependencies.push({ name: dependency, scope: "dev" });
-    }
-    const classifiers = strings2(project.classifiers);
-    result.push({
-      name: name13,
-      ecosystem: "python",
-      dir,
-      manifest: path,
-      private: classifiers.includes("Private :: Do Not Upload") ? true : null,
-      version: typeof (project.version ?? poetry.version) === "string" ? project.version ?? poetry.version : null,
-      entry: Object.keys(record(project.scripts)).length > 0 || Object.keys(record(poetry.scripts)).length > 0,
-      testSupport: isTestSupport(name13, dir),
-      aliases: [],
-      dependencies
-    });
-  }
-  return result;
-}
-async function cargoPackages(paths, read, ignored) {
-  const fileSet = new Set(paths);
-  const result = [];
-  for (const path of paths.filter((p) => baseOf(p) === "Cargo.toml").sort(compareIds)) {
-    const dir = dirOf(path);
-    if (ignored(dir)) continue;
-    const toml = parseToml(await read(path) ?? "");
-    const pkg = record(toml.package);
-    if (typeof pkg.name !== "string") continue;
-    const dependencies = [];
-    for (const [table4, scope] of [["dependencies", "runtime"], ["build-dependencies", "runtime"], ["dev-dependencies", "dev"]]) {
-      for (const [name13, spec] of Object.entries(record(toml[table4]))) {
-        const detail = record(spec);
-        const target2 = typeof detail.path === "string" ? resolveFrom(dir, detail.path) : void 0;
-        dependencies.push({
-          name: typeof detail.package === "string" ? detail.package : name13,
-          scope,
-          ...target2 === void 0 ? {} : { dir: target2 }
-        });
-      }
-    }
-    result.push({
-      name: pkg.name,
-      ecosystem: "cargo",
-      dir,
-      manifest: path,
-      private: pkg.publish === false ? true : null,
-      version: typeof pkg.version === "string" ? pkg.version : null,
-      entry: Array.isArray(toml.bin) || fileSet.has(child(dir, "src/main.rs")),
-      testSupport: isTestSupport(pkg.name, dir),
-      aliases: [],
-      dependencies
-    });
-  }
-  return result;
-}
-async function goPackages(paths, read, ignored) {
-  const fileSet = new Set(paths);
-  const result = [];
-  for (const path of paths.filter((p) => baseOf(p) === "go.mod").sort(compareIds)) {
-    const dir = dirOf(path);
-    if (ignored(dir)) continue;
-    const text2 = (await read(path) ?? "").replace(/\/\/ indirect.*$/gm, "").replace(/\/\/.*$/gm, "");
-    const name13 = /^\s*module\s+(\S+)/m.exec(text2)?.[1];
-    if (name13 === void 0) continue;
-    const replaced = /* @__PURE__ */ new Map();
-    for (const match of text2.matchAll(/^\s*(?:replace\s+)?(\S+)(?:\s+\S+)?\s*=>\s*(\.{1,2}\/\S*)\s*$/gm)) {
-      const target2 = resolveFrom(dir, match[2]);
-      if (target2 !== void 0) replaced.set(match[1], target2);
-    }
-    const required = /* @__PURE__ */ new Set();
-    for (const block of text2.matchAll(/\brequire\s*\(([\s\S]*?)\)/g)) {
-      for (const line of block[1].split("\n")) {
-        const module3 = /^\s*(\S+)\s+v\S+/.exec(line)?.[1];
-        if (module3 !== void 0) required.add(module3);
-      }
-    }
-    for (const match of text2.matchAll(/^\s*require\s+(\S+)\s+v\S+/gm)) required.add(match[1]);
-    result.push({
-      name: name13,
-      ecosystem: "go",
-      dir,
-      manifest: path,
-      private: null,
-      version: null,
-      entry: fileSet.has(child(dir, "main.go")) || [...fileSet].some((f) => f.startsWith(`${child(dir, "cmd")}/`)),
-      testSupport: isTestSupport(name13, dir),
-      aliases: [],
-      dependencies: [...required].sort(compareIds).map((module3) => ({ name: module3, scope: "runtime", ...replaced.has(module3) ? { dir: replaced.get(module3) } : {} }))
-    });
-  }
-  return result;
-}
-var readers = [
-  ["npm", npmPackages],
-  ["dotnet", dotnetPackages],
-  ["cmake", cmakePackages],
-  ["gradle", gradlePackages],
-  ["maven", mavenPackages],
-  ["python", pythonPackages],
-  ["cargo", cargoPackages],
-  ["go", goPackages]
-];
-var lookupKey = (ecosystem, name13) => `${ecosystem}\0${ecosystem === "python" ? normalisePython(name13) : name13}`;
-async function discoverPackages(tree, options2) {
-  const excluded = compileGlobs([...options2.exclude]);
-  const ignoredDirs = compileGlobs([...options2.ignore]);
-  const paths = [...tree.files.keys()].filter((p) => !excluded(p) && !p.split("/").includes("node_modules"));
-  const cache = /* @__PURE__ */ new Map();
-  const read = (path) => {
-    if (!cache.has(path)) cache.set(path, tree.read(path));
-    return cache.get(path);
-  };
-  const ignored = (dir) => ignoredDirs(dir) || options2.ignore.some((glob) => dir.startsWith(`${glob}/`));
-  const raws = [];
-  for (const [, readManifests] of readers) raws.push(...await readManifests(paths, read, ignored));
-  for (const dir of [...options2.extra].sort(compareIds)) {
-    if (raws.some((r) => r.dir === dir)) continue;
-    raws.push({ name: baseOf(dir), ecosystem: "component", dir, manifest: "", private: null, version: null, entry: false, testSupport: isTestSupport(baseOf(dir), dir), aliases: [], dependencies: [] });
-  }
-  const idOf = /* @__PURE__ */ new Map();
-  const taken = /* @__PURE__ */ new Map();
-  for (const raw of raws) taken.set(raw.dir, (taken.get(raw.dir) ?? 0) + 1);
-  const seen = /* @__PURE__ */ new Set();
-  for (const raw of raws) {
-    const id = seen.has(raw.dir) ? `${raw.dir}:${raw.ecosystem}` : raw.dir;
-    seen.add(raw.dir);
-    idOf.set(raw, id);
-  }
-  const byName = /* @__PURE__ */ new Map();
-  const byDir = /* @__PURE__ */ new Map();
-  for (const raw of raws) {
-    const id = idOf.get(raw);
-    for (const name13 of [raw.name, ...raw.aliases]) byName.set(lookupKey(raw.ecosystem, name13), id);
-    for (const alias of raw.aliases) {
-      const short = alias.includes("::") ? alias.slice(alias.lastIndexOf("::") + 2) : void 0;
-      if (short !== void 0 && !byName.has(lookupKey(raw.ecosystem, short))) byName.set(lookupKey(raw.ecosystem, short), id);
-    }
-    if (!byDir.has(`${raw.ecosystem}\0${raw.dir}`)) byDir.set(`${raw.ecosystem}\0${raw.dir}`, id);
-  }
-  const packages = raws.map((raw) => {
-    const id = idOf.get(raw);
-    const seenTargets = /* @__PURE__ */ new Set();
-    const dependencies = [];
-    for (const dependency of raw.dependencies) {
-      const target2 = (dependency.dir === void 0 ? void 0 : byDir.get(`${raw.ecosystem}\0${dependency.dir}`)) ?? byName.get(lookupKey(raw.ecosystem, dependency.name)) ?? (dependency.name.includes("::") ? byName.get(lookupKey(raw.ecosystem, dependency.name.slice(dependency.name.lastIndexOf("::") + 2))) : void 0) ?? null;
-      const key = `${dependency.name}\0${dependency.scope}`;
-      if (seenTargets.has(key)) continue;
-      seenTargets.add(key);
-      dependencies.push({ name: dependency.name, scope: dependency.scope, target: target2 === id ? null : target2, optional: dependency.optional === true });
-    }
-    dependencies.sort((a, b) => compareIds(a.name, b.name) || compareIds(a.scope, b.scope));
-    return {
-      id,
-      name: raw.name,
-      ecosystem: raw.ecosystem,
-      dir: raw.dir,
-      manifest: raw.manifest === "" ? null : raw.manifest,
-      private: raw.private,
-      version: raw.version,
-      entry: raw.entry,
-      testSupport: raw.testSupport,
-      aliases: raw.aliases,
-      dependencies
-    };
-  });
-  markConfiguredEntries(packages, paths, options2.entryPoints ?? []);
-  if (packages.length === 0) {
-    return options2.components.map((component) => ({
-      id: component.name,
-      name: component.name,
-      ecosystem: "component",
-      dir: null,
-      manifest: null,
-      private: null,
-      version: null,
-      entry: false,
-      testSupport: isTestSupport(component.name, ""),
-      aliases: [],
-      dependencies: []
-    })).sort((a, b) => compareIds(a.id, b.id));
-  }
-  return packages.sort((a, b) => compareIds(a.id, b.id));
-}
-function markConfiguredEntries(packages, paths, entryPoints) {
-  if (entryPoints.length === 0 || packages.length === 0) return;
-  const isEntryFile = compileGlobs([...entryPoints]);
-  const index = indexPackages(packages);
-  const owners = new Set(paths.filter(isEntryFile).map((path) => index.owner(path)));
-  for (const pkg of packages) if (owners.has(pkg.id)) pkg.entry = true;
-}
-function indexPackages(packages, components = []) {
-  const owners = /* @__PURE__ */ new Map();
-  for (const pkg of packages) if (pkg.dir !== null && !owners.has(pkg.dir)) owners.set(pkg.dir, pkg.id);
-  const componentIds = new Set(packages.filter((p) => p.ecosystem === "component" && p.dir === null).map((p) => p.id));
-  const matchers = components.filter((c) => componentIds.has(c.name));
-  const cache = /* @__PURE__ */ new Map();
-  const ownerOfDir = (dir) => {
-    if (cache.has(dir)) return cache.get(dir);
-    const found = owners.get(dir) ?? (dir === "." ? void 0 : ownerOfDir(dirOf(dir)));
-    cache.set(dir, found);
-    return found;
-  };
-  return {
-    owner(path) {
-      const matched = matchers.find((c) => c.matches(path));
-      if (matched !== void 0) return matched.name;
-      return ownerOfDir(dirOf(path));
-    }
-  };
-}
-
 // packages/structure/src/packaging/model.ts
 var DAY = 86400;
 function overrideOf(model, pkg) {
@@ -19917,19 +19952,12 @@ async function buildPackageModel(context, history) {
   const root = context.repo.root;
   const headSha = history.view.headSha;
   const tree = await treeFromRef(root, headSha);
-  const components = readComponents(settings.components);
-  const packages = await discoverPackages(tree, {
-    ignore: settings.packages.ignore,
-    extra: settings.packages.extra,
-    components,
-    exclude: settings.exclude,
-    entryPoints: settings.entryPoints
-  });
-  return assemblePackageModel(headSha, history, tree, packages, components, await loadProject(root, headSha, settings.exclude));
+  return assemblePackageModel(headSha, history, tree, await loadProject(root, headSha, settings));
 }
-function assemblePackageModel(headSha, history, tree, packages, components, project) {
+function assemblePackageModel(headSha, history, tree, project) {
   const { settings } = history;
-  const index = indexPackages(packages, components);
+  const { packages } = project;
+  const index = project.packageIndex;
   const excluded = compileGlobs(settings.exclude);
   const byId = new Map(packages.map((p) => [p.id, p]));
   const files = new Map(packages.map((p) => [p.id, []]));
@@ -20054,16 +20082,18 @@ function raise(context, kind, principle, packages, summary, evidence2, options2 
     principle,
     packages,
     unit: options2.unit ?? null,
-    summary,
+    summary: options2.belowGuideline === void 0 ? summary : `${summary} (below the guideline: ${options2.belowGuideline})`,
     evidence: evidence2,
     changeCost: round3(options2.changeCost ?? 0),
     tentative: packages.some((id) => isYoung(context.model, id)),
-    priority: options2.priority ?? "normal"
+    priority: options2.priority ?? "normal",
+    aboveGuideline: options2.belowGuideline === void 0
   };
 }
+var reachingGuideline = (findings) => findings.filter((f) => f.aboveGuideline);
 function rankFindings(findings) {
   return [...findings].sort(
-    (a, b) => Number(a.priority === "low") - Number(b.priority === "low") || b.changeCost - a.changeCost || Number(a.tentative) - Number(b.tentative) || compareIds(a.id, b.id)
+    (a, b) => Number(!a.aboveGuideline) - Number(!b.aboveGuideline) || Number(a.priority === "low") - Number(b.priority === "low") || b.changeCost - a.changeCost || Number(a.tentative) - Number(b.tentative) || compareIds(a.id, b.id)
   );
 }
 var percent2 = (ratio) => `${Math.round(ratio * 100)}%`;
@@ -20164,10 +20194,10 @@ async function manifestChecks(context, reuse) {
 }
 
 // packages/structure/src/packaging/languages/java.ts
-var language9 = { id: "java", readEntries, manifestChecks };
+var language9 = { id: "java", checks: [{ ecosystem: "gradle", undeclared: true, unused: true }, { ecosystem: "maven", undeclared: true, unused: true }], readEntries, manifestChecks };
 
 // packages/structure/src/packaging/languages/kotlin.ts
-var language10 = { id: "kotlin", readEntries, manifestChecks: async () => [] };
+var language10 = { id: "kotlin", checks: [], readEntries, manifestChecks: async () => [] };
 
 // packages/structure/src/packaging/languages/typescript.ts
 var typesName = (name13) => `@types/${name13.startsWith("@") ? name13.slice(1).replace("/", "__") : name13}`;
@@ -20302,7 +20332,7 @@ async function manifestChecks2(context, reuse) {
   }
   return findings;
 }
-var language11 = { id: "typescript", readEntries: readEntries2, manifestChecks: manifestChecks2 };
+var language11 = { id: "typescript", checks: [{ ecosystem: "npm", undeclared: true, unused: true }], readEntries: readEntries2, manifestChecks: manifestChecks2 };
 
 // packages/structure/src/packaging/languages/csharp.ts
 async function readEntries3(model) {
@@ -20343,7 +20373,7 @@ async function manifestChecks3(context, reuse) {
   }
   return findings;
 }
-var language12 = { id: "csharp", readEntries: readEntries3, manifestChecks: manifestChecks3 };
+var language12 = { id: "csharp", checks: [{ ecosystem: "dotnet", undeclared: false, unused: true }], readEntries: readEntries3, manifestChecks: manifestChecks3 };
 
 // packages/structure/src/packaging/languages/cpp.ts
 async function readEntries4(model) {
@@ -20417,7 +20447,7 @@ async function manifestChecks4(context, reuse) {
   }
   return findings;
 }
-var language13 = { id: "cpp", readEntries: readEntries4, manifestChecks: manifestChecks4 };
+var language13 = { id: "cpp", checks: [{ ecosystem: "cmake", undeclared: true, unused: true }], readEntries: readEntries4, manifestChecks: manifestChecks4 };
 
 // packages/structure/src/packaging/languages/python.ts
 var normalise5 = (name13) => name13.toLowerCase().replace(/[-_.]+/g, "_");
@@ -20583,7 +20613,7 @@ async function manifestChecks5(context, reuse) {
   }
   return findings;
 }
-var language14 = { id: "python", readEntries: readEntries5, manifestChecks: manifestChecks5 };
+var language14 = { id: "python", checks: [{ ecosystem: "python", undeclared: true, unused: true }], readEntries: readEntries5, manifestChecks: manifestChecks5 };
 
 // packages/structure/src/packaging/languages/go.ts
 var hidden = (relative) => relative.split("/").some((part) => part === "internal" || part === "testdata" || part === "vendor");
@@ -20672,7 +20702,7 @@ async function manifestChecks6(context, reuse) {
   }
   return findings;
 }
-var language15 = { id: "go", readEntries: readEntries6, manifestChecks: manifestChecks6 };
+var language15 = { id: "go", checks: [{ ecosystem: "go", undeclared: true, unused: true }], readEntries: readEntries6, manifestChecks: manifestChecks6 };
 
 // packages/structure/src/packaging/languages/rust.ts
 var crateName = (name13) => name13.replaceAll("-", "_");
@@ -20813,7 +20843,7 @@ async function manifestChecks7(context, reuse) {
   }
   return findings;
 }
-var language16 = { id: "rust", readEntries: readEntries7, manifestChecks: manifestChecks7 };
+var language16 = { id: "rust", checks: [{ ecosystem: "cargo", undeclared: true, unused: true }], readEntries: readEntries7, manifestChecks: manifestChecks7 };
 
 // packages/structure/src/packaging/language.ts
 var packagingLanguages = Object.values(registered_languages_exports2).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -20862,6 +20892,31 @@ async function manifestChecks8(context, reuse) {
   const findings = [];
   for (const language17 of packagingLanguages) findings.push(...await language17.manifestChecks(context, reuse));
   return findings;
+}
+function unsupportedChecks(model) {
+  const supported = /* @__PURE__ */ new Map();
+  for (const language17 of packagingLanguages) {
+    for (const check2 of language17.checks) {
+      const known = supported.get(check2.ecosystem) ?? { undeclared: false, unused: false };
+      supported.set(check2.ecosystem, { undeclared: known.undeclared || check2.undeclared, unused: known.unused || check2.unused });
+    }
+  }
+  const byEcosystem = /* @__PURE__ */ new Map();
+  for (const pkg of model.packages) byEcosystem.set(pkg.ecosystem, [...byEcosystem.get(pkg.ecosystem) ?? [], pkg.id]);
+  const rows = [];
+  for (const [ecosystem, packages] of [...byEcosystem].sort(([a], [b]) => compareIds(a, b))) {
+    for (const check2 of ["undeclared-dependency", "unused-dependency"]) {
+      const has = supported.get(ecosystem)?.[check2 === "undeclared-dependency" ? "undeclared" : "unused"] === true;
+      if (has) continue;
+      rows.push({
+        ecosystem,
+        check: check2,
+        packages: packages.sort(compareIds),
+        notice: `${check2} is not supported for the ${ecosystem} ecosystem: ${packages.length} package${packages.length === 1 ? "" : "s"} not checked, so the absence of a finding says nothing about them`
+      });
+    }
+  }
+  return rows;
 }
 function purposeMismatches(context, deep) {
   const { model } = context;
@@ -21047,17 +21102,20 @@ async function analyseReuse(model) {
 
 // packages/structure/src/packaging/commands/boundaries.ts
 var boundaries = {
-  summary: "Deep imports, undeclared and unused dependencies, and purpose mismatches",
+  summary: "Deep imports, undeclared and unused dependencies, and purpose mismatches, with a notice for each ecosystem and check that is not supported",
   async analyse({ model, args: args2 }) {
     const [only] = args2;
     if (only !== void 0 && !model.byId.has(only)) throw usageError(`"${only}" is not a package of the analysed commit; run \`packages list\` for the ids`);
     const reuse = await analyseReuse(model);
     const found = rankFindings(await boundaryFindings(findingContext(model), reuse));
+    const notSupported = unsupportedChecks(model).filter((row) => only === void 0 || row.packages.includes(only));
     return {
+      notices: notSupported.map((row) => row.notice),
       inputs: { subcommand: "boundaries", package: only ?? null },
       results: only === void 0 ? found : found.filter((f) => f.packages.includes(only)),
-      columns: ["id", "principle", "changeCost", "tentative", "summary"],
+      columns: ["id", "principle", "changeCost", "aboveGuideline", "tentative", "summary"],
       extra: {
+        notSupported,
         unavailable: reuse.unavailable.filter((u) => only === void 0 || u.package === only).map((u) => ({ ...u, findings: ["deep-import", "undeclared-dependency", "unused-dependency"] }))
       }
     };
@@ -21245,8 +21303,7 @@ function wideChange(context) {
   const total = model.activity.eligibleChanges;
   if (total < model.settings.minRevisions) return [];
   const wide = model.activity.touchingAtLeast(wideChangePackages);
-  const share = wide / total;
-  if (share < wideChangeShare) return [];
+  const share2 = wide / total;
   const midpoint = model.windowSince + (model.anchor - model.windowSince) / 2;
   const half = (later) => {
     const changes = model.changes.filter((c) => !c.oversized && c.date >= midpoint === later);
@@ -21264,9 +21321,9 @@ function wideChange(context) {
       "wide-change",
       "CCP",
       [],
-      `${wide} of ${total} changes (${percent2(share)}) touched at least ${wideChangePackages} packages: the packages cut across the features`,
-      { wide, changes: total, share: round3(share), packagesPerWideChange: wideChangePackages, earlierShare: half(false), laterShare: half(true), mostOften },
-      { subjects: ["repository"], changeCost: context.cost.wide(wideChangePackages) }
+      `${wide} of ${total} changes (${percent2(share2)}) touched at least ${wideChangePackages} packages: the packages cut across the features`,
+      { wide, changes: total, share: round3(share2), packagesPerWideChange: wideChangePackages, earlierShare: half(false), laterShare: half(true), mostOften },
+      { subjects: ["repository"], changeCost: context.cost.wide(wideChangePackages), ...share2 >= wideChangeShare ? {} : { belowGuideline: `${percent2(share2)} of changes against ${percent2(wideChangeShare)}` } }
     )
   ];
 }
@@ -21374,7 +21431,7 @@ function hiddenCycles(context) {
 }
 function againstStability(context) {
   const { model, cost } = context;
-  return findUnstableDependencies(model.model, model.settings).map(
+  return rankDependencies(model.model, model.settings).map(
     (row) => raise(
       context,
       "against-stability",
@@ -21390,7 +21447,12 @@ function againstStability(context) {
         dependencyInstability: row.stability.to.structural.instability,
         disagree: row.disagree
       },
-      { changeCost: cost.pair(row.from, row.to) }
+      {
+        changeCost: cost.pair(row.from, row.to),
+        ...row.aboveGuideline ? {} : {
+          belowGuideline: row.basis === "change" ? `volatility ratio ${row.volatilityRatio} against ${model.settings.minVolatilityRatio}` : `instability gap ${Math.round(((row.stability.to.structural.instability ?? 0) - (row.stability.from.structural.instability ?? 0)) * 100)} points against ${model.settings.minInstabilityGap}`
+        }
+      }
     )
   );
 }
@@ -21421,7 +21483,9 @@ function zones(context, abstractness) {
       exportedTypes: measured.exportedTypes,
       abstractnessWeak: measured.weak
     };
-    if (a + i2 <= 1 - zoneDistance && stability.ca >= 2 && revisions > median3 && revisions >= model.settings.minRevisions) {
+    const distance = Math.abs(a + i2 - 1);
+    const below = { belowGuideline: `distance ${round3(distance)} against ${zoneDistance}` };
+    if (a + i2 < 1 && stability.ca >= 2 && revisions > median3 && revisions >= model.settings.minRevisions) {
       findings.push(
         raise(
           context,
@@ -21430,11 +21494,11 @@ function zones(context, abstractness) {
           [pkg.id],
           `${pkg.id} is concrete (A ${a}) and stable (I ${i2}), ${stability.ca} packages depend on it, and it changed in ${revisions} changes: every change ripples${measured.weak ? "; A is weak here, so the change evidence carries this" : ""}`,
           evidence2,
-          { changeCost: context.cost.package(pkg.id) }
+          { changeCost: context.cost.package(pkg.id), ...distance >= zoneDistance ? {} : below }
         )
       );
     }
-    if (a + i2 >= 1 + zoneDistance && measured.exportedTypes >= 1 && stability.ca <= 1) {
+    if (a + i2 > 1 && measured.exportedTypes >= 1 && stability.ca <= 1) {
       findings.push(
         raise(
           context,
@@ -21443,7 +21507,7 @@ function zones(context, abstractness) {
           [pkg.id],
           `${pkg.id} is abstract (A ${a}) and has ${stability.ca === 0 ? "no dependents" : "one dependent"} (I ${i2}): abstractions written for consumers that never arrived`,
           evidence2,
-          { changeCost: 0 }
+          { changeCost: 0, ...distance >= zoneDistance ? {} : below }
         )
       );
     }
@@ -21460,17 +21524,16 @@ function volatileInterfaces(context, reuse) {
     const touching = model.changes.filter((c) => c.touched.includes(id));
     if (touching.length < model.settings.minRevisions) continue;
     const onSurface = touching.filter((c) => c.files.some((f) => f.package === id && defining.has(f.path))).length;
-    const share = onSurface / touching.length;
-    if (share < volatileInterfaceShare) continue;
+    const share2 = onSurface / touching.length;
     findings.push(
       raise(
         context,
         "volatile-interface",
         "SDP",
         [id],
-        `the files that define what ${id} exports changed in ${onSurface} of its ${touching.length} changes (${percent2(share)}), with ${profile.consumers.length} consumer${profile.consumers.length === 1 ? "" : "s"} depending on them`,
-        { surfaceChanges: onSurface, revisions: touching.length, share: round3(share), consumers: profile.consumers.length, surfaceFiles: [...defining].sort(compareIds).slice(0, 10) },
-        { changeCost: context.cost.package(id) }
+        `the files that define what ${id} exports changed in ${onSurface} of its ${touching.length} changes (${percent2(share2)}), with ${profile.consumers.length} consumer${profile.consumers.length === 1 ? "" : "s"} depending on them`,
+        { surfaceChanges: onSurface, revisions: touching.length, share: round3(share2), consumers: profile.consumers.length, surfaceFiles: [...defining].sort(compareIds).slice(0, 10) },
+        { changeCost: context.cost.package(id), ...share2 >= volatileInterfaceShare ? {} : { belowGuideline: `${percent2(share2)} of revisions against ${percent2(volatileInterfaceShare)}` } }
       )
     );
   }
@@ -21826,8 +21889,8 @@ function dumpingGround(context, profile) {
 function overexposed(context, profile) {
   const { overexposedShare } = context.model.settings.packages;
   if (profile.consumers.length === 0 || profile.surface.length === 0 || profile.unused.length === 0) return [];
-  const share = profile.unused.length / profile.surface.length;
-  if (share < overexposedShare) return [];
+  const share2 = profile.unused.length / profile.surface.length;
+  if (share2 < overexposedShare) return [];
   return [
     raise(
       context,
@@ -21835,7 +21898,7 @@ function overexposed(context, profile) {
       "CRP",
       [profile.package],
       `${profile.unused.length} of the ${profile.surface.length} exports of ${profile.package} are used by no other package: ${profile.unused.slice(0, 5).map(shortName).join(", ")}${profile.unused.length > 5 ? ", ..." : ""}`,
-      { unused: profile.unused.length, surface: profile.surface.length, share: round3(share), names: profile.unused.slice(0, 10).map(shortName) },
+      { unused: profile.unused.length, surface: profile.surface.length, share: round3(share2), names: profile.unused.slice(0, 10).map(shortName) },
       { changeCost: 0 }
     )
   ];
@@ -21967,7 +22030,14 @@ function togetherComponents(model, id, parts2) {
   }
   return found;
 }
-function buildCandidates(model, analysis) {
+function buildCandidates(model, listed) {
+  const analysis = {
+    ...listed,
+    cohesion: reachingGuideline(listed.cohesion),
+    coupling: reachingGuideline(listed.coupling),
+    boundaries: reachingGuideline(listed.boundaries),
+    all: reachingGuideline(listed.all)
+  };
   const { reuse } = analysis;
   const found = /* @__PURE__ */ new Map();
   const withheld = [];
@@ -22245,7 +22315,7 @@ async function balances(model, findings, reuse, root) {
     const changes = model.activity.revisions(pkg.id);
     const young = isYoung(model, pkg.id);
     const matters = young ? "tentative" : changes > median3 && consumers.length <= 2 ? "closure" : consumers.length >= 3 && changes <= median3 ? "reuse" : "mixed";
-    const mine = findings.filter((f) => f.packages.includes(pkg.id));
+    const mine = reachingGuideline(findings).filter((f) => f.packages.includes(pkg.id));
     const profile = reuse.profiles.get(pkg.id);
     const partners = [...model.activity.partners(pkg.id)].sort(([ia, a], [ib, b]) => b - a || compareIds(ia, ib)).slice(0, 3).map(([id]) => id);
     const figures = closure.get(pkg.id);
@@ -22282,7 +22352,7 @@ var cohesion = {
     return {
       inputs: { subcommand: "cohesion", package: only ?? null },
       results: all.filter((f) => wanted(f.packages)),
-      columns: ["id", "principle", "changeCost", "tentative", "summary"],
+      columns: ["id", "principle", "changeCost", "aboveGuideline", "tentative", "summary"],
       extra: {
         balance: rows.filter((row) => wanted([row.id])),
         unavailable: reuse.unavailable.filter((u) => wanted([u.package])).map((u) => ({ ...u, findings: ["partial-use", "disjoint-reuse", "dumping-ground", "inherited-weight", "overexposed", "pass-through-package"] }))
@@ -22314,11 +22384,9 @@ async function violationsAt(root, sha, settings, model) {
 }
 async function structuralModel(root, sha, settings) {
   const tree = await treeFromRef(root, sha);
-  const components = readComponents(settings.components);
-  const packages = await discoverPackages(tree, { ignore: settings.packages.ignore, extra: settings.packages.extra, components, exclude: settings.exclude, entryPoints: settings.entryPoints });
   const date = Number((await runGit(root, ["log", "-1", "--format=%ct", sha])).trim());
   const nothing = { changes: [], imported: [] };
-  return assemblePackageModel(sha, { settings, filtered: nothing, window: { since: date, until: date } }, tree, packages, components, await loadProject(root, sha, settings.exclude));
+  return assemblePackageModel(sha, { settings, filtered: nothing, window: { since: date, until: date } }, tree, await loadProject(root, sha, settings));
 }
 async function baseRevision(root, headSha, requested, settings) {
   return (await resolveBase(root, headSha, settings, requested)).sha;
@@ -22358,7 +22426,7 @@ var coupling = {
         minInstabilityGap: model.settings.minInstabilityGap
       },
       results: found,
-      columns: ["id", "principle", "changeCost", "priority", "tentative", "summary"]
+      columns: ["id", "principle", "changeCost", "priority", "aboveGuideline", "tentative", "summary"]
     };
   }
 };
@@ -22528,9 +22596,9 @@ function figuresFor(changes, groupOf, members2) {
 function compared(changes, groupOf, members2, alone, band) {
   const own = figuresFor(changes, groupOf, members2);
   const eligible = changes.filter((c) => !c.oversized).length;
-  const share = (figures) => eligible === 0 ? 0 : figures.changes / eligible;
+  const share2 = (figures) => eligible === 0 ? 0 : figures.changes / eligible;
   const others = alone.map((id) => ({ id, figures: figuresFor(changes, groupOf, /* @__PURE__ */ new Set([id])) })).filter((o) => o.figures.changes > 0);
-  const near = others.filter((o) => share(own) > 0 && Math.max(share(o.figures), share(own)) / Math.min(share(o.figures), share(own)) <= band);
+  const near = others.filter((o) => share2(own) > 0 && Math.max(share2(o.figures), share2(own)) / Math.min(share2(o.figures), share2(own)) <= band);
   const chosen = near.length > 0 ? near : others;
   return {
     ...own,

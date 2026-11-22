@@ -24,8 +24,8 @@ Run them from the repository root. They analyse `HEAD`. The subcommands:
 
 - `list`: every package with its kind (internal or published), declared purpose, consumers, `Ca`, `Ce`, instability `I`, abstractness `A`, distance `D`, closure beside its share of changes, and change frequency.
 - `cohesion [PACKAGE]`: the closure, reuse and release findings, and for each package the balance between the three forces.
-- `coupling`: package cycles, hidden cycles, dependencies against stability, the zones, volatile interfaces.
-- `boundaries [PACKAGE]`: deep imports, undeclared and unused dependencies, purpose mismatches.
+- `coupling`: package cycles, hidden cycles, dependencies against stability, the zones, volatile interfaces. Rows below their guideline are listed last, with `aboveGuideline: false`.
+- `boundaries [PACKAGE]`: deep imports, undeclared and unused dependencies, purpose mismatches. It prints a notice for each ecosystem and check it does not support, so a missing finding there says nothing.
 - `candidates [--kind merge|split|move-unit|narrow-interface|fix-manifest|break-dependency]`: the findings combined into proposals, ranked by the recency-weighted changes that crossed the boundary in question.
 - `evidence PACKAGE` or `evidence A->B`: the full facts for one package or one pair.
 - `check [--base REV]`: exits 1 on package cycles, deep imports or undeclared dependencies added since a base revision.

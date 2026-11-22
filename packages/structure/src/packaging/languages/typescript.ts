@@ -159,4 +159,4 @@ async function manifestChecks(context: FindingContext, reuse: ReuseAnalysis): Pr
 }
 
 /** TypeScript and JavaScript packages: npm manifests, with entries read through the adapter's own module resolver. */
-export const language: PackagingLanguage = { id: "typescript", readEntries, manifestChecks };
+export const language: PackagingLanguage = { id: "typescript", checks: [{ ecosystem: "npm", undeclared: true, unused: true }], readEntries, manifestChecks };

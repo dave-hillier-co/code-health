@@ -176,9 +176,17 @@
             "items": {
               "$ref": "#/$defs/unavailable"
             }
+          },
+          "notSupported": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/notSupported"
+            },
+            "description": "Each dependency check that no packaging language makes for an ecosystem present in the repository."
           }
         },
         "required": [
+          "notSupported",
           "unavailable"
         ]
       }
@@ -407,7 +415,10 @@
                 "type": "boolean"
               },
               "transcriptStamp": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -515,7 +526,8 @@
     "balance": true,
     "unavailable": true,
     "withheld": true,
-    "summary": true
+    "summary": true,
+    "notSupported": true
   },
   "required": [
     "inputs"
@@ -2681,6 +2693,10 @@
             "normal",
             "low"
           ]
+        },
+        "aboveGuideline": {
+          "type": "boolean",
+          "description": "False when the measured value sits below the guideline. Such a finding is listed after the others and its summary says so."
         }
       },
       "required": [
@@ -2693,7 +2709,39 @@
         "evidence",
         "changeCost",
         "tentative",
-        "priority"
+        "priority",
+        "aboveGuideline"
+      ],
+      "additionalProperties": false
+    },
+    "notSupported": {
+      "type": "object",
+      "properties": {
+        "ecosystem": {
+          "type": "string"
+        },
+        "check": {
+          "enum": [
+            "undeclared-dependency",
+            "unused-dependency"
+          ]
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "notice": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ecosystem",
+        "check",
+        "packages",
+        "notice"
       ],
       "additionalProperties": false
     }

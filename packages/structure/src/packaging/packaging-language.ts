@@ -1,3 +1,4 @@
+import type { Ecosystem } from "./discovery.ts";
 import type { PackageEntries } from "./entries.ts";
 import type { Finding, FindingContext } from "./findings.ts";
 import type { PackageModel } from "./model.ts";
@@ -9,6 +10,8 @@ import type { ReuseAnalysis } from "./reuse-profile.ts";
  */
 export interface PackagingLanguage {
   id: string;
+  /** Which dependency checks `manifestChecks` makes for each ecosystem this language reads. An ecosystem no language lists has neither. */
+  checks: readonly { ecosystem: Ecosystem; undeclared: boolean; unused: boolean }[];
   /**
    * The entry files of every package of this language's ecosystems that has code the adapter reads,
    * by package id: the files outside the language's internals marker (packaging.md, Languages). Packages it

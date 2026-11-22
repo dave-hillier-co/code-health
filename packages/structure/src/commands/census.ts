@@ -41,7 +41,7 @@ export const command: Command = {
     const { root } = context.repo;
     const settings = readSettings(context.config);
     const headSha = (await runGit(root, ["rev-parse", "--verify", `${settings.ref}^{commit}`])).trim();
-    const project = await loadProject(root, headSha, settings.exclude);
+    const project = await loadProject(root, headSha, settings);
     const census = await buildCensus(await treeFromRef(root, headSha), project, settings.census);
     const output = {
       inputs: { census: settings.census },

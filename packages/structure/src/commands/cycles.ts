@@ -17,6 +17,9 @@ export const rules: Record<string, Rule> = {
       "package boundary (the folder of a package.json, go.mod, Cargo.toml, pom.xml, .csproj or the like), so a",
       "cycle there can exist with no file cycle behind it.",
       "",
+      "A folder cycle between a folder and its own sub-folders (including a Rust `mod name;` edge from a",
+      "parent to a child) is listed with `nested: true` and sorts after the other cycles.",
+      "",
       "The breaking set is the smallest set of edges whose removal makes the component acyclic. Small",
       "components (structure.exactLimit nodes or fewer) are solved exactly. Larger ones use the",
       "Eades-Lin-Smyth heuristic, pruned to a minimal set, and say so in `method`. Between equally small",
@@ -41,7 +44,7 @@ export const command = analysisCommand(name, {
     return {
       inputs: { level, exactLimit: history.settings.exactLimit, locality: model.locality?.input ?? null },
       results: rows,
-      columns: ["id", "size", "method", "nodes", "breakingSet", "coChangeAcross", "unblockedGain"],
+      columns: ["id", "size", "method", "nested", "nodes", "breakingSet", "coChangeAcross", "unblockedGain"],
       extra: { population: { modules: model.graph.graph.size, eligibleChanges: model.activity.eligibleChanges } },
     };
   },

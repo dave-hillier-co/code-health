@@ -28,12 +28,22 @@ export interface CycleRow {
   level: string;
   size: number;
   nodes: string[];
+  /** A folder cycle whose folders all lie on one path from the root, such as a folder and its child. Always false at other levels. Listed after cycles that are not nested. */
+  nested: boolean;
   method: "exact" | "heuristic";
   breakingSet: BreakingEdge[];
   /** Eligible logical changes touching two modules of the cycle that depend on each other, each pair counted once. */
   coChangeAcross: number;
   /** Sum of the unblocked gain of every move the breaking set would free, or null without a locality report. */
   unblockedGain: number | null;
+}
+
+const isAncestorFolder = (ancestor: string, folder: string): boolean => ancestor === "." || folder.startsWith(`${ancestor}/`);
+
+/** Whether every folder is an ancestor or a descendant of every other. */
+export function isNestedFolderCycle(level: string, nodes: readonly string[]): boolean {
+  if (level !== "folder") return false;
+  return nodes.every((a) => nodes.every((b) => a === b || isAncestorFolder(a, b) || isAncestorFolder(b, a)));
 }
 
 export const cycleId = (level: string, firstNode: string): string => `cycle:${level}:${firstNode}`;
@@ -60,7 +70,7 @@ export function breakingEdge(model: Model, from: string, to: string, limit = SYM
 }
 
 /**
- * Every import cycle at the model's level with its breaking set, ranked by the locality gain the
+ * Every import cycle at the model's level with its breaking set, nested folder cycles last, then ranked by the locality gain the
  * breaking set unblocks (when a locality report is present), then by the size of the cycle, then
  * by co-change across it, then by id. Breaking-set ties go to the edge whose sides co-change least.
  */
@@ -86,6 +96,7 @@ export function findCycles(model: Model, settings: Pick<StructureSettings, "exac
       level: model.graph.level,
       size: cycle.nodes.length,
       nodes: [...cycle.nodes],
+      nested: isNestedFolderCycle(model.graph.level, cycle.nodes),
       method: cycle.method,
       breakingSet,
       coChangeAcross,
@@ -94,6 +105,6 @@ export function findCycles(model: Model, settings: Pick<StructureSettings, "exac
   });
   return rows.sort(
     (a, b) =>
-      (b.unblockedGain ?? 0) - (a.unblockedGain ?? 0) || b.size - a.size || b.coChangeAcross - a.coChangeAcross || compareIds(a.id, b.id),
+      Number(a.nested) - Number(b.nested) || (b.unblockedGain ?? 0) - (a.unblockedGain ?? 0) || b.size - a.size || b.coChangeAcross - a.coChangeAcross || compareIds(a.id, b.id),
   );
 }

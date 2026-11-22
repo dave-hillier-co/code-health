@@ -222,6 +222,7 @@ export interface HubEvidencePack {
   featureCount: number;
   revisions: number;
   features: HubFeaturePack[];
+  signalsReached: Hub["signalsReached"];
   signals: Hub["signals"];
   /** Structural and change stability of the module the hub sits in. */
   stability: Stability | null;
@@ -254,6 +255,7 @@ export function hubEvidencePack(model: Model, hub: Hub, census: Census): HubEvid
     featureCount: hub.featureCount,
     revisions: hub.revisions,
     features,
+    signalsReached: hub.signalsReached,
     signals: hub.signals,
     stability: stabilityOfModule(model, hub.module) ?? null,
     unblocks,

@@ -12,7 +12,8 @@ export const rules: Record<string, Rule> = {
   "registration-hub": {
     summary: "A central file that every feature has to edit: a route table, menu, handler map or module list",
     explanation: [
-      "Reported only when four signals hold together:",
+      "Four signals describe one. A file is listed when at least two reach their guidelines. Files that\n      reach all four are listed first, then three, then two, and `signalsReached` and each signal's\n      `reached` say which. Within one count, rows sort by the figures behind the signals: features,\n      outward share, append share, authors, then revisions.",
+      "",
       "",
       "1. Star co-change: at least structure.hubMinFeatures folders (or components) co-change with the",
       "   file significantly, and at least structure.hubMinConfidence percent of each one's changes",
@@ -40,7 +41,7 @@ export const rules: Record<string, Rule> = {
 };
 
 export const command = analysisCommand(name, {
-  summary: "Registration hubs: files every feature edits by appending an entry, with the signals that fired",
+  summary: "Registration hubs: files every feature edits by appending an entry, with the signals that reached their guidelines",
   options: { by: { type: "string" } },
   optionHelp: { by: "what a module is: folder or component (default folder)" },
   partial: ({ values }) => values.by !== undefined && values.by !== "folder",

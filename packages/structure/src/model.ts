@@ -24,7 +24,7 @@ export interface ModelOptions {
 
 export async function buildModel(context: CommandContext, history: LoadedHistory, level: Level, project?: Project, options: ModelOptions = {}): Promise<Model> {
   const { settings } = history;
-  const loaded = project ?? (await loadProject(context.repo.root, history.view.headSha, settings.exclude));
+  const loaded = project ?? (await loadProject(context.repo.root, history.view.headSha, settings));
   const graph = buildModuleGraph(level, loaded, settings.components);
   const activity = measureActivity(history.filtered.changes, graph, options.everyPair ? "all" : connectedPairs(graph));
   return {

@@ -76,7 +76,7 @@ export const command = analysisCommand(name, {
       if (!cycle) throw usageError(`no cycle "${target.id}" at the analysed commit`);
       edges = cycle.breakingSet.map((e) => [e.from, e.to]);
     } else {
-      const project = await loadProject(context.repo.root, history.view.headSha, settings.exclude);
+      const project = await loadProject(context.repo.root, history.view.headSha, settings);
       const level = target.level ?? inferLevel(project, target.from, target.to);
       model = await buildModel(context, history, level, project);
       const imported = (a: string, b: string) => model.graph.graph.get(a)?.includes(b) === true;

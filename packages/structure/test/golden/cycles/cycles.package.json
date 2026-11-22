@@ -110,6 +110,7 @@
       "id": "cycle:package:packages/p1",
       "level": "package",
       "method": "exact",
+      "nested": false,
       "nodes": [
         "packages/p1",
         "packages/p2"

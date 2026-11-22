@@ -14,7 +14,7 @@ export const cohesion: Subcommand = {
     return {
       inputs: { subcommand: "cohesion", package: only ?? null },
       results: all.filter((f) => wanted(f.packages)),
-      columns: ["id", "principle", "changeCost", "tentative", "summary"],
+      columns: ["id", "principle", "changeCost", "aboveGuideline", "tentative", "summary"],
       extra: {
         balance: rows.filter((row) => wanted([row.id])),
         unavailable: reuse.unavailable.filter((u) => wanted([u.package])).map((u) => ({ ...u, findings: ["partial-use", "disjoint-reuse", "dumping-ground", "inherited-weight", "overexposed", "pass-through-package"] })),

@@ -148,14 +148,17 @@
             "text": "export const routes = ["
           },
           "hunks": 22,
+          "reached": true,
           "removals": 0
         },
         "contention": {
           "maxAuthors": 3,
+          "reached": true,
           "windowDays": 14
         },
         "outwardDependencies": {
           "of": 4,
+          "reached": true,
           "referenced": 4
         },
         "starCoChange": {
@@ -163,9 +166,11 @@
             "classified": 6,
             "high": 0
           },
-          "features": 4
+          "features": 4,
+          "reached": true
         }
-      }
+      },
+      "signalsReached": 4
     }
   ],
   "schemaVersion": 1,

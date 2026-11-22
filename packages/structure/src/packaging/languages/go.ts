@@ -106,4 +106,4 @@ async function manifestChecks(context: FindingContext, reuse: ReuseAnalysis): Pr
 }
 
 /** Go packages: modules read from go.mod, with entries the Go files outside `internal/`. */
-export const language: PackagingLanguage = { id: "go", readEntries, manifestChecks };
+export const language: PackagingLanguage = { id: "go", checks: [{ ecosystem: "go", undeclared: true, unused: true }], readEntries, manifestChecks };

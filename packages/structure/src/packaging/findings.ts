@@ -54,6 +54,8 @@ export interface Finding {
   /** A package involved is inside the grace period, so the finding is held as tentative. */
   tentative: boolean;
   priority: "normal" | "low";
+  /** False when the measured value sits below the guideline. Such a finding is listed after the others and its summary says so. It never feeds a candidate or a balance. */
+  aboveGuideline: boolean;
 }
 
 export const findingId = (kind: FindingKind, ...subjects: string[]): string => `${kind}:${subjects.join("->")}`;
@@ -75,7 +77,7 @@ export function raise(
   packages: string[],
   summary: string,
   evidence: Record<string, Figure>,
-  options: { unit?: string; changeCost?: number; priority?: "normal" | "low"; subjects?: string[] } = {},
+  options: { unit?: string; changeCost?: number; priority?: "normal" | "low"; subjects?: string[]; belowGuideline?: string } = {},
 ): Finding {
   return {
     id: findingId(kind, ...(options.subjects ?? packages), ...(options.unit === undefined ? [] : [options.unit])),
@@ -83,18 +85,23 @@ export function raise(
     principle,
     packages,
     unit: options.unit ?? null,
-    summary,
+    summary: options.belowGuideline === undefined ? summary : `${summary} (below the guideline: ${options.belowGuideline})`,
     evidence,
     changeCost: round3(options.changeCost ?? 0),
     tentative: packages.some((id) => isYoung(context.model, id)),
     priority: options.priority ?? "normal",
+    aboveGuideline: options.belowGuideline === undefined,
   };
 }
 
-/** Most costly first, then the findings that are not tentative, then by id. */
+/** The findings whose measured value reaches its guideline, which are the ones that feed candidates and balances. */
+export const reachingGuideline = (findings: readonly Finding[]): Finding[] => findings.filter((f) => f.aboveGuideline);
+
+/** Findings at or above their guideline first, then most costly first, then the findings that are not tentative, then by id. */
 export function rankFindings(findings: readonly Finding[]): Finding[] {
   return [...findings].sort(
     (a, b) =>
+      Number(!a.aboveGuideline) - Number(!b.aboveGuideline) ||
       Number(a.priority === "low") - Number(b.priority === "low") ||
       b.changeCost - a.changeCost ||
       Number(a.tentative) - Number(b.tentative) ||

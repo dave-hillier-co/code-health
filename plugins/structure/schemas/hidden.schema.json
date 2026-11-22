@@ -29,6 +29,9 @@
         "minSupport": {
           "$ref": "common.schema.json#/$defs/count"
         },
+        "minAgentTasks": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
         "minRevisions": {
           "$ref": "common.schema.json#/$defs/count"
         },
@@ -51,6 +54,7 @@
         "quadrant",
         "minStaticCoupling",
         "minSupport",
+        "minAgentTasks",
         "minRevisions",
         "significanceLevel",
         "transcripts",

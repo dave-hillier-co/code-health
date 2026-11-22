@@ -199,4 +199,4 @@ async function manifestChecks(context: FindingContext, reuse: ReuseAnalysis): Pr
 }
 
 /** Python distributions: `pyproject.toml` packages, with the modules and names outside the underscore and `__all__` markers as their public surface. */
-export const language: PackagingLanguage = { id: "python", readEntries, manifestChecks };
+export const language: PackagingLanguage = { id: "python", checks: [{ ecosystem: "python", undeclared: true, unused: true }], readEntries, manifestChecks };

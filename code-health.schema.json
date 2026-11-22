@@ -823,6 +823,10 @@
           "type": "number",
           "default": 3
         },
+        "minAgentTasks": {
+          "type": "number",
+          "default": 3
+        },
         "significanceLevel": {
           "type": "number",
           "default": 0.01

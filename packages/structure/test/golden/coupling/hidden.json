@@ -74,6 +74,7 @@
   },
   "inputs": {
     "level": "folder",
+    "minAgentTasks": 3,
     "minRevisions": 3,
     "minStaticCoupling": 3,
     "minSupport": 3,

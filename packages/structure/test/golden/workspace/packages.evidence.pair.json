@@ -98,6 +98,7 @@
     },
     "findings": [
       {
+        "aboveGuideline": true,
         "changeCost": 8.484,
         "evidence": {
           "confidenceFromTo": 0.8,

@@ -5,7 +5,7 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "./support/golden.ts";
 import { runStructure } from "./support/run.ts";
-import { acyclicRepository, cyclesRepository } from "./support/scenarios.ts";
+import { acyclicRepository, cyclesRepository, nestedCyclesRepository } from "./support/scenarios.ts";
 
 let repo: GitFixture;
 let acyclic: GitFixture;
@@ -23,6 +23,7 @@ interface Row {
   level: string;
   size: number;
   nodes: string[];
+  nested: boolean;
   method: string;
   breakingSet: { from: string; to: string; coChange: number; symbols: { symbol: string; sites: number }[] }[];
 }
@@ -90,6 +91,26 @@ describe("folder level", () => {
 
   test("golden", async () => {
     expectGolden("cycles", "cycles.folder", (await cycles(repo, "--level", "folder")).stdout);
+  });
+});
+
+describe("nested folder cycles", () => {
+  test("a folder cycle with its own child is flagged nested and listed after the others", async () => {
+    const nested = nestedCyclesRepository();
+    try {
+      const { document } = await cycles(nested, "--level", "folder");
+      expect(document.results.map((r) => [r.nodes, r.nested])).toEqual([
+        [["src/core", "src/ui"], false],
+        [["src/app", "src/app/feature"], true],
+      ]);
+    } finally {
+      nested.dispose();
+    }
+  });
+
+  test("no cycle at file or package level is nested", async () => {
+    const { document } = await cycles(repo, "--level", "file");
+    expect(document.results.map((r) => r.nested)).toEqual([false, false]);
   });
 });
 

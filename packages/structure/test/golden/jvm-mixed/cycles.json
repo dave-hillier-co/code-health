@@ -110,6 +110,7 @@
       "id": "cycle:file:src/main/java/acme/Order.java",
       "level": "file",
       "method": "exact",
+      "nested": false,
       "nodes": [
         "src/main/java/acme/Order.java",
         "src/main/kotlin/acme/Pricing.kt"

@@ -60,4 +60,4 @@ async function manifestChecks(context: FindingContext, reuse: ReuseAnalysis): Pr
 }
 
 /** .NET projects: entries are the files that declare a public type, and each project reference is checked against the types the project uses. */
-export const language: PackagingLanguage = { id: "csharp", readEntries, manifestChecks };
+export const language: PackagingLanguage = { id: "csharp", checks: [{ ecosystem: "dotnet", undeclared: false, unused: true }], readEntries, manifestChecks };

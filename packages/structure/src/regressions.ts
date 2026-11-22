@@ -72,7 +72,7 @@ function cyclesOf(project: Project, level: Level, settings: Pick<StructureSettin
 
 /** The cycles at the chosen levels and the layer violations of one commit. */
 export async function snapshotOf(root: string, sha: string, levels: readonly Level[], settings: StructureSettings): Promise<StructureSnapshot> {
-  const project = await loadProject(root, sha, settings.exclude);
+  const project = await loadProject(root, sha, settings);
   return {
     sha,
     cycles: levels.flatMap((level) => cyclesOf(project, level, settings)),

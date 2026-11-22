@@ -1,4 +1,3 @@
-import { readComponents } from "@code-health/cochange/components";
 import { runGit } from "@code-health/history/git";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import type { FilteredHistory } from "@code-health/history/noise";
@@ -7,7 +6,6 @@ import { loadProject } from "../project.ts";
 import { resolveBase } from "../regressions.ts";
 import { deepImports, manifestChecks } from "./boundaries.ts";
 import { packageCycles } from "./coupling.ts";
-import { discoverPackages } from "./discovery.ts";
 import { findingContext } from "./findings.ts";
 import { assemblePackageModel, type PackageModel } from "./model.ts";
 import { analyseReuse } from "./reuse.ts";
@@ -48,11 +46,9 @@ export async function violationsAt(root: string, sha: string, settings: Structur
 
 export async function structuralModel(root: string, sha: string, settings: StructureSettings): Promise<PackageModel> {
   const tree = await treeFromRef(root, sha);
-  const components = readComponents(settings.components);
-  const packages = await discoverPackages(tree, { ignore: settings.packages.ignore, extra: settings.packages.extra, components, exclude: settings.exclude, entryPoints: settings.entryPoints });
   const date = Number((await runGit(root, ["log", "-1", "--format=%ct", sha])).trim());
   const nothing = { changes: [], imported: [] } as unknown as FilteredHistory;
-  return assemblePackageModel(sha, { settings, filtered: nothing, window: { since: date, until: date } }, tree, packages, components, await loadProject(root, sha, settings.exclude));
+  return assemblePackageModel(sha, { settings, filtered: nothing, window: { since: date, until: date } }, tree, await loadProject(root, sha, settings));
 }
 
 /**

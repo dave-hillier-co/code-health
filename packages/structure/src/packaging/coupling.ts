@@ -1,7 +1,7 @@
 import { compareIds, subgraph, type Graph } from "@code-health/graph/graph";
 import { stronglyConnectedComponents } from "@code-health/graph/scc";
 import { findCycles } from "../cycles.ts";
-import { findUnstableDependencies } from "../unstable.ts";
+import { rankDependencies } from "../unstable.ts";
 import { edgeKey } from "../project.ts";
 import { round3 } from "../stability.ts";
 import { measureAbstractness, type Abstractness } from "./abstractness.ts";
@@ -99,7 +99,7 @@ export function hiddenCycles(context: FindingContext): Finding[] {
 /** Dependencies from a package onto one that changes more often than it does. */
 export function againstStability(context: FindingContext): Finding[] {
   const { model, cost } = context;
-  return findUnstableDependencies(model.model, model.settings).map((row) =>
+  return rankDependencies(model.model, model.settings).map((row) =>
     raise(
       context,
       "against-stability",
@@ -117,7 +117,17 @@ export function againstStability(context: FindingContext): Finding[] {
         dependencyInstability: row.stability.to.structural.instability,
         disagree: row.disagree,
       },
-      { changeCost: cost.pair(row.from, row.to) },
+      {
+        changeCost: cost.pair(row.from, row.to),
+        ...(row.aboveGuideline
+          ? {}
+          : {
+              belowGuideline:
+                row.basis === "change"
+                  ? `volatility ratio ${row.volatilityRatio} against ${model.settings.minVolatilityRatio}`
+                  : `instability gap ${Math.round(((row.stability.to.structural.instability ?? 0) - (row.stability.from.structural.instability ?? 0)) * 100)} points against ${model.settings.minInstabilityGap}`,
+            }),
+      },
     ),
   );
 }
@@ -155,20 +165,22 @@ export function zones(context: FindingContext, abstractness: ReadonlyMap<string,
       exportedTypes: measured.exportedTypes,
       abstractnessWeak: measured.weak,
     };
-    if (a + i <= 1 - zoneDistance && stability.ca >= 2 && revisions > median && revisions >= model.settings.minRevisions) {
+    const distance = Math.abs(a + i - 1);
+    const below = { belowGuideline: `distance ${round3(distance)} against ${zoneDistance}` };
+    if (a + i < 1 && stability.ca >= 2 && revisions > median && revisions >= model.settings.minRevisions) {
       findings.push(
         raise(context, "zone-of-pain", "SAP", [pkg.id],
           `${pkg.id} is concrete (A ${a}) and stable (I ${i}), ${stability.ca} packages depend on it, and it changed in ${revisions} changes: every change ripples${measured.weak ? "; A is weak here, so the change evidence carries this" : ""}`,
           evidence,
-          { changeCost: context.cost.package(pkg.id) }),
+          { changeCost: context.cost.package(pkg.id), ...(distance >= zoneDistance ? {} : below) }),
       );
     }
-    if (a + i >= 1 + zoneDistance && measured.exportedTypes >= 1 && stability.ca <= 1) {
+    if (a + i > 1 && measured.exportedTypes >= 1 && stability.ca <= 1) {
       findings.push(
         raise(context, "zone-of-uselessness", "SAP", [pkg.id],
           `${pkg.id} is abstract (A ${a}) and has ${stability.ca === 0 ? "no dependents" : "one dependent"} (I ${i}): abstractions written for consumers that never arrived`,
           evidence,
-          { changeCost: 0 }),
+          { changeCost: 0, ...(distance >= zoneDistance ? {} : below) }),
       );
     }
   }
@@ -190,12 +202,11 @@ export function volatileInterfaces(context: FindingContext, reuse: ReuseAnalysis
     if (touching.length < model.settings.minRevisions) continue;
     const onSurface = touching.filter((c) => c.files.some((f) => f.package === id && defining.has(f.path))).length;
     const share = onSurface / touching.length;
-    if (share < volatileInterfaceShare) continue;
     findings.push(
       raise(context, "volatile-interface", "SDP", [id],
         `the files that define what ${id} exports changed in ${onSurface} of its ${touching.length} changes (${percent(share)}), with ${profile.consumers.length} consumer${profile.consumers.length === 1 ? "" : "s"} depending on them`,
         { surfaceChanges: onSurface, revisions: touching.length, share: round3(share), consumers: profile.consumers.length, surfaceFiles: [...defining].sort(compareIds).slice(0, 10) },
-        { changeCost: context.cost.package(id) }),
+        { changeCost: context.cost.package(id), ...(share >= volatileInterfaceShare ? {} : { belowGuideline: `${percent(share)} of revisions against ${percent(volatileInterfaceShare)}` }) }),
     );
   }
   return findings;

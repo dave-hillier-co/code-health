@@ -91,4 +91,4 @@ async function manifestChecks(context: FindingContext, reuse: ReuseAnalysis): Pr
 }
 
 /** C++ packages: CMake targets, with the headers of the public include directory as entries. */
-export const language: PackagingLanguage = { id: "cpp", readEntries, manifestChecks };
+export const language: PackagingLanguage = { id: "cpp", checks: [{ ecosystem: "cmake", undeclared: true, unused: true }], readEntries, manifestChecks };

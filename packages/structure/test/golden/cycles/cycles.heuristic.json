@@ -110,6 +110,7 @@
       "id": "cycle:file:src/c.ts",
       "level": "file",
       "method": "heuristic",
+      "nested": false,
       "nodes": [
         "src/c.ts",
         "src/d.ts",
@@ -142,6 +143,7 @@
       "id": "cycle:file:src/a.ts",
       "level": "file",
       "method": "exact",
+      "nested": false,
       "nodes": [
         "src/a.ts",
         "src/b.ts"

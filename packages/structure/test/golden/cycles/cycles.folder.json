@@ -110,6 +110,7 @@
       "id": "cycle:folder:src/core",
       "level": "folder",
       "method": "exact",
+      "nested": false,
       "nodes": [
         "src/core",
         "src/ui"
@@ -141,6 +142,7 @@
       "id": "cycle:folder:packages/p1/src",
       "level": "folder",
       "method": "exact",
+      "nested": false,
       "nodes": [
         "packages/p1/src",
         "packages/p2/src"
