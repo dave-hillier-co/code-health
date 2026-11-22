@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "./support/golden.ts";
-import { runCochange } from "./support/run.ts";
+import { runCochange, runCochangeOnTerminal } from "./support/run.ts";
 import { auth, deps, engine, knowledgeHistory, lexer, log, parser } from "./support/knowledge-scenario.ts";
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -73,6 +73,9 @@ test("the abandonment guideline is a guideline: a file below it is still listed,
 test("the output has developers as counts and never a name or an address", async () => {
   const { stdout } = await abandonment("current", "--limit", "all");
   for (const hidden of ["example.com", "Ann", "Bob", "Cy", "Di ", "Eve", "dependabot[bot]"]) expect(stdout).not.toContain(hidden);
+  // The files with no lines held by people who have left are omitted, and the table says how many.
+  const table = await runCochangeOnTerminal(repo.path, ["abandonment", "current", "--limit", "all"]);
+  expect(table.stdout).toContain("Notice: Omitted 4 of 8 measured files that have no lines held by people who have left.");
   expectGolden("abandonment", "abandonment.current", stdout);
 });
 

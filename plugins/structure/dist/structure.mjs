@@ -21314,7 +21314,7 @@ function lowClosure(context, closure) {
         [pkg.id],
         `${percent2(1 - mine.closure)} of the ${mine.changes} changes to ${pkg.id} also touched another package, more than most packages with a comparable share of changes`,
         { closure: mine.closure, share: mine.share, changes: mine.changes, crossing: mine.crossing, comparable: mine.comparable, quartile: round3(quartile) },
-        { changeCost: context.cost.package(pkg.id), ...reaches ? {} : { belowGuideline: `closure ${percent2(mine.closure)} against ${percent2(quartile)} at the lowest quartile of ${mine.comparable} comparable packages` } }
+        { changeCost: context.cost.package(pkg.id), ...reaches ? {} : { belowGuideline: mine.closure <= quartile ? `closure ${percent2(mine.closure)} is the highest of the ${mine.comparable} comparable packages` : `closure ${percent2(mine.closure)} against ${percent2(quartile)} at the lowest quartile of ${mine.comparable} comparable packages` } }
       )
     );
   }

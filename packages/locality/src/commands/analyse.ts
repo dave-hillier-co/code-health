@@ -119,7 +119,10 @@ async function historyOnly(root: string, history: History | undefined, settings:
     },
     results: rows,
     columns: historyColumns,
-    notices: [`sorted by ${result.sortMethod}: the gain divided by the locality.minDistance guideline (${settings.minDistance}), highest first, then by gain, then by path`],
+    notices: [
+      `Omitted by reason: ${Object.entries(result.omitted).map(([reason, count]) => `${reason} ${count}`).join(", ")} (near-partners are units whose gain is below the locality.minDistance guideline of ${settings.minDistance})`,
+      `sorted by ${result.sortMethod}: the gain divided by the locality.minDistance guideline (${settings.minDistance}), highest first, then by gain, then by path`,
+    ],
   };
 }
 

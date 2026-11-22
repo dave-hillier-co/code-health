@@ -1,6 +1,8 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, test } from "vitest";
+import { runInProcess } from "@code-health/fixtures/cli-testing";
+import { cli } from "../src/cli.ts";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "./support/golden.ts";
@@ -95,6 +97,15 @@ describe("history-only analysis, with no import graph", () => {
   test("a partner needs the configured support before it counts", async () => {
     const { rows } = await historyOnly({ rounds: 60, every: 3 }, { historyMinSupport: 21 });
     expect(rows).toEqual([]);
+  });
+
+  test("the table says how many candidates were omitted, by reason", async () => {
+    const repo = ratesRepo({ rounds: 60, every: 3 });
+    repos.push(repo);
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ locality: { fixedPoints: ["lib/config/**"] } }));
+    const run = await runInProcess(cli, repo.path, ["analyse", "--source", "history"], true);
+    expect(run.code).toBe(ExitCode.Success);
+    expect(run.stdout).toContain("Notice: Omitted by reason: earned-distance 0, fixed-point 1, near-partners 0, superseded");
   });
 
   test("a fixed point is left where it is", async () => {

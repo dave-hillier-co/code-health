@@ -118,6 +118,8 @@ async function current(context: CommandContext): Promise<CommandOutput> {
     inputs: commonInputs(p, "current", { by, rank }),
     extra: commonExtra(p, { summary: summariseCurrent(files, unattributed) }),
     results: rows,
+    // Only the file view omits rows by a value: files with no lines held by people who have left. Say how many.
+    notices: by === "file" ? [`Omitted ${files.length - rows.length} of ${files.length} measured files that have no lines held by people who have left`] : [],
     columns:
       by === "file"
         ? ["path", "abandoned", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines", "hotspot", "findings"]

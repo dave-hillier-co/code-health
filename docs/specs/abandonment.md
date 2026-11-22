@@ -100,7 +100,7 @@ Subcommands of the cochange CLI. Every one supports `--json` with a versioned sc
 | Command | Output |
 |---|---|
 | `cochange blame refresh` | Updates line authorship for files whose blob changed since the last run |
-| `cochange abandonment current [--by file\|component]` | Files with lines held by people who have left, ranked, with `abandoned` set for those at the abandonment guideline. With `--by component`, every component that has a measured file, sorted by abandoned share, so a component with no abandoned lines is listed last with share 0 |
+| `cochange abandonment current [--by file\|component]` | Files with lines held by people who have left, ranked, with `abandoned` set for those at the abandonment guideline. With `--by component`, every component that has a measured file, sorted by abandoned share, so a component with no abandoned lines is listed last with share 0. With `--by file`, a file with no lines held by people who have left is omitted, and the table prints a notice with how many of the measured files that is (`summary.files.measured` has the total) |
 | `cochange abandonment simulate [--mode rate\|historical\|k-leavers] [--k N] [--trials N] [--horizon P] [--seed S]` | Loss distribution summary, plus top at-risk files and components |
 | `cochange abandonment turnover` | Estimated turnover rate per period, with the developer counts behind it (no names) |
 | `cochange successors PATH... [--names]` | Ranked successors per file, with the coupling evidence |
