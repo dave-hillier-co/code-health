@@ -5,7 +5,7 @@ import { compileGlobs } from "@code-health/history/glob";
 import { isTestPath } from "@code-health/parse/languages";
 import type { LocalitySettings } from "./config.ts";
 import { bestTarget, type BoundaryEdge } from "./footprint.ts";
-import { readAgainst, type GuidelineReading } from "./candidates.ts";
+import { readAgainst, SORT_METHOD, type GuidelineReading } from "./candidates.ts";
 import { ageDays, isoDate, pairing, type History } from "./history-evidence.ts";
 
 /** The most partners whose pairs are compared for independence: a unit with more is reviewed, not moved. */
@@ -61,6 +61,10 @@ export interface Partner {
 export interface HistoryCandidate {
   path: string;
   score: number;
+  /** What `score` counts: always the gain, in folder hops, as for structural candidates. */
+  scoreUnit: "gain";
+  /** The gain beside `minDistance`. Candidates are sorted by its ratio, highest first, then by gain, then path. */
+  ranking: GuidelineReading;
   recommendation: "move" | "review";
   rule: string;
   source: "history";
@@ -91,6 +95,8 @@ export type Omission = "earned-distance" | "fixed-point" | "near-partners" | "su
 
 export interface HistoryOnlyResult {
   candidates: HistoryCandidate[];
+  /** How `candidates` are ordered, the same method as structural candidates. */
+  sortMethod: typeof SORT_METHOD;
   /** Why files that history alone would have considered were not reported. */
   omitted: Record<Omission, number>;
   /** Set when the evidence is too weak to report anything. */
@@ -159,6 +165,7 @@ export function analyseByHistory(history: History, files: ReadonlySet<string>, s
   if (history.evidence.grade === "weak") {
     return {
       candidates: [],
+      sortMethod: SORT_METHOD,
       omitted,
       reason: `history is weak (${history.evidence.usableHistoryMonths} months, ${history.evidence.logicalChangesInWindow} logical changes in the window, ${history.evidence.activeContributors} contributors); history-only candidates need moderate or strong evidence`,
     };
@@ -222,6 +229,8 @@ export function analyseByHistory(history: History, files: ReadonlySet<string>, s
     candidates.push({
       path: root,
       score: choice.gain,
+      scoreUnit: "gain",
+      ranking: readAgainst(choice.gain, settings.minDistance),
       ...decision,
       source: "history",
       guidelines: { gain: readAgainst(choice.gain, settings.minDistance) },
@@ -240,7 +249,7 @@ export function analyseByHistory(history: History, files: ReadonlySet<string>, s
       churn: unitFiles.reduce((sum, file) => sum + (history.churn.get(file) ?? 0), 0),
     });
   }
-  candidates.sort((a, b) => b.score - a.score || compareIds(a.path, b.path));
+  candidates.sort((a, b) => b.ranking.ratio - a.ranking.ratio || b.score - a.score || compareIds(a.path, b.path));
   // Files that always change together pull on each other: a file moving to its partners and the partners moving
   // to the file are one question asked twice. The stronger pull is kept, and the other is left out.
   const claimedBy = new Map<string, HistoryCandidate>();
@@ -255,5 +264,5 @@ export function analyseByHistory(history: History, files: ReadonlySet<string>, s
     kept.push(candidate);
     for (const partner of candidate.consumers) if (!claimedBy.has(partner.path)) claimedBy.set(partner.path, candidate);
   }
-  return { candidates: kept, omitted, reason: null };
+  return { candidates: kept, sortMethod: SORT_METHOD, omitted, reason: null };
 }

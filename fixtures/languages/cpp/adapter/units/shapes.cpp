@@ -71,3 +71,11 @@ int deep() {
 int acme::Widget::count() {
   return 0;
 }
+
+int acme::Widget::Part::weight() {
+  return 2;
+}
+
+int far::Away::Deep::reach() {
+  return 3;
+}

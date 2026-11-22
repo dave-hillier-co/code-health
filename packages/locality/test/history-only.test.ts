@@ -65,6 +65,15 @@ describe("history-only analysis, with no import graph", () => {
     expect(gain).toEqual({ value: rows[0]!.gain, guideline: 2, ratio: rows[0]!.gain / 2 });
   });
 
+  test("candidates are ranked by the gain over the guideline, and the output names the sort", async () => {
+    const { rows, document } = await historyOnly({ rounds: 60, every: 3 });
+    const ranked = rows as unknown as { scoreUnit: string; ranking: { value: number; guideline: number; ratio: number } }[];
+    expect(ranked[0]).toMatchObject({ scoreUnit: "gain", ranking: { value: rows[0]!.gain, guideline: 2 } });
+    const ratios = ranked.map((row) => row.ranking.ratio);
+    expect(ratios).toEqual([...ratios].sort((a, b) => b - a));
+    expect(document.historyOnly.sortMethod).toBe("ratio-to-guideline");
+  });
+
   test("every candidate is a move or a review, never an inline or a split", async () => {
     const { rows } = await historyOnly({ rounds: 60, every: 3 });
     expect(rows.every((row) => row.recommendation === "move" || row.recommendation === "review")).toBe(true);

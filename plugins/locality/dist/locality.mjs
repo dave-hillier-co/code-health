@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-CIFVQ2J7.mjs";
+} from "./chunk-PO5TQTT7.mjs";
 import {
   GitError,
   gitVersion,
@@ -29,14 +29,14 @@ import {
 } from "./chunk-Z55QIW6L.mjs";
 import {
   analyseTree
-} from "./chunk-JIZLIUY6.mjs";
-import "./chunk-N2DRDISL.mjs";
+} from "./chunk-X2MAPTZB.mjs";
+import "./chunk-4LMITZN4.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isTestPath
-} from "./chunk-DUWR2E6O.mjs";
+} from "./chunk-YMZXGKUW.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -3026,6 +3026,7 @@ function analyseByHistory(history, files, settings) {
   if (history.evidence.grade === "weak") {
     return {
       candidates: [],
+      sortMethod: SORT_METHOD,
       omitted,
       reason: `history is weak (${history.evidence.usableHistoryMonths} months, ${history.evidence.logicalChangesInWindow} logical changes in the window, ${history.evidence.activeContributors} contributors); history-only candidates need moderate or strong evidence`
     };
@@ -3081,6 +3082,8 @@ function analyseByHistory(history, files, settings) {
     candidates.push({
       path: root,
       score: choice.gain,
+      scoreUnit: "gain",
+      ranking: readAgainst(choice.gain, settings.minDistance),
       ...decision,
       source: "history",
       guidelines: { gain: readAgainst(choice.gain, settings.minDistance) },
@@ -3099,7 +3102,7 @@ function analyseByHistory(history, files, settings) {
       churn: unitFiles.reduce((sum, file) => sum + (history.churn.get(file) ?? 0), 0)
     });
   }
-  candidates.sort((a, b) => b.score - a.score || compareIds(a.path, b.path));
+  candidates.sort((a, b) => b.ranking.ratio - a.ranking.ratio || b.score - a.score || compareIds(a.path, b.path));
   const claimedBy = /* @__PURE__ */ new Map();
   const kept = [];
   for (const candidate of candidates) {
@@ -3112,7 +3115,7 @@ function analyseByHistory(history, files, settings) {
     kept.push(candidate);
     for (const partner of candidate.consumers) if (!claimedBy.has(partner.path)) claimedBy.set(partner.path, candidate);
   }
-  return { candidates: kept, omitted, reason: null };
+  return { candidates: kept, sortMethod: SORT_METHOD, omitted, reason: null };
 }
 
 // packages/locality/src/reports.ts
@@ -3379,6 +3382,7 @@ async function historyResult(root, history, settings) {
   if (history === void 0) {
     return {
       candidates: [],
+      sortMethod: SORT_METHOD,
       omitted: { "earned-distance": 0, "fixed-point": 0, "near-partners": 0, superseded: 0 },
       reason: "history is not available (disabled by locality.useHistory, a shallow clone, or no commits)"
     };
@@ -3395,11 +3399,12 @@ async function historyOnly(root, history, settings, prefixes, wanted) {
   return {
     inputs: { source: "history", paths: prefixes, recommendation: wanted ?? null },
     extra: {
-      historyOnly: { omitted: result.omitted, reason: result.reason },
+      historyOnly: { sortMethod: result.sortMethod, omitted: result.omitted, reason: result.reason },
       history: history === void 0 ? null : { window: history.window, ...history.evidence }
     },
     results: rows,
-    columns: historyColumns
+    columns: historyColumns,
+    notices: [`sorted by ${result.sortMethod}: the gain divided by the locality.minDistance guideline (${settings.minDistance}), highest first, then by gain, then by path`]
   };
 }
 async function crossCheck(root, history, settings, model, structural) {
@@ -3414,7 +3419,7 @@ async function crossCheck(root, history, settings, model, structural) {
   const hidden = result.candidates.filter(
     (candidate) => !candidate.unit.files.some((file) => moving.has(file)) && !candidate.consumers.some((partner) => candidate.unit.files.some((file) => neighbours.get(file)?.has(partner.path)))
   );
-  return { hiddenCoupling: hidden, historyOnly: { omitted: result.omitted, reason: result.reason } };
+  return { hiddenCoupling: hidden, historyOnly: { sortMethod: result.sortMethod, omitted: result.omitted, reason: result.reason } };
 }
 
 // packages/locality/src/commands/history.ts
@@ -4747,7 +4752,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-5YD3NDQ7.mjs");
+    const { performMove } = await import("./chunk-NWPNSGK2.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -4798,7 +4803,7 @@ var command5 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-NXCYABKT.mjs");
+      const { buildProject } = await import("./chunk-BZW54HNT.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -5018,7 +5023,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-EL6DQQVN.mjs");
+    const { verifyMove } = await import("./chunk-CYAFNQLG.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

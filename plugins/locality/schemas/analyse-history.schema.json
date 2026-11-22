@@ -22,6 +22,8 @@
       "properties": {
         "path": { "type": "string", "description": "The unit's first file in path order." },
         "score": { "$ref": "common.schema.json#/$defs/count", "description": "The gain." },
+        "scoreUnit": { "const": "gain", "description": "What score counts: the gain, in folder hops, as for structural candidates." },
+        "ranking": { "$ref": "common.schema.json#/$defs/guidelineReading", "description": "The gain beside locality.minDistance. Candidates are sorted by its ratio, highest first, then by score, then by path." },
         "recommendation": { "enum": ["move", "review"] },
         "rule": { "type": "string", "description": "Described by `locality explain <rule>`." },
         "source": { "const": "history" },
@@ -84,7 +86,7 @@
         "churn": { "$ref": "common.schema.json#/$defs/count" }
       },
       "required": [
-        "path", "score", "recommendation", "rule", "source", "guidelines", "supersedes", "unit", "location", "target", "distance", "gain",
+        "path", "score", "scoreUnit", "ranking", "recommendation", "rule", "source", "guidelines", "supersedes", "unit", "location", "target", "distance", "gain",
         "netDistance", "consumers", "fanIn", "amongConsumers", "age", "lastChanged", "churn"
       ],
       "additionalProperties": false
@@ -115,10 +117,11 @@
     "historyOnly": {
       "type": "object",
       "properties": {
+        "sortMethod": { "const": "ratio-to-guideline", "description": "How candidates are ordered: by ranking.ratio, then score, then path. The same method as structural candidates." },
         "omitted": { "$ref": "#/$defs/omitted" },
         "reason": { "type": ["string", "null"], "description": "Why nothing was reported, when the evidence is too weak or history is unavailable." }
       },
-      "required": ["omitted", "reason"],
+      "required": ["sortMethod", "omitted", "reason"],
       "additionalProperties": false
     }
   },

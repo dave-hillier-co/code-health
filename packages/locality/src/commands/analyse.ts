@@ -4,7 +4,7 @@ import { compareIds } from "@code-health/graph/graph";
 import { skipReport } from "@code-health/history/reports";
 import { listTree } from "@code-health/history/tree";
 import { compileGlobs } from "@code-health/history/glob";
-import { analyseProject } from "../candidates.ts";
+import { analyseProject, SORT_METHOD } from "../candidates.ts";
 import type { Candidate } from "../candidates.ts";
 import { readSettings, type LocalitySettings } from "../config.ts";
 import { buildModel, type Model } from "../model.ts";
@@ -94,6 +94,7 @@ async function historyResult(root: string, history: History | undefined, setting
   if (history === undefined) {
     return {
       candidates: [],
+      sortMethod: SORT_METHOD,
       omitted: { "earned-distance": 0, "fixed-point": 0, "near-partners": 0, superseded: 0 },
       reason: "history is not available (disabled by locality.useHistory, a shallow clone, or no commits)",
     };
@@ -113,11 +114,12 @@ async function historyOnly(root: string, history: History | undefined, settings:
   return {
     inputs: { source: "history", paths: prefixes, recommendation: wanted ?? null },
     extra: {
-      historyOnly: { omitted: result.omitted, reason: result.reason },
+      historyOnly: { sortMethod: result.sortMethod, omitted: result.omitted, reason: result.reason },
       history: history === undefined ? null : { window: history.window, ...history.evidence },
     },
     results: rows,
     columns: historyColumns,
+    notices: [`sorted by ${result.sortMethod}: the gain divided by the locality.minDistance guideline (${settings.minDistance}), highest first, then by gain, then by path`],
   };
 }
 
@@ -139,5 +141,5 @@ async function crossCheck(root: string, history: History | undefined, settings: 
       !candidate.unit.files.some((file) => moving.has(file)) &&
       !candidate.consumers.some((partner) => candidate.unit.files.some((file) => neighbours.get(file)?.has(partner.path))),
   );
-  return { hiddenCoupling: hidden, historyOnly: { omitted: result.omitted, reason: result.reason } };
+  return { hiddenCoupling: hidden, historyOnly: { sortMethod: result.sortMethod, omitted: result.omitted, reason: result.reason } };
 }
