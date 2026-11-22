@@ -113,6 +113,8 @@ class Measurer {
     for (let row = Math.max(region.startPosition.row, headerRow + 1); row <= last; row++) if (this.options.codeRows[row] === true) size++;
     // The line that only closes a braced region is not part of the run.
     if (region.text.includes("\n") && region.text.split("\n").at(-1)!.trim() === "}") size--;
+    // An empty body is no run of lines, as the lexical layer, which reads indentation, also finds.
+    if (size <= 0) return;
     this.bumps++;
     this.bumpSize = Math.max(this.bumpSize, size);
   }

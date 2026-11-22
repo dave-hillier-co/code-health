@@ -37,6 +37,16 @@ const files: Record<string, string> = {
     "  return total;",
     "}",
     "",
+    "export function emptyBodies(a: number): number {",
+    "  if (a > 0) {",
+    "  }",
+    "  if (a > 1) {",
+    "  }",
+    "  if (a > 2) {",
+    "  }",
+    "  return 0;",
+    "}",
+    "",
     "export function flat(a: number): number {",
     "  if (a < 0) return 0;",
     "  if (a > 100) { return 100; }",
@@ -127,6 +137,10 @@ describe("structural bumps", () => {
 
   test("leave out bodies that fit on the line that opens them", () => {
     expect(bumpsOf("tangled.ts#flat")).toEqual({ bumps: 0, depth: 0, size: 0, bumpy: false });
+  });
+
+  test("leave out an empty body, as the lexical layer does, since there is no run of lines", () => {
+    expect(bumpsOf("tangled.ts#emptyBodies")).toEqual({ bumps: 0, depth: 0, size: 0, bumpy: false });
   });
 
   test("count a structure nested in a bump as part of that bump", () => {
