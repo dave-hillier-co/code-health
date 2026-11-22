@@ -5,6 +5,7 @@ import { compileGlobs } from "@code-health/history/glob";
 import { isTestPath } from "@code-health/parse/languages";
 import type { LocalitySettings } from "./config.ts";
 import { bestTarget, type BoundaryEdge } from "./footprint.ts";
+import { readAgainst, type GuidelineReading } from "./candidates.ts";
 import { ageDays, isoDate, pairing, type History } from "./history-evidence.ts";
 
 /** The most partners whose pairs are compared for independence: a unit with more is reviewed, not moved. */
@@ -63,6 +64,13 @@ export interface HistoryCandidate {
   recommendation: "move" | "review";
   rule: string;
   source: "history";
+  /** The gain beside the `minDistance` guideline. */
+  guidelines: { gain: GuidelineReading };
+  /**
+   * Candidates left out because their files are partners of this one and the pull towards this candidate is the
+   * stronger (higher gain, then path order). Moving it and moving them would be one question asked twice.
+   */
+  supersedes: Array<{ path: string; gain: number }>;
   unit: { kind: "file" | "cluster"; root: string; files: string[] };
   location: string;
   target: string;
@@ -216,6 +224,8 @@ export function analyseByHistory(history: History, files: ReadonlySet<string>, s
       score: choice.gain,
       ...decision,
       source: "history",
+      guidelines: { gain: readAgainst(choice.gain, settings.minDistance) },
+      supersedes: [],
       unit: { kind: unitFiles.length === 1 ? "file" : "cluster", root, files: unitFiles },
       location: base,
       target: choice.target,
@@ -233,15 +243,17 @@ export function analyseByHistory(history: History, files: ReadonlySet<string>, s
   candidates.sort((a, b) => b.score - a.score || compareIds(a.path, b.path));
   // Files that always change together pull on each other: a file moving to its partners and the partners moving
   // to the file are one question asked twice. The stronger pull is kept, and the other is left out.
-  const claimed = new Set<string>();
+  const claimedBy = new Map<string, HistoryCandidate>();
   const kept: HistoryCandidate[] = [];
   for (const candidate of candidates) {
-    if (candidate.unit.files.some((file) => claimed.has(file))) {
+    const winner = candidate.unit.files.map((file) => claimedBy.get(file)).find((other) => other !== undefined);
+    if (winner !== undefined) {
       omitted.superseded++;
+      winner.supersedes.push({ path: candidate.path, gain: candidate.gain });
       continue;
     }
     kept.push(candidate);
-    for (const partner of candidate.consumers) claimed.add(partner.path);
+    for (const partner of candidate.consumers) if (!claimedBy.has(partner.path)) claimedBy.set(partner.path, candidate);
   }
   return { candidates: kept, omitted, reason: null };
 }

@@ -10,37 +10,37 @@ import { TOOL } from "./tool.ts";
 export const localityConfig: PluginConfigSpec = {
   plugin: TOOL,
   section: {
-    /** Minimum net distance a move must save to be worth reporting, in folder hops. */
+    /** Guideline for the net distance a move saves, in folder hops. Ranks and annotates candidates (`guidelines.gain`); units below it are counted in `summary.placed`, not listed. A judgement call. */
     minDistance: 2,
-    /** A unit of at most this many lines is tiny: its import overhead outweighs its content. */
+    /** Guideline: a unit of at most this many lines is tiny, its import overhead outweighing its content. A judgement call. */
     tinyLines: 15,
-    /** A unit of more than this many lines is large and stays a module of its own. */
+    /** Guideline: a unit of more than this many lines is large and stays a module of its own. A judgement call. */
     largeLines: 150,
-    /** A medium unit is inlined only while its consumer stays within this many lines. */
+    /** Guideline: a medium unit is inlined only while its consumer plus the unit stay within this many lines. A judgement call. */
     inlineHostLines: 300,
-    /** Distinct production consumer files at or above which a unit is scrutinised instead of moved. */
+    /** Guideline for distinct production consumer files: a unit at or above it is worth scrutinising instead of moving. Reported as `guidelines.fanIn`. A judgement call. */
     highFanIn: 8,
-    /** Deepest folder nesting a target may have. */
+    /** Deepest folder nesting a target may have. A judgement call: a depth cap stops code being buried to lower its distance. */
     maxDepth: 6,
     /** Read co-change, age and churn from the history cache, so the history guards and rules can fire. */
     useHistory: true,
-    /** A unit younger than this many days is not inlined or moved: one callsite is only evidence once reuse has had time. */
+    /** Guideline: a unit younger than this many days is reviewed, not inlined or moved, because one callsite is only evidence once reuse has had time. A judgement call. */
     graceDays: 90,
-    /** The window for churn and co-change, back from HEAD's commit date. */
+    /** The window for churn and co-change, back from HEAD's commit date. CodeScene advises 6 to 12 months for hotspot windows. */
     windowMonths: 12,
-    /** Consumers co-changing at or below this degree (percent) look independent: coincidental reuse. */
+    /** Guideline: consumers co-changing at or below this degree (percent) look independent, which suggests coincidental reuse. A judgement call. */
     lowCoChange: 10,
-    /** Consumers co-changing at or above this degree (percent) share a reason to change: the distance is earned. */
+    /** Guideline: consumers co-changing at or above this degree (percent) share a reason to change, so the distance looks earned. Matches the 30 to 50 percent range Tornhill gives for coupling degree. */
     highCoChange: 40,
-    /** Logical changes touching any of the consumers that the co-change rules need before they speak. */
+    /** Floor: logical changes touching any of the consumers that the co-change rules need before they read the degree. A degree from fewer is not meaningful, so it is reported as null. */
     minCoChangeChanges: 6,
-    /** History-only mode: shared logical changes a partner needs before it counts as a consumer. */
-    historyMinSupport: 4,
-    /** History-only mode: percent of a unit's changes that must also touch a partner for it to count as a consumer. */
+    /** History-only floor: shared logical changes a partner needs before it counts as a consumer. 5 matches cochange.minSupport and code-maat's default. A coupling from fewer is not meaningful. */
+    historyMinSupport: 5,
+    /** History-only guideline: percent of a unit's changes that also touch a partner for it to count as a consumer. 30 matches cochange.minDegree and code-maat's default. */
     historyMinConfidence: 30,
-    /** `measure compare` concludes nothing from fewer than this many tasks, or measured changes, in any of its four figures. */
+    /** Floor: `measure compare` concludes nothing from fewer than this many tasks, or measured changes, in any of its four figures, and reports the observed direction as low confidence. A judgement call. */
     measureMinSamples: 10,
-    /** `measure compare` calls a difference no change when it is within this percent of the acted-on files' own starting figure. */
+    /** Guideline: `measure compare` calls a difference no change when it is within this percent of the acted-on files' own starting figure. It reports the percent and its ratio to this guideline. A judgement call. */
     measureNoisePercent: 10,
     /** Globs of files that must not move and folders code may not move into (routes, migrations, app folders). */
     fixedPoints: [] as string[],

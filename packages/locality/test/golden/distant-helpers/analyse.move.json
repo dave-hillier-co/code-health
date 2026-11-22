@@ -69,6 +69,18 @@
       "distance": 3,
       "fanIn": 2,
       "gain": 6,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.25,
+          "value": 2
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 3,
+          "value": 6
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared/pair",
       "netDistance": {
@@ -81,6 +93,7 @@
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 6,
+      "scoreUnit": "gain",
       "signals": [],
       "size": {
         "files": 3,
@@ -171,6 +184,18 @@
       "distance": 2,
       "fanIn": 2,
       "gain": 4,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.25,
+          "value": 2
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 2,
+          "value": 4
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared/utils",
       "netDistance": {
@@ -183,6 +208,7 @@
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 4,
+      "scoreUnit": "gain",
       "signals": [
         {
           "detail": "unusedExport",
@@ -242,6 +268,18 @@
       "distance": 3,
       "fanIn": 1,
       "gain": 3,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 1.5,
+          "value": 3
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared/cycle",
       "netDistance": {
@@ -254,6 +292,7 @@
       "recommendation": "move",
       "rule": "single-consumer-tiny",
       "score": 3,
+      "scoreUnit": "gain",
       "signals": [
         {
           "detail": "cycleStart",
@@ -310,6 +349,18 @@
       "distance": 3,
       "fanIn": 1,
       "gain": 3,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 1.5,
+          "value": 3
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared/utils",
       "netDistance": {
@@ -322,6 +373,7 @@
       "recommendation": "move",
       "rule": "single-consumer-large",
       "score": 3,
+      "scoreUnit": "gain",
       "signals": [
         {
           "detail": "utils",
@@ -387,6 +439,18 @@
       "distance": 1,
       "fanIn": 2,
       "gain": 2,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.25,
+          "value": 2
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 1,
+          "value": 2
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared",
       "netDistance": {
@@ -399,6 +463,7 @@
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 2,
+      "scoreUnit": "gain",
       "signals": [],
       "size": {
         "files": 1,
@@ -437,6 +502,7 @@
       "split": 1
     },
     "files": 31,
+    "placed": 16,
     "units": 30
   },
   "tool": "locality",

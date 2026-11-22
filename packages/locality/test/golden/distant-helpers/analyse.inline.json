@@ -59,6 +59,18 @@
       "distance": 3,
       "fanIn": 1,
       "gain": 3,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 1.5,
+          "value": 3
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared/utils",
       "netDistance": {
@@ -71,6 +83,7 @@
       "recommendation": "inline",
       "rule": "single-consumer-tiny",
       "score": 3,
+      "scoreUnit": "gain",
       "signals": [
         {
           "detail": "utils",
@@ -125,6 +138,18 @@
       "distance": 0,
       "fanIn": 1,
       "gain": 0,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 0,
+          "value": 0
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/billing",
       "netDistance": {
@@ -139,6 +164,7 @@
       "recommendation": "inline",
       "rule": "single-consumer-barrel",
       "score": 0,
+      "scoreUnit": "gain",
       "signals": [
         {
           "detail": "1 importing file",
@@ -194,6 +220,18 @@
       "distance": 0,
       "fanIn": 1,
       "gain": 0,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 0,
+          "value": 0
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/orders",
       "netDistance": {
@@ -208,6 +246,7 @@
       "recommendation": "inline",
       "rule": "pass-through",
       "score": 0,
+      "scoreUnit": "gain",
       "signals": [
         {
           "detail": "audit",
@@ -251,6 +290,7 @@
       "split": 1
     },
     "files": 31,
+    "placed": 16,
     "units": 30
   },
   "tool": "locality",

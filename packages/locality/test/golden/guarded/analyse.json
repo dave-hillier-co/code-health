@@ -57,6 +57,18 @@
       "distance": 2,
       "fanIn": 1,
       "gain": 4,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 2,
+          "value": 4
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared",
       "netDistance": {
@@ -69,6 +81,7 @@
       "recommendation": "review",
       "rule": "package-entry",
       "score": 4,
+      "scoreUnit": "gain",
       "signals": [],
       "size": {
         "files": 1,
@@ -114,6 +127,18 @@
       "distance": 2,
       "fanIn": 1,
       "gain": 4,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 2,
+          "value": 4
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared",
       "netDistance": {
@@ -131,6 +156,7 @@
       "recommendation": "review",
       "rule": "other-references",
       "score": 4,
+      "scoreUnit": "gain",
       "signals": [],
       "size": {
         "files": 1,
@@ -164,6 +190,7 @@
       "review": 2
     },
     "files": 3,
+    "placed": 0,
     "units": 2
   },
   "tool": "locality",

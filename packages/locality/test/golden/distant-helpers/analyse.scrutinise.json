@@ -129,6 +129,18 @@
       "distance": 2,
       "fanIn": 8,
       "gain": 16,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 1,
+          "value": 8
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 8,
+          "value": 16
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared",
       "netDistance": {
@@ -141,6 +153,7 @@
       "recommendation": "scrutinise",
       "rule": "high-fan-in",
       "score": 8,
+      "scoreUnit": "fan-in",
       "signals": [
         {
           "detail": "fmt(compact)",
@@ -184,6 +197,7 @@
       "split": 1
     },
     "files": 31,
+    "placed": 16,
     "units": 30
   },
   "tool": "locality",

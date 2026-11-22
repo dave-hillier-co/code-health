@@ -68,9 +68,27 @@ export interface ScoredComponent extends ExportComponent {
   rule: string;
 }
 
+/** A measured value beside the guideline it is read against. A ratio above 1 is past the guideline. */
+export interface GuidelineReading {
+  value: number;
+  guideline: number;
+  ratio: number;
+}
+
+export function readAgainst(value: number, guideline: number): GuidelineReading {
+  return { value, guideline, ratio: Math.round((value / guideline) * 100) / 100 };
+}
+
+/** What `score` counts: folder hops of net distance for most recommendations, consumer files for `scrutinise`. */
+export type ScoreUnit = "gain" | "unblocked-gain" | "component-gain" | "fan-in";
+
 export interface Candidate {
   path: string;
   score: number;
+  /** The unit of `score`. Scores order candidates within one unit and are not comparable across units. */
+  scoreUnit: ScoreUnit;
+  /** The unit's gain and fan-in beside the `minDistance` and `highFanIn` guidelines. */
+  guidelines: { gain: GuidelineReading; fanIn: GuidelineReading };
   recommendation: Decision["recommendation"];
   rule: string;
   source: "structural";
@@ -104,6 +122,8 @@ export interface Candidate {
 export interface AnalysisSummary {
   files: number;
   units: number;
+  /** Units left out of the candidates because they already sit beside their consumers (rule `near-consumers`). */
+  placed: number;
   byRecommendation: Record<string, number>;
 }
 
@@ -473,9 +493,19 @@ export function analyseProject(project: Project, model: Model, settings: Localit
             : choice.gain;
 
     const ownDeps = targets;
+    const scoreUnit: ScoreUnit =
+      decision.recommendation === "blocked"
+        ? "unblocked-gain"
+        : decision.recommendation === "split"
+          ? "component-gain"
+          : decision.recommendation === "scrutinise"
+            ? "fan-in"
+            : "gain";
     return {
       path: unit.path,
       score,
+      scoreUnit,
+      guidelines: { gain: readAgainst(choice.gain, settings.minDistance), fanIn: readAgainst(consumerFiles.length, settings.highFanIn) },
       ...decision,
       source: "structural",
       unit: {
@@ -523,7 +553,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   return {
     candidates: reported,
     placed,
-    summary: { files: project.production.length, units: all.length, byRecommendation },
+    summary: { files: project.production.length, units: all.length, placed: placed.length, byRecommendation },
     metrics: {
       totalWeightedDistance: model.edges
         .filter((edge) => model.reachable.has(edge.from))

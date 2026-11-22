@@ -11,6 +11,17 @@
       "type": "integer",
       "minimum": 0
     },
+    "guidelineReading": {
+      "type": "object",
+      "description": "A measured value beside the guideline it is read against. A ratio above 1 is past the guideline. Guidelines order and annotate results; they do not hide them.",
+      "properties": {
+        "value": { "type": "number" },
+        "guideline": { "type": "number" },
+        "ratio": { "type": "number", "minimum": 0, "description": "value divided by guideline, two decimals." }
+      },
+      "required": ["value", "guideline", "ratio"],
+      "additionalProperties": false
+    },
     "repo": {
       "type": "object",
       "properties": {

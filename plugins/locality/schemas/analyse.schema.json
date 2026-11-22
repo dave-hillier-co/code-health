@@ -62,10 +62,11 @@
           "type": "object",
           "properties": {
             "files": { "$ref": "common.schema.json#/$defs/count", "description": "Production source files analysed." },
-            "units": { "$ref": "common.schema.json#/$defs/count", "description": "Units found, before units already near their consumers are dropped." },
+            "units": { "$ref": "common.schema.json#/$defs/count", "description": "Units found, including the placed ones." },
+            "placed": { "$ref": "common.schema.json#/$defs/count", "description": "Units left out of the results because they already sit beside their consumers (rule near-consumers)." },
             "byRecommendation": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" } }
           },
-          "required": ["files", "units", "byRecommendation"],
+          "required": ["files", "units", "placed", "byRecommendation"],
           "additionalProperties": false
         },
         "metrics": {
@@ -119,7 +120,18 @@
             "type": "object",
             "properties": {
               "path": { "type": "string", "description": "The unit's entry file, or for a sibling-set unit its folder." },
-              "score": { "$ref": "common.schema.json#/$defs/count", "description": "The gain; the unblocked gain for blocked units, the sum of the components' gains for splits, the fan-in for scrutinise." },
+              "score": { "$ref": "common.schema.json#/$defs/count", "description": "The gain; the unblocked gain for blocked units, the sum of the components' gains for splits, the fan-in for scrutinise. Candidates are ordered by it, so compare scores only within one scoreUnit." },
+              "scoreUnit": { "enum": ["gain", "unblocked-gain", "component-gain", "fan-in"], "description": "What score counts: folder hops of net distance, or consumer files for fan-in." },
+              "guidelines": {
+                "type": "object",
+                "description": "The unit's gain beside locality.minDistance and its fan-in beside locality.highFanIn.",
+                "properties": {
+                  "gain": { "$ref": "common.schema.json#/$defs/guidelineReading" },
+                  "fanIn": { "$ref": "common.schema.json#/$defs/guidelineReading" }
+                },
+                "required": ["gain", "fanIn"],
+                "additionalProperties": false
+              },
               "recommendation": { "$ref": "#/$defs/recommendation" },
               "rule": { "type": "string", "description": "The rule that fired, described by `locality explain <rule>`." },
               "source": { "const": "structural" },
@@ -255,7 +267,7 @@
               }
             },
             "required": [
-              "path", "score", "recommendation", "rule", "source", "unit", "location", "target", "distance", "gain", "unblockedGain",
+              "path", "score", "scoreUnit", "guidelines", "recommendation", "rule", "source", "unit", "location", "target", "distance", "gain", "unblockedGain",
               "netDistance", "directCalls", "otherRefs", "testRefs", "fanIn", "size", "ownDeps", "visibility", "age", "lastChanged",
               "churn", "coChange", "signals", "strays", "blockers"
             ],
