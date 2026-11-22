@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { api, signatureHistory } from "./support/composition-scenario.ts";
+import { expectGolden } from "./support/golden.ts";
 import { runCochange } from "./support/run.ts";
 
 let repo: GitFixture;
@@ -12,8 +13,8 @@ beforeAll(() => {
 }, 60_000);
 afterAll(() => repo.dispose());
 beforeEach(() => {
+  // Every test names its own range, so none depends on which branch is checked out.
   rmSync(join(repo.path, ".cache"), { recursive: true, force: true });
-  repo.git("checkout", "--quiet", "main");
 });
 
 interface Factor {
@@ -31,6 +32,13 @@ async function blastRadius(range: string): Promise<Factor> {
 }
 
 describe("blast-radius of a changed signature", () => {
+  test("the evidence from parse is part of the risk output and matches its golden, which the schema validates", async () => {
+    const { stdout } = await runCochange(repo.path, ["risk", "main..signature", "--json"]);
+    expect(stdout).toContain('"from": "parse"');
+    expect(stdout).not.toContain("example.com");
+    expectGolden("risk", "risk.signature", stdout);
+  });
+
   test("an exported function that gains a parameter is counted with the files that use it", async () => {
     const blast = await blastRadius("main..signature");
     expect(blast.source).toBe("co-change and parse");
