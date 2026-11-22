@@ -16844,7 +16844,7 @@ function findLayerViolations(project, rules11) {
       });
     }
   }
-  return rows.sort((a, b) => compareIds(a.from, b.from) || compareIds(a.to, b.to));
+  return rows.sort((a, b) => Number(a.typeOnly) - Number(b.typeOnly) || compareIds(a.from, b.from) || compareIds(a.to, b.to));
 }
 
 // packages/structure/src/packaging/settings.ts
@@ -16985,6 +16985,7 @@ var TOOL = "structure";
 var SCHEMA_VERSION2 = 1;
 
 // packages/structure/src/config.ts
+var BUILT_IN_FOLDER_NAMES = ["ports", "adapters", "infrastructure"];
 var structureConfig = {
   plugin: TOOL,
   section: {
@@ -17001,19 +17002,19 @@ var structureConfig = {
     botPatterns: [],
     /** Cycles whose strongly connected component has at most this many nodes get a minimum breaking set. */
     exactLimit: DEFAULT_EXACT_LIMIT,
-    /** A side is "active" when it has at least this many revisions in the window, so a low co-change is evidence and not absence of data. */
+    /** Evidence floor (a judgement call): a side is "active" when it has at least this many revisions in the window, so a low co-change is evidence and not absence of data. Below it the pair is reported as insufficient evidence. */
     minRevisions: 3,
-    /** A dependency points against change stability when the depended-on side's revisions per file are at least this multiple of the dependant's. */
+    /** Guideline (a judgement call): a dependency is above the guideline for change stability when the depended-on side's revisions per file are at least this multiple of the dependant's. It orders and annotates rows and hides none. */
     minVolatilityRatio: 2,
-    /** A dependency points against structural stability when the depended-on side's instability exceeds the dependant's by at least this many percentage points. */
+    /** Guideline (a judgement call): a dependency is above the guideline for structural stability when the depended-on side's instability exceeds the dependant's by at least this many percentage points. It orders and annotates rows and hides none. */
     minInstabilityGap: 20,
     /**
-     * The mechanism census. The call lists add to what is built in. Names are matched exactly:
+     * The mechanism census. Every list adds to what is built in. Names are matched exactly:
      * folder names against a folder's own name, call names against the called method on any receiver.
      */
     census: {
-      /** Folders whose name marks ports and adapters. This is the whole list: stating it replaces the default. */
-      folderNames: ["ports", "adapters", "infrastructure"],
+      /** Folders whose name marks ports and adapters, beyond ports, adapters and infrastructure. */
+      folderNames: [],
       /** Methods that publish or subscribe to events, beyond emit, on, subscribe, publish, dispatch and the like. */
       eventCalls: [],
       /** Methods that register or dispatch to handlers, beyond send and execute on a mediator or command bus. */
@@ -17021,13 +17022,13 @@ var structureConfig = {
       /** Methods that register into a registry, beyond those named register*. */
       registerCalls: []
     },
-    /** Static coupling is "high" when this many reference sites of the other side's symbols sit across the boundary, counted both ways. */
+    /** Guideline (a judgement call): static coupling is "high" when this many reference sites of the other side's symbols sit across the boundary, counted both ways. The measured count is always reported. */
     minStaticCoupling: 3,
-    /** Co-change is "high" only with at least this many shared changes, and significantly above what independence predicts. */
+    /** Evidence floor: co-change is "high" only with at least this many shared changes, and significantly above what independence predicts. A coupling from fewer shared changes is not meaningful. */
     minSupport: 3,
     /** The level of the one-sided exact test for high co-change, between 0 and 1 exclusive. */
     significanceLevel: 0.01,
-    /** A registration hub needs at least this many distinct features co-changing with it. */
+    /** Guideline (a judgement call, after CodeScene's co-change hotspots): a registration hub has at least this many distinct features co-changing with it. */
     hubMinFeatures: 3,
     /** Percent of a feature's changes that also touch the hub, for the feature to feed it. */
     hubMinConfidence: 50,
@@ -17133,7 +17134,7 @@ function readSettings(config) {
     exclude: config.effective.exclude,
     entryPoints: config.effective.entryPoints,
     components: config.effective.components,
-    census: { folderNames: names("folderNames"), eventCalls: names("eventCalls"), handlerCalls: names("handlerCalls"), registerCalls: names("registerCalls") },
+    census: { folderNames: [.../* @__PURE__ */ new Set([...BUILT_IN_FOLDER_NAMES, ...names("folderNames")])], eventCalls: names("eventCalls"), handlerCalls: names("handlerCalls"), registerCalls: names("registerCalls") },
     evidenceThresholds: section.evidence,
     packages: withVagueNames(readPackageSettings(section.packages, at("packages")), config.effective.vagueNames),
     windowStated: config.sources[at("windowMonths")] === "file"
@@ -18006,19 +18007,21 @@ function stabilityOf(structural, change, id) {
 }
 function judgeDependency(from, to, settings) {
   const gap = from.structural.instability === null || to.structural.instability === null ? null : to.structural.instability - from.structural.instability;
-  const structuralViolation = gap !== null && gap * 100 >= settings.minInstabilityGap;
+  const structuralAboveGuideline = gap !== null && gap * 100 >= settings.minInstabilityGap;
   const volatileTarget = to.change.active && to.change.revisionsPerFile > from.change.revisionsPerFile;
-  const changeViolation = to.change.active ? from.change.revisionsPerFile === 0 || to.change.revisionsPerFile >= settings.minVolatilityRatio * from.change.revisionsPerFile : null;
+  const changeAboveGuideline = to.change.active ? from.change.revisionsPerFile === 0 || to.change.revisionsPerFile >= settings.minVolatilityRatio * from.change.revisionsPerFile : null;
   const volatilityRatio = from.change.revisionsPerFile === 0 ? null : round3(to.change.revisionsPerFile / from.change.revisionsPerFile);
   const basis = to.change.active ? "change" : "structure";
-  const violates = basis === "change" ? volatileTarget && changeViolation === true : structuralViolation;
+  const towardsLessStable = basis === "change" ? volatileTarget : gap !== null && gap > 0;
+  const aboveGuideline = basis === "change" ? volatileTarget && changeAboveGuideline === true : structuralAboveGuideline;
   return {
     basis,
-    structuralViolation,
-    changeViolation,
+    structuralAboveGuideline,
+    changeAboveGuideline,
     volatilityRatio,
-    violates,
-    disagree: changeViolation !== null && changeViolation !== structuralViolation
+    towardsLessStable,
+    aboveGuideline,
+    disagree: changeAboveGuideline !== null && changeAboveGuideline !== structuralAboveGuideline
   };
 }
 
@@ -18351,6 +18354,12 @@ function distanceTo(folders, sideFolders) {
   return least;
 }
 function nearbyMechanisms(census, from, to, limit = NEARBY_LIMIT) {
+  return rankNearby(census, from, to).slice(0, limit);
+}
+function nearbyOmitted(census, limit = NEARBY_LIMIT) {
+  return Math.max(0, census.occurrences.length - limit);
+}
+function rankNearby(census, from, to) {
   return census.occurrences.map((o) => {
     const toFrom = distanceTo(o.folders, from);
     const toTo = distanceTo(o.folders, to);
@@ -18365,7 +18374,7 @@ function nearbyMechanisms(census, from, to, limit = NEARBY_LIMIT) {
     };
   }).sort(
     (a, b) => a.distance - b.distance || MECHANISMS.indexOf(a.mechanism) - MECHANISMS.indexOf(b.mechanism) || compareUtf8(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0)
-  ).slice(0, limit);
+  );
 }
 
 // packages/structure/src/unstable.ts
@@ -18385,18 +18394,21 @@ function judgeEdge(model, from, to, settings) {
     ...judgeDependency(stability.from, stability.to, settings)
   };
 }
-function findUnstableDependencies(model, settings) {
+function rankDependencies(model, settings) {
   const rows = [];
   for (const [from, targets] of model.graph.graph) {
     for (const to of targets) {
       const row = judgeEdge(model, from, to, settings);
-      if (row.violates) rows.push(row);
+      if (row.towardsLessStable) rows.push(row);
     }
   }
   const margin = (row) => row.basis === "change" ? round3(row.stability.to.change.revisionsPerFile - row.stability.from.change.revisionsPerFile) : round3((row.stability.to.structural.instability ?? 0) - (row.stability.from.structural.instability ?? 0));
   return rows.sort(
-    (a, b) => Number(b.basis === "change") - Number(a.basis === "change") || margin(b) - margin(a) || b.fileEdges - a.fileEdges || compareIds(a.from, b.from) || compareIds(a.to, b.to)
+    (a, b) => Number(b.aboveGuideline) - Number(a.aboveGuideline) || Number(b.basis === "change") - Number(a.basis === "change") || margin(b) - margin(a) || b.fileEdges - a.fileEdges || compareIds(a.from, b.from) || compareIds(a.to, b.to)
   );
+}
+function findUnstableDependencies(model, settings) {
+  return rankDependencies(model, settings).filter((row) => row.aboveGuideline);
 }
 function unitStabilities(model) {
   return [...model.graph.filesOf.keys()].map((id) => ({ id, ...stabilityOf(model.structural, model.change, id) })).sort((a, b) => b.change.revisionsPerFile - a.change.revisionsPerFile || compareIds(a.id, b.id));
@@ -18470,7 +18482,7 @@ function evidencePack(model, from, to, settings, census) {
     kinds2.push("layer-violation");
     for (const breach of rule2) for (const edge of breach.fileEdges) findings.push(layerViolationId(edge.from, edge.to));
   }
-  if (verdict.violates) {
+  if (verdict.aboveGuideline) {
     kinds2.push("unstable-dependency");
     findings.push(unstableId(level, from, to));
   }
@@ -18507,6 +18519,7 @@ function evidencePack(model, from, to, settings, census) {
       (model.graph.filesOf.get(from) ?? []).map(folderOf),
       (model.graph.filesOf.get(to) ?? []).map(folderOf)
     ),
+    nearbyMechanismsOmitted: nearbyOmitted(census),
     layerRule: rule2
   };
 }
@@ -18536,7 +18549,8 @@ function hubEvidencePack(model, hub, census) {
       census,
       [folderOf(hub.file)],
       hub.features.flatMap((feature) => (model.graph.filesOf.get(feature.module) ?? []).map(folderOf))
-    )
+    ),
+    nearbyMechanismsOmitted: nearbyOmitted(census)
   };
 }
 
@@ -18989,7 +19003,8 @@ var rules5 = {
       "exactly the layers named, whatever their position.",
       "",
       "Every file import that crosses to a layer the rule does not allow is one row, with the symbols",
-      "used across it. Type-only imports are included, since a type dependency still binds the layers.",
+      "used across it. Type-only imports are included and marked `typeOnly`, since a type dependency",
+      "still binds the layers. Value imports are listed first, then type-only imports.",
       "The CLI does not choose a remedy: `structure evidence` gives the facts."
     ].join("\n")
   }
@@ -22835,17 +22850,22 @@ var levels2 = ["folder", "component"];
 var UNITS_SHOWN = 50;
 var rules9 = {
   "unstable-dependency": {
-    summary: "A dependency points from more stable code towards less stable code",
+    summary: "A dependency points from more stable code towards less stable code, worth a look when the margin is past the guideline",
     explanation: [
       "The stable dependencies principle: depend towards the more stable side. A module that depends on",
       "a volatile one has to change with it.",
       "",
       "Two measures are kept apart. Structural stability is Martin's instability I = Ce / (Ca + Ce) over",
       "distinct outside files. Change stability is revisions per file in the window, from the history",
-      "cache. When the depended-on side has at least structure.minRevisions revisions, change decides:",
-      "the dependency is flagged when that side's revisions per file reach structure.minVolatilityRatio",
-      "times the dependant's. Otherwise structure decides: flagged when the depended-on side's",
-      "instability exceeds the dependant's by structure.minInstabilityGap percentage points.",
+      "cache. When the depended-on side has at least structure.minRevisions revisions, change decides;",
+      "otherwise structure decides. Every dependency onto a less stable side is listed.",
+      "",
+      "structure.minVolatilityRatio (default 2) and structure.minInstabilityGap (default 20 points) are",
+      "guidelines. `aboveGuideline` is true when the margin on the deciding basis reaches the guideline:",
+      "the depended-on side's revisions per file are at least the ratio times the dependant's, or its",
+      "instability exceeds the dependant's by at least the gap. Rows above the guideline are listed first,",
+      "then rows are sorted by margin. `volatilityRatio` is the measured ratio. Nothing is hidden for",
+      "being under the guideline; use --limit to cap the rows.",
       "",
       "`disagree` is set when the two measures point opposite ways, which is when change evidence is the",
       "one to believe. With weak evidence the grade says how far to trust either. This is a prompt for",
@@ -22870,8 +22890,8 @@ var command11 = analysisCommand(name12, {
         minVolatilityRatio: settings.minVolatilityRatio,
         minInstabilityGap: settings.minInstabilityGap
       },
-      results: findUnstableDependencies(model, settings),
-      columns: ["id", "basis", "volatilityRatio", "structuralViolation", "changeViolation", "disagree", "fileEdges", "stability"],
+      results: rankDependencies(model, settings),
+      columns: ["id", "basis", "volatilityRatio", "structuralAboveGuideline", "changeAboveGuideline", "disagree", "fileEdges", "stability"],
       extra: { units: units.slice(0, UNITS_SHOWN), unitsTotal: units.length }
     };
   }
