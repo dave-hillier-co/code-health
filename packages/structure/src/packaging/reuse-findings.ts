@@ -11,7 +11,7 @@ function partialUse(context: FindingContext, profile: ReuseProfile): Finding[] {
   const { partialUseShare, partialUseMinSurface } = settings.packages;
   if (profile.surface.length < partialUseMinSurface || profile.consumers.length === 0) return [];
   const small = profile.consumers.filter((c) => c.share < partialUseShare);
-  if (small.length * 2 <= profile.consumers.length) return [];
+  if (small.length === 0) return [];
   return [
     raise(context, "partial-use", "CRP", [profile.package],
       `${small.length} of ${profile.consumers.length} consumers of ${profile.package} use under ${percent(partialUseShare)} of its ${profile.surface.length} exports, so they depend on what they do not use`,
@@ -22,7 +22,7 @@ function partialUse(context: FindingContext, profile: ReuseProfile): Finding[] {
         medianShare: profile.medianShare,
         shares: profile.consumers.map((c) => `${c.package}:${c.share}`),
       },
-      { changeCost: context.cost.package(profile.package) }),
+      { changeCost: context.cost.package(profile.package), ...(small.length * 2 > profile.consumers.length ? {} : { belowGuideline: `${small.length} of ${profile.consumers.length} consumers against more than half` }) }),
   ];
 }
 
@@ -40,7 +40,6 @@ function disjointReuse(context: FindingContext, profile: ReuseProfile): Finding[
       overlap = Math.max(overlap, shared / (a.size + b.length - shared));
     }
   }
-  if (overlap > disjointOverlap) return [];
   return [
     raise(context, "disjoint-reuse", "CRP", [profile.package],
       `${profile.package} exports ${used.length} groups of names that different consumers use: ${used.map((c) => `{${c.exports.map(shortName).join(", ")}} for ${c.consumers.join(", ")}`).join("; ")}`,
@@ -50,7 +49,7 @@ function disjointReuse(context: FindingContext, profile: ReuseProfile): Finding[
         overlap: round3(overlap),
         groups: used.map((c) => `${c.exports.map(shortName).join("+")}:${c.consumers.join("+")}`),
       },
-      { changeCost: context.cost.package(profile.package) }),
+      { changeCost: context.cost.package(profile.package), ...(overlap > disjointOverlap ? { belowGuideline: `overlap ${percent(overlap)} against at most ${percent(disjointOverlap)}` } : {}) }),
   ];
 }
 
@@ -81,12 +80,11 @@ function overexposed(context: FindingContext, profile: ReuseProfile): Finding[] 
   const { overexposedShare } = context.model.settings.packages;
   if (profile.consumers.length === 0 || profile.surface.length === 0 || profile.unused.length === 0) return [];
   const share = profile.unused.length / profile.surface.length;
-  if (share < overexposedShare) return [];
   return [
     raise(context, "overexposed", "CRP", [profile.package],
       `${profile.unused.length} of the ${profile.surface.length} exports of ${profile.package} are used by no other package: ${profile.unused.slice(0, 5).map(shortName).join(", ")}${profile.unused.length > 5 ? ", ..." : ""}`,
       { unused: profile.unused.length, surface: profile.surface.length, share: round3(share), names: profile.unused.slice(0, 10).map(shortName) },
-      { changeCost: 0 }),
+      { changeCost: 0, ...(share >= overexposedShare ? {} : { belowGuideline: `${percent(share)} of exports unused against ${percent(overexposedShare)}` }) }),
   ];
 }
 

@@ -1144,6 +1144,400 @@
       "summary": "packages/wrap holds 2 files beside its manifest: the package costs more to have than it contains",
       "tentative": false,
       "unit": null
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 13.458,
+      "evidence": {
+        "confidenceFromTo": 0.826,
+        "confidenceToFrom": 0.352,
+        "fromChanges": 23,
+        "lift": 1.484,
+        "shared": 19,
+        "tail": 0.002,
+        "toChanges": 54
+      },
+      "id": "always-together:packages/app->packages/shared",
+      "kind": "always-together",
+      "packages": [
+        "packages/app",
+        "packages/shared"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/app and packages/shared changed together in 19 changes, 83% of those to packages/app and 35% of those to packages/shared: one unit of change split in two (below the guideline: lowest confidence 35% against 60%)",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 13.458,
+      "evidence": {
+        "packageShare": 0.594,
+        "partners": 24,
+        "partnersInOther": 19,
+        "partnersInOwn": 0,
+        "revisions": 19,
+        "share": 0.792
+      },
+      "id": "crossing-unit:packages/app->packages/shared->packages/app/src/work.ts",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/app",
+        "packages/shared"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/app/src/work.ts in packages/app changes with files of packages/shared (19 of 24 co-changed files) more than with its own package (0) (below the guideline: 20% more entangled than packages/app against 25%)",
+      "tentative": false,
+      "unit": "packages/app/src/work.ts"
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 13.458,
+      "evidence": {
+        "packageShare": 0.792,
+        "partners": 24,
+        "partnersInOther": 19,
+        "partnersInOwn": 0,
+        "revisions": 19,
+        "share": 0.792
+      },
+      "id": "crossing-unit:packages/shared->packages/app->packages/shared/src/work.ts",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/shared",
+        "packages/app"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/shared/src/work.ts in packages/shared changes with files of packages/app (19 of 24 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/shared against 25%)",
+      "tentative": false,
+      "unit": "packages/shared/src/work.ts"
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 8.484,
+      "evidence": {
+        "packageShare": 1,
+        "partners": 12,
+        "partnersInOther": 12,
+        "partnersInOwn": 0,
+        "revisions": 12,
+        "share": 1
+      },
+      "id": "crossing-unit:packages/api->packages/ui->packages/api/src/work.ts",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/api",
+        "packages/ui"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/api/src/work.ts in packages/api changes with files of packages/ui (12 of 12 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/api against 25%)",
+      "tentative": false,
+      "unit": "packages/api/src/work.ts"
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 8.484,
+      "evidence": {
+        "packageShare": 1,
+        "partners": 12,
+        "partnersInOther": 12,
+        "partnersInOwn": 0,
+        "revisions": 12,
+        "share": 1
+      },
+      "id": "crossing-unit:packages/ui->packages/api->packages/ui/src/work.ts",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/ui",
+        "packages/api"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/ui/src/work.ts in packages/ui changes with files of packages/api (12 of 12 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/ui against 25%)",
+      "tentative": false,
+      "unit": "packages/ui/src/work.ts"
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 3.575,
+      "evidence": {
+        "confidenceFromTo": 0.385,
+        "confidenceToFrom": 0.833,
+        "fromChanges": 13,
+        "lift": 6.218,
+        "shared": 5,
+        "tail": 0,
+        "toChanges": 6
+      },
+      "id": "always-together:packages/helper->packages/orphan",
+      "kind": "always-together",
+      "packages": [
+        "packages/helper",
+        "packages/orphan"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/helper and packages/orphan changed together in 5 changes, 39% of those to packages/helper and 83% of those to packages/orphan: one unit of change split in two (below the guideline: lowest confidence 39% against 60%)",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 3.575,
+      "evidence": {
+        "packageShare": 1,
+        "partners": 5,
+        "partnersInOther": 5,
+        "partnersInOwn": 0,
+        "revisions": 5,
+        "share": 1
+      },
+      "id": "crossing-unit:packages/orphan->packages/helper->packages/orphan/src/work.ts",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/orphan",
+        "packages/helper"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/orphan/src/work.ts in packages/orphan changes with files of packages/helper (5 of 5 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/orphan against 25%)",
+      "tentative": false,
+      "unit": "packages/orphan/src/work.ts"
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 3.575,
+      "evidence": {
+        "changes": 6,
+        "closure": 0.167,
+        "comparable": 5,
+        "crossing": 5,
+        "quartile": 0,
+        "share": 0.062
+      },
+      "id": "low-closure:packages/orphan",
+      "kind": "low-closure",
+      "packages": [
+        "packages/orphan"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "83% of the 6 changes to packages/orphan also touched another package, more than most packages with a comparable share of changes (below the guideline: closure 17% against 0% at the lowest quartile of 5 comparable packages)",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 3.555,
+      "evidence": {
+        "packageShare": 0.333,
+        "partners": 10,
+        "partnersInOther": 5,
+        "partnersInOwn": 0,
+        "revisions": 5,
+        "share": 0.5
+      },
+      "id": "crossing-unit:packages/helper->packages/app->packages/helper/src/work.ts",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/helper",
+        "packages/app"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/helper/src/work.ts in packages/helper changes with files of packages/app (5 of 10 co-changed files) more than with its own package (0) (below the guideline: 50% of partners in packages/app against more than 50%; 17% more entangled than packages/helper against 25%)",
+      "tentative": false,
+      "unit": "packages/helper/src/work.ts"
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 2.839,
+      "evidence": {
+        "packageShare": 1,
+        "partners": 4,
+        "partnersInOther": 4,
+        "partnersInOwn": 0,
+        "revisions": 4,
+        "share": 1
+      },
+      "id": "crossing-unit:packages/p1->packages/p2->packages/p1/src/work.ts",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/p1",
+        "packages/p2"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/p1/src/work.ts in packages/p1 changes with files of packages/p2 (4 of 4 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/p1 against 25%)",
+      "tentative": false,
+      "unit": "packages/p1/src/work.ts"
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 2.839,
+      "evidence": {
+        "packageShare": 1,
+        "partners": 4,
+        "partnersInOther": 4,
+        "partnersInOwn": 0,
+        "revisions": 4,
+        "share": 1
+      },
+      "id": "crossing-unit:packages/p2->packages/p1->packages/p2/src/work.ts",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/p2",
+        "packages/p1"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/p2/src/work.ts in packages/p2 changes with files of packages/p1 (4 of 4 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/p2 against 25%)",
+      "tentative": false,
+      "unit": "packages/p2/src/work.ts"
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 2.839,
+      "evidence": {
+        "confidenceFromTo": 1,
+        "confidenceToFrom": 1,
+        "fromChanges": 4,
+        "lift": 24.25,
+        "shared": 4,
+        "tail": 0,
+        "toChanges": 4
+      },
+      "id": "follower:packages/p1->packages/p2",
+      "kind": "follower",
+      "packages": [
+        "packages/p1",
+        "packages/p2"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "100% of the changes to packages/p1 also touched packages/p2, which it depends on, while only 100% of the changes to packages/p2 touched packages/p1 (below the guideline: reverse confidence 100% against at most 40%)",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 2.839,
+      "evidence": {
+        "confidenceFromTo": 1,
+        "confidenceToFrom": 1,
+        "fromChanges": 4,
+        "lift": 24.25,
+        "shared": 4,
+        "tail": 0,
+        "toChanges": 4
+      },
+      "id": "follower:packages/p2->packages/p1",
+      "kind": "follower",
+      "packages": [
+        "packages/p2",
+        "packages/p1"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "100% of the changes to packages/p2 also touched packages/p1, which it depends on, while only 100% of the changes to packages/p1 touched packages/p2 (below the guideline: reverse confidence 100% against at most 40%)",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 2.139,
+      "evidence": {
+        "confidenceFromTo": 0.5,
+        "confidenceToFrom": 1,
+        "fromChanges": 6,
+        "lift": 16.167,
+        "shared": 3,
+        "tail": 0,
+        "toChanges": 3
+      },
+      "id": "always-together:packages/lib->packages/lib-extra",
+      "kind": "always-together",
+      "packages": [
+        "packages/lib",
+        "packages/lib-extra"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/lib and packages/lib-extra changed together in 3 changes, 50% of those to packages/lib and 100% of those to packages/lib-extra: one unit of change split in two (below the guideline: lowest confidence 50% against 60%)",
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 2.139,
+      "evidence": {
+        "packageShare": 1,
+        "partners": 3,
+        "partnersInOther": 3,
+        "partnersInOwn": 0,
+        "revisions": 3,
+        "share": 1
+      },
+      "id": "crossing-unit:packages/lib->packages/lib-extra->packages/lib/package.json",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/lib",
+        "packages/lib-extra"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/lib/package.json in packages/lib changes with files of packages/lib-extra (3 of 3 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/lib against 25%)",
+      "tentative": false,
+      "unit": "packages/lib/package.json"
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 2.139,
+      "evidence": {
+        "packageShare": 1,
+        "partners": 3,
+        "partnersInOther": 3,
+        "partnersInOwn": 0,
+        "revisions": 3,
+        "share": 1
+      },
+      "id": "crossing-unit:packages/lib-extra->packages/lib->packages/lib-extra/package.json",
+      "kind": "crossing-unit",
+      "packages": [
+        "packages/lib-extra",
+        "packages/lib"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "packages/lib-extra/package.json in packages/lib-extra changes with files of packages/lib (3 of 3 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/lib-extra against 25%)",
+      "tentative": false,
+      "unit": "packages/lib-extra/package.json"
+    },
+    {
+      "aboveGuideline": false,
+      "changeCost": 2.139,
+      "evidence": {
+        "changes": 6,
+        "closure": 0.5,
+        "comparable": 5,
+        "crossing": 3,
+        "quartile": 0,
+        "share": 0.062
+      },
+      "id": "low-closure:packages/lib",
+      "kind": "low-closure",
+      "packages": [
+        "packages/lib"
+      ],
+      "principle": "CCP",
+      "priority": "normal",
+      "summary": "50% of the 6 changes to packages/lib also touched another package, more than most packages with a comparable share of changes (below the guideline: closure 50% against 0% at the lowest quartile of 5 comparable packages)",
+      "tentative": false,
+      "unit": null
     }
   ],
   "schemaVersion": 1,
@@ -1151,7 +1545,7 @@
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 27
+    "total": 44
   },
   "unavailable": [],
   "window": {

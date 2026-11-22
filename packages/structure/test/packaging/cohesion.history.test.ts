@@ -27,6 +27,8 @@ async function findings(...args: string[]): Promise<Finding[]> {
 }
 
 const byKind = (all: Finding[], kind: string) => all.filter((f) => f.kind === kind);
+const reaching = (all: Finding[], kind: string) => byKind(all, kind).filter((f) => f.aboveGuideline);
+const below = (all: Finding[], kind: string) => byKind(all, kind).filter((f) => !f.aboveGuideline);
 
 describe("always-together", () => {
   test("two packages that change together, and each mostly with the other, are one unit of change", async () => {
@@ -40,8 +42,20 @@ describe("always-together", () => {
   });
 
   test("a package that changes in most commits is not always together with anything, whatever its confidence", async () => {
-    const pairs = byKind(await findings(), "always-together").map((f) => f.packages.join());
-    expect(pairs).not.toContain("packages/app,packages/shared");
+    const all = await findings();
+    expect(reaching(all, "always-together").map((f) => f.packages.join())).not.toContain("packages/app,packages/shared");
+    // it is still listed, below the guideline, with the confidence that fell short
+    const row = below(all, "always-together").find((f) => f.packages.join() === "packages/app,packages/shared");
+    expect(row?.summary).toMatch(/\(below the guideline: lowest confidence 35% against 60%\)$/);
+  });
+
+  test("a pair over the evidence floors that misses the confidence guideline is listed below it, with the confidence and the guideline", async () => {
+    const found = await withPackageSettings(repo, { minConfidence: 0.9 }, () => findings());
+    const ui = byKind(found, "always-together").find((f) => f.packages.join() === "packages/api,packages/ui")!;
+    expect(ui.aboveGuideline).toBe(false);
+    expect(ui.summary).toMatch(/\(below the guideline: lowest confidence 80% against 90%\)$/);
+    expect(found.findIndex((f) => !f.aboveGuideline)).toBeGreaterThan(-1);
+    expect(found.slice(found.findIndex((f) => !f.aboveGuideline)).every((f) => !f.aboveGuideline)).toBe(true);
   });
 
   test("the cost is the changes that crossed the boundary, weighted by recency", async () => {
@@ -55,15 +69,14 @@ describe("always-together", () => {
   });
 
   test("findings are ranked by that cost", async () => {
-    const all = await findings();
-    const costs = all.map((f) => f.changeCost);
+    const costs = (await findings()).filter((f) => f.aboveGuideline).map((f) => f.changeCost);
     expect(costs).toEqual([...costs].sort((a, b) => b - a));
   });
 });
 
 describe("follower", () => {
   test("changing the dependant usually changes what it depends on, and not the other way round", async () => {
-    const found = byKind(await findings(), "follower");
+    const found = reaching(await findings(), "follower");
     expect(found.map((f) => f.packages)).toEqual([["packages/app", "packages/shared"]]);
     expect(found[0]!.evidence).toMatchObject({ shared: 19, confidenceFromTo: 0.826, confidenceToFrom: 0.352 });
   });
@@ -75,21 +88,36 @@ describe("follower", () => {
 
   test("guidelines come from config", async () => {
     const strict = await withPackageSettings(repo, { minLift: 2 }, () => findings());
-    expect(byKind(strict, "follower")).toEqual([]);
+    expect(reaching(strict, "follower")).toEqual([]);
+    expect(below(strict, "follower").find((f) => f.packages.join() === "packages/app,packages/shared")!.summary).toMatch(/\(below the guideline: lift [\d.]+ against 2\)$/);
+    const stricter = await withPackageSettings(repo, { followerReverseConfidence: 0.1 }, () => findings());
+    expect(below(stricter, "follower").find((f) => f.packages.join() === "packages/app,packages/shared")!.summary).toContain("reverse confidence 35% against at most 10%");
   });
 });
 
 describe("crossing-unit", () => {
   test("a file whose co-change partners lie mostly in another package, more than its own package's do", async () => {
-    const found = byKind(await findings(), "crossing-unit");
+    const found = reaching(await findings(), "crossing-unit");
     expect(found.map((f) => f.unit)).toEqual(["packages/helper/src/toOrphan.ts"]);
     expect(found[0]).toMatchObject({ packages: ["packages/helper", "packages/orphan"] });
     expect(found[0]!.evidence).toMatchObject({ partnersInOther: 5, partnersInOwn: 0, share: 1 });
   });
 
   test("a whole package changing with another is the packages' finding, not each file's", async () => {
-    const units = byKind(await findings(), "crossing-unit").map((f) => f.unit);
+    const units = reaching(await findings(), "crossing-unit").map((f) => f.unit);
     expect(units.some((unit) => unit?.endsWith("/work.ts"))).toBe(false);
+  });
+});
+
+describe("crossing-unit below the guideline", () => {
+  test("a file that changes with another package but misses the share or the margin is listed after the others, with what fell short", async () => {
+    const found = await findings();
+    const rows = below(found, "crossing-unit");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.summary).toMatch(/\(below the guideline: .*against/);
+    const strict = await withPackageSettings(repo, { crossingUnitShare: 1 }, () => findings());
+    expect(reaching(strict, "crossing-unit")).toEqual([]);
+    expect(below(strict, "crossing-unit").find((f) => f.unit === "packages/helper/src/toOrphan.ts")!.summary).toMatch(/\(below the guideline: 100% of partners in packages\/orphan against more than 100%\)$/);
   });
 });
 
@@ -106,7 +134,9 @@ describe("wide-change", () => {
     const [wide] = byKind(found, "wide-change");
     expect(wide).toMatchObject({ id: "wide-change:repository", aboveGuideline: false });
     expect(wide!.summary).toMatch(/\(below the guideline: \d+% of changes against 50%\)$/);
-    expect(found.at(-1)!.id).toBe("wide-change:repository");
+    const first = found.findIndex((f) => !f.aboveGuideline);
+    expect(found.slice(first).every((f) => !f.aboveGuideline)).toBe(true);
+    expect(found.slice(first).map((f) => f.id)).toContain("wide-change:repository");
   });
 });
 
@@ -116,14 +146,24 @@ describe("low-closure", () => {
     expect(byKind(found, "low-closure")).toEqual([]);
   });
 
+  test("a package judged with enough comparable packages is listed below the guideline when its closure is above the lowest quartile", async () => {
+    const found = await findings();
+    const rows = below(found, "low-closure");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.summary).toMatch(/\(below the guideline: closure \d+% against \d+% at the lowest quartile of \d+ comparable packages\)$/);
+      expect(row.evidence.closure as number).toBeGreaterThan(row.evidence.quartile as number);
+    }
+  });
+
   test("by default the packages that never change alone are the lowest quartile of their comparable group", async () => {
-    const found = byKind(await findings(), "low-closure");
+    const found = reaching(await findings(), "low-closure");
     expect(found.map((f) => f.packages[0]).sort()).toEqual(["packages/lib-extra", "packages/p1", "packages/p2"]);
     expect(found.find((f) => f.packages[0] === "packages/p1")!.evidence).toMatchObject({ closure: 0, comparable: 5, crossing: 4, changes: 4 });
   });
 
   test("among comparable packages, one in the lowest quartile is raised, with the count of its crossing changes", async () => {
-    const found = byKind(await withPackageSettings(repo, { minComparable: 3 }, () => findings()), "low-closure");
+    const found = reaching(await withPackageSettings(repo, { minComparable: 3 }, () => findings()), "low-closure");
     const app = found.find((f) => f.packages[0] === "packages/app")!;
     expect(app.evidence).toMatchObject({ closure: 0.13, comparable: 4, crossing: 20 });
     // packages with fewer than a quarter of the comparable group's closure are the ones raised

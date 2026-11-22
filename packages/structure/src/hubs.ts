@@ -69,6 +69,25 @@ export interface Hub {
   };
 }
 
+/** The files that were considered and not listed, so that nothing goes without a count. */
+export interface HubsOmitted {
+  /** A file is listed when it reaches at least this many of the four signals. */
+  minSignals: number;
+  /** Production files with at least `minRevisions` eligible changes: the files whose signals were looked at. */
+  considered: number;
+  /** Considered files that reached fewer than `minSignals` signals, and so are not listed. */
+  files: number;
+  /** Of those, files whose diffs were not read, because the three signals that need no diff left them unable to reach `minSignals`. Their append share is not known. */
+  withoutDiffs: number;
+  /** Production files changed in the window with fewer than `minRevisions` eligible changes, which have too little history to judge. Not counted in `considered`. */
+  belowMinRevisions: number;
+}
+
+export interface HubsFound {
+  hubs: Hub[];
+  omitted: HubsOmitted;
+}
+
 export interface HubInputs {
   root: string;
   headSha: string;
@@ -153,7 +172,13 @@ function maxAuthorsWithin(changes: readonly LogicalChange[], windowSeconds: numb
   return most;
 }
 
-const SIGNALS_LISTED = 2;
+/**
+ * A file is listed when it reaches this many of the four signals. The pre-filter exists for cost: the
+ * fourth signal needs `git log -p` for the file, one process per file, and a file that reaches none of
+ * the other three can reach at most one signal. On this repository, reading the diff of every considered
+ * file took 164 reads and 3.4 s against 8 reads and 1.5 s. The files it leaves out are counted in `HubsOmitted`.
+ */
+export const SIGNALS_LISTED = 2;
 
 const share = (part: number, whole: number): number => (whole === 0 ? 0 : part / whole);
 
@@ -184,13 +209,18 @@ export function compareHubs(a: Hub, b: Hub): number {
  *
  * The model must count every pair of modules (`everyPair`). See `compareHubs` for the order.
  */
-export async function findHubs({ root, headSha, model, changes, settings }: HubInputs): Promise<Hub[]> {
+export async function findHubs({ root, headSha, model, changes, settings }: HubInputs): Promise<HubsFound> {
   const { activity, graph, project } = model;
   const histories = fileHistories(model, changes);
   const hubs: Hub[] = [];
+  const omitted: HubsOmitted = { minSignals: SIGNALS_LISTED, considered: 0, files: 0, withoutDiffs: 0, belowMinRevisions: 0 };
 
   for (const [file, history] of [...histories].sort((a, b) => compareIds(a[0], b[0]))) {
-    if (history.eligible < settings.minRevisions) continue;
+    if (history.eligible < settings.minRevisions) {
+      omitted.belowMinRevisions++;
+      continue;
+    }
+    omitted.considered++;
     const features: HubFeature[] = [];
     for (const [module, shared] of history.shared) {
       const featureChanges = activity.eligibleRevisions(module);
@@ -242,9 +272,13 @@ export async function findHubs({ root, headSha, model, changes, settings }: HubI
     const maxAuthors = maxAuthorsWithin(history.changes, settings.hubContentionDays * 86_400);
     const contentionReached = maxAuthors >= settings.hubMinAuthors;
 
-    // the diff is read only when the file can still reach two signals
+    // the diff is read only when the file can still reach `SIGNALS_LISTED` signals
     const cheapReached = [starReached, outwardReached, contentionReached].filter(Boolean).length;
-    if (cheapReached === 0) continue;
+    if (cheapReached + 1 < SIGNALS_LISTED) {
+      omitted.files++;
+      omitted.withoutDiffs++;
+      continue;
+    }
 
     // most of its edits add or remove entries of one collection
     const shas = new Set(history.changes.flatMap((change) => change.shas));
@@ -253,7 +287,10 @@ export async function findHubs({ root, headSha, model, changes, settings }: HubI
     const appended = shapes.filter((s) => s.shape !== null);
     const appendReached = hunks.length >= settings.minSupport && percent(appended.length, hunks.length) >= settings.hubMinAppendShare;
     const signalsReached = cheapReached + (appendReached ? 1 : 0);
-    if (signalsReached < SIGNALS_LISTED) continue;
+    if (signalsReached < SIGNALS_LISTED) {
+      omitted.files++;
+      continue;
+    }
 
     if (text === "") text = (await readBlobAt(root, headSha, file)) ?? "";
     const lines = text.split("\n");
@@ -292,5 +329,5 @@ export async function findHubs({ root, headSha, model, changes, settings }: HubI
       },
     });
   }
-  return hubs.sort(compareHubs);
+  return { hubs: hubs.sort(compareHubs), omitted };
 }

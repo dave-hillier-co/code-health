@@ -19,7 +19,7 @@ REP and CCP make packages larger. CRP makes them smaller. No package satisfies a
 
 ## Findings
 
-Every finding raises a question for review and never proves a fault. `changeCost` is the number of logical changes in the window that crossed the boundary in question, weighted by recency.
+Every finding raises a question for review and never proves a fault. `changeCost` is the number of logical changes in the window that crossed the boundary in question, weighted by recency. A row with `aboveGuideline: false` has a measured value below its guideline (the end of its summary says which value and which guideline). It is listed after the rows that reach theirs, and it is evidence about where the package stands, not a proposal: read it only beside a row that reaches its guideline, or to see how close a package is.
 
 ### Common closure
 

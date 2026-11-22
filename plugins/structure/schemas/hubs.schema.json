@@ -339,6 +339,41 @@
         ],
         "additionalProperties": false
       }
+    },
+    "omitted": {
+      "type": "object",
+      "description": "Files that were considered and not listed. A file is listed when it reaches at least minSignals of the four signals.",
+      "properties": {
+        "minSignals": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "considered": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Production files with at least minRevisions eligible changes."
+        },
+        "files": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Considered files that reached fewer than minSignals signals."
+        },
+        "withoutDiffs": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Of those, files whose diffs were not read, because the three signals that need no diff left them unable to reach minSignals."
+        },
+        "belowMinRevisions": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Files changed in the window with fewer than minRevisions eligible changes, not counted in considered."
+        }
+      },
+      "required": [
+        "minSignals",
+        "considered",
+        "files",
+        "withoutDiffs",
+        "belowMinRevisions"
+      ],
+      "additionalProperties": false
     }
   },
   "unevaluatedProperties": false

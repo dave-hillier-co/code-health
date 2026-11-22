@@ -1,7 +1,7 @@
 import { compareIds } from "@code-health/graph/graph";
 import { round3 } from "../stability.ts";
 import { independenceTail, recencyWeight } from "./changes.ts";
-import { percent, raise, type Finding, type FindingContext } from "./findings.ts";
+import { percent, raise, shortfalls, type Finding, type FindingContext } from "./findings.ts";
 import type { PackageModel } from "./model.ts";
 
 /** One package's closure, beside the share of the repository's changes it takes part in. */
@@ -78,8 +78,12 @@ export function pairFigures(model: PackageModel, from: string, to: string): Pair
   };
 }
 
-const significant = (figures: PairFigures, model: PackageModel): boolean =>
-  figures.shared >= model.settings.packages.minSupport && figures.lift >= model.settings.packages.minLift && figures.tail <= model.settings.packages.significance;
+/** The evidence floor for a pair: enough shared changes, and an exact test that finds them unlikely under independence. Lift and confidence are guidelines. */
+const enoughEvidence = (figures: PairFigures, model: PackageModel): boolean =>
+  figures.shared >= model.settings.packages.minSupport && figures.tail <= model.settings.packages.significance;
+
+const liftShortfall = (figures: PairFigures, model: PackageModel): string | null =>
+  figures.lift >= model.settings.packages.minLift ? null : `lift ${figures.lift} against ${model.settings.packages.minLift}`;
 
 function lowClosure(context: FindingContext, closure: ReadonlyMap<string, Closure>): Finding[] {
   const { model } = context;
@@ -97,12 +101,13 @@ function lowClosure(context: FindingContext, closure: ReadonlyMap<string, Closur
     if (mine.standing === null || mine.closure === null) continue;
     const values = peersOf(pkg.id).map((p) => closure.get(p.id)!.closure!).sort((a, b) => a - b);
     const quartile = values[Math.floor((values.length - 1) / 4)]!;
-    if (mine.closure > quartile || mine.closure >= values[values.length - 1]!) continue;
+    const highest = values[values.length - 1]!;
+    const reaches = mine.closure <= quartile && mine.closure < highest;
     findings.push(
       raise(context, "low-closure", "CCP", [pkg.id],
         `${percent(1 - mine.closure)} of the ${mine.changes} changes to ${pkg.id} also touched another package, more than most packages with a comparable share of changes`,
         { closure: mine.closure, share: mine.share, changes: mine.changes, crossing: mine.crossing, comparable: mine.comparable, quartile: round3(quartile) },
-        { changeCost: context.cost.package(pkg.id) }),
+        { changeCost: context.cost.package(pkg.id), ...(reaches ? {} : { belowGuideline: `closure ${percent(mine.closure)} against ${percent(quartile)} at the lowest quartile of ${mine.comparable} comparable packages` }) }),
     );
   }
   return findings;
@@ -119,12 +124,13 @@ function alwaysTogether(context: FindingContext): Finding[] {
       const b = ids[j]!;
       if (model.activity.shared(a, b) === 0) continue;
       const figures = pairFigures(model, a, b);
-      if (!significant(figures, model) || figures.confidenceFromTo < minConfidence || figures.confidenceToFrom < minConfidence) continue;
+      if (!enoughEvidence(figures, model)) continue;
+      const lowest = Math.min(figures.confidenceFromTo, figures.confidenceToFrom);
       findings.push(
         raise(context, "always-together", "CCP", [a, b],
           `${a} and ${b} changed together in ${figures.shared} changes, ${percent(figures.confidenceFromTo)} of those to ${a} and ${percent(figures.confidenceToFrom)} of those to ${b}: one unit of change split in two`,
           { ...figures },
-          { changeCost: context.cost.pair(a, b) }),
+          { changeCost: context.cost.pair(a, b), ...shortfalls(lowest >= minConfidence ? null : `lowest confidence ${percent(lowest)} against ${percent(minConfidence)}`, liftShortfall(figures, model)) }),
       );
     }
   }
@@ -139,12 +145,19 @@ function followers(context: FindingContext): Finding[] {
     for (const to of targets) {
       if (model.activity.shared(from, to) === 0) continue;
       const figures = pairFigures(model, from, to);
-      if (!significant(figures, model) || figures.confidenceFromTo < minConfidence || figures.confidenceToFrom > followerReverseConfidence) continue;
+      if (!enoughEvidence(figures, model)) continue;
       findings.push(
         raise(context, "follower", "CCP", [from, to],
           `${percent(figures.confidenceFromTo)} of the changes to ${from} also touched ${to}, which it depends on, while only ${percent(figures.confidenceToFrom)} of the changes to ${to} touched ${from}`,
           { ...figures },
-          { changeCost: context.cost.pair(from, to) }),
+          {
+            changeCost: context.cost.pair(from, to),
+            ...shortfalls(
+              figures.confidenceFromTo >= minConfidence ? null : `confidence ${percent(figures.confidenceFromTo)} against ${percent(minConfidence)}`,
+              figures.confidenceToFrom <= followerReverseConfidence ? null : `reverse confidence ${percent(figures.confidenceToFrom)} against at most ${percent(followerReverseConfidence)}`,
+              liftShortfall(figures, model),
+            ),
+          }),
       );
     }
   }
@@ -185,15 +198,22 @@ function crossingUnits(context: FindingContext): Finding[] {
     const total = [...tally.partners.values()].reduce((sum, n) => sum + n, 0);
     const own = tally.partners.get(tally.owner) ?? 0;
     const [other, count] = [...tally.partners].filter(([id]) => id !== tally.owner).sort(([ia, a], [ib, b]) => b - a || compareIds(ia, ib))[0] ?? [];
-    if (other === undefined || count === undefined || count < minSupport || count <= own || count / total <= crossingUnitShare) continue;
+    if (other === undefined || count === undefined || count < minSupport) continue;
     const ofPackage = overall.get(tally.owner)!;
     const packageShare = (ofPackage.get(other) ?? 0) / [...ofPackage.values()].reduce((sum, n) => sum + n, 0);
-    if (count / total - packageShare < crossingUnitMargin) continue;
+    const margin = count / total - packageShare;
     findings.push(
       raise(context, "crossing-unit", "CCP", [tally.owner, other],
         `${path} in ${tally.owner} changes with files of ${other} (${count} of ${total} co-changed files) more than with its own package (${own})`,
         { revisions: tally.changes, partnersInOther: count, partnersInOwn: own, partners: total, share: round3(count / total), packageShare: round3(packageShare) },
-        { unit: path, changeCost: tally.weighted.get(other) ?? 0 }),
+        {
+          unit: path,
+          changeCost: tally.weighted.get(other) ?? 0,
+          ...shortfalls(
+            count / total > crossingUnitShare ? null : `${percent(count / total)} of partners in ${other} against more than ${percent(crossingUnitShare)}`,
+            margin >= crossingUnitMargin ? null : `${percent(margin)} more entangled than ${tally.owner} against ${percent(crossingUnitMargin)}`,
+          ),
+        }),
     );
   }
   return findings;

@@ -110,3 +110,9 @@ export function rankFindings(findings: readonly Finding[]): Finding[] {
 }
 
 export const percent = (ratio: number): string => `${Math.round(ratio * 100)}%`;
+
+/** The `belowGuideline` option for a finding judged against several guidelines: empty when it reaches all of them, otherwise the shortfalls joined. */
+export const shortfalls = (...parts: (string | null)[]): { belowGuideline?: string } => {
+  const missed = parts.filter((part): part is string => part !== null);
+  return missed.length === 0 ? {} : { belowGuideline: missed.join("; ") };
+};

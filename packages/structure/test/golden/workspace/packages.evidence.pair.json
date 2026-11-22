@@ -120,6 +120,52 @@
         "summary": "packages/api and packages/ui changed together in 12 changes, 80% of those to packages/api and 80% of those to packages/ui: one unit of change split in two",
         "tentative": false,
         "unit": null
+      },
+      {
+        "aboveGuideline": false,
+        "changeCost": 8.484,
+        "evidence": {
+          "packageShare": 1,
+          "partners": 12,
+          "partnersInOther": 12,
+          "partnersInOwn": 0,
+          "revisions": 12,
+          "share": 1
+        },
+        "id": "crossing-unit:packages/api->packages/ui->packages/api/src/work.ts",
+        "kind": "crossing-unit",
+        "packages": [
+          "packages/api",
+          "packages/ui"
+        ],
+        "principle": "CCP",
+        "priority": "normal",
+        "summary": "packages/api/src/work.ts in packages/api changes with files of packages/ui (12 of 12 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/api against 25%)",
+        "tentative": false,
+        "unit": "packages/api/src/work.ts"
+      },
+      {
+        "aboveGuideline": false,
+        "changeCost": 8.484,
+        "evidence": {
+          "packageShare": 1,
+          "partners": 12,
+          "partnersInOther": 12,
+          "partnersInOwn": 0,
+          "revisions": 12,
+          "share": 1
+        },
+        "id": "crossing-unit:packages/ui->packages/api->packages/ui/src/work.ts",
+        "kind": "crossing-unit",
+        "packages": [
+          "packages/ui",
+          "packages/api"
+        ],
+        "principle": "CCP",
+        "priority": "normal",
+        "summary": "packages/ui/src/work.ts in packages/ui changes with files of packages/api (12 of 12 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/ui against 25%)",
+        "tentative": false,
+        "unit": "packages/ui/src/work.ts"
       }
     ],
     "from": "packages/ui",

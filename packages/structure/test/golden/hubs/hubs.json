@@ -85,6 +85,13 @@
     "minSupport": 3,
     "significanceLevel": 0.01
   },
+  "omitted": {
+    "belowMinRevisions": 0,
+    "considered": 6,
+    "files": 5,
+    "minSignals": 2,
+    "withoutDiffs": 5
+  },
   "population": {
     "eligibleChanges": 58,
     "modules": 6

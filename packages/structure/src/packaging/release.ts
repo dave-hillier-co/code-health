@@ -133,12 +133,16 @@ function tinyPackages(context: FindingContext): Finding[] {
   for (const pkg of model.packages) {
     const content = contentFiles(model, pkg);
     // the manifest is the overhead; the entry point is the other part of it
-    if (content > threshold || content > 2 || content >= median) continue;
+    if (content > 2) continue;
+    const reaches = content <= threshold && content < median;
     findings.push(
       raise(context, "tiny", "REP", [pkg.id],
         `${pkg.id} holds ${content} file${content === 1 ? "" : "s"} beside its manifest: the package costs more to have than it contains`,
         { files: content, percentileSize: threshold, percentile: model.settings.packages.tinyPercentile },
-        { changeCost: context.cost.package(pkg.id) }),
+        {
+          changeCost: context.cost.package(pkg.id),
+          ...(reaches ? {} : { belowGuideline: `${content} file${content === 1 ? "" : "s"} against ${threshold} at the ${model.settings.packages.tinyPercentile}th percentile and a median of ${median}` }),
+        }),
     );
   }
   return findings;
@@ -185,12 +189,17 @@ export async function releaseFindings(context: FindingContext, reuse: ReuseAnaly
     }
 
     const profile = reuse.profiles.get(pkg.id);
-    if (profile && profile.surface.length > 0 && profile.passThroughShare >= model.settings.packages.passThroughShare) {
+    if (profile && profile.surface.length > 0 && profile.passThroughShare > 0) {
       findings.push(
         raise(context, "pass-through-package", "REP", [pkg.id],
           `${percent(profile.passThroughShare)} of what ${pkg.id} exports is defined in other packages and only passed along: a shallow module at package level`,
           { surface: profile.surface.length, passThroughShare: profile.passThroughShare },
-          { changeCost: context.cost.package(pkg.id) }),
+          {
+            changeCost: context.cost.package(pkg.id),
+            ...(profile.passThroughShare >= model.settings.packages.passThroughShare
+              ? {}
+              : { belowGuideline: `${percent(profile.passThroughShare)} against ${percent(model.settings.packages.passThroughShare)}` }),
+          }),
       );
     }
   }

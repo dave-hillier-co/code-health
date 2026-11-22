@@ -19332,8 +19332,13 @@ async function findHubs({ root, headSha, model, changes, settings }) {
   const { activity, graph, project } = model;
   const histories = fileHistories(model, changes);
   const hubs = [];
+  const omitted = { minSignals: SIGNALS_LISTED, considered: 0, files: 0, withoutDiffs: 0, belowMinRevisions: 0 };
   for (const [file, history] of [...histories].sort((a, b) => compareIds(a[0], b[0]))) {
-    if (history.eligible < settings.minRevisions) continue;
+    if (history.eligible < settings.minRevisions) {
+      omitted.belowMinRevisions++;
+      continue;
+    }
+    omitted.considered++;
     const features = [];
     for (const [module3, shared] of history.shared) {
       const featureChanges = activity.eligibleRevisions(module3);
@@ -19378,14 +19383,21 @@ async function findHubs({ root, headSha, model, changes, settings }) {
     const maxAuthors = maxAuthorsWithin(history.changes, settings.hubContentionDays * 86400);
     const contentionReached = maxAuthors >= settings.hubMinAuthors;
     const cheapReached = [starReached, outwardReached, contentionReached].filter(Boolean).length;
-    if (cheapReached === 0) continue;
+    if (cheapReached + 1 < SIGNALS_LISTED) {
+      omitted.files++;
+      omitted.withoutDiffs++;
+      continue;
+    }
     const shas = new Set(history.changes.flatMap((change) => change.shas));
     const hunks = await windowHunks(root, headSha, file, shas);
     const shapes = hunks.map((hunk) => ({ hunk, shape: appendShape(hunk) }));
     const appended = shapes.filter((s) => s.shape !== null);
     const appendReached = hunks.length >= settings.minSupport && percent(appended.length, hunks.length) >= settings.hubMinAppendShare;
     const signalsReached = cheapReached + (appendReached ? 1 : 0);
-    if (signalsReached < SIGNALS_LISTED) continue;
+    if (signalsReached < SIGNALS_LISTED) {
+      omitted.files++;
+      continue;
+    }
     if (text2 === "") text2 = await readBlobAt(root, headSha, file) ?? "";
     const lines = text2.split("\n");
     let collection = null;
@@ -19422,7 +19434,7 @@ async function findHubs({ root, headSha, model, changes, settings }) {
       }
     });
   }
-  return hubs.sort(compareHubs);
+  return { hubs: hubs.sort(compareHubs), omitted };
 }
 
 // packages/structure/src/commands/evidence.ts
@@ -19465,7 +19477,7 @@ var command5 = analysisCommand(name6, {
     if (target2.kind === "hub") {
       const level = target2.level ?? "folder";
       model = await buildModel(context, history, level, void 0, { everyPair: true });
-      const hub = (await findHubs({ root: context.repo.root, headSha: history.view.headSha, model, changes: history.filtered.changes, settings })).find((h) => h.id === target2.id);
+      const hub = (await findHubs({ root: context.repo.root, headSha: history.view.headSha, model, changes: history.filtered.changes, settings })).hubs.find((h) => h.id === target2.id);
       if (!hub) throw usageError(`no registration hub "${target2.id.slice("hub:".length)}" at level ${level} at the analysed commit`);
       const census2 = await buildCensus(await treeFromRef(context.repo.root, history.view.headSha), model.project, settings.census);
       return {
@@ -19533,8 +19545,15 @@ var rules4 = {
   "registration-hub": {
     summary: "A central file that every feature has to edit: a route table, menu, handler map or module list",
     explanation: [
-      "Four signals describe one. A file is listed when at least two reach their guidelines. Files that\n      reach all four are listed first, then three, then two, and `signalsReached` and each signal's\n      `reached` say which. Within one count, rows sort by the figures behind the signals: features,\n      outward share, append share, authors, then revisions.",
+      "Four signals describe one. A file is listed when at least two reach their guidelines. Files that",
+      "reach all four are listed first, then three, then two, and `signalsReached` and each signal's",
+      "`reached` say which. Within one count, rows sort by the figures behind the signals: features,",
+      "outward share, append share, authors, then revisions.",
       "",
+      "Files that reach fewer than two signals are omitted, and `omitted` (JSON) and the notice under",
+      "the table say how many. The fourth signal is read from `git log -p` for the file, one process per",
+      "file, so a file that reaches none of the three signals that need no diff is omitted without",
+      "reading its diff: it could reach one signal at most. `omitted.withoutDiffs` counts those files.",
       "",
       "1. Star co-change: at least structure.hubMinFeatures folders (or components) co-change with the",
       "   file significantly, and at least structure.hubMinConfidence percent of each one's changes",
@@ -19569,7 +19588,7 @@ var command7 = analysisCommand(name8, {
     const by = readLevel("by", context.values.by, views3, "folder");
     const model = await buildModel(context, history, by, void 0, { everyPair: true });
     const { settings } = history;
-    const rows = await findHubs({
+    const { hubs: rows, omitted } = await findHubs({
       root: context.repo.root,
       headSha: history.view.headSha,
       model,
@@ -19592,7 +19611,10 @@ var command7 = analysisCommand(name8, {
       },
       results: rows,
       columns: ["id", "featureCount", "revisions", "signals"],
-      extra: { population: { modules: model.graph.filesOf.size, eligibleChanges: model.activity.eligibleChanges } }
+      notices: [
+        `Omitted ${omitted.files} of ${omitted.considered} files with at least ${settings.minRevisions} changes: each reached fewer than ${omitted.minSignals} of the 4 signals (${omitted.withoutDiffs} of them without reading their diffs, because the other three signals left them unable to reach ${omitted.minSignals}). ${omitted.belowMinRevisions} more files have fewer than ${settings.minRevisions} changes`
+      ],
+      extra: { omitted, population: { modules: model.graph.filesOf.size, eligibleChanges: model.activity.eligibleChanges } }
     };
   }
 });
@@ -20166,6 +20188,10 @@ function rankFindings(findings) {
   );
 }
 var percent2 = (ratio) => `${Math.round(ratio * 100)}%`;
+var shortfalls = (...parts2) => {
+  const missed = parts2.filter((part) => part !== null);
+  return missed.length === 0 ? {} : { belowGuideline: missed.join("; ") };
+};
 
 // packages/structure/src/packaging/registered-languages.ts
 var registered_languages_exports2 = {};
@@ -21233,7 +21259,8 @@ function pairFigures(model, from, to) {
     tail: round3(independenceTail(shared, a, b, total))
   };
 }
-var significant = (figures, model) => figures.shared >= model.settings.packages.minSupport && figures.lift >= model.settings.packages.minLift && figures.tail <= model.settings.packages.significance;
+var enoughEvidence = (figures, model) => figures.shared >= model.settings.packages.minSupport && figures.tail <= model.settings.packages.significance;
+var liftShortfall = (figures, model) => figures.lift >= model.settings.packages.minLift ? null : `lift ${figures.lift} against ${model.settings.packages.minLift}`;
 function lowClosure(context, closure) {
   const { model } = context;
   const findings = [];
@@ -21249,7 +21276,8 @@ function lowClosure(context, closure) {
     if (mine.standing === null || mine.closure === null) continue;
     const values = peersOf(pkg.id).map((p) => closure.get(p.id).closure).sort((a, b) => a - b);
     const quartile = values[Math.floor((values.length - 1) / 4)];
-    if (mine.closure > quartile || mine.closure >= values[values.length - 1]) continue;
+    const highest = values[values.length - 1];
+    const reaches = mine.closure <= quartile && mine.closure < highest;
     findings.push(
       raise(
         context,
@@ -21258,7 +21286,7 @@ function lowClosure(context, closure) {
         [pkg.id],
         `${percent2(1 - mine.closure)} of the ${mine.changes} changes to ${pkg.id} also touched another package, more than most packages with a comparable share of changes`,
         { closure: mine.closure, share: mine.share, changes: mine.changes, crossing: mine.crossing, comparable: mine.comparable, quartile: round3(quartile) },
-        { changeCost: context.cost.package(pkg.id) }
+        { changeCost: context.cost.package(pkg.id), ...reaches ? {} : { belowGuideline: `closure ${percent2(mine.closure)} against ${percent2(quartile)} at the lowest quartile of ${mine.comparable} comparable packages` } }
       )
     );
   }
@@ -21275,7 +21303,8 @@ function alwaysTogether(context) {
       const b = ids[j];
       if (model.activity.shared(a, b) === 0) continue;
       const figures = pairFigures(model, a, b);
-      if (!significant(figures, model) || figures.confidenceFromTo < minConfidence || figures.confidenceToFrom < minConfidence) continue;
+      if (!enoughEvidence(figures, model)) continue;
+      const lowest = Math.min(figures.confidenceFromTo, figures.confidenceToFrom);
       findings.push(
         raise(
           context,
@@ -21284,7 +21313,7 @@ function alwaysTogether(context) {
           [a, b],
           `${a} and ${b} changed together in ${figures.shared} changes, ${percent2(figures.confidenceFromTo)} of those to ${a} and ${percent2(figures.confidenceToFrom)} of those to ${b}: one unit of change split in two`,
           { ...figures },
-          { changeCost: context.cost.pair(a, b) }
+          { changeCost: context.cost.pair(a, b), ...shortfalls(lowest >= minConfidence ? null : `lowest confidence ${percent2(lowest)} against ${percent2(minConfidence)}`, liftShortfall(figures, model)) }
         )
       );
     }
@@ -21299,7 +21328,7 @@ function followers(context) {
     for (const to of targets) {
       if (model.activity.shared(from, to) === 0) continue;
       const figures = pairFigures(model, from, to);
-      if (!significant(figures, model) || figures.confidenceFromTo < minConfidence || figures.confidenceToFrom > followerReverseConfidence) continue;
+      if (!enoughEvidence(figures, model)) continue;
       findings.push(
         raise(
           context,
@@ -21308,7 +21337,14 @@ function followers(context) {
           [from, to],
           `${percent2(figures.confidenceFromTo)} of the changes to ${from} also touched ${to}, which it depends on, while only ${percent2(figures.confidenceToFrom)} of the changes to ${to} touched ${from}`,
           { ...figures },
-          { changeCost: context.cost.pair(from, to) }
+          {
+            changeCost: context.cost.pair(from, to),
+            ...shortfalls(
+              figures.confidenceFromTo >= minConfidence ? null : `confidence ${percent2(figures.confidenceFromTo)} against ${percent2(minConfidence)}`,
+              figures.confidenceToFrom <= followerReverseConfidence ? null : `reverse confidence ${percent2(figures.confidenceToFrom)} against at most ${percent2(followerReverseConfidence)}`,
+              liftShortfall(figures, model)
+            )
+          }
         )
       );
     }
@@ -21348,10 +21384,10 @@ function crossingUnits(context) {
     const total = [...tally2.partners.values()].reduce((sum, n) => sum + n, 0);
     const own = tally2.partners.get(tally2.owner) ?? 0;
     const [other, count2] = [...tally2.partners].filter(([id]) => id !== tally2.owner).sort(([ia, a], [ib, b]) => b - a || compareIds(ia, ib))[0] ?? [];
-    if (other === void 0 || count2 === void 0 || count2 < minSupport || count2 <= own || count2 / total <= crossingUnitShare) continue;
+    if (other === void 0 || count2 === void 0 || count2 < minSupport) continue;
     const ofPackage = overall.get(tally2.owner);
     const packageShare = (ofPackage.get(other) ?? 0) / [...ofPackage.values()].reduce((sum, n) => sum + n, 0);
-    if (count2 / total - packageShare < crossingUnitMargin) continue;
+    const margin = count2 / total - packageShare;
     findings.push(
       raise(
         context,
@@ -21360,7 +21396,14 @@ function crossingUnits(context) {
         [tally2.owner, other],
         `${path} in ${tally2.owner} changes with files of ${other} (${count2} of ${total} co-changed files) more than with its own package (${own})`,
         { revisions: tally2.changes, partnersInOther: count2, partnersInOwn: own, partners: total, share: round3(count2 / total), packageShare: round3(packageShare) },
-        { unit: path, changeCost: tally2.weighted.get(other) ?? 0 }
+        {
+          unit: path,
+          changeCost: tally2.weighted.get(other) ?? 0,
+          ...shortfalls(
+            count2 / total > crossingUnitShare ? null : `${percent2(count2 / total)} of partners in ${other} against more than ${percent2(crossingUnitShare)}`,
+            margin >= crossingUnitMargin ? null : `${percent2(margin)} more entangled than ${tally2.owner} against ${percent2(crossingUnitMargin)}`
+          )
+        }
       )
     );
   }
@@ -21754,7 +21797,8 @@ function tinyPackages(context) {
   const findings = [];
   for (const pkg of model.packages) {
     const content = contentFiles(model, pkg);
-    if (content > threshold || content > 2 || content >= median3) continue;
+    if (content > 2) continue;
+    const reaches = content <= threshold && content < median3;
     findings.push(
       raise(
         context,
@@ -21763,7 +21807,10 @@ function tinyPackages(context) {
         [pkg.id],
         `${pkg.id} holds ${content} file${content === 1 ? "" : "s"} beside its manifest: the package costs more to have than it contains`,
         { files: content, percentileSize: threshold, percentile: model.settings.packages.tinyPercentile },
-        { changeCost: context.cost.package(pkg.id) }
+        {
+          changeCost: context.cost.package(pkg.id),
+          ...reaches ? {} : { belowGuideline: `${content} file${content === 1 ? "" : "s"} against ${threshold} at the ${model.settings.packages.tinyPercentile}th percentile and a median of ${median3}` }
+        }
       )
     );
   }
@@ -21820,7 +21867,7 @@ async function releaseFindings(context, reuse, root) {
       );
     }
     const profile = reuse.profiles.get(pkg.id);
-    if (profile && profile.surface.length > 0 && profile.passThroughShare >= model.settings.packages.passThroughShare) {
+    if (profile && profile.surface.length > 0 && profile.passThroughShare > 0) {
       findings.push(
         raise(
           context,
@@ -21829,7 +21876,10 @@ async function releaseFindings(context, reuse, root) {
           [pkg.id],
           `${percent2(profile.passThroughShare)} of what ${pkg.id} exports is defined in other packages and only passed along: a shallow module at package level`,
           { surface: profile.surface.length, passThroughShare: profile.passThroughShare },
-          { changeCost: context.cost.package(pkg.id) }
+          {
+            changeCost: context.cost.package(pkg.id),
+            ...profile.passThroughShare >= model.settings.packages.passThroughShare ? {} : { belowGuideline: `${percent2(profile.passThroughShare)} against ${percent2(model.settings.packages.passThroughShare)}` }
+          }
         )
       );
     }
@@ -21880,7 +21930,7 @@ function partialUse(context, profile) {
   const { partialUseShare, partialUseMinSurface } = settings.packages;
   if (profile.surface.length < partialUseMinSurface || profile.consumers.length === 0) return [];
   const small = profile.consumers.filter((c) => c.share < partialUseShare);
-  if (small.length * 2 <= profile.consumers.length) return [];
+  if (small.length === 0) return [];
   return [
     raise(
       context,
@@ -21895,7 +21945,7 @@ function partialUse(context, profile) {
         medianShare: profile.medianShare,
         shares: profile.consumers.map((c) => `${c.package}:${c.share}`)
       },
-      { changeCost: context.cost.package(profile.package) }
+      { changeCost: context.cost.package(profile.package), ...small.length * 2 > profile.consumers.length ? {} : { belowGuideline: `${small.length} of ${profile.consumers.length} consumers against more than half` } }
     )
   ];
 }
@@ -21912,7 +21962,6 @@ function disjointReuse(context, profile) {
       overlap = Math.max(overlap, shared / (a.size + b.length - shared));
     }
   }
-  if (overlap > disjointOverlap) return [];
   return [
     raise(
       context,
@@ -21926,7 +21975,7 @@ function disjointReuse(context, profile) {
         overlap: round3(overlap),
         groups: used.map((c) => `${c.exports.map(shortName).join("+")}:${c.consumers.join("+")}`)
       },
-      { changeCost: context.cost.package(profile.package) }
+      { changeCost: context.cost.package(profile.package), ...overlap > disjointOverlap ? { belowGuideline: `overlap ${percent2(overlap)} against at most ${percent2(disjointOverlap)}` } : {} }
     )
   ];
 }
@@ -21959,7 +22008,6 @@ function overexposed(context, profile) {
   const { overexposedShare } = context.model.settings.packages;
   if (profile.consumers.length === 0 || profile.surface.length === 0 || profile.unused.length === 0) return [];
   const share2 = profile.unused.length / profile.surface.length;
-  if (share2 < overexposedShare) return [];
   return [
     raise(
       context,
@@ -21968,7 +22016,7 @@ function overexposed(context, profile) {
       [profile.package],
       `${profile.unused.length} of the ${profile.surface.length} exports of ${profile.package} are used by no other package: ${profile.unused.slice(0, 5).map(shortName).join(", ")}${profile.unused.length > 5 ? ", ..." : ""}`,
       { unused: profile.unused.length, surface: profile.surface.length, share: round3(share2), names: profile.unused.slice(0, 10).map(shortName) },
-      { changeCost: 0 }
+      { changeCost: 0, ...share2 >= overexposedShare ? {} : { belowGuideline: `${percent2(share2)} of exports unused against ${percent2(overexposedShare)}` } }
     )
   ];
 }
@@ -22833,7 +22881,7 @@ var outcome = {
 
 // packages/structure/src/packaging/rules.ts
 var rule = (summary, ...lines) => ({ summary, explanation: lines.join("\n") });
-var caveat = "A finding raises a question for review and never proves a fault. Findings about a package inside the grace period (structure.packages.graceDays) are tentative.";
+var caveat = "A finding raises a question for review and never proves a fault. Findings about a package inside the grace period (structure.packages.graceDays) are tentative. A finding whose measured value is below its guideline is still listed, after the others, with aboveGuideline false; it feeds no candidate and no balance.";
 var rules7 = {
   "low-closure": rule(
     "Changes to this package usually need another package too",

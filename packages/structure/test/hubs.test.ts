@@ -3,6 +3,8 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "./support/golden.ts";
 import { hubRepository } from "./support/hub-scenarios.ts";
+import { runInProcess } from "@code-health/fixtures/cli-testing";
+import { cli } from "../src/cli.ts";
 import { runStructure } from "./support/run.ts";
 import { compareHubs, type Hub as ListedHub } from "../src/hubs.ts";
 
@@ -62,6 +64,15 @@ describe("structure hubs", () => {
     expect(hub!.signals.appendShapedEdits.collection).toEqual({ line: 15, text: "export const routes = [" });
     expect(hub!.signals.contention).toMatchObject({ maxAuthors: 3 });
     expectGolden("hubs", "hubs", stdout);
+  });
+
+  test("counts the files it omitted for reaching fewer than two signals, in JSON and under the table", async () => {
+    const run = await runStructure(routeTable.path, ["hubs", "--json"]);
+    const { omitted } = JSON.parse(run.stdout) as { omitted: Record<string, number> };
+    expect(omitted).toEqual({ minSignals: 2, considered: 6, files: 5, withoutDiffs: 5, belowMinRevisions: 0 });
+    const table = await runInProcess(cli, routeTable.path, ["hubs"], true);
+    expect(table.stdout).toContain("Notice: Omitted 5 of 6 files with at least");
+    expect(table.stdout).toContain("each reached fewer than 2 of the 4 signals (5 of them without reading their diffs");
   });
 
   const reached = (hub: Hub) => Object.entries(hub.signals).filter(([, signal]) => signal.reached).map(([name]) => name).sort();

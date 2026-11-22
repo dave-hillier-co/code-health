@@ -380,6 +380,98 @@
         "aboveGuideline": false,
         "changeCost": 2.139,
         "evidence": {
+          "confidenceFromTo": 0.5,
+          "confidenceToFrom": 1,
+          "fromChanges": 6,
+          "lift": 16.167,
+          "shared": 3,
+          "tail": 0,
+          "toChanges": 3
+        },
+        "id": "always-together:packages/lib->packages/lib-extra",
+        "kind": "always-together",
+        "packages": [
+          "packages/lib",
+          "packages/lib-extra"
+        ],
+        "principle": "CCP",
+        "priority": "normal",
+        "summary": "packages/lib and packages/lib-extra changed together in 3 changes, 50% of those to packages/lib and 100% of those to packages/lib-extra: one unit of change split in two (below the guideline: lowest confidence 50% against 60%)",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "aboveGuideline": false,
+        "changeCost": 2.139,
+        "evidence": {
+          "packageShare": 1,
+          "partners": 3,
+          "partnersInOther": 3,
+          "partnersInOwn": 0,
+          "revisions": 3,
+          "share": 1
+        },
+        "id": "crossing-unit:packages/lib->packages/lib-extra->packages/lib/package.json",
+        "kind": "crossing-unit",
+        "packages": [
+          "packages/lib",
+          "packages/lib-extra"
+        ],
+        "principle": "CCP",
+        "priority": "normal",
+        "summary": "packages/lib/package.json in packages/lib changes with files of packages/lib-extra (3 of 3 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/lib against 25%)",
+        "tentative": false,
+        "unit": "packages/lib/package.json"
+      },
+      {
+        "aboveGuideline": false,
+        "changeCost": 2.139,
+        "evidence": {
+          "packageShare": 1,
+          "partners": 3,
+          "partnersInOther": 3,
+          "partnersInOwn": 0,
+          "revisions": 3,
+          "share": 1
+        },
+        "id": "crossing-unit:packages/lib-extra->packages/lib->packages/lib-extra/package.json",
+        "kind": "crossing-unit",
+        "packages": [
+          "packages/lib-extra",
+          "packages/lib"
+        ],
+        "principle": "CCP",
+        "priority": "normal",
+        "summary": "packages/lib-extra/package.json in packages/lib-extra changes with files of packages/lib (3 of 3 co-changed files) more than with its own package (0) (below the guideline: 0% more entangled than packages/lib-extra against 25%)",
+        "tentative": false,
+        "unit": "packages/lib-extra/package.json"
+      },
+      {
+        "aboveGuideline": false,
+        "changeCost": 2.139,
+        "evidence": {
+          "changes": 6,
+          "closure": 0.5,
+          "comparable": 5,
+          "crossing": 3,
+          "quartile": 0,
+          "share": 0.062
+        },
+        "id": "low-closure:packages/lib",
+        "kind": "low-closure",
+        "packages": [
+          "packages/lib"
+        ],
+        "principle": "CCP",
+        "priority": "normal",
+        "summary": "50% of the 6 changes to packages/lib also touched another package, more than most packages with a comparable share of changes (below the guideline: closure 50% against 0% at the lowest quartile of 5 comparable packages)",
+        "tentative": false,
+        "unit": null
+      },
+      {
+        "aboveGuideline": false,
+        "changeCost": 2.139,
+        "evidence": {
           "consumers": 3,
           "revisions": 6,
           "share": 0,

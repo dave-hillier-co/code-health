@@ -23,7 +23,7 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/structure.mjs packages evidence "packages/ui->pa
 Run them from the repository root. They analyse `HEAD`. The subcommands:
 
 - `list`: every package with its kind (internal or published), declared purpose, consumers, `Ca`, `Ce`, instability `I`, abstractness `A`, distance `D`, closure beside its share of changes, and change frequency.
-- `cohesion [PACKAGE]`: the closure, reuse and release findings, and for each package the balance between the three forces.
+- `cohesion [PACKAGE]`: the closure, reuse and release findings, and for each package the balance between the three forces. Rows below their guideline (`low-closure`, `always-together`, `follower`, `crossing-unit`, `partial-use`, `disjoint-reuse`, `overexposed`, `pass-through-package`, `tiny`) are listed last, with `aboveGuideline: false` and the shortfall at the end of the summary. They feed no candidate and no balance.
 - `coupling`: package cycles, hidden cycles, dependencies against stability, the zones, volatile interfaces. Rows below their guideline are listed last, with `aboveGuideline: false`.
 - `boundaries [PACKAGE]`: deep imports, undeclared and unused dependencies, purpose mismatches. It prints a notice for each ecosystem and check it does not support, so a missing finding there says nothing.
 - `candidates [--kind merge|split|move-unit|narrow-interface|fix-manifest|break-dependency]`: the findings combined into proposals, ranked by the recency-weighted changes that crossed the boundary in question.

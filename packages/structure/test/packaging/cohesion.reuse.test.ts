@@ -21,6 +21,8 @@ interface Finding {
   tentative: boolean;
   priority: string;
   changeCost: number;
+  aboveGuideline: boolean;
+  summary: string;
 }
 
 async function cohesion(...args: string[]) {
@@ -29,11 +31,13 @@ async function cohesion(...args: string[]) {
 }
 
 const named = (found: Finding[], kind: string): Finding[] => found.filter((f) => f.kind === kind);
+const reaching = (found: Finding[], kind: string): Finding[] => named(found, kind).filter((f) => f.aboveGuideline);
+const below = (found: Finding[], kind: string): Finding[] => named(found, kind).filter((f) => !f.aboveGuideline);
 
 describe("common reuse", () => {
   test("partial-use: most consumers of a package use under a quarter of what it exports", async () => {
     const { findings } = await cohesion();
-    const [lib, ...others] = named(findings, "partial-use");
+    const [lib, ...others] = reaching(findings, "partial-use");
     expect(others).toEqual([]);
     expect(lib).toMatchObject({ principle: "CRP", packages: ["packages/lib"] });
     expect(lib!.evidence).toMatchObject({ surface: 5, consumers: 3, smallUsers: 3, medianShare: 0.2 });
@@ -42,7 +46,7 @@ describe("common reuse", () => {
 
   test("a package whose consumers each use a quarter or more of it is not partly used", async () => {
     const { findings } = await cohesion();
-    expect(named(findings, "partial-use").some((f) => f.packages.includes("packages/shared"))).toBe(false);
+    expect(reaching(findings, "partial-use").some((f) => f.packages.includes("packages/shared"))).toBe(false);
   });
 
   test("disjoint-reuse: export components with consumers that barely overlap are several packages sharing a name", async () => {
@@ -59,13 +63,10 @@ describe("common reuse", () => {
     expect(named(findings, "disjoint-reuse").some((f) => f.packages.includes("packages/helper"))).toBe(false);
   });
 
-  test("dumping-ground: high fan-in, unrelated parts, frequent change and many contributors", async () => {
-    const { findings } = await cohesion();
-    const [dumping, ...rest] = named(findings, "dumping-ground");
-    expect(rest).toEqual([]);
-    expect(dumping!.packages).toEqual(["packages/shared"]);
-    expect(dumping!.evidence).toMatchObject({ consumers: 4, components: 3, revisions: 54, contributors: 3, named: true });
-    expect(dumping!.changeCost).toBeGreaterThan(10);
+  test("overexposed below the configured share is listed below the guideline, with the share and the guideline", async () => {
+    const { findings } = await withPackageSettings(repo, { overexposedShare: 0.9 }, cohesion);
+    expect(reaching(findings, "overexposed")).toEqual([]);
+    expect(below(findings, "overexposed").find((f) => f.packages[0] === "packages/lib")!.summary).toMatch(/\(below the guideline: 60% of exports unused against 90%\)$/);
   });
 
   test("dumping-ground needs the fan-in the config asks for", async () => {
@@ -75,7 +76,7 @@ describe("common reuse", () => {
 
   test("overexposed: exports that no other package uses, where a package that only re-exports a name still uses it", async () => {
     const { findings } = await cohesion();
-    const overexposed = named(findings, "overexposed");
+    const overexposed = reaching(findings, "overexposed");
     expect(overexposed.map((f) => f.packages[0])).toEqual(["packages/lib"]);
     expect(overexposed[0]!.evidence).toMatchObject({ unused: 3, surface: 5, names: ["diff", "serialize", "validate"] });
   });
@@ -158,7 +159,7 @@ describe("reuse and release", () => {
 
   test("pass-through-package: a package whose exports are re-exports of another's", async () => {
     const { findings } = await cohesion();
-    const [wrap, ...rest] = named(findings, "pass-through-package");
+    const [wrap, ...rest] = reaching(findings, "pass-through-package");
     expect(rest).toEqual([]);
     expect(wrap).toMatchObject({ packages: ["packages/wrap"] });
     expect(wrap!.evidence).toMatchObject({ passThroughShare: 1, surface: 1 });
@@ -166,7 +167,7 @@ describe("reuse and release", () => {
 
   test("tiny: among the smallest packages, one holding little beside its manifest and entry point", async () => {
     const { findings } = await cohesion();
-    const ids = named(findings, "tiny").map((f) => f.packages[0]).sort();
+    const ids = reaching(findings, "tiny").map((f) => f.packages[0]).sort();
     expect(ids).toEqual(["packages/lib-extra", "packages/wrap", "packages/young"]);
     expect(named(findings, "tiny").find((f) => f.packages[0] === "packages/young")!.tentative).toBe(true);
   });

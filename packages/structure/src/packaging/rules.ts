@@ -2,7 +2,8 @@ import type { Rule } from "@code-health/cli-kit/run-cli";
 
 const rule = (summary: string, ...lines: string[]): Rule => ({ summary, explanation: lines.join("\n") });
 
-const caveat = "A finding raises a question for review and never proves a fault. Findings about a package inside the grace period (structure.packages.graceDays) are tentative.";
+const caveat =
+  "A finding raises a question for review and never proves a fault. Findings about a package inside the grace period (structure.packages.graceDays) are tentative. A finding whose measured value is below its guideline is still listed, after the others, with aboveGuideline false; it feeds no candidate and no balance.";
 
 /** What `structure explain <finding>` says about each finding of `structure packages`. */
 export const rules: Record<string, Rule> = {

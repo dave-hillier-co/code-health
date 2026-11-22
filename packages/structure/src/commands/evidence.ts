@@ -61,7 +61,7 @@ export const command = analysisCommand(name, {
     if (target.kind === "hub") {
       const level = target.level ?? "folder";
       model = await buildModel(context, history, level, undefined, { everyPair: true });
-      const hub = (await findHubs({ root: context.repo.root, headSha: history.view.headSha, model, changes: history.filtered.changes, settings })).find((h) => h.id === target.id);
+      const hub = (await findHubs({ root: context.repo.root, headSha: history.view.headSha, model, changes: history.filtered.changes, settings })).hubs.find((h) => h.id === target.id);
       if (!hub) throw usageError(`no registration hub "${target.id.slice("hub:".length)}" at level ${level} at the analysed commit`);
       const census = await buildCensus(await treeFromRef(context.repo.root, history.view.headSha), model.project, settings.census);
       return {

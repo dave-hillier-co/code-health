@@ -12,8 +12,15 @@ export const rules: Record<string, Rule> = {
   "registration-hub": {
     summary: "A central file that every feature has to edit: a route table, menu, handler map or module list",
     explanation: [
-      "Four signals describe one. A file is listed when at least two reach their guidelines. Files that\n      reach all four are listed first, then three, then two, and `signalsReached` and each signal's\n      `reached` say which. Within one count, rows sort by the figures behind the signals: features,\n      outward share, append share, authors, then revisions.",
+      "Four signals describe one. A file is listed when at least two reach their guidelines. Files that",
+      "reach all four are listed first, then three, then two, and `signalsReached` and each signal's",
+      "`reached` say which. Within one count, rows sort by the figures behind the signals: features,",
+      "outward share, append share, authors, then revisions.",
       "",
+      "Files that reach fewer than two signals are omitted, and `omitted` (JSON) and the notice under",
+      "the table say how many. The fourth signal is read from `git log -p` for the file, one process per",
+      "file, so a file that reaches none of the three signals that need no diff is omitted without",
+      "reading its diff: it could reach one signal at most. `omitted.withoutDiffs` counts those files.",
       "",
       "1. Star co-change: at least structure.hubMinFeatures folders (or components) co-change with the",
       "   file significantly, and at least structure.hubMinConfidence percent of each one's changes",
@@ -49,7 +56,7 @@ export const command = analysisCommand(name, {
     const by = readLevel("by", context.values.by, views, "folder");
     const model = await buildModel(context, history, by, undefined, { everyPair: true });
     const { settings } = history;
-    const rows = await findHubs({
+    const { hubs: rows, omitted } = await findHubs({
       root: context.repo.root,
       headSha: history.view.headSha,
       model,
@@ -72,7 +79,10 @@ export const command = analysisCommand(name, {
       },
       results: rows,
       columns: ["id", "featureCount", "revisions", "signals"],
-      extra: { population: { modules: model.graph.filesOf.size, eligibleChanges: model.activity.eligibleChanges } },
+      notices: [
+        `Omitted ${omitted.files} of ${omitted.considered} files with at least ${settings.minRevisions} changes: each reached fewer than ${omitted.minSignals} of the 4 signals (${omitted.withoutDiffs} of them without reading their diffs, because the other three signals left them unable to reach ${omitted.minSignals}). ${omitted.belowMinRevisions} more files have fewer than ${settings.minRevisions} changes`,
+      ],
+      extra: { omitted, population: { modules: model.graph.filesOf.size, eligibleChanges: model.activity.eligibleChanges } },
     };
   },
 });
