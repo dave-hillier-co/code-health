@@ -74,7 +74,7 @@ describe("when it speaks", () => {
     expect(JSON.parse(stdout)).toEqual({
       hookSpecificOutput: {
         hookEventName: "PostToolUse",
-        additionalContext: `${simple}: \`run\` nesting depth rose from 1 to 3 (threshold 2). Run \`complexity explain ${simple}#run\` for the breakdown.`,
+        additionalContext: `${simple}: \`run\` nesting depth rose from 1 to 3 (guideline 2, ratio 1.5). Worth a look: run \`complexity explain ${simple}#run\` for the breakdown.`,
       },
     });
   });
@@ -83,14 +83,14 @@ describe("when it speaks", () => {
     enable();
     write(tangled, nested(4, "knot"));
     expect(note(await edit(tangled))).toBe(
-      `${tangled}: \`knot\` nesting depth is 4 in a new unit (threshold 2). Run \`complexity explain ${tangled}#knot\` for the breakdown.`,
+      `${tangled}: \`knot\` nesting depth is 4 in a new or renamed unit (guideline 2, ratio 2). Worth a look: run \`complexity explain ${tangled}#knot\` for the breakdown.`,
     );
   });
 
   test("a unit already over a threshold that got worse by more than the delta speaks", async () => {
     enable();
     write(busy, nested(4));
-    expect(note(await edit(busy))).toContain("`run` nesting depth rose from 3 to 4 (threshold 2)");
+    expect(note(await edit(busy))).toContain("`run` nesting depth rose from 3 to 4 (guideline 2, ratio 2)");
   });
 
   test("the keyword count stands in for cyclomatic complexity, one below it", async () => {
@@ -103,7 +103,7 @@ describe("when it speaks", () => {
   test("with several findings it names the worst and counts the rest", async () => {
     enable();
     write(simple, nested(3) + nested(5, "deeper"));
-    expect(note(await edit(simple))).toContain("`deeper` nesting depth is 5 in a new unit (threshold 2), and 1 more finding in this file.");
+    expect(note(await edit(simple))).toContain("`deeper` nesting depth is 5 in a new or renamed unit (guideline 2, ratio 2.5), and 1 more finding in this file.");
   });
 
   test("Write and MultiEdit are watched as well as Edit", async () => {
@@ -142,7 +142,7 @@ describe("when it stays silent", () => {
     enable();
     write(simple, nested(2));
     expect(await edit(simple)).toBe("");
-    expect(state().lastRun?.outcome).toBe("silent: nothing crossed a threshold or worsened");
+    expect(state().lastRun?.outcome).toBe("printed nothing: nothing went above a guideline or worsened");
   });
 
   test("a unit over a threshold that did not get worse, or got better", async () => {
@@ -165,7 +165,7 @@ describe("when it stays silent", () => {
     expect(await edit("notes.txt")).toBe("");
     write("tool.rb", "def run(a)\n  if a\n    if a\n      if a\n        a\n      end\n    end\n  end\nend\n");
     expect(await edit("tool.rb")).toBe("");
-    expect(state().lastRun?.outcome).toMatch(/^silent: no per-function metrics/);
+    expect(state().lastRun?.outcome).toMatch(/^printed nothing: no per-function metrics/);
   });
 
   test("a file type mapped to a lexer profile by config, whose values are unverified", async () => {
@@ -174,7 +174,7 @@ describe("when it stays silent", () => {
     write("code-health.json", JSON.stringify({ ...config, languages: { zig: "rust" } }));
     write("tool.zig", "pub fn run(a: i32) -> i32 {\n  if a > 1 {\n    if a > 2 {\n      if a > 3 {\n        return a;\n      }\n    }\n  }\n  0\n}\n");
     expect(await edit("tool.zig")).toBe("");
-    expect(state().lastRun?.outcome).toMatch(/^silent: no per-function metrics \(.*unverified/);
+    expect(state().lastRun?.outcome).toMatch(/^printed nothing: no per-function metrics \(.*unverified/);
   });
 
   test("an excluded file", async () => {
@@ -216,7 +216,7 @@ describe("when it stays silent", () => {
     enable();
     write(simple, nested(5));
     expect(await edit(simple, "s", "Edit", 0)).toBe("");
-    expect(state("s").lastRun?.outcome).toBe("silent: over the time budget");
+    expect(state("s").lastRun?.outcome).toBe("printed nothing: over the time budget");
   });
 });
 
@@ -227,7 +227,7 @@ describe("once per file per session", () => {
     expect(await edit(simple)).not.toBe("");
     write(simple, nested(6));
     expect(await edit(simple)).toBe("");
-    expect(state().lastRun?.outcome).toBe("silent: already spoke about this file");
+    expect(state().lastRun?.outcome).toBe("printed nothing: already printed for this file");
   });
 
   test("another file in the session, and the same file in another session, are spoken about", async () => {
@@ -289,6 +289,6 @@ describe("what it writes", () => {
     await edit(simple);
     expect(state().edited).toEqual([simple]);
     expect(state().spokenAbout).toEqual([simple]);
-    expect(state().lastRun?.outcome).toBe("spoke");
+    expect(state().lastRun?.outcome).toBe("printed");
   });
 });

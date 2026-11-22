@@ -153,23 +153,23 @@ good commit. A score that fell while the code got harder to follow is a bad one.
 
 ## Guard against regressions
 
-`check` is the ratchet for CI and pre-commit. It compares the functions that changed with a base revision, and fails
-(exit 1) on a new function over a threshold, or an existing one over a threshold that got worse. It never fails a
-function that stays under its thresholds, and it does not need a baseline file. See
+`check` is the ratchet for CI and pre-commit. It compares the functions that changed with a base revision, and exits
+with 1 on a new function above a guideline, or an existing one above a guideline that got worse. It never does so for a
+function that stays under its guidelines, and it does not need a baseline file. See
 [references/ci.md](references/ci.md) for the wiring, the exit codes and the configuration.
 
 Run `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs check --json` before committing work that adds or changes functions.
-If it fails, simplify the function it names: do not raise a threshold to make it pass. A raised threshold or a
+If it exits with 1, look at the function it names and simplify it: do not raise a guideline to make it pass. A raised guideline or a
 per-path override in `code-health.json` is a decision for the owner of the code, with a reason recorded in the commit.
 
 ## Feedback while editing
 
 A repository can turn on a post-edit hook (`complexity.hook.enabled` in `code-health.json`, off by default). After each
-`Edit`, `Write` or `MultiEdit` it measures the edited file, and when a function crossed a threshold or got worse since
+`Edit`, `Write` or `MultiEdit` it measures the edited file, and when a function went above a guideline or got worse since
 the session's last measurement (or HEAD) it adds one line naming the function, the metric and the before and after values,
-with the `explain` command. It speaks once per file per session. Treat the line as the cheapest moment to simplify: the code
+with the guideline and the `explain` command. It prints at most once per file per session. Treat the line as the cheapest moment to simplify: the code
 is in your context and nothing is built on it yet. Apply the same remedy policy, in place first. Do not respond by
-splitting the function to silence the hook. If the user asks why it is silent or noisy, read
+splitting the function to stop the hook printing. If the user asks why it printed nothing or printed too much, read
 [references/hook.md](references/hook.md).
 
 ## Reporting

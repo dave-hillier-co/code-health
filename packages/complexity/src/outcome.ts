@@ -1,3 +1,4 @@
+import { defaultFixPatterns } from "@code-health/cochange/risk/fix-patterns";
 import { existsSync } from "node:fs";
 import { usageError } from "@code-health/cli-kit/errors";
 import { checkouts } from "@code-health/history/checkouts";
@@ -80,8 +81,9 @@ const round3 = (value: number): number => Math.round(value * 1000) / 1000;
 
 const mean = (values: number[]): number | null => (values.length === 0 ? null : round3(values.reduce((sum, value) => sum + value, 0) / values.length));
 
-/** A subject that starts with fix, bugfix or hotfix, the common commit message convention for a defect fix. */
-const FIX_SUBJECT = /^(fix|bugfix|hotfix)\b/i;
+/** A subject matching the suite's default fix patterns, the same definition of a defect fix that cochange's risk factors use. */
+const FIX_SUBJECTS = defaultFixPatterns.map((pattern) => new RegExp(pattern, "i"));
+export const isFixSubject = (subject: string): boolean => FIX_SUBJECTS.some((pattern) => pattern.test(subject));
 
 const day = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);
 const iso = (seconds: number): string => new Date(seconds * 1000).toISOString();
@@ -125,7 +127,7 @@ function changeFigures(
     const touched = change.files.filter((file) => members.has(file.path) || members.has(file.fileId));
     if (touched.length === 0) continue;
     churn.push(touched.reduce((sum, file) => sum + (file.added ?? 0) + (file.deleted ?? 0), 0));
-    if (change.shas.some((sha) => FIX_SUBJECT.test(subjectOf(sha)))) fixes++;
+    if (change.shas.some((sha) => isFixSubject(subjectOf(sha)))) fixes++;
   }
   return {
     changes: churn.length,

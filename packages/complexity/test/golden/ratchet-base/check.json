@@ -20,9 +20,9 @@
     "added": 0,
     "changed": 0,
     "compared": 0,
+    "findings": 0,
     "moved": 0,
-    "removed": 0,
-    "violations": 0
+    "removed": 0
   },
   "tool": "complexity",
   "truncated": {

@@ -67,31 +67,31 @@ async function consider(
   settings: ComplexitySettings,
   previous: FileMeasurement | undefined,
 ): Promise<Decision> {
-  if (settings.isExcluded(file)) return { note: null, outcome: "silent: the file is excluded" };
-  if (!settings.analyseTests && (await isTestPath(file))) return { note: null, outcome: "silent: tests are not analysed" };
+  if (settings.isExcluded(file)) return { note: null, outcome: "printed nothing: the file is excluded" };
+  if (!settings.analyseTests && (await isTestPath(file))) return { note: null, outcome: "printed nothing: tests are not analysed" };
   const text = readFileSync(join(root, file), "utf8");
-  if (text.length > MAX_BYTES || text.includes("\0")) return { note: null, outcome: "silent: the file is binary or too large" };
+  if (text.length > MAX_BYTES || text.includes("\0")) return { note: null, outcome: "printed nothing: the file is binary or too large" };
 
   const measured = measureFile(file, text, { ...settings, thresholds: thresholdsFor(settings, file) });
-  if ("unmeasured" in measured) return { note: null, outcome: `silent: no per-function metrics (${measured.unmeasured})` };
+  if ("unmeasured" in measured) return { note: null, outcome: `printed nothing: no per-function metrics (${measured.unmeasured})` };
 
   const before = previous ?? (await measurementAtHead(root, file, settings));
   const findings = findingsFor(before, measured.measurement, thresholdsFor(settings, file), settings.delta);
   if (findings.length === 0) {
-    return { note: null, outcome: "silent: nothing crossed a threshold or worsened", measurement: measured.measurement };
+    return { note: null, outcome: "printed nothing: nothing went above a guideline or worsened", measurement: measured.measurement };
   }
-  return { note: describeFindings(file, findings, explainCommand(file)), outcome: "spoke", measurement: measured.measurement };
+  return { note: describeFindings(file, findings, explainCommand(file)), outcome: "printed", measurement: measured.measurement };
 }
 
 /**
  * The post-edit feedback hook, for a `PostToolUse` event on an edit. Returns what to print on stdout:
- * the `hookSpecificOutput` JSON, or the empty string for silence. It never throws, never refreshes the
+ * the `hookSpecificOutput` JSON, or the empty string when nothing is printed. It never throws, never refreshes the
  * cache and never writes anything except its own session state, so the process can always exit 0.
  *
- * It is silent unless the repository enables it, the edited file is inside the repository and measurable
- * by the lexical layer at the configured agreement bar, a unit crossed a threshold or worsened by more
+ * It prints nothing unless the repository enables it, the edited file is inside the repository and measurable
+ * by the lexical layer at the configured agreement bar, a unit went above a guideline or worsened by more
  * than `complexity.delta` since the session's last measurement of the file (or HEAD), and the file has
- * not been spoken about already this session.
+ * not been printed for already this session.
  */
 export async function runHook(request: HookRequest): Promise<string> {
   const started = request.startedAt ?? performance.now();
@@ -108,11 +108,11 @@ export async function runHook(request: HookRequest): Promise<string> {
     });
 
     const decision: Decision = state.spokenAbout.includes(file)
-      ? { note: null, outcome: "silent: already spoke about this file" }
+      ? { note: null, outcome: "printed nothing: already printed for this file" }
       : await within(request.budgetMs ?? DEFAULT_BUDGET_MS, started, consider(root, file, settings, state.measurements[file]), {
           note: null,
-          outcome: "silent: over the time budget",
-        }).catch(() => ({ note: null, outcome: "silent: could not measure the file" }));
+          outcome: "printed nothing: over the time budget",
+        }).catch(() => ({ note: null, outcome: "printed nothing: could not measure the file" }));
     updateSession(root, sessionId, HOOK_NAME, (current) => {
       if (decision.note !== null && !current.spokenAbout.includes(file)) current.spokenAbout.push(file);
       if (decision.measurement !== undefined) current.measurements[file] = decision.measurement;

@@ -21,13 +21,14 @@
       "delta": 1,
       "endLine": 12,
       "finding": "worsened",
+      "guideline": 6,
       "id": "src/pricing.ts#price",
       "metric": "cognitive",
       "path": "src/pricing.ts",
+      "ratio": 1.5,
       "renamedFrom": null,
       "score": 3,
       "startLine": 1,
-      "threshold": 6,
       "unit": "price"
     },
     {
@@ -36,13 +37,14 @@
       "delta": 1,
       "endLine": 12,
       "finding": "worsened",
+      "guideline": 4,
       "id": "src/pricing.ts#price",
       "metric": "cyclomatic",
       "path": "src/pricing.ts",
+      "ratio": 1.5,
       "renamedFrom": null,
       "score": 2,
       "startLine": 1,
-      "threshold": 4,
       "unit": "price"
     }
   ],
@@ -51,9 +53,9 @@
     "added": 0,
     "changed": 1,
     "compared": 1,
+    "findings": 2,
     "moved": 0,
-    "removed": 0,
-    "violations": 2
+    "removed": 0
   },
   "tool": "complexity",
   "truncated": {

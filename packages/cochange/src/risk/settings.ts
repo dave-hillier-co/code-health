@@ -1,6 +1,7 @@
 import { configError } from "@code-health/cli-kit/errors";
 import type { LoadedConfig } from "@code-health/cli-kit/config";
 import { TOOL } from "../tool.ts";
+import { defaultFixPatterns } from "./fix-patterns.ts";
 
 export const PLACEMENT_MODES = ["self", "any", "off"] as const;
 export type PlacementMode = (typeof PLACEMENT_MODES)[number];
@@ -82,7 +83,7 @@ export const riskDefaults = {
     "requirements.txt",
   ] as string[],
   /** Commit messages (regular expressions, case-insensitive) that mark a fix, and a revert. */
-  fixPatterns: ["^fix(es|ed)?\\b", "^bugfix", "^hotfix", "\\bfix(es|ed)?\\b.*#\\d+", "^merge .*\\b(fix|hotfix|bugfix)[/-]"] as string[],
+  fixPatterns: defaultFixPatterns,
   revertPatterns: ["^revert\\b"] as string[],
   /** Backtest: a fix that touches a change's files within this many days counts as trouble. */
   followUpDays: 30,

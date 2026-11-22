@@ -1,6 +1,6 @@
 # Complexity in CI and pre-commit
 
-`check` is a ratchet, not a gate. A hard threshold on an existing codebase produces a backlog nobody burns down, or a
+`check` is a ratchet. It is the one command that exits with 1, because the user runs it as a gate. A hard threshold on an existing codebase produces a backlog nobody burns down, or a
 blanket waiver. `check` compares against a base revision instead, so only functions that are new or got worse can fail.
 
 ```
@@ -10,23 +10,23 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs check --json
 In CI the plugin directory is wherever the bundle is checked out: call
 `node <path-to-plugin>/dist/complexity.mjs check` directly.
 
-## What fails
+## When it exits with 1
 
 `check` measures the functions of the files that differ from the base, on both sides, and matches them by identity
-(`path#Qualified.name`). It fails with exit code 1 when:
+(`path#Qualified.name`). It exits with 1 when:
 
-- a **new** function is over a threshold on any gated metric (`new`), or
-- an **existing** function is over a threshold on a metric and that metric rose by more than `complexity.delta`
-  (`worsened`). The default delta is 0, so any rise fails.
+- a **new** function is above a guideline on any gated metric (`new`), or
+- an **existing** function is above a guideline on a metric and that metric rose by more than `complexity.delta`
+  (`worsened`). The default delta is 0, so any rise counts.
 
-A function that stays under its thresholds never fails, however much it changed. A function over a threshold that did
-not get worse never fails either. Functions in files the change did not touch are not read.
+A function that stays under its guidelines never counts, however much it changed. A function above a guideline that did
+not get worse does not count either. Functions in files the change did not touch are not read.
 
 A function that was renamed or moved is matched to the old one by body similarity (`moveSimilarity`, default 0.8). It is
-compared with its old self, so moving a function unchanged passes and moving it while making it worse fails. A function
-rewritten beyond recognition has no match and counts as new, so it must be under the thresholds.
+compared with its old self, so moving a function unchanged does not count and moving it while making it worse does. A function
+rewritten beyond recognition has no match and counts as new, so it must be under the guidelines.
 
-Each result row names the function, the `finding`, the `metric`, the values before and after, and the threshold. The
+Each result row names the function, the `finding`, the `metric`, the values before and after, the guideline and the ratio of the value to it. The
 `summary` counts what was compared. Changed files in languages with no structural adapter are counted in
 `unsupportedFiles`: they cannot be checked, and the check says so rather than passing silently.
 
@@ -47,8 +47,8 @@ Uncommitted work is checked as it stands on disk, new files included, against th
 
 | Code | Meaning |
 |---|---|
-| 0 | Nothing new or worsened is over a threshold |
-| 1 | `check` found a violation |
+| 0 | Nothing new or worsened is above a guideline |
+| 1 | `check` found a new or worsened unit above a guideline |
 | 2 | Usage or config error, such as an unknown revision |
 | 3 | Environment error: not a git repository, no commits, Node too old |
 
@@ -73,9 +73,9 @@ node path/to/complexity.mjs check --base HEAD
 
 compares the working tree with the last commit and fails on a new or worsened function before it is committed.
 
-## When it fails
+## When it exits with 1
 
-Simplify the function it names, following the remedy policy in the skill. Do not raise a threshold, add an `overrides`
+Simplify the function it names, following the remedy policy in the skill. Do not raise a guideline, add an `overrides`
 entry or set a delta to make it pass. Those are decisions for the owner of the code, with a reason recorded in the commit.
 Generated code and fixtures are the legitimate use of an override, because nobody reads them.
 

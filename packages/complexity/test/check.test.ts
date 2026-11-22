@@ -24,7 +24,7 @@ interface Finding {
   metric: string;
   before: number | null;
   after: number;
-  threshold: number;
+  guideline: number;
   delta: number | null;
   renamedFrom: string | null;
 }
@@ -41,7 +41,7 @@ describe("a function that existed at the base", () => {
     const run = await check(repo);
     expect(run.code).toBe(ExitCode.CheckFailed);
     expectGolden("ratchet-worsened", "check", run.stdout);
-    expect(run.findings.map((f) => [f.id, f.finding, f.metric, f.before, f.after, f.threshold, f.delta])).toEqual([
+    expect(run.findings.map((f) => [f.id, f.finding, f.metric, f.before, f.after, f.guideline, f.delta])).toEqual([
       ["src/pricing.ts#price", "worsened", "cognitive", 8, 9, 6, 1],
       ["src/pricing.ts#price", "worsened", "cyclomatic", 5, 6, 4, 1],
     ]);
@@ -94,7 +94,7 @@ describe("a function that is new", () => {
     const run = await check(repo);
     expect(run.code).toBe(ExitCode.CheckFailed);
     expectGolden("ratchet-new", "check", run.stdout);
-    expect(run.findings.map((f) => [f.id, f.finding, f.metric, f.before, f.after, f.threshold])).toEqual([
+    expect(run.findings.map((f) => [f.id, f.finding, f.metric, f.before, f.after, f.guideline])).toEqual([
       ["src/risky.ts#risky", "new", "cognitive", null, 10, 6],
       ["src/risky.ts#risky", "new", "cyclomatic", null, 5, 4],
     ]);

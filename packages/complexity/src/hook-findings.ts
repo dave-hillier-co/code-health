@@ -28,7 +28,7 @@ export function measureFile(
     bumpyRoad: bumpyRoadLimits(options.thresholds),
   });
   if (analysis.functions.gated) return { unmeasured: analysis.functions.reason };
-  // The hook states a threshold as fact, so it stays silent where nothing measures how accurate the values are.
+  // The hook states measured values, so it prints nothing where nothing measures how accurate the values are.
   if (analysis.unverified) return { unmeasured: "the profile was mapped by config, so its per-function values are unverified" };
   const measurement: FileMeasurement = {};
   const seen = new Map<string, number>();
@@ -53,16 +53,16 @@ export interface HookFinding {
   /** The value in the last measurement, or null when the unit is new. */
   before: number | null;
   after: number;
-  /** How far over its threshold, for choosing the worst finding. */
+  /** How far above its guideline, for choosing the worst finding. */
   overshoot: number;
-  /** The threshold as the sentence states it. */
-  threshold: string;
+  /** The guideline and the measured value's ratio to it, as the sentence states them. */
+  guideline: string;
 }
 
 /**
- * The limit a metric must stay at or under, or undefined for `bumps`, which is over its limit when the
- * unit is a bumpy road. Keyword complexity counts decision points, so cyclomatic complexity is one more
- * than it, and the cyclomatic threshold is applied as that.
+ * The guideline of a metric, a value above which the hook may print, or undefined for `bumps`, which is
+ * above its guideline when the unit is a bumpy road. Keyword complexity counts decision points, so
+ * cyclomatic complexity is one more than it, and the cyclomatic guideline is applied as that.
  */
 function limitOf(metric: HookMetric, thresholds: Thresholds): number | undefined {
   if (metric === "nesting") return thresholds.nesting;
@@ -76,9 +76,10 @@ const isOver = (metric: HookMetric, values: Record<string, number>, thresholds: 
 };
 
 /**
- * What the edit did to the units of a file: a unit that is over a threshold now and was not before (or is
- * new), or was over and rose by more than `delta`. A unit that stays under, or is over and did not get
- * worse, is not a finding, and neither is a removed one. Worst first.
+ * What the edit did to the units of a file: a unit that is above a guideline now and was not before (or is
+ * new), or was above and rose by more than `delta`. The hook prints only these, to keep its output short;
+ * a unit under its guideline, or above it and not worse, is left out of the message, and so is a removed
+ * one. Sorted by how far above the guideline, the most notable first.
  */
 export function findingsFor(before: FileMeasurement, after: FileMeasurement, thresholds: Thresholds, delta: number): HookFinding[] {
   const findings: HookFinding[] = [];
@@ -95,7 +96,7 @@ export function findingsFor(before: FileMeasurement, after: FileMeasurement, thr
         before: was ?? null,
         after: values[metric]!,
         overshoot: values[metric]! - (limit ?? 0),
-        threshold: limit === undefined ? "a bumpy road" : `threshold ${limit}`,
+        guideline: limit === undefined ? "above guideline: a bumpy road" : `guideline ${limit}, ratio ${Math.round((values[metric]! / limit) * 100) / 100}`,
       });
     }
   }
@@ -106,11 +107,12 @@ export function findingsFor(before: FileMeasurement, after: FileMeasurement, thr
 
 const labels: Record<HookMetric, string> = { nesting: "nesting depth", keyword: "keyword complexity", bumps: "bumps" };
 
-/** The one sentence: the worst finding, how many others there are, and the command that breaks the unit down when there is one. */
+/** The one sentence: the most notable finding, how many others there are, and the command that breaks the unit down when there is one. */
 export function describeFindings(file: string, findings: readonly HookFinding[], explainCommand: string | undefined): string {
   const [worst, ...others] = findings as [HookFinding, ...HookFinding[]];
-  const change = worst.before === null ? `is ${worst.after} in a new unit` : `rose from ${worst.before} to ${worst.after}`;
+  // The hook compares unit names and has no body to match a renamed unit by, so a rename reads as a new unit.
+  const change = worst.before === null ? `is ${worst.after} in a new or renamed unit` : `rose from ${worst.before} to ${worst.after}`;
   const more = others.length === 0 ? "" : `, and ${others.length} more ${others.length === 1 ? "finding" : "findings"} in this file`;
-  const pointer = explainCommand === undefined ? "" : ` Run \`${explainCommand} ${file}#${worst.unit}\` for the breakdown.`;
-  return `${file}: \`${worst.unit}\` ${labels[worst.metric]} ${change} (${worst.threshold})${more}.${pointer}`;
+  const pointer = explainCommand === undefined ? "" : ` Worth a look: run \`${explainCommand} ${file}#${worst.unit}\` for the breakdown.`;
+  return `${file}: \`${worst.unit}\` ${labels[worst.metric]} ${change} (${worst.guideline})${more}.${pointer}`;
 }

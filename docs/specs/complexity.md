@@ -8,6 +8,10 @@ The tool measures how hard individual functions and files are to understand, fla
 
 Traditional metrics are useful and easily misused. Ranked alone, they produce long lists of old, stable code nobody needs to touch. Used as hard gates, they reward splitting functions into shallow helpers that pass the threshold and make the system harder to follow. This tool counters both. It ranks by complexity in changing code, gates only on regressions, and steers remedies towards deeper modules rather than more of them.
 
+**Guidelines, not thresholds.** Every numeric value that CodeScene or the literature gives for a metric is a *guideline*: a heuristic that tells the reader where to look. Output carries the measured value and where it sits relative to the guideline (a band word such as `above guideline`, and where useful `guideline: 4`, `ratio: 1.75`), and is sorted by how far past the guideline each item is. A guideline never hides, drops or fails an item. Output is capped by explicit, overridable limits (`--limit N`, with a count of what was left out), not by values. The only floors are minimum-evidence floors, where a statistic is meaningless below them. Findings are for investigation, so wording is "worth a look" or "above guideline", never "violation" or "too complex". The only exit code 1 in this plugin is the explicit gate of `check`. Each default has a recorded source, in [Guidelines](#guidelines).
+
+**Terms.** A *code smell* is Fowler's: a surface indication of a deeper problem. *Code health* is what the suite quantifies, as CodeScene uses the term: how easy code is to understand and change. This tool reports measurements that bear on code health. It does not produce a single code health score, because the weights behind one are opaque.
+
 ## Organisation: one plugin, many metrics
 
 The traditional metrics ship as **one plugin with pluggable metrics**, not one plugin per metric.
@@ -26,7 +30,7 @@ In scope:
 - Per-function structural metrics for supported languages: cyclomatic complexity, cognitive complexity, maximum nesting depth, length, parameter count.
 - Per-file aggregates and a language-agnostic indentation complexity for files in unsupported languages.
 - Interface depth signals: the shallow-module and pass-through red flags.
-- A ratchet for CI against a base revision, so only new or worsened functions fail.
+- A ratchet for CI against a base revision, so only new or worsened functions make `check` exit with 1.
 - Diff mode, measuring only the functions a change touched.
 - An opt-in post-edit hook giving the agent immediate feedback.
 
@@ -43,25 +47,32 @@ Each metric has a precise per-language definition, captured in the language adap
 
 ### Language-agnostic metrics (lexical layer)
 
-These are the lowest common denominator, offered at best effort ([suite.md](suite.md#analysis-layers)). Indentation complexity, nesting and file length work on any text file and any historical blob. Function blocks and the metrics built on them (bumpy road, keyword complexity, per-function length) need a lexer profile. They are the default for tier-0 languages and for trends, and they are reported alongside the structural metrics everywhere.
+These are the lowest common denominator, offered at best effort ([suite.md](suite.md#analysis-layers)). Indentation complexity, nesting and file length work on any text file and any historical blob. Function blocks and the metrics built on them (bumpy road, keyword complexity, per-function length) need a lexer profile. They are the default for tier-0 languages and for trends, and they are reported alongside the structural metrics everywhere. CodeScene applies one code health model to 30+ languages. Here the model is the same shared definitions with a different layer by language: structural for tier 1 and 2, and for any other language only the file-level lexical metrics, with `source` on every row saying which layer measured it.
 
-**Function blocks.** Approximate units found lexically: a line matching the profile's definition shape followed by a block, closed by brace matching (skipping strings and comments) or by indentation returning to the opening level. They are approximate. Their agreement with the structural layer is measured per language ([suite.md](suite.md#testing)), and per-function lexical metrics are reported only where it clears the configured bar, with the rate attached. Lexical blocks are never used for unit identity in `check` and `diff`, which stays structural.
+**Function blocks.** Approximate units found lexically: a line matching the profile's definition shape followed by a block, closed by brace matching (skipping strings and comments) or by indentation returning to the opening level. They are approximate. Their agreement with the structural layer is measured per language ([suite.md](suite.md#testing)), and per-function lexical metrics are reported only where it clears the configured bar (`agreementBar`, default 0.9, a judgement call), with the rate attached. Below the bar a profile's blocks are withheld because a block that does not match its function would attribute a value to the wrong code. That is a measurement floor and not a finding filter. A profile mapped through config has no recorded agreement, so its values are reported with `unverified: true` and the hook does not use them. Lexical blocks are never used for unit identity in `check` and `diff`, which stays structural.
 
-**Indentation complexity.** The sum of logical indentation levels over non-blank lines, leaving out comment lines where a lexer profile identifies them, normalised by the detected indent unit. It is one definition, implemented once in the shared `lexical` package and used by cochange too.
+**Indentation complexity.** The sum of logical indentation levels over non-blank lines, leaving out comment lines where a lexer profile identifies them, normalised by the detected indent unit. Lines inside a multi-line string are left out. It is a file-level proxy in Tornhill's sense (*Your Code as a Crime Scene*), not a per-function metric, and `files` rows carry it as `complexity`. It is one definition, implemented once in the shared `lexical` package and used by cochange too.
 
 **Maximum nesting.** The maximum logical indentation within a block, relative to the block's base.
 
-**Bumpy road.** A function with several separate chunks of nested logic. Each chunk is a sign of a responsibility that has not been named. Lexically, a *bump* is a maximal run of lines indented at least the bump depth (default 2 levels) deeper than the function's base, opened by a branch keyword on the line just before the run. Bumps are separated by lines back at a shallower level. The function reports `bumps` (count), `bumpDepth` (the deepest bump) and `bumpSize` (lines in the largest bump). A function is a bumpy road at the configured threshold (default 3 bumps, or 2 when any bump is deeper than the nesting threshold). The structural layer computes the same measure from the syntax tree when available, counting nested control-flow regions rather than indentation runs.
+**Bumpy road.** A function with several separate chunks of nested logic. Each chunk is a sign of a responsibility that has not been named. Lexically, a *bump* is a maximal run of lines indented at least the bump depth (default 2 levels) deeper than the function's base, opened by a branch keyword on the line just before the run. Bumps are separated by lines back at a shallower level. The function reports `bumps` (count), `bumpDepth` (the deepest bump) and `bumpSize` (lines in the largest bump). A function is labelled a bumpy road above the guideline (default 3 bumps, or 2 when any bump is deeper than the nesting guideline). The structural layer computes the same measure from the syntax tree when available, counting nested control-flow regions rather than indentation runs. A structural bump is the body of each branch of an `if` chain or of a loop, or a whole `switch` or `try`, directly in the function, and a one-line body is not a bump. A `switch` is one bump however many cases it has, which differs from CodeScene, where each indented chunk of conditional logic counts. `bumpDepth` is the nesting of the bump plus 1 and is not configurable for the structural layer. CodeScene's default is 2 bumps at depth 2, and the 3-bump default here is a judgement call. A bumpy road is a finding and is not part of `check`.
 
-**Keyword complexity.** A count of the profile's branch keywords and short-circuit operators per block, outside strings and comments. It is a lexical approximation of cyclomatic complexity.
+**Keyword complexity.** A count of the profile's branch keywords and short-circuit operators per block, outside strings and comments, with no base of 1, so cyclomatic complexity is one more than it. The ternary, `else` and `?:` are not counted, because tokens alone cannot tell `?:` as a ternary (C-family) from the elvis operator (Kotlin), which the structural layer counts as a cyclomatic decision. The two layers therefore differ on elvis-heavy Kotlin, and the lexical value is the approximation. Python lambdas and expression-bodied members are not blocks.
 
 **Length.** Non-blank, non-comment lines per block.
+
+**Hunk shapes.** The lexical layer also parses unified diff hunks and recognises append-shaped hunks (`hunk-shape.ts`), which the structure plugin reads. They are lexical output and have no complexity metric.
 
 Remedies for a bumpy road follow the same policy as for any complexity. Each bump is first a candidate for simplification in place (guard clauses, removing impossible branches, flattening). Only when a bump is a distinct responsibility does it become a candidate for extraction, as a deep, well-named, local function. A bumpy road is not resolved by mechanically extracting each bump into its own helper.
 
 ### Cyclomatic complexity (McCabe)
 
 `1 + decision points`. Decision points: `if`, `else if`, each loop, each `case` (or `1` per `switch` in *modified* mode, configurable), `catch`, the ternary operator, and each short-circuit boolean operator (`&&`, `||`, `??`, `and`, `or`). Optional chaining is not counted. It bounds the number of test paths, which makes it a measure of testability more than readability.
+
+- **Units.** Named functions, methods, constructors, accessors and arrow functions bound to a name are units. An anonymous callback is not a unit and adds to the function that contains it, as CodeScene treats inline callbacks as part of the enclosing function. Decision points in a nested function count for the enclosing function, without a second base of 1.
+- **Default arm.** A `default` or catch-all arm is not a case in any language but Rust, where every `match` arm counts, because the match must be exhaustive and the last arm is a choice like the others. Enum dispatch in Rust therefore scores higher, and a cross-language comparison of that one construct should allow for it.
+- **Both values are stored.** `cyclomatic` counts each case and `cyclomaticModified` one per switch. `cyclomaticSwitch` (default `case`, the McCabe and CodeScene reading) chooses which one is reported.
+- **Per-language readings** are in suite.md under "Metric definitions per language". For Python, a comprehension's `for` and `if` clauses add to cyclomatic complexity only (CodeScene counts comprehension conditions too), `case _` is not a decision, and a name-bound lambda is an arrow unit. In C# and C++ an `#if` branch is parsed as written, so a function with conditional compilation counts every branch of its source text, and in C++ preprocessor lines do not count toward length.
 
 ### Cognitive complexity
 
@@ -72,15 +83,17 @@ Follows the SonarSource cognitive complexity specification (G. Ann Campbell, 201
 - +1 for direct recursion.
 - No increment for shorthand that aids reading, such as null-coalescing.
 
-Nested functions and lambdas add to the enclosing function's score, following the specification, and are also reported as units in their own right with `parent` set.
+Sequences of like `&&`/`||` cost 1, direct recursion and labelled jumps cost a flat 1, `??` and `?.` are free, and a nested function is one level deeper than where it sits. Nested functions and lambdas add to the enclosing function's score, following the specification, and are also reported as units in their own right with `parent` set.
+
+Go has no types in the parse, so recursion is a function calling its bare name, or a method calling its own name through its receiver variable. A call on another value of the same type, such as `t.Left.Sum()`, is not detected as recursion. This is a known limitation, and the recursive-unit exemption in the metric and in locality under-fires for Go because of it.
 
 ### Nesting depth
 
-The maximum nesting of control structures within the function.
+The maximum nesting of control structures within the function: `if`, loops, `switch` and `try`, with `else if` at the level of its `if`, and a nested function continuing from the level where it sits. CodeScene's Deep Nested Complexity counts conditional depth with a default guideline of 4, which is the default here.
 
 ### Length
 
-Lines of code, excluding blank lines and comments, plus a statement count. Length is reported and ranked but **never gated alone**. A long, linear function is often clearer than five shallow fragments (see [red-flags.md](../../shared/red-flags.md)).
+Lines of code, excluding blank lines and comments, plus a statement count (clauses and labels are not statements, and an expression-bodied arrow is 1). Length is reported and ranked but **never gated alone**, and has no guideline where CodeScene's Large Method uses 70 lines, following Ousterhout's argument against shallow decomposition. A long, linear function is often clearer than five shallow fragments (see [red-flags.md](../../shared/red-flags.md)).
 
 ### Parameter count
 
@@ -88,12 +101,12 @@ Declared parameters. Destructured object parameters count as one parameter plus 
 
 ### Interface depth
 
-For each exported function, class or module: implementation size (AST nodes) divided by interface size (parameters + exported members). It is reported as a signal for the *shallow module* red flag. A *pass-through* signal fires when a function body is a single forwarded call.
+For each exported function, class or module: implementation size (AST nodes) divided by interface size (parameters + exported members). It is reported as a signal for the *shallow module* red flag. A *pass-through* signal is raised when a function body is a single forwarded call. The metric is Ousterhout's (*A Philosophy of Software Design*) and not a CodeScene concept, so its definition is the node counts below. `complexity depth` and fields on `files` rows expose it. It is advisory: no command exits with 1 because of it.
 
 - **Nodes** are the named syntax nodes of the unit, itself included, comments left out. For a module, the whole file without its import statements.
 - **Interface size.** A function: its parameters, at least 1. A class: its constructor parameters plus the members a user can reach, everything but `private` members and `#` fields, at least 1. A module: the names it exports, re-exports included.
-- **Pass-through.** The body is one statement that is a call, looking through `return`, `await`, `as` and `!`, and every argument is a parameter of the function, a spread of one, or a literal. A `new`, a computed argument or a second statement is the function doing work. It is reported for any named function or method, exported or not.
-- **Shallow** is a label, not a gate: an exported function, class or module that is not a method, with fewer than `interfaceDepth.shallow` (default 10) nodes per interface element.
+- **Pass-through.** The body is one statement that is a call, looking through `return`, `await`, `as` and `!`, and every argument is a parameter of the function, a spread of one, or a literal. A `new`, a computed argument or a second statement is the function doing work. It is reported for any named function or method, exported or not. The rule is strict: it has few false positives and does not match a wrapper that renames, reorders or computes an argument.
+- **Shallow** is a label, not a gate: an exported function, class or module that is not a method, with fewer than the guideline `interfaceDepth.shallow` nodes per interface element. The default of 10 is a judgement call that no corpus has calibrated, and the label does not hide anything. Rows are ordered pass-throughs first, then by depth from shallowest, whatever the guideline, and each row carries its measured `depth`.
 - It needs the structural layer, so a language without an adapter has no depth.
 - The mean depth of a file's exported functions and classes, and its count of pass-throughs, sit on the `files` rows. They are the gaming check of the Measurement table.
 
@@ -105,24 +118,47 @@ Per file: function count, sum and max of each metric, and the count of functions
 
 A unit is a function, method, constructor, accessor, or a lambda or closure with a body. Each unit has a stable identity, `path#Qualified.name`, with an ordinal suffix for duplicate names in one scope. The identity is used for diffs and the ratchet. When a function is renamed or moved, the comparison matches it by body similarity before treating it as new. An unmatched unit counts as new, so moving code never hides a regression from the ratchet without the agent having looked at it.
 
+Matching is by identity first. The leftovers are paired greedily, best first, by weighted token Jaccard similarity of their bodies at `moveSimilarity` (default 0.8, a judgement call). The 0.8 is a pairing floor, because below it two bodies are not the same unit. Whitespace-only differences are not changes, and a pure move is left out of `diff` and counted in `summary.moved`, as CodeScene's delta analysis follows code that moves. In C++ a unit name drops its namespaces and uses the last qualifier (`A::B::m` is `B.m`), with `~n` for overloads, so two same-named classes in different namespaces can collide in identity (see the open questions).
+
+`check` and `diff` measure only the files changed between the base and the target, with the structural layer, as CodeScene's delta analysis checks changed files only. A rename appears as a delete plus an add in the file list, and the unit matching above pairs the units across it, so a rename does not hide a regression. Files with no adapter are counted in `unsupportedFiles`. `analyse` measures a clean tree at HEAD and uncommitted work from disk, untracked files that are not ignored included. A report is stored only for a whole-repository run on a clean tree.
+
 ## Ranking
 
-Absolute thresholds are reported but **ranking is relative and change-weighted**:
+Guideline values are reported, but **ranking is relative and change-weighted**:
 
-1. Each function gets a percentile per metric within the repository.
+1. Each function gets a percentile per metric within the repository, among units measured the same way (same layer, tests apart from non-tests). The score is the highest selected percentile, `dominant` is the metric behind it, and a tie goes to the metric listed first.
 2. When history is available (the shared history cache, which this plugin can refresh itself), the function's file change frequency (or the function's own, once symbol-level co-change exists) weights the rank. Complexity in code that never changes ranks last.
-3. Default output is the top N by weighted rank, with the metric that dominated.
+3. Default output is the top N by weighted rank, with the metric that dominated and a count of the units left out. Output says whether it is change-weighted (`changeWeighted`). Without history, or with `changeWeighting` off, the ranking is by complexity alone and says so, because CodeScene prioritises by change frequency times low code health and an unweighted list answers a different question.
 
-Default thresholds, which are configurable and used for `check` and labelling only: cyclomatic 10 (warn) / 20 (high), cognitive 15 / 25, nesting 4, parameters 5. There is no default length threshold.
+The `files` rows carry `complexity`, the file's indentation complexity (the definition cochange shares), and `score`, equal to it so that the default order is by complexity. They also carry `functions`, `overThreshold` (the count of units above a guideline), `source`, `profile`, `test` and `codeLines`. A file-level value defined differently from the per-function metrics is a proxy, and `source` says so.
+
+## Guidelines
+
+The default guideline values, each with its source. They are configurable under `thresholds` (the config key keeps its name, and its description calls the values guidelines) and per glob under `overrides`. A value above a guideline is labelled `warn` or `high`, a band word that orders the result and does not hide it. A metric is above its guideline when its value is strictly above it.
+
+| Guideline | Default | Source |
+|---|---|---|
+| cyclomatic | 10 (`warn`), 20 (`high`) | McCabe's limit of 10. CodeScene's default is 9, and a repository that wants it sets 9. |
+| cognitive | 15, 25 | SonarSource's default of 15, with 25 a judgement call |
+| nesting | 4 | CodeScene's Deep Nested Complexity default |
+| parameters | 5 | Judgement call. CodeScene uses 4 for functions and 5 for constructors. |
+| bumps | 3, or 2 when deeper than `nesting` | Judgement call. CodeScene's default is 2 bumps at depth 2. |
+| length | none | See Length |
+| `interfaceDepth.shallow` | 10 nodes per interface element | Judgement call, not calibrated on a corpus |
+| `agreementBar` | 0.9 | Judgement call, a measurement floor |
+| `moveSimilarity` | 0.8 | Judgement call, a pairing floor |
+| `delta` | 0 | The gate of `check`, below |
+
+Only cyclomatic, cognitive, nesting and parameters have a guideline that `check` reads. There is no single score, because CodeScene's Code Health weights are not published and a score could not be audited.
 
 ## CLI
 
 | Command | Output |
 |---|---|
-| `complexity analyse [PATHS] [--metrics m1,m2] [--layer auto\|lexical\|structural] [--limit N]` | Ranked functions with all selected metrics, percentile, change weight and labels. |
+| `complexity analyse [PATHS] [--metrics m1,m2] [--layer auto\|lexical\|structural] [--limit N]` | Ranked functions with all selected metrics, percentile, change weight and labels, and a count of the functions left out by the limit. Exits with 0 whatever the values. |
 | `complexity files [PATHS]` | File-level aggregates. A full run writes the `complexity.files` report that other plugins read. |
 | `complexity diff BASE[..HEAD]` | Only units added or changed between two revisions, with before and after values. Without HEAD, compares against the working tree. |
-| `complexity check [--base REV]` | Compares units against a base revision (default: the merge base with the configured main branch). Exits 1 if a new unit exceeds a threshold, or an existing unit is over a threshold and worsened by more than the configured delta. A unit that stays under its thresholds never fails. Built for CI and pre-commit. |
+| `complexity check [--base REV]` | Compares units against a base revision (default: the merge base with the configured main branch). This is a gate the user chooses to run, so it is the one command that exits with 1: when a new unit is above a guideline, or an existing unit is above a guideline and worsened by more than the configured delta (default 0, so any rise counts). Only cyclomatic, cognitive, nesting and parameters count. Length and the bumpy road do not. A unit that stays under its guidelines never makes it exit with 1, which matches CodeScene gating on a regression and not on absolute values. Built for CI and pre-commit. |
 | `complexity explain UNIT` | Line-by-line breakdown of where each increment came from. Lets the agent target the exact construct. |
 | `complexity depth [PATHS]` | Exported functions, classes and modules by interface depth, and every pass-through, with labels. A full run writes the `complexity.depth` report. |
 
@@ -132,12 +168,15 @@ Default thresholds, which are configurable and used for `check` and labelling on
 
 A `PostToolUse` hook on `Edit` and `Write` for any language with a lexer profile (bumpy road, nesting and keyword complexity), with structural metrics where an adapter exists:
 
-- Measures only the edited file. Each run is a fresh process, so nothing is incremental: the budget (about 150 ms) has to cover process start and, for structural metrics, loading the WASM runtime and one grammar. The hook uses the lexical layer by default, and the structural layer only for languages where the benchmark fixture shows it fits the budget.
-- Compares the file's units against the last measurement in the hook's session state ([suite.md](suite.md#hooks)), or against the values at HEAD when the session has none.
-- Stays silent unless a unit crossed a threshold or worsened by more than the configured delta. When it speaks, it gives a single line with the unit, the metric, the before and after values, and the `explain` command. With several findings it names the worst and counts the rest.
-- The lexical values it compares are nesting, keyword complexity (read as cyclomatic complexity minus one, against the cyclomatic threshold) and the bumpy road. A language speaks only where its lexical agreement with the structural layer clears the bar, and a block with no name is left out. Cognitive complexity is structural, so `check` has it and the hook does not.
+- Measures only the edited file. Each run is a fresh process, so nothing is incremental: the budget has to cover process start, the worker, reading the file and the file at HEAD. The default budget is 150 ms (`DEFAULT_BUDGET_MS`), with a 1 second backstop in `hooks.json`. A run that has not finished by the budget prints nothing and records `printed nothing: over the time budget`. The hook uses the lexical layer only, because a structural run measured about 130 ms, which is most of the budget, and loading the WASM runtime and one grammar alone takes about as long. Lexical values are less accurate than structural ones, and the hook trades that for speed. This follows CodeScene's pre-commit feedback, which is fast and runs on the static source of the changed file only.
+- Compares the file's units against the last measurement of the file in the hook's session state ([suite.md](suite.md#hooks)), or against the values at HEAD when the session has none. The measurement is stored even when nothing is printed, so the next edit is compared with what the previous one left. CodeScene's delta compares against the committed version and matches moved code by similarity. The hook compares unit names only, because it has no bodies to match, so a renamed unit is treated as a new one and is printed if it is above a guideline. The message says `a new or renamed unit` so the agent can tell. A name used twice in a file gets `~2`, `~3` in order, and a block with no name is left out.
+- Prints only when a unit went above a guideline in this edit or was above it and rose by more than the configured delta. A guideline decides whether to print, to keep the token cost down. It does not hide anything from `analyse`, which lists every unit. When it prints, it gives one sentence with the unit, the metric, the before and after values, the guideline and the ratio of the value to it, and `Worth a look: run <command> for the breakdown`. With several findings it names the one furthest above its guideline and counts the rest (`and N more findings in this file`). The message states values and does not state a rule.
+- The pointer is `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs explain FILE#UNIT` when the host sets `CLAUDE_PLUGIN_ROOT`, else `complexity explain FILE#UNIT`. It is left out for a file type with no structural grammar, because `explain` cannot read it. The form of the pointer is part of the output contract.
+- The lexical values it compares are nesting (against `thresholds.nesting`), keyword complexity (read as cyclomatic complexity minus one, against `thresholds.cyclomatic.warn`, so the hook and `check` agree on where a function sits) and the bumpy road. Cognitive complexity needs the syntax tree, so `check` and `analyse` have it and the hook does not. The hook and `check` can therefore disagree on a function that is above the cognitive guideline and under the others.
+- It prints for a language only where the lexical agreement with the structural layer clears `agreementBar` and the profile was not mapped by config. For any other file it prints nothing and records the reason in the session state (`printed nothing: no per-function metrics (<reason>)`), which is where a user finds out why a language gets no feedback.
+- It prints at most once per file per session.
 - The hook's process, worker and session state are shared with the other plugins' hooks (`packages/history`), and each hook keeps its own state file.
-- Never blocks.
+- Never blocks, and always exits with 0.
 
 This is the cheapest point to fix complexity: the agent has the code in context and has not yet built on it.
 
@@ -166,12 +205,12 @@ A rising function count with falling interface depth after a simplification camp
 
 In the `complexity` section of the suite config:
 
-- Enabled metrics and thresholds per metric, with optional per-glob overrides (generated code, tests).
+- Enabled metrics and the guideline of each metric (`thresholds`), with optional per-glob overrides (generated code, tests). Guidelines are configurable because they are defaults for investigation, and a repository that disagrees changes them.
 - Cyclomatic `switch` mode.
 - Base revision for `check`, and the worsening delta it and the hook share.
 - The agreement bar for per-function lexical metrics.
 - Hook enablement (`hook.enabled`, off by default).
-- The shallow threshold of the interface depth label (`interfaceDepth.shallow`).
+- The shallow guideline of the interface depth label (`interfaceDepth.shallow`).
 - Whether tests are analysed (default: analysed, but ranked separately).
 
 ## Languages
@@ -182,13 +221,17 @@ The plugin supports every supported language of the suite (tier 1: TypeScript/Ja
 
 - **One plugin, pluggable metrics**, for the reasons above.
 - **Cognitive complexity follows the SonarSource specification exactly**, so results can be compared with a widely used tool and the definition is not re-litigated.
+- **Guidelines, not thresholds.** Values from CodeScene and the literature order and annotate results. They do not hide or fail them, except in `check`, which the user runs as a gate.
+- **Defect fix.** The outcome comparison and cochange's risk factors share one definition of a fix commit (`cochange/risk/fix-patterns`: a subject starting with fix, bugfix or hotfix, a fix with a `#123` reference, or a merge of a fix branch), because two definitions in one suite give inconsistent outcomes. The comparison group is unchanged files with functions, matched one to one by the highest pre-change metric percentile.
 - **Ratchet, not gate.** A hard threshold on an existing codebase produces a backlog nobody burns down, or a blanket waiver. The ratchet compares against a base revision, not a committed baseline file: a file holding every unit's values would conflict on every merge, and the blob-keyed parse cache makes the base revision cheap to measure.
 - **No length threshold**, following Ousterhout's argument against shallow decomposition.
 
 ## Open questions
 
 - Whether symbol-level co-change, from mapping diff hunks onto function ranges, belongs here (this plugin already parses) or in cochange.
-- How strict body-similarity matching should be for unit identity across moves.
+- Whether a C++ unit name should keep its namespaces, so that same-named classes in different namespaces keep separate identities for trends and history.
+- Whether Rust's wildcard `match` arm should stop counting as a case, for consistency with the other languages.
+- Whether `complexity depth` rows should rank by a corpus-calibrated figure instead of the judgement-call guideline.
 - Whether the hook should also report *improvements*. That would be positive feedback for the agent, at a token cost.
 
 ## Milestones

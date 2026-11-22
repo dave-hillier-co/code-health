@@ -9,13 +9,14 @@ import { unitName } from "../rows.ts";
 export const name = "check";
 
 /**
- * The ratchet. It compares the functions that changed against a base revision, and fails on a new function
- * over a threshold or an existing one that is over a threshold and got worse. A function that stays under
- * its thresholds never fails, and neither does one that is over and did not get worse. The base is a
+ * The ratchet. It compares the functions that changed against a base revision, and exits with 1 for a new
+ * function above a guideline or an existing one above a guideline that got worse. A function that stays under
+ * its guidelines never does, and neither does one that is above and did not get worse. This is the only
+ * place a guideline becomes an exit code. The base is a
  * revision rather than a committed baseline file, which would conflict on every merge.
  */
 export const command: Command = {
-  summary: "Fail when a new function is over a threshold or an existing one over a threshold got worse than a base revision",
+  summary: "Exit with 1 when a new function is above a guideline, or an existing one above a guideline got worse than at a base revision",
   options: { base: { type: "string" } },
   async run(context) {
     const settings = readSettings(context.config);
@@ -29,7 +30,7 @@ export const command: Command = {
       : ({ kind: "revision", revision: { rev: "HEAD", sha: context.repo.head } } as const);
     const comparison = await compareToBase(context, settings, base, target);
 
-    const summary = { compared: 0, added: 0, changed: 0, removed: 0, moved: 0, violations: 0 };
+    const summary = { compared: 0, added: 0, changed: 0, removed: 0, moved: 0, findings: 0 };
     const rows = [];
     for (const match of comparison.matches) {
       const { before, after } = match;
@@ -55,7 +56,8 @@ export const command: Command = {
           metric,
           before: was ?? null,
           after: now,
-          threshold: limit,
+          guideline: limit,
+          ratio: Math.round((now / limit) * 100) / 100,
           delta: was === undefined ? null : now - was,
           startLine: after.startLine,
           endLine: after.endLine,
@@ -64,13 +66,13 @@ export const command: Command = {
         });
       }
     }
-    summary.violations = rows.length;
+    summary.findings = rows.length;
 
     return {
       inputs: { base, against: uncommitted ? "working-tree" : "head", delta: settings.delta },
       extra: { summary, changedFiles: comparison.changedFiles, unsupportedFiles: comparison.unsupportedFiles },
       results: rows,
-      columns: ["path", "unit", "finding", "metric", "before", "after", "threshold", "delta"],
+      columns: ["path", "unit", "finding", "metric", "before", "after", "guideline", "ratio", "delta"],
       failed: rows.length > 0,
     };
   },

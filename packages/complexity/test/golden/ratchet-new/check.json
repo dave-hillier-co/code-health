@@ -21,13 +21,14 @@
       "delta": null,
       "endLine": 12,
       "finding": "new",
+      "guideline": 6,
       "id": "src/risky.ts#risky",
       "metric": "cognitive",
       "path": "src/risky.ts",
+      "ratio": 1.67,
       "renamedFrom": null,
       "score": 4,
       "startLine": 1,
-      "threshold": 6,
       "unit": "risky"
     },
     {
@@ -36,13 +37,14 @@
       "delta": null,
       "endLine": 12,
       "finding": "new",
+      "guideline": 4,
       "id": "src/risky.ts#risky",
       "metric": "cyclomatic",
       "path": "src/risky.ts",
+      "ratio": 1.25,
       "renamedFrom": null,
       "score": 1,
       "startLine": 1,
-      "threshold": 4,
       "unit": "risky"
     }
   ],
@@ -51,9 +53,9 @@
     "added": 2,
     "changed": 0,
     "compared": 2,
+    "findings": 2,
     "moved": 0,
-    "removed": 0,
-    "violations": 2
+    "removed": 0
   },
   "tool": "complexity",
   "truncated": {

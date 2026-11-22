@@ -2036,6 +2036,9 @@ function readRank(context, settings) {
 var TOOL2 = "cochange";
 var SCHEMA_VERSION2 = 1;
 
+// packages/cochange/src/risk/fix-patterns.ts
+var defaultFixPatterns = ["^fix(es|ed)?\\b", "^bugfix", "^hotfix", "\\bfix(es|ed)?\\b.*#\\d+", "^merge .*\\b(fix|hotfix|bugfix)[/-]"];
+
 // packages/cochange/src/risk/settings.ts
 var PLACEMENT_MODES = ["self", "any", "off"];
 var FACTOR_NAMES = [
@@ -2112,7 +2115,7 @@ var riskDefaults = {
     "requirements.txt"
   ],
   /** Commit messages (regular expressions, case-insensitive) that mark a fix, and a revert. */
-  fixPatterns: ["^fix(es|ed)?\\b", "^bugfix", "^hotfix", "\\bfix(es|ed)?\\b.*#\\d+", "^merge .*\\b(fix|hotfix|bugfix)[/-]"],
+  fixPatterns: defaultFixPatterns,
   revertPatterns: ["^revert\\b"],
   /** Backtest: a fix that touches a change's files within this many days counts as trouble. */
   followUpDays: 30,
