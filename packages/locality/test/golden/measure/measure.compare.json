@@ -214,7 +214,14 @@
         },
         "conclusion": "no-change",
         "difference": 0,
-        "smallestSample": 8
+        "lowConfidence": false,
+        "minSamples": 3,
+        "noiseGuidelinePercent": 10,
+        "observed": "no-change",
+        "percentOfStart": 0,
+        "ratioToNoiseGuideline": 0,
+        "smallestSample": 8,
+        "startingMean": 3
       },
       "foldersVisited": {
         "actedOn": {
@@ -225,7 +232,14 @@
         },
         "conclusion": "lower",
         "difference": -1,
-        "smallestSample": 8
+        "lowConfidence": false,
+        "minSamples": 3,
+        "noiseGuidelinePercent": 10,
+        "observed": "lower",
+        "percentOfStart": 50,
+        "ratioToNoiseGuideline": 5,
+        "smallestSample": 8,
+        "startingMean": 2
       },
       "reReads": {
         "actedOn": {
@@ -236,7 +250,14 @@
         },
         "conclusion": "lower",
         "difference": -1,
-        "smallestSample": 8
+        "lowConfidence": false,
+        "minSamples": 3,
+        "noiseGuidelinePercent": 10,
+        "observed": "lower",
+        "percentOfStart": 100,
+        "ratioToNoiseGuideline": 10,
+        "smallestSample": 8,
+        "startingMean": 1
       },
       "role": "primary outcome",
       "tokens": {
@@ -248,7 +269,14 @@
         },
         "conclusion": "lower",
         "difference": -2000,
-        "smallestSample": 8
+        "lowConfidence": false,
+        "minSamples": 3,
+        "noiseGuidelinePercent": 10,
+        "observed": "lower",
+        "percentOfStart": 40,
+        "ratioToNoiseGuideline": 4,
+        "smallestSample": 8,
+        "startingMean": 5000
       }
     },
     "name": "default",
@@ -283,8 +311,15 @@
       },
       "conclusion": "lower",
       "difference": -2,
+      "lowConfidence": false,
+      "minSamples": 3,
+      "noiseGuidelinePercent": 10,
+      "observed": "lower",
+      "percentOfStart": 100,
+      "ratioToNoiseGuideline": 10,
       "role": "outcome, partly by construction",
-      "smallestSample": 9
+      "smallestSample": 9,
+      "startingMean": 2
     },
     "spreadReproduced": true,
     "status": "compared",
@@ -308,7 +343,8 @@
       "actedOn": 2,
       "commits": 2,
       "comparison": 2,
-      "overlapping": 4
+      "overlapping": 4,
+      "untrailered": 0
     }
   },
   "schemaVersion": 1,

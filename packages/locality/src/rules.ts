@@ -83,7 +83,7 @@ export const ruleDescriptions: Record<string, Rule> = {
     ),
   },
   "high-fan-in": {
-    summary: "Fan-in at or above locality.highFanIn: the location is earned, so review the design",
+    summary: "Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design",
     explanation: lines(
       "Many production files depend on the unit, so every flaw in it is multiplied by its consumers.",
       "The unit is not moved. It goes to the review checklist: shallow module, special-general mixture, overexposure,",
@@ -127,8 +127,8 @@ export const ruleDescriptions: Record<string, Rule> = {
   "near-consumers": {
     summary: "Already close to its consumers: nothing to do",
     explanation: lines(
-      "The gain from moving is below locality.minDistance and no blocker would change that.",
-      "Units with this rule are not listed.",
+      "The gain from moving is below the locality.minDistance guideline and no blocker would change that.",
+      "Units with this rule are not listed. summary.placed counts them.",
     ),
   },
   "other-references": {

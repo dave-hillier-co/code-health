@@ -138,7 +138,7 @@ describe("measure compare", () => {
       const { document } = await measure(repo, sessions, ["compare"]);
       expect(document.results.status).toBe("compared");
       // The consumers of a moved helper are candidates in their own right, and four of them are files whose neighbourhood the moves changed.
-      expect(document.results.suite).toEqual({ commits: 2, actedOn: 2, comparison: 2, overlapping: 4 });
+      expect(document.results.suite).toEqual({ commits: 2, actedOn: 2, untrailered: 0, comparison: 2, overlapping: 4 });
       expect(document.results.pairs).toEqual([
         { actedOn: { path: "src/shared/utils/h1.ts", rank: 1 }, comparison: { path: "src/shared/utils/h3.ts", rank: 3 } },
         { actedOn: { path: "src/shared/utils/h2.ts", rank: 2 }, comparison: { path: "src/shared/utils/h4.ts", rank: 4 } },
@@ -246,6 +246,8 @@ describe("measure compare, where the moves did not go through the skill", () => 
     tidyUp(repo, [1], { trailer: false });
     const { document } = await measure(repo, sessions, ["compare"]);
     expect(document.results.status).toBe("nothing-acted-on");
+    // The rename is not attributed to the tool, but the count shows that a candidate's file was moved.
+    expect(document.results.suite).toMatchObject({ commits: 0, actedOn: 0, untrailered: 1 });
   }, 60_000);
 
   test("a baseline taken after a tidy-up says so", async () => {

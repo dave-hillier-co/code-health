@@ -714,7 +714,7 @@
         },
         "historyMinSupport": {
           "type": "number",
-          "default": 4
+          "default": 5
         },
         "historyMinConfidence": {
           "type": "number",

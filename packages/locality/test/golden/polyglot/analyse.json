@@ -44,6 +44,7 @@
   "summary": {
     "byRecommendation": {},
     "files": 8,
+    "placed": 0,
     "units": 0
   },
   "tool": "locality",

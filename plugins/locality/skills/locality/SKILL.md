@@ -21,7 +21,7 @@ Run it from the repository root. It analyses `HEAD` and never edits code. Useful
 - `--limit <n|all>` and `--fields path,recommendation,rule,target,gain,fanIn` keep the output small. The default is 20 rows.
 - `--recommendation inline|move|split|blocked|keep|scrutinise|review` lists one kind.
 - Path arguments (`analyse src/shared`) limit the run to units under those paths.
-- `--source history` analyses co-change alone, for languages with no structural adapter: moves and reviews only, on moderate or strong evidence. `--source both` adds `hiddenCoupling`, units the import graph places well whose co-change partners are all elsewhere.
+- `--source history` analyses co-change alone, for languages with no structural adapter: moves and reviews only, on moderate or strong evidence. `historyOnly.omitted` counts what was left out by reason, and a candidate lists in `supersedes` the opposite-direction candidates it replaced. `--source both` adds `hiddenCoupling`, units the import graph places well whose co-change partners are all elsewhere.
 - `explain <rule>` describes any rule named in a result, and `config explain` shows the effective settings.
 
 A whole-repository run on a clean tree also stores every result in `.cache/code-health/reports/locality.analyse.json`, which other plugins read.
@@ -140,4 +140,4 @@ Do not move code to make the score better. If a target would bury code deeper th
 
 ## Configuration
 
-Settings live in the `locality` section of `code-health.json`, with `exclude`, `entryPoints` and `vagueNames` shared across the suite. `references/recommendations.md` lists them. Ask before changing thresholds to make a recommendation appear or disappear.
+Settings live in the `locality` section of `code-health.json`, with `exclude`, `entryPoints` and `vagueNames` shared across the suite. `references/recommendations.md` lists them. The numbers are guidelines: each candidate reports its value, the guideline and their ratio in `guidelines`. Ask before changing a guideline to make a recommendation appear or disappear.

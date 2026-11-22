@@ -75,6 +75,18 @@
       "distance": 0,
       "fanIn": 1,
       "gain": 0,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 0,
+          "value": 0
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/lib/kernel",
       "netDistance": {
@@ -89,6 +101,7 @@
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 4,
+      "scoreUnit": "unblocked-gain",
       "signals": [],
       "size": {
         "files": 1,
@@ -157,6 +170,18 @@
       "distance": 0,
       "fanIn": 1,
       "gain": 0,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 0,
+          "value": 0
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared/pair",
       "netDistance": {
@@ -171,6 +196,7 @@
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 3,
+      "scoreUnit": "unblocked-gain",
       "signals": [],
       "size": {
         "files": 1,
@@ -239,6 +265,18 @@
       "distance": 0,
       "fanIn": 1,
       "gain": 0,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 0,
+          "value": 0
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared/pair",
       "netDistance": {
@@ -253,6 +291,7 @@
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 3,
+      "scoreUnit": "unblocked-gain",
       "signals": [],
       "size": {
         "files": 1,
@@ -293,6 +332,7 @@
       "split": 1
     },
     "files": 31,
+    "placed": 16,
     "units": 30
   },
   "tool": "locality",

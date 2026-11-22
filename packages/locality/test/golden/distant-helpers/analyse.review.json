@@ -59,6 +59,18 @@
       "distance": 1,
       "fanIn": 1,
       "gain": 2,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.13,
+          "value": 1
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 1,
+          "value": 2
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src",
       "netDistance": {
@@ -75,6 +87,7 @@
       "recommendation": "review",
       "rule": "scattered-unit",
       "score": 2,
+      "scoreUnit": "gain",
       "signals": [],
       "size": {
         "files": 5,
@@ -121,6 +134,7 @@
       "split": 1
     },
     "files": 31,
+    "placed": 16,
     "units": 30
   },
   "tool": "locality",

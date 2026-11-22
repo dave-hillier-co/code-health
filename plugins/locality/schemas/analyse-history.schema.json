@@ -25,6 +25,23 @@
         "recommendation": { "enum": ["move", "review"] },
         "rule": { "type": "string", "description": "Described by `locality explain <rule>`." },
         "source": { "const": "history" },
+        "guidelines": {
+          "type": "object",
+          "description": "The gain beside locality.minDistance.",
+          "properties": { "gain": { "$ref": "common.schema.json#/$defs/guidelineReading" } },
+          "required": ["gain"],
+          "additionalProperties": false
+        },
+        "supersedes": {
+          "type": "array",
+          "description": "Candidates left out because this one pulls on their files more strongly: higher gain, then path order.",
+          "items": {
+            "type": "object",
+            "properties": { "path": { "type": "string" }, "gain": { "$ref": "common.schema.json#/$defs/count" } },
+            "required": ["path", "gain"],
+            "additionalProperties": false
+          }
+        },
         "unit": {
           "type": "object",
           "properties": {
@@ -67,7 +84,7 @@
         "churn": { "$ref": "common.schema.json#/$defs/count" }
       },
       "required": [
-        "path", "score", "recommendation", "rule", "source", "unit", "location", "target", "distance", "gain",
+        "path", "score", "recommendation", "rule", "source", "guidelines", "supersedes", "unit", "location", "target", "distance", "gain",
         "netDistance", "consumers", "fanIn", "amongConsumers", "age", "lastChanged", "churn"
       ],
       "additionalProperties": false

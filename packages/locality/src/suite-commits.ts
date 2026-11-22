@@ -36,17 +36,31 @@ export interface Action {
 /**
  * What the commits after `baseline` (reachable from the view's head, not from `baseline`) did to paths, when they
  * carry a `Code-Health:` trailer naming `plugin`: renames, and removals. Edits are not actions on a unit.
+ * Renames and removals by commits without the trailer are returned as `untrailered`: the outcome does not
+ * attribute them to the tool, but a reader should know they happened.
  */
-export async function actionsSince(root: string, view: HistoryView, baseline: string, plugin: string): Promise<{ actions: Action[]; commits: number; latest: number | null }> {
+export async function actionsSince(
+  root: string,
+  view: HistoryView,
+  baseline: string,
+  plugin: string,
+): Promise<{ actions: Action[]; untrailered: Action[]; commits: number; latest: number | null }> {
   const listing = await runGit(root, ["rev-list", `${baseline}..${view.headSha}`]);
   const later = new Set(listing.split("\n").filter((sha) => sha !== ""));
   const actions: Action[] = [];
+  const untrailered: Action[] = [];
   let commits = 0;
   let latest: number | null = null;
   for (const commit of view.commits) {
     if (!later.has(commit.sha)) continue;
     const trailers = codeHealthTrailers(commit.message).filter((trailer) => trailer.plugin === plugin);
-    if (trailers.length === 0) continue;
+    if (trailers.length === 0) {
+      for (const change of commit.changes) {
+        if (change.status === "R" && change.oldPath !== null) untrailered.push({ sha: commit.sha, rule: "", from: change.oldPath, to: change.path, date: commit.committerDate });
+        else if (change.status === "D") untrailered.push({ sha: commit.sha, rule: "", from: change.path, to: null, date: commit.committerDate });
+      }
+      continue;
+    }
     commits++;
     latest = latest === null ? commit.committerDate : Math.max(latest, commit.committerDate);
     const rule = trailers[0]!.rule;
@@ -55,7 +69,7 @@ export async function actionsSince(root: string, view: HistoryView, baseline: st
       else if (change.status === "D") actions.push({ sha: commit.sha, rule, from: change.path, to: null, date: commit.committerDate });
     }
   }
-  return { actions, commits, latest };
+  return { actions, untrailered, commits, latest };
 }
 
 /** The number of commits reachable from the view's head that carry a trailer naming `plugin`. */

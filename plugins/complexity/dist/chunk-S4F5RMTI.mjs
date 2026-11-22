@@ -1365,7 +1365,7 @@ import { createRequire } from "node:module";
 import { join as join5 } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// node_modules/web-tree-sitter/web-tree-sitter.js
+// ../../../node_modules/web-tree-sitter/web-tree-sitter.js
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 var Edit = class {

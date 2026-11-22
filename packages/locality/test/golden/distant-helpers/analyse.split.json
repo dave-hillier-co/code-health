@@ -112,6 +112,18 @@
       "distance": 2,
       "fanIn": 2,
       "gain": 4,
+      "guidelines": {
+        "fanIn": {
+          "guideline": 8,
+          "ratio": 0.25,
+          "value": 2
+        },
+        "gain": {
+          "guideline": 2,
+          "ratio": 2,
+          "value": 4
+        }
+      },
       "lastChanged": "2024-01-01",
       "location": "src/shared/helpers",
       "netDistance": {
@@ -124,6 +136,7 @@
       "recommendation": "split",
       "rule": "mixed-exports",
       "score": 6,
+      "scoreUnit": "component-gain",
       "signals": [
         {
           "detail": "helpers",
@@ -167,6 +180,7 @@
       "split": 1
     },
     "files": 31,
+    "placed": 16,
     "units": 30
   },
   "tool": "locality",

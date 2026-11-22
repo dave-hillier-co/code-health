@@ -75,9 +75,16 @@
         "comparison": { "type": "object", "properties": { "change": { "type": ["number", "null"] } }, "required": ["change"], "additionalProperties": false },
         "difference": { "type": ["number", "null"], "description": "The acted-on change minus the comparison change. Negative: the acted-on files improved more." },
         "smallestSample": { "$ref": "common.schema.json#/$defs/count" },
-        "conclusion": { "$ref": "#/$defs/conclusion" }
+        "conclusion": { "$ref": "#/$defs/conclusion" },
+        "observed": { "enum": ["lower", "higher", "no-change", null], "description": "The direction the figures show whatever the sample size. Low confidence when lowConfidence is true." },
+        "startingMean": { "type": ["number", "null"], "description": "The acted-on files' own starting figure, the base of the noise guideline." },
+        "percentOfStart": { "type": ["number", "null"], "description": "The size of the difference as a percent of the starting figure." },
+        "noiseGuidelinePercent": { "type": "number", "description": "Guideline (locality.measureNoisePercent): a difference within it is called no-change." },
+        "ratioToNoiseGuideline": { "type": ["number", "null"], "description": "percentOfStart divided by the guideline. Above 1 is past it." },
+        "minSamples": { "$ref": "common.schema.json#/$defs/count", "description": "Floor (locality.measureMinSamples) below which nothing is concluded." },
+        "lowConfidence": { "type": "boolean", "description": "The smallest sample is below the floor." }
       },
-      "required": ["actedOn", "comparison", "difference", "smallestSample", "conclusion"]
+      "required": ["actedOn", "comparison", "difference", "smallestSample", "conclusion", "observed", "startingMean", "percentOfStart", "noiseGuidelinePercent", "ratioToNoiseGuideline", "minSamples", "lowConfidence"]
     },
     "closedDifference": { "type": "object", "allOf": [{ "$ref": "#/$defs/difference" }], "unevaluatedProperties": false },
     "structureMetrics": {
@@ -213,8 +220,12 @@
         },
         "suite": {
           "type": "object",
-          "properties": { "commits": { "$ref": "common.schema.json#/$defs/count" }, "actedOn": { "const": 0 } },
-          "required": ["commits", "actedOn"],
+          "properties": {
+            "commits": { "$ref": "common.schema.json#/$defs/count" },
+            "actedOn": { "const": 0 },
+            "untrailered": { "$ref": "common.schema.json#/$defs/count", "description": "Baseline candidates with a file renamed or removed by a commit that has no Code-Health trailer for this tool. Not attributed to the tool." }
+          },
+          "required": ["commits", "actedOn", "untrailered"],
           "additionalProperties": false
         }
       },
@@ -275,10 +286,11 @@
           "properties": {
             "commits": { "$ref": "common.schema.json#/$defs/count", "description": "Commits with this tool's Code-Health trailer since the baseline. Left out of the outcome windows." },
             "actedOn": { "$ref": "common.schema.json#/$defs/count" },
+            "untrailered": { "$ref": "common.schema.json#/$defs/count", "description": "Baseline candidates with a file renamed or removed by a commit that has no Code-Health trailer for this tool. They are in neither group, because the outcome does not attribute them to the tool." },
             "comparison": { "$ref": "common.schema.json#/$defs/count" },
             "overlapping": { "$ref": "common.schema.json#/$defs/count", "description": "Candidates left alone that were passed over because they share a file with something acted on." }
           },
-          "required": ["commits", "actedOn", "comparison", "overlapping"],
+          "required": ["commits", "actedOn", "untrailered", "comparison", "overlapping"],
           "additionalProperties": false
         },
         "pairs": {

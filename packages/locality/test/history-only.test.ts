@@ -51,8 +51,18 @@ describe("history-only analysis, with no import graph", () => {
   });
 
   test("the partners are not themselves moved towards the rates file, because the pull is balanced", async () => {
-    const { rows } = await historyOnly({ rounds: 60, every: 3 });
+    const { rows, document } = await historyOnly({ rounds: 60, every: 3 });
     expect(rows.map((row) => row.path)).toEqual(["lib/config/rates.yaml"]);
+    // The dropped direction is named on the kept candidate, with its gain, so the omission has a stated reason.
+    const dropped = (rows[0] as unknown as { supersedes: { path: string; gain: number }[] }).supersedes;
+    expect(dropped.map((entry) => entry.path)).toEqual(["billing/invoice.txt"]);
+    expect(document.historyOnly.omitted.superseded).toBe(dropped.length);
+  });
+
+  test("the gain is reported beside the minDistance guideline", async () => {
+    const { rows } = await historyOnly({ rounds: 60, every: 3 });
+    const { gain } = (rows[0] as unknown as { guidelines: { gain: { value: number; guideline: number; ratio: number } } }).guidelines;
+    expect(gain).toEqual({ value: rows[0]!.gain, guideline: 2, ratio: rows[0]!.gain / 2 });
   });
 
   test("every candidate is a move or a review, never an inline or a split", async () => {
