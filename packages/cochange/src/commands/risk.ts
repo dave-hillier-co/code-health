@@ -41,6 +41,8 @@ export const command = analysisCommand(name, {
   partial: () => true,
   async ref(context) {
     const { sub, rest } = parse(context.positionals);
+    // Refused before any history is read, so a stray word never starts a long run.
+    if (sub === "backtest" && rest.length > 0) throw usageError("risk backtest takes no arguments");
     if (sub === "backtest" || (sub === "explain" && rest.length === 0)) return undefined;
     const risk = readRiskSettings(context.config);
     const range = await resolveRange(context.repo.root, {

@@ -5,6 +5,7 @@ import {
   identityKey,
   nameTokens,
   normaliseEmail,
+  organisationOf,
   normaliseName,
   parseNoreply,
   type Address,
@@ -48,6 +49,7 @@ export interface IdentityNode extends Address {
 
 export type SignalName =
   | "exact-email"
+  | "same-organisation-address"
   | "same-signing-key"
   | "noreply-same-user"
   | "noreply-matches-identity"
@@ -163,6 +165,8 @@ interface NodeFacts {
   node: IdentityNode;
   /** Normalised emails with their local parts, generic ones left out of the local part and email signals. */
   emails: string[];
+  /** `local@organisation` of each address at an organisation's own domain, where the host may be a machine inside it. */
+  organisational: string[];
   locals: string[];
   noreplies: { id: string | null; username: string }[];
   names: string[];
@@ -171,12 +175,27 @@ interface NodeFacts {
   signingKeys: string[];
 }
 
+/**
+ * A local part shorter than this is too likely to be a first name (`james@`) for the same local part inside one
+ * organisation to be one person. A judgement call: it labels a link strong or medium and never removes one.
+ */
+export const MIN_ORGANISATIONAL_LOCAL_LENGTH = 5;
+
+/** The same normalised local part, and one domain is the other with host labels in front (`pc12.corp.example.com` inside `example.com`). */
+function insideEachOther(a: string, b: string): boolean {
+  const [localA, domainA] = [a.slice(0, a.lastIndexOf("@")), a.slice(a.lastIndexOf("@") + 1)];
+  const [localB, domainB] = [b.slice(0, b.lastIndexOf("@")), b.slice(b.lastIndexOf("@") + 1)];
+  if (localA !== localB || domainA === domainB) return false;
+  return domainA.endsWith(`.${domainB}`) || domainB.endsWith(`.${domainA}`);
+}
+
 /** A key shared by more than this many identities is a platform's or a team's, not one person's. */
 export const MAX_IDENTITIES_PER_SIGNING_KEY = 3;
 
 function factsOf(node: IdentityNode): NodeFacts {
   const addresses: Address[] = [{ name: node.name, email: node.email }, ...node.aliases];
   const emails = new Set<string>();
+  const organisational = new Set<string>();
   const locals = new Set<string>();
   const noreplies = new Map<string, { id: string | null; username: string }>();
   const names = new Set<string>();
@@ -189,6 +208,8 @@ function factsOf(node: IdentityNode): NodeFacts {
     if (!noreply && !GENERIC_LOCAL_PARTS.has(local)) {
       emails.add(normaliseEmail(email));
       locals.add(local);
+      const organisation = organisationOf(email);
+      if (organisation !== null && local.length >= MIN_ORGANISATIONAL_LOCAL_LENGTH) organisational.add(`${local}@${organisation}`);
     }
     if (nameTokens(name).length >= 2) {
       names.add(normaliseName(name));
@@ -199,6 +220,7 @@ function factsOf(node: IdentityNode): NodeFacts {
   return {
     node,
     emails: [...emails].sort(),
+    organisational: [...organisational].sort(),
     locals: [...locals].sort(),
     noreplies: [...noreplies.values()].sort((x, y) => compare(x.username, y.username)),
     names: [...names].sort(),
@@ -258,6 +280,12 @@ export function findLinks(
   eachPair(index(facts, (f) => f.emails), (email, x, y) =>
     addSignal(candidates, x, y, { signal: "exact-email", strength: "strong", detail: email }),
   );
+  // The same local part at one organisation's domain, where one host is a machine inside it
+  // (`sbykov@pc12.corp.example.com` and `sbykov@example.com`): git writes that address when it has no configured one.
+  eachPair(index(facts, (f) => f.organisational), (address, x, y) => {
+    if (!x.emails.some((e) => y.emails.some((o) => insideEachOther(e, o)))) return;
+    addSignal(candidates, x, y, { signal: "same-organisation-address", strength: "strong", detail: address });
+  });
   // The same key across identities, unless so many share it that it is a platform's (the web-flow key) and not a person's.
   const byKey = index(facts, (f) => f.signingKeys);
   for (const [key, holders] of byKey) if (holders.length > MAX_IDENTITIES_PER_SIGNING_KEY) byKey.delete(key);
@@ -411,7 +439,9 @@ class Groups {
 /**
  * Builds proposals from links. Strong links join identities transitively. Medium
  * links never do: when every pair of a connected set is linked it is one
- * cluster, otherwise it is a chain for review.
+ * cluster, otherwise it is a chain for review. A set held together by medium links
+ * between groups that strong links settled is proposed as those strong groups and
+ * as the whole set, so the settled part is not held back by the rest.
  */
 export function buildProposals(links: readonly Link[]): Proposal[] {
   const groups = new Groups();
@@ -438,6 +468,16 @@ export function buildProposals(links: readonly Link[]): Proposal[] {
     const roots = [...rootSet];
     const complete = roots.every((x, i) => roots.slice(i + 1).every((y) => linked(x, y)));
     const singleGroup = rootSet.size === 1;
+    if (!singleGroup) {
+      // Strong links settle a group whatever else the group is linked to by name alone, so each is proposed as strong too,
+      // and the wider medium proposal remains for the question the evidence does not settle.
+      for (const root of [...rootSet].sort(compare)) {
+        const members = nodes.filter((n) => groups.find(n) === root);
+        if (members.length < 2) continue;
+        const within = inside.filter((l) => members.includes(l.a) && members.includes(l.b));
+        proposals.push({ kind: "cluster", strength: "strong", members, links: within, counterEvidence: within.some((l) => l.counterEvidence) });
+      }
+    }
     proposals.push({
       kind: singleGroup || complete ? "cluster" : "chain",
       strength: singleGroup ? "strong" : complete ? "medium" : "chain",

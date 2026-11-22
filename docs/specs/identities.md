@@ -30,8 +30,9 @@ The CLI computes link evidence between pairs of raw identities. Each link carrie
 |---|---|---|
 | Exact email match after normalisation (case, `+tag`) | `Jo@x.com` / `jo+git@x.com` | Strong |
 | Two GitHub noreply addresses with the same username or numeric id | `1234+jsmith@users.noreply.github.com` / `jsmith@users.noreply.github.com` | Strong |
-| GitHub noreply username matches another identity's email local part or name | `1234+jsmith@users.noreply.github.com` / `jsmith@corp.com` | Medium: the same evidence as a shared local part |
-| Same normalised name (case, diacritics, whitespace, `Last, First` order) | `José Pérez` / `jose perez` | Medium: common names collide |
+| GitHub noreply username matches another identity's email local part or name, written as all its parts joined, as first initial and last name, or as first name and last initial | `1234+jsmith@users.noreply.github.com` / `jsmith@corp.com`, `mazdakb` / `Mazdak Badakhshan` | Medium: the same evidence as a shared local part |
+| Same email local part inside one organisation's domain, where one host is a machine in the other (local part of at least 5 characters, no mailbox provider) | `sbykov@microsoft.com` / `sbykov@pc12.corp.microsoft.com` | Strong: git writes such an address when none is configured |
+| Same normalised name (case, diacritics, whitespace, `_`, a parenthesised affiliation, `Last, First` order) | `José Pérez` / `jose perez`, `Jo Park (Contoso)` / `Jo Park` | Medium: common names collide |
 | Name derivable from email local part | `John Smith` / `j.smith@`, `jsmith@`, `john.smith@` | Medium |
 | Same email local part, different domains | `jsmith@corp.com` / `jsmith@gmail.com` | Medium |
 | Handover in time: one identity stops as the other starts, on overlapping files | Personal email until March, work email from March | Supporting |
@@ -46,6 +47,8 @@ Some medium signals are strong together. These pairs are proposed as strong:
 - a shared signing key and any medium signal.
 
 A name alone, a local part alone and a login alone stay medium.
+
+A set of identities that strong links settle in groups, and that medium links join into a wider set, is proposed twice: each strong group as a strong cluster, and the wider set as a medium cluster or chain. The settled part does not wait for the rest. After the strong groups are applied, `propose` shows the wider question with each group as one identity.
 
 Clusters are built from links, but **never transitively merged on weak links alone**. A chain of medium links (A~B by name, B~C by local part) is shown as a chain for review, not as one cluster.
 
@@ -140,7 +143,7 @@ Numbers here are guidelines or floors, as in [cochange.md](cochange.md#resolved-
 
 **Line ownership.** `check` reads line ownership from the shared blame cache, refreshed first unless `--no-refresh` is given, with the options the abandonment analysis uses (`-w -M -C` unless `cochange.knowledge.copyDetection` is false, and the ignore-revs file). Its mapped share therefore equals the one abandonment reports for the same commit and options. It does not need `cochange.knowledge.enabled`, because it reads line counts per commit and no analysis of people. `headLines.unknownFiles` counts authored files the cache holds no right blame for (zero after a refresh), and their lines are not counted.
 
-**Mapped share.** An identity is unmapped while any proposal that is not rejected names it. `mappedShare` is the share of people's lines held by identities no such proposal names, with bots, services and agents left out of the denominator. A proposal that is pending and wrong therefore counts as unresolved. `needsIdentityReview` is true when the unmapped share exceeds `unmappedShareGuideline` (default 5 percent, a judgement call). It is a guideline for deciding whether to use this skill first, and the measured share is printed beside it.
+**Mapped share.** An identity is unmapped while any proposal that is not rejected names it. `mappedShare` is the share of people's lines held by identities no such proposal names, with bots, services and agents left out of the denominator. A proposal that is pending and wrong therefore counts as unresolved. An identity that no proposal names counts as mapped without a mailmap entry, because nothing links it to anyone: an author with one address is never penalised. An identity that a strong proposal names counts as unmapped until the proposal is applied, because the mailmap is what every other command reads. `unmappedStrong` is the part of the unmapped lines held by identities a strong proposal names. It is the part that needs no decision, so `mappedShare` plus the share `unmappedStrong` gives is what the mapping reaches once the strong proposals are applied. `needsIdentityReview` is true when the unmapped share exceeds `unmappedShareGuideline` (default 5 percent, a judgement call). It is a guideline for deciding whether to use this skill first, and the measured share is printed beside it.
 
 **Evidence constants.** A handover is a gap of at most 90 days or an overlap of at most 14 days between one identity's last commit and the other's first. Counter-evidence is computed only for links without a strong signal, since a strong signal outranks it. Simultaneous activity is compared by week, in areas given by the first two folders of each path. A shared signing key is a supporting signal that makes a link strong only beside a medium signal, and platform keys are ignored as in the table. Both day counts are judgement calls. They decide which proposals the agent is shown, and never which are applied.
 

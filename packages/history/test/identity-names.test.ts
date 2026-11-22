@@ -5,6 +5,7 @@ import {
   flattenedNames,
   normaliseEmail,
   normaliseName,
+  organisationOf,
   parseNoreply,
 } from "../src/identity-names.ts";
 
@@ -40,4 +41,24 @@ test("a name derives the local parts people usually pick", () => {
 
 test("a name flattens to the usernames it could be written as", () => {
   expect(flattenedNames("John Smith")).toEqual(expect.arrayContaining(["johnsmith", "john-smith", "john.smith", "john_smith"]));
+});
+
+test("a parenthesised affiliation, an underscore and a bracketed suffix do not change the name", () => {
+  expect(normaliseName("Ningna Dang (Design Laboratory Inc)")).toBe("ningna dang");
+  expect(normaliseName("Dang, Ningna (Design Laboratory Inc)")).toBe("ningna dang");
+  expect(normaliseName("jo_park")).toBe("jo park");
+  expect(normaliseName("Zoë  Brown [Contoso]")).toBe("zoe brown");
+});
+
+test("a name flattens to a first initial and last name, and a first name and last initial", () => {
+  expect(flattenedNames("Mazdak Badakhshan")).toEqual(expect.arrayContaining(["mbadakhshan", "mazdakb"]));
+  expect(flattenedNames("Cher")).toEqual([]);
+});
+
+test("an address belongs to the organisation that owns its registrable domain, and a mailbox provider to none", () => {
+  expect(organisationOf("sbykov@sbykov-dt.redmond.corp.microsoft.com")).toBe("microsoft.com");
+  expect(organisationOf("sbykov@microsoft.com")).toBe("microsoft.com");
+  expect(organisationOf("dev@build.example.co.uk")).toBe("example.co.uk");
+  expect(organisationOf("someone@gmail.com")).toBeNull();
+  expect(organisationOf("someone@localhost")).toBeNull();
 });

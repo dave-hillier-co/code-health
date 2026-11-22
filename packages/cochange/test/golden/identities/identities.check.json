@@ -12,7 +12,8 @@
       "total": 95,
       "unattributed": 0,
       "unknownFiles": 0,
-      "unmapped": 68
+      "unmapped": 68,
+      "unmappedStrong": 42
     },
     "needsIdentityReview": true,
     "unmappedShareGuideline": 5,
@@ -21,7 +22,8 @@
       "nonPerson": 6,
       "people": 102,
       "total": 108,
-      "unmapped": 81
+      "unmapped": 81,
+      "unmappedStrong": 42
     }
   },
   "repo": {

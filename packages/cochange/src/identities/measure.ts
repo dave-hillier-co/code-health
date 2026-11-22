@@ -14,6 +14,8 @@ export interface Share {
   people: number;
   /** Held by people the mapping has not settled, because a proposal still names them. */
   unmapped: number;
+  /** Part of `unmapped` held by identities a strong proposal names. The skill applies those without asking, so this is the part of the gap that needs no decision. */
+  unmappedStrong: number;
   /** Percentage of people's share held by identities with nothing left to decide. 100 when nobody holds any. */
   mappedShare: number;
 }
@@ -44,13 +46,17 @@ function share(byNode: Map<string, number>, analysis: IdentityAnalysis): Share {
   let total = 0;
   let nonPerson = 0;
   let unmapped = 0;
+  let unmappedStrong = 0;
   for (const [node, count] of byNode) {
     total += count;
     if (analysis.nonPerson.has(node)) nonPerson += count;
-    else if (analysis.unresolved.has(node)) unmapped += count;
+    else if (analysis.unresolved.has(node)) {
+      unmapped += count;
+      if (analysis.strongProposed.has(node)) unmappedStrong += count;
+    }
   }
   const people = total - nonPerson;
-  return { total, nonPerson, people, unmapped, mappedShare: people === 0 ? 100 : Math.round((100 - percent(unmapped, people)) * 10) / 10 };
+  return { total, nonPerson, people, unmapped, unmappedStrong, mappedShare: people === 0 ? 100 : Math.round((100 - percent(unmapped, people)) * 10) / 10 };
 }
 
 /**

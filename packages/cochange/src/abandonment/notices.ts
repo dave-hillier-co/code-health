@@ -24,8 +24,15 @@ export async function mappedShareNotices(context: CommandContext, settings: Know
   const share = measurement.headLines.mappedShare;
   if (measurement.headLines.people === 0 || share >= settings.mappedShareGuideline) return [];
   return [
-    `Identities that are settled hold ${share}% of the lines held by people, under the guideline of ${settings.mappedShareGuideline}% (cochange.knowledge.mappedShareGuideline), so these results depend on unmapped identities; run cochange identities propose to review them`,
+    `Identities that are settled hold ${share}% of the lines held by people, under the guideline of ${settings.mappedShareGuideline}% (cochange.knowledge.mappedShareGuideline), so these results depend on unmapped identities; run cochange identities propose to review them${strongClause(measurement.headLines)}`,
   ];
+}
+
+/** How much of the unmapped lines needs no decision, because strong proposals already settle them. */
+function strongClause(lines: { people: number; unmappedStrong: number }): string {
+  if (lines.unmappedStrong === 0) return "";
+  const percent = Math.round((lines.unmappedStrong / lines.people) * 1000) / 10;
+  return `; ${percent}% of the lines held by people are in strong proposals, which the identities skill applies without asking`;
 }
 
 /** Notices about the turnover rate: it is a percentage, and a rate seen in few periods is a weak estimate. */
