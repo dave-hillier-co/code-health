@@ -111,9 +111,8 @@ async function current(context: CommandContext): Promise<CommandOutput> {
             formerAuthors: f.formerAuthors,
             nonPersonLines: f.nonPersonLines,
           }))
-      : groupByComponent(files, readComponents(context.config.effective.components))
-          .filter((g) => g.abandonedLines > 0)
-          .map((g) => ({ ...g, score: g.abandonedShare }));
+      : // Every component with a measured file is listed. Components with no abandoned lines have score 0 and sort last.
+        groupByComponent(files, readComponents(context.config.effective.components)).map((g) => ({ ...g, score: g.abandonedShare }));
 
   return {
     inputs: commonInputs(p, "current", { by, rank }),

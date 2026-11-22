@@ -83,12 +83,13 @@ test("the guideline is configurable and decides on exact arithmetic", async () =
   expect(abandonedPaths(await json("current", "--limit", "all"))).toEqual([engine, lexer, parser, deps]);
 });
 
-test("components group files, lines and the abandoned share", async () => {
+test("components group files, lines and the abandoned share, and a component with no abandoned lines is listed last", async () => {
   configure({}, { components: { core: "src/core/**", api: "src/api/**" } });
   const document = await json("current", "--by", "component", "--limit", "all");
   expect(document.results).toEqual([
     expect.objectContaining({ path: "core", files: 3, abandonedFiles: 2, peopleLines: 30, abandonedLines: 27, abandonedShare: 0.9 }),
     expect.objectContaining({ path: "(unassigned)", files: 3, abandonedFiles: 1, peopleLines: 25, abandonedLines: 5, abandonedShare: 0.2 }),
+    expect.objectContaining({ path: "api", files: 2, abandonedFiles: 0, peopleLines: 20, abandonedLines: 0, abandonedShare: 0 }),
   ]);
 });
 

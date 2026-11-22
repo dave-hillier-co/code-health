@@ -57,7 +57,7 @@ export function groupByComponent(files: readonly FileAbandonment[], components: 
     g.abandonedLines += f.abandonedLines;
     groups.set(name, g);
   }
-  return [...groups.values()].map((g) => ({ ...g, abandonedShare: round4(g.abandonedLines / g.peopleLines) }));
+  return [...groups.values()].map((g) => ({ ...g, abandonedShare: g.peopleLines === 0 ? 0 : round4(g.abandonedLines / g.peopleLines) }));
 }
 
 export interface CurrentSummary {

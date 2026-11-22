@@ -11,7 +11,7 @@ import {
   guidelinesFor,
   readSettings,
   runGit
-} from "./chunk-UGM2IQ3O.mjs";
+} from "./chunk-V5PIVW5V.mjs";
 import {
   loadConfig
 } from "./chunk-Q2L3NSZB.mjs";
@@ -282,7 +282,7 @@ async function measurementAtHead(root, file, settings) {
   }
 }
 async function isTestPath(file) {
-  return (await import("./chunk-TT5HY3KZ.mjs")).isTestPath(file);
+  return (await import("./chunk-7Z42YMFW.mjs")).isTestPath(file);
 }
 function explainCommand(file) {
   if (!hasSupportedExtension(file)) return void 0;

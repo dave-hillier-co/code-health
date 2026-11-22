@@ -77,7 +77,7 @@ async function runHookProcess(hook) {
 // packages/complexity/src/hook-definition.ts
 var complexityHook = {
   kind: "complexity-hook",
-  run: async ({ stdin, cwd, budgetMs: budgetMs2 }) => (await import("./chunk-URLSZQGT.mjs")).runHook({ stdin, cwd, budgetMs: budgetMs2 }),
+  run: async ({ stdin, cwd, budgetMs: budgetMs2 }) => (await import("./chunk-2XNTTIBW.mjs")).runHook({ stdin, cwd, budgetMs: budgetMs2 }),
   defaultBudgetMs: DEFAULT_BUDGET_MS,
   entry: workerEntry(import.meta.url, "hook-definition.ts")
 };
@@ -88,7 +88,7 @@ if (inHookWorker(complexityHook.kind)) {
   await runHookWorker(complexityHook);
 } else {
   if (argv[0] === "hook") await runHookProcess(complexityHook);
-  const [{ runCli }, { cli }] = await Promise.all([import("./chunk-P47X74HW.mjs"), import("./chunk-63AGOUAO.mjs")]);
+  const [{ runCli }, { cli }] = await Promise.all([import("./chunk-P47X74HW.mjs"), import("./chunk-RLXCJNYK.mjs")]);
   process.exitCode = await runCli(cli, {
     argv,
     cwd: process.cwd(),

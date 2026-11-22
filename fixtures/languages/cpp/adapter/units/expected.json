@@ -17,7 +17,9 @@
       ["hidden", "function", 49, 51],
       ["v2::version", "function", 57, 59],
       ["outer::inner::deep", "function", 65, 67],
-      ["acme::Widget.count", "method", 71, 73]
+      ["acme::Widget.count", "method", 71, 73],
+      ["acme::Widget.Part.weight", "method", 75, 77],
+      ["far::Away::Deep.reach", "method", 79, 81]
     ]
   },
   "syntaxErrors": []

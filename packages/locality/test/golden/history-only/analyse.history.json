@@ -19,7 +19,8 @@
       "near-partners": 0,
       "superseded": 1
     },
-    "reason": null
+    "reason": null,
+    "sortMethod": "ratio-to-guideline"
   },
   "inputs": {
     "paths": [],
@@ -66,9 +67,15 @@
         "current": 114
       },
       "path": "lib/config/rates.yaml",
+      "ranking": {
+        "guideline": 2,
+        "ratio": 57,
+        "value": 114
+      },
       "recommendation": "move",
       "rule": "history-partners",
       "score": 114,
+      "scoreUnit": "gain",
       "source": "history",
       "supersedes": [
         {

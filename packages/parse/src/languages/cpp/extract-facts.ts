@@ -142,9 +142,14 @@ class Extractor {
   private codeRows: boolean[] | undefined;
   private root: Node | undefined;
   private readonly explain: boolean;
+  /** Ids of the classes this file defines, from a first pass, or undefined in the first pass itself. */
+  private readonly knownClasses: ReadonlySet<string> | undefined;
+  /** Set when a definition has a qualifier of two or more segments, which only the file's classes can read. */
+  needsClassTable = false;
 
-  constructor(explain: boolean) {
+  constructor(explain: boolean, knownClasses?: ReadonlySet<string>) {
     this.explain = explain;
+    this.knownClasses = knownClasses;
   }
 
   extract(root: Node): FileFacts {
@@ -448,8 +453,10 @@ class Extractor {
     const insideClass = context.scope === "class";
     const owner = named.qualifier.length > 0 ? named.qualifier.at(-1)! : insideClass ? context.owners.at(-1) : undefined;
     const isMember = owner !== undefined;
-    const base = named.qualifier.length > 0
-      ? unitId([...context.namespaces, ...named.qualifier.slice(0, -1)], `${named.qualifier.at(-1)}.${named.name}`)
+    if (named.qualifier.length >= 2) this.needsClassTable = true;
+    const scope = named.qualifier.length > 0 ? this.outOfLineScope(context.namespaces, named.qualifier) : undefined;
+    const base = scope !== undefined
+      ? unitId(scope.namespaces, `${scope.classes.join(".")}.${named.name}`)
       : context.unit === undefined || !insideClass ? unitId(context.namespaces, named.name) : `${context.unit}.${named.name}`;
     const qualifiedName = this.uniqueName(base);
     const kind: UnitKind = isMember ? "method" : "function";
@@ -458,6 +465,23 @@ class Extractor {
     const exported = !isStatic(fn);
     this.addDeclaration(named.name, "function", qualifiedName, context, fn.startPosition.row + 1, exported, named.qualifier);
     this.functionBody(fn, { ...context, unit: qualifiedName, scope: "function", types: this.parameterTypes(declarator, context.types) });
+  }
+
+  /**
+   * Splits the qualifier written on an out-of-line definition into namespaces and the class chain. A class the file
+   * defines, found from the enclosing namespaces outwards, decides the split, so `A::Outer::Inner::m` is `A::Outer.Inner.m`
+   * when the file defines `Outer` in `A`. Otherwise the last segment is the class and every earlier one a namespace.
+   */
+  private outOfLineScope(enclosing: readonly string[], qualifier: readonly string[]): { namespaces: string[]; classes: string[] } {
+    for (let k = enclosing.length; k >= 0 && this.knownClasses !== undefined; k--) {
+      const written = [...enclosing.slice(0, k), ...qualifier];
+      for (let start = 0; start < written.length; start++) {
+        if (this.knownClasses.has(unitId(written.slice(0, start), written.slice(start).join(".")))) {
+          return { namespaces: written.slice(0, start), classes: written.slice(start) };
+        }
+      }
+    }
+    return { namespaces: [...enclosing, ...qualifier.slice(0, -1)], classes: [qualifier.at(-1)!] };
   }
 
   private measuredUnit(qualifiedName: string, kind: UnitKind, fn: Node, extent: Node, name: string | undefined, context: Context): UnitFact {
@@ -680,5 +704,11 @@ function hasQualifier(node: Node, text: string): boolean {
 }
 
 export function extractFacts(root: Node, options: { explain?: boolean }): FileFacts {
-  return new Extractor(options.explain === true).extract(root);
+  const explain = options.explain === true;
+  const first = new Extractor(explain);
+  const facts = first.extract(root);
+  if (!first.needsClassTable) return facts;
+  // A second pass, only for a file with a multi-segment qualifier, now that the file's classes are known.
+  const classes = new Set(facts.units.filter((unit) => unit.kind === "class").map((unit) => unit.qualifiedName.replace(/~\d+$/, "")));
+  return new Extractor(explain, classes).extract(root);
 }

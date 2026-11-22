@@ -196,6 +196,26 @@ describe("unit ids keep their namespaces", () => {
     expect(found).toEqual(["a::W.run", "b::W.run", "c.free"]);
   });
 
+  it("name a member of a nested class defined out of line as the class defined in its own body is named", async () => {
+    const found = await ids({
+      "a.cpp": [
+        "void A::Outer::Inner::late() {}",
+        "namespace A { class Outer { public: class Inner { public: void inside() {} void outside(); }; }; }",
+        "void A::Outer::Inner::outside() {}",
+        "namespace A { void Outer::Inner::relative() {} }",
+        "void Far::Away::Deep::unknown() {}",
+        "",
+      ].join("\n"),
+    });
+    expect(found).toContain("A::Outer.Inner.inside");
+    expect(found).toContain("A::Outer.Inner.outside");
+    expect(found).toContain("A::Outer.Inner.relative");
+    // A class defined later in the file is known too.
+    expect(found).toContain("A::Outer.Inner.late");
+    // Where no class of the file matches, the last segment is the class and the earlier ones are namespaces.
+    expect(found).toContain("Far::Away::Deep.unknown");
+  });
+
   it("add no segment for an anonymous namespace, and the name for an inline one", async () => {
     const found = await ids({ "a.cpp": "namespace { int hidden() { return 1; } }\ninline namespace v1 { int f() { return 1; } }\nnamespace x::y { int g() { return 1; } }\n" });
     expect(found).toEqual(["hidden", "v1::f", "x::y::g"]);
