@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
-import { GitFixture } from "@code-health/fixtures/git-fixture";
+import { GitFixture, type Step } from "@code-health/fixtures/git-fixture";
 import { encodeProjectDir } from "@code-health/transcripts/measure-repo";
 import { edit, read, SyntheticSession } from "../../transcripts/test/synthetic-transcript.ts";
 import type { Outcome } from "../src/outcome.ts";
 import { expectGolden } from "./support/golden.ts";
-import { buildOutcomeRepo, outcomeSteps } from "./support/outcome-scenario.ts";
+import { buildOutcomeRepo, outcomeSteps, splitHot } from "./support/outcome-scenario.ts";
 import { runComplexity } from "./support/run.ts";
 
 let repo: GitFixture;
@@ -89,6 +89,7 @@ describe("complexity outcome", () => {
       writeFileSync(join(projects, encodeProjectDir(root), "after.jsonl"), after.toJsonl());
 
       const { result, stdout } = await outcome("--projects-dir", projects);
+      expectGolden("outcome", "outcome.measured", stdout);
       const inputs = JSON.parse(stdout).inputs;
       expect(inputs.transcriptStamp).toMatch(/^[0-9a-f]{16}$/);
       const none = mkdtempSync(join(tmpdir(), "no-sessions-"));
@@ -105,6 +106,40 @@ describe("complexity outcome", () => {
     } finally {
       rmSync(projects, { recursive: true, force: true });
     }
+  });
+
+  describe("the instruments' other branches", () => {
+    const flatten = (steps: Step[], content: string): Step[] =>
+      steps.map((step) => (step.type === "commit" && step.message.startsWith("Flatten hot") ? { ...step, changes: [{ op: "modify" as const, path: "src/hot.ts", content }] } : step));
+
+    test("suspects gaming when functions were added while the interfaces got shallower", async () => {
+      const split = GitFixture.build(flatten(outcomeSteps(), splitHot));
+      try {
+        const sha = split.git("log", "--format=%H", "--grep=Flatten hot").trim();
+        const result = JSON.parse((await runComplexity(split.path, ["outcome", "--json", sha])).stdout).results as Outcome;
+        expect(result.gamingCheck.actedOn.after.functions).toBeGreaterThan(result.gamingCheck.actedOn.before.functions);
+        expect(result.gamingCheck.suspected).toBe(true);
+      } finally {
+        split.dispose();
+      }
+    });
+
+    test("with no other file to compare with, the comparison group is empty and the difference is not computed", async () => {
+      const alone = GitFixture.build(outcomeSteps().filter((step) => !(step.type === "commit" && /warm|Fix off|Tune warm|rounding|edge case in warm/.test(step.message))).map((step) =>
+        step.type === "commit" && step.message === "Add modules" ? { ...step, changes: step.changes.filter((change) => change.path !== "src/warm.ts" && change.path !== "src/flat.ts") } : step,
+      ));
+      try {
+        const sha = alone.git("log", "--format=%H", "--grep=Flatten hot").trim();
+        const run = await runComplexity(alone.path, ["outcome", "--json", sha]);
+        const result = JSON.parse(run.stdout).results as Outcome;
+        expect(result.comparison.files).toEqual([]);
+        expect(result.changeCost.comparison.before.changes).toBe(0);
+        expect(result.difference.linesChurnedPerChange).toBeNull();
+        expectGolden("outcome", "outcome.nocomparison", run.stdout);
+      } finally {
+        alone.dispose();
+      }
+    });
   });
 
   describe("with history long after the simplification", () => {
