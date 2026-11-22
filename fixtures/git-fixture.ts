@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 
 export interface Identity {
@@ -48,6 +49,16 @@ function inheritedWithoutGit(): NodeJS.ProcessEnv {
   return Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.toUpperCase().startsWith("GIT_")));
 }
 
+function cacheDirectory(): string {
+  return join(tmpdir(), `code-health-fixture-cache-${userInfo().username}`);
+}
+
+const ownSource = readFileSync(new URL(import.meta.url), "utf8");
+
+function cacheKey(steps: Step[]): string {
+  return createHash("sha256").update(ownSource).update("\0").update(JSON.stringify(steps)).digest("hex").slice(0, 32);
+}
+
 const defaultIdentity: Identity = { name: "Fixture Author", email: "author@example.com" };
 
 /**
@@ -69,19 +80,38 @@ export class GitFixture {
     mkdirSync(path);
     const fixture = new GitFixture(root, path);
     fixture.git("init", "--quiet", `--initial-branch=${defaultBranch}`);
-    fixture.git("config", "commit.gpgsign", "false");
-    fixture.git("config", "core.autocrlf", "false");
     // Every commit would otherwise start a detached `git maintenance run --auto`
     // that outlives the command and races the next one, and the removal of the repository.
-    fixture.git("config", "maintenance.auto", "false");
-    fixture.git("config", "gc.auto", "0");
+    appendFileSync(
+      join(path, ".git", "config"),
+      "[commit]\n\tgpgsign = false\n[core]\n\tautocrlf = false\n[maintenance]\n\tauto = false\n[gc]\n\tauto = 0\n",
+    );
     return fixture;
   }
 
+  /**
+   * A repository built by the steps. The first build of a script runs git once per step and keeps the result in a
+   * cache shared by every test file and every run on the machine, keyed by a hash of the script and of this file.
+   * Every build, the first included, returns a fresh copy of the cached repository, so a test is free to change
+   * its fixture. Copying files starts no git process, which keeps a suite of hundreds of fixtures fast when the
+   * machine is busy.
+   */
   static build(steps: Step[]): GitFixture {
-    const fixture = GitFixture.create();
-    fixture.apply(steps);
-    return fixture;
+    const entry = join(cacheDirectory(), cacheKey(steps));
+    if (!existsSync(join(entry, "repo"))) {
+      const built = GitFixture.create();
+      built.apply(steps);
+      mkdirSync(dirname(entry), { recursive: true });
+      try {
+        renameSync(built.root, entry);
+      } catch {
+        // Another process stored the same repository first. Both are identical, so either serves.
+        built.dispose();
+      }
+    }
+    const root = mkdtempSync(join(tmpdir(), "code-health-fixture-"));
+    cpSync(join(entry, "repo"), join(root, "repo"), { recursive: true, preserveTimestamps: true });
+    return new GitFixture(root, join(root, "repo"));
   }
 
   dispose(): void {

@@ -123,3 +123,17 @@ test("a fixture runs no background maintenance that could touch its repository w
   expect(repo.git("config", "--get", "maintenance.auto")).toBe("false");
   expect(repo.git("config", "--get", "gc.auto")).toBe("0");
 });
+
+test("two builds of one script are separate repositories with the same history", () => {
+  const steps: Step[] = [
+    { type: "commit", message: "add a", date: "2024-01-01T10:00:00Z", changes: [{ op: "add", path: "a.txt", content: "one\n" }] },
+  ];
+  const first = GitFixture.build(steps);
+  const second = GitFixture.build(steps);
+  fixtures.push(first, second);
+  expect(first.path).not.toBe(second.path);
+  expect(first.git("rev-parse", "HEAD")).toBe(second.git("rev-parse", "HEAD"));
+  first.commit({ message: "more", date: "2024-01-02T10:00:00Z", changes: [{ op: "add", path: "b.txt", content: "two\n" }] });
+  expect(second.git("rev-list", "--count", "HEAD")).toBe("1");
+  expect(first.git("status", "--porcelain")).toBe("");
+});
