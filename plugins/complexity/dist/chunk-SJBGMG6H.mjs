@@ -5,7 +5,7 @@ import {
   adapterForPath,
   bindingForPath,
   isTestPath
-} from "./chunk-K5DXLP26.mjs";
+} from "./chunk-FUKS26Y7.mjs";
 import {
   GitError,
   SCHEMA_VERSION,
@@ -1136,8 +1136,18 @@ import { join as join2 } from "node:path";
 function reportPath(root, tool, command8) {
   return join2(root, ".cache", "code-health", "reports", `${tool}.${command8}.json`);
 }
+function skipReport(context, reason) {
+  context.report = { stored: false, reason };
+}
 async function writeReport(context, identity, command8, output, analysedHead) {
-  if (context.repo.dirty || analysedHead !== context.repo.head) return false;
+  if (context.repo.dirty) {
+    skipReport(context, "the working tree has uncommitted changes");
+    return false;
+  }
+  if (analysedHead !== context.repo.head) {
+    skipReport(context, "the analysed commit is not HEAD");
+    return false;
+  }
   const { results, truncated } = shapeResults(output.results, { limit: Infinity });
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
@@ -1157,6 +1167,7 @@ async function writeReport(context, identity, command8, output, analysedHead) {
   const temporary = `${file}.${process.pid}.tmp`;
   writeFileSync(temporary, serialise(document));
   renameSync2(temporary, file);
+  context.report = { stored: true };
   return true;
 }
 
@@ -1365,7 +1376,7 @@ import { createRequire } from "node:module";
 import { join as join5 } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// ../../../node_modules/web-tree-sitter/web-tree-sitter.js
+// node_modules/web-tree-sitter/web-tree-sitter.js
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 var Edit = class {
@@ -6042,6 +6053,7 @@ var command = {
       ]
     };
     if (!isPartial(context) && current.kind === "head") await storeReport(context, name2, output);
+    else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
     return output;
   }
 };
@@ -6261,6 +6273,7 @@ var command3 = {
       columns: ["path", "unit", "kind", "nodes", "interface", "depth", "passThrough", "labels"]
     };
     if (!isPartial2(context) && current.kind === "head") await storeReport(context, name4, output);
+    else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
     return output;
   }
 };
@@ -6597,6 +6610,7 @@ var command6 = {
       columns: ["path", "complexity", "functions", "overThreshold", "source", "profile", "test", "codeLines"]
     };
     if (!isPartial3(context) && current.kind === "head") await storeReport(context, name7, output);
+    else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
     return output;
   }
 };

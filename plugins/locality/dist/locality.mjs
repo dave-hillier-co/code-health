@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-L7PWPJYW.mjs";
+} from "./chunk-R5QMRQUY.mjs";
 import {
   GitError,
   gitVersion,
@@ -29,14 +29,14 @@ import {
 } from "./chunk-Z55QIW6L.mjs";
 import {
   analyseTree
-} from "./chunk-D3Q6TY2C.mjs";
-import "./chunk-T4QZDWJW.mjs";
+} from "./chunk-XZHA3TUN.mjs";
+import "./chunk-HSHIZHZS.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isTestPath
-} from "./chunk-HYQDVCCA.mjs";
+} from "./chunk-OELMQMQG.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -161,9 +161,19 @@ var sharedDefaults = {
   vagueNames: ["utils", "helpers", "common", "misc"]
 };
 var stringLists = ["exclude", "entryPoints", "vagueNames"];
+var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
+var documentKeys = ["$schema"];
+function rejectUnknownKeys(document, plugin) {
+  const known = /* @__PURE__ */ new Set([...Object.keys(sharedDefaults), ...PLUGIN_SECTIONS, plugin]);
+  for (const key of Object.keys(document)) {
+    if (documentKeys.includes(key) || known.has(key)) continue;
+    throw configError(`${CONFIG_FILE}: ${key} is an unknown setting; known settings are ${[...known].sort().join(", ")}`);
+  }
+}
 function loadConfig(root, spec) {
   const file = join(root, CONFIG_FILE);
   const document = existsSync(file) ? parseDocument(file) : void 0;
+  if (document !== void 0) rejectUnknownKeys(document, spec.plugin);
   for (const key of stringLists) {
     const value = document?.[key];
     if (value !== void 0 && (!Array.isArray(value) || value.some((item) => typeof item !== "string"))) {
@@ -426,7 +436,8 @@ async function execute(cli2, io) {
   }
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli2.config);
-  const output = await command8.run({ repo, config, positionals: args.positionals, values: args.values });
+  const context = { repo, config, positionals: args.positionals, values: args.values };
+  const output = await command8.run(context);
   const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
   const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns });
   if (args.json || !io.stdout.isTTY) {
@@ -446,13 +457,16 @@ async function execute(cli2, io) {
             durationMs: Date.now() - started,
             generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
             gitVersion: repo.gitVersion,
-            node: process.versions.node
+            node: process.versions.node,
+            ...context.report === void 0 ? {} : { report: context.report }
           }
         })
       )
     );
   } else if (Array.isArray(results)) {
     io.stdout.write(renderTable(results, args.fields ?? columns, truncated));
+    if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
+`);
   } else {
     io.stdout.write(serialise(results));
   }
@@ -549,6 +563,82 @@ __export(analyse_exports, {
   name: () => name,
   rules: () => rules
 });
+
+// packages/history/src/reports.ts
+import { mkdirSync as mkdirSync2, renameSync, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join3 } from "node:path";
+
+// packages/history/src/cache-location.ts
+import { existsSync as existsSync2, mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, join as join2 } from "node:path";
+async function locateCache(repoPath) {
+  const out = await runGit(repoPath, [
+    "rev-parse",
+    "--path-format=absolute",
+    "--show-toplevel",
+    "--git-common-dir"
+  ]);
+  const [repoRoot, gitDir] = out.split("\n");
+  if (!repoRoot || !gitDir) throw new Error(`Not a git working tree: ${repoPath}`);
+  const cacheRoot = basename(gitDir) === ".git" ? dirname(gitDir) : repoRoot;
+  const cacheDir = join2(cacheRoot, ".cache", "code-health");
+  return {
+    repoRoot,
+    gitDir,
+    cacheDir,
+    dbPath: join2(cacheDir, "history.sqlite"),
+    lockPath: join2(cacheDir, "history.lock"),
+    blamePath: join2(cacheDir, "blame.sqlite"),
+    blameLockPath: join2(cacheDir, "blame.lock")
+  };
+}
+function ensureCacheDir(location) {
+  ensureSelfIgnoring(location.cacheDir);
+}
+function ensureSelfIgnoring(directory) {
+  mkdirSync(directory, { recursive: true });
+  const ignore = join2(directory, ".gitignore");
+  if (!existsSync2(ignore)) writeFileSync(ignore, "*\n");
+}
+
+// packages/history/src/reports.ts
+function reportPath(root, tool, command8) {
+  return join3(root, ".cache", "code-health", "reports", `${tool}.${command8}.json`);
+}
+function skipReport(context, reason) {
+  context.report = { stored: false, reason };
+}
+async function writeReport(context, identity, command8, output, analysedHead) {
+  if (context.repo.dirty) {
+    skipReport(context, "the working tree has uncommitted changes");
+    return false;
+  }
+  if (analysedHead !== context.repo.head) {
+    skipReport(context, "the analysed commit is not HEAD");
+    return false;
+  }
+  const { results, truncated } = shapeResults(output.results, { limit: Infinity });
+  const document = buildDocument({
+    schemaVersion: identity.schemaVersion,
+    tool: identity.tool,
+    command: command8,
+    repo: { head: context.repo.head, dirty: false },
+    configHash: context.config.hash,
+    inputs: output.inputs,
+    extra: output.extra,
+    results,
+    truncated
+  });
+  const file = reportPath(context.repo.root, identity.tool, command8);
+  const location = await locateCache(context.repo.root);
+  ensureCacheDir({ ...location, cacheDir: join3(context.repo.root, ".cache", "code-health") });
+  mkdirSync2(join3(file, ".."), { recursive: true });
+  const temporary = `${file}.${process.pid}.tmp`;
+  writeFileSync2(temporary, serialise(document));
+  renameSync(temporary, file);
+  context.report = { stored: true };
+  return true;
+}
 
 // packages/history/src/glob.ts
 function escape(ch) {
@@ -703,42 +793,7 @@ function expandComponent(condensation, componentId) {
 // packages/parse/src/parse-cache.ts
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname as dirname2, join as join3 } from "node:path";
-
-// packages/history/src/cache-location.ts
-import { existsSync as existsSync2, mkdirSync, writeFileSync } from "node:fs";
-import { basename, dirname, join as join2 } from "node:path";
-async function locateCache(repoPath) {
-  const out = await runGit(repoPath, [
-    "rev-parse",
-    "--path-format=absolute",
-    "--show-toplevel",
-    "--git-common-dir"
-  ]);
-  const [repoRoot, gitDir] = out.split("\n");
-  if (!repoRoot || !gitDir) throw new Error(`Not a git working tree: ${repoPath}`);
-  const cacheRoot = basename(gitDir) === ".git" ? dirname(gitDir) : repoRoot;
-  const cacheDir = join2(cacheRoot, ".cache", "code-health");
-  return {
-    repoRoot,
-    gitDir,
-    cacheDir,
-    dbPath: join2(cacheDir, "history.sqlite"),
-    lockPath: join2(cacheDir, "history.lock"),
-    blamePath: join2(cacheDir, "blame.sqlite"),
-    blameLockPath: join2(cacheDir, "blame.lock")
-  };
-}
-function ensureCacheDir(location) {
-  ensureSelfIgnoring(location.cacheDir);
-}
-function ensureSelfIgnoring(directory) {
-  mkdirSync(directory, { recursive: true });
-  const ignore = join2(directory, ".gitignore");
-  if (!existsSync2(ignore)) writeFileSync(ignore, "*\n");
-}
-
-// packages/parse/src/parse-cache.ts
+import { dirname as dirname2, join as join4 } from "node:path";
 var ParseCache = class _ParseCache {
   directory;
   constructor(directory) {
@@ -748,7 +803,7 @@ var ParseCache = class _ParseCache {
   static async forRepository(repoPath) {
     const location = await locateCache(repoPath);
     ensureCacheDir(location);
-    return new _ParseCache(join3(location.cacheDir, "parse"));
+    return new _ParseCache(join4(location.cacheDir, "parse"));
   }
   async get(blobSha, key) {
     try {
@@ -771,7 +826,7 @@ var ParseCache = class _ParseCache {
   }
   /** The key is a loaded grammar's `cacheKey`: its version and the extractor's, so changed extraction rules never read old facts. */
   entryPath(blobSha, key) {
-    return join3(this.directory, key, blobSha.slice(0, 2), `${blobSha}.json`);
+    return join4(this.directory, key, blobSha.slice(0, 2), `${blobSha}.json`);
   }
 };
 
@@ -1174,11 +1229,11 @@ import { existsSync as existsSync5 } from "node:fs";
 
 // packages/history/src/refresh.ts
 import { existsSync as existsSync4, readFileSync as readFileSync3 } from "node:fs";
-import { join as join4 } from "node:path";
+import { join as join5 } from "node:path";
 
 // packages/history/src/lock.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { closeSync, openSync, readFileSync as readFileSync2, renameSync, rmSync, statSync, utimesSync, writeSync, linkSync } from "node:fs";
+import { closeSync, openSync, readFileSync as readFileSync2, renameSync as renameSync2, rmSync, statSync, utimesSync, writeSync, linkSync } from "node:fs";
 import { hostname } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 var LockTimeoutError = class extends Error {
@@ -1234,7 +1289,7 @@ function tryCreate(path, token) {
 function steal(path, judged) {
   const aside = `${path}.stale-${process.pid}-${randomUUID2()}`;
   try {
-    renameSync(path, aside);
+    renameSync2(path, aside);
   } catch {
     return;
   }
@@ -1582,7 +1637,7 @@ async function readShallowInfo(repoPath) {
   const out = (await runGit(repoPath, ["rev-parse", "--is-shallow-repository", "--path-format=absolute", "--git-common-dir"])).trim().split("\n");
   const isShallow = out[0] === "true";
   if (!isShallow) return { isShallow: false, boundary: [] };
-  const file = join4(out[1] ?? "", "shallow");
+  const file = join5(out[1] ?? "", "shallow");
   const boundary = existsSync4(file) ? readFileSync3(file, "utf8").split("\n").map((l) => l.trim()).filter((l) => l !== "") : [];
   return { isShallow, boundary: boundary.sort() };
 }
@@ -2969,36 +3024,6 @@ function analyseByHistory(history, files, settings) {
   return { candidates: kept, omitted, reason: null };
 }
 
-// packages/history/src/reports.ts
-import { mkdirSync as mkdirSync2, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join5 } from "node:path";
-function reportPath(root, tool, command8) {
-  return join5(root, ".cache", "code-health", "reports", `${tool}.${command8}.json`);
-}
-async function writeReport(context, identity, command8, output, analysedHead) {
-  if (context.repo.dirty || analysedHead !== context.repo.head) return false;
-  const { results, truncated } = shapeResults(output.results, { limit: Infinity });
-  const document = buildDocument({
-    schemaVersion: identity.schemaVersion,
-    tool: identity.tool,
-    command: command8,
-    repo: { head: context.repo.head, dirty: false },
-    configHash: context.config.hash,
-    inputs: output.inputs,
-    extra: output.extra,
-    results,
-    truncated
-  });
-  const file = reportPath(context.repo.root, identity.tool, command8);
-  const location = await locateCache(context.repo.root);
-  ensureCacheDir({ ...location, cacheDir: join5(context.repo.root, ".cache", "code-health") });
-  mkdirSync2(join5(file, ".."), { recursive: true });
-  const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync2(temporary, serialise(document));
-  renameSync2(temporary, file);
-  return true;
-}
-
 // packages/locality/src/reports.ts
 function writeReport2(context, command8, output) {
   return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command8, output, context.repo.head);
@@ -3254,6 +3279,7 @@ var command = {
       columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"]
     };
     if (!partial) await writeReport2(context, name, output);
+    else skipReport(context, "the run was limited by path arguments, --recommendation or --source");
     return output;
   }
 };
@@ -4623,7 +4649,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-46P7AXZH.mjs");
+    const { performMove } = await import("./chunk-PQGKNRUT.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -4673,8 +4699,8 @@ var command5 = {
     let typed;
     let results = [];
     if (chosen.length > 0) {
-      const { scrutinise } = await import("./chunk-SRJUH5IC.mjs");
-      const { buildProject } = await import("./chunk-TQBZ7GMH.mjs");
+      const { scrutinise } = await import("./chunk-MOK677SR.mjs");
+      const { buildProject } = await import("./chunk-TALHXDYP.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -4894,7 +4920,7 @@ var command7 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-MBWEO27V.mjs");
+    const { verifyMove } = await import("./chunk-UPGHQ42A.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

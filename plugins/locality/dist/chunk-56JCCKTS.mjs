@@ -3,11 +3,7 @@
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
   GrammarSet
-<<<<<<<< HEAD:plugins/locality/dist/chunk-JI33CASK.mjs
-} from "./chunk-T4QZDWJW.mjs";
-========
 } from "./chunk-HSHIZHZS.mjs";
->>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-56JCCKTS.mjs
 import {
   sourceFilesOf
 } from "./chunk-J6UQKHZO.mjs";

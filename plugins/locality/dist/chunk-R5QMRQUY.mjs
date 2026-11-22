@@ -25,31 +25,19 @@ __export(registered_languages_exports, {
 // packages/locality/src/movers/java.ts
 var language = {
   id: "java",
-<<<<<<<< HEAD:plugins/locality/dist/chunk-L7PWPJYW.mjs
-  load: async () => (await import("./chunk-AUIHUT3O.mjs")).backend
-========
   load: async () => (await import("./chunk-JCLPZHG3.mjs")).backend
->>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-R5QMRQUY.mjs
 };
 
 // packages/locality/src/movers/kotlin.ts
 var language2 = {
   id: "kotlin",
-<<<<<<<< HEAD:plugins/locality/dist/chunk-L7PWPJYW.mjs
-  load: async () => (await import("./chunk-AUIHUT3O.mjs")).backend
-========
   load: async () => (await import("./chunk-JCLPZHG3.mjs")).backend
->>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-R5QMRQUY.mjs
 };
 
 // packages/locality/src/movers/typescript.ts
 var language3 = {
   id: "typescript",
-<<<<<<<< HEAD:plugins/locality/dist/chunk-L7PWPJYW.mjs
-  load: async () => (await import("./chunk-I33PJEPH.mjs")).backend
-========
   load: async () => (await import("./chunk-TRZ72BS6.mjs")).backend
->>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-R5QMRQUY.mjs
 };
 
 // packages/locality/src/movers/csharp.ts
@@ -61,41 +49,25 @@ var language4 = {
 // packages/locality/src/movers/cpp.ts
 var language5 = {
   id: "cpp",
-<<<<<<<< HEAD:plugins/locality/dist/chunk-L7PWPJYW.mjs
-  load: async () => (await import("./chunk-JI33CASK.mjs")).createBackend()
-========
   load: async () => (await import("./chunk-56JCCKTS.mjs")).createBackend()
->>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-R5QMRQUY.mjs
 };
 
 // packages/locality/src/movers/python.ts
 var language6 = {
   id: "python",
-<<<<<<<< HEAD:plugins/locality/dist/chunk-L7PWPJYW.mjs
-  load: async () => (await import("./chunk-R6IH3HEP.mjs")).load()
-========
   load: async () => (await import("./chunk-TXS4GDP6.mjs")).load()
->>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-R5QMRQUY.mjs
 };
 
 // packages/locality/src/movers/go.ts
 var language7 = {
   id: "go",
-<<<<<<<< HEAD:plugins/locality/dist/chunk-L7PWPJYW.mjs
-  load: async () => (await import("./chunk-LMKBQFN7.mjs")).createBackend()
-========
   load: async () => (await import("./chunk-WBEAMDNZ.mjs")).createBackend()
->>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-R5QMRQUY.mjs
 };
 
 // packages/locality/src/movers/rust.ts
 var language8 = {
   id: "rust",
-<<<<<<<< HEAD:plugins/locality/dist/chunk-L7PWPJYW.mjs
-  load: async () => (await import("./chunk-VGLAHEF5.mjs")).backend
-========
   load: async () => (await import("./chunk-RFGG7YF5.mjs")).backend
->>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-R5QMRQUY.mjs
 };
 
 // packages/locality/src/movers/language.ts

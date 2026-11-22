@@ -6,17 +6,10 @@ import {
 } from "./chunk-Z55QIW6L.mjs";
 import {
   analyseTree
-<<<<<<<< HEAD:plugins/locality/dist/chunk-R6IH3HEP.mjs
-} from "./chunk-D3Q6TY2C.mjs";
-import {
-  loadGrammar
-} from "./chunk-T4QZDWJW.mjs";
-========
 } from "./chunk-XZHA3TUN.mjs";
 import {
   loadGrammar
 } from "./chunk-HSHIZHZS.mjs";
->>>>>>>> wip/amb-suite:plugins/locality/dist/chunk-TXS4GDP6.mjs
 import {
   sourceFilesOf
 } from "./chunk-J6UQKHZO.mjs";
