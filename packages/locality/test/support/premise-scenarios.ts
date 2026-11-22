@@ -29,6 +29,18 @@ export function sessionsWhereDistanceCosts(sessions: Sessions): void {
   sessions.tasks(START, specs);
 }
 
+/** Sessions in which every task edits two files of one folder: cost varies, distance never does. */
+export function sessionsWhereDistanceNeverVaries(sessions: Sessions): void {
+  const specs: TaskSpec[] = [];
+  for (let i = 0; i < 16; i++) {
+    const folder = `src/f${(i % 6) + 1}`;
+    const edits = [`${folder}/a.ts`, `${folder}/b.ts`];
+    const extra = Array.from({ length: (i * 7) % 4 }, (_, n) => `${folder}/extra${n}.ts`);
+    specs.push({ reads: [...edits, ...extra], edits, tokens: 3000 + ((i * 37) % 5) * 100 });
+  }
+  sessions.tasks(START, specs);
+}
+
 /** Sessions in which cost varies but does not follow distance: near and far tasks cost alike. */
 export function sessionsWhereDistanceDoesNotCost(sessions: Sessions): void {
   const specs: TaskSpec[] = [];

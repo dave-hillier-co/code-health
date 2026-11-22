@@ -154,7 +154,7 @@
           "required": ["filesRead", "reReads", "tokens"],
           "additionalProperties": false
         },
-        "verdict": { "enum": ["supported", "partly-supported", "contradicted", "mixed", "not-shown", "insufficient-sample"] },
+        "verdict": { "enum": ["supported", "partly-supported", "contradicted", "mixed", "not-shown", "not-measured", "insufficient-sample"] },
         "meaning": { "type": "string" },
         "limits": { "type": "array", "items": { "type": "string" } }
       },

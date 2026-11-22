@@ -6,7 +6,7 @@ export const PREMISE_FIGURES = ["filesRead", "reReads", "tokens"] as const;
 export type PremiseFigure = (typeof PREMISE_FIGURES)[number];
 
 export type FigureConclusion = "costlier-when-distant" | "cheaper-when-distant" | "no-relationship-shown" | "insufficient-sample" | "not-measured";
-export type PremiseVerdict = "supported" | "partly-supported" | "contradicted" | "mixed" | "not-shown" | "insufficient-sample";
+export type PremiseVerdict = "supported" | "partly-supported" | "contradicted" | "mixed" | "not-shown" | "not-measured" | "insufficient-sample";
 
 export interface Group {
   tasks: number;
@@ -107,6 +107,8 @@ function conclude(n: number, minSamples: number, partial: number | null, z: numb
 
 function verdictOf(conclusions: readonly FigureConclusion[]): PremiseVerdict {
   if (conclusions.every((c) => c === "insufficient-sample")) return "insufficient-sample";
+  // No figure could be tested, because distance or cost never varied: that is not a test that found nothing.
+  if (conclusions.every((c) => c === "insufficient-sample" || c === "not-measured")) return "not-measured";
   const costlier = conclusions.filter((c) => c === "costlier-when-distant").length;
   const cheaper = conclusions.filter((c) => c === "cheaper-when-distant").length;
   if (costlier > 0 && cheaper > 0) return "mixed";

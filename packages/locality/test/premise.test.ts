@@ -6,7 +6,7 @@ import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { partialSpearman, ranks, spearman } from "../src/premise.ts";
 import { expectGolden, withoutMeta } from "./support/golden.ts";
 import { relocationApp, Sessions } from "./support/measure-scenarios.ts";
-import { sessionsWhereDistanceCosts, sessionsWhereDistanceDoesNotCost } from "./support/premise-scenarios.ts";
+import { sessionsWhereDistanceCosts, sessionsWhereDistanceDoesNotCost, sessionsWhereDistanceNeverVaries } from "./support/premise-scenarios.ts";
 import { runLocality } from "./support/run.ts";
 
 const disposables: Array<{ dispose(): void }> = [];
@@ -74,6 +74,15 @@ describe("measure premise", () => {
     const { document } = await premise(repo, sessions);
     expect(document.results.verdict).toBe("not-shown");
     expect(document.results.meaning).toMatch(/not evidence there is none/);
+  }, 60_000);
+
+  test("says distance could not be tested, not that no relationship was shown, when it never varies", async () => {
+    const { repo, sessions } = fresh();
+    sessionsWhereDistanceNeverVaries(sessions);
+    const { document } = await premise(repo, sessions);
+    expect(document.results.figures.filesRead.conclusion).toBe("not-measured");
+    expect(document.results.verdict).toBe("not-measured");
+    expect(document.results.meaning).toMatch(/distance did not vary/);
   }, 60_000);
 
   test("concludes nothing from fewer tasks than locality.measureMinSamples", async () => {

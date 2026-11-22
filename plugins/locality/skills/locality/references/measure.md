@@ -16,6 +16,7 @@ Read `verdict` with `tasks.measured`, `evidence` and `limits`:
 
 - `supported` needs two figures that cost more when distant. `partly-supported` is one. Say how many tasks it rests on.
 - `not-shown` is not evidence that distance is free: say the data shows no relationship.
+- `not-measured` means distance (or cost) never varied across the tasks, for example when every task edited two files of one folder, so nothing could be tested. It is not a finding of no relationship. `tasks.singleFile` says how many one-file tasks were left out, since they have no distance.
 - `insufficient-sample` means fewer tasks than `locality.measureMinSamples`: conclude nothing, and let locality's priority rest on the static signals.
 - The result is an association over tasks nobody assigned to near or far files. It is not a measure of what a move would save. Only `measure compare` after a tidy-up shows that.
 

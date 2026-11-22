@@ -305,6 +305,7 @@ const PREMISE_VERDICTS = {
   contradicted: "tasks touching more distant files cost less",
   mixed: "the cost figures disagree",
   "not-shown": "no relationship between distance and cost was shown. That is not evidence there is none",
+  "not-measured": "distance did not vary across the tasks, or cost did not, so nothing could be tested. That is not a finding of no relationship",
   "insufficient-sample": "too few tasks to conclude anything",
 } as const;
 
