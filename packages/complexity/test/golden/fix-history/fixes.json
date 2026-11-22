@@ -1,0 +1,173 @@
+{
+  "cache": {
+    "cached": 1,
+    "parsed": 11
+  },
+  "command": "fixes",
+  "commits": {
+    "analysed": 11,
+    "inWindow": 11,
+    "maxCommits": 500,
+    "skipped": 0,
+    "skippedBy": {
+      "maxCommits": 0,
+      "noSourceFile": 0,
+      "oversized": 0
+    }
+  },
+  "config": "0000000000000000",
+  "deleted": {
+    "limit": 10,
+    "omitted": 0,
+    "rows": [
+      {
+        "cognitive": null,
+        "earlierIds": [],
+        "evidence": [
+          {
+            "date": "2024-02-08",
+            "matchedIn": "subject",
+            "pattern": "\\bfix\\b",
+            "sha": "73f8c73212fe6de1eb586910e5792c2c3eef295e",
+            "subject": "Fix legacy shipping rate"
+          }
+        ],
+        "evidenceOmitted": 0,
+        "fixCommits": 1,
+        "fixShare": 0.5,
+        "id": "src/orders.ts#legacy",
+        "path": "src/orders.ts",
+        "score": 1.5,
+        "unit": "legacy",
+        "unitRevisions": 2
+      }
+    ],
+    "units": 1,
+    "withFixes": 1
+  },
+  "files": {
+    "analysed": 11,
+    "skipped": {
+      "binary": 0,
+      "excluded": 0,
+      "large": 0,
+      "noAdapter": 0,
+      "tests": 0
+    }
+  },
+  "fixConvention": {
+    "fixes": 6,
+    "followsConvention": false,
+    "guidelines": {
+      "maxShare": 0.6,
+      "minChanges": 30,
+      "minShare": 0.02,
+      "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+    },
+    "logicalChanges": 11,
+    "note": "The commit messages probably do not follow a convention this can use: there are 11 logical changes in the window, fewer than 30.",
+    "share": 0.545
+  },
+  "inputs": {
+    "evidence": 3,
+    "maxCommits": 500,
+    "paths": [],
+    "tree": "head"
+  },
+  "outsideUnits": {
+    "files": 1,
+    "fixCommits": 2,
+    "limit": 10,
+    "omitted": 0,
+    "rows": [
+      {
+        "fixCommits": 2,
+        "path": "src/billing.ts",
+        "revisions": 4
+      }
+    ]
+  },
+  "repo": {
+    "dirty": false,
+    "head": "1fea426f74295b84106396e7ca0b1a81ece5c08b"
+  },
+  "results": [
+    {
+      "cognitive": 8,
+      "earlierIds": [
+        "src/orders.ts#price"
+      ],
+      "endLine": 14,
+      "evidence": [
+        {
+          "date": "2024-02-10",
+          "matchedIn": "subject",
+          "pattern": "\\bfix\\b",
+          "sha": "511562087272505e4e47f546c17682f8c8ca8a10",
+          "subject": "Fix vip rate in priceOrder"
+        },
+        {
+          "date": "2024-02-03",
+          "matchedIn": "subject",
+          "pattern": "\\bfix\\b",
+          "sha": "165f96cc24ae38fe4e16798cc2d3ad6a07099754",
+          "subject": "Fix coupon rounding bug"
+        }
+      ],
+      "evidenceOmitted": 0,
+      "fixCommits": 2,
+      "fixShare": 0.4,
+      "id": "src/billing.ts#priceOrder",
+      "kind": "function",
+      "path": "src/billing.ts",
+      "score": 2.4,
+      "startLine": 4,
+      "unit": "priceOrder",
+      "unitRevisions": 5
+    },
+    {
+      "cognitive": 1,
+      "earlierIds": [
+        "src/orders.ts#describe"
+      ],
+      "endLine": 22,
+      "evidence": [
+        {
+          "date": "2024-02-05",
+          "matchedIn": "subject",
+          "pattern": "\\bfix\\b",
+          "sha": "72e1821fc040c310f37501db8868bb5d837a2485",
+          "subject": "Fix the separator in describe"
+        }
+      ],
+      "evidenceOmitted": 0,
+      "fixCommits": 1,
+      "fixShare": 0.5,
+      "id": "src/billing.ts#describe",
+      "kind": "function",
+      "path": "src/billing.ts",
+      "score": 1.5,
+      "startLine": 16,
+      "unit": "describe",
+      "unitRevisions": 2
+    }
+  ],
+  "schemaVersion": 1,
+  "shallow": false,
+  "summary": {
+    "currentUnitsWithFixes": 2,
+    "unitsTouched": 3,
+    "unitsWithFixes": 3
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 2
+  },
+  "window": {
+    "months": 12,
+    "since": "2023-02-11T12:00:00.000Z",
+    "until": "2024-02-11T12:00:00.000Z"
+  }
+}

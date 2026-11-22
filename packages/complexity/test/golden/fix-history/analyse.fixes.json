@@ -1,0 +1,227 @@
+{
+  "agreement": {},
+  "command": "analyse",
+  "config": "0000000000000000",
+  "filesWithSyntaxErrors": [],
+  "fixes": {
+    "cache": {
+      "cached": 2,
+      "parsed": 10
+    },
+    "commits": {
+      "analysed": 11,
+      "inWindow": 11,
+      "maxCommits": 500,
+      "skipped": 0,
+      "skippedBy": {
+        "maxCommits": 0,
+        "noSourceFile": 0,
+        "oversized": 0
+      }
+    },
+    "deleted": {
+      "limit": 10,
+      "omitted": 0,
+      "rows": [
+        {
+          "cognitive": null,
+          "earlierIds": [],
+          "evidence": [
+            {
+              "date": "2024-02-08",
+              "matchedIn": "subject",
+              "pattern": "\\bfix\\b",
+              "sha": "73f8c73212fe6de1eb586910e5792c2c3eef295e",
+              "subject": "Fix legacy shipping rate"
+            }
+          ],
+          "evidenceOmitted": 0,
+          "fixCommits": 1,
+          "fixShare": 0.5,
+          "id": "src/orders.ts#legacy",
+          "path": "src/orders.ts",
+          "score": 1.5,
+          "unit": "legacy",
+          "unitRevisions": 2
+        }
+      ],
+      "units": 1,
+      "withFixes": 1
+    },
+    "files": {
+      "analysed": 11,
+      "skipped": {
+        "binary": 0,
+        "excluded": 0,
+        "large": 0,
+        "noAdapter": 0,
+        "tests": 0
+      }
+    },
+    "fixConvention": {
+      "fixes": 6,
+      "followsConvention": false,
+      "guidelines": {
+        "maxShare": 0.6,
+        "minChanges": 30,
+        "minShare": 0.02,
+        "provenance": "Judgement calls, not calibrated on a corpus. A share under 2 percent means the commit messages rarely say that a change is a fix, so the patterns most likely miss them. A share over 60 percent means the patterns most likely match what is not a fix. Fewer than 30 logical changes is too few for a share to mean anything."
+      },
+      "logicalChanges": 11,
+      "note": "The commit messages probably do not follow a convention this can use: there are 11 logical changes in the window, fewer than 30.",
+      "share": 0.545
+    },
+    "outsideUnits": {
+      "files": 1,
+      "fixCommits": 2,
+      "limit": 10,
+      "omitted": 0,
+      "rows": [
+        {
+          "fixCommits": 2,
+          "path": "src/billing.ts",
+          "revisions": 4
+        }
+      ]
+    },
+    "shallow": false,
+    "summary": {
+      "currentUnitsWithFixes": 2,
+      "unitsTouched": 3,
+      "unitsWithFixes": 3
+    },
+    "window": {
+      "months": 12,
+      "since": "2023-02-11T12:00:00.000Z",
+      "until": "2024-02-11T12:00:00.000Z"
+    }
+  },
+  "inputs": {
+    "evidence": 3,
+    "layer": "auto",
+    "maxCommits": 500,
+    "metrics": [
+      "cognitive",
+      "cyclomatic",
+      "nesting",
+      "parameters",
+      "length",
+      "keyword",
+      "bumps"
+    ],
+    "paths": [],
+    "tree": "head",
+    "withFixes": true
+  },
+  "layers": {
+    "lexical": 0,
+    "none": 1,
+    "structural": 1
+  },
+  "ranking": {
+    "basis": "percentile within the repository, per metric, among units measured the same way, times the change weight of the unit's file",
+    "changeWeighted": true,
+    "window": {
+      "months": 12,
+      "since": 1676116800,
+      "until": 1707652800
+    }
+  },
+  "repo": {
+    "dirty": false,
+    "head": "1fea426f74295b84106396e7ca0b1a81ece5c08b"
+  },
+  "results": [
+    {
+      "bumpDepth": 3,
+      "bumpSize": 5,
+      "bumps": 1,
+      "changeWeight": 0.75,
+      "cognitive": 8,
+      "complexityScore": 0.75,
+      "cyclomatic": 5,
+      "dominant": "cognitive",
+      "endLine": 14,
+      "fixCommits": 2,
+      "fixShare": 0.4,
+      "id": "src/billing.ts#priceOrder",
+      "kind": "function",
+      "labels": [],
+      "length": 11,
+      "nesting": 2,
+      "optionCount": 0,
+      "parameters": 1,
+      "path": "src/billing.ts",
+      "percentiles": {
+        "bumps": 0.5,
+        "cognitive": 0.75,
+        "cyclomatic": 0.75,
+        "length": 0.75,
+        "nesting": 0.75,
+        "parameters": 0.5
+      },
+      "revisions": 11,
+      "score": 0.5625,
+      "source": "structural",
+      "startLine": 4,
+      "statements": 6,
+      "test": false,
+      "unit": "priceOrder",
+      "unitRevisions": 5
+    },
+    {
+      "bumpDepth": 2,
+      "bumpSize": 1,
+      "bumps": 1,
+      "changeWeight": 0.75,
+      "cognitive": 1,
+      "complexityScore": 0.5,
+      "cyclomatic": 2,
+      "dominant": "parameters",
+      "endLine": 22,
+      "fixCommits": 1,
+      "fixShare": 0.5,
+      "id": "src/billing.ts#describe",
+      "kind": "function",
+      "labels": [],
+      "length": 7,
+      "nesting": 1,
+      "optionCount": 0,
+      "parameters": 1,
+      "path": "src/billing.ts",
+      "percentiles": {
+        "bumps": 0.5,
+        "cognitive": 0.25,
+        "cyclomatic": 0.25,
+        "length": 0.25,
+        "nesting": 0.25,
+        "parameters": 0.5
+      },
+      "revisions": 11,
+      "score": 0.375,
+      "source": "structural",
+      "startLine": 16,
+      "statements": 4,
+      "test": false,
+      "unit": "describe",
+      "unitRevisions": 2
+    }
+  ],
+  "schemaVersion": 1,
+  "skipped": {
+    "comment and string stripping: no lexer profile": 1,
+    "per-function metrics: no lexer profile": 1
+  },
+  "skippedFiles": {
+    "binary": 0,
+    "excluded": 0,
+    "large": 0,
+    "tests": 0
+  },
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 2
+  }
+}

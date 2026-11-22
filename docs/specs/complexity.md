@@ -147,6 +147,7 @@ The default guideline values, each with its source. They are configurable under 
 | `interfaceDepth.shallow` | 10 nodes per interface element | Judgement call, not calibrated on a corpus |
 | `agreementBar` | 0.9 | Judgement call, a measurement floor |
 | `moveSimilarity` | 0.8 | Judgement call, a pairing floor |
+| `fixes.maxCommits` | 500 commits | Judgement call about run time, not calibrated on a corpus. It bounds the work and omits nothing without saying how many commits it left out. |
 | `delta` | 0 | The gate of `check`, below |
 
 Only cyclomatic, cognitive, nesting and parameters have a guideline that `check` reads. There is no single score, because CodeScene's Code Health weights are not published and a score could not be audited.
@@ -155,12 +156,35 @@ Only cyclomatic, cognitive, nesting and parameters have a guideline that `check`
 
 | Command | Output |
 |---|---|
-| `complexity analyse [PATHS] [--metrics m1,m2] [--layer auto\|lexical\|structural] [--limit N]` | Ranked functions with all selected metrics, percentile, change weight and labels, and a count of the functions left out by the limit. Exits with 0 whatever the values. |
+| `complexity analyse [PATHS] [--metrics m1,m2] [--layer auto\|lexical\|structural] [--with-fixes] [--limit N]` | Ranked functions with all selected metrics, percentile, change weight and labels, and a count of the functions left out by the limit. `--with-fixes` adds `fixCommits`, `unitRevisions` and `fixShare` per function from the computation of `complexity fixes`, and its header under `fixes`. Exits with 0 whatever the values. |
 | `complexity files [PATHS]` | File-level aggregates. A full run writes the `complexity.files` report that other plugins read. |
 | `complexity diff BASE[..HEAD]` | Only units added or changed between two revisions, with before and after values. Without HEAD, compares against the working tree. |
 | `complexity check [--base REV]` | Compares units against a base revision (default: the merge base with the configured main branch). This is a gate the user chooses to run, so it is the one command that exits with 1: when a new unit is above a guideline, or an existing unit is above a guideline and worsened by more than the configured delta (default 0, so any rise counts). Only cyclomatic, cognitive, nesting and parameters count. Length and the bumpy road do not. A unit that stays under its guidelines never makes it exit with 1, which matches CodeScene gating on a regression and not on absolute values. Built for CI and pre-commit. |
 | `complexity explain UNIT` | Line-by-line breakdown of where each increment came from. Lets the agent target the exact construct. |
+| `complexity fixes [PATHS] [--max-commits N] [--evidence N]` | Per-function fix statistics over the history window, from the fix definition shared with the rest of the suite. See [Per-function fix statistics](#per-function-fix-statistics). Never stored as a report. |
 | `complexity depth [PATHS]` | Exported functions, classes and modules by interface depth, and every pass-through, with labels. A full run writes the `complexity.depth` report. |
+
+## Per-function fix statistics
+
+`complexity fixes` answers "which functions do the bug fixes keep changing?" in the manner of CodeScene's X-Ray. It uses the fix definition shared by the suite, `history/fix-commits`, configured by `history.fixPatterns`, `history.revertPatterns` and `history.fixMatchBody` (see [suite.md](suite.md#configuration)), so its counts agree with the fix rate of `outcome` and the fix factors of cochange.
+
+**Computation.**
+
+1. The window is `windowMonths` back from HEAD's commit date, over the logical changes that survive the shared noise filters. A change with more files than `maxChangesetSize` is skipped and counted, because one edit to hundreds of files says nothing about any function.
+2. For each logical change that touched a file with a structural adapter, the lines changed in the new revision come from `git diff -U0` against the first parent of each commit. The new revision of the file is read by blob and parsed through the parse cache, keyed by blob, so a rerun parses nothing it parsed before.
+3. Each changed range is mapped onto the functions and methods that contain it. A function nested in another owns its own lines, and the function around it owns the rest, so one edit counts once. A deletion counts for the function that holds the lines on both sides of it. A changed line outside every function counts against the file (`outsideUnits`), never against a function. A file created by a commit counts as one revision of each of its functions, and never as a fix.
+4. Each function is followed forward to the current revision with the matcher of `check` and `diff`: by identity, with the earlier revision given the current path so a file renamed in git keeps its functions, then by body similarity (`moveSimilarity`) so a function renamed inside its file keeps its history. A function that is gone follows its later self in the file's latest analysed revision, so a rename before its deletion keeps its history. A function moved to a different file is not followed across files, so its history splits.
+5. A logical change is a fix when one of its commits matches the shared definition. A revert is not a fix. A function's `fixCommits` is the fix changes with a changed line in it, `unitRevisions` is every change with one, and `fixShare` is the first over the second.
+
+**Output.** Rows are the current functions with at least one fix, sorted by `fixCommits`, then `fixShare`. A row carries the unit id, file, `fixCommits`, `unitRevisions`, `fixShare`, the function's current cognitive complexity, `earlierIds` for a rename or a move, and the evidence commits (`sha`, `date`, `subject`, the matched `pattern`, and whether it matched in the subject or the body) newest first up to `--evidence`, with `evidenceOmitted` for the rest. Functions that no longer exist are listed apart under `deleted`, counted whatever the limit, with their own rows up to a stated limit and the omitted count. `outsideUnits` lists the files with fixes outside every function, with the same limit and count. `summary` counts every function the window touched, so the rows are visibly a part of it.
+
+**Header.** `fixConvention` is the repository-level check over every logical change of the window, as in `outcome`, with the same note when the share is under 2 percent or over 60 percent or there are fewer than 30 changes. `commits` says how many commits the selected files had in the window, how many were analysed and how many skipped, by cause: older than `--max-commits`, in oversized changes, or touching no file with a structural adapter. `files` counts the file revisions analysed and those that could not be mapped, by cause. `cache` counts blobs parsed and blobs read from the cache. `shallow` says whether history before a shallow clone's boundary is missing. A table run prints the same facts as notices.
+
+**Cost.** The run parses the historical revisions of the files the window touched, so it is bounded explicitly: by the window, and by `--max-commits` (default `fixes.maxCommits`, 500), which analyses the newest commits first and reports what it left out. Each distinct blob is parsed once, through the shared parse cache, with the grammars loaded once per run.
+
+**`analyse --with-fixes`** runs the same computation and joins it to the ranked rows by function id. A function no analysed change touched has `fixCommits` 0, `unitRevisions` 0 and a null `fixShare`. A run with `--with-fixes` is never stored as the `complexity.analyse` report.
+
+The figures are guidelines for where to look. A function that is the extension point of a system changes and is fixed often because it is used often, and a function with no fix may have fixes that nobody labelled when `fixConvention.note` is set.
 
 ## Agent integration
 
@@ -212,6 +236,7 @@ In the `complexity` section of the suite config:
 - The agreement bar for per-function lexical metrics.
 - Hook enablement (`hook.enabled`, off by default).
 - The shallow guideline of the interface depth label (`interfaceDepth.shallow`).
+- The defaults of `--max-commits` and `--evidence` for the fix statistics (`fixes.maxCommits`, `fixes.evidence`).
 - Whether tests are analysed (default: analysed, but ranked separately).
 
 ## Languages
@@ -229,6 +254,7 @@ The plugin supports every supported language of the suite (tier 1: TypeScript/Ja
 
 ## Open questions
 
+- Whether a function moved to another file should be followed across files in `complexity fixes`, which costs a comparison of every unmatched function against every function that appeared in the same commit.
 - Whether symbol-level co-change, from mapping diff hunks onto function ranges, belongs here (this plugin already parses) or in cochange.
 - Whether Rust's wildcard `match` arm should stop counting as a case, for consistency with the other languages.
 - Whether `complexity depth` rows should rank by a corpus-calibrated figure instead of the judgement-call guideline.

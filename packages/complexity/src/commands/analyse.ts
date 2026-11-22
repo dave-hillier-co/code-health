@@ -2,6 +2,7 @@ import type { Command, CommandContext, Rule } from "@code-health/cli-kit/run-cli
 import { readChangeWeights } from "../change-weights.ts";
 import { layerOption, measureCurrent, metricsOption, parseLayer, parseMetrics, storeReport } from "../analysis.ts";
 import { normalisePaths, pathSelector } from "../current-tree.ts";
+import { fixFigures, fixHeader, fixNotices, fixOptionHelp, fixOptions, measureFixesFor } from "../fix-report.ts";
 import { metricIds } from "../metrics.ts";
 import { rankUnits } from "../ranking.ts";
 import { ruleDescriptions } from "../rules.ts";
@@ -14,12 +15,16 @@ export const rules: Record<string, Rule> = ruleDescriptions;
 
 /** Whether a run covers less than the whole repository, so it is printed but never stored as a report. */
 function isPartial(context: CommandContext): boolean {
-  return context.positionals.length > 0 || context.values.metrics !== undefined || context.values.layer !== undefined;
+  return context.positionals.length > 0 || context.values.metrics !== undefined || context.values.layer !== undefined || context.values["with-fixes"] === true;
 }
 
 export const command: Command = {
   summary: "Rank the functions that are hardest to understand, with all selected metrics, percentiles and labels",
-  options: { ...metricsOption, ...layerOption },
+  options: { ...metricsOption, ...layerOption, "with-fixes": { type: "boolean" }, ...fixOptions },
+  optionHelp: {
+    "with-fixes": "add fixCommits, unitRevisions and fixShare per function from the history window (see `complexity fixes`); costs a parse of the historical revisions",
+    ...fixOptionHelp,
+  },
   async run(context) {
     const layer = parseLayer(context.values.layer);
     const { settings, current, measurement } = await measureCurrent(context, layer);
@@ -29,7 +34,10 @@ export const command: Command = {
 
     const changes = settings.changeWeighting ? await readChangeWeights(context, settings) : undefined;
     const ranked = rankUnits(measurement.files.flatMap((file) => file.units), selected, changes);
-    const rows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
+    const unitRows = ranked.filter(({ unit }) => inPaths(unit.path)).map((entry) => unitRow(entry, selected, settings));
+    const withFixes = context.values["with-fixes"] === true;
+    const fixes = withFixes ? await measureFixesFor(context, settings, current) : undefined;
+    const rows = fixes === undefined ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
 
     const layers = { structural: 0, lexical: 0, none: 0 };
     for (const file of measurement.files) layers[file.source ?? "none"]++;
@@ -47,7 +55,13 @@ export const command: Command = {
     }
 
     const output = {
-      inputs: { tree: current.kind, layer, metrics: selected, paths },
+      inputs: {
+        tree: current.kind,
+        layer,
+        metrics: selected,
+        paths,
+        ...(fixes === undefined ? {} : { withFixes: true, maxCommits: fixes.request.maxCommits, evidence: fixes.request.evidence }),
+      },
       extra: {
         ranking: {
           basis:
@@ -62,8 +76,10 @@ export const command: Command = {
         skipped,
         filesWithSyntaxErrors: measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => file.path),
         skippedFiles: measurement.skippedFiles,
+        ...(fixes === undefined ? {} : { fixes: fixHeader(fixes.stats, fixes.request) }),
       },
       results: rows,
+      ...(fixes === undefined ? {} : { notices: fixNotices(fixes.stats, fixes.request) }),
       columns: [
         "path",
         "unit",
@@ -71,6 +87,7 @@ export const command: Command = {
         "revisions",
         "dominant",
         ...metricIds.filter((metric) => selected.includes(metric)),
+        ...(fixes === undefined ? [] : ["fixCommits", "unitRevisions", "fixShare"]),
         "labels",
       ],
     };

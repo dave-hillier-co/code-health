@@ -5,6 +5,7 @@ import * as depth from "./commands/depth.ts";
 import * as diff from "./commands/diff.ts";
 import * as explain from "./commands/explain.ts";
 import * as files from "./commands/files.ts";
+import * as fixes from "./commands/fixes.ts";
 import * as outcome from "./commands/outcome.ts";
 
 /** What a module in `commands/` exports. */
@@ -28,6 +29,7 @@ export const commandModules: CommandModule[] = [
   diff,
   explain,
   files,
+  fixes,
   outcome,
 ];
 

@@ -64,6 +64,19 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    other languages are counted in `summary.filesWithoutAdapter` and not listed. Details in
    [references/metrics.md](references/metrics.md).
 
+6. To see which functions the bug fixes keep changing, use `fixes`, or `analyse --with-fixes` to add the figures to the
+   ranking:
+
+   ```
+   node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs fixes --json --limit 10
+   ```
+
+   Each row has `fixCommits`, `unitRevisions`, `fixShare`, the function's current `cognitive` complexity and the `evidence`
+   commits, and a function renamed or moved keeps its history. Read the header first: `fixConvention.note` says when the
+   commit messages probably do not follow a convention the patterns can use, and `commits` says how many commits were
+   skipped. The run parses historical revisions, so bound it with `--max-commits` on a large history. Details in
+   [references/fixes.md](references/fixes.md).
+
 ## Locate the cost
 
 Run `explain` on the function, with its id from the `analyse` row:
@@ -195,5 +208,6 @@ When you finish, report in this order and keep it short:
 - [references/remedies.md](references/remedies.md): the remedies with before and after examples, and the gaming patterns to refuse.
 - [references/hook.md](references/hook.md): the opt-in post-edit hook, what it measures, when it prints and how to read its state.
 - [references/outcome.md](references/outcome.md): the `outcome` command, its instruments and how to read them.
+- [references/fixes.md](references/fixes.md): the `fixes` command and `analyse --with-fixes`, how a function's fixes are counted and how to read the header.
 - [references/ci.md](references/ci.md): `check` and `diff` in CI and pre-commit, exit codes, and choosing a base.
 - [references/red-flags.md](references/red-flags.md): the shared design vocabulary.
