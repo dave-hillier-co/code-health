@@ -6,7 +6,9 @@ import { DEFAULT_LOCKFILES } from "@code-health/history/noise";
 import type { ChangeStatus } from "@code-health/history/log-parser";
 import type { HistoryChange, HistoryView } from "@code-health/history/read";
 import { builtinExcluder } from "@code-health/history/builtin-excludes";
-import { listGitlinks, listTree, readPathAttributes } from "@code-health/history/tree";
+import { recordDropped } from "@code-health/cli-kit/dropped-files";
+import { classifyFiles } from "@code-health/history/file-class";
+import { listBlobs, listGitlinks } from "@code-health/history/tree";
 import { resolveOwners, type Owner, type OwnerOptions } from "@code-health/history/blame-owners";
 
 /** The change under review, before any factor is read from it. */
@@ -163,21 +165,32 @@ export async function extractChange(
   const raw = await rawDiff(root, range.base, worktree ? null : range.head, options.similarity);
   const excluded = compileGlobs(options.exclude);
   const lockfiles = new Set(DEFAULT_LOCKFILES);
-  const tree = await listTree(root, range.head);
+  const blobs = await listBlobs(root, range.head);
+  const tree = blobs.map((entry) => entry.path);
+  const blobOf = new Map(blobs.map((entry) => [entry.path, entry.blob]));
   const builtinExcluded = builtinExcluder(root, await listGitlinks(root, range.head));
-  const attributes = await readPathAttributes(root, range.head, raw.map((file) => file.path).sort(), tree);
+  const classes = await classifyFiles(
+    root,
+    range.head,
+    raw.map((file) => ({ path: file.path, blob: blobOf.get(file.path) ?? null })),
+    tree,
+  );
 
   let moved = 0;
   let filtered = 0;
   const files: HistoryChange[] = [];
   for (const file of raw) {
     const pureRename = file.status === "R" && file.similarity === 100 && (file.added ?? 0) === 0 && (file.deleted ?? 0) === 0;
+    const generated = classes.generated.has(file.path);
+    const vendored = !generated && classes.vendored.has(file.path);
+    if (generated) recordDropped("generated", file.path);
+    if (vendored) recordDropped("vendored", file.path);
     const dropped =
       builtinExcluded(file.path) ||
       excluded(file.path) ||
       lockfiles.has(file.path.slice(file.path.lastIndexOf("/") + 1)) ||
-      attributes.generated.has(file.path) ||
-      attributes.vendored.has(file.path);
+      generated ||
+      vendored;
     if (dropped) {
       filtered++;
       continue;

@@ -1,6 +1,9 @@
 {
   "command": "age",
   "config": "0000000000000000",
+  "dropped": {
+    "nonCode": 1
+  },
   "evidence": {
     "activeContributors": 2,
     "commitSize": {
@@ -102,6 +105,7 @@
     "oversizedChanges": 0
   },
   "inputs": {
+    "allFiles": false,
     "by": "file"
   },
   "repo": {
@@ -117,15 +121,6 @@
       "recommendation": null,
       "revisions": 2,
       "score": 88
-    },
-    {
-      "ageDays": 61,
-      "firstSeen": "2024-04-01T09:00:00.000Z",
-      "lastChanged": "2024-04-01T09:00:00.000Z",
-      "path": "README.md",
-      "recommendation": null,
-      "revisions": 1,
-      "score": 61
     },
     {
       "ageDays": 31,
@@ -151,7 +146,7 @@
   "truncated": {
     "cut": 0,
     "limit": 20,
-    "total": 4
+    "total": 3
   },
   "window": {
     "since": "2024-01-10T09:00:00.000Z",

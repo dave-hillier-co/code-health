@@ -43,12 +43,13 @@ describe("a file type mapped to a lexer profile in languages", () => {
     expect(analysed.agreement).toEqual({});
   });
 
-  test("without the mapping the file has file-level metrics only", async () => {
+  test("without the mapping no profile claims the file, so it is not code and `files` leaves it out and counts it", async () => {
     repo.apply([{ type: "commit", message: "Drop the mapping", date: "2024-01-02T00:00:00+00:00", changes: [{ op: "modify", path: "code-health.json", content: "{}" }] }]);
     const { results } = await json(["analyse"]);
     expect(results).toEqual([]);
     const files = await json(["files"]);
-    expect(files.results[0]).toMatchObject({ profile: null, source: null, unverified: false });
+    expect(files.results).toEqual([]);
+    expect(files.dropped).toEqual({ nonCode: 2 });
   });
 
   test("a profile that does not exist is a config error that names it", async () => {

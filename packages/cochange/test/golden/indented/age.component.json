@@ -102,6 +102,7 @@
     "oversizedChanges": 0
   },
   "inputs": {
+    "allFiles": true,
     "by": "component"
   },
   "repo": {

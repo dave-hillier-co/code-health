@@ -134,10 +134,12 @@
       },
       "findings": [],
       "path": "src/billing/invoice.test.ts",
+      "pathKind": "code",
       "reverseConfidence": 37,
       "score": 54.1,
       "support": 10,
-      "with": "src/billing/invoice.ts"
+      "with": "src/billing/invoice.ts",
+      "withKind": "code"
     },
     {
       "aboveGuideline": true,
@@ -155,10 +157,12 @@
         "asymmetric-coupling"
       ],
       "path": "src/app/registry.ts",
+      "pathKind": "code",
       "reverseConfidence": 18.5,
       "score": 31.3,
       "support": 5,
-      "with": "src/billing/invoice.ts"
+      "with": "src/billing/invoice.ts",
+      "withKind": "code"
     },
     {
       "aboveGuideline": true,
@@ -176,10 +180,12 @@
         "asymmetric-coupling"
       ],
       "path": "src/billing/invoice.ts",
+      "pathKind": "code",
       "reverseConfidence": 83.3,
       "score": 30.3,
       "support": 5,
-      "with": "src/reporting/summary.ts"
+      "with": "src/reporting/summary.ts",
+      "withKind": "code"
     }
   ],
   "schemaVersion": 1,

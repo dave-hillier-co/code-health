@@ -159,7 +159,8 @@ test("the depth of a file's exports and its pass-throughs sit on its row in `fil
   const files = JSON.parse(run.stdout).results as { path: string; interfaceDepth: number | null; passThroughs: number }[];
   // Mean over exported top-level functions and classes: add 9, save 12.5, load 13, audit 22, tagged 19, Repo 11.6, default 5.
   expect(files.find((file) => file.path === "src/shapes.ts")).toMatchObject({ interfaceDepth: 13.16, passThroughs: 4 });
-  expect(files.find((file) => file.path === "src/plain.rb")).toMatchObject({ interfaceDepth: null, passThroughs: 0 });
+  // A Ruby file is not code, so `files` does not list it.
+  expect(files.find((file) => file.path === "src/plain.rb")).toBeUndefined();
 });
 
 test("a module that only re-exports with a star import has no body to measure and is not a row", async () => {

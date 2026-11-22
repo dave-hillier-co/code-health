@@ -1,6 +1,9 @@
 {
   "command": "files",
   "config": "0000000000000000",
+  "dropped": {
+    "nonCode": 2
+  },
   "inputs": {
     "layer": "auto",
     "paths": [],
@@ -97,23 +100,6 @@
     },
     {
       "aboveGuideline": 0,
-      "aggregates": null,
-      "codeLines": 7,
-      "complexity": 6,
-      "functions": 0,
-      "interfaceDepth": null,
-      "keywordComplexity": null,
-      "lineCount": 7,
-      "passThroughs": 0,
-      "path": "tools/total.rb",
-      "profile": null,
-      "score": 6,
-      "source": null,
-      "test": false,
-      "unverified": false
-    },
-    {
-      "aboveGuideline": 0,
       "aggregates": {
         "bumps": {
           "max": 1,
@@ -152,23 +138,6 @@
       "score": 4,
       "source": "structural",
       "test": true,
-      "unverified": false
-    },
-    {
-      "aboveGuideline": 0,
-      "aggregates": null,
-      "codeLines": 3,
-      "complexity": 1,
-      "functions": 0,
-      "interfaceDepth": null,
-      "keywordComplexity": null,
-      "lineCount": 4,
-      "passThroughs": 0,
-      "path": "notes.md",
-      "profile": null,
-      "score": 1,
-      "source": null,
-      "test": false,
       "unverified": false
     },
     {
@@ -225,6 +194,6 @@
   "truncated": {
     "cut": 0,
     "limit": null,
-    "total": 6
+    "total": 4
   }
 }

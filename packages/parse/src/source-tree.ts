@@ -3,7 +3,8 @@ import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { builtinExcluder } from "@code-health/history/builtin-excludes";
-import { readPathAttributes } from "@code-health/history/tree";
+import { recordDropped } from "@code-health/cli-kit/dropped-files";
+import { classifyFiles } from "@code-health/history/file-class";
 
 /**
  * The files of one revision (a git ref, or a directory on disk), each with its
@@ -88,7 +89,7 @@ export async function treeFromWorkingTree(repoPath: string): Promise<SourceTree>
       // Listed but gone from disk: deleted and not yet staged.
     }
   }
-  const files = sortedMap(await withoutMarkedPaths(repoPath, undefined, entries));
+  const files = sortedMap(await withoutGeneratedAndVendored(repoPath, undefined, entries));
   const read = async (path: string) => (files.has(path) ? readFileSync(join(repoPath, path), "utf8") : undefined);
   return {
     files,
@@ -201,18 +202,47 @@ export async function readBlobs(cwd: string, shas: readonly string[]): Promise<M
 }
 
 /**
- * Drops the files that `.gitattributes` marks `linguist-generated` or `linguist-vendored`, the same
- * paths the history filters treat as noise, so every plugin analyses one set of files.
+ * Drops the generated and vendored files, by the one definition every plugin shares (see `classifyFiles`): the
+ * attributes `linguist-generated` and `linguist-vendored`, a generated-code header, and vendor directories. Each file
+ * dropped is recorded for the `dropped` counts of the command. `ref` is undefined for files on disk, whose first
+ * text is read from disk because an uncommitted file is not in the object database.
  */
-async function withoutMarkedPaths(repoPath: string, ref: string | undefined, entries: [string, string][]): Promise<[string, string][]> {
+async function withoutGeneratedAndVendored(
+  repoPath: string,
+  ref: string | undefined,
+  entries: [string, string][],
+): Promise<[string, string][]> {
   const paths = entries.map(([path]) => path);
-  let marked;
-  try {
-    marked = await readPathAttributes(repoPath, ref, paths, paths);
-  } catch {
-    return entries;
+  const classes = await classifyFiles(
+    repoPath,
+    ref,
+    entries.map(([path, blob]) => ({ path, blob })),
+    paths,
+    ref === undefined ? { read: (missing) => readHeadsFromDisk(repoPath, missing) } : {},
+  );
+  return entries.filter(([path]) => {
+    if (classes.generated.has(path)) {
+      recordDropped("generated", path);
+      return false;
+    }
+    if (classes.vendored.has(path)) {
+      recordDropped("vendored", path);
+      return false;
+    }
+    return true;
+  });
+}
+
+async function readHeadsFromDisk(repoPath: string, missing: readonly { path: string; blob: string }[]): Promise<Map<string, string>> {
+  const heads = new Map<string, string>();
+  for (const { path, blob } of missing) {
+    try {
+      heads.set(blob, readFileSync(join(repoPath, path)).subarray(0, 4096).toString("utf8"));
+    } catch {
+      // Gone from disk: no verdict, the file is kept.
+    }
   }
-  return entries.filter(([path]) => !marked.generated.has(path) && !marked.vendored.has(path));
+  return heads;
 }
 
 /** A tree of the files at a git ref. Submodules and symlinks are left out. */
@@ -231,7 +261,7 @@ export async function treeFromRef(repoPath: string, ref: string): Promise<Source
   const omitted = builtinExcluder(repoPath, gitlinks);
   const kept = entries.filter(([path]) => !omitted(path));
   for (const path of gitlinks) omitted(path);
-  const files = sortedMap(await withoutMarkedPaths(repoPath, ref, kept));
+  const files = sortedMap(await withoutGeneratedAndVendored(repoPath, ref, kept));
   const readMany = async (wanted: readonly string[]) => {
     const known = wanted.filter((path) => files.has(path));
     const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path) as string))]);

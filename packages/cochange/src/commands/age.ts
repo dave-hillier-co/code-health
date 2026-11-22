@@ -1,7 +1,7 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { monthsBefore } from "@code-health/history/evidence";
 import { analysisCommand } from "../analysis-command.ts";
-import { SECONDS_PER_DAY, byOption, isGrouped, isoDate, loadUnits, readBy } from "../units.ts";
+import { SECONDS_PER_DAY, allFilesOption, byOption, isGrouped, isoDate, loadUnits, readBy, wantsAllFiles } from "../units.ts";
 
 export const name = "age";
 
@@ -20,9 +20,9 @@ export const rules: Record<string, Rule> = {
 
 export const command = analysisCommand(name, {
   summary: "First-seen and last-changed per file or component, oldest change first",
-  options: byOption,
+  options: { ...byOption, ...allFilesOption },
   wholeHistory: true,
-  partial: isGrouped,
+  partial: (context) => isGrouped(context) || wantsAllFiles(context),
   async analyse({ context, history }) {
     const by = readBy(context);
     const anchor = history.view.headDate;
@@ -44,7 +44,7 @@ export const command = analysisCommand(name, {
     });
 
     return {
-      inputs: { by },
+      inputs: { by, allFiles: wantsAllFiles(context) },
       results: rows,
       columns: ["path", "score", ...(by === "component" ? ["files"] : []), "ageDays", "firstSeen", "lastChanged", "revisions", "recommendation"],
     };

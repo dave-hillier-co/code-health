@@ -115,6 +115,7 @@
     "share": 0.364
   },
   "inputs": {
+    "allFiles": false,
     "by": "file",
     "evidenceLimit": 5
   },

@@ -11,9 +11,10 @@
       "properties": {
         "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" },
         "by": { "enum": ["file", "component"] },
+        "allFiles": { "type": "boolean", "description": "True when --all-files ranked the files that are not code as well." },
         "evidenceLimit": { "$ref": "common.schema.json#/$defs/count", "description": "The most evidence commits listed per row (--evidence)." }
       },
-      "required": ["by", "evidenceLimit"],
+      "required": ["by", "allFiles", "evidenceLimit"],
       "additionalProperties": false
     },
     "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" },

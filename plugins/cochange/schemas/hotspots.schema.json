@@ -10,6 +10,7 @@
       "type": "object",
       "properties": { "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" },
         "by": { "enum": ["file", "component"] },
+        "allFiles": { "type": "boolean", "description": "True when --all-files ranked the files that are not code as well." },
         "complexityReport": {
           "description": "The complexity plugin's report that supplied the complexity column, or null when the indentation proxy was used.",
           "oneOf": [
@@ -27,7 +28,7 @@
           ]
         }
       },
-      "required": ["by", "complexityReport"],
+      "required": ["by", "allFiles", "complexityReport"],
       "additionalProperties": false
     },
     "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" },

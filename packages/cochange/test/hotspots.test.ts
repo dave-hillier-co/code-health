@@ -36,7 +36,7 @@ test("files are ranked by change frequency weighted by indentation complexity", 
   expect(code).toBe(ExitCode.Success);
   const document = json(stdout);
   expect(document.complexitySource).toBe("indentation");
-  expect(document.inputs).toEqual({ by: "file", complexityReport: null });
+  expect(document.inputs).toEqual({ by: "file", allFiles: false, complexityReport: null });
   expect(document.results.map((r: { path: string }) => r.path)).toEqual([
     "src/core/engine.ts",
     "src/legacy/old.ts",

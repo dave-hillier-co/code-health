@@ -2,6 +2,9 @@
   "command": "hotspots",
   "complexitySource": "indentation",
   "config": "0000000000000000",
+  "dropped": {
+    "nonCode": 1
+  },
   "evidence": {
     "activeContributors": 2,
     "commitSize": {
@@ -116,6 +119,7 @@
     "share": 0
   },
   "inputs": {
+    "allFiles": false,
     "by": "file",
     "complexityReport": null
   },
@@ -137,7 +141,7 @@
       "lastChanged": "2024-06-01T09:00:00.000Z",
       "path": "src/billing/invoice.ts",
       "recommendation": "hotspot",
-      "score": 0.4375,
+      "score": 0.416667,
       "siblingTest": null
     },
     {
@@ -151,7 +155,7 @@
       "lastChanged": "2024-05-01T09:00:00.000Z",
       "path": "src/reporting/summary.ts",
       "recommendation": null,
-      "score": 0.3125,
+      "score": 0.25,
       "siblingTest": null
     },
     {
@@ -165,21 +169,7 @@
       "lastChanged": "2024-03-05T09:00:00.000Z",
       "path": "test/billing/invoice.test.ts",
       "recommendation": null,
-      "score": 0.1875,
-      "siblingTest": null
-    },
-    {
-      "ageDays": 61,
-      "churn": 1,
-      "complexity": 0,
-      "findings": [],
-      "fixShare": 0,
-      "fixes": 0,
-      "frequency": 1,
-      "lastChanged": "2024-04-01T09:00:00.000Z",
-      "path": "README.md",
-      "recommendation": null,
-      "score": 0.0625,
+      "score": 0.083333,
       "siblingTest": null
     }
   ],
@@ -188,7 +178,7 @@
   "truncated": {
     "cut": 0,
     "limit": 20,
-    "total": 4
+    "total": 3
   },
   "window": {
     "since": "2023-06-01T09:00:00.000Z",
