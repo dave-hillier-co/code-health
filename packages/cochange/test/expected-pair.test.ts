@@ -31,3 +31,10 @@ test("two non-code files of one format are expected, two of different formats ar
 test("a pair of production code files is not expected", () => {
   expect(expectedReason(code("src/a.ts"), code("src/b.ts"), isTest)).toBeNull();
 });
+
+test("a C or C++ header and the source file with the same stem are expected; other header pairs are not", () => {
+  expect(expectedReason(code("src/render/VirtualShadows.cpp"), code("src/render/VirtualShadows.h"), isTest)).toBe("header-and-source");
+  expect(expectedReason(code("lib/a.hpp"), code("lib/a.cc"), isTest)).toBe("header-and-source");
+  expect(expectedReason(code("src/a/Foo.h"), code("src/b/Foo.cpp"), isTest)).toBeNull();
+  expect(expectedReason(code("src/Foo.h"), code("src/Bar.cpp"), isTest)).toBeNull();
+});
