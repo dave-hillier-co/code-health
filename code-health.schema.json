@@ -1061,6 +1061,10 @@
         "base": {
           "default": null
         },
+        "csharpFolderCycles": {
+          "type": "boolean",
+          "default": false
+        },
         "packages": {
           "type": "object",
           "properties": {

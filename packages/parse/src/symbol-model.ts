@@ -68,8 +68,12 @@ export function resolveBySymbols(input: ResolveInput, options: SymbolModelOption
     for (const reference of symbols.references) {
       let found: Declared[] | undefined;
       for (const scope of scopes) {
-        found = table.get(scope === "" ? reference.name : `${scope}.${reference.name}`);
-        if (found !== undefined) break;
+        // A declaration with internal linkage is visible to its own file only; elsewhere it neither matches nor shadows.
+        const candidates = table.get(scope === "" ? reference.name : `${scope}.${reference.name}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+        if (candidates !== undefined && candidates.length > 0) {
+          found = candidates;
+          break;
+        }
       }
       if (found === undefined) continue;
       for (const target of found) {

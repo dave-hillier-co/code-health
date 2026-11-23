@@ -33,6 +33,7 @@ const goSecond = [
 interface Cycles {
   results: { id: string; level: string; nodes: string[] }[];
   inputs: { level: string };
+  projectFolderCycles?: { count: number; largest: { id: string; size: number; nodes: string[]; project: string }[] };
 }
 
 async function cycles(fixture: GitFixture, ...args: string[]): Promise<Cycles> {
@@ -97,7 +98,7 @@ describe("C# files", () => {
     ],
   );
 
-  test("are not a cycle at the default level, which is the folder", async () => {
+  test("are not a cycle at the default level, which is the project", async () => {
     expect((await cycles(repo)).results).toEqual([]);
   });
 
@@ -108,6 +109,42 @@ describe("C# files", () => {
 
   test("do not make check exit 1 by default", async () => {
     const run = await runStructure(repo.path, ["check", "--json", "--base", "HEAD~1"]);
+    expect(run.code).toBe(ExitCode.Success);
+  });
+});
+
+describe("C# folders of one project", () => {
+  const csproj = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>\n';
+  const klass = (name: string, uses: string) => `namespace Acme;\n\npublic class ${name}\n{\n    public int Run() => new ${uses}().Run();\n}\n`;
+  const stub = (name: string) => `namespace Acme;\n\npublic class ${name}\n{\n    public int Run() => 1;\n}\n`;
+  const build = (config: object | undefined): GitFixture =>
+    repository(
+      [add("Core/Core.csproj", csproj), add("Core/Orders/Order.cs", stub("Order")), add("Core/Billing/Invoice.cs", stub("Invoice")), ...(config === undefined ? [] : [add("code-health.json", JSON.stringify(config))])],
+      [
+        { op: "modify", path: "Core/Orders/Order.cs", content: klass("Order", "Invoice") } as Change,
+        { op: "modify", path: "Core/Billing/Invoice.cs", content: klass("Invoice", "Order") } as Change,
+      ],
+    );
+
+  test("are not a cycle at the default level, which is the project", async () => {
+    const document = await cycles(build(undefined));
+    expect(document.results).toEqual([]);
+    expect(document).not.toHaveProperty("projectFolderCycles");
+  });
+
+  test("are listed at folder level on request", async () => {
+    const document = await cycles(build(undefined), "--level", "folder");
+    expect(document.results.map((r) => r.nodes)).toEqual([["Core/Billing", "Core/Orders"]]);
+  });
+
+  test("are a count with the largest few, and not rows, when csharpFolderCycles is set", async () => {
+    const document = await cycles(build({ structure: { csharpFolderCycles: true } }));
+    expect(document.results).toEqual([]);
+    expect(document.projectFolderCycles).toEqual({ count: 1, largest: [{ id: "cycle:folder:Core/Billing", size: 2, nodes: ["Core/Billing", "Core/Orders"], project: "Core" }] });
+  });
+
+  test("do not make check exit 1 by default", async () => {
+    const run = await runStructure(build(undefined).path, ["check", "--json", "--base", "HEAD~1"]);
     expect(run.code).toBe(ExitCode.Success);
   });
 });
