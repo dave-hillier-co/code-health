@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { validateNotes } from "../src/notes.ts";
-import { ReportError, type Report } from "../src/protocol.ts";
+import { ReportError } from "../src/protocol.ts";
+import type { Report } from "../src/report-model.ts";
 import { renderReport } from "../src/render.ts";
 import { slotsDocument } from "../src/slots-document.ts";
 import { makeStamp } from "../src/stamp.ts";

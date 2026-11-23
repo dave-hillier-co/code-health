@@ -1,5 +1,6 @@
 import { normalise } from "./json.ts";
-import { PROTOCOL_VERSION, type Report } from "./protocol.ts";
+import { PROTOCOL_VERSION } from "./protocol.ts";
+import type { Report } from "./report-model.ts";
 
 /**
  * The document `--slots` prints: the report kind, the stamp to copy into the notes, the data the report will

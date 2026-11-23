@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect } from "vitest";
 import type { Block } from "../src/block.ts";
-import type { Report, ReportBuild } from "../src/protocol.ts";
+import type { Report, ReportBuild } from "../src/report-model.ts";
 import { makeStamp } from "../src/stamp.ts";
 
 export const GOLDEN_DIR = join(dirname(fileURLToPath(import.meta.url)), "golden");

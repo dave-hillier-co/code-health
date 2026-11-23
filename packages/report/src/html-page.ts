@@ -1,5 +1,6 @@
 import { renderBlock } from "./block.ts";
-import type { Notes, Report, Section } from "./protocol.ts";
+import type { Notes } from "./protocol.ts";
+import type { Report, Section } from "./report-model.ts";
 import { escapeHtml, formatNumber, inlineHtml } from "./text.ts";
 import { themeCss } from "./theme.ts";
 

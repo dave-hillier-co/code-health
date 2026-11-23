@@ -1,6 +1,7 @@
 import { htmlPage } from "./html-page.ts";
 import { markdownPage, type MarkdownOptions } from "./markdown-page.ts";
-import { ReportError, type Format, type Notes, type Report } from "./protocol.ts";
+import { ReportError, type Format, type Notes } from "./protocol.ts";
+import type { Report } from "./report-model.ts";
 
 /**
  * Renders a report. Html needs the validated notes. Markdown without them is a data-only draft whose judgement

@@ -7,8 +7,6 @@
 /** Version of the slots and notes documents. A breaking change to either bumps it. */
 export const PROTOCOL_VERSION = 1;
 
-import type { Block } from "./block.ts";
-
 export type Format = "html" | "md";
 
 /** What a slot is about. The `ref` is a path, a pair of paths, a symbol id, a finding id, or the report kind. */
@@ -98,31 +96,6 @@ export interface ReportHeader {
   historyWindow: string;
   /** Everything the report left out, with counts. Empty means nothing was left out. */
   excluded: ExcludedCount[];
-}
-
-export interface Section {
-  /** Becomes the anchor of the section and its entry in the nav. */
-  id: string;
-  heading: string;
-  blocks: Block[];
-}
-
-/** What a report kind provides. The kit adds the repository facts to make a `Report`. */
-export interface ReportBuild {
-  title: string;
-  /** What else the data depends on, for the stamp. */
-  inputs: Record<string, unknown>;
-  header: Pick<ReportHeader, "evidenceGrade" | "historyWindow" | "excluded">;
-  sections: Section[];
-  /** Fixed statements of what the data cannot say. Rendered in the Limits section. */
-  limits: string[];
-  slots: Slot[];
-}
-
-export interface Report extends Omit<ReportBuild, "header"> {
-  kind: string;
-  header: ReportHeader;
-  stamp: Stamp;
 }
 
 /** A problem with the notes or the request, named so the person or agent can fix it. The kit turns it into exit code 2. */

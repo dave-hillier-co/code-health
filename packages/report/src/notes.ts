@@ -1,5 +1,6 @@
 import { stampProblems } from "./stamp.ts";
-import { ReportError, type Notes, type Report, type Slot, type SlotEntry } from "./protocol.ts";
+import { ReportError, type Notes, type Slot, type SlotEntry } from "./protocol.ts";
+import type { Report } from "./report-model.ts";
 
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 

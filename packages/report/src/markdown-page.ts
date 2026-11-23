@@ -1,5 +1,6 @@
 import { renderBlock } from "./block.ts";
-import type { Notes, Report } from "./protocol.ts";
+import type { Notes } from "./protocol.ts";
+import type { Report } from "./report-model.ts";
 import { escapeMd, formatNumber } from "./text.ts";
 
 export interface MarkdownOptions {

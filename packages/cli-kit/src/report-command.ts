@@ -1,7 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { validateNotes } from "@code-health/report/notes";
-import { ReportError, type Format, type Report, type ReportBuild } from "@code-health/report/protocol";
+import { ReportError, type Format } from "@code-health/report/protocol";
+import type { Report, ReportBuild } from "@code-health/report/report-model";
 import { renderReport } from "@code-health/report/render";
 import { slotsDocument } from "@code-health/report/slots-document";
 import { makeStamp } from "@code-health/report/stamp";
