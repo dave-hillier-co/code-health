@@ -37,10 +37,10 @@ The helpers sit far from their consumers.
 | # | Unit | Kind | Target | Gain (net distance removed) | Gain over guideline | Unit files | Consumer files | Consumer folders | Distance | Confidence |
 | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | 1 | src/shared/pair | move | src/reports | 6 ▲ | 3 | 3 | 2 | 1 | 3 | normal |
-| 2 | src/shared/utils/money.ts | move | src/billing | 4 ▲ | 2 | 1 | 2 | 2 | 3 | normal |
+| 2 | src/shared/utils/money.ts | move | src | 4 ▲ | 2 | 1 | 2 | 2 | 2 | normal |
 | 3 | src/shared/cycle/a.ts | move | src/orders | 3 ▲ | 1.5 | 2 | 1 | 1 | 3 | normal |
 | 4 | src/shared/utils/invoice.ts | move | src/billing | 3 ▲ | 1.5 | 1 | 1 | 1 | 3 | normal |
-| 5 | src/shared/log.ts | move | src/billing | 2 | 1 | 1 | 2 | 2 | 2 | normal |
+| 5 | src/shared/log.ts | move | src | 2 | 1 | 1 | 2 | 2 | 1 | normal |
 
 _Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it._
 
@@ -48,7 +48,7 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 
 | # | Unit | Kind | Target | Gain (net distance removed) | Gain over guideline | Unit files | Consumer files | Consumer folders | Distance | Confidence |
 | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | src/shared/helpers/mixed.ts | split | src/billing | 4 ▲ | 3 | 1 | 2 | 2 | 3 | normal |
+| 1 | src/shared/helpers/mixed.ts | split | src | 4 ▲ | 3 | 1 | 2 | 2 | 2 | normal |
 | 2 | src/shared/utils/slug.ts | inline | src/orders | 3 ▲ | 1.5 | 1 | 1 | 1 | 3 | normal |
 | 3 | src/orders/place.ts | review | src/shared | 2 | 1 | 5 | 1 | 1 | 1 | normal |
 | 4 | src/billing/index.ts | inline | src/billing | 0 | 0 | 1 | 0 | 0 | 0 | normal |
@@ -93,12 +93,12 @@ Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consu
 | Kind | move (rule two-consumers) |
 | Reason | Two consumers: move to the target. |
 | Gain | 4 of net distance removed, against the locality.minDistance guideline of 2 |
-| Net distance | 6 now, 2 at the target src/billing |
+| Net distance | 6 now, 2 at the target src |
 | Consumers | 2 files in 2 folders |
 | Size | 1 file, 6 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | 1 file moved to src/billing, 3 imports rewritten in 3 files |
+| Move plan (dry run) | 1 file moved to src, 3 imports rewritten in 3 files |
 
 **Judgement: src/shared/utils/money.ts**
 
@@ -153,12 +153,12 @@ Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consu
 | Kind | move (rule two-consumers) |
 | Reason | Two consumers: move to the target. |
 | Gain | 2 of net distance removed, against the locality.minDistance guideline of 2 |
-| Net distance | 4 now, 2 at the target src/billing |
+| Net distance | 4 now, 2 at the target src |
 | Consumers | 2 files in 2 folders |
 | Size | 1 file, 3 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | 1 file moved to src/billing, 2 imports rewritten in 2 files |
+| Move plan (dry run) | 1 file moved to src, 2 imports rewritten in 2 files |
 
 **Judgement: src/shared/log.ts**
 
@@ -173,7 +173,7 @@ Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consu
 | Kind | split (rule mixed-exports) |
 | Reason | Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split. |
 | Gain | 4 of net distance removed, against the locality.minDistance guideline of 2 |
-| Net distance | 6 now, 2 at the target src/billing |
+| Net distance | 6 now, 2 at the target src |
 | Consumers | 2 files in 2 folders |
 | Size | 1 file, 6 lines |
 | Confidence | normal |

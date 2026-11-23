@@ -23,7 +23,7 @@
       {
         "from": "src/shared/utils/money.ts",
         "role": "unit",
-        "to": "src/billing/money.ts"
+        "to": "src/money.ts"
       }
     ],
     "unexpectedAdded": [],
@@ -32,13 +32,13 @@
   "refusals": [],
   "repo": {
     "dirty": false,
-    "head": "d67516dca2440daf8f4ce969bc3f562143c8f9e5"
+    "head": "47420723d03a032630eb9453c5ed63b85e7f6227"
   },
   "results": [
     {
       "from": "src/shared/utils/money.ts",
       "role": "unit",
-      "to": "src/billing/money.ts"
+      "to": "src/money.ts"
     }
   ],
   "schemaVersion": 1,
@@ -49,7 +49,7 @@
     "total": 1
   },
   "unit": {
-    "destination": "src/billing",
+    "destination": "src",
     "path": "src/shared/utils/money.ts"
   },
   "verified": true

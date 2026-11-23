@@ -19,7 +19,7 @@ test("the inner offset places a member below the unit's base folder", () => {
 
 test("the target of a unit with one consumer is the consumer's folder", () => {
   const result = bestTarget([edge("app/orders")], "shared/utils", { maxDepth: 6 });
-  expect(result).toEqual({ target: "app/orders", current: 4, distance: 0, gain: 4 });
+  expect(result).toEqual({ target: "app/orders", current: 4, distance: 0, gain: 4, ties: [], tiedGain: 0 });
 });
 
 test("the target of two consumers is their lowest common ancestor", () => {
@@ -62,5 +62,24 @@ test("forbidden folders are never chosen as the target", () => {
 });
 
 test("a unit with no boundary edges stays where it is", () => {
-  expect(bestTarget([], "a/b", { maxDepth: 6 })).toEqual({ target: "a/b", current: 0, distance: 0, gain: 0 });
+  expect(bestTarget([], "a/b", { maxDepth: 6 })).toEqual({ target: "a/b", current: 0, distance: 0, gain: 0, ties: [], tiedGain: 0 });
+});
+
+const notRoots = (folder: string) => folder === "" || folder === "internal";
+
+test("equal-distance folders at the same depth, neither containing the other, propose no target and are reported as a tie", () => {
+  const edges = [edge("internal/datastore"), edge("internal/dispatch")];
+  const result = bestTarget(edges, "internal/middleware", { maxDepth: 6, forbidden: notRoots });
+  expect(result).toEqual({ target: "internal/middleware", current: 4, distance: 4, gain: 0, ties: ["internal/datastore", "internal/dispatch"], tiedGain: 2 });
+});
+
+test("a folder that is strictly closer than the others is the target, with no tie", () => {
+  const edges = [edge("internal/datastore", 2), edge("internal/dispatch")];
+  const result = bestTarget(edges, "internal/middleware", { maxDepth: 6, forbidden: notRoots });
+  expect(result).toEqual({ target: "internal/datastore", current: 6, distance: 2, gain: 4, ties: [], tiedGain: 0 });
+});
+
+test("a tie between a folder and its ancestor goes to the shallower folder and is not a tie", () => {
+  const result = bestTarget([edge("a/b"), edge("a/c")], "z", { maxDepth: 6 });
+  expect(result).toMatchObject({ target: "a", ties: [] });
 });

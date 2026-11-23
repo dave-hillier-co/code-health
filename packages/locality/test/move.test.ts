@@ -47,12 +47,12 @@ test("a dry run reports the exact file operations and every import it would rewr
   expect(document.mode).toBe("dry-run");
   expect(document.applied).toBe(false);
   expect(document.refusals).toEqual([]);
-  expect(document.results).toEqual([{ from: "src/shared/utils/money.ts", to: "src/billing/money.ts", role: "unit" }]);
+  expect(document.results).toEqual([{ from: "src/shared/utils/money.ts", to: "src/money.ts", role: "unit" }]);
   // The repository writes its imports with the .ts extension, and the rewrites keep to that.
   expect(document.rewrites).toEqual([
-    { path: "src/billing/charge.ts", line: 1, from: "../shared/utils/money.ts", to: "./money.ts" },
-    { path: "src/legacy/dead.ts", line: 1, from: "../shared/utils/money.ts", to: "../billing/money.ts" },
-    { path: "src/orders/place.ts", line: 1, from: "../shared/utils/money.ts", to: "../billing/money.ts" },
+    { path: "src/billing/charge.ts", line: 1, from: "../shared/utils/money.ts", to: "../money.ts" },
+    { path: "src/legacy/dead.ts", line: 1, from: "../shared/utils/money.ts", to: "../money.ts" },
+    { path: "src/orders/place.ts", line: 1, from: "../shared/utils/money.ts", to: "../money.ts" },
   ]);
   expect(shared.git("status", "--porcelain")).toBe("");
   expect(existsSync(join(shared.path, "src/shared/utils/money.ts"))).toBe(true);
@@ -179,15 +179,15 @@ test("--apply makes one move-only commit with the Code-Health trailer, git sees 
       "M\tsrc/billing/charge.ts",
       "M\tsrc/legacy/dead.ts",
       "M\tsrc/orders/place.ts",
-      "R100\tsrc/shared/utils/money.ts\tsrc/billing/money.ts",
+      "R100\tsrc/shared/utils/money.ts\tsrc/money.ts",
     ]);
-    expect(message.split("\n")[0]).toBe("Move src/shared/utils/money.ts to src/billing");
+    expect(message.split("\n")[0]).toBe("Move src/shared/utils/money.ts to src");
     expect(message).toContain("Rule two-consumers: used by 2 production files");
     expect(message).toContain("vague-name (utils)");
     expect(message.trim().split("\n").at(-1)).toBe("Code-Health: locality two-consumers");
     expect(hasCodeHealthTrailer(message)).toBe(true);
 
-    expect(readFileSync(join(repo.path, "src/orders/place.ts"), "utf8")).toContain('from "../billing/money.ts"');
+    expect(readFileSync(join(repo.path, "src/orders/place.ts"), "utf8")).toContain('from "../money.ts"');
     // The analysis of the moved tree has nothing left to move for this unit.
     const again = await runLocality(repo.path, ["analyse", "--limit", "all", "--json"]);
     expect(JSON.parse(again.stdout).results.map((row: { path: string }) => row.path)).not.toContain("src/shared/utils/money.ts");
@@ -345,7 +345,7 @@ test("a moved tree still type-checks, verifies as the mover's own commit, and mo
       "M\tsrc/billing/charge.ts",
       "M\tsrc/legacy/dead.ts",
       "M\tsrc/orders/place.ts",
-      "R100\tsrc/shared/utils/money.ts\tsrc/billing/money.ts",
+      "R100\tsrc/shared/utils/money.ts\tsrc/money.ts",
     ]);
   } finally {
     repo.dispose();
@@ -403,15 +403,15 @@ test("a unit that was moved can be moved back with --to and a reason, which rest
     expect(repo.git("rev-parse", "HEAD^{tree}")).not.toBe(original);
 
     // The unit now sits beside its consumers, so the analyser has nothing to say about it and recommends keeping it: the way back is an override.
-    const refused = await move(repo, "src/billing/money.ts", "--to", "src/shared/utils");
+    const refused = await move(repo, "src/money.ts", "--to", "src/shared/utils");
     expect(refused.code).toBe(ExitCode.CheckFailed);
-    expect(refused.document.unit).toMatchObject({ path: "src/billing/money.ts", recommendation: "keep", rule: "near-consumers" });
+    expect(refused.document.unit).toMatchObject({ path: "src/money.ts", recommendation: "keep", rule: "near-consumers" });
     expect(refused.document.refusals.map((refusal) => refusal.code)).toEqual(["needs-reason"]);
 
-    const back = await move(repo, "src/billing/money.ts", "--to", "src/shared/utils", "--reason", "the move was a mistake", "--apply");
+    const back = await move(repo, "src/money.ts", "--to", "src/shared/utils", "--reason", "the move was a mistake", "--apply");
     expect(back.code, back.stdout).toBe(ExitCode.Success);
     expect(back.document.refusals).toEqual([]);
-    expect(back.document.results).toEqual([{ from: "src/billing/money.ts", to: "src/shared/utils/money.ts", role: "unit" }]);
+    expect(back.document.results).toEqual([{ from: "src/money.ts", to: "src/shared/utils/money.ts", role: "unit" }]);
     expect(repo.git("rev-parse", "HEAD^{tree}")).toBe(original);
     expect(repo.git("status", "--porcelain")).toBe("");
   } finally {
@@ -455,13 +455,13 @@ test("literal paths in mock calls follow a moved file, and a computed mock path 
     const { document } = await move(repo, "src/shared/utils/money.ts");
     const mocked = document.rewrites.filter((rewrite) => rewrite.path === "src/orders/mocked.test.ts");
     expect(mocked).toEqual([
-      { path: "src/orders/mocked.test.ts", line: 2, from: "../shared/utils/money.ts", to: "../billing/money.ts" },
-      { path: "src/orders/mocked.test.ts", line: 3, from: "../shared/utils/money.ts", to: "../billing/money.ts" },
-      { path: "src/orders/mocked.test.ts", line: 4, from: "../shared/utils/money.ts", to: "../billing/money.ts" },
-      { path: "src/orders/mocked.test.ts", line: 5, from: "../shared/utils/money.ts", to: "../billing/money.ts" },
+      { path: "src/orders/mocked.test.ts", line: 2, from: "../shared/utils/money.ts", to: "../money.ts" },
+      { path: "src/orders/mocked.test.ts", line: 3, from: "../shared/utils/money.ts", to: "../money.ts" },
+      { path: "src/orders/mocked.test.ts", line: 4, from: "../shared/utils/money.ts", to: "../money.ts" },
+      { path: "src/orders/mocked.test.ts", line: 5, from: "../shared/utils/money.ts", to: "../money.ts" },
     ]);
     expect((document as unknown as { warnings: string[] }).warnings).toEqual([
-      "src/orders/mocked.test.ts:8 jest.mock(...) takes a computed path that may refer to src/billing/money.ts: check it by hand",
+      "src/orders/mocked.test.ts:8 jest.mock(...) takes a computed path that may refer to src/money.ts: check it by hand",
     ]);
   } finally {
     repo.dispose();

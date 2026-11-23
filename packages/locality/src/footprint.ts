@@ -22,6 +22,14 @@ export interface TargetChoice {
   distance: number;
   /** `current - distance`, never negative. */
   gain: number;
+  /**
+   * The folders that tie for best when two or more allowed folders at the same depth, neither containing the other, have the
+   * same lowest distance. Then no single target is proposed: `target` is the base, `gain` is 0, and `tiedGain` is the gain each
+   * tied folder would have. Empty when there is no such tie.
+   */
+  ties: string[];
+  /** The gain at each tied folder, 0 when there is no tie. */
+  tiedGain: number;
 }
 
 export interface TargetOptions {
@@ -57,7 +65,9 @@ function prefers(a: string, b: string): boolean {
 
 /**
  * The folder that minimises net distance, found by evaluating the folders on the paths between the
- * edge endpoints (every ancestor of every endpoint). Ties go to the shallower folder, then to path order.
+ * edge endpoints (every ancestor of every endpoint). Ties go to the shallower folder. Folders at the same depth
+ * with the same distance do not contain each other, so choosing one would be arbitrary: no target is proposed
+ * and the tied folders are reported in `ties`.
  */
 export function bestTarget(edges: readonly BoundaryEdge[], base: string, options: TargetOptions): TargetChoice {
   const current = netDistance(edges, base);
@@ -65,14 +75,22 @@ export function bestTarget(edges: readonly BoundaryEdge[], base: string, options
   for (const edge of edges) for (const folder of chain(edge.outer)) candidates.add(folder);
 
   let best = { target: base, distance: current };
+  const allowed: { folder: string; distance: number }[] = [];
   for (const folder of [...candidates].sort(compareIds)) {
     if (folder === base) continue;
     if (depthOf(folder) > options.maxDepth) continue;
     if (options.forbidden?.(folder)) continue;
     const distance = netDistance(edges, folder);
+    allowed.push({ folder, distance });
     if (distance < best.distance || (distance === best.distance && best.target !== base && prefers(folder, best.target))) {
       best = { target: folder, distance };
     }
   }
-  return { target: best.target, current, distance: best.distance, gain: current - best.distance };
+  if (best.target !== base) {
+    const tied = allowed.filter((entry) => entry.distance === best.distance && depthOf(entry.folder) === depthOf(best.target)).map((entry) => entry.folder);
+    if (tied.length > 1) {
+      return { target: base, current, distance: current, gain: 0, ties: tied, tiedGain: current - best.distance };
+    }
+  }
+  return { target: best.target, current, distance: best.distance, gain: current - best.distance, ties: [], tiedGain: 0 };
 }

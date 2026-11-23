@@ -25,10 +25,12 @@ export const localityConfig: PluginConfigSpec = {
     maxDepth: 6,
     /** Guideline: a unit of more than this many files is a folder, and moving a folder reorganises the code base instead of relocating one module. Such a unit is not proposed as a move: it is counted in `summary.omitted` and listed in `omitted`. A judgement call: 20 is above the largest multi-file units that looked like single modules in Orleans (19 files) and below the folders Solent proposed moving whole (58 and 76 files). */
     maxMoveFiles: 20,
-    /** Guideline: a target shallower than this depth that is an ancestor of the unit (the repository root, or a top-level folder such as src or pkg) is a root. A unit of more than one file is not moved up to a root: it is counted in `summary.omitted` and listed in `omitted`. A single file is not moved to a target shallower than this either (see groupingFolders). A judgement call. */
+    /** Guideline: a target shallower than this depth that is an ancestor of the unit (the repository root, or a top-level folder such as src or pkg) is a root. A unit of more than one file is not moved up to a root: it is counted in `summary.omitted` and listed in `omitted`. A single file still moves to a root, because that is where its consumers' lowest common ancestor can be. A judgement call. */
     minTargetDepth: 2,
-    /** Folder names that group code without being a home for it: common layout roots in Go (`internal`, `pkg`, `cmd`), JavaScript and TypeScript (`src`, `lib`, `app`, `packages`), Java and Kotlin (`src`, `modules`) and C and C++ (`src`, `lib`, `source`, `sources`). A folder with one of these names is never proposed as a move target, because "move it to internal" is not advice a person acts on. Matched against the last segment of the target, case-sensitive. A judgement call. */
-    groupingFolders: ["internal", "pkg", "src", "lib", "app", "cmd", "source", "sources", "modules", "packages"] as string[],
+    /** Go layout roots: a Go folder is a package, so a file at the root of `internal`, `pkg` or `cmd` would join a package of that name, which is not a home for code. A folder whose last segment is one of these names is never proposed as a move target for a unit of a language listed in groupingLanguages, and the next best folder is tried. Matched against the last segment of the target, case-sensitive. A judgement call. */
+    groupingFolders: ["internal", "pkg", "cmd"] as string[],
+    /** Language adapter ids whose units groupingFolders applies to: the languages where a folder is a package. Add an id (for example "java") and extend groupingFolders to apply the rule to another language. */
+    groupingLanguages: ["go"] as string[],
     /** Read co-change, age and churn from the history cache, so the history guards and rules can fire. */
     useHistory: true,
     /** Guideline: a unit younger than this many days is reviewed, not inlined or moved, because one callsite is only evidence once reuse has had time. A judgement call. */
@@ -63,10 +65,12 @@ export interface LocalitySettings {
   maxDepth: number;
   /** Units of more files than this are not proposed as moves. */
   maxMoveFiles: number;
-  /** A target shallower than this is a root: a single file is not moved to one, and a unit of several files is not moved up to one that is its ancestor. */
+  /** A target shallower than this that is an ancestor of the unit is a root, and a unit of several files is not moved up to it. */
   minTargetDepth: number;
-  /** Folder names that are grouping roots: a folder with one of these names is not proposed as a move target. */
+  /** Folder names that are grouping roots: a folder with one of these names is not proposed as a move target for a unit of a language in groupingLanguages. */
   groupingFolders: string[];
+  /** Language adapter ids that groupingFolders applies to. */
+  groupingLanguages: string[];
   fixedPoints: string[];
   useHistory: boolean;
   graceDays: number;
@@ -110,10 +114,13 @@ export function readSettings(config: LoadedConfig): LocalitySettings {
   if (!Array.isArray(fixedPoints) || fixedPoints.some((item) => typeof item !== "string")) {
     throw configError(`code-health.json: ${at("fixedPoints")} must be an array of strings`);
   }
-  const groupingFolders = section.groupingFolders;
-  if (!Array.isArray(groupingFolders) || groupingFolders.some((item) => typeof item !== "string")) {
-    throw configError(`code-health.json: ${at("groupingFolders")} must be an array of strings`);
-  }
+  const strings = (key: string): string[] => {
+    const value = section[key];
+    if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+      throw configError(`code-health.json: ${at(key)} must be an array of strings`);
+    }
+    return value as string[];
+  };
   const tinyLines = positive("tinyLines");
   const largeLines = positive("largeLines");
   if (tinyLines >= largeLines) {
@@ -142,7 +149,8 @@ export function readSettings(config: LoadedConfig): LocalitySettings {
     maxDepth: positive("maxDepth"),
     maxMoveFiles: positive("maxMoveFiles"),
     minTargetDepth: positive("minTargetDepth"),
-    groupingFolders: groupingFolders as string[],
+    groupingFolders: strings("groupingFolders"),
+    groupingLanguages: strings("groupingLanguages"),
     fixedPoints: fixedPoints as string[],
     useHistory: section.useHistory === true,
     graceDays: positive("graceDays"),

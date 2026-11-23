@@ -238,15 +238,15 @@ test("the page shows the omitted counts by reason and the omitted units with the
 });
 
 test("a candidate shows its reason and the better folder the placement rules refuse", async () => {
-  const go = goRepository('package main\n\nimport (\n\t"example.com/m/m/core/internal/a/x"\n\t"example.com/m/m/core/internal/b/y"\n)\n\nfunc main() {\n\t_ = x.Use() + y.Use()\n}\n', {
-    "m/core/internal/a/x/x.go": goImports("x", "m/core/store"),
-    "m/core/internal/b/y/y.go": goImports("y", "m/core/store"),
-    "m/core/store/store.go": goUnit("store"),
+  const go = goRepository('package main\n\nimport (\n\t"example.com/m/m/lib/internal/a/x"\n\t"example.com/m/m/lib/internal/b/y"\n)\n\nfunc main() {\n\t_ = x.Use() + y.Use()\n}\n', {
+    "m/lib/internal/a/x/x.go": goImports("x", "m/lib/store"),
+    "m/lib/internal/b/y/y.go": goImports("y", "m/lib/store"),
+    "m/lib/store/store.go": goUnit("store"),
   });
   try {
     const { stdout } = await runLocality(go.path, ["report", "locality", "--format", "md"]);
     expect(stdout).toMatch(/\| Reason \| .+ \|/);
-    expect(stdout).toContain("| Better folder refused | m/core/internal, with gain");
+    expect(stdout).toContain("| Better folder refused | m/lib/internal, with gain");
     expect(stdout).toContain("is refused: crosses internal/");
   } finally {
     go.dispose();

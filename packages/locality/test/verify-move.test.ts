@@ -37,11 +37,11 @@ function edit(path: string, change: (text: string) => string): void {
 }
 
 /** What an agent does by hand: git mv, then rewrite the three importers. */
-function moveByHand(destination: "src/billing/money.ts" | "src/orders/money.ts"): void {
+function moveByHand(destination: "src/money.ts" | "src/orders/money.ts"): void {
   repo.git("mv", "src/shared/utils/money.ts", destination);
   const specifiers =
-    destination === "src/billing/money.ts"
-      ? { "src/billing/charge.ts": "./money.ts", "src/legacy/dead.ts": "../billing/money.ts", "src/orders/place.ts": "../billing/money.ts" }
+    destination === "src/money.ts"
+      ? { "src/billing/charge.ts": "../money.ts", "src/legacy/dead.ts": "../money.ts", "src/orders/place.ts": "../money.ts" }
       : { "src/billing/charge.ts": "../orders/money.ts", "src/legacy/dead.ts": "../orders/money.ts", "src/orders/place.ts": "./money.ts" };
   for (const [path, specifier] of Object.entries(specifiers)) edit(path, (text) => text.replace("../shared/utils/money.ts", specifier));
 }
@@ -54,7 +54,7 @@ function commit(message: string): void {
 const trailer = "\n\nCode-Health: locality two-consumers";
 
 test("a move made by hand that matches the plan is verified", async () => {
-  moveByHand("src/billing/money.ts");
+  moveByHand("src/money.ts");
   commit(`Move money next to its consumers${trailer}`);
   const { code, document } = await verify();
   expect(code).toBe(ExitCode.Success);
@@ -66,13 +66,13 @@ test("a move made by hand that matches the plan is verified", async () => {
 });
 
 test("a commit that also changes behaviour is not a move-only commit", async () => {
-  moveByHand("src/billing/money.ts");
-  edit("src/billing/money.ts", (text) => text.replace("toFixed(2)", "toFixed(3)"));
+  moveByHand("src/money.ts");
+  edit("src/money.ts", (text) => text.replace("toFixed(2)", "toFixed(3)"));
   commit(`Move money next to its consumers${trailer}`);
   const { code, document } = await verify();
   expect(code).toBe(ExitCode.CheckFailed);
   expect(document.checks).toEqual({ operations: true, content: false, trailer: true });
-  expect(document.content.otherChanges).toEqual(["src/billing/money.ts"]);
+  expect(document.content.otherChanges).toEqual(["src/money.ts"]);
 });
 
 test("a move to somewhere other than the plan has missing operations and files nobody planned", async () => {
@@ -81,7 +81,7 @@ test("a move to somewhere other than the plan has missing operations and files n
   const { document } = await verify();
   expect(document.verified).toBe(false);
   expect(document.checks.operations).toBe(false);
-  expect(document.operations.missing).toEqual([{ from: "src/shared/utils/money.ts", to: "src/billing/money.ts", role: "unit" }]);
+  expect(document.operations.missing).toEqual([{ from: "src/shared/utils/money.ts", to: "src/money.ts", role: "unit" }]);
   expect(document.operations.unexpectedAdded).toEqual(["src/orders/money.ts"]);
   expect(document.operations.unexpectedDeleted).toEqual([]);
 });
@@ -94,24 +94,24 @@ test("the same move verifies when its destination is named with --to", async () 
 });
 
 test("an import spelled differently from the mover's is reported by name, apart from other changes", async () => {
-  moveByHand("src/billing/money.ts");
-  edit("src/orders/place.ts", (text) => text.replace('"../billing/money.ts"', '"../billing/money"'));
+  moveByHand("src/money.ts");
+  edit("src/orders/place.ts", (text) => text.replace('"../money.ts"', '"../money"'));
   commit(`Move money${trailer}`);
   const { document } = await verify();
   expect(document.verified).toBe(false);
   expect(document.content.otherChanges).toEqual([]);
-  expect(document.content.specifierDifferences).toEqual([{ path: "src/orders/place.ts", line: 1, expected: "../billing/money.ts", actual: "../billing/money" }]);
+  expect(document.content.specifierDifferences).toEqual([{ path: "src/orders/place.ts", line: 1, expected: "../money.ts", actual: "../money" }]);
 });
 
 test("a move without the Code-Health trailer fails only the trailer check", async () => {
-  moveByHand("src/billing/money.ts");
+  moveByHand("src/money.ts");
   commit("Move money next to its consumers");
   const { document } = await verify();
   expect(document.checks).toEqual({ operations: true, content: true, trailer: false });
 });
 
 test("a file deleted along with the move is reported", async () => {
-  moveByHand("src/billing/money.ts");
+  moveByHand("src/money.ts");
   repo.git("rm", "--quiet", "-f", "src/legacy/dead.ts");
   commit(`Move money and drop dead code${trailer}`);
   const { document } = await verify();
@@ -142,10 +142,10 @@ test("the output of a verification, for a commit with fixed dates", async () => 
     message: `Move money next to its consumers${trailer}`,
     date: "2025-02-01T09:00:00Z",
     changes: [
-      { op: "rename", from: "src/shared/utils/money.ts", path: "src/billing/money.ts" },
-      swap("src/billing/charge.ts", "./money.ts"),
-      swap("src/legacy/dead.ts", "../billing/money.ts"),
-      swap("src/orders/place.ts", "../billing/money.ts"),
+      { op: "rename", from: "src/shared/utils/money.ts", path: "src/money.ts" },
+      swap("src/billing/charge.ts", "../money.ts"),
+      swap("src/legacy/dead.ts", "../money.ts"),
+      swap("src/orders/place.ts", "../money.ts"),
     ],
   });
   const { document, stdout } = await verify();

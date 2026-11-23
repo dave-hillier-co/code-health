@@ -110,7 +110,7 @@
           "path": "src/orders/place.ts"
         }
       ],
-      "distance": 3,
+      "distance": 2,
       "fanIn": 2,
       "fanInPercentile": 97,
       "gain": 4,
@@ -158,7 +158,7 @@
       },
       "source": "structural",
       "strays": [],
-      "target": "src/billing",
+      "target": "src",
       "testRefs": {
         "external": [],
         "owned": []

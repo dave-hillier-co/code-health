@@ -4,6 +4,7 @@ import { depthOf, folderDistance, folderOf, treeDistance } from "@code-health/gr
 import type { SourceUnit } from "@code-health/parse/analyse-tree";
 import type { Consumer } from "@code-health/parse/resolved-dependencies";
 import { compileGlobs } from "@code-health/history/glob";
+import { adapterForPath } from "@code-health/parse/languages";
 import { lowConfidenceReader } from "@code-health/parse/include-resolution";
 import { fileCohesion, type ExportComponent, type FileCohesion } from "./cohesion.ts";
 import type { LocalitySettings } from "./config.ts";
@@ -182,6 +183,7 @@ export const OMITTED_REASONS = {
   folderSized: "folder-sized unit",
   rootTarget: "target is a root folder",
   groupingTarget: "target is a grouping folder",
+  tiedTargets: (count: number) => `no single target: ${count} folders tie`,
   noUsableTarget: (label: string) => `no usable target: ${label}`,
 };
 
@@ -407,16 +409,14 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   }
 
   const manifests = manifestFolders(project.tree);
-  /** Why a folder is a grouping folder and not a home for code: its name is in `locality.groupingFolders`, or (for a single file) it is shallower than `locality.minTargetDepth`. */
-  function groupingRefusal(folder: string, fileCount: number): { label: string; detail: string } | undefined {
+  /** Why a folder is a grouping folder and not a home for these files: its name is in `locality.groupingFolders` and a file is of a language in `locality.groupingLanguages`. */
+  function groupingRefusal(files: readonly string[], folder: string): { label: string; detail: string } | undefined {
+    if (folder === "") return undefined;
     const name = folder.split("/").pop() as string;
-    if (folder !== "" && settings.groupingFolders.includes(name)) {
-      return { label: OMITTED_REASONS.groupingTarget, detail: `${folder} is named ${name}, one of the locality.groupingFolders (layout roots that group code and are not a home for it)` };
-    }
-    if (fileCount === 1 && depthOf(folder) < settings.minTargetDepth) {
-      return { label: OMITTED_REASONS.groupingTarget, detail: `${folder === "" ? "the repository root" : folder} is at depth ${depthOf(folder)}, shallower than the locality.minTargetDepth guideline of ${settings.minTargetDepth}` };
-    }
-    return undefined;
+    if (!settings.groupingFolders.includes(name)) return undefined;
+    const language = files.map((file) => adapterForPath(file)?.id).find((id) => id !== undefined && settings.groupingLanguages.includes(id));
+    if (language === undefined) return undefined;
+    return { label: OMITTED_REASONS.groupingTarget, detail: `${folder} is named ${name}, one of the locality.groupingFolders, and a ${language} folder is a package, so a file there joins a package named ${name}` };
   }
 
   /** For a unit's files, the first language placement rule, or else the grouping folder rule, that refuses moving them to a folder, or undefined when it is usable. */
@@ -425,7 +425,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     return (folder) => {
       if (!memo.has(folder)) {
         const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree);
-        memo.set(folder, first === undefined ? groupingRefusal(folder, files.length) : { label: first.label, detail: first.detail });
+        memo.set(folder, first === undefined ? groupingRefusal(files, folder) : { label: first.label, detail: first.detail });
       }
       return memo.get(folder);
     };
@@ -520,7 +520,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     const tests = testsOf(fileSet);
     const refusal = refusalOf(files, tests.owned, base);
     const options = { maxDepth: settings.maxDepth, forbidden: (folder: string) => forbidden(folder) || refusal(folder) !== undefined };
-    let choice = barrelAlone ? { target: base, current: 0, distance: 0, gain: 0 } : bestTarget(boundaryOf(outgoing), base, options);
+    let choice = barrelAlone ? { target: base, current: 0, distance: 0, gain: 0, ties: [], tiedGain: 0 } : bestTarget(boundaryOf(outgoing), base, options);
     // The best folder if the language placement rules were not applied, to report what they cost.
     const unrestricted = barrelAlone ? choice : bestTarget(boundaryOf(outgoing), base, { maxDepth: settings.maxDepth, forbidden });
     const unusable = unrestricted.gain > choice.gain ? refusal(unrestricted.target) : undefined;
@@ -595,17 +595,20 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     // Units that cannot be proposed as a move are counted, not ranked.
     // The unit is still built in full, because `move` reads it: moving it anywhere, with a reason, is the user's call.
     let omission: Omission | undefined;
-    const omit = (reason: string, detail: string, shown: { target: string; gain: number } = choice) => {
-      omission = { reason, detail, target: shown.target, gain: shown.gain, files: files.length };
+    const omit = (reason: string, detail: string) => {
+      omission = { reason, detail, target: choice.target, gain: choice.gain, files: files.length };
     };
     if (unusable !== undefined && unrestricted.gain >= settings.minDistance && (decision.rule === "near-consumers" || decision.rule === "blocked-by-dependency")) {
-      omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`, unrestricted);
+      omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`);
+    }
+    if (choice.ties.length > 0 && choice.tiedGain >= settings.minDistance && (decision.rule === "near-consumers" || decision.rule === "blocked-by-dependency")) {
+      omit(OMITTED_REASONS.tiedTargets(choice.ties.length), `${choice.ties.map((folder) => folder || "(repository root)").join(", ")} each have gain ${choice.tiedGain} at the same depth and none contains another, so choosing one would be arbitrary`);
     }
     const withheld = choice.gain >= settings.minDistance && choice.target !== base ? withheldBy(files.length, base, choice.target) : undefined;
     if (withheld !== undefined) {
       if (decision.recommendation === "move" || decision.recommendation === "review") omit(withheld.reason, withheld.detail);
       // A split is proposed for the file's exports, which are scored one by one: the whole unit does not move.
-      if (decision.recommendation === "split") choice = { target: base, current: choice.current, distance: choice.current, gain: 0 };
+      if (decision.recommendation === "split") choice = { target: base, current: choice.current, distance: choice.current, gain: 0, ties: [], tiedGain: 0 };
     }
 
     const scored = cohesion?.mixed ? cohesion.components.map((component) => scoreComponent(unit.root, component)) : undefined;
