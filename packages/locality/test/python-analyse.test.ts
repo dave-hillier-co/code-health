@@ -38,12 +38,12 @@ afterAll(() => {
   repo.dispose();
 });
 
-test("a helper used by two packages is recommended to move to their lowest common ancestor", async () => {
+test("a helper used by two packages is recommended to move to the best of their ancestors that is not a grouping folder", async () => {
   const run = await runLocality(repo.path, ["analyse", "--limit", "all"]);
   expect(run.stderr).toBe("");
   expect(run.code).toBe(ExitCode.Success);
   const rows = JSON.parse(run.stdout).results as { path: string; recommendation: string; rule: string; location: string; target: string; fanIn: number; unit: { kind: string; files: string[] } }[];
   const money = rows.find((row) => row.path === "shared/money.py")!;
-  expect(money).toMatchObject({ recommendation: "move", rule: "two-consumers", location: "shared", target: "app", fanIn: 2 });
+  expect(money).toMatchObject({ recommendation: "move", rule: "two-consumers", location: "shared", target: "app/billing", fanIn: 2 });
   expect(money.unit.files).toEqual(["shared/money.py"]);
 });

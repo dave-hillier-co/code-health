@@ -42,13 +42,13 @@ async function analyse(...args: string[]) {
   return { stdout, document, rows, row: (path: string) => rows.find((r) => r.path === path) as Row };
 }
 
-test("a helper with two consumers moves to their lowest common ancestor", async () => {
+test("a helper with two consumers moves to the best of their ancestors that is not a grouping folder", async () => {
   const { row } = await analyse();
   expect(row("src/shared/utils/money.ts")).toMatchObject({
     recommendation: "move",
     rule: "two-consumers",
     location: "src/shared/utils",
-    target: "src",
+    target: "src/billing",
     gain: 4,
     fanIn: 2,
   });

@@ -23,7 +23,7 @@ const base = (config: object): Change[] => [
   add("src/core/Log.cpp", '#include "core/Log.h"\nint logLine() { return 2; }\n'),
   add("src/ui/Panel.h", '#pragma once\n#include "core/Core.h"\nint panel();\n'),
   add("src/ui/Panel.cpp", '#include "ui/Panel.h"\n#include "core/Log.h"\nint panel() { return core() + logLine(); }\n'),
-  add("src/app/Main.cpp", '#include "ui/Panel.h"\nint main() { return panel(); }\n'),
+  add("src/shell/Main.cpp", '#include "ui/Panel.h"\nint main() { return panel(); }\n'),
 ];
 
 const commit = (changes: Change[]) => [{ type: "commit" as const, message: "Add the app", date: "2024-01-01T09:00:00Z", changes }];
@@ -50,7 +50,7 @@ describe("a repository whose includes mostly find no file", () => {
   beforeAll(() => {
     // The generated headers are not in the tree, and nothing else gives their directory.
     const generated = ["a", "b", "c", "d", "e", "f", "g", "Core"].map((name) => `#include "generated/${name}.h"`).join("\n");
-    repo = GitFixture.build(commit(tree({}, [add("src/app/Main.cpp", '#include "ui/Panel.h"\n#include "core/Cfg.h"\nint main() { return panel() + cfg(); }\n'), add("src/app/Gen.cpp", `${generated}\nint gen() { return 0; }\n`), add("src/core/Cfg.h", `#pragma once\n#include "generated/a.h"\ninline int cfg() { return 0; }\n`)])));
+    repo = GitFixture.build(commit(tree({}, [add("src/shell/Main.cpp", '#include "ui/Panel.h"\n#include "core/Cfg.h"\nint main() { return panel() + cfg(); }\n'), add("src/shell/Gen.cpp", `${generated}\nint gen() { return 0; }\n`), add("src/core/Cfg.h", `#pragma once\n#include "generated/a.h"\ninline int cfg() { return 0; }\n`)])));
   });
   afterAll(() => repo.dispose());
 
@@ -100,7 +100,7 @@ describe("a repository with a compile_commands.json in build/ that git ignores",
   beforeAll(() => {
     repo = GitFixture.build(commit(tree({}, [add(".gitignore", "build/\n")])));
     mkdirSync(join(repo.path, "build"));
-    writeFileSync(join(repo.path, "build", "compile_commands.json"), JSON.stringify([{ directory: `${repo.path}/build`, file: "../src/app/Main.cpp", arguments: ["c++", `-I${repo.path}/src`, "-c", "../src/app/Main.cpp"] }]));
+    writeFileSync(join(repo.path, "build", "compile_commands.json"), JSON.stringify([{ directory: `${repo.path}/build`, file: "../src/shell/Main.cpp", arguments: ["c++", `-I${repo.path}/src`, "-c", "../src/shell/Main.cpp"] }]));
   });
   afterAll(() => repo.dispose());
 

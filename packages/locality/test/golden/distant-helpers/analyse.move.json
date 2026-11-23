@@ -189,7 +189,7 @@
           "path": "src/orders/place.ts"
         }
       ],
-      "distance": 2,
+      "distance": 3,
       "fanIn": 2,
       "fanInPercentile": 97,
       "gain": 4,
@@ -241,7 +241,7 @@
       },
       "source": "structural",
       "strays": [],
-      "target": "src",
+      "target": "src/billing",
       "testRefs": {
         "external": [],
         "owned": []
@@ -465,7 +465,7 @@
           "path": "src/orders/audit.ts"
         }
       ],
-      "distance": 1,
+      "distance": 2,
       "fanIn": 2,
       "fanInPercentile": 97,
       "gain": 2,
@@ -508,7 +508,7 @@
       },
       "source": "structural",
       "strays": [],
-      "target": "src",
+      "target": "src/billing",
       "testRefs": {
         "external": [],
         "owned": []

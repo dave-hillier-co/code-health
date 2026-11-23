@@ -54,12 +54,12 @@ const goImports = (pkg: string, imported: string) => `package ${pkg}\n\nimport "
 
 test("a Go unit whose best target is across an internal/ boundary is omitted with that reason, not ranked", async () => {
   const repo = repository(
-    { entryPoints: ["cmd/main.go"] },
+    { entryPoints: ["app/server/main.go"] },
     {
       "go.mod": "module example.com/m\n\ngo 1.22\n",
-      "cmd/main.go": 'package main\n\nimport (\n\t"example.com/m/pkg/svc"\n\t"example.com/m/pkg/other"\n)\n\nfunc main() {\n\t_ = svc.Use() + other.Use()\n}\n',
-      "pkg/svc/one.go": goImports("svc", "lib/internal/store"),
-      "pkg/other/two.go": goImports("other", "lib/internal/store"),
+      "app/server/main.go": 'package main\n\nimport (\n\t"example.com/m/services/core/svc"\n\t"example.com/m/services/core/other"\n)\n\nfunc main() {\n\t_ = svc.Use() + other.Use()\n}\n',
+      "services/core/svc/one.go": goImports("svc", "lib/internal/store"),
+      "services/core/other/two.go": goImports("other", "lib/internal/store"),
       "lib/internal/store/store.go": goUnit("store"),
     },
   );
@@ -75,17 +75,17 @@ test("a unit with a usable target is ranked there, and the better target it cann
     { entryPoints: ["cmd/main.go"] },
     {
       "go.mod": "module example.com/m\n\ngo 1.22\n",
-      "cmd/main.go": 'package main\n\nimport (\n\t"example.com/m/m/lib/internal/a/x"\n\t"example.com/m/m/lib/internal/b/y"\n)\n\nfunc main() {\n\t_ = x.Use() + y.Use()\n}\n',
-      "m/lib/internal/a/x/x.go": goImports("x", "m/lib/store"),
-      "m/lib/internal/b/y/y.go": goImports("y", "m/lib/store"),
-      "m/lib/store/store.go": goUnit("store"),
+      "cmd/main.go": 'package main\n\nimport (\n\t"example.com/m/m/core/internal/a/x"\n\t"example.com/m/m/core/internal/b/y"\n)\n\nfunc main() {\n\t_ = x.Use() + y.Use()\n}\n',
+      "m/core/internal/a/x/x.go": goImports("x", "m/core/store"),
+      "m/core/internal/b/y/y.go": goImports("y", "m/core/store"),
+      "m/core/store/store.go": goUnit("store"),
     },
   );
   const { rows, omitted } = await analyse(repo);
-  const row = rows.find((candidate) => candidate.path === "m/lib/store/store.go");
-  expect(row).toMatchObject({ target: "m/lib", unusableTarget: { target: "m/lib/internal", reason: "crosses internal/" } });
+  const row = rows.find((candidate) => candidate.path === "m/core/store/store.go");
+  expect(row).toMatchObject({ target: "m/core", unusableTarget: { target: "m/core/internal", reason: "crosses internal/" } });
   expect(row!.unusableTarget!.gain).toBeGreaterThan(row!.gain);
-  expect(omitted.map((unit) => unit.path)).not.toContain("m/lib/store/store.go");
+  expect(omitted.map((unit) => unit.path)).not.toContain("m/core/store/store.go");
 });
 
 test("a multi-file unit above the maxMoveFiles guideline is omitted as folder-sized, with the count and the guideline", async () => {
@@ -110,21 +110,62 @@ test("a multi-file unit above the maxMoveFiles guideline is omitted as folder-si
 
 test("a unit of several files is not moved up to a root folder, and the minTargetDepth guideline says which folders are roots", async () => {
   const files: Record<string, string> = {
-    "src/main.ts": 'import { x } from "./x.ts";\nimport { y } from "./y.ts";\nimport { s } from "./deep/er/est/single.ts";\nexport const run = () => [x(), y(), s()];\n',
-    "src/x.ts": 'import { u } from "./deep/er/est/u.ts";\nimport { s } from "./deep/er/est/single.ts";\nexport const x = () => u() + s();\n',
-    "src/y.ts": 'import { u } from "./deep/er/est/u.ts";\nimport { s } from "./deep/er/est/single.ts";\nexport const y = () => u() + s();\n',
-    "src/deep/er/est/u.ts": 'import { w } from "./w.ts";\nexport const u = () => w();\n',
-    "src/deep/er/est/w.ts": "export const w = () => 1;\n",
-    "src/deep/er/est/single.ts": "export const s = () => 1;\n",
+    "web/main.ts": 'import { x } from "./x.ts";\nimport { y } from "./y.ts";\nimport { s } from "./deep/er/est/single.ts";\nexport const run = () => [x(), y(), s()];\n',
+    "web/x.ts": 'import { u } from "./deep/er/est/u.ts";\nimport { s } from "./deep/er/est/single.ts";\nexport const x = () => u() + s();\n',
+    "web/y.ts": 'import { u } from "./deep/er/est/u.ts";\nimport { s } from "./deep/er/est/single.ts";\nexport const y = () => u() + s();\n',
+    "web/deep/er/est/u.ts": 'import { w } from "./w.ts";\nexport const u = () => w();\n',
+    "web/deep/er/est/w.ts": "export const w = () => 1;\n",
+    "web/deep/er/est/single.ts": "export const s = () => 1;\n",
   };
-  const proposed = await analyse(repository({ entryPoints: ["src/main.ts"], locality: { minTargetDepth: 1 } }, files));
-  expect(proposed.rows.find((row) => row.path === "src/deep/er/est/u.ts")).toMatchObject({ target: "src" });
+  const proposed = await analyse(repository({ entryPoints: ["web/main.ts"], locality: { minTargetDepth: 1 } }, files));
+  expect(proposed.rows.find((row) => row.path === "web/deep/er/est/u.ts")).toMatchObject({ target: "web" });
 
-  const omitted = await analyse(repository({ entryPoints: ["src/main.ts"] }, files));
-  expect(omitted.rows.map((row) => row.path)).not.toContain("src/deep/er/est/u.ts");
-  expect(omitted.summary.omitted).toEqual({ "target is a root folder": 1 });
+  const omitted = await analyse(repository({ entryPoints: ["web/main.ts"] }, files));
+  expect(omitted.rows.map((row) => row.path)).not.toContain("web/deep/er/est/u.ts");
+  expect(omitted.summary.omitted).toEqual({ "target is a root folder": 1, "no usable target: target is a grouping folder": 1 });
   expect(omitted.omitted[0]!.detail).toContain("locality.minTargetDepth guideline of 2");
-  expect(omitted.rows.find((row) => row.path === "src/deep/er/est/single.ts")).toMatchObject({ target: "src" });
+  // A single file is not moved to a root either: the folder is refused, so the unit is counted under its own reason.
+  expect(omitted.rows.map((row) => row.path)).not.toContain("web/deep/er/est/single.ts");
+  expect(omitted.omitted.find((unit) => unit.path === "web/deep/er/est/single.ts")).toMatchObject({ reason: "no usable target: target is a grouping folder" });
+});
+
+test("a folder named in locality.groupingFolders, or shallower than minTargetDepth for a single file, is never a target", async () => {
+  const files: Record<string, string> = {
+    "web/main.ts": 'import { a } from "./billing/a.ts";\nimport { c } from "./orders/c.ts";\nexport const run = () => [a(), c()];\n',
+    "web/billing/a.ts": 'import { s } from "../deep/er/est/shared.ts";\nexport const a = () => s();\n',
+    "web/orders/c.ts": 'import { s } from "../deep/er/est/shared.ts";\nexport const c = () => s();\n',
+    "web/deep/er/est/shared.ts": "export const s = () => 1;\n",
+  };
+  const allowed = await analyse(repository({ entryPoints: ["web/main.ts"], locality: { minTargetDepth: 1 } }, files));
+  expect(allowed.rows.find((row) => row.path === "web/deep/er/est/shared.ts")).toMatchObject({ target: "web" });
+
+  const shallow = await analyse(repository({ entryPoints: ["web/main.ts"] }, files));
+  expect(shallow.rows.find((row) => row.path === "web/deep/er/est/shared.ts")?.target).not.toBe("web");
+
+  const rootOnly: Record<string, string> = {
+    "web/main.ts": 'import { s } from "./deep/er/est/shared.ts";\nimport { o } from "./other.ts";\nexport const run = () => [s(), o()];\n',
+    "web/other.ts": 'import { s } from "./deep/er/est/shared.ts";\nexport const o = () => s();\n',
+    "web/deep/er/est/shared.ts": "export const s = () => 1;\n",
+  };
+  const byDepth = await analyse(repository({ entryPoints: ["web/main.ts"] }, rootOnly));
+  expect(byDepth.omitted.find((unit) => unit.path === "web/deep/er/est/shared.ts")).toMatchObject({ reason: "no usable target: target is a grouping folder", target: "web" });
+  expect(byDepth.omitted.find((unit) => unit.path === "web/deep/er/est/shared.ts")!.detail).toContain("locality.minTargetDepth guideline of 2");
+
+  const byName = await analyse(repository({ entryPoints: ["web/main.ts"], locality: { minTargetDepth: 1, groupingFolders: ["web"] } }, rootOnly));
+  expect(byName.omitted.find((unit) => unit.path === "web/deep/er/est/shared.ts")!.detail).toContain("one of the locality.groupingFolders");
+});
+
+test("when the best folder is refused as a grouping folder, the next best folder is proposed if it still gains enough", async () => {
+  const files: Record<string, string> = {
+    "web/main.ts": 'import { a } from "./billing/a.ts";\nimport { b } from "./billing/b.ts";\nimport { c } from "./orders/c.ts";\nexport const run = () => [a(), b(), c()];\n',
+    "web/billing/a.ts": 'import { s } from "../deep/er/est/shared.ts";\nexport const a = () => s();\n',
+    "web/billing/b.ts": 'import { s } from "../deep/er/est/shared.ts";\nexport const b = () => s();\n',
+    "web/orders/c.ts": 'import { s } from "../deep/er/est/shared.ts";\nexport const c = () => s();\n',
+    "web/deep/er/est/shared.ts": "export const s = () => 1;\n",
+  };
+  const { rows } = await analyse(repository({ entryPoints: ["web/main.ts"], locality: { minTargetDepth: 1, groupingFolders: ["web"] } }, files));
+  const row = rows.find((candidate) => candidate.path === "web/deep/er/est/shared.ts");
+  expect(row?.target).toBe("web/billing");
 });
 
 test("a review states why it is not a move, and that locality move needs a reason", async () => {
