@@ -143,4 +143,4 @@ Do not move code to make the score better. If a target would bury code deeper th
 
 Settings live in the `locality` section of `code-health.json`, with `exclude`, `entryPoints` and `vagueNames` shared across the suite. `references/recommendations.md` lists them. The numbers are guidelines: each candidate reports its value, the guideline and their ratio in `guidelines`. Ask before changing a guideline to make a recommendation appear or disappear.
 
-To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).
+To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md). `locality report locality` shows the top candidates with a dry-run move plan for each of the top 10 and a slot for each: give a verdict (`do-it`, `do-it-differently`, `leave`) and the reason, then the risk. It never applies a move.
