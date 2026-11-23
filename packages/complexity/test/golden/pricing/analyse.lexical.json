@@ -14,6 +14,12 @@
   "command": "analyse",
   "config": "0000000000000000",
   "filesWithSyntaxErrors": [],
+  "guidelines": {
+    "cognitiveWarn": 15,
+    "cyclomaticWarn": 10,
+    "nesting": 4,
+    "overrides": 0
+  },
   "inputs": {
     "by": "cognitive",
     "includeTests": false,

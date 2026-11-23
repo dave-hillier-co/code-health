@@ -147,6 +147,18 @@
     "skipped": {
       "$ref": "common.schema.json#/$defs/skipped"
     },
+    "guidelines": {
+      "description": "The configured guidelines that label the rows, as the global defaults: the warn level of cognitive and cyclomatic complexity and the nesting guideline. A path override of complexity.overrides changes them for its paths, and the row's labels already reflect it.",
+      "type": "object",
+      "properties": {
+        "cognitiveWarn": { "type": "number" },
+        "cyclomaticWarn": { "type": "number" },
+        "nesting": { "type": "number" },
+        "overrides": { "description": "How many complexity.overrides entries are configured.", "type": "integer", "minimum": 0 }
+      },
+      "required": ["cognitiveWarn", "cyclomaticWarn", "nesting", "overrides"],
+      "additionalProperties": false
+    },
     "parseCoverage": {
       "description": "How many of the files a grammar read have syntax errors, against the complexity.syntaxErrorPercent guideline. A notice is printed when the share is above it. Nothing is hidden.",
       "type": "object",
@@ -392,6 +404,7 @@
     "layers",
     "agreement",
     "skipped",
+    "guidelines",
     "parseCoverage",
     "filesWithSyntaxErrors",
     "skippedFiles"

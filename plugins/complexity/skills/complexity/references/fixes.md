@@ -66,3 +66,7 @@ simplification pays. A function above a complexity guideline with no fixes is a 
 fixed again and again. Run `explain` on the id of a row to see where its complexity comes from, then use the remedies
 in [remedies.md](remedies.md). A high count is a place to look, not a defect: the extension point of a system changes and
 is fixed often because it is used often.
+
+## Stored result and the X-Ray report
+
+A `fixes` run on a clean tree stores its result, and the default run is `complexity.fixes`, which the cochange hotspots report reads for its X-Ray of the top files (it lists only the functions that have a fix, so a function it does not list has none). A shallow clone stores nothing, because the same commit may have more history later. `--no-cache` computes the statistics again. `report xray FILE` computes the analysis and the statistics for one file itself and lists every function with its revisions and fixes.

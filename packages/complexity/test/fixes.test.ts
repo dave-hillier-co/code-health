@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { historyDefaults } from "@code-health/cli-kit/config";
 import { ExitCode } from "@code-health/cli-kit/errors";
@@ -172,10 +174,22 @@ test("a rerun parses nothing, because historical blobs are cached by blob", asyn
   const repo = fixRepo();
   const first = await fixes(repo);
   expect(first.document.cache.parsed).toBeGreaterThan(0);
-  const second = await fixes(repo);
+  const second = await fixes(repo, "--no-cache");
   expect(second.document.cache.parsed).toBe(0);
   expect(second.document.cache.cached).toBe(first.document.cache.parsed + first.document.cache.cached);
   expect(second.rows).toEqual(first.rows);
+});
+
+test("a run on a clean tree stores complexity.fixes for other plugins, and the same run prints the stored result", async () => {
+  const repo = fixRepo();
+  const first = await fixes(repo);
+  const stored = JSON.parse(readFileSync(join(repo.path, ".cache", "code-health", "reports", "complexity.fixes.json"), "utf8"));
+  expect(stored).toMatchObject({ tool: "complexity", command: "fixes", repo: { head: repo.git("rev-parse", "HEAD").trim(), dirty: false } });
+  const again = await fixes(repo);
+  expect(again.rows).toEqual(first.rows);
+  // A run for one path states its input, so it never replaces the plain report other plugins read.
+  await fixes(repo, "src/billing.ts");
+  expect(JSON.parse(readFileSync(join(repo.path, ".cache", "code-health", "reports", "complexity.fixes.json"), "utf8")).inputs.paths).toEqual([]);
 });
 
 test("selects files by path argument", async () => {

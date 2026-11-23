@@ -115,6 +115,12 @@
       "until": "2024-02-11T12:00:00.000Z"
     }
   },
+  "guidelines": {
+    "cognitiveWarn": 15,
+    "cyclomaticWarn": 10,
+    "nesting": 4,
+    "overrides": 0
+  },
   "inputs": {
     "by": "cognitive",
     "evidence": 3,

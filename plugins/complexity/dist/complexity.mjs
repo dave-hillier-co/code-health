@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial. Third-party licences: THIRD_PARTY_NOTICES.md.
 var __defProp = Object.defineProperty;
 var __export = (target2, all) => {
-  for (var name10 in all)
-    __defProp(target2, name10, { get: all[name10], enumerable: true });
+  for (var name11 in all)
+    __defProp(target2, name11, { get: all[name11], enumerable: true });
 };
 
 // packages/cli-kit/src/args.ts
@@ -61,9 +61,9 @@ function parseArguments(argv, commandOptions = {}) {
     throw usageError(error instanceof Error ? error.message : String(error));
   }
   const { json, help, limit, fields, ...values } = parsed.values;
-  const [command9, ...positionals] = parsed.positionals;
+  const [command10, ...positionals] = parsed.positionals;
   return {
-    command: command9,
+    command: command10,
     positionals,
     json: json === true,
     help: help === true,
@@ -112,8 +112,8 @@ function restoreBuiltinOmissions(counts) {
   omitted.clear();
   restored.clear();
   for (const entry of BUILTIN_EXCLUDE_ENTRIES) {
-    const count3 = counts[entry];
-    if (typeof count3 === "number" && count3 > 0) restored.set(entry, count3);
+    const count4 = counts[entry];
+    if (typeof count4 === "number" && count4 > 0) restored.set(entry, count4);
   }
 }
 function builtinOmissions() {
@@ -243,22 +243,22 @@ function loadConfig(root, spec) {
   }
   const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
   const defaults = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
-  const rows = /* @__PURE__ */ new Map();
+  const rows5 = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
-    effective[key] = merge(defaults[key], document?.[key], key, rows);
+    effective[key] = merge(defaults[key], document?.[key], key, rows5);
   }
   readHistory(effective.history, "history");
   const pluginDocument = document?.[spec.plugin];
   const override2 = Object.fromEntries(historyKeys.filter((key) => pluginDocument?.[key] !== void 0).map((key) => [key, pluginDocument[key]]));
   readHistory(override2, spec.plugin);
-  const section = effective[spec.plugin];
+  const section2 = effective[spec.plugin];
   for (const key of historyKeys) {
-    section[key] = overlay(effective.history[key], pluginDocument?.[key]);
-    inheritSources(rows, spec.plugin, key);
+    section2[key] = overlay(effective.history[key], pluginDocument?.[key]);
+    inheritSources(rows5, spec.plugin, key);
   }
   const sources = {};
-  for (const row of rows.values()) sources[row.path] = row.source;
+  for (const row of rows5.values()) sources[row.path] = row.source;
   const hash2 = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash: hash2, sources };
 }
@@ -269,13 +269,13 @@ function overlay(shared, own) {
   }
   return own;
 }
-function inheritSources(rows, plugin, key) {
+function inheritSources(rows5, plugin, key) {
   const own = `${plugin}.${key}`;
-  for (const row of [...rows.values()]) {
+  for (const row of [...rows5.values()]) {
     if (row.path !== own && !row.path.startsWith(`${own}.`)) continue;
     if (row.source === "file") continue;
-    const shared = rows.get(`history${row.path.slice(plugin.length)}`);
-    if (shared !== void 0) rows.set(row.path, { ...row, source: shared.source });
+    const shared = rows5.get(`history${row.path.slice(plugin.length)}`);
+    if (shared !== void 0) rows5.set(row.path, { ...row, source: shared.source });
   }
 }
 function readHistory(history, where) {
@@ -313,12 +313,12 @@ function readLanguages(value) {
   return mapped;
 }
 function explainConfig(config) {
-  const rows = [];
+  const rows5 = [];
   flatten(config.effective, "", (path, value) => {
-    rows.push({ path, value, source: config.sources[path] ?? "default" });
+    rows5.push({ path, value, source: config.sources[path] ?? "default" });
   });
-  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
-  return rows.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows5.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
+  return rows5.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 function parseDocument(file) {
   let parsed;
@@ -330,15 +330,15 @@ function parseDocument(file) {
   if (!isPlainObject(parsed)) throw configError(`${CONFIG_FILE} must be a JSON object`);
   return parsed;
 }
-function merge(defaultValue, fileValue, path, rows) {
+function merge(defaultValue, fileValue, path, rows5) {
   if (fileValue === void 0) {
-    flatten(defaultValue, path, (leaf, value) => rows.set(leaf, { path: leaf, value, source: "default" }));
+    flatten(defaultValue, path, (leaf, value) => rows5.set(leaf, { path: leaf, value, source: "default" }));
     return defaultValue;
   }
   if (isPlainObject(defaultValue)) {
     if (!isPlainObject(fileValue)) throw configError(`${CONFIG_FILE}: ${path} must be an object`);
     if (Object.keys(defaultValue).length === 0) {
-      flatten(fileValue, path, (leaf, value) => rows.set(leaf, { path: leaf, value, source: "file" }));
+      flatten(fileValue, path, (leaf, value) => rows5.set(leaf, { path: leaf, value, source: "file" }));
       return fileValue;
     }
     for (const key of Object.keys(fileValue)) {
@@ -346,14 +346,14 @@ function merge(defaultValue, fileValue, path, rows) {
     }
     const merged = {};
     for (const key of Object.keys(defaultValue)) {
-      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows);
+      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows5);
     }
     return merged;
   }
   if (defaultValue !== null && kindOf(fileValue) !== kindOf(defaultValue)) {
     throw configError(`${CONFIG_FILE}: ${path} must be ${article(kindOf(defaultValue))}`);
   }
-  rows.set(path, { path, value: fileValue, source: "file" });
+  rows5.set(path, { path, value: fileValue, source: "file" });
   return fileValue;
 }
 var removedSettings = {
@@ -399,8 +399,8 @@ function restoreDropped(counts) {
   dropped.clear();
   restored2.clear();
   for (const kind of DROPPED_KINDS) {
-    const count3 = counts[kind];
-    if (typeof count3 === "number" && count3 > 0) restored2.set(kind, count3);
+    const count4 = counts[kind];
+    if (typeof count4 === "number" && count4 > 0) restored2.set(kind, count4);
   }
 }
 function droppedCounts() {
@@ -424,21 +424,21 @@ var ENVELOPE_KEYS = [
   "truncated",
   "meta"
 ];
-function buildDocument(parts2) {
-  for (const key of Object.keys(parts2.extra ?? {})) {
+function buildDocument(parts3) {
+  for (const key of Object.keys(parts3.extra ?? {})) {
     if (ENVELOPE_KEYS.includes(key)) throw new Error(`extra section "${key}" would replace an envelope field`);
   }
   return {
-    schemaVersion: parts2.schemaVersion,
-    tool: parts2.tool,
-    command: parts2.command,
-    repo: parts2.repo,
-    config: parts2.configHash,
-    inputs: parts2.inputs ?? {},
-    ...parts2.extra,
-    results: parts2.results,
-    truncated: parts2.truncated,
-    ...parts2.meta ? { meta: parts2.meta } : {}
+    schemaVersion: parts3.schemaVersion,
+    tool: parts3.tool,
+    command: parts3.command,
+    repo: parts3.repo,
+    config: parts3.configHash,
+    inputs: parts3.inputs ?? {},
+    ...parts3.extra,
+    results: parts3.results,
+    truncated: parts3.truncated,
+    ...parts3.meta ? { meta: parts3.meta } : {}
   };
 }
 
@@ -490,11 +490,11 @@ function git(cwd, ...args2) {
 // packages/cli-kit/src/results.ts
 function shapeResults(results, options) {
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
-  const { limit, fields, columns } = options;
-  if (fields && columns && columns.length > 0) {
-    const unknown = fields.filter((field6) => !columns.includes(field6));
+  const { limit, fields, columns: columns6 } = options;
+  if (fields && columns6 && columns6.length > 0) {
+    const unknown = fields.filter((field6) => !columns6.includes(field6));
     if (unknown.length > 0) {
-      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns.join(", ")}`);
+      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns6.join(", ")}`);
     }
   }
   const sorted = options.presorted === true ? results : [...results].sort(byScoreThenPath);
@@ -535,15 +535,15 @@ function runNotes() {
 }
 
 // packages/cli-kit/src/table.ts
-function renderTable(rows, columns, truncated) {
-  if (rows.length === 0) return "No results.\n";
-  const cells = rows.map((row) => columns.map((column) => format(row[column])));
-  const numeric = columns.map((column) => rows.every((row) => row[column] == null || typeof row[column] === "number"));
-  const widths = columns.map((column, i2) => Math.max(column.length, ...cells.map((line) => line[i2]?.length ?? 0)));
+function renderTable(rows5, columns6, truncated) {
+  if (rows5.length === 0) return "No results.\n";
+  const cells = rows5.map((row) => columns6.map((column) => format(row[column])));
+  const numeric = columns6.map((column) => rows5.every((row) => row[column] == null || typeof row[column] === "number"));
+  const widths = columns6.map((column, i2) => Math.max(column.length, ...cells.map((line) => line[i2]?.length ?? 0)));
   const render = (line) => line.map((cell, i2) => numeric[i2] ? cell.padStart(widths[i2] ?? 0) : cell.padEnd(widths[i2] ?? 0)).join("  ").trimEnd();
-  const lines = [render(columns), ...cells.map(render)];
-  if (truncated.cut > 0) lines.push(`${truncated.cut} more not shown (use --limit N or --limit all)`);
-  return lines.join("\n") + "\n";
+  const lines2 = [render(columns6), ...cells.map(render)];
+  if (truncated.cut > 0) lines2.push(`${truncated.cut} more not shown (use --limit N or --limit all)`);
+  return lines2.join("\n") + "\n";
 }
 function format(value) {
   if (value === null || value === void 0) return "-";
@@ -577,8 +577,8 @@ async function runCli(cli2, io) {
 }
 async function execute(cli2, io) {
   const started = Date.now();
-  const name10 = discoverCommand(io.argv);
-  if (name10 === void 0) {
+  const name11 = discoverCommand(io.argv);
+  if (name11 === void 0) {
     if (io.argv.includes("--help")) {
       io.stdout.write(helpText(cli2));
       return ExitCode.Success;
@@ -586,16 +586,16 @@ async function execute(cli2, io) {
     io.stderr.write(helpText(cli2));
     return ExitCode.Usage;
   }
-  if (name10 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
-  const command9 = name10 === "config" ? configExplain : cli2.commands[name10];
-  if (!command9) throw usageError(`unknown command "${name10}"; run with --help to list commands`);
-  const args2 = parseArguments(io.argv, command9.options);
+  if (name11 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
+  const command10 = name11 === "config" ? configExplain : cli2.commands[name11];
+  if (!command10) throw usageError(`unknown command "${name11}"; run with --help to list commands`);
+  const args2 = parseArguments(io.argv, command10.options);
   if (args2.help) {
-    io.stdout.write(commandHelp(cli2, name10, command9, args2.positionals[0]));
+    io.stdout.write(commandHelp(cli2, name11, command10, args2.positionals[0]));
     return ExitCode.Success;
   }
-  let commandName = name10;
-  if (name10 === "config") {
+  let commandName = name11;
+  if (name11 === "config") {
     if (args2.positionals[0] !== "explain") throw usageError("usage: config explain");
     commandName = "config explain";
   }
@@ -605,7 +605,7 @@ async function execute(cli2, io) {
   resetBuiltinOmissions();
   resetRunNotes();
   resetDropped();
-  const output = await command9.run(context);
+  const output = await command10.run(context);
   if (output.text !== void 0) {
     for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
 `);
@@ -621,8 +621,8 @@ async function execute(cli2, io) {
 `);
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
-  const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns, presorted: output.presorted });
+  const columns6 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
+  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns: columns6, presorted: output.presorted });
   if (args2.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -652,20 +652,20 @@ async function execute(cli2, io) {
       )
     );
   } else if (Array.isArray(results)) {
-    io.stdout.write(renderTable(results, args2.fields ?? columns, truncated));
+    io.stdout.write(renderTable(results, args2.fields ?? columns6, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
 `);
     for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
 `);
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
-      io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count3]) => `${count3} ${count3 === 1 ? "file" : "files"} (${entry})`).join(", ")}.
+      io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count4]) => `${count4} ${count4 === 1 ? "file" : "files"} (${entry})`).join(", ")}.
 `);
     }
     const left = Object.entries(leftOut);
     if (left.length > 0) {
       const names = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" };
-      io.stdout.write(`Notice: omitted ${left.map(([kind, count3]) => `${count3} ${names[kind]} ${count3 === 1 ? "file" : "files"}`).join(", ")}.
+      io.stdout.write(`Notice: omitted ${left.map(([kind, count4]) => `${count4} ${names[kind]} ${count4 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
@@ -704,38 +704,38 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands3 = [
-    ...Object.entries(cli2.commands).map(([name10, command9]) => [name10, command9.summary]),
+    ...Object.entries(cli2.commands).map(([name11, command10]) => [name11, command10.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
-  const width = Math.max(...commands3.map(([name10]) => name10.length));
+  const width = Math.max(...commands3.map(([name11]) => name11.length));
   return [
     `Usage: ${cli2.tool} <command> [options]`,
     "",
     "Commands:",
-    ...commands3.map(([name10, summary]) => `  ${name10.padEnd(width)}  ${summary}`),
+    ...commands3.map(([name11, summary]) => `  ${name11.padEnd(width)}  ${summary}`),
     "",
     "Options:",
     ...commonOptionHelp,
     ""
   ].join("\n");
 }
-function commandHelp(cli2, name10, command9, requested) {
-  const sub = requested === void 0 ? void 0 : command9.subcommands?.[requested];
+function commandHelp(cli2, name11, command10, requested) {
+  const sub = requested === void 0 ? void 0 : command10.subcommands?.[requested];
   const optionLines = (entries) => {
     const flags2 = entries.map(([option, spec]) => [
       `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
-      command9.optionHelp?.[option] ?? ""
+      command10.optionHelp?.[option] ?? ""
     ]);
     const width2 = Math.max(0, ...flags2.map(([flag]) => flag.length));
     return flags2.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
   };
-  const all = Object.entries(command9.options ?? {});
-  const hiddenOptions = new Set(command9.hiddenOptions ?? []);
+  const all = Object.entries(command10.options ?? {});
+  const hiddenOptions = new Set(command10.hiddenOptions ?? []);
   if (sub !== void 0) {
     const taken = new Set(sub.options ?? []);
     return [
-      `Usage: ${cli2.tool} ${name10} ${requested}${command9.usage === void 0 ? "" : ` ${command9.usage}`} [options]`,
+      `Usage: ${cli2.tool} ${name11} ${requested}${command10.usage === void 0 ? "" : ` ${command10.usage}`} [options]`,
       "",
       sub.summary,
       "",
@@ -745,14 +745,14 @@ function commandHelp(cli2, name10, command9, requested) {
       ""
     ].join("\n");
   }
-  const subcommands = Object.entries(command9.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
+  const subcommands = Object.entries(command10.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
   const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli2.tool} ${name10}${command9.usage === void 0 ? "" : ` ${command9.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
+    `Usage: ${cli2.tool} ${name11}${command10.usage === void 0 ? "" : ` ${command10.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
-    command9.summary,
+    command10.summary,
     "",
-    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name10} <subcommand> --help for the options of one.`, ""] : [],
+    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name11} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
     ...optionLines(all.filter(([option]) => !hiddenOptions.has(option))),
     ...commonOptionHelp,
@@ -772,12 +772,12 @@ __export(analyse_exports, {
 function midRankPercentiles(values) {
   const sorted = [...values].sort((a, b) => a - b);
   const first = /* @__PURE__ */ new Map();
-  const count3 = /* @__PURE__ */ new Map();
+  const count4 = /* @__PURE__ */ new Map();
   sorted.forEach((value, index) => {
     if (!first.has(value)) first.set(value, index);
-    count3.set(value, (count3.get(value) ?? 0) + 1);
+    count4.set(value, (count4.get(value) ?? 0) + 1);
   });
-  return values.map((value) => (first.get(value) + count3.get(value) / 2) / values.length);
+  return values.map((value) => (first.get(value) + count4.get(value) / 2) / values.length);
 }
 
 // packages/history/src/file-class.ts
@@ -912,7 +912,7 @@ var GitError = class extends Error {
   }
 };
 function runGit(cwd, args2, options = {}) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve2, reject) => {
     const child = spawn("git", args2, {
       cwd,
       env: {
@@ -934,7 +934,7 @@ function runGit(cwd, args2, options = {}) {
     child.stdin.on("error", () => {
     });
     child.on("close", (code) => {
-      if (code === 0) resolve(Buffer.concat(out2).toString("utf8"));
+      if (code === 0) resolve2(Buffer.concat(out2).toString("utf8"));
       else reject(new GitError(args2, code, Buffer.concat(err2).toString("utf8")));
     });
     child.stdin.end(options.input ?? "");
@@ -965,8 +965,8 @@ async function listGitlinks(repoPath, ref) {
 }
 async function listBlobs(repoPath, ref) {
   const { entries, gitlinks } = await readEntries(repoPath, ref);
-  const omitted2 = builtinExcluder(repoPath, gitlinks);
-  const blobs = entries.filter(({ mode, path }) => mode !== "160000" && mode !== "120000" && !omitted2(path)).map(({ oid, path }) => ({ path, blob: oid }));
+  const omitted3 = builtinExcluder(repoPath, gitlinks);
+  const blobs = entries.filter(({ mode, path }) => mode !== "160000" && mode !== "120000" && !omitted3(path)).map(({ oid, path }) => ({ path, blob: oid }));
   return blobs.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 async function readBlobAt(repoPath, ref, path) {
@@ -976,17 +976,17 @@ async function readBlobAt(repoPath, ref, path) {
     return void 0;
   }
 }
-function parseBlameIgnoreRevs(text2) {
+function parseBlameIgnoreRevs(text3) {
   const revs = [];
-  for (const line of text2.split("\n")) {
+  for (const line of text3.split("\n")) {
     const token = line.replace(/#.*/, "").trim().split(/\s+/)[0] ?? "";
     if (/^[0-9a-f]{7,40}$/i.test(token)) revs.push(token.toLowerCase());
   }
   return revs;
 }
 async function readBlameIgnoreRevs(repoPath, ref, file) {
-  const text2 = await readBlobAt(repoPath, ref, file);
-  return text2 === void 0 ? [] : parseBlameIgnoreRevs(text2);
+  const text3 = await readBlobAt(repoPath, ref, file);
+  return text3 === void 0 ? [] : parseBlameIgnoreRevs(text3);
 }
 var isSet = (value) => value === "set" || value === "true";
 var isUnset = (value) => value === "unset" || value === "false";
@@ -1023,8 +1023,8 @@ var MARKERS = [
   { name: "Generated by", test: /\bGenerated by\b/ },
   { name: "DO NOT EDIT", test: /\bDO NOT EDIT\b/ }
 ];
-function generatedHeaderMarker(text2) {
-  for (const line of text2.split("\n", HEADER_LINES)) {
+function generatedHeaderMarker(text3) {
+  for (const line of text3.split("\n", HEADER_LINES)) {
     if (!COMMENT_LEADER.test(line)) continue;
     for (const marker of MARKERS) if (marker.test.test(line)) return marker.name;
   }
@@ -1032,9 +1032,9 @@ function generatedHeaderMarker(text2) {
 }
 var VENDOR_DIRECTORIES = ["vendor", "third_party"];
 function isInVendorDirectory(path) {
-  const parts2 = path.split("/");
-  parts2.pop();
-  return parts2.some((part) => VENDOR_DIRECTORIES.includes(part));
+  const parts3 = path.split("/");
+  parts3.pop();
+  return parts3.some((part) => VENDOR_DIRECTORIES.includes(part));
 }
 var verdicts = /* @__PURE__ */ new Map();
 async function readBlobHeads(repoPath, blobs) {
@@ -1048,12 +1048,12 @@ async function readBlobHeads(repoPath, blobs) {
     for (const sha of chunk) {
       const newline = stdout.indexOf(10, offset);
       if (newline === -1) break;
-      const header = stdout.toString("utf8", offset, newline).split(" ");
-      if (header[1] !== "blob") {
+      const header2 = stdout.toString("utf8", offset, newline).split(" ");
+      if (header2[1] !== "blob") {
         offset = newline + 1;
         continue;
       }
-      const size = Number(header[2]);
+      const size = Number(header2[2]);
       const bodyStart = newline + 1;
       heads.set(sha, stdout.toString("utf8", bodyStart, bodyStart + Math.min(size, HEADER_BYTES)));
       offset = bodyStart + size + 1;
@@ -1062,7 +1062,7 @@ async function readBlobHeads(repoPath, blobs) {
   return heads;
 }
 function catFileBatch(cwd, input) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve2, reject) => {
     const child = spawn2("git", ["cat-file", "--batch"], {
       cwd,
       env: { ...process.env, LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" },
@@ -1073,7 +1073,7 @@ function catFileBatch(cwd, input) {
     child.on("error", reject);
     child.stdin.on("error", () => {
     });
-    child.on("close", (code) => code === 0 ? resolve(Buffer.concat(out2)) : reject(new Error(`git cat-file --batch failed (${code})`)));
+    child.on("close", (code) => code === 0 ? resolve2(Buffer.concat(out2)) : reject(new Error(`git cat-file --batch failed (${code})`)));
     child.stdin.end(input);
   });
 }
@@ -1150,9 +1150,9 @@ var BINARY_EXTENSIONS = /* @__PURE__ */ new Set([
   "lockb"
 ]);
 function maybeText(path) {
-  const name10 = path.slice(path.lastIndexOf("/") + 1);
-  const dot = name10.lastIndexOf(".");
-  return dot <= 0 || !BINARY_EXTENSIONS.has(name10.slice(dot + 1).toLowerCase());
+  const name11 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name11.lastIndexOf(".");
+  return dot <= 0 || !BINARY_EXTENSIONS.has(name11.slice(dot + 1).toLowerCase());
 }
 var noAttributes = () => ({ generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set(), notGenerated: /* @__PURE__ */ new Set(), notVendored: /* @__PURE__ */ new Set() });
 async function classifyFiles(repoPath, ref, entries, treeFiles, options = {}) {
@@ -1646,12 +1646,12 @@ function parseLog(output) {
 }
 function parseRecord(record) {
   const tokens2 = record.split("\0");
-  const header = tokens2.shift() ?? "";
-  const fields = header.split(US);
+  const header2 = tokens2.shift() ?? "";
+  const fields = header2.split(US);
   const [sha, parents, authorName, authorEmail, authorDate, committerDate] = fields;
   const message = fields.slice(6).join(US).replace(/\n+$/, "");
   if (sha === void 0 || parents === void 0 || authorDate === void 0 || committerDate === void 0) {
-    throw new Error(`Malformed git log record: ${JSON.stringify(header)}`);
+    throw new Error(`Malformed git log record: ${JSON.stringify(header2)}`);
   }
   if (tokens2[0]?.startsWith("\n")) tokens2[0] = tokens2[0].slice(1);
   while (tokens2.length > 0 && tokens2[tokens2.length - 1] === "") tokens2.pop();
@@ -1721,9 +1721,9 @@ function suppressSqliteWarning() {
   suppressed = true;
   const emitWarning = process.emitWarning.bind(process);
   process.emitWarning = ((warning, ...rest) => {
-    const text2 = typeof warning === "string" ? warning : warning?.message ?? "";
+    const text3 = typeof warning === "string" ? warning : warning?.message ?? "";
     const type = typeof rest[0] === "string" ? rest[0] : warning?.name;
-    if (type === "ExperimentalWarning" && /SQLite/i.test(text2)) return;
+    if (type === "ExperimentalWarning" && /SQLite/i.test(text3)) return;
     emitWarning(warning, ...rest);
   });
 }
@@ -1835,12 +1835,12 @@ function setMeta(db, key, value) {
   );
 }
 function storedShas(db) {
-  const rows = db.prepare("SELECT sha FROM commits").all();
-  return new Set(rows.map((r) => r.sha));
+  const rows5 = db.prepare("SELECT sha FROM commits").all();
+  return new Set(rows5.map((r) => r.sha));
 }
 function storedBoundaryShas(db) {
-  const rows = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
-  return rows.map((r) => r.sha);
+  const rows5 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
+  return rows5.map((r) => r.sha);
 }
 function deleteCommits(db, shas) {
   const statements = ["commits", "commit_parents", "changes"].map((t) => db.prepare(`DELETE FROM ${t} WHERE sha = ?`));
@@ -2034,8 +2034,8 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
     ["-c", `mailmap.file=${file}`, "-c", `mailmap.blob=${blob}`, "check-mailmap", "--stdin"],
     { input: identities.join("\n") + "\n" }
   );
-  const lines = out2.split("\n");
-  const mapped = new Map(identities.map((identity, i2) => [identity, lines[i2] ?? identity]));
+  const lines2 = out2.split("\n");
+  const mapped = new Map(identities.map((identity, i2) => [identity, lines2[i2] ?? identity]));
   for (const commit of view.commits) {
     const line = mapped.get(`${commit.authorName} <${commit.authorEmail}>`) ?? "";
     const open = line.lastIndexOf("<");
@@ -2047,7 +2047,7 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
 function select(db, ref, headSha, firstParent) {
   const head = db.prepare("SELECT committer_date FROM commits WHERE sha = ?").get(headSha);
   if (!head) throw new NoCacheError(`Commit ${headSha} is not in the history cache. Run refresh first.`);
-  const rows = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
+  const rows5 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
   const changeRows = db.prepare(
     `${REACH(firstParent)}
        SELECT ch.* FROM changes ch JOIN reach ON reach.sha = ch.sha ORDER BY ch.sha, ch.idx`
@@ -2069,7 +2069,7 @@ function select(db, ref, headSha, firstParent) {
     if (list2) list2.push(row);
     else changesBySha.set(row.sha, [row]);
   }
-  const ordered = topologicalOrder(rows, parents);
+  const ordered = topologicalOrder(rows5, parents);
   const renames = new RenameMap();
   const commits = [];
   for (const row of ordered) {
@@ -2111,9 +2111,9 @@ function select(db, ref, headSha, firstParent) {
   }
   return { ref, headSha, headDate: head.committer_date, firstParent, commits, renames };
 }
-function topologicalOrder(rows, parents) {
-  const bySha = new Map(rows.map((r) => [r.sha, r]));
-  const sorted = [...rows].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
+function topologicalOrder(rows5, parents) {
+  const bySha = new Map(rows5.map((r) => [r.sha, r]));
+  const sorted = [...rows5].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
   const done = /* @__PURE__ */ new Set();
   const out2 = [];
   for (const start2 of sorted) {
@@ -2253,13 +2253,13 @@ function canonical(value) {
   }
   return JSON.stringify(value) ?? "null";
 }
-function reportPath(root, tool, command9, variant) {
-  return join5(root, ".cache", "code-health", "reports", `${tool}.${command9}${variant === void 0 ? "" : `.${variant}`}.json`);
+function reportPath(root, tool, command10, variant) {
+  return join5(root, ".cache", "code-health", "reports", `${tool}.${command10}${variant === void 0 ? "" : `.${variant}`}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
 }
-async function writeReport(context, identity, command9, output, analysedHead, options = {}) {
+async function writeReport(context, identity, command10, output, analysedHead, options = {}) {
   if (options.describesCommit !== true) {
     if (context.repo.dirty) {
       skipReport(context, "the working tree has uncommitted changes");
@@ -2282,7 +2282,7 @@ async function writeReport(context, identity, command9, output, analysedHead, op
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
     tool: identity.tool,
-    command: command9,
+    command: command10,
     repo: { head: analysedHead, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
@@ -2295,7 +2295,7 @@ async function writeReport(context, identity, command9, output, analysedHead, op
     truncated,
     ...options.replayable === true ? { meta: { printed } } : {}
   });
-  const file = reportPath(context.repo.root, identity.tool, command9, options.variant);
+  const file = reportPath(context.repo.root, identity.tool, command10, options.variant);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join5(context.repo.root, ".cache", "code-health") });
   mkdirSync2(join5(file, ".."), { recursive: true });
@@ -2367,9 +2367,9 @@ function storeCached(context, stored, output) {
     replayable: true
   });
 }
-async function cachedOutput(context, stored, compute3, notStored, notStorableBecause = () => void 0) {
+async function cachedOutput(context, stored, compute4, notStored, notStorableBecause = () => void 0) {
   if (stored === void 0) {
-    const output2 = await compute3();
+    const output2 = await compute4();
     notStored(context);
     return output2;
   }
@@ -2377,7 +2377,7 @@ async function cachedOutput(context, stored, compute3, notStored, notStorableBec
     const hit = readCached(context, stored);
     if (hit !== void 0) return hit;
   }
-  const output = await compute3();
+  const output = await compute4();
   const reason = notStorableBecause(output);
   if (reason === void 0) await storeCached(context, stored, output);
   else skipReport(context, reason);
@@ -2439,15 +2439,15 @@ async function treeFromWorkingTree(repoPath) {
   const listing = (await git2(repoPath, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"])).toString("utf8");
   const entries = [];
   const seen = /* @__PURE__ */ new Set();
-  const omitted2 = builtinExcluder(repoPath);
+  const omitted3 = builtinExcluder(repoPath);
   for (const path of listing.split("\0")) {
     if (path === "" || seen.has(path)) continue;
     seen.add(path);
     if (path.endsWith("/")) {
-      for (const inner2 of await filesOfCheckout(repoPath, path)) omitted2(`${path}${inner2}`);
+      for (const inner2 of await filesOfCheckout(repoPath, path)) omitted3(`${path}${inner2}`);
       continue;
     }
-    if (omitted2(path)) continue;
+    if (omitted3(path)) continue;
     try {
       if (!lstatSync(join7(repoPath, path)).isFile()) continue;
       entries.push([path, gitBlobSha(readFileSync5(join7(repoPath, path)))]);
@@ -2462,8 +2462,8 @@ async function treeFromWorkingTree(repoPath) {
     async readMany(wanted) {
       const out2 = /* @__PURE__ */ new Map();
       for (const path of wanted) {
-        const text2 = await read(path);
-        if (text2 !== void 0) out2.set(path, text2);
+        const text3 = await read(path);
+        if (text3 !== void 0) out2.set(path, text3);
       }
       return out2;
     }
@@ -2479,13 +2479,13 @@ async function filesOfCheckout(repoPath, directory) {
 }
 async function untrackedFiles(repoPath) {
   const listing = (await git2(repoPath, ["ls-files", "-z", "--others", "--exclude-standard"])).toString("utf8");
-  const omitted2 = builtinExcluder(repoPath);
+  const omitted3 = builtinExcluder(repoPath);
   const kept = [];
   for (const path of listing.split("\0")) {
     if (path === "") continue;
     if (path.endsWith("/")) {
-      for (const inner2 of await filesOfCheckout(repoPath, path)) omitted2(`${path}${inner2}`);
-    } else if (!omitted2(path)) {
+      for (const inner2 of await filesOfCheckout(repoPath, path)) omitted3(`${path}${inner2}`);
+    } else if (!omitted3(path)) {
       kept.push(path);
     }
   }
@@ -2504,7 +2504,7 @@ function restrictTree(tree, paths) {
   };
 }
 function git2(cwd, args2, input) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve2, reject) => {
     const child = spawn3("git", args2, {
       cwd,
       env: {
@@ -2524,7 +2524,7 @@ function git2(cwd, args2, input) {
     child.stdin.on("error", () => {
     });
     child.on("close", (code) => {
-      if (code === 0) resolve(Buffer.concat(out2));
+      if (code === 0) resolve2(Buffer.concat(out2));
       else reject(new Error(`git ${args2.join(" ")} failed (${code}): ${Buffer.concat(err2).toString("utf8").trim()}`));
     });
     child.stdin.end(input ?? "");
@@ -2540,12 +2540,12 @@ async function readBlobs(cwd, shas) {
     let offset = 0;
     for (const sha of chunk) {
       const newline = stdout.indexOf(10, offset);
-      const header = stdout.toString("utf8", offset, newline).split(" ");
-      if (header[1] !== "blob") {
+      const header2 = stdout.toString("utf8", offset, newline).split(" ");
+      if (header2[1] !== "blob") {
         offset = newline + 1;
         continue;
       }
-      const size = Number(header[2]);
+      const size = Number(header2[2]);
       const bodyStart = newline + 1;
       out2.set(sha, stdout.toString("utf8", bodyStart, bodyStart + size));
       offset = bodyStart + size + 1;
@@ -2596,17 +2596,17 @@ async function treeFromRef(repoPath, ref) {
     if (type !== "blob" || mode === "120000" || !sha) continue;
     entries.push([record.slice(tab + 1), sha]);
   }
-  const omitted2 = builtinExcluder(repoPath, gitlinks);
-  const kept = entries.filter(([path]) => !omitted2(path));
-  for (const path of gitlinks) omitted2(path);
+  const omitted3 = builtinExcluder(repoPath, gitlinks);
+  const kept = entries.filter(([path]) => !omitted3(path));
+  for (const path of gitlinks) omitted3(path);
   const files = sortedMap(await withoutGeneratedAndVendored(repoPath, ref, kept));
   const readMany = async (wanted) => {
     const known = wanted.filter((path) => files.has(path));
     const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path)))]);
     const out2 = /* @__PURE__ */ new Map();
     for (const path of known) {
-      const text2 = blobs.get(files.get(path));
-      if (text2 !== void 0) out2.set(path, text2);
+      const text3 = blobs.get(files.get(path));
+      if (text3 !== void 0) out2.set(path, text3);
     }
     return out2;
   };
@@ -2620,7 +2620,7 @@ async function treeFromRef(repoPath, ref) {
 }
 function treeFromTexts(texts) {
   const contents = new Map(Object.entries(texts));
-  const files = sortedMap([...contents].map(([path, text2]) => [path, gitBlobSha(Buffer.from(text2))]));
+  const files = sortedMap([...contents].map(([path, text3]) => [path, gitBlobSha(Buffer.from(text3))]));
   return {
     files,
     read: async (path) => contents.get(path),
@@ -2705,7 +2705,7 @@ function fixEvidence(matches, limit = FIX_EVIDENCE_LIMIT) {
   for (const match of matches) counts.set(match.pattern, (counts.get(match.pattern) ?? 0) + 1);
   return {
     fixes: matches.length,
-    byPattern: [...counts].map(([pattern, count3]) => ({ pattern, count: count3 })).sort((a, b) => b.count - a.count || (a.pattern < b.pattern ? -1 : 1)),
+    byPattern: [...counts].map(([pattern, count4]) => ({ pattern, count: count4 })).sort((a, b) => b.count - a.count || (a.pattern < b.pattern ? -1 : 1)),
     commits: matches.slice(0, limit),
     omitted: Math.max(0, matches.length - limit)
   };
@@ -3068,10 +3068,10 @@ var extensionProfiles = {
   py: "python"
 };
 function selectProfile(path, mappings = {}) {
-  const name10 = path.slice(path.lastIndexOf("/") + 1);
-  const dot = name10.lastIndexOf(".");
+  const name11 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name11.lastIndexOf(".");
   if (dot <= 0) return void 0;
-  const extension = name10.slice(dot + 1).toLowerCase();
+  const extension = name11.slice(dot + 1).toLowerCase();
   const mappedName = mappings[extension];
   if (mappedName !== void 0) {
     const profile2 = profiles[mappedName];
@@ -3103,13 +3103,13 @@ var isGradleBuild = (path) => path.endsWith("build.gradle") || path.endsWith("bu
 var isSettings = (path) => /(^|\/)settings\.gradle(\.kts)?$/.test(path);
 var isMavenPom = (path) => path === "pom.xml" || path.endsWith("/pom.xml");
 var isManifest = (path) => manifestNames.has(path.slice(path.lastIndexOf("/") + 1));
-var withoutXmlComments = (text2) => text2.replace(/<!--[\s\S]*?-->/g, "");
-var element = (text2, name10) => new RegExp(`<${name10}>\\s*([^<]*?)\\s*</${name10}>`, "i").exec(text2)?.[1];
-var childOf = (dir, name10) => dir === "." ? name10 : `${dir}/${name10}`;
-function gradleProjects(settings, text2) {
+var withoutXmlComments = (text3) => text3.replace(/<!--[\s\S]*?-->/g, "");
+var element = (text3, name11) => new RegExp(`<${name11}>\\s*([^<]*?)\\s*</${name11}>`, "i").exec(text3)?.[1];
+var childOf = (dir, name11) => dir === "." ? name11 : `${dir}/${name11}`;
+function gradleProjects(settings, text3) {
   const base = posix.dirname(settings);
   const names = /* @__PURE__ */ new Map();
-  const code = text2.replace(/\/\/.*$/gm, "");
+  const code = text3.replace(/\/\/.*$/gm, "");
   for (const statement of code.matchAll(/\binclude\b\s*\(?((?:\s*["'][^"']+["']\s*,?)+)/g)) {
     for (const quoted of statement[1].matchAll(/["']([^"']+)["']/g)) {
       const project = quoted[1];
@@ -3125,7 +3125,7 @@ var jvmBoundaries = {
     const manifests = paths.filter(isManifest);
     const texts = await tree.readMany([...manifests, ...paths.filter(isSettings)]);
     const projectNames = /* @__PURE__ */ new Map();
-    for (const path of paths.filter(isSettings)) for (const [dir, name10] of gradleProjects(path, texts.get(path) ?? "")) projectNames.set(dir, name10);
+    for (const path of paths.filter(isSettings)) for (const [dir, name11] of gradleProjects(path, texts.get(path) ?? "")) projectNames.set(dir, name11);
     const found = [];
     for (const path of manifests) {
       const dir = posix.dirname(path);
@@ -3134,9 +3134,9 @@ var jvmBoundaries = {
         continue;
       }
       if (!isMavenPom(path)) continue;
-      const text2 = withoutXmlComments(texts.get(path) ?? "").replace(/<parent>[\s\S]*?<\/parent>/g, "").replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, "").replace(/<build>[\s\S]*?<\/build>/g, "").replace(/<profiles>[\s\S]*?<\/profiles>/g, "").replace(/<dependencies>[\s\S]*?<\/dependencies>/g, "");
-      if (element(text2, "packaging") === "pom") continue;
-      found.push({ dir, manifest: path, name: element(text2, "artifactId") ?? null });
+      const text3 = withoutXmlComments(texts.get(path) ?? "").replace(/<parent>[\s\S]*?<\/parent>/g, "").replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, "").replace(/<build>[\s\S]*?<\/build>/g, "").replace(/<profiles>[\s\S]*?<\/profiles>/g, "").replace(/<dependencies>[\s\S]*?<\/dependencies>/g, "");
+      if (element(text3, "packaging") === "pom") continue;
+      found.push({ dir, manifest: path, name: element(text3, "artifactId") ?? null });
     }
     const dirs = found.map((boundary) => boundary.dir);
     const owner = (path) => {
@@ -3155,8 +3155,8 @@ var jvmBoundaries = {
 
 // packages/parse/src/symbol-model.ts
 function enclosing(namespace) {
-  const parts2 = namespace.split(".");
-  return parts2.map((_, index) => parts2.slice(0, parts2.length - index).join("."));
+  const parts3 = namespace.split(".");
+  return parts3.map((_, index) => parts3.slice(0, parts3.length - index).join("."));
 }
 function resolveBySymbols(input, options = {}) {
   const enclosingNamespaces = options.enclosingNamespaces ?? true;
@@ -3297,8 +3297,8 @@ var Measurer = class {
    * Walks the body of a control structure one level and one nesting depth deeper, and counts it as a bump when
    * the structure sits directly in the function (`depth` 0). `header` is the node whose line opens the body.
    */
-  body(region, header, level, depth) {
-    if (depth === 0) this.bump(region, header.startPosition.row);
+  body(region, header2, level, depth) {
+    if (depth === 0) this.bump(region, header2.startPosition.row);
     this.visit(region, level + 1, depth + 1);
   }
   bump(region, headerRow) {
@@ -3427,8 +3427,8 @@ var Measurer = class {
   ternaryParts(node) {
     const t = this.c.ternary;
     if (t.positional !== true) return [node.childForFieldName(t.condition), node.childForFieldName(t.consequence), node.childForFieldName(t.alternative)];
-    const parts2 = node.namedChildren.filter((child) => !this.c.commentTypes.has(child.type));
-    return [parts2[1] ?? null, parts2[0] ?? null, parts2[2] ?? null];
+    const parts3 = node.namedChildren.filter((child) => !this.c.commentTypes.has(child.type));
+    return [parts3[1] ?? null, parts3[0] ?? null, parts3[2] ?? null];
   }
   isLabelled(jump) {
     if (this.rules.isLabelled !== void 0) return this.rules.isLabelled(jump);
@@ -3510,9 +3510,9 @@ var Measurer = class {
     }
     this.decision(node, isElseIf ? "else if" : "if");
     const condition = node.childForFieldName(c.condition);
-    const parts2 = c.branches?.(node);
-    const consequence = parts2 === void 0 ? node.childForFieldName(c.consequence) : parts2.consequence;
-    const alternative = parts2 === void 0 ? node.childForFieldName(c.alternative) : parts2.alternative;
+    const parts3 = c.branches?.(node);
+    const consequence = parts3 === void 0 ? node.childForFieldName(c.consequence) : parts3.consequence;
+    const alternative = parts3 === void 0 ? node.childForFieldName(c.alternative) : parts3.alternative;
     for (const child of node.namedChildren) {
       if (child.id === condition?.id || child.id === consequence?.id || child.id === alternative?.id) continue;
       if (c.clauses !== void 0 && (child.type === c.clauses.elif || child.type === c.clauses.else)) continue;
@@ -3620,17 +3620,17 @@ var Measurer = class {
 };
 function codeRowsOf(root, rules5) {
   const comments2 = rules5.constructs.commentTypes;
-  const rows = new Array(root.endPosition.row + 1).fill(false);
+  const rows5 = new Array(root.endPosition.row + 1).fill(false);
   const walk = (node) => {
     if (comments2.has(node.type)) return;
     if (node.childCount === 0) {
-      for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows[row] = true;
+      for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows5[row] = true;
       return;
     }
     for (let i2 = 0; i2 < node.childCount; i2++) walk(node.child(i2));
   };
   walk(root);
-  return rows;
+  return rows5;
 }
 function measureFunction(fn, options, rules5) {
   const measurer = new Measurer(options, rules5, rules5.recursionScope(fn, options.name));
@@ -3710,19 +3710,19 @@ function isStatement(node) {
   const parent = node.parent;
   return !(parent?.type === "for_statement" && parent.childForFieldName("body")?.id !== node.id);
 }
-function rebinds(fn, name10) {
+function rebinds(fn, name11) {
   const binders = fn.descendantsOfType(["required_parameter", "optional_parameter", "variable_declarator", "function_declaration", "rest_pattern"]);
   const own = fn.childForFieldName("name");
   return binders.some((binder) => {
     if (binder.id === fn.id) return false;
-    if (binder.type === "function_declaration") return binder.childForFieldName("name")?.text === name10;
+    if (binder.type === "function_declaration") return binder.childForFieldName("name")?.text === name11;
     const target2 = binder.childForFieldName("pattern") ?? binder.childForFieldName("name") ?? binder;
-    return target2.descendantsOfType("identifier").some((identifier) => identifier.text === name10 && identifier.id !== own?.id);
+    return target2.descendantsOfType("identifier").some((identifier) => identifier.text === name11 && identifier.id !== own?.id);
   });
 }
-function rebindsBareParameter(fn, name10) {
+function rebindsBareParameter(fn, name11) {
   const parameters = fn.descendantsOfType(["formal_parameters"]);
-  return parameters.some((list2) => list2.namedChildren.some((child) => child.type === "identifier" && child.text === name10));
+  return parameters.some((list2) => list2.namedChildren.some((child) => child.type === "identifier" && child.text === name11));
 }
 function enclosingClassName(fn) {
   for (let parent = fn.parent; parent !== null; parent = parent.parent) {
@@ -3733,15 +3733,15 @@ function enclosingClassName(fn) {
   }
   return void 0;
 }
-function recursionScope(fn, name10) {
+function recursionScope(fn, name11) {
   const member = /* @__PURE__ */ new Set();
-  if (name10 !== void 0) member.add(name10);
+  if (name11 !== void 0) member.add(name11);
   const own = fn.childForFieldName("name");
   if (own !== null) member.add(own.text);
   const isMethod = fn.type === "method_definition";
   const bare = /* @__PURE__ */ new Set();
   if (!isMethod) {
-    for (const candidate of own !== null && name10 === void 0 ? [own.text] : [...name10 !== void 0 ? [name10] : [], ...own !== null ? [own.text] : []]) {
+    for (const candidate of own !== null && name11 === void 0 ? [own.text] : [...name11 !== void 0 ? [name11] : [], ...own !== null ? [own.text] : []]) {
       if (!rebinds(fn, candidate) && !rebindsBareParameter(fn, candidate)) bare.add(candidate);
     }
   }
@@ -3793,18 +3793,18 @@ var typescriptMetricRules = {
 
 // packages/parse/src/languages/typescript/interface-shape.ts
 function nodeCount(node, skip) {
-  let count3 = 0;
+  let count4 = 0;
   const walk = (current) => {
     if (!current.isNamed || current.type === "comment") return;
     if (skip?.(current) === true) return;
-    count3++;
+    count4++;
     for (let i2 = 0; i2 < current.childCount; i2++) {
       const child = current.child(i2);
       if (child !== null) walk(child);
     }
   };
   walk(node);
-  return count3;
+  return count4;
 }
 function functionShape(fn, parameters) {
   return { nodes: nodeCount(fn), interfaceSize: Math.max(1, parameters) };
@@ -3919,9 +3919,9 @@ function enclosingClassName2(fn) {
   }
   return void 0;
 }
-function recursionScope2(fn, name10) {
+function recursionScope2(fn, name11) {
   if (fn.type !== "method_declaration") return { bare: /* @__PURE__ */ new Set(), member: /* @__PURE__ */ new Set() };
-  const own = fn.childForFieldName("name")?.text ?? name10;
+  const own = fn.childForFieldName("name")?.text ?? name11;
   const names = new Set(own === void 0 ? [] : [own]);
   const owner = enclosingClassName2(fn);
   return { bare: names, member: names, ...owner === void 0 ? {} : { owner } };
@@ -3961,9 +3961,9 @@ var isComment = (node) => commentTypes.has(node.type);
 var literalTypes2 = /* @__PURE__ */ new Set(["decimal_integer_literal", "hex_integer_literal", "octal_integer_literal", "binary_integer_literal", "decimal_floating_point_literal", "string_literal", "character_literal", "true", "false", "null_literal", "this"]);
 function modifiersOf(node) {
   const modifiers2 = node.namedChildren.find((child) => child.type === "modifiers");
-  const words = /* @__PURE__ */ new Set();
-  for (const child of modifiers2?.children ?? []) if (!child.isNamed) words.add(child.type);
-  return words;
+  const words2 = /* @__PURE__ */ new Set();
+  for (const child of modifiers2?.children ?? []) if (!child.isNamed) words2.add(child.type);
+  return words2;
 }
 function overridesMethod(node) {
   const modifiers2 = node.namedChildren.find((child) => child.type === "modifiers");
@@ -3980,10 +3980,10 @@ function startRow(node) {
   }
   return node.startPosition.row;
 }
-function typeKind(node, words) {
+function typeKind(node, words2) {
   if (node.type === "interface_declaration" || node.type === "annotation_type_declaration") return "interface";
   if (node.type === "enum_declaration") return "enum";
-  if (node.type === "class_declaration" && words.has("abstract")) return "abstract-class";
+  if (node.type === "class_declaration" && words2.has("abstract")) return "abstract-class";
   return "class";
 }
 function chainText(node) {
@@ -4031,16 +4031,16 @@ function passThroughOf2(fn, parameters) {
   if (args2 === null) return void 0;
   const forwarded = args2.namedChildren.filter((child) => !isComment(child)).every((argument) => argument.type === "identifier" ? parameters.has(argument.text) : literalTypes2.has(argument.type));
   if (!forwarded) return void 0;
-  const name10 = call.childForFieldName("name").text;
+  const name11 = call.childForFieldName("name").text;
   const object = call.childForFieldName("object");
-  return object === null ? name10 : `${object.text}.${name10}`;
+  return object === null ? name11 : `${object.text}.${name11}`;
 }
 function parameterNames(fn) {
   const names = /* @__PURE__ */ new Set();
   const list2 = fn.childForFieldName("parameters");
   for (const parameter of list2?.namedChildren ?? []) {
-    const name10 = parameter.type === "spread_parameter" ? parameter.namedChildren.find((child) => child.type === "variable_declarator")?.childForFieldName("name") : parameter.childForFieldName("name");
-    if (name10 !== null && name10 !== void 0) names.add(name10.text);
+    const name11 = parameter.type === "spread_parameter" ? parameter.namedChildren.find((child) => child.type === "variable_declarator")?.childForFieldName("name") : parameter.childForFieldName("name");
+    if (name11 !== null && name11 !== void 0) names.add(name11.text);
   }
   return names;
 }
@@ -4080,23 +4080,23 @@ var Extractor = class {
   }
   /** `import a.b.C;` reaches the type `a.b.C` and makes `C` mean it; `import a.b.*;` brings `a.b` in; a static import reaches the class that holds the member. */
   importDeclaration(node) {
-    const name10 = chainText(node.namedChildren.find((child) => child.type === "scoped_identifier" || child.type === "identifier") ?? null);
-    if (name10 === void 0) return;
+    const name11 = chainText(node.namedChildren.find((child) => child.type === "scoped_identifier" || child.type === "identifier") ?? null);
+    if (name11 === void 0) return;
     const isStatic2 = node.children.some((child) => child.type === "static");
     const wildcard = node.namedChildren.some((child) => child.type === "asterisk");
     const line = node.startPosition.row + 1;
-    const parent = name10.includes(".") ? name10.slice(0, name10.lastIndexOf(".")) : "";
-    if (!wildcard) this.imported.set(name10.slice(name10.lastIndexOf(".") + 1), name10);
+    const parent = name11.includes(".") ? name11.slice(0, name11.lastIndexOf(".")) : "";
+    if (!wildcard) this.imported.set(name11.slice(name11.lastIndexOf(".") + 1), name11);
     if (wildcard) {
-      this.uses.add(name10);
-      if (isStatic2) this.references.push({ name: name10, kind: "reference", line });
+      this.uses.add(name11);
+      if (isStatic2) this.references.push({ name: name11, kind: "reference", line });
       return;
     }
     if (isStatic2) {
       if (parent !== "") this.references.push({ name: parent, kind: "reference", line });
       return;
     }
-    this.references.push({ name: name10, kind: "reference", line });
+    this.references.push({ name: name11, kind: "reference", line });
   }
   qualified(chain) {
     return this.packageName === "" ? chain : `${this.packageName}.${chain}`;
@@ -4104,8 +4104,8 @@ var Extractor = class {
   reference(written, kind, node, context) {
     const head = written.split(".")[0];
     const imported = this.imported.get(head);
-    const name10 = imported === void 0 ? written : `${imported}${written.slice(head.length)}`;
-    const fact = { name: name10, kind, line: node.startPosition.row + 1 };
+    const name11 = imported === void 0 ? written : `${imported}${written.slice(head.length)}`;
+    const fact = { name: name11, kind, line: node.startPosition.row + 1 };
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
   }
@@ -4125,8 +4125,8 @@ var Extractor = class {
         return;
       case "marker_annotation":
       case "annotation": {
-        const name10 = chainText(node.childForFieldName("name"));
-        if (name10 !== void 0) this.reference(name10, "reference", node, context);
+        const name11 = chainText(node.childForFieldName("name"));
+        if (name11 !== void 0) this.reference(name11, "reference", node, context);
         const args2 = node.childForFieldName("arguments");
         if (args2 !== null) this.visitChildren(args2, context);
         return;
@@ -4135,8 +4135,8 @@ var Extractor = class {
         const created = node.childForFieldName("type");
         const target2 = created?.type === "generic_type" ? created.namedChildren[0] : created;
         if (target2 !== null && target2 !== void 0) {
-          const name10 = chainText(target2);
-          if (name10 !== void 0) this.reference(name10, "call", target2, context);
+          const name11 = chainText(target2);
+          if (name11 !== void 0) this.reference(name11, "call", target2, context);
         }
         for (const child of node.namedChildren) if (child.id !== created?.id) this.visit(child, context);
         for (const child of created?.namedChildren ?? []) if (child.id !== target2?.id) this.visit(child, context);
@@ -4144,10 +4144,10 @@ var Extractor = class {
       }
       case "method_invocation": {
         const object = node.childForFieldName("object");
-        const name10 = chainText(object);
-        if (name10 !== void 0) this.reference(name10, "call", object, context);
+        const name11 = chainText(object);
+        if (name11 !== void 0) this.reference(name11, "call", object, context);
         for (const child of node.namedChildren) {
-          if (child.id === object?.id && name10 !== void 0) continue;
+          if (child.id === object?.id && name11 !== void 0) continue;
           if (child.id === node.childForFieldName("name")?.id) continue;
           this.visit(child, context);
         }
@@ -4155,9 +4155,9 @@ var Extractor = class {
       }
       case "field_access": {
         const object = node.childForFieldName("object");
-        const name10 = chainText(object);
-        if (name10 !== void 0) {
-          this.reference(name10, "reference", object, context);
+        const name11 = chainText(object);
+        if (name11 !== void 0) {
+          this.reference(name11, "reference", object, context);
           return;
         }
         this.visitChildren(node, context);
@@ -4165,8 +4165,8 @@ var Extractor = class {
       }
       case "method_reference": {
         const first = node.namedChildren[0];
-        const name10 = chainText(first ?? null);
-        if (first !== void 0 && name10 !== void 0) this.reference(name10, "reference", first, context);
+        const name11 = chainText(first ?? null);
+        if (first !== void 0 && name11 !== void 0) this.reference(name11, "reference", first, context);
         else this.visitChildren(node, context);
         return;
       }
@@ -4180,30 +4180,30 @@ var Extractor = class {
     return seen === 0 ? base : `${base}~${seen + 1}`;
   }
   typeDeclaration(node, context) {
-    const name10 = node.childForFieldName("name")?.text;
-    if (name10 === void 0) return this.visitChildren(node, context);
-    const words = modifiersOf(node);
-    const chain = context.unit === void 0 ? name10 : `${context.unit}.${name10}`;
+    const name11 = node.childForFieldName("name")?.text;
+    if (name11 === void 0) return this.visitChildren(node, context);
+    const words2 = modifiersOf(node);
+    const chain = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
     const qualifiedName = this.unitName(chain);
-    const visible = context.unit === void 0 ? words.has("public") : context.exposed && (context.inInterface || words.has("public") || words.has("protected"));
-    const kind = typeKind(node, words);
+    const visible = context.unit === void 0 ? words2.has("public") : context.exposed && (context.inInterface || words2.has("public") || words2.has("protected"));
+    const kind = typeKind(node, words2);
     const unit = { qualifiedName, kind: "class", startLine: startRow(node) + 1, endLine: node.endPosition.row + 1, source: "structural" };
     if (context.unit !== void 0) unit.parent = context.unit;
     unit.shape = typeShape(node);
     this.units.push(unit);
     this.declarations.push({ name: this.qualified(chain), kind, unit: qualifiedName, exported: visible, line: node.startPosition.row + 1 });
-    const inside = { unit: qualifiedName, type: name10, exposed: visible, inInterface: kind === "interface" };
+    const inside = { unit: qualifiedName, type: name11, exposed: visible, inInterface: kind === "interface" };
     for (const child of node.namedChildren) this.visit(child, child.type === "modifiers" ? context : inside);
   }
   functionDeclaration(node, context) {
     const body2 = node.childForFieldName("body");
-    const name10 = node.childForFieldName("name")?.text;
-    if (body2 === null || name10 === void 0) return this.visitChildren(node, context);
-    const qualifiedName = this.unitName(context.unit === void 0 ? name10 : `${context.unit}.${name10}`);
+    const name11 = node.childForFieldName("name")?.text;
+    if (body2 === null || name11 === void 0) return this.visitChildren(node, context);
+    const qualifiedName = this.unitName(context.unit === void 0 ? name11 : `${context.unit}.${name11}`);
     const startLine = startRow(node) + 1;
     const endLine = node.endPosition.row + 1;
     this.codeRows ??= codeRowsOf(this.root, javaMetricRules);
-    const measured = measureFunction(node, { name: name10, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, javaMetricRules);
+    const measured = measureFunction(node, { name: name11, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, javaMetricRules);
     const unit = { qualifiedName, kind: "method", startLine, endLine, source: "structural", metrics: measured.metrics };
     if (context.unit !== void 0) unit.parent = context.unit;
     unit.shape = { nodes: nodeCount(node, isComment), interfaceSize: Math.max(1, measured.metrics.parameters) };
@@ -4211,8 +4211,8 @@ var Extractor = class {
     if (forwarded !== void 0) unit.passThrough = forwarded;
     if (measured.recursive) unit.recursive = true;
     if (overridesMethod(node)) unit.override = true;
-    const words = modifiersOf(node);
-    if (!context.inInterface && !words.has("public") && !words.has("protected")) unit.hidden = true;
+    const words2 = modifiersOf(node);
+    if (!context.inInterface && !words2.has("public") && !words2.has("protected")) unit.hidden = true;
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     const inside = { ...context, unit: qualifiedName };
@@ -4226,8 +4226,8 @@ function extractFacts(root, options = {}) {
 // packages/parse/src/languages/java/census.ts
 var registryName = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)$/i;
 var mapTypes = /^(Map|HashMap|LinkedHashMap|TreeMap|ConcurrentHashMap|ConcurrentMap|EnumMap|WeakHashMap|SortedMap)$/;
-var field = (node, name10) => node.childForFieldName(name10);
-var lastSegment = (name10) => name10.slice(name10.lastIndexOf(".") + 1);
+var field = (node, name11) => node.childForFieldName(name11);
+var lastSegment = (name11) => name11.slice(name11.lastIndexOf(".") + 1);
 function lastName(node) {
   if (node === null) return null;
   switch (node.type) {
@@ -4272,23 +4272,23 @@ function heritageOf(node) {
   const out2 = [];
   const superclass = field(node, "superclass");
   if (superclass !== null) {
-    const name10 = lastName(superclass.namedChildren[0] ?? null);
-    if (name10 !== null) out2.push(name10);
+    const name11 = lastName(superclass.namedChildren[0] ?? null);
+    if (name11 !== null) out2.push(name11);
   }
   for (const clause of node.namedChildren.filter((child) => child.type === "super_interfaces" || child.type === "extends_interfaces")) {
     for (const list2 of clause.namedChildren) {
       for (const type of list2.type === "type_list" ? list2.namedChildren : [list2]) {
-        const name10 = lastName(type);
-        if (name10 !== null) out2.push(name10);
+        const name11 = lastName(type);
+        if (name11 !== null) out2.push(name11);
       }
     }
   }
   return out2;
 }
 function importOf(node) {
-  const name10 = node.namedChildren.find((child) => child.type === "scoped_identifier" || child.type === "identifier");
-  if (name10 === void 0 || node.namedChildren.some((child) => child.type === "asterisk")) return null;
-  const specifier = name10.text.replace(/\s+/g, "");
+  const name11 = node.namedChildren.find((child) => child.type === "scoped_identifier" || child.type === "identifier");
+  if (name11 === void 0 || node.namedChildren.some((child) => child.type === "asterisk")) return null;
+  const specifier = name11.text.replace(/\s+/g, "");
   return { local: lastSegment(specifier), imported: lastSegment(specifier), specifier };
 }
 function extractFileCensus(root) {
@@ -4303,29 +4303,29 @@ function extractFileCensus(root) {
         break;
       }
       case "interface_declaration": {
-        const name10 = field(node, "name")?.text;
-        if (name10) facts.types.push({ name: name10, kind: "interface", line });
-        if (name10) nextClass = name10;
+        const name11 = field(node, "name")?.text;
+        if (name11) facts.types.push({ name: name11, kind: "interface", line });
+        if (name11) nextClass = name11;
         break;
       }
       case "class_declaration":
       case "record_declaration":
       case "enum_declaration": {
-        const name10 = field(node, "name")?.text;
-        if (name10) {
+        const name11 = field(node, "name")?.text;
+        if (name11) {
           const body2 = field(node, "body");
           const constructor = body2?.namedChildren.find((member) => member.type === "constructor_declaration");
           const parameters = node.type === "record_declaration" ? field(node, "parameters") : constructor ? field(constructor, "parameters") : null;
-          facts.classes.push({ name: name10, line, heritage: heritageOf(node), constructorTypes: parametersOf(parameters).flatMap((p) => p.type.names) });
-          if (node.type === "class_declaration" && modifiersOf(node).has("abstract")) facts.types.push({ name: name10, kind: "abstract-class", line });
-          nextClass = name10;
+          facts.classes.push({ name: name11, line, heritage: heritageOf(node), constructorTypes: parametersOf(parameters).flatMap((p) => p.type.names) });
+          if (node.type === "class_declaration" && modifiersOf(node).has("abstract")) facts.types.push({ name: name11, kind: "abstract-class", line });
+          nextClass = name11;
         }
         break;
       }
       case "method_declaration":
       case "constructor_declaration": {
-        const name10 = field(node, "name")?.text;
-        if (name10 && className) facts.functions.push({ name: `${className}.${name10}`, line, parameters: parametersOf(field(node, "parameters")) });
+        const name11 = field(node, "name")?.text;
+        if (name11 && className) facts.functions.push({ name: `${className}.${name11}`, line, parameters: parametersOf(field(node, "parameters")) });
         break;
       }
       case "field_declaration":
@@ -4333,23 +4333,23 @@ function extractFileCensus(root) {
         const type = field(node, "type");
         const typeNames2 = annotation(type).names;
         for (const declarator of node.namedChildren.filter((child) => child.type === "variable_declarator")) {
-          const name10 = field(declarator, "name")?.text;
-          if (name10 === void 0 || !registryName.test(name10)) continue;
+          const name11 = field(declarator, "name")?.text;
+          if (name11 === void 0 || !registryName.test(name11)) continue;
           const value = field(declarator, "value");
           const created = value?.type === "object_creation_expression" ? lastName(field(value, "type")) : null;
-          if (typeNames2.some((t) => mapTypes.test(t)) || created !== null && mapTypes.test(created)) facts.keyedMaps.push({ line: declarator.startPosition.row + 1, name: name10 });
+          if (typeNames2.some((t) => mapTypes.test(t)) || created !== null && mapTypes.test(created)) facts.keyedMaps.push({ line: declarator.startPosition.row + 1, name: name11 });
         }
         break;
       }
       case "marker_annotation":
       case "annotation": {
-        const name10 = lastName(field(node, "name"));
-        if (name10) facts.decorators.push({ line, name: name10 });
+        const name11 = lastName(field(node, "name"));
+        if (name11) facts.decorators.push({ line, name: name11 });
         break;
       }
       case "object_creation_expression": {
-        const name10 = lastName(field(node, "type"));
-        if (name10) facts.news.push({ line, name: name10 });
+        const name11 = lastName(field(node, "type"));
+        if (name11) facts.news.push({ line, name: name11 });
         break;
       }
       case "method_invocation": {
@@ -4395,15 +4395,15 @@ var adapter = {
 // packages/parse/src/languages/kotlin/metric-rules.ts
 var branchPartsOf = (node) => {
   const condition = node.childForFieldName("condition");
-  const parts2 = node.namedChildren.filter((child) => child.id !== condition?.id && child.type !== "line_comment" && child.type !== "block_comment");
-  return { consequence: parts2[0] ?? null, alternative: parts2[1] ?? null };
+  const parts3 = node.namedChildren.filter((child) => child.id !== condition?.id && child.type !== "line_comment" && child.type !== "block_comment");
+  return { consequence: parts3[0] ?? null, alternative: parts3[1] ?? null };
 };
 var nonBody = /* @__PURE__ */ new Set(["line_comment", "block_comment", "label"]);
 var bodyOf = (node) => {
   const condition = node.childForFieldName("condition");
-  const parts2 = node.namedChildren.filter((child) => child.id !== condition?.id && !nonBody.has(child.type));
-  if (node.type === "do_while_statement") return parts2[0] ?? null;
-  return parts2.at(-1) ?? null;
+  const parts3 = node.namedChildren.filter((child) => child.id !== condition?.id && !nonBody.has(child.type));
+  if (node.type === "do_while_statement") return parts3[0] ?? null;
+  return parts3.at(-1) ?? null;
 };
 var constructs3 = {
   functionLike: /* @__PURE__ */ new Set(["function_declaration", "secondary_constructor", "anonymous_function", "lambda_literal", "getter", "setter"]),
@@ -4464,9 +4464,9 @@ function enclosingClassName3(fn) {
   }
   return void 0;
 }
-function recursionScope3(fn, name10) {
+function recursionScope3(fn, name11) {
   if (fn.type !== "function_declaration") return { bare: /* @__PURE__ */ new Set(), member: /* @__PURE__ */ new Set() };
-  const own = fn.childForFieldName("name")?.text ?? name10;
+  const own = fn.childForFieldName("name")?.text ?? name11;
   const names = new Set(own === void 0 ? [] : [own]);
   const owner = enclosingClassName3(fn);
   return { bare: names, member: names, ...owner === void 0 ? {} : { owner } };
@@ -4538,14 +4538,14 @@ var bindingParents = /* @__PURE__ */ new Set([
 ]);
 function modifierWords(node) {
   const modifiers2 = node.namedChildren.find((child) => child.type === "modifiers");
-  const words = /* @__PURE__ */ new Set();
+  const words2 = /* @__PURE__ */ new Set();
   const visit2 = (current) => {
     if (current.type === "annotation") return;
-    if (current.childCount === 0 && !current.isNamed) words.add(current.type);
+    if (current.childCount === 0 && !current.isNamed) words2.add(current.type);
     for (const child of current.children) visit2(child);
   };
   if (modifiers2 !== void 0) visit2(modifiers2);
-  return words;
+  return words2;
 }
 function startRow2(node) {
   for (const child of node.children) {
@@ -4561,11 +4561,11 @@ function startRow2(node) {
 function dotted(node) {
   return node.namedChildren.filter((child) => child.type === "identifier").map((child) => child.text).join(".");
 }
-function typeKind2(node, words) {
+function typeKind2(node, words2) {
   if (node.type === "object_declaration" || node.type === "companion_object") return "class";
   if (node.children.some((child) => !child.isNamed && child.type === "interface")) return "interface";
-  if (words.has("enum")) return "enum";
-  if (words.has("abstract") || words.has("sealed")) return "abstract-class";
+  if (words2.has("enum")) return "enum";
+  if (words2.has("abstract") || words2.has("sealed")) return "abstract-class";
   return "class";
 }
 function receiverChain(navigation) {
@@ -4596,8 +4596,8 @@ function parameterNames2(fn) {
   const names = /* @__PURE__ */ new Set();
   for (const list2 of fn.namedChildren.filter((child) => child.type === "function_value_parameters")) {
     for (const parameter of list2.namedChildren) {
-      const name10 = parameter.type === "parameter" ? parameter.namedChildren.find((child) => child.type === "identifier") : void 0;
-      if (name10 !== void 0) names.add(name10.text);
+      const name11 = parameter.type === "parameter" ? parameter.namedChildren.find((child) => child.type === "identifier") : void 0;
+      if (name11 !== void 0) names.add(name11.text);
     }
   }
   return names;
@@ -4665,19 +4665,19 @@ var Extractor2 = class {
   }
   /** `import a.b.C` reaches `a.b.C` (and its enclosing class for a member) and makes `C` mean it; `import a.b.*` brings `a.b` in; `as` renames. */
   importDirective(node) {
-    const name10 = dotted(node.namedChildren.find((child) => child.type === "qualified_identifier") ?? node);
-    if (name10 === "") return;
+    const name11 = dotted(node.namedChildren.find((child) => child.type === "qualified_identifier") ?? node);
+    if (name11 === "") return;
     const line = node.startPosition.row + 1;
     if (node.children.some((child) => !child.isNamed && child.type === "*")) {
-      this.uses.add(name10);
+      this.uses.add(name11);
       return;
     }
-    const parent = name10.includes(".") ? name10.slice(0, name10.lastIndexOf(".")) : "";
-    this.references.push({ name: name10, kind: "reference", line });
+    const parent = name11.includes(".") ? name11.slice(0, name11.lastIndexOf(".")) : "";
+    this.references.push({ name: name11, kind: "reference", line });
     if (parent.includes(".")) this.references.push({ name: parent, kind: "reference", line });
     const alias = node.namedChildren.filter((child) => child.type === "identifier").at(-1);
     const renamed = alias !== void 0 && node.children.some((child) => !child.isNamed && child.type === "as");
-    this.aliases.set(renamed ? alias.text : name10.slice(name10.lastIndexOf(".") + 1), name10);
+    this.aliases.set(renamed ? alias.text : name11.slice(name11.lastIndexOf(".") + 1), name11);
   }
   qualified(chain) {
     return this.packageName === "" ? chain : `${this.packageName}.${chain}`;
@@ -4685,8 +4685,8 @@ var Extractor2 = class {
   reference(written, kind, node, context) {
     const head = written.split(".")[0];
     const aliased = this.aliases.get(head);
-    const name10 = aliased === void 0 ? written : `${aliased}${written.slice(head.length)}`;
-    const fact = { name: name10, kind, line: node.startPosition.row + 1 };
+    const name11 = aliased === void 0 ? written : `${aliased}${written.slice(head.length)}`;
+    const fact = { name: name11, kind, line: node.startPosition.row + 1 };
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
   }
@@ -4760,18 +4760,18 @@ var Extractor2 = class {
     this.nameCounts.set(base, seen + 1);
     return seen === 0 ? base : `${base}~${seen + 1}`;
   }
-  isVisible(words, context) {
-    if (words.has("private") || words.has("internal")) return false;
+  isVisible(words2, context) {
+    if (words2.has("private") || words2.has("internal")) return false;
     return context.exposed;
   }
   typeDeclaration(node, context) {
-    const name10 = node.type === "companion_object" ? node.childForFieldName("name")?.text ?? "Companion" : node.childForFieldName("name")?.text;
-    if (name10 === void 0) return this.visitChildren(node, context);
-    const words = modifierWords(node);
-    const chain = context.unit === void 0 ? name10 : `${context.unit}.${name10}`;
+    const name11 = node.type === "companion_object" ? node.childForFieldName("name")?.text ?? "Companion" : node.childForFieldName("name")?.text;
+    if (name11 === void 0) return this.visitChildren(node, context);
+    const words2 = modifierWords(node);
+    const chain = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
     const qualifiedName = this.unitName(chain);
-    const visible = this.isVisible(words, context);
-    const kind = typeKind2(node, words);
+    const visible = this.isVisible(words2, context);
+    const kind = typeKind2(node, words2);
     const unit = { qualifiedName, kind: "class", startLine: startRow2(node) + 1, endLine: node.endPosition.row + 1, source: "structural", shape: typeShape2(node) };
     if (context.unit !== void 0) unit.parent = context.unit;
     this.units.push(unit);
@@ -4781,14 +4781,14 @@ var Extractor2 = class {
   }
   functionDeclaration(node, context) {
     const isConstructor2 = node.type === "secondary_constructor";
-    const name10 = isConstructor2 ? "constructor" : node.childForFieldName("name")?.text;
+    const name11 = isConstructor2 ? "constructor" : node.childForFieldName("name")?.text;
     const hasBody = node.namedChildren.some((child) => child.type === "function_body" || isConstructor2 && child.type === "block");
-    if (name10 === void 0 || !hasBody) return this.visitChildren(node, { ...context, topLevel: false });
-    const qualifiedName = this.unitName(context.unit === void 0 ? name10 : `${context.unit}.${name10}`);
+    if (name11 === void 0 || !hasBody) return this.visitChildren(node, { ...context, topLevel: false });
+    const qualifiedName = this.unitName(context.unit === void 0 ? name11 : `${context.unit}.${name11}`);
     const startLine = startRow2(node) + 1;
     const endLine = node.endPosition.row + 1;
     this.codeRows ??= codeRowsOf(this.root, kotlinMetricRules);
-    const measured = measureFunction(node, { name: name10, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, kotlinMetricRules);
+    const measured = measureFunction(node, { name: name11, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, kotlinMetricRules);
     const unit = { qualifiedName, kind: context.inType ? "method" : "function", startLine, endLine, source: "structural", metrics: measured.metrics };
     if (context.unit !== void 0) unit.parent = context.unit;
     unit.shape = { nodes: nodeCount(node, isComment2), interfaceSize: Math.max(1, measured.metrics.parameters) };
@@ -4800,18 +4800,18 @@ var Extractor2 = class {
     if (measured.increments !== void 0) unit.increments = measured.increments;
     this.units.push(unit);
     if (context.topLevel && !isConstructor2) {
-      const words = modifierWords(node);
-      this.declarations.push({ name: this.qualified(name10), kind: "function", unit: qualifiedName, exported: this.isVisible(words, context), line: node.startPosition.row + 1 });
+      const words2 = modifierWords(node);
+      this.declarations.push({ name: this.qualified(name11), kind: "function", unit: qualifiedName, exported: this.isVisible(words2, context), line: node.startPosition.row + 1 });
     }
     const inside = { unit: qualifiedName, inType: false, exposed: context.exposed, topLevel: false };
     for (const child of node.namedChildren) this.visit(child, child.type === "modifiers" ? context : inside);
   }
   propertyDeclaration(node, context) {
     if (context.topLevel) {
-      const words = modifierWords(node);
+      const words2 = modifierWords(node);
       for (const variable of node.namedChildren.filter((child) => child.type === "variable_declaration")) {
-        const name10 = variable.namedChildren.find((child) => child.type === "identifier")?.text;
-        if (name10 !== void 0) this.declarations.push({ name: this.qualified(name10), kind: "variable", exported: this.isVisible(words, context), line: node.startPosition.row + 1 });
+        const name11 = variable.namedChildren.find((child) => child.type === "identifier")?.text;
+        if (name11 !== void 0) this.declarations.push({ name: this.qualified(name11), kind: "variable", exported: this.isVisible(words2, context), line: node.startPosition.row + 1 });
       }
     }
     this.visitChildren(node, { ...context, topLevel: false });
@@ -4825,7 +4825,7 @@ function extractFacts2(root, options = {}) {
 var registryName2 = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)$/i;
 var mapTypes2 = /^(Map|MutableMap|HashMap|LinkedHashMap|TreeMap|ConcurrentHashMap|ConcurrentMap|EnumMap|SortedMap)$/;
 var mapBuilders = /^(mutableMapOf|hashMapOf|linkedMapOf|sortedMapOf|mapOf|HashMap|LinkedHashMap|TreeMap|ConcurrentHashMap)$/;
-var lastSegment2 = (name10) => name10.slice(name10.lastIndexOf(".") + 1);
+var lastSegment2 = (name11) => name11.slice(name11.lastIndexOf(".") + 1);
 var identifiersOf = (node) => node.namedChildren.filter((child) => child.type === "identifier").map((child) => child.text);
 var comment = (node) => node.type === "line_comment" || node.type === "block_comment";
 function lastName2(node) {
@@ -4851,7 +4851,7 @@ function annotation2(node) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
   const visit2 = (current) => {
-    if (current.type === "user_type") for (const name10 of identifiersOf(current).slice(-1)) names.add(name10);
+    if (current.type === "user_type") for (const name11 of identifiersOf(current).slice(-1)) names.add(name11);
     if (current.type === "function_type") callback = true;
     for (const child of current.namedChildren) visit2(child);
   };
@@ -4876,8 +4876,8 @@ function heritageOf2(node) {
   const specifiers = node.namedChildren.find((child) => child.type === "delegation_specifiers");
   for (const specifier of specifiers?.namedChildren ?? []) {
     const target2 = specifier.namedChildren.find((child) => child.type === "constructor_invocation")?.namedChildren.find((child) => child.type === "user_type") ?? specifier.namedChildren.find((child) => child.type === "user_type");
-    const name10 = lastName2(target2 ?? null);
-    if (name10 !== null) out2.push(name10);
+    const name11 = lastName2(target2 ?? null);
+    if (name11 !== null) out2.push(name11);
   }
   return out2;
 }
@@ -4888,52 +4888,52 @@ function extractFileCensus2(root) {
     let nextClass = className;
     switch (node.type) {
       case "import": {
-        const name10 = identifiersOf(node.namedChildren.find((child) => child.type === "qualified_identifier") ?? node).join(".");
-        if (name10 === "" || node.children.some((child) => !child.isNamed && child.type === "*")) break;
+        const name11 = identifiersOf(node.namedChildren.find((child) => child.type === "qualified_identifier") ?? node).join(".");
+        if (name11 === "" || node.children.some((child) => !child.isNamed && child.type === "*")) break;
         const alias = node.children.some((child) => !child.isNamed && child.type === "as") ? node.namedChildren.filter((child) => child.type === "identifier").at(-1)?.text : void 0;
-        facts.imports.push({ local: alias ?? lastSegment2(name10), imported: lastSegment2(name10), specifier: name10 });
+        facts.imports.push({ local: alias ?? lastSegment2(name11), imported: lastSegment2(name11), specifier: name11 });
         break;
       }
       case "type_alias": {
-        const name10 = node.childForFieldName("type")?.text;
-        if (name10 && node.namedChildren.some((child) => child.type === "function_type")) facts.types.push({ name: name10, kind: "function-type", line });
+        const name11 = node.childForFieldName("type")?.text;
+        if (name11 && node.namedChildren.some((child) => child.type === "function_type")) facts.types.push({ name: name11, kind: "function-type", line });
         break;
       }
       case "object_declaration":
       case "class_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (!name10) break;
-        const words = modifierWords(node);
+        const name11 = node.childForFieldName("name")?.text;
+        if (!name11) break;
+        const words2 = modifierWords(node);
         const isInterface = node.children.some((child) => !child.isNamed && child.type === "interface");
-        if (isInterface) facts.types.push({ name: name10, kind: "interface", line });
-        else if (node.type === "class_declaration" && (words.has("abstract") || words.has("sealed"))) facts.types.push({ name: name10, kind: "abstract-class", line });
+        if (isInterface) facts.types.push({ name: name11, kind: "interface", line });
+        else if (node.type === "class_declaration" && (words2.has("abstract") || words2.has("sealed"))) facts.types.push({ name: name11, kind: "abstract-class", line });
         const primary = node.namedChildren.find((child) => child.type === "primary_constructor");
         const secondary = node.namedChildren.find((child) => child.type === "class_body")?.namedChildren.find((member) => member.type === "secondary_constructor");
         const parameters = primary?.namedChildren.find((child) => child.type === "class_parameters") ?? secondary?.namedChildren.find((child) => child.type === "function_value_parameters") ?? null;
-        facts.classes.push({ name: name10, line, heritage: heritageOf2(node), constructorTypes: parametersOf2(parameters).flatMap((p) => p.type.names) });
-        nextClass = name10;
+        facts.classes.push({ name: name11, line, heritage: heritageOf2(node), constructorTypes: parametersOf2(parameters).flatMap((p) => p.type.names) });
+        nextClass = name11;
         break;
       }
       case "function_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (!name10) break;
+        const name11 = node.childForFieldName("name")?.text;
+        if (!name11) break;
         const parameters = parametersOf2(node.namedChildren.find((child) => child.type === "function_value_parameters") ?? null);
-        facts.functions.push({ name: className === null ? name10 : `${className}.${name10}`, line, parameters });
+        facts.functions.push({ name: className === null ? name11 : `${className}.${name11}`, line, parameters });
         break;
       }
       case "property_declaration": {
         const variable = node.namedChildren.find((child) => child.type === "variable_declaration");
-        const name10 = variable?.namedChildren.find((child) => child.type === "identifier")?.text;
-        if (name10 === void 0 || !registryName2.test(name10)) break;
+        const name11 = variable?.namedChildren.find((child) => child.type === "identifier")?.text;
+        if (name11 === void 0 || !registryName2.test(name11)) break;
         const declared = annotation2(variable?.namedChildren.find((child) => child.type === "user_type" || child.type === "nullable_type") ?? null).names;
         const value = node.namedChildren.filter((child) => child.id !== variable?.id && !comment(child) && child.type !== "modifiers").at(-1);
         const built = value?.type === "call_expression" ? lastName2(value) : null;
-        if (declared.some((type) => mapTypes2.test(type)) || built !== null && mapBuilders.test(built)) facts.keyedMaps.push({ line, name: name10 });
+        if (declared.some((type) => mapTypes2.test(type)) || built !== null && mapBuilders.test(built)) facts.keyedMaps.push({ line, name: name11 });
         break;
       }
       case "annotation": {
-        const name10 = lastName2(node.namedChildren.find((child) => child.type === "user_type") ?? null);
-        if (name10) facts.decorators.push({ line, name: name10 });
+        const name11 = lastName2(node.namedChildren.find((child) => child.type === "user_type") ?? null);
+        if (name11) facts.decorators.push({ line, name: name11 });
         break;
       }
       case "call_expression": {
@@ -5035,11 +5035,11 @@ var typescriptBoundaries = {
   async discover(tree) {
     const manifests = [...tree.files.keys()].filter(isManifest2).sort();
     const boundaries = [];
-    for (const [path, text2] of await tree.readMany(manifests)) {
+    for (const [path, text3] of await tree.readMany(manifests)) {
       const directory = posix2.dirname(path);
       let manifest;
       try {
-        manifest = JSON.parse(text2);
+        manifest = JSON.parse(text3);
       } catch {
         manifest = void 0;
       }
@@ -5073,8 +5073,8 @@ var typescriptBoundaries = {
 
 // packages/parse/src/languages/typescript/census.ts
 var registryName3 = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)$/i;
-function field2(node, name10) {
-  return node.childForFieldName(name10);
+function field2(node, name11) {
+  return node.childForFieldName(name11);
 }
 function lastName3(node) {
   if (!node) return null;
@@ -5129,16 +5129,16 @@ function heritageOf3(node) {
   for (const clause of heritage?.namedChildren ?? []) {
     if (clause.type === "extends_clause") {
       const value = field2(clause, "value");
-      const name10 = lastName3(value);
-      if (name10) out2.push(name10);
+      const name11 = lastName3(value);
+      if (name11) out2.push(name11);
     } else if (clause.type === "implements_clause") {
       for (const type of clause.namedChildren) {
-        const name10 = type.type === "generic_type" ? lastName3(field2(type, "name")) : lastName3(type);
-        if (name10) out2.push(name10);
+        const name11 = type.type === "generic_type" ? lastName3(field2(type, "name")) : lastName3(type);
+        if (name11) out2.push(name11);
       }
     } else {
-      const name10 = lastName3(clause);
-      if (name10) out2.push(name10);
+      const name11 = lastName3(clause);
+      if (name11) out2.push(name11);
     }
   }
   return out2;
@@ -5167,40 +5167,40 @@ function extractFileCensus3(root) {
         break;
       }
       case "interface_declaration": {
-        const name10 = field2(node, "name")?.text;
-        if (name10) facts.types.push({ name: name10, kind: "interface", line });
+        const name11 = field2(node, "name")?.text;
+        if (name11) facts.types.push({ name: name11, kind: "interface", line });
         break;
       }
       case "type_alias_declaration": {
-        const name10 = field2(node, "name")?.text;
-        if (name10 && field2(node, "value")?.type === "function_type") facts.types.push({ name: name10, kind: "function-type", line });
+        const name11 = field2(node, "name")?.text;
+        if (name11 && field2(node, "value")?.type === "function_type") facts.types.push({ name: name11, kind: "function-type", line });
         break;
       }
       case "abstract_class_declaration":
       case "class_declaration": {
-        const name10 = field2(node, "name")?.text;
-        if (name10) {
+        const name11 = field2(node, "name")?.text;
+        if (name11) {
           const body2 = field2(node, "body");
           const constructor = body2?.namedChildren.find((member) => member.type === "method_definition" && field2(member, "name")?.text === "constructor");
           const constructorTypes2 = parametersOf3(constructor ? field2(constructor, "parameters") : null).flatMap((p) => p.type.names);
-          facts.classes.push({ name: name10, line, heritage: heritageOf3(node), constructorTypes: constructorTypes2 });
-          if (node.type === "abstract_class_declaration") facts.types.push({ name: name10, kind: "abstract-class", line });
-          nextClass = name10;
+          facts.classes.push({ name: name11, line, heritage: heritageOf3(node), constructorTypes: constructorTypes2 });
+          if (node.type === "abstract_class_declaration") facts.types.push({ name: name11, kind: "abstract-class", line });
+          nextClass = name11;
         }
         break;
       }
       case "function_declaration":
       case "generator_function_declaration": {
-        const name10 = field2(node, "name")?.text;
-        if (name10) {
-          facts.functions.push({ name: name10, line, parameters: parametersOf3(field2(node, "parameters")) });
+        const name11 = field2(node, "name")?.text;
+        if (name11) {
+          facts.functions.push({ name: name11, line, parameters: parametersOf3(field2(node, "parameters")) });
         }
         break;
       }
       case "method_definition": {
-        const name10 = field2(node, "name")?.text;
-        if (name10 && className) {
-          const qualified = `${className}.${name10}`;
+        const name11 = field2(node, "name")?.text;
+        if (name11 && className) {
+          const qualified = `${className}.${name11}`;
           facts.functions.push({ name: qualified, line, parameters: parametersOf3(field2(node, "parameters")) });
         }
         break;
@@ -5209,27 +5209,27 @@ function extractFileCensus3(root) {
       case "public_field_definition": {
         const nameNode = field2(node, "name");
         const value = field2(node, "value");
-        const name10 = nameNode?.text;
-        if (name10 && value && (value.type === "arrow_function" || value.type === "function_expression" || value.type === "function")) {
+        const name11 = nameNode?.text;
+        if (name11 && value && (value.type === "arrow_function" || value.type === "function_expression" || value.type === "function")) {
           if (node.type === "variable_declarator" && className === null) {
-            facts.functions.push({ name: name10, line, parameters: parametersOf3(field2(value, "parameters")) });
+            facts.functions.push({ name: name11, line, parameters: parametersOf3(field2(value, "parameters")) });
           }
         }
-        if (name10 && registryName3.test(name10)) {
+        if (name11 && registryName3.test(name11)) {
           const typeNames2 = annotation3(node.namedChildren.find((child) => child.type === "type_annotation") ?? null).names;
           const isMap = value?.type === "new_expression" && /^(Map|WeakMap)$/.test(lastName3(field2(value, "constructor")) ?? "");
-          if (isMap || value?.type === "object" || typeNames2.some((t) => t === "Record" || t === "Map")) facts.keyedMaps.push({ line, name: name10 });
+          if (isMap || value?.type === "object" || typeNames2.some((t) => t === "Record" || t === "Map")) facts.keyedMaps.push({ line, name: name11 });
         }
         break;
       }
       case "decorator": {
-        const name10 = decoratorName(node);
-        if (name10) facts.decorators.push({ line, name: name10 });
+        const name11 = decoratorName(node);
+        if (name11) facts.decorators.push({ line, name: name11 });
         break;
       }
       case "new_expression": {
-        const name10 = lastName3(field2(node, "constructor"));
-        if (name10) facts.news.push({ line, name: name10 });
+        const name11 = lastName3(field2(node, "constructor"));
+        if (name11) facts.news.push({ line, name: name11 });
         break;
       }
       case "call_expression": {
@@ -5322,7 +5322,7 @@ function declarationKinds(root) {
   const kinds = /* @__PURE__ */ new Map();
   const note = (node) => {
     if (!node) return;
-    const name10 = node.childForFieldName("name")?.text;
+    const name11 = node.childForFieldName("name")?.text;
     switch (node.type) {
       case "export_statement":
         note(node.childForFieldName("declaration"));
@@ -5331,27 +5331,27 @@ function declarationKinds(root) {
         note(node.namedChildren.find((child) => child.type !== "comment") ?? null);
         return;
       case "interface_declaration":
-        if (name10) kinds.set(name10, "interface");
+        if (name11) kinds.set(name11, "interface");
         return;
       case "abstract_class_declaration":
-        if (name10) kinds.set(name10, "abstract-class");
+        if (name11) kinds.set(name11, "abstract-class");
         return;
       case "class_declaration":
-        if (name10) kinds.set(name10, "class");
+        if (name11) kinds.set(name11, "class");
         return;
       case "enum_declaration":
-        if (name10) kinds.set(name10, "enum");
+        if (name11) kinds.set(name11, "enum");
         return;
       case "type_alias_declaration":
-        if (name10) kinds.set(name10, "type");
+        if (name11) kinds.set(name11, "type");
         return;
       case "function_declaration":
       case "generator_function_declaration":
-        if (name10) kinds.set(name10, "function");
+        if (name11) kinds.set(name11, "function");
         return;
       case "internal_module":
       case "module":
-        if (name10) kinds.set(name10, "namespace");
+        if (name11) kinds.set(name11, "namespace");
         return;
       case "lexical_declaration":
       case "variable_declaration": {
@@ -5378,8 +5378,8 @@ function declaredNames(statement, out2) {
     case "generator_function_declaration":
     case "class_declaration":
     case "abstract_class_declaration": {
-      const name10 = statement.childForFieldName("name");
-      if (name10) out2.push(name10.text);
+      const name11 = statement.childForFieldName("name");
+      if (name11) out2.push(name11.text);
       return;
     }
     default:
@@ -5450,29 +5450,29 @@ var Extractor3 = class {
         return;
       case "function_declaration":
       case "generator_function_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        const inner2 = name10 ? this.declareUnit(name10, "function", node, wrapperOf(parent), context, node) : context;
+        const name11 = node.childForFieldName("name")?.text;
+        const inner2 = name11 ? this.declareUnit(name11, "function", node, wrapperOf(parent), context, node) : context;
         this.functionBody(node, inner2);
         return;
       }
       case "class_declaration":
       case "abstract_class_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        const inner2 = name10 ? this.declareUnit(name10, "class", node, wrapperOf(parent), context) : context;
+        const name11 = node.childForFieldName("name")?.text;
+        const inner2 = name11 ? this.declareUnit(name11, "class", node, wrapperOf(parent), context) : context;
         this.classParts(node, context, inner2);
         return;
       }
       case "method_definition": {
-        const name10 = node.childForFieldName("name");
-        const inner2 = name10 && parent.type === "class_body" ? this.declareUnit(name10.text, "method", node, void 0, context, node) : context;
+        const name11 = node.childForFieldName("name");
+        const inner2 = name11 && parent.type === "class_body" ? this.declareUnit(name11.text, "method", node, void 0, context, node) : context;
         this.functionBody(node, inner2);
         return;
       }
       case "public_field_definition": {
-        const name10 = node.childForFieldName("name");
+        const name11 = node.childForFieldName("name");
         const value = node.childForFieldName("value");
-        if (name10 && value && isFunctionValue(value)) {
-          this.functionBody(value, this.declareUnit(name10.text, functionKind(value), node, void 0, context, value));
+        if (name11 && value && isFunctionValue(value)) {
+          this.functionBody(value, this.declareUnit(name11.text, functionKind(value), node, void 0, context, value));
         } else if (value) {
           this.visit(value, context, node, "value");
         }
@@ -5516,8 +5516,8 @@ var Extractor3 = class {
       }
       case "internal_module":
       case "module": {
-        const name10 = node.childForFieldName("name");
-        this.visitChildren(node, name10 ? scopeOf(context, name10.text) : context);
+        const name11 = node.childForFieldName("name");
+        this.visitChildren(node, name11 ? scopeOf(context, name11.text) : context);
         return;
       }
       case "call_expression":
@@ -5534,8 +5534,8 @@ var Extractor3 = class {
         return;
       case "nested_type_identifier": {
         const module3 = node.childForFieldName("module");
-        const name10 = node.childForFieldName("name");
-        if (module3?.type === "identifier" && name10) this.reference(module3, context, "reference", name10.text);
+        const name11 = node.childForFieldName("name");
+        if (module3?.type === "identifier" && name11) this.reference(module3, context, "reference", name11.text);
         else if (module3) this.visit(module3, context, node, "module");
         return;
       }
@@ -5600,8 +5600,8 @@ var Extractor3 = class {
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
   }
-  declareUnit(name10, kind, node, wrapper, context, fn) {
-    const base = context.unit === void 0 ? name10 : `${context.unit}.${name10}`;
+  declareUnit(name11, kind, node, wrapper, context, fn) {
+    const base = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
     const seen = this.nameCounts.get(base) ?? 0;
     this.nameCounts.set(base, seen + 1);
     const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
@@ -5619,7 +5619,7 @@ var Extractor3 = class {
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root, typescriptMetricRules);
       const measured = measureFunction(fn, {
-        name: name10,
+        name: name11,
         startLine: unit.startLine,
         endLine: unit.endLine,
         codeRows: this.codeRows,
@@ -5654,34 +5654,34 @@ var Extractor3 = class {
     const declarators = node.namedChildren.filter((child) => child.type === "variable_declarator");
     const sole = declarators.length === 1;
     for (const declarator of declarators) {
-      const name10 = declarator.childForFieldName("name");
+      const name11 = declarator.childForFieldName("name");
       const value = declarator.childForFieldName("value");
       const annotation7 = declarator.childForFieldName("type");
       if (annotation7) this.visit(annotation7, context, declarator, "type");
       const extent = sole ? parent.type === "export_statement" ? parent : node : declarator;
-      if (name10?.type === "identifier" && value) {
-        if (this.requireDeclarator(declarator, name10, value, context)) continue;
+      if (name11?.type === "identifier" && value) {
+        if (this.requireDeclarator(declarator, name11, value, context)) continue;
         if (isFunctionValue(value)) {
-          this.functionBody(value, this.declareUnit(name10.text, functionKind(value), value, extent, context, value));
+          this.functionBody(value, this.declareUnit(name11.text, functionKind(value), value, extent, context, value));
           continue;
         }
         if (value.type === "class") {
-          this.visitChildren(value, this.declareUnit(name10.text, "class", value, extent, context));
+          this.visitChildren(value, this.declareUnit(name11.text, "class", value, extent, context));
           continue;
         }
         if (value.type === "object") {
-          this.objectLiteral(value, name10.text, context);
+          this.objectLiteral(value, name11.text, context);
           continue;
         }
-      } else if (name10 && value && this.requireDeclarator(declarator, name10, value, context)) {
+      } else if (name11 && value && this.requireDeclarator(declarator, name11, value, context)) {
         continue;
       }
-      if (name10 && name10.type !== "identifier") this.visit(name10, context, declarator, "name");
+      if (name11 && name11.type !== "identifier") this.visit(name11, context, declarator, "name");
       if (value) this.visit(value, context, declarator, "value");
     }
   }
   /** `const x = require("y")` and its destructuring forms. Returns true when it was one. */
-  requireDeclarator(declarator, name10, value, context) {
+  requireDeclarator(declarator, name11, value, context) {
     if (value.type !== "call_expression") return false;
     const callee = value.childForFieldName("function");
     if (callee?.type !== "identifier" || callee.text !== "require" || context.shadow.has("require")) return false;
@@ -5689,10 +5689,10 @@ var Extractor3 = class {
     const specifier = stringValue(args2?.namedChildren[0] ?? null);
     if (specifier === null || args2?.namedChildren.length !== 1) return false;
     const bindings = [];
-    if (name10.type === "identifier") {
-      bindings.push({ imported: "*", local: name10.text, typeOnly: false });
-    } else if (name10.type === "object_pattern") {
-      for (const part of name10.namedChildren) {
+    if (name11.type === "identifier") {
+      bindings.push({ imported: "*", local: name11.text, typeOnly: false });
+    } else if (name11.type === "object_pattern") {
+      for (const part of name11.namedChildren) {
         if (part.type === "shorthand_property_identifier_pattern") {
           bindings.push({ imported: part.text, local: part.text, typeOnly: false });
         } else if (part.type === "object_assignment_pattern") {
@@ -5715,11 +5715,11 @@ var Extractor3 = class {
     });
     return true;
   }
-  objectLiteral(object, name10, context) {
+  objectLiteral(object, name11, context) {
     for (const member of object.namedChildren) {
       if (member.type === "method_definition") {
         const key = member.childForFieldName("name");
-        const inner2 = key ? this.declareUnit(key.text, "method", member, void 0, scopeOf(context, name10), member) : context;
+        const inner2 = key ? this.declareUnit(key.text, "method", member, void 0, scopeOf(context, name11), member) : context;
         this.functionBody(member, inner2);
         continue;
       }
@@ -5727,7 +5727,7 @@ var Extractor3 = class {
         const key = member.childForFieldName("key");
         const value = member.childForFieldName("value");
         if (key && value && isFunctionValue(value)) {
-          const inner2 = this.declareUnit(key.text, functionKind(value), member, void 0, scopeOf(context, name10), value);
+          const inner2 = this.declareUnit(key.text, functionKind(value), member, void 0, scopeOf(context, name11), value);
           this.functionBody(value, inner2);
           continue;
         }
@@ -5794,14 +5794,14 @@ var Extractor3 = class {
           if (alias) this.reexports.push({ specifier: source, typeOnly, line, imported: "*", exported: alias.text });
         } else if (child.type === "export_clause") {
           for (const spec of child.namedChildren) {
-            const name10 = spec.childForFieldName("name");
-            if (spec.type !== "export_specifier" || !name10) continue;
-            const exported2 = spec.childForFieldName("alias")?.text ?? name10.text;
+            const name11 = spec.childForFieldName("name");
+            if (spec.type !== "export_specifier" || !name11) continue;
+            const exported2 = spec.childForFieldName("alias")?.text ?? name11.text;
             this.reexports.push({
               specifier: source,
               typeOnly: typeOnly || hasToken(spec, "type"),
               line,
-              imported: name10.text,
+              imported: name11.text,
               exported: exported2
             });
           }
@@ -5815,9 +5815,9 @@ var Extractor3 = class {
     const clause = node.namedChildren.find((child) => child.type === "export_clause");
     if (clause) {
       for (const spec of clause.namedChildren) {
-        const name10 = spec.childForFieldName("name");
-        if (spec.type !== "export_specifier" || !name10) continue;
-        this.exports.push({ exported: spec.childForFieldName("alias")?.text ?? name10.text, local: name10.text, line });
+        const name11 = spec.childForFieldName("name");
+        if (spec.type !== "export_specifier" || !name11) continue;
+        this.exports.push({ exported: spec.childForFieldName("alias")?.text ?? name11.text, local: name11.text, line });
       }
       return;
     }
@@ -5845,15 +5845,15 @@ var Extractor3 = class {
     const named = declaration.type === "ambient_declaration" ? declaration.namedChildren.find((child) => child.type !== "comment") ?? declaration : declaration;
     const names = [];
     declaredNames(named, names);
-    const name10 = named.childForFieldName("name");
-    if (names.length === 0 && name10) names.push(name10.text);
+    const name11 = named.childForFieldName("name");
+    if (names.length === 0 && name11) names.push(name11.text);
     const alias = named.type === "import_alias" ? named.namedChildren.find((c) => c.type === "identifier") : void 0;
     if (names.length === 0 && alias) names.push(alias.text);
     if (isDefault) {
       const anonymous = functionTypes.has(declaration.type) || classTypes.has(declaration.type);
-      const unitName2 = name10?.text ?? "default";
+      const unitName2 = name11?.text ?? "default";
       this.exports.push({ exported: "default", local: unitName2, line });
-      if (anonymous && !name10) {
+      if (anonymous && !name11) {
         const kind = classTypes.has(declaration.type) ? "class" : "function";
         const inner2 = this.declareUnit("default", kind, declaration, statement, context, declaration);
         if (kind === "class") this.visitChildren(declaration, inner2);
@@ -5935,23 +5935,23 @@ var Extractor3 = class {
     }
   }
   jsxElement(node, context) {
-    const name10 = node.childForFieldName("name");
-    if (name10?.type === "identifier") this.reference(name10, context, "reference");
-    else if (name10?.type === "member_expression" || name10?.type === "nested_identifier") {
-      const first = name10.namedChildren[0];
-      const second = name10.namedChildren[1];
+    const name11 = node.childForFieldName("name");
+    if (name11?.type === "identifier") this.reference(name11, context, "reference");
+    else if (name11?.type === "member_expression" || name11?.type === "nested_identifier") {
+      const first = name11.namedChildren[0];
+      const second = name11.namedChildren[1];
       if (first?.type === "identifier") this.reference(first, context, "reference", second?.text);
     }
     for (const child of node.namedChildren) {
-      if (child.id !== name10?.id) this.visit(child, context, node, null);
+      if (child.id !== name11?.id) this.visit(child, context, node, null);
     }
   }
 };
 function wrapperOf(parent) {
   return parent.type === "export_statement" ? parent : void 0;
 }
-function scopeOf(context, name10) {
-  const unit = context.unit === void 0 ? name10 : `${context.unit}.${name10}`;
+function scopeOf(context, name11) {
+  const unit = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
   return { unit, shadow: context.shadow };
 }
 function extractFacts3(root, options = {}) {
@@ -6010,21 +6010,21 @@ import { posix as posix3 } from "node:path";
 
 // packages/parse/src/languages/typescript/jsonc.ts
 function parseJsonc(source) {
-  const text2 = source.charCodeAt(0) === 65279 ? source.slice(1) : source;
+  const text3 = source.charCodeAt(0) === 65279 ? source.slice(1) : source;
   let cleaned = "";
   let i2 = 0;
-  while (i2 < text2.length) {
-    const char = text2[i2];
+  while (i2 < text3.length) {
+    const char = text3[i2];
     if (char === '"') {
       let end = i2 + 1;
-      while (end < text2.length && text2[end] !== '"') end += text2[end] === "\\" ? 2 : 1;
-      cleaned += text2.slice(i2, end + 1);
+      while (end < text3.length && text3[end] !== '"') end += text3[end] === "\\" ? 2 : 1;
+      cleaned += text3.slice(i2, end + 1);
       i2 = end + 1;
-    } else if (char === "/" && text2[i2 + 1] === "/") {
-      while (i2 < text2.length && text2[i2] !== "\n") i2++;
-    } else if (char === "/" && text2[i2 + 1] === "*") {
-      const end = text2.indexOf("*/", i2 + 2);
-      i2 = end < 0 ? text2.length : end + 2;
+    } else if (char === "/" && text3[i2 + 1] === "/") {
+      while (i2 < text3.length && text3[i2] !== "\n") i2++;
+    } else if (char === "/" && text3[i2 + 1] === "*") {
+      const end = text3.indexOf("*/", i2 + 2);
+      i2 = end < 0 ? text3.length : end + 2;
     } else {
       cleaned += char;
       i2++;
@@ -6036,20 +6036,20 @@ function parseJsonc(source) {
     return void 0;
   }
 }
-function removeTrailingCommas(text2) {
+function removeTrailingCommas(text3) {
   let out2 = "";
   let i2 = 0;
-  while (i2 < text2.length) {
-    const char = text2[i2];
+  while (i2 < text3.length) {
+    const char = text3[i2];
     if (char === '"') {
       let end = i2 + 1;
-      while (end < text2.length && text2[end] !== '"') end += text2[end] === "\\" ? 2 : 1;
-      out2 += text2.slice(i2, end + 1);
+      while (end < text3.length && text3[end] !== '"') end += text3[end] === "\\" ? 2 : 1;
+      out2 += text3.slice(i2, end + 1);
       i2 = end + 1;
     } else if (char === ",") {
       let next = i2 + 1;
-      while (next < text2.length && /\s/.test(text2[next])) next++;
-      if (text2[next] !== "}" && text2[next] !== "]") out2 += char;
+      while (next < text3.length && /\s/.test(text3[next])) next++;
+      if (text3[next] !== "}" && text3[next] !== "]") out2 += char;
       i2++;
     } else {
       out2 += char;
@@ -6061,8 +6061,8 @@ function removeTrailingCommas(text2) {
 
 // packages/parse/src/languages/typescript/resolve-specifier.ts
 function isConfigPath(path) {
-  const name10 = path.slice(path.lastIndexOf("/") + 1);
-  return name10 === "package.json" || name10.startsWith("tsconfig") && name10.endsWith(".json");
+  const name11 = path.slice(path.lastIndexOf("/") + 1);
+  return name11 === "package.json" || name11.startsWith("tsconfig") && name11.endsWith(".json");
 }
 var sourceExtensions = [".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
 var emittedExtensions = {
@@ -6085,9 +6085,9 @@ function asRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : void 0;
 }
 function splitPackageSpecifier(specifier) {
-  const parts2 = specifier.split("/");
+  const parts3 = specifier.split("/");
   const nameParts = specifier.startsWith("@") ? 2 : 1;
-  return { name: parts2.slice(0, nameParts).join("/"), subpath: `.${parts2.slice(nameParts).map((p) => `/${p}`).join("")}` };
+  return { name: parts3.slice(0, nameParts).join("/"), subpath: `.${parts3.slice(nameParts).map((p) => `/${p}`).join("")}` };
 }
 var SpecifierResolver = class {
   files;
@@ -6096,10 +6096,10 @@ var SpecifierResolver = class {
   packages = [];
   constructor(files, configs) {
     this.files = new Set(files);
-    for (const [path, text2] of configs) {
-      const name10 = path.slice(path.lastIndexOf("/") + 1);
-      if (name10 === "package.json") this.addPackage(path, text2);
-      else this.tsconfigTexts.set(path, text2);
+    for (const [path, text3] of configs) {
+      const name11 = path.slice(path.lastIndexOf("/") + 1);
+      if (name11 === "package.json") this.addPackage(path, text3);
+      else this.tsconfigTexts.set(path, text3);
     }
     this.packages.sort((a, b) => b.name.length - a.name.length);
   }
@@ -6128,14 +6128,14 @@ var SpecifierResolver = class {
       const file = resolved === void 0 ? void 0 : this.resolveFile(resolved);
       if (file !== void 0) return { kind: "file", path: file };
     }
-    const { name: name10, subpath } = splitPackageSpecifier(specifier);
-    const workspace = this.packages.find((candidate) => candidate.name === name10);
+    const { name: name11, subpath } = splitPackageSpecifier(specifier);
+    const workspace = this.packages.find((candidate) => candidate.name === name11);
     if (workspace) {
       const file = this.resolveInPackage(workspace, subpath);
       return file === void 0 ? { kind: "not-found" } : { kind: "file", path: file };
     }
     if (builtins.has(specifier.split("/")[0])) return { kind: "builtin" };
-    return pathsMatched ? { kind: "not-found" } : { kind: "external", packageName: name10 };
+    return pathsMatched ? { kind: "not-found" } : { kind: "external", packageName: name11 };
   }
   /** A file for an extensionless or emitted-extension path, or a directory with an index. */
   resolveFile(path) {
@@ -6152,8 +6152,8 @@ var SpecifierResolver = class {
     }
     return void 0;
   }
-  addPackage(path, text2) {
-    const json = asRecord(parseJsonc(text2));
+  addPackage(path, text3) {
+    const json = asRecord(parseJsonc(text3));
     if (typeof json?.name !== "string") return;
     const entry = [json.module, json.main].find((value) => typeof value === "string");
     this.packages.push({ name: json.name, dir: directoryOf(path), exports: json.exports, entry });
@@ -6254,8 +6254,8 @@ var SpecifierResolver = class {
   /** Reads a tsconfig and the configs it extends. `paths` replaces rather than merges, as in TypeScript. */
   loadOptions(config, seen = /* @__PURE__ */ new Set()) {
     if (this.tsOptionsCache.has(config)) return this.tsOptionsCache.get(config);
-    const text2 = this.tsconfigTexts.get(config);
-    const json = text2 === void 0 || seen.has(config) ? void 0 : asRecord(parseJsonc(text2));
+    const text3 = this.tsconfigTexts.get(config);
+    const json = text3 === void 0 || seen.has(config) ? void 0 : asRecord(parseJsonc(text3));
     let result;
     if (json) {
       const dir = directoryOf(config);
@@ -6300,7 +6300,7 @@ function includes(config, json, file) {
   const patterns = Array.isArray(json?.include) ? json.include.filter((p) => typeof p === "string") : void 0;
   if (patterns === void 0) return dir === "" || file.startsWith(`${dir}/`);
   return patterns.some((pattern) => {
-    const literal = pattern.split("/").filter((part, index, parts2) => !/[*?]/.test(part) && parts2.slice(0, index).every((p) => !/[*?]/.test(p)));
+    const literal = pattern.split("/").filter((part, index, parts3) => !/[*?]/.test(part) && parts3.slice(0, index).every((p) => !/[*?]/.test(p)));
     const base = join8(dir, literal.join("/"));
     if (base === void 0) return false;
     const last = pattern.split("/").at(-1) ?? "";
@@ -6364,16 +6364,16 @@ import { posix as posix5 } from "node:path";
 import { posix as posix4 } from "node:path";
 var isProjectFile = (path) => path.endsWith(".csproj");
 var isSolutionFile = (path) => path.endsWith(".sln") || path.endsWith(".slnx");
-var withoutComments = (text2) => text2.replace(/<!--[\s\S]*?-->/g, "");
-function attribute(tag, name10) {
-  return new RegExp(`\\b${name10}\\s*=\\s*"([^"]*)"`, "i").exec(tag)?.[1] ?? new RegExp(`\\b${name10}\\s*=\\s*'([^']*)'`, "i").exec(tag)?.[1];
+var withoutComments = (text3) => text3.replace(/<!--[\s\S]*?-->/g, "");
+function attribute(tag, name11) {
+  return new RegExp(`\\b${name11}\\s*=\\s*"([^"]*)"`, "i").exec(tag)?.[1] ?? new RegExp(`\\b${name11}\\s*=\\s*'([^']*)'`, "i").exec(tag)?.[1];
 }
-function projectProperty(text2, element2) {
-  return new RegExp(`<${element2}>\\s*([^<]*?)\\s*</${element2}>`, "i").exec(withoutComments(text2))?.[1];
+function projectProperty(text3, element2) {
+  return new RegExp(`<${element2}>\\s*([^<]*?)\\s*</${element2}>`, "i").exec(withoutComments(text3))?.[1];
 }
-function projectReferences(path, text2) {
+function projectReferences(path, text3) {
   const out2 = [];
-  for (const tag of withoutComments(text2).match(/<ProjectReference\b[^>]*>/gi) ?? []) {
+  for (const tag of withoutComments(text3).match(/<ProjectReference\b[^>]*>/gi) ?? []) {
     const include = attribute(tag, "Include");
     if (include === void 0) continue;
     const target2 = posix4.normalize(posix4.join(posix4.dirname(path), include.replaceAll("\\", "/")));
@@ -6431,13 +6431,13 @@ var csharpBoundaries = {
     return manifests.map((manifest) => {
       const dir = posix5.dirname(manifest);
       if (isSolutionFile(manifest)) return { dir, manifest, name: stem(manifest), private: null, entryFiles: [] };
-      const text2 = texts.get(manifest);
-      if (text2 === void 0) return { dir, manifest, name: null, private: null, entryFiles: [] };
-      const packable = projectProperty(text2, "IsPackable");
+      const text3 = texts.get(manifest);
+      if (text3 === void 0) return { dir, manifest, name: null, private: null, entryFiles: [] };
+      const packable = projectProperty(text3, "IsPackable");
       return {
         dir,
         manifest,
-        name: projectProperty(text2, "AssemblyName") ?? stem(manifest),
+        name: projectProperty(text3, "AssemblyName") ?? stem(manifest),
         private: packable === void 0 ? null : packable.toLowerCase() === "false",
         entryFiles: []
       };
@@ -6461,7 +6461,7 @@ var constructs4 = {
   loops: { for_statement: "for", foreach_statement: "foreach", while_statement: "while", do_statement: "do-while" },
   conditional: { type: "if_statement", condition: "condition", consequence: "consequence", alternative: "alternative", alternativeIsClause: false },
   // A section holds one case per `case` keyword, and none when it is only `default:`.
-  switch: { type: "switch_statement", body: "body", caseType: "switch_section", caseCount: (section) => section.children.filter((child) => child.type === "case").length },
+  switch: { type: "switch_statement", body: "body", caseType: "switch_section", caseCount: (section2) => section2.children.filter((child) => child.type === "case").length },
   switchExpression: { type: "switch_expression", arm: "switch_expression_arm", isDefaultArm },
   tryType: "try_statement",
   catchType: "catch_clause",
@@ -6513,12 +6513,12 @@ function enclosingTypeName(fn) {
   }
   return void 0;
 }
-function recursionScope4(fn, name10) {
+function recursionScope4(fn, name11) {
   const parameters = parameterInfo(fn);
   const params = parameters.some((parameter) => parameter.isParams);
   const optional = parameters.filter((parameter) => parameter.hasDefault).length;
   const callable = fn.type === "method_declaration" || fn.type === "local_function_statement";
-  const own = callable ? fn.childForFieldName("name")?.text ?? name10 : void 0;
+  const own = callable ? fn.childForFieldName("name")?.text ?? name11 : void 0;
   const names = new Set(own === void 0 ? [] : [own]);
   const owner = fn.type === "method_declaration" ? enclosingTypeName(fn) : void 0;
   return {
@@ -6536,12 +6536,12 @@ function isRecursiveCall4(call, scope) {
   if (args2 < arity2.min || args2 > arity2.max) return false;
   const simple = (node) => node === null ? void 0 : node.type === "generic_name" ? node.namedChildren[0]?.text : node.type === "identifier" ? node.text : void 0;
   if (callee.type === "identifier" || callee.type === "generic_name") {
-    const name10 = simple(callee);
-    return name10 !== void 0 && scope.bare.has(name10);
+    const name11 = simple(callee);
+    return name11 !== void 0 && scope.bare.has(name11);
   }
   if (callee.type === "member_access_expression") {
-    const name10 = simple(callee.childForFieldName("name"));
-    if (name10 === void 0 || !scope.member.has(name10)) return false;
+    const name11 = simple(callee.childForFieldName("name"));
+    if (name11 === void 0 || !scope.member.has(name11)) return false;
     const target2 = callee.childForFieldName("expression");
     if (target2 === null || target2.type === "this") return true;
     return scope.owner !== void 0 && target2.type === "identifier" && target2.text === scope.owner;
@@ -6563,18 +6563,18 @@ var csharpMetricRules = {
 
 // packages/parse/src/languages/csharp/interface-shape.ts
 function nodeCount2(node, skip) {
-  let count3 = 0;
+  let count4 = 0;
   const walk = (current) => {
     if (!current.isNamed || current.type === "comment") return;
     if (skip?.(current) === true) return;
-    count3++;
+    count4++;
     for (let i2 = 0; i2 < current.childCount; i2++) {
       const child = current.child(i2);
       if (child !== null) walk(child);
     }
   };
   walk(node);
-  return count3;
+  return count4;
 }
 function functionShape2(fn, parameters) {
   return { nodes: nodeCount2(fn), interfaceSize: Math.max(1, parameters) };
@@ -6692,16 +6692,16 @@ function chainOf(node) {
       return [node.namedChildren[0]?.text ?? ""];
     case "qualified_name": {
       const qualifier = chainOf(node.childForFieldName("qualifier"));
-      const name10 = chainOf(node.childForFieldName("name"));
-      return qualifier === void 0 || name10 === void 0 ? void 0 : [...qualifier, ...name10];
+      const name11 = chainOf(node.childForFieldName("name"));
+      return qualifier === void 0 || name11 === void 0 ? void 0 : [...qualifier, ...name11];
     }
     case "member_access_expression": {
-      const name10 = chainOf(node.childForFieldName("name"));
-      if (name10 === void 0) return void 0;
+      const name11 = chainOf(node.childForFieldName("name"));
+      if (name11 === void 0) return void 0;
       const target2 = node.childForFieldName("expression");
       if (target2 === null) return void 0;
       const qualifier = chainOf(target2);
-      return qualifier === void 0 ? void 0 : [...qualifier, ...name10];
+      return qualifier === void 0 ? void 0 : [...qualifier, ...name11];
     }
     default:
       return void 0;
@@ -6748,13 +6748,13 @@ var Extractor4 = class {
   /** `using` directives of the whole file, wherever they sit: scopes are file-wide here, which is the heuristic's price. */
   usings(root) {
     for (const directive of root.descendantsOfType("using_directive")) {
-      const name10 = directive.childForFieldName("name");
-      const target2 = directive.namedChildren.find((child) => child.id !== name10?.id && (child.type === "qualified_name" || child.type === "identifier" || child.type === "generic_name"));
+      const name11 = directive.childForFieldName("name");
+      const target2 = directive.namedChildren.find((child) => child.id !== name11?.id && (child.type === "qualified_name" || child.type === "identifier" || child.type === "generic_name"));
       const chain = chainOf(target2 ?? null);
       if (chain === void 0) continue;
       const written = chain.join(".");
-      if (name10 !== null) {
-        this.aliases.set(name10.text, chain);
+      if (name11 !== null) {
+        this.aliases.set(name11.text, chain);
         this.references.push({ name: written, kind: "reference", line: directive.startPosition.row + 1 });
         continue;
       }
@@ -6775,8 +6775,8 @@ var Extractor4 = class {
       }
       case "namespace_declaration": {
         const outer = this.namespace;
-        const name10 = chainOf(node.childForFieldName("name"))?.join(".") ?? "";
-        this.namespace = outer === "" ? name10 : `${outer}.${name10}`;
+        const name11 = chainOf(node.childForFieldName("name"))?.join(".") ?? "";
+        this.namespace = outer === "" ? name11 : `${outer}.${name11}`;
         this.noteNamespace();
         const body2 = node.childForFieldName("body");
         if (body2 !== null) this.members(body2, context);
@@ -6825,10 +6825,10 @@ var Extractor4 = class {
     return seen === 0 ? qualified : `${qualified}~${seen + 1}`;
   }
   typeDeclaration(node, context) {
-    const name10 = node.childForFieldName("name")?.text;
-    if (name10 === void 0) return;
+    const name11 = node.childForFieldName("name")?.text;
+    if (name11 === void 0) return;
     const modifiers2 = modifiersOf2(node);
-    const qualifiedName = this.unitName(name10, context);
+    const qualifiedName = this.unitName(name11, context);
     const nested = context.unit !== void 0;
     const visible = nested ? context.visible && modifiers2.some((modifier) => modifier === "public" || modifier === "protected") : modifiers2.includes("public");
     const kind = kindOf2(node, modifiers2);
@@ -6849,8 +6849,8 @@ var Extractor4 = class {
     }
     const parameters = /* @__PURE__ */ new Set();
     for (const parameter of node.descendantsOfType("type_parameter").filter((candidate) => candidate.parent?.parent?.id === node.id)) {
-      const text2 = parameter.childForFieldName("name")?.text;
-      if (text2 !== void 0) parameters.add(text2);
+      const text3 = parameter.childForFieldName("name")?.text;
+      if (text3 !== void 0) parameters.add(text3);
     }
     const inner2 = { unit: qualifiedName, shadow: /* @__PURE__ */ new Set([...context.shadow, ...parameters]), visible };
     for (const child of node.namedChildren) {
@@ -6890,8 +6890,8 @@ var Extractor4 = class {
   functionParts(node, inner2, outer) {
     const shadow = new Set(inner2.shadow);
     for (const parameter of node.descendantsOfType("type_parameter").filter((candidate) => candidate.parent?.parent?.id === node.id)) {
-      const text2 = parameter.childForFieldName("name")?.text;
-      if (text2 !== void 0) shadow.add(text2);
+      const text3 = parameter.childForFieldName("name")?.text;
+      if (text3 !== void 0) shadow.add(text3);
     }
     const context = { ...inner2, shadow };
     const skipped = new Set([node.childForFieldName("name")?.id, node.childForFieldName("type_parameters")?.id].filter((id) => id !== void 0));
@@ -6902,15 +6902,15 @@ var Extractor4 = class {
     }
   }
   propertyMember(node, context) {
-    const name10 = node.childForFieldName("name")?.text ?? (node.type === "indexer_declaration" ? "this[]" : "");
+    const name11 = node.childForFieldName("name")?.text ?? (node.type === "indexer_declaration" ? "this[]" : "");
     const accessors = node.childForFieldName("accessors");
     if (accessors === null) {
-      const propertyUnit2 = this.unitName(name10, context);
+      const propertyUnit2 = this.unitName(name11, context);
       const inner3 = node.childForFieldName("value") !== null ? this.declareFunction(node, propertyUnit2, "method", context.unit, void 0, context) : { ...context, unit: propertyUnit2 };
       this.functionParts(node, inner3, context);
       return;
     }
-    const propertyUnit = context.unit === void 0 ? name10 : `${context.unit}.${name10}`;
+    const propertyUnit = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
     const inner2 = { ...context, unit: propertyUnit };
     for (const child of node.namedChildren) {
       if (child.type === "attribute_list") this.attributes(child, context);
@@ -6926,11 +6926,11 @@ var Extractor4 = class {
     }
   }
   /** Records a function-like node as a unit with its metrics and shape, and returns the context its body is read in. */
-  declareFunction(fn, qualifiedName, kind, parent, name10, context) {
+  declareFunction(fn, qualifiedName, kind, parent, name11, context) {
     const startLine = startRow4(fn) + 1;
     const endLine = fn.endPosition.row + 1;
     this.codeRows ??= codeRowsOf(this.root, csharpMetricRules);
-    const measured = measureFunction(fn, { name: name10, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, csharpMetricRules);
+    const measured = measureFunction(fn, { name: name11, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, csharpMetricRules);
     const unit = { qualifiedName, kind, startLine, endLine, source: "structural", metrics: measured.metrics, shape: functionShape2(fn, measured.metrics.parameters) };
     if (parent !== void 0) unit.parent = parent;
     const forwarded = passThroughOf4(fn, new Set(parameterInfo(fn).map((parameter) => parameter.name)));
@@ -7010,8 +7010,8 @@ var Extractor4 = class {
         this.attributes(node, context);
         return;
       case "parameter": {
-        const name10 = node.childForFieldName("name");
-        for (const child of node.namedChildren) if (child.id !== name10?.id && child.type !== "modifier") this.expression(child, context);
+        const name11 = node.childForFieldName("name");
+        for (const child of node.namedChildren) if (child.id !== name11?.id && child.type !== "modifier") this.expression(child, context);
         return;
       }
       case "variable_declarator":
@@ -7019,8 +7019,8 @@ var Extractor4 = class {
       case "enum_member_declaration":
       case "type_parameter":
       case "labeled_statement": {
-        const name10 = node.childForFieldName("name");
-        for (const child of node.namedChildren) if (child.id !== name10?.id) this.expression(child, context);
+        const name11 = node.childForFieldName("name");
+        for (const child of node.namedChildren) if (child.id !== name11?.id) this.expression(child, context);
         return;
       }
       case "foreach_statement":
@@ -7076,8 +7076,8 @@ var Extractor4 = class {
   }
   /** The qualifier of a member access that is not a name chain, such as `Make().Run` or `a[0].Run`. */
   walkMembers(node, context) {
-    const name10 = node.childForFieldName("name");
-    for (const child of node.namedChildren) if (child.id !== name10?.id) this.expression(child, context);
+    const name11 = node.childForFieldName("name");
+    for (const child of node.namedChildren) if (child.id !== name11?.id) this.expression(child, context);
   }
   /** The generic arguments inside a chain of names: `List<Invoice>` references `Invoice`. */
   typeArguments(node, context) {
@@ -7089,9 +7089,9 @@ var Extractor4 = class {
    */
   nested(node, context) {
     if (node.type === "local_function_statement" && context.unit !== void 0) {
-      const name10 = node.childForFieldName("name")?.text ?? "";
-      const qualifiedName = this.unitName(name10, context);
-      const inner3 = this.declareFunction(node, qualifiedName, "function", context.unit, name10, context);
+      const name11 = node.childForFieldName("name")?.text ?? "";
+      const qualifiedName = this.unitName(name11, context);
+      const inner3 = this.declareFunction(node, qualifiedName, "function", context.unit, name11, context);
       this.functionParts(node, inner3, context);
       return;
     }
@@ -7120,8 +7120,8 @@ function typeNames(node, out2) {
   if (node.type === "identifier") out2.add(node.text);
   else if (node.type === "qualified_name") typeNames(node.childForFieldName("name"), out2);
   else if (node.type === "generic_name") {
-    const name10 = node.namedChildren[0];
-    if (name10 !== void 0) out2.add(name10.text);
+    const name11 = node.namedChildren[0];
+    if (name11 !== void 0) out2.add(name11.text);
     for (const list2 of node.namedChildren.filter((child) => child.type === "type_argument_list")) for (const child of list2.namedChildren) typeNames(child, out2);
   } else for (const child of node.namedChildren) typeNames(child, out2);
 }
@@ -7141,8 +7141,8 @@ function heritageOf4(declaration) {
   const out2 = [];
   for (const list2 of declaration.namedChildren.filter((child) => child.type === "base_list")) {
     for (const base of list2.namedChildren) {
-      const name10 = lastNameOf(base.type === "primary_constructor_base_type" ? base.namedChildren[0] ?? null : base);
-      if (name10 !== void 0) out2.push(name10);
+      const name11 = lastNameOf(base.type === "primary_constructor_base_type" ? base.namedChildren[0] ?? null : base);
+      if (name11 !== void 0) out2.push(name11);
     }
   }
   return out2;
@@ -7184,58 +7184,58 @@ function extractFileCensus4(root) {
     let nextClass = className;
     switch (node.type) {
       case "interface_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 !== void 0) facts.types.push({ name: name10, kind: "interface", line });
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 !== void 0) facts.types.push({ name: name11, kind: "interface", line });
         break;
       }
       case "delegate_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 !== void 0) facts.types.push({ name: name10, kind: "function-type", line });
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 !== void 0) facts.types.push({ name: name11, kind: "function-type", line });
         break;
       }
       case "class_declaration":
       case "struct_declaration":
       case "record_declaration":
       case "record_struct_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 === void 0 || !classLike.has(node.type)) break;
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 === void 0 || !classLike.has(node.type)) break;
         const constructors = [node.namedChildren.find((child) => child.type === "parameter_list") ?? null];
         for (const member of node.childForFieldName("body")?.namedChildren ?? []) if (member.type === "constructor_declaration") constructors.push(member.childForFieldName("parameters"));
         const constructorTypes2 = constructors.flatMap((list2) => parametersOf4(list2).flatMap((parameter) => parameter.type.names));
-        const klass = { name: name10, line, heritage: heritageOf4(node), constructorTypes: constructorTypes2 };
+        const klass = { name: name11, line, heritage: heritageOf4(node), constructorTypes: constructorTypes2 };
         facts.classes.push(klass);
-        if (node.type === "class_declaration" && modifiersOf2(node).includes("abstract")) facts.types.push({ name: name10, kind: "abstract-class", line });
-        nextClass = name10;
+        if (node.type === "class_declaration" && modifiersOf2(node).includes("abstract")) facts.types.push({ name: name11, kind: "abstract-class", line });
+        nextClass = name11;
         break;
       }
       case "method_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 !== void 0 && className !== null) {
-          const fn = { name: `${className}.${name10}`, line, parameters: parametersOf4(node.childForFieldName("parameters")) };
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 !== void 0 && className !== null) {
+          const fn = { name: `${className}.${name11}`, line, parameters: parametersOf4(node.childForFieldName("parameters")) };
           facts.functions.push(fn);
         }
         break;
       }
       case "attribute": {
-        const name10 = lastNameOf(node.childForFieldName("name"));
-        if (name10 !== void 0) facts.decorators.push({ line, name: name10.replace(/Attribute$/, "") });
+        const name11 = lastNameOf(node.childForFieldName("name"));
+        if (name11 !== void 0) facts.decorators.push({ line, name: name11.replace(/Attribute$/, "") });
         break;
       }
       case "object_creation_expression": {
-        const name10 = lastNameOf(node.childForFieldName("type"));
-        if (name10 !== void 0) facts.news.push({ line, name: name10 });
+        const name11 = lastNameOf(node.childForFieldName("type"));
+        if (name11 !== void 0) facts.news.push({ line, name: name11 });
         break;
       }
       case "variable_declarator": {
-        const name10 = node.childForFieldName("name")?.text;
+        const name11 = node.childForFieldName("name")?.text;
         const declaration = node.parent;
         const type = declaration?.type === "variable_declaration" ? declaration.childForFieldName("type") : null;
-        if (name10 !== void 0 && registryName4.test(name10) && isDictionary(node, type)) facts.keyedMaps.push({ line, name: name10 });
+        if (name11 !== void 0 && registryName4.test(name11) && isDictionary(node, type)) facts.keyedMaps.push({ line, name: name11 });
         break;
       }
       case "property_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 !== void 0 && registryName4.test(name10) && isDictionary(node, node.childForFieldName("type"))) facts.keyedMaps.push({ line, name: name10 });
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 !== void 0 && registryName4.test(name11) && isDictionary(node, node.childForFieldName("type"))) facts.keyedMaps.push({ line, name: name11 });
         break;
       }
       case "invocation_expression": {
@@ -7253,7 +7253,7 @@ function extractFileCensus4(root) {
 function isDictionary(node, type) {
   const names = /* @__PURE__ */ new Set();
   typeNames(type, names);
-  if ([...names].some((name10) => dictionaryTypes.test(name10))) return true;
+  if ([...names].some((name11) => dictionaryTypes.test(name11))) return true;
   const created = node.descendantsOfType("object_creation_expression")[0];
   const createdName = created === void 0 ? void 0 : lastNameOf(created.childForFieldName("type"));
   return createdName !== void 0 && dictionaryTypes.test(createdName);
@@ -7312,10 +7312,10 @@ function partialTypes(facts, owner) {
     }
   }
   const partial = /* @__PURE__ */ new Map();
-  for (const [key, parts2] of declared) {
-    if (parts2.length < 2) continue;
+  for (const [key, parts3] of declared) {
+    if (parts3.length < 2) continue;
     const primary = `${nameOf(key).slice(nameOf(key).lastIndexOf(".") + 1)}.cs`;
-    partial.set(key, parts2.sort((a, b) => Number(basename2(b.file) === primary) - Number(basename2(a.file) === primary) || compare(a.file, b.file)));
+    partial.set(key, parts3.sort((a, b) => Number(basename2(b.file) === primary) - Number(basename2(a.file) === primary) || compare(a.file, b.file)));
   }
   return partial;
 }
@@ -7323,7 +7323,7 @@ var nameOf = (key) => key.slice(key.indexOf("\0") + 1);
 function mergePartials(resolved, partial, own, isTest) {
   if (partial.size === 0) return resolved;
   const lead = /* @__PURE__ */ new Map();
-  for (const [key, parts2] of partial) for (const part of parts2) lead.set(`${part.file}\0${nameOf(key)}`, parts2[0]);
+  for (const [key, parts3] of partial) for (const part of parts3) lead.set(`${part.file}\0${nameOf(key)}`, parts3[0]);
   const consumers = /* @__PURE__ */ new Map();
   const addConsumer = (consumer) => {
     const key = [consumer.from, consumer.fromUnit ?? "", consumer.to, consumer.toSymbol ?? consumer.toExport, consumer.kind].join("\0");
@@ -7336,14 +7336,14 @@ function mergePartials(resolved, partial, own, isTest) {
     addConsumer(target2 === void 0 ? consumer : { ...consumer, to: target2.file, toSymbol: target2.unit });
   }
   const behind = /* @__PURE__ */ new Set();
-  for (const [key, parts2] of partial) for (const part of parts2.slice(1)) behind.add(`${part.file}\0${nameOf(key)}`);
+  for (const [key, parts3] of partial) for (const part of parts3.slice(1)) behind.add(`${part.file}\0${nameOf(key)}`);
   const behindFiles = new Set([...behind].map((entry) => entry.slice(0, entry.indexOf("\0"))));
   const used = new Set([...consumers.values()].map((consumer) => `${consumer.from}\0${consumer.to}`));
   const explained = (edge) => !behindFiles.has(edge.to) || used.has(`${edge.from}\0${edge.to}`);
   const fileEdges = new Map(resolved.fileEdges.filter(explained).map((edge) => [`${edge.from}\0${edge.to}`, edge]));
-  for (const [key, parts2] of partial) {
-    for (const from of parts2) {
-      for (const to of parts2) {
+  for (const [key, parts3] of partial) {
+    for (const from of parts3) {
+      for (const to of parts3) {
         if (from.file === to.file || !own.has(from.file)) continue;
         const edge = `${from.file}\0${to.file}`;
         const kind = isTest(from.file) ? "test" : "reference";
@@ -7421,14 +7421,14 @@ var adapter4 = {
 import { posix as posix7 } from "node:path";
 
 // packages/parse/src/languages/cpp/cmake.ts
-function stripComments(text2) {
+function stripComments(text3) {
   let out2 = "";
   let quoted = false;
-  for (let i2 = 0; i2 < text2.length; i2++) {
-    const c = text2[i2];
-    if (c === '"' && text2[i2 - 1] !== "\\") quoted = !quoted;
+  for (let i2 = 0; i2 < text3.length; i2++) {
+    const c = text3[i2];
+    if (c === '"' && text3[i2 - 1] !== "\\") quoted = !quoted;
     if (c === "#" && !quoted) {
-      while (i2 < text2.length && text2[i2] !== "\n") i2++;
+      while (i2 < text3.length && text3[i2] !== "\n") i2++;
       out2 += "\n";
       continue;
     }
@@ -7436,14 +7436,14 @@ function stripComments(text2) {
   }
   return out2;
 }
-function tokens(text2) {
+function tokens(text3) {
   const out2 = [];
   const pattern = /"((?:[^"\\]|\\.)*)"|([^\s"]+)/g;
-  for (const match of text2.matchAll(pattern)) out2.push(match[1] ?? match[2]);
+  for (const match of text3.matchAll(pattern)) out2.push(match[1] ?? match[2]);
   return out2;
 }
-function commands(text2) {
-  const source = stripComments(text2);
+function commands(text3) {
+  const source = stripComments(text3);
   const found = [];
   const start2 = /([A-Za-z_][A-Za-z0-9_]*)\s*\(/g;
   let match;
@@ -7472,32 +7472,32 @@ function pathArgument(argument) {
 var scopes = /* @__PURE__ */ new Set(["PUBLIC", "PRIVATE", "INTERFACE"]);
 var libraryTypes = /* @__PURE__ */ new Set(["STATIC", "SHARED", "MODULE", "OBJECT", "INTERFACE", "EXCLUDE_FROM_ALL"]);
 var includeFlags = /* @__PURE__ */ new Set(["SYSTEM", "BEFORE", "AFTER"]);
-function parseCmake(text2) {
+function parseCmake(text3) {
   const file = { project: null, targets: [], includeDirectories: [], subdirectories: [] };
-  const byName = /* @__PURE__ */ new Map();
-  const all = commands(text2);
-  for (const command9 of all) {
-    const [first, ...rest] = command9.args;
-    if (command9.name === "project" && first !== void 0) file.project ??= first;
-    if ((command9.name === "add_library" || command9.name === "add_executable") && first !== void 0) {
+  const byName2 = /* @__PURE__ */ new Map();
+  const all = commands(text3);
+  for (const command10 of all) {
+    const [first, ...rest] = command10.args;
+    if (command10.name === "project" && first !== void 0) file.project ??= first;
+    if ((command10.name === "add_library" || command10.name === "add_executable") && first !== void 0) {
       if (rest.some((argument) => argument === "ALIAS" || argument === "IMPORTED")) continue;
       const sources = rest.filter((argument) => !libraryTypes.has(argument) && argument !== "WIN32" && argument !== "MACOSX_BUNDLE").flatMap((argument) => pathArgument(argument) ?? []);
-      const target2 = { name: first, kind: command9.name === "add_library" ? "library" : "executable", sources, publicIncludes: [], privateIncludes: [], links: [] };
+      const target2 = { name: first, kind: command10.name === "add_library" ? "library" : "executable", sources, publicIncludes: [], privateIncludes: [], links: [] };
       file.targets.push(target2);
-      byName.set(first, target2);
+      byName2.set(first, target2);
     }
   }
-  for (const command9 of all) {
-    const [first, ...rest] = command9.args;
+  for (const command10 of all) {
+    const [first, ...rest] = command10.args;
     if (first === void 0) continue;
-    switch (command9.name) {
+    switch (command10.name) {
       case "target_sources": {
-        const target2 = byName.get(first);
+        const target2 = byName2.get(first);
         if (target2 !== void 0) target2.sources.push(...rest.filter((argument) => !scopes.has(argument) && argument !== "FILE_SET" && argument !== "HEADERS").flatMap((argument) => pathArgument(argument) ?? []));
         break;
       }
       case "target_include_directories": {
-        const target2 = byName.get(first);
+        const target2 = byName2.get(first);
         if (target2 === void 0) break;
         let scope = "PRIVATE";
         for (const argument of rest) {
@@ -7510,7 +7510,7 @@ function parseCmake(text2) {
         break;
       }
       case "target_link_libraries": {
-        const target2 = byName.get(first);
+        const target2 = byName2.get(first);
         if (target2 !== void 0) target2.links.push(...rest.filter((argument) => !scopes.has(argument) && !/^(debug|optimized|general)$/i.test(argument) && !/\$[{<]/.test(argument)));
         break;
       }
@@ -7553,9 +7553,9 @@ var cppBoundaries = {
     const manifests = [...tree.files.keys()].filter(isManifest3).sort();
     const paths = [...tree.files.keys()];
     const boundaries = [];
-    for (const [path, text2] of await tree.readMany(manifests)) {
+    for (const [path, text3] of await tree.readMany(manifests)) {
       const dir = posix7.dirname(path) === "." ? "" : posix7.dirname(path);
-      const parsed = parseCmake(text2);
+      const parsed = parseCmake(text3);
       const onlyExecutables = parsed.targets.length > 0 && parsed.targets.every((target2) => target2.kind === "executable");
       boundaries.push({
         dir: dir === "" ? "." : dir,
@@ -7624,8 +7624,8 @@ function functionDeclarator(fn) {
   return current;
 }
 function plainName(node) {
-  const text2 = node.type === "template_type" ? node.childForFieldName("name")?.text ?? node.text : node.text;
-  return text2.replace(/\s+/g, "");
+  const text3 = node.type === "template_type" ? node.childForFieldName("name")?.text ?? node.text : node.text;
+  return text3.replace(/\s+/g, "");
 }
 function declaratorName(declarator) {
   if (declarator === null) return null;
@@ -7644,17 +7644,17 @@ function ownerOf(fn, qualifier) {
   if (qualifier.length > 0) return qualifier.at(-1);
   for (let parent = fn.parent; parent !== null; parent = parent.parent) {
     if (parent.type === "class_specifier" || parent.type === "struct_specifier" || parent.type === "union_specifier") {
-      const name10 = parent.childForFieldName("name");
-      return name10 === null ? void 0 : plainName(name10);
+      const name11 = parent.childForFieldName("name");
+      return name11 === null ? void 0 : plainName(name11);
     }
     if (parent.type === "function_definition" || parent.type === "translation_unit") return void 0;
   }
   return void 0;
 }
-function recursionScope5(fn, name10) {
+function recursionScope5(fn, name11) {
   if (fn.type === "lambda_expression") return { bare: /* @__PURE__ */ new Set(), member: /* @__PURE__ */ new Set() };
   const named = declaratorName(functionDeclarator(fn));
-  const own = named?.name ?? name10;
+  const own = named?.name ?? name11;
   const names = new Set(own === void 0 ? [] : [own]);
   const owner = named === null ? void 0 : ownerOf(fn, named.qualifier);
   return { bare: names, member: names, ...owner === void 0 ? {} : { owner } };
@@ -7671,8 +7671,8 @@ function isRecursiveCall5(call, scope) {
       return scope.member.has(field6) && object?.type === "this";
     }
     case "qualified_identifier": {
-      const name10 = callee.childForFieldName("name");
-      const last = name10 === null ? "" : plainName(name10);
+      const name11 = callee.childForFieldName("name");
+      const last = name11 === null ? "" : plainName(name11);
       const scopeName = callee.childForFieldName("scope");
       if (!scope.bare.has(last)) return false;
       return scope.owner === void 0 || scopeName !== null && plainName(scopeName) === scope.owner;
@@ -7717,8 +7717,8 @@ function classAbstraction(declaration) {
       if (node.type === "field_declaration") data++;
       continue;
     }
-    const name10 = declaratorName(declarator)?.name ?? "";
-    if (name10 === className || name10 === `~${className}`) continue;
+    const name11 = declaratorName(declarator)?.name ?? "";
+    if (name11 === className || name11 === `~${className}`) continue;
     if (node.childForFieldName("default_value")?.text === "0") pure++;
     else other++;
   }
@@ -7730,8 +7730,8 @@ function classAbstraction(declaration) {
 var registryName5 = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)_?$/i;
 var mapTypes3 = /map$/i;
 var macroName = /^[A-Z][A-Z0-9_]{2,}$/;
-function field3(node, name10) {
-  return node.childForFieldName(name10);
+function field3(node, name11) {
+  return node.childForFieldName(name11);
 }
 function lastName4(node) {
   if (node === null) return null;
@@ -7779,15 +7779,15 @@ function parameterFacts(list2) {
   for (const parameter of list2?.namedChildren ?? []) {
     if (parameter.type !== "parameter_declaration" && parameter.type !== "optional_parameter_declaration") continue;
     const declarator = field3(parameter, "declarator");
-    let name10 = "";
+    let name11 = "";
     for (let current = declarator; current !== null; ) {
       if (current.type === "identifier") {
-        name10 = current.text;
+        name11 = current.text;
         break;
       }
       current = field3(current, "declarator") ?? current.namedChildren.find((child) => child.type.endsWith("declarator") || child.type === "identifier") ?? null;
     }
-    out2.push({ name: name10, type: typeFact(field3(parameter, "type"), declarator !== null && hasFunctionDeclarator(declarator)) });
+    out2.push({ name: name11, type: typeFact(field3(parameter, "type"), declarator !== null && hasFunctionDeclarator(declarator)) });
   }
   return out2;
 }
@@ -7799,8 +7799,8 @@ function heritageOf5(node) {
   const clause = node.namedChildren.find((child) => child.type === "base_class_clause");
   for (const base of clause?.namedChildren ?? []) {
     if (base.type === "access_specifier" || base.type === "virtual_specifier") continue;
-    const name10 = lastName4(base);
-    if (name10 !== null) out2.push(name10);
+    const name11 = lastName4(base);
+    if (name11 !== null) out2.push(name11);
   }
   return out2;
 }
@@ -7823,39 +7823,39 @@ function extractFileCensus5(root) {
       case "union_specifier": {
         const nameNode = field3(node, "name");
         const body2 = field3(node, "body");
-        const name10 = lastName4(nameNode);
-        if (name10 !== null && body2 !== null) {
+        const name11 = lastName4(nameNode);
+        if (name11 !== null && body2 !== null) {
           const kind = classAbstraction(node);
-          if (kind === "interface" || kind === "abstract-class") facts.types.push({ name: name10, kind, line });
+          if (kind === "interface" || kind === "abstract-class") facts.types.push({ name: name11, kind, line });
           const constructorTypes2 = /* @__PURE__ */ new Set();
           for (const member of body2.namedChildren) {
             const target2 = member.type === "template_declaration" ? member.namedChildren.find((child) => child.type !== "template_parameter_list") ?? member : member;
             const declarator = target2.type === "function_definition" || target2.type === "declaration" || target2.type === "field_declaration" ? functionDeclarator(target2) : null;
-            if (declaratorName(declarator)?.name !== name10) continue;
+            if (declaratorName(declarator)?.name !== name11) continue;
             for (const parameter of parameterFacts(field3(declarator, "parameters"))) for (const type of parameter.type.names) constructorTypes2.add(type);
           }
-          facts.classes.push({ name: name10, line, heritage: heritageOf5(node), constructorTypes: [...constructorTypes2].sort() });
-          nextClass = name10;
+          facts.classes.push({ name: name11, line, heritage: heritageOf5(node), constructorTypes: [...constructorTypes2].sort() });
+          nextClass = name11;
         }
         nextFileLevel = false;
         break;
       }
       case "alias_declaration": {
-        const name10 = field3(node, "name")?.text;
-        if (name10 !== void 0 && isFunctionTypeAlias(field3(node, "type"))) facts.types.push({ name: name10, kind: "function-type", line });
+        const name11 = field3(node, "name")?.text;
+        if (name11 !== void 0 && isFunctionTypeAlias(field3(node, "type"))) facts.types.push({ name: name11, kind: "function-type", line });
         break;
       }
       case "type_definition": {
         const declarator = field3(node, "declarator");
         if (declarator !== null && declarator.descendantsOfType(["function_declarator"]).length + (declarator.type === "function_declarator" ? 1 : 0) > 0) {
-          let name10 = null;
+          let name11 = null;
           for (let current = declarator; current !== null; current = field3(current, "declarator") ?? current.namedChildren.find((child) => child.type.endsWith("declarator") || child.type === "type_identifier") ?? null) {
             if (current.type === "type_identifier") {
-              name10 = current.text;
+              name11 = current.text;
               break;
             }
           }
-          if (name10 !== null) facts.types.push({ name: name10, kind: "function-type", line });
+          if (name11 !== null) facts.types.push({ name: name11, kind: "function-type", line });
         }
         break;
       }
@@ -7888,8 +7888,8 @@ function extractFileCensus5(root) {
         break;
       }
       case "attribute": {
-        const name10 = lastName4(field3(node, "name"));
-        if (name10 !== null) facts.decorators.push({ line, name: name10 });
+        const name11 = lastName4(field3(node, "name"));
+        if (name11 !== null) facts.decorators.push({ line, name: name11 });
         break;
       }
       case "expression_statement": {
@@ -7899,8 +7899,8 @@ function extractFileCensus5(root) {
         break;
       }
       case "new_expression": {
-        const name10 = lastName4(field3(node, "type"));
-        if (name10 !== null) facts.news.push({ line, name: name10 });
+        const name11 = lastName4(field3(node, "type"));
+        if (name11 !== null) facts.news.push({ line, name: name11 });
         break;
       }
       case "call_expression": {
@@ -7953,18 +7953,18 @@ function extractFileCensus5(root) {
 
 // packages/parse/src/languages/cpp/interface-shape.ts
 function nodeCount3(node, skip) {
-  let count3 = 0;
+  let count4 = 0;
   const walk = (current) => {
     if (!current.isNamed || current.type === "comment") return;
     if (skip?.(current) === true) return;
-    count3++;
+    count4++;
     for (let i2 = 0; i2 < current.childCount; i2++) {
       const child = current.child(i2);
       if (child !== null) walk(child);
     }
   };
   walk(node);
-  return count3;
+  return count4;
 }
 function functionShape3(fn, parameters) {
   return { nodes: nodeCount3(fn), interfaceSize: Math.max(1, parameters) };
@@ -8036,15 +8036,15 @@ function dotted2(node) {
   switch (node.type) {
     case "qualified_identifier": {
       const scope = node.childForFieldName("scope");
-      const name10 = node.childForFieldName("name");
+      const name11 = node.childForFieldName("name");
       const head = scope === null ? "" : dotted2(scope);
-      const tail = name10 === null ? "" : dotted2(name10);
-      return head === "" ? tail : `${head}.${tail}`;
+      const tail2 = name11 === null ? "" : dotted2(name11);
+      return head === "" ? tail2 : `${head}.${tail2}`;
     }
     case "template_type":
     case "template_function": {
-      const name10 = node.childForFieldName("name");
-      return name10 === null ? plain(node) : dotted2(name10);
+      const name11 = node.childForFieldName("name");
+      return name11 === null ? plain(node) : dotted2(name11);
     }
     case "dependent_type":
     case "type_descriptor": {
@@ -8063,8 +8063,8 @@ function receiverType(type) {
     case "qualified_identifier":
     case "template_type": {
       const last = (type.type === "template_type" ? type.childForFieldName("name") : type.childForFieldName("name")) ?? null;
-      const name10 = last === null ? "" : plain(last.type === "template_type" ? last.childForFieldName("name") ?? last : last);
-      if (type.type === "template_type" && smartPointers.has(name10)) return receiverType(firstTemplateArgument(type));
+      const name11 = last === null ? "" : plain(last.type === "template_type" ? last.childForFieldName("name") ?? last : last);
+      if (type.type === "template_type" && smartPointers.has(name11)) return receiverType(firstTemplateArgument(type));
       if (type.type === "qualified_identifier" && last?.type === "template_type" && smartPointers.has(plain(last.childForFieldName("name") ?? last))) return receiverType(firstTemplateArgument(last));
       return dotted2(type);
     }
@@ -8170,14 +8170,14 @@ var Extractor5 = class {
         this.enumeration(node, context);
         return;
       case "alias_declaration": {
-        const name10 = node.childForFieldName("name");
-        if (name10 !== null) this.addDeclaration(name10.text, "type", void 0, context, node.startPosition.row + 1, true);
+        const name11 = node.childForFieldName("name");
+        if (name11 !== null) this.addDeclaration(name11.text, "type", void 0, context, node.startPosition.row + 1, true);
         this.visitChildren(node, context);
         return;
       }
       case "type_definition": {
-        const name10 = declaredIdentifier(node.childForFieldName("declarator")) ?? node.childForFieldName("declarator")?.text;
-        if (name10 !== void 0 && name10 !== null) this.addDeclaration(name10, "type", void 0, context, node.startPosition.row + 1, true);
+        const name11 = declaredIdentifier(node.childForFieldName("declarator")) ?? node.childForFieldName("declarator")?.text;
+        if (name11 !== void 0 && name11 !== null) this.addDeclaration(name11, "type", void 0, context, node.startPosition.row + 1, true);
         this.visitChildren(node, context);
         return;
       }
@@ -8222,8 +8222,8 @@ var Extractor5 = class {
       }
       case "init_declarator": {
         const value = node.childForFieldName("value");
-        const name10 = declaredIdentifier(node.childForFieldName("declarator"));
-        if (value?.type === "lambda_expression" && name10 !== null) this.namedLambda(node, value, name10, context);
+        const name11 = declaredIdentifier(node.childForFieldName("declarator"));
+        if (value?.type === "lambda_expression" && name11 !== null) this.namedLambda(node, value, name11, context);
         else this.visitChildren(node, context);
         return;
       }
@@ -8235,15 +8235,15 @@ var Extractor5 = class {
   include(node) {
     const path = node.childForFieldName("path");
     if (path === null) return;
-    const text2 = path.type === "system_lib_string" ? path.text : path.namedChildren.find((child) => child.type === "string_content")?.text ?? path.text.slice(1, -1);
-    this.imports.push({ specifier: text2, kind: "import", typeOnly: false, line: node.startPosition.row + 1, bindings: [] });
+    const text3 = path.type === "system_lib_string" ? path.text : path.namedChildren.find((child) => child.type === "string_content")?.text ?? path.text.slice(1, -1);
+    this.imports.push({ specifier: text3, kind: "import", typeOnly: false, line: node.startPosition.row + 1, bindings: [] });
   }
   /** A macro whose body holds declarations, or braces and statements, generates code the grammar never sees. */
   macroDefinition(node) {
     const value = node.childForFieldName("value")?.text ?? "";
-    const name10 = node.childForFieldName("name")?.text ?? "";
+    const name11 = node.childForFieldName("name")?.text ?? "";
     if (/[{};]/.test(value) && /\b(class|struct|union|enum|namespace|template|void|int|bool|return|if|for|while)\b|##/.test(value)) {
-      this.macros.push({ line: node.startPosition.row + 1, name: name10, kind: "definition" });
+      this.macros.push({ line: node.startPosition.row + 1, name: name11, kind: "definition" });
     }
   }
   /** A macro invoked where a declaration belongs, so what it declares is invisible. */
@@ -8255,15 +8255,15 @@ var Extractor5 = class {
     this.macros.push({ line: node.startPosition.row + 1, name: callee.text, kind: "invocation" });
   }
   namespace(node, context) {
-    const name10 = node.childForFieldName("name");
+    const name11 = node.childForFieldName("name");
     const body2 = node.childForFieldName("body");
     if (body2 === null) return;
-    if (name10 === null) {
+    if (name11 === null) {
       this.visitChildren(body2, { ...context, anonymous: true });
       return;
     }
-    const parts2 = name10.text.replace(/\binline\b/g, "").split("::").map((part) => part.trim()).filter((part) => part !== "");
-    const namespaces = [...context.namespaces, ...parts2];
+    const parts3 = name11.text.replace(/\binline\b/g, "").split("::").map((part) => part.trim()).filter((part) => part !== "");
+    const namespaces = [...context.namespaces, ...parts3];
     this.namespaces.add(namespaces.join("."));
     this.visitChildren(body2, { ...context, namespaces });
   }
@@ -8271,17 +8271,17 @@ var Extractor5 = class {
     const isNamespace = hasChildOfType(node, "namespace");
     const target2 = node.namedChildren.find((child) => child.type === "qualified_identifier" || child.type === "identifier");
     if (target2 === void 0) return;
-    const name10 = dotted2(target2);
-    if (isNamespace) this.uses.add(name10);
-    else if (name10.includes(".")) this.uses.add(name10.slice(0, name10.lastIndexOf(".")));
+    const name11 = dotted2(target2);
+    if (isNamespace) this.uses.add(name11);
+    else if (name11.includes(".")) this.uses.add(name11.slice(0, name11.lastIndexOf(".")));
   }
   // ---- declarations ----
-  qualify(context, ...parts2) {
-    return [...context.namespaces, ...context.owners, ...parts2].join(".");
+  qualify(context, ...parts3) {
+    return [...context.namespaces, ...context.owners, ...parts3].join(".");
   }
-  addDeclaration(name10, kind, unit, context, line, exported, qualifier = []) {
+  addDeclaration(name11, kind, unit, context, line, exported, qualifier = []) {
     this.declarations.push({
-      name: this.qualify(context, ...qualifier, name10),
+      name: this.qualify(context, ...qualifier, name11),
       kind,
       ...unit === void 0 ? {} : { unit },
       exported: exported && !context.anonymous && context.publicMembers,
@@ -8289,9 +8289,9 @@ var Extractor5 = class {
     });
   }
   enumeration(node, context) {
-    const name10 = node.childForFieldName("name");
+    const name11 = node.childForFieldName("name");
     const body2 = node.childForFieldName("body");
-    if (name10 !== null && body2 !== null) this.addDeclaration(plain(name10), "enum", void 0, context, node.startPosition.row + 1, true);
+    if (name11 !== null && body2 !== null) this.addDeclaration(plain(name11), "enum", void 0, context, node.startPosition.row + 1, true);
     this.visitChildren(node, context);
   }
   templated(node, context) {
@@ -8323,9 +8323,9 @@ var Extractor5 = class {
       this.visitChildren(node, context);
       return;
     }
-    const name10 = plain(nameNode.type === "template_type" ? nameNode.childForFieldName("name") ?? nameNode : nameNode);
+    const name11 = plain(nameNode.type === "template_type" ? nameNode.childForFieldName("name") ?? nameNode : nameNode);
     const kind = classAbstraction(node);
-    const unitName2 = this.uniqueName(context.unit === void 0 ? unitId(context.namespaces, name10) : `${context.unit}.${name10}`);
+    const unitName2 = this.uniqueName(context.unit === void 0 ? unitId(context.namespaces, name11) : `${context.unit}.${name11}`);
     const unit = {
       qualifiedName: unitName2,
       kind: "class",
@@ -8336,8 +8336,8 @@ var Extractor5 = class {
     };
     if (context.unit !== void 0) unit.parent = context.unit;
     this.units.push(unit);
-    this.addDeclaration(name10, kind, unitName2, context, node.startPosition.row + 1, true);
-    const inner2 = { ...context, unit: unitName2, owners: [...context.owners, name10], scope: "class", publicMembers: true, types: this.fieldTypes(body2, context.types) };
+    this.addDeclaration(name11, kind, unitName2, context, node.startPosition.row + 1, true);
+    const inner2 = { ...context, unit: unitName2, owners: [...context.owners, name11], scope: "class", publicMembers: true, types: this.fieldTypes(body2, context.types) };
     for (let i2 = 0; i2 < node.childCount; i2++) {
       const part = node.child(i2);
       if (part !== null && part.isNamed && part.id !== body2.id) this.visit(part, inner2, node, node.fieldNameForChild(i2));
@@ -8362,8 +8362,8 @@ var Extractor5 = class {
       if (type === null) continue;
       for (let i2 = 0; i2 < member.childCount; i2++) {
         if (member.fieldNameForChild(i2) !== "declarator") continue;
-        const name10 = declaredIdentifier(member.child(i2));
-        if (name10 !== null) types.set(name10, type);
+        const name11 = declaredIdentifier(member.child(i2));
+        if (name11 !== null) types.set(name11, type);
       }
     }
     return types;
@@ -8374,11 +8374,11 @@ var Extractor5 = class {
     return seen === 0 ? base : `${base}~${seen + 1}`;
   }
   /** `auto f = [](...) {...};` binds a lambda to a name, which makes it a unit like a function. */
-  namedLambda(declarator, lambda, name10, context) {
+  namedLambda(declarator, lambda, name11, context) {
     const declaration = declarator.parent;
     const sole = declaration?.type === "declaration" && declaration.namedChildren.filter((child) => child.type === "init_declarator").length === 1;
     const extent = sole ? declaration : declarator;
-    const qualifiedName = this.uniqueName(context.unit === void 0 ? unitId(context.namespaces, name10) : `${context.unit}.${name10}`);
+    const qualifiedName = this.uniqueName(context.unit === void 0 ? unitId(context.namespaces, name11) : `${context.unit}.${name11}`);
     this.units.push(this.measuredUnit(qualifiedName, "arrow", lambda, extent, void 0, context));
     this.visitChildren(lambda, { ...context, unit: qualifiedName, scope: "function" });
   }
@@ -8420,7 +8420,7 @@ var Extractor5 = class {
     }
     return { namespaces: [...enclosing2, ...qualifier.slice(0, -1)], classes: [qualifier.at(-1)] };
   }
-  measuredUnit(qualifiedName, kind, fn, extent, name10, context) {
+  measuredUnit(qualifiedName, kind, fn, extent, name11, context) {
     this.codeRows ??= codeRowsOf(this.root, cppMetricRules);
     const unit = {
       qualifiedName,
@@ -8431,7 +8431,7 @@ var Extractor5 = class {
     };
     if (context.unit !== void 0) unit.parent = context.unit;
     if (kind === "method" && context.scope === "class" && !context.publicMembers) unit.hidden = true;
-    const measured = measureFunction(fn, { ...name10 === void 0 ? {} : { name: name10 }, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, cppMetricRules);
+    const measured = measureFunction(fn, { ...name11 === void 0 ? {} : { name: name11 }, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, cppMetricRules);
     unit.metrics = measured.metrics;
     unit.shape = functionShape3(fn, measured.metrics.parameters);
     const parameters = new Set(this.parameterNames(functionDeclarator(fn) ?? fn.childForFieldName("declarator")));
@@ -8446,8 +8446,8 @@ var Extractor5 = class {
     const list2 = declarator?.childForFieldName("parameters");
     const names = [];
     for (const parameter of list2?.namedChildren ?? []) {
-      const name10 = declaredIdentifier(parameter.childForFieldName("declarator"));
-      if (name10 !== null) names.push(name10);
+      const name11 = declaredIdentifier(parameter.childForFieldName("declarator"));
+      if (name11 !== null) names.push(name11);
     }
     return names;
   }
@@ -8457,8 +8457,8 @@ var Extractor5 = class {
     const types = new Map(outer);
     for (const parameter of list2.namedChildren) {
       const type = receiverType(parameter.childForFieldName("type"));
-      const name10 = declaredIdentifier(parameter.childForFieldName("declarator"));
-      if (type !== null && name10 !== null) types.set(name10, type);
+      const name11 = declaredIdentifier(parameter.childForFieldName("declarator"));
+      if (type !== null && name11 !== null) types.set(name11, type);
     }
     return types;
   }
@@ -8472,10 +8472,10 @@ var Extractor5 = class {
         const type = node.type === "declaration" ? receiverType(node.childForFieldName("type")) : null;
         for (let i2 = 0; i2 < node.childCount; i2++) {
           if (node.fieldNameForChild(i2) !== "declarator") continue;
-          const name10 = declaredIdentifier(node.child(i2));
-          if (name10 === null) continue;
-          names.add(name10);
-          if (type !== null) types.set(name10, type);
+          const name11 = declaredIdentifier(node.child(i2));
+          if (name11 === null) continue;
+          names.add(name11);
+          if (type !== null) types.set(name11, type);
         }
       }
       for (const child of node.namedChildren) walk(child);
@@ -8493,8 +8493,8 @@ var Extractor5 = class {
       } else if (declarator === null || named === null) {
         for (let i2 = 0; i2 < node.childCount; i2++) {
           if (node.fieldNameForChild(i2) !== "declarator") continue;
-          const name10 = declaredIdentifier(node.child(i2));
-          if (name10 !== null && type !== null) this.addDeclaration(name10, "variable", void 0, context, node.startPosition.row + 1, !isStatic(node) && !hasQualifier(node, "constexpr"));
+          const name11 = declaredIdentifier(node.child(i2));
+          if (name11 !== null && type !== null) this.addDeclaration(name11, "variable", void 0, context, node.startPosition.row + 1, !isStatic(node) && !hasQualifier(node, "constexpr"));
         }
       }
     }
@@ -8508,8 +8508,8 @@ var Extractor5 = class {
     this.visitChildren(node, context);
   }
   // ---- references ----
-  reference(name10, kind, node, context) {
-    const fact = { name: name10, kind, line: node.startPosition.row + 1 };
+  reference(name11, kind, node, context) {
+    const fact = { name: name11, kind, line: node.startPosition.row + 1 };
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
   }
@@ -8519,8 +8519,8 @@ var Extractor5 = class {
     else this.visit(type, context, type.parent ?? type, "type");
   }
   qualified(node, context) {
-    const name10 = dotted2(node);
-    if (name10 !== "") this.reference(name10.replace(/^\./, ""), "reference", node, context);
+    const name11 = dotted2(node);
+    if (name11 !== "") this.reference(name11.replace(/^\./, ""), "reference", node, context);
     for (const found of node.descendantsOfType(["template_argument_list"])) this.visitChildren(found, context);
   }
   call(node, context) {
@@ -8532,14 +8532,14 @@ var Extractor5 = class {
           if (!context.locals.has(callee.text)) this.reference(callee.text, "call", callee, context);
           break;
         case "qualified_identifier": {
-          const name10 = dotted2(callee);
-          this.reference(name10.replace(/^\./, ""), "call", callee, context);
+          const name11 = dotted2(callee);
+          this.reference(name11.replace(/^\./, ""), "call", callee, context);
           for (const found of callee.descendantsOfType(["template_argument_list"])) this.visitChildren(found, context);
           break;
         }
         case "template_function": {
-          const name10 = callee.childForFieldName("name");
-          if (name10 !== null) this.reference(dotted2(name10), "call", callee, context);
+          const name11 = callee.childForFieldName("name");
+          if (name11 !== null) this.reference(dotted2(name11), "call", callee, context);
           const list2 = callee.childForFieldName("arguments");
           if (list2 !== null) this.visitChildren(list2, context);
           break;
@@ -8620,8 +8620,8 @@ var Extractor5 = class {
     }
   }
 };
-function hasQualifier(node, text2) {
-  return node.namedChildren.some((child) => child.type === "type_qualifier" && child.text === text2);
+function hasQualifier(node, text3) {
+  return node.namedChildren.some((child) => child.type === "type_qualifier" && child.text === text3);
 }
 function extractFacts5(root, options) {
   const explain2 = options.explain === true;
@@ -8635,14 +8635,14 @@ function extractFacts5(root, options) {
 // packages/parse/src/languages/cpp/grammar-repair.ts
 function cppRepairs(root, source) {
   const edits = /* @__PURE__ */ new Map();
-  const overwrite = (start2, text2) => {
-    for (let i2 = 0; i2 < text2.length; i2++) if (source[start2 + i2] !== text2[i2]) edits.set(start2 + i2, text2[i2]);
+  const overwrite = (start2, text3) => {
+    for (let i2 = 0; i2 < text3.length; i2++) if (source[start2 + i2] !== text3[i2]) edits.set(start2 + i2, text3[i2]);
   };
   visit(root, source, overwrite);
   return [...edits].map(([offset, character]) => ({ offset, character }));
 }
-var blanks = (text2) => text2.replace(/[^\r\n]/g, " ");
-var identifierText = (text2) => text2.replace(/[^A-Za-z0-9_]/g, "_").replace(/^[0-9]/, "_");
+var blanks = (text3) => text3.replace(/[^\r\n]/g, " ");
+var identifierText = (text3) => text3.replace(/[^A-Za-z0-9_]/g, "_").replace(/^[0-9]/, "_");
 function visit(node, source, overwrite) {
   if (!node.hasError && !node.isMissing) return;
   if (node.type === "expression_statement") {
@@ -8677,33 +8677,33 @@ function testMacro(statement, source, overwrite) {
   if (macro === void 0) return false;
   const { call, callee } = macro;
   const start2 = call.startIndex;
-  const text2 = source.slice(start2, call.endIndex);
+  const text3 = source.slice(start2, call.endIndex);
   const topLevel = holdsDeclarations(statement);
-  const lineBreak = text2.search(/[\r\n]/);
+  const lineBreak = text3.search(/[\r\n]/);
   if (!topLevel) {
-    overwrite(start2, blanks(text2));
+    overwrite(start2, blanks(text3));
     return true;
   }
   if (suiteName.test(callee.text)) {
     const head2 = "namespace ";
-    const identifierEnd2 = lineBreak === -1 ? text2.length : lineBreak;
+    const identifierEnd2 = lineBreak === -1 ? text3.length : lineBreak;
     if (identifierEnd2 <= head2.length) return false;
-    overwrite(start2, head2 + identifierText(text2.slice(head2.length, identifierEnd2)) + blanks(text2.slice(identifierEnd2)));
+    overwrite(start2, head2 + identifierText(text3.slice(head2.length, identifierEnd2)) + blanks(text3.slice(identifierEnd2)));
     return true;
   }
   const head = "void ";
-  const identifierEnd = lineBreak === -1 ? text2.length - 2 : lineBreak - 1;
+  const identifierEnd = lineBreak === -1 ? text3.length - 2 : lineBreak - 1;
   if (identifierEnd <= head.length) return false;
-  const rest = lineBreak === -1 ? "()" : `(${blanks(text2.slice(identifierEnd + 1, -1))})`;
-  overwrite(start2, head + identifierText(text2.slice(head.length, identifierEnd)) + rest);
+  const rest = lineBreak === -1 ? "()" : `(${blanks(text3.slice(identifierEnd + 1, -1))})`;
+  overwrite(start2, head + identifierText(text3.slice(head.length, identifierEnd)) + rest);
   return true;
 }
 function untypedBraces(literal, source, overwrite) {
   if (!literal.children.some((child) => child.isMissing && child.type === "type_identifier")) return false;
   const braces = literal.children.find((child) => child.type === "initializer_list");
   if (braces === void 0) return false;
-  const text2 = source.slice(braces.startIndex, braces.endIndex);
-  overwrite(braces.startIndex, `0${blanks(text2.slice(1))}`);
+  const text3 = source.slice(braces.startIndex, braces.endIndex);
+  overwrite(braces.startIndex, `0${blanks(text3.slice(1))}`);
   return true;
 }
 function memberPointerUse(missing, source, overwrite) {
@@ -8728,22 +8728,22 @@ import { posix as posix9 } from "node:path";
 // packages/parse/src/languages/cpp/include-paths.ts
 import { posix as posix8 } from "node:path";
 var systemPrefixes = ["/usr/", "/lib/", "/System/", "/Library/", "/Applications/", "/etc/", "/bin/", "/sbin/", "/opt/homebrew/", "/opt/local/"];
-function splitCommand(command9) {
+function splitCommand(command10) {
   const out2 = [];
   let current = "";
   let quote = null;
   let started = false;
-  for (let i2 = 0; i2 < command9.length; i2++) {
-    const c = command9[i2];
+  for (let i2 = 0; i2 < command10.length; i2++) {
+    const c = command10[i2];
     if (quote !== null) {
       if (c === quote) quote = null;
-      else if (c === "\\" && quote === '"' && i2 + 1 < command9.length) current += command9[++i2];
+      else if (c === "\\" && quote === '"' && i2 + 1 < command10.length) current += command10[++i2];
       else current += c;
     } else if (c === '"' || c === "'") {
       quote = c;
       started = true;
-    } else if (c === "\\" && i2 + 1 < command9.length) {
-      current += command9[++i2];
+    } else if (c === "\\" && i2 + 1 < command10.length) {
+      current += command10[++i2];
       started = true;
     } else if (/\s/.test(c)) {
       if (started || current !== "") out2.push(current);
@@ -8756,10 +8756,10 @@ function splitCommand(command9) {
   if (started || current !== "") out2.push(current);
   return out2;
 }
-function entriesOf(text2) {
+function entriesOf(text3) {
   let parsed;
   try {
-    parsed = JSON.parse(text2);
+    parsed = JSON.parse(text3);
   } catch {
     return [];
   }
@@ -8811,9 +8811,9 @@ function includePathsOf(paths, configs, options = {}) {
     }
     const whole = posix8.normalize(isAbsolute2(written) ? written : `${from}/${written}`).replace(/^[A-Za-z]:/, "");
     if (systemPrefixes.some((prefix) => whole.startsWith(prefix))) return void 0;
-    const parts2 = whole.split("/").filter((part) => part !== "");
-    for (let start2 = 0; start2 < parts2.length; start2++) {
-      const candidate = parts2.slice(start2).join("/");
+    const parts3 = whole.split("/").filter((part) => part !== "");
+    for (let start2 = 0; start2 < parts3.length; start2++) {
+      const candidate = parts3.slice(start2).join("/");
       if (isFile ? files.has(candidate) : directories.has(candidate)) return candidate;
     }
     return void 0;
@@ -8821,11 +8821,11 @@ function includePathsOf(paths, configs, options = {}) {
   const forFile = /* @__PURE__ */ new Map();
   const everyEntry = [];
   const compileCommandPaths = [];
-  for (const [path, text2] of configs) {
+  for (const [path, text3] of configs) {
     if (posix8.basename(path) !== "compile_commands.json") continue;
     compileCommandPaths.push(path);
     const base = posix8.dirname(path) === "." ? "" : posix8.dirname(path);
-    for (const entry of entriesOf(text2)) {
+    for (const entry of entriesOf(text3)) {
       const directory = entry.directory === "" ? base : entry.directory;
       const source = toTree(entry.file, directory, true);
       const dirs = includeDirectories(entry.flags).flatMap((dir) => toTree(dir, directory, false) ?? []);
@@ -8833,7 +8833,7 @@ function includePathsOf(paths, configs, options = {}) {
       everyEntry.push(...dirs);
     }
   }
-  const parsedFiles = [...configs].filter(([path]) => posix8.basename(path) === "CMakeLists.txt").map(([path, text2]) => ({ directory: posix8.dirname(path) === "." ? "" : posix8.dirname(path), parsed: parseCmake(text2) }));
+  const parsedFiles = [...configs].filter(([path]) => posix8.basename(path) === "CMakeLists.txt").map(([path, text3]) => ({ directory: posix8.dirname(path) === "." ? "" : posix8.dirname(path), parsed: parseCmake(text3) }));
   const publicOf = /* @__PURE__ */ new Map();
   for (const { directory, parsed } of parsedFiles) {
     for (const target2 of parsed.targets) {
@@ -8842,10 +8842,10 @@ function includePathsOf(paths, configs, options = {}) {
   }
   const reachable = (links, seen = /* @__PURE__ */ new Set()) => {
     const dirs = [];
-    for (const name10 of links) {
-      if (seen.has(name10)) continue;
-      seen.add(name10);
-      const found = publicOf.get(name10);
+    for (const name11 of links) {
+      if (seen.has(name11)) continue;
+      seen.add(name11);
+      const found = publicOf.get(name11);
       if (found !== void 0) dirs.push(...found.dirs, ...reachable(found.links, seen));
     }
     return dirs;
@@ -8877,37 +8877,37 @@ var MIN_INFERRED_COVERAGE = 2;
 function inferIncludeRoots(unresolved, paths) {
   const byBasename = /* @__PURE__ */ new Map();
   for (const path of paths) {
-    const name10 = posix8.basename(path);
-    byBasename.set(name10, [...byBasename.get(name10) ?? [], path]);
+    const name11 = posix8.basename(path);
+    byBasename.set(name11, [...byBasename.get(name11) ?? [], path]);
   }
   const wanted = /* @__PURE__ */ new Map();
   for (const { specifier } of unresolved) {
     if (specifier.startsWith("<")) continue;
-    const name10 = specifier;
-    wanted.set(name10, (wanted.get(name10) ?? 0) + 1);
+    const name11 = specifier;
+    wanted.set(name11, (wanted.get(name11) ?? 0) + 1);
   }
   const rootsOf = /* @__PURE__ */ new Map();
-  for (const name10 of wanted.keys()) {
-    const normal = posix8.normalize(name10);
+  for (const name11 of wanted.keys()) {
+    const normal = posix8.normalize(name11);
     const found = [];
     for (const path of byBasename.get(posix8.basename(normal)) ?? []) {
       if (path === normal) continue;
       if (path.endsWith(`/${normal}`)) found.push(path.slice(0, path.length - normal.length - 1));
     }
-    if (found.length > 0) rootsOf.set(name10, found);
+    if (found.length > 0) rootsOf.set(name11, found);
   }
   const chosen = [];
   const covered = /* @__PURE__ */ new Set();
   for (; ; ) {
     const gain = /* @__PURE__ */ new Map();
-    for (const [name10, roots] of rootsOf) {
-      if (covered.has(name10)) continue;
-      for (const root of new Set(roots)) gain.set(root, (gain.get(root) ?? 0) + (wanted.get(name10) ?? 0));
+    for (const [name11, roots] of rootsOf) {
+      if (covered.has(name11)) continue;
+      for (const root of new Set(roots)) gain.set(root, (gain.get(root) ?? 0) + (wanted.get(name11) ?? 0));
     }
     const best = [...gain].sort(([a, x], [b, y]) => y - x || a.split("/").length - b.split("/").length || (a < b ? -1 : a > b ? 1 : 0))[0];
     if (best === void 0 || best[1] < MIN_INFERRED_COVERAGE) return chosen;
     chosen.push(best[0]);
-    for (const [name10, roots] of rootsOf) if (roots.includes(best[0])) covered.add(name10);
+    for (const [name11, roots] of rootsOf) if (roots.includes(best[0])) covered.add(name11);
   }
 }
 
@@ -8915,11 +8915,11 @@ function inferIncludeRoots(unresolved, paths) {
 var systemDirectories = /* @__PURE__ */ new Set(["sys", "bits", "linux", "net", "netinet", "arpa", "asm", "mach", "os", "machine", "x86_64-linux-gnu", "CoreFoundation", "Foundation"]);
 function locateInclude(from, specifier, dirs, files) {
   const angle = specifier.startsWith("<");
-  const name10 = angle ? specifier.slice(1, -1) : specifier;
+  const name11 = angle ? specifier.slice(1, -1) : specifier;
   const own = posix9.dirname(from) === "." ? "" : posix9.dirname(from);
   const places = angle ? dirs : [own, ...dirs];
   for (const [index, dir] of places.entries()) {
-    const candidate = posix9.normalize(dir === "" ? name10 : `${dir}/${name10}`);
+    const candidate = posix9.normalize(dir === "" ? name11 : `${dir}/${name11}`);
     if (files.has(candidate)) return { path: candidate, via: dir, relativeToIncluder: !angle && index === 0 };
   }
   return void 0;
@@ -8943,9 +8943,9 @@ function resolveCpp(input) {
           considered++;
           if (target2 !== path) direct.add(target2);
         } else if (imported.specifier.startsWith("<")) {
-          const name10 = imported.specifier.slice(1, -1);
-          const head = name10.split("/")[0];
-          if (name10.includes("/") && !systemDirectories.has(head)) externals2.push({ from: path, packageName: head, typeOnly: false });
+          const name11 = imported.specifier.slice(1, -1);
+          const head = name11.split("/")[0];
+          if (name11.includes("/") && !systemDirectories.has(head)) externals2.push({ from: path, packageName: head, typeOnly: false });
         } else {
           considered++;
           unresolved2.push({ from: path, line: imported.line, specifier: imported.specifier, reason: "not-found" });
@@ -8984,10 +8984,10 @@ function resolveCpp(input) {
     const stem2 = stemOf(path);
     const sameFolder = headersByDirectoryAndStem.get(`${posix9.dirname(path)}\0${stem2}`) ?? [];
     const included = includes2.get(path) ?? [];
-    const header = sameFolder.find((target2) => included.includes(target2)) ?? sameFolder[0] ?? included.find((target2) => isHeader(target2) && stemOf(target2) === stem2);
-    if (header === void 0) continue;
-    pairedWith.set(path, header);
-    implementations.set(header, [...implementations.get(header) ?? [], path]);
+    const header2 = sameFolder.find((target2) => included.includes(target2)) ?? sameFolder[0] ?? included.find((target2) => isHeader(target2) && stemOf(target2) === stem2);
+    if (header2 === void 0) continue;
+    pairedWith.set(path, header2);
+    implementations.set(header2, [...implementations.get(header2) ?? [], path]);
   }
   const visibleCache = /* @__PURE__ */ new Map();
   const visibleFrom = (start2) => {
@@ -9024,17 +9024,17 @@ function resolveCpp(input) {
     const defined = new Set(facts.units.map((unit) => unit.qualifiedName));
     const seen = visibleFrom(path);
     const declarations = symbols.declarations.filter(
-      (declaration) => !(declaration.kind === "function" && declaration.unit !== void 0 && defined.has(declaration.unit) && (prototypes.get(declaration.name) ?? []).some((header) => header !== path && seen.has(header)))
+      (declaration) => !(declaration.kind === "function" && declaration.unit !== void 0 && defined.has(declaration.unit) && (prototypes.get(declaration.name) ?? []).some((header2) => header2 !== path && seen.has(header2)))
     );
     stripped.set(path, { ...facts, symbols: { ...symbols, declarations } });
   }
-  const byName = resolveBySymbols({ ...input, facts: stripped });
+  const byName2 = resolveBySymbols({ ...input, facts: stripped });
   const fileEdges = /* @__PURE__ */ new Map();
-  for (const edge of byName.fileEdges) {
+  for (const edge of byName2.fileEdges) {
     if (!visibleFrom(edge.from).has(edge.to) || paired(edge.from, edge.to)) continue;
     fileEdges.set(`${edge.from}\0${edge.to}`, edge);
   }
-  const consumers = byName.consumers.filter((consumer) => fileEdges.has(`${consumer.from}\0${consumer.to}`));
+  const consumers = byName2.consumers.filter((consumer) => fileEdges.has(`${consumer.from}\0${consumer.to}`));
   const importEdges = /* @__PURE__ */ new Map();
   const addImport = (from, to) => {
     importEdges.set(`${from}\0${to}`, { from, to, kind: "import", typeOnly: false });
@@ -9048,10 +9048,10 @@ function resolveCpp(input) {
       if (!fileEdges.has(key)) fileEdges.set(key, { from, to, kind: input.isTestPath(from) ? "test" : "reference", calls: 0, references: 0 });
     }
   }
-  for (const [header, sources] of implementations) {
+  for (const [header2, sources] of implementations) {
     for (const source of sources) {
-      const key = `${header}\0${source}`;
-      if (!importEdges.has(key)) importEdges.set(key, { from: header, to: source, kind: "import", typeOnly: false, pairing: true });
+      const key = `${header2}\0${source}`;
+      if (!importEdges.has(key)) importEdges.set(key, { from: header2, to: source, kind: "import", typeOnly: false, pairing: true });
     }
   }
   return {
@@ -9059,7 +9059,7 @@ function resolveCpp(input) {
     consumers,
     fileEdges: [...fileEdges.values()],
     barrels: [],
-    exports: byName.exports,
+    exports: byName2.exports,
     externalImports: externals,
     unresolved,
     includeResolution
@@ -9098,8 +9098,8 @@ import { posix as posix10 } from "node:path";
 var Reader = class {
   index = 0;
   text;
-  constructor(text2) {
-    this.text = text2;
+  constructor(text3) {
+    this.text = text3;
   }
   skipSpace() {
     while (this.index < this.text.length && /[ \t\r\n]/.test(this.text[this.index])) this.index++;
@@ -9122,8 +9122,8 @@ var Reader = class {
     this.index += word.length;
     if (word === "true") return true;
     if (word === "false") return false;
-    const number = Number(word.replaceAll("_", ""));
-    return Number.isNaN(number) ? void 0 : number;
+    const number2 = Number(word.replaceAll("_", ""));
+    return Number.isNaN(number2) ? void 0 : number2;
   }
   string() {
     const quote = this.text[this.index++];
@@ -9183,21 +9183,21 @@ var Reader = class {
   }
   /** A possibly dotted, possibly quoted key. */
   key() {
-    const parts2 = [];
+    const parts3 = [];
     for (; ; ) {
       this.skipSpace();
       const ch = this.text[this.index];
       if (ch === '"' || ch === "'") {
-        parts2.push(this.string());
+        parts3.push(this.string());
       } else {
         const bare = /^[A-Za-z0-9_-]+/.exec(this.text.slice(this.index))?.[0] ?? "";
         this.index += bare.length;
-        if (bare === "") return parts2;
-        parts2.push(bare);
+        if (bare === "") return parts3;
+        parts3.push(bare);
       }
       this.skipSpace();
       if (this.text[this.index] === ".") this.index++;
-      else return parts2;
+      else return parts3;
     }
   }
   atEnd() {
@@ -9243,8 +9243,8 @@ function tableAt(root, path, appendToArray) {
   });
   return at;
 }
-function parseToml(text2) {
-  const reader = new Reader(text2);
+function parseToml(text3) {
+  const reader = new Reader(text3);
   const root = {};
   let current = root;
   while (!reader.atEnd()) {
@@ -9297,12 +9297,12 @@ var pythonBoundaries = {
     const manifests = [...tree.files.keys()].filter(isManifest4).sort();
     const files = new Set(tree.files.keys());
     const boundaries = [];
-    for (const [path, text2] of await tree.readMany(manifests)) {
+    for (const [path, text3] of await tree.readMany(manifests)) {
       const dir = posix10.dirname(path);
-      const toml = parseToml(text2);
+      const toml = parseToml(text3);
       const project = table(toml.project);
       const poetry = table(table(toml.tool).poetry);
-      const name10 = project.name ?? poetry.name;
+      const name11 = project.name ?? poetry.name;
       const priv = strings(project.classifiers).includes("Private :: Do Not Upload") ? true : null;
       const entries = /* @__PURE__ */ new Set();
       if (priv !== true) {
@@ -9319,7 +9319,7 @@ var pythonBoundaries = {
           }
         }
       }
-      boundaries.push({ dir, manifest: path, name: typeof name10 === "string" ? name10 : null, private: priv, entryFiles: [...entries].sort() });
+      boundaries.push({ dir, manifest: path, name: typeof name11 === "string" ? name11 : null, private: priv, entryFiles: [...entries].sort() });
     }
     for (const path of manifests) if (!boundaries.some((boundary) => boundary.manifest === path)) boundaries.push({ dir: posix10.dirname(path), manifest: path, name: null, private: null, entryFiles: [] });
     return boundaries.sort((a, b) => a.manifest < b.manifest ? -1 : a.manifest > b.manifest ? 1 : 0);
@@ -9388,19 +9388,19 @@ function parameterName(parameter) {
   if (parameter.type === "identifier") return parameter.text;
   return parameter.namedChildren.find((child) => child.type === "identifier")?.text;
 }
-function rebinds2(fn, name10) {
-  if (parameterNodes(fn).some((parameter) => parameterName(parameter) === name10)) return true;
+function rebinds2(fn, name11) {
+  if (parameterNodes(fn).some((parameter) => parameterName(parameter) === name11)) return true;
   for (const nested of fn.descendantsOfType(["function_definition", "assignment"])) {
     if (nested.id === fn.id) continue;
     if (nested.type === "function_definition") {
-      if (nested.childForFieldName("name")?.text === name10) return true;
-    } else if (nested.childForFieldName("left")?.type === "identifier" && nested.childForFieldName("left")?.text === name10) return true;
+      if (nested.childForFieldName("name")?.text === name11) return true;
+    } else if (nested.childForFieldName("left")?.type === "identifier" && nested.childForFieldName("left")?.text === name11) return true;
   }
   return false;
 }
-function recursionScope6(fn, name10) {
+function recursionScope6(fn, name11) {
   const own = fn.childForFieldName("name")?.text;
-  const names = [...new Set([name10, own].filter((candidate) => candidate !== void 0))];
+  const names = [...new Set([name11, own].filter((candidate) => candidate !== void 0))];
   const owner = enclosingClass(fn);
   const member = new Set(names);
   const bare = new Set(owner === null ? names.filter((candidate) => !rebinds2(fn, candidate)) : []);
@@ -9442,7 +9442,7 @@ function functionShape4(fn, parameters) {
 function members(body2) {
   return (body2?.namedChildren ?? []).map((member) => member.type === "decorated_definition" ? member.childForFieldName("definition") ?? member : member);
 }
-var isPrivate = (name10) => name10.startsWith("_") && !(name10.startsWith("__") && name10.endsWith("__"));
+var isPrivate = (name11) => name11.startsWith("_") && !(name11.startsWith("__") && name11.endsWith("__"));
 function memberNames(member) {
   if (member.type === "function_definition" || member.type === "class_definition") return [member.childForFieldName("name")?.text ?? ""];
   if (member.type !== "expression_statement") return [];
@@ -9456,9 +9456,9 @@ function classShape3(declaration) {
   const body2 = declaration.childForFieldName("body");
   let interfaceSize = 0;
   for (const member of members(body2)) {
-    for (const name10 of memberNames(member)) {
-      if (name10 === "" || isPrivate(name10)) continue;
-      if (name10 === "__init__" && member.type === "function_definition") interfaceSize += parameterNodes(member).length;
+    for (const name11 of memberNames(member)) {
+      if (name11 === "" || isPrivate(name11)) continue;
+      if (name11 === "__init__" && member.type === "function_definition") interfaceSize += parameterNodes(member).length;
       else interfaceSize++;
     }
   }
@@ -9488,8 +9488,8 @@ function boundParameterNames(fn) {
   const names = /* @__PURE__ */ new Set();
   const list2 = fn.childForFieldName("parameters");
   for (const entry of list2?.namedChildren ?? []) {
-    const name10 = parameterName(entry);
-    if (name10 !== void 0) names.add(name10);
+    const name11 = parameterName(entry);
+    if (name11 !== void 0) names.add(name11);
   }
   return names;
 }
@@ -9541,7 +9541,7 @@ function classKind(declaration) {
   const named = bases.map((base) => base.type === "keyword_argument" ? `${base.childForFieldName("name")?.text}=${lastName5(base.childForFieldName("value"))}` : lastName5(base));
   if (named.includes("Protocol")) return "interface";
   if (named.includes("ABC") || named.includes("metaclass=ABCMeta")) return "abstract-class";
-  if (named.some((name10) => name10 !== void 0 && enumBases.has(name10))) return "enum";
+  if (named.some((name11) => name11 !== void 0 && enumBases.has(name11))) return "enum";
   return "class";
 }
 function isTypeChecking(statement) {
@@ -9572,8 +9572,8 @@ function boundNames(scope, out2) {
       switch (child.type) {
         case "function_definition":
         case "class_definition": {
-          const name10 = child.childForFieldName("name")?.text;
-          if (name10 !== void 0) out2.add(name10);
+          const name11 = child.childForFieldName("name")?.text;
+          if (name11 !== void 0) out2.add(name11);
           continue;
         }
         case "lambda":
@@ -9582,22 +9582,22 @@ function boundNames(scope, out2) {
         case "augmented_assignment": {
           const names = [];
           targetNames(child.childForFieldName("left"), names);
-          for (const name10 of names) out2.add(name10);
+          for (const name11 of names) out2.add(name11);
           break;
         }
         case "for_statement":
         case "for_in_clause": {
           const names = [];
           targetNames(child.childForFieldName("left"), names);
-          if (child.type === "for_statement") for (const name10 of names) out2.add(name10);
+          if (child.type === "for_statement") for (const name11 of names) out2.add(name11);
           break;
         }
         case "as_pattern_target":
           for (const identifier of child.namedChildren) if (identifier.type === "identifier") out2.add(identifier.text);
           break;
         case "named_expression": {
-          const name10 = child.childForFieldName("name")?.text;
-          if (name10 !== void 0) out2.add(name10);
+          const name11 = child.childForFieldName("name")?.text;
+          if (name11 !== void 0) out2.add(name11);
           break;
         }
         case "global_statement":
@@ -9614,7 +9614,7 @@ function boundNames(scope, out2) {
     }
   };
   walk(scope);
-  for (const name10 of globals) out2.delete(name10);
+  for (const name11 of globals) out2.delete(name11);
 }
 function comprehensionNames(node) {
   const names = [];
@@ -9624,10 +9624,10 @@ function comprehensionNames(node) {
 function importedModules(node) {
   if (node.type === "import_statement") {
     const modules = [];
-    for (const name10 of node.childrenForFieldName("name")) {
-      const dotted3 = name10.type === "aliased_import" ? name10.childForFieldName("name") : name10;
+    for (const name11 of node.childrenForFieldName("name")) {
+      const dotted3 = name11.type === "aliased_import" ? name11.childForFieldName("name") : name11;
       if (dotted3 === null) continue;
-      const alias = name10.type === "aliased_import" ? name10.childForFieldName("alias") : null;
+      const alias = name11.type === "aliased_import" ? name11.childForFieldName("alias") : null;
       modules.push({ specifier: dotted3.text, bindings: [{ imported: "*", local: alias?.text ?? dotted3.text, typeOnly: false }] });
     }
     return modules;
@@ -9635,9 +9635,9 @@ function importedModules(node) {
   const specifier = node.childForFieldName("module_name")?.text;
   if (specifier === void 0) return [];
   const bindings = [];
-  for (const name10 of node.childrenForFieldName("name")) {
-    const imported = name10.type === "aliased_import" ? name10.childForFieldName("name") : name10;
-    const alias = name10.type === "aliased_import" ? name10.childForFieldName("alias") : null;
+  for (const name11 of node.childrenForFieldName("name")) {
+    const imported = name11.type === "aliased_import" ? name11.childForFieldName("name") : name11;
+    const alias = name11.type === "aliased_import" ? name11.childForFieldName("alias") : null;
     if (imported !== null) bindings.push({ imported: imported.text, local: alias?.text ?? imported.text, typeOnly: false });
   }
   return [{ specifier, bindings }];
@@ -9710,8 +9710,8 @@ var Extractor6 = class {
   /** `importlib.import_module("x")` and `__import__("x")`: the specifier when it is a plain string, otherwise null. */
   dynamicImport(call) {
     const callee = call.childForFieldName("function");
-    const name10 = callee?.type === "identifier" ? callee.text : callee?.type === "attribute" ? callee.text : void 0;
-    if (name10 !== "__import__" && name10 !== "importlib.import_module" && name10 !== "import_module") return;
+    const name11 = callee?.type === "identifier" ? callee.text : callee?.type === "attribute" ? callee.text : void 0;
+    if (name11 !== "__import__" && name11 !== "importlib.import_module" && name11 !== "import_module") return;
     const first = call.childForFieldName("arguments")?.namedChildren[0] ?? null;
     this.imports.push({ specifier: stringValue2(first), kind: "dynamic", typeOnly: false, line: call.startPosition.row + 1, bindings: [] });
   }
@@ -9740,12 +9740,12 @@ var Extractor6 = class {
             if (assignment?.type !== "assignment") break;
             const names = [];
             targetNames(assignment.childForFieldName("left"), names);
-            for (const name10 of names) add(name10, line, "variable");
+            for (const name11 of names) add(name11, line, "variable");
             break;
           }
           case "type_alias_statement": {
-            const name10 = definition.childForFieldName("left")?.namedChildren[0]?.text;
-            if (name10 !== void 0) add(name10, line, "type");
+            const name11 = definition.childForFieldName("left")?.namedChildren[0]?.text;
+            if (name11 !== void 0) add(name11, line, "type");
             break;
           }
           case "import_statement":
@@ -9941,14 +9941,14 @@ var Extractor6 = class {
     this.visit(right, context, node, "right");
   }
   functionDefinition(node, context) {
-    const name10 = node.childForFieldName("name")?.text;
+    const name11 = node.childForFieldName("name")?.text;
     const kind = enclosingClass(node) !== null ? "method" : "function";
-    const inner2 = name10 === void 0 ? context : this.declareUnit(name10, kind, node, context, node);
+    const inner2 = name11 === void 0 ? context : this.declareUnit(name11, kind, node, context, node);
     this.functionBody(node, inner2);
   }
   classDefinition(node, context) {
-    const name10 = node.childForFieldName("name")?.text;
-    const inner2 = name10 === void 0 ? context : this.declareUnit(name10, "class", node, context);
+    const name11 = node.childForFieldName("name")?.text;
+    const inner2 = name11 === void 0 ? context : this.declareUnit(name11, "class", node, context);
     const superclasses = node.childForFieldName("superclasses");
     if (superclasses !== null) this.visit(superclasses, context, node, "superclasses");
     const body2 = node.childForFieldName("body");
@@ -9970,8 +9970,8 @@ var Extractor6 = class {
     const inner2 = { unit: context.unit, shadow: /* @__PURE__ */ new Set([...context.shadow, ...names]) };
     for (const child of node.namedChildren) if (child.id !== node.childForFieldName("name")?.id) this.visit(child, inner2, node, null);
   }
-  declareUnit(name10, kind, extent, context, fn) {
-    const base = context.unit === void 0 ? name10 : `${context.unit}.${name10}`;
+  declareUnit(name11, kind, extent, context, fn) {
+    const base = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
     const seen = this.nameCounts.get(base) ?? 0;
     this.nameCounts.set(base, seen + 1);
     const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
@@ -9983,11 +9983,11 @@ var Extractor6 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
-    if (name10.startsWith("_") && !(name10.startsWith("__") && name10.endsWith("__"))) unit.hidden = true;
+    if (name11.startsWith("_") && !(name11.startsWith("__") && name11.endsWith("__"))) unit.hidden = true;
     if (kind === "class") unit.shape = classShape3(extent);
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root, pythonMetricRules);
-      const measured = measureFunction(fn, { name: name10, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, pythonMetricRules);
+      const measured = measureFunction(fn, { name: name11, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, pythonMetricRules);
       unit.metrics = measured.metrics;
       unit.shape = functionShape4(fn, measured.metrics.parameters);
       const forwarded = passThroughOf6(fn);
@@ -10009,8 +10009,8 @@ var registryName6 = /(registry|registries|handlers|plugins|strategies|factories|
 var mapConstructors = /^(dict|defaultdict|OrderedDict|WeakValueDictionary|WeakKeyDictionary|ChainMap)$/;
 var mapAnnotations = /* @__PURE__ */ new Set(["dict", "Dict", "Mapping", "MutableMapping", "defaultdict", "DefaultDict", "OrderedDict"]);
 var dataclassDecorators = /* @__PURE__ */ new Set(["dataclass", "define", "frozen", "attrs", "s"]);
-function field4(node, name10) {
-  return node.childForFieldName(name10);
+function field4(node, name11) {
+  return node.childForFieldName(name11);
 }
 function receiverName2(node) {
   if (node === null) return null;
@@ -10048,8 +10048,8 @@ function parametersOf5(fn) {
     if (parameter.type !== "typed_parameter" && parameter.type !== "typed_default_parameter") continue;
     const type = field4(parameter, "type");
     if (type === null) continue;
-    const name10 = parameter.type === "typed_default_parameter" ? field4(parameter, "name")?.text ?? "" : parameter.namedChildren.find((child) => child.type === "identifier")?.text ?? "";
-    out2.push({ name: name10, type: annotation4(type) });
+    const name11 = parameter.type === "typed_default_parameter" ? field4(parameter, "name")?.text ?? "" : parameter.namedChildren.find((child) => child.type === "identifier")?.text ?? "";
+    out2.push({ name: name11, type: annotation4(type) });
   }
   return out2;
 }
@@ -10072,7 +10072,7 @@ function constructorTypes(declaration) {
 function holdsMap(value, type) {
   if (value?.type === "dictionary" || value?.type === "dictionary_comprehension") return true;
   if (value?.type === "call" && mapConstructors.test(lastName5(value) ?? "")) return true;
-  return annotation4(type).names.some((name10) => mapAnnotations.has(name10));
+  return annotation4(type).names.some((name11) => mapAnnotations.has(name11));
 }
 function isFunctionType(value) {
   if (value === null) return false;
@@ -10086,38 +10086,38 @@ function extractFileCensus6(root) {
     let nextOwner = owner;
     switch (node.type) {
       case "import_statement":
-        for (const name10 of node.childrenForFieldName("name")) {
-          const module3 = name10.type === "aliased_import" ? field4(name10, "name") : name10;
-          const alias = name10.type === "aliased_import" ? field4(name10, "alias") : null;
+        for (const name11 of node.childrenForFieldName("name")) {
+          const module3 = name11.type === "aliased_import" ? field4(name11, "name") : name11;
+          const alias = name11.type === "aliased_import" ? field4(name11, "alias") : null;
           if (module3 !== null) facts.imports.push({ local: alias?.text ?? module3.text, imported: "*", specifier: module3.text });
         }
         return;
       case "import_from_statement": {
         const specifier = field4(node, "module_name")?.text ?? "";
-        for (const name10 of node.childrenForFieldName("name")) {
-          const imported = name10.type === "aliased_import" ? field4(name10, "name") : name10;
-          const alias = name10.type === "aliased_import" ? field4(name10, "alias") : null;
+        for (const name11 of node.childrenForFieldName("name")) {
+          const imported = name11.type === "aliased_import" ? field4(name11, "name") : name11;
+          const alias = name11.type === "aliased_import" ? field4(name11, "alias") : null;
           if (imported !== null) facts.imports.push({ local: alias?.text ?? imported.text, imported: imported.text, specifier });
         }
         return;
       }
       case "class_definition": {
-        const name10 = field4(node, "name")?.text;
-        if (name10 !== void 0) {
-          const qualified = owner === null ? name10 : `${owner}.${name10}`;
+        const name11 = field4(node, "name")?.text;
+        if (name11 !== void 0) {
+          const qualified = owner === null ? name11 : `${owner}.${name11}`;
           const heritage = (field4(node, "superclasses")?.namedChildren ?? []).filter((base) => base.type !== "keyword_argument").map((base) => lastName5(base)).filter((base) => base !== void 0);
-          facts.classes.push({ name: name10, line, heritage, constructorTypes: constructorTypes(node) });
+          facts.classes.push({ name: name11, line, heritage, constructorTypes: constructorTypes(node) });
           const kind = classKind(node);
-          if (kind === "interface") facts.types.push({ name: name10, kind: "interface", line });
-          else if (kind === "abstract-class") facts.types.push({ name: name10, kind: "abstract-class", line });
+          if (kind === "interface") facts.types.push({ name: name11, kind: "interface", line });
+          else if (kind === "abstract-class") facts.types.push({ name: name11, kind: "abstract-class", line });
           nextOwner = qualified;
         }
         break;
       }
       case "function_definition": {
-        const name10 = field4(node, "name")?.text;
-        if (name10 !== void 0) {
-          const qualified = owner === null ? name10 : `${owner}.${name10}`;
+        const name11 = field4(node, "name")?.text;
+        if (name11 !== void 0) {
+          const qualified = owner === null ? name11 : `${owner}.${name11}`;
           const parameters = parametersOf5(node);
           facts.functions.push({ name: qualified, line, parameters });
           nextOwner = qualified;
@@ -10125,8 +10125,8 @@ function extractFileCensus6(root) {
         break;
       }
       case "type_alias_statement": {
-        const name10 = field4(node, "left")?.namedChildren[0]?.text;
-        if (name10 !== void 0 && isFunctionType(field4(node, "right")?.namedChildren[0] ?? null)) facts.types.push({ name: name10, kind: "function-type", line });
+        const name11 = field4(node, "left")?.namedChildren[0]?.text;
+        if (name11 !== void 0 && isFunctionType(field4(node, "right")?.namedChildren[0] ?? null)) facts.types.push({ name: name11, kind: "function-type", line });
         break;
       }
       case "assignment": {
@@ -10134,14 +10134,14 @@ function extractFileCensus6(root) {
         const value = field4(node, "right");
         const type = field4(node, "type");
         if (left?.type === "identifier" && isFunctionType(value)) facts.types.push({ name: left.text, kind: "function-type", line });
-        const short = left?.type === "attribute" ? field4(left, "attribute")?.text : left?.type === "identifier" ? left.text : void 0;
-        if (short !== void 0 && registryName6.test(short) && holdsMap(value, type)) facts.keyedMaps.push({ line, name: short });
+        const short2 = left?.type === "attribute" ? field4(left, "attribute")?.text : left?.type === "identifier" ? left.text : void 0;
+        if (short2 !== void 0 && registryName6.test(short2) && holdsMap(value, type)) facts.keyedMaps.push({ line, name: short2 });
         break;
       }
       case "decorator": {
         const expression = node.namedChildren[0] ?? null;
-        const name10 = lastName5(expression);
-        if (name10 !== void 0) facts.decorators.push({ line, name: name10 });
+        const name11 = lastName5(expression);
+        if (name11 !== void 0) facts.decorators.push({ line, name: name11 });
         break;
       }
       case "call": {
@@ -10429,27 +10429,27 @@ var PythonResolver = class {
     this.rootOfDirectory.set(directory, root);
     return root;
   }
-  moduleFile(base, parts2) {
-    const stem2 = posix11.join(base, ...parts2);
+  moduleFile(base, parts3) {
+    const stem2 = posix11.join(base, ...parts3);
     if (this.files.has(posix11.join(stem2, "__init__.py"))) return posix11.join(stem2, "__init__.py");
-    if (parts2.length > 0 && this.files.has(`${stem2}.py`)) return `${stem2}.py`;
+    if (parts3.length > 0 && this.files.has(`${stem2}.py`)) return `${stem2}.py`;
     return void 0;
   }
   resolve(from, specifier) {
     const dots = /^\.*/.exec(specifier)[0].length;
-    const parts2 = specifier.slice(dots).split(".").filter((part) => part !== "");
+    const parts3 = specifier.slice(dots).split(".").filter((part) => part !== "");
     if (dots > 0) {
       let base = posix11.dirname(from);
       for (let level = 1; level < dots && base !== "."; level++) base = posix11.dirname(base);
-      const found = this.moduleFile(base, parts2);
+      const found = this.moduleFile(base, parts3);
       return found === void 0 ? { kind: "not-found" } : { kind: "file", path: found };
     }
     const own = this.rootOf(posix11.dirname(from));
     for (const root of [own, ...this.roots.filter((candidate) => candidate !== own)]) {
-      const found = this.moduleFile(root, parts2);
+      const found = this.moduleFile(root, parts3);
       if (found !== void 0) return { kind: "file", path: found };
     }
-    const first = parts2[0] ?? "";
+    const first = parts3[0] ?? "";
     if (this.topLevelNames.has(first)) return { kind: "not-found" };
     if (standardLibrary.has(first)) return { kind: "builtin" };
     return { kind: "external", packageName: first };
@@ -10458,16 +10458,16 @@ var PythonResolver = class {
   moduleName(file, root) {
     const relative = root === "." ? file : file.startsWith(`${root}/`) ? file.slice(root.length + 1) : void 0;
     if (relative === void 0 || !relative.endsWith(".py")) return void 0;
-    const parts2 = relative.slice(0, -3).split("/");
-    if (parts2.at(-1) === "__init__") parts2.pop();
-    return parts2.length === 0 ? void 0 : parts2.join(".");
+    const parts3 = relative.slice(0, -3).split("/");
+    if (parts3.at(-1) === "__init__") parts3.pop();
+    return parts3.length === 0 ? void 0 : parts3.join(".");
   }
   reexportsImplicitly(path) {
     return posix11.basename(path) === "__init__.py";
   }
-  submodule(modulePath, name10) {
+  submodule(modulePath, name11) {
     if (posix11.basename(modulePath) !== "__init__.py") return void 0;
-    return this.moduleFile(posix11.dirname(modulePath), [name10]);
+    return this.moduleFile(posix11.dirname(modulePath), [name11]);
   }
 };
 var isConfigPath2 = () => false;
@@ -10501,10 +10501,10 @@ var adapter6 = {
 import { posix as posix12 } from "node:path";
 var isGoModFile = (path) => path === "go.mod" || path.endsWith("/go.mod");
 var isGoWorkFile = (path) => path === "go.work" || path.endsWith("/go.work");
-function directives(text2) {
+function directives(text3) {
   const out2 = [];
   let block;
-  for (const raw of text2.split("\n")) {
+  for (const raw of text3.split("\n")) {
     const comment3 = raw.includes("//") ? raw.slice(raw.indexOf("//") + 2).trim() : "";
     const line = (raw.includes("//") ? raw.slice(0, raw.indexOf("//")) : raw).trim();
     if (line === "") continue;
@@ -10524,14 +10524,14 @@ function directives(text2) {
   return out2;
 }
 var unquote = (value) => value.replace(/^["`]|["`]$/g, "");
-function parseGoMod(path, text2) {
+function parseGoMod(path, text3) {
   const dir = posix12.dirname(path);
   const module3 = { dir, path: null, requires: [], replaces: [] };
-  for (const { verb, rest, comment: comment3 } of directives(text2)) {
+  for (const { verb, rest, comment: comment3 } of directives(text3)) {
     if (verb === "module") module3.path = unquote(rest.split(/\s+/)[0] ?? "");
     else if (verb === "require") {
-      const name10 = unquote(rest.split(/\s+/)[0] ?? "");
-      if (name10 !== "") module3.requires.push({ path: name10, indirect: /^indirect\b/.test(comment3) });
+      const name11 = unquote(rest.split(/\s+/)[0] ?? "");
+      if (name11 !== "") module3.requires.push({ path: name11, indirect: /^indirect\b/.test(comment3) });
     } else if (verb === "replace") {
       const [from = "", target2 = ""] = rest.split("=>").map((side) => side.trim());
       const to = unquote(target2.split(/\s+/)[0] ?? "");
@@ -10541,7 +10541,7 @@ function parseGoMod(path, text2) {
   return module3;
 }
 function modulesOf(configs) {
-  return [...configs].filter(([path]) => isGoModFile(path)).map(([path, text2]) => parseGoMod(path, text2)).sort((a, b) => a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0);
+  return [...configs].filter(([path]) => isGoModFile(path)).map(([path, text3]) => parseGoMod(path, text3)).sort((a, b) => a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0);
 }
 function importPathToDirectory(modules, importPath) {
   let best;
@@ -10575,16 +10575,16 @@ function externalModuleOf(module3, importPath) {
     if ((importPath === required.path || importPath.startsWith(`${required.path}/`)) && (best === void 0 || required.path.length > best.length)) best = required.path;
   }
   if (best !== void 0) return best;
-  const parts2 = importPath.split("/");
-  return parts2.slice(0, /^(github\.com|gitlab\.com|bitbucket\.org|golang\.org)$/.test(parts2[0] ?? "") ? 3 : 2).join("/");
+  const parts3 = importPath.split("/");
+  return parts3.slice(0, /^(github\.com|gitlab\.com|bitbucket\.org|golang\.org)$/.test(parts3[0] ?? "") ? 3 : 2).join("/");
 }
 function isStandardLibrary(importPath) {
   return !(importPath.split("/")[0] ?? "").includes(".");
 }
 function defaultPackageName(importPath) {
-  const parts2 = importPath.split("/");
-  let last = parts2.at(-1) ?? importPath;
-  if (/^v\d+$/.test(last) && parts2.length > 1) last = parts2.at(-2) ?? last;
+  const parts3 = importPath.split("/");
+  let last = parts3.at(-1) ?? importPath;
+  if (/^v\d+$/.test(last) && parts3.length > 1) last = parts3.at(-2) ?? last;
   return last.replace(/^go-/, "").replace(/\.v\d+$/, "");
 }
 
@@ -10594,8 +10594,8 @@ var goBoundaries = {
   async discover(tree) {
     const manifests = [...tree.files.keys()].filter(isGoModFile).sort();
     const boundaries = [];
-    for (const [path, text2] of await tree.readMany(manifests)) {
-      const module3 = parseGoMod(path, text2);
+    for (const [path, text3] of await tree.readMany(manifests)) {
+      const module3 = parseGoMod(path, text3);
       boundaries.push({ dir: module3.dir, manifest: path, name: module3.path, private: null, entryFiles: [] });
     }
     return boundaries;
@@ -10642,7 +10642,7 @@ function parametersOf6(list2) {
     const type = annotation5(parameter.childForFieldName("type"));
     const names = parameter.childrenForFieldName("name");
     if (names.length === 0) out2.push({ name: "", type });
-    else for (const name10 of names) out2.push({ name: name10.text, type });
+    else for (const name11 of names) out2.push({ name: name11.text, type });
   }
   return out2;
 }
@@ -10653,8 +10653,8 @@ function embeddedTypes(struct) {
     let type = field6.childForFieldName("type");
     while (type?.type === "pointer_type") type = type.namedChildren[0] ?? null;
     if (type?.type === "generic_type") type = type.childForFieldName("type");
-    const name10 = type?.type === "qualified_type" ? type.childForFieldName("name") : type;
-    if (name10 !== null && name10 !== void 0) out2.push(name10.text);
+    const name11 = type?.type === "qualified_type" ? type.childForFieldName("name") : type;
+    if (name11 !== null && name11 !== void 0) out2.push(name11.text);
   }
   return out2;
 }
@@ -10665,8 +10665,8 @@ function receiverTypeOf(method) {
   return type?.text;
 }
 function tagKeys(tag) {
-  const text2 = tag.text.slice(1, -1);
-  return [...text2.matchAll(/([A-Za-z_][\w-]*):"/g)].map((match) => match[1]);
+  const text3 = tag.text.slice(1, -1);
+  return [...text3.matchAll(/([A-Za-z_][\w-]*):"/g)].map((match) => match[1]);
 }
 function isMapValue(value) {
   if (value === null) return false;
@@ -10679,8 +10679,8 @@ function extractFileCensus7(root) {
   const constructors = /* @__PURE__ */ new Map();
   for (const child of root.namedChildren) {
     if (child.type !== "function_declaration") continue;
-    const name10 = child.childForFieldName("name")?.text ?? "";
-    if (name10.startsWith("New")) constructors.set(name10, parametersOf6(child.childForFieldName("parameters")).flatMap((parameter) => parameter.type.names));
+    const name11 = child.childForFieldName("name")?.text ?? "";
+    if (name11.startsWith("New")) constructors.set(name11, parametersOf6(child.childForFieldName("parameters")).flatMap((parameter) => parameter.type.names));
   }
   const visit2 = (node) => {
     const line = node.startPosition.row + 1;
@@ -10693,47 +10693,47 @@ function extractFileCensus7(root) {
         break;
       }
       case "type_spec": {
-        const name10 = node.childForFieldName("name")?.text;
+        const name11 = node.childForFieldName("name")?.text;
         const type = node.childForFieldName("type");
-        if (name10 === void 0 || type === null) break;
-        if (type.type === "interface_type") facts.types.push({ name: name10, kind: "interface", line });
-        else if (type.type === "function_type") facts.types.push({ name: name10, kind: "function-type", line });
+        if (name11 === void 0 || type === null) break;
+        if (type.type === "interface_type") facts.types.push({ name: name11, kind: "interface", line });
+        else if (type.type === "function_type") facts.types.push({ name: name11, kind: "function-type", line });
         else if (type.type === "struct_type") {
-          facts.classes.push({ name: name10, line, heritage: embeddedTypes(type), constructorTypes: constructors.get(`New${name10}`) ?? constructors.get("New") ?? [] });
+          facts.classes.push({ name: name11, line, heritage: embeddedTypes(type), constructorTypes: constructors.get(`New${name11}`) ?? constructors.get("New") ?? [] });
         }
         break;
       }
       case "field_declaration": {
         const tag = node.childForFieldName("tag");
         if (tag !== null) for (const key of tagKeys(tag)) facts.decorators.push({ line, name: key });
-        const name10 = node.childrenForFieldName("name")[0]?.text;
-        if (name10 !== void 0 && registryName7.test(name10) && node.childForFieldName("type")?.type === "map_type") facts.keyedMaps.push({ line, name: name10 });
+        const name11 = node.childrenForFieldName("name")[0]?.text;
+        if (name11 !== void 0 && registryName7.test(name11) && node.childForFieldName("type")?.type === "map_type") facts.keyedMaps.push({ line, name: name11 });
         break;
       }
       case "function_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 !== void 0) facts.functions.push({ name: name10, line, parameters: parametersOf6(node.childForFieldName("parameters")) });
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 !== void 0) facts.functions.push({ name: name11, line, parameters: parametersOf6(node.childForFieldName("parameters")) });
         break;
       }
       case "method_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
+        const name11 = node.childForFieldName("name")?.text;
         const type = receiverTypeOf(node);
-        if (name10 !== void 0 && type !== void 0) facts.functions.push({ name: `${type}.${name10}`, line, parameters: parametersOf6(node.childForFieldName("parameters")) });
+        if (name11 !== void 0 && type !== void 0) facts.functions.push({ name: `${type}.${name11}`, line, parameters: parametersOf6(node.childForFieldName("parameters")) });
         break;
       }
       case "var_spec":
       case "const_spec": {
         const values = node.childForFieldName("value")?.namedChildren ?? [];
         const declared = node.childForFieldName("type");
-        node.childrenForFieldName("name").forEach((name10, index) => {
-          if (registryName7.test(name10.text) && (declared?.type === "map_type" || isMapValue(values[index] ?? null))) facts.keyedMaps.push({ line: name10.startPosition.row + 1, name: name10.text });
+        node.childrenForFieldName("name").forEach((name11, index) => {
+          if (registryName7.test(name11.text) && (declared?.type === "map_type" || isMapValue(values[index] ?? null))) facts.keyedMaps.push({ line: name11.startPosition.row + 1, name: name11.text });
         });
         break;
       }
       case "short_var_declaration": {
         const values = node.childForFieldName("right")?.namedChildren ?? [];
-        (node.childForFieldName("left")?.namedChildren ?? []).forEach((name10, index) => {
-          if (registryName7.test(name10.text) && isMapValue(values[index] ?? null)) facts.keyedMaps.push({ line, name: name10.text });
+        (node.childForFieldName("left")?.namedChildren ?? []).forEach((name11, index) => {
+          if (registryName7.test(name11.text) && isMapValue(values[index] ?? null)) facts.keyedMaps.push({ line, name: name11.text });
         });
         break;
       }
@@ -10742,8 +10742,8 @@ function extractFileCensus7(root) {
         if (callee?.type === "identifier") {
           if (callee.text === "new") {
             const type = node.childForFieldName("arguments")?.namedChildren[0];
-            const name10 = type?.type === "qualified_type" ? type.childForFieldName("name")?.text : type?.text;
-            if (name10 !== void 0) facts.news.push({ line, name: name10 });
+            const name11 = type?.type === "qualified_type" ? type.childForFieldName("name")?.text : type?.text;
+            if (name11 !== void 0) facts.news.push({ line, name: name11 });
           }
           facts.calls.push({ line, receiver: null, method: callee.text });
         } else if (callee?.type === "selector_expression") {
@@ -10818,16 +10818,16 @@ function isStatement7(node) {
 }
 function receiverNameOf(fn) {
   const receiver = fn.childForFieldName("receiver");
-  const name10 = receiver?.namedChildren.find((child) => child.type === "parameter_declaration")?.childForFieldName("name")?.text;
-  return name10 === void 0 || name10 === "_" ? void 0 : name10;
+  const name11 = receiver?.namedChildren.find((child) => child.type === "parameter_declaration")?.childForFieldName("name")?.text;
+  return name11 === void 0 || name11 === "_" ? void 0 : name11;
 }
-function recursionScope7(fn, name10) {
+function recursionScope7(fn, name11) {
   if (fn.type === "method_declaration") {
     const own = fn.childForFieldName("name")?.text;
     const owner = receiverNameOf(fn);
     return { bare: /* @__PURE__ */ new Set(), member: new Set(own === void 0 ? [] : [own]), ...owner === void 0 ? {} : { owner } };
   }
-  return { bare: new Set(name10 === void 0 ? [] : [name10]), member: /* @__PURE__ */ new Set() };
+  return { bare: new Set(name11 === void 0 ? [] : [name11]), member: /* @__PURE__ */ new Set() };
 }
 function isRecursiveCall7(call, scope) {
   const callee = call.childForFieldName("function");
@@ -10858,8 +10858,8 @@ var goMetricRules = {
 };
 
 // packages/parse/src/languages/go/shape.ts
-function isExported(name10) {
-  return new RegExp("^\\p{Lu}", "u").test(name10);
+function isExported(name11) {
+  return new RegExp("^\\p{Lu}", "u").test(name11);
 }
 function functionShape5(fn) {
   return { nodes: nodeCount(fn), interfaceSize: Math.max(1, parameterCounts6(fn).parameters) };
@@ -10879,7 +10879,7 @@ function typeShape4(declaration, type, exportedMethods) {
       if (names.length === 0) {
         if (isExported(embeddedName(field6.childForFieldName("type")))) size++;
       } else {
-        size += names.filter((name10) => isExported(name10.text)).length;
+        size += names.filter((name11) => isExported(name11.text)).length;
       }
     }
     size += exportedMethods;
@@ -10915,7 +10915,7 @@ function isForwarded5(argument, parameters) {
 function parameterNames4(fn) {
   const names = /* @__PURE__ */ new Set();
   for (const parameter of fn.childForFieldName("parameters")?.namedChildren ?? []) {
-    for (const name10 of parameter.childrenForFieldName("name")) names.add(name10.text);
+    for (const name11 of parameter.childrenForFieldName("name")) names.add(name11.text);
   }
   return names;
 }
@@ -10990,8 +10990,8 @@ var predeclared = /* @__PURE__ */ new Set([
   "recover",
   "_"
 ]);
-function isGeneratedSource(text2) {
-  for (const line of text2.split("\n")) {
+function isGeneratedSource(text3) {
+  for (const line of text3.split("\n")) {
     const trimmed = line.trimEnd();
     if (GENERATED.test(trimmed)) return true;
     if (/^package\s/.test(trimmed)) return false;
@@ -11012,7 +11012,7 @@ function receiverTypeParameters(method) {
   let type = method.childForFieldName("receiver")?.namedChildren.find((child) => child.type === "parameter_declaration")?.childForFieldName("type") ?? null;
   while (type !== null && type.type === "pointer_type") type = type.namedChildren[0] ?? null;
   if (type?.type !== "generic_type") return [];
-  return (type.childForFieldName("type_arguments")?.descendantsOfType("type_identifier") ?? []).map((name10) => name10.text);
+  return (type.childForFieldName("type_arguments")?.descendantsOfType("type_identifier") ?? []).map((name11) => name11.text);
 }
 function declaredIn(fn) {
   const names = /* @__PURE__ */ new Set();
@@ -11020,14 +11020,14 @@ function declaredIn(fn) {
     for (const identifier of node?.type === "identifier" ? [node] : node?.namedChildren ?? []) if (identifier.type === "identifier") names.add(identifier.text);
   };
   const addParameters = (list2) => {
-    for (const parameter of list2?.namedChildren ?? []) for (const name10 of parameter.childrenForFieldName("name")) names.add(name10.text);
+    for (const parameter of list2?.namedChildren ?? []) for (const name11 of parameter.childrenForFieldName("name")) names.add(name11.text);
   };
   addParameters(fn.childForFieldName("receiver"));
   addParameters(fn.childForFieldName("parameters"));
   const result = fn.childForFieldName("result");
   if (result?.type === "parameter_list") addParameters(result);
-  for (const parameter of fn.childForFieldName("type_parameters")?.namedChildren ?? []) for (const name10 of parameter.childrenForFieldName("name")) names.add(name10.text);
-  for (const name10 of fn.type === "method_declaration" ? receiverTypeParameters(fn) : []) names.add(name10);
+  for (const parameter of fn.childForFieldName("type_parameters")?.namedChildren ?? []) for (const name11 of parameter.childrenForFieldName("name")) names.add(name11.text);
+  for (const name11 of fn.type === "method_declaration" ? receiverTypeParameters(fn) : []) names.add(name11);
   const walk = (node) => {
     for (const child of node.namedChildren) {
       switch (child.type) {
@@ -11049,12 +11049,12 @@ function declaredIn(fn) {
           break;
         case "var_spec":
         case "const_spec":
-          for (const name10 of child.childrenForFieldName("name")) names.add(name10.text);
+          for (const name11 of child.childrenForFieldName("name")) names.add(name11.text);
           break;
         case "type_spec":
         case "type_alias": {
-          const name10 = child.childForFieldName("name");
-          if (name10 !== null) names.add(name10.text);
+          const name11 = child.childForFieldName("name");
+          if (name11 !== null) names.add(name11.text);
           break;
         }
         default:
@@ -11098,13 +11098,13 @@ var Extractor7 = class {
       if (child.type === "type_declaration") {
         for (const spec of child.namedChildren) {
           const type = spec.childForFieldName("type");
-          const name10 = spec.childForFieldName("name")?.text;
-          if (spec.type === "type_spec" && name10 !== void 0 && (type?.type === "struct_type" || type?.type === "interface_type")) this.typeUnits.add(name10);
+          const name11 = spec.childForFieldName("name")?.text;
+          if (spec.type === "type_spec" && name11 !== void 0 && (type?.type === "struct_type" || type?.type === "interface_type")) this.typeUnits.add(name11);
         }
       } else if (child.type === "method_declaration") {
         const type = receiverTypeOf2(child);
-        const name10 = child.childForFieldName("name")?.text;
-        if (type !== void 0 && name10 !== void 0 && isExported(name10)) this.exportedMethods.set(type, (this.exportedMethods.get(type) ?? 0) + 1);
+        const name11 = child.childForFieldName("name")?.text;
+        if (type !== void 0 && name11 !== void 0 && isExported(name11)) this.exportedMethods.set(type, (this.exportedMethods.get(type) ?? 0) + 1);
       }
     }
     const context = { unit: void 0, locals: /* @__PURE__ */ new Set() };
@@ -11126,20 +11126,20 @@ var Extractor7 = class {
         this.importDeclaration(node);
         return;
       case "function_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 === void 0) return;
-        if (name10 !== "init" && name10 !== "_") this.addDeclaration(name10, "function", name10, node.startPosition.row + 1);
-        this.functionUnit(name10, node, node, void 0, context, "function");
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 === void 0) return;
+        if (name11 !== "init" && name11 !== "_") this.addDeclaration(name11, "function", name11, node.startPosition.row + 1);
+        this.functionUnit(name11, node, node, void 0, context, "function");
         return;
       }
       case "method_declaration": {
-        const name10 = node.childForFieldName("name")?.text;
+        const name11 = node.childForFieldName("name")?.text;
         const type = receiverTypeOf2(node);
-        if (name10 === void 0) return;
-        const qualified = type === void 0 ? name10 : `${type}.${name10}`;
+        if (name11 === void 0) return;
+        const qualified = type === void 0 ? name11 : `${type}.${name11}`;
         if (type !== void 0) this.addDeclaration(qualified, "function", qualified, node.startPosition.row + 1, false);
         const parent = type !== void 0 && this.typeUnits.has(type) ? type : void 0;
-        this.functionUnit(qualified, node, node, parent, { ...context, unit: void 0 }, "method", name10, type);
+        this.functionUnit(qualified, node, node, parent, { ...context, unit: void 0 }, "method", name11, type);
         return;
       }
       case "type_declaration":
@@ -11167,8 +11167,8 @@ var Extractor7 = class {
       });
     }
   }
-  addDeclaration(name10, kind, unit, line, exported = isExported(name10)) {
-    this.declarations.push({ name: name10, kind, ...unit === void 0 ? {} : { unit }, exported, line });
+  addDeclaration(name11, kind, unit, line, exported = isExported(name11)) {
+    this.declarations.push({ name: name11, kind, ...unit === void 0 ? {} : { unit }, exported, line });
   }
   nameOf(base) {
     const seen = this.nameCounts.get(base) ?? 0;
@@ -11207,18 +11207,18 @@ var Extractor7 = class {
   typeDeclaration(node, context) {
     const specs = node.namedChildren.filter((child) => child.type === "type_spec" || child.type === "type_alias");
     for (const spec of specs) {
-      const name10 = spec.childForFieldName("name")?.text;
+      const name11 = spec.childForFieldName("name")?.text;
       const type = spec.childForFieldName("type");
-      if (name10 === void 0 || type === null) continue;
+      if (name11 === void 0 || type === null) continue;
       const kind = type.type === "interface_type" ? "interface" : type.type === "struct_type" ? "class" : "type";
       const isUnit = kind !== "type" && spec.type === "type_spec";
-      this.addDeclaration(name10, kind, isUnit ? name10 : void 0, spec.startPosition.row + 1);
+      this.addDeclaration(name11, kind, isUnit ? name11 : void 0, spec.startPosition.row + 1);
       const parameters = new Set((spec.childForFieldName("type_parameters")?.namedChildren ?? []).flatMap((parameter) => parameter.childrenForFieldName("name").map((n) => n.text)));
       let inner2 = context;
       if (isUnit) {
         const extent = specs.length === 1 ? node : spec;
-        const unit = { qualifiedName: this.nameOf(name10), kind: "class", startLine: extent.startPosition.row + 1, endLine: extent.endPosition.row + 1, source: "structural" };
-        unit.shape = typeShape4(extent, type, this.exportedMethods.get(name10) ?? 0);
+        const unit = { qualifiedName: this.nameOf(name11), kind: "class", startLine: extent.startPosition.row + 1, endLine: extent.endPosition.row + 1, source: "structural" };
+        unit.shape = typeShape4(extent, type, this.exportedMethods.get(name11) ?? 0);
         this.units.push(unit);
         inner2 = { unit: unit.qualifiedName, locals: /* @__PURE__ */ new Set([...context.locals, ...parameters]) };
       } else if (parameters.size > 0) inner2 = { ...context, locals: /* @__PURE__ */ new Set([...context.locals, ...parameters]) };
@@ -11234,27 +11234,27 @@ var Extractor7 = class {
       const values = spec.childForFieldName("value")?.namedChildren ?? [];
       const type = spec.childForFieldName("type");
       if (type !== null) this.walk(type, context, spec, "type");
-      names.forEach((name10, index) => {
+      names.forEach((name11, index) => {
         const value = values[index];
         const bound = value?.type === "func_literal" && names.length === values.length;
-        if (packageLevel && name10.text !== "_") this.addDeclaration(name10.text, bound ? "function" : "variable", bound ? name10.text : void 0, name10.startPosition.row + 1);
-        if (bound && value !== void 0) this.functionUnit(name10.text, value, sole ? node : spec, void 0, context, "function");
+        if (packageLevel && name11.text !== "_") this.addDeclaration(name11.text, bound ? "function" : "variable", bound ? name11.text : void 0, name11.startPosition.row + 1);
+        if (bound && value !== void 0) this.functionUnit(name11.text, value, sole ? node : spec, void 0, context, "function");
       });
       values.forEach((value, index) => {
         if (!(value.type === "func_literal" && names.length === values.length && names[index] !== void 0)) this.walk(value, context, spec, "value");
       });
     }
   }
-  reference(name10, kind, node, context) {
-    const fact = { name: name10, kind, line: node.startPosition.row + 1 };
+  reference(name11, kind, node, context) {
+    const fact = { name: name11, kind, line: node.startPosition.row + 1 };
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
     this.referenceNodes?.push(node);
   }
   bare(node, context, kind) {
-    const name10 = node.text;
-    if (predeclared.has(name10) || context.locals.has(name10)) return;
-    this.reference(name10, kind, node, context);
+    const name11 = node.text;
+    if (predeclared.has(name11) || context.locals.has(name11)) return;
+    this.reference(name11, kind, node, context);
   }
   walkChildren(node, context) {
     for (let i2 = 0; i2 < node.childCount; i2++) {
@@ -11297,8 +11297,8 @@ var Extractor7 = class {
         return;
       case "qualified_type": {
         const pkg = node.childForFieldName("package");
-        const name10 = node.childForFieldName("name");
-        if (pkg !== null && name10 !== null) this.reference(`${pkg.text}.${name10.text}`, "reference", node, context);
+        const name11 = node.childForFieldName("name");
+        if (pkg !== null && name11 !== null) this.reference(`${pkg.text}.${name11.text}`, "reference", node, context);
         return;
       }
       case "selector_expression":
@@ -11350,14 +11350,14 @@ var Extractor7 = class {
       this.walk(operand, context, node, "operand");
       return;
     }
-    const name10 = operand.text;
-    if (context.receiver !== void 0 && context.receiver.name === name10) {
+    const name11 = operand.text;
+    if (context.receiver !== void 0 && context.receiver.name === name11) {
       this.reference(`${context.receiver.type}.${field6}`, kind, node, context);
       return;
     }
-    if (context.locals.has(name10) || predeclared.has(name10)) return;
-    this.reference(`${name10}.${field6}`, kind, node, context);
-    this.reference(name10, "reference", operand, context);
+    if (context.locals.has(name11) || predeclared.has(name11)) return;
+    this.reference(`${name11}.${field6}`, kind, node, context);
+    this.reference(name11, "reference", operand, context);
   }
   /** `a := func() {}` and `a = func() {}` bind a unit when one name takes one literal. */
   binding(node, context) {
@@ -11366,9 +11366,9 @@ var Extractor7 = class {
     const pairs = left.length === right.length;
     for (const target2 of node.type === "assignment_statement" ? left : []) this.walk(target2, context, node.childForFieldName("left"), null);
     right.forEach((value, index) => {
-      const name10 = left[index];
-      if (pairs && value.type === "func_literal" && name10?.type === "identifier" && name10.text !== "_") {
-        this.functionUnit(name10.text, value, left.length === 1 ? node : value, void 0, context, "function");
+      const name11 = left[index];
+      if (pairs && value.type === "func_literal" && name11?.type === "identifier" && name11.text !== "_") {
+        this.functionUnit(name11.text, value, left.length === 1 ? node : value, void 0, context, "function");
       } else this.walk(value, context, node.childForFieldName("right"), null);
     });
   }
@@ -11427,8 +11427,8 @@ var PackageGraph = class _PackageGraph {
       }
     }
   }
-  static keyOf(dir, name10) {
-    return `${dir}${SEPARATOR}${name10}`;
+  static keyOf(dir, name11) {
+    return `${dir}${SEPARATOR}${name11}`;
   }
   keyOfFile(file) {
     return _PackageGraph.keyOf(posix13.dirname(file), this.facts.get(file)?.symbols?.namespaces[0] ?? "");
@@ -11471,13 +11471,13 @@ var PackageGraph = class _PackageGraph {
    */
   lookup(file, written, imports) {
     const own = this.keyOfFile(file);
-    const has = (key, name10) => this.declared.has(`${key}${SEPARATOR}${name10}`);
+    const has = (key, name11) => this.declared.has(`${key}${SEPARATOR}${name11}`);
     const dot = written.indexOf(".");
     if (dot >= 0) {
       const head = written.slice(0, dot);
-      const tail = written.slice(dot + 1);
+      const tail2 = written.slice(dot + 1);
       const imported = imports.locals.get(head);
-      if (imported !== void 0) return isExported(tail) && has(imported, tail) ? { key: imported, name: tail } : void 0;
+      if (imported !== void 0) return isExported(tail2) && has(imported, tail2) ? { key: imported, name: tail2 } : void 0;
       return has(own, written) ? { key: own, name: written } : void 0;
     }
     if (has(own, written)) return { key: own, name: written };
@@ -11486,8 +11486,8 @@ var PackageGraph = class _PackageGraph {
     return void 0;
   }
   /** The files that declare a name in a package. */
-  declarers(key, name10) {
-    return this.declared.get(`${key}${SEPARATOR}${name10}`) ?? [];
+  declarers(key, name11) {
+    return this.declared.get(`${key}${SEPARATOR}${name11}`) ?? [];
   }
 };
 function resolvePackages(input) {
@@ -11522,7 +11522,7 @@ function resolvePackages(input) {
       result.importEdges.push({ from, to, kind: "import", typeOnly: false });
     }
   }
-  const unmangle = (name10) => name10.slice(name10.lastIndexOf(SEPARATOR) + 1);
+  const unmangle = (name11) => name11.slice(name11.lastIndexOf(SEPARATOR) + 1);
   return {
     ...result,
     consumers: result.consumers.map((consumer) => ({ ...consumer, toExport: unmangle(consumer.toExport) })),
@@ -11560,7 +11560,7 @@ var adapter7 = {
 // packages/parse/src/languages/rust/crates.ts
 import { posix as posix14 } from "node:path";
 var isManifestPath = (path) => path === "Cargo.toml" || path.endsWith("/Cargo.toml");
-var underscored = (name10) => name10.replaceAll("-", "_");
+var underscored = (name11) => name11.replaceAll("-", "_");
 var table2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
 var text = (value) => typeof value === "string" ? value : void 0;
 var list = (value) => Array.isArray(value) ? value.filter((entry) => typeof entry === "object" && entry !== null && !Array.isArray(entry)) : [];
@@ -11606,25 +11606,25 @@ function readCrates(paths, configs) {
       continue;
     }
     const pkg = table2(toml.package);
-    const name10 = text(pkg.name) ?? null;
+    const name11 = text(pkg.name) ?? null;
     const lib = table2(toml.lib);
-    const libName2 = name10 === null ? null : text(lib.name) ?? underscored(name10);
+    const libName2 = name11 === null ? null : text(lib.name) ?? underscored(name11);
     const libPath = join9(dir, text(lib.path) ?? "src/lib.rs");
-    const libRoot = name10 !== null && tree.has(libPath) ? libPath : void 0;
+    const libRoot = name11 !== null && tree.has(libPath) ? libPath : void 0;
     const bins = /* @__PURE__ */ new Set();
     for (const bin of list(toml.bin)) {
-      const binName = text(bin.name) ?? name10 ?? "";
+      const binName = text(bin.name) ?? name11 ?? "";
       const declared = text(bin.path);
       const candidates = declared === void 0 ? [join9(dir, `src/bin/${binName}.rs`), join9(dir, `src/bin/${binName}/main.rs`), join9(dir, "src/main.rs")] : [join9(dir, declared)];
       const found = candidates.find((candidate) => tree.has(candidate));
       if (found !== void 0) bins.add(found);
     }
-    if (name10 !== null) {
+    if (name11 !== null) {
       if (tree.has(join9(dir, "src/main.rs"))) bins.add(join9(dir, "src/main.rs"));
       rootOfDirectory(dir, "src/bin", tree, bins);
     }
     const others = /* @__PURE__ */ new Set();
-    if (name10 !== null) {
+    if (name11 !== null) {
       if (tree.has(join9(dir, "build.rs"))) others.add(join9(dir, "build.rs"));
       for (const folder of ["tests", "examples", "benches"]) rootOfDirectory(dir, folder, tree, others);
       for (const key of ["test", "example", "bench"]) {
@@ -11635,8 +11635,8 @@ function readCrates(paths, configs) {
       }
     }
     const dependencies = /* @__PURE__ */ new Map();
-    for (const section of ["dependencies", "dev-dependencies", "build-dependencies"]) {
-      for (const [key, value] of Object.entries(table2(toml[section]))) {
+    for (const section2 of ["dependencies", "dev-dependencies", "build-dependencies"]) {
+      for (const [key, value] of Object.entries(table2(toml[section2]))) {
         const spec = table2(value);
         const local = text(spec.path);
         const inherited = spec.workspace === true ? workspaceDependency(manifest, key) : void 0;
@@ -11648,7 +11648,7 @@ function readCrates(paths, configs) {
     crates.push({
       manifest,
       dir,
-      name: name10,
+      name: name11,
       libName: libName2,
       private: publish === false ? true : publish === void 0 ? null : false,
       libRoot,
@@ -11717,10 +11717,10 @@ var ModuleTree = class {
     return place;
   }
   /** The file of the child module `name` in a module directory: `name.rs`, else `name/mod.rs`. */
-  child(directory, name10) {
-    const flat = posix14.join(directory, `${name10}.rs`);
+  child(directory, name11) {
+    const flat = posix14.join(directory, `${name11}.rs`);
     if (this.tree.has(flat)) return flat;
-    const nested = posix14.join(directory, name10, "mod.rs");
+    const nested = posix14.join(directory, name11, "mod.rs");
     return this.tree.has(nested) ? nested : void 0;
   }
   /**
@@ -11734,14 +11734,14 @@ var ModuleTree = class {
     let directory = moduleDirectory(file, from.root);
     let consumed = 0;
     for (let index = 0; index < names.length; index++) {
-      const name10 = names[index];
-      const found = this.child(directory, name10);
+      const name11 = names[index];
+      const found = this.child(directory, name11);
       if (found !== void 0) {
         file = found;
         directory = moduleDirectory(found, from.root);
         consumed = index + 1;
-      } else if (/^[a-z_]/.test(name10)) {
-        directory = posix14.join(directory, name10);
+      } else if (/^[a-z_]/.test(name11)) {
+        directory = posix14.join(directory, name11);
       } else break;
     }
     return { file, consumed };
@@ -11902,8 +11902,8 @@ function typeName(type) {
   }
   return void 0;
 }
-function recursionScope8(fn, name10) {
-  const own = fn.childForFieldName("name")?.text ?? name10;
+function recursionScope8(fn, name11) {
+  const own = fn.childForFieldName("name")?.text ?? name11;
   const owner = ownerOf2(fn);
   const names = own === void 0 || fn.type !== "function_item" ? [] : [own];
   const isMember = owner !== void 0;
@@ -11920,8 +11920,8 @@ function isRecursiveCall8(call, scope) {
   }
   if (callee.type === "scoped_identifier") {
     const path = callee.childForFieldName("path")?.text;
-    const name10 = callee.childForFieldName("name")?.text ?? "";
-    return scope.member.has(name10) && (path === "Self" || scope.owner !== void 0 && path === scope.owner);
+    const name11 = callee.childForFieldName("name")?.text ?? "";
+    return scope.member.has(name11) && (path === "Self" || scope.owner !== void 0 && path === scope.owner);
   }
   return false;
 }
@@ -11969,8 +11969,8 @@ function attributesOf(node) {
   }
   return out2;
 }
-function attributeNamed(node, name10) {
-  return attributesOf(node).map((item) => item.namedChildren.find((child) => child.type === "attribute")).find((attribute2) => attribute2?.namedChildren[0]?.text === name10);
+function attributeNamed(node, name11) {
+  return attributesOf(node).map((item) => item.namedChildren.find((child) => child.type === "attribute")).find((attribute2) => attribute2?.namedChildren[0]?.text === name11);
 }
 function isTestItem(node) {
   return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
@@ -12071,10 +12071,10 @@ function inlineModulesOf(scope, prefix, out2) {
   for (const child of scope.namedChildren) {
     if (child.type !== "mod_item") continue;
     const body2 = child.childForFieldName("body");
-    const name10 = child.childForFieldName("name")?.text;
-    if (body2 === null || name10 === void 0) continue;
-    out2.add([...prefix, name10].join("::"));
-    inlineModulesOf(body2, [...prefix, name10], out2);
+    const name11 = child.childForFieldName("name")?.text;
+    if (body2 === null || name11 === void 0) continue;
+    out2.add([...prefix, name11].join("::"));
+    inlineModulesOf(body2, [...prefix, name11], out2);
   }
 }
 var primitives = /* @__PURE__ */ new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
@@ -12157,8 +12157,8 @@ var Extractor8 = class {
     const names = /* @__PURE__ */ new Set();
     for (const child of scope.namedChildren) {
       if (child.type === "mod_item") {
-        const name10 = child.childForFieldName("name")?.text;
-        if (name10 !== void 0) names.add(name10);
+        const name11 = child.childForFieldName("name")?.text;
+        if (name11 !== void 0) names.add(name11);
       }
     }
     return names;
@@ -12178,9 +12178,9 @@ var Extractor8 = class {
   prefix(context) {
     return context.unit ?? context.mods.join(".");
   }
-  declareUnit(name10, kind, node, context, fn, memberOf) {
+  declareUnit(name11, kind, node, context, fn, memberOf) {
     const head = this.prefix(context);
-    const base = [head, memberOf, name10].filter((part) => part !== void 0 && part !== "").join(".");
+    const base = [head, memberOf, name11].filter((part) => part !== void 0 && part !== "").join(".");
     const seen = this.nameCounts.get(base) ?? 0;
     this.nameCounts.set(base, seen + 1);
     const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
@@ -12190,7 +12190,7 @@ var Extractor8 = class {
     if (fn === void 0) unit.shape = typeShape5(node);
     else {
       this.codeRows ??= codeRowsOf(this.root, rustMetricRules);
-      const measured = measureFunction(fn, { name: name10, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, rustMetricRules);
+      const measured = measureFunction(fn, { name: name11, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, rustMetricRules);
       unit.metrics = measured.metrics;
       unit.shape = functionShape6(fn, measured.metrics.parameters);
       const forwarded = passThroughOf8(fn, new Set(parameterNames5(fn)));
@@ -12203,10 +12203,10 @@ var Extractor8 = class {
     this.units.push(unit);
     return qualifiedName;
   }
-  export(node, name10, local, kind, visibility, context) {
+  export(node, name11, local, kind, visibility, context) {
     if (context.owner !== void 0 || context.unit !== void 0) return;
     const exposed = visibility === "public" && context.exposed;
-    const fact = { exported: name10, line: node.startPosition.row + 1 };
+    const fact = { exported: name11, line: node.startPosition.row + 1 };
     if (local !== void 0) fact.local = local;
     if (kind !== void 0) fact.kind = kind;
     if (!exposed) fact.internal = true;
@@ -12221,12 +12221,12 @@ var Extractor8 = class {
         this.modItem(node, context);
         return;
       case "function_item": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 === void 0) return;
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 === void 0) return;
         const member = context.owner;
         const kind = member === void 0 ? "function" : "method";
-        const qualified = this.declareUnit(name10, kind, node, context, node, member);
-        this.export(node, name10, qualified, "function", visibilityOf(node), context);
+        const qualified = this.declareUnit(name11, kind, node, context, node, member);
+        this.export(node, name11, qualified, "function", visibilityOf(node), context);
         this.functionParts(node, { ...context, unit: qualified, owner: void 0 });
         return;
       }
@@ -12234,15 +12234,15 @@ var Extractor8 = class {
       case "union_item":
       case "enum_item":
       case "trait_item": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 === void 0) return;
-        const qualified = this.declareUnit(name10, "class", node, context);
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 === void 0) return;
+        const qualified = this.declareUnit(name11, "class", node, context);
         const kind = node.type === "trait_item" ? "interface" : node.type === "enum_item" ? "enum" : "class";
-        this.export(node, name10, qualified, kind, visibilityOf(node), context);
+        this.export(node, name11, qualified, kind, visibilityOf(node), context);
         if (node.type === "trait_item") {
           const body2 = node.childForFieldName("body");
           this.visitChildrenExcept(node, body2, { ...context, unit: void 0, owner: void 0 });
-          if (body2 !== null) this.visitScope(body2, { ...context, unit: void 0, owner: name10 });
+          if (body2 !== null) this.visitScope(body2, { ...context, unit: void 0, owner: name11 });
         } else this.visitChildren(node, { ...context, owner: void 0 });
         return;
       }
@@ -12256,14 +12256,14 @@ var Extractor8 = class {
       case "type_item":
       case "const_item":
       case "static_item": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 !== void 0) this.export(node, name10, void 0, node.type === "type_item" ? "type" : "variable", visibilityOf(node), context);
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 !== void 0) this.export(node, name11, void 0, node.type === "type_item" ? "type" : "variable", visibilityOf(node), context);
         this.visitChildren(node, context);
         return;
       }
       case "macro_definition": {
-        const name10 = node.childForFieldName("name")?.text;
-        if (name10 !== void 0) this.export(node, name10, void 0, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", context);
+        const name11 = node.childForFieldName("name")?.text;
+        if (name11 !== void 0) this.export(node, name11, void 0, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", context);
         return;
       }
       case "let_declaration":
@@ -12322,8 +12322,8 @@ var Extractor8 = class {
   /** An attribute names a crate when its path has one (`#[tokio::main]`, `#[derive(thiserror::Error)]`). */
   attribute(node, context) {
     for (const attribute2 of node.namedChildren.filter((child) => child.type === "attribute")) {
-      const name10 = attribute2.namedChildren[0];
-      if (name10?.type === "scoped_identifier") this.path(name10, context, "reference");
+      const name11 = attribute2.namedChildren[0];
+      if (name11?.type === "scoped_identifier") this.path(name11, context, "reference");
       const args2 = attribute2.childForFieldName("arguments");
       if (args2 !== null) this.tokens(args2, context);
     }
@@ -12340,20 +12340,20 @@ var Extractor8 = class {
     this.visitChildren(fn, context);
   }
   modItem(node, context) {
-    const name10 = node.childForFieldName("name")?.text;
-    if (name10 === void 0) return;
+    const name11 = node.childForFieldName("name")?.text;
+    if (name11 === void 0) return;
     const visibility = visibilityOf(node);
     const body2 = node.childForFieldName("body");
     if (body2 !== null) {
-      this.export(node, name10, void 0, "namespace", visibility, context);
-      this.visitScope(body2, { ...context, mods: [...context.mods, name10], exposed: context.exposed && visibility === "public", ...isTestItem(node) ? { inTests: true } : {} });
+      this.export(node, name11, void 0, "namespace", visibility, context);
+      this.visitScope(body2, { ...context, mods: [...context.mods, name11], exposed: context.exposed && visibility === "public", ...isTestItem(node) ? { inTests: true } : {} });
       return;
     }
     const written = pathAttribute(node);
-    const specifier = `mod ${[...context.mods, name10].join("::")}${written === void 0 ? "" : `@${written}`}`;
+    const specifier = `mod ${[...context.mods, name11].join("::")}${written === void 0 ? "" : `@${written}`}`;
     const line = node.startPosition.row + 1;
-    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name10, typeOnly: false }] });
-    this.export(node, name10, name10, "namespace", visibility, context);
+    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name11, typeOnly: false }] });
+    this.export(node, name11, name11, "namespace", visibility, context);
   }
   useDeclaration(node, context) {
     const visibility = visibilityOf(node);
@@ -12470,9 +12470,9 @@ var Extractor8 = class {
     if (args2 !== null) this.visitChildren(args2, context);
   }
   macro(node, context) {
-    const name10 = node.childForFieldName("macro");
-    if (name10?.type === "identifier") this.reference(name10.text, name10, context, "call");
-    else if (name10?.type === "scoped_identifier") this.path(name10, context, "call");
+    const name11 = node.childForFieldName("macro");
+    if (name11?.type === "identifier") this.reference(name11.text, name11, context, "call");
+    else if (name11?.type === "scoped_identifier") this.path(name11, context, "call");
     for (const tree of node.namedChildren.filter((child) => child.type === "token_tree")) this.tokens(tree, context);
   }
   /** Macro arguments are not parsed, so names in them are read from the tokens: `a`, or `a::b`. */
@@ -12504,8 +12504,8 @@ function extractFacts8(root, options = {}) {
 // packages/parse/src/languages/rust/census.ts
 var registryName8 = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)$/i;
 var mapTypes4 = /^(HashMap|BTreeMap|IndexMap|DashMap)$/;
-function field5(node, name10) {
-  return node.childForFieldName(name10);
+function field5(node, name11) {
+  return node.childForFieldName(name11);
 }
 var comment2 = (node) => node.type === "line_comment" || node.type === "block_comment";
 function lastName7(node) {
@@ -12556,12 +12556,12 @@ function callbackGenerics(fn) {
   const names = /* @__PURE__ */ new Set();
   for (const parameter of field5(fn, "type_parameters")?.namedChildren ?? []) {
     const bounds = field5(parameter, "bounds");
-    const name10 = field5(parameter, "name")?.text;
-    if (name10 !== void 0 && bounds?.descendantsOfType("function_type").length) names.add(name10);
+    const name11 = field5(parameter, "name")?.text;
+    if (name11 !== void 0 && bounds?.descendantsOfType("function_type").length) names.add(name11);
   }
   for (const predicate of fn.namedChildren.filter((child) => child.type === "where_clause").flatMap((clause) => clause.namedChildren)) {
-    const name10 = field5(predicate, "left")?.text;
-    if (name10 !== void 0 && field5(predicate, "bounds")?.descendantsOfType("function_type").length) names.add(name10);
+    const name11 = field5(predicate, "left")?.text;
+    if (name11 !== void 0 && field5(predicate, "bounds")?.descendantsOfType("function_type").length) names.add(name11);
   }
   return names;
 }
@@ -12575,9 +12575,9 @@ function parametersOf7(fn) {
   return out2;
 }
 function attributeNames(attribute2) {
-  const name10 = attribute2.namedChildren[0];
-  if (name10 === void 0) return [];
-  const own = nameOf2(name10) ?? lastName7(name10);
+  const name11 = attribute2.namedChildren[0];
+  if (name11 === void 0) return [];
+  const own = nameOf2(name11) ?? lastName7(name11);
   if (own === "derive") return field5(attribute2, "arguments")?.namedChildren.filter((child) => child.type === "identifier").map((child) => child.text) ?? [];
   return own === null ? [] : [own];
 }
@@ -12599,24 +12599,24 @@ function extractFileCensus8(root) {
         return;
       }
       case "trait_item": {
-        const name10 = field5(node, "name")?.text;
-        if (name10 !== void 0) facts.types.push({ name: name10, kind: "interface", line });
-        nextOwner = name10 ?? owner;
+        const name11 = field5(node, "name")?.text;
+        if (name11 !== void 0) facts.types.push({ name: name11, kind: "interface", line });
+        nextOwner = name11 ?? owner;
         break;
       }
       case "type_item": {
-        const name10 = field5(node, "name")?.text;
+        const name11 = field5(node, "name")?.text;
         const value = field5(node, "type");
-        if (name10 !== void 0 && value !== null && (value.type === "function_type" || value.descendantsOfType("function_type").length > 0)) facts.types.push({ name: name10, kind: "function-type", line });
+        if (name11 !== void 0 && value !== null && (value.type === "function_type" || value.descendantsOfType("function_type").length > 0)) facts.types.push({ name: name11, kind: "function-type", line });
         break;
       }
       case "struct_item":
       case "enum_item":
       case "union_item": {
-        const name10 = field5(node, "name")?.text;
-        if (name10 !== void 0) {
-          facts.classes.push({ name: name10, line, heritage: [], constructorTypes: [] });
-          nextOwner = name10;
+        const name11 = field5(node, "name")?.text;
+        if (name11 !== void 0) {
+          facts.classes.push({ name: name11, line, heritage: [], constructorTypes: [] });
+          nextOwner = name11;
         }
         break;
       }
@@ -12633,13 +12633,13 @@ function extractFileCensus8(root) {
         break;
       }
       case "function_item": {
-        const name10 = field5(node, "name")?.text;
-        if (name10 !== void 0) facts.functions.push({ name: owner === null ? name10 : `${owner}.${name10}`, line, parameters: parametersOf7(node) });
+        const name11 = field5(node, "name")?.text;
+        if (name11 !== void 0) facts.functions.push({ name: owner === null ? name11 : `${owner}.${name11}`, line, parameters: parametersOf7(node) });
         break;
       }
       case "attribute_item": {
         const attribute2 = node.namedChildren.find((child) => child.type === "attribute");
-        if (attribute2 !== void 0) for (const name10 of attributeNames(attribute2)) facts.decorators.push({ line, name: name10 });
+        if (attribute2 !== void 0) for (const name11 of attributeNames(attribute2)) facts.decorators.push({ line, name: name11 });
         return;
       }
       case "field_declaration":
@@ -12647,13 +12647,13 @@ function extractFileCensus8(root) {
       case "const_item":
       case "let_declaration": {
         const nameNode = field5(node, node.type === "let_declaration" ? "pattern" : "name");
-        const name10 = nameNode?.type === "identifier" || nameNode?.type === "field_identifier" ? nameNode.text : void 0;
-        if (name10 !== void 0 && registryName8.test(name10)) {
+        const name11 = nameNode?.type === "identifier" || nameNode?.type === "field_identifier" ? nameNode.text : void 0;
+        if (name11 !== void 0 && registryName8.test(name11)) {
           const declared = field5(node, "type");
           const value = field5(node, "value");
           const typeNames2 = annotation6(declared, /* @__PURE__ */ new Set()).names;
           const constructs9 = value?.type === "call_expression" && mapTypes4.test(nameOf2(field5(field5(value, "function") ?? value, "path")) ?? "");
-          if (typeNames2.some((type) => mapTypes4.test(type)) || constructs9) facts.keyedMaps.push({ line, name: name10 });
+          if (typeNames2.some((type) => mapTypes4.test(type)) || constructs9) facts.keyedMaps.push({ line, name: name11 });
         }
         break;
       }
@@ -12675,13 +12675,13 @@ function extractFileCensus8(root) {
         break;
       }
       case "macro_invocation": {
-        const name10 = lastName7(field5(node, "macro"));
-        if (name10 !== null) facts.calls.push({ line, receiver: null, method: name10 });
+        const name11 = lastName7(field5(node, "macro"));
+        if (name11 !== null) facts.calls.push({ line, receiver: null, method: name11 });
         break;
       }
       case "struct_expression": {
-        const name10 = nameOf2(field5(node, "name"));
-        if (name10 !== null) facts.news.push({ line, name: name10 });
+        const name11 = nameOf2(field5(node, "name"));
+        if (name11 !== null) facts.news.push({ line, name: name11 });
         break;
       }
       default:
@@ -12719,10 +12719,10 @@ var PathResolver = class {
     }
     const place = this.tree.placeOf(from);
     const names = declaration.split("::");
-    const name10 = names.pop();
+    const name11 = names.pop();
     let directory = moduleDirectory(from, place?.root ?? from);
     for (const inline of names) directory = posix15.join(directory, inline);
-    const file = this.tree.child(directory, name10);
+    const file = this.tree.child(directory, name11);
     return file === void 0 ? { kind: "not-found" } : { kind: "file", path: file };
   }
   usedPath(from, segments) {
@@ -12752,9 +12752,9 @@ var PathResolver = class {
     return { kind: "file", path: walked.file };
   }
   /** The crate a name in a `use` path stands for: the importing crate's own library, one of its path dependencies, or a crate of the tree by that name. */
-  crateNamed(importer, name10) {
-    if (importer?.libName === name10) return importer;
-    const dependency = importer?.dependencies.get(name10);
+  crateNamed(importer, name11) {
+    if (importer?.libName === name11) return importer;
+    const dependency = importer?.dependencies.get(name11);
     if (dependency !== void 0) return this.tree.crates.find((crate) => crate.dir === dependency && crate.name !== null);
     return void 0;
   }
@@ -12944,66 +12944,66 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function readSettings(config) {
-  const section = config.effective[TOOL];
+  const section2 = config.effective[TOOL];
   const at = (key) => `${TOOL}.${key}`;
-  const number = (value, where, min, max = Infinity) => {
+  const number2 = (value, where, min, max = Infinity) => {
     if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
       throw configError(`code-health.json: ${where} must be a number from ${min}${max === Infinity ? "" : ` to ${max}`}`);
     }
     return value;
   };
   const optionalString = (key) => {
-    const value = section[key];
+    const value = section2[key];
     if (value !== null && (typeof value !== "string" || value === "")) {
       throw configError(`code-health.json: ${at(key)} must be a revision name or null`);
     }
     return value;
   };
-  const requested = section.metrics;
+  const requested = section2.metrics;
   if (!Array.isArray(requested) || requested.some((metric) => typeof metric !== "string" || !isMetricId(metric))) {
     throw configError(`code-health.json: ${at("metrics")} must list metrics from ${metricIds.join(", ")}`);
   }
   const metrics = metricIds.filter((metric) => requested.includes(metric));
-  if (section.cyclomaticSwitch !== "case" && section.cyclomaticSwitch !== "modified") {
+  if (section2.cyclomaticSwitch !== "case" && section2.cyclomaticSwitch !== "modified") {
     throw configError(`code-health.json: ${at("cyclomaticSwitch")} must be "case" or "modified"`);
   }
-  const guidelines = readGuidelines(section.guidelines, at("guidelines"), number);
-  const overrides = readOverrides(section.overrides, at("overrides"), number, guidelines);
+  const guidelines = readGuidelines(section2.guidelines, at("guidelines"), number2);
+  const overrides = readOverrides(section2.overrides, at("overrides"), number2, guidelines);
   return {
     metrics,
     guidelines,
     overrides,
-    cyclomaticSwitch: section.cyclomaticSwitch,
+    cyclomaticSwitch: section2.cyclomaticSwitch,
     base: optionalString("base"),
     mainBranch: optionalString("mainBranch"),
-    delta: number(section.delta, at("delta"), 0),
-    agreementBar: number(section.agreementBar, at("agreementBar"), 0, 1),
-    syntaxErrorPercent: number(section.syntaxErrorPercent, at("syntaxErrorPercent"), 0, 100),
-    moveSimilarity: number(section.moveSimilarity, at("moveSimilarity"), 0, 1),
-    analyseTests: section.analyseTests === true,
-    changeWeighting: section.changeWeighting === true,
-    windowMonths: number(section.windowMonths, at("windowMonths"), 1),
-    maxChangesetSize: number(section.maxChangesetSize, at("maxChangesetSize"), 1),
-    botPatterns: section.botPatterns,
-    fix: readFixClassifier(section),
+    delta: number2(section2.delta, at("delta"), 0),
+    agreementBar: number2(section2.agreementBar, at("agreementBar"), 0, 1),
+    syntaxErrorPercent: number2(section2.syntaxErrorPercent, at("syntaxErrorPercent"), 0, 100),
+    moveSimilarity: number2(section2.moveSimilarity, at("moveSimilarity"), 0, 1),
+    analyseTests: section2.analyseTests === true,
+    changeWeighting: section2.changeWeighting === true,
+    windowMonths: number2(section2.windowMonths, at("windowMonths"), 1),
+    maxChangesetSize: number2(section2.maxChangesetSize, at("maxChangesetSize"), 1),
+    botPatterns: section2.botPatterns,
+    fix: readFixClassifier(section2),
     fixes: {
-      maxCommits: section.fixes.maxCommits === null ? null : number(section.fixes.maxCommits, at("fixes.maxCommits"), 1),
-      evidence: number(section.fixes.evidence, at("fixes.evidence"), 0),
-      minRevisions: number(section.fixes.minRevisions, at("fixes.minRevisions"), 1)
+      maxCommits: section2.fixes.maxCommits === null ? null : number2(section2.fixes.maxCommits, at("fixes.maxCommits"), 1),
+      evidence: number2(section2.fixes.evidence, at("fixes.evidence"), 0),
+      minRevisions: number2(section2.fixes.minRevisions, at("fixes.minRevisions"), 1)
     },
-    shallowDepth: number(section.interfaceDepth.shallow, at("interfaceDepth.shallow"), 0),
+    shallowDepth: number2(section2.interfaceDepth.shallow, at("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
     isTest: testClassifier(config.effective.testPatterns),
     languageProfiles: readLanguageProfiles(config.effective.languages)
   };
 }
-function readFixClassifier(section) {
+function readFixClassifier(section2) {
   try {
     return compileFixClassifier({
-      fixPatterns: section.fixPatterns,
-      fixExcludePatterns: section.fixExcludePatterns,
-      revertPatterns: section.revertPatterns,
-      fixMatchBody: section.fixMatchBody === true
+      fixPatterns: section2.fixPatterns,
+      fixExcludePatterns: section2.fixExcludePatterns,
+      revertPatterns: section2.revertPatterns,
+      fixMatchBody: section2.fixMatchBody === true
     });
   } catch (error) {
     if (error instanceof InvalidPatternError) throw configError(`code-health.json: ${error.message}`);
@@ -13011,31 +13011,31 @@ function readFixClassifier(section) {
   }
 }
 function readLanguageProfiles(languages) {
-  for (const [extension, name10] of Object.entries(languages)) {
-    if (!(name10 in profiles)) {
-      throw configError(`code-health.json: languages.${extension} names the lexer profile "${name10}", which does not exist: use one of ${Object.keys(profiles).join(", ")}`);
+  for (const [extension, name11] of Object.entries(languages)) {
+    if (!(name11 in profiles)) {
+      throw configError(`code-health.json: languages.${extension} names the lexer profile "${name11}", which does not exist: use one of ${Object.keys(profiles).join(", ")}`);
     }
   }
   return languages;
 }
-function readGuidelines(value, where, number) {
+function readGuidelines(value, where, number2) {
   const source = value;
-  const level = (name10) => {
-    const { warn, high } = source[name10];
-    const checked = { warn: number(warn, `${where}.${name10}.warn`, 0), high: number(high, `${where}.${name10}.high`, 0) };
-    if (checked.high < checked.warn) throw configError(`code-health.json: ${where}.${name10}.high must not be below warn`);
+  const level = (name11) => {
+    const { warn, high } = source[name11];
+    const checked = { warn: number2(warn, `${where}.${name11}.warn`, 0), high: number2(high, `${where}.${name11}.high`, 0) };
+    if (checked.high < checked.warn) throw configError(`code-health.json: ${where}.${name11}.high must not be below warn`);
     return checked;
   };
   return {
     cyclomatic: level("cyclomatic"),
     cognitive: level("cognitive"),
-    nesting: number(source.nesting, `${where}.nesting`, 0),
-    parameters: number(source.parameters, `${where}.parameters`, 0),
-    bumps: number(source.bumps, `${where}.bumps`, 1),
-    deepBumps: number(source.deepBumps, `${where}.deepBumps`, 1)
+    nesting: number2(source.nesting, `${where}.nesting`, 0),
+    parameters: number2(source.parameters, `${where}.parameters`, 0),
+    bumps: number2(source.bumps, `${where}.bumps`, 1),
+    deepBumps: number2(source.deepBumps, `${where}.deepBumps`, 1)
   };
 }
-function readOverrides(value, where, number, global) {
+function readOverrides(value, where, number2, global) {
   if (!Array.isArray(value)) throw configError(`code-health.json: ${where} must be an array`);
   return value.map((entry, index) => {
     const here = `${where}[${index}]`;
@@ -13043,16 +13043,16 @@ function readOverrides(value, where, number, global) {
       throw configError(`code-health.json: ${here} needs "paths", an array of globs, and "guidelines"`);
     }
     if (!isRecord(entry.guidelines)) throw configError(`code-health.json: ${here}.guidelines must be an object`);
-    const merged = mergeGuidelines(global, entry.guidelines, `${here}.guidelines`, number);
-    for (const name10 of ["cyclomatic", "cognitive"]) {
-      if (merged[name10].high < merged[name10].warn) {
-        throw configError(`code-health.json: ${here}.guidelines.${name10}.high must not be below warn (${merged[name10].warn}); set both when raising warn`);
+    const merged = mergeGuidelines(global, entry.guidelines, `${here}.guidelines`, number2);
+    for (const name11 of ["cyclomatic", "cognitive"]) {
+      if (merged[name11].high < merged[name11].warn) {
+        throw configError(`code-health.json: ${here}.guidelines.${name11}.high must not be below warn (${merged[name11].warn}); set both when raising warn`);
       }
     }
     return { matches: compileGlobs(entry.paths), guidelines: entry.guidelines };
   });
 }
-function mergeGuidelines(base, patch, where, number) {
+function mergeGuidelines(base, patch, where, number2) {
   if (!isRecord(patch)) throw configError(`code-health.json: ${where} must be an object`);
   const merged = { cyclomatic: { ...base.cyclomatic }, cognitive: { ...base.cognitive }, nesting: base.nesting, parameters: base.parameters, bumps: base.bumps, deepBumps: base.deepBumps };
   for (const [key, entry] of Object.entries(patch)) {
@@ -13060,12 +13060,12 @@ function mergeGuidelines(base, patch, where, number) {
       if (!isRecord(entry)) throw configError(`code-health.json: ${where}.${key} must be an object with warn and high`);
       for (const [level, limit] of Object.entries(entry)) {
         if (level !== "warn" && level !== "high") throw configError(`code-health.json: ${where}.${key}.${level} is an unknown setting`);
-        merged[key][level] = number(limit, `${where}.${key}.${level}`, 0);
+        merged[key][level] = number2(limit, `${where}.${key}.${level}`, 0);
       }
     } else if (key === "nesting" || key === "parameters") {
-      merged[key] = number(entry, `${where}.${key}`, 0);
+      merged[key] = number2(entry, `${where}.${key}`, 0);
     } else if (key === "bumps" || key === "deepBumps") {
-      merged[key] = number(entry, `${where}.${key}`, 1);
+      merged[key] = number2(entry, `${where}.${key}`, 1);
     } else {
       throw configError(`code-health.json: ${where}.${key} is an unknown setting`);
     }
@@ -13134,10 +13134,10 @@ var MAX_UNIT = 8;
 function isIndentLine(line) {
   return line.kind === "code" && !line.startsInLiteral;
 }
-function detectIndentUnit(lines) {
+function detectIndentUnit(lines2) {
   const votes = /* @__PURE__ */ new Map();
   let previous = 0;
-  for (const line of lines) {
+  for (const line of lines2) {
     if (!isIndentLine(line)) continue;
     if (line.text.startsWith("	")) {
       previous = 0;
@@ -13150,31 +13150,31 @@ function detectIndentUnit(lines) {
   }
   let best = DEFAULT_UNIT;
   let bestVotes = 0;
-  for (const [unit, count3] of [...votes].sort((a, b) => a[0] - b[0])) {
-    if (count3 > bestVotes) {
+  for (const [unit, count4] of [...votes].sort((a, b) => a[0] - b[0])) {
+    if (count4 > bestVotes) {
       best = unit;
-      bestVotes = count3;
+      bestVotes = count4;
     }
   }
   return best;
 }
-function leadingSpaces(text2) {
+function leadingSpaces(text3) {
   let width = 0;
-  while (text2[width] === " ") width++;
+  while (text3[width] === " ") width++;
   return width;
 }
-function levelOf(text2, unit) {
+function levelOf(text3, unit) {
   let tabs = 0;
-  while (text2[tabs] === "	") tabs++;
+  while (text3[tabs] === "	") tabs++;
   let spaces = 0;
-  while (text2[tabs + spaces] === " ") spaces++;
+  while (text3[tabs + spaces] === " ") spaces++;
   return tabs + Math.floor(spaces / unit);
 }
-function indentationMetrics(lines) {
-  const indentUnit = detectIndentUnit(lines);
+function indentationMetrics(lines2) {
+  const indentUnit = detectIndentUnit(lines2);
   let indentationComplexity = 0;
   let maxIndent = 0;
-  for (const line of lines) {
+  for (const line of lines2) {
     if (!isIndentLine(line)) continue;
     const level = levelOf(line.text, indentUnit);
     indentationComplexity += level;
@@ -13182,14 +13182,14 @@ function indentationMetrics(lines) {
   }
   return { indentUnit, indentationComplexity, maxIndent };
 }
-function lengthMetrics(lines) {
+function lengthMetrics(lines2) {
   let nonBlankLines = 0;
   let codeLines = 0;
-  for (const line of lines) {
+  for (const line of lines2) {
     if (line.kind !== "blank") nonBlankLines++;
     if (line.kind === "code" || line.kind === "literal") codeLines++;
   }
-  return { lineCount: lines.length, nonBlankLines, codeLines };
+  return { lineCount: lines2.length, nonBlankLines, codeLines };
 }
 
 // packages/lexical/src/blocks.ts
@@ -13216,31 +13216,31 @@ function classifyHeader(segments, profile) {
     return trimmed !== "" && !noise.some((pattern) => pattern.test(trimmed));
   });
   if (kept.length === 0) return { kind: "other" };
-  const text2 = kept.map((segment3) => segment3.text.trim()).join(" ").replace(/\s+/g, " ");
+  const text3 = kept.map((segment3) => segment3.text.trim()).join(" ").replace(/\s+/g, " ");
   const line = kept[0].line;
-  if (control.test(text2)) return { kind: "other" };
+  if (control.test(text3)) return { kind: "other" };
   for (const pattern of types) {
-    const match = pattern.exec(text2);
+    const match = pattern.exec(text3);
     if (match?.groups?.name !== void 0) return { kind: "type", name: cleanName(match.groups.name), line };
   }
   for (const pattern of functions) {
-    const match = pattern.exec(text2);
+    const match = pattern.exec(text3);
     if (match !== null) {
-      const name10 = match.groups?.name;
-      return { kind: "function", name: name10 === void 0 ? void 0 : cleanName(name10), line };
+      const name11 = match.groups?.name;
+      return { kind: "function", name: name11 === void 0 ? void 0 : cleanName(name11), line };
     }
   }
   return { kind: "other" };
 }
-function cleanName(name10) {
-  return name10.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
+function cleanName(name11) {
+  return name11.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
 }
-function findFunctionBlocks(lines, profile) {
-  const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines, profile) : findBracedBlocks(lines, profile);
+function findFunctionBlocks(lines2, profile) {
+  const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines2, profile) : findBracedBlocks(lines2, profile);
   return blocks.sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
 }
-function qualify(scopes2, name10) {
-  return name10 === void 0 ? void 0 : [...scopes2, name10].join(".");
+function qualify(scopes2, name11) {
+  return name11 === void 0 ? void 0 : [...scopes2, name11].join(".");
 }
 var modifiers = "(?:(?:public|private|protected|static|readonly|override|declare|export)\\s+)*";
 var boundArrow = [
@@ -13260,19 +13260,19 @@ function isPlainEquals(code, index) {
   return code[index + 1] !== "=" && code[index + 1] !== ">" && !/[-+*/%&|^!<>=]/.test(code[index - 1] ?? "");
 }
 function endsStatement(code, following) {
-  const text2 = code.trimEnd();
-  if (text2 === "" || /[-+*/%&|^?:=<.,([!~]$/.test(text2) || /(?:^|\s)>$/.test(text2) || text2.endsWith("->")) return false;
+  const text3 = code.trimEnd();
+  if (text3 === "" || /[-+*/%&|^?:=<.,([!~]$/.test(text3) || /(?:^|\s)>$/.test(text3) || text3.endsWith("->")) return false;
   return !continuesFromStart.test(following) && !following.startsWith("{") && !/^else\b/.test(following);
 }
-function angleBalanced(text2) {
-  const flat = text2.replace(/=>|->/g, "");
+function angleBalanced(text3) {
+  const flat = text3.replace(/=>|->/g, "");
   return (flat.match(/</g)?.length ?? 0) <= (flat.match(/>/g)?.length ?? 0);
 }
-function findBracedBlocks(lines, profile) {
+function findBracedBlocks(lines2, profile) {
   const closed = [];
   const stack = [];
-  const codeLines = lines.filter((line) => line.kind === "code");
-  let header = [];
+  const codeLines = lines2.filter((line) => line.kind === "code");
+  let header2 = [];
   let parenDepth = 0;
   let arrow;
   let inDeclaration = false;
@@ -13282,7 +13282,7 @@ function findBracedBlocks(lines, profile) {
     if (statementEnd === void 0 || code === "") return false;
     return /^["'`]/.test(line.text.slice(code.length).trimStart()) || statementEnd.test(code);
   };
-  const headerText = (extra) => [...header.map((part) => part.text), extra].join(" ").replace(/\s+/g, " ").trim();
+  const headerText = (extra) => [...header2.map((part) => part.text), extra].join(" ").replace(/\s+/g, " ").trim();
   const closeArrow = () => {
     if (arrow === void 0) return;
     arrow.block.endLine = arrow.lastLine;
@@ -13292,7 +13292,7 @@ function findBracedBlocks(lines, profile) {
   const openExpressionBody = (before, line) => {
     const top = stack[stack.length - 1];
     if (top?.typeOnly === true) return false;
-    const kept = [...header, { line: line.number, text: before }];
+    const kept = [...header2, { line: line.number, text: before }];
     const classification = classifyHeader(kept, profile);
     if (classification.kind !== "function") return false;
     const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
@@ -13310,42 +13310,42 @@ function findBracedBlocks(lines, profile) {
     if (rest.startsWith("{") || rest === "" && nextLine?.startsWith("{")) return false;
     const top = stack[stack.length - 1];
     if (top?.typeOnly === true || parenDepth > 0) return false;
-    const kept = [...header, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
+    const kept = [...header2, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
     if (kept.length === 0) return false;
-    const text2 = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
-    let name10;
+    const text3 = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
+    let name11;
     let matched = false;
     const members2 = compile2(profile).members;
     if (members2 !== void 0) {
-      const found = members2.map((pattern) => pattern.exec(text2)).find((match) => match !== null);
+      const found = members2.map((pattern) => pattern.exec(text3)).find((match) => match !== null);
       if (found === void 0) return false;
-      name10 = found?.groups?.name;
+      name11 = found?.groups?.name;
       matched = true;
     }
     for (const [i2, pattern] of members2 === void 0 ? [...boundArrow.entries()] : []) {
-      const match = pattern.exec(text2);
+      const match = pattern.exec(text3);
       if (match === null) continue;
-      if (i2 === 0 && !inDeclaration && !keywordAssignment.test(text2) && top?.name === void 0) continue;
+      if (i2 === 0 && !inDeclaration && !keywordAssignment.test(text3) && top?.name === void 0) continue;
       if (i2 === 1 && (top === void 0 || top.name !== void 0)) continue;
-      name10 = match.groups?.name;
+      name11 = match.groups?.name;
       matched = true;
       break;
     }
     if (!matched) return false;
     const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
     const block = { startLine: kept[0].line, endLine: -1, source: "lexical" };
-    if (name10 !== void 0) {
-      block.name = cleanName(name10);
+    if (name11 !== void 0) {
+      block.name = cleanName(name11);
       block.qualifiedName = qualify(names, block.name);
     }
-    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text2) };
+    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text3) };
     return true;
   };
   for (const [index, line] of codeLines.entries()) {
     let segment3 = "";
     const code = line.code;
     if (profile.expressionArrows === true && arrow === void 0 && parenDepth === 0 && keywordAssignment.test(code.trim())) {
-      header = [];
+      header2 = [];
       inDeclaration = false;
     }
     for (let i2 = 0; i2 < code.length; i2++) {
@@ -13355,7 +13355,7 @@ function findBracedBlocks(lines, profile) {
         if (ch === ";" || ch === "," && profile.expressionArrows === true) {
           inDeclaration = ch === "," && arrow.declaration;
           closeArrow();
-          header = [];
+          header2 = [];
           segment3 = "";
           continue;
         }
@@ -13384,44 +13384,44 @@ function findBracedBlocks(lines, profile) {
         }
       } else if (ch === ";" && parenDepth === 0) {
         inDeclaration = false;
-        header = [];
+        header2 = [];
         segment3 = "";
         continue;
       } else if (ch === "," && parenDepth === 0 && profile.expressionArrows === true && arrow === void 0 && !/\b(?:class|interface|implements|extends|enum|namespace|type)\b/.test(headerText(segment3)) && angleBalanced(headerText(segment3))) {
         inDeclaration = inDeclaration || keywordAssignment.test(headerText(segment3));
-        header = [];
+        header2 = [];
         segment3 = "";
         continue;
       } else if (ch === "{") {
-        header.push({ line: line.number, text: segment3 });
-        if (parenDepth > 0 && /(?:[(,=:]|\b(?:struct|interface))\s*$/.test(header.map((part) => part.text).join(" "))) {
-          stack.push({ name: void 0, block: void 0, parenDepth, resume: header });
-          header = [];
+        header2.push({ line: line.number, text: segment3 });
+        if (parenDepth > 0 && /(?:[(,=:]|\b(?:struct|interface))\s*$/.test(header2.map((part) => part.text).join(" "))) {
+          stack.push({ name: void 0, block: void 0, parenDepth, resume: header2 });
+          header2 = [];
           segment3 = "";
           continue;
         }
-        const classification = classifyHeader(header, profile);
+        const classification = classifyHeader(header2, profile);
         const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
         let block;
-        let name10;
+        let name11;
         if (classification.kind === "function") {
-          name10 = classification.name;
+          name11 = classification.name;
           block = { startLine: classification.line, endLine: -1, source: "lexical" };
-          if (name10 !== void 0) {
-            block.name = name10;
-            block.qualifiedName = qualify(names, name10);
+          if (name11 !== void 0) {
+            block.name = name11;
+            block.qualifiedName = qualify(names, name11);
           }
-        } else if (classification.kind === "type") name10 = classification.name;
+        } else if (classification.kind === "type") name11 = classification.name;
         const typeOnly = /^(?:export\s+)?(?:declare\s+)?(?:interface|type)\b/.test(headerText(""));
-        stack.push({ name: name10, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
-        header = [];
+        stack.push({ name: name11, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
+        header2 = [];
         segment3 = "";
         continue;
       } else if (ch === "}") {
         const scope = stack.pop();
         if (scope?.resume !== void 0) {
           parenDepth = scope.parenDepth;
-          header = scope.resume;
+          header2 = scope.resume;
           segment3 = "{}";
           continue;
         }
@@ -13432,21 +13432,21 @@ function findBracedBlocks(lines, profile) {
             closed.push(scope.block);
           }
         }
-        header = [];
+        header2 = [];
         segment3 = "";
         continue;
       }
       segment3 += ch;
     }
-    header.push({ line: line.number, text: segment3 });
-    if (parenDepth === 0 && arrow === void 0 && endsLineWithoutSemicolon(line)) header = [];
-    if (profile.newlineEndsStatements === true && arrow === void 0 && parenDepth === 0 && endsStatement(code, codeLines[index + 1]?.code.trim() ?? "")) header = [];
+    header2.push({ line: line.number, text: segment3 });
+    if (parenDepth === 0 && arrow === void 0 && endsLineWithoutSemicolon(line)) header2 = [];
+    if (profile.newlineEndsStatements === true && arrow === void 0 && parenDepth === 0 && endsStatement(code, codeLines[index + 1]?.code.trim() ?? "")) header2 = [];
     if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
-      const text2 = code.trimEnd();
+      const text3 = code.trimEnd();
       const following = codeLines[index + 1]?.code.trim() ?? "";
-      if (text2 !== "" && !continuesExpression.test(text2) && !continuesFromStart.test(following) && !(profile.expressionBodies === true && /^else\b/.test(following))) {
+      if (text3 !== "" && !continuesExpression.test(text3) && !continuesFromStart.test(following) && !(profile.expressionBodies === true && /^else\b/.test(following))) {
         closeArrow();
-        header = [];
+        header2 = [];
       }
     }
   }
@@ -13456,8 +13456,8 @@ function findBracedBlocks(lines, profile) {
 function previousCodeLine(codeLines, index) {
   return codeLines[Math.max(0, index - 1)].number;
 }
-function findIndentedBlocks(lines, profile) {
-  const unit = detectIndentUnit(lines);
+function findIndentedBlocks(lines2, profile) {
+  const unit = detectIndentUnit(lines2);
   const closed = [];
   const stack = [];
   let lastBodyLine = 0;
@@ -13468,7 +13468,7 @@ function findIndentedBlocks(lines, profile) {
     scope.block.endLine = Math.max(lastBodyLine, scope.block.startLine);
     closed.push(scope.block);
   };
-  for (const line of lines) {
+  for (const line of lines2) {
     if (line.kind === "literal") {
       lastBodyLine = line.number;
       continue;
@@ -13512,8 +13512,8 @@ var openerPatterns = /* @__PURE__ */ new WeakMap();
 function keywordPattern(profile) {
   let pattern = keywordPatterns.get(profile);
   if (pattern === void 0) {
-    const words = `\\b(?:${profile.branchKeywords.join("|")})\\b`;
-    pattern = new RegExp([words, ...profile.shortCircuitOperators].join("|"), "g");
+    const words2 = `\\b(?:${profile.branchKeywords.join("|")})\\b`;
+    pattern = new RegExp([words2, ...profile.shortCircuitOperators].join("|"), "g");
     keywordPatterns.set(profile, pattern);
   }
   return pattern;
@@ -13526,27 +13526,27 @@ function openerPattern(profile) {
   }
   return pattern;
 }
-function keywordComplexity(lines, profile, from = 1, to = lines.length) {
+function keywordComplexity(lines2, profile, from = 1, to = lines2.length) {
   const pattern = keywordPattern(profile);
-  let count3 = 0;
+  let count4 = 0;
   for (let n = from; n <= to; n++) {
-    const line = lines[n - 1];
+    const line = lines2[n - 1];
     if (line === void 0 || line.kind !== "code") continue;
-    count3 += line.code.match(pattern)?.length ?? 0;
+    count4 += line.code.match(pattern)?.length ?? 0;
   }
-  return count3;
+  return count4;
 }
-function blockMetrics(lines, block, profile, options = {}) {
-  const unit = options.indentUnit ?? detectIndentUnit(lines);
+function blockMetrics(lines2, block, profile, options = {}) {
+  const unit = options.indentUnit ?? detectIndentUnit(lines2);
   const threshold = options.bumpDepth ?? DEFAULT_BUMP_DEPTH;
-  const header = lines[block.startLine - 1];
-  const base = levelOf(header.text, unit);
+  const header2 = lines2[block.startLine - 1];
+  const base = levelOf(header2.text, unit);
   let length = 0;
   let indentationComplexity = 0;
   let maxRelative = 0;
   const codeLines = [];
   for (let n = block.startLine; n <= block.endLine; n++) {
-    const line = lines[n - 1];
+    const line = lines2[n - 1];
     if (line.kind === "code" || line.kind === "literal") length++;
     if (line.kind !== "code" || line.startsInLiteral) continue;
     const relative = Math.max(0, levelOf(line.text, unit) - base);
@@ -13558,7 +13558,7 @@ function blockMetrics(lines, block, profile, options = {}) {
     length,
     indentationComplexity,
     maxNesting: Math.max(0, maxRelative - 1),
-    keywordComplexity: keywordComplexity(lines, profile, block.startLine, block.endLine),
+    keywordComplexity: keywordComplexity(lines2, profile, block.startLine, block.endLine),
     ...findBumps(codeLines, profile, threshold)
   };
 }
@@ -13626,14 +13626,14 @@ function compileRules(profile) {
 function stripSource(rawContent, profile) {
   const content = normaliseNewlines(rawContent);
   const mask = profile === void 0 ? new Uint8Array(content.length) : maskLiterals(content, profile);
-  const lines = [];
+  const lines2 = [];
   let start2 = 0;
-  let number = 1;
+  let number2 = 1;
   while (start2 <= content.length) {
     let end = content.indexOf("\n", start2);
     if (end === -1) end = content.length;
     if (end === content.length && start2 === content.length && start2 > 0) break;
-    const text2 = content.slice(start2, end);
+    const text3 = content.slice(start2, end);
     let code = "";
     let sawComment = false;
     for (let i2 = start2; i2 < end; i2++) {
@@ -13645,15 +13645,15 @@ function stripSource(rawContent, profile) {
     }
     const startsInString = start2 > 0 && mask[start2 - 1] === STRING;
     let kind;
-    if (text2.trim() === "") kind = "blank";
+    if (text3.trim() === "") kind = "blank";
     else if (startsInString && code.trim() === "") kind = "literal";
     else if (code.trim() !== "") kind = "code";
     else kind = sawComment || start2 > 0 && mask[start2 - 1] === COMMENT ? "comment" : "code";
-    lines.push({ number, text: text2, code, kind, startsInLiteral: startsInString });
-    number++;
+    lines2.push({ number: number2, text: text3, code, kind, startsInLiteral: startsInString });
+    number2++;
     start2 = end + 1;
   }
-  return lines;
+  return lines2;
 }
 function maskLiterals(content, profile) {
   const mask = new Uint8Array(content.length);
@@ -13769,8 +13769,8 @@ var DEFAULT_AGREEMENT_BAR = 0.9;
 function analyseSource(path, content, options = {}) {
   const selection = selectProfile(path, options.mappings);
   const profile = selection?.profile;
-  const lines = stripSource(content, profile);
-  const file = { ...indentationMetrics(lines), ...lengthMetrics(lines) };
+  const lines2 = stripSource(content, profile);
+  const file = { ...indentationMetrics(lines2), ...lengthMetrics(lines2) };
   const skipped = [];
   const blocks = [];
   if (profile === void 0) {
@@ -13779,9 +13779,9 @@ function analyseSource(path, content, options = {}) {
     skipped.push(`keywordComplexity: ${reason}`);
     skipped.push(`function blocks: ${reason}`);
   } else {
-    file.keywordComplexity = keywordComplexity(lines, profile);
-    for (const block of findFunctionBlocks(lines, profile)) {
-      const metrics = blockMetrics(lines, block, profile, {
+    file.keywordComplexity = keywordComplexity(lines2, profile);
+    for (const block of findFunctionBlocks(lines2, profile)) {
+      const metrics = blockMetrics(lines2, block, profile, {
         indentUnit: file.indentUnit,
         ...options.bumpDepth === void 0 ? {} : { bumpDepth: options.bumpDepth }
       });
@@ -14141,12 +14141,12 @@ var Tree = class _Tree {
       throw new TypeError("Argument must be a Tree");
     }
     C._ts_tree_get_changed_ranges_wasm(this[0], other[0]);
-    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count4 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count3);
-    if (count3 > 0) {
+    const result = new Array(count4);
+    if (count4 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count3; i2++) {
+      for (let i2 = 0; i2 < count4; i2++) {
         result[i2] = unmarshalRange(address);
         address += SIZE_OF_RANGE;
       }
@@ -14157,12 +14157,12 @@ var Tree = class _Tree {
   /** Get the included ranges that were used to parse the syntax tree. */
   getIncludedRanges() {
     C._ts_tree_included_ranges_wasm(this[0]);
-    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count4 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count3);
-    if (count3 > 0) {
+    const result = new Array(count4);
+    if (count4 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count3; i2++) {
+      for (let i2 = 0; i2 < count4; i2++) {
         result[i2] = unmarshalRange(address);
         address += SIZE_OF_RANGE;
       }
@@ -14681,12 +14681,12 @@ var Node = class {
   childrenForFieldId(fieldId) {
     marshalNode(this);
     C._ts_node_children_by_field_id_wasm(this.tree[0], fieldId);
-    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count4 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count3);
-    if (count3 > 0) {
+    const result = new Array(count4);
+    if (count4 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count3; i2++) {
+      for (let i2 = 0; i2 < count4; i2++) {
         result[i2] = unmarshalNode(this.tree, address);
         address += SIZE_OF_NODE;
       }
@@ -14758,12 +14758,12 @@ var Node = class {
     if (!this._children) {
       marshalNode(this);
       C._ts_node_children_wasm(this.tree[0]);
-      const count3 = C.getValue(TRANSFER_BUFFER, "i32");
+      const count4 = C.getValue(TRANSFER_BUFFER, "i32");
       const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-      this._children = new Array(count3);
-      if (count3 > 0) {
+      this._children = new Array(count4);
+      if (count4 > 0) {
         let address = buffer;
-        for (let i2 = 0; i2 < count3; i2++) {
+        for (let i2 = 0; i2 < count4; i2++) {
           this._children[i2] = unmarshalNode(this.tree, address);
           address += SIZE_OF_NODE;
         }
@@ -14781,12 +14781,12 @@ var Node = class {
     if (!this._namedChildren) {
       marshalNode(this);
       C._ts_node_named_children_wasm(this.tree[0]);
-      const count3 = C.getValue(TRANSFER_BUFFER, "i32");
+      const count4 = C.getValue(TRANSFER_BUFFER, "i32");
       const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-      this._namedChildren = new Array(count3);
-      if (count3 > 0) {
+      this._namedChildren = new Array(count4);
+      if (count4 > 0) {
         let address = buffer;
-        for (let i2 = 0; i2 < count3; i2++) {
+        for (let i2 = 0; i2 < count4; i2++) {
           this._namedChildren[i2] = unmarshalNode(this.tree, address);
           address += SIZE_OF_NODE;
         }
@@ -15231,12 +15231,12 @@ var Language = class _Language {
    */
   get supertypes() {
     C._ts_language_supertypes_wasm(this[0]);
-    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count4 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count3);
-    if (count3 > 0) {
+    const result = new Array(count4);
+    if (count4 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count3; i2++) {
+      for (let i2 = 0; i2 < count4; i2++) {
         result[i2] = C.getValue(address, "i16");
         address += SIZE_OF_SHORT;
       }
@@ -15248,12 +15248,12 @@ var Language = class _Language {
    */
   subtypes(supertype) {
     C._ts_language_subtypes_wasm(this[0], supertype);
-    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count4 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count3);
-    if (count3 > 0) {
+    const result = new Array(count4);
+    if (count4 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count3; i2++) {
+      for (let i2 = 0; i2 < count4; i2++) {
         result[i2] = C.getValue(address, "i16");
         address += SIZE_OF_SHORT;
       }
@@ -15411,13 +15411,13 @@ async function Module2(moduleArg = {}) {
       }
       readAsync = /* @__PURE__ */ __name(async (url) => {
         if (isFileURI(url)) {
-          return new Promise((resolve, reject) => {
+          return new Promise((resolve2, reject) => {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
             xhr.responseType = "arraybuffer";
             xhr.onload = () => {
               if (xhr.status == 200 || xhr.status == 0 && xhr.response) {
-                resolve(xhr.response);
+                resolve2(xhr.response);
                 return;
               }
               reject(xhr.status);
@@ -15613,9 +15613,9 @@ async function Module2(moduleArg = {}) {
     __name(receiveInstantiationResult, "receiveInstantiationResult");
     var info2 = getWasmImports();
     if (Module["instantiateWasm"]) {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve2, reject) => {
         Module["instantiateWasm"](info2, (mod, inst) => {
-          resolve(receiveInstance(mod, inst));
+          resolve2(receiveInstance(mod, inst));
         });
       });
     }
@@ -15790,8 +15790,8 @@ async function Module2(moduleArg = {}) {
       } else if (subsectionType === WASM_DYLINK_NEEDED) {
         customSection.neededDynlibs = getStringList();
       } else if (subsectionType === WASM_DYLINK_EXPORT_INFO) {
-        var count3 = getLEB();
-        while (count3--) {
+        var count4 = getLEB();
+        while (count4--) {
           var symname = getString();
           var flags2 = getLEB();
           if (flags2 & WASM_SYMBOL_TLS) {
@@ -15799,8 +15799,8 @@ async function Module2(moduleArg = {}) {
           }
         }
       } else if (subsectionType === WASM_DYLINK_IMPORT_INFO) {
-        var count3 = getLEB();
-        while (count3--) {
+        var count4 = getLEB();
+        while (count4--) {
           var modname = getString();
           var symname = getString();
           var flags2 = getLEB();
@@ -15959,9 +15959,9 @@ async function Module2(moduleArg = {}) {
     }
     return func2;
   }, "getWasmTableEntry");
-  var updateTableMap = /* @__PURE__ */ __name((offset, count3) => {
+  var updateTableMap = /* @__PURE__ */ __name((offset, count4) => {
     if (functionsInTableMap) {
-      for (var i2 = offset; i2 < offset + count3; i2++) {
+      for (var i2 = offset; i2 < offset + count4; i2++) {
         var item = getWasmTableEntry(i2);
         if (item) {
           functionsInTableMap.set(item, i2);
@@ -16948,8 +16948,8 @@ async function Module2(moduleArg = {}) {
   if (runtimeInitialized) {
     moduleRtn = Module;
   } else {
-    moduleRtn = new Promise((resolve, reject) => {
-      readyPromiseResolve = resolve;
+    moduleRtn = new Promise((resolve2, reject) => {
+      readyPromiseResolve = resolve2;
       readyPromiseReject = reject;
     });
   }
@@ -17136,12 +17136,12 @@ var Parser = class {
   /** Get the ranges of text that the parser will include when parsing. */
   getIncludedRanges() {
     C._ts_parser_included_ranges_wasm(this[0]);
-    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count4 = C.getValue(TRANSFER_BUFFER, "i32");
     const buffer = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
-    const result = new Array(count3);
-    if (count3 > 0) {
+    const result = new Array(count4);
+    if (count4 > 0) {
       let address = buffer;
-      for (let i2 = 0; i2 < count3; i2++) {
+      for (let i2 = 0; i2 < count4; i2++) {
         result[i2] = unmarshalRange(address);
         address += SIZE_OF_RANGE;
       }
@@ -17285,11 +17285,11 @@ function parseMatchPredicate(steps, index, operator, textPredicates) {
     for (const c of captures) {
       if (c.name === captureName) nodes.push(c.node.text);
     }
-    const test = /* @__PURE__ */ __name((text2, positive) => {
-      return positive ? regex.test(text2) : !regex.test(text2);
+    const test = /* @__PURE__ */ __name((text3, positive) => {
+      return positive ? regex.test(text3) : !regex.test(text3);
     }, "test");
     if (nodes.length === 0) return !isPositive;
-    return matchAll ? nodes.every((text2) => test(text2, isPositive)) : nodes.some((text2) => test(text2, isPositive));
+    return matchAll ? nodes.every((text3) => test(text3, isPositive)) : nodes.some((text3) => test(text3, isPositive));
   });
 }
 __name(parseMatchPredicate, "parseMatchPredicate");
@@ -17319,7 +17319,7 @@ function parseAnyOfPredicate(steps, index, operator, textPredicates) {
       if (c.name === captureName) nodes.push(c.node.text);
     }
     if (nodes.length === 0) return !isPositive;
-    return nodes.every((text2) => values.includes(text2)) === isPositive;
+    return nodes.every((text3) => values.includes(text3)) === isPositive;
   });
 }
 __name(parseAnyOfPredicate, "parseAnyOfPredicate");
@@ -17717,14 +17717,14 @@ var Query = class {
       matchLimit,
       maxStartDepth
     );
-    const count3 = C.getValue(TRANSFER_BUFFER, "i32");
+    const count4 = C.getValue(TRANSFER_BUFFER, "i32");
     const startAddress = C.getValue(TRANSFER_BUFFER + SIZE_OF_INT, "i32");
     const didExceedMatchLimit = C.getValue(TRANSFER_BUFFER + 2 * SIZE_OF_INT, "i32");
     const result = new Array();
     this.exceededMatchLimit = Boolean(didExceedMatchLimit);
     const captures = new Array();
     let address = startAddress;
-    for (let i2 = 0; i2 < count3; i2++) {
+    for (let i2 = 0; i2 < count4; i2++) {
       const patternIndex = C.getValue(address, "i32");
       address += SIZE_OF_INT;
       const captureCount = C.getValue(address, "i32");
@@ -17894,18 +17894,18 @@ var repairPasses = 4;
 function errorCount(node) {
   if (node.isMissing || node.type === "ERROR") return 1;
   if (!node.hasError) return 0;
-  let count3 = 0;
-  for (const child of node.children) count3 += errorCount(child);
-  return Math.max(count3, 1);
+  let count4 = 0;
+  for (const child of node.children) count4 += errorCount(child);
+  return Math.max(count4, 1);
 }
 function repaired(parser, original, source, repairs) {
   let best = original;
-  let text2 = source;
+  let text3 = source;
   for (let pass = 0; pass < repairPasses && best.rootNode.hasError; pass++) {
-    const edits = repairs(best.rootNode, text2);
+    const edits = repairs(best.rootNode, text3);
     if (edits.length === 0) break;
-    for (const { offset, character } of edits) text2 = `${text2.slice(0, offset)}${character}${text2.slice(offset + 1)}`;
-    const next = parser.parse(text2);
+    for (const { offset, character } of edits) text3 = `${text3.slice(0, offset)}${character}${text3.slice(offset + 1)}`;
+    const next = parser.parse(text3);
     if (!next) break;
     if (errorCount(next.rootNode) < errorCount(best.rootNode)) {
       if (best !== original) best.delete();
@@ -17994,21 +17994,21 @@ async function measureTree(tree, options) {
   for (let start2 = 0; start2 < paths.length; start2 += BATCH) {
     const texts = await tree.readMany(paths.slice(start2, start2 + BATCH));
     for (const path of paths.slice(start2, start2 + BATCH)) {
-      const text2 = texts.get(path);
-      if (text2 === void 0) continue;
-      if (text2.length > MAX_BYTES) {
+      const text3 = texts.get(path);
+      if (text3 === void 0) continue;
+      if (text3.length > MAX_BYTES) {
         skippedFiles.large++;
         continue;
       }
-      if (text2.includes("\0")) {
+      if (text3.includes("\0")) {
         skippedFiles.binary++;
         continue;
       }
-      if (adapterForPath(path)?.isGeneratedSource?.(text2) === true) {
+      if (adapterForPath(path)?.isGeneratedSource?.(text3) === true) {
         skippedFiles.excluded++;
         continue;
       }
-      const lexical = analyseSource(path, text2, {
+      const lexical = analyseSource(path, text3, {
         agreementBar: settings.agreementBar,
         mappings: settings.languageProfiles,
         bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path))
@@ -18016,7 +18016,7 @@ async function measureTree(tree, options) {
       const language9 = options.layer === "lexical" ? void 0 : await grammars.forPath(path);
       let structural;
       if (language9 !== void 0) {
-        const { facts, cached } = await factsForBlob(language9, tree.files.get(path), text2, options.cache);
+        const { facts, cached } = await factsForBlob(language9, tree.files.get(path), text3, options.cache);
         if (cached) stats.cached++;
         else stats.parsed++;
         structural = {
@@ -18025,7 +18025,7 @@ async function measureTree(tree, options) {
           syntaxErrors: facts.hasSyntaxErrors
         };
       }
-      files.push(fileRecord(path, text2, lexical, structural, options));
+      files.push(fileRecord(path, text3, lexical, structural, options));
     }
   }
   return { files, skippedFiles, stats };
@@ -18077,7 +18077,7 @@ function structuralUnits(path, units, settings) {
   }
   return records;
 }
-function fileRecord(path, text2, lexical, structural, options) {
+function fileRecord(path, text3, lexical, structural, options) {
   const test = options.settings.isTest(path);
   const skipped = lexical.skipped.filter((reason) => reason.startsWith("comment and string stripping"));
   let units = [];
@@ -18130,7 +18130,7 @@ function fileRecord(path, text2, lexical, structural, options) {
     hasSyntaxErrors: structural?.syntaxErrors ?? false,
     skipped,
     ...agreement === void 0 ? {} : { agreement },
-    ...options.keepText ? { text: text2 } : {}
+    ...options.keepText ? { text: text3 } : {}
   };
 }
 
@@ -18144,8 +18144,8 @@ function parseLayer(value) {
 }
 function parseMetrics(value, settings) {
   if (value === void 0) return settings.metrics;
-  const names = String(value).split(",").map((name10) => name10.trim());
-  const unknown = names.filter((name10) => !isMetricId(name10));
+  const names = String(value).split(",").map((name11) => name11.trim());
+  const unknown = names.filter((name11) => !isMetricId(name11));
   if (unknown.length > 0) throw usageError(`unknown metric ${unknown.join(", ")}; metrics: ${metricIds.join(", ")}`);
   return metricIds.filter((metric) => names.includes(metric));
 }
@@ -18156,23 +18156,23 @@ async function measureCurrent(context, layer) {
   const measurement = await measureTree(current.tree, { settings, layer, cache });
   return { settings, current, measurement };
 }
-function storeReport(context, command9, output) {
-  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command9, output, context.repo.head);
+function storeReport(context, command10, output) {
+  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command10, output, context.repo.head);
 }
-async function cachedAnalysis(context, command9, stated, compute3, cacheable = true, notStorableBecause = () => void 0) {
-  if (!cacheable) return cachedOutput(context, void 0, compute3, (run3) => skipReport(run3, "the run read the history of earlier revisions"));
+async function cachedAnalysis(context, command10, stated, compute4, cacheable = true, notStorableBecause = () => void 0) {
+  if (!cacheable) return cachedOutput(context, void 0, compute4, (run3) => skipReport(run3, "the run read the history of earlier revisions"));
   const uncommitted = await hasUncommittedWork(context);
-  const stored = uncommitted ? void 0 : { identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command: command9, head: context.repo.head, stated };
-  return cachedOutput(context, stored, compute3, (run3) => skipReport(run3, "the run did not analyse HEAD"), notStorableBecause);
+  const stored = uncommitted ? void 0 : { identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command: command10, head: context.repo.head, stated };
+  return cachedOutput(context, stored, compute4, (run3) => skipReport(run3, "the run did not analyse HEAD"), notStorableBecause);
 }
 
 // packages/history/src/landings.ts
-var firstContent = (lines, skip) => lines.findIndex((line) => line.trim() !== "" && !skip.test(line.trim()));
+var firstContent = (lines2, skip) => lines2.findIndex((line) => line.trim() !== "" && !skip.test(line.trim()));
 function landedText(message) {
   const normalised = message.replace(/\r\n/g, "\n").trim();
-  const lines = normalised.split("\n");
-  const subject = lines[0].trim();
-  const body2 = lines.slice(1);
+  const lines2 = normalised.split("\n");
+  const subject = lines2[0].trim();
+  const body2 = lines2.slice(1);
   const bodyTitle = (skip) => {
     const at = firstContent(body2, skip);
     if (at === -1) return { title: null, text: normalised };
@@ -18206,9 +18206,9 @@ async function readLandings(root, tip) {
   const assigned = new Set(line.map((c) => c.sha));
   const landings = [];
   for (const entry of line) {
-    const { title, text: text2 } = landedText(entry.message);
+    const { title, text: text3 } = landedText(entry.message);
     if (entry.parents.length < 2) {
-      landings.push({ id: entry.sha, time: entry.time, how: "direct", title: title ?? entry.message.split("\n", 1)[0].trim(), text: text2, members: [entry.sha], branch: [] });
+      landings.push({ id: entry.sha, time: entry.time, how: "direct", title: title ?? entry.message.split("\n", 1)[0].trim(), text: text3, members: [entry.sha], branch: [] });
       continue;
     }
     const stack = entry.parents.slice(1);
@@ -18229,7 +18229,7 @@ async function readLandings(root, tip) {
       time: entry.time,
       how: "merge",
       title: title ?? entry.message.split("\n", 1)[0].trim(),
-      text: text2,
+      text: text3,
       members: branch.map((commit) => commit.sha),
       branch
     });
@@ -18330,20 +18330,20 @@ function bodiesOf(files, cache) {
       ranges = /* @__PURE__ */ new Map();
       cache.set(source, ranges);
     }
-    let lines;
+    let lines2;
     for (const unit of file.units) {
       const range = `${unit.startLine}-${unit.endLine}`;
       let body2 = ranges.get(range);
       if (body2 === void 0) {
-        lines ??= source.split("\n");
-        const text2 = lines.slice(unit.startLine - 1, unit.endLine).join("\n").replace(/\s+/g, " ").trim();
+        lines2 ??= source.split("\n");
+        const text3 = lines2.slice(unit.startLine - 1, unit.endLine).join("\n").replace(/\s+/g, " ").trim();
         const tokens2 = /* @__PURE__ */ new Map();
         let size = 0;
-        for (const token of text2.match(/[A-Za-z_$][\w$]*|\d+(?:\.\d+)?|"[^"]*"|'[^']*'|`[^`]*`|\S/g) ?? []) {
+        for (const token of text3.match(/[A-Za-z_$][\w$]*|\d+(?:\.\d+)?|"[^"]*"|'[^']*'|`[^`]*`|\S/g) ?? []) {
           tokens2.set(token, (tokens2.get(token) ?? 0) + 1);
           size++;
         }
-        body2 = { text: text2, tokens: tokens2, size };
+        body2 = { text: text3, tokens: tokens2, size };
         ranges.set(range, body2);
       }
       bodies.push({ unit, ...body2 });
@@ -18354,7 +18354,7 @@ function bodiesOf(files, cache) {
 function similarity(a, b) {
   if (a.size === 0 && b.size === 0) return 1;
   let shared = 0;
-  for (const [token, count3] of a.tokens) shared += Math.min(count3, b.tokens.get(token) ?? 0);
+  for (const [token, count4] of a.tokens) shared += Math.min(count4, b.tokens.get(token) ?? 0);
   return shared / (a.size + b.size - shared);
 }
 function matchUnits(before, after, threshold, cache = /* @__PURE__ */ new Map()) {
@@ -18646,12 +18646,12 @@ var includeTestsHelp = "list test code in the same ranking as production code (d
 var wantsTests = (context) => context.values["include-tests"] === true;
 var roleOfTest = (test) => test ? "test" : "production";
 var TEST_ROWS_LISTED = 10;
-function splitRoles(rows, include) {
-  if (include) return { listed: [...rows], tests: null };
-  const tests = rows.filter((row) => row.role === "test");
+function splitRoles(rows5, include) {
+  if (include) return { listed: [...rows5], tests: null };
+  const tests = rows5.filter((row) => row.role === "test");
   const shown = tests.slice(0, TEST_ROWS_LISTED);
   return {
-    listed: rows.filter((row) => row.role === "production"),
+    listed: rows5.filter((row) => row.role === "production"),
     tests: { count: tests.length, listed: shown.length, omitted: tests.length - shown.length, rows: shown }
   };
 }
@@ -18677,12 +18677,12 @@ function exportedTopLevel(file) {
 function depthRows(file, shallow) {
   if (file.interfaces === void 0) return [];
   const exported = exportedUnits(file);
-  const rows = [];
+  const rows5 = [];
   const add = (row) => {
     const { shallowCandidate, ...rest } = row;
     const depth = round(row.nodes / row.interface, 2);
     const labels = [...row.passThrough === null ? [] : ["pass-through"], ...shallowCandidate && row.nodes / row.interface < shallow ? ["shallow"] : []];
-    rows.push({
+    rows5.push({
       path: file.path,
       ...rest,
       depth,
@@ -18723,7 +18723,7 @@ function depthRows(file, shallow) {
       shallowCandidate: true
     });
   }
-  return rows;
+  return rows5;
 }
 function meanDepth(file) {
   const units = exportedTopLevel(file);
@@ -19141,7 +19141,7 @@ async function compute(context, paths) {
   const { listed: unitRows, tests } = splitRoles(allRows, wantsTests(context));
   const withFixes = context.values["with-fixes"] === true;
   const fixes = withFixes ? await measureFixesFor(context, settings, current) : void 0;
-  const rows = fixes === void 0 ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
+  const rows5 = fixes === void 0 ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
   const layers = { structural: 0, lexical: 0, none: 0 };
   for (const file of measurement.files) layers[file.source ?? "none"]++;
   const agreement = Object.fromEntries(
@@ -19185,6 +19185,7 @@ async function compute(context, paths) {
       layers,
       agreement,
       skipped,
+      guidelines: { cognitiveWarn: settings.guidelines.cognitive.warn, cyclomaticWarn: settings.guidelines.cyclomatic.warn, nesting: settings.guidelines.nesting, overrides: settings.overrides.length },
       parseCoverage: {
         parsedFiles,
         filesWithSyntaxErrors: filesWithSyntaxErrors.length,
@@ -19196,7 +19197,7 @@ async function compute(context, paths) {
       skippedFiles: measurement.skippedFiles,
       ...fixes === void 0 ? {} : { fixes: fixHeader(fixes.stats, fixes.request, settings) }
     },
-    results: rows,
+    results: rows5,
     notices: [
       `sorted by ${keys.join(", then ")}`,
       ...tests === null || tests.count === 0 ? [] : [`${tests.count} test functions are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`],
@@ -19263,8 +19264,8 @@ async function changedPaths(root, base, head) {
   const diffArgs = ["diff", "--name-only", "--no-renames", "-z", base];
   const changed = (await runGit(root, head === null ? diffArgs : [...diffArgs, head])).split("\0");
   if (head === null) changed.push(...await untrackedFiles(root));
-  const omitted2 = builtinExcluder(root, [], { record: false });
-  return [...new Set(changed.filter((path) => path !== "" && !omitted2(path)))].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+  const omitted3 = builtinExcluder(root, [], { record: false });
+  return [...new Set(changed.filter((path) => path !== "" && !omitted3(path)))].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
 }
 
 // packages/complexity/src/comparison.ts
@@ -19299,7 +19300,7 @@ var command2 = {
     const target2 = uncommitted ? { kind: "working-tree" } : { kind: "revision", revision: { rev: "HEAD", sha: context.repo.head } };
     const comparison = await compareToBase(context, settings, base, target2);
     const summary = { compared: 0, added: 0, changed: 0, removed: 0, moved: 0, findings: 0 };
-    const rows = [];
+    const rows5 = [];
     for (const match of comparison.matches) {
       const { before, after } = match;
       if (after === void 0) {
@@ -19316,7 +19317,7 @@ var command2 = {
         const was = before?.values[metric];
         const limit = limitOf(guidelines, metric);
         if (before !== void 0 && now - (was ?? 0) <= settings.delta) continue;
-        rows.push({
+        rows5.push({
           path: after.path,
           unit: unitName(after),
           id: after.id,
@@ -19335,13 +19336,13 @@ var command2 = {
         });
       }
     }
-    summary.findings = rows.length;
+    summary.findings = rows5.length;
     return {
       inputs: { base, against: uncommitted ? "working-tree" : "head", delta: settings.delta },
       extra: { summary, changedFiles: comparison.changedFiles, unsupportedFiles: comparison.unsupportedFiles },
-      results: rows,
+      results: rows5,
       columns: ["path", "unit", "finding", "metric", "before", "after", "guideline", "ratio", "delta"],
-      failed: rows.length > 0
+      failed: rows5.length > 0
     };
   }
 };
@@ -19368,20 +19369,20 @@ var command3 = {
     const inPaths = pathSelector(paths);
     const files = measurement.files.filter((file) => inPaths(file.path));
     const all = files.flatMap((file) => depthRows(file, settings.shallowDepth)).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
-    const { listed: rows, tests } = splitRoles(all, wantsTests(context));
+    const { listed: rows5, tests } = splitRoles(all, wantsTests(context));
     const summary = {
       files: files.filter((file) => file.interfaces !== void 0).length,
       filesWithoutAdapter: files.filter((file) => file.interfaces === void 0).length,
-      rows: rows.length,
-      shallow: rows.filter((row) => row.labels.includes("shallow")).length,
-      passThrough: rows.filter((row) => row.passThrough !== null).length,
+      rows: rows5.length,
+      shallow: rows5.filter((row) => row.labels.includes("shallow")).length,
+      passThrough: rows5.filter((row) => row.passThrough !== null).length,
       /** Pass-through functions with no row because the language does not export them. */
       passThroughNotExported: files.reduce((sum, file) => sum + passThroughCount(file), 0) - all.filter((row) => row.passThrough !== null && row.kind !== "module").length
     };
     const output = {
       inputs: { tree: current.kind, paths, shallow: settings.shallowDepth, includeTests: wantsTests(context) },
       extra: { summary, ...tests === null ? {} : { tests }, skippedFiles: measurement.skippedFiles },
-      results: rows,
+      results: rows5,
       columns: ["path", "unit", "kind", "role", "exported", "nodes", "interface", "depth", "passThrough", "labels"],
       notices: tests === null || tests.count === 0 ? [] : [`${tests.count} test rows are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`]
     };
@@ -19425,7 +19426,7 @@ var command4 = {
       head === void 0 ? { kind: "working-tree" } : { kind: "revision", revision: head }
     );
     const summary = { added: 0, changed: 0, removed: 0, moved: 0, unchanged: 0 };
-    const rows = [];
+    const rows5 = [];
     for (const match of comparison.matches) {
       const { before, after } = match;
       if (after === void 0) {
@@ -19440,7 +19441,7 @@ var command4 = {
         continue;
       }
       const guidelines = guidelinesFor(settings, after.path);
-      rows.push({
+      rows5.push({
         path: after.path,
         unit: unitName(after),
         id: after.id,
@@ -19462,7 +19463,7 @@ var command4 = {
         against: head === void 0 ? "working-tree" : "revision"
       },
       extra: { summary, changedFiles: comparison.changedFiles, unsupportedFiles: comparison.unsupportedFiles },
-      results: rows,
+      results: rows5,
       columns: ["path", "unit", "change", "score", "before", "after", "delta", "labels"]
     };
   }
@@ -19626,9 +19627,9 @@ var language8 = {
 var complexityLanguages = Object.values(registered_languages_exports).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 function explainRule(rule, explanation) {
   const notes2 = complexityLanguages.flatMap((language9) => {
-    const lines = language9.ruleNotes[rule];
-    const name10 = adapterById(language9.id)?.name ?? language9.id;
-    return lines === void 0 || lines.length === 0 ? [] : [`${name10}: ${lines.join(" ")}`];
+    const lines2 = language9.ruleNotes[rule];
+    const name11 = adapterById(language9.id)?.name ?? language9.id;
+    return lines2 === void 0 || lines2.length === 0 ? [] : [`${name11}: ${lines2.join(" ")}`];
   });
   return notes2.length === 0 ? explanation : `${explanation}
 ${notes2.join("\n")}`;
@@ -19657,31 +19658,31 @@ var command5 = {
     const path = target2.slice(0, hash2);
     const wanted = target2.slice(hash2 + 1);
     const current = await currentTree(context);
-    const text2 = await current.tree.read(path);
-    if (text2 === void 0) throw usageError(`${path} is not in the ${current.kind === "head" ? "commit at HEAD" : "working tree"}`);
+    const text3 = await current.tree.read(path);
+    if (text3 === void 0) throw usageError(`${path} is not in the ${current.kind === "head" ? "commit at HEAD" : "working tree"}`);
     const stored = {
       identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION2 },
       command: name6,
       head: context.repo.head,
-      stated: { path, unit: wanted, tree: current.kind, content: createHash5("sha256").update(text2).digest("hex") },
+      stated: { path, unit: wanted, tree: current.kind, content: createHash5("sha256").update(text3).digest("hex") },
       describesCommit: true
     };
-    return cachedOutput(context, stored, () => breakdown(context, current, text2, path, wanted), () => void 0);
+    return cachedOutput(context, stored, () => breakdown(context, current, text3, path, wanted), () => void 0);
   }
 };
-async function breakdown(context, current, text2, path, wanted) {
+async function breakdown(context, current, text3, path, wanted) {
   const settings = readSettings(context.config);
   const language9 = await new GrammarSet().forPath(path);
   if (language9 === void 0) throw usageError(`${path} has no structural adapter, so its functions cannot be broken down`);
-  const facts = parseWith(language9.adapter, language9.grammar, text2, { explain: true });
+  const facts = parseWith(language9.adapter, language9.grammar, text3, { explain: true });
   const functions = facts.units.filter((unit2) => unit2.metrics !== void 0);
   const unit = functions.find((candidate) => candidate.qualifiedName === wanted);
   if (unit === void 0 || unit.metrics === void 0 || unit.increments === void 0) {
     const known = functions.slice(0, 20).map((candidate) => candidate.qualifiedName);
     throw usageError(`${path} has no function "${wanted}"; functions: ${known.join(", ") || "none"}${functions.length > known.length ? ", ..." : ""}`);
   }
-  const source = text2.split("\n");
-  const rows = unit.increments.filter((increment) => increment.switchMode === void 0 || increment.switchMode === settings.cyclomaticSwitch).map((increment, index) => ({ increment, index })).sort(
+  const source = text3.split("\n");
+  const rows5 = unit.increments.filter((increment) => increment.switchMode === void 0 || increment.switchMode === settings.cyclomaticSwitch).map((increment, index) => ({ increment, index })).sort(
     (a, b) => a.increment.line - b.increment.line || metricOrder[a.increment.metric] - metricOrder[b.increment.metric] || a.index - b.index
   ).map(({ increment }) => ({
     line: increment.line,
@@ -19705,7 +19706,7 @@ async function breakdown(context, current, text2, path, wanted) {
         cyclomaticSwitch: settings.cyclomaticSwitch
       }
     },
-    results: rows,
+    results: rows5,
     columns: ["line", "metric", "construct", "amount", "nesting", "code"]
   };
 }
@@ -19737,10 +19738,10 @@ var command6 = {
     const layer = parseLayer(context.values.layer);
     const paths = normalisePaths(context.positionals);
     const all = await cachedAnalysis(context, name7, { layer: context.values.layer, paths: paths.length === 0 ? void 0 : paths }, () => compute2(context, layer, paths));
-    const rows = all.results;
-    const listed = wantsTests(context) ? rows : rows.filter((row) => row.role === "production");
-    if (listed.length < rows.length) {
-      for (const row of rows) if (row.role === "test") recordDropped("tests", row.path);
+    const rows5 = all.results;
+    const listed = wantsTests(context) ? rows5 : rows5.filter((row) => row.role === "production");
+    if (listed.length < rows5.length) {
+      for (const row of rows5) if (row.role === "test") recordDropped("tests", row.path);
     }
     return { ...all, inputs: { ...all.inputs, includeTests: wantsTests(context) }, results: listed };
   }
@@ -19748,7 +19749,7 @@ var command6 = {
 async function compute2(context, layer, paths) {
   const { settings, current, measurement } = await measureCurrent(context, layer);
   const inPaths = pathSelector(paths);
-  const rows = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
+  const rows5 = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
     if (isCodePath(file.path, settings.languageProfiles)) return true;
     recordDropped("nonCode", file.path);
     return false;
@@ -19756,7 +19757,7 @@ async function compute2(context, layer, paths) {
   return {
     inputs: { tree: current.kind, layer, paths, includeTests: true },
     extra: { skippedFiles: measurement.skippedFiles },
-    results: rows,
+    results: rows5,
     columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "role", "codeLines"]
   };
 }
@@ -19773,26 +19774,37 @@ var rules3 = { fixes: ruleDescriptions.fixes };
 var command7 = {
   summary: "Per function: fix commits in the history window, revisions touching it, fix share and current cognitive complexity, with the evidence commits",
   usage: "[paths...]",
-  options: { ...includeTestsOption, ...fixOptions },
-  optionHelp: { "include-tests": includeTestsHelp, ...fixOptionHelp },
-  async run(context) {
-    const settings = readSettings(context.config);
-    const current = await currentTree(context);
-    const { stats, request, paths } = await measureFixesFor(context, settings, current);
-    const all = [...stats.units.values()].filter((unit) => unit.fixCommits > 0).map((unit) => fixRow(unit, stats.minRevisions, settings.isTest)).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
-    const { listed, tests } = splitRoles(all, wantsTests(context));
-    return {
-      inputs: { tree: current.kind, paths, maxCommits: request.maxCommits, evidence: request.evidence, includeTests: wantsTests(context) },
-      extra: { ...fixHeader(stats, request, settings), ...tests === null ? {} : { tests } },
-      results: listed,
-      columns: ["path", "unit", "role", "fixCommits", "unitRevisions", "fixShare", "reviewFixes", "cognitive", "labels"],
-      notices: [
-        ...tests === null || tests.count === 0 ? [] : [`${tests.count} test functions with fixes are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`],
-        ...fixNotices(stats, request)
-      ]
+  options: { ...includeTestsOption, ...fixOptions, ...noCacheOption },
+  optionHelp: { "include-tests": includeTestsHelp, ...fixOptionHelp, "no-cache": noCacheHelp },
+  run(context) {
+    const paths = normalisePaths(context.positionals);
+    const stated = {
+      paths: paths.length === 0 ? void 0 : paths,
+      includeTests: wantsTests(context) ? true : void 0,
+      maxCommits: context.values["max-commits"],
+      evidence: context.values.evidence
     };
+    const shallow = (output) => output.extra?.shallow === true ? "the clone is shallow, and the same commit may have more history later" : void 0;
+    return cachedAnalysis(context, name8, stated, () => compute3(context), true, shallow);
   }
 };
+async function compute3(context) {
+  const settings = readSettings(context.config);
+  const current = await currentTree(context);
+  const { stats, request, paths } = await measureFixesFor(context, settings, current);
+  const all = [...stats.units.values()].filter((unit) => unit.fixCommits > 0).map((unit) => fixRow(unit, stats.minRevisions, settings.isTest)).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+  const { listed, tests } = splitRoles(all, wantsTests(context));
+  return {
+    inputs: { tree: current.kind, paths, maxCommits: request.maxCommits, evidence: request.evidence, includeTests: wantsTests(context) },
+    extra: { ...fixHeader(stats, request, settings), ...tests === null ? {} : { tests } },
+    results: listed,
+    columns: ["path", "unit", "role", "fixCommits", "unitRevisions", "fixShare", "reviewFixes", "cognitive", "labels"],
+    notices: [
+      ...tests === null || tests.count === 0 ? [] : [`${tests.count} test functions with fixes are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`],
+      ...fixNotices(stats, request)
+    ]
+  };
+}
 
 // packages/complexity/src/commands/outcome.ts
 var outcome_exports = {};
@@ -19896,7 +19908,7 @@ function tokenize(source) {
   const tokens2 = [];
   const pending = [];
   let expectDelimiter = null;
-  let text2 = "";
+  let text3 = "";
   let unquoted = "";
   let inWord = false;
   let dynamic = false;
@@ -19906,7 +19918,7 @@ function tokenize(source) {
   const flush = () => {
     if (!inWord) return;
     const hasBrace = /\{[^{}]*(,|\.\.)[^{}]*\}/.test(unquoted);
-    const word = { t: "word", text: text2, dynamic: dynamic || hasBrace, glob, quoted };
+    const word = { t: "word", text: text3, dynamic: dynamic || hasBrace, glob, quoted };
     if (!word.dynamic) word.text = plain2(word);
     if (expectDelimiter !== null) {
       pending.push({ delimiter: plain2(word), strip: expectDelimiter.strip });
@@ -19914,7 +19926,7 @@ function tokenize(source) {
     } else {
       tokens2.push(word);
     }
-    text2 = "";
+    text3 = "";
     unquoted = "";
     inWord = false;
     dynamic = false;
@@ -19923,7 +19935,7 @@ function tokenize(source) {
   };
   const add = (char, isQuoted) => {
     inWord = true;
-    text2 += char;
+    text3 += char;
     if (!isQuoted) unquoted += char;
     else quoted = true;
   };
@@ -19933,7 +19945,7 @@ function tokenize(source) {
     if (next === "'" && !insideDouble) {
       dynamic = true;
       inWord = true;
-      text2 += "$";
+      text3 += "$";
       i2++;
       return true;
     }
@@ -19942,24 +19954,24 @@ function tokenize(source) {
       dynamic = true;
       const end = source.indexOf("}", i2);
       if (end === -1) return false;
-      text2 += source.slice(i2, end + 1);
+      text3 += source.slice(i2, end + 1);
       i2 = end + 1;
       return true;
     }
-    const name10 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i2 + 1));
-    if (name10 !== null) {
+    const name11 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i2 + 1));
+    if (name11 !== null) {
       dynamic = true;
-      text2 += `$${name10[0]}`;
-      i2 += 1 + name10[0].length;
+      text3 += `$${name11[0]}`;
+      i2 += 1 + name11[0].length;
       return true;
     }
     if (next === void 0 || /\s|["'`]/.test(next)) {
-      text2 += LITERAL_DOLLAR;
+      text3 += LITERAL_DOLLAR;
       i2++;
       return true;
     }
     dynamic = true;
-    text2 += `$${next}`;
+    text3 += `$${next}`;
     i2 += 2;
     return true;
   };
@@ -19998,7 +20010,7 @@ function tokenize(source) {
       if (end === -1) return null;
       inWord = true;
       quoted = true;
-      text2 += source.slice(i2 + 1, end).replaceAll("$", LITERAL_DOLLAR);
+      text3 += source.slice(i2 + 1, end).replaceAll("$", LITERAL_DOLLAR);
       i2 = end + 1;
       continue;
     }
@@ -20020,10 +20032,10 @@ function tokenize(source) {
           if (escaped === "\n") {
             i2 += 2;
           } else if ('"\\$`'.includes(escaped)) {
-            text2 += escaped === "$" ? LITERAL_DOLLAR : escaped;
+            text3 += escaped === "$" ? LITERAL_DOLLAR : escaped;
             i2 += 2;
           } else {
-            text2 += `\\${escaped}`;
+            text3 += `\\${escaped}`;
             i2 += 2;
           }
           continue;
@@ -20032,7 +20044,7 @@ function tokenize(source) {
           if (!dollar(true)) return null;
           continue;
         }
-        text2 += c;
+        text3 += c;
         i2++;
       }
       if (!closed) return null;
@@ -20053,8 +20065,8 @@ function tokenize(source) {
     if (operator !== void 0) {
       if ((operator === "<" || operator === ">") && source[i2 + 1] === "(") return null;
       const redirect = /^[0-9<>&|]/.test(operator) && operator !== "&&" && operator !== "||" && operator !== "|" && operator !== "|&" && operator !== "&";
-      if (redirect && inWord && /^[0-9]+$/.test(text2) && unquoted === text2) {
-        text2 = "";
+      if (redirect && inWord && /^[0-9]+$/.test(text3) && unquoted === text3) {
+        text3 = "";
         unquoted = "";
         inWord = false;
         quoted = false;
@@ -20133,33 +20145,33 @@ function parseArgs2(args2, spec) {
   let ended = false;
   for (let k = 0; k < args2.length; k++) {
     const word = args2[k];
-    const text2 = plain2(word);
-    if (ended || word.quoted || !text2.startsWith("-") || text2 === "-") {
+    const text3 = plain2(word);
+    if (ended || word.quoted || !text3.startsWith("-") || text3 === "-") {
       operands.push(word);
       continue;
     }
     if (word.dynamic) return null;
-    if (text2 === "--") {
+    if (text3 === "--") {
       ended = true;
-    } else if (text2.startsWith("--")) {
-      const equals = text2.indexOf("=");
-      const name10 = equals === -1 ? text2 : text2.slice(0, equals);
-      flags2.add(name10);
+    } else if (text3.startsWith("--")) {
+      const equals = text3.indexOf("=");
+      const name11 = equals === -1 ? text3 : text3.slice(0, equals);
+      flags2.add(name11);
       if (equals !== -1) {
-        values.push({ name: name10, value: text2.slice(equals + 1) });
-      } else if (spec.valueLong?.includes(name10)) {
+        values.push({ name: name11, value: text3.slice(equals + 1) });
+      } else if (spec.valueLong?.includes(name11)) {
         const next = args2[k + 1];
         if (next === void 0) return null;
-        values.push({ name: name10, value: plain2(next) });
+        values.push({ name: name11, value: plain2(next) });
         k++;
       }
     } else {
-      for (let c = 1; c < text2.length; c++) {
-        const char = text2[c];
+      for (let c = 1; c < text3.length; c++) {
+        const char = text3[c];
         flags2.add(char);
         if (spec.suffixShort === char) break;
         if (spec.valueShort?.includes(char)) {
-          const rest = text2.slice(c + 1);
+          const rest = text3.slice(c + 1);
           if (rest !== "") {
             values.push({ name: char, value: rest });
           } else {
@@ -20177,11 +20189,11 @@ function parseArgs2(args2, spec) {
 }
 var GREP_VALUE_LONG = ["--regexp", "--file", "--max-count", "--after-context", "--before-context", "--context", "--include", "--exclude", "--exclude-dir", "--exclude-from", "--label", "--directories", "--devices", "--binary-files"];
 var RG_VALUE_LONG = ["--regexp", "--file", "--glob", "--iglob", "--type", "--type-not", "--max-count", "--after-context", "--before-context", "--context", "--threads", "--max-columns", "--max-depth", "--replace", "--ignore-file", "--pre", "--sort", "--sortr", "--encoding", "--type-add"];
-var looksLikeFile = (text2) => {
-  const last = text2.split("/").at(-1) ?? "";
+var looksLikeFile = (text3) => {
+  const last = text3.split("/").at(-1) ?? "";
   return last !== "" && last !== "." && last !== ".." && last.includes(".") && !last.endsWith(".");
 };
-var endsLikeDirectory = (text2) => text2.endsWith("/");
+var endsLikeDirectory = (text3) => text3.endsWith("/");
 var Interpretation = class {
   access = { reads: [], searches: [], edits: [] };
   ok = true;
@@ -20196,13 +20208,13 @@ var Interpretation = class {
     this.ok = false;
   }
   /** The path a literal word names, resolved against the working directory. Null (and the line is unparsed) when it cannot be. */
-  resolve(text2) {
-    if (text2.startsWith("/") || text2.startsWith("~") || /^[A-Za-z]:[\\/]/.test(text2)) return text2;
+  resolve(text3) {
+    if (text3.startsWith("/") || text3.startsWith("~") || /^[A-Za-z]:[\\/]/.test(text3)) return text3;
     if (this.cwd === null) {
       this.fail();
       return null;
     }
-    return this.cwd === void 0 ? text2 : posix17.join(this.cwd, text2);
+    return this.cwd === void 0 ? text3 : posix17.join(this.cwd, text3);
   }
   substitute(word) {
     if (!word.dynamic || !word.text.includes("$")) return word;
@@ -20244,16 +20256,16 @@ var Interpretation = class {
     else this.access.edits.push(operand.path);
   }
 };
-function redirections(command9, run3) {
-  for (const { op, target: target2 } of command9.redirects) {
+function redirections(command10, run3) {
+  for (const { op, target: target2 } of command10.redirects) {
     if (target2 === null || op === "<<<") continue;
-    const text2 = plain2(target2);
-    if ((op === ">&" || op === "<&") && (/^[0-9]+$/.test(text2) || text2 === "-")) continue;
+    const text3 = plain2(target2);
+    if ((op === ">&" || op === "<&") && (/^[0-9]+$/.test(text3) || text3 === "-")) continue;
     if (target2.dynamic) {
       run3.fail();
       continue;
     }
-    if (text2.startsWith("/dev/")) continue;
+    if (text3.startsWith("/dev/")) continue;
     if (op === "<" || op === "<&") run3.read(target2);
     else run3.edit(target2);
   }
@@ -20276,29 +20288,29 @@ function perlLike(args2, run3) {
   const rest = [];
   for (let k = 0; k < args2.length; k++) {
     const word = args2[k];
-    const text2 = plain2(word);
-    if (word.quoted || !text2.startsWith("-") || text2 === "-") {
+    const text3 = plain2(word);
+    if (word.quoted || !text3.startsWith("-") || text3 === "-") {
       rest.push(...args2.slice(k));
       break;
     }
     if (word.dynamic) return run3.fail();
-    if (text2 === "--") {
+    if (text3 === "--") {
       rest.push(...args2.slice(k + 1));
       break;
     }
-    for (let c = 1; c < text2.length; c++) {
-      const char = text2[c];
+    for (let c = 1; c < text3.length; c++) {
+      const char = text3[c];
       if (char === "i") {
         inPlace = true;
         break;
       }
       if (char === "e" || char === "E") {
         hasScript = true;
-        if (text2.slice(c + 1) === "") k++;
+        if (text3.slice(c + 1) === "") k++;
         break;
       }
       if ("IMmx".includes(char)) {
-        if (text2.slice(c + 1) === "") k++;
+        if (text3.slice(c + 1) === "") k++;
         break;
       }
     }
@@ -20320,8 +20332,8 @@ function awkLike(args2, run3) {
     run3.read(word);
   }
 }
-function grepLike(name10, args2, run3, piped, hasInput) {
-  const ripgrep = name10 === "rg";
+function grepLike(name11, args2, run3, piped, hasInput) {
+  const ripgrep = name11 === "rg";
   const parsed = parseArgs2(args2, {
     valueShort: ripgrep ? "efgtTABCmjMEdr" : "efmABCdD",
     valueLong: ripgrep ? RG_VALUE_LONG : GREP_VALUE_LONG
@@ -20360,16 +20372,16 @@ function gitLike(args2, run3) {
   const saved = run3.cwd;
   let k = 0;
   while (k < args2.length) {
-    const text2 = plain2(args2[k]);
+    const text3 = plain2(args2[k]);
     if (args2[k].dynamic) return run3.fail();
-    if (text2 === "-C") {
+    if (text3 === "-C") {
       const dir = args2[k + 1];
       if (dir === void 0 || dir.dynamic) return run3.fail();
       run3.cwd = run3.resolve(plain2(dir));
       k += 2;
-    } else if (text2 === "-c" || text2 === "--git-dir" || text2 === "--work-tree" || text2 === "--namespace") {
+    } else if (text3 === "-c" || text3 === "--git-dir" || text3 === "--work-tree" || text3 === "--namespace") {
       k += 2;
-    } else if (text2.startsWith("-")) {
+    } else if (text3.startsWith("-")) {
       k++;
     } else {
       break;
@@ -20380,21 +20392,21 @@ function gitLike(args2, run3) {
   if (sub === "show") {
     for (const word of rest) {
       if (word.dynamic) return run3.fail();
-      const text2 = plain2(word);
-      const colon = text2.indexOf(":");
-      if (!text2.startsWith("-") && colon > 0 && colon < text2.length - 1) run3.access.reads.push(text2.slice(colon + 1));
+      const text3 = plain2(word);
+      const colon = text3.indexOf(":");
+      if (!text3.startsWith("-") && colon > 0 && colon < text3.length - 1) run3.access.reads.push(text3.slice(colon + 1));
     }
   } else if (sub === "mv" || sub === "rm") {
     moveLike(sub === "mv" ? "mv" : "rm", rest, run3);
   }
   run3.cwd = saved;
 }
-function moveLike(name10, args2, run3) {
+function moveLike(name11, args2, run3) {
   const parsed = parseArgs2(args2, { valueShort: "tS", valueLong: ["--target-directory", "--suffix"] });
   if (parsed === null) return run3.fail();
   const recursive = parsed.flags.has("r") || parsed.flags.has("R") || parsed.flags.has("d") || parsed.flags.has("--recursive") || parsed.flags.has("a");
   const operands = parsed.operands.filter((word) => !endsLikeDirectory(plain2(word)) || word.dynamic);
-  if (name10 === "rm") {
+  if (name11 === "rm") {
     if (recursive) return;
     for (const word of operands) run3.edit(word);
     return;
@@ -20426,16 +20438,16 @@ function moveLike(name10, args2, run3) {
   for (const word of sources) {
     if (word.dynamic || word.glob && !word.quoted) return run3.fail();
   }
-  if (name10 === "mv") {
+  if (name11 === "mv") {
     for (const word of sources) if (!recursive && !endsLikeDirectory(plain2(word))) run3.edit(word);
   }
-  if (recursive && name10 === "cp") return;
+  if (recursive && name11 === "cp") return;
   run3.access.edits.push(...targets);
 }
-function interpreterLike(args2, command9, run3, name10) {
-  if (command9.heredoc) return run3.fail();
+function interpreterLike(args2, command10, run3, name11) {
+  if (command10.heredoc) return run3.fail();
   const parsed = parseArgs2(args2, {
-    valueShort: name10.startsWith("python") ? "WXmc" : "rCeEpr",
+    valueShort: name11.startsWith("python") ? "WXmc" : "rCeEpr",
     valueLong: ["--require", "--import", "--loader", "--eval", "--print", "--experimental-loader"]
   });
   if (parsed === null) return run3.fail();
@@ -20451,8 +20463,8 @@ function interpreterLike(args2, command9, run3, name10) {
 function findLike(args2, run3) {
   const paths = [];
   for (const word of args2) {
-    const text2 = plain2(word);
-    if (!word.quoted && (text2.startsWith("-") || text2 === "(" || text2 === "!")) break;
+    const text3 = plain2(word);
+    if (!word.quoted && (text3.startsWith("-") || text3 === "(" || text3 === "!")) break;
     paths.push(word);
   }
   for (const word of args2) {
@@ -20461,97 +20473,97 @@ function findLike(args2, run3) {
   if (paths.length === 0) run3.search(null);
   for (const word of paths) run3.search(word);
 }
-function execute2(command9, run3, piped) {
-  let words = command9.words.map((word) => run3.substitute(word));
-  const redirects = command9.redirects.map((r) => ({ ...r, target: r.target === null ? null : run3.substitute(r.target) }));
-  const substituted = { ...command9, words, redirects };
-  while (words[0] !== void 0 && !words[0].quoted && !words[0].dynamic && SKIPPED_KEYWORDS.has(plain2(words[0]))) words = words.slice(1);
-  if (words[0] !== void 0 && !words[0].quoted && UNPARSED_KEYWORDS.has(plain2(words[0]))) return run3.fail();
-  while (words[0] !== void 0 && !words[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain2(words[0]))) {
-    const text2 = plain2(words[0]);
-    const equals = text2.indexOf("=");
-    const name11 = text2.slice(0, equals);
-    if (words[0].glob) run3.variables.delete(name11);
-    else run3.variables.set(name11, text2.slice(equals + 1));
-    words = words.slice(1);
+function execute2(command10, run3, piped) {
+  let words2 = command10.words.map((word) => run3.substitute(word));
+  const redirects = command10.redirects.map((r) => ({ ...r, target: r.target === null ? null : run3.substitute(r.target) }));
+  const substituted = { ...command10, words: words2, redirects };
+  while (words2[0] !== void 0 && !words2[0].quoted && !words2[0].dynamic && SKIPPED_KEYWORDS.has(plain2(words2[0]))) words2 = words2.slice(1);
+  if (words2[0] !== void 0 && !words2[0].quoted && UNPARSED_KEYWORDS.has(plain2(words2[0]))) return run3.fail();
+  while (words2[0] !== void 0 && !words2[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain2(words2[0]))) {
+    const text3 = plain2(words2[0]);
+    const equals = text3.indexOf("=");
+    const name12 = text3.slice(0, equals);
+    if (words2[0].glob) run3.variables.delete(name12);
+    else run3.variables.set(name12, text3.slice(equals + 1));
+    words2 = words2.slice(1);
   }
   redirections(substituted, run3);
-  if (words.length === 0) return;
+  if (words2.length === 0) return;
   for (; ; ) {
-    const head2 = words[0];
+    const head2 = words2[0];
     if (head2.dynamic) return run3.fail();
-    const text2 = plain2(head2);
-    if (!WRAPPERS.has(text2)) break;
-    words = words.slice(1);
-    while (words[0] !== void 0 && (plain2(words[0]).startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain2(words[0])))) words = words.slice(1);
-    if (words.length === 0) return;
+    const text3 = plain2(head2);
+    if (!WRAPPERS.has(text3)) break;
+    words2 = words2.slice(1);
+    while (words2[0] !== void 0 && (plain2(words2[0]).startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain2(words2[0])))) words2 = words2.slice(1);
+    if (words2.length === 0) return;
   }
-  const head = words[0];
+  const head = words2[0];
   if (head.dynamic) return run3.fail();
-  const name10 = posix17.basename(plain2(head));
-  const args2 = words.slice(1);
-  const hasInput = command9.redirects.some((r) => r.op === "<" || r.op === "<<<") || command9.heredoc;
-  if (HIDING_COMMANDS.has(name10)) return run3.fail();
-  if (SHELLS.has(name10)) {
+  const name11 = posix17.basename(plain2(head));
+  const args2 = words2.slice(1);
+  const hasInput = command10.redirects.some((r) => r.op === "<" || r.op === "<<<") || command10.heredoc;
+  if (HIDING_COMMANDS.has(name11)) return run3.fail();
+  if (SHELLS.has(name11)) {
     const parsed = parseArgs2(args2, { valueShort: "co" });
-    if (parsed === null || parsed.flags.has("c") || command9.heredoc) return run3.fail();
+    if (parsed === null || parsed.flags.has("c") || command10.heredoc) return run3.fail();
     const script = parsed.operands[0];
     if (script !== void 0 && !(script.dynamic === false && !looksLikeFile(plain2(script)))) run3.read(script);
     return;
   }
-  if (name10 === "cd") {
+  if (name11 === "cd") {
     const target2 = args2.find((word) => !/^-[A-Za-z]+$/.test(plain2(word)) || word.quoted);
     if (target2 === void 0) run3.cwd = "~";
     else if (target2.dynamic || plain2(target2) === "-") run3.cwd = null;
     else run3.cwd = run3.resolve(plain2(target2));
     return;
   }
-  if (name10 === "pushd" || name10 === "popd") {
+  if (name11 === "pushd" || name11 === "popd") {
     run3.cwd = null;
     return;
   }
-  if (READERS.has(name10)) {
-    const parsed = parseArgs2(args2, { valueShort: name10 === "head" || name10 === "tail" ? "nc" : "", valueLong: ["--lines", "--bytes", "--files0-from"] });
+  if (READERS.has(name11)) {
+    const parsed = parseArgs2(args2, { valueShort: name11 === "head" || name11 === "tail" ? "nc" : "", valueLong: ["--lines", "--bytes", "--files0-from"] });
     if (parsed === null) return run3.fail();
     for (const word of parsed.operands) run3.read(word);
     return;
   }
-  if (name10 === "sed") return sedLike(args2, run3);
-  if (name10 === "perl") return perlLike(args2, run3);
-  if (name10 === "awk" || name10 === "gawk" || name10 === "mawk") return awkLike(args2, run3);
-  if (name10 === "grep" || name10 === "egrep" || name10 === "fgrep" || name10 === "rg") return grepLike(name10 === "rg" ? "rg" : "grep", args2, run3, piped, hasInput);
-  if (name10 === "diff") return diffLike(args2, run3);
-  if (name10 === "git") return gitLike(args2, run3);
-  if (name10 === "tee") {
+  if (name11 === "sed") return sedLike(args2, run3);
+  if (name11 === "perl") return perlLike(args2, run3);
+  if (name11 === "awk" || name11 === "gawk" || name11 === "mawk") return awkLike(args2, run3);
+  if (name11 === "grep" || name11 === "egrep" || name11 === "fgrep" || name11 === "rg") return grepLike(name11 === "rg" ? "rg" : "grep", args2, run3, piped, hasInput);
+  if (name11 === "diff") return diffLike(args2, run3);
+  if (name11 === "git") return gitLike(args2, run3);
+  if (name11 === "tee") {
     const parsed = parseArgs2(args2, {});
     if (parsed === null) return run3.fail();
     for (const word of parsed.operands) if (plain2(word) !== "-" && !plain2(word).startsWith("/dev/")) run3.edit(word);
     return;
   }
-  if (name10 === "cp" || name10 === "mv" || name10 === "rm") return moveLike(name10, args2, run3);
-  if (name10 === "find") return findLike(args2, run3);
-  if (INTERPRETERS.has(name10)) return interpreterLike(args2, command9, run3, name10);
+  if (name11 === "cp" || name11 === "mv" || name11 === "rm") return moveLike(name11, args2, run3);
+  if (name11 === "find") return findLike(args2, run3);
+  if (INTERPRETERS.has(name11)) return interpreterLike(args2, command10, run3, name11);
 }
-var headOf = (command9) => {
-  const word = command9.words.find((candidate) => candidate.quoted || !SKIPPED_KEYWORDS.has(plain2(candidate)));
+var headOf = (command10) => {
+  const word = command10.words.find((candidate) => candidate.quoted || !SKIPPED_KEYWORDS.has(plain2(candidate)));
   return word === void 0 || word.quoted ? null : plain2(word);
 };
 function run2(commands3, from, to, interpretation) {
   let i2 = from;
   while (i2 < to && interpretation.ok) {
-    const command9 = commands3[i2];
-    if (command9.marker === "(") {
+    const command10 = commands3[i2];
+    if (command10.marker === "(") {
       interpretation.stack.push(interpretation.cwd);
       i2++;
       continue;
     }
-    if (command9.marker === ")") {
+    if (command10.marker === ")") {
       if (interpretation.stack.length === 0) return interpretation.fail();
       interpretation.cwd = interpretation.stack.pop();
       i2++;
       continue;
     }
-    const head = headOf(command9);
+    const head = headOf(command10);
     if (head === "done") return interpretation.fail();
     if (head === "for") {
       let depth = 1;
@@ -20562,9 +20574,9 @@ function run2(commands3, from, to, interpretation) {
         else if (inner2 === "done" && --depth === 0) break;
       }
       if (j >= to) return interpretation.fail();
-      const start2 = command9.words.findIndex((word) => !word.quoted && plain2(word) === "for");
-      const words = command9.words.slice(start2 + 1).map((word) => interpretation.substitute(word));
-      const [variable, keyword, ...items] = words;
+      const start2 = command10.words.findIndex((word) => !word.quoted && plain2(word) === "for");
+      const words2 = command10.words.slice(start2 + 1).map((word) => interpretation.substitute(word));
+      const [variable, keyword, ...items] = words2;
       if (variable === void 0 || keyword === void 0 || plain2(keyword) !== "in" || variable.dynamic) return interpretation.fail();
       if (items.some((item) => item.dynamic || item.glob && !item.quoted)) return interpretation.fail();
       if (commands3[j].redirects.length > 0) return interpretation.fail();
@@ -20577,12 +20589,12 @@ function run2(commands3, from, to, interpretation) {
       continue;
     }
     const previous = i2 > from ? commands3[i2 - 1].separator : "";
-    execute2(command9, interpretation, previous === "|" || previous === "|&");
+    execute2(command10, interpretation, previous === "|" || previous === "|&");
     i2++;
   }
 }
-function shellAccess(command9, cwd) {
-  const tokens2 = tokenize(command9);
+function shellAccess(command10, cwd) {
+  const tokens2 = tokenize(command10);
   if (tokens2 === null) return null;
   const commands3 = segment(tokens2);
   if (commands3 === null) return null;
@@ -20610,19 +20622,19 @@ function pathOf(input) {
   return asString(input["file_path"]) ?? asString(input["notebook_path"]) ?? asString(input["path"]);
 }
 function actionOf(block) {
-  const name10 = asString(block["name"]);
-  if (name10 === null) return null;
+  const name11 = asString(block["name"]);
+  if (name11 === null) return null;
   const input = isObject(block["input"]) ? block["input"] : {};
-  if (READ_TOOLS.has(name10)) return { kind: "read", origin: "tool", path: pathOf(input) };
-  if (SEARCH_TOOLS.has(name10)) return { kind: "search", origin: "tool", path: pathOf(input) };
-  if (EDIT_TOOLS.has(name10)) return { kind: "edit", origin: "tool", path: pathOf(input) };
+  if (READ_TOOLS.has(name11)) return { kind: "read", origin: "tool", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name11)) return { kind: "search", origin: "tool", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name11)) return { kind: "edit", origin: "tool", path: pathOf(input) };
   return null;
 }
 var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash"]);
 function shellActionsOf(block, cwd) {
   const input = isObject(block["input"]) ? block["input"] : {};
-  const command9 = asString(input["command"]);
-  const access = command9 === null ? null : shellAccess(command9, cwd);
+  const command10 = asString(input["command"]);
+  const access = command10 === null ? null : shellAccess(command10, cwd);
   if (access === null) return null;
   return [
     ...access.reads.map((path) => ({ kind: "read", origin: "shell", path })),
@@ -20631,8 +20643,8 @@ function shellActionsOf(block, cwd) {
   ];
 }
 var INTERRUPT_MARKER = "[Request interrupted by user";
-function isHumanText(text2) {
-  return typeof text2 === "string" && !text2.startsWith(INTERRUPT_MARKER);
+function isHumanText(text3) {
+  return typeof text3 === "string" && !text3.startsWith(INTERRUPT_MARKER);
 }
 function isHumanPrompt(line, message) {
   if (line["isMeta"] === true || line["toolUseResult"] !== void 0) return false;
@@ -20655,10 +20667,10 @@ function compareVersions(a, b) {
   }
   return 0;
 }
-function earliest(lines) {
+function earliest(lines2) {
   let best = null;
   let bestMs = Number.POSITIVE_INFINITY;
-  for (const line of lines) {
+  for (const line of lines2) {
     const timestamp = asString(line["timestamp"]);
     const ms = timestamp === null ? Number.NaN : Date.parse(timestamp);
     if (timestamp !== null && ms < bestMs) {
@@ -20668,20 +20680,20 @@ function earliest(lines) {
   }
   return best;
 }
-function parseTranscript(text2, scope = "main") {
-  const lines = [];
+function parseTranscript(text3, scope = "main") {
+  const lines2 = [];
   let skippedLines = 0;
-  const body2 = text2.charCodeAt(0) === 65279 ? text2.slice(1) : text2;
+  const body2 = text3.charCodeAt(0) === 65279 ? text3.slice(1) : text3;
   for (const raw of body2.split(/\r?\n/)) {
     if (raw === "") continue;
     try {
       const parsed = JSON.parse(raw);
-      if (isObject(parsed)) lines.push(parsed);
+      if (isObject(parsed)) lines2.push(parsed);
     } catch {
       skippedLines++;
     }
   }
-  const messageLines = lines.filter((line) => line["type"] === "user" || line["type"] === "assistant");
+  const messageLines = lines2.filter((line) => line["type"] === "user" || line["type"] === "assistant");
   const cwds = [...new Set(messageLines.flatMap((line) => typeof line["cwd"] === "string" ? [line["cwd"]] : []))].sort();
   const notMeasured = (version, reason) => ({
     status: "not-measured",
@@ -20740,8 +20752,8 @@ function parseTranscript(text2, scope = "main") {
     }
     for (const block of message["content"]) {
       if (!isObject(block) || block["type"] !== "tool_use") continue;
-      const name10 = asString(block["name"]);
-      if (name10 !== null && SHELL_TOOLS.has(name10)) {
+      const name11 = asString(block["name"]);
+      if (name11 !== null && SHELL_TOOLS.has(name11)) {
         const actions = shellActionsOf(block, asString(line["cwd"]));
         turn.shell.calls++;
         if (actions === null) turn.shell.unparsed++;
@@ -20846,8 +20858,8 @@ function measureTask(origin, taskIndex, startedAt, turns, roots, effortMode) {
 function mainOrigin(sessionId) {
   return { sessionId, source: "main", agentId: null, agentType: null, description: null };
 }
-function measureSubagent(text2, sessionId, agentId, roots, meta, effortMode = "all") {
-  const parsed = parseTranscript(text2, "sidechain");
+function measureSubagent(text3, sessionId, agentId, roots, meta, effortMode = "all") {
+  const parsed = parseTranscript(text3, "sidechain");
   if (parsed.status === "not-measured") {
     return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
   }
@@ -20866,8 +20878,8 @@ function measureSubagent(text2, sessionId, agentId, roots, meta, effortMode = "a
   const task = start2 === void 0 ? null : measureTask(origin, 0, start2.timestamp, turns, mapRoots, effortMode);
   return { status: "measured", sessionId, version: parsed.version, tasks: task === null || task.edits === 0 ? [] : [task], cwds: parsed.cwds };
 }
-function measureSession(text2, sessionId, roots, effortMode = "all") {
-  const parsed = parseTranscript(text2);
+function measureSession(text3, sessionId, roots, effortMode = "all") {
+  const parsed = parseTranscript(text3);
   if (parsed.status === "not-measured") {
     return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
   }
@@ -20945,8 +20957,8 @@ function subagentFiles(projectsDir, root) {
     const subagents = join11(dir, entry.name, "subagents");
     if (!entry.isDirectory() || !existsSync9(subagents)) continue;
     for (const path of agentFilesUnder(subagents)) {
-      const name10 = path.slice(path.lastIndexOf("/") + 1);
-      files.push({ sessionId: entry.name, agentId: name10.slice("agent-".length, -".jsonl".length), path });
+      const name11 = path.slice(path.lastIndexOf("/") + 1);
+      files.push({ sessionId: entry.name, agentId: name11.slice("agent-".length, -".jsonl".length), path });
     }
   }
   return files.sort((a, b) => compareBytes2(a.path, b.path));
@@ -20983,14 +20995,14 @@ function measureRepo(options) {
       for (const file of subagentFiles(projectsDir, root)) {
         if (seen.has(file.path)) continue;
         seen.add(file.path);
-        let text2;
+        let text3;
         try {
-          text2 = readFileSync7(file.path, "utf8");
+          text3 = readFileSync7(file.path, "utf8");
         } catch {
           continue;
         }
         const meta = readMeta2(file.path);
-        const result = measureSubagent(text2, file.sessionId, file.agentId, repoRoots, meta, effort);
+        const result = measureSubagent(text3, file.sessionId, file.agentId, repoRoots, meta, effort);
         const places = meta?.worktreePath == null ? repoRoots : [...repoRoots, meta.worktreePath];
         if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, places))) continue;
         if (result.status === "not-measured") {
@@ -21006,13 +21018,13 @@ function measureRepo(options) {
     for (const file of sessionFiles(projectsDir, root)) {
       if (seen.has(file.path)) continue;
       seen.add(file.path);
-      let text2;
+      let text3;
       try {
-        text2 = readFileSync7(file.path, "utf8");
+        text3 = readFileSync7(file.path, "utf8");
       } catch {
         continue;
       }
-      const result = measureSession(text2, file.sessionId, repoRoots, effort);
+      const result = measureSession(text3, file.sessionId, repoRoots, effort);
       if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;
       if (result.status === "not-measured") {
         if (result.startedAt !== null && inWindow(window2, result.startedAt)) {
@@ -21268,6 +21280,1243 @@ var command8 = {
   }
 };
 
+// packages/complexity/src/commands/report.ts
+var report_exports = {};
+__export(report_exports, {
+  command: () => command9,
+  name: () => name10
+});
+
+// packages/cli-kit/src/report-command.ts
+import { mkdirSync as mkdirSync3, readFileSync as readFileSync8, writeFileSync as writeFileSync3 } from "node:fs";
+import { dirname as dirname3, resolve } from "node:path";
+
+// packages/report/src/json.ts
+var FLOAT_PRECISION2 = 6;
+function normalise4(value) {
+  return normaliseValue(value);
+}
+function normaliseValue(value) {
+  if (typeof value === "number") return Number(value.toFixed(FLOAT_PRECISION2));
+  if (Array.isArray(value)) return value.map(normaliseValue);
+  if (value !== null && typeof value === "object") {
+    const record = value;
+    const sorted = {};
+    for (const key of Object.keys(record).sort()) if (record[key] !== void 0) sorted[key] = normaliseValue(record[key]);
+    return sorted;
+  }
+  return value;
+}
+function canonical2(value) {
+  return JSON.stringify(normaliseValue(value)) ?? "null";
+}
+
+// packages/report/src/protocol.ts
+var PROTOCOL_VERSION = 1;
+var ReportError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ReportError";
+  }
+};
+
+// packages/report/src/stamp.ts
+function makeStamp(kind, head, config, inputs) {
+  return normalise4({ protocol: PROTOCOL_VERSION, kind, head, config, inputs });
+}
+var short = (sha) => typeof sha === "string" ? sha.slice(0, 7) : String(sha);
+function stampProblems(expected, actual) {
+  if (actual === null || typeof actual !== "object" || Array.isArray(actual)) return ["the notes have no stamp object; copy the stamp from --slots unchanged"];
+  const given = actual;
+  const problems = [];
+  if (given.protocol !== expected.protocol) problems.push(`the stamp is for protocol ${String(given.protocol)} and this report uses protocol ${expected.protocol}`);
+  if (given.kind !== expected.kind) problems.push(`the stamp is for the "${String(given.kind)}" report and this is "${expected.kind}"`);
+  if (given.head !== expected.head) problems.push(`the stamp is for HEAD ${short(given.head)} and the repository is at ${short(expected.head)}; run --slots again and write the notes from its output`);
+  if (given.config !== expected.config) problems.push(`the stamp has config hash ${String(given.config)} and the effective config hash is ${expected.config}; run --slots again`);
+  if (canonical2(given.inputs ?? null) !== canonical2(expected.inputs)) {
+    const was = given.inputs ?? {};
+    const keys = [.../* @__PURE__ */ new Set([...Object.keys(was), ...Object.keys(expected.inputs)])].sort().filter((key) => canonical2(was[key] ?? null) !== canonical2(expected.inputs[key] ?? null));
+    problems.push(`the stamp's inputs differ from this run's${keys.length === 0 ? "" : ` (${keys.join(", ")})`}; run --slots again with the same arguments`);
+  }
+  return problems;
+}
+
+// packages/report/src/notes.ts
+var isRecord2 = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+function pieceProblems(where, slot, piece, allowed) {
+  if (!isRecord2(piece)) return [`${where} must be an object with ${slot.verdicts.length > 0 ? "a verdict and " : ""}text`];
+  const problems = [];
+  const extra = Object.keys(piece).filter((key) => key !== "verdict" && key !== "text" && !allowed.includes(key));
+  if (extra.length > 0) problems.push(`${where} has fields the slot does not take: ${extra.join(", ")}`);
+  const { verdict, text: text3 } = piece;
+  if (slot.verdicts.length > 0) {
+    if (typeof verdict !== "string" || verdict === "") problems.push(`${where} needs a verdict, one of: ${slot.verdicts.join(", ")}`);
+    else if (!slot.verdicts.includes(verdict)) problems.push(`${where} has verdict "${verdict}", which is not one of: ${slot.verdicts.join(", ")}`);
+  } else if (verdict !== void 0) {
+    problems.push(`${where} has a verdict, and this slot takes text only`);
+  }
+  if (typeof text3 !== "string") problems.push(`${where} needs text, a string`);
+  else if (text3.trim() === "") problems.push(`${where} has empty text`);
+  else if (text3.length > slot.maxChars) problems.push(`${where} has ${text3.length} characters of text and the limit is ${slot.maxChars}`);
+  return problems;
+}
+function entryProblems(slot, entry) {
+  const where = `slot "${slot.id}"`;
+  if (slot.choose === void 0) return pieceProblems(where, slot, entry, []);
+  if (!isRecord2(entry) || !Array.isArray(entry.items)) return [`${where} must be an object with an "items" list of at most ${slot.choose.max} subjects chosen from its candidates`];
+  const problems = [];
+  const extra = Object.keys(entry).filter((key) => key !== "items");
+  if (extra.length > 0) problems.push(`${where} has fields the slot does not take: ${extra.join(", ")}`);
+  const { items } = entry;
+  if (items.length === 0) problems.push(`${where} needs at least one item`);
+  if (items.length > slot.choose.max) problems.push(`${where} has ${items.length} items and the limit is ${slot.choose.max}`);
+  const refs = slot.choose.candidates.map((c) => c.ref);
+  const seen = /* @__PURE__ */ new Set();
+  items.forEach((item, i2) => {
+    const at = `${where} item ${i2 + 1}`;
+    problems.push(...pieceProblems(at, slot, item, ["subject"]));
+    const subject = isRecord2(item) ? item.subject : void 0;
+    if (typeof subject !== "string") problems.push(`${at} needs a subject, one of the slot's candidates`);
+    else if (!refs.includes(subject)) problems.push(`${at} names subject "${subject}", which is not one of the candidates: ${refs.join(", ")}`);
+    else if (seen.has(subject)) problems.push(`${at} repeats subject "${subject}"`);
+    else seen.add(subject);
+  });
+  return problems;
+}
+function validateNotes(report, document) {
+  if (!isRecord2(document)) throw new ReportError("the notes file must be a JSON object with a stamp and a notes object");
+  const problems = stampProblems(report.stamp, document.stamp);
+  const given = document.notes;
+  if (!isRecord2(given)) {
+    problems.push('the notes file has no "notes" object with one entry per slot id');
+  } else {
+    const ids = report.slots.map((slot) => slot.id);
+    for (const slot of report.slots) {
+      if (!(slot.id in given)) problems.push(`slot "${slot.id}" has no entry in the notes`);
+      else problems.push(...entryProblems(slot, given[slot.id]));
+    }
+    for (const id of Object.keys(given)) if (!ids.includes(id)) problems.push(`the notes have an entry "${id}", and the report has no such slot; slots: ${ids.join(", ")}`);
+  }
+  if (problems.length > 0) throw new ReportError(`the notes were rejected, ${problems.length} ${problems.length === 1 ? "problem" : "problems"}:
+${problems.map((p) => `  - ${p}`).join("\n")}`);
+  return given;
+}
+
+// packages/report/src/text.ts
+import { createHash as createHash7 } from "node:crypto";
+function escapeHtml(text3) {
+  return text3.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function oneLine(text3) {
+  return text3.replace(/\s+/g, " ").trim();
+}
+var MD_SPECIAL = /[\\|*<>[\]]/g;
+function escapeMd(text3) {
+  const line = oneLine(text3);
+  const balanced = (line.match(/`/g) ?? []).length % 2 === 0;
+  if (!balanced) return line.replace(/[\\|*`<>[\]]/g, (c) => `\\${c}`);
+  return line.split("`").map((part, i2) => i2 % 2 === 1 ? part.replace(/\|/g, "\\|") : part.replace(MD_SPECIAL, (c) => `\\${c}`)).join("`");
+}
+function inlineHtml(text3) {
+  const escaped = escapeHtml(text3);
+  return (escaped.match(/`/g) ?? []).length % 2 === 0 ? escaped.replace(/`([^`]+)`/g, "<code>$1</code>") : escaped;
+}
+function formatNumber(value) {
+  if (Number.isInteger(value)) return String(value);
+  return String(Number(value.toFixed(2)));
+}
+function shortHash(content) {
+  return createHash7("sha256").update(content).digest("hex").slice(0, 6);
+}
+function slug(text3) {
+  return text3.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
+}
+function count3(n, singular, plural = `${singular}s`) {
+  return `${formatNumber(n)} ${n === 1 ? singular : plural}`;
+}
+function clip(text3, max) {
+  if (max < 1) return "";
+  return text3.length <= max ? text3 : `${text3.slice(0, Math.max(0, max - 1))}…`;
+}
+
+// packages/report/src/components/evidence-list.ts
+var tail = (data) => data.omitted === void 0 || data.omitted <= 0 ? void 0 : `${formatNumber(data.omitted)} more not listed.`;
+function evidenceListHtml(data) {
+  const items = data.items.map((item) => `<li><code>${escapeHtml(item.id)}</code> ${escapeHtml(item.text)}${item.detail === void 0 ? "" : ` <span class="detail">(${escapeHtml(item.detail)})</span>`}</li>`);
+  const more = tail(data);
+  return `<section class="evidence">
+<h3>${escapeHtml(data.title)}</h3>
+${items.length === 0 ? '<p class="empty">None.</p>' : `<ul>
+${items.join("\n")}
+</ul>`}
+${more === void 0 ? "" : `<p class="omitted">${escapeHtml(more)}</p>
+`}</section>`;
+}
+function evidenceListMd(data) {
+  const items = data.items.map((item) => `- \`${item.id.replace(/`/g, "")}\` ${escapeMd(item.text)}${item.detail === void 0 ? "" : ` (${escapeMd(item.detail)})`}`);
+  const more = tail(data);
+  return [`**${escapeMd(data.title)}**`, "", ...items.length === 0 ? ["None."] : items, ...more === void 0 ? [] : ["", `_${more}_`]].join("\n");
+}
+
+// packages/report/src/tables.ts
+function htmlTable(caption, columns6, rows5, options = {}) {
+  const head = columns6.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
+  const body2 = rows5.map((row) => {
+    const cells = row.map((cell, i2) => {
+      const number2 = columns6[i2]?.align === "right" ? ' class="number"' : "";
+      return i2 === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number2}>${cell}</td>`;
+    });
+    return `<tr>${cells.join("")}</tr>`;
+  }).join("\n");
+  return `<table${options.className === void 0 ? "" : ` class="${options.className}"`}>
+<caption>${escapeHtml(caption)}</caption>
+<thead><tr>${head}</tr></thead>
+<tbody>
+${body2}
+</tbody>
+</table>`;
+}
+function mdTable(columns6, rows5) {
+  const head = `| ${columns6.map((c) => escapeMd(c.label)).join(" | ")} |`;
+  const rule = `| ${columns6.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
+  const body2 = rows5.map((row) => `| ${row.map((cell) => escapeMd(cell)).join(" | ")} |`);
+  return [head, rule, ...body2].join("\n");
+}
+
+// packages/report/src/components/facts.ts
+var columns = [{ label: "Measure" }, { label: "Value" }];
+function factsHtml(data) {
+  return htmlTable(data.caption, columns, data.facts.map((f) => [escapeHtml(f.label), escapeHtml(f.value)]), { rowHeaders: true, className: "facts" });
+}
+function factsMd(data) {
+  return [`**${escapeMd(data.caption)}**`, "", mdTable(columns, data.facts.map((f) => [f.label, f.value]))].join("\n");
+}
+
+// packages/report/src/components/figure.ts
+function figureHtml(parts3) {
+  const id = `${slug(parts3.title)}-${shortHash(parts3.drawing)}`;
+  const svg = `<svg role="img" aria-labelledby="${id}-title ${id}-desc" viewBox="0 0 ${parts3.width} ${parts3.height}" preserveAspectRatio="xMinYMin meet">
+<title id="${id}-title">${escapeHtml(parts3.title)}</title>
+<desc id="${id}-desc">${escapeHtml(parts3.description)}</desc>
+${parts3.drawing}
+</svg>`;
+  return `<figure class="chart ${parts3.kind}">
+<figcaption>${escapeHtml(parts3.title)}</figcaption>
+${svg}
+${parts3.table}
+${parts3.notes ?? ""}</figure>`;
+}
+
+// packages/report/src/components/guideline-bar.ts
+var WIDTH = 720;
+var ROW = 28;
+var LABEL = 200;
+var BAR_MAX = 360;
+function positionOf(bar) {
+  return bar.value > bar.guideline ? "above guideline" : bar.value === bar.guideline ? "at guideline" : "below guideline";
+}
+function ratioOf2(bar) {
+  return bar.guideline === 0 ? null : bar.value / bar.guideline;
+}
+var ratioText = (bar) => {
+  const ratio = ratioOf2(bar);
+  return ratio === null ? "none" : `${Number(ratio.toPrecision(2))}x`;
+};
+var columns2 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
+var rows = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf(b)]);
+function guidelineBarsHtml(data) {
+  const greatest = Math.max(1, ...data.bars.flatMap((b) => [b.value, b.guideline]));
+  const scale = BAR_MAX / greatest;
+  const drawing = data.bars.map((b, i2) => {
+    const y = i2 * ROW;
+    const width = b.value * scale;
+    const marker = LABEL + b.guideline * scale;
+    const above = b.value > b.guideline;
+    return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y + 18}" text-anchor="end">${escapeHtml(b.label)}</text><rect x="${LABEL}" y="${y + 5}" width="${width.toFixed(1)}" height="${ROW - 10}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y + 2}" y2="${y + ROW - 2}"/><text x="${(LABEL + Math.max(width, b.guideline * scale) + 8).toFixed(1)}" y="${y + 18}">${above ? "▲ " : ""}${formatNumber(b.value)} (guideline ${formatNumber(b.guideline)})</text></g>`;
+  }).join("\n");
+  return figureHtml({
+    kind: "guideline-bars",
+    title: data.title,
+    description: `${data.bars.length} values of ${data.unit}, each against its guideline. A bar longer than its marker is above guideline, shown with a triangle and the words in the table.`,
+    width: WIDTH,
+    height: Math.max(ROW, data.bars.length * ROW),
+    drawing,
+    table: htmlTable(`${data.title}: each value against its guideline`, columns2(data), rows(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    notes: `<p class="legend">The vertical line marks the guideline and ▲ marks a value above it. A guideline orders and labels results; it decides nothing.${data.source === void 0 ? "" : ` ${escapeHtml(data.source)}`}</p>
+`
+  });
+}
+function guidelineBarsMd(data) {
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns2(data), rows(data))].join("\n");
+}
+
+// packages/report/src/components/histogram.ts
+var WIDTH2 = 640;
+var ROW2 = 22;
+var LABEL2 = 150;
+var BAR_MAX2 = 400;
+var columns3 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
+function shares(data) {
+  const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
+  return data.bins.map((bin) => total === 0 ? "0%" : `${formatNumber(bin.count / total * 100)}%`);
+}
+var rows2 = (data) => {
+  const share = shares(data);
+  return data.bins.map((bin, i2) => [bin.label, formatNumber(bin.count), share[i2]]);
+};
+function histogramHtml(data) {
+  const greatest = Math.max(1, ...data.bins.map((bin) => bin.count));
+  const drawing = data.bins.map((bin, i2) => {
+    const y = i2 * ROW2;
+    const width = bin.count / greatest * BAR_MAX2;
+    return `<g class="bin"><text x="${LABEL2 - 6}" y="${y + 15}" text-anchor="end">${escapeHtml(bin.label)}</text><rect x="${LABEL2}" y="${y + 3}" width="${width.toFixed(1)}" height="${ROW2 - 6}"/><text x="${(LABEL2 + width + 6).toFixed(1)}" y="${y + 15}">${formatNumber(bin.count)}</text></g>`;
+  }).join("\n");
+  const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
+  return figureHtml({
+    kind: "histogram",
+    title: data.title,
+    description: `${formatNumber(total)} ${data.unit} in ${data.bins.length} bins. Each bar prints its count; the table below lists the same counts.`,
+    width: WIDTH2,
+    height: Math.max(ROW2, data.bins.length * ROW2),
+    drawing,
+    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns3(data), rows2(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+  });
+}
+function histogramMd(data) {
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns3(data), rows2(data))].join("\n");
+}
+
+// packages/report/src/components/judgement.ts
+var isChoice = (entry) => "items" in entry;
+function labelOf(slot, ref) {
+  return slot.choose?.candidates.find((c) => c.ref === ref)?.label ?? ref;
+}
+function parts2(slot, entry) {
+  if (isChoice(entry)) return entry.items.map((item) => ({ subject: labelOf(slot, item.subject), verdict: item.verdict, text: item.text }));
+  const note = entry;
+  return [{ subject: slot.about.label, verdict: note.verdict, text: note.text }];
+}
+function judgementHtml(data) {
+  const heading = `<h3>${escapeHtml(data.slot.title)}</h3>`;
+  if (data.entry === void 0) return `<section class="judgement unwritten">
+${heading}
+<p class="empty">Judgement not yet written.</p>
+</section>`;
+  const items = parts2(data.slot, data.entry).map(
+    (p) => `<li><strong class="subject">${escapeHtml(p.subject)}</strong>${p.verdict === void 0 ? "" : ` <span class="verdict">Verdict: ${escapeHtml(p.verdict)}.</span>`} ${escapeHtml(oneLine(p.text))}</li>`
+  );
+  return `<section class="judgement">
+${heading}
+<ol>
+${items.join("\n")}
+</ol>
+</section>`;
+}
+function judgementMd(data) {
+  if (data.entry === void 0) return [`**${escapeMd(data.slot.title)}**`, "", `_Judgement not yet written: ${escapeMd(data.slot.task)}_`].join("\n");
+  const items = parts2(data.slot, data.entry).map((p, i2) => `${i2 + 1}. **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
+  return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
+}
+
+// packages/report/src/components/bands.ts
+var BAND_COUNT = 5;
+function makeBands(values, breaks) {
+  if (breaks !== void 0 && breaks.length === BAND_COUNT - 1) {
+    const edges = [...breaks];
+    const least2 = Math.min(...values, edges[0] ?? 0);
+    const greatest2 = Math.max(...values, edges[edges.length - 1] ?? 0);
+    const lower = [least2, ...edges];
+    const upper2 = [...edges, greatest2];
+    return {
+      ranges: lower.map((from, i2) => ({ band: i2 + 1, from, to: upper2[i2] ?? greatest2 })),
+      of: (value) => 1 + edges.filter((edge) => edge <= value).length
+    };
+  }
+  const least = values.length === 0 ? 0 : Math.min(...values);
+  const greatest = values.length === 0 ? 0 : Math.max(...values);
+  const step = (greatest - least) / BAND_COUNT;
+  return {
+    ranges: Array.from({ length: BAND_COUNT }, (_, i2) => ({ band: i2 + 1, from: least + i2 * step, to: i2 === BAND_COUNT - 1 ? greatest : least + (i2 + 1) * step })),
+    of: (value) => step === 0 ? 1 : Math.min(BAND_COUNT, 1 + Math.floor((value - least) / step))
+  };
+}
+function bandLegend(bands) {
+  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+}
+
+// packages/report/src/components/matrix.ts
+var CELL_W = 64;
+var CELL_H = 26;
+var ROW_LABEL = 180;
+var COLUMN_LABEL = 90;
+var display = (value) => value === null ? "none" : formatNumber(value);
+function matrixHtml(data) {
+  const present = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
+  const bands = makeBands(present, data.breaks);
+  const labels = [
+    ...data.columns.map((c, j) => `<text x="${ROW_LABEL + j * CELL_W + CELL_W / 2}" y="${COLUMN_LABEL - 6}" transform="rotate(-35 ${ROW_LABEL + j * CELL_W + CELL_W / 2} ${COLUMN_LABEL - 6})">${escapeHtml(c)}</text>`),
+    ...data.rows.map((r, i2) => `<text x="${ROW_LABEL - 6}" y="${COLUMN_LABEL + i2 * CELL_H + 17}" text-anchor="end">${escapeHtml(r)}</text>`)
+  ];
+  const cells = data.rows.flatMap(
+    (_, i2) => data.columns.map((_2, j) => {
+      const value = data.cells[i2]?.[j] ?? null;
+      const x = ROW_LABEL + j * CELL_W;
+      const y = COLUMN_LABEL + i2 * CELL_H;
+      return `<g class="cell band-${value === null ? "none" : bands.of(value)}"><rect x="${x}" y="${y}" width="${CELL_W - 2}" height="${CELL_H - 2}"/><text x="${x + CELL_W / 2 - 1}" y="${y + 16}" text-anchor="middle">${display(value)}</text></g>`;
+    })
+  );
+  return figureHtml({
+    kind: "matrix",
+    title: data.title,
+    description: `A grid of ${data.rows.length} rows by ${data.columns.length} columns holding ${data.valueLabel}. Each cell prints its value; the table below lists the same values.`,
+    width: ROW_LABEL + data.columns.length * CELL_W + 40,
+    height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
+    drawing: [...labels, ...cells].join("\n"),
+    table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i2) => [escapeHtml(r), ...data.columns.map((_, j) => escapeHtml(display(data.cells[i2]?.[j] ?? null)))]), { rowHeaders: true }),
+    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in five bands, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
+`
+  });
+}
+function matrixMd(data) {
+  const present = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
+  const bands = makeBands(present, data.breaks);
+  return [
+    `**${escapeMd(data.title)}** (${escapeMd(data.valueLabel)}; ${bandLegend(bands)})`,
+    "",
+    mdTable([{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i2) => [r, ...data.columns.map((_, j) => display(data.cells[i2]?.[j] ?? null))]))
+  ].join("\n");
+}
+
+// packages/report/src/components/notice.ts
+var WORD = { notice: "Notice", limit: "Limit", warning: "Warning" };
+function noticeHtml(data) {
+  return `<aside class="notice ${data.level}" role="note"><strong>${WORD[data.level]}:</strong> ${inlineHtml(data.text)}</aside>`;
+}
+function noticeMd(data) {
+  return `> **${WORD[data.level]}:** ${escapeMd(data.text)}`;
+}
+
+// packages/report/src/components/paragraph.ts
+var paragraphHtml = (data) => `<p>${inlineHtml(data.text)}</p>`;
+var paragraphMd = (data) => escapeMd(data.text);
+
+// packages/report/src/components/ranked-table.ts
+var MARK = { above: "▲", below: "▼" };
+function marked(column, value) {
+  if (typeof value !== "number" || column.guideline === void 0) return false;
+  return column.guideline.direction === "below" ? value < column.guideline.value : value > column.guideline.value;
+}
+var rankColumn = (data) => data.numbered === false ? [] : [{ label: "#", align: "right" }];
+var rankCell = (data, index) => data.numbered === false ? [] : [String(index + 1)];
+function text2(value) {
+  return value === null ? "–" : typeof value === "number" ? formatNumber(value) : value;
+}
+function legend(data) {
+  const entries = data.columns.flatMap((column) => {
+    if (column.guideline === void 0) return [];
+    const side = column.guideline.direction === "below" ? "below" : "above";
+    return [`${column.label} ${formatNumber(column.guideline.value)}${column.guideline.note === void 0 ? "" : ` (${column.guideline.note})`}, ${MARK[side]} marks a value ${side} it`];
+  });
+  return entries.length === 0 ? void 0 : `Guidelines order and label the rows and decide nothing. ${entries.join("; ")}.`;
+}
+function omitted2(data) {
+  if (data.total === void 0 || data.total <= data.rows.length) return void 0;
+  const left = data.total - data.rows.length;
+  return `Showing ${formatNumber(data.rows.length)} of ${formatNumber(data.total)}${data.noun === void 0 ? "" : ` ${data.noun}`}; ${formatNumber(left)} not shown.`;
+}
+function rankedTableHtml(data) {
+  const cell = (column, value) => {
+    const shown = escapeHtml(text2(value));
+    if (!marked(column, value)) return shown;
+    const side = column.guideline?.direction === "below" ? "below" : "above";
+    return `${shown} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
+  };
+  const columns6 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows5 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
+  const table3 = data.rows.length === 0 ? `<p class="empty">${escapeHtml(data.caption)}: no rows.</p>` : htmlTable(data.caption, columns6, rows5, { rowHeaders: data.numbered === false, className: "ranked" });
+  const notes2 = [legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${escapeHtml(n)}</p>`]);
+  return [table3, ...notes2].join("\n");
+}
+function rankedTableMd(data) {
+  const columns6 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows5 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => `${text2(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
+  return [
+    `**${escapeMd(data.caption)}**`,
+    "",
+    data.rows.length === 0 ? "No rows." : mdTable(columns6, rows5),
+    ...[legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : ["", `_${escapeMd(n)}_`])
+  ].join("\n");
+}
+
+// packages/report/src/components/sparkline.ts
+var WIDTH3 = 240;
+var HEIGHT = 48;
+var MARGIN = 6;
+var columns4 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
+var rows3 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
+function sparklineCoordinates(points) {
+  const values = points.map((p) => p.value);
+  const least = Math.min(...values);
+  const greatest = Math.max(...values);
+  const span = greatest - least;
+  return points.map((p, i2) => [
+    points.length === 1 ? WIDTH3 / 2 : MARGIN + i2 * (WIDTH3 - 2 * MARGIN) / (points.length - 1),
+    span === 0 ? HEIGHT / 2 : HEIGHT - MARGIN - (p.value - least) * (HEIGHT - 2 * MARGIN) / span
+  ]);
+}
+function sparklineHtml(data) {
+  const coordinates = sparklineCoordinates(data.points);
+  const last = coordinates[coordinates.length - 1];
+  const line = coordinates.length > 1 ? `<polyline points="${coordinates.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ")}"/>` : "";
+  const end = last === void 0 ? "" : `<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3"/>`;
+  const values = data.points.map((p) => p.value);
+  const range = values.length === 0 ? "no points" : `from ${formatNumber(values[0])} to ${formatNumber(values[values.length - 1])}, least ${formatNumber(Math.min(...values))}, greatest ${formatNumber(Math.max(...values))}`;
+  return figureHtml({
+    kind: "sparkline",
+    title: data.title,
+    description: `${data.unit} over ${data.points.length} periods, ${range}. The table below lists every value.`,
+    width: WIDTH3,
+    height: HEIGHT,
+    drawing: `${line}${end}`,
+    table: htmlTable(`${data.title}: ${data.unit} by period`, columns4(data), rows3(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+  });
+}
+function sparklineMd(data) {
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns4(data), rows3(data))].join("\n");
+}
+
+// packages/report/src/components/trend-marker.ts
+var ARROW = { stronger: "↑", stable: "→", weaker: "↓" };
+function trendOf(earlier, later, tolerance = 0.2) {
+  if (later === earlier) return "stable";
+  const base = Math.abs(earlier);
+  if (base === 0) return later > 0 ? "stronger" : "weaker";
+  if (Math.abs(later - earlier) <= tolerance * base) return "stable";
+  return later > earlier ? "stronger" : "weaker";
+}
+function words(data) {
+  const trend = trendOf(data.earlier, data.later, data.tolerance);
+  return { trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
+}
+function trendMarkerHtml(data) {
+  const { trend, detail } = words(data);
+  return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${trend} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
+}
+function trendMarkerMd(data) {
+  const { trend, detail } = words(data);
+  return `${ARROW[trend]} ${trend} (${escapeMd(detail)})`;
+}
+
+// packages/report/src/components/treemap.ts
+var WIDTH4 = 960;
+var HEIGHT2 = 520;
+var HEADER = 14;
+var PAD = 2;
+var DEFAULT_MAX_TILES = 80;
+var byName = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function buildTree(items) {
+  const root = { name: "", path: "", size: 0, children: [] };
+  for (const item of items) {
+    let at = root;
+    const parts3 = item.path.split("/");
+    parts3.forEach((part, i2) => {
+      const path = parts3.slice(0, i2 + 1).join("/");
+      let next = at.children.find((child) => child.name === part && i2 < parts3.length - 1 === (child.item === void 0));
+      if (next === void 0) {
+        next = { name: part, path, size: 0, children: [] };
+        at.children.push(next);
+      }
+      if (i2 === parts3.length - 1) next.item = item;
+      at = next;
+    });
+  }
+  const total = (node) => {
+    node.size = node.item !== void 0 ? node.item.size : node.children.reduce((sum, child) => sum + total(child), 0);
+    return node.size;
+  };
+  total(root);
+  const collapse = (node) => {
+    for (const child of node.children) {
+      while (child.item === void 0 && child.children.length === 1 && child.children[0].item === void 0) {
+        const only = child.children[0];
+        child.name = `${child.name}/${only.name}`;
+        child.path = only.path;
+        child.children = only.children;
+      }
+      collapse(child);
+    }
+  };
+  collapse(root);
+  return root;
+}
+function squarify(sizes, rect) {
+  const total = sizes.reduce((sum, size) => sum + size, 0);
+  const out2 = [];
+  if (total <= 0) return sizes.map(() => ({ x: rect.x, y: rect.y, w: 0, h: 0 }));
+  const scale = rect.w * rect.h / total;
+  const areas = sizes.map((size) => size * scale);
+  let { x, y, w, h } = rect;
+  let start2 = 0;
+  const worst = (row, side) => {
+    const sum = row.reduce((a, b) => a + b, 0);
+    const largest = Math.max(...row);
+    const smallest = Math.min(...row);
+    return Math.max(side * side * largest / (sum * sum), sum * sum / (side * side * smallest));
+  };
+  while (start2 < areas.length) {
+    const side = Math.min(w, h);
+    let end = start2 + 1;
+    while (end < areas.length && worst(areas.slice(start2, end + 1), side) <= worst(areas.slice(start2, end), side)) end++;
+    const row = areas.slice(start2, end);
+    const sum = row.reduce((a, b) => a + b, 0);
+    if (w >= h) {
+      const width = h === 0 ? 0 : sum / h;
+      let top = y;
+      for (const area of row) {
+        const height = width === 0 ? 0 : area / width;
+        out2.push({ x, y: top, w: width, h: height });
+        top += height;
+      }
+      x += width;
+      w -= width;
+    } else {
+      const height = w === 0 ? 0 : sum / w;
+      let left = x;
+      for (const area of row) {
+        const width = height === 0 ? 0 : area / height;
+        out2.push({ x: left, y, w: width, h: height });
+        left += width;
+      }
+      y += height;
+      h -= height;
+    }
+    start2 = end;
+  }
+  return out2;
+}
+function layoutTreemap(items, width = WIDTH4, height = HEIGHT2) {
+  const tiles = [];
+  const folders = [];
+  const place = (node, rect) => {
+    const children = [...node.children].sort((a, b) => b.size - a.size || byName(a.name, b.name));
+    const rects = squarify(children.map((c) => c.size), rect);
+    children.forEach((child, i2) => {
+      const r = rects[i2];
+      if (child.item !== void 0) {
+        tiles.push({ ...r, path: child.path, name: child.name, item: child.item });
+        return;
+      }
+      folders.push({ ...r, path: child.path, name: child.name });
+      const header2 = r.h > HEADER * 2 && r.w > 40 ? HEADER : 0;
+      place(child, { x: r.x + PAD, y: r.y + PAD + header2, w: Math.max(0, r.w - PAD * 2), h: Math.max(0, r.h - PAD * 2 - header2) });
+    });
+  };
+  place(buildTree(items), { x: 0, y: 0, w: width, h: height });
+  return { tiles, folders };
+}
+function prepare(data) {
+  const sized = data.items.filter((item) => item.size > 0).sort((a, b) => b.size - a.size || byName(a.path, b.path));
+  const limit = data.maxTiles ?? DEFAULT_MAX_TILES;
+  const drawn = sized.slice(0, limit);
+  const coloured = drawn.flatMap((item) => item.colour === null ? [] : [item.colour]);
+  return { drawn, notDrawn: { unsized: data.items.length - sized.length, beyondLimit: sized.length - drawn.length }, bands: makeBands(coloured, data.breaks) };
+}
+var bandName = (item, bands) => item.colour === null ? "none" : String(bands.of(item.colour));
+function omissions(prepared) {
+  const out2 = [];
+  if (prepared.notDrawn.beyondLimit > 0) out2.push(`${count3(prepared.notDrawn.beyondLimit, "smaller item")} not drawn`);
+  if (prepared.notDrawn.unsized > 0) out2.push(`${count3(prepared.notDrawn.unsized, "item")} of no size not drawn`);
+  return out2;
+}
+var rows4 = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
+function columns5(data) {
+  return [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: `Colour (${data.colourLabel})`, align: "right" }, { label: "Band", align: "right" }];
+}
+function treemapHtml(data) {
+  const prepared = prepare(data);
+  const { tiles, folders } = layoutTreemap(prepared.drawn);
+  const fmt = (n) => n.toFixed(1);
+  const drawing = [
+    ...folders.map((f) => `<g class="folder"><rect x="${fmt(f.x)}" y="${fmt(f.y)}" width="${fmt(f.w)}" height="${fmt(f.h)}"/>${f.w > 40 && f.h > HEADER * 2 ? `<text x="${fmt(f.x + 4)}" y="${fmt(f.y + 11)}">${escapeHtml(clip(f.name, Math.floor((f.w - 8) / 6.2)))}</text>` : ""}</g>`),
+    ...tiles.map((t) => {
+      const room = Math.floor((t.w - 6) / 6.2);
+      const labels = t.w >= 36 && t.h >= 16 ? [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(clip(t.name, room))}</text>`] : [];
+      if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(t.item.colour === null ? "none" : formatNumber(t.item.colour), room))}</text>`);
+      return `<g class="tile band-${bandName(t.item, prepared.bands)}"><title>${escapeHtml(`${t.path}: ${formatNumber(t.item.size)} ${data.sizeLabel}, ${t.item.colour === null ? "no" : formatNumber(t.item.colour)} ${data.colourLabel}`)}</title><rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>${labels.join("")}</g>`;
+    })
+  ].join("\n");
+  const left = omissions(prepared);
+  const notes2 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
+${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
+`}`;
+  return figureHtml({
+    kind: "treemap",
+    title: data.title,
+    description: `A treemap of ${count3(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; colour is ${data.colourLabel}. The table below lists the same items.`,
+    width: WIDTH4,
+    height: HEIGHT2,
+    drawing,
+    table: htmlTable(`${data.title}: the items drawn, largest first`, columns5(data), rows4(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    notes: notes2
+  });
+}
+function treemapMd(data) {
+  const prepared = prepare(data);
+  const left = omissions(prepared);
+  return [
+    `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)})`,
+    "",
+    mdTable(columns5(data), rows4(prepared)),
+    ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
+  ].join("\n");
+}
+
+// packages/report/src/block.ts
+function slotOf(id, context) {
+  const slot = context.slots.find((s) => s.id === id);
+  if (slot === void 0) throw new ReportError(`a judgement block names slot "${id}", which the report does not define`);
+  return slot;
+}
+function renderBlock(block, format2, context) {
+  switch (block.type) {
+    case "paragraph":
+      return format2 === "html" ? paragraphHtml(block) : paragraphMd(block);
+    case "facts":
+      return format2 === "html" ? factsHtml(block) : factsMd(block);
+    case "ranked-table":
+      return format2 === "html" ? rankedTableHtml(block) : rankedTableMd(block);
+    case "treemap":
+      return format2 === "html" ? treemapHtml(block) : treemapMd(block);
+    case "sparkline":
+      return format2 === "html" ? sparklineHtml(block) : sparklineMd(block);
+    case "histogram":
+      return format2 === "html" ? histogramHtml(block) : histogramMd(block);
+    case "matrix":
+      return format2 === "html" ? matrixHtml(block) : matrixMd(block);
+    case "guideline-bars":
+      return format2 === "html" ? guidelineBarsHtml(block) : guidelineBarsMd(block);
+    case "trend-marker":
+      return format2 === "html" ? `<p>${trendMarkerHtml(block)}</p>` : trendMarkerMd(block);
+    case "evidence-list":
+      return format2 === "html" ? evidenceListHtml(block) : evidenceListMd(block);
+    case "notice":
+      return format2 === "html" ? noticeHtml(block) : noticeMd(block);
+    case "judgement": {
+      const slot = slotOf(block.slot, context);
+      const data = { slot, entry: context.notes?.[slot.id] };
+      return format2 === "html" ? judgementHtml(data) : judgementMd(data);
+    }
+  }
+}
+
+// packages/report/src/theme.ts
+var themeCss = `
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff; --text: #16181d; --muted: #4a4f5c; --rule: #c9ced8; --panel: #f4f6fa;
+  --link: #0b4fb3; --focus: #0b4fb3;
+  --band-1: #eef3fb; --on-band-1: #12233f;
+  --band-2: #cfdff5; --on-band-2: #12233f;
+  --band-3: #9fbfe8; --on-band-3: #0d1f3a;
+  --band-4: #3f78c4; --on-band-4: #ffffff;
+  --band-5: #1c4587; --on-band-5: #ffffff;
+  --bar: #3f78c4; --bar-above: #1c4587; --marker: #16181d;
+  --notice-bg: #fff8e1; --notice-rule: #8a6100;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151b; --text: #e8eaf0; --muted: #b4bac8; --rule: #3a4150; --panel: #1b2029;
+    --link: #8db8ff; --focus: #8db8ff;
+    --band-1: #1b2535; --on-band-1: #dbe6f7;
+    --band-2: #25406a; --on-band-2: #e8f0fc;
+    --band-3: #3566a8; --on-band-3: #ffffff;
+    --band-4: #7ba6e0; --on-band-4: #0b1830;
+    --band-5: #b9d3f5; --on-band-5: #0b1830;
+    --bar: #7ba6e0; --bar-above: #b9d3f5; --marker: #e8eaf0;
+    --notice-bg: #2a2310; --notice-rule: #e0b84a;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+body > header, body > nav, body > main, body > footer { max-width: 72rem; margin: 0 auto; padding: 0 1rem; }
+body > header { padding-top: 1.5rem; border-bottom: 1px solid var(--rule); }
+h1 { margin: 0 0 .75rem; font-size: 1.75rem; line-height: 1.2; }
+h2 { margin: 2rem 0 .75rem; font-size: 1.35rem; border-bottom: 1px solid var(--rule); padding-bottom: .25rem; }
+h3 { margin: 1.25rem 0 .5rem; font-size: 1.1rem; }
+a { color: var(--link); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 1rem; top: 1rem; background: var(--bg); padding: .5rem; z-index: 1; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+dl.header { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; margin: 0 0 1rem; }
+dl.header dt { color: var(--muted); }
+dl.header dd { margin: 0; overflow-wrap: anywhere; }
+dl.header ul { margin: 0; padding-left: 1.1rem; }
+nav { padding-top: .75rem; padding-bottom: .75rem; }
+nav ul { display: flex; flex-wrap: wrap; gap: .25rem 1rem; list-style: none; margin: 0; padding: 0; }
+main { overflow-wrap: anywhere; padding-bottom: 2rem; }
+table { border-collapse: collapse; margin: .5rem 0; max-width: 100%; }
+caption { text-align: left; font-weight: 600; padding: .25rem 0; }
+th, td { border: 1px solid var(--rule); padding: .25rem .6rem; text-align: left; vertical-align: top; }
+thead th { background: var(--panel); }
+th[scope="row"] { font-weight: 600; background: var(--panel); }
+.number { text-align: right; font-variant-numeric: tabular-nums; }
+.legend, .omitted { color: var(--muted); font-size: .9rem; margin: .25rem 0 1rem; }
+.empty { color: var(--muted); font-style: italic; }
+.marker { white-space: nowrap; }
+figure.chart { margin: 1rem 0; }
+figure.chart figcaption { font-weight: 600; margin-bottom: .25rem; }
+figure.chart svg { display: block; width: 100%; height: auto; max-width: 60rem; font: 11px system-ui, sans-serif; }
+figure.sparkline svg { max-width: 16rem; }
+figure.chart svg text { fill: var(--text); }
+svg .folder rect { fill: none; stroke: var(--rule); }
+svg .folder text { fill: var(--muted); }
+svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
+svg .band-1 rect { fill: var(--band-1); } svg .band-1 text { fill: var(--on-band-1); }
+svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band-2); }
+svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
+svg .band-4 rect { fill: var(--band-4); } svg .band-4 text { fill: var(--on-band-4); }
+svg .band-5 rect { fill: var(--band-5); } svg .band-5 text { fill: var(--on-band-5); }
+svg .band-none rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
+svg .bin rect { fill: var(--bar); }
+svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
+svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
+.notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
+.judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
+.judgement ol { margin: 0; padding-left: 1.25rem; }
+.judgement li { margin: .4rem 0; }
+.evidence ul { margin: 0; padding-left: 1.25rem; }
+.trend .trend-detail, .evidence .detail { color: var(--muted); }
+body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-size: .9rem; padding-top: .75rem; padding-bottom: 1.5rem; }
+@media (max-width: 40rem) { dl.header { grid-template-columns: 1fr; } table { font-size: .9rem; } }
+@media print {
+  :root { --bg: #ffffff; --text: #000000; --muted: #333333; --rule: #888888; --panel: #f0f0f0; --link: #000000; }
+  nav, .skip { display: none; }
+  body { font-size: 11pt; }
+  figure.chart, table, .judgement, .notice { break-inside: avoid; }
+  h2 { break-after: avoid; }
+  a { text-decoration: none; }
+}
+`;
+
+// packages/report/src/html-page.ts
+function headerFacts(report) {
+  const { header: header2 } = report;
+  const excluded = header2.excluded.length === 0 ? "nothing" : `<ul>${header2.excluded.map((e) => `<li>${escapeHtml(e.what)}: ${formatNumber(e.count)}</li>`).join("")}</ul>`;
+  const rows5 = [
+    ["Repository", escapeHtml(header2.repo)],
+    ["Analysed commit", `<code>${escapeHtml(header2.commit)}</code>`],
+    ["Date", escapeHtml(header2.date)],
+    ["Config hash", `<code>${escapeHtml(header2.configHash)}</code>`],
+    ["Evidence grade", escapeHtml(header2.evidenceGrade)],
+    ["History window", escapeHtml(header2.historyWindow)],
+    ["Excluded", excluded]
+  ];
+  return `<dl class="header">
+${rows5.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
+</dl>`;
+}
+function section(s, report, notes2) {
+  const body2 = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes2 })).join("\n");
+  return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
+<h2 id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}</h2>
+${body2}
+</section>`;
+}
+function limitsSection(report, notes2) {
+  const slot = report.slots.find((s) => s.id === "limits");
+  const fixed = report.limits.map((text3) => `<li>${inlineHtml(text3)}</li>`).join("\n");
+  const judged = slot === void 0 ? "" : renderBlock({ type: "judgement", slot: slot.id }, "html", { slots: report.slots, notes: notes2 });
+  return `<section id="limits" aria-labelledby="limits-heading">
+<h2 id="limits-heading">Limits</h2>
+${fixed === "" ? "" : `<ul>
+${fixed}
+</ul>
+`}${judged}
+</section>`;
+}
+function htmlPage(report, notes2) {
+  const ids = [...report.sections.map((s) => [s.id, s.heading]), ["limits", "Limits"]];
+  const nav = `<nav aria-label="Sections">
+<ul>
+${ids.map(([id, heading]) => `<li><a href="#${escapeHtml(id)}">${escapeHtml(heading)}</a></li>`).join("\n")}
+</ul>
+</nav>`;
+  return [
+    "<!doctype html>",
+    '<html lang="en">',
+    "<head>",
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<meta name="color-scheme" content="light dark">',
+    `<title>${escapeHtml(report.title)}</title>`,
+    `<style>${themeCss}</style>`,
+    "</head>",
+    "<body>",
+    '<a class="skip" href="#main">Skip to the report</a>',
+    `<header>
+<h1>${escapeHtml(report.title)}</h1>
+${headerFacts(report)}
+</header>`,
+    nav,
+    '<main id="main">',
+    ...report.sections.map((s) => section(s, report, notes2)),
+    limitsSection(report, notes2),
+    "</main>",
+    `<footer>
+<p>Report <code>${escapeHtml(report.kind)}</code> for commit <code>${escapeHtml(report.header.commit.slice(0, 12))}</code>. Every number comes from the command's data. The judgements were written by an agent from that data and checked against the report's slots.</p>
+</footer>`,
+    "</body>",
+    "</html>",
+    ""
+  ].join("\n");
+}
+
+// packages/report/src/markdown-page.ts
+function header(report, compact) {
+  const h = report.header;
+  const excluded = h.excluded.length === 0 ? "nothing" : h.excluded.map((e) => `${escapeMd(e.what)}: ${formatNumber(e.count)}`).join(", ");
+  if (compact) {
+    return [
+      `- Repository \`${h.repo}\` at \`${h.commit.slice(0, 12)}\` on ${h.date}; config hash \`${h.configHash}\``,
+      `- Evidence grade: ${escapeMd(h.evidenceGrade)}. History window: ${escapeMd(h.historyWindow)}`,
+      `- Excluded: ${excluded}`
+    ];
+  }
+  return [
+    `- Repository: ${escapeMd(h.repo)}`,
+    `- Analysed commit: \`${h.commit}\``,
+    `- Date: ${h.date}`,
+    `- Config hash: \`${h.configHash}\``,
+    `- Evidence grade: ${escapeMd(h.evidenceGrade)}`,
+    `- History window: ${escapeMd(h.historyWindow)}`,
+    ...h.excluded.length === 0 ? ["- Excluded: nothing"] : ["- Excluded:", ...h.excluded.map((e) => `  - ${escapeMd(e.what)}: ${formatNumber(e.count)}`)]
+  ];
+}
+function markdownPage(report, notes2, options = {}) {
+  const context = { slots: report.slots, notes: notes2 };
+  const limits = report.limits.map((text3) => `- ${escapeMd(text3)}`);
+  const slot = report.slots.find((s) => s.id === "limits");
+  const judged = slot === void 0 ? [] : [renderBlock({ type: "judgement", slot: slot.id }, "md", context)];
+  return [
+    `# ${escapeMd(report.title)}`,
+    header(report, options.compact === true).join("\n"),
+    ...report.sections.map((s) => [`## ${escapeMd(s.heading)}`, ...s.blocks.map((b) => renderBlock(b, "md", context))].join("\n\n")),
+    ["## Limits", ...limits.length === 0 ? [] : [limits.join("\n")], ...judged].join("\n\n")
+  ].join("\n\n") + "\n";
+}
+
+// packages/report/src/render.ts
+function renderReport(report, format2, notes2, options = {}) {
+  if (format2 === "html") {
+    if (notes2 === void 0) throw new ReportError("html needs notes: run --slots, write the notes file, then render with --notes FILE --format html");
+    return htmlPage(report, notes2);
+  }
+  return markdownPage(report, notes2, options);
+}
+
+// packages/report/src/slots-document.ts
+function slotsDocument(report) {
+  return normalise4({
+    protocol: PROTOCOL_VERSION,
+    report: report.kind,
+    stamp: report.stamp,
+    data: { title: report.title, header: report.header, sections: report.sections, limits: report.limits },
+    slots: report.slots,
+    instructions: "Write notes.json as { stamp, notes }: copy the stamp unchanged, and give each slot id an entry that follows the slot's shape."
+  });
+}
+
+// packages/cli-kit/src/report-command.ts
+var protocolOptions = {
+  slots: { type: "boolean" },
+  notes: { type: "string" },
+  format: { type: "string" },
+  out: { type: "string" },
+  compact: { type: "boolean" }
+};
+var protocolOptionHelp = {
+  slots: "print the report's data and judgement slots as JSON",
+  notes: "the notes file to render: { stamp, notes }, with one entry per slot id",
+  format: "html or md. md without --notes is a data-only draft; html needs --notes",
+  out: "write the output to this file instead of stdout",
+  compact: "md only: the short header used in a pull request comment"
+};
+var protocolOptionNames = Object.keys(protocolOptions);
+function reportCommand(kinds) {
+  const names = Object.keys(kinds);
+  const kindOptions = Object.assign({}, ...Object.values(kinds).map((k) => k.options ?? {}));
+  const subcommands = Object.fromEntries(
+    Object.entries(kinds).map(([name11, kind]) => [name11, { summary: kind.summary, options: [...protocolOptionNames, ...Object.keys(kind.options ?? {})] }])
+  );
+  return {
+    summary: "Write a report: --slots prints its data and judgement slots, --notes renders the notes as html or markdown",
+    usage: "<report> [args]",
+    options: { ...kindOptions, ...protocolOptions },
+    optionHelp: Object.assign({}, ...Object.values(kinds).map((k) => k.optionHelp ?? {}), protocolOptionHelp),
+    subcommands,
+    async run(context) {
+      const [name11, ...args2] = context.positionals;
+      if (name11 === void 0) throw usageError(`report needs a report name: ${names.join(", ")}`);
+      const kind = kinds[name11];
+      if (kind === void 0) throw usageError(`unknown report "${name11}"; reports: ${names.join(", ")}`);
+      const request = readRequest(context);
+      const build = await kind.build({ ...context, positionals: args2 });
+      const report = {
+        ...build,
+        kind: name11,
+        header: { repo: repoName(context.repo.root), commit: context.repo.head, date: context.repo.headCommitDate.slice(0, 10), configHash: context.config.hash, ...build.header },
+        stamp: makeStamp(name11, context.repo.head, context.config.hash, build.inputs)
+      };
+      try {
+        const text3 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
+        if (request.out === void 0) return { results: [], text: text3 };
+        const file = resolve(context.cwd, request.out);
+        mkdirSync3(dirname3(file), { recursive: true });
+        writeFileSync3(file, text3);
+        return { results: [], text: `wrote ${request.out}
+` };
+      } catch (error) {
+        if (error instanceof ReportError) throw usageError(error.message);
+        throw error;
+      }
+    }
+  };
+}
+function readRequest(context) {
+  const { slots, notes: notes2, format: format2, out: out2, compact } = context.values;
+  const text3 = (value, option) => {
+    if (value === void 0) return void 0;
+    if (typeof value !== "string" || value === "") throw usageError(`--${option} needs a value`);
+    return value;
+  };
+  const chosen = text3(format2, "format");
+  if (chosen !== void 0 && chosen !== "html" && chosen !== "md") throw usageError(`--format must be html or md, got "${chosen}"`);
+  const request = { slots: slots === true, notes: text3(notes2, "notes"), format: chosen, out: text3(out2, "out"), compact: compact === true };
+  if (request.slots) {
+    if (request.notes !== void 0 || request.format !== void 0 || request.compact) throw usageError("--slots prints the slots and takes no --notes, --format or --compact");
+  } else if (request.notes === void 0 && request.format !== "md") {
+    throw usageError(
+      request.format === "html" ? "html needs notes: run with --slots, write the notes file, then run with --notes FILE --format html" : "say what to print: --slots for the data and slots, --notes FILE --format html|md to render notes, or --format md for a draft without notes"
+    );
+  }
+  if (request.compact && (request.format ?? "md") !== "md") throw usageError("--compact is for --format md");
+  return request;
+}
+function produce(report, request, cwd) {
+  const format2 = request.format ?? "md";
+  if (request.notes === void 0) return renderReport(report, format2, void 0, { compact: request.compact });
+  let document;
+  try {
+    document = JSON.parse(readFileSync8(resolve(cwd, request.notes), "utf8"));
+  } catch (error) {
+    throw new ReportError(`cannot read the notes file ${request.notes}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  return renderReport(report, format2, validateNotes(report, document), { compact: request.compact });
+}
+function repoName(root) {
+  return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
+}
+
+// packages/report/src/xray.ts
+var FLAG_VERDICTS = [
+  "none-applies",
+  "nonobvious-code",
+  "bumpy-road",
+  "shallow-module",
+  "information-leakage",
+  "special-general-mixture",
+  "overexposure",
+  "pass-through-method",
+  "conjoined-methods",
+  "temporal-decomposition",
+  "repetition",
+  "vague-name",
+  "hard-to-describe",
+  "other"
+];
+var XRAY_JUDGED = 5;
+var guidelineOf = (value, guidelines) => value === void 0 || guidelines === void 0 ? {} : { guideline: { value, note: guidelines.note } };
+var lines = (fn) => `${fn.startLine}-${fn.endLine}`;
+function xrayBlocks(data) {
+  const shown = data.rows === void 0 ? data.functions : data.functions.slice(0, data.rows);
+  const withFixes = data.functions.some((fn) => fn.fixes !== null);
+  const table3 = {
+    type: "ranked-table",
+    caption: `X-Ray of ${data.file}: its functions, most complex first`,
+    noun: "functions",
+    total: data.functions.length,
+    columns: [
+      { key: "function", label: "Function" },
+      { key: "lines", label: "Lines" },
+      { key: "length", label: "Length", align: "right" },
+      { key: "cognitive", label: "Cognitive", align: "right", ...guidelineOf(data.guidelines?.cognitive, data.guidelines) },
+      { key: "nesting", label: "Nesting", align: "right", ...guidelineOf(data.guidelines?.nesting, data.guidelines) },
+      { key: "cyclomatic", label: "Cyclomatic", align: "right", ...guidelineOf(data.guidelines?.cyclomatic, data.guidelines) },
+      { key: "revisions", label: "Revisions", align: "right" },
+      { key: "fixes", label: "Fixes", align: "right" },
+      { key: "smells", label: "Code smells" }
+    ],
+    rows: shown.map((fn) => ({
+      function: fn.name,
+      lines: lines(fn),
+      length: fn.length,
+      cognitive: fn.cognitive,
+      nesting: fn.nesting,
+      cyclomatic: fn.cyclomatic,
+      revisions: fn.revisions,
+      fixes: fn.fixes,
+      smells: fn.labels.length === 0 ? "none" : fn.labels.join(", ")
+    }))
+  };
+  return [
+    table3,
+    ...withFixes ? [] : [{ type: "notice", level: "notice", text: "No fix result covers these functions, so revisions and fixes are not shown." }]
+  ];
+}
+function xraySlots(data) {
+  return data.functions.slice(0, XRAY_JUDGED).map((fn) => ({
+    id: `function:${fn.id}`,
+    title: `Judgement: ${fn.name}`,
+    about: { kind: "unit", ref: fn.id, label: `${fn.name} (${data.file}, lines ${lines(fn)})` },
+    task: "Read the function in the file. Give the red flag or code smell you judge present in it, or none-applies, and in one or two sentences say what makes it hard to read or change and the smallest next step, citing only the values the table shows. A long linear function with low nesting is not a smell on its own.",
+    verdicts: FLAG_VERDICTS,
+    maxChars: 400
+  }));
+}
+
+// packages/complexity/src/reports/xray.ts
+var isoDate = (value) => value.slice(0, 10);
+var number = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
+function functionOf(row, fixes) {
+  const measured = fixes?.get(row.id);
+  return {
+    id: row.id,
+    name: row.unit,
+    startLine: row.startLine,
+    endLine: row.endLine,
+    length: number(row.length),
+    cognitive: number(row.cognitive),
+    nesting: number(row.nesting),
+    cyclomatic: number(row.cyclomatic),
+    labels: row.labels ?? [],
+    // A function no analysed change touched has no revisions and no fixes, and one the history could not read has neither figure.
+    revisions: fixes === void 0 ? null : measured?.revisions ?? 0,
+    fixes: fixes === void 0 ? null : measured?.fixCommits ?? 0
+  };
+}
+var xray = {
+  summary: "The functions of one file with their length, complexity, revisions, fixes and code smells, and a judgement of each of the top 5",
+  usage: "FILE",
+  options: { ...fixOptions, ...noCacheOption },
+  optionHelp: { ...fixOptionHelp, "no-cache": "compute the analysis and the fix statistics again instead of reading the stored ones" },
+  async build(context) {
+    const paths = normalisePaths(context.positionals);
+    if (paths.length !== 1) throw usageError("usage: complexity report xray FILE");
+    const file = paths[0];
+    const settings = readSettings(context.config);
+    const forFile = { ...context, positionals: [file], values: { ...context.values, "include-tests": true } };
+    const analysis = await command.run(forFile);
+    const rows5 = analysis.results.filter((row) => row.path === file);
+    if (rows5.length === 0) throw usageError(`no functions were measured in "${file}": name a source file of the current tree that a language adapter reads`);
+    const current = await currentTree(context);
+    let fixes;
+    let header2;
+    let fixProblem;
+    try {
+      const measured = await measureFixesFor(forFile, settings, current);
+      fixes = measured.stats.units;
+      header2 = fixHeader(measured.stats, measured.request, settings);
+    } catch (error) {
+      if (!(error instanceof CliError)) throw error;
+      fixProblem = error.message;
+    }
+    const guidelines = guidelinesFor(settings, file);
+    const data = {
+      file,
+      functions: rows5.map((row) => functionOf(row, fixes)),
+      guidelines: {
+        cognitive: limitOf(guidelines, "cognitive"),
+        cyclomatic: limitOf(guidelines, "cyclomatic"),
+        nesting: limitOf(guidelines, "nesting"),
+        note: "complexity.guidelines, the warn level"
+      }
+    };
+    const above = data.functions.filter((fn) => fn.labels.length > 0).length;
+    const touched = data.functions.filter((fn) => (fn.revisions ?? 0) > 0).length;
+    const grade = fixes === void 0 ? "not graded" : (await analyseHistory(context.repo.root, { ref: "HEAD", noise: { exclude: [...context.config.effective.exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize } })).evidence.grade;
+    const commits = header2?.commits;
+    const excluded = header2 === void 0 ? [] : [
+      { what: "commits over --max-commits", count: header2.commits.skippedBy.maxCommits },
+      { what: "commits in oversized changes", count: header2.commits.skippedBy.oversized },
+      { what: "commits touching no source file", count: header2.commits.skippedBy.noSourceFile },
+      { what: "landed changes a fix exclude pattern removed", count: header2.fixesExcluded.fixes }
+    ];
+    const summary = [
+      {
+        type: "facts",
+        caption: `Measures of ${file}`,
+        facts: [
+          { label: "Functions measured", value: String(data.functions.length) },
+          { label: "Functions with a code smell label", value: String(above) },
+          ...fixes === void 0 ? [] : [{ label: "Functions changed in the window", value: String(touched) }],
+          ...commits === void 0 ? [] : [{ label: "Commits analysed", value: `${commits.analysed} of ${commits.inWindow} in the window` }]
+        ]
+      },
+      ...fixProblem === void 0 ? [] : [{ type: "notice", level: "warning", text: `Fix statistics are not available: ${fixProblem}` }]
+    ];
+    return {
+      title: `X-Ray of ${file}`,
+      inputs: { file, fixes: fixes === void 0 ? null : { maxCommits: header2.commits.maxCommits, evidence: Number(context.values.evidence ?? settings.fixes.evidence) } },
+      header: {
+        evidenceGrade: grade,
+        historyWindow: header2 === void 0 ? "no history was read for this report" : `${header2.window.months} months of fix history, ${isoDate(header2.window.since)} to ${isoDate(header2.window.until)}`,
+        excluded: excluded.filter((e) => e.count > 0)
+      },
+      sections: [
+        { id: "summary", heading: "Summary", blocks: [...summary, { type: "judgement", slot: "summary" }] },
+        {
+          id: "xray",
+          heading: "X-Ray",
+          blocks: [...xrayBlocks(data), ...xraySlots(data).map((slot) => ({ type: "judgement", slot: slot.id }))]
+        }
+      ],
+      limits: [
+        "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+        "The table lists every function of the file. Length has no guideline: a long, linear function is often clearer than five shallow fragments.",
+        "Revisions and fixes are counts of landed changes in the window that touched the function, and a fix is a count of commit messages, not of defects.",
+        ...header2?.shallow === true ? ["The clone is shallow, so history before its boundary is missing."] : [],
+        ...commits !== void 0 && commits.skipped > 0 ? [`${commits.skipped} of ${commits.inWindow} commits in the window were not analysed (see what was excluded).`] : [],
+        `Only the first ${xraySlots(data).length} functions have a judgement, because the table is ordered by cognitive complexity.`
+      ],
+      slots: [
+        {
+          id: "summary",
+          title: "Judgement: the file as a whole",
+          about: { kind: "file", ref: file, label: file },
+          task: "In at most three sentences, say what the table shows about this file: where its complexity is concentrated, and whether the functions that changed or were fixed most are the complex ones. Cite only values the table shows, and say so when there are no fix figures.",
+          verdicts: [],
+          maxChars: 500
+        },
+        ...xraySlots(data),
+        {
+          id: "limits",
+          title: "Judgement: what limits these results",
+          about: { kind: "report", ref: "xray", label: file },
+          task: "In at most three sentences, say what limits how far this X-Ray can be trusted, using only the evidence grade, the exclusions and the notices shown.",
+          verdicts: [],
+          maxChars: 500
+        }
+      ]
+    };
+  }
+};
+
+// packages/complexity/src/commands/report.ts
+var name10 = "report";
+var command9 = reportCommand({ xray });
+
 // packages/complexity/src/commands.ts
 var commandModules = [
   analyse_exports,
@@ -21277,7 +22526,8 @@ var commandModules = [
   explain_exports,
   files_exports,
   fixes_exports,
-  outcome_exports
+  outcome_exports,
+  report_exports
 ];
 var commands2 = Object.fromEntries(commandModules.map((m) => [m.name, m.command]));
 var rules4 = Object.assign({}, ...commandModules.map((m) => m.rules ?? {}));

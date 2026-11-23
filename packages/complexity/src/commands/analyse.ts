@@ -119,6 +119,7 @@ async function compute(context: CommandContext, paths: string[]): Promise<Comman
         layers,
         agreement,
         skipped,
+        guidelines: { cognitiveWarn: settings.guidelines.cognitive.warn, cyclomaticWarn: settings.guidelines.cyclomatic.warn, nesting: settings.guidelines.nesting, overrides: settings.overrides.length },
         parseCoverage: {
           parsedFiles,
           filesWithSyntaxErrors: filesWithSyntaxErrors.length,

@@ -1,0 +1,466 @@
+{
+  "data": {
+    "header": {
+      "commit": "e280410157605ca8c1a5a2f33e70539f4a18188d",
+      "configHash": "0000000000000000",
+      "date": "2024-06-15",
+      "evidenceGrade": "weak",
+      "excluded": [
+        {
+          "count": 1,
+          "what": "commits outside the analysis window"
+        }
+      ],
+      "historyWindow": "17.3 months of usable history; the analysis window is 12 months, 2023-06-15 to 2024-06-15",
+      "repo": "repo"
+    },
+    "limits": [
+      "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+      "The friction list is the files at or above the 50th percentile (cochange.hotspotPercentile) of both change frequency and complexity. A percentile is a rank among the 4 files ranked, so it moves when files are added.",
+      "The friction list shows 1 of 1 files; the history covers the first 1 and the X-Ray the first 1.",
+      "Complexity is the indentation proxy, because no complexity files report covers this commit.",
+      "Revisions count every commit that touched the file in the window. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.",
+      "The evidence grade is weak, so history-based results are tentative and static signals should lead."
+    ],
+    "sections": [
+      {
+        "blocks": [
+          {
+            "slot": "summary",
+            "type": "judgement"
+          }
+        ],
+        "heading": "What the picture says",
+        "id": "summary"
+      },
+      {
+        "blocks": [
+          {
+            "breaks": [
+              5,
+              6,
+              7,
+              8
+            ],
+            "colourLabel": "revisions in the window",
+            "items": [
+              {
+                "colour": 5,
+                "path": "src/core/engine.ts",
+                "size": 13
+              },
+              {
+                "colour": 3,
+                "path": "src/legacy/old.ts",
+                "size": 7
+              },
+              {
+                "colour": 2,
+                "path": "src/ui/page.ts",
+                "size": 5
+              },
+              {
+                "colour": 5,
+                "path": "src/core/util.ts",
+                "size": 1
+              }
+            ],
+            "sizeLabel": "lines",
+            "title": "Code by folder: size is lines, colour is revisions in the window",
+            "type": "treemap"
+          },
+          {
+            "text": "Colour bands are rank steps of the files shown: the band edges sit at the 50th, 75th, 90th and 97th percentile of their revisions, so band 5 is the most changed and says nothing about good or bad.",
+            "type": "paragraph"
+          }
+        ],
+        "heading": "Map of the code",
+        "id": "map"
+      },
+      {
+        "blocks": [
+          {
+            "text": "1 of 4 files reach the top 50 percent in change frequency and in complexity at once. Both percentiles are ranks among the files ranked, and the list is ordered by hotspot score.",
+            "type": "paragraph"
+          },
+          {
+            "caption": "Friction list: files in the top change-frequency percentile and above the complexity guideline, by hotspot score",
+            "columns": [
+              {
+                "key": "path",
+                "label": "File"
+              },
+              {
+                "align": "right",
+                "key": "revisions",
+                "label": "Revisions"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "cochange.hotspotPercentile",
+                  "value": 50
+                },
+                "key": "frequencyPercentile",
+                "label": "Frequency percentile"
+              },
+              {
+                "align": "right",
+                "key": "complexity",
+                "label": "Complexity (indentation)"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "cochange.hotspotPercentile",
+                  "value": 50
+                },
+                "key": "complexityPercentile",
+                "label": "Complexity percentile"
+              },
+              {
+                "key": "lastChanged",
+                "label": "Last changed"
+              },
+              {
+                "align": "right",
+                "key": "fixShare",
+                "label": "Fix share (%)"
+              },
+              {
+                "align": "right",
+                "key": "fixes",
+                "label": "Fixes landed"
+              },
+              {
+                "align": "right",
+                "key": "reviewFixes",
+                "label": "Fixes in review"
+              },
+              {
+                "key": "flag",
+                "label": "Flag"
+              }
+            ],
+            "noun": "files",
+            "rows": [
+              {
+                "complexity": 36,
+                "complexityPercentile": 87.5,
+                "fixShare": 0,
+                "fixes": 0,
+                "flag": "hotspot",
+                "frequencyPercentile": 75,
+                "lastChanged": "2024-06-15",
+                "path": "src/core/engine.ts",
+                "reviewFixes": 0,
+                "revisions": 5
+              }
+            ],
+            "total": 1,
+            "type": "ranked-table"
+          },
+          {
+            "slot": "flag:src/core/engine.ts",
+            "type": "judgement"
+          },
+          {
+            "slot": "recommend:src/core/engine.ts",
+            "type": "judgement"
+          }
+        ],
+        "heading": "Friction list",
+        "id": "friction"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Complexity and size of the first friction files across their history (cochange trend)",
+            "columns": [
+              {
+                "key": "path",
+                "label": "File"
+              },
+              {
+                "align": "right",
+                "key": "revisions",
+                "label": "Revisions in history"
+              },
+              {
+                "key": "direction",
+                "label": "Direction"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "the trend guideline for worsening",
+                  "value": 20
+                },
+                "key": "change",
+                "label": "Change in complexity (%)"
+              },
+              {
+                "align": "right",
+                "key": "peak",
+                "label": "Peak complexity"
+              },
+              {
+                "align": "right",
+                "key": "linesFirst",
+                "label": "Lines at first sample"
+              },
+              {
+                "align": "right",
+                "key": "linesLast",
+                "label": "Lines at last sample"
+              }
+            ],
+            "noun": "friction files",
+            "rows": [
+              {
+                "change": 0,
+                "direction": "stable",
+                "linesFirst": 13,
+                "linesLast": 13,
+                "path": "src/core/engine.ts",
+                "peak": 36,
+                "revisions": 6
+              }
+            ],
+            "total": 1,
+            "type": "ranked-table"
+          },
+          {
+            "points": [
+              {
+                "label": "2023-01-05",
+                "value": 36
+              },
+              {
+                "label": "2024-02-01",
+                "value": 36
+              },
+              {
+                "label": "2024-03-20",
+                "value": 36
+              },
+              {
+                "label": "2024-04-20",
+                "value": 36
+              },
+              {
+                "label": "2024-05-25",
+                "value": 36
+              },
+              {
+                "label": "2024-06-15",
+                "value": 36
+              }
+            ],
+            "title": "src/core/engine.ts: indentation complexity across its history",
+            "type": "sparkline",
+            "unit": "indentation complexity"
+          }
+        ],
+        "heading": "History of the top files",
+        "id": "history"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "X-Ray of src/core/engine.ts: its functions, most complex first",
+            "columns": [
+              {
+                "key": "function",
+                "label": "Function"
+              },
+              {
+                "key": "lines",
+                "label": "Lines"
+              },
+              {
+                "align": "right",
+                "key": "length",
+                "label": "Length"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "complexity.guidelines, the warn level",
+                  "value": 15
+                },
+                "key": "cognitive",
+                "label": "Cognitive"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "complexity.guidelines, the warn level",
+                  "value": 4
+                },
+                "key": "nesting",
+                "label": "Nesting"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "complexity.guidelines, the warn level",
+                  "value": 10
+                },
+                "key": "cyclomatic",
+                "label": "Cyclomatic"
+              },
+              {
+                "align": "right",
+                "key": "revisions",
+                "label": "Revisions"
+              },
+              {
+                "align": "right",
+                "key": "fixes",
+                "label": "Fixes"
+              },
+              {
+                "key": "smells",
+                "label": "Code smells"
+              }
+            ],
+            "noun": "functions",
+            "rows": [
+              {
+                "cognitive": 30,
+                "cyclomatic": 12,
+                "fixes": 2,
+                "function": "tune",
+                "length": 14,
+                "lines": "1-20",
+                "nesting": 6,
+                "revisions": 5,
+                "smells": "cognitive-high, nesting-warn"
+              },
+              {
+                "cognitive": 4,
+                "cyclomatic": 12,
+                "fixes": 0,
+                "function": "start",
+                "length": 14,
+                "lines": "1-20",
+                "nesting": 6,
+                "revisions": null,
+                "smells": "none"
+              }
+            ],
+            "total": 2,
+            "type": "ranked-table"
+          },
+          {
+            "level": "notice",
+            "text": "The stored fix result lists the functions that have a fix, so revisions show only for those and a dash means the figure is not stored.",
+            "type": "notice"
+          }
+        ],
+        "heading": "X-Ray: src/core/engine.ts",
+        "id": "xray-1"
+      }
+    ],
+    "title": "Hotspots"
+  },
+  "instructions": "Write notes.json as { stamp, notes }: copy the stamp unchanged, and give each slot id an entry that follows the slot's shape.",
+  "protocol": 1,
+  "report": "hotspots",
+  "slots": [
+    {
+      "about": {
+        "kind": "report",
+        "label": "the repository",
+        "ref": "hotspots"
+      },
+      "id": "summary",
+      "maxChars": 500,
+      "task": "In at most three sentences, say where change and size concentrate and whether the friction list points at a few files or many, citing only values this report shows. When the evidence grade is weak, say the history-based results are tentative.",
+      "title": "Judgement: what the picture says",
+      "verdicts": []
+    },
+    {
+      "about": {
+        "kind": "file",
+        "label": "src/core/engine.ts",
+        "ref": "src/core/engine.ts"
+      },
+      "id": "flag:src/core/engine.ts",
+      "maxChars": 400,
+      "task": "Read the file, and its X-Ray when the report has one. Give the red flag or code smell you judge present, or none-applies. In one or two sentences say what in the file shows it. Cite only values this report shows. A fix is a count of commit messages, not of defects.",
+      "title": "Judgement: src/core/engine.ts, red flag or code smell",
+      "verdicts": [
+        "none-applies",
+        "nonobvious-code",
+        "bumpy-road",
+        "shallow-module",
+        "information-leakage",
+        "special-general-mixture",
+        "overexposure",
+        "pass-through-method",
+        "conjoined-methods",
+        "temporal-decomposition",
+        "repetition",
+        "vague-name",
+        "hard-to-describe",
+        "other"
+      ]
+    },
+    {
+      "about": {
+        "kind": "file",
+        "label": "src/core/engine.ts",
+        "ref": "src/core/engine.ts"
+      },
+      "id": "recommend:src/core/engine.ts",
+      "maxChars": 400,
+      "task": "Recommend one: refactor (reduce complexity in place), split (separate responsibilities into files), leave (the signal does not call for work), review (a person should look first), or dismiss (a false positive such as generated or data-table code; the text records why). Give the reason in one or two sentences.",
+      "title": "Judgement: src/core/engine.ts, recommendation",
+      "verdicts": [
+        "refactor",
+        "split",
+        "leave",
+        "review",
+        "dismiss"
+      ]
+    },
+    {
+      "about": {
+        "kind": "report",
+        "label": "the repository",
+        "ref": "hotspots"
+      },
+      "id": "limits",
+      "maxChars": 500,
+      "task": "In at most three sentences, say what limits how far these results can be trusted for this repository, using only the evidence, the exclusions and the missing results shown above.",
+      "title": "Judgement: what limits these results",
+      "verdicts": []
+    }
+  ],
+  "stamp": {
+    "config": "0000000000000000",
+    "head": "e280410157605ca8c1a5a2f33e70539f4a18188d",
+    "inputs": {
+      "complexityReport": null,
+      "since": null,
+      "storedResultsRead": [
+        {
+          "config": "1111111111111111",
+          "head": "e280410157605ca8c1a5a2f33e70539f4a18188d",
+          "report": "complexity.analyse"
+        },
+        {
+          "config": "1111111111111111",
+          "head": "e280410157605ca8c1a5a2f33e70539f4a18188d",
+          "report": "complexity.fixes"
+        }
+      ],
+      "top": 20,
+      "until": null
+    },
+    "kind": "hotspots",
+    "protocol": 1
+  }
+}

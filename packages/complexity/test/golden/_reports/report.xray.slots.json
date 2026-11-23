@@ -1,0 +1,250 @@
+{
+  "data": {
+    "header": {
+      "commit": "ff3b4208d8631f234e71c3f979954c0eb2989f9e",
+      "configHash": "0000000000000000",
+      "date": "2024-02-11",
+      "evidenceGrade": "weak",
+      "excluded": [],
+      "historyWindow": "12 months of fix history, 2023-02-11 to 2024-02-11",
+      "repo": "repo"
+    },
+    "limits": [
+      "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+      "The table lists every function of the file. Length has no guideline: a long, linear function is often clearer than five shallow fragments.",
+      "Revisions and fixes are counts of landed changes in the window that touched the function, and a fix is a count of commit messages, not of defects.",
+      "Only the first 2 functions have a judgement, because the table is ordered by cognitive complexity."
+    ],
+    "sections": [
+      {
+        "blocks": [
+          {
+            "caption": "Measures of src/billing.ts",
+            "facts": [
+              {
+                "label": "Functions measured",
+                "value": "2"
+              },
+              {
+                "label": "Functions with a code smell label",
+                "value": "0"
+              },
+              {
+                "label": "Functions changed in the window",
+                "value": "2"
+              },
+              {
+                "label": "Commits analysed",
+                "value": "11 of 11 in the window"
+              }
+            ],
+            "type": "facts"
+          },
+          {
+            "slot": "summary",
+            "type": "judgement"
+          }
+        ],
+        "heading": "Summary",
+        "id": "summary"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "X-Ray of src/billing.ts: its functions, most complex first",
+            "columns": [
+              {
+                "key": "function",
+                "label": "Function"
+              },
+              {
+                "key": "lines",
+                "label": "Lines"
+              },
+              {
+                "align": "right",
+                "key": "length",
+                "label": "Length"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "complexity.guidelines, the warn level",
+                  "value": 15
+                },
+                "key": "cognitive",
+                "label": "Cognitive"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "complexity.guidelines, the warn level",
+                  "value": 4
+                },
+                "key": "nesting",
+                "label": "Nesting"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "complexity.guidelines, the warn level",
+                  "value": 10
+                },
+                "key": "cyclomatic",
+                "label": "Cyclomatic"
+              },
+              {
+                "align": "right",
+                "key": "revisions",
+                "label": "Revisions"
+              },
+              {
+                "align": "right",
+                "key": "fixes",
+                "label": "Fixes"
+              },
+              {
+                "key": "smells",
+                "label": "Code smells"
+              }
+            ],
+            "noun": "functions",
+            "rows": [
+              {
+                "cognitive": 8,
+                "cyclomatic": 5,
+                "fixes": 2,
+                "function": "priceOrder",
+                "length": 11,
+                "lines": "4-14",
+                "nesting": 2,
+                "revisions": 5,
+                "smells": "none"
+              },
+              {
+                "cognitive": 1,
+                "cyclomatic": 2,
+                "fixes": 1,
+                "function": "describe",
+                "length": 7,
+                "lines": "16-22",
+                "nesting": 1,
+                "revisions": 2,
+                "smells": "none"
+              }
+            ],
+            "total": 2,
+            "type": "ranked-table"
+          },
+          {
+            "slot": "function:src/billing.ts#priceOrder",
+            "type": "judgement"
+          },
+          {
+            "slot": "function:src/billing.ts#describe",
+            "type": "judgement"
+          }
+        ],
+        "heading": "X-Ray",
+        "id": "xray"
+      }
+    ],
+    "title": "X-Ray of src/billing.ts"
+  },
+  "instructions": "Write notes.json as { stamp, notes }: copy the stamp unchanged, and give each slot id an entry that follows the slot's shape.",
+  "protocol": 1,
+  "report": "xray",
+  "slots": [
+    {
+      "about": {
+        "kind": "file",
+        "label": "src/billing.ts",
+        "ref": "src/billing.ts"
+      },
+      "id": "summary",
+      "maxChars": 500,
+      "task": "In at most three sentences, say what the table shows about this file: where its complexity is concentrated, and whether the functions that changed or were fixed most are the complex ones. Cite only values the table shows, and say so when there are no fix figures.",
+      "title": "Judgement: the file as a whole",
+      "verdicts": []
+    },
+    {
+      "about": {
+        "kind": "unit",
+        "label": "priceOrder (src/billing.ts, lines 4-14)",
+        "ref": "src/billing.ts#priceOrder"
+      },
+      "id": "function:src/billing.ts#priceOrder",
+      "maxChars": 400,
+      "task": "Read the function in the file. Give the red flag or code smell you judge present in it, or none-applies, and in one or two sentences say what makes it hard to read or change and the smallest next step, citing only the values the table shows. A long linear function with low nesting is not a smell on its own.",
+      "title": "Judgement: priceOrder",
+      "verdicts": [
+        "none-applies",
+        "nonobvious-code",
+        "bumpy-road",
+        "shallow-module",
+        "information-leakage",
+        "special-general-mixture",
+        "overexposure",
+        "pass-through-method",
+        "conjoined-methods",
+        "temporal-decomposition",
+        "repetition",
+        "vague-name",
+        "hard-to-describe",
+        "other"
+      ]
+    },
+    {
+      "about": {
+        "kind": "unit",
+        "label": "describe (src/billing.ts, lines 16-22)",
+        "ref": "src/billing.ts#describe"
+      },
+      "id": "function:src/billing.ts#describe",
+      "maxChars": 400,
+      "task": "Read the function in the file. Give the red flag or code smell you judge present in it, or none-applies, and in one or two sentences say what makes it hard to read or change and the smallest next step, citing only the values the table shows. A long linear function with low nesting is not a smell on its own.",
+      "title": "Judgement: describe",
+      "verdicts": [
+        "none-applies",
+        "nonobvious-code",
+        "bumpy-road",
+        "shallow-module",
+        "information-leakage",
+        "special-general-mixture",
+        "overexposure",
+        "pass-through-method",
+        "conjoined-methods",
+        "temporal-decomposition",
+        "repetition",
+        "vague-name",
+        "hard-to-describe",
+        "other"
+      ]
+    },
+    {
+      "about": {
+        "kind": "report",
+        "label": "src/billing.ts",
+        "ref": "xray"
+      },
+      "id": "limits",
+      "maxChars": 500,
+      "task": "In at most three sentences, say what limits how far this X-Ray can be trusted, using only the evidence grade, the exclusions and the notices shown.",
+      "title": "Judgement: what limits these results",
+      "verdicts": []
+    }
+  ],
+  "stamp": {
+    "config": "0000000000000000",
+    "head": "ff3b4208d8631f234e71c3f979954c0eb2989f9e",
+    "inputs": {
+      "file": "src/billing.ts",
+      "fixes": {
+        "evidence": 3,
+        "maxCommits": null
+      }
+    },
+    "kind": "xray",
+    "protocol": 1
+  }
+}
