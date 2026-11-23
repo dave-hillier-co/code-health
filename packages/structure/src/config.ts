@@ -75,6 +75,8 @@ export const structureConfig: PluginConfigSpec = {
     mainBranch: "main",
     /** The revision `check` compares against, replacing the merge base with mainBranch. null uses the merge base. */
     base: null,
+    /** When true, `cycles` also counts the folder cycles inside one C# project and lists the largest few. They are never the headline: folders of one project are one compilation unit. */
+    csharpFolderCycles: false,
     /** The packaging skill's settings; see docs/specs/packaging.md. */
     packages: packagesDefaults,
   },
@@ -111,6 +113,8 @@ export interface StructureSettings {
   hubMinAuthors: number;
   layers: LayerRule[];
   mainBranch: string;
+  /** Count the folder cycles inside one C# project and list the largest few, in `cycles` and `check`. */
+  csharpFolderCycles: boolean;
   /** Explicit base revision for `check`, or null for the merge base with mainBranch. */
   base: string | null;
   /** The suite's shared `exclude` globs. */
@@ -175,6 +179,8 @@ export function readSettings(config: LoadedConfig): StructureSettings {
   }
   const mainBranch = section.mainBranch;
   if (typeof mainBranch !== "string" || mainBranch === "") throw configError(`code-health.json: ${at("mainBranch")} must be a branch name`);
+  const csharpFolderCycles = section.csharpFolderCycles;
+  if (typeof csharpFolderCycles !== "boolean") throw configError(`code-health.json: ${at("csharpFolderCycles")} must be true or false`);
   const base = section.base;
   if (base !== null && (typeof base !== "string" || base === "")) {
     throw configError(`code-health.json: ${at("base")} must be a revision or null`);
@@ -207,6 +213,7 @@ export function readSettings(config: LoadedConfig): StructureSettings {
     includeRoots: config.effective.includeRoots,
     layers: readLayerRules(section.layers, at("layers")),
     mainBranch,
+    csharpFolderCycles,
     base: base as string | null,
     exclude: config.effective.exclude,
     entryPoints: config.effective.entryPoints,

@@ -138,6 +138,8 @@ export interface SymbolDeclaration {
   /** Part of the file's public surface (public or exported, or visible outside its package). */
   exported: boolean;
   line: number;
+  /** C++ only: internal linkage (static, anonymous namespace, namespace-scope const), so only the declaring file can refer to it. */
+  internal?: boolean;
   /** Declared with the `partial` modifier, so other files may hold further parts of the same type. */
   partial?: boolean;
 }

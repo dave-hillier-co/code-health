@@ -160,7 +160,9 @@ export function resolveCpp(input: ResolveInput): ResolvedDependencies {
     }
     const defined = new Set(facts.units.map((unit) => unit.qualifiedName));
     const seen = visibleFrom(path);
-    const declarations = symbols.declarations.filter(
+    // In a header, internal linkage gives each includer its own copy, so the includer depends on the header all the same.
+    const visible = isHeader(path) ? symbols.declarations.map(({ internal: _internal, ...declaration }) => declaration) : symbols.declarations;
+    const declarations = visible.filter(
       (declaration) =>
         !(declaration.kind === "function" && declaration.unit !== undefined && defined.has(declaration.unit) && (prototypes.get(declaration.name) ?? []).some((header) => header !== path && seen.has(header))),
     );

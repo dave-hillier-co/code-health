@@ -3,6 +3,7 @@ import { breakingSets } from "@code-health/graph/feedback-arc-set";
 import { runGit } from "@code-health/history/git";
 import type { StructureSettings } from "./config.ts";
 import { findLayerViolations, type LayerViolation } from "./layers.ts";
+import { csharpProjectOfFolders } from "./cycles.ts";
 import { buildModuleGraph, importGraph, type Level } from "./modules.ts";
 import { loadProject, type Project } from "./project.ts";
 
@@ -63,9 +64,11 @@ export async function resolveBase(root: string, headSha: string, settings: Pick<
   );
 }
 
-function cyclesOf(project: Project, level: Level, settings: Pick<StructureSettings, "exactLimit" | "components">): CycleSnapshot[] {
+function cyclesOf(project: Project, level: Level, settings: Pick<StructureSettings, "exactLimit" | "components" | "csharpFolderCycles">): CycleSnapshot[] {
   const graph = buildModuleGraph(level, project, settings.components);
-  return breakingSets(importGraph(graph), { exactLimit: settings.exactLimit }).map((cycle) => ({
+  // Folders of one C# project are one compilation unit, so a cycle among them is not a failure of `check` unless the setting asks for it.
+  const judged = (nodes: readonly string[]): boolean => level !== "folder" || settings.csharpFolderCycles || csharpProjectOfFolders(project, graph, nodes) === undefined;
+  return breakingSets(importGraph(graph), { exactLimit: settings.exactLimit }).filter((cycle) => judged(cycle.nodes)).map((cycle) => ({
     id: `cycle:${level}:${cycle.nodes[0]}`,
     level,
     nodes: [...cycle.nodes],

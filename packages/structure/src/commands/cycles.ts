@@ -1,6 +1,6 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { analysisCommand } from "../analysis-command.ts";
-import { findCycles } from "../cycles.ts";
+import { findCycles, findProjectFolderCycles } from "../cycles.ts";
 import { buildModel } from "../model.ts";
 import { readLevel, type Level } from "../modules.ts";
 
@@ -13,9 +13,9 @@ export const rules: Record<string, Rule> = {
     summary: "Modules that import each other, directly or through others",
     explanation: [
       "Raised for every strongly connected component of the import graph at the chosen level (default, file,",
-      "folder or package). The default level is a Go package (its directory) for Go, a folder for C# and a",
-      "file for every other language, because Go forbids cycles only between packages and C# files in one",
-      "project reference each other without imports. Folders and packages are the files grouped by their",
+      "folder or package). The default level is a Go package (its directory) for Go, a project (.csproj) for",
+      "C# and a file for every other language, because Go forbids cycles only between packages and the",
+      "folders and files of one C# project are one compilation unit and one namespace tree. Folders and packages are the files grouped by their",
       "folder or by the owning package (a workspace package, a C# project, a Go package, a crate and the",
       "like), so a cycle there can exist with no file cycle behind it. At file level an edge between two",
       "files of one Go package is not an import and is left out.",
@@ -40,7 +40,7 @@ export const command = analysisCommand(name, {
   options: { level: { type: "string" } },
   optionHelp: {
     level:
-      "what a node is: file, folder or package, or default, which is a Go package (its directory) for Go, a folder for C# and a file for every other language (default: default). Files of one Go package are never in a file cycle, because they reference each other without imports.",
+      "what a node is: file, folder or package, or default, which is a Go package (its directory) for Go, a project for C# and a file for every other language (default: default). Files of one Go package are never in a file cycle, because they reference each other without imports. Folder cycles inside one C# project are counted, with the largest few, only when the structure.csharpFolderCycles setting is true.",
   },
   partial: ({ values }) => values.level !== undefined && values.level !== "default",
   async analyse({ context, history }) {
@@ -51,7 +51,10 @@ export const command = analysisCommand(name, {
       inputs: { level, exactLimit: history.settings.exactLimit, locality: model.locality?.input ?? null },
       results: rows,
       columns: ["id", "size", "method", "nested", "nodes", "breakingSet", "coChangeAcross", "unblockedGain"],
-      extra: { population: { modules: model.graph.graph.size, eligibleChanges: model.activity.eligibleChanges } },
+      extra: {
+        population: { modules: model.graph.graph.size, eligibleChanges: model.activity.eligibleChanges },
+        ...(history.settings.csharpFolderCycles && level === "default" ? { projectFolderCycles: findProjectFolderCycles(model.project, history.settings) } : {}),
+      },
     };
   },
 });

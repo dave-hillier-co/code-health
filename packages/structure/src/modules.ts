@@ -7,7 +7,7 @@ import { edgeKey, folderOf, type Project } from "./project.ts";
 
 /**
  * What a dependency is counted between: single files, their folders, their packages, or configured components.
- * `default` is the level each file's language is judged at for cycles: a Go package (its directory), a C# folder,
+ * `default` is the level each file's language is judged at for cycles: a Go package (its directory), a C# project,
  * and a file for every other language.
  */
 export type Level = "file" | "folder" | "package" | "component" | "default";
@@ -33,7 +33,7 @@ export function moduleOfFile(level: Level, project: Project, componentsConfig: R
     case "file":
       return (path) => path;
     case "default":
-      return (path) => (isGoFile(path) || isCSharpFile(path) ? folderOf(path) : path);
+      return (path) => (isGoFile(path) ? folderOf(path) : isCSharpFile(path) ? project.packageOf(path) : path);
     case "folder":
       return folderOf;
     case "package":

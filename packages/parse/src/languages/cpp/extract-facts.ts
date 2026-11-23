@@ -330,13 +330,15 @@ class Extractor {
     return [...context.namespaces, ...context.owners, ...parts].join(".");
   }
 
-  private addDeclaration(name: string, kind: DeclarationKind, unit: string | undefined, context: Context, line: number, exported: boolean, qualifier: readonly string[] = []): void {
+  /** `internal` marks a name with internal linkage: it names something private to this translation unit. */
+  private addDeclaration(name: string, kind: DeclarationKind, unit: string | undefined, context: Context, line: number, exported: boolean, qualifier: readonly string[] = [], internal = false): void {
     this.declarations.push({
       name: this.qualify(context, ...qualifier, name),
       kind,
       ...(unit === undefined ? {} : { unit }),
       exported: exported && !context.anonymous && context.publicMembers,
       line,
+      ...(internal || context.anonymous ? { internal: true } : {}),
     });
   }
 
@@ -463,7 +465,7 @@ class Extractor {
     const unit = this.measuredUnit(qualifiedName, kind, fn, extent, named.name, context);
     this.units.push(unit);
     const exported = !isStatic(fn);
-    this.addDeclaration(named.name, "function", qualifiedName, context, fn.startPosition.row + 1, exported, named.qualifier);
+    this.addDeclaration(named.name, "function", qualifiedName, context, fn.startPosition.row + 1, exported, named.qualifier, context.scope === "file" && isStatic(fn));
     this.functionBody(fn, { ...context, unit: qualifiedName, scope: "function", types: this.parameterTypes(declarator, context.types) });
   }
 
@@ -558,12 +560,12 @@ class Extractor {
       const declarator = functionDeclarator(node);
       const named = declaratorName(declarator);
       if (declarator !== null && declarator.type === "function_declarator" && named !== null && named.qualifier.length === 0) {
-        this.addDeclaration(named.name, "function", named.name, context, node.startPosition.row + 1, !isStatic(node));
+        this.addDeclaration(named.name, "function", named.name, context, node.startPosition.row + 1, !isStatic(node), [], isStatic(node));
       } else if (declarator === null || named === null) {
         for (let i = 0; i < node.childCount; i++) {
           if (node.fieldNameForChild(i) !== "declarator") continue;
           const name = declaredIdentifier(node.child(i));
-          if (name !== null && type !== null) this.addDeclaration(name, "variable", undefined, context, node.startPosition.row + 1, !isStatic(node) && !hasQualifier(node, "constexpr"));
+          if (name !== null && type !== null) this.addDeclaration(name, "variable", undefined, context, node.startPosition.row + 1, !isStatic(node) && !hasQualifier(node, "constexpr"), [], isStatic(node) || hasInternalConstant(node));
         }
       }
     }
@@ -702,6 +704,13 @@ class Extractor {
 
 function hasQualifier(node: Node, text: string): boolean {
   return node.namedChildren.some((child) => child.type === "type_qualifier" && child.text === text);
+}
+
+/** A namespace-scope const or constexpr variable has internal linkage unless it is declared `extern` or `inline`. */
+function hasInternalConstant(node: Node): boolean {
+  const constant = hasQualifier(node, "const") || hasQualifier(node, "constexpr");
+  const external = node.namedChildren.some((child) => child.type === "storage_class_specifier" && (child.text === "extern" || child.text === "inline"));
+  return constant && !external;
 }
 
 export function extractFacts(root: Node, options: { explain?: boolean }): FileFacts {
