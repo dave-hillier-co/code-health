@@ -69,12 +69,18 @@ describe("without the sibling plugins", () => {
   test("complexity-delta falls back to the rise in indentation complexity of the touched files", async () => {
     const result = await risk("main..nest");
     const delta = factor(result, "complexity-delta");
-    expect(delta).toMatchObject({ status: "ok", layer: "lexical", source: "indentation" });
+    expect(delta).toMatchObject({ status: "ok", layer: "lexical", source: "indentation proxy, not a complexity comparison" });
     expect(delta.value).toMatchObject({ count: 1, files: 1 });
     expect(delta.evidence).toHaveLength(1);
     expect(delta.evidence[0]).toMatchObject({ file: calc });
     expect(Number(delta.evidence[0]!.delta)).toBeGreaterThanOrEqual(10);
     expect(result.findings.map((f) => f.id)).toContain("complexity-delta");
+  });
+
+  test("test files and test-support folders are left out of the indentation proxy, like every other factor", async () => {
+    const delta = factor(await risk("main..tests-only"), "complexity-delta");
+    expect(delta.value).toMatchObject({ count: 0, files: 0 });
+    expect(delta.evidence).toHaveLength(0);
   });
 
   test("indented prose is not code, so a licence text adds no complexity", async () => {

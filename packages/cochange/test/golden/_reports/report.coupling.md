@@ -43,7 +43,7 @@ _Guidelines order and label the rows and decide nothing. Degree (%) 30 (cochange
 
 > **Notice:** 1 pair is an expected pair (1 a test and the code it tests). Expected pairs are not judged; the table below lists them.
 
-**Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, or two data files of one format. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.**
+**Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.**
 
 | # | File | Changes with | Why expected | Degree (%) | Shared changes |
 | ---: | --- | --- | --- | ---: | ---: |
@@ -139,7 +139,7 @@ _Guidelines order and label the rows and decide nothing. Degree (%) 30 (cochange
 ## Limits
 
 - Guidelines order and label results. They are heuristics for investigation and decide nothing.
-- A pair where either side is a test, a fixture or a golden file, or where both sides are data or configuration files of one format, is an expected pair. It is listed in its own table and not judged.
+- A pair where either side is a test, a fixture or a golden file, or where the sides are a C or C++ header and its source file, two build or packaging manifests of one toolchain (go.mod and go.work, Dockerfile variants, package.json and its lockfile), or two data or configuration files of one format, is an expected pair. It is listed in its own table and not judged.
 - Coupling counts changes that touched both files in the window, over changes at or below the changeset limit; a larger change counts on neither side. A pair that shares fewer than 5 changes (the support floor) is not listed.
 - Files that change together may share a design decision, or only a shared constant, a registry, a protocol, tests or generated code. The numbers cannot tell these apart; the judgements say which it is.
 - Each table shows the top rows of its result and says how many rows it leaves out; `cochange coupling` and `cochange clusters` print the rest.

@@ -3,6 +3,8 @@ import { GitFixture, type Change, type Identity, type Step } from "@code-health/
 const alice: Identity = { name: "Alice", email: "alice@example.com" };
 
 export const calc = "src/app/calc.ts";
+export const calcTest = "src/app/calc.test.ts";
+export const testSupport = "src/test/fixtures.ts";
 
 const total = `export function total(items: number[]): number {
   let sum = 0;
@@ -47,11 +49,23 @@ const licence = Array.from({ length: 40 }, (_, i) => `${"    ".repeat(1 + (i % 4
 export function compositionHistory(): GitFixture {
   const at = (day: number) => new Date(Date.UTC(2024, 0, 8 + day * 7, 9)).toISOString();
   return GitFixture.build([
-    { type: "commit", message: "Add the calculator", date: at(0), author: alice, changes: [{ op: "add", path: calc, content: total }] },
+    { type: "commit", message: "Add the calculator", date: at(0), author: alice, changes: [{ op: "add", path: calc, content: total }, { op: "add", path: calcTest, content: total }, { op: "add", path: testSupport, content: total }] },
     { type: "commit", message: "Add a helper", date: at(1), author: alice, changes: [{ op: "add", path: "src/app/helper.ts", content: "export const helper = 1;\n" }] },
     { type: "commit", message: "Change the helper", date: at(2), author: alice, changes: [{ op: "modify", path: "src/app/helper.ts", content: "export const helper = 2;\n" }] },
     { type: "branch", name: "nest" },
     { type: "commit", message: "Classify triangles", date: "2024-06-03T09:00:00Z", author: alice, changes: [{ op: "modify", path: calc, content: total + classify }] },
+    { type: "checkout", name: "main" },
+    { type: "branch", name: "tests-only" },
+    {
+      type: "commit",
+      message: "Nest the test code",
+      date: "2024-06-03T10:00:00Z",
+      author: alice,
+      changes: [
+        { op: "modify", path: calcTest, content: total + classify },
+        { op: "modify", path: testSupport, content: total + classify },
+      ],
+    },
     { type: "checkout", name: "main" },
     { type: "branch", name: "quiet" },
     { type: "commit", message: "Change the helper again", date: "2024-06-04T09:00:00Z", author: alice, changes: [{ op: "modify", path: "src/app/helper.ts", content: "export const helper = 3;\n" }] },

@@ -103,7 +103,7 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     layer: "history",
     banding: "count",
     signal: "Files that usually change with a touched file and are missing from the change",
-    definition: "Files whose confidence towards a touched file is at least cochange.risk.missingConfidence percent, with support of at least cochange.minSupport, over the eligible changes of the analysis window, that exist and are not touched by the change. Confidence is shared changes divided by the touched file's changes. Banded on the count.",
+    definition: "Files whose confidence towards a touched file is at least cochange.risk.missingConfidence percent, with support of at least cochange.minSupport, over the eligible changes of the analysis window, that exist and are not touched by the change. Confidence is shared changes divided by the touched file's changes. A partner that is a build manifest listing sources (`CMakeLists.txt`, `Makefile`, `meson.build`, Bazel `BUILD`) counts only when the change adds, removes or renames a code file in its folder or below, because it mostly changes when sources are added or removed; the partners skipped for that are counted in `manifestPartnersSkipped`. Banded on the count.",
     why: "The strongest single completeness signal: these files have needed changing every other time.",
   },
   {
@@ -139,7 +139,7 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     layer: "lexical",
     banding: "count",
     signal: "Units that are new and over a guideline, or over a guideline and worse",
-    definition: "With the complexity plugin's diff passed in: the units it reports as new and over its guideline, or over it and worse. Without it: the touched code files (those a lexer profile reads, so not prose or licence text) whose indentation complexity rose by at least cochange.risk.complexityRise. Banded on the count, and not counted in the score.",
+    definition: "With the complexity plugin's diff passed in: the units it reports as new and over its guideline, or over it and worse. Without it: the touched production code files (those a lexer profile reads, so not prose or licence text, and not test files or test-support folders) whose indentation complexity rose by at least cochange.risk.complexityRise. Banded on the count, and not counted in the score. The factor's `source` says `indentation proxy, not a complexity comparison` in that case.",
     why: "The change is adding code that is hard to understand.",
   },
   {

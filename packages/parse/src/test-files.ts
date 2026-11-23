@@ -4,9 +4,22 @@ import { isTestPath } from "./languages.ts";
 /** What a file is for. A file is a test by its language's naming conventions, or by the config's `testPatterns`. */
 export type Role = "production" | "test";
 
+const SUPPORT_FOLDER =
+  /(^|\/)(tests?|__tests__|__mocks__|mocks|testing|testutils?|testhelpers?|testsupport|testfixtures?|integrationtesting|e2e)\//i;
+
 /**
- * Decides whether a path is a test. The owning language adapter's conventions give the default (`isTestPath`), and each
- * entry of `testPatterns` is laid over it in order: a glob makes a matching file a test, a glob with a leading `!` makes
+ * Test-support code by folder, whatever the language: a folder named `test`, `tests`, `__tests__`, `__mocks__`, `mocks`,
+ * `testing`, `testutil`, `testutils`, `testhelper`, `testhelpers`, `testsupport`, `testfixtures`, `integrationtesting`
+ * or `e2e`. Language adapters only know their own file naming (Go `_test.go`), so a Go helper in `pkg/datastore/test/`
+ * is not a test by name. The names are whole folder names, never a part of one, so `contest/` and `latest/` do not
+ * match. `testing` is also the name of Go's standard package, but a folder of that name in a repository holds helpers
+ * for tests in practice; a repository where it holds production code lists a negated entry such as `!pkg/testing/*` in `testPatterns`.
+ */
+export const isTestSupportFolder = (path: string): boolean => SUPPORT_FOLDER.test(path.slice(0, path.lastIndexOf("/") + 1));
+
+/**
+ * Decides whether a path is a test. The owning language adapter's conventions and the support folders give the default
+ * (`isTestPath`, `isTestSupportFolder`), and each entry of `testPatterns` is laid over it in order: a glob makes a matching file a test, a glob with a leading `!` makes
  * it production, and the last entry that matches wins.
  */
 export function testClassifier(patterns: readonly string[] = []): (path: string) => boolean {
@@ -18,7 +31,7 @@ export function testClassifier(patterns: readonly string[] = []): (path: string)
     for (let index = entries.length - 1; index >= 0; index--) {
       if (entries[index]!.matches(path)) return entries[index]!.test;
     }
-    return isTestPath(path);
+    return isTestPath(path) || isTestSupportFolder(path);
   };
 }
 

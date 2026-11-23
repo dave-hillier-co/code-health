@@ -1,8 +1,10 @@
+import { hasAdapter } from "@code-health/parse/languages";
 import { folderOf, treeDistance } from "@code-health/graph/tree-distance";
 import type { FixMatch } from "@code-health/history/fix-commits";
 import { monthsBefore } from "@code-health/history/evidence";
 import { compileGlobs } from "@code-health/history/glob";
 import type { HistoryChange } from "@code-health/history/read";
+import { folderPrefix, listsSourceFiles } from "../expected-pair.ts";
 import { componentOf, type Component } from "../components.ts";
 import { isTestPath, siblingTestOf } from "../sibling-test.ts";
 import { changeSpread } from "../spread-measure.ts";
@@ -255,12 +257,28 @@ function coupledPartners(facts: ChangeFacts, state: HistoryState, context: Measu
   return [...best.values()].sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.file < b.file ? -1 : 1));
 }
 
+/**
+ * A build manifest that lists sources (`CMakeLists.txt`, `Makefile`) changes with its sources mostly because sources
+ * are added to it or removed from it. It is expected to change with the change only when the change adds, removes or
+ * renames a code file in its folder or below; otherwise it is not counted as missing, and the number skipped is reported.
+ */
+function manifestExpected(partner: string, facts: ChangeFacts): boolean {
+  const folder = folderPrefix(partner);
+  return facts.files.some((file) => {
+    if (file.status !== "A" && file.status !== "D" && file.status !== "R") return false;
+    const paths = file.oldPath === null ? [file.path] : [file.path, file.oldPath];
+    return paths.some((path) => path.startsWith(folder) && !listsSourceFiles(path) && hasAdapter(path));
+  });
+}
+
 function missingCoChange(facts: ChangeFacts, state: HistoryState, context: MeasureContext): Measurement {
   const touched = new Set(facts.files.map((file) => file.fileId));
-  const missing = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
+  const absent = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
+  const skipped = absent.filter((partner) => listsSourceFiles(partner.file) && !manifestExpected(partner.file, facts));
+  const missing = absent.filter((partner) => !skipped.includes(partner));
   return measurement("missing-co-change", "completeness", "history", "count", "history", {
     series: { count: missing.length },
-    value: { count: missing.length },
+    value: skipped.length === 0 ? { count: missing.length } : { count: missing.length, manifestPartnersSkipped: skipped.length },
     evidence: missing.map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence, support: partner.support })),
   });
 }
