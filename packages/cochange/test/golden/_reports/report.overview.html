@@ -165,19 +165,19 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </table>
 <p class="legend">The vertical line marks the guideline and ▲ marks a value above it. A guideline orders and labels results; it decides nothing. Guidelines for strong evidence: 24 months, 300 logical changes, 5 contributors.</p>
 </figure>
-<p><span class="trend weaker"><span aria-hidden="true">↓</span> weaker <span class="trend-detail">(Median files per logical change: 2 in the earlier half, 1 in the later half)</span></span></p>
+<p><span class="trend stable"><span aria-hidden="true">→</span> no shift <span class="trend-detail">(Median files per logical change: 2 in the earlier half, 1 in the later half)</span></span></p>
 </section>
 <section id="fix-convention" aria-labelledby="fix-convention-heading">
 <h2 id="fix-convention-heading">Fix convention</h2>
 <table class="facts">
-<caption>Fix convention check</caption>
+<caption>Fix convention check, over the landed changes in the window</caption>
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Landed changes in the window</th><td>6</td></tr>
 <tr><th scope="row">Changes whose title or message is a fix</th><td>0 (0%)</td></tr>
-<tr><th scope="row">Conventional Commits fix prefixes</th><td>0</td></tr>
-<tr><th scope="row">Fix verbs</th><td>0</td></tr>
-<tr><th scope="row">Issue references</th><td>0</td></tr>
+<tr><th scope="row">Landed changes with a Conventional Commits type (feat, fix, chore and the others, so more than the fixes)</th><td>0</td></tr>
+<tr><th scope="row">Landed changes whose title starts with a fix verb</th><td>0</td></tr>
+<tr><th scope="row">Landed changes whose title has a closing keyword and an issue reference</th><td>0</td></tr>
 <tr><th scope="row">Convention followed</th><td>no</td></tr>
 </tbody>
 </table>
@@ -260,7 +260,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li>Guidelines order and label results. They are heuristics for investigation and decide nothing.</li>
 <li>Each table shows the top 5 of its result and says how many rows it leaves out; the command prints the rest.</li>
 <li>The evidence grade is weak, so history-based results are tentative and static signals should lead.</li>
-<li>Hotspot complexity is the indentation proxy, because no complexity report covers this commit.</li>
+<li>Hotspot complexity is the indentation proxy, because no <code>complexity files</code> result is stored for this commit.</li>
 <li>Not stored for this commit: complexity analyse, structure cycles, locality analyse. The overview reads other plugins' stored results and never computes them.</li>
 </ul>
 <section class="judgement">

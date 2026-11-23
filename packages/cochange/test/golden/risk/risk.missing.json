@@ -213,6 +213,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "size-and-diffusion",
         "guidelines": {
           "count": {
@@ -240,6 +241,7 @@
             "revisions": 7
           }
         ],
+        "evidenceTotal": 1,
         "family": "history",
         "guidelines": {
           "share": {
@@ -276,6 +278,7 @@
             "revisions": 7
           }
         ],
+        "evidenceTotal": 1,
         "family": "history",
         "guidelines": {
           "share": null
@@ -295,6 +298,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "history",
         "guidelines": {
           "authors": {
@@ -315,6 +319,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "history",
         "guidelines": {
           "settling": {
@@ -374,6 +379,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "completeness",
         "guidelines": {
           "count": {
@@ -433,6 +439,7 @@
             "towards": "src/billing/invoice.ts"
           }
         ],
+        "evidenceTotal": 2,
         "family": "structure-and-content",
         "guidelines": {
           "files": {
@@ -475,6 +482,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "structure-and-content",
         "guidelines": {
           "count": {

@@ -73,7 +73,16 @@ function evidenceBlocks(evidence: Evidence, contributors: Contributors): Block[]
         { label: `Contributors (${contributors.people} of ${g.contributors})`, value: share(contributors.people, g.contributors), guideline: 100 },
       ],
     },
-    { type: "trend-marker", label: "Median files per logical change", earlier: merge.earlierMedian, later: merge.laterMedian, windows: ["the earlier half", "the later half"] },
+    {
+      type: "trend-marker",
+      label: "Median files per logical change",
+      earlier: merge.earlierMedian,
+      later: merge.laterMedian,
+      windows: ["the earlier half", "the later half"],
+      // The same rule as the merge policy line above, so the two never disagree.
+      trend: merge.shifted ? (merge.laterMedian > merge.earlierMedian ? "stronger" : "weaker") : "stable",
+      wording: { stronger: "more files per change", weaker: "fewer files per change", stable: "no shift" },
+    },
   ];
 }
 
@@ -81,13 +90,13 @@ function fixBlocks(convention: FixConvention): Block[] {
   return [
     {
       type: "facts",
-      caption: "Fix convention check",
+      caption: "Fix convention check, over the landed changes in the window",
       facts: [
         { label: "Landed changes in the window", value: String(convention.landedChanges) },
         { label: "Changes whose title or message is a fix", value: `${convention.fixes} (${percent(convention.share)})` },
-        { label: "Conventional Commits fix prefixes", value: String(convention.forms.conventionalCommits) },
-        { label: "Fix verbs", value: String(convention.forms.fixVerb) },
-        { label: "Issue references", value: String(convention.forms.issueReference) },
+        { label: "Landed changes with a Conventional Commits type (feat, fix, chore and the others, so more than the fixes)", value: String(convention.forms.conventionalCommits) },
+        { label: "Landed changes whose title starts with a fix verb", value: String(convention.forms.fixVerb) },
+        { label: "Landed changes whose title has a closing keyword and an issue reference", value: String(convention.forms.issueReference) },
         { label: "Convention followed", value: convention.followsConvention ? "yes" : "no" },
       ],
     },
@@ -335,7 +344,7 @@ function limitsOf(evidence: Evidence, missing: string[], complexitySource: unkno
     ...(evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : []),
     ...(evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate(evidence.truncated.availableSince)} is missing.`] : []),
     ...(evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : []),
-    ...(complexitySource === "indentation" ? ["Hotspot complexity is the indentation proxy, because no complexity report covers this commit."] : []),
+    ...(complexitySource === "indentation" ? ["Hotspot complexity is the indentation proxy, because no `complexity files` result is stored for this commit."] : []),
     ...(missing.length === 0 ? [] : [`Not stored for this commit: ${missing.join(", ")}. The overview reads other plugins' stored results and never computes them.`]),
   ];
 }

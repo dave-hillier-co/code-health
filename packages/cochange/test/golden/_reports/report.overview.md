@@ -39,19 +39,19 @@
 | Logical changes (6 of 300) | 2 | 100 | 0.02x | below guideline |
 | Contributors (2 of 5) | 40 | 100 | 0.4x | below guideline |
 
-↓ weaker (Median files per logical change: 2 in the earlier half, 1 in the later half)
+→ no shift (Median files per logical change: 2 in the earlier half, 1 in the later half)
 
 ## Fix convention
 
-**Fix convention check**
+**Fix convention check, over the landed changes in the window**
 
 | Measure | Value |
 | --- | --- |
 | Landed changes in the window | 6 |
 | Changes whose title or message is a fix | 0 (0%) |
-| Conventional Commits fix prefixes | 0 |
-| Fix verbs | 0 |
-| Issue references | 0 |
+| Landed changes with a Conventional Commits type (feat, fix, chore and the others, so more than the fixes) | 0 |
+| Landed changes whose title starts with a fix verb | 0 |
+| Landed changes whose title has a closing keyword and an issue reference | 0 |
 | Convention followed | no |
 
 > **Notice:** The commit messages probably do not follow a convention this can use: none of the 6 landed changes uses a recognisable fix form (a Conventional Commits type, a leading Fix or Fixes, or an issue reference).
@@ -113,7 +113,7 @@
 - Guidelines order and label results. They are heuristics for investigation and decide nothing.
 - Each table shows the top 5 of its result and says how many rows it leaves out; the command prints the rest.
 - The evidence grade is weak, so history-based results are tentative and static signals should lead.
-- Hotspot complexity is the indentation proxy, because no complexity report covers this commit.
+- Hotspot complexity is the indentation proxy, because no `complexity files` result is stored for this commit.
 - Not stored for this commit: complexity analyse, structure cycles, locality analyse. The overview reads other plugins' stored results and never computes them.
 
 **Judgement: what limits these results**

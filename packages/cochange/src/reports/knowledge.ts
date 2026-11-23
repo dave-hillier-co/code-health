@@ -433,7 +433,7 @@ function limitsOf(p: Prepared, measured: MeasuredPatterns, notices: string[]): s
     `A developer counts as having left after ${s.activityWindowMonths} months without a commit. Someone on leave looks the same, and local overrides correct it.`,
     "The simulation assumes turnover is random. It says nothing about any person, and the report names nobody unless run with --names, which lists active developers only.",
     `Each table shows the top ${TOP} of its result and says how many rows it leaves out; \`cochange abandonment patterns\` prints every file.`,
-    `Complexity is ${measured.complexity.source === "indentation" ? "the indentation proxy, because no complexity report covers this commit" : "from the complexity plugin's stored report"}. Test files and files that are not code have none, so the complex-code pattern does not apply to them (${measured.summary.complexityUnknown} files with a blame have no complexity).`,
+    `Complexity is ${measured.complexity.source === "indentation" ? "the indentation proxy, because no `complexity files` result is stored for this commit" : "from the stored `complexity files` result"}. Test files and files that are not code have none, so the complex-code pattern does not apply to them (${measured.summary.complexityUnknown} files with a blame have no complexity).`,
     ...(evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative."] : []),
     ...(notices.length > 0 ? ["The notices above say where the identities or the turnover estimate weaken the results."] : []),
     ...(p.knowledge.model.missing.length > 0 ? [`The blame is not cached for ${p.knowledge.model.missing.length} files, which are inconclusive. Run without --no-refresh to refresh it.`] : []),

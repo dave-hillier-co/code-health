@@ -13,6 +13,8 @@ export interface Factor {
   value: Record<string, unknown>;
   guidelines: BandResult["guidelines"];
   evidence: Record<string, unknown>[];
+  /** How many evidence records there are before the list was cut, when it was cut. */
+  evidenceTotal?: number;
   source: string;
   reason: string | null;
 }

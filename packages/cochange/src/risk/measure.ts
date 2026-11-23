@@ -58,6 +58,8 @@ export interface Measurement {
   series: Record<string, number>;
   value: Record<string, number | string[] | null>;
   evidence: Record<string, unknown>[];
+  /** How many evidence records there are before the list was cut, when it was cut. */
+  evidenceTotal?: number;
   source: string;
 }
 
@@ -71,7 +73,7 @@ function measurement(
   layer: Layer,
   kind: Kind,
   source: string,
-  parts: Partial<Pick<Measurement, "series" | "value" | "evidence" | "unavailable">>,
+  parts: Partial<Pick<Measurement, "series" | "value" | "evidence" | "evidenceTotal" | "unavailable">>,
 ): Measurement {
   return { name, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts };
 }
@@ -142,6 +144,7 @@ function mixedPurpose(facts: ChangeFacts): Measurement {
           .slice(0, FIRST_ROWS)
           .map((file) => ({ file: file.path, from: file.oldPath }))
       : [],
+    evidenceTotal: mixed ? facts.files.filter((file) => file.status === "R").length : 0,
   });
 }
 
@@ -165,6 +168,7 @@ function hotspotsTouched(facts: ChangeFacts, state: HistoryState, context: Measu
       .map((file) => ({ file: file.fileId, revisions: state.revisionsInWindow(file.fileId) }))
       .sort((a, b) => b.revisions - a.revisions || (a.file < b.file ? -1 : 1))
       .slice(0, FIRST_ROWS),
+    evidenceTotal: hot.length,
   });
 }
 
@@ -192,6 +196,7 @@ function defectHistory(facts: ChangeFacts, state: HistoryState, context: Measure
     series: { share },
     value: { share, fixes, revisions },
     evidence: perFile.sort((a, b) => b.fixes - a.fixes || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
+    evidenceTotal: perFile.length,
   });
 }
 
@@ -212,6 +217,7 @@ function contention(facts: ChangeFacts, state: HistoryState, context: MeasureCon
     series: { authors: others.size },
     value: { authors: others.size },
     evidence: perFile.sort((a, b) => b.authors - a.authors || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
+    evidenceTotal: perFile.length,
   });
 }
 
@@ -229,6 +235,7 @@ function age(facts: ChangeFacts, state: HistoryState, context: MeasureContext): 
       ...stale.slice(0, FIRST_ROWS).map((file) => ({ file: file.fileId, side: "stale" })),
       ...settling.slice(0, FIRST_ROWS).map((file) => ({ file: file.fileId, side: "settling" })),
     ],
+    evidenceTotal: stale.length + settling.length,
   });
 }
 
@@ -329,6 +336,7 @@ function novelCoupling(facts: ChangeFacts, state: HistoryState, context: Measure
     series: { count: pairs.length },
     value: { count: pairs.length },
     evidence: pairs.slice(0, FIRST_ROWS).map((pair) => ({ ...pair })),
+    evidenceTotal: pairs.length,
   });
 }
 
@@ -361,6 +369,7 @@ function blastRadius(facts: ChangeFacts, state: HistoryState, context: MeasureCo
     series: { files: partners.length },
     value: { files: partners.length },
     evidence: partners.slice(0, FIRST_ROWS).map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence })),
+    evidenceTotal: partners.length,
   });
 }
 

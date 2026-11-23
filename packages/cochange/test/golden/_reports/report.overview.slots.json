@@ -22,7 +22,7 @@
       "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
       "Each table shows the top 5 of its result and says how many rows it leaves out; the command prints the rest.",
       "The evidence grade is weak, so history-based results are tentative and static signals should lead.",
-      "Hotspot complexity is the indentation proxy, because no complexity report covers this commit.",
+      "Hotspot complexity is the indentation proxy, because no `complexity files` result is stored for this commit.",
       "Not stored for this commit: complexity analyse, structure cycles, locality analyse. The overview reads other plugins' stored results and never computes them."
     ],
     "sections": [
@@ -99,11 +99,17 @@
             "earlier": 2,
             "label": "Median files per logical change",
             "later": 1,
+            "trend": "stable",
             "type": "trend-marker",
             "windows": [
               "the earlier half",
               "the later half"
-            ]
+            ],
+            "wording": {
+              "stable": "no shift",
+              "stronger": "more files per change",
+              "weaker": "fewer files per change"
+            }
           }
         ],
         "heading": "Evidence",
@@ -112,7 +118,7 @@
       {
         "blocks": [
           {
-            "caption": "Fix convention check",
+            "caption": "Fix convention check, over the landed changes in the window",
             "facts": [
               {
                 "label": "Landed changes in the window",
@@ -123,15 +129,15 @@
                 "value": "0 (0%)"
               },
               {
-                "label": "Conventional Commits fix prefixes",
+                "label": "Landed changes with a Conventional Commits type (feat, fix, chore and the others, so more than the fixes)",
                 "value": "0"
               },
               {
-                "label": "Fix verbs",
+                "label": "Landed changes whose title starts with a fix verb",
                 "value": "0"
               },
               {
-                "label": "Issue references",
+                "label": "Landed changes whose title has a closing keyword and an issue reference",
                 "value": "0"
               },
               {

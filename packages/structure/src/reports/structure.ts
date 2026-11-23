@@ -285,7 +285,7 @@ function censusBlocks(rows: readonly CensusRow[]): Block[] {
         { key: "count", label: "Occurrences", align: "right" },
         { key: "files", label: "Files", align: "right" },
         { key: "variants", label: "Variants" },
-        { key: "folders", label: "Busiest folders" },
+        { key: "folders", label: "Busiest folders (counts include the folders of implementers and callers)" },
         { key: "example", label: "Example" },
       ],
       rows: rows.map((row): Record<string, Cell> => ({

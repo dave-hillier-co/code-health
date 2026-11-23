@@ -400,7 +400,7 @@
               },
               {
                 "key": "folders",
-                "label": "Busiest folders"
+                "label": "Busiest folders (counts include the folders of implementers and callers)"
               },
               {
                 "key": "example",

@@ -74,8 +74,10 @@ function describeEvidence(record: Record<string, unknown>): EvidenceItem {
   return { id, text: rest.length === 0 ? "touched by the change" : rest.join(", ") };
 }
 
-function evidenceItems(records: Record<string, unknown>[]): { items: EvidenceItem[]; omitted: number } {
-  return { items: records.slice(0, EVIDENCE_ITEMS).map(describeEvidence), omitted: Math.max(0, records.length - EVIDENCE_ITEMS) };
+/** The records shown, and how many the factor has beyond them: `total` is the count before the factor cut its own list. */
+function evidenceItems(records: Record<string, unknown>[], total: number = records.length): { items: EvidenceItem[]; omitted: number } {
+  const items = records.slice(0, EVIDENCE_ITEMS).map(describeEvidence);
+  return { items, omitted: Math.max(0, total - items.length) };
 }
 
 function findingItem(finding: Finding): Item {
@@ -132,7 +134,7 @@ function complexityItem(rows: ComplexityRow[], index: number): Item {
 
 function hotspotsItem(factor: Factor): Item {
   const files = factor.evidence.flatMap((record) => text(record.file) ?? []);
-  const { items, omitted } = evidenceItems(factor.evidence);
+  const { items, omitted } = evidenceItems(factor.evidence, factor.evidenceTotal);
   return {
     slot: itemSlot(
       "hotspots-touched",
@@ -267,7 +269,7 @@ function evidenceBlocks(assessed: Assessed): Block[] {
   const blocks = assessed.factors
     .filter((f) => f.status === "ok" && f.evidence.length > 0 && f.name !== "abandoned-touched")
     .map((f): Block => {
-      const { items, omitted } = evidenceItems(f.evidence);
+      const { items, omitted } = evidenceItems(f.evidence, f.evidenceTotal);
       return { type: "evidence-list", title: `Evidence for ${f.name}`, items, omitted };
     });
   return blocks.length > 0 ? blocks : [{ type: "notice", level: "notice", text: "No factor has evidence items to list." }];
@@ -413,7 +415,7 @@ function hotspotBlocks(assessed: Assessed): Block[] {
     type: "ranked-table",
     caption: "Hot files the change touches, by revisions in the window",
     noun: "files",
-    total: factor.evidence.length,
+    total: factor.evidenceTotal ?? factor.evidence.length,
     emptyText: "The change touches no hot file.",
     columns: [
       { key: "file", label: "File" },
