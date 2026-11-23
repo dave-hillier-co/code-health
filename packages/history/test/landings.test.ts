@@ -1,6 +1,10 @@
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { GitFixture, type Identity } from "@code-health/fixtures/git-fixture";
-import { landedText, landingOf, readLandings } from "../src/landings.ts";
+import { groupByLanding, landedText, landingOf, readLandings } from "../src/landings.ts";
 
 describe("landedText", () => {
   test("takes a GitHub merge's title from the body", () => {
@@ -50,5 +54,81 @@ describe("readLandings", () => {
     expect(landings[1]!.branch.map((c) => c.message)).toEqual(["Step one", "fix: step two"]);
     const of = landingOf(landings);
     expect(of.get(landings[1]!.members[1]!)).toBe(landings[1]);
+  });
+});
+
+describe("the work of reading landings", () => {
+  const author: Identity = { name: "A", email: "a@example.com" };
+  const day = (n: number): string => new Date(Date.UTC(2024, 0, 1) + n * 86_400_000).toISOString();
+
+  /** A repository with `merges` pull requests of two commits each, merged one after another. */
+  function withMerges(merges: number): GitFixture {
+    const steps: Parameters<typeof GitFixture.build>[0] = [
+      { type: "commit", message: "Root", date: day(0), author, changes: [{ op: "add", path: "a.txt", content: "0\n" }] },
+    ];
+    for (let i = 1; i <= merges; i++) {
+      steps.push(
+        { type: "branch", name: `topic-${i}`, from: "main" },
+        { type: "commit", message: `Step ${i}`, date: day(i * 3), author, changes: [{ op: "modify", path: "a.txt", content: `${i}a\n` }] },
+        { type: "commit", message: `fix: step ${i}`, date: day(i * 3 + 1), author, changes: [{ op: "add", path: `f${i}.txt`, content: `${i}\n` }] },
+        { type: "checkout", name: "main" },
+        { type: "merge", branch: `topic-${i}`, message: `Merge pull request #${i} from o/topic-${i}\n\nChange ${i}`, date: day(i * 3 + 2), author },
+      );
+    }
+    return GitFixture.build(steps);
+  }
+
+  /** Runs `work` with a `git` in front of the real one on PATH that records every invocation, and returns the invocations. */
+  async function gitInvocations(work: () => Promise<unknown>): Promise<string[]> {
+    const real = execFileSync("which", ["git"], { encoding: "utf8" }).trim();
+    const dir = mkdtempSync(join(tmpdir(), "git-shim-"));
+    const log = join(dir, "log");
+    writeFileSync(join(dir, "git"), `#!/bin/sh\necho "$1" >> '${log}'\nexec '${real}' "$@"\n`);
+    chmodSync(join(dir, "git"), 0o755);
+    writeFileSync(log, "");
+    const path = process.env.PATH;
+    process.env.PATH = `${dir}:${path}`;
+    try {
+      await work();
+    } finally {
+      process.env.PATH = path;
+    }
+    const lines = readFileSync(log, "utf8").split("\n").filter((line) => line !== "");
+    rmSync(dir, { recursive: true, force: true });
+    return lines;
+  }
+
+  test("reading the landings starts the same few git processes however many merges there are", async () => {
+    const small = withMerges(3);
+    const large = withMerges(40);
+    try {
+      const few = await gitInvocations(() => readLandings(small.path, "HEAD"));
+      let landings: Awaited<ReturnType<typeof readLandings>> = [];
+      const many = await gitInvocations(async () => {
+        landings = await readLandings(large.path, "HEAD");
+      });
+      expect(landings).toHaveLength(41);
+      expect(landings.filter((l) => l.how === "merge").every((l) => l.members.length === 2)).toBe(true);
+      expect(few.length).toBeGreaterThan(0);
+      expect(many.length).toBeLessThanOrEqual(3);
+      expect(many.length).toBe(few.length);
+    } finally {
+      small.dispose();
+      large.dispose();
+    }
+  });
+
+  test("grouping changes by landing starts no git process", async () => {
+    const repo = withMerges(10);
+    try {
+      const landings = await readLandings(repo.path, "HEAD");
+      const changes = landings.flatMap((l) => l.members.map((sha) => ({ shas: [sha] })));
+      const invocations = await gitInvocations(async () => {
+        expect(groupByLanding(changes, landings)).toHaveLength(landings.length);
+      });
+      expect(invocations).toEqual([]);
+    } finally {
+      repo.dispose();
+    }
   });
 });

@@ -3,6 +3,7 @@ import {
   emailLocalPart,
   flattenedNames,
   identityKey,
+  isTruncatedLogin,
   nameTokens,
   normaliseEmail,
   organisationOf,
@@ -170,6 +171,8 @@ interface NodeFacts {
   locals: string[];
   noreplies: { id: string | null; username: string }[];
   names: string[];
+  /** The names as written, with at least two parts. */
+  nameList: string[];
   derived: string[];
   flattened: string[];
   signingKeys: string[];
@@ -199,6 +202,7 @@ function factsOf(node: IdentityNode): NodeFacts {
   const locals = new Set<string>();
   const noreplies = new Map<string, { id: string | null; username: string }>();
   const names = new Set<string>();
+  const nameList = new Set<string>();
   const derived = new Set<string>();
   const flattened = new Set<string>();
   for (const { name, email } of addresses) {
@@ -213,6 +217,7 @@ function factsOf(node: IdentityNode): NodeFacts {
     }
     if (nameTokens(name).length >= 2) {
       names.add(normaliseName(name));
+      nameList.add(name);
       for (const d of derivedLocalParts(name)) derived.add(d);
       for (const f of flattenedNames(name)) flattened.add(f);
     }
@@ -224,6 +229,7 @@ function factsOf(node: IdentityNode): NodeFacts {
     locals: [...locals].sort(),
     noreplies: [...noreplies.values()].sort((x, y) => compare(x.username, y.username)),
     names: [...names].sort(),
+    nameList: [...nameList].sort(),
     derived: [...derived].sort(),
     flattened: [...flattened].sort(),
     signingKeys: [...node.signingKeys].sort(),
@@ -316,6 +322,11 @@ export function findLinks(
       }
       for (const other of byFlat.get(username) ?? []) {
         addSignal(candidates, f, other, { signal: "noreply-matches-identity", strength: "medium", detail: username });
+      }
+      for (const other of facts) {
+        if (other !== f && other.nameList.some((name) => isTruncatedLogin(name, username))) {
+          addSignal(candidates, f, other, { signal: "noreply-matches-identity", strength: "medium", detail: username });
+        }
       }
     }
   }
@@ -493,13 +504,22 @@ export function buildProposals(links: readonly Link[]): Proposal[] {
 /**
  * Pairs among identities a mailmap has joined that look like different people:
  * active in the same weeks and never in the same area. Compares each raw
- * identity with every other one in the group.
+ * identity with every other one in the group. A pair that the name and address evidence settles as strong is not
+ * compared, by the rule `findLinks` applies when it proposes: a strong link outranks counter-evidence, so a join
+ * that `propose` marks strong never fails `check` for a reason `propose` could have seen.
  */
 export function counterEvidenceWithin(group: readonly RawIdentity[]): { a: string; b: string; signal: Signal }[] {
-  const nodes = buildNodes(group.map((r) => ({ ...r, mappedName: r.name, mappedEmail: r.email })));
+  const mapped = group.map((r) => ({ ...r, mappedName: r.name, mappedEmail: r.email }));
+  const nodes = buildNodes(mapped);
+  const settled = new Set(
+    findLinks(nodes, mapped, { committersOfAuthor: new Map(), authorsOfCommitter: new Map() })
+      .filter((link) => link.strength === "strong")
+      .map((link) => pairKey(link.a, link.b).join("\u0000")),
+  );
   const found: { a: string; b: string; signal: Signal }[] = [];
   nodes.forEach((x, i) => {
     for (const y of nodes.slice(i + 1)) {
+      if (settled.has(pairKey(x.key, y.key).join("\u0000"))) continue;
       const signal = counterSignal(x, y);
       if (signal) found.push({ a: x.key, b: y.key, signal });
     }

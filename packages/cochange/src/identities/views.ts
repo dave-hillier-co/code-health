@@ -1,5 +1,6 @@
 import { onlyVersionBumpsOrMerges } from "@code-health/history/identity-classify";
-import { identityKey } from "@code-health/history/identity-names";
+import type { IdentityNode } from "@code-health/history/identity-evidence";
+import { identityKey, parseNoreply } from "@code-health/history/identity-names";
 import { isoDay, topAreas, type IdentityAnalysis } from "./analysis.ts";
 
 const compare = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0);
@@ -29,13 +30,41 @@ export function listRows(analysis: IdentityAnalysis, onlyUnmapped: boolean) {
   return onlyUnmapped ? rows.filter((r) => r.unmapped) : rows;
 }
 
+const looksPersonal = (name: string): boolean => {
+  const words = name.trim().split(/\s+/);
+  return words.length >= 2 && words.every((word) => /^\p{L}[\p{L}'.\-]*$/u.test(word));
+};
+const isNoreply = (email: string): boolean => parseNoreply(email) !== null || /^noreply@/i.test(email.trim());
+
+/**
+ * The member to keep as the name of a merged person. A name that looks like a personal name comes first: two or more
+ * words, all letters, so `Dmitry Vakulenko` is preferred to `dVakulen` and to `jthelin`. When no member has one, the
+ * members that carry the name most of the cluster's members share come first. Then a member with an address that is
+ * not a GitHub noreply address, then the most recently active, then the one with most commits, then the key.
+ */
+export function suggestCanonical(members: readonly IdentityNode[]): IdentityNode {
+  const nameCounts = new Map<string, number>();
+  for (const m of members) nameCounts.set(m.name.trim().toLowerCase(), (nameCounts.get(m.name.trim().toLowerCase()) ?? 0) + 1);
+  const commonest = Math.max(...nameCounts.values());
+  const personal = members.some((m) => looksPersonal(m.name));
+  const nameRank = (m: IdentityNode): number =>
+    personal ? (looksPersonal(m.name) ? 0 : 1) : commonest > 1 && nameCounts.get(m.name.trim().toLowerCase()) === commonest ? 0 : 1;
+  return [...members].sort(
+    (x, y) =>
+      nameRank(x) - nameRank(y) ||
+      Number(isNoreply(x.email)) - Number(isNoreply(y.email)) ||
+      y.last - x.last ||
+      y.commits - x.commits ||
+      compare(x.key, y.key),
+  )[0]!;
+}
+
 /** Clusters and chains, strongest first, with each link's signals. */
 export function proposeRows(analysis: IdentityAnalysis) {
   const nodes = new Map(analysis.nodes.map((n) => [n.key, n]));
   return analysis.proposals.map((proposal, i) => {
     const members = proposal.members.map((key) => nodes.get(key)!);
-    // The most recently active identity is the suggested name: it is the current one.
-    const current = [...members].sort((x, y) => y.last - x.last || y.commits - x.commits || compare(x.key, y.key))[0]!;
+    const current = suggestCanonical(members);
     return {
       id: `P${i + 1}`,
       kind: proposal.kind,

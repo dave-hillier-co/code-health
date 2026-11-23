@@ -84,6 +84,19 @@ export function flattenedNames(name: string): string[] {
   return [...new Set([...["", "-", ".", "_"].map((glue) => tokens.join(glue)), `${first[0]}${last}`, `${first}${last[0]}`])];
 }
 
+/** A surname cut short in a username (`dvakulen` for Dmitry Vakulenko) is read as the surname only from this many letters of it. A judgement call: it labels a login medium and never removes one. */
+export const MIN_TRUNCATED_SURNAME_LENGTH = 6;
+
+/** Whether a GitHub noreply username is the first initial and the beginning of the last name, cut short: `dvakulen` for `Dmitry Vakulenko`. The whole last name is a flattened name already. */
+export function isTruncatedLogin(name: string, username: string): boolean {
+  const tokens = nameTokens(name);
+  if (tokens.length < 2) return false;
+  const first = tokens[0]!;
+  const last = tokens[tokens.length - 1]!;
+  const rest = username.slice(1);
+  return username[0] === first[0] && rest.length >= MIN_TRUNCATED_SURNAME_LENGTH && rest.length < last.length && last.startsWith(rest);
+}
+
 /** Providers whose addresses anyone can hold, so a shared domain says nothing about an organisation. */
 const MAILBOX_PROVIDERS = new Set([
   "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com", "yahoo.com", "icloud.com", "me.com",

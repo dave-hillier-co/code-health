@@ -272,7 +272,9 @@ export async function measureFixes(
     if (!blobs.includes(touch.blob)) blobs.push(touch.blob);
     blobsByPath.set(touch.path, blobs);
     const key = pairKey(touch.path, touch.blob);
-    touchesByPair.set(key, [...(touchesByPair.get(key) ?? []), touch]);
+    const pairTouches = touchesByPair.get(key);
+    if (pairTouches === undefined) touchesByPair.set(key, [touch]);
+    else pairTouches.push(touch);
     if (!latestPair.has(touch.fileId)) latestPair.set(touch.fileId, key);
     fileOfPair.set(key, touch.fileId);
   }

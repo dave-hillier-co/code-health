@@ -7,14 +7,14 @@
 | `exact-email` | strong | The same address apart from case and a `+tag` | A shared mailbox. Generic local parts such as `noreply` and `admin` are never used. |
 | `same-signing-key` | supporting | Commits of both identities were signed with one GPG or SSH key, read from the signatures themselves with nothing verified. It links no one alone, and makes a link strong beside a medium signal. | A key shared by more than three identities is ignored, as is GitHub's web-flow key, which signs every user's web-UI commits. A team key on a shared machine still carries across the people who share the machine. |
 | `noreply-same-user` | strong | Two GitHub noreply addresses with the same username or numeric id | A username that was released and taken by someone else, which is rare and shows as two different numeric ids |
-| `noreply-matches-identity` | medium | A noreply username equals another identity's local part, or its name written as a username: all parts joined, first initial and last name, or first name and last initial | A common username |
+| `noreply-matches-identity` | medium | A noreply username equals another identity's local part, or its name written as a username: all parts joined, first initial and last name, first name and last initial, or first initial and the first 6 or more letters of a longer last name (`dvakulen` for `Dmitry Vakulenko`) | A common username |
 | `same-organisation-address` | strong | The same local part at one organisation's domain, where one host is a machine inside the other (`sbykov@pc12.corp.example.com` and `sbykov@example.com`). Git writes that address when none is configured. The local part has at least 5 characters, and mailbox providers do not count. | Two people with the same local part under sibling subdomains are not matched. A short local part is never matched. |
 | `same-name` | medium | The same name apart from case, diacritics, spacing, `_`, a parenthesised affiliation and `Last, First` order | Common names collide. Alone, this is never enough. |
 | `name-from-email` | medium | One identity's name can be written as the other's local part (`j.smith`, `jsmith`, `john.smith`) | `jsmith` can be any J. Smith |
 | `same-local-part` | medium | The same local part on different domains | Short or common local parts |
 | `handover` | supporting | One identity stops as the other starts, on shared files | A team taking over a module |
 | `exclusive-pairing` | supporting | Every commit the author wrote was committed by the other identity, who commits for no one else | A maintainer who applies one person's patches |
-| `simultaneous-disjoint-areas` | counter | Both active in the same weeks, never in the same area | Someone with two roles. It still argues for keeping them apart. |
+| `simultaneous-disjoint-areas` | counter | Both active in the same weeks, never in the same area | Someone with two roles. It still argues for keeping them apart. It is not looked for on a strong link, and `check` follows the same rule for joins already applied. |
 
 Supporting and counter signals never create a link on their own.
 

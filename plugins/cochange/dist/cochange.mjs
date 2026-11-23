@@ -2494,6 +2494,15 @@ function flattenedNames(name17) {
   const last = tokens[tokens.length - 1];
   return [.../* @__PURE__ */ new Set([...["", "-", ".", "_"].map((glue) => tokens.join(glue)), `${first[0]}${last}`, `${first}${last[0]}`])];
 }
+var MIN_TRUNCATED_SURNAME_LENGTH = 6;
+function isTruncatedLogin(name17, username) {
+  const tokens = nameTokens(name17);
+  if (tokens.length < 2) return false;
+  const first = tokens[0];
+  const last = tokens[tokens.length - 1];
+  const rest = username.slice(1);
+  return username[0] === first[0] && rest.length >= MIN_TRUNCATED_SURNAME_LENGTH && rest.length < last.length && last.startsWith(rest);
+}
 var MAILBOX_PROVIDERS = /* @__PURE__ */ new Set([
   "gmail.com",
   "googlemail.com",
@@ -3270,6 +3279,7 @@ function factsOf(node) {
   const locals = /* @__PURE__ */ new Set();
   const noreplies = /* @__PURE__ */ new Map();
   const names = /* @__PURE__ */ new Set();
+  const nameList = /* @__PURE__ */ new Set();
   const derived4 = /* @__PURE__ */ new Set();
   const flattened = /* @__PURE__ */ new Set();
   for (const { name: name17, email } of addresses) {
@@ -3284,6 +3294,7 @@ function factsOf(node) {
     }
     if (nameTokens(name17).length >= 2) {
       names.add(normaliseName(name17));
+      nameList.add(name17);
       for (const d of derivedLocalParts(name17)) derived4.add(d);
       for (const f of flattenedNames(name17)) flattened.add(f);
     }
@@ -3295,6 +3306,7 @@ function factsOf(node) {
     locals: [...locals].sort(),
     noreplies: [...noreplies.values()].sort((x, y) => compare2(x.username, y.username)),
     names: [...names].sort(),
+    nameList: [...nameList].sort(),
     derived: [...derived4].sort(),
     flattened: [...flattened].sort(),
     signingKeys: [...node.signingKeys].sort()
@@ -3367,6 +3379,11 @@ function findLinks(nodes, raws, pairing, rejections = []) {
       }
       for (const other of byFlat.get(username) ?? []) {
         addSignal(candidates, f, other, { signal: "noreply-matches-identity", strength: "medium", detail: username });
+      }
+      for (const other of facts) {
+        if (other !== f && other.nameList.some((name17) => isTruncatedLogin(name17, username))) {
+          addSignal(candidates, f, other, { signal: "noreply-matches-identity", strength: "medium", detail: username });
+        }
       }
     }
   }
@@ -3504,10 +3521,15 @@ function buildProposals(links) {
   return proposals.sort((p, q) => order[p.strength] - order[q.strength] || compare2(p.members[0], q.members[0]));
 }
 function counterEvidenceWithin(group) {
-  const nodes = buildNodes(group.map((r) => ({ ...r, mappedName: r.name, mappedEmail: r.email })));
+  const mapped = group.map((r) => ({ ...r, mappedName: r.name, mappedEmail: r.email }));
+  const nodes = buildNodes(mapped);
+  const settled = new Set(
+    findLinks(nodes, mapped, { committersOfAuthor: /* @__PURE__ */ new Map(), authorsOfCommitter: /* @__PURE__ */ new Map() }).filter((link) => link.strength === "strong").map((link) => pairKey2(link.a, link.b).join("\0"))
+  );
   const found = [];
   nodes.forEach((x, i) => {
     for (const y of nodes.slice(i + 1)) {
+      if (settled.has(pairKey2(x.key, y.key).join("\0"))) continue;
       const signal = counterSignal(x, y);
       if (signal) found.push({ a: x.key, b: y.key, signal });
     }
@@ -7756,11 +7778,26 @@ function listRows(analysis, onlyUnmapped) {
   });
   return onlyUnmapped ? rows.filter((r) => r.unmapped) : rows;
 }
+var looksPersonal = (name17) => {
+  const words = name17.trim().split(/\s+/);
+  return words.length >= 2 && words.every((word) => new RegExp("^\\p{L}[\\p{L}'.\\-]*$", "u").test(word));
+};
+var isNoreply = (email) => parseNoreply(email) !== null || /^noreply@/i.test(email.trim());
+function suggestCanonical(members) {
+  const nameCounts = /* @__PURE__ */ new Map();
+  for (const m of members) nameCounts.set(m.name.trim().toLowerCase(), (nameCounts.get(m.name.trim().toLowerCase()) ?? 0) + 1);
+  const commonest = Math.max(...nameCounts.values());
+  const personal = members.some((m) => looksPersonal(m.name));
+  const nameRank = (m) => personal ? looksPersonal(m.name) ? 0 : 1 : commonest > 1 && nameCounts.get(m.name.trim().toLowerCase()) === commonest ? 0 : 1;
+  return [...members].sort(
+    (x, y) => nameRank(x) - nameRank(y) || Number(isNoreply(x.email)) - Number(isNoreply(y.email)) || y.last - x.last || y.commits - x.commits || compare4(x.key, y.key)
+  )[0];
+}
 function proposeRows(analysis) {
   const nodes = new Map(analysis.nodes.map((n) => [n.key, n]));
   return analysis.proposals.map((proposal, i) => {
     const members = proposal.members.map((key) => nodes.get(key));
-    const current2 = [...members].sort((x, y) => y.last - x.last || y.commits - x.commits || compare4(x.key, y.key))[0];
+    const current2 = suggestCanonical(members);
     return {
       id: `P${i + 1}`,
       kind: proposal.kind,
