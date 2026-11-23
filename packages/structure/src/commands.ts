@@ -9,6 +9,7 @@ import * as hubs from "./commands/hubs.ts";
 import * as layers from "./commands/layers.ts";
 import * as outcome from "./commands/outcome.ts";
 import * as packages from "./commands/packages.ts";
+import * as report from "./commands/report.ts";
 import * as stability from "./commands/stability.ts";
 
 /** What a module in `commands/` exports. */
@@ -36,6 +37,7 @@ export const commandModules: CommandModule[] = [
   layers,
   outcome,
   packages,
+  report,
   stability,
 ];
 

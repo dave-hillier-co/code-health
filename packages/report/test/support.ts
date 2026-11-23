@@ -60,6 +60,18 @@ export const sampleBlocks: Record<string, Block> = {
   histogram: { type: "histogram", title: "Complexity of files", unit: "files", bins: [{ label: "0 to 9", count: 30 }, { label: "10 to 19", count: 8 }, { label: "20 or more", count: 2 }] },
   matrix: { type: "matrix", title: "Shared changes", valueLabel: "shared changes", rows: ["a.ts", "b.ts"], columns: ["a.ts", "b.ts", "c.ts"], cells: [[null, 5, 1], [5, null, 9]] },
   "guideline-bars": { type: "guideline-bars", title: "Against guidelines", unit: "cognitive", source: "Guideline from a judgement call.", bars: [{ label: "f", value: 30, guideline: 15 }, { label: "g", value: 10, guideline: 15 }] },
+  "stability-chart": {
+    type: "stability-chart",
+    title: "Packages by instability and abstractness",
+    zoneDistance: 0.5,
+    zoneSource: "structure.packages.zoneDistance",
+    total: 6,
+    points: [
+      { name: "core", instability: 0.1, abstractness: 0.1, distance: 0.8, ca: 9, ce: 1, exportedTypes: 10, weak: false },
+      { name: "ports", instability: 0.9, abstractness: 1, distance: 0.9, ca: 1, ce: 9, exportedTypes: 2, weak: true },
+      { name: "app", instability: 0.6, abstractness: 0.4, distance: 0, ca: 2, ce: 3, exportedTypes: 5, weak: false },
+    ],
+  },
   "trend-marker": { type: "trend-marker", label: "support", earlier: 4, later: 9, windows: ["2024", "2025"] },
   "evidence-list": { type: "evidence-list", title: "Commits", items: [{ id: "abc1234", text: "Fix the parser", detail: "2025-03-01" }, { id: "def5678", text: "Fix again" }], omitted: 3 },
   notice: { type: "notice", level: "limit", text: "History is short." },
