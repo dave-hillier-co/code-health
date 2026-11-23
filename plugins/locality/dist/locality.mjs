@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-O2EMY4PI.mjs";
+} from "./chunk-QKW5NUND.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -39,15 +39,16 @@ import {
 } from "./chunk-M2UXSTYU.mjs";
 import {
   analyseTree
-} from "./chunk-WYU76QFD.mjs";
-import "./chunk-JGKE26TW.mjs";
+} from "./chunk-F46LLJIS.mjs";
+import "./chunk-LYITVUNB.mjs";
 import {
+  adapterForPath,
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isCppPath,
   isTestPath
-} from "./chunk-GVSRVFUJ.mjs";
+} from "./chunk-BAXRC4U5.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -1172,16 +1173,24 @@ function bestTarget(edges, base, options) {
   const candidates = /* @__PURE__ */ new Set();
   for (const edge of edges) for (const folder of chain(edge.outer)) candidates.add(folder);
   let best = { target: base, distance: current };
+  const allowed = [];
   for (const folder of [...candidates].sort(compareIds)) {
     if (folder === base) continue;
     if (depthOf(folder) > options.maxDepth) continue;
     if (options.forbidden?.(folder)) continue;
     const distance = netDistance(edges, folder);
+    allowed.push({ folder, distance });
     if (distance < best.distance || distance === best.distance && best.target !== base && prefers(folder, best.target)) {
       best = { target: folder, distance };
     }
   }
-  return { target: best.target, current, distance: best.distance, gain: current - best.distance };
+  if (best.target !== base) {
+    const tied = allowed.filter((entry) => entry.distance === best.distance && depthOf(entry.folder) === depthOf(best.target)).map((entry) => entry.folder);
+    if (tied.length > 1) {
+      return { target: base, current, distance: current, gain: 0, ties: tied, tiedGain: current - best.distance };
+    }
+  }
+  return { target: best.target, current, distance: best.distance, gain: current - best.distance, ties: [], tiedGain: 0 };
 }
 
 // packages/history/src/co-change.ts
@@ -2641,6 +2650,7 @@ var OMITTED_REASONS = {
   folderSized: "folder-sized unit",
   rootTarget: "target is a root folder",
   groupingTarget: "target is a grouping folder",
+  tiedTargets: (count3) => `no single target: ${count3} folders tie`,
   noUsableTarget: (label) => `no usable target: ${label}`
 };
 function commonFolder(folders) {
@@ -2822,22 +2832,20 @@ function analyseProject(project, model, settings, history) {
     return signals.sort((a, b) => compareIds(a.name, b.name));
   }
   const manifests = manifestFolders(project.tree);
-  function groupingRefusal(folder, fileCount) {
-    const name9 = folder.split("/").pop();
-    if (folder !== "" && settings.groupingFolders.includes(name9)) {
-      return { label: OMITTED_REASONS.groupingTarget, detail: `${folder} is named ${name9}, one of the locality.groupingFolders (layout roots that group code and are not a home for it)` };
-    }
-    if (fileCount === 1 && depthOf(folder) < settings.minTargetDepth) {
-      return { label: OMITTED_REASONS.groupingTarget, detail: `${folder === "" ? "the repository root" : folder} is at depth ${depthOf(folder)}, shallower than the locality.minTargetDepth guideline of ${settings.minTargetDepth}` };
-    }
-    return void 0;
+  function groupingRefusal(files, folder) {
+    const name9 = folder === "" ? void 0 : folder.split("/").pop();
+    if (name9 !== void 0 && !settings.groupingFolders.includes(name9)) return void 0;
+    const language = files.map((file) => adapterForPath(file)?.id).find((id) => id !== void 0 && settings.groupingLanguages.includes(id));
+    if (language === void 0) return void 0;
+    if (name9 === void 0) return { label: OMITTED_REASONS.groupingTarget, detail: `the target is the repository root, and a ${language} folder is a package, so a file there joins the root package` };
+    return { label: OMITTED_REASONS.groupingTarget, detail: `${folder} is named ${name9}, one of the locality.groupingFolders, and a ${language} folder is a package, so a file there joins a package named ${name9}` };
   }
   function refusalOf(files, tests, base) {
     const memo = /* @__PURE__ */ new Map();
     return (folder) => {
       if (!memo.has(folder)) {
         const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree);
-        memo.set(folder, first === void 0 ? groupingRefusal(folder, files.length) : { label: first.label, detail: first.detail });
+        memo.set(folder, first === void 0 ? groupingRefusal(files, folder) : { label: first.label, detail: first.detail });
       }
       return memo.get(folder);
     };
@@ -2926,7 +2934,7 @@ function analyseProject(project, model, settings, history) {
     const tests = testsOf(fileSet);
     const refusal = refusalOf(files, tests.owned, base);
     const options = { maxDepth: settings.maxDepth, forbidden: (folder) => forbidden(folder) || refusal(folder) !== void 0 };
-    let choice = barrelAlone ? { target: base, current: 0, distance: 0, gain: 0 } : bestTarget(boundaryOf(outgoing), base, options);
+    let choice = barrelAlone ? { target: base, current: 0, distance: 0, gain: 0, ties: [], tiedGain: 0 } : bestTarget(boundaryOf(outgoing), base, options);
     const unrestricted = barrelAlone ? choice : bestTarget(boundaryOf(outgoing), base, { maxDepth: settings.maxDepth, forbidden });
     const unusable = unrestricted.gain > choice.gain ? refusal(unrestricted.target) : void 0;
     const consumerFiles = barrelAlone ? (model.importers.get(unit.root) ?? []).filter(live) : [...new Set(incoming.map((edge) => edge.from))].sort(compareIds);
@@ -2990,16 +2998,19 @@ function analyseProject(project, model, settings, history) {
     };
     const decision = recommend(input);
     let omission;
-    const omit = (reason, detail, shown2 = choice) => {
-      omission = { reason, detail, target: shown2.target, gain: shown2.gain, files: files.length };
+    const omit = (reason, detail) => {
+      omission = { reason, detail, target: choice.target, gain: choice.gain, files: files.length };
     };
     if (unusable !== void 0 && unrestricted.gain >= settings.minDistance && (decision.rule === "near-consumers" || decision.rule === "blocked-by-dependency")) {
-      omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`, unrestricted);
+      omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`);
+    }
+    if (choice.ties.length > 0 && choice.tiedGain >= settings.minDistance && (decision.rule === "near-consumers" || decision.rule === "blocked-by-dependency")) {
+      omit(OMITTED_REASONS.tiedTargets(choice.ties.length), `${choice.ties.map((folder) => folder || "(repository root)").join(", ")} each have gain ${choice.tiedGain} at the same depth and none contains another, so choosing one would be arbitrary`);
     }
     const withheld = choice.gain >= settings.minDistance && choice.target !== base ? withheldBy(files.length, base, choice.target) : void 0;
     if (withheld !== void 0) {
       if (decision.recommendation === "move" || decision.recommendation === "review") omit(withheld.reason, withheld.detail);
-      if (decision.recommendation === "split") choice = { target: base, current: choice.current, distance: choice.current, gain: 0 };
+      if (decision.recommendation === "split") choice = { target: base, current: choice.current, distance: choice.current, gain: 0, ties: [], tiedGain: 0 };
     }
     const scored = cohesion?.mixed ? cohesion.components.map((component) => scoreComponent(unit.root, component)) : void 0;
     const score = decision.recommendation === "blocked" ? unblocked : decision.recommendation === "split" ? Math.max(choice.gain, (scored ?? []).reduce((sum, component) => sum + component.gain, 0)) : decision.recommendation === "scrutinise" ? consumerFiles.length : choice.gain;
@@ -3103,10 +3114,12 @@ var localityConfig = {
     maxDepth: 6,
     /** Guideline: a unit of more than this many files is a folder, and moving a folder reorganises the code base instead of relocating one module. Such a unit is not proposed as a move: it is counted in `summary.omitted` and listed in `omitted`. A judgement call: 20 is above the largest multi-file units that looked like single modules in Orleans (19 files) and below the folders Solent proposed moving whole (58 and 76 files). */
     maxMoveFiles: 20,
-    /** Guideline: a target shallower than this depth that is an ancestor of the unit (the repository root, or a top-level folder such as src or pkg) is a root. A unit of more than one file is not moved up to a root: it is counted in `summary.omitted` and listed in `omitted`. A single file is not moved to a target shallower than this either (see groupingFolders). A judgement call. */
+    /** Guideline: a target shallower than this depth that is an ancestor of the unit (the repository root, or a top-level folder such as src or pkg) is a root. A unit of more than one file is not moved up to a root: it is counted in `summary.omitted` and listed in `omitted`. A single file still moves to a root, because that is where its consumers' lowest common ancestor can be. A judgement call. */
     minTargetDepth: 2,
-    /** Folder names that group code without being a home for it: common layout roots in Go (`internal`, `pkg`, `cmd`), JavaScript and TypeScript (`src`, `lib`, `app`, `packages`), Java and Kotlin (`src`, `modules`) and C and C++ (`src`, `lib`, `source`, `sources`). A folder with one of these names is never proposed as a move target, because "move it to internal" is not advice a person acts on. Matched against the last segment of the target, case-sensitive. A judgement call. */
-    groupingFolders: ["internal", "pkg", "src", "lib", "app", "cmd", "source", "sources", "modules", "packages"],
+    /** Go layout roots: a Go folder is a package, so a file at the root of `internal`, `pkg` or `cmd` would join a package of that name, which is not a home for code. A folder whose last segment is one of these names is never proposed as a move target for a unit of a language listed in groupingLanguages, and the next best folder is tried. Matched against the last segment of the target, case-sensitive. A judgement call. */
+    groupingFolders: ["internal", "pkg", "cmd"],
+    /** Language adapter ids whose units groupingFolders applies to: the languages where a folder is a package. Add an id (for example "java") and extend groupingFolders to apply the rule to another language. */
+    groupingLanguages: ["go"],
     /** Read co-change, age and churn from the history cache, so the history guards and rules can fire. */
     useHistory: true,
     /** Guideline: a unit younger than this many days is reviewed, not inlined or moved, because one callsite is only evidence once reuse has had time. A judgement call. */
@@ -3145,10 +3158,13 @@ function readSettings(config) {
   if (!Array.isArray(fixedPoints) || fixedPoints.some((item) => typeof item !== "string")) {
     throw configError(`code-health.json: ${at2("fixedPoints")} must be an array of strings`);
   }
-  const groupingFolders = section2.groupingFolders;
-  if (!Array.isArray(groupingFolders) || groupingFolders.some((item) => typeof item !== "string")) {
-    throw configError(`code-health.json: ${at2("groupingFolders")} must be an array of strings`);
-  }
+  const strings = (key) => {
+    const value = section2[key];
+    if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+      throw configError(`code-health.json: ${at2(key)} must be an array of strings`);
+    }
+    return value;
+  };
   const tinyLines = positive("tinyLines");
   const largeLines = positive("largeLines");
   if (tinyLines >= largeLines) {
@@ -3175,7 +3191,8 @@ function readSettings(config) {
     maxDepth: positive("maxDepth"),
     maxMoveFiles: positive("maxMoveFiles"),
     minTargetDepth: positive("minTargetDepth"),
-    groupingFolders,
+    groupingFolders: strings("groupingFolders"),
+    groupingLanguages: strings("groupingLanguages"),
     fixedPoints,
     useHistory: section2.useHistory === true,
     graceDays: positive("graceDays"),
@@ -5957,7 +5974,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-7DJASEST.mjs");
+    const { performMove } = await import("./chunk-KMIFTMLA.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -7501,7 +7518,7 @@ async function dryRun(context, candidate, settings, files) {
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null };
   try {
-    const { performMove } = await import("./chunk-7DJASEST.mjs");
+    const { performMove } = await import("./chunk-KMIFTMLA.mjs");
     const tree = await treeFromRef(context.repo.root, "HEAD");
     const moved = await performMove(tree, plan.operations);
     return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null };
@@ -7868,7 +7885,7 @@ var command6 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-YB55CI2D.mjs");
+      const { buildProject } = await import("./chunk-DEUYKDLO.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -8088,7 +8105,7 @@ var command8 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-KPUQ65ZJ.mjs");
+    const { verifyMove } = await import("./chunk-U6HTNMLQ.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

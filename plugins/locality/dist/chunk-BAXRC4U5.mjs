@@ -9794,8 +9794,8 @@ async function discoverBoundaries(tree, adapters = supportedAdapters()) {
 }
 
 export {
-  isCppPath,
   resolveBySymbols,
+  isCppPath,
   includePathsOf,
   locateInclude,
   PythonResolver,
