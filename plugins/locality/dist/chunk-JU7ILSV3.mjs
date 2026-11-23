@@ -6,17 +6,17 @@ import {
 } from "./chunk-M2UXSTYU.mjs";
 import {
   analyseTree
-} from "./chunk-JEH2H4PA.mjs";
+} from "./chunk-WYU76QFD.mjs";
 import {
   loadGrammar
-} from "./chunk-ZOCW2RSI.mjs";
+} from "./chunk-JGKE26TW.mjs";
 import {
   sourceFilesOf
-} from "./chunk-JQBCDNIW.mjs";
+} from "./chunk-KU26G4PG.mjs";
 import {
   PythonResolver,
   adapterById
-} from "./chunk-CZES2SMZ.mjs";
+} from "./chunk-GVSRVFUJ.mjs";
 import "./chunk-OQRLKAKZ.mjs";
 
 // packages/locality/src/movers/python-backend.ts

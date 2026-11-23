@@ -14,6 +14,16 @@
       "until": 1704067200
     }
   },
+  "includeResolution": {
+    "aboveGuideline": false,
+    "compileCommands": null,
+    "configuredRoots": [],
+    "guideline": 20,
+    "includes": 0,
+    "inferredRoots": [],
+    "unresolved": 0,
+    "unresolvedShare": 0
+  },
   "inputs": {
     "entries": [
       "a/a.go",

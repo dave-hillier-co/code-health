@@ -3188,8 +3188,11 @@ function resolveBySymbols(input, options = {}) {
     for (const reference of symbols.references) {
       let found;
       for (const scope of scopes2) {
-        found = table3.get(scope === "" ? reference.name : `${scope}.${reference.name}`);
-        if (found !== void 0) break;
+        const candidates = table3.get(scope === "" ? reference.name : `${scope}.${reference.name}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+        if (candidates !== void 0 && candidates.length > 0) {
+          found = candidates;
+          break;
+        }
       }
       if (found === void 0) continue;
       for (const target2 of found) {
@@ -8279,13 +8282,15 @@ var Extractor5 = class {
   qualify(context, ...parts3) {
     return [...context.namespaces, ...context.owners, ...parts3].join(".");
   }
-  addDeclaration(name11, kind, unit, context, line, exported, qualifier = []) {
+  /** `internal` marks a name with internal linkage: it names something private to this translation unit. */
+  addDeclaration(name11, kind, unit, context, line, exported, qualifier = [], internal = false) {
     this.declarations.push({
       name: this.qualify(context, ...qualifier, name11),
       kind,
       ...unit === void 0 ? {} : { unit },
       exported: exported && !context.anonymous && context.publicMembers,
-      line
+      line,
+      ...internal || context.anonymous ? { internal: true } : {}
     });
   }
   enumeration(node, context) {
@@ -8401,7 +8406,7 @@ var Extractor5 = class {
     const unit = this.measuredUnit(qualifiedName, kind, fn, extent, named.name, context);
     this.units.push(unit);
     const exported = !isStatic(fn);
-    this.addDeclaration(named.name, "function", qualifiedName, context, fn.startPosition.row + 1, exported, named.qualifier);
+    this.addDeclaration(named.name, "function", qualifiedName, context, fn.startPosition.row + 1, exported, named.qualifier, context.scope === "file" && isStatic(fn));
     this.functionBody(fn, { ...context, unit: qualifiedName, scope: "function", types: this.parameterTypes(declarator, context.types) });
   }
   /**
@@ -8489,12 +8494,12 @@ var Extractor5 = class {
       const declarator = functionDeclarator(node);
       const named = declaratorName(declarator);
       if (declarator !== null && declarator.type === "function_declarator" && named !== null && named.qualifier.length === 0) {
-        this.addDeclaration(named.name, "function", named.name, context, node.startPosition.row + 1, !isStatic(node));
+        this.addDeclaration(named.name, "function", named.name, context, node.startPosition.row + 1, !isStatic(node), [], isStatic(node));
       } else if (declarator === null || named === null) {
         for (let i2 = 0; i2 < node.childCount; i2++) {
           if (node.fieldNameForChild(i2) !== "declarator") continue;
           const name11 = declaredIdentifier(node.child(i2));
-          if (name11 !== null && type !== null) this.addDeclaration(name11, "variable", void 0, context, node.startPosition.row + 1, !isStatic(node) && !hasQualifier(node, "constexpr"));
+          if (name11 !== null && type !== null) this.addDeclaration(name11, "variable", void 0, context, node.startPosition.row + 1, !isStatic(node) && !hasQualifier(node, "constexpr"), [], isStatic(node) || hasInternalConstant(node));
         }
       }
     }
@@ -8622,6 +8627,11 @@ var Extractor5 = class {
 };
 function hasQualifier(node, text3) {
   return node.namedChildren.some((child) => child.type === "type_qualifier" && child.text === text3);
+}
+function hasInternalConstant(node) {
+  const constant = hasQualifier(node, "const") || hasQualifier(node, "constexpr");
+  const external = node.namedChildren.some((child) => child.type === "storage_class_specifier" && (child.text === "extern" || child.text === "inline"));
+  return constant && !external;
 }
 function extractFacts5(root, options) {
   const explain2 = options.explain === true;
@@ -9023,7 +9033,8 @@ function resolveCpp(input) {
     }
     const defined = new Set(facts.units.map((unit) => unit.qualifiedName));
     const seen = visibleFrom(path);
-    const declarations = symbols.declarations.filter(
+    const visible = isHeader(path) ? symbols.declarations.map(({ internal: _internal, ...declaration }) => declaration) : symbols.declarations;
+    const declarations = visible.filter(
       (declaration) => !(declaration.kind === "function" && declaration.unit !== void 0 && defined.has(declaration.unit) && (prototypes.get(declaration.name) ?? []).some((header2) => header2 !== path && seen.has(header2)))
     );
     stripped.set(path, { ...facts, symbols: { ...symbols, declarations } });
@@ -9075,7 +9086,7 @@ var adapter5 = {
   support: "supported",
   lexerProfile: "cpp",
   grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm", repairs: cppRepairs }, extensions: claimed }],
-  extractorVersion: 4,
+  extractorVersion: 5,
   extract: extractFacts5,
   isTestPath: (path) => /(^|\/)(tests?|unittests?|gtest|testing)\//i.test(path) || /(^|\/)(test_[^/]+|[^/]+_(test|tests|unittest|unittests)|[^/]+Tests?|[^/]+\.(test|spec))\.[^/.]+$/.test(path),
   metrics: cppMetricRules,

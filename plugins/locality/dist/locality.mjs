@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-XVC3FGAQ.mjs";
+} from "./chunk-O2EMY4PI.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -39,15 +39,15 @@ import {
 } from "./chunk-M2UXSTYU.mjs";
 import {
   analyseTree
-} from "./chunk-JEH2H4PA.mjs";
-import "./chunk-ZOCW2RSI.mjs";
+} from "./chunk-WYU76QFD.mjs";
+import "./chunk-JGKE26TW.mjs";
 import {
   discoverBoundaries,
   hasAdapter,
   isBoundaryManifest,
   isCppPath,
   isTestPath
-} from "./chunk-CZES2SMZ.mjs";
+} from "./chunk-GVSRVFUJ.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -1068,7 +1068,8 @@ function countLines(text2) {
   return text2.endsWith("\n") ? breaks : breaks + 1;
 }
 async function loadProject(root, ref, settings) {
-  const tree = withoutExcluded(await treeFromRef(root, ref), settings.exclude);
+  const fullTree = await treeFromRef(root, ref);
+  const tree = withoutExcluded(fullTree, settings.exclude);
   const analysis = await analyseTree(tree, { cache: await ParseCache.forRepository(root), extraConfigs: readBuildConfigs(root, tree), includeRoots: settings.includeRoots });
   if (analysis.includeResolution !== void 0) {
     const report = describeIncludeResolution(analysis.includeResolution, settings.unresolvedIncludePercent, "locality");
@@ -1078,7 +1079,7 @@ async function loadProject(root, ref, settings) {
   const production = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !generated.has(path));
   const texts = await tree.readMany(production);
   const packageEntries = await readPackageEntries(tree);
-  return { analysis, production, isTest: isTestPath, texts, packageEntries };
+  return { analysis, production, isTest: isTestPath, texts, packageEntries, tree: new Set(fullTree.files.keys()) };
 }
 function unitText(project, unit) {
   const text2 = project.texts.get(unit.path);
@@ -2240,6 +2241,64 @@ function pairing(history, group, file) {
 }
 var round1 = (value) => Math.round(value * 10) / 10;
 
+// packages/locality/src/placement.ts
+import { posix as posix2 } from "node:path";
+function relativeTo(folder, base) {
+  if (folder === base) return "";
+  return base === "" ? folder : folder.slice(base.length + 1);
+}
+function manifestFolders(tree) {
+  return new Set([...tree].filter((path) => isBoundaryManifest(path)).map((path) => posix2.dirname(path) === "." ? "" : posix2.dirname(path)));
+}
+function packageRoot(path, boundaries) {
+  let folder = posix2.dirname(path);
+  for (; ; ) {
+    const dir = folder === "." ? "" : folder;
+    if (boundaries.has(dir)) return dir;
+    if (dir === "") return "";
+    folder = posix2.dirname(folder);
+  }
+}
+function internalScopes(path) {
+  const folders = posix2.dirname(path).split("/");
+  return folders.flatMap((folder, index) => folder === "internal" ? [folders.slice(0, index + 1).join("/")] : []);
+}
+function relocate(files, tests, base, destination) {
+  const operations = [];
+  for (const file of files) {
+    const offset = relativeTo(posix2.dirname(file) === "." ? "" : posix2.dirname(file), base);
+    operations.push({ from: file, to: posix2.join(destination, offset, posix2.basename(file)), role: "unit" });
+  }
+  for (const test of tests) {
+    const folder = posix2.dirname(test) === "." ? "" : posix2.dirname(test);
+    const inside = base === "" || folder === base || folder.startsWith(`${base}/`);
+    const offset = inside ? relativeTo(folder, base) : "";
+    operations.push({ from: test, to: posix2.join(destination, offset, posix2.basename(test)), role: "test" });
+  }
+  return operations.sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
+}
+function placementRefusals(operations, manifests, tree) {
+  const refusals = [];
+  const leaving = new Set(operations.map((operation) => operation.from));
+  const landing = /* @__PURE__ */ new Set();
+  for (const operation of operations) {
+    if (packageRoot(operation.from, manifests) !== packageRoot(operation.to, manifests)) {
+      refusals.push({ code: "package-boundary", detail: `${operation.from} would leave its package for ${operation.to}`, label: "crosses a package boundary" });
+    }
+    if (operation.from.endsWith(".go") && internalScopes(operation.from).join("\0") !== internalScopes(operation.to).join("\0")) {
+      refusals.push({
+        code: "fixed-point",
+        detail: `${operation.from} to ${operation.to} crosses an internal/ directory, which the Go compiler restricts to code under its parent`,
+        label: "crosses internal/"
+      });
+    }
+    if (landing.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} is the destination of two files`, label: "name collision" });
+    else if (tree.has(operation.to) && !leaving.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} already exists`, label: "name collision" });
+    landing.add(operation.to);
+  }
+  return refusals;
+}
+
 // packages/locality/src/recommend.ts
 function recommend(input) {
   if (input.fixedPoint) return { recommendation: "keep", rule: "fixed-point" };
@@ -2282,6 +2341,224 @@ function guard(input, decision) {
   if (input.scattered) return { recommendation: "review", rule: "scattered-unit" };
   if (decision.recommendation === "move" && input.createsCycle) return { recommendation: "review", rule: "creates-cycle" };
   return decision;
+}
+
+// packages/locality/src/rules.ts
+var lines = (...text2) => text2.join("\n");
+var ruleDescriptions = {
+  "single-consumer-tiny": {
+    summary: "One consumer, and the unit is tiny: inline it",
+    explanation: lines(
+      "The unit is used by exactly one production file and is at most locality.tinyLines lines long, so the cost of the",
+      "import (an extra file to open) outweighs what the unit says. The default is to inline it into its consumer.",
+      "A unit of several files cannot be inlined, so it moves next to the consumer instead.",
+      "",
+      "Inline is a separate commit made by the agent. Keep the unit when it encodes a domain rule that needs one source",
+      "of truth, or when its name explains the code better than the code does."
+    )
+  },
+  "single-consumer-medium": {
+    summary: "One consumer and a medium unit: inline if the consumer stays readable, otherwise move",
+    explanation: lines(
+      "The unit is used by one production file and is larger than a tiny unit but no larger than locality.largeLines.",
+      "It is inlined when the consumer plus the unit stay within locality.inlineHostLines lines, otherwise it moves",
+      "next to the consumer as its own module."
+    )
+  },
+  "single-consumer-large": {
+    summary: "One consumer and a large unit: move it next to the consumer, as its own module",
+    explanation: lines(
+      "The unit is longer than locality.largeLines lines and has one production consumer. Inlining would bury the",
+      "consumer, so the unit keeps its own file and moves to the target folder, usually the consumer's."
+    )
+  },
+  "two-consumers": {
+    summary: "Two consumers: move to the target",
+    explanation: lines(
+      "Two production files use the unit. It moves to the folder that minimises its net distance: the consumers'",
+      "lowest common ancestor when the unit has no outside dependencies.",
+      "",
+      "Two consumers that rarely change together suggest coincidental reuse: see independent-consumers. When the",
+      "history gives too little to judge, the default is the move."
+    )
+  },
+  "independent-consumers": {
+    summary: "Two consumers that rarely change together: coincidental reuse, so review before moving",
+    explanation: lines(
+      "Two production files use the unit, but their median co-change degree over the window is at or below",
+      "locality.lowCoChange percent, with at least locality.minCoChangeChanges logical changes touching them. Independent",
+      "consumers suggest the reuse is coincidence: inlining into each may be better than moving to the common folder.",
+      "Look at coChange.consumers to see whether the unit itself changes with either."
+    )
+  },
+  "consumers-co-change": {
+    summary: "Three or more consumers that change together: the distance is earned, keep",
+    explanation: lines(
+      "At least three production files use the unit and their median co-change degree over the window is at or above",
+      "locality.highCoChange percent: they share a reason to change, so the unit's distance from them is earned.",
+      "It is kept where it is. Scrutinise it if its fan-in is high."
+    )
+  },
+  "within-grace-period": {
+    summary: "A unit younger than locality.graceDays is not inlined or moved",
+    explanation: lines(
+      "One callsite is only evidence once reuse has had time to happen, so a unit whose entry file first appeared fewer",
+      "than locality.graceDays days before HEAD is reviewed instead of inlined or moved. Re-run once it has aged."
+    )
+  },
+  "creates-cycle": {
+    summary: "Moving to the target would create an import cycle between folders",
+    explanation: lines(
+      "Moving the unit to its target folder would make folders import each other that do not now, and an import cycle",
+      "is not made by a move. Cycles between a folder and its own subfolders are not counted. Review the unit's",
+      "dependencies, or break the dependency first with the structure plugin, then re-analyse."
+    )
+  },
+  "three-or-more-consumers": {
+    summary: "Three or more consumers: judge whether they share a reason to change",
+    explanation: lines(
+      "At the third consumer the rule of three asks for judgement, not a mechanical answer. If the consumers change",
+      "together, the distance is earned and the unit is kept. If they change independently, consider moving or",
+      "inlining where the consumers diverge. With enough history the median co-change between consumers decides: at or",
+      "above locality.highCoChange percent the rule is consumers-co-change (keep). Otherwise, and when history gives",
+      "too little to judge, the answer is review."
+    )
+  },
+  "high-fan-in": {
+    summary: "Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design",
+    explanation: lines(
+      "Many production files depend on the unit, so every flaw in it is multiplied by its consumers.",
+      "The unit is not moved. It goes to the review checklist: shallow module, special-general mixture, overexposure,",
+      "pass-through method, vague name, and correctness under every caller."
+    )
+  },
+  "pass-through": {
+    summary: "A pass-through with one consumer: inline it",
+    explanation: lines(
+      "Every exported function of the file only calls something else with the arguments it was given, and one",
+      "production file uses it. It adds a name and a hop and hides nothing, so the default is to inline it, whatever its",
+      "distance."
+    )
+  },
+  "single-consumer-barrel": {
+    summary: "A barrel with one importing file: inline it by rewriting imports to the real definitions",
+    explanation: lines(
+      "The file only re-exports other modules and one production file imports it. The importer can import the real",
+      "definitions directly and the barrel can go."
+    )
+  },
+  "mixed-exports": {
+    summary: "Exports with disjoint consumers in different folders: split the file",
+    explanation: lines(
+      "Two or more groups of exports share no consumers and do not refer to each other, and their consumers live in",
+      "different folders: the file is several units sharing a name (coincidental cohesion). Each group becomes its own",
+      "file, then is scored and recommended on its own: see cohesion.components in the output.",
+      "",
+      "A split is its own commit, before any move."
+    )
+  },
+  "blocked-by-dependency": {
+    summary: "The gain is below the minimum, but would clear it if a dependency were resolved",
+    explanation: lines(
+      "The unit would gain from moving closer to its consumers, but its own dependencies hold it where it is.",
+      "Each blocker lists its unblocked gain. Resolve one by judgement: grow the unit to take it along, accept the",
+      "coupling, split the blocker first, break the dependency, or move anyway when the blocker is stable.",
+      "Then re-analyse before moving, because resolving a blocker changes the graph."
+    )
+  },
+  "near-consumers": {
+    summary: "Already close to its consumers: nothing to do",
+    explanation: lines(
+      "The gain from moving is below the locality.minDistance guideline and no blocker would change that.",
+      "Units with this rule are not listed. summary.placed counts them."
+    )
+  },
+  "other-references": {
+    summary: "Guard: a consumer uses the unit as a value, so callsite counts cannot be trusted",
+    explanation: lines(
+      "At least one production file passes the unit as a value, registers it or decorates with it. Counting callsites",
+      "undercounts its use, so an inline or move becomes a review."
+    )
+  },
+  "package-entry": {
+    summary: "Guard: the unit is exported from a published package entry point",
+    explanation: lines(
+      "A non-private package manifest (package.json, pyproject.toml, Cargo.toml and the like) names the file as an entry point, so consumers outside the",
+      "repository may exist. An inline or move becomes a review."
+    )
+  },
+  "scattered-unit": {
+    summary: "Guard: the unit's files live outside its entry file's folder, so its leaves are scored on their own",
+    explanation: lines(
+      "A dominator unit moves as one block with its layout kept, but some of its files sit in folders outside the entry",
+      "file's own folder. A single move of that block is coarse advice. The unit's leaves are candidates in their own",
+      "right: move or inline them first (leaves before roots), then re-analyse."
+    )
+  },
+  "interface-unit": {
+    summary: "Guard: the unit declares an interface or abstract type, which is not a free-standing helper",
+    explanation: lines(
+      "A file of the unit exports an interface or an abstract class. Its implementations and callers elsewhere give it a",
+      "reason to sit where it is, so inlining it or moving it is for review, not a default. Read the implementers before",
+      "deciding, and keep the unit beside the code that owns the contract."
+    )
+  },
+  "overrides-inherited-method": {
+    summary: "Guard: the unit holds a method that overrides or implements an inherited one",
+    explanation: lines(
+      "A unit of the files has a method the language marks as overriding (an override modifier or annotation, a trait",
+      "implementation, a decorator). Such a method is called through the type it overrides, not by name, so callsite",
+      "counts understate its use and it cannot be inlined into a single consumer. Review before inlining or moving."
+    )
+  },
+  "recursive-unit": {
+    summary: "Guard: the unit holds a function that calls itself",
+    explanation: lines(
+      "A function in the unit calls itself directly. Inlining a recursive function into its one consumer is not possible",
+      "as written, and moving it changes nothing about the recursion. Review before inlining or moving."
+    )
+  },
+  "fixed-point": {
+    summary: "Guard: the unit is a fixed point (locality.fixedPoints) and stays where it is",
+    explanation: lines(
+      "A file of the unit matches a glob in locality.fixedPoints: framework conventions such as routes, migrations or",
+      "app folders. Fixed points do not move, and code is not moved into folders they cover."
+    )
+  },
+  "no-production-consumers": {
+    summary: "No production file uses the unit: dead code or a missing entry point",
+    explanation: lines(
+      "Nothing in production references what the unit defines (an import that is only re-exported, or one used only by",
+      "tests). Check whether it is dead, or whether an entry point is missing from the suite config."
+    )
+  }
+};
+
+// packages/locality/src/reason.ts
+var plural = (count3, noun) => `${count3} ${noun}${count3 === 1 ? "" : "s"}`;
+function reasonFor(input, decision) {
+  const needsReason = decision.recommendation === "move" || decision.recommendation === "inline" ? "" : ` \`locality move\` needs --reason for ${decision.recommendation === "review" ? "a review" : `a ${decision.recommendation}`}.`;
+  const consumers = plural(input.fanIn, "consumer file");
+  switch (decision.rule) {
+    case "three-or-more-consumers": {
+      const coChange = input.consumerCoChange === null ? "whether they change together is not known (the history gives fewer than locality.minCoChangeChanges changes touching them, or is not available)" : `their median co-change is ${input.consumerCoChange} percent, below the locality.highCoChange guideline of ${input.highCoChange} percent`;
+      return `${consumers} use it, so whether it moves is for judgement; ${coChange}.${needsReason}`;
+    }
+    case "other-references":
+      return `${plural(input.otherRefs, "consumer file")} use it as a value, not a call, so callsite counts are not reliable and the move is for judgement.${needsReason}`;
+    case "independent-consumers":
+      return `${consumers} use it and their median co-change is ${input.consumerCoChange} percent, at or below the locality.lowCoChange guideline of ${input.lowCoChange} percent, which suggests coincidental reuse.${needsReason}`;
+    case "within-grace-period":
+      return `its entry file first appeared ${input.age} days before HEAD, inside the locality.graceDays guideline of ${input.graceDays} days, so one callsite is not yet evidence of reuse.${needsReason}`;
+    case "no-production-consumers":
+      return `no production file uses it: it is dead code, or an entry point is missing from the suite config.${needsReason}`;
+    case "creates-cycle":
+      return `moving it to its target would make folders import each other that do not now.${needsReason}`;
+    default: {
+      const rule = ruleDescriptions[decision.rule];
+      return `${rule === void 0 ? decision.rule : rule.summary}.${needsReason}`.replace("..", ".");
+    }
+  }
 }
 
 // packages/locality/src/signals.ts
@@ -2360,6 +2637,11 @@ function percentileRank(value, values) {
   if (values.length === 0) return 0;
   return Math.round(values.filter((other) => other <= value).length / values.length * 100);
 }
+var OMITTED_REASONS = {
+  folderSized: "folder-sized unit",
+  rootTarget: "target is a root folder",
+  noUsableTarget: (label) => `no usable target: ${label}`
+};
 function commonFolder(folders) {
   let shared = folders[0].split("/").filter((part) => part !== "");
   for (const folder of folders) {
@@ -2538,9 +2820,21 @@ function analyseProject(project, model, settings, history) {
     }
     return signals.sort((a, b) => compareIds(a.name, b.name));
   }
+  const manifests = manifestFolders(project.tree);
+  function refusalOf(files, tests, base) {
+    const memo = /* @__PURE__ */ new Map();
+    return (folder) => {
+      if (!memo.has(folder)) {
+        const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree);
+        memo.set(folder, first === void 0 ? void 0 : { label: first.label, detail: first.detail });
+      }
+      return memo.get(folder);
+    };
+  }
   function scoreComponent(path, component) {
     const symbols = new Set(component.symbols);
     const base = folderOf(path);
+    const refusal = refusalOf([path], [], base);
     const own = (consumersTo.get(path) ?? []).filter(
       (consumer) => consumer.toSymbol !== void 0 && symbols.has(consumer.toSymbol) && consumer.kind !== "test" && consumer.from !== path && live(consumer.from)
     );
@@ -2552,7 +2846,7 @@ function analyseProject(project, model, settings, history) {
       ...own.map((consumer) => ({ inner: "", outer: folderOf(consumer.from), weight: consumer.count })),
       ...outward.map((consumer) => ({ inner: "", outer: folderOf(consumer.to), weight: consumer.count }))
     ];
-    const choice = bestTarget(boundary, base, { maxDepth: settings.maxDepth, forbidden });
+    const choice = bestTarget(boundary, base, { maxDepth: settings.maxDepth, forbidden: (folder) => forbidden(folder) || refusal(folder) !== void 0 });
     const units = exportedUnits(path).filter((unit) => symbols.has(unit.qualifiedName));
     const componentLines = units.reduce((sum, unit) => sum + unit.endLine - unit.startLine + 1, 0);
     const only = component.consumers.length === 1 ? component.consumers[0] : void 0;
@@ -2587,6 +2881,21 @@ function analyseProject(project, model, settings, history) {
       ...decision
     };
   }
+  function withheldBy(fileCount, base, target) {
+    if (fileCount > settings.maxMoveFiles) {
+      return {
+        reason: OMITTED_REASONS.folderSized,
+        detail: `${fileCount} files, above the locality.maxMoveFiles guideline of ${settings.maxMoveFiles}: moving a folder is a reorganisation, not one relocation`
+      };
+    }
+    if (fileCount > 1 && under(base, target) && depthOf(target) < settings.minTargetDepth) {
+      return {
+        reason: OMITTED_REASONS.rootTarget,
+        detail: `${target === "" ? "the repository root" : target} is an ancestor of the unit at depth ${depthOf(target)}, shallower than the locality.minTargetDepth guideline of ${settings.minTargetDepth}: a unit of ${fileCount} files is not moved up to a root`
+      };
+    }
+    return void 0;
+  }
   function candidateFor(unit) {
     const importerCount = (model.importers.get(unit.root) ?? []).filter(live).length;
     const barrelAlone = barrels.has(unit.root) && importerCount === 1;
@@ -2603,8 +2912,12 @@ function analyseProject(project, model, settings, history) {
       ...incoming.map((edge) => ({ inner: relative(folderOf(edge.to), base), outer: folderOf(edge.from), weight: edge.weight })),
       ...outbound.map((edge) => ({ inner: relative(folderOf(edge.from), base), outer: folderOf(edge.to), weight: edge.weight }))
     ];
-    const options = { maxDepth: settings.maxDepth, forbidden };
-    const choice = barrelAlone ? { target: base, current: 0, distance: 0, gain: 0 } : bestTarget(boundaryOf(outgoing), base, options);
+    const tests = testsOf(fileSet);
+    const refusal = refusalOf(files, tests.owned, base);
+    const options = { maxDepth: settings.maxDepth, forbidden: (folder) => forbidden(folder) || refusal(folder) !== void 0 };
+    let choice = barrelAlone ? { target: base, current: 0, distance: 0, gain: 0 } : bestTarget(boundaryOf(outgoing), base, options);
+    const unrestricted = barrelAlone ? choice : bestTarget(boundaryOf(outgoing), base, { maxDepth: settings.maxDepth, forbidden });
+    const unusable = unrestricted.gain > choice.gain ? refusal(unrestricted.target) : void 0;
     const consumerFiles = barrelAlone ? (model.importers.get(unit.root) ?? []).filter(live) : [...new Set(incoming.map((edge) => edge.from))].sort(compareIds);
     const targets = [...new Set(outgoing.map((edge) => edge.to))].sort(compareIds);
     const blockers = [];
@@ -2638,7 +2951,6 @@ function analyseProject(project, model, settings, history) {
         (file) => (consumersTo.get(file) ?? []).filter((c) => c.kind === "reference" && !fileSet.has(c.from) && live(c.from)).map((c) => [c.from, c.count])
       )
     );
-    const tests = testsOf(fileSet);
     const coChange = unitCoChange(history, fileSet, consumerFiles, settings.minCoChangeChanges);
     const createsCycle = choice.gain >= settings.minDistance && choice.target !== base && movingCreatesCycle(files, base, choice.target);
     const totalLines = files.reduce((sum, file) => sum + lines2(file), 0);
@@ -2666,12 +2978,24 @@ function analyseProject(project, model, settings, history) {
       ...guidelines
     };
     const decision = recommend(input);
+    let omission;
+    const omit = (reason, detail) => {
+      omission = { reason, detail, target: choice.target, gain: choice.gain, files: files.length };
+    };
+    if (unusable !== void 0 && unrestricted.gain >= settings.minDistance && (decision.rule === "near-consumers" || decision.rule === "blocked-by-dependency")) {
+      omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`);
+    }
+    const withheld = choice.gain >= settings.minDistance && choice.target !== base ? withheldBy(files.length, base, choice.target) : void 0;
+    if (withheld !== void 0) {
+      if (decision.recommendation === "move" || decision.recommendation === "review") omit(withheld.reason, withheld.detail);
+      if (decision.recommendation === "split") choice = { target: base, current: choice.current, distance: choice.current, gain: 0 };
+    }
     const scored = cohesion?.mixed ? cohesion.components.map((component) => scoreComponent(unit.root, component)) : void 0;
     const score = decision.recommendation === "blocked" ? unblocked : decision.recommendation === "split" ? Math.max(choice.gain, (scored ?? []).reduce((sum, component) => sum + component.gain, 0)) : decision.recommendation === "scrutinise" ? consumerFiles.length : choice.gain;
     const unresolvedReason = files.flatMap((file) => lowConfidence(file) ?? []).sort(compareIds)[0];
     const ownDeps = targets;
     const scoreUnit = decision.recommendation === "blocked" ? "unblocked-gain" : decision.recommendation === "split" ? "component-gain" : decision.recommendation === "scrutinise" ? "fan-in" : "gain";
-    return {
+    const candidate = {
       path: unit.path,
       score,
       scoreUnit,
@@ -2679,6 +3003,7 @@ function analyseProject(project, model, settings, history) {
       fanInPercentile: 0,
       guidelines: { gain: readAgainst(choice.gain, settings.minDistance), fanIn: readAgainst(consumerFiles.length, settings.highFanIn) },
       ...decision,
+      reason: reasonFor(input, decision),
       source: "structural",
       unit: {
         kind: barrelAlone ? "barrel" : unit.kind,
@@ -2690,6 +3015,7 @@ function analyseProject(project, model, settings, history) {
       },
       location: base,
       target: choice.target,
+      ...unusable === void 0 ? {} : { unusableTarget: { target: unrestricted.target, gain: unrestricted.gain, reason: unusable.label } },
       distance: folderDistance(base, choice.target),
       gain: choice.gain,
       unblockedGain: unblocked,
@@ -2711,10 +3037,18 @@ function analyseProject(project, model, settings, history) {
       ...unresolvedReason === void 0 ? {} : { confidence: { level: "low", reason: unresolvedReason } },
       ...cohesion ? { cohesion: { components: scored ?? cohesion.components, mixed: cohesion.mixed } } : {}
     };
+    return { candidate, omission };
   }
-  const all = model.units.map(candidateFor);
-  const reported = all.filter((candidate) => candidate.rule !== "near-consumers").sort((a, b) => b.ranking.ratio - a.ranking.ratio || b.score - a.score || compareIds(a.path, b.path));
-  const placed = all.filter((candidate) => candidate.rule === "near-consumers").sort((a, b) => compareIds(a.path, b.path));
+  const outcomes = model.units.map(candidateFor);
+  const all = outcomes.map((outcome) => outcome.candidate);
+  const omittedOutcomes = outcomes.filter((outcome) => outcome.omission !== void 0);
+  const omitted2 = omittedOutcomes.map((outcome) => ({ path: outcome.candidate.path, ...outcome.omission })).sort((a, b) => compareIds(a.path, b.path));
+  const unranked = new Set(omitted2.map((unit) => unit.path));
+  const omittedByReason = {};
+  for (const unit of omitted2) omittedByReason[unit.reason] = (omittedByReason[unit.reason] ?? 0) + 1;
+  const reported = all.filter((candidate) => candidate.rule !== "near-consumers" && !unranked.has(candidate.path)).sort((a, b) => b.ranking.ratio - a.ranking.ratio || b.score - a.score || compareIds(a.path, b.path));
+  const placed = all.filter((candidate) => candidate.rule === "near-consumers" && !unranked.has(candidate.path)).sort((a, b) => compareIds(a.path, b.path));
+  const unproposed = all.filter((candidate) => unranked.has(candidate.path)).sort((a, b) => compareIds(a.path, b.path));
   const fanIns = all.map((candidate) => candidate.fanIn);
   for (const candidate of all) candidate.fanInPercentile = percentileRank(candidate.fanIn, fanIns);
   const byRecommendation = {};
@@ -2723,8 +3057,10 @@ function analyseProject(project, model, settings, history) {
   for (const file of project.production) folders.set(folderOf(file), (folders.get(folderOf(file)) ?? 0) + 1);
   return {
     candidates: reported,
+    omitted: omitted2,
+    unproposed,
     placed,
-    summary: { files: project.production.length, units: all.length, placed: placed.length, byRecommendation },
+    summary: { files: project.production.length, units: outcomes.length, placed: placed.length, omitted: omittedByReason, byRecommendation },
     metrics: {
       totalWeightedDistance: model.edges.filter((edge) => model.reachable.has(edge.from)).reduce((sum, edge) => sum + edge.weight * treeDistance(edge.from, edge.to), 0),
       singleFileFolders: [...folders.values()].filter((count3) => count3 === 1).length,
@@ -2754,6 +3090,10 @@ var localityConfig = {
     highFanIn: 8,
     /** Deepest folder nesting a target may have. A judgement call: a depth cap stops code being buried to lower its distance. */
     maxDepth: 6,
+    /** Guideline: a unit of more than this many files is a folder, and moving a folder reorganises the code base instead of relocating one module. Such a unit is not proposed as a move: it is counted in `summary.omitted` and listed in `omitted`. A judgement call: 20 is above the largest multi-file units that looked like single modules in Orleans (19 files) and below the folders Solent proposed moving whole (58 and 76 files). */
+    maxMoveFiles: 20,
+    /** Guideline: a target shallower than this depth that is an ancestor of the unit (the repository root, or a top-level folder such as src or pkg) is a root. A unit of more than one file is not moved up to a root: it is counted in `summary.omitted` and listed in `omitted`. A single file still moves to a root, because that is where its consumers' lowest common ancestor can be. A judgement call. */
+    minTargetDepth: 2,
     /** Read co-change, age and churn from the history cache, so the history guards and rules can fire. */
     useHistory: true,
     /** Guideline: a unit younger than this many days is reviewed, not inlined or moved, because one callsite is only evidence once reuse has had time. A judgement call. */
@@ -2816,6 +3156,8 @@ function readSettings(config) {
     inlineHostLines: positive("inlineHostLines"),
     highFanIn: positive("highFanIn"),
     maxDepth: positive("maxDepth"),
+    maxMoveFiles: positive("maxMoveFiles"),
+    minTargetDepth: positive("minTargetDepth"),
     fixedPoints,
     useHistory: section2.useHistory === true,
     graceDays: positive("graceDays"),
@@ -3281,197 +3623,6 @@ function writeReport2(context, command9, output) {
   return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command9, output, context.repo.head);
 }
 
-// packages/locality/src/rules.ts
-var lines = (...text2) => text2.join("\n");
-var ruleDescriptions = {
-  "single-consumer-tiny": {
-    summary: "One consumer, and the unit is tiny: inline it",
-    explanation: lines(
-      "The unit is used by exactly one production file and is at most locality.tinyLines lines long, so the cost of the",
-      "import (an extra file to open) outweighs what the unit says. The default is to inline it into its consumer.",
-      "A unit of several files cannot be inlined, so it moves next to the consumer instead.",
-      "",
-      "Inline is a separate commit made by the agent. Keep the unit when it encodes a domain rule that needs one source",
-      "of truth, or when its name explains the code better than the code does."
-    )
-  },
-  "single-consumer-medium": {
-    summary: "One consumer and a medium unit: inline if the consumer stays readable, otherwise move",
-    explanation: lines(
-      "The unit is used by one production file and is larger than a tiny unit but no larger than locality.largeLines.",
-      "It is inlined when the consumer plus the unit stay within locality.inlineHostLines lines, otherwise it moves",
-      "next to the consumer as its own module."
-    )
-  },
-  "single-consumer-large": {
-    summary: "One consumer and a large unit: move it next to the consumer, as its own module",
-    explanation: lines(
-      "The unit is longer than locality.largeLines lines and has one production consumer. Inlining would bury the",
-      "consumer, so the unit keeps its own file and moves to the target folder, usually the consumer's."
-    )
-  },
-  "two-consumers": {
-    summary: "Two consumers: move to the target",
-    explanation: lines(
-      "Two production files use the unit. It moves to the folder that minimises its net distance: the consumers'",
-      "lowest common ancestor when the unit has no outside dependencies.",
-      "",
-      "Two consumers that rarely change together suggest coincidental reuse: see independent-consumers. When the",
-      "history gives too little to judge, the default is the move."
-    )
-  },
-  "independent-consumers": {
-    summary: "Two consumers that rarely change together: coincidental reuse, so review before moving",
-    explanation: lines(
-      "Two production files use the unit, but their median co-change degree over the window is at or below",
-      "locality.lowCoChange percent, with at least locality.minCoChangeChanges logical changes touching them. Independent",
-      "consumers suggest the reuse is coincidence: inlining into each may be better than moving to the common folder.",
-      "Look at coChange.consumers to see whether the unit itself changes with either."
-    )
-  },
-  "consumers-co-change": {
-    summary: "Three or more consumers that change together: the distance is earned, keep",
-    explanation: lines(
-      "At least three production files use the unit and their median co-change degree over the window is at or above",
-      "locality.highCoChange percent: they share a reason to change, so the unit's distance from them is earned.",
-      "It is kept where it is. Scrutinise it if its fan-in is high."
-    )
-  },
-  "within-grace-period": {
-    summary: "A unit younger than locality.graceDays is not inlined or moved",
-    explanation: lines(
-      "One callsite is only evidence once reuse has had time to happen, so a unit whose entry file first appeared fewer",
-      "than locality.graceDays days before HEAD is reviewed instead of inlined or moved. Re-run once it has aged."
-    )
-  },
-  "creates-cycle": {
-    summary: "Moving to the target would create an import cycle between folders",
-    explanation: lines(
-      "Moving the unit to its target folder would make folders import each other that do not now, and an import cycle",
-      "is not made by a move. Cycles between a folder and its own subfolders are not counted. Review the unit's",
-      "dependencies, or break the dependency first with the structure plugin, then re-analyse."
-    )
-  },
-  "three-or-more-consumers": {
-    summary: "Three or more consumers: judge whether they share a reason to change",
-    explanation: lines(
-      "At the third consumer the rule of three asks for judgement, not a mechanical answer. If the consumers change",
-      "together, the distance is earned and the unit is kept. If they change independently, consider moving or",
-      "inlining where the consumers diverge. With enough history the median co-change between consumers decides: at or",
-      "above locality.highCoChange percent the rule is consumers-co-change (keep). Otherwise, and when history gives",
-      "too little to judge, the answer is review."
-    )
-  },
-  "high-fan-in": {
-    summary: "Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design",
-    explanation: lines(
-      "Many production files depend on the unit, so every flaw in it is multiplied by its consumers.",
-      "The unit is not moved. It goes to the review checklist: shallow module, special-general mixture, overexposure,",
-      "pass-through method, vague name, and correctness under every caller."
-    )
-  },
-  "pass-through": {
-    summary: "A pass-through with one consumer: inline it",
-    explanation: lines(
-      "Every exported function of the file only calls something else with the arguments it was given, and one",
-      "production file uses it. It adds a name and a hop and hides nothing, so the default is to inline it, whatever its",
-      "distance."
-    )
-  },
-  "single-consumer-barrel": {
-    summary: "A barrel with one importing file: inline it by rewriting imports to the real definitions",
-    explanation: lines(
-      "The file only re-exports other modules and one production file imports it. The importer can import the real",
-      "definitions directly and the barrel can go."
-    )
-  },
-  "mixed-exports": {
-    summary: "Exports with disjoint consumers in different folders: split the file",
-    explanation: lines(
-      "Two or more groups of exports share no consumers and do not refer to each other, and their consumers live in",
-      "different folders: the file is several units sharing a name (coincidental cohesion). Each group becomes its own",
-      "file, then is scored and recommended on its own: see cohesion.components in the output.",
-      "",
-      "A split is its own commit, before any move."
-    )
-  },
-  "blocked-by-dependency": {
-    summary: "The gain is below the minimum, but would clear it if a dependency were resolved",
-    explanation: lines(
-      "The unit would gain from moving closer to its consumers, but its own dependencies hold it where it is.",
-      "Each blocker lists its unblocked gain. Resolve one by judgement: grow the unit to take it along, accept the",
-      "coupling, split the blocker first, break the dependency, or move anyway when the blocker is stable.",
-      "Then re-analyse before moving, because resolving a blocker changes the graph."
-    )
-  },
-  "near-consumers": {
-    summary: "Already close to its consumers: nothing to do",
-    explanation: lines(
-      "The gain from moving is below the locality.minDistance guideline and no blocker would change that.",
-      "Units with this rule are not listed. summary.placed counts them."
-    )
-  },
-  "other-references": {
-    summary: "Guard: a consumer uses the unit as a value, so callsite counts cannot be trusted",
-    explanation: lines(
-      "At least one production file passes the unit as a value, registers it or decorates with it. Counting callsites",
-      "undercounts its use, so an inline or move becomes a review."
-    )
-  },
-  "package-entry": {
-    summary: "Guard: the unit is exported from a published package entry point",
-    explanation: lines(
-      "A non-private package manifest (package.json, pyproject.toml, Cargo.toml and the like) names the file as an entry point, so consumers outside the",
-      "repository may exist. An inline or move becomes a review."
-    )
-  },
-  "scattered-unit": {
-    summary: "Guard: the unit's files live outside its entry file's folder, so its leaves are scored on their own",
-    explanation: lines(
-      "A dominator unit moves as one block with its layout kept, but some of its files sit in folders outside the entry",
-      "file's own folder. A single move of that block is coarse advice. The unit's leaves are candidates in their own",
-      "right: move or inline them first (leaves before roots), then re-analyse."
-    )
-  },
-  "interface-unit": {
-    summary: "Guard: the unit declares an interface or abstract type, which is not a free-standing helper",
-    explanation: lines(
-      "A file of the unit exports an interface or an abstract class. Its implementations and callers elsewhere give it a",
-      "reason to sit where it is, so inlining it or moving it is for review, not a default. Read the implementers before",
-      "deciding, and keep the unit beside the code that owns the contract."
-    )
-  },
-  "overrides-inherited-method": {
-    summary: "Guard: the unit holds a method that overrides or implements an inherited one",
-    explanation: lines(
-      "A unit of the files has a method the language marks as overriding (an override modifier or annotation, a trait",
-      "implementation, a decorator). Such a method is called through the type it overrides, not by name, so callsite",
-      "counts understate its use and it cannot be inlined into a single consumer. Review before inlining or moving."
-    )
-  },
-  "recursive-unit": {
-    summary: "Guard: the unit holds a function that calls itself",
-    explanation: lines(
-      "A function in the unit calls itself directly. Inlining a recursive function into its one consumer is not possible",
-      "as written, and moving it changes nothing about the recursion. Review before inlining or moving."
-    )
-  },
-  "fixed-point": {
-    summary: "Guard: the unit is a fixed point (locality.fixedPoints) and stays where it is",
-    explanation: lines(
-      "A file of the unit matches a glob in locality.fixedPoints: framework conventions such as routes, migrations or",
-      "app folders. Fixed points do not move, and code is not moved into folders they cover."
-    )
-  },
-  "no-production-consumers": {
-    summary: "No production file uses the unit: dead code or a missing entry point",
-    explanation: lines(
-      "Nothing in production references what the unit defines (an import that is only re-exported, or one used only by",
-      "tests). Check whether it is dead, or whether an entry point is missing from the suite config."
-    )
-  }
-};
-
 // packages/locality/src/commands/analyse.ts
 var name = "analyse";
 var rules = { ...ruleDescriptions, ...historyRuleDescriptions };
@@ -3517,6 +3668,7 @@ var command = {
       },
       extra: {
         summary: analysis.summary,
+        omitted: analysis.omitted,
         metrics: analysis.metrics,
         unreachable: model.unreachable,
         barrels: project.analysis.barrels,
@@ -3528,7 +3680,12 @@ var command = {
         ...source === "both" ? await crossCheck(context.repo.root, history, settings, model, analysis.candidates) : {}
       },
       results: rows7,
-      columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"]
+      columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"],
+      ...analysis.omitted.length === 0 ? {} : {
+        notices: [
+          `Omitted, with no proposed move: ${Object.entries(analysis.summary.omitted).map(([reason, count3]) => `${reason} ${count3}`).join(", ")} (listed in omitted; guidelines locality.maxMoveFiles ${settings.maxMoveFiles}, locality.minTargetDepth ${settings.minTargetDepth})`
+        ]
+      }
     };
     if (!partial) await writeReport2(context, name, output);
     else skipReport(context, "the run was limited by path arguments, --recommendation or --source");
@@ -3623,12 +3780,12 @@ import { existsSync as existsSync7, readFileSync as readFileSync5, readdirSync a
 import { join as join7 } from "node:path";
 
 // packages/transcripts/src/repo-path.ts
-import { posix as posix2 } from "node:path";
+import { posix as posix3 } from "node:path";
 function normalise3(path) {
   const converted = path.replaceAll("\\", "/");
   const drive = /^[A-Za-z]:\//.exec(converted);
-  if (drive === null) return posix2.normalize(converted);
-  return drive[0] + posix2.normalize(converted.slice(drive[0].length));
+  if (drive === null) return posix3.normalize(converted);
+  return drive[0] + posix3.normalize(converted.slice(drive[0].length));
 }
 function isAbsolute(path) {
   return path.startsWith("/") || /^[A-Za-z]:\//.test(path);
@@ -3683,7 +3840,7 @@ function toRepoPath(path, roots) {
 }
 
 // packages/transcripts/src/shell-command.ts
-import { posix as posix3 } from "node:path";
+import { posix as posix4 } from "node:path";
 var LITERAL_DOLLAR = "";
 var plain = (word) => word.text.replaceAll(LITERAL_DOLLAR, "$");
 var OPERATORS = ["&>>", "<<<", "<<-", "&&", "||", "|&", ";;", "<<", ">>", ">&", ">|", "&>", "<&", ";", "|", "&", "(", ")", ">", "<"];
@@ -3997,7 +4154,7 @@ var Interpretation = class {
       this.fail();
       return null;
     }
-    return this.cwd === void 0 ? text2 : posix3.join(this.cwd, text2);
+    return this.cwd === void 0 ? text2 : posix4.join(this.cwd, text2);
   }
   substitute(word) {
     if (!word.dynamic || !word.text.includes("$")) return word;
@@ -4203,7 +4360,7 @@ function moveLike(name9, args, run2) {
     sources2 = all;
     const directory = run2.resolve(targetOption.value ?? "");
     if (directory === null) return;
-    targets = all.filter((w) => !w.dynamic).map((w) => posix3.join(directory, posix3.basename(plain(w))));
+    targets = all.filter((w) => !w.dynamic).map((w) => posix4.join(directory, posix4.basename(plain(w))));
   } else {
     sources2 = all.slice(0, -1);
     const last = all.at(-1);
@@ -4212,7 +4369,7 @@ function moveLike(name9, args, run2) {
     if (sources2.length > 1 || endsLikeDirectory(lastText)) {
       const directory = run2.resolve(lastText);
       if (directory === null) return;
-      targets = sources2.filter((w) => !w.dynamic).map((w) => posix3.join(directory, posix3.basename(plain(w))));
+      targets = sources2.filter((w) => !w.dynamic).map((w) => posix4.join(directory, posix4.basename(plain(w))));
     } else {
       const target = run2.resolve(lastText);
       if (target !== null) targets = [target];
@@ -4283,7 +4440,7 @@ function execute2(command9, run2, piped) {
   }
   const head = words2[0];
   if (head.dynamic) return run2.fail();
-  const name9 = posix3.basename(plain(head));
+  const name9 = posix4.basename(plain(head));
   const args = words2.slice(1);
   const hasInput = command9.redirects.some((r) => r.op === "<" || r.op === "<<<") || command9.heredoc;
   if (HIDING_COMMANDS.has(name9)) return run2.fail();
@@ -5681,29 +5838,12 @@ async function commitTexts(root, texts, message, commit) {
 }
 
 // packages/locality/src/move-plan.ts
-import { posix as posix4 } from "node:path";
-function relativeTo(folder, base) {
-  if (folder === base) return "";
-  return base === "" ? folder : folder.slice(base.length + 1);
-}
+import { posix as posix5 } from "node:path";
 function normaliseFolder(folder) {
-  const normal = posix4.normalize(folder === "" ? "." : folder).replace(/\/+$/, "");
+  const normal = posix5.normalize(folder === "" ? "." : folder).replace(/\/+$/, "");
   if (normal === "." || normal === "") return "";
   if (normal.startsWith("/") || normal === ".." || normal.startsWith("../")) return void 0;
   return normal;
-}
-function packageRoot(path, boundaries) {
-  let folder = posix4.dirname(path);
-  for (; ; ) {
-    const dir = folder === "." ? "" : folder;
-    if (boundaries.has(dir)) return dir;
-    if (dir === "") return "";
-    folder = posix4.dirname(folder);
-  }
-}
-function internalScopes(path) {
-  const folders = posix4.dirname(path).split("/");
-  return folders.flatMap((folder, index) => folder === "internal" ? [folders.slice(0, index + 1).join("/")] : []);
 }
 function planMove(candidate, settings, tree, request = {}) {
   const refusals = [];
@@ -5740,32 +5880,8 @@ function planMove(candidate, settings, tree, request = {}) {
   if (candidate.visibility === "package-entry") {
     refuse("package-entry", "a published package names a file of the unit as an entry point, so outside consumers may exist");
   }
-  const operations = [];
-  for (const file of candidate.unit.files) {
-    const offset = relativeTo(posix4.dirname(file) === "." ? "" : posix4.dirname(file), base);
-    operations.push({ from: file, to: posix4.join(destination, offset, posix4.basename(file)), role: "unit" });
-  }
-  for (const test of candidate.unit.tests) {
-    const folder = posix4.dirname(test) === "." ? "" : posix4.dirname(test);
-    const inside = base === "" || folder === base || folder.startsWith(`${base}/`);
-    const offset = inside ? relativeTo(folder, base) : "";
-    operations.push({ from: test, to: posix4.join(destination, offset, posix4.basename(test)), role: "test" });
-  }
-  operations.sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
-  const manifests = new Set([...tree].filter((path) => isBoundaryManifest(path)).map((path) => posix4.dirname(path) === "." ? "" : posix4.dirname(path)));
-  const leaving = new Set(operations.map((operation) => operation.from));
-  const landing = /* @__PURE__ */ new Set();
-  for (const operation of operations) {
-    if (packageRoot(operation.from, manifests) !== packageRoot(operation.to, manifests)) {
-      refuse("package-boundary", `${operation.from} would leave its package for ${operation.to}`);
-    }
-    if (operation.from.endsWith(".go") && internalScopes(operation.from).join("\0") !== internalScopes(operation.to).join("\0")) {
-      refuse("fixed-point", `${operation.from} to ${operation.to} crosses an internal/ directory, which the Go compiler restricts to code under its parent`);
-    }
-    if (landing.has(operation.to)) refuse("collision", `${operation.to} is the destination of two files`);
-    else if (tree.has(operation.to) && !leaving.has(operation.to)) refuse("collision", `${operation.to} already exists`);
-    landing.add(operation.to);
-  }
+  const operations = relocate(candidate.unit.files, candidate.unit.tests, base, destination);
+  for (const refusal of placementRefusals(operations, manifestFolders(tree), tree)) refuse(refusal.code, refusal.detail);
   if (candidate.recommendation !== "move" && (request.reason === void 0 || request.reason.trim() === "")) {
     refuse(
       "needs-reason",
@@ -5813,7 +5929,7 @@ var command4 = {
     const commit = context.values["no-commit"] !== true;
     if (!apply && context.values["no-commit"] === true) throw usageError("--no-commit only applies with --apply");
     const { analysis } = await analyseRevision(context, settings, "HEAD");
-    const candidate = [...analysis.candidates, ...analysis.placed].find((entry) => entry.path === unitPath);
+    const candidate = [...analysis.candidates, ...analysis.placed, ...analysis.unproposed].find((entry) => entry.path === unitPath);
     if (candidate === void 0) {
       throw usageError(`"${unitPath}" is not a unit the analyser reports: run \`locality analyse\` and name one of its paths`);
     }
@@ -5823,7 +5939,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-TUT26HLJ.mjs");
+    const { performMove } = await import("./chunk-7DJASEST.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -6003,8 +6119,8 @@ function shortHash(content) {
 function slug(text2) {
   return text2.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
 }
-function count2(n, singular, plural2 = `${singular}s`) {
-  return `${formatNumber(n)} ${n === 1 ? singular : plural2}`;
+function count2(n, singular, plural3 = `${singular}s`) {
+  return `${formatNumber(n)} ${n === 1 ? singular : plural3}`;
 }
 function clip(text2, max) {
   if (max < 1) return "";
@@ -7268,7 +7384,7 @@ var PLANNED = 10;
 var VERDICTS = ["do-it", "do-it-differently", "leave"];
 var KINDS = ["move", "split", "inline", "scrutinise", "review"];
 var DISTANCE_BINS = 5;
-var plural = (count3, noun) => `${count3} ${noun}${count3 === 1 ? "" : "s"}`;
+var plural2 = (count3, noun) => `${count3} ${noun}${count3 === 1 ? "" : "s"}`;
 var byText = ([a], [b]) => a < b ? -1 : a > b ? 1 : 0;
 function consumersOf(candidate) {
   return [...new Set([...candidate.directCalls, ...candidate.otherRefs].map((entry) => entry.path))].sort();
@@ -7285,7 +7401,7 @@ async function dryRun(context, candidate, settings, files) {
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusals: groupRefusals(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null };
   try {
-    const { performMove } = await import("./chunk-TUT26HLJ.mjs");
+    const { performMove } = await import("./chunk-7DJASEST.mjs");
     const tree = await treeFromRef(context.repo.root, "HEAD");
     const moved = await performMove(tree, plan.operations);
     return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null };
@@ -7296,7 +7412,7 @@ async function dryRun(context, candidate, settings, files) {
 function planText(plan) {
   if (plan.refusals.length > 0) return `no plan: ${plan.refusals.join(", ")}`;
   if (plan.failure !== null) return `the dry run failed: ${plan.failure}`;
-  return `${plural(plan.filesMoved, "file")} moved to ${plan.destination === "" ? "the repository root" : plan.destination}, ${plural(plan.rewrites, "import")} rewritten in ${plural(plan.filesRewritten, "file")}`;
+  return `${plural2(plan.filesMoved, "file")} moved to ${plan.destination === "" ? "the repository root" : plan.destination}, ${plural2(plan.rewrites, "import")} rewritten in ${plural2(plan.filesRewritten, "file")}`;
 }
 function candidateTable(rows7, total, settings) {
   return {
@@ -7339,8 +7455,8 @@ function candidateSection(rank, candidate, plan, settings) {
           { label: "Kind", value: `${candidate.recommendation} (rule ${candidate.rule})` },
           { label: "Gain", value: `${candidate.gain} of net distance removed, against the locality.minDistance guideline of ${settings.minDistance}` },
           { label: "Net distance", value: `${candidate.netDistance.current} now, ${candidate.netDistance.atTarget} at the target ${candidate.target === "" ? "(the repository root)" : candidate.target}` },
-          { label: "Consumers", value: `${plural(consumers.length, "file")} in ${plural(consumerFolders(candidate).size, "folder")}` },
-          { label: "Size", value: `${plural(candidate.size.files, "file")}, ${plural(candidate.size.lines, "line")}` },
+          { label: "Consumers", value: `${plural2(consumers.length, "file")} in ${plural2(consumerFolders(candidate).size, "folder")}` },
+          { label: "Size", value: `${plural2(candidate.size.files, "file")}, ${plural2(candidate.size.lines, "line")}` },
           { label: "Confidence", value: confidenceOf(candidate) },
           { label: "Blockers", value: candidate.blockers.length === 0 ? "none" : candidate.blockers.map((b) => b.path).join(", ") },
           { label: "Move plan (dry run)", value: planText(plan) }
@@ -7496,7 +7612,7 @@ var localityReport = {
         `The table shows the top ${TOP2} candidates and says how many it leaves out; the move plans and judgements cover the top ${PLANNED}.`,
         "A move plan is a dry run of the proposed move. The report never applies one.",
         "Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.",
-        ...lowConfidence > 0 ? [`${plural(lowConfidence, "candidate")} rest on includes that found no file, so a consumer may be missing and the result is a lower bound.`] : [],
+        ...lowConfidence > 0 ? [`${plural2(lowConfidence, "candidate")} rest on includes that found no file, so a consumer may be missing and the result is a lower bound.`] : [],
         ...history === null ? ["No history was read, so co-change evidence is not used."] : history.grade === "weak" ? ["The evidence grade is weak, so history-based evidence is tentative and the structure leads."] : []
       ],
       slots: slotsFor(planned)
@@ -7530,7 +7646,7 @@ var command6 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-KJ7TLY45.mjs");
+      const { buildProject } = await import("./chunk-YB55CI2D.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -7552,10 +7668,10 @@ __export(update_namespaces_exports, {
 });
 
 // packages/locality/src/movers/csharp-namespaces.ts
-import { posix as posix5 } from "node:path";
+import { posix as posix6 } from "node:path";
 var declaration = /^(\s*namespace\s+)([\w.]+)(\s*[;{]?)/;
 var segmentsOf = (folder) => folder === "." || folder === "" ? [] : folder.split("/");
-var directoryOf = (path) => posix5.dirname(path);
+var directoryOf = (path) => posix6.dirname(path);
 function namespaceAfterMove(namespace, from, to) {
   const before = segmentsOf(directoryOf(from));
   const after = segmentsOf(directoryOf(to));
@@ -7744,13 +7860,13 @@ var command8 = {
       throw usageError(`${ref} cannot be verified as a move: ${error instanceof Error ? error.message : String(error)}`);
     }
     const { analysis } = await analyseRevision(context, settings, parent);
-    const candidate = [...analysis.candidates, ...analysis.placed].find((entry) => entry.path === unitPath);
+    const candidate = [...analysis.candidates, ...analysis.placed, ...analysis.unproposed].find((entry) => entry.path === unitPath);
     if (candidate === void 0) throw usageError(`"${unitPath}" is not a unit the analyser reports for ${parent.slice(0, 10)}, the parent of ${ref}`);
     const parentTree = await treeFromRef(root, parent);
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-6NXCJKLA.mjs");
+    const { verifyMove } = await import("./chunk-KPUQ65ZJ.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

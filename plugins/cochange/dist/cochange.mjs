@@ -32,7 +32,7 @@ import {
   restoreBuiltinOmissions,
   restoreDropped,
   runGit
-} from "./chunk-EAYJFA6B.mjs";
+} from "./chunk-OKO2JROO.mjs";
 
 // packages/cli-kit/src/args.ts
 import { parseArgs } from "node:util";
@@ -12259,7 +12259,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change3.head);
   const touched = change3.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-AU4ZAAV4.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-3OVP4473.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change3);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);

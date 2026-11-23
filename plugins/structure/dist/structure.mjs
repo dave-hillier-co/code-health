@@ -6398,8 +6398,11 @@ function resolveBySymbols(input, options2 = {}) {
     for (const reference of symbols.references) {
       let found;
       for (const scope of scopes2) {
-        found = table4.get(scope === "" ? reference.name : `${scope}.${reference.name}`);
-        if (found !== void 0) break;
+        const candidates2 = table4.get(scope === "" ? reference.name : `${scope}.${reference.name}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+        if (candidates2 !== void 0 && candidates2.length > 0) {
+          found = candidates2;
+          break;
+        }
       }
       if (found === void 0) continue;
       for (const target2 of found) {
@@ -11489,13 +11492,15 @@ var Extractor5 = class {
   qualify(context, ...parts3) {
     return [...context.namespaces, ...context.owners, ...parts3].join(".");
   }
-  addDeclaration(name14, kind, unit, context, line, exported, qualifier = []) {
+  /** `internal` marks a name with internal linkage: it names something private to this translation unit. */
+  addDeclaration(name14, kind, unit, context, line, exported, qualifier = [], internal = false) {
     this.declarations.push({
       name: this.qualify(context, ...qualifier, name14),
       kind,
       ...unit === void 0 ? {} : { unit },
       exported: exported && !context.anonymous && context.publicMembers,
-      line
+      line,
+      ...internal || context.anonymous ? { internal: true } : {}
     });
   }
   enumeration(node, context) {
@@ -11611,7 +11616,7 @@ var Extractor5 = class {
     const unit = this.measuredUnit(qualifiedName, kind, fn, extent, named.name, context);
     this.units.push(unit);
     const exported = !isStatic(fn);
-    this.addDeclaration(named.name, "function", qualifiedName, context, fn.startPosition.row + 1, exported, named.qualifier);
+    this.addDeclaration(named.name, "function", qualifiedName, context, fn.startPosition.row + 1, exported, named.qualifier, context.scope === "file" && isStatic(fn));
     this.functionBody(fn, { ...context, unit: qualifiedName, scope: "function", types: this.parameterTypes(declarator, context.types) });
   }
   /**
@@ -11699,12 +11704,12 @@ var Extractor5 = class {
       const declarator = functionDeclarator(node);
       const named = declaratorName(declarator);
       if (declarator !== null && declarator.type === "function_declarator" && named !== null && named.qualifier.length === 0) {
-        this.addDeclaration(named.name, "function", named.name, context, node.startPosition.row + 1, !isStatic(node));
+        this.addDeclaration(named.name, "function", named.name, context, node.startPosition.row + 1, !isStatic(node), [], isStatic(node));
       } else if (declarator === null || named === null) {
         for (let i2 = 0; i2 < node.childCount; i2++) {
           if (node.fieldNameForChild(i2) !== "declarator") continue;
           const name14 = declaredIdentifier(node.child(i2));
-          if (name14 !== null && type !== null) this.addDeclaration(name14, "variable", void 0, context, node.startPosition.row + 1, !isStatic(node) && !hasQualifier(node, "constexpr"));
+          if (name14 !== null && type !== null) this.addDeclaration(name14, "variable", void 0, context, node.startPosition.row + 1, !isStatic(node) && !hasQualifier(node, "constexpr"), [], isStatic(node) || hasInternalConstant(node));
         }
       }
     }
@@ -11832,6 +11837,11 @@ var Extractor5 = class {
 };
 function hasQualifier(node, text3) {
   return node.namedChildren.some((child2) => child2.type === "type_qualifier" && child2.text === text3);
+}
+function hasInternalConstant(node) {
+  const constant = hasQualifier(node, "const") || hasQualifier(node, "constexpr");
+  const external = node.namedChildren.some((child2) => child2.type === "storage_class_specifier" && (child2.text === "extern" || child2.text === "inline"));
+  return constant && !external;
 }
 function extractFacts5(root, options2) {
   const explain2 = options2.explain === true;
@@ -12233,7 +12243,8 @@ function resolveCpp(input) {
     }
     const defined = new Set(facts.units.map((unit) => unit.qualifiedName));
     const seen = visibleFrom(path);
-    const declarations = symbols.declarations.filter(
+    const visible = isHeader(path) ? symbols.declarations.map(({ internal: _internal, ...declaration }) => declaration) : symbols.declarations;
+    const declarations = visible.filter(
       (declaration) => !(declaration.kind === "function" && declaration.unit !== void 0 && defined.has(declaration.unit) && (prototypes.get(declaration.name) ?? []).some((header2) => header2 !== path && seen.has(header2)))
     );
     stripped.set(path, { ...facts, symbols: { ...symbols, declarations } });
@@ -12285,7 +12296,7 @@ var adapter5 = {
   support: "supported",
   lexerProfile: "cpp",
   grammars: [{ spec: { id: "cpp", packageName: "tree-sitter-cpp", file: "tree-sitter-cpp.wasm", repairs: cppRepairs }, extensions: claimed }],
-  extractorVersion: 4,
+  extractorVersion: 5,
   extract: extractFacts5,
   isTestPath: (path) => /(^|\/)(tests?|unittests?|gtest|testing)\//i.test(path) || /(^|\/)(test_[^/]+|[^/]+_(test|tests|unittest|unittests)|[^/]+Tests?|[^/]+\.(test|spec))\.[^/.]+$/.test(path),
   metrics: cppMetricRules,
@@ -17931,7 +17942,7 @@ function moduleOfFile(level, project, componentsConfig) {
     case "file":
       return (path) => path;
     case "default":
-      return (path) => isGoFile(path) || isCSharpFile(path) ? folderOf(path) : path;
+      return (path) => isGoFile(path) ? folderOf(path) : isCSharpFile(path) ? project.packageOf(path) : path;
     case "folder":
       return folderOf;
     case "package":
@@ -18267,6 +18278,8 @@ var structureConfig = {
     mainBranch: "main",
     /** The revision `check` compares against, replacing the merge base with mainBranch. null uses the merge base. */
     base: null,
+    /** When true, `cycles` also counts the folder cycles inside one C# project and lists the largest few. They are never the headline: folders of one project are one compilation unit. */
+    csharpFolderCycles: false,
     /** The packaging skill's settings; see docs/specs/packaging.md. */
     packages: packagesDefaults
   }
@@ -18312,6 +18325,8 @@ function readSettings(config) {
   }
   const mainBranch = section2.mainBranch;
   if (typeof mainBranch !== "string" || mainBranch === "") throw configError(`code-health.json: ${at2("mainBranch")} must be a branch name`);
+  const csharpFolderCycles = section2.csharpFolderCycles;
+  if (typeof csharpFolderCycles !== "boolean") throw configError(`code-health.json: ${at2("csharpFolderCycles")} must be true or false`);
   const base = section2.base;
   if (base !== null && (typeof base !== "string" || base === "")) {
     throw configError(`code-health.json: ${at2("base")} must be a revision or null`);
@@ -18343,6 +18358,7 @@ function readSettings(config) {
     includeRoots: config.effective.includeRoots,
     layers: readLayerRules(section2.layers, at2("layers")),
     mainBranch,
+    csharpFolderCycles,
     base,
     exclude: config.effective.exclude,
     entryPoints: config.effective.entryPoints,
@@ -18480,6 +18496,84 @@ __export(check_exports, {
   name: () => name3
 });
 
+// packages/structure/src/cycles.ts
+var SYMBOLS_SHOWN = 10;
+var isAncestorFolder = (ancestor, folder) => ancestor === "." || folder.startsWith(`${ancestor}/`);
+function isNestedFolderCycle(level, nodes) {
+  if (level !== "folder") return false;
+  return nodes.every((a) => nodes.every((b) => a === b || isAncestorFolder(a, b) || isAncestorFolder(b, a)));
+}
+var cycleId = (level, firstNode) => `cycle:${level}:${firstNode}`;
+function unblocksOf(model, from, to) {
+  if (!model.locality) return [];
+  const members2 = model.graph.members.get(edgeKey(from, to)) ?? [];
+  return members2.flatMap((edge) => model.locality.byFileEdge.get(edgeKey(edge.from, edge.to)) ?? []);
+}
+function breakingEdge(model, from, to, limit = SYMBOLS_SHOWN) {
+  const detail = describeEdge(model.project, model.graph, from, to);
+  return {
+    from,
+    to,
+    coChange: model.activity.shared(from, to),
+    fileEdges: detail.fileEdges,
+    importStatements: detail.importStatements,
+    typeOnly: detail.typeOnly,
+    symbolsTotal: detail.symbols.length,
+    symbols: detail.symbols.slice(0, limit).map(({ symbol, sites, kind }) => ({ symbol, sites, kind })),
+    unblocks: unblocksOf(model, from, to)
+  };
+}
+function findCycles(model, settings) {
+  const graph = importGraph(model.graph);
+  const files = new Set(model.project.files);
+  const sets = breakingSets(graph, {
+    exactLimit: settings.exactLimit,
+    weight: (edge) => model.activity.shared(edge.from, edge.to)
+  });
+  const rows7 = sets.map((cycle) => {
+    const inCycle = new Set(cycle.nodes);
+    let coChangeAcross = 0;
+    for (const from of cycle.nodes) {
+      for (const to of graph.get(from) ?? []) {
+        if (inCycle.has(to) && (compareIds(from, to) < 0 || !graph.get(to)?.includes(from))) {
+          coChangeAcross += model.activity.shared(from, to);
+        }
+      }
+    }
+    const breakingSet = cycle.edges.map((edge) => breakingEdge(model, edge.from, edge.to));
+    return {
+      id: cycleId(model.graph.level, cycle.nodes[0]),
+      level: model.graph.level,
+      size: cycle.nodes.length,
+      nodes: [...cycle.nodes],
+      nested: isNestedFolderCycle(model.graph.level === "default" && cycle.nodes.every((node) => !files.has(node)) ? "folder" : model.graph.level, cycle.nodes),
+      method: cycle.method,
+      breakingSet,
+      coChangeAcross,
+      unblockedGain: model.locality ? breakingSet.reduce((sum, edge) => sum + edge.unblocks.reduce((s, u) => s + u.unblockedGain, 0), 0) : null
+    };
+  });
+  return rows7.sort(
+    (a, b) => Number(a.nested) - Number(b.nested) || (b.unblockedGain ?? 0) - (a.unblockedGain ?? 0) || b.size - a.size || b.coChangeAcross - a.coChangeAcross || compareIds(a.id, b.id)
+  );
+}
+var PROJECT_FOLDER_CYCLES_SHOWN = 3;
+function csharpProjectOfFolders(project, graph, nodes) {
+  const files = nodes.flatMap((node) => graph.filesOf.get(node) ?? []);
+  if (files.length === 0 || !files.every((file) => file.endsWith(".cs"))) return void 0;
+  const owners = new Set(files.map((file) => project.packageOf(file)));
+  return owners.size === 1 ? [...owners][0] : void 0;
+}
+function findProjectFolderCycles(project, settings) {
+  const graph = buildModuleGraph("folder", project, settings.components);
+  const inside = breakingSets(importGraph(graph), { exactLimit: settings.exactLimit }).flatMap((cycle) => {
+    const owner = csharpProjectOfFolders(project, graph, cycle.nodes);
+    return owner === void 0 ? [] : [{ id: cycleId("folder", cycle.nodes[0]), size: cycle.nodes.length, nodes: [...cycle.nodes], project: owner }];
+  });
+  inside.sort((a, b) => b.size - a.size || compareIds(a.id, b.id));
+  return { count: inside.length, largest: inside.slice(0, PROJECT_FOLDER_CYCLES_SHOWN) };
+}
+
 // packages/structure/src/regressions.ts
 var CHECK_LEVELS = ["default", "file", "folder", "package"];
 var DEFAULT_CHECK_LEVELS = ["default", "folder", "package"];
@@ -18513,7 +18607,8 @@ async function resolveBase(root, headSha, settings, flag) {
 }
 function cyclesOf(project, level, settings) {
   const graph = buildModuleGraph(level, project, settings.components);
-  return breakingSets(importGraph(graph), { exactLimit: settings.exactLimit }).map((cycle) => ({
+  const judged = (nodes) => level !== "folder" || settings.csharpFolderCycles || csharpProjectOfFolders(project, graph, nodes) === void 0;
+  return breakingSets(importGraph(graph), { exactLimit: settings.exactLimit }).filter((cycle) => judged(cycle.nodes)).map((cycle) => ({
     id: `cycle:${level}:${cycle.nodes[0]}`,
     level,
     nodes: [...cycle.nodes],
@@ -20000,68 +20095,6 @@ function measureRepo(options2) {
   };
 }
 
-// packages/structure/src/cycles.ts
-var SYMBOLS_SHOWN = 10;
-var isAncestorFolder = (ancestor, folder) => ancestor === "." || folder.startsWith(`${ancestor}/`);
-function isNestedFolderCycle(level, nodes) {
-  if (level !== "folder") return false;
-  return nodes.every((a) => nodes.every((b) => a === b || isAncestorFolder(a, b) || isAncestorFolder(b, a)));
-}
-var cycleId = (level, firstNode) => `cycle:${level}:${firstNode}`;
-function unblocksOf(model, from, to) {
-  if (!model.locality) return [];
-  const members2 = model.graph.members.get(edgeKey(from, to)) ?? [];
-  return members2.flatMap((edge) => model.locality.byFileEdge.get(edgeKey(edge.from, edge.to)) ?? []);
-}
-function breakingEdge(model, from, to, limit = SYMBOLS_SHOWN) {
-  const detail = describeEdge(model.project, model.graph, from, to);
-  return {
-    from,
-    to,
-    coChange: model.activity.shared(from, to),
-    fileEdges: detail.fileEdges,
-    importStatements: detail.importStatements,
-    typeOnly: detail.typeOnly,
-    symbolsTotal: detail.symbols.length,
-    symbols: detail.symbols.slice(0, limit).map(({ symbol, sites, kind }) => ({ symbol, sites, kind })),
-    unblocks: unblocksOf(model, from, to)
-  };
-}
-function findCycles(model, settings) {
-  const graph = importGraph(model.graph);
-  const files = new Set(model.project.files);
-  const sets = breakingSets(graph, {
-    exactLimit: settings.exactLimit,
-    weight: (edge) => model.activity.shared(edge.from, edge.to)
-  });
-  const rows7 = sets.map((cycle) => {
-    const inCycle = new Set(cycle.nodes);
-    let coChangeAcross = 0;
-    for (const from of cycle.nodes) {
-      for (const to of graph.get(from) ?? []) {
-        if (inCycle.has(to) && (compareIds(from, to) < 0 || !graph.get(to)?.includes(from))) {
-          coChangeAcross += model.activity.shared(from, to);
-        }
-      }
-    }
-    const breakingSet = cycle.edges.map((edge) => breakingEdge(model, edge.from, edge.to));
-    return {
-      id: cycleId(model.graph.level, cycle.nodes[0]),
-      level: model.graph.level,
-      size: cycle.nodes.length,
-      nodes: [...cycle.nodes],
-      nested: isNestedFolderCycle(model.graph.level === "default" && cycle.nodes.every((node) => !files.has(node)) ? "folder" : model.graph.level, cycle.nodes),
-      method: cycle.method,
-      breakingSet,
-      coChangeAcross,
-      unblockedGain: model.locality ? breakingSet.reduce((sum, edge) => sum + edge.unblocks.reduce((s, u) => s + u.unblockedGain, 0), 0) : null
-    };
-  });
-  return rows7.sort(
-    (a, b) => Number(a.nested) - Number(b.nested) || (b.unblockedGain ?? 0) - (a.unblockedGain ?? 0) || b.size - a.size || b.coChangeAcross - a.coChangeAcross || compareIds(a.id, b.id)
-  );
-}
-
 // packages/structure/src/layer-rule.ts
 var violationsByProject = /* @__PURE__ */ new WeakMap();
 function layerRuleOf(model, from, to, settings) {
@@ -20491,9 +20524,9 @@ var rules3 = {
     summary: "Modules that import each other, directly or through others",
     explanation: [
       "Raised for every strongly connected component of the import graph at the chosen level (default, file,",
-      "folder or package). The default level is a Go package (its directory) for Go, a folder for C# and a",
-      "file for every other language, because Go forbids cycles only between packages and C# files in one",
-      "project reference each other without imports. Folders and packages are the files grouped by their",
+      "folder or package). The default level is a Go package (its directory) for Go, a project (.csproj) for",
+      "C# and a file for every other language, because Go forbids cycles only between packages and the",
+      "folders and files of one C# project are one compilation unit and one namespace tree. Folders and packages are the files grouped by their",
       "folder or by the owning package (a workspace package, a C# project, a Go package, a crate and the",
       "like), so a cycle there can exist with no file cycle behind it. At file level an edge between two",
       "files of one Go package is not an import and is left out.",
@@ -20516,7 +20549,7 @@ var command4 = analysisCommand(name5, {
   summary: "Import cycles with their smallest breaking sets, ranked by size and co-change",
   options: { level: { type: "string" } },
   optionHelp: {
-    level: "what a node is: file, folder or package, or default, which is a Go package (its directory) for Go, a folder for C# and a file for every other language (default: default). Files of one Go package are never in a file cycle, because they reference each other without imports."
+    level: "what a node is: file, folder or package, or default, which is a Go package (its directory) for Go, a project for C# and a file for every other language (default: default). Files of one Go package are never in a file cycle, because they reference each other without imports. Folder cycles inside one C# project are counted, with the largest few, only when the structure.csharpFolderCycles setting is true."
   },
   partial: ({ values }) => values.level !== void 0 && values.level !== "default",
   async analyse({ context, history }) {
@@ -20527,7 +20560,10 @@ var command4 = analysisCommand(name5, {
       inputs: { level, exactLimit: history.settings.exactLimit, locality: model.locality?.input ?? null },
       results: rows7,
       columns: ["id", "size", "method", "nested", "nodes", "breakingSet", "coChangeAcross", "unblockedGain"],
-      extra: { population: { modules: model.graph.graph.size, eligibleChanges: model.activity.eligibleChanges } }
+      extra: {
+        population: { modules: model.graph.graph.size, eligibleChanges: model.activity.eligibleChanges },
+        ...history.settings.csharpFolderCycles && level === "default" ? { projectFolderCycles: findProjectFolderCycles(model.project, history.settings) } : {}
+      }
     };
   }
 });
