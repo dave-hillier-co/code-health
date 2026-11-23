@@ -58,16 +58,23 @@ async function complexityDelta(root: string, change: BranchChange, risk: RiskSet
   // Without the complexity plugin: how much more indentation the touched code files carry than they did at the base.
   const rows: { file: string; before: number; after: number; delta: number }[] = [];
   let examined = 0;
+  let added = 0;
   for (const file of change.files) {
     if (file.status === "D" || file.binary) continue;
-    const before = file.status === "A" ? "" : await readBlobAt(root, change.base, file.oldPath ?? file.path);
+    const isNew = file.status === "A";
+    const before = isNew ? "" : await readBlobAt(root, change.base, file.oldPath ?? file.path);
     const after = change.worktree ? readWorktree(root, file.path) : await readBlobAt(root, change.head, file.path);
     if (after === undefined || before === undefined || after.includes("\0") || before.includes("\0")) continue;
     // Prose has no lexer profile, so its indentation says nothing about how hard code is to read.
     const now = analyseSource(file.path, after);
     if (now.profile === null) continue;
     examined++;
-    const was = before === "" ? 0 : analyseSource(file.oldPath ?? file.path, before).file.indentationComplexity;
+    // A new file has no complexity before it, so it is counted as new and never as a rise from zero.
+    if (isNew) {
+      added++;
+      continue;
+    }
+    const was = analyseSource(file.oldPath ?? file.path, before).file.indentationComplexity;
     const rose = now.file.indentationComplexity;
     if (rose - was >= risk.complexityRise) rows.push({ file: file.path, before: was, after: rose, delta: rose - was });
   }
@@ -78,7 +85,7 @@ async function complexityDelta(root: string, change: BranchChange, risk: RiskSet
     source: "indentation",
     unavailable: null,
     series: { count: rows.length },
-    value: { count: rows.length, files: examined },
+    value: { count: rows.length, files: examined, newFiles: added },
     evidence: rows.slice(0, 5),
   };
 }

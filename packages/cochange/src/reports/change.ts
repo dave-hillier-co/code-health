@@ -9,7 +9,9 @@ import type { ReportKind } from "@code-health/cli-kit/report-command";
 import type { Block } from "@code-health/report/block";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import type { EvidenceItem } from "@code-health/report/components/evidence-list";
+import { dropEmptySlots } from "@code-health/report/empty-block";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
+import { capRows } from "@code-health/report/table-cap";
 import type { ReportBuild, Section } from "@code-health/report/report-model";
 import { runGit } from "@code-health/history/git";
 import { loadHistory } from "../history-access.ts";
@@ -143,9 +145,8 @@ function hotspotsItem(factor: Factor): Item {
 
 /** What needs attention, in the order to deal with it: the risk findings, then the structure and complexity results, then the hotspots. */
 function attentionItems(assessed: Assessed, evidence: ChangeEvidence): { shown: Item[]; total: number } {
-  const findings = findingsOf(assessed, null).filter(
-    (f) => !(f.id === "complexity-delta" && evidence.complexity !== null) && !(f.id === "structure-delta" && evidence.structure !== null),
-  );
+  // A complexity finding comes only from a comparison that was passed in, and then from its own rows: without one, the indentation fallback of `cochange risk` is not a comparison.
+  const findings = findingsOf(assessed, null).filter((f) => f.id !== "complexity-delta" && !(f.id === "structure-delta" && evidence.structure !== null));
   const items: Item[] = findings.map(findingItem);
   (evidence.structure ?? []).forEach((row, i) => items.push(structureItem(row, i)));
   const byUnit = new Map<string, ComplexityRow[]>();
@@ -182,6 +183,7 @@ function limitsSlot(): Slot {
 function guidelineText(factor: Factor): string {
   const parts = Object.entries(factor.guidelines).map(([series, cutoffs]) => {
     if (cutoffs === null) return `${series}: no cutoff, the baseline is too small`;
+    if (cutoffs.moderate === cutoffs.high) return `${series}: ${series === "count" ? "from" : "above"} ${cutoffs.high} is high, with no moderate band: the moderate and high cutoffs are the same value`;
     return series === "count" ? `${series}: moderate from ${cutoffs.moderate}, high from ${cutoffs.high}` : `${series}: moderate above ${cutoffs.moderate}, high above ${cutoffs.high}`;
   });
   return parts.length === 0 ? "none" : parts.join("; ");
@@ -228,9 +230,38 @@ function factorBlocks(assessed: Assessed, compact: boolean): Block[] {
   return blocks;
 }
 
+function abandonedBlocks(assessed: Assessed): Block[] {
+  const factor = assessed.factors.find((f) => f.name === "abandoned-touched");
+  if (factor === undefined || factor.status !== "ok") {
+    return [{ type: "notice", level: "notice", text: `Abandoned touched files could not be computed: ${factor?.reason ?? "the factor is not available"}.` }];
+  }
+  const baseline = number(factor.value.baseline) ?? 0;
+  const count = number(factor.value.count) ?? 0;
+  if (count === 0) return [{ type: "notice", level: "notice", text: `No touched file is abandoned or above the repository's baseline abandonment probability of ${baseline}.` }];
+  const rows = factor.evidence.map((e): Record<string, Cell> => ({ file: text(e.file), abandoned: e.abandoned === true ? "yes" : "no", probability: number(e.probability) }));
+  const table = capRows(
+    {
+      caption: `Touched files that are abandoned or above the repository's baseline abandonment probability of ${baseline}, the probability one developer leaves within the horizon, which every file has from the turnover model alone`,
+      noun: "files",
+      total: count,
+      numbered: false,
+      emptyText: `No touched file is abandoned or above the repository's baseline abandonment probability of ${baseline}.`,
+      columns: [
+        { key: "file", label: "File" },
+        { key: "abandoned", label: "Abandoned now" },
+        { key: "probability", label: "Probability of abandonment", align: "right" },
+      ],
+      rows,
+    },
+    ROWS,
+    "cochange abandonment simulate",
+  );
+  return [{ type: "ranked-table", ...table }];
+}
+
 function evidenceBlocks(assessed: Assessed): Block[] {
   return assessed.factors
-    .filter((f) => f.status === "ok" && f.evidence.length > 0)
+    .filter((f) => f.status === "ok" && f.evidence.length > 0 && f.name !== "abandoned-touched")
     .map((f): Block => {
       const { items, omitted } = evidenceItems(f.evidence);
       return { type: "evidence-list", title: `Evidence for ${f.name}`, items, omitted };
@@ -365,20 +396,26 @@ function hotspotBlocks(assessed: Assessed): Block[] {
       ],
     },
   ];
-  if (factor.evidence.length > 0) {
-    blocks.push({
-      type: "ranked-table",
-      caption: "Hot files the change touches, by revisions in the window",
-      noun: "files",
-      total: factor.evidence.length,
-      columns: [
-        { key: "file", label: "File" },
-        { key: "revisions", label: "Revisions", align: "right" },
-      ],
-      rows: factor.evidence.slice(0, ROWS).map((e): Record<string, Cell> => ({ file: text(e.file), revisions: number(e.revisions) })),
-    });
-  }
+  blocks.push({
+    type: "ranked-table",
+    caption: "Hot files the change touches, by revisions in the window",
+    noun: "files",
+    total: factor.evidence.length,
+    emptyText: "The change touches no hot file.",
+    columns: [
+      { key: "file", label: "File" },
+      { key: "revisions", label: "Revisions", align: "right" },
+    ],
+    rows: factor.evidence.slice(0, ROWS).map((e): Record<string, Cell> => ({ file: text(e.file), revisions: number(e.revisions) })),
+  });
   return blocks;
+}
+
+/** A range that covers several landed changes is their union, and the factors that describe one change then describe the union. */
+function landedBlocks(assessed: Assessed): Block[] {
+  const { landed, commits } = assessed.change;
+  if (landed <= 1) return [];
+  return [{ type: "notice", level: "limit", text: `This range covers ${landed} landed changes and ${plural(commits.length, "commit")}, so the per-change factors (size, spread, novel coupling and the others) describe their union, not one change. Name a single change as BASE..HEAD to read it alone.` }];
 }
 
 function changeBlocks(assessed: Assessed): Block[] {
@@ -386,6 +423,7 @@ function changeBlocks(assessed: Assessed): Block[] {
   const added = change.files.reduce((sum, f) => sum + (f.added ?? 0), 0);
   const deleted = change.files.reduce((sum, f) => sum + (f.deleted ?? 0), 0);
   return [
+    ...landedBlocks(assessed),
     {
       type: "facts",
       caption: "The change",
@@ -401,11 +439,21 @@ function changeBlocks(assessed: Assessed): Block[] {
   ];
 }
 
-function attentionSection(items: Item[], total: number, compact: boolean): Section {
-  if (total === 0) return { id: "attention", heading: "Needs attention", blocks: [{ type: "paragraph", text: "Nothing needs attention: the risk factors raise no finding, and the complexity and structure results passed in, where there are any, show nothing new." }] };
-  const blocks: Block[] = items.flatMap((item): Block[] =>
-    compact ? [{ type: "judgement", slot: item.slot.id }] : [{ type: "evidence-list", title: item.heading, items: item.evidence, omitted: item.omitted }, { type: "judgement", slot: item.slot.id }],
-  );
+function attentionSection(assessed: Assessed, items: Item[], total: number, compact: boolean): Section {
+  const notices = compact ? landedBlocks(assessed) : [];
+  if (total === 0) return { id: "attention", heading: "Needs attention", blocks: [...notices, { type: "paragraph", text: "Nothing needs attention: the risk factors raise no finding, and the complexity and structure results passed in, where there are any, show nothing new." }] };
+  // The full report lists every item with its verdict. The compact form lists the items judged needs-change or not yet judged, and counts the rest.
+  const blocks: Block[] = compact
+    ? [
+        ...notices,
+        {
+          type: "judged-items",
+          items: items.map((item) => ({ slot: item.slot.id, blocks: [] })),
+          fold: { keep: ["needs-change"], labels: { "false-positive": "false positive", "accepted-with-reason": "accepted with a reason" }, pointer: "see the full report" },
+          emptyText: "Nothing needs attention.",
+        },
+      ]
+    : items.flatMap((item): Block[] => [{ type: "evidence-list", title: item.heading, items: item.evidence, omitted: item.omitted }, { type: "judgement", slot: item.slot.id }]);
   if (total > items.length) blocks.push({ type: "notice", level: "notice", text: `${plural(total - items.length, "more item")} need attention and have no judgement slot, to keep the summary short. ${compact ? "The full report lists them" : "The tables below list them"}.` });
   return { id: "attention", heading: "Needs attention", blocks };
 }
@@ -513,21 +561,22 @@ export const change: ReportKind = {
     const hist = assessed.history.evidence;
     const sections: Section[] = compact
       ? [
-          attentionSection(shown, total, true),
+          attentionSection(assessed, shown, total, true),
           { id: "guidance", heading: "Reviewer guidance", blocks: [{ type: "judgement", slot: "guidance" }] },
         ]
       : [
           { id: "change", heading: "The change", blocks: changeBlocks(assessed) },
           { id: "guidance", heading: "Reviewer guidance", blocks: [{ type: "judgement", slot: "guidance" }] },
-          attentionSection(shown, total, false),
+          attentionSection(assessed, shown, total, false),
           { id: "factors", heading: "Risk factors", blocks: [...factorBlocks(assessed, false), ...levelBlocks(level)] },
           { id: "missing-co-change", heading: "Missing co-change partners", blocks: missingBlocks(assessed) },
           { id: "complexity", heading: "Complexity before and after", blocks: complexityBlocks(evidence) },
           { id: "structure", heading: "Structure findings the change adds", blocks: structureBlocks(evidence) },
           { id: "hotspots", heading: "Hotspots touched", blocks: hotspotBlocks(assessed) },
+          { id: "abandoned", heading: "Abandoned files touched", blocks: abandonedBlocks(assessed) },
           { id: "evidence", heading: "Evidence behind the factors", blocks: evidenceBlocks(assessed) },
         ];
-    return {
+    return dropEmptySlots({
       title: `Change summary ${short(assessed.change.base)}..${short(assessed.change.head)}${compact ? ` (${plural(assessed.change.commits.length, "commit")}, ${plural(assessed.change.files.length, "file")})` : ""}`,
       inputs: {
         range: requested ?? null,
@@ -547,6 +596,6 @@ export const change: ReportKind = {
       sections,
       limits: limitsOf(assessed, level, evidence, compact),
       slots: [...shown.map((item) => item.slot), guidanceSlot(), limitsSlot()],
-    };
+    });
   },
 };

@@ -35,3 +35,11 @@ export function judgementMd(data: JudgementData): string {
   const items = parts(data.slot, data.entry).map((p, i) => `${i + 1}. **${escapeMd(p.subject)}**${p.verdict === undefined ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
   return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
 }
+
+/**
+ * A judgement as one list item with no heading of its own: the subject in bold, the verdict and the text. For
+ * lists whose items are already named by the subject.
+ */
+export function judgedLineMd(slot: Slot, entry: SlotEntry): string {
+  return parts(slot, entry).map((p) => `- **${escapeMd(p.subject)}**${p.verdict === undefined ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`).join("\n");
+}

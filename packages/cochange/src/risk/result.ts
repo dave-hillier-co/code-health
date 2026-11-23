@@ -11,6 +11,7 @@ export function describeChange(assessed: Assessed) {
     base: change.base,
     head: change.head,
     against: change.against,
+    landedChanges: change.landed,
     worktree: change.worktree,
     commits: change.commits.length,
     files: change.files.length,

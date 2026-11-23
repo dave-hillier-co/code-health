@@ -200,21 +200,21 @@
                 "band": "low",
                 "evidence": 0,
                 "factor": "size",
-                "guideline": "lines: moderate above 80, high above 80",
+                "guideline": "lines: above 80 is high, with no moderate band: the moderate and high cutoffs are the same value",
                 "value": "lines 40, files 1"
               },
               {
                 "band": "low",
                 "evidence": 0,
                 "factor": "spread",
-                "guideline": "spread: moderate above 0, high above 0",
+                "guideline": "spread: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value",
                 "value": "spread 0, folders 1"
               },
               {
                 "band": "low",
                 "evidence": 0,
                 "factor": "entropy",
-                "guideline": "entropy: moderate above 1.5, high above 1.5",
+                "guideline": "entropy: above 1.5 is high, with no moderate band: the moderate and high cutoffs are the same value",
                 "value": "entropy 0, files 1"
               },
               {
@@ -228,7 +228,7 @@
                 "band": "low",
                 "evidence": 1,
                 "factor": "hotspots-touched",
-                "guideline": "share: moderate above 1, high above 1",
+                "guideline": "share: above 1 is high, with no moderate band: the moderate and high cutoffs are the same value",
                 "value": "share 1, hotFiles 1"
               },
               {
@@ -249,7 +249,7 @@
                 "band": "low",
                 "evidence": 0,
                 "factor": "age",
-                "guideline": "stale: moderate above 0, high above 0; settling: moderate above 0, high above 0",
+                "guideline": "stale: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value; settling: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value",
                 "value": "stale 0, settling 0, known 1"
               },
               {
@@ -292,7 +292,7 @@
                 "evidence": 0,
                 "factor": "complexity-delta",
                 "guideline": "count: moderate from 1, high from 3",
-                "value": "count 0, files 1"
+                "value": "count 0, files 1, newFiles 0"
               },
               {
                 "band": "moderate",
@@ -519,7 +519,7 @@
               },
               {
                 "label": "Guideline",
-                "value": "share: moderate above 1, high above 1"
+                "value": "share: above 1 is high, with no moderate band: the moderate and high cutoffs are the same value"
               }
             ],
             "type": "facts"
@@ -537,6 +537,7 @@
                 "label": "Revisions"
               }
             ],
+            "emptyText": "The change touches no hot file.",
             "noun": "files",
             "rows": [
               {
@@ -550,6 +551,17 @@
         ],
         "heading": "Hotspots touched",
         "id": "hotspots"
+      },
+      {
+        "blocks": [
+          {
+            "level": "notice",
+            "text": "Abandoned touched files could not be computed: knowledge analysis is not enabled (cochange.knowledge.enabled).",
+            "type": "notice"
+          }
+        ],
+        "heading": "Abandoned files touched",
+        "id": "abandoned"
       },
       {
         "blocks": [

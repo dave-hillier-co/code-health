@@ -52,7 +52,7 @@ export async function abandonedTouched(context: CommandContext, history: LoadedH
 
   // The report is the composition seam: when `abandonment simulate` has already run for this tip, its files are read, not computed again.
   const report = change.worktree ? null : readAbandonmentReport(root, change.head, context.config.hash, readOverrides(root).stamp);
-  if (report !== null) return { measurement: fromReport(report, change, settings.atRiskProbability), report: report.input };
+  if (report !== null) return { measurement: fromReport(report, change, settings), report: report.input };
   return { measurement: await fromBlame(context, history, change, settings), report: null };
 }
 
@@ -60,15 +60,16 @@ export async function abandonedTouched(context: CommandContext, history: LoadedH
  * The report describes the tip, so a line the change itself wrote counts for the file's authors at the
  * tip, where the blame cache at the base would count the file as it was before the change.
  */
-function fromReport(report: AbandonmentReport, change: BranchChange, atRiskProbability: number): Measurement {
+function fromReport(report: AbandonmentReport, change: BranchChange, settings: ReturnType<typeof readKnowledgeSettings>): Measurement {
+  const { baseline, margin } = baselineOf(report.leaverProbability, settings.trials);
   const touched = [...new Set(change.files.filter((f) => f.status !== "A" && f.status !== "D").map((f) => f.path))].sort();
   const rows = touched.flatMap((file) => {
     const row = report.files.get(file);
     if (row === undefined) return [];
     const abandoned = row.abandoned;
-    return abandoned || (row.probability > 0 && row.probability * 100 >= atRiskProbability) ? [{ file, abandoned, probability: round4(abandoned ? 1 : row.probability) }] : [];
+    return abandoned || (row.probability * 100 >= settings.atRiskProbability && row.probability > baseline + margin) ? [{ file, abandoned, probability: round4(abandoned ? 1 : row.probability) }] : [];
   });
-  return { ...measurement(rows, touched.length, 0), source: "abandonment report" };
+  return { ...measurement(rows, touched.length, 0, baseline, margin), source: "abandonment report" };
 }
 
 async function fromBlame(
@@ -80,7 +81,7 @@ async function fromBlame(
   const root = context.repo.root;
 
   const paths = [...new Set(change.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
-  if (paths.length === 0) return measurement([], 0, 0);
+  if (paths.length === 0) return measurement([], 0, 0, 0, 0);
 
   const options = { ref: change.base, ...blameOptions(history, settings), paths };
   if (context.values["no-refresh"] !== true) await refreshBlame(root, options);
@@ -95,6 +96,7 @@ async function fromBlame(
   const turnover = estimateTurnover(activity, asOf, { windowSeconds: windowSecondsOf(settings), periodSeconds: periodSecondsOf(settings) });
   const rate = settings.turnoverRate ?? turnover.rate;
   const probabilities = new Map<string, number>();
+  let leaverProbability = 0;
   if (rate !== null && model.files.length > 0) {
     const result = simulate(model, {
       selection: { mode: "rate", rate, periods: settings.horizonPeriods },
@@ -103,27 +105,42 @@ async function fromBlame(
       alphas: settings.alphas,
       guidelinePercent: settings.abandonmentGuideline,
     });
+    leaverProbability = result.meanLeaverProbability;
     for (const risk of result.fileRisks) probabilities.set(risk.path, risk.probability);
   }
 
+  const { baseline, margin } = baselineOf(leaverProbability, settings.trials);
   const rows = model.files
     .map((file) => {
       const abandoned = reachesGuideline(goneLinesOf(file, model.developers), file.people, settings.abandonmentGuideline);
       const probability = abandoned ? 1 : (probabilities.get(file.path) ?? 0);
       return { path: file.path, abandoned, probability, share: round4(goneLinesOf(file, model.developers) / file.people) };
     })
-    .filter((row) => row.abandoned || (row.probability > 0 && row.probability * 100 >= settings.atRiskProbability));
+    .filter((row) => row.abandoned || (row.probability * 100 >= settings.atRiskProbability && row.probability > baseline + margin));
 
   const nowPath = new Map(change.files.map((f) => [f.oldPath ?? f.path, f.path]));
   return measurement(
     rows.map((row) => ({ file: nowPath.get(row.path) ?? row.path, abandoned: row.abandoned, probability: round4(row.probability), abandonedShare: row.share })),
     snapshot.files.size,
     snapshot.missing.length,
+    baseline,
+    margin,
   );
 }
 
-function measurement(evidence: Record<string, unknown>[], files: number, unknown: number): Measurement {
-  const sorted = [...evidence].sort((a, b) => (a.file as string) < (b.file as string) ? -1 : (a.file as string) > (b.file as string) ? 1 : 0);
+/**
+ * The abandonment probability every file has from the turnover model alone: the probability that one developer leaves
+ * within the horizon, which is what a file held by one active developer has. The margin is the noise of one simulated
+ * probability (three standard errors over `trials`), so a file is above the baseline only when it exceeds it by more.
+ */
+export function baselineOf(leaverProbability: number, trials: number): { baseline: number; margin: number } {
+  return { baseline: round4(leaverProbability), margin: round4(3 * Math.sqrt((leaverProbability * (1 - leaverProbability)) / trials)) };
+}
+
+function measurement(evidence: Record<string, unknown>[], files: number, unknown: number, baseline: number, margin: number): Measurement {
+  const sorted = [...evidence].sort(
+    (a, b) => Number(b.abandoned) - Number(a.abandoned) || (b.probability as number) - (a.probability as number) || ((a.file as string) < (b.file as string) ? -1 : (a.file as string) > (b.file as string) ? 1 : 0),
+  );
   return {
     name: "abandoned-touched",
     family: "history",
@@ -132,7 +149,7 @@ function measurement(evidence: Record<string, unknown>[], files: number, unknown
     source: SOURCE,
     unavailable: null,
     series: { count: sorted.length },
-    value: { count: sorted.length, files, unknown },
+    value: { count: sorted.length, files, unknown, baseline, margin },
     evidence: sorted.slice(0, 5),
   };
 }

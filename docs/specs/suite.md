@@ -348,6 +348,7 @@ Components are pure functions from data to strings, one for HTML (with inline SV
 | `evidence-list` | Commits or findings, each with an id, text and detail as plain text, and a count of those not listed. |
 | `notice` | A line that opens with the word Notice, Limit or Warning. |
 | `judgement` | The place a slot's verdict and text appear, with its subject. |
+| `judged-items` | Items that each ask for a judgement. With a `fold`, the markdown prints only the items whose verdict is in `fold.keep` or that have no entry yet, each as one list item of subject, verdict and text, and one line that counts the other items by verdict. When it keeps none it prints `emptyText` first. |
 | `facts`, `paragraph` | A two column table of measures, and a paragraph. |
 
 ### The reports

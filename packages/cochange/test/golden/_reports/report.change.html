@@ -119,6 +119,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li><a href="#complexity">Complexity before and after</a></li>
 <li><a href="#structure">Structure findings the change adds</a></li>
 <li><a href="#hotspots">Hotspots touched</a></li>
+<li><a href="#abandoned">Abandoned files touched</a></li>
 <li><a href="#evidence">Evidence behind the factors</a></li>
 <li><a href="#limits">Limits</a></li>
 </ul>
@@ -231,20 +232,20 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Risk factors with their values and bands</caption>
 <thead><tr><th scope="col">Factor</th><th scope="col">Band</th><th scope="col">Value</th><th scope="col">Guideline</th><th scope="col" class="number">Evidence items</th></tr></thead>
 <tbody>
-<tr><th scope="row">size</th><td>low</td><td>lines 40, files 1</td><td>lines: moderate above 80, high above 80</td><td class="number">0</td></tr>
-<tr><th scope="row">spread</th><td>low</td><td>spread 0, folders 1</td><td>spread: moderate above 0, high above 0</td><td class="number">0</td></tr>
-<tr><th scope="row">entropy</th><td>low</td><td>entropy 0, files 1</td><td>entropy: moderate above 1.5, high above 1.5</td><td class="number">0</td></tr>
+<tr><th scope="row">size</th><td>low</td><td>lines 40, files 1</td><td>lines: above 80 is high, with no moderate band: the moderate and high cutoffs are the same value</td><td class="number">0</td></tr>
+<tr><th scope="row">spread</th><td>low</td><td>spread 0, folders 1</td><td>spread: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value</td><td class="number">0</td></tr>
+<tr><th scope="row">entropy</th><td>low</td><td>entropy 0, files 1</td><td>entropy: above 1.5 is high, with no moderate band: the moderate and high cutoffs are the same value</td><td class="number">0</td></tr>
 <tr><th scope="row">mixed-purpose</th><td>low</td><td>moved 0, edited 1, editedWhileMoved 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
-<tr><th scope="row">hotspots-touched</th><td>low</td><td>share 1, hotFiles 1</td><td>share: moderate above 1, high above 1</td><td class="number">1</td></tr>
+<tr><th scope="row">hotspots-touched</th><td>low</td><td>share 1, hotFiles 1</td><td>share: above 1 is high, with no moderate band: the moderate and high cutoffs are the same value</td><td class="number">1</td></tr>
 <tr><th scope="row">defect-history</th><td>unavailable</td><td>share 0.142857, fixes 1, revisions 7</td><td>share: no cutoff, the baseline is too small</td><td class="number">1</td></tr>
 <tr><th scope="row">contention</th><td>low</td><td>authors 0</td><td>authors: moderate above 0, high above 1</td><td class="number">0</td></tr>
-<tr><th scope="row">age</th><td>low</td><td>stale 0, settling 0, known 1</td><td>stale: moderate above 0, high above 0; settling: moderate above 0, high above 0</td><td class="number">0</td></tr>
+<tr><th scope="row">age</th><td>low</td><td>stale 0, settling 0, known 1</td><td>stale: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value; settling: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value</td><td class="number">0</td></tr>
 <tr><th scope="row">missing-co-change</th><td>moderate</td><td>count 2</td><td>count: moderate from 1, high from 3</td><td class="number">2</td></tr>
 <tr><th scope="row">novel-coupling</th><td>low</td><td>count 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
 <tr><th scope="row">test-evidence</th><td>moderate</td><td>count 1</td><td>count: moderate from 1, high from 3</td><td class="number">1</td></tr>
 <tr><th scope="row">blast-radius</th><td>moderate</td><td>files 2, signatureChanges 0, symbolFanIn 0</td><td>files: moderate above 0, high above 2</td><td class="number">2</td></tr>
 <tr><th scope="row">sensitive-paths</th><td>low</td><td>count 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
-<tr><th scope="row">complexity-delta</th><td>low</td><td>count 0, files 1</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
+<tr><th scope="row">complexity-delta</th><td>low</td><td>count 0, files 1, newFiles 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
 <tr><th scope="row">structure-delta</th><td>moderate</td><td>count 2</td><td>count: moderate from 1, high from 3</td><td class="number">2</td></tr>
 <tr><th scope="row">abandoned-touched</th><td>unavailable</td><td>none</td><td>none</td><td class="number">0</td></tr>
 </tbody>
@@ -302,7 +303,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Hot files touched</th><td>1</td></tr>
 <tr><th scope="row">Share of the change's churn in hot files</th><td>100%</td></tr>
 <tr><th scope="row">Band</th><td>low</td></tr>
-<tr><th scope="row">Guideline</th><td>share: moderate above 1, high above 1</td></tr>
+<tr><th scope="row">Guideline</th><td>share: above 1 is high, with no moderate band: the moderate and high cutoffs are the same value</td></tr>
 </tbody>
 </table>
 <table class="ranked">
@@ -312,6 +313,10 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><td class="number">1</td><td>src/billing/invoice.ts</td><td class="number">7</td></tr>
 </tbody>
 </table>
+</section>
+<section id="abandoned" aria-labelledby="abandoned-heading">
+<h2 id="abandoned-heading">Abandoned files touched</h2>
+<aside class="notice notice" role="note"><strong>Notice:</strong> Abandoned touched files could not be computed: knowledge analysis is not enabled (cochange.knowledge.enabled).</aside>
 </section>
 <section id="evidence" aria-labelledby="evidence-heading">
 <h2 id="evidence-heading">Evidence behind the factors</h2>

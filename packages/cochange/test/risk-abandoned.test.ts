@@ -91,12 +91,12 @@ describe("abandoned-touched", () => {
     expect(findings.map((f) => f.id)).not.toContain("abandoned-touched");
   });
 
-  test("a file likely to become abandoned within the horizon counts, by its simulated probability", async () => {
+  test("a file held by one active developer has the probability the turnover model gives every file, so it does not count however high that is", async () => {
     configure({ turnoverRate: 100, atRiskProbability: 10 });
     const { factor } = await risk("main..living");
-    expect(factor.value).toMatchObject({ count: 1 });
-    expect(factor.evidence[0]).toMatchObject({ file: view, abandoned: false });
-    expect(Number(factor.evidence[0]!.probability)).toBeGreaterThan(0.1);
+    expect(factor.value).toMatchObject({ count: 0 });
+    expect(Number(factor.value.baseline)).toBeGreaterThan(0.9);
+    expect(factor.evidence).toEqual([]);
   });
 
   test("names no one in the output and is never stored in the report another plugin reads", async () => {
