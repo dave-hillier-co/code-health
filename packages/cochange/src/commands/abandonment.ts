@@ -8,6 +8,7 @@ import { readRank } from "../abandonment/settings.ts";
 import { noSuccessorCheck } from "../abandonment/successors.ts";
 import { simulationOptions } from "../abandonment/selection.ts";
 import { adoptionCommand, redundancyCommand, trendCommand } from "../abandonment/outcome-run.ts";
+import { patternsCommand } from "../abandonment/patterns-run.ts";
 import { simulateCommand, turnoverCommand } from "../abandonment/simulate-run.ts";
 import { readComponents } from "../components.ts";
 import { byOption, readBy } from "../units.ts";
@@ -16,7 +17,7 @@ export const name = "abandonment";
 
 export const rules = abandonmentRules;
 
-const SUBCOMMANDS = ["adoption", "backtest", "current", "redundancy", "simulate", "trend", "turnover"] as const;
+const SUBCOMMANDS = ["adoption", "backtest", "current", "patterns", "redundancy", "simulate", "trend", "turnover"] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
 
 /**
@@ -29,6 +30,7 @@ export const command: Command = {
     adoption: { summary: "Files abandoned at a past date and whether an active developer, or a recommended successor, picked them up", options: ["at", "successors", "horizon", "no-refresh"] },
     backtest: { summary: "At a past date, the predicted at-risk files against the files actually abandoned one horizon later", options: ["at", "trials", "horizon", "seed", "top", "no-refresh"], hidden: true },
     current: { summary: "Files already abandoned, ranked", options: ["by", "rank", "no-refresh"] },
+    patterns: { summary: "Knowledge-risk patterns of every file: single-owner hotspot, complex code by former contributors, single owner, many active developers, inconclusive", options: ["no-refresh"] },
     redundancy: { summary: "Share of hotspot files with enough active authors holding enough of the lines", options: ["min-authors", "min-share", "no-refresh"] },
     simulate: { summary: "Loss distribution of simulated turnover, with the files and components it concentrates in", options: ["mode", "k", "trials", "horizon", "seed", "top", "rank", "no-refresh"] },
     trend: { summary: "Expected loss and knowledge at risk over time, at the same settings and rate", options: ["points", "trials", "horizon", "seed", "no-refresh"] },
@@ -48,6 +50,8 @@ export const command: Command = {
         return backtestCommand(context);
       case "current":
         return current(context);
+      case "patterns":
+        return patternsCommand(context);
       case "redundancy":
         return redundancyCommand(context);
       case "simulate":

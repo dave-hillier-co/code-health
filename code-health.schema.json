@@ -496,6 +496,34 @@
             "concentratedTailRatio": {
               "type": "number",
               "default": 3
+            },
+            "singleOwnerShare": {
+              "type": "number",
+              "default": 90
+            },
+            "formerContributorShare": {
+              "type": "number",
+              "default": 50
+            },
+            "complexityPercentile": {
+              "type": "number",
+              "default": 75
+            },
+            "manyActiveAuthors": {
+              "type": "number",
+              "default": 5
+            },
+            "meaningfulShare": {
+              "type": "number",
+              "default": 5
+            },
+            "inconclusiveShare": {
+              "type": "number",
+              "default": 50
+            },
+            "busFactorShare": {
+              "type": "number",
+              "default": 80
             }
           },
           "additionalProperties": false,
@@ -517,7 +545,14 @@
             "rank": "hotspot",
             "copyDetection": true,
             "atRiskProbability": 10,
-            "concentratedTailRatio": 3
+            "concentratedTailRatio": 3,
+            "singleOwnerShare": 90,
+            "formerContributorShare": 50,
+            "complexityPercentile": 75,
+            "manyActiveAuthors": 5,
+            "meaningfulShare": 5,
+            "inconclusiveShare": 50,
+            "busFactorShare": 80
           }
         },
         "branch": {

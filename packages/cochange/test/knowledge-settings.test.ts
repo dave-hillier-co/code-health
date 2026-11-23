@@ -35,6 +35,13 @@ test("the analysis is off by default and the defaults follow the spec", () => {
     copyDetection: true,
     atRiskProbability: 10,
     concentratedTailRatio: 3,
+    singleOwnerShare: 90,
+    formerContributorShare: 50,
+    complexityPercentile: 75,
+    manyActiveAuthors: 5,
+    meaningfulShare: 5,
+    inconclusiveShare: 50,
+    busFactorShare: 80,
   });
 });
 
@@ -47,6 +54,8 @@ test("a stated turnover rate is a percentage and is read as a fraction", () => {
 test("nonsense settings are refused", () => {
   expect(() => settingsFor({ cochange: { knowledge: { abandonmentGuideline: 0 } } })).toThrow(/abandonmentGuideline/);
   expect(() => settingsFor({ cochange: { knowledge: { turnoverRate: 120 } } })).toThrow(/turnoverRate/);
+  expect(() => settingsFor({ cochange: { knowledge: { singleOwnerShare: 0 } } })).toThrow(/singleOwnerShare/);
+  expect(() => settingsFor({ cochange: { knowledge: { manyActiveAuthors: 0 } } })).toThrow(/manyActiveAuthors/);
   expect(() => settingsFor({ cochange: { knowledge: { alphas: [100] } } })).toThrow(/alphas/);
   expect(() => settingsFor({ cochange: { knowledge: { rank: "people" } } })).toThrow(/rank/);
   expect(() => settingsFor({ cochange: { knowledge: { unknownThing: 1 } } })).toThrow(/unknown/);

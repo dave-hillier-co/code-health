@@ -1,0 +1,346 @@
+{
+  "blame": {
+    "unattributedLines": 0,
+    "unknownFiles": 0
+  },
+  "command": "abandonment",
+  "complexitySource": "indentation",
+  "config": "0000000000000000",
+  "developers": {
+    "active": 3,
+    "inactive": 2
+  },
+  "evidence": {
+    "activeContributors": 3,
+    "commitSize": {
+      "earlierMedian": 2,
+      "laterMedian": 2,
+      "shifted": false
+    },
+    "grade": "weak",
+    "guidelines": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "importedHistory": [],
+    "logicalChangesInWindow": 7,
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 25.7,
+    "window": {
+      "months": 12,
+      "since": 1709283600,
+      "until": 1740819600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 19,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 20,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "nonPerson": {
+      "builtinBotPatterns": [
+        "\\[bot\\]",
+        "^dependabot",
+        "^renovate",
+        "^github-actions",
+        "^greenkeeper",
+        "^snyk-bot",
+        "^mergify",
+        "^imgbot",
+        "^allcontributors",
+        "^pre-commit-ci",
+        "<bot@renovateapp\\.com>"
+      ],
+      "builtinServiceNames": [
+        "build",
+        "builds",
+        "buildbot",
+        "jenkins",
+        "release",
+        "releases",
+        "ci",
+        "deploy",
+        "deployer",
+        "automation",
+        "teamcity",
+        "travis",
+        "circleci",
+        "gitlab ci",
+        "azure pipelines",
+        "service account"
+      ],
+      "decisions": 0,
+      "servicePatterns": []
+    },
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "abandonmentGuideline": 90,
+    "activityWindowMonths": 6,
+    "complexityReport": null,
+    "copyDetection": true,
+    "guidelines": {
+      "busFactorShare": 80,
+      "complexityPercentile": 75,
+      "formerContributorShare": 50,
+      "inconclusiveShare": 50,
+      "manyActiveAuthors": 5,
+      "meaningfulShare": 5,
+      "singleOwnerShare": 90
+    },
+    "overrides": {
+      "active": 0,
+      "hash": null,
+      "inactive": 0
+    },
+    "periodMonths": 3,
+    "subcommand": "patterns"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6"
+  },
+  "results": [
+    {
+      "activeAuthors": 1,
+      "basis": "blame",
+      "busFactor": 1,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 0,
+      "formerShare": 0,
+      "hotspot": true,
+      "hotspotPercentile": 0.6667,
+      "kind": "code",
+      "meaningfulAuthors": 1,
+      "path": "src/api/auth.ts",
+      "pattern": "single-owner-hotspot",
+      "patterns": [
+        "single-owner-hotspot",
+        "single-owner"
+      ],
+      "peopleLines": 10,
+      "topActiveShare": 1,
+      "unreliableShare": 0
+    },
+    {
+      "activeAuthors": 2,
+      "basis": "blame",
+      "busFactor": 2,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 0,
+      "formerShare": 0,
+      "hotspot": true,
+      "hotspotPercentile": 0.6667,
+      "kind": "code",
+      "meaningfulAuthors": 2,
+      "path": "src/api/routes.ts",
+      "pattern": null,
+      "patterns": [],
+      "peopleLines": 10,
+      "topActiveShare": 0.5,
+      "unreliableShare": 0
+    },
+    {
+      "activeAuthors": 0,
+      "basis": "blame",
+      "busFactor": null,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 1,
+      "formerShare": 1,
+      "hotspot": false,
+      "hotspotPercentile": 0,
+      "kind": "code",
+      "meaningfulAuthors": 0,
+      "path": "src/core/engine.ts",
+      "pattern": null,
+      "patterns": [],
+      "peopleLines": 10,
+      "topActiveShare": 0,
+      "unreliableShare": 0
+    },
+    {
+      "activeAuthors": 1,
+      "basis": "blame",
+      "busFactor": null,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 1,
+      "formerShare": 0.8,
+      "hotspot": false,
+      "hotspotPercentile": 0,
+      "kind": "code",
+      "meaningfulAuthors": 1,
+      "path": "src/core/lexer.ts",
+      "pattern": null,
+      "patterns": [],
+      "peopleLines": 10,
+      "topActiveShare": 0.2,
+      "unreliableShare": 0
+    },
+    {
+      "activeAuthors": 1,
+      "basis": "blame",
+      "busFactor": null,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 1,
+      "formerShare": 0.9,
+      "hotspot": false,
+      "hotspotPercentile": 0,
+      "kind": "code",
+      "meaningfulAuthors": 1,
+      "path": "src/core/parser.ts",
+      "pattern": null,
+      "patterns": [],
+      "peopleLines": 10,
+      "topActiveShare": 0.1,
+      "unreliableShare": 0
+    },
+    {
+      "activeAuthors": 0,
+      "basis": "blame",
+      "busFactor": null,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 1,
+      "formerShare": 1,
+      "hotspot": false,
+      "hotspotPercentile": 0,
+      "kind": "code",
+      "meaningfulAuthors": 0,
+      "path": "src/gen/deps.ts",
+      "pattern": "inconclusive",
+      "patterns": [
+        "inconclusive"
+      ],
+      "peopleLines": 5,
+      "topActiveShare": 0,
+      "unreliableShare": 0.5
+    },
+    {
+      "activeAuthors": 1,
+      "basis": "blame",
+      "busFactor": 1,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 0,
+      "formerShare": 0,
+      "hotspot": false,
+      "hotspotPercentile": 0.1667,
+      "kind": "code",
+      "meaningfulAuthors": 1,
+      "path": "src/ui/view.ts",
+      "pattern": "single-owner",
+      "patterns": [
+        "single-owner"
+      ],
+      "peopleLines": 10,
+      "topActiveShare": 1,
+      "unreliableShare": 0
+    },
+    {
+      "activeAuthors": 1,
+      "basis": "blame",
+      "busFactor": 1,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 0,
+      "formerShare": 0,
+      "hotspot": false,
+      "hotspotPercentile": 0,
+      "kind": "code",
+      "meaningfulAuthors": 1,
+      "path": "src/util/log.ts",
+      "pattern": "single-owner",
+      "patterns": [
+        "single-owner"
+      ],
+      "peopleLines": 10,
+      "topActiveShare": 1,
+      "unreliableShare": 0
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "complexityUnknown": 0,
+    "counts": [
+      {
+        "matching": 1,
+        "pattern": "single-owner-hotspot",
+        "primary": 1
+      },
+      {
+        "matching": 0,
+        "pattern": "former-contributors-complex",
+        "primary": 0
+      },
+      {
+        "matching": 3,
+        "pattern": "single-owner",
+        "primary": 2
+      },
+      {
+        "matching": 0,
+        "pattern": "many-active-developers",
+        "primary": 0
+      },
+      {
+        "matching": 1,
+        "pattern": "inconclusive",
+        "primary": 1
+      }
+    ],
+    "files": 8,
+    "hotspotFiles": 2,
+    "none": 4
+  },
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 8
+  },
+  "window": {
+    "since": "2024-03-01T09:00:00.000Z",
+    "until": "2025-03-01T09:00:00.000Z"
+  }
+}

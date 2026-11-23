@@ -1,7 +1,7 @@
 import { midRankPercentiles } from "@code-health/cli-kit/ranking";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import type { Rule } from "@code-health/cli-kit/run-cli";
-import { rankHotspots } from "../hotspot-ranking.ts";
+import { rankHotspots, type HotspotRow } from "../hotspot-ranking.ts";
 import type { LoadedHistory } from "../history-access.ts";
 import { round4 } from "./current.ts";
 import type { RankMode } from "./settings.ts";
@@ -19,6 +19,11 @@ export interface HotspotWeight {
  */
 export async function hotspotWeights(context: CommandContext, history: LoadedHistory): Promise<Map<string, HotspotWeight>> {
   const { rows } = await rankHotspots(context, history, "file");
+  return weightsOf(rows);
+}
+
+/** The hotspot standing of every row of a hotspot ranking, as `hotspotWeights` defines it. */
+export function weightsOf(rows: readonly HotspotRow[]): Map<string, HotspotWeight> {
   const scored = rows.filter((row) => row.score !== null);
   const percentiles = midRankPercentiles(scored.map((row) => row.score!));
   const weights = new Map<string, HotspotWeight>();

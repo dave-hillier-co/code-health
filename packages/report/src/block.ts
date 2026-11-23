@@ -1,3 +1,4 @@
+import { categoryTreemapHtml, categoryTreemapMd, type CategoryTreemapData } from "./components/category-treemap.ts";
 import { evidenceListHtml, evidenceListMd, type EvidenceListData } from "./components/evidence-list.ts";
 import { factsHtml, factsMd, type FactsData } from "./components/facts.ts";
 import { guidelineBarsHtml, guidelineBarsMd, type GuidelineBarsData } from "./components/guideline-bar.ts";
@@ -18,6 +19,7 @@ export type Block =
   | ({ type: "facts" } & FactsData)
   | ({ type: "ranked-table" } & RankedTableData)
   | ({ type: "treemap" } & TreemapData)
+  | ({ type: "category-treemap" } & CategoryTreemapData)
   | ({ type: "sparkline" } & SparklineData)
   | ({ type: "histogram" } & HistogramData)
   | ({ type: "matrix" } & MatrixData)
@@ -47,6 +49,7 @@ export function renderBlock(block: Block, format: Format, context: BlockContext)
     case "facts": return format === "html" ? factsHtml(block) : factsMd(block);
     case "ranked-table": return format === "html" ? rankedTableHtml(block) : rankedTableMd(block);
     case "treemap": return format === "html" ? treemapHtml(block) : treemapMd(block);
+    case "category-treemap": return format === "html" ? categoryTreemapHtml(block) : categoryTreemapMd(block);
     case "sparkline": return format === "html" ? sparklineHtml(block) : sparklineMd(block);
     case "histogram": return format === "html" ? histogramHtml(block) : histogramMd(block);
     case "matrix": return format === "html" ? matrixHtml(block) : matrixMd(block);
