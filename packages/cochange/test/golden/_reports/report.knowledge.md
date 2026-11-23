@@ -14,7 +14,7 @@
 
 **Judgement: where knowledge is concentrated**
 
-1. **the repository**: Knowledge sits with a few people and the history is short.
+Knowledge sits with a few people and the history is short.
 
 ## Knowledge-risk patterns
 
@@ -65,7 +65,7 @@
 
 **Judgement: single-owner hotspot**
 
-1. **Single-owner hotspot** (verdict: pair): These files follow the pattern in the table above.
+**Single-owner hotspot**: Verdict: pair. These files follow the pattern in the table above.
 
 **Top files whose first pattern is complex code by former contributors, hottest first**
 
@@ -77,7 +77,7 @@
 
 **Judgement: complex code by former contributors**
 
-1. **Complex code by former contributors** (verdict: pair): These files follow the pattern in the table above.
+**Complex code by former contributors**: Verdict: pair. These files follow the pattern in the table above.
 
 **Top files whose first pattern is single owner, hottest first**
 
@@ -88,7 +88,7 @@
 
 **Judgement: single owner**
 
-1. **Single owner** (verdict: pair): These files follow the pattern in the table above.
+**Single owner**: Verdict: pair. These files follow the pattern in the table above.
 
 **Top files whose first pattern is inconclusive, hottest first**
 
@@ -98,7 +98,7 @@
 
 **Judgement: inconclusive**
 
-1. **Inconclusive** (verdict: map-identities): These files follow the pattern in the table above.
+**Inconclusive**: Verdict: map-identities. These files follow the pattern in the table above.
 
 ## Bus factor of the top hotspots
 
@@ -187,4 +187,4 @@ _Guidelines order and label the rows and decide nothing. Tail ratio 3 (cochange.
 
 **Judgement: what limits these results**
 
-1. **the repository**: Knowledge sits with a few people and the history is short.
+Knowledge sits with a few people and the history is short.

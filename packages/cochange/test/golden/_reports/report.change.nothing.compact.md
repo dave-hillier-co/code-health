@@ -12,7 +12,7 @@ Nothing needs attention: the risk factors raise no finding, and the complexity a
 
 **Judgement: reviewer guidance**
 
-1. **the change**: Open the files the tables name first, then ask the author about each item.
+Open the files the tables name first, then ask the author about each item.
 
 ## Limits
 
@@ -24,4 +24,4 @@ Nothing needs attention: the risk factors raise no finding, and the complexity a
 
 **Judgement: what limits this summary**
 
-1. **the change**: Open the files the tables name first, then ask the author about each item.
+Open the files the tables name first, then ask the author about each item.

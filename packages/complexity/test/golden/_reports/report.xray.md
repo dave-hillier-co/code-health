@@ -21,7 +21,7 @@
 
 **Judgement: the file as a whole**
 
-1. **src/billing.ts**: The pricing function holds most of the complexity and most of the fixes.
+**src/billing.ts**: The pricing function holds most of the complexity and most of the fixes.
 
 ## X-Ray
 
@@ -36,11 +36,11 @@ _Guidelines order and label the rows and decide nothing. Cognitive 15 (complexit
 
 **Judgement: priceOrder**
 
-1. **priceOrder (src/billing.ts, lines 4-14)** (verdict: nonobvious-code): It is long and has been fixed more than once.
+**priceOrder (src/billing.ts, lines 4-14)**: Verdict: nonobvious-code. It is long and has been fixed more than once.
 
 **Judgement: describe**
 
-1. **describe (src/billing.ts, lines 16-22)** (verdict: nonobvious-code): It is long and has been fixed more than once.
+**describe (src/billing.ts, lines 16-22)**: Verdict: nonobvious-code. It is long and has been fixed more than once.
 
 ## Limits
 
@@ -51,4 +51,4 @@ _Guidelines order and label the rows and decide nothing. Cognitive 15 (complexit
 
 **Judgement: what limits these results**
 
-1. **src/billing.ts**: The pricing function holds most of the complexity and most of the fixes.
+The pricing function holds most of the complexity and most of the fixes.

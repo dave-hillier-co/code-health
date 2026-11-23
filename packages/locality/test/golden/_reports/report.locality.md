@@ -14,7 +14,7 @@
 
 **Judgement: what this report says**
 
-1. **the repository**: The helpers sit far from their consumers.
+The helpers sit far from their consumers.
 
 ## Candidates
 
@@ -82,7 +82,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: src/shared/pair**
 
-1. **src/shared/pair** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## 2. src/shared/utils/money.ts
 
@@ -102,7 +102,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: src/shared/utils/money.ts**
 
-1. **src/shared/utils/money.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## 3. src/shared/cycle/a.ts
 
@@ -122,7 +122,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: src/shared/cycle/a.ts**
 
-1. **src/shared/cycle/a.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## 4. src/shared/utils/invoice.ts
 
@@ -142,7 +142,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: src/shared/utils/invoice.ts**
 
-1. **src/shared/utils/invoice.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## 5. src/shared/log.ts
 
@@ -162,7 +162,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: src/shared/log.ts**
 
-1. **src/shared/log.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## 6. src/shared/helpers/mixed.ts
 
@@ -182,7 +182,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: src/shared/helpers/mixed.ts**
 
-1. **src/shared/helpers/mixed.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## 7. src/shared/utils/slug.ts
 
@@ -202,7 +202,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: src/shared/utils/slug.ts**
 
-1. **src/shared/utils/slug.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## 8. src/orders/place.ts
 
@@ -222,7 +222,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: src/orders/place.ts**
 
-1. **src/orders/place.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## 9. src/billing/index.ts
 
@@ -242,7 +242,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: src/billing/index.ts**
 
-1. **src/billing/index.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## 10. src/orders/audit.ts
 
@@ -262,7 +262,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: src/orders/audit.ts**
 
-1. **src/orders/audit.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## Consumer distance
 
@@ -312,4 +312,4 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 
 **Judgement: what limits these results**
 
-1. **the repository**: The helpers sit far from their consumers.
+The helpers sit far from their consumers.

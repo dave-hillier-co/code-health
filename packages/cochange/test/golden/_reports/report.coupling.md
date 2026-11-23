@@ -13,7 +13,7 @@
 
 **Judgement: what the coupling says about this repository**
 
-1. **the repository**: Four pairs only, from a history with two authors, so the trends are tentative.
+Four pairs only, from a history with two authors, so the trends are tentative.
 
 ## Coupled pairs
 
@@ -31,15 +31,15 @@ _Guidelines order and label the rows and decide nothing. Degree (%) 30 (cochange
 
 **Judgement: pair 1**
 
-1. **src/search/index.ts and src/search/ranking.ts** (verdict: real-locality-review): Shared design decision: the two files change in one commit.
+**src/search/index.ts and src/search/ranking.ts**: Verdict: real-locality-review. Shared design decision: the two files change in one commit.
 
 **Judgement: pair 2**
 
-1. **src/api/orders.ts and src/web/orders-view.ts** (verdict: real-locality-review): Shared design decision: the two files change in one commit.
+**src/api/orders.ts and src/web/orders-view.ts**: Verdict: real-locality-review. Shared design decision: the two files change in one commit.
 
 **Judgement: pair 3**
 
-1. **src/config/flags.ts and src/runtime/flags.ts** (verdict: real-locality-review): Shared design decision: the two files change in one commit.
+**src/config/flags.ts and src/runtime/flags.ts**: Verdict: real-locality-review. Shared design decision: the two files change in one commit.
 
 > **Notice:** 1 pair is an expected pair (1 a test and the code it tests). Expected pairs are not judged; the table below lists them.
 
@@ -150,4 +150,4 @@ _Guidelines order and label the rows and decide nothing. Degree (%) 30 (cochange
 
 **Judgement: what limits these results**
 
-1. **the repository**: Four pairs only, from a history with two authors, so the trends are tentative.
+Four pairs only, from a history with two authors, so the trends are tentative.

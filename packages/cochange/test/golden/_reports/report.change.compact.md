@@ -14,7 +14,7 @@ Nothing needs attention.
 
 **Judgement: reviewer guidance**
 
-1. **the change**: Open the files the tables name first, then ask the author about each item.
+Open the files the tables name first, then ask the author about each item.
 
 ## Limits
 
@@ -24,4 +24,4 @@ Nothing needs attention.
 
 **Judgement: what limits this summary**
 
-1. **the change**: Open the files the tables name first, then ask the author about each item.
+Open the files the tables name first, then ask the author about each item.

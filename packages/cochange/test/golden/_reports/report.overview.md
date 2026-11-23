@@ -118,4 +118,4 @@
 
 **Judgement: what limits these results**
 
-1. **the repository**: One contributor wrote all of it, so the history says little about ownership.
+One contributor wrote all of it, so the history says little about ownership.

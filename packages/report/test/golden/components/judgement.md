@@ -1,3 +1,3 @@
 **Judgement: look**
 
-1. **src/a.ts** (verdict: act): Split it \<now\>.
+**src/a.ts**: Verdict: act. Split it \<now\>.

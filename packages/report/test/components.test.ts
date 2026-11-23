@@ -19,6 +19,19 @@ test("a judgement block without notes reads not yet written in a draft", () => {
   expect(md).toContain("Say what to do.");
 });
 
+test("a note prints as a paragraph under its title, without repeating a subject the title names", () => {
+  const slot = { ...sampleBuild.slots[0]!, title: `Judgement: ${sampleBuild.slots[0]!.about.label}` };
+  const slots = [slot];
+  const notes = { [slot.id]: { verdict: "leave", text: "Nothing to change." } };
+  const md = renderBlock({ type: "judgement", slot: slot.id }, "md", { slots, notes });
+  expect(md).toContain("Verdict: leave. Nothing to change.");
+  expect(md).not.toMatch(/^1\. /m);
+  expect(md).not.toContain(`**${slot.about.label}**:`);
+  const html = renderBlock({ type: "judgement", slot: slot.id }, "html", { slots, notes });
+  expect(html).toContain("<p><span class=\"verdict\">Verdict: leave.</span> Nothing to change.</p>");
+  expect(html).not.toContain("<ol>");
+});
+
 test("the whole page renders to the golden html and markdown, and the compact markdown", () => {
   const report = sampleReport();
   // The same report in each format is the one the kit prints.

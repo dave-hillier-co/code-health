@@ -23,7 +23,7 @@
 
 **Judgement: what to look at first**
 
-1. **the repository**: The cycles are small and the history is short, so little can be said with confidence.
+The cycles are small and the history is short, so little can be said with confidence.
 
 ## Import cycles
 
@@ -44,7 +44,7 @@ Cycles are found at the default level: a Go package for Go, a project for C# and
 
 **Judgement: cycle 1 (src/c.ts, src/d.ts and 1 more)**
 
-1. **cycle 1 (src/c.ts, src/d.ts and 1 more)** (verdict: break-the-listed-edge): The edge carries one call, so it is cheap to move.
+Verdict: break-the-listed-edge. The edge carries one call, so it is cheap to move.
 
 **Cycle 2: the breaking set of 1 edge (exact)**
 
@@ -54,7 +54,7 @@ Cycles are found at the default level: a Go package for Go, a project for C# and
 
 **Judgement: cycle 2 (src/a.ts, src/b.ts)**
 
-1. **cycle 2 (src/a.ts, src/b.ts)** (verdict: break-the-listed-edge): The edge carries one call, so it is cheap to move.
+Verdict: break-the-listed-edge. The edge carries one call, so it is cheap to move.
 
 ## Layer violations
 
@@ -96,7 +96,7 @@ _Guidelines order and label the rows and decide nothing. Revisions per file, to 
 
 **Judgement: dependency 1 (packages/p2/src → packages/p1/src)**
 
-1. **dependency 1 (packages/p2/src → packages/p1/src)** (verdict: worth-fixing): The edge carries one call, so it is cheap to move.
+Verdict: worth-fixing. The edge carries one call, so it is cheap to move.
 
 ## Decoupling mechanisms in use
 
@@ -128,4 +128,4 @@ _Guidelines order and label the rows and decide nothing. Revisions per file, to 
 
 **Judgement: what limits these results**
 
-1. **the repository**: The cycles are small and the history is short, so little can be said with confidence.
+The cycles are small and the history is short, so little can be said with confidence.

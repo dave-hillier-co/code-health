@@ -13,7 +13,7 @@
 
 **Judgement: what the picture says**
 
-1. **the repository**: Nesting and change meet in one file, and the history is short.
+Nesting and change meet in one file, and the history is short.
 
 ## Map of the code
 
@@ -42,11 +42,11 @@ _Guidelines order and label the rows and decide nothing. Frequency percentile 50
 
 **Judgement: src/core/engine.ts, red flag or code smell**
 
-1. **src/core/engine.ts** (verdict: none-applies): The file changes often and is deeply nested.
+Verdict: none-applies. The file changes often and is deeply nested.
 
 **Judgement: src/core/engine.ts, recommendation**
 
-1. **src/core/engine.ts** (verdict: refactor): The file changes often and is deeply nested.
+Verdict: refactor. The file changes often and is deeply nested.
 
 ## History of the top files
 
@@ -93,4 +93,4 @@ _Guidelines order and label the rows and decide nothing. Cognitive 15 (complexit
 
 **Judgement: what limits these results**
 
-1. **the repository**: Nesting and change meet in one file, and the history is short.
+Nesting and change meet in one file, and the history is short.
