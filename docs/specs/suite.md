@@ -344,9 +344,9 @@ Components are pure functions from data to strings, one for HTML (with inline SV
 | `matrix` | A heatmap of rows by columns with the values printed in the cells, and a table. |
 | `guideline-bars` | Values each against its guideline, with the ratio and "above guideline", "at guideline" or "below guideline". |
 | `stability-chart` | With fewer than 3 points, one notice line (`emptyText` or a default) instead of a chart. Otherwise a scatter of instability against abstractness with the main sequence and the zones of pain and uselessness labelled. Every measured point is drawn, the furthest from the main sequence are numbered and tabled with their position in words, and the legend counts all points by position. |
-| `trend-marker` | A later window against an earlier one: the word stronger, stable or weaker, an arrow and both values. |
+| `trend-marker` | A later window against an earlier one: the word stronger, stable or weaker, an arrow and both values. A report may set the trend by its own rule and replace the words with ones that name the quantity (the overview prints "more files per change", "fewer files per change" or "no shift", by the same 2x rule as its merge policy line). |
 | `evidence-list` | Commits or findings, each with an id, text and detail as plain text, and a count of those not listed. |
-| `notice` | A line that opens with the word Notice, Limit or Warning. |
+| `notice` | A line that opens with the word Notice, Limit or Warning, and ends with a full stop (one is added when the text has none, because the command line adds its own). |
 | `judgement` | The place a slot's verdict and text appear, with its subject. |
 | `judged-items` | Items that each ask for a judgement. With a `fold`, the markdown prints only the items whose verdict is in `fold.keep` or that have no entry yet, each as one list item of subject, verdict and text, and one line that counts the other items by verdict. When it keeps none it prints `emptyText` first. |
 | `facts`, `paragraph` | A two column table of measures, and a paragraph. |

@@ -11,6 +11,10 @@ export interface TrendMarkerData {
   windows: [string, string];
   /** How far the later value may differ from the earlier one, as a fraction of it, and still be stable. Default 0.2. */
   tolerance?: number;
+  /** The trend, when the caller decides it by its own rule instead of the tolerance. */
+  trend?: Trend;
+  /** The words printed for each trend, when "stronger" and "weaker" do not describe the quantity. The arrow and style class stay as they are. */
+  wording?: Partial<Record<Trend, string>>;
 }
 
 export const ARROW: Record<Trend, string> = { stronger: "↑", stable: "→", weaker: "↓" };
@@ -24,18 +28,18 @@ export function trendOf(earlier: number, later: number, tolerance = 0.2): Trend 
   return later > earlier ? "stronger" : "weaker";
 }
 
-function words(data: TrendMarkerData): { trend: Trend; detail: string } {
-  const trend = trendOf(data.earlier, data.later, data.tolerance);
-  return { trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
+function words(data: TrendMarkerData): { trend: Trend; word: string; detail: string } {
+  const trend = data.trend ?? trendOf(data.earlier, data.later, data.tolerance);
+  return { trend, word: data.wording?.[trend] ?? trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
 }
 
 /** An inline marker: an arrow and the word, with the two values beside it. The arrow is decoration, the word is the signal. */
 export function trendMarkerHtml(data: TrendMarkerData): string {
-  const { trend, detail } = words(data);
-  return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${trend} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
+  const { trend, word, detail } = words(data);
+  return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${escapeHtml(word)} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
 }
 
 export function trendMarkerMd(data: TrendMarkerData): string {
-  const { trend, detail } = words(data);
-  return `${ARROW[trend]} ${trend} (${escapeMd(detail)})`;
+  const { trend, word, detail } = words(data);
+  return `${ARROW[trend]} ${escapeMd(word)} (${escapeMd(detail)})`;
 }

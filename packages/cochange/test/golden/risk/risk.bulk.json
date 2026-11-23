@@ -279,6 +279,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "size-and-diffusion",
         "guidelines": {
           "count": {
@@ -301,6 +302,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "history",
         "guidelines": {
           "share": {
@@ -322,6 +324,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "history",
         "guidelines": {
           "share": null
@@ -341,6 +344,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "history",
         "guidelines": {
           "authors": {
@@ -361,6 +365,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "history",
         "guidelines": {
           "settling": {
@@ -407,6 +412,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "completeness",
         "guidelines": {
           "count": {
@@ -447,6 +453,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "structure-and-content",
         "guidelines": {
           "files": {
@@ -489,6 +496,7 @@
       {
         "band": "low",
         "evidence": [],
+        "evidenceTotal": 0,
         "family": "structure-and-content",
         "guidelines": {
           "count": {

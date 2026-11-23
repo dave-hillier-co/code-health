@@ -182,7 +182,7 @@ _Guidelines order and label the rows and decide nothing. Tail ratio 3 (cochange.
 - A developer counts as having left after 6 months without a commit. Someone on leave looks the same, and local overrides correct it.
 - The simulation assumes turnover is random. It says nothing about any person, and the report names nobody unless run with --names, which lists active developers only.
 - Each table shows the top 10 of its result and says how many rows it leaves out; `cochange abandonment patterns` prints every file.
-- Complexity is the indentation proxy, because no complexity report covers this commit. Test files and files that are not code have none, so the complex-code pattern does not apply to them (0 files with a blame have no complexity).
+- Complexity is the indentation proxy, because no `complexity files` result is stored for this commit. Test files and files that are not code have none, so the complex-code pattern does not apply to them (0 files with a blame have no complexity).
 - The evidence grade is weak, so history-based results are tentative.
 
 **Judgement: what limits these results**

@@ -67,6 +67,7 @@ export function toFactor(measurement: Measurement, banded: BandResult, risk: Ris
     value: disabled ? {} : measurement.value,
     guidelines: disabled ? {} : banded.guidelines,
     evidence: disabled ? [] : measurement.evidence,
+    ...(disabled || measurement.evidenceTotal === undefined ? {} : { evidenceTotal: measurement.evidenceTotal }),
     source: measurement.source,
     reason: disabled ? "switched off by cochange.risk.disable" : (measurement.unavailable ?? banded.reason),
   };

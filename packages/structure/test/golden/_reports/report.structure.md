@@ -102,7 +102,7 @@ Verdict: worth-fixing. The edge carries one call, so it is cheap to move.
 
 **Decoupling mechanisms the codebase uses today**
 
-| Mechanism | Occurrences | Files | Variants | Busiest folders | Example |
+| Mechanism | Occurrences | Files | Variants | Busiest folders (counts include the folders of implementers and callers) | Example |
 | --- | ---: | ---: | --- | --- | --- |
 | callbacks | 0 | 0 | – | – | – |
 | interfaces | 0 | 0 | – | – | – |

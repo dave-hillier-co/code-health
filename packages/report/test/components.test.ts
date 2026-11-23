@@ -82,3 +82,17 @@ test("a trend is stable within the tolerance, and from zero any rise is stronger
   expect(trendOf(0, 1)).toBe("stronger");
   expect(trendOf(0, 0)).toBe("stable");
 });
+
+const bare = { slots: [], notes: undefined };
+
+test("a notice ends with a full stop, and a notice that already has one is unchanged", () => {
+  const md = (text: string) => renderBlock({ type: "notice", level: "notice", text }, "md", bare);
+  expect(md("Omitted 3 of 9 files")).toBe("> **Notice:** Omitted 3 of 9 files.");
+  expect(md("Run `structure stability`.")).toBe("> **Notice:** Run `structure stability`.");
+  expect(md("Is it so?")).toBe("> **Notice:** Is it so?");
+});
+
+test("a trend marker can use its caller's rule and words", () => {
+  const block = { type: "trend-marker" as const, label: "Median files per change", earlier: 8, later: 5, windows: ["the earlier half", "the later half"] as [string, string], trend: "stable" as const, wording: { stable: "no shift" } };
+  expect(renderBlock(block, "md", bare)).toBe("→ no shift (Median files per change: 8 in the earlier half, 5 in the later half)");
+});

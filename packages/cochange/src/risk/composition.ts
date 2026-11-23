@@ -39,6 +39,7 @@ function structureDelta(evidence: EvidenceInputs): Measurement {
     series: { count: findings.length },
     value: { count: findings.length },
     evidence: findings.slice(0, 5).map((finding) => ({ kind: finding.kind, id: finding.id })),
+    evidenceTotal: findings.length,
   };
 }
 
@@ -57,6 +58,7 @@ async function complexityDelta(root: string, change: BranchChange, risk: RiskSet
       series: { count: units.length },
       value: { count: units.length, unsupportedFiles: evidence.complexity.unsupportedFiles },
       evidence: units.slice(0, 5).map((unit) => ({ unit: unit.id, change: unit.change, cognitive: unit.cognitive, delta: unit.delta })),
+      evidenceTotal: units.length,
     };
   }
 
@@ -92,6 +94,7 @@ async function complexityDelta(root: string, change: BranchChange, risk: RiskSet
     series: { count: rows.length },
     value: { count: rows.length, files: examined, newFiles: added },
     evidence: rows.slice(0, 5),
+    evidenceTotal: rows.length,
   };
 }
 
@@ -162,6 +165,7 @@ export function withFanIn(factor: Factor, touched: readonly string[], locality: 
     reason: band === null ? factor.reason : null,
     value: { ...factor.value, fanIn },
     guidelines: { ...factor.guidelines, fanIn: cutoffs === null ? null : { moderate: cutoffs.moderate, high: cutoffs.high } },
+    evidenceTotal: (factor.evidenceTotal ?? factor.evidence.length) + rows.length,
     evidence: [...factor.evidence, ...rows.sort((a, b) => b.fanIn - a.fanIn || (a.file < b.file ? -1 : 1)).slice(0, 5).map((row) => ({ ...row, from: "locality" }))],
   };
 }
