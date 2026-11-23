@@ -1,0 +1,1069 @@
+{
+  "data": {
+    "header": {
+      "commit": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6",
+      "configHash": "0000000000000000",
+      "date": "2025-03-01",
+      "evidenceGrade": "weak",
+      "excluded": [
+        {
+          "count": 20,
+          "what": "commits outside the analysis window"
+        },
+        {
+          "count": 19,
+          "what": "commits with no file left after filtering"
+        }
+      ],
+      "historyWindow": "25.7 months of usable history; the analysis window is 12 months, 2024-03-01 to 2025-03-01; authorship is the blame at the analysed commit",
+      "repo": "repo"
+    },
+    "limits": [
+      "Guidelines order and label results. They are heuristics for investigation and decide nothing, and every file is listed under its pattern or under none.",
+      "Authorship is git blame ignoring whitespace and following moved and copied lines. It says who last wrote a line, which is not who understands it.",
+      "A developer counts as having left after 6 months without a commit. Someone on leave looks the same, and local overrides correct it.",
+      "The simulation assumes turnover is random. It says nothing about any person, and the report names nobody unless run with --names, which lists active developers only.",
+      "Each table shows the top 10 of its result and says how many rows it leaves out; `cochange abandonment patterns` prints every file.",
+      "Complexity is the indentation proxy, because no complexity report covers this commit. Test files and files that are not code have none, so the complex-code pattern does not apply to them (0 files with a blame have no complexity).",
+      "The evidence grade is weak, so history-based results are tentative."
+    ],
+    "sections": [
+      {
+        "blocks": [
+          {
+            "slot": "summary",
+            "type": "judgement"
+          }
+        ],
+        "heading": "Where knowledge is concentrated",
+        "id": "summary"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Guidelines the patterns use (cochange.knowledge, each a judgement call that labels and orders files and hides none)",
+            "facts": [
+              {
+                "label": "singleOwnerShare",
+                "value": "90% of the lines held by people"
+              },
+              {
+                "label": "formerContributorShare",
+                "value": "50% of the lines held by people"
+              },
+              {
+                "label": "complexityPercentile",
+                "value": "50th percentile of complexity"
+              },
+              {
+                "label": "manyActiveAuthors",
+                "value": "5 active developers"
+              },
+              {
+                "label": "meaningfulShare",
+                "value": "5% of the lines held by people"
+              },
+              {
+                "label": "inconclusiveShare",
+                "value": "50% of a file's lines"
+              },
+              {
+                "label": "busFactorShare",
+                "value": "80% of the lines held by people"
+              },
+              {
+                "label": "activityWindowMonths",
+                "value": "6 months without a commit means a developer has left"
+              }
+            ],
+            "type": "facts"
+          },
+          {
+            "caption": "Files by knowledge-risk pattern",
+            "columns": [
+              {
+                "key": "pattern",
+                "label": "Pattern"
+              },
+              {
+                "key": "rule",
+                "label": "Rule, with its guideline"
+              },
+              {
+                "align": "right",
+                "key": "primary",
+                "label": "Files, first pattern"
+              },
+              {
+                "align": "right",
+                "key": "matching",
+                "label": "Files, any pattern"
+              }
+            ],
+            "numbered": false,
+            "rows": [
+              {
+                "matching": 1,
+                "pattern": "Single-owner hotspot",
+                "primary": 1,
+                "rule": "One active developer holds at least 90% of the lines held by people, and the file is a hotspot"
+              },
+              {
+                "matching": 3,
+                "pattern": "Complex code by former contributors",
+                "primary": 3,
+                "rule": "Developers who have left hold at least 50% of the lines held by people, and the file's complexity is at or above the 50th percentile"
+              },
+              {
+                "matching": 3,
+                "pattern": "Single owner",
+                "primary": 2,
+                "rule": "One active developer holds at least 90% of the lines held by people"
+              },
+              {
+                "matching": 0,
+                "pattern": "Many active developers",
+                "primary": 0,
+                "rule": "At least 5 active developers each hold at least 5% of the lines held by people"
+              },
+              {
+                "matching": 1,
+                "pattern": "Inconclusive",
+                "primary": 1,
+                "rule": "Lines of bots, services, agents, unknown commits and unmapped identities are at least 50% of the file's lines, or its blame is not known"
+              },
+              {
+                "matching": 1,
+                "pattern": "No pattern",
+                "primary": 1,
+                "rule": "None of the above applies"
+              }
+            ],
+            "type": "ranked-table"
+          },
+          {
+            "categories": [
+              {
+                "band": 5,
+                "id": "single-owner-hotspot",
+                "label": "Single-owner hotspot",
+                "mark": "SOH"
+              },
+              {
+                "band": 4,
+                "id": "former-contributors-complex",
+                "label": "Complex code by former contributors",
+                "mark": "CFC"
+              },
+              {
+                "band": 3,
+                "id": "single-owner",
+                "label": "Single owner",
+                "mark": "SO"
+              },
+              {
+                "band": 2,
+                "id": "many-active-developers",
+                "label": "Many active developers",
+                "mark": "MAD"
+              },
+              {
+                "band": 1,
+                "id": "inconclusive",
+                "label": "Inconclusive",
+                "mark": "INC"
+              }
+            ],
+            "categoryLabel": "First pattern",
+            "items": [
+              {
+                "category": "single-owner-hotspot",
+                "path": "src/api/auth.ts",
+                "size": 10
+              },
+              {
+                "category": null,
+                "path": "src/api/routes.ts",
+                "size": 10
+              },
+              {
+                "category": "former-contributors-complex",
+                "path": "src/core/engine.ts",
+                "size": 10
+              },
+              {
+                "category": "former-contributors-complex",
+                "path": "src/core/lexer.ts",
+                "size": 10
+              },
+              {
+                "category": "former-contributors-complex",
+                "path": "src/core/parser.ts",
+                "size": 10
+              },
+              {
+                "category": "single-owner",
+                "path": "src/ui/view.ts",
+                "size": 10
+              },
+              {
+                "category": "single-owner",
+                "path": "src/util/log.ts",
+                "size": 10
+              },
+              {
+                "category": "inconclusive",
+                "path": "src/gen/deps.ts",
+                "size": 5
+              }
+            ],
+            "maxTiles": 60,
+            "sizeLabel": "lines held by people",
+            "title": "Files by lines held by people, marked by knowledge-risk pattern",
+            "type": "category-treemap"
+          },
+          {
+            "level": "notice",
+            "text": "The treemap draws the 8 production code files with the most lines held by people, of 8. The tables below list files of every kind by pattern, hottest first.",
+            "type": "notice"
+          },
+          {
+            "caption": "Top files whose first pattern is single-owner hotspot, hottest first",
+            "columns": [
+              {
+                "key": "path",
+                "label": "File"
+              },
+              {
+                "key": "hotspot",
+                "label": "Hotspot"
+              },
+              {
+                "align": "right",
+                "key": "complexity",
+                "label": "Complexity"
+              },
+              {
+                "align": "right",
+                "key": "people",
+                "label": "Lines held by people"
+              },
+              {
+                "align": "right",
+                "key": "active",
+                "label": "Active holders"
+              },
+              {
+                "align": "right",
+                "key": "former",
+                "label": "Former holders"
+              },
+              {
+                "align": "right",
+                "key": "top",
+                "label": "Top active holder (%)"
+              },
+              {
+                "align": "right",
+                "key": "gone",
+                "label": "Held by former (%)"
+              },
+              {
+                "align": "right",
+                "key": "bus",
+                "label": "Bus factor"
+              }
+            ],
+            "noun": "files",
+            "rows": [
+              {
+                "active": 1,
+                "bus": 1,
+                "complexity": 0,
+                "former": 0,
+                "gone": 0,
+                "hotspot": "yes",
+                "path": "src/api/auth.ts",
+                "people": 10,
+                "top": 100
+              }
+            ],
+            "total": 1,
+            "type": "ranked-table"
+          },
+          {
+            "slot": "pattern-single-owner-hotspot",
+            "type": "judgement"
+          },
+          {
+            "caption": "Top files whose first pattern is complex code by former contributors, hottest first",
+            "columns": [
+              {
+                "key": "path",
+                "label": "File"
+              },
+              {
+                "key": "hotspot",
+                "label": "Hotspot"
+              },
+              {
+                "align": "right",
+                "key": "complexity",
+                "label": "Complexity"
+              },
+              {
+                "align": "right",
+                "key": "people",
+                "label": "Lines held by people"
+              },
+              {
+                "align": "right",
+                "key": "active",
+                "label": "Active holders"
+              },
+              {
+                "align": "right",
+                "key": "former",
+                "label": "Former holders"
+              },
+              {
+                "align": "right",
+                "key": "top",
+                "label": "Top active holder (%)"
+              },
+              {
+                "align": "right",
+                "key": "gone",
+                "label": "Held by former (%)"
+              },
+              {
+                "align": "right",
+                "key": "bus",
+                "label": "Bus factor"
+              }
+            ],
+            "noun": "files",
+            "rows": [
+              {
+                "active": 0,
+                "bus": null,
+                "complexity": 0,
+                "former": 1,
+                "gone": 100,
+                "hotspot": "no",
+                "path": "src/core/engine.ts",
+                "people": 10,
+                "top": 0
+              },
+              {
+                "active": 1,
+                "bus": null,
+                "complexity": 0,
+                "former": 1,
+                "gone": 80,
+                "hotspot": "no",
+                "path": "src/core/lexer.ts",
+                "people": 10,
+                "top": 20
+              },
+              {
+                "active": 1,
+                "bus": null,
+                "complexity": 0,
+                "former": 1,
+                "gone": 90,
+                "hotspot": "no",
+                "path": "src/core/parser.ts",
+                "people": 10,
+                "top": 10
+              }
+            ],
+            "total": 3,
+            "type": "ranked-table"
+          },
+          {
+            "slot": "pattern-former-contributors-complex",
+            "type": "judgement"
+          },
+          {
+            "caption": "Top files whose first pattern is single owner, hottest first",
+            "columns": [
+              {
+                "key": "path",
+                "label": "File"
+              },
+              {
+                "key": "hotspot",
+                "label": "Hotspot"
+              },
+              {
+                "align": "right",
+                "key": "complexity",
+                "label": "Complexity"
+              },
+              {
+                "align": "right",
+                "key": "people",
+                "label": "Lines held by people"
+              },
+              {
+                "align": "right",
+                "key": "active",
+                "label": "Active holders"
+              },
+              {
+                "align": "right",
+                "key": "former",
+                "label": "Former holders"
+              },
+              {
+                "align": "right",
+                "key": "top",
+                "label": "Top active holder (%)"
+              },
+              {
+                "align": "right",
+                "key": "gone",
+                "label": "Held by former (%)"
+              },
+              {
+                "align": "right",
+                "key": "bus",
+                "label": "Bus factor"
+              }
+            ],
+            "noun": "files",
+            "rows": [
+              {
+                "active": 1,
+                "bus": 1,
+                "complexity": 0,
+                "former": 0,
+                "gone": 0,
+                "hotspot": "no",
+                "path": "src/ui/view.ts",
+                "people": 10,
+                "top": 100
+              },
+              {
+                "active": 1,
+                "bus": 1,
+                "complexity": 0,
+                "former": 0,
+                "gone": 0,
+                "hotspot": "no",
+                "path": "src/util/log.ts",
+                "people": 10,
+                "top": 100
+              }
+            ],
+            "total": 2,
+            "type": "ranked-table"
+          },
+          {
+            "slot": "pattern-single-owner",
+            "type": "judgement"
+          },
+          {
+            "caption": "Top files whose first pattern is inconclusive, hottest first",
+            "columns": [
+              {
+                "key": "path",
+                "label": "File"
+              },
+              {
+                "key": "hotspot",
+                "label": "Hotspot"
+              },
+              {
+                "align": "right",
+                "key": "complexity",
+                "label": "Complexity"
+              },
+              {
+                "align": "right",
+                "key": "people",
+                "label": "Lines held by people"
+              },
+              {
+                "align": "right",
+                "key": "active",
+                "label": "Active holders"
+              },
+              {
+                "align": "right",
+                "key": "former",
+                "label": "Former holders"
+              },
+              {
+                "align": "right",
+                "key": "top",
+                "label": "Top active holder (%)"
+              },
+              {
+                "align": "right",
+                "key": "gone",
+                "label": "Held by former (%)"
+              },
+              {
+                "align": "right",
+                "key": "bus",
+                "label": "Bus factor"
+              }
+            ],
+            "noun": "files",
+            "rows": [
+              {
+                "active": 0,
+                "bus": null,
+                "complexity": 0,
+                "former": 1,
+                "gone": 100,
+                "hotspot": "no",
+                "path": "src/gen/deps.ts",
+                "people": 5,
+                "top": 0
+              }
+            ],
+            "total": 1,
+            "type": "ranked-table"
+          },
+          {
+            "slot": "pattern-inconclusive",
+            "type": "judgement"
+          }
+        ],
+        "heading": "Knowledge-risk patterns",
+        "id": "patterns"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Bus factor of the top hotspots: the fewest active developers who together hold 80% of a file's lines held by people",
+            "columns": [
+              {
+                "key": "path",
+                "label": "Hotspot"
+              },
+              {
+                "align": "right",
+                "key": "score",
+                "label": "Hotspot score"
+              },
+              {
+                "align": "right",
+                "key": "people",
+                "label": "Lines held by people"
+              },
+              {
+                "align": "right",
+                "key": "active",
+                "label": "Active holders"
+              },
+              {
+                "align": "right",
+                "key": "bus",
+                "label": "Bus factor"
+              },
+              {
+                "align": "right",
+                "key": "top",
+                "label": "Top active holder (%)"
+              },
+              {
+                "align": "right",
+                "key": "gone",
+                "label": "Held by former (%)"
+              },
+              {
+                "key": "pattern",
+                "label": "First pattern"
+              }
+            ],
+            "noun": "hotspots",
+            "rows": [
+              {
+                "active": 1,
+                "bus": 1,
+                "gone": 0,
+                "path": "src/api/auth.ts",
+                "pattern": "Single-owner hotspot",
+                "people": 10,
+                "score": 0.3333,
+                "top": 100
+              },
+              {
+                "active": 2,
+                "bus": 2,
+                "gone": 0,
+                "path": "src/api/routes.ts",
+                "pattern": null,
+                "people": 10,
+                "score": 0.3333,
+                "top": 50
+              }
+            ],
+            "total": 2,
+            "type": "ranked-table"
+          },
+          {
+            "level": "notice",
+            "text": "A dash in the bus factor column means active developers together hold less than 80% of the file's lines held by people, so the rest sits with developers who have left or with lines nobody holds.",
+            "type": "notice"
+          }
+        ],
+        "heading": "Bus factor of the top hotspots",
+        "id": "bus-factor"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Knowledge lost so far, at the analysed commit",
+            "facts": [
+              {
+                "label": "Files with lines held by people",
+                "value": "8"
+              },
+              {
+                "label": "Files abandoned (90% or more of the lines held by people belong to people who have left)",
+                "value": "3 (37.5%)"
+              },
+              {
+                "label": "Lines held by people",
+                "value": "75"
+              },
+              {
+                "label": "Of those, held by people who have left",
+                "value": "32 (42.7%)"
+              },
+              {
+                "label": "Lines of bots, services and agents, on neither side",
+                "value": "5"
+              },
+              {
+                "label": "Lines with an unknown commit",
+                "value": "0"
+              },
+              {
+                "label": "Developers active, and who have left",
+                "value": "3 active, 2 left"
+              }
+            ],
+            "type": "facts"
+          },
+          {
+            "caption": "Files with the most knowledge held by people who have left, ranked by abandoned share weighted by hotspot percentile",
+            "columns": [
+              {
+                "key": "path",
+                "label": "File"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "cochange.knowledge.abandonmentGuideline, at or above it a file is abandoned",
+                  "value": 90
+                },
+                "key": "share",
+                "label": "Held by former (%)"
+              },
+              {
+                "align": "right",
+                "key": "lines",
+                "label": "Lines lost"
+              },
+              {
+                "align": "right",
+                "key": "people",
+                "label": "Lines held by people"
+              },
+              {
+                "align": "right",
+                "key": "active",
+                "label": "Active holders"
+              },
+              {
+                "align": "right",
+                "key": "former",
+                "label": "Former holders"
+              },
+              {
+                "key": "hotspot",
+                "label": "Hotspot"
+              }
+            ],
+            "noun": "files",
+            "rows": [
+              {
+                "active": 0,
+                "former": 1,
+                "hotspot": "no",
+                "lines": 10,
+                "path": "src/core/engine.ts",
+                "people": 10,
+                "share": 100
+              },
+              {
+                "active": 1,
+                "former": 1,
+                "hotspot": "no",
+                "lines": 8,
+                "path": "src/core/lexer.ts",
+                "people": 10,
+                "share": 80
+              },
+              {
+                "active": 1,
+                "former": 1,
+                "hotspot": "no",
+                "lines": 9,
+                "path": "src/core/parser.ts",
+                "people": 10,
+                "share": 90
+              },
+              {
+                "active": 0,
+                "former": 1,
+                "hotspot": "no",
+                "lines": 5,
+                "path": "src/gen/deps.ts",
+                "people": 5,
+                "share": 100
+              }
+            ],
+            "total": 4,
+            "type": "ranked-table"
+          },
+          {
+            "level": "notice",
+            "text": "4 of 8 measured files have no lines held by people who have left and are not listed.",
+            "type": "notice"
+          }
+        ],
+        "heading": "Knowledge lost so far",
+        "id": "knowledge-lost"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Simulated turnover over 4 periods of 3 months, 300 trials, seed 1",
+            "facts": [
+              {
+                "label": "Model",
+                "value": "rate; leaver rate per period 15% (configured)"
+              },
+              {
+                "label": "Active developers",
+                "value": "3"
+              },
+              {
+                "label": "Files already abandoned",
+                "value": "3 of 8"
+              },
+              {
+                "label": "Expected further files lost",
+                "value": "2 (25.3% of files)"
+              },
+              {
+                "label": "Knowledge at risk at the 95th percentile, in files",
+                "value": "5 of 8 files (62.5%), 2.5 times the expected loss"
+              },
+              {
+                "label": "Knowledge at risk at the 99th percentile, in files",
+                "value": "5 of 8 files (62.5%), 2.5 times the expected loss"
+              },
+              {
+                "label": "Expected further lines lost",
+                "value": "19.7 of 75 lines held by people (26.3%)"
+              }
+            ],
+            "type": "facts"
+          },
+          {
+            "caption": "Files most likely to lose their authors within the horizon, hotspot-weighted",
+            "columns": [
+              {
+                "key": "path",
+                "label": "File"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "cochange.knowledge.atRiskProbability",
+                  "value": 10
+                },
+                "key": "probability",
+                "label": "Probability (%)"
+              },
+              {
+                "key": "abandoned",
+                "label": "Already abandoned"
+              },
+              {
+                "key": "hotspot",
+                "label": "Hotspot"
+              },
+              {
+                "align": "right",
+                "key": "active",
+                "label": "Active holders"
+              },
+              {
+                "align": "right",
+                "key": "former",
+                "label": "Former holders"
+              },
+              {
+                "key": "findings",
+                "label": "Findings"
+              }
+            ],
+            "noun": "files",
+            "rows": [
+              {
+                "abandoned": "no",
+                "active": 1,
+                "findings": "at-risk-hot",
+                "former": 0,
+                "hotspot": "yes",
+                "path": "src/api/auth.ts",
+                "probability": 43
+              },
+              {
+                "abandoned": "no",
+                "active": 2,
+                "findings": "at-risk-hot",
+                "former": 0,
+                "hotspot": "yes",
+                "path": "src/api/routes.ts",
+                "probability": 17.3
+              },
+              {
+                "abandoned": "no",
+                "active": 1,
+                "findings": "at-risk-cold, no-successor",
+                "former": 0,
+                "hotspot": "no",
+                "path": "src/ui/view.ts",
+                "probability": 52.7
+              },
+              {
+                "abandoned": "yes",
+                "active": 0,
+                "findings": "abandoned, no-successor",
+                "former": 1,
+                "hotspot": "no",
+                "path": "src/core/engine.ts",
+                "probability": 100
+              },
+              {
+                "abandoned": "yes",
+                "active": 1,
+                "findings": "abandoned, no-successor",
+                "former": 1,
+                "hotspot": "no",
+                "path": "src/core/parser.ts",
+                "probability": 100
+              },
+              {
+                "abandoned": "yes",
+                "active": 0,
+                "findings": "abandoned, no-successor",
+                "former": 1,
+                "hotspot": "no",
+                "path": "src/gen/deps.ts",
+                "probability": 100
+              },
+              {
+                "abandoned": "no",
+                "active": 1,
+                "findings": "at-risk-cold, no-successor",
+                "former": 1,
+                "hotspot": "no",
+                "path": "src/core/lexer.ts",
+                "probability": 44.7
+              },
+              {
+                "abandoned": "no",
+                "active": 1,
+                "findings": "at-risk-cold, no-successor",
+                "former": 0,
+                "hotspot": "no",
+                "path": "src/util/log.ts",
+                "probability": 44.7
+              }
+            ],
+            "total": 8,
+            "type": "ranked-table"
+          },
+          {
+            "caption": "Components by expected loss, with the tail ratio against its guideline",
+            "columns": [
+              {
+                "key": "path",
+                "label": "Component"
+              },
+              {
+                "align": "right",
+                "key": "expected",
+                "label": "Expected lines lost"
+              },
+              {
+                "align": "right",
+                "key": "people",
+                "label": "Lines held by people"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "cochange.knowledge.concentratedTailRatio",
+                  "value": 3
+                },
+                "key": "tail",
+                "label": "Tail ratio"
+              }
+            ],
+            "noun": "components",
+            "rows": [
+              {
+                "expected": 19.7,
+                "path": "(unassigned)",
+                "people": 75,
+                "tail": 2.1783
+              }
+            ],
+            "total": 1,
+            "type": "ranked-table"
+          }
+        ],
+        "heading": "Simulated turnover",
+        "id": "simulation"
+      }
+    ],
+    "title": "Knowledge report"
+  },
+  "instructions": "Write notes.json as { stamp, notes }: copy the stamp unchanged, and give each slot id an entry that follows the slot's shape.",
+  "protocol": 1,
+  "report": "knowledge",
+  "slots": [
+    {
+      "about": {
+        "kind": "report",
+        "label": "the repository",
+        "ref": "knowledge"
+      },
+      "id": "summary",
+      "maxChars": 700,
+      "task": "In at most four sentences, say where knowledge is most concentrated or most at risk, using only the pattern counts, the bus factors, the knowledge lost and the simulation shown in this report. Do not name people, do not rank or judge any person, and do not add numbers the report does not show. When a notice says the mapped share is low or the turnover estimate is weak, say the results are tentative.",
+      "title": "Judgement: where knowledge is concentrated",
+      "verdicts": []
+    },
+    {
+      "about": {
+        "kind": "finding",
+        "label": "Single-owner hotspot",
+        "ref": "single-owner-hotspot"
+      },
+      "id": "pattern-single-owner-hotspot",
+      "maxChars": 450,
+      "task": "For the single-owner hotspots: these change often, and one active developer holds nearly all of the lines. Choose one verdict: pair (pair on the next change to these files), document (write down what the owner knows), rotate-reviews (have another active developer review each change), or leave (the pattern does not call for action here). Give one or two sentences of why that cite only values shown in this report. Do not name people, do not rank or judge any person, and do not guess who might leave. Do not add numbers the report does not show.",
+      "title": "Judgement: single-owner hotspot",
+      "verdicts": [
+        "pair",
+        "document",
+        "rotate-reviews",
+        "leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "finding",
+        "label": "Complex code by former contributors",
+        "ref": "former-contributors-complex"
+      },
+      "id": "pattern-former-contributors-complex",
+      "maxChars": 450,
+      "task": "For complex code written mostly by people who have left: whoever changes it next inherits the complexity without its authors. Choose one verdict: pair (pair on the next change to these files), document (write down what the owner knows), rotate-reviews (have another active developer review each change), or leave (the pattern does not call for action here). Give one or two sentences of why that cite only values shown in this report. Do not name people, do not rank or judge any person, and do not guess who might leave. Do not add numbers the report does not show.",
+      "title": "Judgement: complex code by former contributors",
+      "verdicts": [
+        "pair",
+        "document",
+        "rotate-reviews",
+        "leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "finding",
+        "label": "Single owner",
+        "ref": "single-owner"
+      },
+      "id": "pattern-single-owner",
+      "maxChars": 450,
+      "task": "For files with a single owner that are not hotspots: they change rarely, so the risk is lower than for hotspots. Choose one verdict: pair (pair on the next change to these files), document (write down what the owner knows), rotate-reviews (have another active developer review each change), or leave (the pattern does not call for action here). Give one or two sentences of why that cite only values shown in this report. Do not name people, do not rank or judge any person, and do not guess who might leave. Do not add numbers the report does not show.",
+      "title": "Judgement: single owner",
+      "verdicts": [
+        "pair",
+        "document",
+        "rotate-reviews",
+        "leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "finding",
+        "label": "Inconclusive",
+        "ref": "inconclusive"
+      },
+      "id": "pattern-inconclusive",
+      "maxChars": 450,
+      "task": "For files whose authorship cannot be read: choose map-identities (review the identity mapping, because settled identities would let these files be read) or leave (nothing here is worth settling). Give one or two sentences of why that cite only values shown in this report. Do not name people, do not rank or judge any person, and do not guess who might leave. Do not add numbers the report does not show.",
+      "title": "Judgement: inconclusive",
+      "verdicts": [
+        "map-identities",
+        "leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "report",
+        "label": "the repository",
+        "ref": "knowledge"
+      },
+      "id": "limits",
+      "maxChars": 500,
+      "task": "In at most three sentences, say what limits how far these results can be trusted for this repository, using only the evidence, the exclusions, the notices and the limits shown above.",
+      "title": "Judgement: what limits these results",
+      "verdicts": []
+    }
+  ],
+  "stamp": {
+    "config": "0000000000000000",
+    "head": "8b1b36a2426ea5a91dd5fd359f33f385e37741d6",
+    "inputs": {
+      "abandonmentGuideline": 90,
+      "activityWindowMonths": 6,
+      "complexityReport": null,
+      "copyDetection": true,
+      "guidelines": {
+        "busFactorShare": 80,
+        "complexityPercentile": 50,
+        "formerContributorShare": 50,
+        "inconclusiveShare": 50,
+        "manyActiveAuthors": 5,
+        "meaningfulShare": 5,
+        "singleOwnerShare": 90
+      },
+      "names": false,
+      "overrides": {
+        "active": 0,
+        "hash": null,
+        "inactive": 0
+      },
+      "periodMonths": 3,
+      "subcommand": "report"
+    },
+    "kind": "knowledge",
+    "protocol": 1
+  }
+}

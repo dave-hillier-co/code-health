@@ -32,7 +32,8 @@ All commands run as `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs abandonment <s
 4. **Say it in plain terms.** From `results.loss.files`: "In a typical year, expect to lose authorship of about M more files (`increment.expected`). In a bad year, one in twenty, around N more (`increment.atRisk[0].kar`). N files are already abandoned." Then the tail ratio (`kar` over `expected`): a high one means knowledge sits with few people, so a bad year is much worse than a typical one. Give the lines as well. Explain knowledge at risk (KaR) as the loss that is only exceeded in the worst 5 percent of years, and expected loss as the average year, because people confuse them. State the horizon, the turnover rate and where it came from (`selection.source`).
 5. **Present the top files with their findings.** `results.files` is ranked by abandonment probability weighted by hotspot percentile, so code that keeps changing comes first. `--rank abandonment` gives the raw view, which puts old stable code first. Give each file's `findings` and the cheapest mitigation for it (below).
 6. **Successors.** For files the user wants to act on, run `successors PATH...`. Without `--names` it gives ranks, scores and the coupling evidence. With the user's go-ahead, add `--names` to name the active developers who could review or pair. Propose assignments, never rankings of people.
-7. **Connect to the rest of the suite and report the limits** (below).
+7. **Knowledge-risk patterns.** `abandonment patterns` labels every file with a pattern (`single-owner-hotspot`, `former-contributors-complex`, `single-owner`, `many-active-developers`, `inconclusive`), each judged against a guideline that `summary` and `inputs.guidelines` state. A file can match several, `pattern` is the first, and a file with none is listed with `pattern: null`. Report the counts, then the single-owner hotspots and the complex code by former contributors, with their `busFactor`. Pair and rotate reviewers for the first, document the second, settle identities before reading an inconclusive file, and leave a single-owner file that rarely changes. These label files, never people.
+8. **Connect to the rest of the suite and report the limits** (below).
 
 ## Findings and mitigations
 
@@ -68,5 +69,7 @@ Three commands give the instruments, all counts and no names:
 - Turnover is assumed random. Occasional contributors leave at a higher rate than established ones, so one pooled rate can overstate the loss of core authors.
 - Agent-authored lines have no knowledge to lose. How to attribute them is an open policy question, not something to decide silently.
 - The ranking is a prompt to look. It is not a forecast of which files will be lost.
+
+`cochange report knowledge` writes all of this as a page (patterns, bus factor of the hotspots, knowledge lost so far and the simulation). It needs the opt-in, and `--names` adds the names, without addresses, of the active developers who hold each listed file's lines: use it only when the user wants to assign people.
 
 To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).

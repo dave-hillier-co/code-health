@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "abandonment.schema.json",
-  "title": "cochange abandonment <current|turnover|simulate|backtest|redundancy|trend|adoption> --json",
+  "title": "cochange abandonment <current|patterns|turnover|simulate|backtest|redundancy|trend|adoption> --json",
   "description": "Knowledge lost when people leave. Developers appear only as counts. The output is never stored as a report. `inputs.subcommand` says which shape `results` takes.",
   "$defs": {
     "inputs": {
       "type": "object",
       "properties": {
-        "subcommand": { "enum": ["current", "turnover", "simulate", "backtest", "redundancy", "trend", "adoption"] },
+        "subcommand": { "enum": ["current", "patterns", "turnover", "simulate", "backtest", "redundancy", "trend", "adoption"] },
         "points": { "type": "integer", "minimum": 2, "description": "Trend: how many dates, one period apart, are measured." },
         "successors": { "type": "integer", "minimum": 1, "description": "Adoption: how many of the ranked successors count as recommended." },
         "minAuthors": { "type": "integer", "minimum": 1, "description": "Redundancy: active authors a file needs." },
@@ -27,6 +27,37 @@
         "periodMonths": { "type": "integer", "minimum": 1 },
         "abandonmentGuideline": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Percentage of a file's lines held by people who have left at which it is abandoned." },
         "copyDetection": { "type": "boolean" },
+        "guidelines": {
+          "type": "object",
+          "description": "Patterns: the guidelines the knowledge-risk patterns are judged against, from cochange.knowledge. Percentages run from 1 to 100, except the complexity percentile (0 to 100) and the count of active developers.",
+          "properties": {
+            "singleOwnerShare": { "type": "integer", "minimum": 1, "maximum": 100, "description": "One active developer holds at least this percentage of the lines held by people." },
+            "formerContributorShare": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Developers who have left hold at least this percentage of the lines held by people." },
+            "complexityPercentile": { "type": "integer", "minimum": 0, "maximum": 100, "description": "A file is complex at or above this percentile of complexity." },
+            "manyActiveAuthors": { "type": "integer", "minimum": 1, "description": "Active developers holding a meaningful share that make a file shared by many." },
+            "meaningfulShare": { "type": "integer", "minimum": 1, "maximum": 100, "description": "A meaningful share, as a percentage of the lines held by people." },
+            "inconclusiveShare": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Lines of bots, agents, unknown commits and unmapped identities, as a percentage of a file's lines, at which its authorship is inconclusive." },
+            "busFactorShare": { "type": "integer", "minimum": 1, "maximum": 100, "description": "The bus factor is the fewest active developers who together hold this percentage of the lines held by people." }
+          },
+          "required": ["singleOwnerShare", "formerContributorShare", "complexityPercentile", "manyActiveAuthors", "meaningfulShare", "inconclusiveShare", "busFactorShare"],
+          "additionalProperties": false
+        },
+        "complexityReport": {
+          "description": "Patterns: the complexity plugin's report that supplied the complexity, or null when the indentation proxy was used.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "report": { "type": "string" },
+                "head": { "$ref": "common.schema.json#/$defs/sha" },
+                "config": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+              },
+              "required": ["report", "head", "config"],
+              "additionalProperties": false
+            }
+          ]
+        },
         "overrides": {
           "type": "object",
           "description": "Counts of the local activity overrides in effect, and a hash of the file. Never identities.",
@@ -257,6 +288,57 @@
       "required": ["at", "outcomeAt", "commits", "model", "candidates", "predicted", "actual", "truePositives", "precision", "recall", "expectedAbandoned", "files"],
       "additionalProperties": false
     },
+    "pattern": { "enum": ["single-owner-hotspot", "former-contributors-complex", "single-owner", "many-active-developers", "inconclusive"] },
+    "patternFile": {
+      "description": "A file with a blame, its knowledge-risk patterns and the numbers behind them. Developers appear only as counts and shares.",
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "kind": { "enum": ["code", "test", "other"], "description": "Production code, a test file, or anything else. Only production code has a complexity." },
+        "pattern": { "oneOf": [{ "$ref": "#/$defs/pattern" }, { "type": "null" }], "description": "The first of `patterns`, or null when none applies." },
+        "patterns": { "type": "array", "items": { "$ref": "#/$defs/pattern" }, "description": "Every pattern that applies, in the order single-owner-hotspot, former-contributors-complex, single-owner, many-active-developers, inconclusive. An inconclusive file has no other." },
+        "hotspot": { "type": "boolean" },
+        "hotspotPercentile": { "$ref": "#/$defs/share" },
+        "complexity": { "type": ["number", "null"], "minimum": 0 },
+        "complexityPercentile": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Rank percentile of the complexity among production code files with a blame. Null when the complexity is unknown." },
+        "peopleLines": { "$ref": "common.schema.json#/$defs/count" },
+        "activeAuthors": { "$ref": "common.schema.json#/$defs/count" },
+        "formerAuthors": { "$ref": "common.schema.json#/$defs/count" },
+        "topActiveShare": { "type": "number", "minimum": 0, "maximum": 1, "description": "The share of the lines held by people that the largest active holder has." },
+        "formerShare": { "type": "number", "minimum": 0, "maximum": 1, "description": "The share of the lines held by people that developers who have left hold." },
+        "unreliableShare": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "The share of the file's lines that bots, agents, unknown commits or unmapped identities hold. Null when the blame is unknown." },
+        "meaningfulAuthors": { "$ref": "common.schema.json#/$defs/count", "description": "Active developers holding at least the meaningful share." },
+        "busFactor": { "type": ["integer", "null"], "minimum": 1, "description": "The fewest active developers who together hold the bus factor share of the lines held by people. Null when active developers hold less than that." },
+        "basis": { "enum": ["blame", "bots-only", "blame-unknown"], "description": "A file only bots wrote, or whose blame is not cached, has no author to reason about and is inconclusive." }
+      },
+      "required": ["path", "kind", "pattern", "patterns", "hotspot", "hotspotPercentile", "complexity", "complexityPercentile", "peopleLines", "activeAuthors", "formerAuthors", "topActiveShare", "formerShare", "unreliableShare", "meaningfulAuthors", "busFactor", "basis"],
+      "additionalProperties": false
+    },
+    "patternSummary": {
+      "type": "object",
+      "description": "With `patterns`: the files by pattern.",
+      "properties": {
+        "files": { "$ref": "common.schema.json#/$defs/count" },
+        "none": { "$ref": "common.schema.json#/$defs/count", "description": "Files no pattern applies to." },
+        "counts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pattern": { "$ref": "#/$defs/pattern" },
+              "primary": { "$ref": "common.schema.json#/$defs/count", "description": "Files whose first pattern it is." },
+              "matching": { "$ref": "common.schema.json#/$defs/count", "description": "Files it applies to, including those where another pattern comes first." }
+            },
+            "required": ["pattern", "primary", "matching"],
+            "additionalProperties": false
+          }
+        },
+        "complexityUnknown": { "$ref": "common.schema.json#/$defs/count", "description": "Files with a blame and no complexity, which the complex-code pattern cannot judge." },
+        "hotspotFiles": { "$ref": "common.schema.json#/$defs/count" }
+      },
+      "required": ["files", "none", "counts", "complexityUnknown", "hotspotFiles"],
+      "additionalProperties": false
+    },
     "redundancyFile": {
       "description": "A hotspot file and whether enough active developers each hold enough of its lines.",
       "type": "object",
@@ -432,7 +514,8 @@
       "required": ["unknownFiles", "unattributedLines"],
       "additionalProperties": false
     },
-    "summary": { "oneOf": [{ "$ref": "#/$defs/currentSummary" }, { "$ref": "#/$defs/redundancySummary" }] },
+    "summary": { "oneOf": [{ "$ref": "#/$defs/currentSummary" }, { "$ref": "#/$defs/redundancySummary" }, { "$ref": "#/$defs/patternSummary" }] },
+    "complexitySource": { "enum": ["complexity-report", "indentation"], "description": "Patterns: where the complexity came from." },
     "turnover": { "$ref": "#/$defs/turnoverSummary" },
     "notices": {
       "type": "array",
@@ -456,6 +539,21 @@
         "blame": true
       },
       "required": ["inputs", "summary", "developers", "blame"]
+    },
+    {
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "properties": { "subcommand": { "const": "patterns" }, "guidelines": true, "complexityReport": true, "overrides": true },
+          "required": ["subcommand", "guidelines", "complexityReport", "overrides"]
+        },
+        "results": { "type": "array", "items": { "$ref": "#/$defs/patternFile" } },
+        "summary": { "$ref": "#/$defs/patternSummary" },
+        "complexitySource": true,
+        "developers": true,
+        "blame": true
+      },
+      "required": ["inputs", "summary", "complexitySource", "developers", "blame"]
     },
     {
       "properties": {

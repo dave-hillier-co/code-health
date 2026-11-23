@@ -42,6 +42,21 @@ export const KNOWLEDGE_DEFAULTS = {
   atRiskProbability: 10,
   /** A component whose tail ratio reaches this is concentrated. The paper found losses more than three times the expected loss in the tail. */
   concentratedTailRatio: 3,
+  // Knowledge-risk patterns (`abandonment patterns`). Every value below is a guideline: it labels and orders files and hides none.
+  /** A file has a single owner when one active developer holds at least this percentage of the lines held by people. A judgement call. */
+  singleOwnerShare: 90,
+  /** Complex code by former contributors: developers who have left hold at least this percentage of the lines held by people. A judgement call. */
+  formerContributorShare: 50,
+  /** A file is complex for the patterns when its complexity is at or above this percentile of the scored files. A judgement call. */
+  complexityPercentile: 75,
+  /** Many active developers: at least this many active developers each hold a meaningful share. A judgement call. */
+  manyActiveAuthors: 5,
+  /** A meaningful share, as a percentage of the lines held by people. A judgement call. */
+  meaningfulShare: 5,
+  /** A file is inconclusive when lines of bots, services, agents, unknown commits and unmapped identities are at least this percentage of its lines. A judgement call. */
+  inconclusiveShare: 50,
+  /** The bus factor of a file is the fewest active developers who together hold this percentage of the lines held by people. A judgement call. */
+  busFactorShare: 80,
 };
 
 export interface KnowledgeSettings {
@@ -66,6 +81,14 @@ export interface KnowledgeSettings {
   /** Percentage, 0 to 100. */
   atRiskProbability: number;
   concentratedTailRatio: number;
+  /** Percentages, 1 to 100, except `complexityPercentile` (0 to 100) and `manyActiveAuthors` (a count). */
+  singleOwnerShare: number;
+  formerContributorShare: number;
+  complexityPercentile: number;
+  manyActiveAuthors: number;
+  meaningfulShare: number;
+  inconclusiveShare: number;
+  busFactorShare: number;
 }
 
 /** Validates the effective `cochange.knowledge` section. Throws a config error (exit 2). */
@@ -108,6 +131,13 @@ export function readKnowledgeSettings(effective: Record<string, unknown>): Knowl
     copyDetection: section.copyDetection === true,
     atRiskProbability: whole("atRiskProbability", 0, 100),
     concentratedTailRatio: ratio,
+    singleOwnerShare: whole("singleOwnerShare", 1, 100),
+    formerContributorShare: whole("formerContributorShare", 1, 100),
+    complexityPercentile: whole("complexityPercentile", 0, 100),
+    manyActiveAuthors: whole("manyActiveAuthors", 1),
+    meaningfulShare: whole("meaningfulShare", 1, 100),
+    inconclusiveShare: whole("inconclusiveShare", 1, 100),
+    busFactorShare: whole("busFactorShare", 1, 100),
   };
 }
 

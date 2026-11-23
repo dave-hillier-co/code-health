@@ -99,6 +99,22 @@ Findings:
 | `concentrated-component` | Component with a high tail ratio | Rotate reviewers within the component |
 | `no-successor` | At-risk file with no active developer touching coupled files | Escalate. Nobody is near this code. |
 
+## Knowledge-risk patterns
+
+`cochange abandonment patterns` labels every file that has a blame with the named shapes of who holds its lines, in the style of CodeScene's knowledge risks. A pattern is a label for investigation. Each has a stated guideline that is configurable and reported beside the numbers, and no file is left out of the listing for lacking a pattern: a file with none has `pattern: null`.
+
+| Pattern | Applies when | Suggested mitigation |
+|---|---|---|
+| `single-owner-hotspot` | One active developer holds at least `singleOwnerShare` of the lines held by people, and the file is a hotspot (as `cochange hotspots` defines it) | Pair on the next change, and have another active developer review each change |
+| `former-contributors-complex` | Developers who have left hold at least `formerContributorShare` of the lines held by people, and the file's complexity is at or above the `complexityPercentile` of production code files | Pair on the next change, and write down what the file does |
+| `single-owner` | One active developer holds at least `singleOwnerShare` of the lines held by people | Documentation and review rotation. Leave it when the file rarely changes |
+| `many-active-developers` | At least `manyActiveAuthors` active developers each hold at least `meaningfulShare` of the lines held by people | Knowledge is spread, so the risk is coordination: look at ownership of changes, not at transfer |
+| `inconclusive` | Lines of bots, services and agents, lines with an unknown commit and lines held by identities the mapping has not settled are at least `inconclusiveShare` of the file's lines, or the file's blame is unknown or only bots wrote it | Settle the identities ([identities](identities.md)) before reading the file's ownership |
+
+A file can match several patterns (a single-owner hotspot is also a single owner). `patterns` lists all of them in the order above and `pattern` is the first, so counts are given both ways (`primary` and `matching`). A file that is inconclusive has no other pattern, because its ownership cannot be read. Percentages are shares of the lines held by people, in exact integer arithmetic, and the complexity percentile is the mid-rank percentile among production code files with a blame, taken at the analysed commit and not over the analysis window, so code nobody has changed lately has a complexity. Test files and files that are not code have none, so the complex-code pattern never applies to them, and the summary counts how many files that leaves out (`complexityUnknown`).
+
+Every row also carries the numbers behind the label: `hotspot`, `hotspotPercentile`, `complexity`, `peopleLines`, `activeAuthors`, `formerAuthors`, `topActiveShare`, `formerShare`, `unreliableShare`, `meaningfulAuthors` and `busFactor`. The **bus factor** of a file is the fewest active developers who together hold `busFactorShare` of the lines held by people; it is null when active developers together hold less than that. Developers appear only as counts and shares. The command shows no names, and the report shows names only with `--names` (see [Privacy](#privacy)).
+
 ## CLI
 
 Subcommands of the cochange CLI. Every one supports `--json` with a versioned schema.
@@ -110,6 +126,7 @@ Subcommands of the cochange CLI. Every one supports `--json` with a versioned sc
 | `cochange abandonment simulate [--mode rate\|historical\|k-leavers] [--k N] [--trials N] [--horizon P] [--seed S]` | Loss distribution summary, plus top at-risk files and components |
 | `cochange abandonment turnover` | Estimated turnover rate per period, with the developer counts behind it (no names) |
 | `cochange successors PATH... [--names]` | Ranked successors per file, with the coupling evidence |
+| `cochange abandonment patterns` | Every file with a blame, with its knowledge-risk patterns, hotspot and complexity standing, shares held by active and former developers and bus factor, and a summary of the files per pattern (see [Knowledge-risk patterns](#knowledge-risk-patterns)) |
 | `cochange abandonment redundancy [--min-authors N] [--min-share PERCENT]` | Share of hotspot files with at least N active authors (default 2) each holding at least the share of lines (default 10 %), with the counts behind it |
 | `cochange abandonment trend [--points N]` | Expected loss and KaR at dates one period apart, each from the history and blame then, with one turnover rate and the same settings at every point |
 | `cochange abandonment adoption [--at DATE] [--successors N]` | Of the files abandoned at a past date, how many an active developer picked up within the horizon, and how many by one of the top recommended successors using only the history before the date |
@@ -129,9 +146,10 @@ These are calibration tools, run by the suite's maintainers on a corpus of repos
 This is the most sensitive analysis in the suite, so it is the most constrained.
 
 - **Off by default.** It needs `cochange.knowledge.enabled: true` in the repo config.
-- **No names by default.** Outputs are per file and per component, with developers as counts. `successors --names` is the only command that shows identities, and it shows only *active* developers as recommended reviewers and pair partners. It never lists leavers, or the people whose departure would cause the most loss.
+- **No names by default.** Outputs are per file and per component, with developers as counts. `successors --names` is the only command that shows identities, and it shows only *active* developers as recommended reviewers and pair partners. The knowledge report's `--names` is the one other place, and follows the same rule. It never lists leavers, or the people whose departure would cause the most loss.
 - **No individual departure ranking.** The CLI does not output "impact if person X leaves". The `k-leavers` mode samples uniformly and reports distributions only. Named scenarios (a specific person or team leaving) are deliberately unsupported. Their output reads as an evaluation of people.
 - **Overrides stay local.** Corrections to the activity window (someone on leave, someone gone) go in `.code-health/local/knowledge-overrides.json`, which that folder's own `.gitignore` excludes from git ([suite.md](suite.md#local-state)). It is not part of the cache, so clearing the cache keeps them. Identities never go in the committed config. Every abandonment subcommand and `successors` prints a warning on stderr when that file exists and git tracks it or does not ignore it. The warning creates and changes no file.
+- **The knowledge report follows the same rule.** `cochange report knowledge` shows files, components and counts, and names nobody. With `--names` it adds the names (without addresses) of the active developers who hold the lines of the files it lists, in the bus factor table and the pattern tables, as `successors --names` does. It never lists a developer who has left, a bot, or the people whose departure would lose the most, and a notes file written without `--names` does not match one rendered with it.
 - **One report, of files.** A configured `simulate` run (no `--mode`, `--k`, `--trials`, `--horizon` or `--seed`) on a clean tree stores `reports/cochange.abandonment.simulate.json` for change-risk to read. It holds files, components and probabilities, and no identities. Nothing else here is stored.
 - **Local only.** As for the rest of the suite.
 
@@ -180,6 +198,7 @@ In `cochange.knowledge`:
 - Turnover rate override.
 - Trials, α values, seed.
 - Ranking mode.
+- The knowledge-risk pattern guidelines: `singleOwnerShare`, `formerContributorShare`, `complexityPercentile`, `manyActiveAuthors`, `meaningfulShare`, `inconclusiveShare`, `busFactorShare`.
 
 Local, never committed: `.code-health/local/knowledge-overrides.json`, holding activity overrides by identity.
 
@@ -204,6 +223,12 @@ Where the sections above leave a definition open, these apply. Constants marked 
 | `minTurnoverPeriods` | 4 | *Guideline.* Judgement call. A rate estimated from fewer observed periods is labelled a weak estimate |
 | `mappedShareGuideline` | 80 (percent of lines held by people) | *Guideline.* Judgement call. Results are labelled as depending on unmapped identities below it |
 | `trials`, `alphas`, `seed` | 10000, [95, 99], 1 | Rigby et al. for the alphas; the rest are judgement calls |
+| `singleOwnerShare` | 90 (percent of lines held by people) | *Guideline.* Judgement call, chosen to match `abandonmentGuideline` |
+| `formerContributorShare` | 50 (percent of lines held by people) | *Guideline.* Judgement call. Former contributors hold most of the file |
+| `complexityPercentile` | 75 | *Guideline.* Judgement call. Complex means in the top quarter of production code files |
+| `manyActiveAuthors`, `meaningfulShare` | 5 developers, 5 (percent of lines held by people) | *Guideline.* Judgement call |
+| `inconclusiveShare` | 50 (percent of a file's lines) | *Guideline.* Judgement call. Most of the file's authorship cannot be read |
+| `busFactorShare` | 80 (percent of lines held by people) | *Guideline.* Judgement call. The fewest active developers holding this share of a file |
 
 **Active developer.** Active means a committer date within the activity window before the analysed commit, with a month of 30.4375 days. Committer date is used because it is when the work reached the history, and it is the date the suite anchors every window to. Identities go through the mailmap (working tree and local), and bots, services and agents are excluded. It does not depend on the opt-in, and the history `windowMonths` does not govern it.
 

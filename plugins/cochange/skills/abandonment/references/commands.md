@@ -14,6 +14,12 @@ Brings the blame cache up to date: `git blame -w -M -C` of every authored file w
 
 Files with any lines held by people who have left. Rows: `path`, `abandoned` (the share is at or above `abandonmentGuideline`), `score`, `hotspot`, `hotspotPercentile`, `findings`, `abandonedShare`, `abandonedLines`, `peopleLines`, `activeAuthors`, `formerAuthors` (counts of people holding lines), `nonPersonLines`. `score` is the abandoned share times the hotspot percentile, or with `--rank abandonment` the abandoned lines. With `--by component`: `path`, `score`, `files`, `abandonedFiles`, `abandonedShare`, `abandonedLines`, `peopleLines`. The `summary` section gives the files and lines of the whole repository.
 
+## abandonment patterns
+
+Every file that has a blame, labelled with its knowledge-risk pattern. Rows: `path`, `kind` (`code`, `test` or `other`), `pattern` (the first of `patterns`, or null), `patterns` (every pattern that applies, in the order `single-owner-hotspot`, `former-contributors-complex`, `single-owner`, `many-active-developers`, `inconclusive`), `hotspot`, `hotspotPercentile`, `complexity`, `complexityPercentile` (null for tests, non-code and files with no measure), `peopleLines`, `activeAuthors`, `formerAuthors`, `topActiveShare` (the largest active holder's share of the lines held by people), `formerShare`, `unreliableShare` (the share of the file's lines held by bots, agents, unknown commits and unmapped identities), `meaningfulAuthors`, `busFactor` (the fewest active developers holding `busFactorShare` of the lines held by people, null when active developers hold less) and `basis` (`blame`, `bots-only` or `blame-unknown`). Rows are sorted by first pattern, then hotspot percentile; files with no pattern come last. `summary` gives `files`, `none`, `counts` (per pattern: `primary`, the files where it comes first, and `matching`), `complexityUnknown` and `hotspotFiles`. `inputs.guidelines` holds the guidelines the patterns were judged against, and `complexitySource` says where the complexity came from. No names.
+
+A pattern is a label for investigation. The guidelines are configurable and each is a judgement call: a file below one is still listed.
+
 ## abandonment turnover
 
 One row per usable period: `start`, `end`, `developers` (on the team at its start), `departed`, `rate`. The `turnover` section pools them: `rate`, `atRisk`, `departed`, `periods`, and `configuredRatePercent` (as written in the config, a percentage) when the config states one. Counts only.
@@ -36,6 +42,6 @@ One row per path: `abandoned`, `coupledFiles` (`path`, `degree`, `support`), `ca
 
 ## Configuration (`cochange.knowledge`)
 
-`enabled` (false), `activityWindowMonths` (6), `periodMonths` (3), `horizonPeriods` (4), `abandonmentGuideline` (90), `turnoverRate` (null, a percentage per period from 0 to 100: 15 is 15 percent), `minTurnoverPeriods` (4), `mappedShareGuideline` (80), `trials` (10000), `alphas` ([95, 99]), `seed` (1), `rank` (`hotspot`), `copyDetection` (true), `atRiskProbability` (10), `concentratedTailRatio` (3).
+`enabled` (false), `activityWindowMonths` (6), `periodMonths` (3), `horizonPeriods` (4), `abandonmentGuideline` (90), `turnoverRate` (null, a percentage per period from 0 to 100: 15 is 15 percent), `minTurnoverPeriods` (4), `mappedShareGuideline` (80), `trials` (10000), `alphas` ([95, 99]), `seed` (1), `rank` (`hotspot`), `copyDetection` (true), `atRiskProbability` (10), `concentratedTailRatio` (3), and the pattern guidelines `singleOwnerShare` (90), `formerContributorShare` (50), `complexityPercentile` (75), `manyActiveAuthors` (5), `meaningfulShare` (5), `inconclusiveShare` (50), `busFactorShare` (80).
 
 Local, never committed: `.code-health/local/knowledge-overrides.json`, `{ "schemaVersion": 1, "active": ["Name <email>"], "inactive": ["Name <email>"] }`.
