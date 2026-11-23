@@ -101,7 +101,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <h1>Structure report</h1>
 <dl class="header">
 <dt>Repository</dt><dd>repo</dd>
-<dt>Analysed commit</dt><dd><code>5c72cdf8d3f476ab7dde9b33dad8138317cc81a8</code></dd>
+<dt>Analysed commit</dt><dd><code>15d0025597eb9e7c8a2acaf7fcdbbce7858dc064</code></dd>
 <dt>Date</dt><dd>2024-05-25</dd>
 <dt>Config hash</dt><dd><code>0000000000000000</code></dd>
 <dt>Evidence grade</dt><dd>weak</dd>
@@ -129,9 +129,9 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tbody>
 <tr><th scope="row">Import cycles at the default level</th><td>2</td></tr>
 <tr><th scope="row">Layer violations</th><td>1</td></tr>
-<tr><th scope="row">Dependencies pointing towards less stable folders</th><td>1, of which 0 reach a guideline</td></tr>
+<tr><th scope="row">Dependencies pointing towards less stable folders</th><td>1, of which 1 reach a guideline</td></tr>
 <tr><th scope="row">Registration hubs</th><td>0</td></tr>
-<tr><th scope="row">Packages</th><td>4</td></tr>
+<tr><th scope="row">Packages</th><td>5</td></tr>
 </tbody>
 </table>
 <section class="judgement">
@@ -143,7 +143,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </section>
 <section id="cycles" aria-labelledby="cycles-heading">
 <h2 id="cycles-heading">Import cycles</h2>
-<p>Cycles are found at the default level: a Go package for Go, a folder for C# and a file for every other language. The breaking set is the smallest set of edges whose removal makes the cycle acyclic, and between equally small sets the one whose sides co-change least. Nested folder cycles, a folder and its own sub-folder, sort last.</p>
+<p>Cycles are found at the default level: a Go package for Go, a project for C# and a file for every other language. The breaking set is the smallest set of edges whose removal makes the cycle acyclic, and between equally small sets the one whose sides co-change least. Nested folder cycles, a folder and its own sub-folder, sort last.</p>
 <table class="ranked">
 <caption>Import cycles, largest first</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Modules in the cycle</th><th scope="col" class="number">Size</th><th scope="col">Breaking set found by</th><th scope="col" class="number">Edges to break</th><th scope="col" class="number">Changes touching two members</th><th scope="col">Nested folders</th></tr></thead>
@@ -194,9 +194,9 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <h2 id="stability-heading">Stability</h2>
 <figure class="chart stability-chart">
 <figcaption>Packages by instability and abstractness</figcaption>
-<svg role="img" aria-labelledby="packages-by-instability-and-abstractness-a170ba-title packages-by-instability-and-abstractness-a170ba-desc" viewBox="0 0 440 424" preserveAspectRatio="xMinYMin meet">
-<title id="packages-by-instability-and-abstractness-a170ba-title">Packages by instability and abstractness</title>
-<desc id="packages-by-instability-and-abstractness-a170ba-desc">A scatter of 4 packages by instability (horizontal) and abstractness (vertical), with the main sequence and the zone of pain and the zone of uselessness marked. The 4 furthest from the main sequence have a number that the table below gives with their figures and their position in words; the legend counts all of them by position.</desc>
+<svg role="img" aria-labelledby="packages-by-instability-and-abstractness-83add2-title packages-by-instability-and-abstractness-83add2-desc" viewBox="0 0 440 424" preserveAspectRatio="xMinYMin meet">
+<title id="packages-by-instability-and-abstractness-83add2-title">Packages by instability and abstractness</title>
+<desc id="packages-by-instability-and-abstractness-83add2-desc">A scatter of 3 packages by instability (horizontal) and abstractness (vertical), with the main sequence and the zone of pain and the zone of uselessness marked. The 3 furthest from the main sequence have a number that the table below gives with their figures and their position in words; the legend counts all of them by position.</desc>
 <polygon points="56.0,376.0 236.0,376.0 56.0,196.0" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="3 3"/>
 <polygon points="416.0,16.0 236.0,16.0 416.0,196.0" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="3 3"/>
 <rect x="56" y="16" width="360" height="360" fill="none" stroke="currentColor" stroke-opacity="0.5"/>
@@ -213,30 +213,29 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <text x="236.0" y="412" text-anchor="middle">Instability I (outgoing over all dependencies)</text>
 <text transform="rotate(-90 14 196.0)" x="14" y="196.0" text-anchor="middle">Abstractness A</text>
 <g class="point"><rect x="412.0" y="12.0" width="8" height="8" fill="currentColor"/><text x="423.0" y="11.0">1</text></g>
-<g class="point"><rect x="232.0" y="372.0" width="8" height="8" fill="currentColor"/><text x="243.0" y="371.0">2</text></g>
-<g class="point"><circle cx="296.1" cy="376.0" r="4"/><text x="303.1" y="371.0">3</text></g>
-<g class="point"><circle cx="56.0" cy="135.9" r="4"/><text x="63.0" y="130.9">4</text></g>
+<g class="point"><rect x="52.0" y="372.0" width="8" height="8" fill="currentColor"/><text x="63.0" y="371.0">2</text></g>
+<g class="point"><circle cx="56.0" cy="135.9" r="4"/><text x="63.0" y="130.9">3</text></g>
 </svg>
 <table>
 <caption>Packages by instability and abstractness: the same points with their figures</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Package</th><th scope="col" class="number">Instability I</th><th scope="col" class="number">Abstractness A</th><th scope="col" class="number">Distance</th><th scope="col" class="number">Ca</th><th scope="col" class="number">Ce</th><th scope="col" class="number">Exported types</th><th scope="col">Position</th></tr></thead>
 <tbody>
 <tr><td class="number">1</td><td>packages/p4</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">0</td><td class="number">1</td><td class="number">3</td><td>zone of uselessness</td></tr>
-<tr><td class="number">2</td><td>packages/p2</td><td class="number">0.5</td><td class="number">0</td><td class="number">0.5</td><td class="number">1</td><td class="number">1</td><td class="number">0 (A weak)</td><td>zone of pain</td></tr>
-<tr><td class="number">3</td><td>packages/p1</td><td class="number">0.67</td><td class="number">0</td><td class="number">0.33</td><td class="number">1</td><td class="number">2</td><td class="number">0 (A weak)</td><td>outside the zones</td></tr>
-<tr><td class="number">4</td><td>packages/p3</td><td class="number">0</td><td class="number">0.67</td><td class="number">0.33</td><td class="number">2</td><td class="number">0</td><td class="number">3</td><td>outside the zones</td></tr>
+<tr><td class="number">2</td><td>packages/p5</td><td class="number">0</td><td class="number">0</td><td class="number">1</td><td class="number">1</td><td class="number">0</td><td class="number">3</td><td>zone of pain</td></tr>
+<tr><td class="number">3</td><td>packages/p3</td><td class="number">0</td><td class="number">0.67</td><td class="number">0.33</td><td class="number">2</td><td class="number">0</td><td class="number">3</td><td>outside the zones</td></tr>
 </tbody>
 </table>
 <p class="legend">The dashed diagonal is the main sequence, where A + I = 1. A zone starts 0.5 from it (structure.packages.zoneDistance, a judgement call): the zone of pain is concrete and stable (A + I at most 0.5) and the zone of uselessness is abstract and unstable (A + I at least 1.5). Square points are inside a zone, round points are not, and the table gives each position in words. A guideline orders and labels results; it decides nothing.</p>
-<p class="legend">Of the 4 measured packages, 1 are in the zone of pain, 1 in the zone of uselessness and 2 outside the zones.</p>
-<p class="legend">The table lists 4 of 4 packages, furthest from the main sequence first; 0 not listed.</p>
+<p class="legend">Of the 3 measured packages, 1 are in the zone of pain, 1 in the zone of uselessness and 1 outside the zones.</p>
+<p class="legend">The table lists 3 of 3 packages, furthest from the main sequence first; 0 not listed.</p>
 </figure>
+<aside class="notice notice" role="note"><strong>Notice:</strong> 2 packages export no types, so abstractness is not measured for them. They are left out of the chart and its table and are not placed in a zone.</aside>
 <p>A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one.</p>
 <table class="ranked">
 <caption>Dependencies pointing towards less stable folders</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">From (depends)</th><th scope="col">To (depended on)</th><th scope="col">Decided by</th><th scope="col" class="number">Revisions per file, to over from</th><th scope="col" class="number">Instability gap in points</th><th scope="col" class="number">File imports</th><th scope="col">Measures disagree</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>packages/p2/src</td><td>packages/p1/src</td><td>structure</td><td class="number">–</td><td class="number">16.7</td><td class="number">1</td><td>no</td></tr>
+<tr><td class="number">1</td><td>packages/p2/src</td><td>packages/p1/src</td><td>structure</td><td class="number">–</td><td class="number">25 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1</td><td>no</td></tr>
 </tbody>
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Revisions per file, to over from 2 (structure.minVolatilityRatio), ▲ marks a value above it; Instability gap in points 20 (structure.minInstabilityGap), ▲ marks a value above it.</p>
@@ -265,15 +264,15 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <aside class="notice notice" role="note"><strong>Notice:</strong> The census describes and does not judge. A count of zero is a finding: callbacks, interfaces, dependency-injection, events, handlers, registries, ports-and-adapters are not in use here, so choosing one would introduce something new.</aside>
 </section>
 <section id="hubs" aria-labelledby="hubs-heading">
-<p class="empty"><strong id="hubs-heading">Hubs:</strong> Registration hubs: files every feature edits: no rows. Omitted 2 of 2 files with at least 3 changes: each reached fewer than 2 of the 4 signals (2 of them without reading their diffs, because the other three signals left them unable to reach 2). 7 more files have fewer than 3 changes</p>
+<p class="empty"><strong id="hubs-heading">Hubs:</strong> Registration hubs: files every feature edits: no rows. Omitted 2 of 2 files with at least 3 changes: each reached fewer than 2 of the 4 signals (2 of them without reading their diffs, because the other three signals left them unable to reach 2). 8 more files have fewer than 3 changes</p>
 </section>
 <section id="limits" aria-labelledby="limits-heading">
 <h2 id="limits-heading">Limits</h2>
 <ul>
 <li>Guidelines order and label results. They are heuristics for investigation and decide nothing.</li>
-<li>Each list shows its top rows and says how many it leaves out: 5 cycles, 8 dependencies against stability, 15 layer violations, 10 hubs and 40 packages in the stability table (the chart draws every measured package). The commands print the rest.</li>
+<li>Each list shows its top rows and says how many it leaves out: 5 cycles, 8 dependencies against stability, 15 layer violations, 10 hubs and 15 packages in the stability table (the chart draws every package that exports types). The commands print the rest.</li>
 <li>Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. <code>structure cycles --level</code> shows the other levels.</li>
-<li>Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, and a package that exports fewer than 3 types is marked weak. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.</li>
+<li>Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, a package that exports fewer than 3 types is marked weak, and a package that exports none is not measured and is left out of the chart. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.</li>
 <li>The zones of the chart are geometric. <code>structure packages coupling</code> raises a finding only when a package in a zone also has dependents and changes often.</li>
 <li>The census finds mechanisms by name and shape, so a look-alike can be counted and a custom convention missed.</li>
 <li>The evidence grade is weak, so change stability and the co-change counts are tentative and the static structure should lead.</li>
@@ -287,7 +286,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </section>
 </main>
 <footer>
-<p>Report <code>structure</code> for commit <code>5c72cdf8d3f4</code>. Every number comes from the command's data. The judgements were written by an agent from that data and checked against the report's slots.</p>
+<p>Report <code>structure</code> for commit <code>15d0025597eb</code>. Every number comes from the command's data. The judgements were written by an agent from that data and checked against the report's slots.</p>
 </footer>
 </body>
 </html>

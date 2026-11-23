@@ -33,7 +33,9 @@ export function structureReportRepository(): GitFixture {
           "packages/p4/src/ports.ts",
           'import { make } from "../../p3/src/types.ts";\nexport interface Port { go(): number }\nexport interface Gate { open(): number }\nexport interface Door { shut(): number }\nexport const made = make;\n',
         ),
-        add("packages/p1/src/use.ts", 'import { make } from "../../p3/src/types.ts";\nexport function use() {\n  return make();\n}\n'),
+        add("packages/p5/package.json", '{ "name": "p5", "main": "src/model.ts" }\n'),
+        add("packages/p5/src/model.ts", "export class Order {}\nexport class Line {}\nexport class Invoice {}\n"),
+        add("packages/p1/src/use.ts", 'import { make } from "../../p3/src/types.ts";\nimport { Order } from "../../p5/src/model.ts";\nexport function use() {\n  return [make(), new Order()];\n}\n'),
       ],
     },
   ]);

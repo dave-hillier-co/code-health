@@ -2,10 +2,11 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import Ajv2020Module from "ajv/dist/2020.js";
-import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import { GOLDEN_CONFIG_HASH } from "@code-health/fixtures/cli-testing";
-import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import { GitFixture } from "@code-health/fixtures/git-fixture";
+import { withEvidenceFloor } from "../src/reports/structure.ts";
 import { GOLDEN_DIR } from "./support/golden.ts";
 import { structureReportRepository, unresolvedIncludesRepository } from "./support/report-scenarios.ts";
 import { runStructure } from "./support/run.ts";
@@ -230,4 +231,96 @@ test("the report command is described by --help with its report and the protocol
   const help = (await runStructure(repo.path, ["report", "--help"])).stdout;
   expect(help).toMatch(/structure\s+Import cycles/);
   expect(help).toContain("--slots");
+});
+
+test("packages that export no types are left out of the chart and counted, and are not placed in a zone", async () => {
+  const document = await slots();
+  const stability = document.data.sections.find((s: { id: string }) => s.id === "stability");
+  const chart = stability.blocks.find((b: { type: string }) => b.type === "stability-chart");
+  expect(chart.points.map((p: { name: string }) => p.name).sort()).toEqual(["packages/p3", "packages/p4", "packages/p5"]);
+  expect(chart.points.every((p: { exportedTypes: number }) => p.exportedTypes > 0)).toBe(true);
+  const { stdout } = await run("--notes", writeNotes("notes-types.json", fullNotes(document)), "--format", "md");
+  expect(stdout).toContain("2 packages export no types, so abstractness is not measured for them");
+  expect(stdout).not.toContain("| packages/p1 |");
+  expect(stdout).not.toContain("A weak");
+});
+
+test("the evidence floor lists a dependency only when the depended-on folder has enough files, and counts the rest", async () => {
+  const stability = JSON.parse((await runStructure(repo.path, ["stability", "--json"])).stdout).results as Parameters<typeof withEvidenceFloor>[0];
+  expect(stability.length).toBeGreaterThan(0);
+  const filesOfTarget = stability[0]!.stability.to.change.files;
+  expect(withEvidenceFloor(stability, { minTargetFiles: filesOfTarget })).toMatchObject({ belowFloor: 0 });
+  const floored = withEvidenceFloor(stability, { minTargetFiles: filesOfTarget + 1 });
+  expect(floored.listed.length + floored.belowFloor).toBe(stability.length);
+  expect(floored.belowFloor).toBeGreaterThan(0);
+  expect(floored.listed.every((row) => row.stability.to.change.files > filesOfTarget)).toBe(true);
+});
+
+test("the cycles table has a locality gain column when a locality report for this commit names a blocked move, and has none without one", async () => {
+  expect((await run("--format", "md")).stdout).not.toContain("Locality gain unblocked");
+  const cycles = JSON.parse((await runStructure(repo.path, ["cycles", "--json"])).stdout).results as { breakingSet: { from: string; to: string }[] }[];
+  const edge = cycles[0]!.breakingSet[0]!;
+  const directory = join(repo.path, ".cache", "code-health", "reports");
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(
+    join(directory, "locality.analyse.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      tool: "locality",
+      command: "analyse",
+      repo: { head: repo.git("rev-parse", "HEAD").trim(), dirty: false },
+      config: "0123456789abcdef",
+      results: [{ path: "src/leaf.ts", blockers: [{ path: edge.to, from: [edge.from], kind: "dependency", weight: 1, otherConsumers: 0, coChange: null, unblockedGain: 7 }] }],
+    }),
+  );
+  const { stdout } = await run("--no-cache", "--format", "md");
+  expect(stdout).toContain("Locality gain unblocked");
+  expect(stdout).toMatch(/\| 7 \|/);
+});
+
+describe("folder cycles inside one C# project", () => {
+  const csproj = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>\n';
+  const klass = (name: string, uses: string) => `namespace Acme;\n\npublic class ${name}\n{\n    public int Run() => new ${uses}().Run();\n}\n`;
+  const stub = (name: string) => `namespace Acme;\n\npublic class ${name}\n{\n    public int Run() => 1;\n}\n`;
+  const alice = { name: "Alice", email: "alice@example.com" };
+  const build = (setting: boolean) =>
+    GitFixture.build([
+      {
+        type: "commit",
+        message: "Add the project",
+        date: "2024-01-10T09:00:00Z",
+        author: alice,
+        changes: [
+          { op: "add", path: "Core/Core.csproj", content: csproj },
+          { op: "add", path: "Core/Orders/Order.cs", content: stub("Order") },
+          { op: "add", path: "Core/Billing/Invoice.cs", content: stub("Invoice") },
+          { op: "add", path: "code-health.json", content: JSON.stringify({ structure: { csharpFolderCycles: setting } }) },
+        ],
+      },
+      {
+        type: "commit",
+        message: "Make the folders use each other",
+        date: "2024-02-10T09:00:00Z",
+        author: alice,
+        changes: [
+          { op: "modify", path: "Core/Orders/Order.cs", content: klass("Order", "Invoice") },
+          { op: "modify", path: "Core/Billing/Invoice.cs", content: klass("Invoice", "Order") },
+        ],
+      },
+    ]);
+
+  test("the page prints one line with the count and the largest when the setting is true, and no line when it is false", async () => {
+    const on = build(true);
+    const off = build(false);
+    try {
+      const withSetting = await runStructure(on.path, ["report", "structure", "--format", "md"]);
+      expect(withSetting.code).toBe(ExitCode.Success);
+      expect(withSetting.stdout).toContain("1 folder cycle lies inside one C# project and is not in the table (structure.csharpFolderCycles is true). Largest: Core/Billing, Core/Orders in Core");
+      const without = await runStructure(off.path, ["report", "structure", "--format", "md"]);
+      expect(without.stdout).not.toContain("inside one C# project");
+    } finally {
+      on.dispose();
+      off.dispose();
+    }
+  });
 });

@@ -4,12 +4,15 @@ import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import type { ReportKind } from "@code-health/cli-kit/report-command";
 import { folderDistance, folderOf } from "@code-health/graph/tree-distance";
 import { historyWindowText } from "@code-health/history/report-header";
+import { dropEmptySlots } from "@code-health/report/empty-block";
+import { capRows } from "@code-health/report/table-cap";
+import { clip } from "@code-health/report/text";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import type { Block } from "@code-health/report/block";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild, Section } from "@code-health/report/report-model";
-import type { Candidate } from "../candidates.ts";
+import type { Candidate, OmittedUnit } from "../candidates.ts";
 import { command as analyseCommand } from "../commands/analyse.ts";
 import { readSettings, type LocalitySettings } from "../config.ts";
 import { planMove, type Refusal } from "../move-plan.ts";
@@ -20,9 +23,16 @@ const PLANNED = 10;
 const VERDICTS = ["do-it", "do-it-differently", "leave"];
 const KINDS = ["move", "split", "inline", "scrutinise", "review"];
 const DISTANCE_BINS = 5;
+/** Rows of the omitted units table, of the blocked units table, and blockers named per unit. */
+const TOP_OMITTED = 10;
+const TOP_BLOCKED = 10;
+const BLOCKERS_PER_UNIT = 3;
+const REFUSAL_DETAIL_CHARS = 120;
+const OMITTED_DETAIL_CHARS = 200;
 
 interface AnalyseExtra {
-  summary: { files: number; units: number; placed: number; byRecommendation: Record<string, number> };
+  summary: { files: number; units: number; placed: number; omitted: Record<string, number>; byRecommendation: Record<string, number> };
+  omitted: OmittedUnit[];
   unresolved: Record<string, number>;
   history: { grade: string; usableHistoryMonths: number; window: { months: number; since: number; until: number } } | null;
 }
@@ -37,7 +47,7 @@ interface PlanSummary {
   filesMoved: number;
   rewrites: number;
   filesRewritten: number;
-  refusals: string[];
+  refusal: string | null;
   failure: string | null;
 }
 
@@ -50,19 +60,21 @@ function consumersOf(candidate: Candidate): string[] {
 }
 
 const consumerFolders = (candidate: Candidate) => new Set(consumersOf(candidate).map(folderOf));
+const folderText = (folder: string) => (folder === "" ? "the repository root" : folder);
 const confidenceOf = (candidate: Candidate) => (candidate.confidence === undefined ? "normal" : `low: ${candidate.confidence.reason}`);
 
-/** One entry per refusal code: how many there were, and the detail of the first. */
-function groupRefusals(refusals: Refusal[]): string[] {
-  const groups = new Map<string, Refusal[]>();
-  for (const refusal of refusals) groups.set(refusal.code, [...(groups.get(refusal.code) ?? []), refusal]);
-  return [...groups].map(([code, list]) => `${code}${list.length > 1 ? ` x${list.length}` : ""} (${list[0]!.detail})`);
+/** One literal line: the refusal codes with their counts, then the detail of the first refusal, cut to one short sentence. */
+function refusalLine(refusals: Refusal[]): string {
+  const counts = new Map<string, number>();
+  for (const refusal of refusals) counts.set(refusal.code, (counts.get(refusal.code) ?? 0) + 1);
+  const codes = [...counts].map(([code, n]) => (n > 1 ? `${code} x${n}` : code)).join(", ");
+  return `${codes}; first: ${clip(refusals[0]!.detail, REFUSAL_DETAIL_CHARS)}`;
 }
 
 /** A dry run of the move the analyser proposes, as `locality move` plans it without `--apply`. */
 async function dryRun(context: CommandContext, candidate: Candidate, settings: LocalitySettings, files: Set<string>): Promise<PlanSummary> {
   const plan = planMove(candidate, settings, files, {});
-  const base = { destination: plan.destination, filesMoved: plan.operations.length, refusals: groupRefusals(plan.refusals) };
+  const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null };
   try {
     const { performMove } = await import("../move-engine.ts");
@@ -75,7 +87,7 @@ async function dryRun(context: CommandContext, candidate: Candidate, settings: L
 }
 
 function planText(plan: PlanSummary): string {
-  if (plan.refusals.length > 0) return `no plan: ${plan.refusals.join(", ")}`;
+  if (plan.refusal !== null) return `no plan: ${plan.refusal}`;
   if (plan.failure !== null) return `the dry run failed: ${plan.failure}`;
   return `${plural(plan.filesMoved, "file")} moved to ${plan.destination === "" ? "the repository root" : plan.destination}, ${plural(plan.rewrites, "import")} rewritten in ${plural(plan.filesRewritten, "file")}`;
 }
@@ -120,10 +132,14 @@ function candidateSection(rank: number, candidate: Candidate, plan: PlanSummary,
         caption: `Candidate ${rank}: ${candidate.path}`,
         facts: [
           { label: "Kind", value: `${candidate.recommendation} (rule ${candidate.rule})` },
+          { label: "Reason", value: candidate.reason },
           { label: "Gain", value: `${candidate.gain} of net distance removed, against the locality.minDistance guideline of ${settings.minDistance}` },
           { label: "Net distance", value: `${candidate.netDistance.current} now, ${candidate.netDistance.atTarget} at the target ${candidate.target === "" ? "(the repository root)" : candidate.target}` },
           { label: "Consumers", value: `${plural(consumers.length, "file")} in ${plural(consumerFolders(candidate).size, "folder")}` },
           { label: "Size", value: `${plural(candidate.size.files, "file")}, ${plural(candidate.size.lines, "line")}` },
+          ...(candidate.unusableTarget === undefined
+            ? []
+            : [{ label: "Better folder refused", value: `${folderText(candidate.unusableTarget.target)}, with gain ${candidate.unusableTarget.gain}, is refused: ${candidate.unusableTarget.reason}` }]),
           { label: "Confidence", value: confidenceOf(candidate) },
           { label: "Blockers", value: candidate.blockers.length === 0 ? "none" : candidate.blockers.map((b) => b.path).join(", ") },
           { label: "Move plan (dry run)", value: planText(plan) },
@@ -149,14 +165,71 @@ const REASON_WORDS: Record<string, string> = {
   superseded: "history candidates that a structural candidate already covers",
 };
 
-function omittedRows(structural: { placed: number; blocked: number; keep: number; notShown: number }, history: HistoryExtra["historyOnly"]): ExcludedCount[] {
+/** The units with no proposed move and the units that are recommended blocked or keep, counted by reason. */
+function omittedRows(structural: { placed: number; blocked: number; keep: number; notShown: number; byReason: Record<string, number> }, history: HistoryExtra["historyOnly"]): ExcludedCount[] {
   return [
     { what: "units already beside their consumers (rule near-consumers)", count: structural.placed },
-    { what: "candidates recommended blocked, held back by a dependency", count: structural.blocked },
-    { what: "candidates recommended keep", count: structural.keep },
+    ...Object.entries(structural.byReason).sort(byText).map(([reason, count]) => ({ what: `units with no proposed move: ${reason}`, count })),
+    { what: "units recommended blocked, held back by a dependency (listed below with their blockers)", count: structural.blocked },
+    { what: "units recommended keep, with nothing to move", count: structural.keep },
     { what: `candidates past the top ${TOP} of the table`, count: structural.notShown },
     ...Object.entries(history.omitted).map(([reason, count]) => ({ what: REASON_WORDS[reason] ?? reason, count })),
   ];
+}
+
+function omittedUnitsTable(units: OmittedUnit[]): Block {
+  const sorted = [...units].sort((a, b) => b.gain - a.gain || (a.path < b.path ? -1 : 1));
+  return {
+    type: "ranked-table",
+    ...capRows(
+    {
+      caption: "Units with no proposed move, by gain of the folder their neighbours pull them towards",
+      noun: "units",
+      emptyText: "No unit was left without a proposed move.",
+      columns: [
+        { key: "path", label: "Unit" },
+        { key: "reason", label: "Reason" },
+        { key: "detail", label: "Detail" },
+        { key: "target", label: "Pulled towards" },
+        { key: "gain", label: "Gain", align: "right" },
+        { key: "files", label: "Files", align: "right" },
+      ],
+      rows: sorted.map((u): Record<string, Cell> => ({ path: u.path, reason: u.reason, detail: clip(u.detail, OMITTED_DETAIL_CHARS), target: folderText(u.target), gain: u.gain, files: u.files })),
+    },
+    TOP_OMITTED,
+    "locality analyse --json",
+  ) };
+}
+
+function blockedTable(units: Candidate[]): Block {
+  return {
+    type: "ranked-table",
+    ...capRows(
+    {
+      caption: "Units recommended blocked, with the files that hold them back",
+      noun: "units",
+      emptyText: "No unit is recommended blocked.",
+      columns: [
+        { key: "path", label: "Unit" },
+        { key: "gain", label: "Gain", align: "right" },
+        { key: "blockers", label: "Blockers" },
+      ],
+      rows: units.map((c): Record<string, Cell> => ({
+        path: c.path,
+        gain: c.gain,
+        blockers: nameList(c.blockers.map((b) => b.path), BLOCKERS_PER_UNIT),
+      })),
+    },
+    TOP_BLOCKED,
+    "locality analyse --recommendation blocked",
+  ) };
+}
+
+/** Names with the rest counted: `a, b, c and 4 more`. */
+function nameList(names: readonly string[], shown: number): string {
+  if (names.length === 0) return "none";
+  if (names.length <= shown) return names.join(", ");
+  return `${names.slice(0, shown).join(", ")} and ${names.length - shown} more`;
 }
 
 function slotsFor(planned: Candidate[]): Slot[] {
@@ -209,7 +282,8 @@ export const localityReport: ReportKind = {
     for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files));
 
     const byKind = extra.summary.byRecommendation;
-    const omitted = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shown.length }, historyOnly);
+    const blocked = all.filter((c) => c.recommendation === "blocked");
+    const omitted = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shown.length, byReason: extra.summary.omitted }, historyOnly);
     const unresolved = Object.entries(extra.unresolved).sort(byText);
     const excluded: ExcludedCount[] = [
       ...omitted,
@@ -274,15 +348,18 @@ export const localityReport: ReportKind = {
               { key: "what", label: "Left out" },
               { key: "count", label: "Count", align: "right" },
             ],
-            rows: omitted.map((o): Record<string, Cell> => ({ what: o.what, count: o.count })),
+            emptyText: "Nothing was left out.",
+            rows: omitted.filter((o) => o.count > 0).map((o): Record<string, Cell> => ({ what: o.what, count: o.count })),
           },
+          omittedUnitsTable(extra.omitted),
+          blockedTable(blocked),
           ...(historyOnly.reason === null ? [] : [{ type: "notice" as const, level: "notice" as const, text: `The history counts are zero because ${historyOnly.reason}.` }]),
         ],
       },
     ];
 
     const lowConfidence = ofKind.filter((c) => c.confidence !== undefined).length;
-    return {
+    return dropEmptySlots({
       title: "Locality report",
       inputs: { source: "structural", entrySource: inputs.entrySource, entries: inputs.entries },
       header: {
@@ -303,6 +380,6 @@ export const localityReport: ReportKind = {
         ...(history === null ? ["No history was read, so co-change evidence is not used."] : history.grade === "weak" ? ["The evidence grade is weak, so history-based evidence is tentative and the structure leads."] : []),
       ],
       slots: slotsFor(planned),
-    };
+    });
   },
 };

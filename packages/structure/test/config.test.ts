@@ -24,6 +24,7 @@ test("defaults", () => {
     minRevisions: 3,
     minVolatilityRatio: 2,
     minInstabilityGap: 20,
+    minTargetFiles: 2,
   });
 });
 

@@ -8,7 +8,7 @@
 - History window: 12 months of usable history; the analysis window is 12 months, 2024-01-01 to 2025-01-01
 - Excluded:
   - units already beside their consumers (rule near-consumers): 16
-  - candidates recommended blocked, held back by a dependency: 3
+  - units recommended blocked, held back by a dependency (listed below with their blockers): 3
 
 ## Summary
 
@@ -57,13 +57,14 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Measure | Value |
 | --- | --- |
 | Kind | split (rule mixed-exports) |
+| Reason | Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split. |
 | Gain | 4 of net distance removed, against the locality.minDistance guideline of 2 |
 | Net distance | 6 now, 2 at the target src |
 | Consumers | 2 files in 2 folders |
 | Size | 1 file, 6 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | no plan: needs-reason (the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway) |
+| Move plan (dry run) | no plan: needs-reason; first: the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway |
 
 **Judgement: src/shared/helpers/mixed.ts**
 
@@ -76,6 +77,7 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Measure | Value |
 | --- | --- |
 | Kind | move (rule two-consumers) |
+| Reason | Two consumers: move to the target. |
 | Gain | 6 of net distance removed, against the locality.minDistance guideline of 2 |
 | Net distance | 6 now, 0 at the target src/reports |
 | Consumers | 2 files in 1 folder |
@@ -95,6 +97,7 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Measure | Value |
 | --- | --- |
 | Kind | move (rule two-consumers) |
+| Reason | Two consumers: move to the target. |
 | Gain | 4 of net distance removed, against the locality.minDistance guideline of 2 |
 | Net distance | 6 now, 2 at the target src |
 | Consumers | 2 files in 2 folders |
@@ -114,6 +117,7 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Measure | Value |
 | --- | --- |
 | Kind | move (rule single-consumer-tiny) |
+| Reason | One consumer, and the unit is tiny: inline it. |
 | Gain | 3 of net distance removed, against the locality.minDistance guideline of 2 |
 | Net distance | 3 now, 0 at the target src/orders |
 | Consumers | 1 file in 1 folder |
@@ -133,6 +137,7 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Measure | Value |
 | --- | --- |
 | Kind | move (rule single-consumer-large) |
+| Reason | One consumer and a large unit: move it next to the consumer, as its own module. |
 | Gain | 3 of net distance removed, against the locality.minDistance guideline of 2 |
 | Net distance | 3 now, 0 at the target src/billing |
 | Consumers | 1 file in 1 folder |
@@ -152,13 +157,14 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Measure | Value |
 | --- | --- |
 | Kind | inline (rule single-consumer-tiny) |
+| Reason | One consumer, and the unit is tiny: inline it. |
 | Gain | 3 of net distance removed, against the locality.minDistance guideline of 2 |
 | Net distance | 3 now, 0 at the target src/orders |
 | Consumers | 1 file in 1 folder |
 | Size | 1 file, 3 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | no plan: needs-reason (the analyser recommends inline (single-consumer-tiny), not a move: pass --reason to record why it moves anyway) |
+| Move plan (dry run) | no plan: needs-reason; first: the analyser recommends inline (single-consumer-tiny), not a move: pass --reason to record why it moves anyway |
 
 **Judgement: src/shared/utils/slug.ts**
 
@@ -171,13 +177,14 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Measure | Value |
 | --- | --- |
 | Kind | scrutinise (rule high-fan-in) |
+| Reason | Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design. `locality move` needs --reason for a scrutinise. |
 | Gain | 16 of net distance removed, against the locality.minDistance guideline of 2 |
 | Net distance | 16 now, 0 at the target src/features |
 | Consumers | 8 files in 1 folder |
 | Size | 1 file, 3 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | no plan: needs-reason (the analyser recommends scrutinise (high-fan-in), not a move: pass --reason to record why it moves anyway) |
+| Move plan (dry run) | no plan: needs-reason; first: the analyser recommends scrutinise (high-fan-in), not a move: pass --reason to record why it moves anyway |
 
 **Judgement: src/shared/format.ts**
 
@@ -190,13 +197,14 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Measure | Value |
 | --- | --- |
 | Kind | review (rule scattered-unit) |
+| Reason | Guard: the unit's files live outside its entry file's folder, so its leaves are scored on their own. `locality move` needs --reason for a review. |
 | Gain | 2 of net distance removed, against the locality.minDistance guideline of 2 |
 | Net distance | 9 now, 7 at the target src/shared |
 | Consumers | 1 file in 1 folder |
 | Size | 5 files, 23 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | no plan: needs-reason (the analyser recommends review (scattered-unit), not a move: pass --reason to record why it moves anyway) |
+| Move plan (dry run) | no plan: needs-reason; first: the analyser recommends review (scattered-unit), not a move: pass --reason to record why it moves anyway |
 
 **Judgement: src/orders/place.ts**
 
@@ -209,6 +217,7 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Measure | Value |
 | --- | --- |
 | Kind | move (rule two-consumers) |
+| Reason | Two consumers: move to the target. |
 | Gain | 2 of net distance removed, against the locality.minDistance guideline of 2 |
 | Net distance | 4 now, 2 at the target src |
 | Consumers | 2 files in 2 folders |
@@ -228,13 +237,14 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Measure | Value |
 | --- | --- |
 | Kind | inline (rule single-consumer-barrel) |
+| Reason | A barrel with one importing file: inline it by rewriting imports to the real definitions. |
 | Gain | 0 of net distance removed, against the locality.minDistance guideline of 2 |
 | Net distance | 0 now, 0 at the target src/billing |
 | Consumers | 0 files in 0 folders |
 | Size | 1 file, 1 line |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | no plan: barrel (a barrel is inlined by rewriting its importer to the real definitions, not moved) |
+| Move plan (dry run) | no plan: barrel; first: a barrel is inlined by rewriting its importer to the real definitions, not moved |
 
 **Judgement: src/billing/index.ts**
 
@@ -264,13 +274,17 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 | Left out | Count |
 | --- | ---: |
 | units already beside their consumers (rule near-consumers) | 16 |
-| candidates recommended blocked, held back by a dependency | 3 |
-| candidates recommended keep | 0 |
-| candidates past the top 15 of the table | 0 |
-| history candidates whose distance the co-change evidence does not earn | 0 |
-| history candidates whose target is a fixed point | 0 |
-| history candidates whose gain is below the locality.minDistance guideline | 0 |
-| history candidates that a structural candidate already covers | 0 |
+| units recommended blocked, held back by a dependency (listed below with their blockers) | 3 |
+
+> **Notice:** No unit was left without a proposed move.
+
+**Units recommended blocked, with the files that hold them back**
+
+| # | Unit | Gain | Blockers |
+| ---: | --- | ---: | --- |
+| 1 | src/lib/kernel/tool.ts | 0 | src/lib/kernel/core.ts |
+| 2 | src/shared/pair/a.ts | 0 | src/shared/pair/core.ts |
+| 3 | src/shared/pair/b.ts | 0 | src/shared/pair/core.ts |
 
 > **Notice:** The history counts are zero because history is weak (12 months, 34 logical changes in the window, 1 contributors); history-only candidates need moderate or strong evidence.
 

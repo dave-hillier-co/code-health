@@ -10,6 +10,7 @@ import type { IncludeResolution } from "@code-health/parse/resolved-dependencies
 import type { Block } from "@code-health/report/block";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import type { StabilityPoint } from "@code-health/report/components/stability-chart";
+import { dropEmptySlots } from "@code-health/report/empty-block";
 import type { Slot } from "@code-health/report/protocol";
 import type { ReportBuild, Section } from "@code-health/report/report-model";
 import { command as census } from "../commands/census.ts";
@@ -19,7 +20,7 @@ import { command as layers } from "../commands/layers.ts";
 import { command as packages } from "../commands/packages.ts";
 import { command as stability } from "../commands/stability.ts";
 import { readSettings, type StructureSettings } from "../config.ts";
-import type { CycleRow } from "../cycles.ts";
+import type { CycleRow, ProjectFolderCycles } from "../cycles.ts";
 import type { Hub } from "../hubs.ts";
 import type { LayerViolation } from "../layers.ts";
 import type { PackageRow } from "../packaging/list.ts";
@@ -34,7 +35,7 @@ const TOP_LAYER_VIOLATIONS = 15;
 const TOP_HUBS = 10;
 const SYMBOLS_PER_EDGE = 3;
 const NODES_PER_CYCLE = 4;
-const TOP_PACKAGES = 40;
+const TOP_PACKAGES = 15;
 
 const yesNo = (value: boolean) => (value ? "yes" : "no");
 const plural = (n: number, noun: string, many = `${noun}s`) => `${n} ${n === 1 ? noun : many}`;
@@ -49,6 +50,8 @@ interface Extra {
   evidence: Evidence;
   filtersApplied: FiltersApplied;
   window: { since: string; until: string };
+  /** Present only when the structure.csharpFolderCycles setting is true. */
+  projectFolderCycles?: ProjectFolderCycles;
 }
 
 type IncludeSection = IncludeResolution & { guideline: number; aboveGuideline: boolean };
@@ -100,13 +103,20 @@ async function gather(context: CommandContext, settings: StructureSettings): Pro
   };
 }
 
-function cycleBlocks(rows: readonly CycleRow[]): { blocks: Block[]; slots: Slot[] } {
+/** One line about the folder cycles inside one C# project, which the table of cycles does not list. */
+function projectFolderCyclesText(cycles: ProjectFolderCycles): string {
+  if (cycles.count === 0) return "No folder cycle lies inside one C# project (structure.csharpFolderCycles is true).";
+  const largest = cycles.largest.map((c) => `${nameList(c.nodes, NODES_PER_CYCLE)} in ${c.project}`).join("; ");
+  return `${plural(cycles.count, "folder cycle")} lie${cycles.count === 1 ? "s" : ""} inside one C# project and ${cycles.count === 1 ? "is" : "are"} not in the table (structure.csharpFolderCycles is true). Largest: ${largest}.`;
+}
+
+function cycleBlocks(rows: readonly CycleRow[], projectFolderCycles: ProjectFolderCycles | undefined): { blocks: Block[]; slots: Slot[] } {
   const shown = rows.slice(0, TOP_CYCLES);
   const slots: Slot[] = [];
   const blocks: Block[] = [
     {
       type: "paragraph",
-      text: "Cycles are found at the default level: a Go package for Go, a folder for C# and a file for every other language. The breaking set is the smallest set of edges whose removal makes the cycle acyclic, and between equally small sets the one whose sides co-change least. Nested folder cycles, a folder and its own sub-folder, sort last.",
+      text: "Cycles are found at the default level: a Go package for Go, a project for C# and a file for every other language. The breaking set is the smallest set of edges whose removal makes the cycle acyclic, and between equally small sets the one whose sides co-change least. Nested folder cycles, a folder and its own sub-folder, sort last.",
     },
     {
       type: "ranked-table",
@@ -166,6 +176,7 @@ function cycleBlocks(rows: readonly CycleRow[]): { blocks: Block[]; slots: Slot[
     });
   });
   if (rows.length === 0) blocks.push({ type: "notice", level: "notice", text: "No import cycle at the default level." });
+  if (projectFolderCycles !== undefined) blocks.push({ type: "notice", level: "notice", text: projectFolderCyclesText(projectFolderCycles) });
   return { blocks, slots };
 }
 
@@ -199,9 +210,17 @@ function layerBlocks(rows: readonly LayerViolation[], settings: StructureSetting
 
 const round3 = (value: number) => Math.round(value * 1000) / 1000;
 
-function stabilityBlocks(packageRows: readonly PackageRow[], against: readonly UnstableDependency[], settings: StructureSettings): { blocks: Block[]; slots: Slot[] } {
+/** The dependencies the report lists, and how many it leaves out because the depended-on folder is below the evidence floor. */
+export function withEvidenceFloor(against: readonly UnstableDependency[], settings: Pick<StructureSettings, "minTargetFiles">): { listed: UnstableDependency[]; belowFloor: number } {
+  const listed = against.filter((row) => row.stability.to.change.files >= settings.minTargetFiles);
+  return { listed, belowFloor: against.length - listed.length };
+}
+
+function stabilityBlocks(packageRows: readonly PackageRow[], allAgainst: readonly UnstableDependency[], settings: StructureSettings): { blocks: Block[]; slots: Slot[] } {
+  const { listed: against, belowFloor } = withEvidenceFloor(allAgainst, settings);
+  const noTypes = packageRows.filter((row) => row.abstractness !== null && row.exportedTypes === 0).length;
   const measured = packageRows.flatMap((row): StabilityPoint[] =>
-    row.instability === null || row.abstractness === null || row.distance === null
+    row.instability === null || row.abstractness === null || row.distance === null || (row.exportedTypes ?? 0) === 0
       ? []
       : [{ name: row.id, instability: row.instability, abstractness: row.abstractness, distance: row.distance, ca: row.ca, ce: row.ce, exportedTypes: row.exportedTypes ?? 0, weak: row.abstractnessWeak }],
   );
@@ -209,7 +228,8 @@ function stabilityBlocks(packageRows: readonly PackageRow[], against: readonly U
   const shown = against.slice(0, TOP_AGAINST);
   const slots: Slot[] = [];
   const blocks: Block[] = [
-    { type: "stability-chart", title: "Packages by instability and abstractness", zoneDistance: settings.packages.zoneDistance, zoneSource: "structure.packages.zoneDistance, a judgement call", points, maxPoints: TOP_PACKAGES, total: packageRows.length, noun: "packages" },
+    { type: "stability-chart", title: "Packages by instability and abstractness", zoneDistance: settings.packages.zoneDistance, zoneSource: "structure.packages.zoneDistance, a judgement call", points, maxPoints: TOP_PACKAGES, total: packageRows.length - noTypes, noun: "packages" },
+    ...(noTypes === 0 ? [] : [{ type: "notice" as const, level: "notice" as const, text: `${plural(noTypes, "package")} export${noTypes === 1 ? "s" : ""} no types, so abstractness is not measured for ${noTypes === 1 ? "it" : "them"}. ${noTypes === 1 ? "It is" : "They are"} left out of the chart and its table and are not placed in a zone.` }]),
     {
       type: "paragraph",
       text: "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one.",
@@ -218,6 +238,7 @@ function stabilityBlocks(packageRows: readonly PackageRow[], against: readonly U
       type: "ranked-table",
       caption: "Dependencies pointing towards less stable folders",
       noun: "dependencies",
+      emptyText: belowFloor === 0 ? "No dependency points towards a less stable folder." : `No dependency points towards a less stable folder that has at least ${settings.minTargetFiles} files; ${plural(belowFloor, "dependency", "dependencies")} onto smaller folders ${belowFloor === 1 ? "is" : "are"} left out.`,
       total: against.length,
       columns: [
         { key: "from", label: "From (depends)" },
@@ -247,7 +268,7 @@ function stabilityBlocks(packageRows: readonly PackageRow[], against: readonly U
       maxChars: 320,
     });
   });
-  if (against.length === 0) blocks.push({ type: "notice", level: "notice", text: "No dependency points towards a less stable folder." });
+  if (belowFloor > 0) blocks.push({ type: "notice", level: "notice", text: `${plural(belowFloor, "dependency", "dependencies")} onto a folder of fewer than ${settings.minTargetFiles} files ${belowFloor === 1 ? "is" : "are"} left out, because the figures of a one-file folder are the figures of one file (evidence floor structure.minTargetFiles, a judgement call). \`structure stability\` lists them.` });
   return { blocks, slots };
 }
 
@@ -369,9 +390,9 @@ function limitsOf(results: Results, settings: StructureSettings): string[] {
   const { evidence } = results.extra;
   return [
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-    `Each list shows its top rows and says how many it leaves out: ${TOP_CYCLES} cycles, ${TOP_AGAINST} dependencies against stability, ${TOP_LAYER_VIOLATIONS} layer violations, ${TOP_HUBS} hubs and ${TOP_PACKAGES} packages in the stability table (the chart draws every measured package). The commands print the rest.`,
+    `Each list shows its top rows and says how many it leaves out: ${TOP_CYCLES} cycles, ${TOP_AGAINST} dependencies against stability, ${TOP_LAYER_VIOLATIONS} layer violations, ${TOP_HUBS} hubs and ${TOP_PACKAGES} packages in the stability table (the chart draws every package that exports types). The commands print the rest.`,
     "Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. `structure cycles --level` shows the other levels.",
-    "Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, and a package that exports fewer than 3 types is marked weak. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.",
+    "Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, a package that exports fewer than 3 types is marked weak, and a package that exports none is not measured and is left out of the chart. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.",
     "The zones of the chart are geometric. `structure packages coupling` raises a finding only when a package in a zone also has dependents and changes often.",
     "The census finds mechanisms by name and shape, so a look-alike can be counted and a custom convention missed.",
     ...(settings.layers.length === 0 ? ["No layers are configured in structure.layers, so no layer rule was checked."] : []),
@@ -393,9 +414,10 @@ export const structure: ReportKind = {
     const settings = readSettings(context.config);
     const results = await gather(context, settings);
     const { evidence } = results.extra;
-    const cycle = cycleBlocks(results.cycles);
+    const cycle = cycleBlocks(results.cycles, results.extra.projectFolderCycles);
     const dependency = stabilityBlocks(results.packages, results.against, settings);
-    const aboveGuideline = results.against.filter((row) => row.aboveGuideline).length;
+    const listedAgainst = withEvidenceFloor(results.against, settings).listed;
+    const aboveGuideline = listedAgainst.filter((row) => row.aboveGuideline).length;
     const excluded = excludedCounts(results.extra.filtersApplied, droppedCounts(), builtinOmissions()).filter((e) => e.count > 0);
     const sections: Section[] = [
       {
@@ -408,7 +430,7 @@ export const structure: ReportKind = {
             facts: [
               { label: "Import cycles at the default level", value: String(results.cycles.length) },
               { label: "Layer violations", value: results.layerViolations === null ? "no layers configured" : String(results.layerViolations.length) },
-              { label: "Dependencies pointing towards less stable folders", value: `${results.against.length}, of which ${aboveGuideline} reach a guideline` },
+              { label: "Dependencies pointing towards less stable folders", value: `${listedAgainst.length}, of which ${aboveGuideline} reach a guideline` },
               { label: "Registration hubs", value: String(results.hubs.length) },
               { label: "Packages", value: String(results.packages.length) },
             ],
@@ -423,7 +445,7 @@ export const structure: ReportKind = {
       { id: "hubs", heading: "Hubs", blocks: hubBlocks(results.hubs, results.hubNotices) },
       ...(results.include === null ? [] : [{ id: "includes", heading: "C and C++ include resolution", blocks: includeBlocks(results.include) }]),
     ];
-    return {
+    return dropEmptySlots({
       title: "Structure report",
       inputs: { since: context.values.since ?? null, until: context.values.until ?? null, ...results.inputs },
       header: {
@@ -434,6 +456,6 @@ export const structure: ReportKind = {
       sections,
       limits: limitsOf(results, settings),
       slots: slotsOf([...cycle.slots, ...dependency.slots]),
-    };
+    });
   },
 };

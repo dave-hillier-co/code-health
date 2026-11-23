@@ -982,6 +982,10 @@
           "type": "number",
           "default": 20
         },
+        "minTargetFiles": {
+          "type": "number",
+          "default": 2
+        },
         "census": {
           "type": "object",
           "properties": {

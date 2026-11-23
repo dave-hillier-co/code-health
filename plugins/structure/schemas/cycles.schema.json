@@ -55,6 +55,55 @@
       ],
       "additionalProperties": false
     },
+    "projectFolderCycles": {
+      "type": "object",
+      "description": "Present only when the structure.csharpFolderCycles setting is true and the level is default: the folder cycles whose folders are all in one C# project. They are not rows of results.",
+      "properties": {
+        "count": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "largest": {
+          "type": "array",
+          "description": "At most 3, largest first.",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 2
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 2
+              },
+              "project": {
+                "type": "string",
+                "description": "The .csproj that owns the folders."
+              }
+            },
+            "required": [
+              "id",
+              "size",
+              "nodes",
+              "project"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "count",
+        "largest"
+      ],
+      "additionalProperties": false
+    },
     "results": {
       "type": "array",
       "items": {
