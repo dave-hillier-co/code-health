@@ -175,6 +175,8 @@ export interface OmittedUnit {
   files: number;
 }
 
+type Omission = Omit<OmittedUnit, "path">;
+
 /** The reasons a unit is omitted, as `summary.omitted` counts them. */
 export const OMITTED_REASONS = {
   folderSized: "folder-sized unit",
@@ -186,6 +188,8 @@ export interface AnalysisResult {
   candidates: Candidate[];
   /** Units that have no proposed move, with the reason. They are not ranked and `summary.omitted` counts them by reason. */
   omitted: OmittedUnit[];
+  /** The omitted units in full, not printed. `move` and `verify-move` read them, so that a unit can be moved on purpose, with a reason, to a target the analysis would not propose. */
+  unproposed: Candidate[];
   /**
    * Units already beside their consumers, which the analysis does not report because there is nothing to
    * propose for them. They are not printed. `move` and `verify-move` read them, so that a unit can be moved
@@ -483,7 +487,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     return undefined;
   }
 
-  function candidateFor(unit: RawUnit): { candidate: Candidate } | { omitted: OmittedUnit } {
+  function candidateFor(unit: RawUnit): { candidate: Candidate; omission: Omission | undefined } {
     const importerCount = (model.importers.get(unit.root) ?? []).filter(live).length;
     const barrelAlone = barrels.has(unit.root) && importerCount === 1;
     const files = barrelAlone ? [unit.root] : unit.files;
@@ -576,15 +580,17 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     const decision = recommend(input);
 
     // Units that cannot be proposed as a move are counted, not ranked.
-    const omit = (reason: string, detail: string): { omitted: OmittedUnit } => ({
-      omitted: { path: unit.path, reason, detail, target: choice.target, gain: choice.gain, files: files.length },
-    });
+    // The unit is still built in full, because `move` reads it: moving it anywhere, with a reason, is the user's call.
+    let omission: Omission | undefined;
+    const omit = (reason: string, detail: string) => {
+      omission = { reason, detail, target: choice.target, gain: choice.gain, files: files.length };
+    };
     if (unusable !== undefined && unrestricted.gain >= settings.minDistance && (decision.rule === "near-consumers" || decision.rule === "blocked-by-dependency")) {
-      return omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`);
+      omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`);
     }
     const withheld = choice.gain >= settings.minDistance && choice.target !== base ? withheldBy(files.length, base, choice.target) : undefined;
     if (withheld !== undefined) {
-      if (decision.recommendation === "move" || decision.recommendation === "review") return omit(withheld.reason, withheld.detail);
+      if (decision.recommendation === "move" || decision.recommendation === "review") omit(withheld.reason, withheld.detail);
       // A split is proposed for the file's exports, which are scored one by one: the whole unit does not move.
       if (decision.recommendation === "split") choice = { target: base, current: choice.current, distance: choice.current, gain: 0 };
     }
@@ -651,18 +657,21 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       ...(unresolvedReason === undefined ? {} : { confidence: { level: "low" as const, reason: unresolvedReason } }),
       ...(cohesion ? { cohesion: { components: scored ?? cohesion.components, mixed: cohesion.mixed } } : {}),
     };
-    return { candidate };
+    return { candidate, omission };
   }
 
   const outcomes = model.units.map(candidateFor);
-  const all = outcomes.flatMap((outcome) => ("candidate" in outcome ? [outcome.candidate] : []));
-  const omitted = outcomes.flatMap((outcome) => ("omitted" in outcome ? [outcome.omitted] : [])).sort((a, b) => compareIds(a.path, b.path));
+  const all = outcomes.map((outcome) => outcome.candidate);
+  const omittedOutcomes = outcomes.filter((outcome) => outcome.omission !== undefined);
+  const omitted: OmittedUnit[] = omittedOutcomes.map((outcome) => ({ path: outcome.candidate.path, ...(outcome.omission as Omission) })).sort((a, b) => compareIds(a.path, b.path));
+  const unranked = new Set(omitted.map((unit) => unit.path));
   const omittedByReason: Record<string, number> = {};
   for (const unit of omitted) omittedByReason[unit.reason] = (omittedByReason[unit.reason] ?? 0) + 1;
   const reported = all
-    .filter((candidate) => candidate.rule !== "near-consumers")
+    .filter((candidate) => candidate.rule !== "near-consumers" && !unranked.has(candidate.path))
     .sort((a, b) => b.ranking.ratio - a.ranking.ratio || b.score - a.score || compareIds(a.path, b.path));
-  const placed = all.filter((candidate) => candidate.rule === "near-consumers").sort((a, b) => compareIds(a.path, b.path));
+  const placed = all.filter((candidate) => candidate.rule === "near-consumers" && !unranked.has(candidate.path)).sort((a, b) => compareIds(a.path, b.path));
+  const unproposed = all.filter((candidate) => unranked.has(candidate.path)).sort((a, b) => compareIds(a.path, b.path));
   const fanIns = all.map((candidate) => candidate.fanIn);
   for (const candidate of all) candidate.fanInPercentile = percentileRank(candidate.fanIn, fanIns);
   const byRecommendation: Record<string, number> = {};
@@ -673,6 +682,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   return {
     candidates: reported,
     omitted,
+    unproposed,
     placed,
     summary: { files: project.production.length, units: outcomes.length, placed: placed.length, omitted: omittedByReason, byRecommendation },
     metrics: {
