@@ -35,12 +35,8 @@ interface PatternInfo {
 
 const percent = (share: number): number => Math.round(share * 1000) / 10;
 const oneDecimal = (value: number): number => Math.round(value * 10) / 10;
-const oneDecimal = (value: number): number => Math.round(value * 10) / 10;
-const oneDecimal = (value: number): number => Math.round(value * 10) / 10;
 
 const VERDICTS = ["pair", "document", "rotate-reviews", "leave"];
-const INCONCLUSIVE_VERDICTS = ["map-identities", "leave"];
-const INCONCLUSIVE_VERDICTS = ["map-identities", "leave"];
 const INCONCLUSIVE_VERDICTS = ["map-identities", "leave"];
 const CITE =
   "Give one or two sentences of why that cite only values shown in this report. Do not name people, do not rank or judge any person, and do not guess who might leave. Do not add numbers the report does not show.";
