@@ -7507,6 +7507,27 @@ __export(hotspots_exports, {
   rankedOutput: () => rankedOutput,
   rules: () => rules5
 });
+
+// packages/cochange/src/contributors.ts
+function contributorsOf(history) {
+  const { since, until } = history.evidence.window;
+  const names = /* @__PURE__ */ new Map();
+  for (const commit of history.view.commits) names.set(commit.mappedEmail.toLowerCase(), commit.mappedName);
+  const addresses = /* @__PURE__ */ new Set();
+  for (const change3 of history.filtered.changes) {
+    if (change3.committerDate < since || change3.committerDate > until) continue;
+    for (const author of change3.authors) addresses.add(author.toLowerCase());
+  }
+  let agents = 0;
+  for (const address2 of addresses) if (history.identities.matcher.classify(names.get(address2) ?? "", address2)?.kind === "agent") agents++;
+  return { people: addresses.size - agents, agents };
+}
+function contributorsText({ people, agents }) {
+  const person = `${people} ${people === 1 ? "person" : "people"}`;
+  return agents === 0 ? person : `${person}, plus ${agents} agent ${agents === 1 ? "identity" : "identities"}`;
+}
+
+// packages/cochange/src/commands/hotspots.ts
 var name6 = "hotspots";
 var rules5 = {
   hotspot: {
@@ -7570,7 +7591,7 @@ async function rankedOutput(context, history) {
       "recommendation",
       ...by === "file" ? ["siblingTest", "findings"] : []
     ],
-    extra: { complexitySource: complexity.source, fixConvention },
+    extra: { complexitySource: complexity.source, fixConvention, contributors: contributorsOf(history) },
     notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")]
   };
 }
@@ -11184,6 +11205,16 @@ function repoName(root) {
   return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
 }
 
+// packages/cochange/src/percent-text.ts
+function percentText(share3) {
+  if (share3 > 0 && share3 < 5e-4) return "<0.1%";
+  if (share3 < 1 && share3 >= 0.9995) return ">99.9%";
+  return `${Math.round(share3 * 1e3) / 10}%`;
+}
+function percentTextOfCounts(part, whole) {
+  return whole === 0 ? "0%" : percentText(part / whole);
+}
+
 // packages/cochange/src/reports/change.ts
 import { createHash as createHash13 } from "node:crypto";
 import { readFileSync as readFileSync19 } from "node:fs";
@@ -11991,16 +12022,18 @@ function mixedPurpose(facts) {
 function hotspotsTouched(facts, state, context) {
   const recentSince = monthsBefore(facts.time, context.recentMonths);
   const line = state.hotRevisionCount((100 - context.hotspotPercentile) / 100);
-  const hot = facts.files.filter((file) => {
+  const busy = facts.files.filter((file) => {
     const last = state.lastChanged(file.fileId);
     return state.present(file.fileId) && last !== null && last >= recentSince && state.revisionsInWindow(file.fileId) >= line;
   });
+  const hot = busy.filter((file) => isCodePath(file.fileId, context.languages));
+  const nonCodeHot = busy.length - hot.length;
   const total = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
   const inHot = hot.reduce((sum, file) => sum + churnOf(file), 0);
   const share3 = total === 0 ? 0 : round2(inHot / total);
   return measurement2("hotspots-touched", "history", "history", "percentile", "history", {
     series: { share: share3 },
-    value: { share: share3, hotFiles: hot.length },
+    value: { share: share3, hotFiles: hot.length, ...nonCodeHot > 0 ? { nonCodeHotFiles: nonCodeHot } : {} },
     evidence: hot.map((file) => ({ file: file.fileId, revisions: state.revisionsInWindow(file.fileId) })).sort((a, b) => b.revisions - a.revisions || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS)
   });
 }
@@ -12427,7 +12460,8 @@ function measureContext(context, history, risk) {
     recentMonths: history.settings.recentMonths,
     staleMonths: history.settings.staleMonths,
     hotspotPercentile: history.settings.hotspotPercentile,
-    components: readComponents(context.config.effective.components)
+    components: readComponents(context.config.effective.components),
+    languages: context.config.effective.languages
   };
 }
 function toFactor(measurement3, banded, risk) {
@@ -13060,10 +13094,11 @@ function abandonedBlocks(assessed) {
   return [{ type: "ranked-table", ...table }];
 }
 function evidenceBlocks(assessed) {
-  return assessed.factors.filter((f) => f.status === "ok" && f.evidence.length > 0 && f.name !== "abandoned-touched").map((f) => {
+  const blocks = assessed.factors.filter((f) => f.status === "ok" && f.evidence.length > 0 && f.name !== "abandoned-touched").map((f) => {
     const { items, omitted: omitted2 } = evidenceItems(f.evidence);
     return { type: "evidence-list", title: `Evidence for ${f.name}`, items, omitted: omitted2 };
   });
+  return blocks.length > 0 ? blocks : [{ type: "notice", level: "notice", text: "No factor has evidence items to list." }];
 }
 function levelBlocks(level) {
   if (level.status !== "shown") {
@@ -13181,13 +13216,15 @@ function hotspotBlocks(assessed) {
   }
   const hot = number2(factor.value.hotFiles) ?? 0;
   const share3 = number2(factor.value.share) ?? 0;
+  const nonCode = number2(factor.value.nonCodeHotFiles) ?? 0;
   const blocks = [
     {
       type: "facts",
       caption: "Hotspots the change touches",
       facts: [
         { label: "Hot files touched", value: String(hot) },
-        { label: "Share of the change's churn in hot files", value: `${Math.round(share3 * 1e3) / 10}%` },
+        { label: "Share of the change's churn in hot files", value: percentText(share3) },
+        ...nonCode > 0 ? [{ label: "Hot files left out because they are not code", value: String(nonCode) }] : [],
         { label: "Band", value: bandText(factor) },
         { label: "Guideline", value: guidelineText(factor) }
       ]
@@ -14071,8 +14108,9 @@ function frictionBlocks(friction, shown2, judged, percentile2, basis, complexity
         { key: "complexity", label: complexityLabel, align: "right" },
         { key: "complexityPercentile", label: "Complexity percentile", align: "right", ...byFunctions ? {} : { guideline: { value: percentile2, note: "cochange.hotspotPercentile" } } },
         { key: "lastChanged", label: "Last changed" },
-        { key: "fixShare", label: "Fix share (%)", align: "right" },
+        { key: "landedChanges", label: "Landed changes", align: "right" },
         { key: "fixes", label: "Fixes landed", align: "right" },
+        { key: "fixShare", label: "Fix share of landed changes (%)", align: "right" },
         { key: "reviewFixes", label: "Fixes in review", align: "right" },
         { key: "flag", label: "Flag" }
       ],
@@ -14084,8 +14122,9 @@ function frictionBlocks(friction, shown2, judged, percentile2, basis, complexity
         complexity: row2.complexity,
         complexityPercentile,
         lastChanged: isoDate2(row2.lastChanged),
-        fixShare: row2.fixShare === null ? null : percentOf(row2.fixShare),
+        landedChanges: row2.landedChanges,
         fixes: row2.fixes,
+        fixShare: row2.fixShare === null ? null : percentOf(row2.fixShare),
         reviewFixes: row2.reviewFixes,
         flag: row2.recommendation
       }))
@@ -14318,7 +14357,7 @@ var hotspots = {
         basis === "functions" ? `The friction list is the files at or above the ${percentile2}th percentile of change frequency (cochange.hotspotPercentile) that have a function above the cognitive complexity guideline (from the stored \`complexity analyse\` result). A percentile is a rank among the ${rows7.length} files ranked, so it moves when files are added.` : `The friction list is the files at or above the ${percentile2}th percentile (cochange.hotspotPercentile) of both change frequency and complexity, because no stored \`complexity analyse\` result covers this commit; run \`complexity analyse\` and this report again to list files with a function above the cognitive guideline instead. A percentile is a rank among the ${rows7.length} files ranked, so it moves when files are added.`,
         `The friction list shows ${shown2.length} of ${friction.length} files; the judgement covers the first ${judged.length} (cochange.hotspotJudged), the history table covers the first ${Math.min(TREND_FILES, shown2.length)} (sparklines of the first ${Math.min(SPARKLINES, shown2.length)}) and the X-Ray the first ${Math.min(XRAY_FILES, shown2.length)}.`,
         extra.complexitySource === "indentation" ? "The Complexity column is the file's indentation complexity computed by this report; `complexity files` stores the same figure for this commit." : "The Complexity column is the file's indentation complexity from the stored `complexity files` result.",
-        "Revisions count every commit that touched the file in the window. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.",
+        "Revisions count every commit that touched the file in the window. Landed changes count the merged changes (a pull request, or a commit on the main line) that touched it, so they are fewer than revisions when a change has several commits; the fix share is fixes landed divided by landed changes. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.",
         ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
         ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate2(evidence.truncated.availableSince)} is missing.`] : [],
         ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
@@ -14342,7 +14381,6 @@ var notAppliedTable = (caption, consequence) => ({
   emptyText: `${caption}: not listed. The repository has one contributor in the window, so ${consequence}.`
 });
 var percent2 = (share3) => Math.round(share3 * 1e3) / 10;
-var percentOfCounts = (part, whole) => whole === 0 ? 0 : Math.round(part / whole * 1e3) / 10;
 var oneDecimal = (value) => Math.round(value * 10) / 10;
 var VERDICTS = ["pair", "document", "rotate-reviews", "leave"];
 var INCONCLUSIVE_VERDICTS = ["map-identities", "leave"];
@@ -14534,9 +14572,9 @@ async function abandonmentBlocks(p, measured) {
       caption: "Knowledge lost so far, at the analysed commit",
       facts: [
         { label: "Files with lines held by people", value: String(summary.files.measured) },
-        { label: `Files abandoned (${p.settings.abandonmentGuideline}% or more of the lines held by people belong to people who have left)`, value: `${summary.files.abandoned} (${percentOfCounts(summary.files.abandoned, summary.files.measured)}%)` },
+        { label: `Files abandoned (${p.settings.abandonmentGuideline}% or more of the lines held by people belong to people who have left)`, value: `${summary.files.abandoned} (${percentTextOfCounts(summary.files.abandoned, summary.files.measured)})` },
         { label: "Lines held by people", value: String(summary.lines.people) },
-        { label: "Of those, held by people who have left", value: `${summary.lines.abandoned} (${percentOfCounts(summary.lines.abandoned, summary.lines.people)}%)` },
+        { label: "Of those, held by people who have left", value: `${summary.lines.abandoned} (${percentTextOfCounts(summary.lines.abandoned, summary.lines.people)})` },
         { label: "Lines of bots, services and agents, on neither side", value: String(summary.lines.nonPerson) },
         { label: "Lines with an unknown commit", value: String(summary.lines.unattributed) },
         { label: "Developers active, and who have left", value: `${model.developers.filter((d) => d.active).length} active, ${model.developers.filter((d) => !d.active).length} left` }
@@ -14555,7 +14593,7 @@ async function abandonmentBlocks(p, measured) {
         { key: "former", label: "Former holders", align: "right" },
         { key: "hotspot", label: "Hotspot" }
       ],
-      emptyText: "No file has lines held by people who have left.",
+      emptyText: `No file has lines held by people who have left: 0 of ${files.length} measured files.`,
       rows: listed.map(({ f }) => ({
         path: f.path,
         share: percent2(f.abandonedShare),
@@ -14566,7 +14604,7 @@ async function abandonmentBlocks(p, measured) {
         hotspot: measured.weights.get(f.path)?.hot === true ? "yes" : "no"
       }))
     }, "cochange abandonment current"),
-    ...files.length > listed.length ? [{ type: "notice", level: "notice", text: `${files.length - listed.length} of ${files.length} measured files have no lines held by people who have left and are not listed.` }] : []
+    ...listed.length > 0 && files.length > listed.length ? [{ type: "notice", level: "notice", text: `${files.length - listed.length} of ${files.length} measured files have no lines held by people who have left and are not listed.` }] : []
   ];
 }
 async function simulationBlocks(context, p) {
@@ -14575,7 +14613,7 @@ async function simulationBlocks(context, p) {
   const notices = output.notices ?? [];
   const karFacts = r.loss.files.increment.atRisk.map((a) => ({
     label: `Knowledge at risk at the ${a.alpha}th percentile, in files`,
-    value: `${a.kar} of ${r.loss.files.population} files (${percent2(a.karShare)}%), ${a.tailRatio === null ? "no tail ratio" : `${oneDecimal(a.tailRatio)} times the expected loss`}`
+    value: `${a.kar} of ${r.loss.files.population} files (${percentText(a.karShare)}), ${a.tailRatio === null ? "no tail ratio" : `${oneDecimal(a.tailRatio)} times the expected loss`}`
   }));
   return {
     notices,
@@ -14584,12 +14622,12 @@ async function simulationBlocks(context, p) {
         type: "facts",
         caption: `Simulated turnover over ${r.horizonPeriods} periods of ${p.settings.periodMonths} months, ${r.trials} trials, seed ${r.seed}`,
         facts: [
-          { label: "Model", value: `${r.mode}; leaver rate per period ${r.selection.ratePerPeriod === null ? "not applicable" : `${percent2(r.selection.ratePerPeriod)}%`} (${r.selection.source})` },
+          { label: "Model", value: `${r.mode}; leaver rate per period ${r.selection.ratePerPeriod === null ? "not applicable" : `${percentText(r.selection.ratePerPeriod)}`} (${r.selection.source})` },
           { label: "Active developers", value: String(r.population.activeDevelopers) },
           { label: "Files already abandoned", value: `${r.loss.files.baseline} of ${r.loss.files.population}` },
-          { label: "Expected further files lost", value: `${oneDecimal(r.loss.files.increment.expected)} (${percent2(r.loss.files.increment.expectedShare)}% of files)` },
+          { label: "Expected further files lost", value: `${oneDecimal(r.loss.files.increment.expected)} (${percentText(r.loss.files.increment.expectedShare)} of files)` },
           ...karFacts,
-          { label: "Expected further lines lost", value: `${oneDecimal(r.loss.lines.increment.expected)} of ${r.loss.lines.population} lines held by people (${percent2(r.loss.lines.increment.expectedShare)}%)` }
+          { label: "Expected further lines lost", value: `${oneDecimal(r.loss.lines.increment.expected)} of ${r.loss.lines.population} lines held by people (${percentText(r.loss.lines.increment.expectedShare)})` }
         ]
       },
       cappedTable2({
@@ -14736,11 +14774,11 @@ var knowledge = {
 // packages/cochange/src/reports/overview.ts
 var TOP3 = 5;
 var FIRST_LOOK_MAX = 3;
-var percent3 = (share3) => `${Math.round(share3 * 1e3) / 10}%`;
+var percent3 = percentText;
 var number5 = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
 var text5 = (value) => typeof value === "string" ? value : null;
 var grade = (evidence) => evidence.grade;
-function evidenceBlocks2(evidence) {
+function evidenceBlocks2(evidence, contributors) {
   const g = evidence.guidelines.strong;
   const share3 = (value, guideline) => guideline === 0 ? 0 : value / guideline * 100;
   const merge2 = evidence.commitSize;
@@ -14751,7 +14789,7 @@ function evidenceBlocks2(evidence) {
       facts: [
         { label: "Evidence grade", value: evidence.grade },
         { label: "Months of usable history", value: String(evidence.usableHistoryMonths) },
-        { label: "Active contributors in the window", value: String(evidence.activeContributors) },
+        { label: "Active contributors in the window", value: contributorsText(contributors) },
         { label: "Logical changes in the window", value: String(evidence.logicalChangesInWindow) },
         { label: "Shallow clone", value: evidence.truncated.shallow ? `yes, ${evidence.truncated.boundaryCommits} boundary commits` : "no" },
         { label: "Imported history", value: evidence.importedHistory.length === 0 ? "none detected" : `${evidence.importedHistory.length} detected` },
@@ -14769,7 +14807,7 @@ function evidenceBlocks2(evidence) {
       bars: [
         { label: `Months of history (${evidence.usableHistoryMonths} of ${g.months})`, value: share3(evidence.usableHistoryMonths, g.months), guideline: 100 },
         { label: `Logical changes (${evidence.logicalChangesInWindow} of ${g.logicalChanges})`, value: share3(evidence.logicalChangesInWindow, g.logicalChanges), guideline: 100 },
-        { label: `Contributors (${evidence.activeContributors} of ${g.contributors})`, value: share3(evidence.activeContributors, g.contributors), guideline: 100 }
+        { label: `Contributors (${contributors.people} of ${g.contributors})`, value: share3(contributors.people, g.contributors), guideline: 100 }
       ]
     },
     { type: "trend-marker", label: "Median files per logical change", earlier: merge2.earlierMedian, later: merge2.laterMedian, windows: ["the earlier half", "the later half"] }
@@ -14880,13 +14918,35 @@ function cyclesResult(stored) {
   });
 }
 var MOVE_KINDS = ["move", "review", "split", "inline"];
+var LEFT_OUT_LABELS = [
+  ["scrutinise", "to scrutinise for high fan-in"],
+  ["blocked", "blocked"],
+  ["keep", "to keep"]
+];
+function localityLeftOutNotice(all) {
+  const ranking = (row2) => typeof row2.ranking === "object" && row2.ranking !== null ? row2.ranking : {};
+  const gainOf = (row2) => number5(ranking(row2).value) ?? number5(row2.score);
+  const count3 = (kind, predicate) => all.filter((row2) => text5(row2.recommendation) === kind && predicate(row2)).length;
+  const parts2 = [];
+  const zero = MOVE_KINDS.map((kind) => [kind, count3(kind, (row2) => (gainOf(row2) ?? 0) <= 0)]).filter(([, n]) => n > 0);
+  if (zero.length > 0) {
+    const total = zero.reduce((sum, [, n]) => sum + n, 0);
+    parts2.push(`${total} ${total === 1 ? "unit has" : "units have"} a gain of 0 and ${total === 1 ? "is" : "are"} not listed here: ${zero.map(([kind, n]) => `${n} ${kind}`).join(", ")}.`);
+  }
+  const other = LEFT_OUT_LABELS.map(([kind, label]) => [label, count3(kind, () => true)]).filter(([, n]) => n > 0);
+  if (other.length > 0) {
+    const total = other.reduce((sum, [, n]) => sum + n, 0);
+    parts2.push(`${total} ${total === 1 ? "unit is" : "units are"} ranked by other measures and not listed here: ${other.map(([label, n]) => `${n} ${label}`).join(", ")}.`);
+  }
+  if (parts2.length === 0) return null;
+  return `${parts2.join(" ")} \`locality analyse\` and the locality report list them with their own measures.`;
+}
 function localityResult(stored) {
   if (stored === void 0) return missingResult("locality analyse result", "locality analyse");
   const ranking = (row2) => typeof row2.ranking === "object" && row2.ranking !== null ? row2.ranking : {};
   const gainOf = (row2) => number5(ranking(row2).value) ?? number5(row2.score);
   const moves = stored.rows.filter((row2) => MOVE_KINDS.includes(text5(row2.recommendation) ?? "") && (gainOf(row2) ?? 0) > 0);
   const rows7 = top2(moves);
-  const others = stored.rows.length - moves.length;
   const guideline = rows7.map((row2) => number5(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
   const table = topTable({
     caption: "Units with a proposed move, split or inline, by gain, from locality analyse",
@@ -14911,7 +14971,8 @@ function localityResult(stored) {
     }))
   }, "locality analyse");
   const blocks = [table];
-  if (others > 0) blocks.push({ type: "notice", level: "notice", text: `${others} other ${others === 1 ? "unit is" : "units are"} not listed here: units to scrutinise for high fan-in, blocked units and units to keep. \`locality analyse\` and the locality report list them with their own measures.` });
+  const notice = localityLeftOutNotice(stored.rows);
+  if (notice !== null) blocks.push({ type: "notice", level: "notice", text: notice });
   return {
     candidates: rows7.flatMap((row2) => text5(row2.path) === null ? [] : [{ ref: `locality:${text5(row2.path)}`, label: `${text5(row2.path)} (locality)` }]),
     blocks,
@@ -14995,6 +15056,7 @@ var overview = {
     const output = await command5.run(context);
     const extra = output.extra;
     const { evidence } = extra;
+    const contributors = extra.contributors ?? { people: evidence.activeContributors, agents: 0 };
     const rows7 = output.results;
     const root = context.repo.root;
     const head = context.repo.head;
@@ -15023,7 +15085,7 @@ var overview = {
       },
       sections: [
         { id: "first-look", heading: "What to look at first", blocks: [{ type: "judgement", slot: "first-look" }] },
-        { id: "evidence", heading: "Evidence", blocks: evidenceBlocks2(evidence) },
+        { id: "evidence", heading: "Evidence", blocks: evidenceBlocks2(evidence, contributors) },
         { id: "fix-convention", heading: "Fix convention", blocks: fixBlocks(extra.fixConvention) },
         { id: "excluded", heading: "What was excluded", blocks: excludedBlocks(excluded) },
         { id: "results", heading: "Top results of each plugin", blocks: results.flatMap((r) => r.blocks) }

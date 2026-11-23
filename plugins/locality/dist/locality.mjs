@@ -1089,7 +1089,8 @@ function relocate(files, tests, base, destination) {
   return operations.sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
 }
 var MAIN_PACKAGE = /^package\s+main\b/m;
-function goPackages(edges, texts) {
+var PACKAGE_CLAUSE = /^package\s+([A-Za-z_][A-Za-z0-9_]*)/m;
+function goPackages(edges, texts, consumers = []) {
   const uses = /* @__PURE__ */ new Map();
   for (const edge of edges) {
     if (edge.from === edge.to || !edge.from.endsWith(".go") || !edge.to.endsWith(".go")) continue;
@@ -1098,7 +1099,16 @@ function goPackages(edges, texts) {
     else list.push(edge.to);
   }
   const mainFiles = new Set([...texts].filter(([path, text2]) => path.endsWith(".go") && MAIN_PACKAGE.test(text2)).map(([path]) => path));
-  return { uses, mainFolders: new Set([...mainFiles].map((path) => posix2.dirname(path))), mainFiles };
+  const unexportedUses = /* @__PURE__ */ new Map();
+  for (const use of consumers) {
+    const name9 = use.toSymbol ?? use.toExport;
+    if (use.from === use.to || !use.from.endsWith(".go") || !use.to.endsWith(".go") || posix2.dirname(use.from) !== posix2.dirname(use.to)) continue;
+    if (!/^[a-z_]/.test(name9.split(".").pop() ?? "")) continue;
+    const list = unexportedUses.get(use.to) ?? [];
+    if (!list.some((entry) => entry.name === name9 && entry.by === use.from)) list.push({ name: name9, by: use.from });
+    unexportedUses.set(use.to, list);
+  }
+  return { uses, mainFolders: new Set([...mainFiles].map((path) => posix2.dirname(path))), mainFiles, unexportedUses, packageNames: new Map([...texts].flatMap(([path, text2]) => path.endsWith(".go") && PACKAGE_CLAUSE.test(text2) ? [[path, PACKAGE_CLAUSE.exec(text2)[1]]] : [])) };
 }
 function goRefusals(operations, go) {
   const refusals = [];
@@ -1120,6 +1130,14 @@ function goRefusals(operations, go) {
       if (posix2.dirname(newPath(used)) === destination && posix2.dirname(used) !== source) {
         refusals.push({ code: "import-cycle", detail: `import cycle: ${from} imports ${posix2.dirname(used)}, so in ${destination} it would import its own package`, label: "import cycle" });
         break;
+      }
+    }
+  }
+  unexported: for (const [declared, uses] of go.unexportedUses) {
+    for (const { name: name9, by } of uses) {
+      if ((moved.has(declared) || moved.has(by)) && posix2.dirname(newPath(declared)) !== posix2.dirname(newPath(by))) {
+        refusals.push({ code: "unexported-use", detail: `unexported symbol used in its package: ${name9} used by ${by}`, label: "unexported symbol used in its package" });
+        break unexported;
       }
     }
   }
@@ -1206,7 +1224,7 @@ async function loadProject(root, ref, settings) {
 }
 function goPackagesOf(project) {
   const production = new Set(project.production);
-  return goPackages(project.analysis.importEdges.filter((edge) => production.has(edge.from) && production.has(edge.to)), project.texts);
+  return goPackages(project.analysis.importEdges.filter((edge) => production.has(edge.from) && production.has(edge.to)), project.texts, project.analysis.consumers.filter((consumer) => production.has(consumer.from) && production.has(consumer.to)));
 }
 function unitText(project, unit) {
   const text2 = project.texts.get(unit.path);
@@ -7540,6 +7558,9 @@ function repoName(root) {
   return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
 }
 
+// packages/locality/src/reports/locality.ts
+import { posix as posix6 } from "node:path";
+
 // packages/history/src/report-header.ts
 var FILE_KINDS = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
 var READ_BY_COMMANDS = /* @__PURE__ */ new Set(["generated", "vendored"]);
@@ -7570,6 +7591,8 @@ var TOP_OMITTED = 10;
 var TOP_BLOCKED = 10;
 var BLOCKERS_PER_UNIT = 3;
 var REFUSAL_DETAIL_CHARS = 120;
+var WARNINGS_SHOWN = 3;
+var WARNING_CHARS = 160;
 var OMITTED_DETAIL_CHARS = 200;
 var plural2 = (count3, noun) => `${count3} ${noun}${count3 === 1 ? "" : "s"}`;
 var byText = ([a], [b]) => a < b ? -1 : a > b ? 1 : 0;
@@ -7589,33 +7612,55 @@ function refusalLine(refusals) {
 async function dryRun(context, candidate, settings, files, go) {
   const plan = planMove(candidate, settings, files, {}, go);
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
-  if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null };
+  if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null, warnings: [] };
   try {
     const { performMove } = await import("./chunk-5667DYHG.mjs");
     const tree = await treeFromRef(context.repo.root, "HEAD");
     const moved = await performMove(tree, plan.operations);
-    return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null };
+    return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null, warnings: moved.warnings };
   } catch (error) {
-    return { ...base, rewrites: 0, filesRewritten: 0, failure: error instanceof Error ? error.message : String(error) };
+    return { ...base, rewrites: 0, filesRewritten: 0, failure: error instanceof Error ? error.message : String(error), warnings: [] };
   }
 }
 function planText(plan) {
   if (plan.refusal !== null) return `no plan: ${plan.refusal}`;
   if (plan.failure !== null) return `the dry run failed: ${plan.failure}`;
-  return `${plural2(plan.filesMoved, "file")} moved to ${folderText(plan.destination)}, ${plural2(plan.rewrites, "import")} rewritten in ${plural2(plan.filesRewritten, "file")}`;
+  const moved = `${plural2(plan.filesMoved, "file")} moved to ${folderText(plan.destination)}, ${plural2(plan.rewrites, "import")} rewritten in ${plural2(plan.filesRewritten, "file")}`;
+  if (plan.warnings.length === 0) return moved;
+  const shown2 = plan.warnings.slice(0, WARNINGS_SHOWN).map((warning) => clip(warning, WARNING_CHARS));
+  const rest = plan.warnings.length > shown2.length ? `; and ${plan.warnings.length - shown2.length} more` : "";
+  return `${moved}; ${plural2(plan.warnings.length, "warning")} from the mover: ${shown2.join("; ")}${rest}`;
 }
 var gainColumns = (settings) => [
   { key: "path", label: "Unit" },
   { key: "kind", label: "Kind" },
   { key: "target", label: "Target" },
   { key: "gain", label: "Gain (net distance removed)", align: "right", guideline: { value: settings.minDistance, note: "locality.minDistance" } },
-  { key: "ratio", label: "Gain over guideline", align: "right" },
+  { key: "ratio", label: `Gain ÷ guideline (${settings.minDistance})`, align: "right" },
   { key: "files", label: "Unit files", align: "right" },
   { key: "consumers", label: "Consumer files", align: "right" },
   { key: "folders", label: "Consumer folders", align: "right" },
   { key: "distance", label: "Distance", align: "right" },
   { key: "confidence", label: "Confidence" }
 ];
+function folderConflicts(moves, files, go) {
+  const goFolders = new Set([...files].filter((file) => file.endsWith(".go")).map((file) => posix6.dirname(file)));
+  const byTarget = /* @__PURE__ */ new Map();
+  for (const move of moves) {
+    const names = new Set(move.unit.files.flatMap((file) => go.packageNames.get(file) ?? []));
+    if (names.size !== 1 || goFolders.has(move.target === "" ? "." : move.target)) continue;
+    byTarget.set(move.target, [...byTarget.get(move.target) ?? [], { path: move.path, name: [...names][0] }]);
+  }
+  const notes3 = /* @__PURE__ */ new Map();
+  for (const [target, group] of byTarget) {
+    if (new Set(group.map((entry) => entry.name)).size < 2) continue;
+    for (const entry of group) {
+      const others = group.filter((other) => other.name !== entry.name);
+      notes3.set(entry.path, `${folderText(target)} has no Go file, and ${nameList(others.map((other) => `${other.path} (package ${other.name})`), 3)} also lands there; a folder holds one package, but this file keeps package ${entry.name}`);
+    }
+  }
+  return notes3;
+}
 var gainRow = (c) => ({
   path: c.path,
   kind: c.recommendation,
@@ -7628,7 +7673,8 @@ var gainRow = (c) => ({
   distance: c.distance,
   confidence: confidenceOf(c)
 });
-function moveTable(rows7, settings) {
+function moveTable(rows7, settings, notes3) {
+  const noted = rows7.some((c) => notes3.has(c.path));
   return {
     type: "ranked-table",
     ...capRows(
@@ -7636,8 +7682,8 @@ function moveTable(rows7, settings) {
         caption: "Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline",
         noun: "moves",
         emptyText: "No candidate has kind move, so no unit can be planned without --reason.",
-        columns: gainColumns(settings),
-        rows: rows7.map(gainRow)
+        columns: noted ? [...gainColumns(settings), { key: "note", label: "Note" }] : gainColumns(settings),
+        rows: rows7.map((c) => noted ? { ...gainRow(c), note: notes3.get(c.path) ?? "" } : gainRow(c))
       },
       TOP2,
       "locality analyse --recommendation move"
@@ -7665,15 +7711,14 @@ function scrutiniseTable(rows7, settings) {
     type: "ranked-table",
     ...capRows(
       {
-        caption: "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline. Consumer files are the distinct production files that use the unit; test files are not counted",
+        caption: "High fan-in units (kind scrutinise): consumer files are above the locality.highFanIn guideline, so no move is proposed. Ordered by consumer files. Consumer files are the distinct production files that use the unit; test files are not counted",
         noun: "units",
         emptyText: "No unit has kind scrutinise.",
         columns: [
           { key: "path", label: "Unit" },
           { key: "fanIn", label: "Consumer files", align: "right", guideline: { value: settings.highFanIn, note: "locality.highFanIn" } },
-          { key: "ratio", label: "Consumer files over guideline", align: "right" },
+          { key: "ratio", label: `Consumer files ÷ guideline (${settings.highFanIn})`, align: "right" },
           { key: "folders", label: "Consumer folders", align: "right" },
-          { key: "gain", label: "Gain (net distance removed)", align: "right" },
           { key: "confidence", label: "Confidence" }
         ],
         rows: rows7.map((c) => ({
@@ -7681,7 +7726,6 @@ function scrutiniseTable(rows7, settings) {
           fanIn: c.fanIn,
           ratio: c.guidelines.fanIn.ratio,
           folders: consumerFolders(c).size,
-          gain: c.gain,
           confidence: confidenceOf(c)
         }))
       },
@@ -7757,7 +7801,7 @@ function omittedUnitsTable(units) {
           { key: "gain", label: "Gain", align: "right" },
           { key: "files", label: "Files", align: "right" }
         ],
-        rows: sorted.map((u) => ({ path: u.path, reason: u.reason, detail: clip(u.detail, OMITTED_DETAIL_CHARS), target: folderText(u.target), gain: u.gain, files: u.files }))
+        rows: sorted.map((u) => ({ path: u.path, reason: u.reason, detail: clip(u.detail, OMITTED_DETAIL_CHARS), target: u.target === folderOf(u.path) ? "stays: no other folder lowers its distance" : folderText(u.target), gain: u.gain, files: u.files }))
       },
       TOP_OMITTED,
       "locality analyse --json"
@@ -7873,7 +7917,7 @@ var localityReport = {
               ...Object.entries(byKind).sort(byText).map(([kind, count3]) => ({ label: `Recommended ${kind}`, value: String(count3) }))
             ]
           },
-          ofKind.length === 0 ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." } : moveTable(moves, settings),
+          ofKind.length === 0 ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." } : moveTable(moves, settings, folderConflicts(moves, files, go)),
           ...ofKind.length === 0 ? [] : [reviewTable(reviews, settings), scrutiniseTable(scrutinise, settings)]
         ]
       },
@@ -7988,10 +8032,10 @@ __export(update_namespaces_exports, {
 });
 
 // packages/locality/src/movers/csharp-namespaces.ts
-import { posix as posix6 } from "node:path";
+import { posix as posix7 } from "node:path";
 var declaration = /^(\s*namespace\s+)([\w.]+)(\s*[;{]?)/;
 var segmentsOf = (folder) => folder === "." || folder === "" ? [] : folder.split("/");
-var directoryOf = (path) => posix6.dirname(path);
+var directoryOf = (path) => posix7.dirname(path);
 function namespaceAfterMove(namespace, from, to) {
   const before = segmentsOf(directoryOf(from));
   const after = segmentsOf(directoryOf(to));
