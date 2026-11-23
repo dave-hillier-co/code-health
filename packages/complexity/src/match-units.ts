@@ -17,19 +17,35 @@ interface Body {
   size: number;
 }
 
-function bodiesOf(files: readonly FileRecord[]): Body[] {
+/** Tokenised unit bodies by file text, then by line range, so the same revision of a file is tokenised once however often it is compared. */
+export type BodyCache = Map<string, Map<string, Pick<Body, "text" | "tokens" | "size">>>;
+
+function bodiesOf(files: readonly FileRecord[], cache: BodyCache): Body[] {
   const bodies: Body[] = [];
   for (const file of files) {
-    const lines = (file.text ?? "").split("\n");
+    const source = file.text ?? "";
+    let ranges = cache.get(source);
+    if (ranges === undefined) {
+      ranges = new Map();
+      cache.set(source, ranges);
+    }
+    let lines: string[] | undefined;
     for (const unit of file.units) {
-      const text = lines.slice(unit.startLine - 1, unit.endLine).join("\n").replace(/\s+/g, " ").trim();
-      const tokens = new Map<string, number>();
-      let size = 0;
-      for (const token of text.match(/[A-Za-z_$][\w$]*|\d+(?:\.\d+)?|"[^"]*"|'[^']*'|`[^`]*`|\S/g) ?? []) {
-        tokens.set(token, (tokens.get(token) ?? 0) + 1);
-        size++;
+      const range = `${unit.startLine}-${unit.endLine}`;
+      let body = ranges.get(range);
+      if (body === undefined) {
+        lines ??= source.split("\n");
+        const text = lines.slice(unit.startLine - 1, unit.endLine).join("\n").replace(/\s+/g, " ").trim();
+        const tokens = new Map<string, number>();
+        let size = 0;
+        for (const token of text.match(/[A-Za-z_$][\w$]*|\d+(?:\.\d+)?|"[^"]*"|'[^']*'|`[^`]*`|\S/g) ?? []) {
+          tokens.set(token, (tokens.get(token) ?? 0) + 1);
+          size++;
+        }
+        body = { text, tokens, size };
+        ranges.set(range, body);
       }
-      bodies.push({ unit, text, tokens, size });
+      bodies.push({ unit, ...body });
     }
   }
   return bodies;
@@ -47,11 +63,11 @@ function similarity(a: Body, b: Body): number {
  * Matches the functions of two measurements. Identity (`path#Qualified.name`) matches first. What is left
  * on each side is paired by body similarity, best pair first, so a function that was renamed or moved is
  * compared with itself. A function left unpaired counts as new (or removed), so moving code never hides a
- * regression without anyone having looked at it.
+ * regression without anyone having looked at it. A `cache` shared between calls keeps each revision of a file tokenised once.
  */
-export function matchUnits(before: readonly FileRecord[], after: readonly FileRecord[], threshold: number): UnitMatch[] {
-  const oldBodies = new Map(bodiesOf(before).map((body) => [body.unit.id, body]));
-  const newBodies = new Map(bodiesOf(after).map((body) => [body.unit.id, body]));
+export function matchUnits(before: readonly FileRecord[], after: readonly FileRecord[], threshold: number, cache: BodyCache = new Map()): UnitMatch[] {
+  const oldBodies = new Map(bodiesOf(before, cache).map((body) => [body.unit.id, body]));
+  const newBodies = new Map(bodiesOf(after, cache).map((body) => [body.unit.id, body]));
   const matches: UnitMatch[] = [];
 
   for (const [id, current] of newBodies) {

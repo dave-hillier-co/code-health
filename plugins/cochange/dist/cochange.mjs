@@ -7778,28 +7778,38 @@ function listRows(analysis, onlyUnmapped) {
   });
   return onlyUnmapped ? rows.filter((r) => r.unmapped) : rows;
 }
+var isWord = (word) => new RegExp("^\\p{L}[\\p{L}'.\\-]*$", "u").test(word);
 var looksPersonal = (name17) => {
   const words = name17.trim().split(/\s+/);
-  return words.length >= 2 && words.every((word) => new RegExp("^\\p{L}[\\p{L}'.\\-]*$", "u").test(word));
+  return words.length >= 2 && words.every(isWord);
+};
+var looksLikeFirstName = (member) => {
+  const name17 = member.name.trim();
+  const login = parseNoreply(member.email)?.username;
+  return new RegExp("^(?:\\p{Lu}\\p{Ll}+|\\p{Lo}+)$", "u").test(name17) && name17.toLowerCase() !== emailLocalPart(member.email) && name17.toLowerCase() !== login;
 };
 var isNoreply = (email) => parseNoreply(email) !== null || /^noreply@/i.test(email.trim());
 function suggestCanonical(members) {
   const nameCounts = /* @__PURE__ */ new Map();
   for (const m of members) nameCounts.set(m.name.trim().toLowerCase(), (nameCounts.get(m.name.trim().toLowerCase()) ?? 0) + 1);
   const commonest = Math.max(...nameCounts.values());
-  const personal = members.some((m) => looksPersonal(m.name));
-  const nameRank = (m) => personal ? looksPersonal(m.name) ? 0 : 1 : commonest > 1 && nameCounts.get(m.name.trim().toLowerCase()) === commonest ? 0 : 1;
+  const twoWords = members.some((m) => looksPersonal(m.name));
+  const personal = twoWords || members.some(looksLikeFirstName);
+  const nameRank = (m) => personal ? (twoWords ? looksPersonal(m.name) : looksLikeFirstName(m)) ? 0 : 1 : commonest > 1 && nameCounts.get(m.name.trim().toLowerCase()) === commonest ? 0 : 1;
   return [...members].sort(
     (x, y) => nameRank(x) - nameRank(y) || Number(isNoreply(x.email)) - Number(isNoreply(y.email)) || y.last - x.last || y.commits - x.commits || compare4(x.key, y.key)
   )[0];
 }
+var PROPOSE_ORDER = "members' commits, largest first, then strength (strong, medium, chain), then suggested name";
 function proposeRows(analysis) {
   const nodes = new Map(analysis.nodes.map((n) => [n.key, n]));
-  return analysis.proposals.map((proposal, i) => {
+  const strengthOrder = { strong: 0, medium: 1, chain: 2 };
+  const rows = analysis.proposals.map((proposal) => {
     const members = proposal.members.map((key) => nodes.get(key));
     const current2 = suggestCanonical(members);
     return {
-      id: `P${i + 1}`,
+      commits: members.reduce((sum, m) => sum + m.commits, 0),
+      id: "",
       kind: proposal.kind,
       strength: proposal.strength,
       counterEvidence: proposal.counterEvidence,
@@ -7821,6 +7831,8 @@ function proposeRows(analysis) {
       }))
     };
   });
+  rows.sort((x, y) => y.commits - x.commits || strengthOrder[x.strength] - strengthOrder[y.strength] || compare4(x.suggestedCanonical, y.suggestedCanonical));
+  return rows.map(({ commits: _held, ...row2 }, i) => ({ ...row2, id: `P${i + 1}` }));
 }
 var MIN_SERVICE_COMMITS = 3;
 function classifyRows(analysis) {
@@ -8098,7 +8110,7 @@ var command9 = {
         return { inputs: inputs({ unmapped }), results: listRows(analysis, unmapped), columns: ["identity", "commits", "firstSeen", "lastSeen", "topAreas", "mappedTo", "kind", "unmapped"] };
       }
       case "propose":
-        return { inputs: inputs(), results: proposeRows(analysis), columns: ["id", "kind", "strength", "counterEvidence", "suggestedCanonical", "members", "links"] };
+        return { inputs: inputs({ order: PROPOSE_ORDER }), results: proposeRows(analysis), columns: ["id", "kind", "strength", "counterEvidence", "suggestedCanonical", "members", "links"] };
       case "classify":
         return { inputs: inputs(), results: classifyRows(analysis), columns: ["kind", "identity", "commits", "source", "pattern", "decided"] };
       case "check": {

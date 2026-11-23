@@ -83,11 +83,19 @@ test("list --unmapped keeps only identities a decision is still owed on, and the
   expect(document.results.every((r: { topAreas: string[] }) => r.topAreas.length <= 3)).toBe(true);
 });
 
-test("propose gives clusters and the signals behind every link, strongest first", async () => {
+test("propose gives clusters and the signals behind every link, the most commits first", async () => {
   const { stdout } = await identities("propose", "--limit", "all");
   const document = json(stdout);
-  const byId = Object.fromEntries(document.results.map((p: { id: string }) => [p.id, p]));
-  expect(document.results.map((p: { strength: string }) => p.strength)).toEqual(["strong", "strong", "strong", "medium", "medium"]);
+  type Row = { id: string; strength: string; members: { identity: string; commits: number }[] };
+  const held = (p: Row): number => p.members.reduce((sum, m) => sum + m.commits, 0);
+  const rows: Row[] = document.results;
+  expect(rows.map((p) => p.id)).toEqual(rows.map((_, i) => `P${i + 1}`));
+  expect(rows.map(held)).toEqual(rows.map(held).sort((a, b) => b - a));
+  expect(rows.map((p) => p.strength).sort()).toEqual(["medium", "medium", "strong", "strong", "strong"]);
+  const byId = {
+    P1: rows.find((p) => p.members.some((m) => m.identity === key(jo1)))!,
+    P2: rows.find((p) => p.members.some((m) => m.identity === key(john1)))!,
+  };
   expect(byId.P1.members.map((m: { identity: string }) => m.identity).sort()).toEqual([key(jo1), key(jo2)].sort());
   expect(byId.P1.links[0].signals.map((s: { signal: string }) => s.signal)).toEqual(["exact-email"]);
   expect(byId.P2.links[0].signals[0]).toMatchObject({ signal: "noreply-same-user", strength: "strong" });

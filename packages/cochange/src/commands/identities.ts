@@ -4,7 +4,7 @@ import { analyseIdentities } from "../identities/analysis.ts";
 import { chooseLocation, readDecisionsInput, planApply, writePlan } from "../identities/apply.ts";
 import { checkMapping } from "../identities/check.ts";
 import { measureMapping } from "../identities/measure.ts";
-import { classifyRows, listRows, proposeRows } from "../identities/views.ts";
+import { classifyRows, listRows, PROPOSE_ORDER, proposeRows } from "../identities/views.ts";
 
 export const name = "identities";
 
@@ -50,7 +50,7 @@ export const command: Command = {
         return { inputs: inputs({ unmapped }), results: listRows(analysis, unmapped), columns: ["identity", "commits", "firstSeen", "lastSeen", "topAreas", "mappedTo", "kind", "unmapped"] };
       }
       case "propose":
-        return { inputs: inputs(), results: proposeRows(analysis), columns: ["id", "kind", "strength", "counterEvidence", "suggestedCanonical", "members", "links"] };
+        return { inputs: inputs({ order: PROPOSE_ORDER }), results: proposeRows(analysis), columns: ["id", "kind", "strength", "counterEvidence", "suggestedCanonical", "members", "links"] };
       case "classify":
         return { inputs: inputs(), results: classifyRows(analysis), columns: ["kind", "identity", "commits", "source", "pattern", "decided"] };
       case "check": {

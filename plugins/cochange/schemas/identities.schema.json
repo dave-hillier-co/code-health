@@ -185,7 +185,7 @@
         },
         "suggestedCanonical": {
           "$ref": "#/$defs/identity",
-          "description": "The member to keep as the name: one whose name looks like a personal name (two or more words, all letters) first, or when none does, one carrying the name most members share; then one whose address is not a GitHub noreply, then the most recently active, then the one with most commits, then the identity as written."
+          "description": "The member to keep as the name: one whose name looks like a personal name first (two or more words, all letters; failing that one capitalised word that is not the address's local part or the login), or when none does, one carrying the name most members share; then one whose address is not a GitHub noreply, then the most recently active, then the one with most commits, then the identity as written."
         },
         "members": {
           "type": "array",
@@ -431,6 +431,10 @@
         },
         "unmapped": {
           "type": "boolean"
+        },
+        "order": {
+          "type": "string",
+          "description": "`propose` only. The order of the results, so the default limit cuts the smallest clusters."
         },
         "fromHash": {
           "type": "string",

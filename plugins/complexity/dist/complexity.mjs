@@ -18315,19 +18315,32 @@ function touchedUnits(units, ranges) {
 }
 
 // packages/complexity/src/match-units.ts
-function bodiesOf(files) {
+function bodiesOf(files, cache) {
   const bodies = [];
   for (const file of files) {
-    const lines = (file.text ?? "").split("\n");
+    const source = file.text ?? "";
+    let ranges = cache.get(source);
+    if (ranges === void 0) {
+      ranges = /* @__PURE__ */ new Map();
+      cache.set(source, ranges);
+    }
+    let lines;
     for (const unit of file.units) {
-      const text2 = lines.slice(unit.startLine - 1, unit.endLine).join("\n").replace(/\s+/g, " ").trim();
-      const tokens2 = /* @__PURE__ */ new Map();
-      let size = 0;
-      for (const token of text2.match(/[A-Za-z_$][\w$]*|\d+(?:\.\d+)?|"[^"]*"|'[^']*'|`[^`]*`|\S/g) ?? []) {
-        tokens2.set(token, (tokens2.get(token) ?? 0) + 1);
-        size++;
+      const range = `${unit.startLine}-${unit.endLine}`;
+      let body2 = ranges.get(range);
+      if (body2 === void 0) {
+        lines ??= source.split("\n");
+        const text2 = lines.slice(unit.startLine - 1, unit.endLine).join("\n").replace(/\s+/g, " ").trim();
+        const tokens2 = /* @__PURE__ */ new Map();
+        let size = 0;
+        for (const token of text2.match(/[A-Za-z_$][\w$]*|\d+(?:\.\d+)?|"[^"]*"|'[^']*'|`[^`]*`|\S/g) ?? []) {
+          tokens2.set(token, (tokens2.get(token) ?? 0) + 1);
+          size++;
+        }
+        body2 = { text: text2, tokens: tokens2, size };
+        ranges.set(range, body2);
       }
-      bodies.push({ unit, text: text2, tokens: tokens2, size });
+      bodies.push({ unit, ...body2 });
     }
   }
   return bodies;
@@ -18338,9 +18351,9 @@ function similarity(a, b) {
   for (const [token, count3] of a.tokens) shared += Math.min(count3, b.tokens.get(token) ?? 0);
   return shared / (a.size + b.size - shared);
 }
-function matchUnits(before, after, threshold) {
-  const oldBodies = new Map(bodiesOf(before).map((body2) => [body2.unit.id, body2]));
-  const newBodies = new Map(bodiesOf(after).map((body2) => [body2.unit.id, body2]));
+function matchUnits(before, after, threshold, cache = /* @__PURE__ */ new Map()) {
+  const oldBodies = new Map(bodiesOf(before, cache).map((body2) => [body2.unit.id, body2]));
+  const newBodies = new Map(bodiesOf(after, cache).map((body2) => [body2.unit.id, body2]));
   const matches = [];
   for (const [id, current] of newBodies) {
     const previous = oldBodies.get(id);
@@ -18382,14 +18395,14 @@ var isLowEvidence = (fixes, minRevisions) => fixes.revisions < minRevisions;
 function byFixes(minRevisions) {
   return (a, b) => b.fixCommits - a.fixCommits || Number(isLowEvidence(a, minRevisions)) - Number(isLowEvidence(b, minRevisions)) || (b.fixShare ?? 0) - (a.fixShare ?? 0) || utf8(a.id, b.id);
 }
-function followUnits(earlier, earlierUnits, later, laterUnits, threshold) {
+function followUnits(earlier, earlierUnits, later, laterUnits, threshold, cache) {
   const original = /* @__PURE__ */ new Map();
   const moved = earlierUnits.map((unit) => {
     const relocated = { ...unit, path: later.path, id: `${later.path}${unit.id.slice(earlier.path.length)}` };
     original.set(relocated.id, unit);
     return relocated;
   });
-  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold);
+  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold, cache);
   return matches.flatMap((match) => match.before === void 0 ? [] : [{ before: original.get(match.before.id), after: match.after }]);
 }
 async function diffsOf(root, shas) {
@@ -18491,6 +18504,7 @@ async function measureFixes(root, settings, exclude, current, request) {
     fileOfPair.set(key, touch.fileId);
   }
   const mapping = /* @__PURE__ */ new Map();
+  const bodyCache = /* @__PURE__ */ new Map();
   const retained = /* @__PURE__ */ new Map();
   const unitTouches = [];
   const outsideTouches = [];
@@ -18521,7 +18535,7 @@ async function measureFixes(root, settings, exclude, current, request) {
       const unmatched = [];
       if (target2 === void 0) unmatched.push(...record.units);
       else {
-        for (const { before, after } of followUnits(record, record.units, target2, target2.units, settings.moveSimilarity)) {
+        for (const { before, after } of followUnits(record, record.units, target2, target2.units, settings.moveSimilarity, bodyCache)) {
           if (after === void 0) unmatched.push(before);
           else map.set(before.id, `c:${after.id}`);
         }
@@ -18545,7 +18559,7 @@ async function measureFixes(root, settings, exclude, current, request) {
     const later = latest === void 0 || latest === key ? void 0 : retained.get(latest);
     if (later === void 0) continue;
     const map = mapping.get(key);
-    for (const { before, after } of followUnits(entry.record, entry.unmatched, later.record, later.unmatched, settings.moveSimilarity)) {
+    for (const { before, after } of followUnits(entry.record, entry.unmatched, later.record, later.unmatched, settings.moveSimilarity, bodyCache)) {
       if (after !== void 0) map.set(before.id, `d:${after.id}`);
     }
   }

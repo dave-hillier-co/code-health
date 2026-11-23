@@ -32,6 +32,10 @@ const kyleNoreply: Identity = { name: "Kyle McNamara", email: "kylemc@users.nore
 const kyleWork: Identity = { name: "Kyle McNamara", email: "kyle.mcnamara@corp.example" };
 const kyleHandle: Identity = { name: "kylemc", email: "kyle.mcnamara@corp.example" };
 
+// A first name on a noreply address, against the login it was committed as once: the first name is the person's name.
+const alvin: Identity = { name: "Alvin", email: "1234+bluexo@users.noreply.github.com" };
+const bluexo: Identity = { name: "bluexo", email: "bluexo@mail.example" };
+
 const specs: { author: Identity; weeks: number[]; path: string }[] = [
   { author: sergeyWork, weeks: range(0, 9), path: "src/silo/a.ts" },
   { author: sergeyLogin, weeks: range(5, 14), path: "docs/guide/b.md" },
@@ -45,6 +49,8 @@ const specs: { author: Identity; weeks: number[]; path: string }[] = [
   { author: kyleNoreply, weeks: range(0, 8), path: "src/kyle/j.ts" },
   { author: kyleWork, weeks: range(0, 5), path: "src/kyle/k.ts" },
   { author: kyleHandle, weeks: range(9, 16), path: "src/kyle/l.ts" },
+  { author: alvin, weeks: range(0, 3), path: "src/alvin/m.ts" },
+  { author: bluexo, weeks: [4], path: "src/alvin/n.ts" },
 ];
 
 function build(): GitFixture {
@@ -100,11 +106,10 @@ test("a join made against the evidence, with nothing strong behind it, still fai
 
 test("one name beside a login cut short from the surname is one strong cluster, and a login alone is not", async () => {
   const all = await proposals();
-  const [dmitry] = containing(all, dmitryLogin, dmitryMail);
+  const dmitry = containing(all, dmitryLogin, dmitryMail).find((p) => p.strength === "strong");
   expect(dmitry).toMatchObject({ strength: "strong", counterEvidence: false });
   expect(dmitry!.members).toHaveLength(2);
-  const [other] = containing(all, dmitryLogin, danielle);
-  expect(other?.strength).toBe("medium");
+  expect(containing(all, dmitryLogin, danielle).map((p) => p.strength)).toEqual(["medium"]);
 });
 
 test("the suggested name is a personal name before a handle, then an address that is not a noreply, then the latest", async () => {
@@ -113,4 +118,17 @@ test("the suggested name is a personal name before a handle, then an address tha
   // Both real names, so the work address beats the noreply address even though the noreply identity is as recent as any.
   const kyle = containing(all, kyleNoreply, kyleWork, kyleHandle).find((p) => p.members.length === 3)!;
   expect(kyle.suggestedCanonical).toBe(key(kyleWork));
+});
+
+test("a one word name that is not the login or the address is a personal name, so Alvin is suggested over the handle bluexo", async () => {
+  const [cluster] = containing(await proposals(), alvin, bluexo);
+  expect(cluster!.suggestedCanonical).toBe(key(alvin));
+});
+
+test("propose lists the clusters holding the most commits first, says so, and numbers them in that order", async () => {
+  const out = JSON.parse((await identities("propose", "--limit", "all")).stdout);
+  expect(out.inputs.order).toContain("commits");
+  expect(out.results.map((p: { id: string }) => p.id)).toEqual(out.results.map((_: unknown, i: number) => `P${i + 1}`));
+  const first = containing(out.results, kyleNoreply, kyleWork, kyleHandle).find((p) => p.members.length === 3)!;
+  expect(out.results.indexOf(first)).toBeLessThan(out.results.indexOf(containing(out.results, alvin, bluexo)[0]!));
 });

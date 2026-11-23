@@ -1,6 +1,6 @@
 import { onlyVersionBumpsOrMerges } from "@code-health/history/identity-classify";
 import type { IdentityNode } from "@code-health/history/identity-evidence";
-import { identityKey, parseNoreply } from "@code-health/history/identity-names";
+import { emailLocalPart, identityKey, parseNoreply } from "@code-health/history/identity-names";
 import { isoDay, topAreas, type IdentityAnalysis } from "./analysis.ts";
 
 const compare = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0);
@@ -30,15 +30,28 @@ export function listRows(analysis: IdentityAnalysis, onlyUnmapped: boolean) {
   return onlyUnmapped ? rows.filter((r) => r.unmapped) : rows;
 }
 
+const isWord = (word: string): boolean => /^\p{L}[\p{L}'.\-]*$/u.test(word);
 const looksPersonal = (name: string): boolean => {
   const words = name.trim().split(/\s+/);
-  return words.length >= 2 && words.every((word) => /^\p{L}[\p{L}'.\-]*$/u.test(word));
+  return words.length >= 2 && words.every(isWord);
+};
+/** One word, letters only, not all lower case, no joined words in camelCase, and neither the address's local part nor the login: `Alvin`, not `bluexo`, `dVakulen` or `jthelin`. */
+const looksLikeFirstName = (member: IdentityNode): boolean => {
+  const name = member.name.trim();
+  const login = parseNoreply(member.email)?.username;
+  return (
+    /^(?:\p{Lu}\p{Ll}+|\p{Lo}+)$/u.test(name) &&
+    name.toLowerCase() !== emailLocalPart(member.email) &&
+    name.toLowerCase() !== login
+  );
 };
 const isNoreply = (email: string): boolean => parseNoreply(email) !== null || /^noreply@/i.test(email.trim());
 
 /**
  * The member to keep as the name of a merged person. A name that looks like a personal name comes first: two or more
- * words, all letters, so `Dmitry Vakulenko` is preferred to `dVakulen` and to `jthelin`. When no member has one, the
+ * words, all letters, so `Dmitry Vakulenko` is preferred to `dVakulen` and to `jthelin`. Failing a two word name, a one word name
+ * that is not the address's local part or the login, and is not all lower case or a handle shape, so `Alvin` is preferred to
+ * `bluexo`. When no member has one, the
  * members that carry the name most of the cluster's members share come first. Then a member with an address that is
  * not a GitHub noreply address, then the most recently active, then the one with most commits, then the key.
  */
@@ -46,9 +59,10 @@ export function suggestCanonical(members: readonly IdentityNode[]): IdentityNode
   const nameCounts = new Map<string, number>();
   for (const m of members) nameCounts.set(m.name.trim().toLowerCase(), (nameCounts.get(m.name.trim().toLowerCase()) ?? 0) + 1);
   const commonest = Math.max(...nameCounts.values());
-  const personal = members.some((m) => looksPersonal(m.name));
+  const twoWords = members.some((m) => looksPersonal(m.name));
+  const personal = twoWords || members.some(looksLikeFirstName);
   const nameRank = (m: IdentityNode): number =>
-    personal ? (looksPersonal(m.name) ? 0 : 1) : commonest > 1 && nameCounts.get(m.name.trim().toLowerCase()) === commonest ? 0 : 1;
+    personal ? ((twoWords ? looksPersonal(m.name) : looksLikeFirstName(m)) ? 0 : 1) : commonest > 1 && nameCounts.get(m.name.trim().toLowerCase()) === commonest ? 0 : 1;
   return [...members].sort(
     (x, y) =>
       nameRank(x) - nameRank(y) ||
@@ -59,14 +73,18 @@ export function suggestCanonical(members: readonly IdentityNode[]): IdentityNode
   )[0]!;
 }
 
-/** Clusters and chains, strongest first, with each link's signals. */
+export const PROPOSE_ORDER = "members' commits, largest first, then strength (strong, medium, chain), then suggested name";
+
+/** Clusters and chains, the most commits held by their members first, then the strongest, then by name, each with its links' signals. */
 export function proposeRows(analysis: IdentityAnalysis) {
   const nodes = new Map(analysis.nodes.map((n) => [n.key, n]));
-  return analysis.proposals.map((proposal, i) => {
+  const strengthOrder = { strong: 0, medium: 1, chain: 2 };
+  const rows = analysis.proposals.map((proposal) => {
     const members = proposal.members.map((key) => nodes.get(key)!);
     const current = suggestCanonical(members);
     return {
-      id: `P${i + 1}`,
+      commits: members.reduce((sum, m) => sum + m.commits, 0),
+      id: "",
       kind: proposal.kind,
       strength: proposal.strength,
       counterEvidence: proposal.counterEvidence,
@@ -88,6 +106,8 @@ export function proposeRows(analysis: IdentityAnalysis) {
       })),
     };
   });
+  rows.sort((x, y) => y.commits - x.commits || strengthOrder[x.strength] - strengthOrder[y.strength] || compare(x.suggestedCanonical, y.suggestedCanonical));
+  return rows.map(({ commits: _held, ...row }, i) => ({ ...row, id: `P${i + 1}` }));
 }
 
 const MIN_SERVICE_COMMITS = 3;

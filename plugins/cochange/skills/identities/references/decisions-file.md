@@ -20,7 +20,7 @@ Write it outside the repository (a temporary path), and pass it with `--from`. N
 }
 ```
 
-- `merges`: each alias is shown as the canonical identity. Use the proposal's `suggestedCanonical` (a member with a personal name, two or more words, before a handle; then one with an address that is not a GitHub noreply; then the most recently active) unless the user prefers another. Each alias becomes one full-form `.mailmap` line, `Canonical Name <canonical@email> Alias Name <alias@email>`.
+- `merges`: each alias is shown as the canonical identity. Use the proposal's `suggestedCanonical` (a member with a personal name, two or more words, or failing that one capitalised word that is neither the address's local part nor the login, before a handle; then one with an address that is not a GitHub noreply; then the most recently active) unless the user prefers another. Each alias becomes one full-form `.mailmap` line, `Canonical Name <canonical@email> Alias Name <alias@email>`.
 - `rejectedMerges`: pairs that are different people. Stored in the decisions file, never in `.mailmap`, and never proposed again.
 - `classifications`: `kind` is `bot`, `service`, `agent` or `person`. `person` overrides a pattern that misfired. They are matched by email address.
 

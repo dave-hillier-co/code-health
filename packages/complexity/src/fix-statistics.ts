@@ -12,7 +12,7 @@ import { readBlobs, restrictTree, treeFromTexts, type SourceTree } from "@code-h
 import type { ComplexitySettings } from "./config.ts";
 import { pathSelector } from "./current-tree.ts";
 import { parseDiffs, touchedUnits, type FileDiff } from "./fix-ranges.ts";
-import { matchUnits } from "./match-units.ts";
+import { matchUnits, type BodyCache } from "./match-units.ts";
 import { measureTree, type FileRecord, type UnitRecord } from "./measure.ts";
 
 /** Rows kept in each secondary list, deleted units and files with fixes outside any unit. The output says how many were left out. */
@@ -143,6 +143,7 @@ function followUnits(
   later: FileRecord,
   laterUnits: readonly UnitRecord[],
   threshold: number,
+  cache: BodyCache,
 ): { before: UnitRecord; after: UnitRecord | undefined }[] {
   const original = new Map<string, UnitRecord>();
   const moved = earlierUnits.map((unit) => {
@@ -150,7 +151,7 @@ function followUnits(
     original.set(relocated.id, unit);
     return relocated;
   });
-  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold);
+  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold, cache);
   return matches.flatMap((match) => (match.before === undefined ? [] : [{ before: original.get(match.before.id)!, after: match.after }]));
 }
 
@@ -281,6 +282,7 @@ export async function measureFixes(
 
   /** Which unit a historical unit is now, by revision of a file: `c:` is a unit that still exists and `d:` one that does not. */
   const mapping = new Map<string, Map<string, string>>();
+  const bodyCache: BodyCache = new Map();
   const retained = new Map<string, { record: FileRecord; unmatched: UnitRecord[] }>();
   const unitTouches: { key: string; unitId: string; changeId: string; sha: string; fix: boolean; review: boolean }[] = [];
   const outsideTouches: { fileId: string; changeId: string; fix: boolean }[] = [];
@@ -313,7 +315,7 @@ export async function measureFixes(
       const unmatched: UnitRecord[] = [];
       if (target === undefined) unmatched.push(...record.units);
       else {
-        for (const { before, after } of followUnits(record, record.units, target, target.units, settings.moveSimilarity)) {
+        for (const { before, after } of followUnits(record, record.units, target, target.units, settings.moveSimilarity, bodyCache)) {
           if (after === undefined) unmatched.push(before);
           else map.set(before.id, `c:${after.id}`);
         }
@@ -340,7 +342,7 @@ export async function measureFixes(
     const later = latest === undefined || latest === key ? undefined : retained.get(latest);
     if (later === undefined) continue;
     const map = mapping.get(key)!;
-    for (const { before, after } of followUnits(entry.record, entry.unmatched, later.record, later.unmatched, settings.moveSimilarity)) {
+    for (const { before, after } of followUnits(entry.record, entry.unmatched, later.record, later.unmatched, settings.moveSimilarity, bodyCache)) {
       if (after !== undefined) map.set(before.id, `d:${after.id}`);
     }
   }
