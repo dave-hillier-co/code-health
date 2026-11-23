@@ -67,10 +67,11 @@ test("fixed points stay where they are, and nothing moves into them", async () =
     join(helpers.path, "code-health.json"),
     JSON.stringify({ entryPoints: ["src/main.ts"], locality: { fixedPoints: ["src/shared/utils/**", "src/orders/**"] } }),
   );
-  const { row } = await analyse(helpers);
+  const { row, document } = await analyse(helpers);
   expect(row("src/shared/utils/money.ts")).toMatchObject({ recommendation: "keep", rule: "fixed-point" });
-  // src/shared/cycle would move to src/orders, a fixed folder: it settles for the next best place.
-  expect(row("src/shared/cycle/a.ts")?.target).not.toMatch(/^src\/orders/);
+  // src/shared/cycle would move to src/orders, a fixed folder: it settles for the next best place, which is the root folder src, and two files are not moved up to a root.
+  expect(row("src/shared/cycle/a.ts")).toBeUndefined();
+  expect(document.omitted).toContainEqual(expect.objectContaining({ path: "src/shared/cycle/a.ts", reason: "target is a root folder", target: "src" }));
 });
 
 test("the minimum distance decides what is reported", async () => {

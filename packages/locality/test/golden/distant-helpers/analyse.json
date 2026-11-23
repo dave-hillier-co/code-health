@@ -30,6 +30,7 @@
     "singleFileFolders": 4,
     "totalWeightedDistance": 60
   },
+  "omitted": [],
   "repo": {
     "dirty": false,
     "head": "78ddadd4de155734ef2b56a253b72b25b5f87053"
@@ -139,6 +140,7 @@
         "ratio": 3,
         "value": 6
       },
+      "reason": "Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split.",
       "recommendation": "split",
       "rule": "mixed-exports",
       "score": 6,
@@ -235,6 +237,7 @@
         "ratio": 3,
         "value": 6
       },
+      "reason": "Two consumers: move to the target.",
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 6,
@@ -339,6 +342,7 @@
         "ratio": 2,
         "value": 4
       },
+      "reason": "The gain is below the minimum, but would clear it if a dependency were resolved. `locality move` needs --reason for a blocked.",
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 4,
@@ -457,6 +461,7 @@
         "ratio": 2,
         "value": 4
       },
+      "reason": "Two consumers: move to the target.",
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 4,
@@ -547,6 +552,7 @@
         "ratio": 1.5,
         "value": 3
       },
+      "reason": "One consumer, and the unit is tiny: inline it.",
       "recommendation": "move",
       "rule": "single-consumer-tiny",
       "score": 3,
@@ -652,6 +658,7 @@
         "ratio": 1.5,
         "value": 3
       },
+      "reason": "The gain is below the minimum, but would clear it if a dependency were resolved. `locality move` needs --reason for a blocked.",
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 3,
@@ -753,6 +760,7 @@
         "ratio": 1.5,
         "value": 3
       },
+      "reason": "The gain is below the minimum, but would clear it if a dependency were resolved. `locality move` needs --reason for a blocked.",
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 3,
@@ -836,6 +844,7 @@
         "ratio": 1.5,
         "value": 3
       },
+      "reason": "One consumer and a large unit: move it next to the consumer, as its own module.",
       "recommendation": "move",
       "rule": "single-consumer-large",
       "score": 3,
@@ -922,6 +931,7 @@
         "ratio": 1.5,
         "value": 3
       },
+      "reason": "One consumer, and the unit is tiny: inline it.",
       "recommendation": "inline",
       "rule": "single-consumer-tiny",
       "score": 3,
@@ -1082,6 +1092,7 @@
         "ratio": 1,
         "value": 8
       },
+      "reason": "Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design. `locality move` needs --reason for a scrutinise.",
       "recommendation": "scrutinise",
       "rule": "high-fan-in",
       "score": 8,
@@ -1172,6 +1183,7 @@
         "ratio": 1,
         "value": 2
       },
+      "reason": "Guard: the unit's files live outside its entry file's folder, so its leaves are scored on their own. `locality move` needs --reason for a review.",
       "recommendation": "review",
       "rule": "scattered-unit",
       "score": 2,
@@ -1271,6 +1283,7 @@
         "ratio": 1,
         "value": 2
       },
+      "reason": "Two consumers: move to the target.",
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 2,
@@ -1349,6 +1362,7 @@
         "ratio": 0,
         "value": 0
       },
+      "reason": "A barrel with one importing file: inline it by rewriting imports to the real definitions.",
       "recommendation": "inline",
       "rule": "single-consumer-barrel",
       "score": 0,
@@ -1437,6 +1451,7 @@
         "ratio": 0,
         "value": 0
       },
+      "reason": "A pass-through with one consumer: inline it.",
       "recommendation": "inline",
       "rule": "pass-through",
       "score": 0,
@@ -1484,6 +1499,7 @@
       "split": 1
     },
     "files": 31,
+    "omitted": {},
     "placed": 16,
     "units": 30
   },

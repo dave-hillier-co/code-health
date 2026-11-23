@@ -30,6 +30,7 @@
     "singleFileFolders": 4,
     "totalWeightedDistance": 60
   },
+  "omitted": [],
   "repo": {
     "dirty": false,
     "head": "78ddadd4de155734ef2b56a253b72b25b5f87053"
@@ -156,6 +157,7 @@
         "ratio": 1,
         "value": 8
       },
+      "reason": "Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design. `locality move` needs --reason for a scrutinise.",
       "recommendation": "scrutinise",
       "rule": "high-fan-in",
       "score": 8,
@@ -203,6 +205,7 @@
       "split": 1
     },
     "files": 31,
+    "omitted": {},
     "placed": 16,
     "units": 30
   },

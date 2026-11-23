@@ -65,9 +65,10 @@
             "files": { "$ref": "common.schema.json#/$defs/count", "description": "Production source files analysed." },
             "units": { "$ref": "common.schema.json#/$defs/count", "description": "Units found, including the placed ones." },
             "placed": { "$ref": "common.schema.json#/$defs/count", "description": "Units left out of the results because they already sit beside their consumers (rule near-consumers)." },
+            "omitted": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Units left out of the results because no move of them is proposed, by reason: no usable target (the best target is refused by a language placement rule such as a Go internal/ boundary or a package boundary), folder-sized unit (more files than locality.maxMoveFiles) and target is a root folder (a unit of several files moving up to a folder shallower than locality.minTargetDepth). Each is listed in `omitted`." },
             "byRecommendation": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" } }
           },
-          "required": ["files", "units", "placed", "byRecommendation"],
+          "required": ["files", "units", "placed", "omitted", "byRecommendation"],
           "additionalProperties": false
         },
         "metrics": {
@@ -110,6 +111,23 @@
           "items": { "$ref": "analyse-history.schema.json#/$defs/candidate" }
         },
         "historyOnly": { "$ref": "analyse-history.schema.json#/$defs/historyOnly", "description": "With `--source both`: what the cross-check left out, or why it reported nothing." },
+        "omitted": {
+          "type": "array",
+          "description": "Units with no proposed move, with the reason. They are not ranked; summary.omitted counts them by reason.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "reason": { "type": "string", "description": "The reason it is counted under in summary.omitted." },
+              "detail": { "type": "string", "description": "The figures and the guideline behind the reason." },
+              "target": { "type": "string", "description": "The best usable target at the time the unit was left out, for reference." },
+              "gain": { "$ref": "common.schema.json#/$defs/count", "description": "The gain at that target." },
+              "files": { "$ref": "common.schema.json#/$defs/count" }
+            },
+            "required": ["path", "reason", "detail", "target", "gain", "files"],
+            "additionalProperties": false
+          }
+        },
         "unreachable": { "$ref": "#/$defs/paths", "description": "Production files the virtual root cannot reach: dead code, or an entry point missing from config." },
         "barrels": { "$ref": "#/$defs/paths" },
         "unresolved": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Imports the resolver could not follow, by reason." },
@@ -137,6 +155,7 @@
               },
               "recommendation": { "$ref": "#/$defs/recommendation" },
               "rule": { "type": "string", "description": "The rule that fired, described by `locality explain <rule>`." },
+              "reason": { "type": "string", "description": "Why the unit has this recommendation, in one sentence, with the values behind it. For a recommendation other than move it says that `locality move` needs --reason." },
               "source": { "const": "structural" },
               "unit": {
                 "type": "object",
@@ -152,7 +171,18 @@
                 "additionalProperties": false
               },
               "location": { "type": "string", "description": "The folder the unit lives in: the deepest folder holding all its files." },
-              "target": { "type": "string", "description": "The folder that minimises the unit's net distance." },
+              "target": { "type": "string", "description": "The folder that minimises the unit's net distance among the folders the language placement rules allow." },
+              "unusableTarget": {
+                "type": "object",
+                "description": "Present only when a folder with a larger gain exists but a language placement rule refuses it (a Go internal/ boundary, a package boundary, a name collision). target and gain are for the best folder that can be used.",
+                "properties": {
+                  "target": { "type": "string" },
+                  "gain": { "$ref": "common.schema.json#/$defs/count" },
+                  "reason": { "type": "string", "description": "The rule that refuses it, for example: crosses internal/." }
+                },
+                "required": ["target", "gain", "reason"],
+                "additionalProperties": false
+              },
               "distance": { "$ref": "common.schema.json#/$defs/count", "description": "Folder hops from location to target." },
               "gain": { "$ref": "common.schema.json#/$defs/count", "description": "Net distance saved by moving to the target as things stand." },
               "unblockedGain": { "$ref": "common.schema.json#/$defs/count", "description": "The gain if every blocker were resolved." },
@@ -280,7 +310,7 @@
               }
             },
             "required": [
-              "path", "score", "scoreUnit", "ranking", "fanInPercentile", "guidelines", "recommendation", "rule", "source", "unit", "location", "target", "distance", "gain", "unblockedGain",
+              "path", "score", "scoreUnit", "ranking", "fanInPercentile", "guidelines", "recommendation", "rule", "reason", "source", "unit", "location", "target", "distance", "gain", "unblockedGain",
               "netDistance", "directCalls", "otherRefs", "testRefs", "fanIn", "size", "ownDeps", "visibility", "age", "lastChanged",
               "churn", "coChange", "signals", "strays", "blockers"
             ],
