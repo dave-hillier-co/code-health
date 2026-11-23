@@ -10,6 +10,7 @@ import * as hotspots from "./commands/hotspots.ts";
 import * as identities from "./commands/identities.ts";
 import * as outcome from "./commands/outcome.ts";
 import * as refresh from "./commands/refresh.ts";
+import * as report from "./commands/report.ts";
 import * as risk from "./commands/risk.ts";
 import * as spread from "./commands/spread.ts";
 import * as successors from "./commands/successors.ts";
@@ -41,6 +42,7 @@ export const commandModules: CommandModule[] = [
   identities,
   outcome,
   refresh,
+  report,
   risk,
   spread,
   successors,

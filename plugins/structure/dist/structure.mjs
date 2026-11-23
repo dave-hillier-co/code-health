@@ -588,11 +588,17 @@ async function execute(cli2, io) {
   }
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli2.config);
-  const context = { repo, config, positionals: args2.positionals, values: args2.values };
+  const context = { cwd: io.cwd, repo, config, positionals: args2.positionals, values: args2.values };
   resetBuiltinOmissions();
   resetRunNotes();
   resetDropped();
   const output = await command12.run(context);
+  if (output.text !== void 0) {
+    for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
+`);
+    io.stdout.write(output.text);
+    return output.failed ? ExitCode.CheckFailed : ExitCode.Success;
+  }
   const noted = runNotes();
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };

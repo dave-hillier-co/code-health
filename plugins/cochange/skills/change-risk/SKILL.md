@@ -50,3 +50,5 @@ When the author is the user, your stance is a pre-flight check: what to fix befo
 - **Placement** is `close`, `mixed`, `distant` or `unknown`, with a label per file. Say which labels drove it, in terms of files, never in terms of the person. [references/placement.md](references/placement.md) has the labels and the privacy rules in full.
 - **Level** is `routine`, `attention` or `elevated`. It appears only where stored evidence shows the levels separate past changes, and the CLI states that evidence beside it. Read it as advice.
 - A response that rests on placement (`owner-distance`, `no-owner`, `distant-placement`) exists only when placement was computed.
+
+To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).

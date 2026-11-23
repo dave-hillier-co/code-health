@@ -68,3 +68,5 @@ Three commands give the instruments, all counts and no names:
 - Turnover is assumed random. Occasional contributors leave at a higher rate than established ones, so one pooled rate can overstate the loss of core authors.
 - Agent-authored lines have no knowledge to lose. How to attribute them is an open policy question, not something to decide silently.
 - The ranking is a prompt to look. It is not a forecast of which files will be lost.
+
+To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).

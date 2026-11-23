@@ -74,3 +74,5 @@ Name problems with the red flags in `references/red-flags.md`. A `pass-through-p
 - Reuse, deep import and manifest checks need the structural layer, which reads TypeScript, JavaScript, C#, C++, Python, Java, Kotlin, Go and Rust. For a package in any other language it reads the manifest only: the dependency graph, closure, co-change, lockstep and wide-change findings still apply.
 - `abstractness` is weak where little is declared abstract, as in code that is mostly functions. The finding says so, and the change evidence carries the judgement.
 - Evidence beats convention. A package diagram is a hypothesis, and a package in the zone of pain that never changes is not in pain.
+
+To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).

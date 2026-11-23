@@ -47,3 +47,13 @@ test("a plugin without skills has nothing to copy", () => {
   rmSync(join(root, "plugins", "b"), { recursive: true });
   expect(syncRedFlags(root)).toEqual([]);
 });
+
+test("a shared reports file is copied into every skill too, and a stale copy of it is reported", () => {
+  writeFileSync(join(root, "shared", "reports.md"), "# Reports\n");
+  expect(syncRedFlags(root)).toHaveLength(6);
+  const reports = (skill: string) => join(root, "plugins", skill, "references", "reports.md");
+  for (const skill of ["a/skills/one", "a/skills/two", "b/skills/three"]) expect(readFileSync(reports(skill), "utf8")).toBe("# Reports\n");
+  expect(staleRedFlags(root)).toEqual([]);
+  writeFileSync(reports("b/skills/three"), "edited\n");
+  expect(staleRedFlags(root)).toEqual([reports("b/skills/three")]);
+});

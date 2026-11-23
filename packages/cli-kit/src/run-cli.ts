@@ -19,6 +19,8 @@ export interface ReportStatus {
 }
 
 export interface CommandContext {
+  /** The directory the command was run from, which relative paths in its options are read against. */
+  cwd: string;
   repo: RepoState;
   config: LoadedConfig;
   positionals: string[];
@@ -35,6 +37,11 @@ export interface CommandOutput {
   inputs?: Record<string, unknown>;
   /** Sections emitted beside the envelope in JSON, such as `evidence` or `window`. Not shown in tables. */
   extra?: Record<string, unknown>;
+  /**
+   * The command's complete stdout, written as it is in place of a table or the JSON envelope. For a command whose
+   * output is a document of its own, such as a rendered report.
+   */
+  text?: string;
   /** A list of rows (sorted, limited and projected by the kit) or any other JSON value. */
   results: unknown;
   /** The rows are already in the order the command states, so the kit keeps that order instead of sorting by ranking ratio, score and path. */
@@ -155,11 +162,16 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
 
   const repo = readRepoState(io.cwd);
   const config = loadConfig(repo.root, cli.config);
-  const context: CommandContext = { repo, config, positionals: args.positionals, values: args.values };
+  const context: CommandContext = { cwd: io.cwd, repo, config, positionals: args.positionals, values: args.values };
   resetBuiltinOmissions();
   resetRunNotes();
   resetDropped();
   const output = await command.run(context);
+  if (output.text !== undefined) {
+    for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}\n`);
+    io.stdout.write(output.text);
+    return output.failed ? ExitCode.CheckFailed : ExitCode.Success;
+  }
   const noted = runNotes();
   const builtin = builtinOmissions();
   const omittedByBuiltin = Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin };

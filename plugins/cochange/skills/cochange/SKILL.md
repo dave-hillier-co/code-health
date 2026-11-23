@@ -109,3 +109,5 @@ Report what you acted on and what you dismissed, each with the reason. When a fi
 - Do not edit `code-health.json` to make a finding appear or vanish. To tune guidelines, show the user the setting and let them decide.
 - Do not quote author names or emails from history. Default outputs carry none, and a request to evaluate individuals is out of scope.
 - Do not read a hotspot as a verdict, or a coupling as a defect.
+
+To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).

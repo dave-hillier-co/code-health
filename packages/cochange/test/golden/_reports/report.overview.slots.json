@@ -1,0 +1,420 @@
+{
+  "data": {
+    "header": {
+      "commit": "9f65c10e2680360c26e94d73aa12fc4b81bdd0dc",
+      "configHash": "0000000000000000",
+      "date": "2024-06-01",
+      "evidenceGrade": "weak",
+      "excluded": [
+        {
+          "count": 1,
+          "what": "non-code files left out of the rankings"
+        },
+        {
+          "count": 1,
+          "what": "test files left out of the rankings"
+        }
+      ],
+      "historyWindow": "4.7 months of usable history; the analysis window is 12 months, 2023-06-01 to 2024-06-01",
+      "repo": "repo"
+    },
+    "limits": [
+      "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+      "Each table shows the top 5 of its result and says how many rows it leaves out; the command prints the rest.",
+      "The evidence grade is weak, so history-based results are tentative and static signals should lead.",
+      "Hotspot complexity is the indentation proxy, because no complexity report covers this commit.",
+      "Not stored for this commit: complexity analyse, structure cycles, locality analyse. The overview reads other plugins' stored results and never computes them."
+    ],
+    "sections": [
+      {
+        "blocks": [
+          {
+            "slot": "first-look",
+            "type": "judgement"
+          }
+        ],
+        "heading": "What to look at first",
+        "id": "first-look"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Evidence behind the history-based results",
+            "facts": [
+              {
+                "label": "Evidence grade",
+                "value": "weak"
+              },
+              {
+                "label": "Months of usable history",
+                "value": "4.7"
+              },
+              {
+                "label": "Active contributors in the window",
+                "value": "2"
+              },
+              {
+                "label": "Logical changes in the window",
+                "value": "6"
+              },
+              {
+                "label": "Shallow clone",
+                "value": "no"
+              },
+              {
+                "label": "Imported history",
+                "value": "none detected"
+              },
+              {
+                "label": "Merge policy",
+                "value": "no shift in the median files per change (2 earlier, 1 later)"
+              }
+            ],
+            "type": "facts"
+          },
+          {
+            "bars": [
+              {
+                "guideline": 100,
+                "label": "Months of history (4.7 of 24)",
+                "value": 19.583333
+              },
+              {
+                "guideline": 100,
+                "label": "Logical changes (6 of 300)",
+                "value": 2
+              },
+              {
+                "guideline": 100,
+                "label": "Contributors (2 of 5)",
+                "value": 40
+              }
+            ],
+            "source": "Guidelines for strong evidence: 24 months, 300 logical changes, 5 contributors.",
+            "title": "History against the guidelines for strong evidence",
+            "type": "guideline-bars",
+            "unit": "percent of the guideline for strong evidence"
+          },
+          {
+            "earlier": 2,
+            "label": "Median files per logical change",
+            "later": 1,
+            "type": "trend-marker",
+            "windows": [
+              "the earlier half",
+              "the later half"
+            ]
+          }
+        ],
+        "heading": "Evidence",
+        "id": "evidence"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Fix convention check",
+            "facts": [
+              {
+                "label": "Landed changes in the window",
+                "value": "6"
+              },
+              {
+                "label": "Changes whose title or message is a fix",
+                "value": "0 (0%)"
+              },
+              {
+                "label": "Conventional Commits fix prefixes",
+                "value": "0"
+              },
+              {
+                "label": "Fix verbs",
+                "value": "0"
+              },
+              {
+                "label": "Issue references",
+                "value": "0"
+              },
+              {
+                "label": "Convention followed",
+                "value": "no"
+              }
+            ],
+            "type": "facts"
+          },
+          {
+            "level": "notice",
+            "text": "The commit messages probably do not follow a convention this can use: none of the 6 landed changes uses a recognisable fix form (a Conventional Commits type, a leading Fix or Fixes, or an issue reference).",
+            "type": "notice"
+          }
+        ],
+        "heading": "Fix convention",
+        "id": "fix-convention"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "What the run left out, with counts",
+            "columns": [
+              {
+                "key": "what",
+                "label": "Left out"
+              },
+              {
+                "align": "right",
+                "key": "count",
+                "label": "Count"
+              }
+            ],
+            "numbered": false,
+            "rows": [
+              {
+                "count": 0,
+                "what": "commits outside the analysis window"
+              },
+              {
+                "count": 0,
+                "what": "shallow boundary commits"
+              },
+              {
+                "count": 0,
+                "what": "commits of imported history"
+              },
+              {
+                "count": 0,
+                "what": "commits in the blame ignore file"
+              },
+              {
+                "count": 0,
+                "what": "commits by bots and service accounts"
+              },
+              {
+                "count": 0,
+                "what": "commits trailed by this suite"
+              },
+              {
+                "count": 0,
+                "what": "commits with no file left after filtering"
+              },
+              {
+                "count": 0,
+                "what": "file changes that only rename"
+              },
+              {
+                "count": 0,
+                "what": "file changes matching exclude globs"
+              },
+              {
+                "count": 0,
+                "what": "lockfile changes"
+              },
+              {
+                "count": 0,
+                "what": "generated file changes"
+              },
+              {
+                "count": 0,
+                "what": "vendored file changes"
+              },
+              {
+                "count": 0,
+                "what": "changes over the changeset limit of 30 files"
+              },
+              {
+                "count": 1,
+                "what": "non-code files left out of the rankings"
+              },
+              {
+                "count": 1,
+                "what": "test files left out of the rankings"
+              }
+            ],
+            "type": "ranked-table"
+          }
+        ],
+        "heading": "What was excluded",
+        "id": "excluded"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Highest hotspot scores, from cochange hotspots",
+            "columns": [
+              {
+                "key": "path",
+                "label": "File"
+              },
+              {
+                "align": "right",
+                "key": "score",
+                "label": "Score"
+              },
+              {
+                "align": "right",
+                "key": "frequency",
+                "label": "Revisions"
+              },
+              {
+                "align": "right",
+                "key": "complexity",
+                "label": "Complexity"
+              },
+              {
+                "align": "right",
+                "key": "fixes",
+                "label": "Fixes"
+              },
+              {
+                "key": "recommendation",
+                "label": "Flag"
+              }
+            ],
+            "noun": "files",
+            "rows": [
+              {
+                "complexity": 0,
+                "fixes": 0,
+                "frequency": 4,
+                "path": "src/billing/invoice.ts",
+                "recommendation": "hotspot",
+                "score": 0.375
+              },
+              {
+                "complexity": 0,
+                "fixes": 0,
+                "frequency": 3,
+                "path": "src/reporting/summary.ts",
+                "recommendation": null,
+                "score": 0.125
+              }
+            ],
+            "total": 2,
+            "type": "ranked-table"
+          },
+          {
+            "bins": [
+              {
+                "count": 0,
+                "label": "0.0 to 0.1"
+              },
+              {
+                "count": 1,
+                "label": "0.1 to 0.2"
+              },
+              {
+                "count": 0,
+                "label": "0.2 to 0.3"
+              },
+              {
+                "count": 1,
+                "label": "0.3 to 0.4"
+              },
+              {
+                "count": 0,
+                "label": "0.4 to 0.5"
+              },
+              {
+                "count": 0,
+                "label": "0.5 to 0.6"
+              },
+              {
+                "count": 0,
+                "label": "0.6 to 0.7"
+              },
+              {
+                "count": 0,
+                "label": "0.7 to 0.8"
+              },
+              {
+                "count": 0,
+                "label": "0.8 to 0.9"
+              },
+              {
+                "count": 0,
+                "label": "0.9 to 1.0"
+              }
+            ],
+            "title": "Distribution of hotspot scores",
+            "type": "histogram",
+            "unit": "files"
+          },
+          {
+            "level": "notice",
+            "text": "No stored complexity analyse result for this commit. Run `complexity analyse` to store it, then run the overview again.",
+            "type": "notice"
+          },
+          {
+            "level": "notice",
+            "text": "No stored structure cycles result for this commit. Run `structure cycles` to store it, then run the overview again.",
+            "type": "notice"
+          },
+          {
+            "level": "notice",
+            "text": "No stored locality analyse result for this commit. Run `locality analyse` to store it, then run the overview again.",
+            "type": "notice"
+          }
+        ],
+        "heading": "Top results of each plugin",
+        "id": "results"
+      }
+    ],
+    "title": "Code health overview"
+  },
+  "instructions": "Write notes.json as { stamp, notes }: copy the stamp unchanged, and give each slot id an entry that follows the slot's shape.",
+  "protocol": 1,
+  "report": "overview",
+  "slots": [
+    {
+      "about": {
+        "kind": "report",
+        "label": "the repository",
+        "ref": "overview"
+      },
+      "choose": {
+        "candidates": [
+          {
+            "label": "src/billing/invoice.ts (hotspot ranking)",
+            "ref": "hotspot:src/billing/invoice.ts"
+          },
+          {
+            "label": "src/reporting/summary.ts (hotspot ranking)",
+            "ref": "hotspot:src/reporting/summary.ts"
+          }
+        ],
+        "max": 3
+      },
+      "id": "first-look",
+      "maxChars": 320,
+      "task": "Choose up to 3 subjects from the candidates that the tables in this report say are worth a look first, most worthwhile first. For each, give a verdict and one or two sentences of why that cite only values shown in this report. Do not add numbers the report does not show. When the evidence grade is weak, say the history-based results are tentative.",
+      "title": "Judgement: where to start",
+      "verdicts": [
+        "investigate-first",
+        "worth-a-look",
+        "evidence-too-weak"
+      ]
+    },
+    {
+      "about": {
+        "kind": "report",
+        "label": "the repository",
+        "ref": "overview"
+      },
+      "id": "limits",
+      "maxChars": 500,
+      "task": "In at most three sentences, say what limits how far these results can be trusted for this repository, using only the evidence, the exclusions and the missing results shown above.",
+      "title": "Judgement: what limits these results",
+      "verdicts": []
+    }
+  ],
+  "stamp": {
+    "config": "0000000000000000",
+    "head": "9f65c10e2680360c26e94d73aa12fc4b81bdd0dc",
+    "inputs": {
+      "complexityReport": null,
+      "since": null,
+      "storedResultsRead": [],
+      "until": null
+    },
+    "kind": "overview",
+    "protocol": 1
+  }
+}

@@ -150,7 +150,11 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<p>.mjs *)
 
 ### Shared red flags
 
-`shared/red-flags.md` is the single source of the design vocabulary. `npm run build` copies it byte for byte to `plugins/*/skills/*/references/red-flags.md`, and `npm run check:red-flags` (part of `npm run check` and CI) fails when a copy differs or is missing. Edit only the shared file, then build and commit the copies together. Specs link to `shared/red-flags.md`.
+`shared/red-flags.md` is the single source of the design vocabulary. `npm run build` copies it byte for byte to `plugins/*/skills/*/references/red-flags.md`, and `npm run check:red-flags` (part of `npm run check` and CI) fails when a copy differs or is missing. Edit only the shared file, then build and commit the copies together. Specs link to `shared/red-flags.md`. `shared/reports.md`, how an agent writes a report's judgement, is copied and checked the same way.
+
+### Adding a report
+
+A plugin adds a report as one entry in the `reportCommand({ ... })` registration of its `commands/report.ts` (see `packages/cochange/src/commands/report.ts`). The entry is a `ReportKind` from `@code-health/cli-kit/report-command`: its `build` returns the title, the stamp inputs, the header facts, sections of blocks (components from `@code-health/report`), the fixed limits and the slots. Test it with a real git fixture end to end: `--slots`, then notes, then HTML and Markdown, plus the refusal cases, as `packages/cochange/test/report-overview.test.ts` does.
 
 ## Adding a language
 

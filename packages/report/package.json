@@ -1,0 +1,13 @@
+{
+  "name": "@code-health/report",
+  "version": "0.0.0",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "license": "AGPL-3.0-only OR LicenseRef-Commercial",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  }
+}

@@ -142,3 +142,5 @@ Do not move code to make the score better. If a target would bury code deeper th
 ## Configuration
 
 Settings live in the `locality` section of `code-health.json`, with `exclude`, `entryPoints` and `vagueNames` shared across the suite. `references/recommendations.md` lists them. The numbers are guidelines: each candidate reports its value, the guideline and their ratio in `guidelines`. Ask before changing a guideline to make a recommendation appear or disappear.
+
+To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).

@@ -44,7 +44,7 @@ plugins/                            what users install; one self-contained folde
   <plugin>/
     .claude-plugin/plugin.json
     skills/<skill>/SKILL.md
-    skills/<skill>/references/*.md  loaded on demand (incl. generated red-flags.md)
+    skills/<skill>/references/*.md  loaded on demand (incl. generated red-flags.md and reports.md)
     dist/<plugin>.mjs               bundled CLI (built, committed)
     dist/chunk-<hash>.mjs           modules a command imports on demand, only if the plugin has any
     dist/grammars/*.wasm            tree-sitter grammars, only if the plugin parses
@@ -53,11 +53,13 @@ plugins/                            what users install; one self-contained folde
 packages/                           source; never installed directly
   cli-kit/                          argument parsing, output, exit codes, config loading
   history/                          git ingestion and the shared cache
+  report/                           the report slot protocol, page shell and components
   lexical/                          lexer profiles, indentation, function blocks, hunk shapes
   parse/                            web-tree-sitter loading and language adapters
   graph/                            import graphs, dominators, tree distance
   <plugin>/                         each plugin's CLI source and tests
 shared/red-flags.md                 single source, copied into each skill's references
+shared/reports.md                   how an agent writes a report's judgement, copied likewise
 docs/specs/                         these specs
 fixtures/                           scripts that build deterministic fixture repos, and languages/<id>/ conformance fixtures
 ```
@@ -142,6 +144,7 @@ Every plugin's CLI follows the same conventions, implemented once in `packages/c
 - **Exit codes.** 0 success; 1 a command that explicitly gates (a regression check, a move verification or a gate the user configured) found a regression or a mismatch; 2 usage or config error, including an unknown config key; 3 environment error (not a git repo, shallow clone without a window, Node too old). Findings above a guideline never set 1. Errors are JSON on stderr when `--json` is set.
 - **Schemas.** Each output has a JSON Schema in `schemas/`. A breaking change bumps `schemaVersion` and the plugin's major version.
 - **Self-description.** `--help` on every command, `explain <rule>` for every recommendation rule, and `config explain`.
+- **Reports.** `report <kind>` prints judgement slots and renders notes as HTML or Markdown (see [Reports](#reports)).
 - **Maintainer commands.** A command or subcommand that calibrates or evaluates the suite on a corpus, such as `cochange risk backtest`, `cochange abandonment backtest` and `locality measure premise`, stays runnable and has its own `--help`, but is left out of its parent's `--help` listing, and no skill or reference that end users or Claude follow mentions it. Each plugin's spec describes its own in a "Maintainer commands" section. The outcome commands measure what a user acted on and stay user-facing.
 
 ## Shared vocabulary
@@ -294,6 +297,63 @@ The shared engine counts as complexity.md defines the metrics. These are the rea
 | Rust | every `match` arm, the wildcard included, `&&` and `||` also in let chains and guards, `while let`, `if let` | `?`, `\|` between patterns | closures nest; a labelled `break` or `continue` costs a flat 1 |
 | Java | each `case` label (not `default`), the ternary, `&&`, `||`; a `switch` expression and statement are one node | no null-coalescing operator exists | lambdas nest; a labelled `break` or `continue` costs a flat 1 |
 | Kotlin | each `when` entry with a condition (not `else`), `&&`, `||` and the elvis operator `?:`, which is a cyclomatic decision as `??` is and free in cognitive complexity; `if` is an expression, so there is no ternary | safe calls `?.` and `!!` | lambdas, anonymous functions and local functions nest; `break@label` and `continue@label` cost a flat 1 |
+
+## Reports
+
+A report is a page for a person to read: the CLI computes the data and renders HTML or Markdown, and the agent writes only the judgement. The design is shared, so every report has the same two steps, the same page and the same rules. The code is `packages/report` (the protocol, the page shell and the components, bundled into each plugin) and `packages/cli-kit/src/report-command.ts` (the command wiring). Agents follow [shared/reports.md](../../shared/reports.md), which every skill carries as `references/reports.md`.
+
+### Command and protocol
+
+Each report is `<plugin> report <kind> [args]`, in two steps.
+
+1. **`--slots`** prints JSON: the report kind, a `stamp`, the `data` the report will show, and the judgement `slots`. The stamp holds the protocol version, the kind, HEAD, the config hash and the report's `inputs`: its arguments, its window, and the stored results of other plugins that it read. A slot has an `id`, a `title`, what it is `about` (a file, pair, unit, finding or the whole report, with a ref and a label), the `task` (what to write), and its allowed shape: `verdicts` (an enum; empty for a text-only slot) and `maxChars`. A slot that asks the agent to choose subjects from the data has `choose: { max, candidates }`.
+2. The agent writes `notes.json`: `{ "stamp": ..., "notes": { "<slot id>": entry } }`, with the stamp copied unchanged and one entry per slot id: `{ verdict?, text }`, or `{ items: [{ subject, verdict?, text }] }` for a choosing slot. **`--notes FILE --format html|md [--out PATH]`** renders it. Without `--out` the page goes to stdout.
+
+Rendering refuses, with exit 2 and a message that names every problem, when the stamp does not match (another HEAD, config hash, kind or inputs), when a slot has no entry or an empty text, when an entry names a slot that does not exist, or when a verdict, a subject, a field or a length is not allowed. Every number on the page comes from the CLI's data and never from the notes: notes text is printed as written, escaped.
+
+`--format md` without notes may render a data-only draft with the slots marked "not yet written", for terminals and quick looks. HTML requires notes. `--format md --compact` renders the short header used in a pull request comment. `--slots` takes none of `--notes`, `--format` and `--compact`. The common options `--limit` and `--fields` do not apply to a report: each report states how many rows each list leaves out.
+
+A report reads other plugins' stored results only through the results cache, as [Shared caches](#shared-caches) says, names each one it read in the stamp's `inputs`, and never computes another plugin's result. A result that is missing becomes a line saying which command to run.
+
+The `--slots` output has the schema `report.schema.json` in the plugin's `schemas/`. A report's goldens (slots, HTML and Markdown) sit in `test/golden/_reports/`, and its tests cover the refusal cases.
+
+### Page rules
+
+- **HTML** is one self-contained file: inline CSS and inline SVG, no script needed to read it, no external request. It uses semantic elements (header, nav, main, section, table with caption, `th scope`, figure and figcaption). Class names say what a thing is and never how it looks. Every chart has a text table of the same data. Colour is never the only signal: values are printed, and a value beside its guideline has a marker and words. Text and fills meet WCAG AA contrast. A light and a dark theme follow `prefers-color-scheme`, and print styles drop the navigation and keep charts and tables whole.
+- **Markdown** uses headings, lists and tables only, and reads on GitHub and in a terminal.
+- **Header.** Every report shows the repository, the analysed commit, the date (HEAD's committer date, never the wall clock), the config hash, the evidence grade, the history window and what was excluded, with counts. A **Limits** section closes every report: fixed statements that follow from the data, then the agent's own limits slot when the report defines one.
+- **Guidelines** are shown as legend values beside the numbers and never as a single score or a red, yellow and green rating. A list is a distribution or a top-N and says how many rows it leaves out. No headline figure is an average weighted by lines of code.
+- **Names of people** appear only where the plugin already allows them (abandonment and successors with `--names`), and the knowledge report follows the same rule.
+
+### Components
+
+Components are pure functions from data to strings, one for HTML (with inline SVG where it is a chart) and one for Markdown, each with golden tests and an accessibility test. A section holds blocks, each a component's data tagged with `type`.
+
+| Block `type` | What it renders |
+|---|---|
+| `ranked-table` | Rows in the order given, an optional rank column, and a guideline legend with a marker on the marked side of each column's guideline. |
+| `treemap` | A squarified treemap nested by folder. The caller chooses the size and colour keys. Tiles print their name and value, colour is five numbered bands, and a table lists the tiles. Tiles not drawn are counted. |
+| `sparkline` | A small line over periods, with a table of the values. |
+| `histogram` | Counts per bin as bars with printed counts, and a table with shares. |
+| `matrix` | A heatmap of rows by columns with the values printed in the cells, and a table. |
+| `guideline-bars` | Values each against its guideline, with the ratio and "above guideline", "at guideline" or "below guideline". |
+| `trend-marker` | A later window against an earlier one: the word stronger, stable or weaker, an arrow and both values. |
+| `evidence-list` | Commits or findings, each with an id, text and detail as plain text, and a count of those not listed. |
+| `notice` | A line that opens with the word Notice, Limit or Warning. |
+| `judgement` | The place a slot's verdict and text appear, with its subject. |
+| `facts`, `paragraph` | A two column table of measures, and a paragraph. |
+
+### The reports
+
+| Report | Owner | Command | What it shows |
+|---|---|---|---|
+| overview | cochange | `cochange report overview` | The evidence (grade, history months, contributors, changes in the window, shallow or not, merge policy), the fix convention check, what was excluded, and the top 5 of each plugin's main result (hotspots, complexity analyse, structure cycles, locality analyse) read from the stored results for HEAD, with a line naming the command to run for one that is not stored. Slots: what to look at first (up to 3 subjects chosen from the data) and the limits. |
+| hotspots | cochange | `cochange report hotspots` | The hotspot ranking, with an X-Ray section for each top file from the complexity plugin's stored results. `complexity report xray FILE` is the same X-Ray for one file. |
+| coupling | cochange | `cochange report coupling` | The coupled pairs with their support. |
+| knowledge | cochange | `cochange report knowledge` | Knowledge concentration and loss. It requires `cochange.knowledge.enabled` and follows the privacy rules of [abandonment](abandonment.md). |
+| change summary | cochange | `cochange report change [BASE..HEAD]` | What a range of changes touched and the evidence around it. It has a compact Markdown form for a pull request comment. |
+| structure | structure | `structure report structure` | Cycles, dependencies against stability and the mechanisms in use. |
+| locality | locality | `locality report locality` | Units far from where they are used, with their blockers. |
 
 ## Testing
 

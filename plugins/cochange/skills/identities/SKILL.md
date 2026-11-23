@@ -61,3 +61,5 @@ Bots, services and agents are left out of the population of people and out of ev
 | `identities propose` | Clusters and chains with each link's signals and strength. Recorded rejections are left out. |
 | `identities classify` | Bot, service and agent candidates with the pattern that matched. |
 | `identities apply --from FILE [--location committed\|local] [--apply]` | Write mailmap entries and decisions. Dry run unless `--apply`. |
+
+To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).

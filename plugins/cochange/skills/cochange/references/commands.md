@@ -58,6 +58,10 @@ Change-spread distribution per bucket, with an `overall` row. Dates are ISO 8601
 
 Updates the shared history cache and reports commits added. Analysis commands do this themselves.
 
+## report overview [--since DATE] [--until DATE]
+
+Writes the overview page: the evidence, the fix convention check, what was excluded and the top 5 of each plugin's main result, read from the stored results for HEAD (a result that is not stored is a line naming the command to run). `--slots` prints the data and the two judgement slots (what to look at first, and the limits) as JSON. `--notes FILE --format html|md [--out PATH]` renders your notes, and exits with 2 naming the problem when they do not fit. `--format md` alone prints a draft. The steps are in [reports.md](reports.md).
+
 ## explain [rule]
 
 Describes a recommendation rule: `hotspot`, `cold`, `distant-coupling`, `asymmetric-coupling`. `config explain` prints the effective config and where each value came from.
