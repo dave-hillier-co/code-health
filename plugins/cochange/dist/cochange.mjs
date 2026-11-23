@@ -9905,12 +9905,16 @@ function codeSpan(text6) {
 }
 
 // packages/report/src/components/notice.ts
+function endWithFullStop(text6) {
+  const trimmed = text6.trimEnd();
+  return /[.!?]["')\]`]*$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
 var WORD = { notice: "Notice", limit: "Limit", warning: "Warning" };
 function noticeHtml(data) {
-  return `<aside class="notice ${data.level}" role="note"><strong>${WORD[data.level]}:</strong> ${inlineHtml(data.text)}</aside>`;
+  return `<aside class="notice ${data.level}" role="note"><strong>${WORD[data.level]}:</strong> ${inlineHtml(endWithFullStop(data.text))}</aside>`;
 }
 function noticeMd(data) {
-  return `> **${WORD[data.level]}:** ${escapeMd(data.text)}`;
+  return `> **${WORD[data.level]}:** ${escapeMd(endWithFullStop(data.text))}`;
 }
 
 // packages/report/src/tables.ts
@@ -10679,16 +10683,16 @@ function trendOf(earlier, later, tolerance = 0.2) {
   return later > earlier ? "stronger" : "weaker";
 }
 function words(data) {
-  const trend = trendOf(data.earlier, data.later, data.tolerance);
-  return { trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
+  const trend = data.trend ?? trendOf(data.earlier, data.later, data.tolerance);
+  return { trend, word: data.wording?.[trend] ?? trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
 }
 function trendMarkerHtml(data) {
-  const { trend, detail } = words(data);
-  return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${trend} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
+  const { trend, word, detail } = words(data);
+  return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${escapeHtml(word)} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
 }
 function trendMarkerMd(data) {
-  const { trend, detail } = words(data);
-  return `${ARROW[trend]} ${trend} (${escapeMd(detail)})`;
+  const { trend, word, detail } = words(data);
+  return `${ARROW[trend]} ${escapeMd(word)} (${escapeMd(detail)})`;
 }
 
 // packages/report/src/block.ts
@@ -11620,7 +11624,8 @@ function structureDelta(evidence) {
     unavailable: null,
     series: { count: findings.length },
     value: { count: findings.length },
-    evidence: findings.slice(0, 5).map((finding) => ({ kind: finding.kind, id: finding.id }))
+    evidence: findings.slice(0, 5).map((finding) => ({ kind: finding.kind, id: finding.id })),
+    evidenceTotal: findings.length
   };
 }
 var INDENTATION_PROXY = "indentation proxy, not a complexity comparison";
@@ -11635,7 +11640,8 @@ async function complexityDelta(root, change3, risk, evidence, isTest) {
       unavailable: null,
       series: { count: units.length },
       value: { count: units.length, unsupportedFiles: evidence.complexity.unsupportedFiles },
-      evidence: units.slice(0, 5).map((unit) => ({ unit: unit.id, change: unit.change, cognitive: unit.cognitive, delta: unit.delta }))
+      evidence: units.slice(0, 5).map((unit) => ({ unit: unit.id, change: unit.change, cognitive: unit.cognitive, delta: unit.delta })),
+      evidenceTotal: units.length
     };
   }
   const rows7 = [];
@@ -11666,7 +11672,8 @@ async function complexityDelta(root, change3, risk, evidence, isTest) {
     unavailable: null,
     series: { count: rows7.length },
     value: { count: rows7.length, files: examined, newFiles: added },
-    evidence: rows7.slice(0, 5)
+    evidence: rows7.slice(0, 5),
+    evidenceTotal: rows7.length
   };
 }
 function readWorktree(root, path) {
@@ -11710,6 +11717,7 @@ function withFanIn(factor, touched, locality, risk) {
     reason: band === null ? factor.reason : null,
     value: { ...factor.value, fanIn },
     guidelines: { ...factor.guidelines, fanIn: cutoffs === null ? null : { moderate: cutoffs.moderate, high: cutoffs.high } },
+    evidenceTotal: (factor.evidenceTotal ?? factor.evidence.length) + rows7.length,
     evidence: [...factor.evidence, ...rows7.sort((a, b) => b.fanIn - a.fanIn || (a.file < b.file ? -1 : 1)).slice(0, 5).map((row2) => ({ ...row2, from: "locality" }))]
   };
 }
@@ -12016,7 +12024,8 @@ function mixedPurpose(facts) {
   return measurement2("mixed-purpose", "size-and-diffusion", "history", "count", "history", {
     series: { count: count3 },
     value: { moved, edited, editedWhileMoved },
-    evidence: mixed ? facts.files.filter((file) => file.status === "R").slice(0, FIRST_ROWS).map((file) => ({ file: file.path, from: file.oldPath })) : []
+    evidence: mixed ? facts.files.filter((file) => file.status === "R").slice(0, FIRST_ROWS).map((file) => ({ file: file.path, from: file.oldPath })) : [],
+    evidenceTotal: mixed ? facts.files.filter((file) => file.status === "R").length : 0
   });
 }
 function hotspotsTouched(facts, state, context) {
@@ -12034,7 +12043,8 @@ function hotspotsTouched(facts, state, context) {
   return measurement2("hotspots-touched", "history", "history", "percentile", "history", {
     series: { share: share3 },
     value: { share: share3, hotFiles: hot.length, ...nonCodeHot > 0 ? { nonCodeHotFiles: nonCodeHot } : {} },
-    evidence: hot.map((file) => ({ file: file.fileId, revisions: state.revisionsInWindow(file.fileId) })).sort((a, b) => b.revisions - a.revisions || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS)
+    evidence: hot.map((file) => ({ file: file.fileId, revisions: state.revisionsInWindow(file.fileId) })).sort((a, b) => b.revisions - a.revisions || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
+    evidenceTotal: hot.length
   });
 }
 var FIX_COMMITS_PER_FILE = 3;
@@ -12058,7 +12068,8 @@ function defectHistory(facts, state, context) {
   return measurement2("defect-history", "history", "history", "percentile", "history", {
     series: { share: share3 },
     value: { share: share3, fixes, revisions },
-    evidence: perFile.sort((a, b) => b.fixes - a.fixes || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS)
+    evidence: perFile.sort((a, b) => b.fixes - a.fixes || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
+    evidenceTotal: perFile.length
   });
 }
 function contention(facts, state, context) {
@@ -12077,7 +12088,8 @@ function contention(facts, state, context) {
   return measurement2("contention", "history", "history", "percentile", "history", {
     series: { authors: others.size },
     value: { authors: others.size },
-    evidence: perFile.sort((a, b) => b.authors - a.authors || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS)
+    evidence: perFile.sort((a, b) => b.authors - a.authors || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
+    evidenceTotal: perFile.length
   });
 }
 function age(facts, state, context) {
@@ -12093,7 +12105,8 @@ function age(facts, state, context) {
     evidence: [
       ...stale.slice(0, FIRST_ROWS).map((file) => ({ file: file.fileId, side: "stale" })),
       ...settling.slice(0, FIRST_ROWS).map((file) => ({ file: file.fileId, side: "settling" }))
-    ]
+    ],
+    evidenceTotal: stale.length + settling.length
   });
 }
 function coupledPartners(facts, state, context) {
@@ -12158,7 +12171,8 @@ function novelCoupling(facts, state, context) {
   return measurement2("novel-coupling", "completeness", "history", "count", "history", {
     series: { count: pairs.length },
     value: { count: pairs.length },
-    evidence: pairs.slice(0, FIRST_ROWS).map((pair) => ({ ...pair }))
+    evidence: pairs.slice(0, FIRST_ROWS).map((pair) => ({ ...pair })),
+    evidenceTotal: pairs.length
   });
 }
 function testEvidence(facts, state, context) {
@@ -12188,7 +12202,8 @@ function blastRadius(facts, state, context) {
   return measurement2("blast-radius", "structure-and-content", "history", "percentile", "co-change", {
     series: { files: partners.length },
     value: { files: partners.length },
-    evidence: partners.slice(0, FIRST_ROWS).map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence }))
+    evidence: partners.slice(0, FIRST_ROWS).map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence })),
+    evidenceTotal: partners.length
   });
 }
 function sensitivePaths(facts, context) {
@@ -12477,6 +12492,7 @@ function toFactor(measurement3, banded, risk) {
     value: disabled ? {} : measurement3.value,
     guidelines: disabled ? {} : banded.guidelines,
     evidence: disabled ? [] : measurement3.evidence,
+    ...disabled || measurement3.evidenceTotal === void 0 ? {} : { evidenceTotal: measurement3.evidenceTotal },
     source: measurement3.source,
     reason: disabled ? "switched off by cochange.risk.disable" : measurement3.unavailable ?? banded.reason
   };
@@ -12520,7 +12536,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change3.head);
   const touched = change3.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-PQO6DNSA.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-SH3JEEID.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change3);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);
@@ -12923,8 +12939,9 @@ function describeEvidence(record2) {
   const id = idKey === void 0 ? "item" : pair ? `${text3(record2.a)} and ${text3(record2.b)}` : text3(record2[idKey]);
   return { id, text: rest.length === 0 ? "touched by the change" : rest.join(", ") };
 }
-function evidenceItems(records) {
-  return { items: records.slice(0, EVIDENCE_ITEMS).map(describeEvidence), omitted: Math.max(0, records.length - EVIDENCE_ITEMS) };
+function evidenceItems(records, total = records.length) {
+  const items = records.slice(0, EVIDENCE_ITEMS).map(describeEvidence);
+  return { items, omitted: Math.max(0, total - items.length) };
 }
 function findingItem(finding) {
   const files = finding.evidence.flatMap((record2) => text3(record2.file) ?? text3(record2.path) ?? []);
@@ -12976,7 +12993,7 @@ function complexityItem(rows7, index2) {
 }
 function hotspotsItem(factor) {
   const files = factor.evidence.flatMap((record2) => text3(record2.file) ?? []);
-  const { items, omitted: omitted2 } = evidenceItems(factor.evidence);
+  const { items, omitted: omitted2 } = evidenceItems(factor.evidence, factor.evidenceTotal);
   return {
     slot: itemSlot(
       "hotspots-touched",
@@ -13095,7 +13112,7 @@ function abandonedBlocks(assessed) {
 }
 function evidenceBlocks(assessed) {
   const blocks = assessed.factors.filter((f) => f.status === "ok" && f.evidence.length > 0 && f.name !== "abandoned-touched").map((f) => {
-    const { items, omitted: omitted2 } = evidenceItems(f.evidence);
+    const { items, omitted: omitted2 } = evidenceItems(f.evidence, f.evidenceTotal);
     return { type: "evidence-list", title: `Evidence for ${f.name}`, items, omitted: omitted2 };
   });
   return blocks.length > 0 ? blocks : [{ type: "notice", level: "notice", text: "No factor has evidence items to list." }];
@@ -13234,7 +13251,7 @@ function hotspotBlocks(assessed) {
     type: "ranked-table",
     caption: "Hot files the change touches, by revisions in the window",
     noun: "files",
-    total: factor.evidence.length,
+    total: factor.evidenceTotal ?? factor.evidence.length,
     emptyText: "The change touches no hot file.",
     columns: [
       { key: "file", label: "File" },
@@ -14709,7 +14726,7 @@ function limitsOf3(p, measured, notices) {
     `A developer counts as having left after ${s.activityWindowMonths} months without a commit. Someone on leave looks the same, and local overrides correct it.`,
     "The simulation assumes turnover is random. It says nothing about any person, and the report names nobody unless run with --names, which lists active developers only.",
     `Each table shows the top ${TOP2} of its result and says how many rows it leaves out; \`cochange abandonment patterns\` prints every file.`,
-    `Complexity is ${measured.complexity.source === "indentation" ? "the indentation proxy, because no complexity report covers this commit" : "from the complexity plugin's stored report"}. Test files and files that are not code have none, so the complex-code pattern does not apply to them (${measured.summary.complexityUnknown} files with a blame have no complexity).`,
+    `Complexity is ${measured.complexity.source === "indentation" ? "the indentation proxy, because no `complexity files` result is stored for this commit" : "from the stored `complexity files` result"}. Test files and files that are not code have none, so the complex-code pattern does not apply to them (${measured.summary.complexityUnknown} files with a blame have no complexity).`,
     ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative."] : [],
     ...notices.length > 0 ? ["The notices above say where the identities or the turnover estimate weaken the results."] : [],
     ...p.knowledge.model.missing.length > 0 ? [`The blame is not cached for ${p.knowledge.model.missing.length} files, which are inconclusive. Run without --no-refresh to refresh it.`] : []
@@ -14810,20 +14827,29 @@ function evidenceBlocks2(evidence, contributors) {
         { label: `Contributors (${contributors.people} of ${g.contributors})`, value: share3(contributors.people, g.contributors), guideline: 100 }
       ]
     },
-    { type: "trend-marker", label: "Median files per logical change", earlier: merge2.earlierMedian, later: merge2.laterMedian, windows: ["the earlier half", "the later half"] }
+    {
+      type: "trend-marker",
+      label: "Median files per logical change",
+      earlier: merge2.earlierMedian,
+      later: merge2.laterMedian,
+      windows: ["the earlier half", "the later half"],
+      // The same rule as the merge policy line above, so the two never disagree.
+      trend: merge2.shifted ? merge2.laterMedian > merge2.earlierMedian ? "stronger" : "weaker" : "stable",
+      wording: { stronger: "more files per change", weaker: "fewer files per change", stable: "no shift" }
+    }
   ];
 }
 function fixBlocks(convention) {
   return [
     {
       type: "facts",
-      caption: "Fix convention check",
+      caption: "Fix convention check, over the landed changes in the window",
       facts: [
         { label: "Landed changes in the window", value: String(convention.landedChanges) },
         { label: "Changes whose title or message is a fix", value: `${convention.fixes} (${percent3(convention.share)})` },
-        { label: "Conventional Commits fix prefixes", value: String(convention.forms.conventionalCommits) },
-        { label: "Fix verbs", value: String(convention.forms.fixVerb) },
-        { label: "Issue references", value: String(convention.forms.issueReference) },
+        { label: "Landed changes with a Conventional Commits type (feat, fix, chore and the others, so more than the fixes)", value: String(convention.forms.conventionalCommits) },
+        { label: "Landed changes whose title starts with a fix verb", value: String(convention.forms.fixVerb) },
+        { label: "Landed changes whose title has a closing keyword and an issue reference", value: String(convention.forms.issueReference) },
         { label: "Convention followed", value: convention.followsConvention ? "yes" : "no" }
       ]
     },
@@ -15039,7 +15065,7 @@ function limitsOf4(evidence, missing, complexitySource) {
     ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
     ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate2(evidence.truncated.availableSince)} is missing.`] : [],
     ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
-    ...complexitySource === "indentation" ? ["Hotspot complexity is the indentation proxy, because no complexity report covers this commit."] : [],
+    ...complexitySource === "indentation" ? ["Hotspot complexity is the indentation proxy, because no `complexity files` result is stored for this commit."] : [],
     ...missing.length === 0 ? [] : [`Not stored for this commit: ${missing.join(", ")}. The overview reads other plugins' stored results and never computes them.`]
   ];
 }

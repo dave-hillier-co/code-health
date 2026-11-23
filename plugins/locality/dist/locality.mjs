@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-U4DA7C6U.mjs";
+} from "./chunk-KH2LNDQK.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -1114,7 +1114,9 @@ function goRefusals(operations, go) {
   const refusals = [];
   const moved = new Map(operations.filter((operation) => operation.from.endsWith(".go") && operation.role === "unit").map((operation) => [operation.from, operation.to]));
   if (moved.size === 0) return refusals;
+  const movedWithTests = new Map([...moved, ...operations.filter((operation) => operation.from.endsWith(".go") && operation.role === "test").map((operation) => [operation.from, operation.to])]);
   const newPath = (path) => moved.get(path) ?? path;
+  const newPathWithTests = (path) => movedWithTests.get(path) ?? path;
   for (const [from, to] of moved) {
     const source = posix2.dirname(from);
     const destination = posix2.dirname(to);
@@ -1135,7 +1137,7 @@ function goRefusals(operations, go) {
   }
   unexported: for (const [declared, uses] of go.unexportedUses) {
     for (const { name: name9, by } of uses) {
-      if ((moved.has(declared) || moved.has(by)) && posix2.dirname(newPath(declared)) !== posix2.dirname(newPath(by))) {
+      if ((movedWithTests.has(declared) || movedWithTests.has(by)) && posix2.dirname(newPathWithTests(declared)) !== posix2.dirname(newPathWithTests(by))) {
         refusals.push({ code: "unexported-use", detail: `unexported symbol used in its package: ${name9} used by ${by}`, label: "unexported symbol used in its package" });
         break unexported;
       }
@@ -1184,6 +1186,13 @@ function placementRefusals(operations, manifests, tree, go) {
         label: "crosses internal/"
       });
     }
+    const dir = posix2.dirname(operation.from);
+    if (operation.from.endsWith("_test.go") && dir !== posix2.dirname(operation.to)) {
+      const testdata = [...tree].find((path) => path.startsWith(dir === "." ? "testdata/" : `${dir}/testdata/`));
+      if (testdata !== void 0) {
+        refusals.push({ code: "testdata", detail: `${operation.from} would leave ${dir}/testdata behind, and Go tests read ./testdata of their own package folder (${testdata})`, label: "tests read the testdata folder they would leave" });
+      }
+    }
     if (landing.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} is the destination of two files`, label: "name collision" });
     else if (tree.has(operation.to) && !leaving.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} already exists`, label: "name collision" });
     landing.add(operation.to);
@@ -1224,7 +1233,7 @@ async function loadProject(root, ref, settings) {
 }
 function goPackagesOf(project) {
   const production = new Set(project.production);
-  return goPackages(project.analysis.importEdges.filter((edge) => production.has(edge.from) && production.has(edge.to)), project.texts, project.analysis.consumers.filter((consumer) => production.has(consumer.from) && production.has(consumer.to)));
+  return goPackages(project.analysis.importEdges.filter((edge) => production.has(edge.from) && production.has(edge.to)), project.texts, project.analysis.consumers.filter((consumer) => production.has(consumer.to) && (production.has(consumer.from) || consumer.from.endsWith(".go") && project.isTest(consumer.from))));
 }
 function unitText(project, unit) {
   const text2 = project.texts.get(unit.path);
@@ -2863,6 +2872,13 @@ function analyseProject(project, model, settings, history) {
   }
   const unitsByFile = /* @__PURE__ */ new Map();
   for (const unit of analysis.units) unitsByFile.set(unit.path, [...unitsByFile.get(unit.path) ?? [], unit]);
+  function goTestsOf(files) {
+    const declaredBy = /* @__PURE__ */ new Map();
+    for (const [declared, uses] of go.unexportedUses) {
+      for (const { by } of uses) if (project.isTest(by)) declaredBy.set(by, (declaredBy.get(by) ?? /* @__PURE__ */ new Set()).add(declared));
+    }
+    return [...declaredBy].filter(([, declared]) => [...declared].every((file) => files.has(file)) && [...declared].some((file) => files.has(file))).map(([test]) => test);
+  }
   function testsOf(files) {
     const touching = new Set([...files].flatMap((file) => testsByFile.get(file) ?? []));
     const owned = [];
@@ -2871,7 +2887,9 @@ function analyseProject(project, model, settings, history) {
       const imported = testImports.get(test);
       ([...imported].every((file) => files.has(file)) ? owned : external).push(test);
     }
-    return { owned, external };
+    for (const test of goTestsOf(files)) if (!owned.includes(test)) owned.push(test);
+    owned.sort(compareIds);
+    return { owned, external: external.filter((test) => !owned.includes(test)) };
   }
   const interfaces = /* @__PURE__ */ new Set();
   for (const exported of analysis.exports) {
@@ -6062,9 +6080,10 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-5667DYHG.mjs");
+    const { performMove } = await import("./chunk-FIFNIFUE.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
+    for (const broken of moved?.breaks ?? []) refusals.push({ code: "does-not-compile", detail: broken });
     let sha = null;
     let applied = false;
     if (apply && moved !== void 0 && refusals.length === 0) {
@@ -6258,12 +6277,16 @@ function codeSpan(text2) {
 }
 
 // packages/report/src/components/notice.ts
+function endWithFullStop(text2) {
+  const trimmed = text2.trimEnd();
+  return /[.!?]["')\]`]*$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
 var WORD = { notice: "Notice", limit: "Limit", warning: "Warning" };
 function noticeHtml(data) {
-  return `<aside class="notice ${data.level}" role="note"><strong>${WORD[data.level]}:</strong> ${inlineHtml(data.text)}</aside>`;
+  return `<aside class="notice ${data.level}" role="note"><strong>${WORD[data.level]}:</strong> ${inlineHtml(endWithFullStop(data.text))}</aside>`;
 }
 function noticeMd(data) {
-  return `> **${WORD[data.level]}:** ${escapeMd(data.text)}`;
+  return `> **${WORD[data.level]}:** ${escapeMd(endWithFullStop(data.text))}`;
 }
 
 // packages/report/src/tables.ts
@@ -7032,16 +7055,16 @@ function trendOf(earlier, later, tolerance = 0.2) {
   return later > earlier ? "stronger" : "weaker";
 }
 function words(data) {
-  const trend = trendOf(data.earlier, data.later, data.tolerance);
-  return { trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
+  const trend = data.trend ?? trendOf(data.earlier, data.later, data.tolerance);
+  return { trend, word: data.wording?.[trend] ?? trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
 }
 function trendMarkerHtml(data) {
-  const { trend, detail } = words(data);
-  return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${trend} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
+  const { trend, word, detail } = words(data);
+  return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${escapeHtml(word)} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
 }
 function trendMarkerMd(data) {
-  const { trend, detail } = words(data);
-  return `${ARROW[trend]} ${trend} (${escapeMd(detail)})`;
+  const { trend, word, detail } = words(data);
+  return `${ARROW[trend]} ${escapeMd(word)} (${escapeMd(detail)})`;
 }
 
 // packages/report/src/block.ts
@@ -7614,9 +7637,12 @@ async function dryRun(context, candidate, settings, files, go) {
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null, warnings: [] };
   try {
-    const { performMove } = await import("./chunk-5667DYHG.mjs");
+    const { performMove } = await import("./chunk-FIFNIFUE.mjs");
     const tree = await treeFromRef(context.repo.root, "HEAD");
     const moved = await performMove(tree, plan.operations);
+    if ((moved.breaks ?? []).length > 0) {
+      return { ...base, refusal: refusalLine((moved.breaks ?? []).map((detail) => ({ code: "does-not-compile", detail }))), rewrites: 0, filesRewritten: 0, failure: null, warnings: [] };
+    }
     return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null, warnings: moved.warnings };
   } catch (error) {
     return { ...base, rewrites: 0, filesRewritten: 0, failure: error instanceof Error ? error.message : String(error), warnings: [] };
@@ -7643,23 +7669,19 @@ var gainColumns = (settings) => [
   { key: "distance", label: "Distance", align: "right" },
   { key: "confidence", label: "Confidence" }
 ];
-function folderConflicts(moves, files, go) {
+function oneMovePerEmptyFolder(moves, files) {
   const goFolders = new Set([...files].filter((file) => file.endsWith(".go")).map((file) => posix6.dirname(file)));
-  const byTarget = /* @__PURE__ */ new Map();
+  const best = /* @__PURE__ */ new Map();
   for (const move of moves) {
-    const names = new Set(move.unit.files.flatMap((file) => go.packageNames.get(file) ?? []));
-    if (names.size !== 1 || goFolders.has(move.target === "" ? "." : move.target)) continue;
-    byTarget.set(move.target, [...byTarget.get(move.target) ?? [], { path: move.path, name: [...names][0] }]);
+    if (!move.unit.files.every((file) => file.endsWith(".go")) || goFolders.has(move.target === "" ? "." : move.target)) continue;
+    const held = best.get(move.target);
+    if (held === void 0 || move.gain > held.gain) best.set(move.target, move);
   }
-  const notes3 = /* @__PURE__ */ new Map();
-  for (const [target, group] of byTarget) {
-    if (new Set(group.map((entry) => entry.name)).size < 2) continue;
-    for (const entry of group) {
-      const others = group.filter((other) => other.name !== entry.name);
-      notes3.set(entry.path, `${folderText(target)} has no Go file, and ${nameList(others.map((other) => `${other.path} (package ${other.name})`), 3)} also lands there; a folder holds one package, but this file keeps package ${entry.name}`);
-    }
-  }
-  return notes3;
+  const left = moves.filter((move) => {
+    const held = best.get(move.target);
+    return held !== void 0 && held !== move && move.unit.files.every((file) => file.endsWith(".go"));
+  });
+  return { kept: moves.filter((move) => !left.includes(move)), left };
 }
 var gainRow = (c) => ({
   path: c.path,
@@ -7673,8 +7695,7 @@ var gainRow = (c) => ({
   distance: c.distance,
   confidence: confidenceOf(c)
 });
-function moveTable(rows7, settings, notes3) {
-  const noted = rows7.some((c) => notes3.has(c.path));
+function moveTable(rows7, settings) {
   return {
     type: "ranked-table",
     ...capRows(
@@ -7682,8 +7703,8 @@ function moveTable(rows7, settings, notes3) {
         caption: "Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline",
         noun: "moves",
         emptyText: "No candidate has kind move, so no unit can be planned without --reason.",
-        columns: noted ? [...gainColumns(settings), { key: "note", label: "Note" }] : gainColumns(settings),
-        rows: rows7.map((c) => noted ? { ...gainRow(c), note: notes3.get(c.path) ?? "" } : gainRow(c))
+        columns: gainColumns(settings),
+        rows: rows7.map(gainRow)
       },
       TOP2,
       "locality analyse --recommendation move"
@@ -7779,6 +7800,7 @@ function omittedRows(structural, history) {
     ...Object.entries(structural.byReason).sort(byText).map(([reason, count3]) => ({ what: `units with no proposed move: ${reason}`, count: count3 })),
     { what: "units recommended blocked, held back by a dependency (listed below with their blockers)", count: structural.blocked },
     { what: "units of kind move that have blockers (listed in the blocked table, not as moves)", count: structural.heldMoves },
+    { what: "units of kind move left out of the moves table: another proposed move lands in the same empty folder", count: structural.sharedFolder },
     { what: "units recommended keep, with nothing to move", count: structural.keep },
     { what: `candidates past the rows of the three candidate tables`, count: structural.notShown },
     ...Object.entries(history.omitted).map(([reason, count3]) => ({ what: REASON_WORDS[reason] ?? reason, count: count3 }))
@@ -7880,19 +7902,20 @@ var localityReport = {
     const historyOutput = await command.run({ ...context, positionals: [], values: { source: "history" } });
     const historyOnly2 = historyOutput.extra.historyOnly;
     const ofKind = all.filter((c) => KINDS.includes(c.recommendation));
-    const moves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length === 0);
+    const unblockedMoves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length === 0);
     const heldMoves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length > 0);
+    const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
+    const { kept: moves, left: sharedFolder } = oneMovePerEmptyFolder(unblockedMoves, files);
     const reviews = ofKind.filter((c) => c.recommendation === "review" || c.recommendation === "split" || c.recommendation === "inline");
     const scrutinise = ofKind.filter((c) => c.recommendation === "scrutinise").sort((a, b) => b.fanIn - a.fanIn || (a.path < b.path ? -1 : 1));
     const planned = [...moves, ...reviews].slice(0, PLANNED);
     const shownCount = Math.min(moves.length, TOP2) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
-    const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
     const go = goPackagesOf(await loadProject(context.repo.root, "HEAD", settings));
     const plans = [];
     for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files, go));
     const byKind = extra.summary.byRecommendation;
     const blocked = [...all.filter((c) => c.recommendation === "blocked"), ...heldMoves];
-    const omitted2 = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount - heldMoves.length, heldMoves: heldMoves.length, byReason: extra.summary.omitted }, historyOnly2);
+    const omitted2 = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount - heldMoves.length - sharedFolder.length, sharedFolder: sharedFolder.length, heldMoves: heldMoves.length, byReason: extra.summary.omitted }, historyOnly2);
     const unresolved = Object.entries(extra.unresolved).sort(byText);
     const excluded = [
       ...omitted2,
@@ -7917,7 +7940,7 @@ var localityReport = {
               ...Object.entries(byKind).sort(byText).map(([kind, count3]) => ({ label: `Recommended ${kind}`, value: String(count3) }))
             ]
           },
-          ofKind.length === 0 ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." } : moveTable(moves, settings, folderConflicts(moves, files, go)),
+          ofKind.length === 0 ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." } : moveTable(moves, settings),
           ...ofKind.length === 0 ? [] : [reviewTable(reviews, settings), scrutiniseTable(scrutinise, settings)]
         ]
       },
@@ -8230,7 +8253,7 @@ var command8 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" }, goPackagesOf(project));
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-2H7BQ3LA.mjs");
+    const { verifyMove } = await import("./chunk-O7H4ID67.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

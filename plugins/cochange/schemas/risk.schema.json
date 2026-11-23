@@ -346,6 +346,11 @@
             ]
           }
         },
+        "evidenceTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many evidence items the factor found before its list was cut to the first few; the list shows the first ones."
+        },
         "evidence": {
           "type": "array",
           "items": {
@@ -1167,6 +1172,11 @@
         },
         "summary": {
           "type": "string"
+        },
+        "evidenceTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many evidence items the factor found before its list was cut to the first few; the list shows the first ones."
         },
         "evidence": {
           "type": "array",

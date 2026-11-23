@@ -24873,12 +24873,16 @@ function codeSpan(text3) {
 }
 
 // packages/report/src/components/notice.ts
+function endWithFullStop(text3) {
+  const trimmed = text3.trimEnd();
+  return /[.!?]["')\]`]*$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
 var WORD = { notice: "Notice", limit: "Limit", warning: "Warning" };
 function noticeHtml(data) {
-  return `<aside class="notice ${data.level}" role="note"><strong>${WORD[data.level]}:</strong> ${inlineHtml(data.text)}</aside>`;
+  return `<aside class="notice ${data.level}" role="note"><strong>${WORD[data.level]}:</strong> ${inlineHtml(endWithFullStop(data.text))}</aside>`;
 }
 function noticeMd(data) {
-  return `> **${WORD[data.level]}:** ${escapeMd(data.text)}`;
+  return `> **${WORD[data.level]}:** ${escapeMd(endWithFullStop(data.text))}`;
 }
 
 // packages/report/src/tables.ts
@@ -25647,16 +25651,16 @@ function trendOf(earlier, later, tolerance = 0.2) {
   return later > earlier ? "stronger" : "weaker";
 }
 function words(data) {
-  const trend = trendOf(data.earlier, data.later, data.tolerance);
-  return { trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
+  const trend = data.trend ?? trendOf(data.earlier, data.later, data.tolerance);
+  return { trend, word: data.wording?.[trend] ?? trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
 }
 function trendMarkerHtml(data) {
-  const { trend, detail } = words(data);
-  return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${trend} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
+  const { trend, word, detail } = words(data);
+  return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${escapeHtml(word)} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
 }
 function trendMarkerMd(data) {
-  const { trend, detail } = words(data);
-  return `${ARROW[trend]} ${trend} (${escapeMd(detail)})`;
+  const { trend, word, detail } = words(data);
+  return `${ARROW[trend]} ${escapeMd(word)} (${escapeMd(detail)})`;
 }
 
 // packages/report/src/block.ts
@@ -26485,7 +26489,7 @@ function censusBlocks(rows7) {
         { key: "count", label: "Occurrences", align: "right" },
         { key: "files", label: "Files", align: "right" },
         { key: "variants", label: "Variants" },
-        { key: "folders", label: "Busiest folders" },
+        { key: "folders", label: "Busiest folders (counts include the folders of implementers and callers)" },
         { key: "example", label: "Example" }
       ],
       rows: rows7.map((row) => ({

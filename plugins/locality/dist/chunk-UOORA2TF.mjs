@@ -157,6 +157,7 @@ function lineOf(file, index) {
 }
 async function performMove(grammar, tree, operations) {
   const warnings = [];
+  const breaks = [];
   const moves = /* @__PURE__ */ new Map();
   for (const operation of operations) {
     if (!tree.files.has(operation.from)) {
@@ -165,7 +166,7 @@ async function performMove(grammar, tree, operations) {
     }
     moves.set(operation.from, operation.to);
   }
-  if (![...moves].some(([from, to]) => posix.dirname(from) !== posix.dirname(to))) return { rewrites: [], texts: /* @__PURE__ */ new Map(), warnings };
+  if (![...moves].some(([from, to]) => posix.dirname(from) !== posix.dirname(to))) return { rewrites: [], texts: /* @__PURE__ */ new Map(), warnings, breaks };
   const paths = [...tree.files.keys()].sort();
   const texts = await tree.readMany(paths.filter((path) => isSource(path) || isGoModFile(path) || isGoWorkFile(path)));
   const parsed = /* @__PURE__ */ new Map();
@@ -229,7 +230,7 @@ async function performMove(grammar, tree, operations) {
       const where = `${pathAfter(path)}:${lineOf(file, reference.whole.start)}`;
       const targets = new Set(graph.declarers(found.key, found.name).map(keyAfter));
       if (targets.size !== 1) {
-        warnings.push(`${where} ${found.name} is declared in files that end up in different packages, so its references were not rewritten`);
+        breaks.push(`${where} ${found.name} is declared in files that end up in different packages, so its references were not rewritten`);
         if (spec !== void 0) stillUsed.add(spec);
         continue;
       }
@@ -238,7 +239,7 @@ async function performMove(grammar, tree, operations) {
       let after;
       if (target === keyAfter(path)) after = found.name;
       else if (!isExported(found.name)) {
-        warnings.push(`${where} ${found.name} is not exported and would be reached from another package`);
+        breaks.push(`${where} ${found.name} is not exported and would be reached from another package`);
         if (spec !== void 0) stillUsed.add(spec);
         continue;
       } else {
@@ -249,7 +250,7 @@ async function performMove(grammar, tree, operations) {
         } else {
           const importPath = directoryToImportPath(graph.modules, dirOfKey(target));
           if (importPath === void 0) {
-            warnings.push(`${where} ${dirOfKey(target)} is in no module, so it has no import path`);
+            breaks.push(`${where} ${dirOfKey(target)} is in no module, so it has no import path`);
             continue;
           }
           const name = nameOfKey(target);
@@ -272,7 +273,7 @@ async function performMove(grammar, tree, operations) {
       if (moved === void 0 || dirOfKey(moved) === found.dir) return;
       const importPath = directoryToImportPath(graph.modules, dirOfKey(moved));
       if (importPath === void 0) {
-        warnings.push(`${pathAfter(path)}:${spec.startRow + 1} ${dirOfKey(moved)} is in no module, so "${spec.path}" was not rewritten`);
+        breaks.push(`${pathAfter(path)}:${spec.startRow + 1} ${dirOfKey(moved)} is in no module, so "${spec.path}" was not rewritten`);
         return;
       }
       const quote = file.text[spec.literal.start];
@@ -298,7 +299,7 @@ async function performMove(grammar, tree, operations) {
       if (marker < 0 || !/^\/internal(\/|$)/.test(importPath.slice(marker))) continue;
       const parent = importPath.slice(0, marker);
       if (importer === void 0 || importer !== parent && !importer.startsWith(`${parent}/`)) {
-        warnings.push(`${pathAfter(path)} imports ${importPath}, which only code under ${parent} may import: internal/ is a fixed point`);
+        breaks.push(`${pathAfter(path)} imports ${importPath}, which only code under ${parent} may import: internal/ is a fixed point`);
       }
     }
   }
@@ -310,7 +311,7 @@ async function performMove(grammar, tree, operations) {
     if (text !== file.text) result.set(pathAfter(path), text);
   }
   rewrites.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : a.line - b.line || (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
-  return { rewrites, texts: result, warnings };
+  return { rewrites, texts: result, warnings, breaks };
 }
 function skeleton(grammar, text) {
   const tree = grammar.parse(text);

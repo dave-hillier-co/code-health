@@ -61,7 +61,7 @@ var language6 = {
 // packages/locality/src/movers/go.ts
 var language7 = {
   id: "go",
-  load: async () => (await import("./chunk-BM7HZ36J.mjs")).createBackend()
+  load: async () => (await import("./chunk-UOORA2TF.mjs")).createBackend()
 };
 
 // packages/locality/src/movers/rust.ts
