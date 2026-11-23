@@ -235,10 +235,10 @@ function loadConfig(root, spec) {
   }
   const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
   const defaults = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
-  const rows6 = /* @__PURE__ */ new Map();
+  const rows7 = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
-    effective[key] = merge(defaults[key], document?.[key], key, rows6);
+    effective[key] = merge(defaults[key], document?.[key], key, rows7);
   }
   readHistory(effective.history, "history");
   const pluginDocument = document?.[spec.plugin];
@@ -247,10 +247,10 @@ function loadConfig(root, spec) {
   const section2 = effective[spec.plugin];
   for (const key of historyKeys) {
     section2[key] = overlay(effective.history[key], pluginDocument?.[key]);
-    inheritSources(rows6, spec.plugin, key);
+    inheritSources(rows7, spec.plugin, key);
   }
   const sources = {};
-  for (const row of rows6.values()) sources[row.path] = row.source;
+  for (const row of rows7.values()) sources[row.path] = row.source;
   const hash2 = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash: hash2, sources };
 }
@@ -261,13 +261,13 @@ function overlay(shared, own) {
   }
   return own;
 }
-function inheritSources(rows6, plugin, key) {
+function inheritSources(rows7, plugin, key) {
   const own = `${plugin}.${key}`;
-  for (const row of [...rows6.values()]) {
+  for (const row of [...rows7.values()]) {
     if (row.path !== own && !row.path.startsWith(`${own}.`)) continue;
     if (row.source === "file") continue;
-    const shared = rows6.get(`history${row.path.slice(plugin.length)}`);
-    if (shared !== void 0) rows6.set(row.path, { ...row, source: shared.source });
+    const shared = rows7.get(`history${row.path.slice(plugin.length)}`);
+    if (shared !== void 0) rows7.set(row.path, { ...row, source: shared.source });
   }
 }
 function readHistory(history, where) {
@@ -305,12 +305,12 @@ function readLanguages(value) {
   return mapped;
 }
 function explainConfig(config) {
-  const rows6 = [];
+  const rows7 = [];
   flatten(config.effective, "", (path, value) => {
-    rows6.push({ path, value, source: config.sources[path] ?? "default" });
+    rows7.push({ path, value, source: config.sources[path] ?? "default" });
   });
-  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows6.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
-  return rows6.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows7.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
+  return rows7.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 function parseDocument(file) {
   let parsed;
@@ -322,15 +322,15 @@ function parseDocument(file) {
   if (!isPlainObject(parsed)) throw configError(`${CONFIG_FILE} must be a JSON object`);
   return parsed;
 }
-function merge(defaultValue, fileValue, path, rows6) {
+function merge(defaultValue, fileValue, path, rows7) {
   if (fileValue === void 0) {
-    flatten(defaultValue, path, (leaf, value) => rows6.set(leaf, { path: leaf, value, source: "default" }));
+    flatten(defaultValue, path, (leaf, value) => rows7.set(leaf, { path: leaf, value, source: "default" }));
     return defaultValue;
   }
   if (isPlainObject(defaultValue)) {
     if (!isPlainObject(fileValue)) throw configError(`${CONFIG_FILE}: ${path} must be an object`);
     if (Object.keys(defaultValue).length === 0) {
-      flatten(fileValue, path, (leaf, value) => rows6.set(leaf, { path: leaf, value, source: "file" }));
+      flatten(fileValue, path, (leaf, value) => rows7.set(leaf, { path: leaf, value, source: "file" }));
       return fileValue;
     }
     for (const key of Object.keys(fileValue)) {
@@ -338,14 +338,14 @@ function merge(defaultValue, fileValue, path, rows6) {
     }
     const merged = {};
     for (const key of Object.keys(defaultValue)) {
-      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows6);
+      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows7);
     }
     return merged;
   }
   if (defaultValue !== null && kindOf(fileValue) !== kindOf(defaultValue)) {
     throw configError(`${CONFIG_FILE}: ${path} must be ${article(kindOf(defaultValue))}`);
   }
-  rows6.set(path, { path, value: fileValue, source: "file" });
+  rows7.set(path, { path, value: fileValue, source: "file" });
   return fileValue;
 }
 var removedSettings = {
@@ -474,11 +474,11 @@ function git(cwd, ...args2) {
 // packages/cli-kit/src/results.ts
 function shapeResults(results, options2) {
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
-  const { limit, fields, columns: columns7 } = options2;
-  if (fields && columns7 && columns7.length > 0) {
-    const unknown = fields.filter((field6) => !columns7.includes(field6));
+  const { limit, fields, columns: columns8 } = options2;
+  if (fields && columns8 && columns8.length > 0) {
+    const unknown = fields.filter((field6) => !columns8.includes(field6));
     if (unknown.length > 0) {
-      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns7.join(", ")}`);
+      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns8.join(", ")}`);
     }
   }
   const sorted = options2.presorted === true ? results : [...results].sort(byScoreThenPath);
@@ -522,13 +522,13 @@ function runNotes() {
 }
 
 // packages/cli-kit/src/table.ts
-function renderTable(rows6, columns7, truncated) {
-  if (rows6.length === 0) return "No results.\n";
-  const cells = rows6.map((row) => columns7.map((column) => format(row[column])));
-  const numeric = columns7.map((column) => rows6.every((row) => row[column] == null || typeof row[column] === "number"));
-  const widths = columns7.map((column, i2) => Math.max(column.length, ...cells.map((line) => line[i2]?.length ?? 0)));
+function renderTable(rows7, columns8, truncated) {
+  if (rows7.length === 0) return "No results.\n";
+  const cells = rows7.map((row) => columns8.map((column) => format(row[column])));
+  const numeric = columns8.map((column) => rows7.every((row) => row[column] == null || typeof row[column] === "number"));
+  const widths = columns8.map((column, i2) => Math.max(column.length, ...cells.map((line) => line[i2]?.length ?? 0)));
   const render = (line) => line.map((cell, i2) => numeric[i2] ? cell.padStart(widths[i2] ?? 0) : cell.padEnd(widths[i2] ?? 0)).join("  ").trimEnd();
-  const lines = [render(columns7), ...cells.map(render)];
+  const lines = [render(columns8), ...cells.map(render)];
   if (truncated.cut > 0) lines.push(`${truncated.cut} more not shown (use --limit N or --limit all)`);
   return lines.join("\n") + "\n";
 }
@@ -608,8 +608,8 @@ async function execute(cli2, io) {
 `);
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
-  const columns7 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns: columns7, presorted: output.presorted });
+  const columns8 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
+  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns: columns8, presorted: output.presorted });
   if (args2.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -639,7 +639,7 @@ async function execute(cli2, io) {
       )
     );
   } else if (Array.isArray(results)) {
-    io.stdout.write(renderTable(results, args2.fields ?? columns7, truncated));
+    io.stdout.write(renderTable(results, args2.fields ?? columns8, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
 `);
     for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
@@ -1802,12 +1802,12 @@ function setMeta(db, key, value) {
   );
 }
 function storedShas(db) {
-  const rows6 = db.prepare("SELECT sha FROM commits").all();
-  return new Set(rows6.map((r) => r.sha));
+  const rows7 = db.prepare("SELECT sha FROM commits").all();
+  return new Set(rows7.map((r) => r.sha));
 }
 function storedBoundaryShas(db) {
-  const rows6 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
-  return rows6.map((r) => r.sha);
+  const rows7 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
+  return rows7.map((r) => r.sha);
 }
 function deleteCommits(db, shas) {
   const statements = ["commits", "commit_parents", "changes"].map((t) => db.prepare(`DELETE FROM ${t} WHERE sha = ?`));
@@ -2014,7 +2014,7 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
 function select(db, ref, headSha, firstParent) {
   const head = db.prepare("SELECT committer_date FROM commits WHERE sha = ?").get(headSha);
   if (!head) throw new NoCacheError(`Commit ${headSha} is not in the history cache. Run refresh first.`);
-  const rows6 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
+  const rows7 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
   const changeRows = db.prepare(
     `${REACH(firstParent)}
        SELECT ch.* FROM changes ch JOIN reach ON reach.sha = ch.sha ORDER BY ch.sha, ch.idx`
@@ -2036,7 +2036,7 @@ function select(db, ref, headSha, firstParent) {
     if (list3) list3.push(row);
     else changesBySha.set(row.sha, [row]);
   }
-  const ordered = topologicalOrder(rows6, parents);
+  const ordered = topologicalOrder(rows7, parents);
   const renames = new RenameMap();
   const commits = [];
   for (const row of ordered) {
@@ -2078,9 +2078,9 @@ function select(db, ref, headSha, firstParent) {
   }
   return { ref, headSha, headDate: head.committer_date, firstParent, commits, renames };
 }
-function topologicalOrder(rows6, parents) {
-  const bySha = new Map(rows6.map((r) => [r.sha, r]));
-  const sorted = [...rows6].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
+function topologicalOrder(rows7, parents) {
+  const bySha = new Map(rows7.map((r) => [r.sha, r]));
+  const sorted = [...rows7].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
   const done = /* @__PURE__ */ new Set();
   const out2 = [];
   for (const start2 of sorted) {
@@ -6830,17 +6830,17 @@ var Measurer = class {
 };
 function codeRowsOf(root, rules11) {
   const comments2 = rules11.constructs.commentTypes;
-  const rows6 = new Array(root.endPosition.row + 1).fill(false);
+  const rows7 = new Array(root.endPosition.row + 1).fill(false);
   const walk = (node) => {
     if (comments2.has(node.type)) return;
     if (node.childCount === 0) {
-      for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows6[row] = true;
+      for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows7[row] = true;
       return;
     }
     for (let i2 = 0; i2 < node.childCount; i2++) walk(node.child(i2));
   };
   walk(root);
-  return rows6;
+  return rows7;
 }
 function measureFunction(fn, options2, rules11) {
   const measurer = new Measurer(options2, rules11, rules11.recursionScope(fn, options2.name));
@@ -10684,7 +10684,7 @@ var libraryTypes = /* @__PURE__ */ new Set(["STATIC", "SHARED", "MODULE", "OBJEC
 var includeFlags = /* @__PURE__ */ new Set(["SYSTEM", "BEFORE", "AFTER"]);
 function parseCmake(text3) {
   const file = { project: null, targets: [], includeDirectories: [], subdirectories: [] };
-  const byName2 = /* @__PURE__ */ new Map();
+  const byName3 = /* @__PURE__ */ new Map();
   const all = commands(text3);
   for (const command13 of all) {
     const [first, ...rest] = command13.args;
@@ -10694,7 +10694,7 @@ function parseCmake(text3) {
       const sources = rest.filter((argument) => !libraryTypes.has(argument) && argument !== "WIN32" && argument !== "MACOSX_BUNDLE").flatMap((argument) => pathArgument(argument) ?? []);
       const target2 = { name: first, kind: command13.name === "add_library" ? "library" : "executable", sources, publicIncludes: [], privateIncludes: [], links: [] };
       file.targets.push(target2);
-      byName2.set(first, target2);
+      byName3.set(first, target2);
     }
   }
   for (const command13 of all) {
@@ -10702,12 +10702,12 @@ function parseCmake(text3) {
     if (first === void 0) continue;
     switch (command13.name) {
       case "target_sources": {
-        const target2 = byName2.get(first);
+        const target2 = byName3.get(first);
         if (target2 !== void 0) target2.sources.push(...rest.filter((argument) => !scopes.has(argument) && argument !== "FILE_SET" && argument !== "HEADERS").flatMap((argument) => pathArgument(argument) ?? []));
         break;
       }
       case "target_include_directories": {
-        const target2 = byName2.get(first);
+        const target2 = byName3.get(first);
         if (target2 === void 0) break;
         let scope = "PRIVATE";
         for (const argument of rest) {
@@ -10720,7 +10720,7 @@ function parseCmake(text3) {
         break;
       }
       case "target_link_libraries": {
-        const target2 = byName2.get(first);
+        const target2 = byName3.get(first);
         if (target2 !== void 0) target2.links.push(...rest.filter((argument) => !scopes.has(argument) && !/^(debug|optimized|general)$/i.test(argument) && !/\$[{<]/.test(argument)));
         break;
       }
@@ -12238,13 +12238,13 @@ function resolveCpp(input) {
     );
     stripped.set(path, { ...facts, symbols: { ...symbols, declarations } });
   }
-  const byName2 = resolveBySymbols({ ...input, facts: stripped });
+  const byName3 = resolveBySymbols({ ...input, facts: stripped });
   const fileEdges = /* @__PURE__ */ new Map();
-  for (const edge of byName2.fileEdges) {
+  for (const edge of byName3.fileEdges) {
     if (!visibleFrom(edge.from).has(edge.to) || paired(edge.from, edge.to)) continue;
     fileEdges.set(`${edge.from}\0${edge.to}`, edge);
   }
-  const consumers = byName2.consumers.filter((consumer) => fileEdges.has(`${consumer.from}\0${consumer.to}`));
+  const consumers = byName3.consumers.filter((consumer) => fileEdges.has(`${consumer.from}\0${consumer.to}`));
   const importEdges = /* @__PURE__ */ new Map();
   const addImport = (from, to) => {
     importEdges.set(`${from}\0${to}`, { from, to, kind: "import", typeOnly: false });
@@ -12269,7 +12269,7 @@ function resolveCpp(input) {
     consumers,
     fileEdges: [...fileEdges.values()],
     barrels: [],
-    exports: byName2.exports,
+    exports: byName3.exports,
     externalImports: externals,
     unresolved,
     includeResolution
@@ -17315,14 +17315,14 @@ async function discoverPackages(tree, options2) {
     seen.add(raw.dir);
     idOf.set(raw, id);
   }
-  const byName2 = /* @__PURE__ */ new Map();
+  const byName3 = /* @__PURE__ */ new Map();
   const byDir = /* @__PURE__ */ new Map();
   for (const raw of raws) {
     const id = idOf.get(raw);
-    for (const name14 of [raw.name, ...raw.aliases]) byName2.set(lookupKey(raw.ecosystem, name14), id);
+    for (const name14 of [raw.name, ...raw.aliases]) byName3.set(lookupKey(raw.ecosystem, name14), id);
     for (const alias of raw.aliases) {
       const short2 = alias.includes("::") ? alias.slice(alias.lastIndexOf("::") + 2) : void 0;
-      if (short2 !== void 0 && !byName2.has(lookupKey(raw.ecosystem, short2))) byName2.set(lookupKey(raw.ecosystem, short2), id);
+      if (short2 !== void 0 && !byName3.has(lookupKey(raw.ecosystem, short2))) byName3.set(lookupKey(raw.ecosystem, short2), id);
     }
     if (!byDir.has(`${raw.ecosystem}\0${raw.dir}`)) byDir.set(`${raw.ecosystem}\0${raw.dir}`, id);
   }
@@ -17331,7 +17331,7 @@ async function discoverPackages(tree, options2) {
     const seenTargets = /* @__PURE__ */ new Set();
     const dependencies = [];
     for (const dependency of raw.dependencies) {
-      const target2 = (dependency.dir === void 0 ? void 0 : byDir.get(`${raw.ecosystem}\0${dependency.dir}`)) ?? byName2.get(lookupKey(raw.ecosystem, dependency.name)) ?? (dependency.name.includes("::") ? byName2.get(lookupKey(raw.ecosystem, dependency.name.slice(dependency.name.lastIndexOf("::") + 2))) : void 0) ?? null;
+      const target2 = (dependency.dir === void 0 ? void 0 : byDir.get(`${raw.ecosystem}\0${dependency.dir}`)) ?? byName3.get(lookupKey(raw.ecosystem, dependency.name)) ?? (dependency.name.includes("::") ? byName3.get(lookupKey(raw.ecosystem, dependency.name.slice(dependency.name.lastIndexOf("::") + 2))) : void 0) ?? null;
       const key = `${dependency.name}\0${dependency.scope}`;
       if (seenTargets.has(key)) continue;
       seenTargets.add(key);
@@ -18042,7 +18042,7 @@ function findLayerViolations(project, rules11) {
   if (rules11.length === 0) return [];
   const layerOf = layerClassifier(rules11);
   const files = buildModuleGraph("file", project, {});
-  const rows6 = [];
+  const rows7 = [];
   for (const [from, targets] of project.graph) {
     const fromLayer = layerOf(from);
     if (fromLayer === void 0) continue;
@@ -18051,7 +18051,7 @@ function findLayerViolations(project, rules11) {
       const toLayer = layerOf(to);
       if (toLayer === void 0 || allowed.includes(toLayer)) continue;
       const detail = describeEdge(project, files, from, to);
-      rows6.push({
+      rows7.push({
         id: layerViolationId(from, to),
         from,
         to,
@@ -18064,7 +18064,7 @@ function findLayerViolations(project, rules11) {
       });
     }
   }
-  return rows6.sort((a, b) => Number(a.typeOnly) - Number(b.typeOnly) || compareIds(a.from, b.from) || compareIds(a.to, b.to));
+  return rows7.sort((a, b) => Number(a.typeOnly) - Number(b.typeOnly) || compareIds(a.from, b.from) || compareIds(a.to, b.to));
 }
 
 // packages/structure/src/packaging/settings.ts
@@ -18560,15 +18560,15 @@ var command2 = {
     const base = await resolveBase(root, headSha, settings, context.values.base);
     const [before, after] = await Promise.all([snapshotOf(root, base.sha, levels3, settings), snapshotOf(root, headSha, levels3, settings)]);
     const fresh = newSince(before, after);
-    const rows6 = [
+    const rows7 = [
       ...fresh.cycles.map((cycle) => ({ kind: "cycle", ...cycle })),
       ...fresh.layerViolations.map((violation) => ({ kind: "layer-violation", ...violation }))
     ];
     return {
       inputs: { base: base.rev, baseSha: base.sha, analysed: headSha, levels: [...levels3], layers: settings.layers.map((l) => l.name) },
-      results: rows6,
+      results: rows7,
       columns: ["kind", "id", "level", "nodes", "breakingSet", "fromLayer", "toLayer"],
-      failed: rows6.length > 0
+      failed: rows7.length > 0
     };
   }
 };
@@ -20034,7 +20034,7 @@ function findCycles(model, settings) {
     exactLimit: settings.exactLimit,
     weight: (edge) => model.activity.shared(edge.from, edge.to)
   });
-  const rows6 = sets.map((cycle) => {
+  const rows7 = sets.map((cycle) => {
     const inCycle = new Set(cycle.nodes);
     let coChangeAcross = 0;
     for (const from of cycle.nodes) {
@@ -20057,7 +20057,7 @@ function findCycles(model, settings) {
       unblockedGain: model.locality ? breakingSet.reduce((sum, edge) => sum + edge.unblocks.reduce((s, u) => s + u.unblockedGain, 0), 0) : null
     };
   });
-  return rows6.sort(
+  return rows7.sort(
     (a, b) => Number(a.nested) - Number(b.nested) || (b.unblockedGain ?? 0) - (a.unblockedGain ?? 0) || b.size - a.size || b.coChangeAcross - a.coChangeAcross || compareIds(a.id, b.id)
   );
 }
@@ -20101,9 +20101,9 @@ function agentReadsAcross(tasks, from, to, fileEdges) {
   };
   return tasks.filter((task) => follows(task, sideFrom, sideTo) || follows(task, sideTo, sideFrom)).length;
 }
-function rankIncidental(rows6, model, settings, tasks) {
-  const cycles = rows6.some((row) => row.quadrant === "incidental") ? findCycles(model, settings) : [];
-  const ranked = rows6.map((row) => {
+function rankIncidental(rows7, model, settings, tasks) {
+  const cycles = rows7.some((row) => row.quadrant === "incidental") ? findCycles(model, settings) : [];
+  const ranked = rows7.map((row) => {
     if (row.quadrant !== "incidental") return row;
     const reasons = [];
     if (unblocksOf(model, row.from, row.to).length + unblocksOf(model, row.to, row.from).length > 0) reasons.push("blocks-locality-move");
@@ -20259,13 +20259,13 @@ function findCoupling(model, settings) {
     if (shared >= settings.minSupport && model.graph.filesOf.has(a) && model.graph.filesOf.has(b)) pairs.set(pairKey(a, b), [a, b]);
   }
   const level = model.graph.level;
-  const rows6 = [...pairs.values()].map(([x2, y2]) => {
+  const rows7 = [...pairs.values()].map(([x2, y2]) => {
     const [from, to] = orientPair(model.project, model.graph, x2, y2);
     const { name: name14, staticCoupling: staticCoupling2, coChange, bothActive } = judgePair(model.project, model.graph, model.activity, from, to, settings);
     return { id: couplingId(level, from, to), level, from, to, quadrant: name14, staticCoupling: staticCoupling2, coChange, bothActive };
   });
   const byShared = (row) => row.quadrant === "real" || row.quadrant === "hidden";
-  return rows6.sort(
+  return rows7.sort(
     (a, b) => QUADRANTS.indexOf(a.quadrant) - QUADRANTS.indexOf(b.quadrant) || (byShared(a) ? b.coChange.shared - a.coChange.shared || a.coChange.pValue - b.coChange.pValue : b.staticCoupling.sites - a.staticCoupling.sites) || compareIds(a.id, b.id)
   );
 }
@@ -20440,7 +20440,7 @@ async function analyseCoupling({ context, history }, level, quadrant) {
   const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : void 0;
   const tasks = projectsDir === void 0 ? void 0 : readAgentTasks(await checkouts(context.repo.root), projectsDir, history.window);
   const all = rankIncidental(findCoupling(model, history.settings), model, history.settings, tasks);
-  const rows6 = quadrant === void 0 ? all : all.filter((row) => row.quadrant === quadrant);
+  const rows7 = quadrant === void 0 ? all : all.filter((row) => row.quadrant === quadrant);
   return {
     inputs: {
       level,
@@ -20453,7 +20453,7 @@ async function analyseCoupling({ context, history }, level, quadrant) {
       transcripts: tasks !== void 0,
       transcriptStamp: tasks === void 0 ? null : stampOf(tasks)
     },
-    results: rows6,
+    results: rows7,
     columns: ["id", "quadrant", "staticCoupling", "coChange", "bothActive"],
     extra: {
       population: { modules: model.graph.filesOf.size, eligibleChanges: model.activity.eligibleChanges },
@@ -20522,10 +20522,10 @@ var command4 = analysisCommand(name5, {
   async analyse({ context, history }) {
     const level = readLevel("level", context.values.level, levels, "default");
     const model = await buildModel(context, history, level);
-    const rows6 = findCycles(model, history.settings);
+    const rows7 = findCycles(model, history.settings);
     return {
       inputs: { level, exactLimit: history.settings.exactLimit, locality: model.locality?.input ?? null },
-      results: rows6,
+      results: rows7,
       columns: ["id", "size", "method", "nested", "nodes", "breakingSet", "coChangeAcross", "unblockedGain"],
       extra: { population: { modules: model.graph.graph.size, eligibleChanges: model.activity.eligibleChanges } }
     };
@@ -20596,15 +20596,15 @@ function judgeEdge(model, from, to, settings) {
   };
 }
 function rankDependencies(model, settings) {
-  const rows6 = [];
+  const rows7 = [];
   for (const [from, targets] of model.graph.graph) {
     for (const to of targets) {
       const row = judgeEdge(model, from, to, settings);
-      if (row.towardsLessStable) rows6.push(row);
+      if (row.towardsLessStable) rows7.push(row);
     }
   }
   const margin = (row) => row.basis === "change" ? round3(row.stability.to.change.revisionsPerFile - row.stability.from.change.revisionsPerFile) : round3((row.stability.to.structural.instability ?? 0) - (row.stability.from.structural.instability ?? 0));
-  return rows6.sort(
+  return rows7.sort(
     (a, b) => Number(b.aboveGuideline) - Number(a.aboveGuideline) || Number(b.basis === "change") - Number(a.basis === "change") || margin(b) - margin(a) || b.fileEdges - a.fileEdges || compareIds(a.from, b.from) || compareIds(a.to, b.to)
   );
 }
@@ -21191,7 +21191,7 @@ var command7 = analysisCommand(name8, {
     const by = readLevel("by", context.values.by, views3, "folder");
     const model = await buildModel(context, history, by, void 0, { everyPair: true });
     const { settings } = history;
-    const { hubs: rows6, omitted: omitted3 } = await findHubs({
+    const { hubs: rows7, omitted: omitted3 } = await findHubs({
       root: context.repo.root,
       headSha: history.view.headSha,
       model,
@@ -21212,7 +21212,7 @@ var command7 = analysisCommand(name8, {
         contentionDays: settings.hubContentionDays,
         minAuthors: settings.hubMinAuthors
       },
-      results: rows6,
+      results: rows7,
       columns: ["id", "featureCount", "revisions", "signals"],
       notices: [
         `Omitted ${omitted3.files} of ${omitted3.considered} files with at least ${settings.minRevisions} changes: each reached fewer than ${omitted3.minSignals} of the 4 signals (${omitted3.withoutDiffs} of them without reading their diffs, because the other three signals left them unable to reach ${omitted3.minSignals}). ${omitted3.belowMinRevisions} more files have fewer than ${settings.minRevisions} changes`
@@ -21252,10 +21252,10 @@ var command8 = {
     const settings = readSettings(context.config);
     const sha = (await runGit(context.repo.root, ["rev-parse", "--verify", `${settings.ref}^{commit}`])).trim();
     const project = await loadProject(context.repo.root, sha, settings);
-    const rows6 = findLayerViolations(project, settings.layers);
+    const rows7 = findLayerViolations(project, settings.layers);
     return {
       inputs: { layers: settings.layers.map((layer) => layer.name), analysed: sha },
-      results: rows6,
+      results: rows7,
       columns: ["id", "fromLayer", "toLayer", "allowed", "importStatements", "typeOnly", "symbols"]
     };
   }
@@ -22612,12 +22612,12 @@ function unsupportedChecks(model) {
   }
   const byEcosystem = /* @__PURE__ */ new Map();
   for (const pkg of model.packages) byEcosystem.set(pkg.ecosystem, [...byEcosystem.get(pkg.ecosystem) ?? [], pkg.id]);
-  const rows6 = [];
+  const rows7 = [];
   for (const [ecosystem, packages] of [...byEcosystem].sort(([a], [b]) => compareIds(a, b))) {
     for (const check2 of ["undeclared-dependency", "unused-dependency"]) {
       const has = supported.get(ecosystem)?.[check2 === "undeclared-dependency" ? "undeclared" : "unused"] === true;
       if (has) continue;
-      rows6.push({
+      rows7.push({
         ecosystem,
         check: check2,
         packages: packages.sort(compareIds),
@@ -22625,7 +22625,7 @@ function unsupportedChecks(model) {
       });
     }
   }
-  return rows6;
+  return rows7;
 }
 function purposeMismatches(context, deep) {
   const { model } = context;
@@ -22836,13 +22836,13 @@ function measureClosure(model) {
   const { activity, settings } = model;
   const { closureBand, minComparable } = settings.packages;
   const total = activity.eligibleChanges;
-  const rows6 = model.packages.map((pkg) => {
+  const rows7 = model.packages.map((pkg) => {
     const changes = activity.eligible(pkg.id);
     return { id: pkg.id, changes, share: total === 0 ? 0 : changes / total, closure: changes === 0 ? null : activity.alone(pkg.id) / changes, crossing: activity.crossing(pkg.id) };
   });
-  const active = rows6.filter((row) => row.changes >= settings.minRevisions && row.closure !== null);
+  const active = rows7.filter((row) => row.changes >= settings.minRevisions && row.closure !== null);
   const result = /* @__PURE__ */ new Map();
-  for (const row of rows6) {
+  for (const row of rows7) {
     const peers = active.filter((other) => row.share > 0 && other.share > 0 && Math.max(row.share, other.share) / Math.min(row.share, other.share) <= closureBand);
     const judged = row.changes >= settings.minRevisions && peers.length >= minComparable && peers.some((p) => p.id === row.id);
     const below = peers.filter((p) => p.closure < row.closure).length;
@@ -24040,7 +24040,7 @@ async function balances(model, findings, reuse, root) {
   const closure = measureClosure(model);
   const revisions = model.packages.map((p) => model.activity.revisions(p.id)).sort((a, b) => a - b);
   const median3 = revisions[Math.floor((revisions.length - 1) / 2)] ?? 0;
-  const rows6 = [];
+  const rows7 = [];
   for (const pkg of model.packages) {
     const consumers = consumerPackages(model, pkg.id);
     const changes = model.activity.revisions(pkg.id);
@@ -24051,7 +24051,7 @@ async function balances(model, findings, reuse, root) {
     const partners = [...model.activity.partners(pkg.id)].sort(([ia, a], [ib, b]) => b - a || compareIds(ia, ib)).slice(0, 3).map(([id]) => id);
     const figures = closure.get(pkg.id);
     const versions = await versionChanges(model, root, pkg);
-    rows6.push({
+    rows7.push({
       id: pkg.id,
       matters,
       closure: { value: figures.closure, share: figures.share, crossing: figures.crossing, changesWith: partners },
@@ -24068,7 +24068,7 @@ async function balances(model, findings, reuse, root) {
       reading: READINGS[matters](consumers.length)
     });
   }
-  return rows6.sort((a, b) => compareIds(a.id, b.id));
+  return rows7.sort((a, b) => compareIds(a.id, b.id));
 }
 
 // packages/structure/src/packaging/commands/cohesion.ts
@@ -24078,14 +24078,14 @@ var cohesion = {
     const [only] = args2;
     if (only !== void 0 && !model.byId.has(only)) throw usageError(`"${only}" is not a package of the analysed commit; run \`packages list\` for the ids`);
     const { cohesion: all, reuse } = await analysePackages(model, command13.repo.root);
-    const rows6 = await balances(model, all, reuse, command13.repo.root);
+    const rows7 = await balances(model, all, reuse, command13.repo.root);
     const wanted = (ids) => only === void 0 || ids.includes(only);
     return {
       inputs: { subcommand: "cohesion", package: only ?? null },
       results: all.filter((f) => wanted(f.packages)),
       columns: ["id", "principle", "changeCost", "aboveGuideline", "tentative", "summary"],
       extra: {
-        balance: rows6.filter((row) => wanted([row.id])),
+        balance: rows7.filter((row) => wanted([row.id])),
         unavailable: reuse.unavailable.filter((u) => wanted([u.package])).map((u) => ({ ...u, findings: ["partial-use", "disjoint-reuse", "dumping-ground", "inherited-weight", "overexposed", "pass-through-package"] }))
       }
     };
@@ -24283,16 +24283,16 @@ var evidence = {
 var list2 = {
   summary: "Every package with its kind, purpose, size, consumers, stability, closure and change frequency",
   async analyse({ model }) {
-    const rows6 = packageRows(model, measureAbstractness(await analyseReuse(model)));
+    const rows7 = packageRows(model, measureAbstractness(await analyseReuse(model)));
     const ecosystems2 = {};
-    for (const row of rows6) ecosystems2[row.ecosystem] = (ecosystems2[row.ecosystem] ?? 0) + 1;
+    for (const row of rows7) ecosystems2[row.ecosystem] = (ecosystems2[row.ecosystem] ?? 0) + 1;
     return {
       inputs: { subcommand: "list", graceDays: model.settings.packages.graceDays },
-      results: rows6,
+      results: rows7,
       columns: ["id", "kind", "purpose", "files", "consumers", "ca", "ce", "instability", "abstractness", "distance", "closure", "share", "revisions"],
       extra: {
         repository: {
-          packages: rows6.length,
+          packages: rows7.length,
           ecosystems: ecosystems2,
           eligibleChanges: model.activity.eligibleChanges
         }
@@ -24824,6 +24824,310 @@ function clip(text3, max) {
   return text3.length <= max ? text3 : `${text3.slice(0, Math.max(0, max - 1))}…`;
 }
 
+// packages/report/src/tables.ts
+function htmlTable(caption, columns8, rows7, options2 = {}) {
+  const head = columns8.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
+  const body2 = rows7.map((row) => {
+    const cells = row.map((cell, i2) => {
+      const number = columns8[i2]?.align === "right" ? ' class="number"' : "";
+      return i2 === 0 && options2.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number}>${cell}</td>`;
+    });
+    return `<tr>${cells.join("")}</tr>`;
+  }).join("\n");
+  return `<table${options2.className === void 0 ? "" : ` class="${options2.className}"`}>
+<caption>${escapeHtml(caption)}</caption>
+<thead><tr>${head}</tr></thead>
+<tbody>
+${body2}
+</tbody>
+</table>`;
+}
+function mdTable(columns8, rows7) {
+  const head = `| ${columns8.map((c) => escapeMd(c.label)).join(" | ")} |`;
+  const rule2 = `| ${columns8.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
+  const body2 = rows7.map((row) => `| ${row.map((cell) => escapeMd(cell)).join(" | ")} |`);
+  return [head, rule2, ...body2].join("\n");
+}
+
+// packages/report/src/components/figure.ts
+function figureHtml(parts3) {
+  const id = `${slug(parts3.title)}-${shortHash(parts3.drawing)}`;
+  const svg = `<svg role="img" aria-labelledby="${id}-title ${id}-desc" viewBox="0 0 ${parts3.width} ${parts3.height}" preserveAspectRatio="xMinYMin meet">
+<title id="${id}-title">${escapeHtml(parts3.title)}</title>
+<desc id="${id}-desc">${escapeHtml(parts3.description)}</desc>
+${parts3.drawing}
+</svg>`;
+  return `<figure class="chart ${parts3.kind}">
+<figcaption>${escapeHtml(parts3.title)}</figcaption>
+${svg}
+${parts3.table}
+${parts3.notes ?? ""}</figure>`;
+}
+
+// packages/report/src/components/bands.ts
+var BAND_COUNT = 5;
+function makeBands(values, breaks) {
+  if (breaks !== void 0 && breaks.length === BAND_COUNT - 1) {
+    const edges = [...breaks];
+    const least2 = Math.min(...values, edges[0] ?? 0);
+    const greatest2 = Math.max(...values, edges[edges.length - 1] ?? 0);
+    const lower = [least2, ...edges];
+    const upper2 = [...edges, greatest2];
+    return {
+      ranges: lower.map((from, i2) => ({ band: i2 + 1, from, to: upper2[i2] ?? greatest2 })),
+      of: (value) => 1 + edges.filter((edge) => edge <= value).length
+    };
+  }
+  const least = values.length === 0 ? 0 : Math.min(...values);
+  const greatest = values.length === 0 ? 0 : Math.max(...values);
+  const step = (greatest - least) / BAND_COUNT;
+  return {
+    ranges: Array.from({ length: BAND_COUNT }, (_, i2) => ({ band: i2 + 1, from: least + i2 * step, to: i2 === BAND_COUNT - 1 ? greatest : least + (i2 + 1) * step })),
+    of: (value) => step === 0 ? 1 : Math.min(BAND_COUNT, 1 + Math.floor((value - least) / step))
+  };
+}
+function bandLegend(bands) {
+  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+}
+
+// packages/report/src/components/treemap.ts
+var WIDTH = 960;
+var HEIGHT = 520;
+var HEADER = 14;
+var PAD = 2;
+var DEFAULT_MAX_TILES = 80;
+var byName = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function buildTree(items) {
+  const root = { name: "", path: "", size: 0, children: [] };
+  for (const item of items) {
+    let at2 = root;
+    const parts3 = item.path.split("/");
+    parts3.forEach((part, i2) => {
+      const path = parts3.slice(0, i2 + 1).join("/");
+      let next = at2.children.find((child2) => child2.name === part && i2 < parts3.length - 1 === (child2.item === void 0));
+      if (next === void 0) {
+        next = { name: part, path, size: 0, children: [] };
+        at2.children.push(next);
+      }
+      if (i2 === parts3.length - 1) next.item = item;
+      at2 = next;
+    });
+  }
+  const total = (node) => {
+    node.size = node.item !== void 0 ? node.item.size : node.children.reduce((sum, child2) => sum + total(child2), 0);
+    return node.size;
+  };
+  total(root);
+  const collapse = (node) => {
+    for (const child2 of node.children) {
+      while (child2.item === void 0 && child2.children.length === 1 && child2.children[0].item === void 0) {
+        const only = child2.children[0];
+        child2.name = `${child2.name}/${only.name}`;
+        child2.path = only.path;
+        child2.children = only.children;
+      }
+      collapse(child2);
+    }
+  };
+  collapse(root);
+  return root;
+}
+function squarify(sizes, rect) {
+  const total = sizes.reduce((sum, size) => sum + size, 0);
+  const out2 = [];
+  if (total <= 0) return sizes.map(() => ({ x: rect.x, y: rect.y, w: 0, h: 0 }));
+  const scale = rect.w * rect.h / total;
+  const areas = sizes.map((size) => size * scale);
+  let { x: x2, y: y2, w, h } = rect;
+  let start2 = 0;
+  const worst = (row, side) => {
+    const sum = row.reduce((a, b) => a + b, 0);
+    const largest = Math.max(...row);
+    const smallest = Math.min(...row);
+    return Math.max(side * side * largest / (sum * sum), sum * sum / (side * side * smallest));
+  };
+  while (start2 < areas.length) {
+    const side = Math.min(w, h);
+    let end = start2 + 1;
+    while (end < areas.length && worst(areas.slice(start2, end + 1), side) <= worst(areas.slice(start2, end), side)) end++;
+    const row = areas.slice(start2, end);
+    const sum = row.reduce((a, b) => a + b, 0);
+    if (w >= h) {
+      const width = h === 0 ? 0 : sum / h;
+      let top = y2;
+      for (const area of row) {
+        const height = width === 0 ? 0 : area / width;
+        out2.push({ x: x2, y: top, w: width, h: height });
+        top += height;
+      }
+      x2 += width;
+      w -= width;
+    } else {
+      const height = w === 0 ? 0 : sum / w;
+      let left = x2;
+      for (const area of row) {
+        const width = height === 0 ? 0 : area / height;
+        out2.push({ x: left, y: y2, w: width, h: height });
+        left += width;
+      }
+      y2 += height;
+      h -= height;
+    }
+    start2 = end;
+  }
+  return out2;
+}
+function layoutTreemap(items, width = WIDTH, height = HEIGHT) {
+  const tiles = [];
+  const folders = [];
+  const place = (node, rect) => {
+    const children = [...node.children].sort((a, b) => b.size - a.size || byName(a.name, b.name));
+    const rects = squarify(children.map((c) => c.size), rect);
+    children.forEach((child2, i2) => {
+      const r = rects[i2];
+      if (child2.item !== void 0) {
+        tiles.push({ ...r, path: child2.path, name: child2.name, item: child2.item });
+        return;
+      }
+      folders.push({ ...r, path: child2.path, name: child2.name });
+      const header2 = r.h > HEADER * 2 && r.w > 40 ? HEADER : 0;
+      place(child2, { x: r.x + PAD, y: r.y + PAD + header2, w: Math.max(0, r.w - PAD * 2), h: Math.max(0, r.h - PAD * 2 - header2) });
+    });
+  };
+  place(buildTree(items), { x: 0, y: 0, w: width, h: height });
+  return { tiles, folders };
+}
+function prepare(data) {
+  const sized = data.items.filter((item) => item.size > 0).sort((a, b) => b.size - a.size || byName(a.path, b.path));
+  const limit = data.maxTiles ?? DEFAULT_MAX_TILES;
+  const drawn = sized.slice(0, limit);
+  const coloured = drawn.flatMap((item) => item.colour === null ? [] : [item.colour]);
+  return { drawn, notDrawn: { unsized: data.items.length - sized.length, beyondLimit: sized.length - drawn.length }, bands: makeBands(coloured, data.breaks) };
+}
+var bandName = (item, bands) => item.colour === null ? "none" : String(bands.of(item.colour));
+function omissions(prepared) {
+  const out2 = [];
+  if (prepared.notDrawn.beyondLimit > 0) out2.push(`${count2(prepared.notDrawn.beyondLimit, "smaller item")} not drawn`);
+  if (prepared.notDrawn.unsized > 0) out2.push(`${count2(prepared.notDrawn.unsized, "item")} of no size not drawn`);
+  return out2;
+}
+var rows = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
+function columns(data) {
+  return [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: `Colour (${data.colourLabel})`, align: "right" }, { label: "Band", align: "right" }];
+}
+function treemapHtml(data) {
+  const prepared = prepare(data);
+  const { tiles, folders } = layoutTreemap(prepared.drawn);
+  const fmt = (n) => n.toFixed(1);
+  const drawing = [
+    ...folders.map((f) => `<g class="folder"><rect x="${fmt(f.x)}" y="${fmt(f.y)}" width="${fmt(f.w)}" height="${fmt(f.h)}"/>${f.w > 40 && f.h > HEADER * 2 ? `<text x="${fmt(f.x + 4)}" y="${fmt(f.y + 11)}">${escapeHtml(clip(f.name, Math.floor((f.w - 8) / 6.2)))}</text>` : ""}</g>`),
+    ...tiles.map((t) => {
+      const room = Math.floor((t.w - 6) / 6.2);
+      const labels = t.w >= 36 && t.h >= 16 ? [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(clip(t.name, room))}</text>`] : [];
+      if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(t.item.colour === null ? "none" : formatNumber(t.item.colour), room))}</text>`);
+      return `<g class="tile band-${bandName(t.item, prepared.bands)}"><title>${escapeHtml(`${t.path}: ${formatNumber(t.item.size)} ${data.sizeLabel}, ${t.item.colour === null ? "no" : formatNumber(t.item.colour)} ${data.colourLabel}`)}</title><rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>${labels.join("")}</g>`;
+    })
+  ].join("\n");
+  const left = omissions(prepared);
+  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
+${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
+`}`;
+  return figureHtml({
+    kind: "treemap",
+    title: data.title,
+    description: `A treemap of ${count2(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; colour is ${data.colourLabel}. The table below lists the same items.`,
+    width: WIDTH,
+    height: HEIGHT,
+    drawing,
+    table: htmlTable(`${data.title}: the items drawn, largest first`, columns(data), rows(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    notes: notes3
+  });
+}
+function treemapMd(data) {
+  const prepared = prepare(data);
+  const left = omissions(prepared);
+  return [
+    `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)})`,
+    "",
+    mdTable(columns(data), rows(prepared)),
+    ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
+  ].join("\n");
+}
+
+// packages/report/src/components/category-treemap.ts
+var WIDTH2 = 960;
+var HEIGHT2 = 520;
+var DEFAULT_MAX_TILES2 = 80;
+var byName2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function prepare2(data) {
+  const sized = data.items.filter((item) => item.size > 0).sort((a, b) => b.size - a.size || byName2(a.path, b.path));
+  const drawn = sized.slice(0, data.maxTiles ?? DEFAULT_MAX_TILES2);
+  const byId = new Map(data.categories.map((c) => [c.id, c]));
+  return { drawn, unsized: data.items.length - sized.length, beyondLimit: sized.length - drawn.length, categoryOf: (item) => item.category === null ? null : byId.get(item.category) ?? null };
+}
+function omissions2(prepared) {
+  const out2 = [];
+  if (prepared.beyondLimit > 0) out2.push(`${count2(prepared.beyondLimit, "smaller item")} not drawn`);
+  if (prepared.unsized > 0) out2.push(`${count2(prepared.unsized, "item")} of no size not drawn`);
+  return out2;
+}
+var rows2 = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), prepared.categoryOf(item)?.label ?? "none"]);
+var columns2 = (data) => [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: data.categoryLabel }];
+function drawnPerCategory(prepared) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const item of prepared.drawn) counts.set(item.category ?? "", (counts.get(item.category ?? "") ?? 0) + 1);
+  return counts;
+}
+function categoryTreemapHtml(data) {
+  const prepared = prepare2(data);
+  const items = prepared.drawn.map((item) => ({ path: item.path, size: item.size, colour: null }));
+  const byPath = new Map(prepared.drawn.map((item) => [item.path, item]));
+  const { tiles, folders } = layoutTreemap(items);
+  const fmt = (n) => n.toFixed(1);
+  const drawing = [
+    ...folders.map((f) => `<g class="folder"><rect x="${fmt(f.x)}" y="${fmt(f.y)}" width="${fmt(f.w)}" height="${fmt(f.h)}"/>${f.w > 40 && f.h > 28 ? `<text x="${fmt(f.x + 4)}" y="${fmt(f.y + 11)}">${escapeHtml(clip(f.name, Math.floor((f.w - 8) / 6.2)))}</text>` : ""}</g>`),
+    ...tiles.map((t) => {
+      const item = byPath.get(t.path);
+      const category = prepared.categoryOf(item);
+      const room = Math.floor((t.w - 6) / 6.2);
+      const labels = t.w >= 36 && t.h >= 16 ? [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(clip(t.name, room))}</text>`] : [];
+      if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(category?.mark ?? "none", room))}</text>`);
+      return `<g class="tile band-${category === null ? "none" : category.band}"><title>${escapeHtml(`${t.path}: ${formatNumber(item.size)} ${data.sizeLabel}, ${category === null ? `no ${data.categoryLabel}` : `${data.categoryLabel} ${category.label}`}`)}</title><rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>${labels.join("")}</g>`;
+    })
+  ].join("\n");
+  const per = drawnPerCategory(prepared);
+  const legend2 = data.categories.map((c) => `<li><strong>${escapeHtml(c.mark)}</strong> ${escapeHtml(c.label)}: ${count2(per.get(c.id) ?? 0, "tile")}</li>`).join("\n");
+  const left = omissions2(prepared);
+  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Each tile prints its name and the mark of its ${escapeHtml(data.categoryLabel.toLowerCase())}; hatched tiles have none. The marks are:</p>
+<ul class="legend">
+${legend2}
+</ul>
+${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
+`}`;
+  return figureHtml({
+    kind: "treemap category-treemap",
+    title: data.title,
+    description: `A treemap of ${count2(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; each tile is marked with its ${data.categoryLabel.toLowerCase()}. The table below lists the same items.`,
+    width: WIDTH2,
+    height: HEIGHT2,
+    drawing,
+    table: htmlTable(`${data.title}: the items drawn, largest first`, columns2(data), rows2(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    notes: notes3
+  });
+}
+function categoryTreemapMd(data) {
+  const prepared = prepare2(data);
+  const left = omissions2(prepared);
+  const per = drawnPerCategory(prepared);
+  const key = data.categories.map((c) => `${escapeMd(c.mark)} ${escapeMd(c.label)} (${count2(per.get(c.id) ?? 0, "tile")})`).join("; ");
+  return [
+    `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; marks: ${key})`,
+    "",
+    mdTable(columns2(data), rows2(prepared)),
+    ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
+  ].join("\n");
+}
+
 // packages/report/src/components/evidence-list.ts
 var tail = (data) => data.omitted === void 0 || data.omitted <= 0 ? void 0 : `${formatNumber(data.omitted)} more not listed.`;
 function evidenceListHtml(data) {
@@ -24843,57 +25147,17 @@ function evidenceListMd(data) {
   return [`**${escapeMd(data.title)}**`, "", ...items.length === 0 ? ["None."] : items, ...more === void 0 ? [] : ["", `_${more}_`]].join("\n");
 }
 
-// packages/report/src/tables.ts
-function htmlTable(caption, columns7, rows6, options2 = {}) {
-  const head = columns7.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
-  const body2 = rows6.map((row) => {
-    const cells = row.map((cell, i2) => {
-      const number = columns7[i2]?.align === "right" ? ' class="number"' : "";
-      return i2 === 0 && options2.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number}>${cell}</td>`;
-    });
-    return `<tr>${cells.join("")}</tr>`;
-  }).join("\n");
-  return `<table${options2.className === void 0 ? "" : ` class="${options2.className}"`}>
-<caption>${escapeHtml(caption)}</caption>
-<thead><tr>${head}</tr></thead>
-<tbody>
-${body2}
-</tbody>
-</table>`;
-}
-function mdTable(columns7, rows6) {
-  const head = `| ${columns7.map((c) => escapeMd(c.label)).join(" | ")} |`;
-  const rule2 = `| ${columns7.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
-  const body2 = rows6.map((row) => `| ${row.map((cell) => escapeMd(cell)).join(" | ")} |`);
-  return [head, rule2, ...body2].join("\n");
-}
-
 // packages/report/src/components/facts.ts
-var columns = [{ label: "Measure" }, { label: "Value" }];
+var columns3 = [{ label: "Measure" }, { label: "Value" }];
 function factsHtml(data) {
-  return htmlTable(data.caption, columns, data.facts.map((f) => [escapeHtml(f.label), escapeHtml(f.value)]), { rowHeaders: true, className: "facts" });
+  return htmlTable(data.caption, columns3, data.facts.map((f) => [escapeHtml(f.label), escapeHtml(f.value)]), { rowHeaders: true, className: "facts" });
 }
 function factsMd(data) {
-  return [`**${escapeMd(data.caption)}**`, "", mdTable(columns, data.facts.map((f) => [f.label, f.value]))].join("\n");
-}
-
-// packages/report/src/components/figure.ts
-function figureHtml(parts3) {
-  const id = `${slug(parts3.title)}-${shortHash(parts3.drawing)}`;
-  const svg = `<svg role="img" aria-labelledby="${id}-title ${id}-desc" viewBox="0 0 ${parts3.width} ${parts3.height}" preserveAspectRatio="xMinYMin meet">
-<title id="${id}-title">${escapeHtml(parts3.title)}</title>
-<desc id="${id}-desc">${escapeHtml(parts3.description)}</desc>
-${parts3.drawing}
-</svg>`;
-  return `<figure class="chart ${parts3.kind}">
-<figcaption>${escapeHtml(parts3.title)}</figcaption>
-${svg}
-${parts3.table}
-${parts3.notes ?? ""}</figure>`;
+  return [`**${escapeMd(data.caption)}**`, "", mdTable(columns3, data.facts.map((f) => [f.label, f.value]))].join("\n");
 }
 
 // packages/report/src/components/guideline-bar.ts
-var WIDTH = 720;
+var WIDTH3 = 720;
 var ROW = 28;
 var LABEL = 200;
 var BAR_MAX = 360;
@@ -24907,8 +25171,8 @@ var ratioText = (bar) => {
   const ratio = ratioOf2(bar);
   return ratio === null ? "none" : `${Number(ratio.toPrecision(2))}x`;
 };
-var columns2 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
-var rows = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf(b)]);
+var columns4 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
+var rows3 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf(b)]);
 function guidelineBarsHtml(data) {
   const greatest = Math.max(1, ...data.bars.flatMap((b) => [b.value, b.guideline]));
   const scale = BAR_MAX / greatest;
@@ -24923,29 +25187,29 @@ function guidelineBarsHtml(data) {
     kind: "guideline-bars",
     title: data.title,
     description: `${data.bars.length} values of ${data.unit}, each against its guideline. A bar longer than its marker is above guideline, shown with a triangle and the words in the table.`,
-    width: WIDTH,
+    width: WIDTH3,
     height: Math.max(ROW, data.bars.length * ROW),
     drawing,
-    table: htmlTable(`${data.title}: each value against its guideline`, columns2(data), rows(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: each value against its guideline`, columns4(data), rows3(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
     notes: `<p class="legend">The vertical line marks the guideline and ▲ marks a value above it. A guideline orders and labels results; it decides nothing.${data.source === void 0 ? "" : ` ${escapeHtml(data.source)}`}</p>
 `
   });
 }
 function guidelineBarsMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns2(data), rows(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns4(data), rows3(data))].join("\n");
 }
 
 // packages/report/src/components/histogram.ts
-var WIDTH2 = 640;
+var WIDTH4 = 640;
 var ROW2 = 22;
 var LABEL2 = 150;
 var BAR_MAX2 = 400;
-var columns3 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
+var columns5 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
 function shares(data) {
   const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
   return data.bins.map((bin) => total === 0 ? "0%" : `${formatNumber(bin.count / total * 100)}%`);
 }
-var rows2 = (data) => {
+var rows4 = (data) => {
   const share2 = shares(data);
   return data.bins.map((bin, i2) => [bin.label, formatNumber(bin.count), share2[i2]]);
 };
@@ -24961,14 +25225,14 @@ function histogramHtml(data) {
     kind: "histogram",
     title: data.title,
     description: `${formatNumber(total)} ${data.unit} in ${data.bins.length} bins. Each bar prints its count; the table below lists the same counts.`,
-    width: WIDTH2,
+    width: WIDTH4,
     height: Math.max(ROW2, data.bins.length * ROW2),
     drawing,
-    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns3(data), rows2(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns5(data), rows4(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function histogramMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns3(data), rows2(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns5(data), rows4(data))].join("\n");
 }
 
 // packages/report/src/components/judgement.ts
@@ -25001,32 +25265,6 @@ function judgementMd(data) {
   if (data.entry === void 0) return [`**${escapeMd(data.slot.title)}**`, "", `_Judgement not yet written: ${escapeMd(data.slot.task)}_`].join("\n");
   const items = parts2(data.slot, data.entry).map((p, i2) => `${i2 + 1}. **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
   return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
-}
-
-// packages/report/src/components/bands.ts
-var BAND_COUNT = 5;
-function makeBands(values, breaks) {
-  if (breaks !== void 0 && breaks.length === BAND_COUNT - 1) {
-    const edges = [...breaks];
-    const least2 = Math.min(...values, edges[0] ?? 0);
-    const greatest2 = Math.max(...values, edges[edges.length - 1] ?? 0);
-    const lower = [least2, ...edges];
-    const upper2 = [...edges, greatest2];
-    return {
-      ranges: lower.map((from, i2) => ({ band: i2 + 1, from, to: upper2[i2] ?? greatest2 })),
-      of: (value) => 1 + edges.filter((edge) => edge <= value).length
-    };
-  }
-  const least = values.length === 0 ? 0 : Math.min(...values);
-  const greatest = values.length === 0 ? 0 : Math.max(...values);
-  const step = (greatest - least) / BAND_COUNT;
-  return {
-    ranges: Array.from({ length: BAND_COUNT }, (_, i2) => ({ band: i2 + 1, from: least + i2 * step, to: i2 === BAND_COUNT - 1 ? greatest : least + (i2 + 1) * step })),
-    of: (value) => step === 0 ? 1 : Math.min(BAND_COUNT, 1 + Math.floor((value - least) / step))
-  };
-}
-function bandLegend(bands) {
-  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
 }
 
 // packages/report/src/components/matrix.ts
@@ -25116,19 +25354,19 @@ function rankedTableHtml(data) {
     const side = column.guideline?.direction === "below" ? "below" : "above";
     return `${shown2} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
   };
-  const columns7 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows6 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
-  const table4 = data.rows.length === 0 ? `<p class="empty">${escapeHtml(data.caption)}: no rows.</p>` : htmlTable(data.caption, columns7, rows6, { rowHeaders: data.numbered === false, className: "ranked" });
+  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows7 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
+  const table4 = data.rows.length === 0 ? `<p class="empty">${escapeHtml(data.caption)}: no rows.</p>` : htmlTable(data.caption, columns8, rows7, { rowHeaders: data.numbered === false, className: "ranked" });
   const notes3 = [legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${escapeHtml(n)}</p>`]);
   return [table4, ...notes3].join("\n");
 }
 function rankedTableMd(data) {
-  const columns7 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows6 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => `${text2(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
+  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows7 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => `${text2(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
   return [
     `**${escapeMd(data.caption)}**`,
     "",
-    data.rows.length === 0 ? "No rows." : mdTable(columns7, rows6),
+    data.rows.length === 0 ? "No rows." : mdTable(columns8, rows7),
     ...[legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : ["", `_${escapeMd(n)}_`])
   ].join("\n");
 }
@@ -25144,13 +25382,13 @@ function positionOf2(point, zoneDistance) {
 var SIZE = 360;
 var LEFT = 56;
 var TOP = 16;
-var WIDTH3 = LEFT + SIZE + 24;
-var HEIGHT = TOP + SIZE + 48;
+var WIDTH5 = LEFT + SIZE + 24;
+var HEIGHT3 = TOP + SIZE + 48;
 var x = (instability) => LEFT + instability * SIZE;
 var y = (abstractness) => TOP + (1 - abstractness) * SIZE;
 var at = (value) => value.toFixed(1);
 var shown = (data) => data.points.slice(0, data.maxPoints ?? DEFAULT_MAX_POINTS);
-var columns4 = [
+var columns6 = [
   { label: "#", align: "right" },
   { label: "Package" },
   { label: "Instability I", align: "right" },
@@ -25161,7 +25399,7 @@ var columns4 = [
   { label: "Exported types", align: "right" },
   { label: "Position" }
 ];
-function rows3(data) {
+function rows5(data) {
   return shown(data).map((p, i2) => [
     String(i2 + 1),
     p.name,
@@ -25227,32 +25465,32 @@ function stabilityChartHtml(data) {
     kind: "stability-chart",
     title: data.title,
     description: `A scatter of ${formatNumber(points.length)} ${data.noun ?? "packages"} by instability (horizontal) and abstractness (vertical), with the main sequence and the zone of pain and the zone of uselessness marked. The ${formatNumber(limit)} furthest from the main sequence have a number that the table below gives with their figures and their position in words; the legend counts all of them by position.`,
-    width: WIDTH3,
-    height: HEIGHT,
+    width: WIDTH5,
+    height: HEIGHT3,
     drawing: [pain, useless, frame, sequence, ...labels, ...ticks, ...axes, ...dots].join("\n"),
-    table: htmlTable(`${data.title}: the same points with their figures`, columns4, rows3(data).map((r) => r.map(escapeHtml)), { rowHeaders: false }),
+    table: htmlTable(`${data.title}: the same points with their figures`, columns6, rows5(data).map((r) => r.map(escapeHtml)), { rowHeaders: false }),
     notes: notes2(data).map((n) => `<p class="legend">${escapeHtml(n)}</p>
 `).join("")
   });
 }
 function stabilityChartMd(data) {
-  return [`**${escapeMd(data.title)}** (instability I against abstractness A)`, "", mdTable(columns4, rows3(data).map((r) => r.map((cell, i2) => i2 === 1 ? clip(cell, 80) : cell))), "", notes2(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
+  return [`**${escapeMd(data.title)}** (instability I against abstractness A)`, "", mdTable(columns6, rows5(data).map((r) => r.map((cell, i2) => i2 === 1 ? clip(cell, 80) : cell))), "", notes2(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
 }
 
 // packages/report/src/components/sparkline.ts
-var WIDTH4 = 240;
-var HEIGHT2 = 48;
+var WIDTH6 = 240;
+var HEIGHT4 = 48;
 var MARGIN = 6;
-var columns5 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
-var rows4 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
+var columns7 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
+var rows6 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
 function sparklineCoordinates(points) {
   const values = points.map((p) => p.value);
   const least = Math.min(...values);
   const greatest = Math.max(...values);
   const span = greatest - least;
   return points.map((p, i2) => [
-    points.length === 1 ? WIDTH4 / 2 : MARGIN + i2 * (WIDTH4 - 2 * MARGIN) / (points.length - 1),
-    span === 0 ? HEIGHT2 / 2 : HEIGHT2 - MARGIN - (p.value - least) * (HEIGHT2 - 2 * MARGIN) / span
+    points.length === 1 ? WIDTH6 / 2 : MARGIN + i2 * (WIDTH6 - 2 * MARGIN) / (points.length - 1),
+    span === 0 ? HEIGHT4 / 2 : HEIGHT4 - MARGIN - (p.value - least) * (HEIGHT4 - 2 * MARGIN) / span
   ]);
 }
 function sparklineHtml(data) {
@@ -25266,14 +25504,14 @@ function sparklineHtml(data) {
     kind: "sparkline",
     title: data.title,
     description: `${data.unit} over ${data.points.length} periods, ${range}. The table below lists every value.`,
-    width: WIDTH4,
-    height: HEIGHT2,
+    width: WIDTH6,
+    height: HEIGHT4,
     drawing: `${line}${end}`,
-    table: htmlTable(`${data.title}: ${data.unit} by period`, columns5(data), rows4(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} by period`, columns7(data), rows6(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function sparklineMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns5(data), rows4(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns7(data), rows6(data))].join("\n");
 }
 
 // packages/report/src/components/trend-marker.ts
@@ -25298,170 +25536,6 @@ function trendMarkerMd(data) {
   return `${ARROW[trend]} ${trend} (${escapeMd(detail)})`;
 }
 
-// packages/report/src/components/treemap.ts
-var WIDTH5 = 960;
-var HEIGHT3 = 520;
-var HEADER = 14;
-var PAD = 2;
-var DEFAULT_MAX_TILES = 80;
-var byName = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-function buildTree(items) {
-  const root = { name: "", path: "", size: 0, children: [] };
-  for (const item of items) {
-    let at2 = root;
-    const parts3 = item.path.split("/");
-    parts3.forEach((part, i2) => {
-      const path = parts3.slice(0, i2 + 1).join("/");
-      let next = at2.children.find((child2) => child2.name === part && i2 < parts3.length - 1 === (child2.item === void 0));
-      if (next === void 0) {
-        next = { name: part, path, size: 0, children: [] };
-        at2.children.push(next);
-      }
-      if (i2 === parts3.length - 1) next.item = item;
-      at2 = next;
-    });
-  }
-  const total = (node) => {
-    node.size = node.item !== void 0 ? node.item.size : node.children.reduce((sum, child2) => sum + total(child2), 0);
-    return node.size;
-  };
-  total(root);
-  const collapse = (node) => {
-    for (const child2 of node.children) {
-      while (child2.item === void 0 && child2.children.length === 1 && child2.children[0].item === void 0) {
-        const only = child2.children[0];
-        child2.name = `${child2.name}/${only.name}`;
-        child2.path = only.path;
-        child2.children = only.children;
-      }
-      collapse(child2);
-    }
-  };
-  collapse(root);
-  return root;
-}
-function squarify(sizes, rect) {
-  const total = sizes.reduce((sum, size) => sum + size, 0);
-  const out2 = [];
-  if (total <= 0) return sizes.map(() => ({ x: rect.x, y: rect.y, w: 0, h: 0 }));
-  const scale = rect.w * rect.h / total;
-  const areas = sizes.map((size) => size * scale);
-  let { x: x2, y: y2, w, h } = rect;
-  let start2 = 0;
-  const worst = (row, side) => {
-    const sum = row.reduce((a, b) => a + b, 0);
-    const largest = Math.max(...row);
-    const smallest = Math.min(...row);
-    return Math.max(side * side * largest / (sum * sum), sum * sum / (side * side * smallest));
-  };
-  while (start2 < areas.length) {
-    const side = Math.min(w, h);
-    let end = start2 + 1;
-    while (end < areas.length && worst(areas.slice(start2, end + 1), side) <= worst(areas.slice(start2, end), side)) end++;
-    const row = areas.slice(start2, end);
-    const sum = row.reduce((a, b) => a + b, 0);
-    if (w >= h) {
-      const width = h === 0 ? 0 : sum / h;
-      let top = y2;
-      for (const area of row) {
-        const height = width === 0 ? 0 : area / width;
-        out2.push({ x: x2, y: top, w: width, h: height });
-        top += height;
-      }
-      x2 += width;
-      w -= width;
-    } else {
-      const height = w === 0 ? 0 : sum / w;
-      let left = x2;
-      for (const area of row) {
-        const width = height === 0 ? 0 : area / height;
-        out2.push({ x: left, y: y2, w: width, h: height });
-        left += width;
-      }
-      y2 += height;
-      h -= height;
-    }
-    start2 = end;
-  }
-  return out2;
-}
-function layoutTreemap(items, width = WIDTH5, height = HEIGHT3) {
-  const tiles = [];
-  const folders = [];
-  const place = (node, rect) => {
-    const children = [...node.children].sort((a, b) => b.size - a.size || byName(a.name, b.name));
-    const rects = squarify(children.map((c) => c.size), rect);
-    children.forEach((child2, i2) => {
-      const r = rects[i2];
-      if (child2.item !== void 0) {
-        tiles.push({ ...r, path: child2.path, name: child2.name, item: child2.item });
-        return;
-      }
-      folders.push({ ...r, path: child2.path, name: child2.name });
-      const header2 = r.h > HEADER * 2 && r.w > 40 ? HEADER : 0;
-      place(child2, { x: r.x + PAD, y: r.y + PAD + header2, w: Math.max(0, r.w - PAD * 2), h: Math.max(0, r.h - PAD * 2 - header2) });
-    });
-  };
-  place(buildTree(items), { x: 0, y: 0, w: width, h: height });
-  return { tiles, folders };
-}
-function prepare(data) {
-  const sized = data.items.filter((item) => item.size > 0).sort((a, b) => b.size - a.size || byName(a.path, b.path));
-  const limit = data.maxTiles ?? DEFAULT_MAX_TILES;
-  const drawn = sized.slice(0, limit);
-  const coloured = drawn.flatMap((item) => item.colour === null ? [] : [item.colour]);
-  return { drawn, notDrawn: { unsized: data.items.length - sized.length, beyondLimit: sized.length - drawn.length }, bands: makeBands(coloured, data.breaks) };
-}
-var bandName = (item, bands) => item.colour === null ? "none" : String(bands.of(item.colour));
-function omissions(prepared) {
-  const out2 = [];
-  if (prepared.notDrawn.beyondLimit > 0) out2.push(`${count2(prepared.notDrawn.beyondLimit, "smaller item")} not drawn`);
-  if (prepared.notDrawn.unsized > 0) out2.push(`${count2(prepared.notDrawn.unsized, "item")} of no size not drawn`);
-  return out2;
-}
-var rows5 = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
-function columns6(data) {
-  return [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: `Colour (${data.colourLabel})`, align: "right" }, { label: "Band", align: "right" }];
-}
-function treemapHtml(data) {
-  const prepared = prepare(data);
-  const { tiles, folders } = layoutTreemap(prepared.drawn);
-  const fmt = (n) => n.toFixed(1);
-  const drawing = [
-    ...folders.map((f) => `<g class="folder"><rect x="${fmt(f.x)}" y="${fmt(f.y)}" width="${fmt(f.w)}" height="${fmt(f.h)}"/>${f.w > 40 && f.h > HEADER * 2 ? `<text x="${fmt(f.x + 4)}" y="${fmt(f.y + 11)}">${escapeHtml(clip(f.name, Math.floor((f.w - 8) / 6.2)))}</text>` : ""}</g>`),
-    ...tiles.map((t) => {
-      const room = Math.floor((t.w - 6) / 6.2);
-      const labels = t.w >= 36 && t.h >= 16 ? [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(clip(t.name, room))}</text>`] : [];
-      if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(t.item.colour === null ? "none" : formatNumber(t.item.colour), room))}</text>`);
-      return `<g class="tile band-${bandName(t.item, prepared.bands)}"><title>${escapeHtml(`${t.path}: ${formatNumber(t.item.size)} ${data.sizeLabel}, ${t.item.colour === null ? "no" : formatNumber(t.item.colour)} ${data.colourLabel}`)}</title><rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>${labels.join("")}</g>`;
-    })
-  ].join("\n");
-  const left = omissions(prepared);
-  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
-${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
-`}`;
-  return figureHtml({
-    kind: "treemap",
-    title: data.title,
-    description: `A treemap of ${count2(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; colour is ${data.colourLabel}. The table below lists the same items.`,
-    width: WIDTH5,
-    height: HEIGHT3,
-    drawing,
-    table: htmlTable(`${data.title}: the items drawn, largest first`, columns6(data), rows5(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
-    notes: notes3
-  });
-}
-function treemapMd(data) {
-  const prepared = prepare(data);
-  const left = omissions(prepared);
-  return [
-    `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)})`,
-    "",
-    mdTable(columns6(data), rows5(prepared)),
-    ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
-  ].join("\n");
-}
-
 // packages/report/src/block.ts
 function slotOf(id, context) {
   const slot = context.slots.find((s) => s.id === id);
@@ -25478,6 +25552,8 @@ function renderBlock(block, format2, context) {
       return format2 === "html" ? rankedTableHtml(block) : rankedTableMd(block);
     case "treemap":
       return format2 === "html" ? treemapHtml(block) : treemapMd(block);
+    case "category-treemap":
+      return format2 === "html" ? categoryTreemapHtml(block) : categoryTreemapMd(block);
     case "sparkline":
       return format2 === "html" ? sparklineHtml(block) : sparklineMd(block);
     case "histogram":
@@ -25597,7 +25673,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 function headerFacts(report) {
   const { header: header2 } = report;
   const excluded = header2.excluded.length === 0 ? "nothing" : `<ul>${header2.excluded.map((e) => `<li>${escapeHtml(e.what)}: ${formatNumber(e.count)}</li>`).join("")}</ul>`;
-  const rows6 = [
+  const rows7 = [
     ["Repository", escapeHtml(header2.repo)],
     ["Analysed commit", `<code>${escapeHtml(header2.commit)}</code>`],
     ["Date", escapeHtml(header2.date)],
@@ -25607,7 +25683,7 @@ function headerFacts(report) {
     ["Excluded", excluded]
   ];
   return `<dl class="header">
-${rows6.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
+${rows7.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
 </dl>`;
 }
 function section(s, report, notes3) {
@@ -25944,8 +26020,8 @@ async function gather(context, settings) {
     include: note === void 0 ? null : { section: note.value, notice: note.notice }
   };
 }
-function cycleBlocks(rows6) {
-  const shown2 = rows6.slice(0, TOP_CYCLES);
+function cycleBlocks(rows7) {
+  const shown2 = rows7.slice(0, TOP_CYCLES);
   const slots = [];
   const blocks = [
     {
@@ -25956,7 +26032,7 @@ function cycleBlocks(rows6) {
       type: "ranked-table",
       caption: "Import cycles, largest first",
       noun: "cycles",
-      total: rows6.length,
+      total: rows7.length,
       columns: [
         { key: "modules", label: "Modules in the cycle" },
         { key: "size", label: "Size", align: "right" },
@@ -26009,18 +26085,18 @@ function cycleBlocks(rows6) {
       maxChars: 400
     });
   });
-  if (rows6.length === 0) blocks.push({ type: "notice", level: "notice", text: "No import cycle at the default level." });
+  if (rows7.length === 0) blocks.push({ type: "notice", level: "notice", text: "No import cycle at the default level." });
   return { blocks, slots };
 }
-function layerBlocks(rows6, settings) {
-  const shown2 = rows6.slice(0, TOP_LAYER_VIOLATIONS);
+function layerBlocks(rows7, settings) {
+  const shown2 = rows7.slice(0, TOP_LAYER_VIOLATIONS);
   return [
     { type: "paragraph", text: `Layers are declared in order, top first, in structure.layers: ${settings.layers.map((l) => l.name).join(", ")}. Each row is one file import that crosses to a layer its rule does not allow. Value imports come first, then type-only imports.` },
     {
       type: "ranked-table",
       caption: "Imports that break the layer rules",
       noun: "violations",
-      total: rows6.length,
+      total: rows7.length,
       columns: [
         { key: "from", label: "Importing file" },
         { key: "to", label: "Imported file" },
@@ -26036,7 +26112,7 @@ function layerBlocks(rows6, settings) {
         symbols: row.symbols.length === 0 ? null : nameList(row.symbols.map((s) => s.symbol), SYMBOLS_PER_EDGE)
       }))
     },
-    ...rows6.length === 0 ? [{ type: "notice", level: "notice", text: "No import breaks the configured layer rules." }] : []
+    ...rows7.length === 0 ? [{ type: "notice", level: "notice", text: "No import breaks the configured layer rules." }] : []
   ];
 }
 var round32 = (value) => Math.round(value * 1e3) / 1e3;
@@ -26089,8 +26165,8 @@ function stabilityBlocks(packageRows2, against, settings) {
   if (against.length === 0) blocks.push({ type: "notice", level: "notice", text: "No dependency points towards a less stable folder." });
   return { blocks, slots };
 }
-function censusBlocks(rows6) {
-  const none2 = rows6.filter((row) => row.count === 0).map((row) => row.mechanism);
+function censusBlocks(rows7) {
+  const none2 = rows7.filter((row) => row.count === 0).map((row) => row.mechanism);
   return [
     {
       type: "ranked-table",
@@ -26104,7 +26180,7 @@ function censusBlocks(rows6) {
         { key: "folders", label: "Busiest folders" },
         { key: "example", label: "Example" }
       ],
-      rows: rows6.map((row) => ({
+      rows: rows7.map((row) => ({
         mechanism: row.mechanism,
         count: row.count,
         files: row.files,
@@ -26126,13 +26202,13 @@ var SIGNALS = [
   ["appendShapedEdits", "append-shaped edits"],
   ["contention", "contention"]
 ];
-function hubBlocks(rows6, notices) {
+function hubBlocks(rows7, notices) {
   return [
     {
       type: "ranked-table",
       caption: "Registration hubs: files every feature edits",
       noun: "hubs",
-      total: rows6.length,
+      total: rows7.length,
       columns: [
         { key: "file", label: "File" },
         { key: "reached", label: "Signals reached of 4", align: "right" },
@@ -26140,7 +26216,7 @@ function hubBlocks(rows6, notices) {
         { key: "features", label: "Features", align: "right" },
         { key: "revisions", label: "Revisions", align: "right" }
       ],
-      rows: rows6.slice(0, TOP_HUBS).map((hub) => ({
+      rows: rows7.slice(0, TOP_HUBS).map((hub) => ({
         file: hub.file,
         reached: hub.signalsReached,
         signals: SIGNALS.filter(([key]) => hub.signals[key].reached).map(([, name14]) => name14).join(", "),

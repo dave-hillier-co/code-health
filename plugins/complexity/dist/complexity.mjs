@@ -243,10 +243,10 @@ function loadConfig(root, spec) {
   }
   const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
   const defaults = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
-  const rows5 = /* @__PURE__ */ new Map();
+  const rows7 = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
-    effective[key] = merge(defaults[key], document?.[key], key, rows5);
+    effective[key] = merge(defaults[key], document?.[key], key, rows7);
   }
   readHistory(effective.history, "history");
   const pluginDocument = document?.[spec.plugin];
@@ -255,10 +255,10 @@ function loadConfig(root, spec) {
   const section2 = effective[spec.plugin];
   for (const key of historyKeys) {
     section2[key] = overlay(effective.history[key], pluginDocument?.[key]);
-    inheritSources(rows5, spec.plugin, key);
+    inheritSources(rows7, spec.plugin, key);
   }
   const sources = {};
-  for (const row of rows5.values()) sources[row.path] = row.source;
+  for (const row of rows7.values()) sources[row.path] = row.source;
   const hash2 = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash: hash2, sources };
 }
@@ -269,13 +269,13 @@ function overlay(shared, own) {
   }
   return own;
 }
-function inheritSources(rows5, plugin, key) {
+function inheritSources(rows7, plugin, key) {
   const own = `${plugin}.${key}`;
-  for (const row of [...rows5.values()]) {
+  for (const row of [...rows7.values()]) {
     if (row.path !== own && !row.path.startsWith(`${own}.`)) continue;
     if (row.source === "file") continue;
-    const shared = rows5.get(`history${row.path.slice(plugin.length)}`);
-    if (shared !== void 0) rows5.set(row.path, { ...row, source: shared.source });
+    const shared = rows7.get(`history${row.path.slice(plugin.length)}`);
+    if (shared !== void 0) rows7.set(row.path, { ...row, source: shared.source });
   }
 }
 function readHistory(history, where) {
@@ -313,12 +313,12 @@ function readLanguages(value) {
   return mapped;
 }
 function explainConfig(config) {
-  const rows5 = [];
+  const rows7 = [];
   flatten(config.effective, "", (path, value) => {
-    rows5.push({ path, value, source: config.sources[path] ?? "default" });
+    rows7.push({ path, value, source: config.sources[path] ?? "default" });
   });
-  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows5.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
-  return rows5.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows7.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
+  return rows7.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 function parseDocument(file) {
   let parsed;
@@ -330,15 +330,15 @@ function parseDocument(file) {
   if (!isPlainObject(parsed)) throw configError(`${CONFIG_FILE} must be a JSON object`);
   return parsed;
 }
-function merge(defaultValue, fileValue, path, rows5) {
+function merge(defaultValue, fileValue, path, rows7) {
   if (fileValue === void 0) {
-    flatten(defaultValue, path, (leaf, value) => rows5.set(leaf, { path: leaf, value, source: "default" }));
+    flatten(defaultValue, path, (leaf, value) => rows7.set(leaf, { path: leaf, value, source: "default" }));
     return defaultValue;
   }
   if (isPlainObject(defaultValue)) {
     if (!isPlainObject(fileValue)) throw configError(`${CONFIG_FILE}: ${path} must be an object`);
     if (Object.keys(defaultValue).length === 0) {
-      flatten(fileValue, path, (leaf, value) => rows5.set(leaf, { path: leaf, value, source: "file" }));
+      flatten(fileValue, path, (leaf, value) => rows7.set(leaf, { path: leaf, value, source: "file" }));
       return fileValue;
     }
     for (const key of Object.keys(fileValue)) {
@@ -346,14 +346,14 @@ function merge(defaultValue, fileValue, path, rows5) {
     }
     const merged = {};
     for (const key of Object.keys(defaultValue)) {
-      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows5);
+      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows7);
     }
     return merged;
   }
   if (defaultValue !== null && kindOf(fileValue) !== kindOf(defaultValue)) {
     throw configError(`${CONFIG_FILE}: ${path} must be ${article(kindOf(defaultValue))}`);
   }
-  rows5.set(path, { path, value: fileValue, source: "file" });
+  rows7.set(path, { path, value: fileValue, source: "file" });
   return fileValue;
 }
 var removedSettings = {
@@ -490,11 +490,11 @@ function git(cwd, ...args2) {
 // packages/cli-kit/src/results.ts
 function shapeResults(results, options) {
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
-  const { limit, fields, columns: columns6 } = options;
-  if (fields && columns6 && columns6.length > 0) {
-    const unknown = fields.filter((field6) => !columns6.includes(field6));
+  const { limit, fields, columns: columns8 } = options;
+  if (fields && columns8 && columns8.length > 0) {
+    const unknown = fields.filter((field6) => !columns8.includes(field6));
     if (unknown.length > 0) {
-      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns6.join(", ")}`);
+      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns8.join(", ")}`);
     }
   }
   const sorted = options.presorted === true ? results : [...results].sort(byScoreThenPath);
@@ -535,13 +535,13 @@ function runNotes() {
 }
 
 // packages/cli-kit/src/table.ts
-function renderTable(rows5, columns6, truncated) {
-  if (rows5.length === 0) return "No results.\n";
-  const cells = rows5.map((row) => columns6.map((column) => format(row[column])));
-  const numeric = columns6.map((column) => rows5.every((row) => row[column] == null || typeof row[column] === "number"));
-  const widths = columns6.map((column, i2) => Math.max(column.length, ...cells.map((line) => line[i2]?.length ?? 0)));
+function renderTable(rows7, columns8, truncated) {
+  if (rows7.length === 0) return "No results.\n";
+  const cells = rows7.map((row) => columns8.map((column) => format(row[column])));
+  const numeric = columns8.map((column) => rows7.every((row) => row[column] == null || typeof row[column] === "number"));
+  const widths = columns8.map((column, i2) => Math.max(column.length, ...cells.map((line) => line[i2]?.length ?? 0)));
   const render = (line) => line.map((cell, i2) => numeric[i2] ? cell.padStart(widths[i2] ?? 0) : cell.padEnd(widths[i2] ?? 0)).join("  ").trimEnd();
-  const lines2 = [render(columns6), ...cells.map(render)];
+  const lines2 = [render(columns8), ...cells.map(render)];
   if (truncated.cut > 0) lines2.push(`${truncated.cut} more not shown (use --limit N or --limit all)`);
   return lines2.join("\n") + "\n";
 }
@@ -621,8 +621,8 @@ async function execute(cli2, io) {
 `);
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
-  const columns6 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns: columns6, presorted: output.presorted });
+  const columns8 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
+  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns: columns8, presorted: output.presorted });
   if (args2.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -652,7 +652,7 @@ async function execute(cli2, io) {
       )
     );
   } else if (Array.isArray(results)) {
-    io.stdout.write(renderTable(results, args2.fields ?? columns6, truncated));
+    io.stdout.write(renderTable(results, args2.fields ?? columns8, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
 `);
     for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
@@ -1835,12 +1835,12 @@ function setMeta(db, key, value) {
   );
 }
 function storedShas(db) {
-  const rows5 = db.prepare("SELECT sha FROM commits").all();
-  return new Set(rows5.map((r) => r.sha));
+  const rows7 = db.prepare("SELECT sha FROM commits").all();
+  return new Set(rows7.map((r) => r.sha));
 }
 function storedBoundaryShas(db) {
-  const rows5 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
-  return rows5.map((r) => r.sha);
+  const rows7 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
+  return rows7.map((r) => r.sha);
 }
 function deleteCommits(db, shas) {
   const statements = ["commits", "commit_parents", "changes"].map((t) => db.prepare(`DELETE FROM ${t} WHERE sha = ?`));
@@ -1978,14 +1978,14 @@ var RenameMap = class {
   /** The stable identity of `path` as touched by the commit at `position`. */
   resolve(path, position) {
     let current = path;
-    let at = position;
+    let at2 = position;
     for (; ; ) {
-      const next = this.edges.get(current)?.find((edge) => edge.position > at);
+      const next = this.edges.get(current)?.find((edge) => edge.position > at2);
       if (!next) return current;
-      const deletedAt = this.deletions.get(current)?.find((position2) => position2 >= at);
+      const deletedAt = this.deletions.get(current)?.find((position2) => position2 >= at2);
       if (deletedAt !== void 0 && deletedAt <= next.position) return current;
       current = next.to;
-      at = next.position;
+      at2 = next.position;
     }
   }
 };
@@ -2047,7 +2047,7 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
 function select(db, ref, headSha, firstParent) {
   const head = db.prepare("SELECT committer_date FROM commits WHERE sha = ?").get(headSha);
   if (!head) throw new NoCacheError(`Commit ${headSha} is not in the history cache. Run refresh first.`);
-  const rows5 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
+  const rows7 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
   const changeRows = db.prepare(
     `${REACH(firstParent)}
        SELECT ch.* FROM changes ch JOIN reach ON reach.sha = ch.sha ORDER BY ch.sha, ch.idx`
@@ -2069,7 +2069,7 @@ function select(db, ref, headSha, firstParent) {
     if (list2) list2.push(row);
     else changesBySha.set(row.sha, [row]);
   }
-  const ordered = topologicalOrder(rows5, parents);
+  const ordered = topologicalOrder(rows7, parents);
   const renames = new RenameMap();
   const commits = [];
   for (const row of ordered) {
@@ -2111,9 +2111,9 @@ function select(db, ref, headSha, firstParent) {
   }
   return { ref, headSha, headDate: head.committer_date, firstParent, commits, renames };
 }
-function topologicalOrder(rows5, parents) {
-  const bySha = new Map(rows5.map((r) => [r.sha, r]));
-  const sorted = [...rows5].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
+function topologicalOrder(rows7, parents) {
+  const bySha = new Map(rows7.map((r) => [r.sha, r]));
+  const sorted = [...rows7].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
   const done = /* @__PURE__ */ new Set();
   const out2 = [];
   for (const start2 of sorted) {
@@ -3620,17 +3620,17 @@ var Measurer = class {
 };
 function codeRowsOf(root, rules5) {
   const comments2 = rules5.constructs.commentTypes;
-  const rows5 = new Array(root.endPosition.row + 1).fill(false);
+  const rows7 = new Array(root.endPosition.row + 1).fill(false);
   const walk = (node) => {
     if (comments2.has(node.type)) return;
     if (node.childCount === 0) {
-      for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows5[row] = true;
+      for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows7[row] = true;
       return;
     }
     for (let i2 = 0; i2 < node.childCount; i2++) walk(node.child(i2));
   };
   walk(root);
-  return rows5;
+  return rows7;
 }
 function measureFunction(fn, options, rules5) {
   const measurer = new Measurer(options, rules5, rules5.recursionScope(fn, options.name));
@@ -7474,7 +7474,7 @@ var libraryTypes = /* @__PURE__ */ new Set(["STATIC", "SHARED", "MODULE", "OBJEC
 var includeFlags = /* @__PURE__ */ new Set(["SYSTEM", "BEFORE", "AFTER"]);
 function parseCmake(text3) {
   const file = { project: null, targets: [], includeDirectories: [], subdirectories: [] };
-  const byName2 = /* @__PURE__ */ new Map();
+  const byName3 = /* @__PURE__ */ new Map();
   const all = commands(text3);
   for (const command10 of all) {
     const [first, ...rest] = command10.args;
@@ -7484,7 +7484,7 @@ function parseCmake(text3) {
       const sources = rest.filter((argument) => !libraryTypes.has(argument) && argument !== "WIN32" && argument !== "MACOSX_BUNDLE").flatMap((argument) => pathArgument(argument) ?? []);
       const target2 = { name: first, kind: command10.name === "add_library" ? "library" : "executable", sources, publicIncludes: [], privateIncludes: [], links: [] };
       file.targets.push(target2);
-      byName2.set(first, target2);
+      byName3.set(first, target2);
     }
   }
   for (const command10 of all) {
@@ -7492,12 +7492,12 @@ function parseCmake(text3) {
     if (first === void 0) continue;
     switch (command10.name) {
       case "target_sources": {
-        const target2 = byName2.get(first);
+        const target2 = byName3.get(first);
         if (target2 !== void 0) target2.sources.push(...rest.filter((argument) => !scopes.has(argument) && argument !== "FILE_SET" && argument !== "HEADERS").flatMap((argument) => pathArgument(argument) ?? []));
         break;
       }
       case "target_include_directories": {
-        const target2 = byName2.get(first);
+        const target2 = byName3.get(first);
         if (target2 === void 0) break;
         let scope = "PRIVATE";
         for (const argument of rest) {
@@ -7510,7 +7510,7 @@ function parseCmake(text3) {
         break;
       }
       case "target_link_libraries": {
-        const target2 = byName2.get(first);
+        const target2 = byName3.get(first);
         if (target2 !== void 0) target2.links.push(...rest.filter((argument) => !scopes.has(argument) && !/^(debug|optimized|general)$/i.test(argument) && !/\$[{<]/.test(argument)));
         break;
       }
@@ -8707,8 +8707,8 @@ function untypedBraces(literal, source, overwrite) {
   return true;
 }
 function memberPointerUse(missing, source, overwrite) {
-  const at = missing.startIndex;
-  const star = source[at] === "*" ? at : source[at - 1] === "*" ? at - 1 : -1;
+  const at2 = missing.startIndex;
+  const star = source[at2] === "*" ? at2 : source[at2 - 1] === "*" ? at2 - 1 : -1;
   if (star < 0) return;
   if (source[star - 1] === ".") overwrite(star - 1, " ");
   else if (source[star - 1] === ">" && source[star - 2] === "-") overwrite(star - 2, "  ");
@@ -8904,7 +8904,7 @@ function inferIncludeRoots(unresolved, paths) {
       if (covered.has(name11)) continue;
       for (const root of new Set(roots)) gain.set(root, (gain.get(root) ?? 0) + (wanted.get(name11) ?? 0));
     }
-    const best = [...gain].sort(([a, x], [b, y]) => y - x || a.split("/").length - b.split("/").length || (a < b ? -1 : a > b ? 1 : 0))[0];
+    const best = [...gain].sort(([a, x2], [b, y2]) => y2 - x2 || a.split("/").length - b.split("/").length || (a < b ? -1 : a > b ? 1 : 0))[0];
     if (best === void 0 || best[1] < MIN_INFERRED_COVERAGE) return chosen;
     chosen.push(best[0]);
     for (const [name11, roots] of rootsOf) if (roots.includes(best[0])) covered.add(name11);
@@ -9028,13 +9028,13 @@ function resolveCpp(input) {
     );
     stripped.set(path, { ...facts, symbols: { ...symbols, declarations } });
   }
-  const byName2 = resolveBySymbols({ ...input, facts: stripped });
+  const byName3 = resolveBySymbols({ ...input, facts: stripped });
   const fileEdges = /* @__PURE__ */ new Map();
-  for (const edge of byName2.fileEdges) {
+  for (const edge of byName3.fileEdges) {
     if (!visibleFrom(edge.from).has(edge.to) || paired(edge.from, edge.to)) continue;
     fileEdges.set(`${edge.from}\0${edge.to}`, edge);
   }
-  const consumers = byName2.consumers.filter((consumer) => fileEdges.has(`${consumer.from}\0${consumer.to}`));
+  const consumers = byName3.consumers.filter((consumer) => fileEdges.has(`${consumer.from}\0${consumer.to}`));
   const importEdges = /* @__PURE__ */ new Map();
   const addImport = (from, to) => {
     importEdges.set(`${from}\0${to}`, { from, to, kind: "import", typeOnly: false });
@@ -9059,7 +9059,7 @@ function resolveCpp(input) {
     consumers,
     fileEdges: [...fileEdges.values()],
     barrels: [],
-    exports: byName2.exports,
+    exports: byName3.exports,
     externalImports: externals,
     unresolved,
     includeResolution
@@ -9214,34 +9214,34 @@ var Reader = class {
   }
 };
 function assign(table3, path, value) {
-  let at = table3;
+  let at2 = table3;
   for (const part of path.slice(0, -1)) {
-    const existing = at[part];
-    if (Array.isArray(existing)) at = existing[existing.length - 1];
-    else if (typeof existing === "object") at = existing;
-    else at = at[part] = {};
+    const existing = at2[part];
+    if (Array.isArray(existing)) at2 = existing[existing.length - 1];
+    else if (typeof existing === "object") at2 = existing;
+    else at2 = at2[part] = {};
   }
-  at[path.at(-1)] = value;
+  at2[path.at(-1)] = value;
 }
 function tableAt(root, path, appendToArray) {
-  let at = root;
+  let at2 = root;
   path.forEach((part, i2) => {
     const last = i2 === path.length - 1;
-    const existing = at[part];
+    const existing = at2[part];
     if (last && appendToArray) {
-      const list2 = Array.isArray(existing) ? existing : at[part] = [];
+      const list2 = Array.isArray(existing) ? existing : at2[part] = [];
       const created = {};
       list2.push(created);
-      at = created;
+      at2 = created;
     } else if (Array.isArray(existing)) {
-      at = existing[existing.length - 1];
+      at2 = existing[existing.length - 1];
     } else if (typeof existing === "object") {
-      at = existing;
+      at2 = existing;
     } else {
-      at = at[part] = {};
+      at2 = at2[part] = {};
     }
   });
-  return at;
+  return at2;
 }
 function parseToml(text3) {
   const reader = new Reader(text3);
@@ -12712,9 +12712,9 @@ var PathResolver = class {
     return specifier.startsWith("mod ") ? this.declaredModule(from, specifier.slice(4)) : this.usedPath(from, specifier.split("::"));
   }
   declaredModule(from, declaration) {
-    const at = declaration.indexOf("@");
-    if (at >= 0) {
-      const target2 = posix15.normalize(posix15.join(posix15.dirname(from), declaration.slice(at + 1)));
+    const at2 = declaration.indexOf("@");
+    if (at2 >= 0) {
+      const target2 = posix15.normalize(posix15.join(posix15.dirname(from), declaration.slice(at2 + 1)));
       return this.tree.has(target2) ? { kind: "file", path: target2 } : { kind: "not-found" };
     }
     const place = this.tree.placeOf(from);
@@ -12945,7 +12945,7 @@ function isRecord(value) {
 }
 function readSettings(config) {
   const section2 = config.effective[TOOL];
-  const at = (key) => `${TOOL}.${key}`;
+  const at2 = (key) => `${TOOL}.${key}`;
   const number2 = (value, where, min, max = Infinity) => {
     if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
       throw configError(`code-health.json: ${where} must be a number from ${min}${max === Infinity ? "" : ` to ${max}`}`);
@@ -12955,20 +12955,20 @@ function readSettings(config) {
   const optionalString = (key) => {
     const value = section2[key];
     if (value !== null && (typeof value !== "string" || value === "")) {
-      throw configError(`code-health.json: ${at(key)} must be a revision name or null`);
+      throw configError(`code-health.json: ${at2(key)} must be a revision name or null`);
     }
     return value;
   };
   const requested = section2.metrics;
   if (!Array.isArray(requested) || requested.some((metric) => typeof metric !== "string" || !isMetricId(metric))) {
-    throw configError(`code-health.json: ${at("metrics")} must list metrics from ${metricIds.join(", ")}`);
+    throw configError(`code-health.json: ${at2("metrics")} must list metrics from ${metricIds.join(", ")}`);
   }
   const metrics = metricIds.filter((metric) => requested.includes(metric));
   if (section2.cyclomaticSwitch !== "case" && section2.cyclomaticSwitch !== "modified") {
-    throw configError(`code-health.json: ${at("cyclomaticSwitch")} must be "case" or "modified"`);
+    throw configError(`code-health.json: ${at2("cyclomaticSwitch")} must be "case" or "modified"`);
   }
-  const guidelines = readGuidelines(section2.guidelines, at("guidelines"), number2);
-  const overrides = readOverrides(section2.overrides, at("overrides"), number2, guidelines);
+  const guidelines = readGuidelines(section2.guidelines, at2("guidelines"), number2);
+  const overrides = readOverrides(section2.overrides, at2("overrides"), number2, guidelines);
   return {
     metrics,
     guidelines,
@@ -12976,22 +12976,22 @@ function readSettings(config) {
     cyclomaticSwitch: section2.cyclomaticSwitch,
     base: optionalString("base"),
     mainBranch: optionalString("mainBranch"),
-    delta: number2(section2.delta, at("delta"), 0),
-    agreementBar: number2(section2.agreementBar, at("agreementBar"), 0, 1),
-    syntaxErrorPercent: number2(section2.syntaxErrorPercent, at("syntaxErrorPercent"), 0, 100),
-    moveSimilarity: number2(section2.moveSimilarity, at("moveSimilarity"), 0, 1),
+    delta: number2(section2.delta, at2("delta"), 0),
+    agreementBar: number2(section2.agreementBar, at2("agreementBar"), 0, 1),
+    syntaxErrorPercent: number2(section2.syntaxErrorPercent, at2("syntaxErrorPercent"), 0, 100),
+    moveSimilarity: number2(section2.moveSimilarity, at2("moveSimilarity"), 0, 1),
     analyseTests: section2.analyseTests === true,
     changeWeighting: section2.changeWeighting === true,
-    windowMonths: number2(section2.windowMonths, at("windowMonths"), 1),
-    maxChangesetSize: number2(section2.maxChangesetSize, at("maxChangesetSize"), 1),
+    windowMonths: number2(section2.windowMonths, at2("windowMonths"), 1),
+    maxChangesetSize: number2(section2.maxChangesetSize, at2("maxChangesetSize"), 1),
     botPatterns: section2.botPatterns,
     fix: readFixClassifier(section2),
     fixes: {
-      maxCommits: section2.fixes.maxCommits === null ? null : number2(section2.fixes.maxCommits, at("fixes.maxCommits"), 1),
-      evidence: number2(section2.fixes.evidence, at("fixes.evidence"), 0),
-      minRevisions: number2(section2.fixes.minRevisions, at("fixes.minRevisions"), 1)
+      maxCommits: section2.fixes.maxCommits === null ? null : number2(section2.fixes.maxCommits, at2("fixes.maxCommits"), 1),
+      evidence: number2(section2.fixes.evidence, at2("fixes.evidence"), 0),
+      minRevisions: number2(section2.fixes.minRevisions, at2("fixes.minRevisions"), 1)
     },
-    shallowDepth: number2(section2.interfaceDepth.shallow, at("interfaceDepth.shallow"), 0),
+    shallowDepth: number2(section2.interfaceDepth.shallow, at2("interfaceDepth.shallow"), 0),
     isExcluded: compileGlobs(config.effective.exclude),
     isTest: testClassifier(config.effective.testPatterns),
     languageProfiles: readLanguageProfiles(config.effective.languages)
@@ -13928,8 +13928,8 @@ var SIZE_OF_POINT = 2 * SIZE_OF_INT;
 var SIZE_OF_RANGE = 2 * SIZE_OF_INT + 2 * SIZE_OF_POINT;
 var ZERO_POINT = { row: 0, column: 0 };
 var INTERNAL = /* @__PURE__ */ Symbol("INTERNAL");
-function assertInternal(x) {
-  if (x !== INTERNAL) throw new Error("Illegal constructor");
+function assertInternal(x2) {
+  if (x2 !== INTERNAL) throw new Error("Illegal constructor");
 }
 __name(assertInternal, "assertInternal");
 function isPoint(point) {
@@ -16649,20 +16649,20 @@ async function Module2(moduleArg = {}) {
   }, "stringToUTF16");
   LE_ATOMICS_NATIVE_BYTE_ORDER = new Int8Array(new Int16Array([1]).buffer)[0] === 1 ? [
     /* little endian */
-    ((x) => x),
-    ((x) => x),
+    ((x2) => x2),
+    ((x2) => x2),
     void 0,
-    ((x) => x)
+    ((x2) => x2)
   ] : [
     /* big endian */
-    ((x) => x),
-    ((x) => ((x & 65280) << 8 | (x & 255) << 24) >> 16),
+    ((x2) => x2),
+    ((x2) => ((x2 & 65280) << 8 | (x2 & 255) << 24) >> 16),
     void 0,
-    ((x) => x >> 24 & 255 | x >> 8 & 65280 | (x & 65280) << 8 | (x & 255) << 24)
+    ((x2) => x2 >> 24 & 255 | x2 >> 8 & 65280 | (x2 & 65280) << 8 | (x2 & 255) << 24)
   ];
   function LE_HEAP_UPDATE() {
-    HEAPU16.unsigned = ((x) => x & 65535);
-    HEAPU32.unsigned = ((x) => x >>> 0);
+    HEAPU16.unsigned = ((x2) => x2 & 65535);
+    HEAPU32.unsigned = ((x2) => x2 >>> 0);
   }
   __name(LE_HEAP_UPDATE, "LE_HEAP_UPDATE");
   {
@@ -18174,9 +18174,9 @@ function landedText(message) {
   const subject = lines2[0].trim();
   const body2 = lines2.slice(1);
   const bodyTitle = (skip) => {
-    const at = firstContent(body2, skip);
-    if (at === -1) return { title: null, text: normalised };
-    return { title: body2[at].trim(), text: [body2[at].trim(), ...body2.slice(at + 1)].join("\n").trim() };
+    const at2 = firstContent(body2, skip);
+    if (at2 === -1) return { title: null, text: normalised };
+    return { title: body2[at2].trim(), text: [body2[at2].trim(), ...body2.slice(at2 + 1)].join("\n").trim() };
   };
   const pull = /^Merge pull request #\d+\b(.*)$/i.exec(subject);
   if (pull) {
@@ -18201,7 +18201,7 @@ async function readLandings(root, tip) {
   const graph = await readGraph(root, tip);
   const head = (await runGit(root, ["rev-parse", "--verify", `${tip}^{commit}`])).trim();
   const line = [];
-  for (let at = graph.get(head); at !== void 0; at = at.parents[0] === void 0 ? void 0 : graph.get(at.parents[0])) line.push(at);
+  for (let at2 = graph.get(head); at2 !== void 0; at2 = at2.parents[0] === void 0 ? void 0 : graph.get(at2.parents[0])) line.push(at2);
   line.reverse();
   const assigned = new Set(line.map((c) => c.sha));
   const landings = [];
@@ -18646,13 +18646,13 @@ var includeTestsHelp = "list test code in the same ranking as production code (d
 var wantsTests = (context) => context.values["include-tests"] === true;
 var roleOfTest = (test) => test ? "test" : "production";
 var TEST_ROWS_LISTED = 10;
-function splitRoles(rows5, include) {
-  if (include) return { listed: [...rows5], tests: null };
-  const tests = rows5.filter((row) => row.role === "test");
-  const shown = tests.slice(0, TEST_ROWS_LISTED);
+function splitRoles(rows7, include) {
+  if (include) return { listed: [...rows7], tests: null };
+  const tests = rows7.filter((row) => row.role === "test");
+  const shown2 = tests.slice(0, TEST_ROWS_LISTED);
   return {
-    listed: rows5.filter((row) => row.role === "production"),
-    tests: { count: tests.length, listed: shown.length, omitted: tests.length - shown.length, rows: shown }
+    listed: rows7.filter((row) => row.role === "production"),
+    tests: { count: tests.length, listed: shown2.length, omitted: tests.length - shown2.length, rows: shown2 }
   };
 }
 
@@ -18677,12 +18677,12 @@ function exportedTopLevel(file) {
 function depthRows(file, shallow) {
   if (file.interfaces === void 0) return [];
   const exported = exportedUnits(file);
-  const rows5 = [];
+  const rows7 = [];
   const add = (row) => {
     const { shallowCandidate, ...rest } = row;
     const depth = round(row.nodes / row.interface, 2);
     const labels = [...row.passThrough === null ? [] : ["pass-through"], ...shallowCandidate && row.nodes / row.interface < shallow ? ["shallow"] : []];
-    rows5.push({
+    rows7.push({
       path: file.path,
       ...rest,
       depth,
@@ -18723,7 +18723,7 @@ function depthRows(file, shallow) {
       shallowCandidate: true
     });
   }
-  return rows5;
+  return rows7;
 }
 function meanDepth(file) {
   const units = exportedTopLevel(file);
@@ -19141,7 +19141,7 @@ async function compute(context, paths) {
   const { listed: unitRows, tests } = splitRoles(allRows, wantsTests(context));
   const withFixes = context.values["with-fixes"] === true;
   const fixes = withFixes ? await measureFixesFor(context, settings, current) : void 0;
-  const rows5 = fixes === void 0 ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
+  const rows7 = fixes === void 0 ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
   const layers = { structural: 0, lexical: 0, none: 0 };
   for (const file of measurement.files) layers[file.source ?? "none"]++;
   const agreement = Object.fromEntries(
@@ -19197,7 +19197,7 @@ async function compute(context, paths) {
       skippedFiles: measurement.skippedFiles,
       ...fixes === void 0 ? {} : { fixes: fixHeader(fixes.stats, fixes.request, settings) }
     },
-    results: rows5,
+    results: rows7,
     notices: [
       `sorted by ${keys.join(", then ")}`,
       ...tests === null || tests.count === 0 ? [] : [`${tests.count} test functions are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`],
@@ -19300,7 +19300,7 @@ var command2 = {
     const target2 = uncommitted ? { kind: "working-tree" } : { kind: "revision", revision: { rev: "HEAD", sha: context.repo.head } };
     const comparison = await compareToBase(context, settings, base, target2);
     const summary = { compared: 0, added: 0, changed: 0, removed: 0, moved: 0, findings: 0 };
-    const rows5 = [];
+    const rows7 = [];
     for (const match of comparison.matches) {
       const { before, after } = match;
       if (after === void 0) {
@@ -19317,7 +19317,7 @@ var command2 = {
         const was = before?.values[metric];
         const limit = limitOf(guidelines, metric);
         if (before !== void 0 && now - (was ?? 0) <= settings.delta) continue;
-        rows5.push({
+        rows7.push({
           path: after.path,
           unit: unitName(after),
           id: after.id,
@@ -19336,13 +19336,13 @@ var command2 = {
         });
       }
     }
-    summary.findings = rows5.length;
+    summary.findings = rows7.length;
     return {
       inputs: { base, against: uncommitted ? "working-tree" : "head", delta: settings.delta },
       extra: { summary, changedFiles: comparison.changedFiles, unsupportedFiles: comparison.unsupportedFiles },
-      results: rows5,
+      results: rows7,
       columns: ["path", "unit", "finding", "metric", "before", "after", "guideline", "ratio", "delta"],
-      failed: rows5.length > 0
+      failed: rows7.length > 0
     };
   }
 };
@@ -19369,20 +19369,20 @@ var command3 = {
     const inPaths = pathSelector(paths);
     const files = measurement.files.filter((file) => inPaths(file.path));
     const all = files.flatMap((file) => depthRows(file, settings.shallowDepth)).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
-    const { listed: rows5, tests } = splitRoles(all, wantsTests(context));
+    const { listed: rows7, tests } = splitRoles(all, wantsTests(context));
     const summary = {
       files: files.filter((file) => file.interfaces !== void 0).length,
       filesWithoutAdapter: files.filter((file) => file.interfaces === void 0).length,
-      rows: rows5.length,
-      shallow: rows5.filter((row) => row.labels.includes("shallow")).length,
-      passThrough: rows5.filter((row) => row.passThrough !== null).length,
+      rows: rows7.length,
+      shallow: rows7.filter((row) => row.labels.includes("shallow")).length,
+      passThrough: rows7.filter((row) => row.passThrough !== null).length,
       /** Pass-through functions with no row because the language does not export them. */
       passThroughNotExported: files.reduce((sum, file) => sum + passThroughCount(file), 0) - all.filter((row) => row.passThrough !== null && row.kind !== "module").length
     };
     const output = {
       inputs: { tree: current.kind, paths, shallow: settings.shallowDepth, includeTests: wantsTests(context) },
       extra: { summary, ...tests === null ? {} : { tests }, skippedFiles: measurement.skippedFiles },
-      results: rows5,
+      results: rows7,
       columns: ["path", "unit", "kind", "role", "exported", "nodes", "interface", "depth", "passThrough", "labels"],
       notices: tests === null || tests.count === 0 ? [] : [`${tests.count} test rows are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`]
     };
@@ -19426,7 +19426,7 @@ var command4 = {
       head === void 0 ? { kind: "working-tree" } : { kind: "revision", revision: head }
     );
     const summary = { added: 0, changed: 0, removed: 0, moved: 0, unchanged: 0 };
-    const rows5 = [];
+    const rows7 = [];
     for (const match of comparison.matches) {
       const { before, after } = match;
       if (after === void 0) {
@@ -19441,7 +19441,7 @@ var command4 = {
         continue;
       }
       const guidelines = guidelinesFor(settings, after.path);
-      rows5.push({
+      rows7.push({
         path: after.path,
         unit: unitName(after),
         id: after.id,
@@ -19463,7 +19463,7 @@ var command4 = {
         against: head === void 0 ? "working-tree" : "revision"
       },
       extra: { summary, changedFiles: comparison.changedFiles, unsupportedFiles: comparison.unsupportedFiles },
-      results: rows5,
+      results: rows7,
       columns: ["path", "unit", "change", "score", "before", "after", "delta", "labels"]
     };
   }
@@ -19626,13 +19626,13 @@ var language8 = {
 // packages/complexity/src/language.ts
 var complexityLanguages = Object.values(registered_languages_exports).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 function explainRule(rule, explanation) {
-  const notes2 = complexityLanguages.flatMap((language9) => {
+  const notes3 = complexityLanguages.flatMap((language9) => {
     const lines2 = language9.ruleNotes[rule];
     const name11 = adapterById(language9.id)?.name ?? language9.id;
     return lines2 === void 0 || lines2.length === 0 ? [] : [`${name11}: ${lines2.join(" ")}`];
   });
-  return notes2.length === 0 ? explanation : `${explanation}
-${notes2.join("\n")}`;
+  return notes3.length === 0 ? explanation : `${explanation}
+${notes3.join("\n")}`;
 }
 
 // packages/complexity/src/commands/explain.ts
@@ -19682,7 +19682,7 @@ async function breakdown(context, current, text3, path, wanted) {
     throw usageError(`${path} has no function "${wanted}"; functions: ${known.join(", ") || "none"}${functions.length > known.length ? ", ..." : ""}`);
   }
   const source = text3.split("\n");
-  const rows5 = unit.increments.filter((increment) => increment.switchMode === void 0 || increment.switchMode === settings.cyclomaticSwitch).map((increment, index) => ({ increment, index })).sort(
+  const rows7 = unit.increments.filter((increment) => increment.switchMode === void 0 || increment.switchMode === settings.cyclomaticSwitch).map((increment, index) => ({ increment, index })).sort(
     (a, b) => a.increment.line - b.increment.line || metricOrder[a.increment.metric] - metricOrder[b.increment.metric] || a.index - b.index
   ).map(({ increment }) => ({
     line: increment.line,
@@ -19706,7 +19706,7 @@ async function breakdown(context, current, text3, path, wanted) {
         cyclomaticSwitch: settings.cyclomaticSwitch
       }
     },
-    results: rows5,
+    results: rows7,
     columns: ["line", "metric", "construct", "amount", "nesting", "code"]
   };
 }
@@ -19738,10 +19738,10 @@ var command6 = {
     const layer = parseLayer(context.values.layer);
     const paths = normalisePaths(context.positionals);
     const all = await cachedAnalysis(context, name7, { layer: context.values.layer, paths: paths.length === 0 ? void 0 : paths }, () => compute2(context, layer, paths));
-    const rows5 = all.results;
-    const listed = wantsTests(context) ? rows5 : rows5.filter((row) => row.role === "production");
-    if (listed.length < rows5.length) {
-      for (const row of rows5) if (row.role === "test") recordDropped("tests", row.path);
+    const rows7 = all.results;
+    const listed = wantsTests(context) ? rows7 : rows7.filter((row) => row.role === "production");
+    if (listed.length < rows7.length) {
+      for (const row of rows7) if (row.role === "test") recordDropped("tests", row.path);
     }
     return { ...all, inputs: { ...all.inputs, includeTests: wantsTests(context) }, results: listed };
   }
@@ -19749,7 +19749,7 @@ var command6 = {
 async function compute2(context, layer, paths) {
   const { settings, current, measurement } = await measureCurrent(context, layer);
   const inPaths = pathSelector(paths);
-  const rows5 = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
+  const rows7 = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
     if (isCodePath(file.path, settings.languageProfiles)) return true;
     recordDropped("nonCode", file.path);
     return false;
@@ -19757,7 +19757,7 @@ async function compute2(context, layer, paths) {
   return {
     inputs: { tree: current.kind, layer, paths, includeTests: true },
     extra: { skippedFiles: measurement.skippedFiles },
-    results: rows5,
+    results: rows7,
     columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "role", "codeLines"]
   };
 }
@@ -20659,10 +20659,10 @@ function compareVersions(a, b) {
   const left = a.split(".");
   const right = b.split(".");
   for (let i2 = 0; i2 < Math.max(left.length, right.length); i2++) {
-    const x = left[i2] ?? "0";
-    const y = right[i2] ?? "0";
-    const numeric = /^\d+$/.test(x) && /^\d+$/.test(y);
-    const order = numeric ? Number(x) - Number(y) : x < y ? -1 : x > y ? 1 : 0;
+    const x2 = left[i2] ?? "0";
+    const y2 = right[i2] ?? "0";
+    const numeric = /^\d+$/.test(x2) && /^\d+$/.test(y2);
+    const order = numeric ? Number(x2) - Number(y2) : x2 < y2 ? -1 : x2 > y2 ? 1 : 0;
     if (order !== 0) return order;
   }
   return 0;
@@ -21142,17 +21142,17 @@ function rankFigures(files, members2, selected, changes, until, settings) {
 var delta2 = (before, after) => before === null || after === null ? null : round32(after - before);
 var gap = (own, other) => own === null || other === null ? null : round32(own - other);
 async function measureOutcome(root, settings, exclude, options) {
-  const at = await resolveRevision2(root, options.at);
-  const first = options.from === void 0 ? at : await resolveRevision2(root, options.from);
+  const at2 = await resolveRevision2(root, options.at);
+  const first = options.from === void 0 ? at2 : await resolveRevision2(root, options.from);
   let beforeSha;
   try {
     beforeSha = (await runGit(root, ["rev-parse", "--verify", `${first}^`])).trim();
   } catch {
     throw usageError(`${first} has no parent, so there is no earlier code to compare with`);
   }
-  const series = new Set((await runGit(root, ["rev-list", `${beforeSha}..${at}`])).split("\n").filter((line) => line !== ""));
+  const series = new Set((await runGit(root, ["rev-list", `${beforeSha}..${at2}`])).split("\n").filter((line) => line !== ""));
   if (series.size === 0 || !series.has(first)) throw usageError(`--from ${options.from} is not an ancestor of ${options.at}`);
-  const date = Number((await runGit(root, ["log", "-1", "--format=%ct", at])).trim());
+  const date = Number((await runGit(root, ["log", "-1", "--format=%ct", at2])).trim());
   const startedAt = Number((await runGit(root, ["log", "-1", "--format=%ct", first])).trim());
   const history = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize, excludeSuiteCommits: true } });
   const headDate = history.view.headDate;
@@ -21165,13 +21165,13 @@ async function measureOutcome(root, settings, exclude, options) {
   const cache = await ParseCache.forRepository(root);
   const selected = settings.metrics;
   const earlier = (await measureTree(await treeFromRef(root, beforeSha), { settings, layer: "auto", cache })).files;
-  const later = (await measureTree(await treeFromRef(root, at), { settings, layer: "auto", cache })).files;
+  const later = (await measureTree(await treeFromRef(root, at2), { settings, layer: "auto", cache })).files;
   const earlierBy = new Map(earlier.map((file) => [file.path, file]));
   const laterBy = new Map(later.map((file) => [file.path, file]));
-  const acted = (await changedFiles(root, beforeSha, at)).filter(
+  const acted = (await changedFiles(root, beforeSha, at2)).filter(
     ({ path, earlierPath }) => (earlierBy.get(earlierPath)?.units.length ?? 0) > 0 || (laterBy.get(path)?.units.length ?? 0) > 0
   );
-  if (acted.length === 0) throw usageError(`no file with functions changed between ${beforeSha.slice(0, 7)} and ${at.slice(0, 7)}`);
+  if (acted.length === 0) throw usageError(`no file with functions changed between ${beforeSha.slice(0, 7)} and ${at2.slice(0, 7)}`);
   const actedEarlier = new Set(acted.map((file) => file.earlierPath));
   const actedLater = new Set(acted.map((file) => file.path));
   const scores = fileScores(earlier, selected);
@@ -21233,7 +21233,7 @@ async function measureOutcome(root, settings, exclude, options) {
   };
   const agentEffort = await effort();
   const outcome = {
-    actedOn: { at, before: beforeSha, files: acted },
+    actedOn: { at: at2, before: beforeSha, files: acted },
     comparison: {
       files: control,
       basis: "unchanged files with functions, matched one to one to the acted-on files by the highest metric percentile of their functions before the change"
@@ -21264,15 +21264,15 @@ var command8 = {
   summary: "Whether a simplification made code cheaper to change: change cost, fix rate, rank, the function-count gaming check and agent effort, before and after, against files left alone",
   options: { from: { type: "string" }, "projects-dir": { type: "string" } },
   async run(context) {
-    const [at] = context.positionals;
-    if (at === void 0) throw usageError(usage);
+    const [at2] = context.positionals;
+    if (at2 === void 0) throw usageError(usage);
     const from = typeof context.values.from === "string" ? context.values.from : void 0;
     const projectsDir = typeof context.values["projects-dir"] === "string" ? context.values["projects-dir"] : void 0;
     const { root } = context.repo;
     if ((await readShallowInfo(root)).isShallow) throw usageError("history is shallow, so the windows before and after the change cannot be measured");
     await refresh(root, { ref: "HEAD" });
     const settings = readSettings(context.config);
-    const { outcome: result, transcriptStamp } = await measureOutcome(root, settings, context.config.effective.exclude, { at, from, projectsDir });
+    const { outcome: result, transcriptStamp } = await measureOutcome(root, settings, context.config.effective.exclude, { at: at2, from, projectsDir });
     return {
       inputs: { at: result.actedOn.at, before: result.actedOn.before, transcripts: projectsDir !== void 0, transcriptStamp },
       results: result
@@ -21373,12 +21373,12 @@ function entryProblems(slot, entry) {
   const refs = slot.choose.candidates.map((c) => c.ref);
   const seen = /* @__PURE__ */ new Set();
   items.forEach((item, i2) => {
-    const at = `${where} item ${i2 + 1}`;
-    problems.push(...pieceProblems(at, slot, item, ["subject"]));
+    const at2 = `${where} item ${i2 + 1}`;
+    problems.push(...pieceProblems(at2, slot, item, ["subject"]));
     const subject = isRecord2(item) ? item.subject : void 0;
-    if (typeof subject !== "string") problems.push(`${at} needs a subject, one of the slot's candidates`);
-    else if (!refs.includes(subject)) problems.push(`${at} names subject "${subject}", which is not one of the candidates: ${refs.join(", ")}`);
-    else if (seen.has(subject)) problems.push(`${at} repeats subject "${subject}"`);
+    if (typeof subject !== "string") problems.push(`${at2} needs a subject, one of the slot's candidates`);
+    else if (!refs.includes(subject)) problems.push(`${at2} names subject "${subject}", which is not one of the candidates: ${refs.join(", ")}`);
+    else if (seen.has(subject)) problems.push(`${at2} repeats subject "${subject}"`);
     else seen.add(subject);
   });
   return problems;
@@ -21439,6 +21439,310 @@ function clip(text3, max) {
   return text3.length <= max ? text3 : `${text3.slice(0, Math.max(0, max - 1))}…`;
 }
 
+// packages/report/src/tables.ts
+function htmlTable(caption, columns8, rows7, options = {}) {
+  const head = columns8.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
+  const body2 = rows7.map((row) => {
+    const cells = row.map((cell, i2) => {
+      const number2 = columns8[i2]?.align === "right" ? ' class="number"' : "";
+      return i2 === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number2}>${cell}</td>`;
+    });
+    return `<tr>${cells.join("")}</tr>`;
+  }).join("\n");
+  return `<table${options.className === void 0 ? "" : ` class="${options.className}"`}>
+<caption>${escapeHtml(caption)}</caption>
+<thead><tr>${head}</tr></thead>
+<tbody>
+${body2}
+</tbody>
+</table>`;
+}
+function mdTable(columns8, rows7) {
+  const head = `| ${columns8.map((c) => escapeMd(c.label)).join(" | ")} |`;
+  const rule = `| ${columns8.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
+  const body2 = rows7.map((row) => `| ${row.map((cell) => escapeMd(cell)).join(" | ")} |`);
+  return [head, rule, ...body2].join("\n");
+}
+
+// packages/report/src/components/figure.ts
+function figureHtml(parts3) {
+  const id = `${slug(parts3.title)}-${shortHash(parts3.drawing)}`;
+  const svg = `<svg role="img" aria-labelledby="${id}-title ${id}-desc" viewBox="0 0 ${parts3.width} ${parts3.height}" preserveAspectRatio="xMinYMin meet">
+<title id="${id}-title">${escapeHtml(parts3.title)}</title>
+<desc id="${id}-desc">${escapeHtml(parts3.description)}</desc>
+${parts3.drawing}
+</svg>`;
+  return `<figure class="chart ${parts3.kind}">
+<figcaption>${escapeHtml(parts3.title)}</figcaption>
+${svg}
+${parts3.table}
+${parts3.notes ?? ""}</figure>`;
+}
+
+// packages/report/src/components/bands.ts
+var BAND_COUNT = 5;
+function makeBands(values, breaks) {
+  if (breaks !== void 0 && breaks.length === BAND_COUNT - 1) {
+    const edges = [...breaks];
+    const least2 = Math.min(...values, edges[0] ?? 0);
+    const greatest2 = Math.max(...values, edges[edges.length - 1] ?? 0);
+    const lower = [least2, ...edges];
+    const upper2 = [...edges, greatest2];
+    return {
+      ranges: lower.map((from, i2) => ({ band: i2 + 1, from, to: upper2[i2] ?? greatest2 })),
+      of: (value) => 1 + edges.filter((edge) => edge <= value).length
+    };
+  }
+  const least = values.length === 0 ? 0 : Math.min(...values);
+  const greatest = values.length === 0 ? 0 : Math.max(...values);
+  const step = (greatest - least) / BAND_COUNT;
+  return {
+    ranges: Array.from({ length: BAND_COUNT }, (_, i2) => ({ band: i2 + 1, from: least + i2 * step, to: i2 === BAND_COUNT - 1 ? greatest : least + (i2 + 1) * step })),
+    of: (value) => step === 0 ? 1 : Math.min(BAND_COUNT, 1 + Math.floor((value - least) / step))
+  };
+}
+function bandLegend(bands) {
+  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+}
+
+// packages/report/src/components/treemap.ts
+var WIDTH = 960;
+var HEIGHT = 520;
+var HEADER = 14;
+var PAD = 2;
+var DEFAULT_MAX_TILES = 80;
+var byName = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function buildTree(items) {
+  const root = { name: "", path: "", size: 0, children: [] };
+  for (const item of items) {
+    let at2 = root;
+    const parts3 = item.path.split("/");
+    parts3.forEach((part, i2) => {
+      const path = parts3.slice(0, i2 + 1).join("/");
+      let next = at2.children.find((child) => child.name === part && i2 < parts3.length - 1 === (child.item === void 0));
+      if (next === void 0) {
+        next = { name: part, path, size: 0, children: [] };
+        at2.children.push(next);
+      }
+      if (i2 === parts3.length - 1) next.item = item;
+      at2 = next;
+    });
+  }
+  const total = (node) => {
+    node.size = node.item !== void 0 ? node.item.size : node.children.reduce((sum, child) => sum + total(child), 0);
+    return node.size;
+  };
+  total(root);
+  const collapse = (node) => {
+    for (const child of node.children) {
+      while (child.item === void 0 && child.children.length === 1 && child.children[0].item === void 0) {
+        const only = child.children[0];
+        child.name = `${child.name}/${only.name}`;
+        child.path = only.path;
+        child.children = only.children;
+      }
+      collapse(child);
+    }
+  };
+  collapse(root);
+  return root;
+}
+function squarify(sizes, rect) {
+  const total = sizes.reduce((sum, size) => sum + size, 0);
+  const out2 = [];
+  if (total <= 0) return sizes.map(() => ({ x: rect.x, y: rect.y, w: 0, h: 0 }));
+  const scale = rect.w * rect.h / total;
+  const areas = sizes.map((size) => size * scale);
+  let { x: x2, y: y2, w, h } = rect;
+  let start2 = 0;
+  const worst = (row, side) => {
+    const sum = row.reduce((a, b) => a + b, 0);
+    const largest = Math.max(...row);
+    const smallest = Math.min(...row);
+    return Math.max(side * side * largest / (sum * sum), sum * sum / (side * side * smallest));
+  };
+  while (start2 < areas.length) {
+    const side = Math.min(w, h);
+    let end = start2 + 1;
+    while (end < areas.length && worst(areas.slice(start2, end + 1), side) <= worst(areas.slice(start2, end), side)) end++;
+    const row = areas.slice(start2, end);
+    const sum = row.reduce((a, b) => a + b, 0);
+    if (w >= h) {
+      const width = h === 0 ? 0 : sum / h;
+      let top = y2;
+      for (const area of row) {
+        const height = width === 0 ? 0 : area / width;
+        out2.push({ x: x2, y: top, w: width, h: height });
+        top += height;
+      }
+      x2 += width;
+      w -= width;
+    } else {
+      const height = w === 0 ? 0 : sum / w;
+      let left = x2;
+      for (const area of row) {
+        const width = height === 0 ? 0 : area / height;
+        out2.push({ x: left, y: y2, w: width, h: height });
+        left += width;
+      }
+      y2 += height;
+      h -= height;
+    }
+    start2 = end;
+  }
+  return out2;
+}
+function layoutTreemap(items, width = WIDTH, height = HEIGHT) {
+  const tiles = [];
+  const folders = [];
+  const place = (node, rect) => {
+    const children = [...node.children].sort((a, b) => b.size - a.size || byName(a.name, b.name));
+    const rects = squarify(children.map((c) => c.size), rect);
+    children.forEach((child, i2) => {
+      const r = rects[i2];
+      if (child.item !== void 0) {
+        tiles.push({ ...r, path: child.path, name: child.name, item: child.item });
+        return;
+      }
+      folders.push({ ...r, path: child.path, name: child.name });
+      const header2 = r.h > HEADER * 2 && r.w > 40 ? HEADER : 0;
+      place(child, { x: r.x + PAD, y: r.y + PAD + header2, w: Math.max(0, r.w - PAD * 2), h: Math.max(0, r.h - PAD * 2 - header2) });
+    });
+  };
+  place(buildTree(items), { x: 0, y: 0, w: width, h: height });
+  return { tiles, folders };
+}
+function prepare(data) {
+  const sized = data.items.filter((item) => item.size > 0).sort((a, b) => b.size - a.size || byName(a.path, b.path));
+  const limit = data.maxTiles ?? DEFAULT_MAX_TILES;
+  const drawn = sized.slice(0, limit);
+  const coloured = drawn.flatMap((item) => item.colour === null ? [] : [item.colour]);
+  return { drawn, notDrawn: { unsized: data.items.length - sized.length, beyondLimit: sized.length - drawn.length }, bands: makeBands(coloured, data.breaks) };
+}
+var bandName = (item, bands) => item.colour === null ? "none" : String(bands.of(item.colour));
+function omissions(prepared) {
+  const out2 = [];
+  if (prepared.notDrawn.beyondLimit > 0) out2.push(`${count3(prepared.notDrawn.beyondLimit, "smaller item")} not drawn`);
+  if (prepared.notDrawn.unsized > 0) out2.push(`${count3(prepared.notDrawn.unsized, "item")} of no size not drawn`);
+  return out2;
+}
+var rows = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
+function columns(data) {
+  return [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: `Colour (${data.colourLabel})`, align: "right" }, { label: "Band", align: "right" }];
+}
+function treemapHtml(data) {
+  const prepared = prepare(data);
+  const { tiles, folders } = layoutTreemap(prepared.drawn);
+  const fmt = (n) => n.toFixed(1);
+  const drawing = [
+    ...folders.map((f) => `<g class="folder"><rect x="${fmt(f.x)}" y="${fmt(f.y)}" width="${fmt(f.w)}" height="${fmt(f.h)}"/>${f.w > 40 && f.h > HEADER * 2 ? `<text x="${fmt(f.x + 4)}" y="${fmt(f.y + 11)}">${escapeHtml(clip(f.name, Math.floor((f.w - 8) / 6.2)))}</text>` : ""}</g>`),
+    ...tiles.map((t) => {
+      const room = Math.floor((t.w - 6) / 6.2);
+      const labels = t.w >= 36 && t.h >= 16 ? [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(clip(t.name, room))}</text>`] : [];
+      if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(t.item.colour === null ? "none" : formatNumber(t.item.colour), room))}</text>`);
+      return `<g class="tile band-${bandName(t.item, prepared.bands)}"><title>${escapeHtml(`${t.path}: ${formatNumber(t.item.size)} ${data.sizeLabel}, ${t.item.colour === null ? "no" : formatNumber(t.item.colour)} ${data.colourLabel}`)}</title><rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>${labels.join("")}</g>`;
+    })
+  ].join("\n");
+  const left = omissions(prepared);
+  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
+${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
+`}`;
+  return figureHtml({
+    kind: "treemap",
+    title: data.title,
+    description: `A treemap of ${count3(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; colour is ${data.colourLabel}. The table below lists the same items.`,
+    width: WIDTH,
+    height: HEIGHT,
+    drawing,
+    table: htmlTable(`${data.title}: the items drawn, largest first`, columns(data), rows(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    notes: notes3
+  });
+}
+function treemapMd(data) {
+  const prepared = prepare(data);
+  const left = omissions(prepared);
+  return [
+    `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)})`,
+    "",
+    mdTable(columns(data), rows(prepared)),
+    ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
+  ].join("\n");
+}
+
+// packages/report/src/components/category-treemap.ts
+var WIDTH2 = 960;
+var HEIGHT2 = 520;
+var DEFAULT_MAX_TILES2 = 80;
+var byName2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function prepare2(data) {
+  const sized = data.items.filter((item) => item.size > 0).sort((a, b) => b.size - a.size || byName2(a.path, b.path));
+  const drawn = sized.slice(0, data.maxTiles ?? DEFAULT_MAX_TILES2);
+  const byId = new Map(data.categories.map((c) => [c.id, c]));
+  return { drawn, unsized: data.items.length - sized.length, beyondLimit: sized.length - drawn.length, categoryOf: (item) => item.category === null ? null : byId.get(item.category) ?? null };
+}
+function omissions2(prepared) {
+  const out2 = [];
+  if (prepared.beyondLimit > 0) out2.push(`${count3(prepared.beyondLimit, "smaller item")} not drawn`);
+  if (prepared.unsized > 0) out2.push(`${count3(prepared.unsized, "item")} of no size not drawn`);
+  return out2;
+}
+var rows2 = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), prepared.categoryOf(item)?.label ?? "none"]);
+var columns2 = (data) => [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: data.categoryLabel }];
+function drawnPerCategory(prepared) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const item of prepared.drawn) counts.set(item.category ?? "", (counts.get(item.category ?? "") ?? 0) + 1);
+  return counts;
+}
+function categoryTreemapHtml(data) {
+  const prepared = prepare2(data);
+  const items = prepared.drawn.map((item) => ({ path: item.path, size: item.size, colour: null }));
+  const byPath = new Map(prepared.drawn.map((item) => [item.path, item]));
+  const { tiles, folders } = layoutTreemap(items);
+  const fmt = (n) => n.toFixed(1);
+  const drawing = [
+    ...folders.map((f) => `<g class="folder"><rect x="${fmt(f.x)}" y="${fmt(f.y)}" width="${fmt(f.w)}" height="${fmt(f.h)}"/>${f.w > 40 && f.h > 28 ? `<text x="${fmt(f.x + 4)}" y="${fmt(f.y + 11)}">${escapeHtml(clip(f.name, Math.floor((f.w - 8) / 6.2)))}</text>` : ""}</g>`),
+    ...tiles.map((t) => {
+      const item = byPath.get(t.path);
+      const category = prepared.categoryOf(item);
+      const room = Math.floor((t.w - 6) / 6.2);
+      const labels = t.w >= 36 && t.h >= 16 ? [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(clip(t.name, room))}</text>`] : [];
+      if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(category?.mark ?? "none", room))}</text>`);
+      return `<g class="tile band-${category === null ? "none" : category.band}"><title>${escapeHtml(`${t.path}: ${formatNumber(item.size)} ${data.sizeLabel}, ${category === null ? `no ${data.categoryLabel}` : `${data.categoryLabel} ${category.label}`}`)}</title><rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>${labels.join("")}</g>`;
+    })
+  ].join("\n");
+  const per = drawnPerCategory(prepared);
+  const legend2 = data.categories.map((c) => `<li><strong>${escapeHtml(c.mark)}</strong> ${escapeHtml(c.label)}: ${count3(per.get(c.id) ?? 0, "tile")}</li>`).join("\n");
+  const left = omissions2(prepared);
+  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Each tile prints its name and the mark of its ${escapeHtml(data.categoryLabel.toLowerCase())}; hatched tiles have none. The marks are:</p>
+<ul class="legend">
+${legend2}
+</ul>
+${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
+`}`;
+  return figureHtml({
+    kind: "treemap category-treemap",
+    title: data.title,
+    description: `A treemap of ${count3(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; each tile is marked with its ${data.categoryLabel.toLowerCase()}. The table below lists the same items.`,
+    width: WIDTH2,
+    height: HEIGHT2,
+    drawing,
+    table: htmlTable(`${data.title}: the items drawn, largest first`, columns2(data), rows2(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    notes: notes3
+  });
+}
+function categoryTreemapMd(data) {
+  const prepared = prepare2(data);
+  const left = omissions2(prepared);
+  const per = drawnPerCategory(prepared);
+  const key = data.categories.map((c) => `${escapeMd(c.mark)} ${escapeMd(c.label)} (${count3(per.get(c.id) ?? 0, "tile")})`).join("; ");
+  return [
+    `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; marks: ${key})`,
+    "",
+    mdTable(columns2(data), rows2(prepared)),
+    ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
+  ].join("\n");
+}
+
 // packages/report/src/components/evidence-list.ts
 var tail = (data) => data.omitted === void 0 || data.omitted <= 0 ? void 0 : `${formatNumber(data.omitted)} more not listed.`;
 function evidenceListHtml(data) {
@@ -21458,57 +21762,17 @@ function evidenceListMd(data) {
   return [`**${escapeMd(data.title)}**`, "", ...items.length === 0 ? ["None."] : items, ...more === void 0 ? [] : ["", `_${more}_`]].join("\n");
 }
 
-// packages/report/src/tables.ts
-function htmlTable(caption, columns6, rows5, options = {}) {
-  const head = columns6.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
-  const body2 = rows5.map((row) => {
-    const cells = row.map((cell, i2) => {
-      const number2 = columns6[i2]?.align === "right" ? ' class="number"' : "";
-      return i2 === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number2}>${cell}</td>`;
-    });
-    return `<tr>${cells.join("")}</tr>`;
-  }).join("\n");
-  return `<table${options.className === void 0 ? "" : ` class="${options.className}"`}>
-<caption>${escapeHtml(caption)}</caption>
-<thead><tr>${head}</tr></thead>
-<tbody>
-${body2}
-</tbody>
-</table>`;
-}
-function mdTable(columns6, rows5) {
-  const head = `| ${columns6.map((c) => escapeMd(c.label)).join(" | ")} |`;
-  const rule = `| ${columns6.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
-  const body2 = rows5.map((row) => `| ${row.map((cell) => escapeMd(cell)).join(" | ")} |`);
-  return [head, rule, ...body2].join("\n");
-}
-
 // packages/report/src/components/facts.ts
-var columns = [{ label: "Measure" }, { label: "Value" }];
+var columns3 = [{ label: "Measure" }, { label: "Value" }];
 function factsHtml(data) {
-  return htmlTable(data.caption, columns, data.facts.map((f) => [escapeHtml(f.label), escapeHtml(f.value)]), { rowHeaders: true, className: "facts" });
+  return htmlTable(data.caption, columns3, data.facts.map((f) => [escapeHtml(f.label), escapeHtml(f.value)]), { rowHeaders: true, className: "facts" });
 }
 function factsMd(data) {
-  return [`**${escapeMd(data.caption)}**`, "", mdTable(columns, data.facts.map((f) => [f.label, f.value]))].join("\n");
-}
-
-// packages/report/src/components/figure.ts
-function figureHtml(parts3) {
-  const id = `${slug(parts3.title)}-${shortHash(parts3.drawing)}`;
-  const svg = `<svg role="img" aria-labelledby="${id}-title ${id}-desc" viewBox="0 0 ${parts3.width} ${parts3.height}" preserveAspectRatio="xMinYMin meet">
-<title id="${id}-title">${escapeHtml(parts3.title)}</title>
-<desc id="${id}-desc">${escapeHtml(parts3.description)}</desc>
-${parts3.drawing}
-</svg>`;
-  return `<figure class="chart ${parts3.kind}">
-<figcaption>${escapeHtml(parts3.title)}</figcaption>
-${svg}
-${parts3.table}
-${parts3.notes ?? ""}</figure>`;
+  return [`**${escapeMd(data.caption)}**`, "", mdTable(columns3, data.facts.map((f) => [f.label, f.value]))].join("\n");
 }
 
 // packages/report/src/components/guideline-bar.ts
-var WIDTH = 720;
+var WIDTH3 = 720;
 var ROW = 28;
 var LABEL = 200;
 var BAR_MAX = 360;
@@ -21522,68 +21786,68 @@ var ratioText = (bar) => {
   const ratio = ratioOf2(bar);
   return ratio === null ? "none" : `${Number(ratio.toPrecision(2))}x`;
 };
-var columns2 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
-var rows = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf(b)]);
+var columns4 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
+var rows3 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf(b)]);
 function guidelineBarsHtml(data) {
   const greatest = Math.max(1, ...data.bars.flatMap((b) => [b.value, b.guideline]));
   const scale = BAR_MAX / greatest;
   const drawing = data.bars.map((b, i2) => {
-    const y = i2 * ROW;
+    const y2 = i2 * ROW;
     const width = b.value * scale;
     const marker = LABEL + b.guideline * scale;
     const above = b.value > b.guideline;
-    return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y + 18}" text-anchor="end">${escapeHtml(b.label)}</text><rect x="${LABEL}" y="${y + 5}" width="${width.toFixed(1)}" height="${ROW - 10}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y + 2}" y2="${y + ROW - 2}"/><text x="${(LABEL + Math.max(width, b.guideline * scale) + 8).toFixed(1)}" y="${y + 18}">${above ? "▲ " : ""}${formatNumber(b.value)} (guideline ${formatNumber(b.guideline)})</text></g>`;
+    return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y2 + 18}" text-anchor="end">${escapeHtml(b.label)}</text><rect x="${LABEL}" y="${y2 + 5}" width="${width.toFixed(1)}" height="${ROW - 10}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 2}" y2="${y2 + ROW - 2}"/><text x="${(LABEL + Math.max(width, b.guideline * scale) + 8).toFixed(1)}" y="${y2 + 18}">${above ? "▲ " : ""}${formatNumber(b.value)} (guideline ${formatNumber(b.guideline)})</text></g>`;
   }).join("\n");
   return figureHtml({
     kind: "guideline-bars",
     title: data.title,
     description: `${data.bars.length} values of ${data.unit}, each against its guideline. A bar longer than its marker is above guideline, shown with a triangle and the words in the table.`,
-    width: WIDTH,
+    width: WIDTH3,
     height: Math.max(ROW, data.bars.length * ROW),
     drawing,
-    table: htmlTable(`${data.title}: each value against its guideline`, columns2(data), rows(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: each value against its guideline`, columns4(data), rows3(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
     notes: `<p class="legend">The vertical line marks the guideline and ▲ marks a value above it. A guideline orders and labels results; it decides nothing.${data.source === void 0 ? "" : ` ${escapeHtml(data.source)}`}</p>
 `
   });
 }
 function guidelineBarsMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns2(data), rows(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns4(data), rows3(data))].join("\n");
 }
 
 // packages/report/src/components/histogram.ts
-var WIDTH2 = 640;
+var WIDTH4 = 640;
 var ROW2 = 22;
 var LABEL2 = 150;
 var BAR_MAX2 = 400;
-var columns3 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
+var columns5 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
 function shares(data) {
   const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
   return data.bins.map((bin) => total === 0 ? "0%" : `${formatNumber(bin.count / total * 100)}%`);
 }
-var rows2 = (data) => {
+var rows4 = (data) => {
   const share = shares(data);
   return data.bins.map((bin, i2) => [bin.label, formatNumber(bin.count), share[i2]]);
 };
 function histogramHtml(data) {
   const greatest = Math.max(1, ...data.bins.map((bin) => bin.count));
   const drawing = data.bins.map((bin, i2) => {
-    const y = i2 * ROW2;
+    const y2 = i2 * ROW2;
     const width = bin.count / greatest * BAR_MAX2;
-    return `<g class="bin"><text x="${LABEL2 - 6}" y="${y + 15}" text-anchor="end">${escapeHtml(bin.label)}</text><rect x="${LABEL2}" y="${y + 3}" width="${width.toFixed(1)}" height="${ROW2 - 6}"/><text x="${(LABEL2 + width + 6).toFixed(1)}" y="${y + 15}">${formatNumber(bin.count)}</text></g>`;
+    return `<g class="bin"><text x="${LABEL2 - 6}" y="${y2 + 15}" text-anchor="end">${escapeHtml(bin.label)}</text><rect x="${LABEL2}" y="${y2 + 3}" width="${width.toFixed(1)}" height="${ROW2 - 6}"/><text x="${(LABEL2 + width + 6).toFixed(1)}" y="${y2 + 15}">${formatNumber(bin.count)}</text></g>`;
   }).join("\n");
   const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
   return figureHtml({
     kind: "histogram",
     title: data.title,
     description: `${formatNumber(total)} ${data.unit} in ${data.bins.length} bins. Each bar prints its count; the table below lists the same counts.`,
-    width: WIDTH2,
+    width: WIDTH4,
     height: Math.max(ROW2, data.bins.length * ROW2),
     drawing,
-    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns3(data), rows2(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns5(data), rows4(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function histogramMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns3(data), rows2(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns5(data), rows4(data))].join("\n");
 }
 
 // packages/report/src/components/judgement.ts
@@ -21618,32 +21882,6 @@ function judgementMd(data) {
   return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
 }
 
-// packages/report/src/components/bands.ts
-var BAND_COUNT = 5;
-function makeBands(values, breaks) {
-  if (breaks !== void 0 && breaks.length === BAND_COUNT - 1) {
-    const edges = [...breaks];
-    const least2 = Math.min(...values, edges[0] ?? 0);
-    const greatest2 = Math.max(...values, edges[edges.length - 1] ?? 0);
-    const lower = [least2, ...edges];
-    const upper2 = [...edges, greatest2];
-    return {
-      ranges: lower.map((from, i2) => ({ band: i2 + 1, from, to: upper2[i2] ?? greatest2 })),
-      of: (value) => 1 + edges.filter((edge) => edge <= value).length
-    };
-  }
-  const least = values.length === 0 ? 0 : Math.min(...values);
-  const greatest = values.length === 0 ? 0 : Math.max(...values);
-  const step = (greatest - least) / BAND_COUNT;
-  return {
-    ranges: Array.from({ length: BAND_COUNT }, (_, i2) => ({ band: i2 + 1, from: least + i2 * step, to: i2 === BAND_COUNT - 1 ? greatest : least + (i2 + 1) * step })),
-    of: (value) => step === 0 ? 1 : Math.min(BAND_COUNT, 1 + Math.floor((value - least) / step))
-  };
-}
-function bandLegend(bands) {
-  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
-}
-
 // packages/report/src/components/matrix.ts
 var CELL_W = 64;
 var CELL_H = 26;
@@ -21660,9 +21898,9 @@ function matrixHtml(data) {
   const cells = data.rows.flatMap(
     (_, i2) => data.columns.map((_2, j) => {
       const value = data.cells[i2]?.[j] ?? null;
-      const x = ROW_LABEL + j * CELL_W;
-      const y = COLUMN_LABEL + i2 * CELL_H;
-      return `<g class="cell band-${value === null ? "none" : bands.of(value)}"><rect x="${x}" y="${y}" width="${CELL_W - 2}" height="${CELL_H - 2}"/><text x="${x + CELL_W / 2 - 1}" y="${y + 16}" text-anchor="middle">${display(value)}</text></g>`;
+      const x2 = ROW_LABEL + j * CELL_W;
+      const y2 = COLUMN_LABEL + i2 * CELL_H;
+      return `<g class="cell band-${value === null ? "none" : bands.of(value)}"><rect x="${x2}" y="${y2}" width="${CELL_W - 2}" height="${CELL_H - 2}"/><text x="${x2 + CELL_W / 2 - 1}" y="${y2 + 16}" text-anchor="middle">${display(value)}</text></g>`;
     })
   );
   return figureHtml({
@@ -21726,48 +21964,154 @@ function omitted2(data) {
 }
 function rankedTableHtml(data) {
   const cell = (column, value) => {
-    const shown = escapeHtml(text2(value));
-    if (!marked(column, value)) return shown;
+    const shown2 = escapeHtml(text2(value));
+    if (!marked(column, value)) return shown2;
     const side = column.guideline?.direction === "below" ? "below" : "above";
-    return `${shown} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
+    return `${shown2} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
   };
-  const columns6 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows5 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
-  const table3 = data.rows.length === 0 ? `<p class="empty">${escapeHtml(data.caption)}: no rows.</p>` : htmlTable(data.caption, columns6, rows5, { rowHeaders: data.numbered === false, className: "ranked" });
-  const notes2 = [legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${escapeHtml(n)}</p>`]);
-  return [table3, ...notes2].join("\n");
+  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows7 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
+  const table3 = data.rows.length === 0 ? `<p class="empty">${escapeHtml(data.caption)}: no rows.</p>` : htmlTable(data.caption, columns8, rows7, { rowHeaders: data.numbered === false, className: "ranked" });
+  const notes3 = [legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${escapeHtml(n)}</p>`]);
+  return [table3, ...notes3].join("\n");
 }
 function rankedTableMd(data) {
-  const columns6 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows5 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => `${text2(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
+  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows7 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => `${text2(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
   return [
     `**${escapeMd(data.caption)}**`,
     "",
-    data.rows.length === 0 ? "No rows." : mdTable(columns6, rows5),
+    data.rows.length === 0 ? "No rows." : mdTable(columns8, rows7),
     ...[legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : ["", `_${escapeMd(n)}_`])
   ].join("\n");
 }
 
+// packages/report/src/components/stability-chart.ts
+var DEFAULT_MAX_POINTS = 40;
+function positionOf2(point, zoneDistance) {
+  const sum = point.instability + point.abstractness;
+  if (sum <= 1 - zoneDistance) return "zone of pain";
+  if (sum >= 1 + zoneDistance) return "zone of uselessness";
+  return "outside the zones";
+}
+var SIZE = 360;
+var LEFT = 56;
+var TOP = 16;
+var WIDTH5 = LEFT + SIZE + 24;
+var HEIGHT3 = TOP + SIZE + 48;
+var x = (instability) => LEFT + instability * SIZE;
+var y = (abstractness) => TOP + (1 - abstractness) * SIZE;
+var at = (value) => value.toFixed(1);
+var shown = (data) => data.points.slice(0, data.maxPoints ?? DEFAULT_MAX_POINTS);
+var columns6 = [
+  { label: "#", align: "right" },
+  { label: "Package" },
+  { label: "Instability I", align: "right" },
+  { label: "Abstractness A", align: "right" },
+  { label: "Distance", align: "right" },
+  { label: "Ca", align: "right" },
+  { label: "Ce", align: "right" },
+  { label: "Exported types", align: "right" },
+  { label: "Position" }
+];
+function rows5(data) {
+  return shown(data).map((p, i2) => [
+    String(i2 + 1),
+    p.name,
+    formatNumber(p.instability),
+    formatNumber(p.abstractness),
+    formatNumber(p.distance),
+    formatNumber(p.ca),
+    formatNumber(p.ce),
+    `${formatNumber(p.exportedTypes)}${p.weak ? " (A weak)" : ""}`,
+    positionOf2(p, data.zoneDistance)
+  ]);
+}
+function positionCounts(data) {
+  const counts = { "zone of pain": 0, "zone of uselessness": 0, "outside the zones": 0 };
+  for (const point of data.points) counts[positionOf2(point, data.zoneDistance)]++;
+  return counts;
+}
+function notes2(data) {
+  const noun = data.noun ?? "packages";
+  const left = data.total - shown(data).length;
+  const unplotted = data.total - data.points.length;
+  const cut = data.points.length - shown(data).length;
+  const why = unplotted > 0 ? `${formatNumber(unplotted)} have no instability (no dependency in or out) or no abstractness (no language adapter reads them)` : "";
+  const drawn = cut > 0 ? `${formatNumber(cut)} are measured and drawn as small points without a number` : "";
+  const counts = positionCounts(data);
+  return [
+    `The dashed diagonal is the main sequence, where A + I = 1. A zone starts ${formatNumber(data.zoneDistance)} from it${data.zoneSource === void 0 ? "" : ` (${data.zoneSource})`}: the zone of pain is concrete and stable (A + I at most ${formatNumber(1 - data.zoneDistance)}) and the zone of uselessness is abstract and unstable (A + I at least ${formatNumber(1 + data.zoneDistance)}). Square points are inside a zone, round points are not, and the table gives each position in words. A guideline orders and labels results; it decides nothing.`,
+    `Of the ${formatNumber(data.points.length)} measured ${noun}, ${formatNumber(counts["zone of pain"])} are in the zone of pain, ${formatNumber(counts["zone of uselessness"])} in the zone of uselessness and ${formatNumber(counts["outside the zones"])} outside the zones.`,
+    `The table lists ${formatNumber(shown(data).length)} of ${formatNumber(data.total)} ${noun}, furthest from the main sequence first; ${formatNumber(left)} not listed${left > 0 ? `: ${[why, drawn].filter((s) => s !== "").join("; ")}` : ""}.`
+  ];
+}
+function stabilityChartHtml(data) {
+  const d = data.zoneDistance;
+  const points = data.points;
+  const limit = shown(data).length;
+  const frame = `<rect x="${LEFT}" y="${TOP}" width="${SIZE}" height="${SIZE}" fill="none" stroke="currentColor" stroke-opacity="0.5"/>`;
+  const pain = `<polygon points="${at(x(0))},${at(y(0))} ${at(x(1 - d))},${at(y(0))} ${at(x(0))},${at(y(1 - d))}" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="3 3"/>`;
+  const useless = `<polygon points="${at(x(1))},${at(y(1))} ${at(x(d))},${at(y(1))} ${at(x(1))},${at(y(d))}" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="3 3"/>`;
+  const sequence = `<line x1="${at(x(0))}" y1="${at(y(1))}" x2="${at(x(1))}" y2="${at(y(0))}" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+  const labels = [
+    `<text x="${at(x(0) + 6)}" y="${at(y(0) - 8)}">Zone of pain</text>`,
+    `<text x="${at(x(1) - 6)}" y="${at(y(1) + 16)}" text-anchor="end">Zone of uselessness</text>`,
+    `<text x="${at(x(0.5) + 6)}" y="${at(y(0.5) - 6)}" transform="rotate(45 ${at(x(0.5))} ${at(y(0.5))})" text-anchor="middle">Main sequence</text>`
+  ];
+  const ticks = [0, 0.5, 1].flatMap((v) => [
+    `<text x="${at(x(v))}" y="${TOP + SIZE + 16}" text-anchor="middle">${v}</text>`,
+    `<text x="${LEFT - 8}" y="${at(y(v) + 4)}" text-anchor="end">${v}</text>`
+  ]);
+  const axes = [
+    `<text x="${at(x(0.5))}" y="${TOP + SIZE + 36}" text-anchor="middle">Instability I (outgoing over all dependencies)</text>`,
+    `<text transform="rotate(-90 14 ${at(y(0.5))})" x="14" y="${at(y(0.5))}" text-anchor="middle">Abstractness A</text>`
+  ];
+  const dots = points.map((p, i2) => {
+    const cx = x(p.instability);
+    const cy = y(p.abstractness);
+    const inside = positionOf2(p, d) !== "outside the zones";
+    const numbered = i2 < limit;
+    const half = numbered ? 4 : 2.5;
+    const mark = inside ? `<rect x="${at(cx - half)}" y="${at(cy - half)}" width="${half * 2}" height="${half * 2}" fill="currentColor"/>` : `<circle cx="${at(cx)}" cy="${at(cy)}" r="${half}"/>`;
+    return `<g class="point">${mark}${numbered ? `<text x="${at(cx + 7)}" y="${at(cy - 5)}">${i2 + 1}</text>` : ""}</g>`;
+  });
+  return figureHtml({
+    kind: "stability-chart",
+    title: data.title,
+    description: `A scatter of ${formatNumber(points.length)} ${data.noun ?? "packages"} by instability (horizontal) and abstractness (vertical), with the main sequence and the zone of pain and the zone of uselessness marked. The ${formatNumber(limit)} furthest from the main sequence have a number that the table below gives with their figures and their position in words; the legend counts all of them by position.`,
+    width: WIDTH5,
+    height: HEIGHT3,
+    drawing: [pain, useless, frame, sequence, ...labels, ...ticks, ...axes, ...dots].join("\n"),
+    table: htmlTable(`${data.title}: the same points with their figures`, columns6, rows5(data).map((r) => r.map(escapeHtml)), { rowHeaders: false }),
+    notes: notes2(data).map((n) => `<p class="legend">${escapeHtml(n)}</p>
+`).join("")
+  });
+}
+function stabilityChartMd(data) {
+  return [`**${escapeMd(data.title)}** (instability I against abstractness A)`, "", mdTable(columns6, rows5(data).map((r) => r.map((cell, i2) => i2 === 1 ? clip(cell, 80) : cell))), "", notes2(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
+}
+
 // packages/report/src/components/sparkline.ts
-var WIDTH3 = 240;
-var HEIGHT = 48;
+var WIDTH6 = 240;
+var HEIGHT4 = 48;
 var MARGIN = 6;
-var columns4 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
-var rows3 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
+var columns7 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
+var rows6 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
 function sparklineCoordinates(points) {
   const values = points.map((p) => p.value);
   const least = Math.min(...values);
   const greatest = Math.max(...values);
   const span = greatest - least;
   return points.map((p, i2) => [
-    points.length === 1 ? WIDTH3 / 2 : MARGIN + i2 * (WIDTH3 - 2 * MARGIN) / (points.length - 1),
-    span === 0 ? HEIGHT / 2 : HEIGHT - MARGIN - (p.value - least) * (HEIGHT - 2 * MARGIN) / span
+    points.length === 1 ? WIDTH6 / 2 : MARGIN + i2 * (WIDTH6 - 2 * MARGIN) / (points.length - 1),
+    span === 0 ? HEIGHT4 / 2 : HEIGHT4 - MARGIN - (p.value - least) * (HEIGHT4 - 2 * MARGIN) / span
   ]);
 }
 function sparklineHtml(data) {
   const coordinates = sparklineCoordinates(data.points);
   const last = coordinates[coordinates.length - 1];
-  const line = coordinates.length > 1 ? `<polyline points="${coordinates.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ")}"/>` : "";
+  const line = coordinates.length > 1 ? `<polyline points="${coordinates.map(([x2, y2]) => `${x2.toFixed(1)},${y2.toFixed(1)}`).join(" ")}"/>` : "";
   const end = last === void 0 ? "" : `<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3"/>`;
   const values = data.points.map((p) => p.value);
   const range = values.length === 0 ? "no points" : `from ${formatNumber(values[0])} to ${formatNumber(values[values.length - 1])}, least ${formatNumber(Math.min(...values))}, greatest ${formatNumber(Math.max(...values))}`;
@@ -21775,14 +22119,14 @@ function sparklineHtml(data) {
     kind: "sparkline",
     title: data.title,
     description: `${data.unit} over ${data.points.length} periods, ${range}. The table below lists every value.`,
-    width: WIDTH3,
-    height: HEIGHT,
+    width: WIDTH6,
+    height: HEIGHT4,
     drawing: `${line}${end}`,
-    table: htmlTable(`${data.title}: ${data.unit} by period`, columns4(data), rows3(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} by period`, columns7(data), rows6(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function sparklineMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns4(data), rows3(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns7(data), rows6(data))].join("\n");
 }
 
 // packages/report/src/components/trend-marker.ts
@@ -21807,170 +22151,6 @@ function trendMarkerMd(data) {
   return `${ARROW[trend]} ${trend} (${escapeMd(detail)})`;
 }
 
-// packages/report/src/components/treemap.ts
-var WIDTH4 = 960;
-var HEIGHT2 = 520;
-var HEADER = 14;
-var PAD = 2;
-var DEFAULT_MAX_TILES = 80;
-var byName = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-function buildTree(items) {
-  const root = { name: "", path: "", size: 0, children: [] };
-  for (const item of items) {
-    let at = root;
-    const parts3 = item.path.split("/");
-    parts3.forEach((part, i2) => {
-      const path = parts3.slice(0, i2 + 1).join("/");
-      let next = at.children.find((child) => child.name === part && i2 < parts3.length - 1 === (child.item === void 0));
-      if (next === void 0) {
-        next = { name: part, path, size: 0, children: [] };
-        at.children.push(next);
-      }
-      if (i2 === parts3.length - 1) next.item = item;
-      at = next;
-    });
-  }
-  const total = (node) => {
-    node.size = node.item !== void 0 ? node.item.size : node.children.reduce((sum, child) => sum + total(child), 0);
-    return node.size;
-  };
-  total(root);
-  const collapse = (node) => {
-    for (const child of node.children) {
-      while (child.item === void 0 && child.children.length === 1 && child.children[0].item === void 0) {
-        const only = child.children[0];
-        child.name = `${child.name}/${only.name}`;
-        child.path = only.path;
-        child.children = only.children;
-      }
-      collapse(child);
-    }
-  };
-  collapse(root);
-  return root;
-}
-function squarify(sizes, rect) {
-  const total = sizes.reduce((sum, size) => sum + size, 0);
-  const out2 = [];
-  if (total <= 0) return sizes.map(() => ({ x: rect.x, y: rect.y, w: 0, h: 0 }));
-  const scale = rect.w * rect.h / total;
-  const areas = sizes.map((size) => size * scale);
-  let { x, y, w, h } = rect;
-  let start2 = 0;
-  const worst = (row, side) => {
-    const sum = row.reduce((a, b) => a + b, 0);
-    const largest = Math.max(...row);
-    const smallest = Math.min(...row);
-    return Math.max(side * side * largest / (sum * sum), sum * sum / (side * side * smallest));
-  };
-  while (start2 < areas.length) {
-    const side = Math.min(w, h);
-    let end = start2 + 1;
-    while (end < areas.length && worst(areas.slice(start2, end + 1), side) <= worst(areas.slice(start2, end), side)) end++;
-    const row = areas.slice(start2, end);
-    const sum = row.reduce((a, b) => a + b, 0);
-    if (w >= h) {
-      const width = h === 0 ? 0 : sum / h;
-      let top = y;
-      for (const area of row) {
-        const height = width === 0 ? 0 : area / width;
-        out2.push({ x, y: top, w: width, h: height });
-        top += height;
-      }
-      x += width;
-      w -= width;
-    } else {
-      const height = w === 0 ? 0 : sum / w;
-      let left = x;
-      for (const area of row) {
-        const width = height === 0 ? 0 : area / height;
-        out2.push({ x: left, y, w: width, h: height });
-        left += width;
-      }
-      y += height;
-      h -= height;
-    }
-    start2 = end;
-  }
-  return out2;
-}
-function layoutTreemap(items, width = WIDTH4, height = HEIGHT2) {
-  const tiles = [];
-  const folders = [];
-  const place = (node, rect) => {
-    const children = [...node.children].sort((a, b) => b.size - a.size || byName(a.name, b.name));
-    const rects = squarify(children.map((c) => c.size), rect);
-    children.forEach((child, i2) => {
-      const r = rects[i2];
-      if (child.item !== void 0) {
-        tiles.push({ ...r, path: child.path, name: child.name, item: child.item });
-        return;
-      }
-      folders.push({ ...r, path: child.path, name: child.name });
-      const header2 = r.h > HEADER * 2 && r.w > 40 ? HEADER : 0;
-      place(child, { x: r.x + PAD, y: r.y + PAD + header2, w: Math.max(0, r.w - PAD * 2), h: Math.max(0, r.h - PAD * 2 - header2) });
-    });
-  };
-  place(buildTree(items), { x: 0, y: 0, w: width, h: height });
-  return { tiles, folders };
-}
-function prepare(data) {
-  const sized = data.items.filter((item) => item.size > 0).sort((a, b) => b.size - a.size || byName(a.path, b.path));
-  const limit = data.maxTiles ?? DEFAULT_MAX_TILES;
-  const drawn = sized.slice(0, limit);
-  const coloured = drawn.flatMap((item) => item.colour === null ? [] : [item.colour]);
-  return { drawn, notDrawn: { unsized: data.items.length - sized.length, beyondLimit: sized.length - drawn.length }, bands: makeBands(coloured, data.breaks) };
-}
-var bandName = (item, bands) => item.colour === null ? "none" : String(bands.of(item.colour));
-function omissions(prepared) {
-  const out2 = [];
-  if (prepared.notDrawn.beyondLimit > 0) out2.push(`${count3(prepared.notDrawn.beyondLimit, "smaller item")} not drawn`);
-  if (prepared.notDrawn.unsized > 0) out2.push(`${count3(prepared.notDrawn.unsized, "item")} of no size not drawn`);
-  return out2;
-}
-var rows4 = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
-function columns5(data) {
-  return [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: `Colour (${data.colourLabel})`, align: "right" }, { label: "Band", align: "right" }];
-}
-function treemapHtml(data) {
-  const prepared = prepare(data);
-  const { tiles, folders } = layoutTreemap(prepared.drawn);
-  const fmt = (n) => n.toFixed(1);
-  const drawing = [
-    ...folders.map((f) => `<g class="folder"><rect x="${fmt(f.x)}" y="${fmt(f.y)}" width="${fmt(f.w)}" height="${fmt(f.h)}"/>${f.w > 40 && f.h > HEADER * 2 ? `<text x="${fmt(f.x + 4)}" y="${fmt(f.y + 11)}">${escapeHtml(clip(f.name, Math.floor((f.w - 8) / 6.2)))}</text>` : ""}</g>`),
-    ...tiles.map((t) => {
-      const room = Math.floor((t.w - 6) / 6.2);
-      const labels = t.w >= 36 && t.h >= 16 ? [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(clip(t.name, room))}</text>`] : [];
-      if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(t.item.colour === null ? "none" : formatNumber(t.item.colour), room))}</text>`);
-      return `<g class="tile band-${bandName(t.item, prepared.bands)}"><title>${escapeHtml(`${t.path}: ${formatNumber(t.item.size)} ${data.sizeLabel}, ${t.item.colour === null ? "no" : formatNumber(t.item.colour)} ${data.colourLabel}`)}</title><rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>${labels.join("")}</g>`;
-    })
-  ].join("\n");
-  const left = omissions(prepared);
-  const notes2 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
-${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
-`}`;
-  return figureHtml({
-    kind: "treemap",
-    title: data.title,
-    description: `A treemap of ${count3(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; colour is ${data.colourLabel}. The table below lists the same items.`,
-    width: WIDTH4,
-    height: HEIGHT2,
-    drawing,
-    table: htmlTable(`${data.title}: the items drawn, largest first`, columns5(data), rows4(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
-    notes: notes2
-  });
-}
-function treemapMd(data) {
-  const prepared = prepare(data);
-  const left = omissions(prepared);
-  return [
-    `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)})`,
-    "",
-    mdTable(columns5(data), rows4(prepared)),
-    ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
-  ].join("\n");
-}
-
 // packages/report/src/block.ts
 function slotOf(id, context) {
   const slot = context.slots.find((s) => s.id === id);
@@ -21987,6 +22167,8 @@ function renderBlock(block, format2, context) {
       return format2 === "html" ? rankedTableHtml(block) : rankedTableMd(block);
     case "treemap":
       return format2 === "html" ? treemapHtml(block) : treemapMd(block);
+    case "category-treemap":
+      return format2 === "html" ? categoryTreemapHtml(block) : categoryTreemapMd(block);
     case "sparkline":
       return format2 === "html" ? sparklineHtml(block) : sparklineMd(block);
     case "histogram":
@@ -21995,6 +22177,8 @@ function renderBlock(block, format2, context) {
       return format2 === "html" ? matrixHtml(block) : matrixMd(block);
     case "guideline-bars":
       return format2 === "html" ? guidelineBarsHtml(block) : guidelineBarsMd(block);
+    case "stability-chart":
+      return format2 === "html" ? stabilityChartHtml(block) : stabilityChartMd(block);
     case "trend-marker":
       return format2 === "html" ? `<p>${trendMarkerHtml(block)}</p>` : trendMarkerMd(block);
     case "evidence-list":
@@ -22104,7 +22288,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 function headerFacts(report) {
   const { header: header2 } = report;
   const excluded = header2.excluded.length === 0 ? "nothing" : `<ul>${header2.excluded.map((e) => `<li>${escapeHtml(e.what)}: ${formatNumber(e.count)}</li>`).join("")}</ul>`;
-  const rows5 = [
+  const rows7 = [
     ["Repository", escapeHtml(header2.repo)],
     ["Analysed commit", `<code>${escapeHtml(header2.commit)}</code>`],
     ["Date", escapeHtml(header2.date)],
@@ -22114,20 +22298,20 @@ function headerFacts(report) {
     ["Excluded", excluded]
   ];
   return `<dl class="header">
-${rows5.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
+${rows7.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
 </dl>`;
 }
-function section(s, report, notes2) {
-  const body2 = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes2 })).join("\n");
+function section(s, report, notes3) {
+  const body2 = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes3 })).join("\n");
   return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
 <h2 id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}</h2>
 ${body2}
 </section>`;
 }
-function limitsSection(report, notes2) {
+function limitsSection(report, notes3) {
   const slot = report.slots.find((s) => s.id === "limits");
   const fixed = report.limits.map((text3) => `<li>${inlineHtml(text3)}</li>`).join("\n");
-  const judged = slot === void 0 ? "" : renderBlock({ type: "judgement", slot: slot.id }, "html", { slots: report.slots, notes: notes2 });
+  const judged = slot === void 0 ? "" : renderBlock({ type: "judgement", slot: slot.id }, "html", { slots: report.slots, notes: notes3 });
   return `<section id="limits" aria-labelledby="limits-heading">
 <h2 id="limits-heading">Limits</h2>
 ${fixed === "" ? "" : `<ul>
@@ -22136,7 +22320,7 @@ ${fixed}
 `}${judged}
 </section>`;
 }
-function htmlPage(report, notes2) {
+function htmlPage(report, notes3) {
   const ids = [...report.sections.map((s) => [s.id, s.heading]), ["limits", "Limits"]];
   const nav = `<nav aria-label="Sections">
 <ul>
@@ -22161,8 +22345,8 @@ ${headerFacts(report)}
 </header>`,
     nav,
     '<main id="main">',
-    ...report.sections.map((s) => section(s, report, notes2)),
-    limitsSection(report, notes2),
+    ...report.sections.map((s) => section(s, report, notes3)),
+    limitsSection(report, notes3),
     "</main>",
     `<footer>
 <p>Report <code>${escapeHtml(report.kind)}</code> for commit <code>${escapeHtml(report.header.commit.slice(0, 12))}</code>. Every number comes from the command's data. The judgements were written by an agent from that data and checked against the report's slots.</p>
@@ -22194,8 +22378,8 @@ function header(report, compact) {
     ...h.excluded.length === 0 ? ["- Excluded: nothing"] : ["- Excluded:", ...h.excluded.map((e) => `  - ${escapeMd(e.what)}: ${formatNumber(e.count)}`)]
   ];
 }
-function markdownPage(report, notes2, options = {}) {
-  const context = { slots: report.slots, notes: notes2 };
+function markdownPage(report, notes3, options = {}) {
+  const context = { slots: report.slots, notes: notes3 };
   const limits = report.limits.map((text3) => `- ${escapeMd(text3)}`);
   const slot = report.slots.find((s) => s.id === "limits");
   const judged = slot === void 0 ? [] : [renderBlock({ type: "judgement", slot: slot.id }, "md", context)];
@@ -22208,12 +22392,12 @@ function markdownPage(report, notes2, options = {}) {
 }
 
 // packages/report/src/render.ts
-function renderReport(report, format2, notes2, options = {}) {
+function renderReport(report, format2, notes3, options = {}) {
   if (format2 === "html") {
-    if (notes2 === void 0) throw new ReportError("html needs notes: run --slots, write the notes file, then render with --notes FILE --format html");
-    return htmlPage(report, notes2);
+    if (notes3 === void 0) throw new ReportError("html needs notes: run --slots, write the notes file, then render with --notes FILE --format html");
+    return htmlPage(report, notes3);
   }
-  return markdownPage(report, notes2, options);
+  return markdownPage(report, notes3, options);
 }
 
 // packages/report/src/slots-document.ts
@@ -22285,7 +22469,7 @@ function reportCommand(kinds) {
   };
 }
 function readRequest(context) {
-  const { slots, notes: notes2, format: format2, out: out2, compact } = context.values;
+  const { slots, notes: notes3, format: format2, out: out2, compact } = context.values;
   const text3 = (value, option) => {
     if (value === void 0) return void 0;
     if (typeof value !== "string" || value === "") throw usageError(`--${option} needs a value`);
@@ -22293,7 +22477,7 @@ function readRequest(context) {
   };
   const chosen = text3(format2, "format");
   if (chosen !== void 0 && chosen !== "html" && chosen !== "md") throw usageError(`--format must be html or md, got "${chosen}"`);
-  const request = { slots: slots === true, notes: text3(notes2, "notes"), format: chosen, out: text3(out2, "out"), compact: compact === true };
+  const request = { slots: slots === true, notes: text3(notes3, "notes"), format: chosen, out: text3(out2, "out"), compact: compact === true };
   if (request.slots) {
     if (request.notes !== void 0 || request.format !== void 0 || request.compact) throw usageError("--slots prints the slots and takes no --notes, --format or --compact");
   } else if (request.notes === void 0 && request.format !== "md") {
@@ -22340,7 +22524,7 @@ var XRAY_JUDGED = 5;
 var guidelineOf = (value, guidelines) => value === void 0 || guidelines === void 0 ? {} : { guideline: { value, note: guidelines.note } };
 var lines = (fn) => `${fn.startLine}-${fn.endLine}`;
 function xrayBlocks(data) {
-  const shown = data.rows === void 0 ? data.functions : data.functions.slice(0, data.rows);
+  const shown2 = data.rows === void 0 ? data.functions : data.functions.slice(0, data.rows);
   const withFixes = data.functions.some((fn) => fn.fixes !== null);
   const table3 = {
     type: "ranked-table",
@@ -22358,7 +22542,7 @@ function xrayBlocks(data) {
       { key: "fixes", label: "Fixes", align: "right" },
       { key: "smells", label: "Code smells" }
     ],
-    rows: shown.map((fn) => ({
+    rows: shown2.map((fn) => ({
       function: fn.name,
       lines: lines(fn),
       length: fn.length,
@@ -22418,8 +22602,8 @@ var xray = {
     const settings = readSettings(context.config);
     const forFile = { ...context, positionals: [file], values: { ...context.values, "include-tests": true } };
     const analysis = await command.run(forFile);
-    const rows5 = analysis.results.filter((row) => row.path === file);
-    if (rows5.length === 0) throw usageError(`no functions were measured in "${file}": name a source file of the current tree that a language adapter reads`);
+    const rows7 = analysis.results.filter((row) => row.path === file);
+    if (rows7.length === 0) throw usageError(`no functions were measured in "${file}": name a source file of the current tree that a language adapter reads`);
     const current = await currentTree(context);
     let fixes;
     let header2;
@@ -22435,7 +22619,7 @@ var xray = {
     const guidelines = guidelinesFor(settings, file);
     const data = {
       file,
-      functions: rows5.map((row) => functionOf(row, fixes)),
+      functions: rows7.map((row) => functionOf(row, fixes)),
       guidelines: {
         cognitive: limitOf(guidelines, "cognitive"),
         cyclomatic: limitOf(guidelines, "cyclomatic"),
