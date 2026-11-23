@@ -18136,7 +18136,9 @@ var packagesDefaults = {
   /** `volatile-interface`: the exported surface changed in at least this share of the package's revisions. */
   volatileInterfaceShare: 0.3,
   /** `zone-of-pain` and `zone-of-uselessness`: the distance from the main sequence at which the zones are raised. */
-  zoneDistance: 0.5
+  zoneDistance: 0.5,
+  /** A package that exports fewer types than this has weak abstractness evidence: the abstract-to-concrete ratio of one or two types says little. The report leaves such a package unplaced in the zones. A judgement call, not from Martin, whose metric defines no floor. */
+  minExportedTypes: 3
 };
 function readPackageSettings(section2, at2) {
   const number = (key, min, max) => {
@@ -18207,7 +18209,8 @@ function readPackageSettings(section2, at2) {
     tinyPercentile: number("tinyPercentile", 0, 100),
     graceDays: integer("graceDays", 0),
     volatileInterfaceShare: number("volatileInterfaceShare", 0, 1),
-    zoneDistance: number("zoneDistance", 0, 1)
+    zoneDistance: number("zoneDistance", 0, 1),
+    minExportedTypes: integer("minExportedTypes", 1)
   };
 }
 
@@ -23098,8 +23101,7 @@ function closureFindings(context) {
 }
 
 // packages/structure/src/packaging/abstractness.ts
-var WEAK_BELOW_TYPES = 3;
-function measureAbstractness(reuse) {
+function measureAbstractness(reuse, minExportedTypes) {
   const result = /* @__PURE__ */ new Map();
   for (const [id, profile] of reuse.profiles) {
     let types = 0;
@@ -23114,7 +23116,7 @@ function measureAbstractness(reuse) {
       exportedTypes: types,
       abstractTypes: abstractCount,
       value: types === 0 ? 0 : round3(abstractCount / types),
-      weak: types < WEAK_BELOW_TYPES
+      weak: types < minExportedTypes
     });
   }
   return result;
@@ -23309,7 +23311,7 @@ function couplingFindings(context, reuse) {
     ...packageCycles(context),
     ...hiddenCycles(context),
     ...againstStability(context),
-    ...zones(context, measureAbstractness(reuse)),
+    ...zones(context, measureAbstractness(reuse, context.model.settings.packages.minExportedTypes)),
     ...volatileInterfaces(context, reuse)
   ];
 }
@@ -24322,7 +24324,7 @@ var evidence = {
 var list2 = {
   summary: "Every package with its kind, purpose, size, consumers, stability, closure and change frequency",
   async analyse({ model }) {
-    const rows7 = packageRows(model, measureAbstractness(await analyseReuse(model)));
+    const rows7 = packageRows(model, measureAbstractness(await analyseReuse(model), model.settings.packages.minExportedTypes));
     const ecosystems2 = {};
     for (const row of rows7) ecosystems2[row.ecosystem] = (ecosystems2[row.ecosystem] ?? 0) + 1;
     return {
@@ -24399,7 +24401,7 @@ function reuseOf(reuse, unit) {
   return any ? { consumers: consumers.size, medianShare: median2(shares2), components } : null;
 }
 function medianDistance(model, reuse) {
-  const abstractness = measureAbstractness(reuse);
+  const abstractness = measureAbstractness(reuse, model.settings.packages.minExportedTypes);
   const distances = [];
   for (const [id, measured] of abstractness) {
     const instability = model.model.structural.get(id)?.instability;
@@ -25504,6 +25506,10 @@ var isChoice = (entry) => "items" in entry;
 function labelOf(slot, ref) {
   return slot.choose?.candidates.find((c) => c.ref === ref)?.label ?? ref;
 }
+function leadOf(slot) {
+  if (slot.about.kind === "report" || slot.title.includes(slot.about.label)) return void 0;
+  return slot.about.label;
+}
 function parts2(slot, entry) {
   if (isChoice(entry)) return entry.items.map((item) => ({ subject: labelOf(slot, item.subject), verdict: item.verdict, text: item.text }));
   const note = entry;
@@ -25515,6 +25521,14 @@ function judgementHtml(data) {
 ${heading}
 <p class="empty">Judgement not yet written.</p>
 </section>`;
+  if (!isChoice(data.entry)) {
+    const verdict = data.entry.verdict === void 0 ? "" : `<span class="verdict">Verdict: ${escapeHtml(data.entry.verdict)}.</span> `;
+    const lead = leadOf(data.slot);
+    return `<section class="judgement">
+${heading}
+<p>${lead === void 0 ? "" : `<strong class="subject">${escapeHtml(lead)}</strong>: `}${verdict}${escapeHtml(oneLine(data.entry.text))}</p>
+</section>`;
+  }
   const items = parts2(data.slot, data.entry).map(
     (p) => `<li><strong class="subject">${escapeHtml(p.subject)}</strong>${p.verdict === void 0 ? "" : ` <span class="verdict">Verdict: ${escapeHtml(p.verdict)}.</span>`} ${escapeHtml(oneLine(p.text))}</li>`
   );
@@ -25527,6 +25541,11 @@ ${items.join("\n")}
 }
 function judgementMd(data) {
   if (data.entry === void 0) return [`**${escapeMd(data.slot.title)}**`, "", `_Judgement not yet written: ${escapeMd(data.slot.task)}_`].join("\n");
+  if (!isChoice(data.entry)) {
+    const verdict = data.entry.verdict === void 0 ? "" : `Verdict: ${escapeMd(data.entry.verdict)}. `;
+    const lead = leadOf(data.slot);
+    return [`**${escapeMd(data.slot.title)}**`, "", `${lead === void 0 ? "" : `**${escapeMd(lead)}**: `}${verdict}${escapeMd(data.entry.text)}`].join("\n");
+  }
   const items = parts2(data.slot, data.entry).map((p, i2) => `${i2 + 1}. **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
   return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
 }
@@ -26400,16 +26419,17 @@ function withEvidenceFloor(against, settings) {
 }
 function stabilityBlocks(packageRows2, allAgainst, settings) {
   const { listed: against, belowFloor } = withEvidenceFloor(allAgainst, settings);
-  const noTypes = packageRows2.filter((row) => row.abstractness !== null && row.exportedTypes === 0).length;
+  const floor = settings.packages.minExportedTypes;
+  const unplaced = packageRows2.filter((row) => row.abstractness !== null && (row.exportedTypes ?? 0) < floor).length;
   const measured = packageRows2.flatMap(
-    (row) => row.instability === null || row.abstractness === null || row.distance === null || (row.exportedTypes ?? 0) === 0 ? [] : [{ name: row.id, instability: row.instability, abstractness: row.abstractness, distance: row.distance, ca: row.ca, ce: row.ce, exportedTypes: row.exportedTypes ?? 0, weak: row.abstractnessWeak }]
+    (row) => row.instability === null || row.abstractness === null || row.distance === null || (row.exportedTypes ?? 0) < floor ? [] : [{ name: row.id, instability: row.instability, abstractness: row.abstractness, distance: row.distance, ca: row.ca, ce: row.ce, exportedTypes: row.exportedTypes ?? 0, weak: row.abstractnessWeak }]
   );
   const points = measured.sort((a, b) => b.distance - a.distance || (a.name < b.name ? -1 : 1));
   const shown2 = against.slice(0, TOP_AGAINST);
   const slots = [];
   const blocks = [
-    { type: "stability-chart", title: "Packages by instability and abstractness", zoneDistance: settings.packages.zoneDistance, zoneSource: "structure.packages.zoneDistance, a judgement call", points, maxPoints: TOP_PACKAGES, total: packageRows2.length - noTypes, noun: "packages" },
-    ...noTypes === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(noTypes, "package")} export${noTypes === 1 ? "s" : ""} no types, so abstractness is not measured for ${noTypes === 1 ? "it" : "them"}. ${noTypes === 1 ? "It is" : "They are"} left out of the chart and its table and are not placed in a zone.` }],
+    { type: "stability-chart", title: "Packages by instability and abstractness", zoneDistance: settings.packages.zoneDistance, zoneSource: "structure.packages.zoneDistance, a judgement call", points, maxPoints: TOP_PACKAGES, total: packageRows2.length - unplaced, noun: "packages" },
+    ...unplaced === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(unplaced, "package")} ${unplaced === 1 ? "has" : "have"} too few exported types to place (fewer than ${floor}, structure.packages.minExportedTypes, a judgement call); abstractness is not measured for ${unplaced === 1 ? "it" : "them"}. ${unplaced === 1 ? "It is" : "They are"} left out of the chart, its table and its zone counts.` }],
     {
       type: "paragraph",
       text: "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one."
@@ -26559,7 +26579,8 @@ function limitsOf(results, settings) {
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
     `Each list shows its top rows and says how many it leaves out: ${TOP_CYCLES} cycles, ${TOP_AGAINST} dependencies against stability, ${TOP_LAYER_VIOLATIONS} layer violations, ${TOP_HUBS} hubs and ${TOP_PACKAGES} packages in the stability table (the chart draws every package that exports types). The commands print the rest.`,
     "Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. `structure cycles --level` shows the other levels.",
-    "Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, a package that exports fewer than 3 types is marked weak, and a package that exports none is not measured and is left out of the chart. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.",
+    `Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums. A package that exports fewer than ${settings.packages.minExportedTypes} types (structure.packages.minExportedTypes) has too few for the abstract-to-concrete ratio to mean anything, so it is unplaced: left out of the chart, its table and its zone counts, and counted. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.`,
+    ...results.packages.some((row) => row.ecosystem === "go") ? ["In Go, packages offer behaviour through functions and structurally satisfied interfaces, and the measure counts only declared types, so a concrete Go package that many packages depend on is common and a position in the zone of pain says little about it. Change evidence carries the judgement."] : [],
     "The zones of the chart are geometric. `structure packages coupling` raises a finding only when a package in a zone also has dependents and changes often.",
     "The census finds mechanisms by name and shape, so a look-alike can be counted and a custom convention missed.",
     ...settings.layers.length === 0 ? ["No layers are configured in structure.layers, so no layer rule was checked."] : [],

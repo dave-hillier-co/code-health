@@ -5316,13 +5316,15 @@ function isCodePath(path, mappings = {}) {
 }
 
 // packages/parse/src/test-files.ts
+var SUPPORT_FOLDER = /(^|\/)(tests?|__tests__|__mocks__|mocks|testing|testutils?|testhelpers?|testsupport|testfixtures?|integrationtesting|e2e)\//i;
+var isTestSupportFolder = (path) => SUPPORT_FOLDER.test(path.slice(0, path.lastIndexOf("/") + 1));
 function testClassifier(patterns = []) {
   const entries = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern !== "" && !pattern.startsWith("#")).map((pattern) => pattern.startsWith("!") ? { test: false, matches: compileGlobs([pattern.slice(1)]) } : { test: true, matches: compileGlobs([pattern]) });
   return (path) => {
     for (let index2 = entries.length - 1; index2 >= 0; index2--) {
       if (entries[index2].matches(path)) return entries[index2].test;
     }
-    return isTestPath(path);
+    return isTestPath(path) || isTestSupportFolder(path);
   };
 }
 
@@ -10515,6 +10517,10 @@ var isChoice = (entry) => "items" in entry;
 function labelOf(slot, ref) {
   return slot.choose?.candidates.find((c) => c.ref === ref)?.label ?? ref;
 }
+function leadOf(slot) {
+  if (slot.about.kind === "report" || slot.title.includes(slot.about.label)) return void 0;
+  return slot.about.label;
+}
 function parts(slot, entry) {
   if (isChoice(entry)) return entry.items.map((item) => ({ subject: labelOf(slot, item.subject), verdict: item.verdict, text: item.text }));
   const note = entry;
@@ -10526,6 +10532,14 @@ function judgementHtml(data) {
 ${heading}
 <p class="empty">Judgement not yet written.</p>
 </section>`;
+  if (!isChoice(data.entry)) {
+    const verdict = data.entry.verdict === void 0 ? "" : `<span class="verdict">Verdict: ${escapeHtml(data.entry.verdict)}.</span> `;
+    const lead = leadOf(data.slot);
+    return `<section class="judgement">
+${heading}
+<p>${lead === void 0 ? "" : `<strong class="subject">${escapeHtml(lead)}</strong>: `}${verdict}${escapeHtml(oneLine(data.entry.text))}</p>
+</section>`;
+  }
   const items = parts(data.slot, data.entry).map(
     (p) => `<li><strong class="subject">${escapeHtml(p.subject)}</strong>${p.verdict === void 0 ? "" : ` <span class="verdict">Verdict: ${escapeHtml(p.verdict)}.</span>`} ${escapeHtml(oneLine(p.text))}</li>`
   );
@@ -10538,6 +10552,11 @@ ${items.join("\n")}
 }
 function judgementMd(data) {
   if (data.entry === void 0) return [`**${escapeMd(data.slot.title)}**`, "", `_Judgement not yet written: ${escapeMd(data.slot.task)}_`].join("\n");
+  if (!isChoice(data.entry)) {
+    const verdict = data.entry.verdict === void 0 ? "" : `Verdict: ${escapeMd(data.entry.verdict)}. `;
+    const lead = leadOf(data.slot);
+    return [`**${escapeMd(data.slot.title)}**`, "", `${lead === void 0 ? "" : `**${escapeMd(lead)}**: `}${verdict}${escapeMd(data.entry.text)}`].join("\n");
+  }
   const items = parts(data.slot, data.entry).map((p, i) => `${i + 1}. **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
   return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
 }
@@ -11520,8 +11539,8 @@ function aboveGuideline(evidence) {
 }
 
 // packages/cochange/src/risk/composition.ts
-async function liveMeasurements(root, change3, risk, evidence, abandoned) {
-  return [await complexityDelta(root, change3, risk, evidence), structureDelta(evidence), abandoned];
+async function liveMeasurements(root, change3, risk, evidence, abandoned, testPatterns = []) {
+  return [await complexityDelta(root, change3, risk, evidence, testClassifier(testPatterns)), structureDelta(evidence), abandoned];
 }
 function structureDelta(evidence) {
   const base = { name: "structure-delta", family: "structure-and-content", layer: "structural", kind: "count", source: "structure check" };
@@ -11537,7 +11556,8 @@ function structureDelta(evidence) {
     evidence: findings.slice(0, 5).map((finding) => ({ kind: finding.kind, id: finding.id }))
   };
 }
-async function complexityDelta(root, change3, risk, evidence) {
+var INDENTATION_PROXY = "indentation proxy, not a complexity comparison";
+async function complexityDelta(root, change3, risk, evidence, isTest) {
   const base = { name: "complexity-delta", family: "structure-and-content", kind: "count" };
   if (evidence.complexity !== null) {
     const units = aboveGuideline(evidence.complexity);
@@ -11555,7 +11575,7 @@ async function complexityDelta(root, change3, risk, evidence) {
   let examined = 0;
   let added = 0;
   for (const file of change3.files) {
-    if (file.status === "D" || file.binary) continue;
+    if (file.status === "D" || file.binary || isTest(file.path)) continue;
     const isNew = file.status === "A";
     const before = isNew ? "" : await readBlobAt(root, change3.base, file.oldPath ?? file.path);
     const after = change3.worktree ? readWorktree(root, file.path) : await readBlobAt(root, change3.head, file.path);
@@ -11575,7 +11595,7 @@ async function complexityDelta(root, change3, risk, evidence) {
   return {
     ...base,
     layer: "lexical",
-    source: "indentation",
+    source: INDENTATION_PROXY,
     unavailable: null,
     series: { count: rows7.length },
     value: { count: rows7.length, files: examined, newFiles: added },
@@ -11806,6 +11826,67 @@ var HistoryState = class {
   }
 };
 
+// packages/cochange/src/expected-pair.ts
+var EXPECTED_LABEL = {
+  test: "a test and the code it tests",
+  "fixture-or-golden": "a fixture or golden file and what it checks",
+  "header-and-source": "a C or C++ header and its source file",
+  "build-manifests": "two build or packaging manifests of one toolchain",
+  "same-format-data": "two data or configuration files of one format"
+};
+var EXPECTED_REASONS = ["test", "fixture-or-golden", "header-and-source", "build-manifests", "same-format-data"];
+var FIXTURE_FOLDER = /(^|\/)(testdata|test-data|fixtures?|__fixtures__|__snapshots__|__mocks__|snapshots?|goldens?|golden-files)\//i;
+var FIXTURE_NAME = /[._-](golden|snap|approved|received)(\.[^/.]+)?$/i;
+function isFixturePath(path) {
+  return FIXTURE_FOLDER.test(path) || FIXTURE_NAME.test(path);
+}
+var extension = (path) => {
+  const base = path.slice(path.lastIndexOf("/") + 1);
+  const dot = base.lastIndexOf(".");
+  return dot <= 0 ? "" : base.slice(dot).toLowerCase();
+};
+var HEADER2 = /* @__PURE__ */ new Set([".h", ".hh", ".hpp", ".hxx", ".h++", ".inl"]);
+var SOURCE2 = /* @__PURE__ */ new Set([".c", ".cc", ".cpp", ".cxx", ".c++", ".m", ".mm"]);
+var stem = (path) => {
+  const ext = extension(path);
+  return path.slice(0, path.length - ext.length);
+};
+function isHeaderAndSource(a, b) {
+  const [x2, y2] = [extension(a), extension(b)];
+  const pair = HEADER2.has(x2) && SOURCE2.has(y2) || SOURCE2.has(x2) && HEADER2.has(y2);
+  return pair && stem(a) === stem(b);
+}
+var FAMILIES = [
+  { family: "go", name: /^(go\.(mod|sum|work|work\.sum))$/ },
+  { family: "docker", name: /^(Dockerfile([._-].*)?|.*\.Dockerfile|.*\.dockerfile|\.dockerignore)$/ },
+  { family: "node", name: /^(package\.json|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|pnpm-workspace\.yaml|bun\.lockb?|\.npmrc|\.nvmrc)$/ },
+  { family: "cargo", name: /^(Cargo\.(toml|lock)|rust-toolchain(\.toml)?)$/ },
+  { family: "cmake", name: /^(CMakeLists\.txt|CMakePresets\.json|.*\.cmake)$/ },
+  { family: "dotnet", name: /^(.*\.(csproj|fsproj|vbproj|sln|slnx|props|targets)|global\.json|nuget\.config|packages\.lock\.json)$/i },
+  { family: "jvm", name: /^(pom\.xml|build\.gradle(\.kts)?|settings\.gradle(\.kts)?|gradle\.properties|gradlew(\.bat)?)$/ },
+  { family: "python", name: /^(pyproject\.toml|requirements.*\.txt|Pipfile(\.lock)?|poetry\.lock|uv\.lock|setup\.cfg|tox\.ini)$/ },
+  { family: "ruby", name: /^(Gemfile(\.lock)?|.*\.gemspec)$/ },
+  { family: "make", name: /^(Makefile|GNUmakefile|.*\.mk)$/ }
+];
+function manifestFamily(path) {
+  const base = path.slice(path.lastIndexOf("/") + 1);
+  return FAMILIES.find((entry) => entry.name.test(base))?.family ?? null;
+}
+function expectedReason(a, b, isTest) {
+  if (isTest(a.path) || isTest(b.path)) return "test";
+  if (isFixturePath(a.path) || isFixturePath(b.path)) return "fixture-or-golden";
+  if (isHeaderAndSource(a.path, b.path)) return "header-and-source";
+  const family = manifestFamily(a.path);
+  if (family !== null && family === manifestFamily(b.path)) return "build-manifests";
+  if (!a.code && !b.code && extension(a.path) === extension(b.path)) return "same-format-data";
+  return null;
+}
+var SOURCE_LIST_NAME = /^(CMakeLists\.txt|.*\.cmake|Makefile|GNUmakefile|.*\.mk|meson\.build|BUILD|BUILD\.bazel|Android\.bp|SConscript|SConstruct|.*\.(vcxproj|pro|pri))$/;
+function listsSourceFiles(path) {
+  return SOURCE_LIST_NAME.test(path.slice(path.lastIndexOf("/") + 1));
+}
+var folderPrefix = (path) => path.slice(0, path.lastIndexOf("/") + 1);
+
 // packages/cochange/src/risk/measure.ts
 var round2 = (value, places = 6) => Math.round(value * 10 ** places) / 10 ** places;
 var churnOf = (file) => (file.added ?? 0) + (file.deleted ?? 0);
@@ -11962,12 +12043,23 @@ function coupledPartners(facts, state, context) {
   }
   return [...best.values()].sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.file < b.file ? -1 : 1));
 }
+function manifestExpected(manifest, facts) {
+  const folder = folderPrefix(manifest);
+  return facts.files.some((file) => {
+    if (file.status !== "A" && file.status !== "D" && file.status !== "R") return false;
+    const paths = file.oldPath === null ? [file.path] : [file.path, file.oldPath];
+    return paths.some((path) => path.startsWith(folder) && !listsSourceFiles(path) && hasAdapter(path));
+  });
+}
 function missingCoChange(facts, state, context) {
   const touched = new Set(facts.files.map((file) => file.fileId));
-  const missing = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
+  const absent = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
+  const withoutManifests = coupledPartners({ ...facts, files: facts.files.filter((file) => !listsSourceFiles(file.fileId)) }, state, context);
+  const missing = withoutManifests.filter((partner) => !touched.has(partner.file) && (!listsSourceFiles(partner.file) || manifestExpected(partner.file, facts)));
+  const skipped = absent.length - missing.length;
   return measurement2("missing-co-change", "completeness", "history", "count", "history", {
     series: { count: missing.length },
-    value: { count: missing.length },
+    value: skipped === 0 ? { count: missing.length } : { count: missing.length, manifestPartnersSkipped: skipped },
     evidence: missing.map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence, support: partner.support }))
   });
 }
@@ -12338,7 +12430,7 @@ async function assessBranch(context, history, request) {
   const abandoned = await abandonedTouched(context, history, change3);
   const measurements = [
     ...measureHistoryLayer(facts, state, measure),
-    ...await liveMeasurements(root, change3, risk, evidence, abandoned.measurement)
+    ...await liveMeasurements(root, change3, risk, evidence, abandoned.measurement, context.config.effective.testPatterns)
   ];
   const baselineMeasures = past.map((p) => p.measurements);
   const bander = makeBander(baselineMeasures, risk);
@@ -12452,7 +12544,7 @@ var RESPONSES = {
     step: "simplify",
     response: "Run `complexity explain` on the named units and simplify before merge.",
     summary: "The change adds code that is hard to understand",
-    explanation: "From `complexity diff` passed in with --evidence: units that are new and over its guideline, or over it and worse. Without that, the touched files whose indentation complexity rose.",
+    explanation: "From `complexity diff` passed in with --evidence: units that are new and over its guideline, or over it and worse. Without that, the touched production code files whose indentation complexity rose (the indentation proxy, not a complexity comparison).",
     redFlag: null
   },
   "structure-delta": {
@@ -12855,7 +12947,8 @@ function guidelineText(factor) {
 }
 function valueText(factor) {
   const parts2 = Object.entries(factor.value).filter(([, value]) => value !== null && typeof value !== "object").map(([key, value]) => `${key} ${value}`);
-  return parts2.length === 0 ? "none" : parts2.join(", ");
+  const label = factor.name === "complexity-delta" && factor.source === INDENTATION_PROXY ? `${INDENTATION_PROXY}: ` : "";
+  return parts2.length === 0 ? `${label}none` : `${label}${parts2.join(", ")}`;
 }
 function bandText(factor) {
   return factor.status === "ok" ? factor.band ?? "none" : factor.status;
@@ -12948,9 +13041,12 @@ function missingBlocks(assessed) {
   if (factor === void 0 || factor.status !== "ok") {
     return [{ type: "notice", level: "notice", text: `Missing co-change partners could not be computed: ${factor?.reason ?? "the factor is not available"}.` }];
   }
-  if (factor.evidence.length === 0) return [{ type: "notice", level: "notice", text: "No file that usually changes with a touched file is missing from the change." }];
+  const skipped = number2(factor.value.manifestPartnersSkipped) ?? 0;
+  const skippedNotice = skipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(skipped, "partner")} left out of this list because the pairing is with a build manifest that lists source files (such as CMakeLists.txt): a manifest counts as missing only when the change adds, removes or renames a code file in its folder, and a touched manifest does not make its source files missing.` }];
+  if (factor.evidence.length === 0) return [...skippedNotice, { type: "notice", level: "notice", text: "No file that usually changes with a touched file is missing from the change." }];
   const rows7 = factor.evidence.map((e) => ({ file: text3(e.file), towards: text3(e.towards), confidence: number2(e.confidence), support: number2(e.support) }));
   return [
+    ...skippedNotice,
     {
       type: "ranked-table",
       caption: "Files that usually change with a touched file and are not in the change",
@@ -12969,7 +13065,7 @@ function missingBlocks(assessed) {
 function complexityBlocks(evidence) {
   const complexity = evidence.complexity;
   if (complexity === null) {
-    return [{ type: "notice", level: "notice", text: "No complexity comparison was passed in. Run `complexity check --json` (or `complexity diff BASE..HEAD --json`) for this base and pass it with `--evidence FILE`, then run this report again." }];
+    return [{ type: "notice", level: "notice", text: "No complexity comparison was passed in. The complexity-delta factor in the risk table is the indentation proxy (production code files whose indentation complexity rose), not a complexity comparison, and lists no units. Run `complexity check --json` (or `complexity diff BASE..HEAD --json`) for this base and pass it with `--evidence FILE`, then run this report again." }];
   }
   const blocks = [];
   if (complexity.rows.length === 0) {
@@ -13265,43 +13361,6 @@ function historyWindowText(evidence, window, suffix = "") {
   return `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate3(window.since)} to ${isoDate3(window.until)}${suffix}`;
 }
 
-// packages/cochange/src/expected-pair.ts
-var EXPECTED_LABEL = {
-  test: "a test and the code it tests",
-  "fixture-or-golden": "a fixture or golden file and what it checks",
-  "header-and-source": "a C or C++ header and its source file",
-  "same-format-data": "two data or configuration files of one format"
-};
-var EXPECTED_REASONS = ["test", "fixture-or-golden", "header-and-source", "same-format-data"];
-var FIXTURE_FOLDER = /(^|\/)(testdata|test-data|fixtures?|__fixtures__|__snapshots__|__mocks__|snapshots?|goldens?|golden-files)\//i;
-var FIXTURE_NAME = /[._-](golden|snap|approved|received)(\.[^/.]+)?$/i;
-function isFixturePath(path) {
-  return FIXTURE_FOLDER.test(path) || FIXTURE_NAME.test(path);
-}
-var extension = (path) => {
-  const base = path.slice(path.lastIndexOf("/") + 1);
-  const dot = base.lastIndexOf(".");
-  return dot <= 0 ? "" : base.slice(dot).toLowerCase();
-};
-var HEADER2 = /* @__PURE__ */ new Set([".h", ".hh", ".hpp", ".hxx", ".h++", ".inl"]);
-var SOURCE2 = /* @__PURE__ */ new Set([".c", ".cc", ".cpp", ".cxx", ".c++", ".m", ".mm"]);
-var stem = (path) => {
-  const ext = extension(path);
-  return path.slice(0, path.length - ext.length);
-};
-function isHeaderAndSource(a, b) {
-  const [x2, y2] = [extension(a), extension(b)];
-  const pair = HEADER2.has(x2) && SOURCE2.has(y2) || SOURCE2.has(x2) && HEADER2.has(y2);
-  return pair && stem(a) === stem(b);
-}
-function expectedReason(a, b, isTest) {
-  if (isTest(a.path) || isTest(b.path)) return "test";
-  if (isFixturePath(a.path) || isFixturePath(b.path)) return "fixture-or-golden";
-  if (isHeaderAndSource(a.path, b.path)) return "header-and-source";
-  if (!a.code && !b.code && extension(a.path) === extension(b.path)) return "same-format-data";
-  return null;
-}
-
 // packages/cochange/src/sibling-reports.ts
 import { existsSync as existsSync20, readFileSync as readFileSync20 } from "node:fs";
 var ENVELOPE2 = /* @__PURE__ */ new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta"]);
@@ -13361,6 +13420,21 @@ function trendCell(row2) {
 var pairRef = (row2) => `${row2.path} <-> ${row2.with}`;
 var cappedTable = (table, max, command17) => ({ type: "ranked-table", ...capRows(table, max, command17) });
 var PAIR_ORDER = "Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.";
+function tieNotice(production, judged) {
+  if (production.length <= judged) return null;
+  const same3 = (a, b) => a.degree === b.degree && a.support === b.support;
+  const edge = production[judged - 1];
+  if (!same3(edge, production[judged])) return null;
+  let first = judged - 1;
+  while (first > 0 && same3(production[first - 1], edge)) first--;
+  let last = judged;
+  while (last + 1 < production.length && same3(production[last + 1], edge)) last++;
+  return {
+    type: "notice",
+    level: "notice",
+    text: `Pairs ${first + 1} to ${last + 1} tie on degree and shared changes (degree ${edge.degree}, ${edge.support} shared changes); the order among them is by path, so the ${judged} judged pairs are the first ${judged} by path and not the ${judged} strongest.`
+  };
+}
 var trendOf2 = (previous) => previous !== void 0 && previous.eligibleChanges > 0;
 function pairColumns(guideline, withTrend) {
   return [
@@ -13404,7 +13478,7 @@ function expectedSection(expected, settings) {
   const counts = EXPECTED_REASONS.map((reason) => ({ reason, count: expected.filter((e) => e.reason === reason).length })).filter((c) => c.count > 0);
   const table = cappedTable(
     {
-      caption: `Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, or two data files of one format. ${PAIR_ORDER}`,
+      caption: `Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. ${PAIR_ORDER}`,
       noun: "pairs",
       total: expected.length,
       emptyText: "No pair is an expected pair: every pair that reaches the support floor is a pair of production files.",
@@ -13643,7 +13717,7 @@ function slots(judged) {
 function limitsOf2(evidence, settings, previous, hiddenMissing) {
   return [
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-    "A pair where either side is a test, a fixture or a golden file, or where both sides are data or configuration files of one format, is an expected pair. It is listed in its own table and not judged.",
+    "A pair where either side is a test, a fixture or a golden file, or where the sides are a C or C++ header and its source file, two build or packaging manifests of one toolchain (go.mod and go.work, Dockerfile variants, package.json and its lockfile), or two data or configuration files of one format, is an expected pair. It is listed in its own table and not judged.",
     `Coupling counts changes that touched both files in the window, over changes at or below the changeset limit; a larger change counts on neither side. A pair that shares fewer than ${settings.minSupport} changes (the support floor) is not listed.`,
     "Files that change together may share a design decision, or only a shared constant, a registry, a protocol, tests or generated code. The numbers cannot tell these apart; the judgements say which it is.",
     `Each table shows the top rows of its result and says how many rows it leaves out; \`cochange coupling\` and \`cochange clusters\` print the rest.`,
@@ -13686,10 +13760,12 @@ var coupling = {
     const withTrend = trendOf2(previous);
     const thin = rows7.length < FEW_PAIRS;
     const below = thin ? await pairsBelowFloor(context, inputs.minSupport) : [];
+    const tie = tieNotice(production, JUDGED_PAIRS);
     const pairsHeading = [
       ...thin ? thinBlocks(rows7.length, inputs.minSupport, below) : [],
       ...rows7.length === 0 ? [] : [
         ...pairsSection(production, rows7.length, guideline, withTrend),
+        ...tie === null ? [] : [tie],
         ...judged.map((_, i) => ({ type: "judgement", slot: `pair-${i + 1}` })),
         ...expectedSection(expected, guideline),
         ...trendBlocks(rows7, rows7.length, guideline, previous),
@@ -15030,7 +15106,7 @@ var FACTOR_DOCS = [
     layer: "history",
     banding: "count",
     signal: "Files that usually change with a touched file and are missing from the change",
-    definition: "Files whose confidence towards a touched file is at least cochange.risk.missingConfidence percent, with support of at least cochange.minSupport, over the eligible changes of the analysis window, that exist and are not touched by the change. Confidence is shared changes divided by the touched file's changes. Banded on the count.",
+    definition: "Files whose confidence towards a touched file is at least cochange.risk.missingConfidence percent, with support of at least cochange.minSupport, over the eligible changes of the analysis window, that exist and are not touched by the change. Confidence is shared changes divided by the touched file's changes. A partner that is a build manifest listing sources (`CMakeLists.txt`, `Makefile`, `meson.build`, Bazel `BUILD`) counts only when the change adds, removes or renames a code file in its folder or below, and a touched build manifest does not make its source files missing, because such a manifest mostly changes when sources are added or removed; the partners skipped for that are counted in `manifestPartnersSkipped`. Banded on the count.",
     why: "The strongest single completeness signal: these files have needed changing every other time."
   },
   {
@@ -15066,7 +15142,7 @@ var FACTOR_DOCS = [
     layer: "lexical",
     banding: "count",
     signal: "Units that are new and over a guideline, or over a guideline and worse",
-    definition: "With the complexity plugin's diff passed in: the units it reports as new and over its guideline, or over it and worse. Without it: the touched code files (those a lexer profile reads, so not prose or licence text) whose indentation complexity rose by at least cochange.risk.complexityRise. Banded on the count, and not counted in the score.",
+    definition: "With the complexity plugin's diff passed in: the units it reports as new and over its guideline, or over it and worse. Without it: the touched production code files (those a lexer profile reads, so not prose or licence text, and not test files or test-support folders) whose indentation complexity rose by at least cochange.risk.complexityRise. Banded on the count, and not counted in the score. The factor's `source` says `indentation proxy, not a complexity comparison` in that case.",
     why: "The change is adding code that is hard to understand."
   },
   {

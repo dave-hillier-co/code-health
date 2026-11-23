@@ -12835,13 +12835,15 @@ function isTestPath(path, adapters) {
 }
 
 // packages/parse/src/test-files.ts
+var SUPPORT_FOLDER = /(^|\/)(tests?|__tests__|__mocks__|mocks|testing|testutils?|testhelpers?|testsupport|testfixtures?|integrationtesting|e2e)\//i;
+var isTestSupportFolder = (path) => SUPPORT_FOLDER.test(path.slice(0, path.lastIndexOf("/") + 1));
 function testClassifier(patterns = []) {
   const entries = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern !== "" && !pattern.startsWith("#")).map((pattern) => pattern.startsWith("!") ? { test: false, matches: compileGlobs([pattern.slice(1)]) } : { test: true, matches: compileGlobs([pattern]) });
   return (path) => {
     for (let index = entries.length - 1; index >= 0; index--) {
       if (entries[index].matches(path)) return entries[index].test;
     }
-    return isTestPath(path);
+    return isTestPath(path) || isTestSupportFolder(path);
   };
 }
 
@@ -22071,6 +22073,10 @@ var isChoice = (entry) => "items" in entry;
 function labelOf(slot, ref) {
   return slot.choose?.candidates.find((c) => c.ref === ref)?.label ?? ref;
 }
+function leadOf(slot) {
+  if (slot.about.kind === "report" || slot.title.includes(slot.about.label)) return void 0;
+  return slot.about.label;
+}
 function parts2(slot, entry) {
   if (isChoice(entry)) return entry.items.map((item) => ({ subject: labelOf(slot, item.subject), verdict: item.verdict, text: item.text }));
   const note = entry;
@@ -22082,6 +22088,14 @@ function judgementHtml(data) {
 ${heading}
 <p class="empty">Judgement not yet written.</p>
 </section>`;
+  if (!isChoice(data.entry)) {
+    const verdict = data.entry.verdict === void 0 ? "" : `<span class="verdict">Verdict: ${escapeHtml(data.entry.verdict)}.</span> `;
+    const lead = leadOf(data.slot);
+    return `<section class="judgement">
+${heading}
+<p>${lead === void 0 ? "" : `<strong class="subject">${escapeHtml(lead)}</strong>: `}${verdict}${escapeHtml(oneLine(data.entry.text))}</p>
+</section>`;
+  }
   const items = parts2(data.slot, data.entry).map(
     (p) => `<li><strong class="subject">${escapeHtml(p.subject)}</strong>${p.verdict === void 0 ? "" : ` <span class="verdict">Verdict: ${escapeHtml(p.verdict)}.</span>`} ${escapeHtml(oneLine(p.text))}</li>`
   );
@@ -22094,6 +22108,11 @@ ${items.join("\n")}
 }
 function judgementMd(data) {
   if (data.entry === void 0) return [`**${escapeMd(data.slot.title)}**`, "", `_Judgement not yet written: ${escapeMd(data.slot.task)}_`].join("\n");
+  if (!isChoice(data.entry)) {
+    const verdict = data.entry.verdict === void 0 ? "" : `Verdict: ${escapeMd(data.entry.verdict)}. `;
+    const lead = leadOf(data.slot);
+    return [`**${escapeMd(data.slot.title)}**`, "", `${lead === void 0 ? "" : `**${escapeMd(lead)}**: `}${verdict}${escapeMd(data.entry.text)}`].join("\n");
+  }
   const items = parts2(data.slot, data.entry).map((p, i2) => `${i2 + 1}. **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
   return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
 }

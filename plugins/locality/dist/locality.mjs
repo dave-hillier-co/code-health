@@ -6768,6 +6768,10 @@ var isChoice = (entry) => "items" in entry;
 function labelOf(slot, ref) {
   return slot.choose?.candidates.find((c) => c.ref === ref)?.label ?? ref;
 }
+function leadOf(slot) {
+  if (slot.about.kind === "report" || slot.title.includes(slot.about.label)) return void 0;
+  return slot.about.label;
+}
 function parts(slot, entry) {
   if (isChoice(entry)) return entry.items.map((item) => ({ subject: labelOf(slot, item.subject), verdict: item.verdict, text: item.text }));
   const note = entry;
@@ -6779,6 +6783,14 @@ function judgementHtml(data) {
 ${heading}
 <p class="empty">Judgement not yet written.</p>
 </section>`;
+  if (!isChoice(data.entry)) {
+    const verdict = data.entry.verdict === void 0 ? "" : `<span class="verdict">Verdict: ${escapeHtml(data.entry.verdict)}.</span> `;
+    const lead = leadOf(data.slot);
+    return `<section class="judgement">
+${heading}
+<p>${lead === void 0 ? "" : `<strong class="subject">${escapeHtml(lead)}</strong>: `}${verdict}${escapeHtml(oneLine(data.entry.text))}</p>
+</section>`;
+  }
   const items = parts(data.slot, data.entry).map(
     (p) => `<li><strong class="subject">${escapeHtml(p.subject)}</strong>${p.verdict === void 0 ? "" : ` <span class="verdict">Verdict: ${escapeHtml(p.verdict)}.</span>`} ${escapeHtml(oneLine(p.text))}</li>`
   );
@@ -6791,6 +6803,11 @@ ${items.join("\n")}
 }
 function judgementMd(data) {
   if (data.entry === void 0) return [`**${escapeMd(data.slot.title)}**`, "", `_Judgement not yet written: ${escapeMd(data.slot.task)}_`].join("\n");
+  if (!isChoice(data.entry)) {
+    const verdict = data.entry.verdict === void 0 ? "" : `Verdict: ${escapeMd(data.entry.verdict)}. `;
+    const lead = leadOf(data.slot);
+    return [`**${escapeMd(data.slot.title)}**`, "", `${lead === void 0 ? "" : `**${escapeMd(lead)}**: `}${verdict}${escapeMd(data.entry.text)}`].join("\n");
+  }
   const items = parts(data.slot, data.entry).map((p, i) => `${i + 1}. **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
   return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
 }
@@ -7436,6 +7453,8 @@ function capRows(table, max, command9) {
 // packages/locality/src/reports/locality.ts
 var TOP2 = 15;
 var PLANNED = 10;
+var TOP_REVIEW = 10;
+var TOP_SCRUTINISE = 10;
 var VERDICTS = ["do-it", "do-it-differently", "leave"];
 var KINDS = ["move", "split", "inline", "scrutinise", "review"];
 var DISTANCE_BINS = 5;
@@ -7450,7 +7469,8 @@ function consumersOf(candidate) {
   return [...new Set([...candidate.directCalls, ...candidate.otherRefs].map((entry) => entry.path))].sort();
 }
 var consumerFolders = (candidate) => new Set(consumersOf(candidate).map(folderOf));
-var folderText = (folder) => folder === "" ? "the repository root" : folder;
+var ROOT_TEXT = "the repository root (/)";
+var folderText = (folder) => folder === "" ? ROOT_TEXT : folder;
 var confidenceOf = (candidate) => candidate.confidence === void 0 ? "normal" : `low: ${candidate.confidence.reason}`;
 function refusalLine(refusals) {
   const counts = /* @__PURE__ */ new Map();
@@ -7474,34 +7494,92 @@ async function dryRun(context, candidate, settings, files) {
 function planText(plan) {
   if (plan.refusal !== null) return `no plan: ${plan.refusal}`;
   if (plan.failure !== null) return `the dry run failed: ${plan.failure}`;
-  return `${plural2(plan.filesMoved, "file")} moved to ${plan.destination === "" ? "the repository root" : plan.destination}, ${plural2(plan.rewrites, "import")} rewritten in ${plural2(plan.filesRewritten, "file")}`;
+  return `${plural2(plan.filesMoved, "file")} moved to ${folderText(plan.destination)}, ${plural2(plan.rewrites, "import")} rewritten in ${plural2(plan.filesRewritten, "file")}`;
 }
-function candidateTable(rows7, total, settings) {
+var gainColumns = (settings) => [
+  { key: "path", label: "Unit" },
+  { key: "kind", label: "Kind" },
+  { key: "target", label: "Target" },
+  { key: "gain", label: "Gain (net distance removed)", align: "right", guideline: { value: settings.minDistance, note: "locality.minDistance" } },
+  { key: "ratio", label: "Gain over guideline", align: "right" },
+  { key: "files", label: "Unit files", align: "right" },
+  { key: "consumers", label: "Consumer files", align: "right" },
+  { key: "folders", label: "Consumer folders", align: "right" },
+  { key: "distance", label: "Distance", align: "right" },
+  { key: "confidence", label: "Confidence" }
+];
+var gainRow = (c) => ({
+  path: c.path,
+  kind: c.recommendation,
+  target: folderText(c.target),
+  gain: c.gain,
+  ratio: c.ranking.ratio,
+  files: c.size.files,
+  consumers: consumersOf(c).length,
+  folders: consumerFolders(c).size,
+  distance: c.distance,
+  confidence: confidenceOf(c)
+});
+function moveTable(rows7, settings) {
   return {
     type: "ranked-table",
-    caption: "Candidates, ordered by gain over the locality.minDistance guideline",
-    noun: "candidates",
-    total,
-    columns: [
-      { key: "path", label: "Unit" },
-      { key: "kind", label: "Kind" },
-      { key: "gain", label: "Gain (net distance removed)", align: "right", guideline: { value: settings.minDistance, note: "locality.minDistance" } },
-      { key: "ratio", label: "Gain over guideline", align: "right" },
-      { key: "consumers", label: "Consumer files", align: "right" },
-      { key: "folders", label: "Consumer folders", align: "right" },
-      { key: "distance", label: "Distance", align: "right" },
-      { key: "confidence", label: "Confidence" }
-    ],
-    rows: rows7.map((c) => ({
-      path: c.path,
-      kind: c.recommendation,
-      gain: c.gain,
-      ratio: c.ranking.ratio,
-      consumers: consumersOf(c).length,
-      folders: consumerFolders(c).size,
-      distance: c.distance,
-      confidence: confidenceOf(c)
-    }))
+    ...capRows(
+      {
+        caption: "Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline",
+        noun: "moves",
+        emptyText: "No candidate has kind move, so no unit can be planned without --reason.",
+        columns: gainColumns(settings),
+        rows: rows7.map(gainRow)
+      },
+      TOP2,
+      "locality analyse --recommendation move"
+    )
+  };
+}
+function reviewTable(rows7, settings) {
+  return {
+    type: "ranked-table",
+    ...capRows(
+      {
+        caption: "Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline",
+        noun: "candidates",
+        emptyText: "No candidate has kind review, split or inline.",
+        columns: gainColumns(settings),
+        rows: rows7.map(gainRow)
+      },
+      TOP_REVIEW,
+      "locality analyse --recommendation review"
+    )
+  };
+}
+function scrutiniseTable(rows7, settings) {
+  return {
+    type: "ranked-table",
+    ...capRows(
+      {
+        caption: "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline",
+        noun: "units",
+        emptyText: "No unit has kind scrutinise.",
+        columns: [
+          { key: "path", label: "Unit" },
+          { key: "fanIn", label: "Consumer files", align: "right", guideline: { value: settings.highFanIn, note: "locality.highFanIn" } },
+          { key: "ratio", label: "Consumer files over guideline", align: "right" },
+          { key: "folders", label: "Consumer folders", align: "right" },
+          { key: "gain", label: "Gain (net distance removed)", align: "right" },
+          { key: "confidence", label: "Confidence" }
+        ],
+        rows: rows7.map((c) => ({
+          path: c.path,
+          fanIn: consumersOf(c).length,
+          ratio: c.guidelines.fanIn.ratio,
+          folders: consumerFolders(c).size,
+          gain: c.gain,
+          confidence: confidenceOf(c)
+        }))
+      },
+      TOP_SCRUTINISE,
+      "locality analyse --recommendation scrutinise"
+    )
   };
 }
 function candidateSection(rank, candidate, plan, settings) {
@@ -7517,7 +7595,7 @@ function candidateSection(rank, candidate, plan, settings) {
           { label: "Kind", value: `${candidate.recommendation} (rule ${candidate.rule})` },
           { label: "Reason", value: candidate.reason },
           { label: "Gain", value: `${candidate.gain} of net distance removed, against the locality.minDistance guideline of ${settings.minDistance}` },
-          { label: "Net distance", value: `${candidate.netDistance.current} now, ${candidate.netDistance.atTarget} at the target ${candidate.target === "" ? "(the repository root)" : candidate.target}` },
+          { label: "Net distance", value: `${candidate.netDistance.current} now, ${candidate.netDistance.atTarget} at the target ${folderText(candidate.target)}` },
           { label: "Consumers", value: `${plural2(consumers.length, "file")} in ${plural2(consumerFolders(candidate).size, "folder")}` },
           { label: "Size", value: `${plural2(candidate.size.files, "file")}, ${plural2(candidate.size.lines, "line")}` },
           ...candidate.unusableTarget === void 0 ? [] : [{ label: "Better folder refused", value: `${folderText(candidate.unusableTarget.target)}, with gain ${candidate.unusableTarget.gain}, is refused: ${candidate.unusableTarget.reason}` }],
@@ -7549,7 +7627,7 @@ function omittedRows(structural, history) {
     ...Object.entries(structural.byReason).sort(byText).map(([reason, count3]) => ({ what: `units with no proposed move: ${reason}`, count: count3 })),
     { what: "units recommended blocked, held back by a dependency (listed below with their blockers)", count: structural.blocked },
     { what: "units recommended keep, with nothing to move", count: structural.keep },
-    { what: `candidates past the top ${TOP2} of the table`, count: structural.notShown },
+    { what: `candidates past the rows of the three candidate tables`, count: structural.notShown },
     ...Object.entries(history.omitted).map(([reason, count3]) => ({ what: REASON_WORDS[reason] ?? reason, count: count3 }))
   ];
 }
@@ -7644,14 +7722,17 @@ var localityReport = {
     const historyOutput = await command.run({ ...context, positionals: [], values: { source: "history" } });
     const historyOnly2 = historyOutput.extra.historyOnly;
     const ofKind = all.filter((c) => KINDS.includes(c.recommendation));
-    const shown2 = ofKind.slice(0, TOP2);
-    const planned = shown2.slice(0, PLANNED);
+    const moves = ofKind.filter((c) => c.recommendation === "move");
+    const reviews = ofKind.filter((c) => c.recommendation === "review" || c.recommendation === "split" || c.recommendation === "inline");
+    const scrutinise = ofKind.filter((c) => c.recommendation === "scrutinise").sort((a, b) => b.fanIn - a.fanIn || (a.path < b.path ? -1 : 1));
+    const planned = [...moves, ...reviews].slice(0, PLANNED);
+    const shownCount = Math.min(moves.length, TOP2) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
     const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
     const plans = [];
     for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files));
     const byKind = extra.summary.byRecommendation;
     const blocked = all.filter((c) => c.recommendation === "blocked");
-    const omitted2 = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shown2.length, byReason: extra.summary.omitted }, historyOnly2);
+    const omitted2 = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount, byReason: extra.summary.omitted }, historyOnly2);
     const unresolved = Object.entries(extra.unresolved).sort(byText);
     const excluded = [
       ...omitted2,
@@ -7676,7 +7757,8 @@ var localityReport = {
               ...Object.entries(byKind).sort(byText).map(([kind, count3]) => ({ label: `Recommended ${kind}`, value: String(count3) }))
             ]
           },
-          ofKind.length === 0 ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." } : candidateTable(shown2, ofKind.length, settings)
+          ofKind.length === 0 ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." } : moveTable(moves, settings),
+          ...ofKind.length === 0 ? [] : [reviewTable(reviews, settings), scrutiniseTable(scrutinise, settings)]
         ]
       },
       ...planned.map((candidate, index) => candidateSection(index + 1, candidate, plans[index], settings)),
@@ -7731,7 +7813,7 @@ var localityReport = {
       sections,
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        `The table shows the top ${TOP2} candidates and says how many it leaves out; the move plans and judgements cover the top ${PLANNED}.`,
+        `Three tables list candidates by kind: moves (top ${TOP2}), reviews, splits and inlines (top ${TOP_REVIEW}) and scrutinise (top ${TOP_SCRUTINISE}). Each says how many rows it leaves out. Move plans and judgements cover the first ${PLANNED} of the moves, then the reviews and splits. A unit of kind blocked is listed only in the blocked table.`,
         "A move plan is a dry run of the proposed move. The report never applies one.",
         "Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.",
         ...lowConfidence > 0 ? [`${plural2(lowConfidence, "candidate")} rest on includes that found no file, so a consumer may be missing and the result is a lower bound.`] : [],
