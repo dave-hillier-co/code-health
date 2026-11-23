@@ -75,6 +75,10 @@
             "commits": {
               "$ref": "#/$defs/count"
             },
+            "landedChanges": {
+              "$ref": "#/$defs/count",
+              "description": "Changes landed on the main line in the range: its first-parent commits. Above 1, the per-change factors describe the union of those changes."
+            },
             "files": {
               "$ref": "#/$defs/count",
               "description": "Files left after the noise filters, pure moves excluded."
