@@ -14,15 +14,14 @@ export interface Abstractness {
   weak: boolean;
 }
 
-/** Below this many exported types `A` is reported with a caveat. */
-export const WEAK_BELOW_TYPES = 3;
 
 /**
- * Abstractness of every package the structural layer could read. Which declarations are types and which
+ * Abstractness of every package, weak below `minExportedTypes` exported types (`structure.packages.minExportedTypes`);
+ * every package the structural layer could read. Which declarations are types and which
  * are abstract is the adapter's of each element's file. Type aliases are left out of both counts: counted
  * as abstract they would make any package of types look fully abstract.
  */
-export function measureAbstractness(reuse: ReuseAnalysis): Map<string, Abstractness> {
+export function measureAbstractness(reuse: ReuseAnalysis, minExportedTypes: number): Map<string, Abstractness> {
   const result = new Map<string, Abstractness>();
   for (const [id, profile] of reuse.profiles) {
     let types = 0;
@@ -37,7 +36,7 @@ export function measureAbstractness(reuse: ReuseAnalysis): Map<string, Abstractn
       exportedTypes: types,
       abstractTypes: abstractCount,
       value: types === 0 ? 0 : round3(abstractCount / types),
-      weak: types < WEAK_BELOW_TYPES,
+      weak: types < minExportedTypes,
     });
   }
   return result;

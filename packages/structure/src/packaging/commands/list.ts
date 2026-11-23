@@ -6,7 +6,7 @@ import type { Subcommand } from "../subcommand.ts";
 export const list: Subcommand = {
   summary: "Every package with its kind, purpose, size, consumers, stability, closure and change frequency",
   async analyse({ model }) {
-    const rows = packageRows(model, measureAbstractness(await analyseReuse(model)));
+    const rows = packageRows(model, measureAbstractness(await analyseReuse(model), model.settings.packages.minExportedTypes));
     const ecosystems: Record<string, number> = {};
     for (const row of rows) ecosystems[row.ecosystem] = (ecosystems[row.ecosystem] ?? 0) + 1;
     return {

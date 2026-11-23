@@ -218,7 +218,7 @@ export function couplingFindings(context: FindingContext, reuse: ReuseAnalysis):
     ...packageCycles(context),
     ...hiddenCycles(context),
     ...againstStability(context),
-    ...zones(context, measureAbstractness(reuse)),
+    ...zones(context, measureAbstractness(reuse, context.model.settings.packages.minExportedTypes)),
     ...volatileInterfaces(context, reuse),
   ];
 }

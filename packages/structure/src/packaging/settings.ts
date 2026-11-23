@@ -62,6 +62,8 @@ export const packagesDefaults = {
   volatileInterfaceShare: 0.3,
   /** `zone-of-pain` and `zone-of-uselessness`: the distance from the main sequence at which the zones are raised. */
   zoneDistance: 0.5,
+  /** A package that exports fewer types than this has weak abstractness evidence: the abstract-to-concrete ratio of one or two types says little. The report leaves such a package unplaced in the zones. A judgement call, not from Martin, whose metric defines no floor. */
+  minExportedTypes: 3,
 };
 
 export interface PackageOverride {
@@ -146,5 +148,6 @@ export function readPackageSettings(section: Record<string, unknown>, at: string
     graceDays: integer("graceDays", 0),
     volatileInterfaceShare: number("volatileInterfaceShare", 0, 1),
     zoneDistance: number("zoneDistance", 0, 1),
+    minExportedTypes: integer("minExportedTypes", 1),
   };
 }

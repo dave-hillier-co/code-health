@@ -218,9 +218,10 @@ export function withEvidenceFloor(against: readonly UnstableDependency[], settin
 
 function stabilityBlocks(packageRows: readonly PackageRow[], allAgainst: readonly UnstableDependency[], settings: StructureSettings): { blocks: Block[]; slots: Slot[] } {
   const { listed: against, belowFloor } = withEvidenceFloor(allAgainst, settings);
-  const noTypes = packageRows.filter((row) => row.abstractness !== null && row.exportedTypes === 0).length;
+  const floor = settings.packages.minExportedTypes;
+  const unplaced = packageRows.filter((row) => row.abstractness !== null && (row.exportedTypes ?? 0) < floor).length;
   const measured = packageRows.flatMap((row): StabilityPoint[] =>
-    row.instability === null || row.abstractness === null || row.distance === null || (row.exportedTypes ?? 0) === 0
+    row.instability === null || row.abstractness === null || row.distance === null || (row.exportedTypes ?? 0) < floor
       ? []
       : [{ name: row.id, instability: row.instability, abstractness: row.abstractness, distance: row.distance, ca: row.ca, ce: row.ce, exportedTypes: row.exportedTypes ?? 0, weak: row.abstractnessWeak }],
   );
@@ -228,8 +229,8 @@ function stabilityBlocks(packageRows: readonly PackageRow[], allAgainst: readonl
   const shown = against.slice(0, TOP_AGAINST);
   const slots: Slot[] = [];
   const blocks: Block[] = [
-    { type: "stability-chart", title: "Packages by instability and abstractness", zoneDistance: settings.packages.zoneDistance, zoneSource: "structure.packages.zoneDistance, a judgement call", points, maxPoints: TOP_PACKAGES, total: packageRows.length - noTypes, noun: "packages" },
-    ...(noTypes === 0 ? [] : [{ type: "notice" as const, level: "notice" as const, text: `${plural(noTypes, "package")} export${noTypes === 1 ? "s" : ""} no types, so abstractness is not measured for ${noTypes === 1 ? "it" : "them"}. ${noTypes === 1 ? "It is" : "They are"} left out of the chart and its table and are not placed in a zone.` }]),
+    { type: "stability-chart", title: "Packages by instability and abstractness", zoneDistance: settings.packages.zoneDistance, zoneSource: "structure.packages.zoneDistance, a judgement call", points, maxPoints: TOP_PACKAGES, total: packageRows.length - unplaced, noun: "packages" },
+    ...(unplaced === 0 ? [] : [{ type: "notice" as const, level: "notice" as const, text: `${plural(unplaced, "package")} ${unplaced === 1 ? "has" : "have"} too few exported types to place (fewer than ${floor}, structure.packages.minExportedTypes, a judgement call); abstractness is not measured for ${unplaced === 1 ? "it" : "them"}. ${unplaced === 1 ? "It is" : "They are"} left out of the chart, its table and its zone counts.` }]),
     {
       type: "paragraph",
       text: "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one.",
@@ -392,7 +393,10 @@ function limitsOf(results: Results, settings: StructureSettings): string[] {
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
     `Each list shows its top rows and says how many it leaves out: ${TOP_CYCLES} cycles, ${TOP_AGAINST} dependencies against stability, ${TOP_LAYER_VIOLATIONS} layer violations, ${TOP_HUBS} hubs and ${TOP_PACKAGES} packages in the stability table (the chart draws every package that exports types). The commands print the rest.`,
     "Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. `structure cycles --level` shows the other levels.",
-    "Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, a package that exports fewer than 3 types is marked weak, and a package that exports none is not measured and is left out of the chart. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.",
+    `Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums. A package that exports fewer than ${settings.packages.minExportedTypes} types (structure.packages.minExportedTypes) has too few for the abstract-to-concrete ratio to mean anything, so it is unplaced: left out of the chart, its table and its zone counts, and counted. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.`,
+    ...(results.packages.some((row) => row.ecosystem === "go")
+      ? ["In Go, packages offer behaviour through functions and structurally satisfied interfaces, and the measure counts only declared types, so a concrete Go package that many packages depend on is common and a position in the zone of pain says little about it. Change evidence carries the judgement."]
+      : []),
     "The zones of the chart are geometric. `structure packages coupling` raises a finding only when a package in a zone also has dependents and changes often.",
     "The census finds mechanisms by name and shape, so a look-alike can be counted and a custom convention missed.",
     ...(settings.layers.length === 0 ? ["No layers are configured in structure.layers, so no layer rule was checked."] : []),

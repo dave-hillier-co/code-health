@@ -50,6 +50,12 @@ describe("abstractness and distance from the main sequence", () => {
     expect(shared).toMatchObject({ abstractness: 0, exportedTypes: 0, abstractnessWeak: true, instability: 0, distance: 1 });
   });
 
+  test("a package is weak below the configured number of exported types", async () => {
+    expect((await rows()).get("packages/orphan")!.abstractnessWeak).toBe(true);
+    const lowered = await withPackageSettings(repo, { minExportedTypes: 2 }, rows);
+    expect(lowered.get("packages/orphan")!.abstractnessWeak).toBe(false);
+  });
+
   test("packages the structural layer cannot read have neither", async () => {
     const fixture = manifestsRepository();
     try {

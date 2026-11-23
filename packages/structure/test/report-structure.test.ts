@@ -233,14 +233,14 @@ test("the report command is described by --help with its report and the protocol
   expect(help).toContain("--slots");
 });
 
-test("packages that export no types are left out of the chart and counted, and are not placed in a zone", async () => {
+test("packages with too few exported types are unplaced: left out of the chart and its zone counts, and counted", async () => {
   const document = await slots();
   const stability = document.data.sections.find((s: { id: string }) => s.id === "stability");
   const chart = stability.blocks.find((b: { type: string }) => b.type === "stability-chart");
   expect(chart.points.map((p: { name: string }) => p.name).sort()).toEqual(["packages/p3", "packages/p4", "packages/p5"]);
   expect(chart.points.every((p: { exportedTypes: number }) => p.exportedTypes > 0)).toBe(true);
   const { stdout } = await run("--notes", writeNotes("notes-types.json", fullNotes(document)), "--format", "md");
-  expect(stdout).toContain("2 packages export no types, so abstractness is not measured for them");
+  expect(stdout).toContain("2 packages have too few exported types to place (fewer than 3, structure.packages.minExportedTypes, a judgement call); abstractness is not measured for them");
   expect(stdout).not.toContain("| packages/p1 |");
   expect(stdout).not.toContain("A weak");
 });

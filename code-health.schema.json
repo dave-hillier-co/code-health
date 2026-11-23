@@ -1203,6 +1203,10 @@
             "zoneDistance": {
               "type": "number",
               "default": 0.5
+            },
+            "minExportedTypes": {
+              "type": "number",
+              "default": 3
             }
           },
           "additionalProperties": false,
@@ -1239,7 +1243,8 @@
             "tinyPercentile": 10,
             "graceDays": 180,
             "volatileInterfaceShare": 0.3,
-            "zoneDistance": 0.5
+            "zoneDistance": 0.5,
+            "minExportedTypes": 3
           }
         },
         "branch": {

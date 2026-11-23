@@ -137,7 +137,7 @@ function reuseOf(reuse: ReuseAnalysis, unit: ReadonlySet<string>): ReuseFigures 
 }
 
 function medianDistance(model: PackageModel, reuse: ReuseAnalysis): number | null {
-  const abstractness = measureAbstractness(reuse);
+  const abstractness = measureAbstractness(reuse, model.settings.packages.minExportedTypes);
   const distances: number[] = [];
   for (const [id, measured] of abstractness) {
     const instability = model.model.structural.get(id)?.instability;

@@ -229,7 +229,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <p class="legend">Of the 3 measured packages, 1 are in the zone of pain, 1 in the zone of uselessness and 1 outside the zones.</p>
 <p class="legend">The table lists 3 of 3 packages, furthest from the main sequence first; 0 not listed.</p>
 </figure>
-<aside class="notice notice" role="note"><strong>Notice:</strong> 2 packages export no types, so abstractness is not measured for them. They are left out of the chart and its table and are not placed in a zone.</aside>
+<aside class="notice notice" role="note"><strong>Notice:</strong> 2 packages have too few exported types to place (fewer than 3, structure.packages.minExportedTypes, a judgement call); abstractness is not measured for them. They are left out of the chart, its table and its zone counts.</aside>
 <p>A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one.</p>
 <table class="ranked">
 <caption>Dependencies pointing towards less stable folders</caption>
@@ -272,7 +272,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li>Guidelines order and label results. They are heuristics for investigation and decide nothing.</li>
 <li>Each list shows its top rows and says how many it leaves out: 5 cycles, 8 dependencies against stability, 15 layer violations, 10 hubs and 15 packages in the stability table (the chart draws every package that exports types). The commands print the rest.</li>
 <li>Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. <code>structure cycles --level</code> shows the other levels.</li>
-<li>Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, a package that exports fewer than 3 types is marked weak, and a package that exports none is not measured and is left out of the chart. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.</li>
+<li>Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums. A package that exports fewer than 3 types (structure.packages.minExportedTypes) has too few for the abstract-to-concrete ratio to mean anything, so it is unplaced: left out of the chart, its table and its zone counts, and counted. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.</li>
 <li>The zones of the chart are geometric. <code>structure packages coupling</code> raises a finding only when a package in a zone also has dependents and changes often.</li>
 <li>The census finds mechanisms by name and shape, so a look-alike can be counted and a custom convention missed.</li>
 <li>The evidence grade is weak, so change stability and the co-change counts are tentative and the static structure should lead.</li>
