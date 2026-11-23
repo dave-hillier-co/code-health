@@ -86,7 +86,7 @@ test("list --unmapped keeps only identities a decision is still owed on, and the
 test("propose gives clusters and the signals behind every link, the most commits first", async () => {
   const { stdout } = await identities("propose", "--limit", "all");
   const document = json(stdout);
-  type Row = { id: string; strength: string; members: { identity: string; commits: number }[] };
+  type Row = { id: string; strength: string; members: { identity: string; commits: number }[]; links: { signals: { signal: string; strength: string }[] }[]; suggestedCanonical: string };
   const held = (p: Row): number => p.members.reduce((sum, m) => sum + m.commits, 0);
   const rows: Row[] = document.results;
   expect(rows.map((p) => p.id)).toEqual(rows.map((_, i) => `P${i + 1}`));
@@ -97,8 +97,8 @@ test("propose gives clusters and the signals behind every link, the most commits
     P2: rows.find((p) => p.members.some((m) => m.identity === key(john1)))!,
   };
   expect(byId.P1.members.map((m: { identity: string }) => m.identity).sort()).toEqual([key(jo1), key(jo2)].sort());
-  expect(byId.P1.links[0].signals.map((s: { signal: string }) => s.signal)).toEqual(["exact-email"]);
-  expect(byId.P2.links[0].signals[0]).toMatchObject({ signal: "noreply-same-user", strength: "strong" });
+  expect(byId.P1.links[0]!.signals.map((s: { signal: string }) => s.signal)).toEqual(["exact-email"]);
+  expect(byId.P2.links[0]!.signals[0]).toMatchObject({ signal: "noreply-same-user", strength: "strong" });
   const alex = document.results.find((p: { members: { identity: string }[] }) => p.members.some((m) => m.identity === key(alexA)));
   expect(alex).toMatchObject({ counterEvidence: true });
   const sam = document.results.find((p: { members: { identity: string }[] }) => p.members.some((m) => m.identity === key(samHome)));
