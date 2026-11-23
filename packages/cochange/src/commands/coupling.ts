@@ -3,11 +3,12 @@ import { treeDistance } from "@code-health/graph/tree-distance";
 import { isCodePath } from "@code-health/parse/code-files";
 import { analysisCommand } from "../analysis-command.ts";
 import type { Derived } from "../derived-results.ts";
-import type { LoadedHistory } from "../history-access.ts";
+import { loadHistory, type LoadedHistory } from "../history-access.ts";
 import { readSettings } from "../config.ts";
 import { coupledPairs, integerOption } from "../coupled-pairs.ts";
 import { focusPath } from "../focus-path.ts";
-import { compareBytes, confidenceOf, degreeOf, reachesDegree, type PairCount } from "../coupling.ts";
+import { pairIndex, pairTrend, type PairTrend } from "../coupling-trend.ts";
+import { compareBytes, confidenceOf, countCoupling, degreeOf, reachesDegree, type PairCount } from "../coupling.ts";
 
 export const name = "coupling";
 
@@ -52,7 +53,7 @@ const round1 = (value: number) => Math.round(value * 10) / 10;
 /** The pairs are stored for each file focus, listing option and window the run states. */
 export const derived: Derived = {
   command: name,
-  stated: ({ values }) => ({ file: values.file, minDegree: values["min-degree"], minSupport: values["min-support"] }),
+  stated: ({ values }) => ({ file: values.file, minDegree: values["min-degree"], minSupport: values["min-support"], trend: values.trend === true ? true : undefined }),
 };
 
 export const command = analysisCommand(name, {
@@ -62,6 +63,7 @@ export const command = analysisCommand(name, {
     file: { type: "string" },
     "min-degree": { type: "string" },
     "min-support": { type: "string" },
+    trend: { type: "boolean" },
   },
   partial: ({ values }) =>
     values.file !== undefined || values["min-degree"] !== undefined || values["min-support"] !== undefined,
@@ -81,17 +83,31 @@ export async function couplingOutput(context: CommandContext, history: LoadedHis
   const requested = context.values.file;
   const focus = typeof requested === "string" ? await focusPath(context, history, requested) : undefined;
 
+  const previous = context.values.trend === true ? await previousWindow(context, history) : undefined;
+  const tolerance = settings.couplingTrendTolerance;
+
   const rows = counts.pairs
     .filter((pair) => focus === undefined || pair.a === focus || pair.b === focus)
-    .map((pair) => describe(pair, focus, settings, minDegree, (path) => (isCodePath(path, languages) ? "code" : "non-code")))
+    .map((pair) => describe(pair, focus, settings, minDegree, previous === undefined ? undefined : pairTrend(pair, previous.index, tolerance), (path) => (isCodePath(path, languages) ? "code" : "non-code")))
     .sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
 
   return {
-    inputs: { file: focus ?? null, degreeGuideline: minDegree, minSupport, asymmetry: ASYMMETRY },
+    inputs: {
+      file: focus ?? null,
+      degreeGuideline: minDegree,
+      minSupport,
+      asymmetry: ASYMMETRY,
+      ...(context.values.trend === true ? { trend: { toleranceGuideline: tolerance } } : {}),
+    },
     results: rows,
-    columns: ["path", "pathKind", "with", "withKind", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
+    columns: [
+      "path", "pathKind", "with", "withKind", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance",
+      ...(context.values.trend === true ? ["trend", "degreeChange"] : []),
+      "findings",
+    ],
     extra: {
       population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
+      ...(previous === undefined ? {} : { trendWindows: previous.windows }),
       note:
         rows.length === 0
           ? `No pair shares at least ${minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.`
@@ -105,6 +121,7 @@ function describe(
   focus: string | undefined,
   settings: { minDegree: number; minSupport: number; minDistance: number },
   guideline: number,
+  trend: PairTrend | undefined,
   kindOf: (path: string) => "code" | "non-code",
 ) {
   // With --file the focused file leads, whichever way the pair sorts.
@@ -147,6 +164,27 @@ function describe(
     distance,
     findings,
     dependent,
+    ...(trend === undefined ? {} : trend),
     evidence: { support: pair.support, changesPath, changesWith, clearsMinimum },
+  };
+}
+
+/**
+ * The pairs of the window before the current one, of the same length and ending where the current one starts, read with the
+ * same filters. Pairs are counted from one shared change, with no support floor, so a pair that was weak before has its real
+ * earlier degree. `index` is undefined when that window holds no eligible change, and the trend is then null.
+ */
+async function previousWindow(context: CommandContext, history: LoadedHistory) {
+  const { since, until } = history.window;
+  const earlierSince = since - (until - since);
+  const earlier = await loadHistory(context, { noRefresh: true, window: { since: earlierSince, until: since } });
+  const counts = countCoupling(
+    earlier.filtered.changes.map((change) => ({ files: change.files.map((file) => file.fileId), oversized: change.oversized })),
+    { minSupport: 1 },
+  );
+  const iso = (seconds: number) => new Date(seconds * 1000).toISOString();
+  return {
+    index: counts.eligibleChanges === 0 ? undefined : pairIndex(counts.pairs),
+    windows: { previous: { since: iso(earlierSince), until: iso(since), eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges } },
   };
 }

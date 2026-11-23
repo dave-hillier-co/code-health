@@ -80,6 +80,8 @@ A hotspot with no red flag and no outcome evidence is a candidate for dismissal.
 4. Before you recommend anything, open both files and confirm the coupling is real: shared constants, a registry or list that must be kept in step, a format written in one and read in another. A coupling you cannot explain after reading the code is a finding to report as unexplained, not one to act on.
 5. Report each pair with support, both confidences, distance, the red flag or "none applies", and the handoff: a locality review for co-location, or a design change that removes the shared decision.
 
+`coupling --trend` adds how each pair moved against the window before: `stronger`, `stable` or `weaker`, with both degrees. Say a pair that was not coupled before is new coupling, not a long-standing one. The `report coupling` page lays the pairs, sums, clusters and trends out for a reader.
+
 Coupling between a file and its sibling test has distance 0 and is expected. Do not report it as a problem.
 
 `clusters` lists groups of mutually coupled files with their spread, and flags the change magnets: files that change with many folders whose partners rarely change with each other. A `change-magnet` is probably a registration hub. Say so and ask before proposing a change. A `cluster` spanning three or more folders may be one unit spread across the tree: hand it to a locality review.

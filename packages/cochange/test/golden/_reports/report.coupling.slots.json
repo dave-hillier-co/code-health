@@ -1,0 +1,703 @@
+{
+  "data": {
+    "header": {
+      "commit": "8f8f40240b6e83b43f5b0513636448cf4ee76478",
+      "configHash": "0000000000000000",
+      "date": "2025-12-31",
+      "evidenceGrade": "weak",
+      "excluded": [
+        {
+          "count": 46,
+          "what": "commits outside the analysis window"
+        }
+      ],
+      "historyWindow": "23 months of usable history; the analysis window is 12 months, 2024-12-31 to 2025-12-31; the previous window for trends is 2024-01-01 to 2024-12-31",
+      "repo": "repo"
+    },
+    "limits": [
+      "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+      "Coupling counts changes that touched both files in the window, over changes at or below the changeset limit; a larger change counts on neither side. A pair that shares fewer than 5 changes (the support floor) is not listed.",
+      "Files that change together may share a design decision, or only a shared constant, a registry, a protocol, tests or generated code. The numbers cannot tell these apart; the judgements say which it is.",
+      "Each table shows the top rows of its result and says how many rows it leaves out; `cochange coupling` and `cochange clusters` print the rest.",
+      "The trend compares each pair's degree with its degree in the previous window of the same length (2024-01-01 to 2024-12-31, 46 eligible changes). A pair that was young or rare then has a noisy earlier degree, and stable means a change of at most 10 points.",
+      "The evidence grade is weak, so history-based results are tentative and static signals should lead.",
+      "A change of merge policy shifts what a commit means, so compare windows within one policy.",
+      "Hidden coupling is read from structure's stored result and never computed here, so none is shown until `structure hidden` has run for this commit."
+    ],
+    "sections": [
+      {
+        "blocks": [
+          {
+            "slot": "summary",
+            "type": "judgement"
+          }
+        ],
+        "heading": "What the coupling says",
+        "id": "summary"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Most strongly coupled pairs of files, with how each moved since the previous window",
+            "columns": [
+              {
+                "key": "file",
+                "label": "File"
+              },
+              {
+                "key": "with",
+                "label": "Changes with"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "cochange.minDegree",
+                  "value": 30
+                },
+                "key": "degree",
+                "label": "Degree (%)"
+              },
+              {
+                "align": "right",
+                "key": "support",
+                "label": "Shared changes"
+              },
+              {
+                "align": "right",
+                "key": "confidence",
+                "label": "Confidence file to with (%)"
+              },
+              {
+                "align": "right",
+                "key": "reverse",
+                "label": "Confidence with to file (%)"
+              },
+              {
+                "align": "right",
+                "key": "distance",
+                "label": "Distance (folder hops)"
+              },
+              {
+                "key": "trend",
+                "label": "Trend"
+              }
+            ],
+            "noun": "pairs",
+            "rows": [
+              {
+                "confidence": 100,
+                "degree": 100,
+                "distance": 0,
+                "file": "src/search/index.ts",
+                "reverse": 100,
+                "support": 5,
+                "trend": "↑ stronger (+100 points, shared no change before)",
+                "with": "src/search/ranking.ts"
+              },
+              {
+                "confidence": 80,
+                "degree": 80,
+                "distance": 2,
+                "file": "src/api/orders.ts",
+                "reverse": 80,
+                "support": 8,
+                "trend": "↑ stronger (+60 points)",
+                "with": "src/web/orders-view.ts"
+              },
+              {
+                "confidence": 70,
+                "degree": 70,
+                "distance": 0,
+                "file": "src/billing/ledger.test.ts",
+                "reverse": 70,
+                "support": 7,
+                "trend": "→ stable (+10 points)",
+                "with": "src/billing/ledger.ts"
+              },
+              {
+                "confidence": 50,
+                "degree": 50,
+                "distance": 2,
+                "file": "src/config/flags.ts",
+                "reverse": 50,
+                "support": 5,
+                "trend": "↓ weaker (-40 points)",
+                "with": "src/runtime/flags.ts"
+              }
+            ],
+            "total": 4,
+            "type": "ranked-table"
+          },
+          {
+            "caption": "Trend of all 4 pairs against 2024-01-01 to 2024-12-31",
+            "facts": [
+              {
+                "label": "Stronger",
+                "value": "2"
+              },
+              {
+                "label": "Stable",
+                "value": "1"
+              },
+              {
+                "label": "Weaker",
+                "value": "1"
+              },
+              {
+                "label": "Pairs that shared no change in the previous window",
+                "value": "1"
+              },
+              {
+                "label": "Stable means a change in degree of at most",
+                "value": "10 points (guideline cochange.couplingTrendTolerance, a judgement call)"
+              },
+              {
+                "label": "Eligible changes in the previous window",
+                "value": "46"
+              }
+            ],
+            "type": "facts"
+          },
+          {
+            "slot": "pair-1",
+            "type": "judgement"
+          },
+          {
+            "slot": "pair-2",
+            "type": "judgement"
+          },
+          {
+            "slot": "pair-3",
+            "type": "judgement"
+          },
+          {
+            "slot": "pair-4",
+            "type": "judgement"
+          },
+          {
+            "bins": [
+              {
+                "count": 0,
+                "label": "0 to 9"
+              },
+              {
+                "count": 0,
+                "label": "10 to 19"
+              },
+              {
+                "count": 0,
+                "label": "20 to 29"
+              },
+              {
+                "count": 0,
+                "label": "30 to 39"
+              },
+              {
+                "count": 0,
+                "label": "40 to 49"
+              },
+              {
+                "count": 1,
+                "label": "50 to 59"
+              },
+              {
+                "count": 0,
+                "label": "60 to 69"
+              },
+              {
+                "count": 1,
+                "label": "70 to 79"
+              },
+              {
+                "count": 1,
+                "label": "80 to 89"
+              },
+              {
+                "count": 1,
+                "label": "90 to 100"
+              }
+            ],
+            "title": "Distribution of pair degrees (percent)",
+            "type": "histogram",
+            "unit": "pairs"
+          }
+        ],
+        "heading": "Coupled pairs",
+        "id": "pairs"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Sum of coupling per file: the shared changes of all the pairs a file is in",
+            "columns": [
+              {
+                "key": "file",
+                "label": "File"
+              },
+              {
+                "align": "right",
+                "key": "shared",
+                "label": "Sum of shared changes"
+              },
+              {
+                "align": "right",
+                "key": "partners",
+                "label": "Coupled files"
+              },
+              {
+                "align": "right",
+                "key": "strongest",
+                "label": "Strongest degree (%)"
+              }
+            ],
+            "noun": "files",
+            "rows": [
+              {
+                "file": "src/api/orders.ts",
+                "partners": 1,
+                "shared": 8,
+                "strongest": 80
+              },
+              {
+                "file": "src/web/orders-view.ts",
+                "partners": 1,
+                "shared": 8,
+                "strongest": 80
+              },
+              {
+                "file": "src/billing/ledger.test.ts",
+                "partners": 1,
+                "shared": 7,
+                "strongest": 70
+              },
+              {
+                "file": "src/billing/ledger.ts",
+                "partners": 1,
+                "shared": 7,
+                "strongest": 70
+              },
+              {
+                "file": "src/config/flags.ts",
+                "partners": 1,
+                "shared": 5,
+                "strongest": 50
+              },
+              {
+                "file": "src/runtime/flags.ts",
+                "partners": 1,
+                "shared": 5,
+                "strongest": 50
+              },
+              {
+                "file": "src/search/index.ts",
+                "partners": 1,
+                "shared": 5,
+                "strongest": 100
+              },
+              {
+                "file": "src/search/ranking.ts",
+                "partners": 1,
+                "shared": 5,
+                "strongest": 100
+              }
+            ],
+            "total": 8,
+            "type": "ranked-table"
+          },
+          {
+            "cells": [
+              [
+                null,
+                8,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                8,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                7,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                7,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                5,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                5,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                5
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                5,
+                null
+              ]
+            ],
+            "columns": [
+              "src/api/orders.ts",
+              "src/web/orders-view.ts",
+              "src/billing/ledger.test.ts",
+              "src/billing/ledger.ts",
+              "src/config/flags.ts",
+              "src/runtime/flags.ts",
+              "src/search/index.ts",
+              "src/search/ranking.ts"
+            ],
+            "rows": [
+              "src/api/orders.ts",
+              "src/web/orders-view.ts",
+              "src/billing/ledger.test.ts",
+              "src/billing/ledger.ts",
+              "src/config/flags.ts",
+              "src/runtime/flags.ts",
+              "src/search/index.ts",
+              "src/search/ranking.ts"
+            ],
+            "title": "Shared changes between the top 8 files by sum of coupling",
+            "type": "matrix",
+            "valueLabel": "shared changes (none where the pair shares fewer than 5, the support floor)"
+          }
+        ],
+        "heading": "Sum of coupling per file",
+        "id": "sums"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Clusters of mutually coupled files, with their spread",
+            "columns": [
+              {
+                "key": "files",
+                "label": "Files"
+              },
+              {
+                "align": "right",
+                "key": "size",
+                "label": "Files in cluster"
+              },
+              {
+                "align": "right",
+                "key": "folders",
+                "label": "Folders"
+              },
+              {
+                "align": "right",
+                "key": "spread",
+                "label": "Spread (mean tree distance)"
+              },
+              {
+                "align": "right",
+                "key": "degree",
+                "label": "Mean degree (%)"
+              },
+              {
+                "key": "findings",
+                "label": "Findings"
+              }
+            ],
+            "noun": "clusters",
+            "rows": [
+              {
+                "degree": 80,
+                "files": "src/api/orders.ts, src/web/orders-view.ts",
+                "findings": null,
+                "folders": 2,
+                "size": 2,
+                "spread": 2
+              },
+              {
+                "degree": 50,
+                "files": "src/config/flags.ts, src/runtime/flags.ts",
+                "findings": null,
+                "folders": 2,
+                "size": 2,
+                "spread": 2
+              },
+              {
+                "degree": 70,
+                "files": "src/billing/ledger.test.ts, src/billing/ledger.ts",
+                "findings": null,
+                "folders": 1,
+                "size": 2,
+                "spread": 0
+              },
+              {
+                "degree": 100,
+                "files": "src/search/index.ts, src/search/ranking.ts",
+                "findings": null,
+                "folders": 1,
+                "size": 2,
+                "spread": 0
+              }
+            ],
+            "total": 4,
+            "type": "ranked-table"
+          }
+        ],
+        "heading": "Clusters",
+        "id": "clusters"
+      },
+      {
+        "blocks": [
+          {
+            "level": "notice",
+            "text": "No stored structure hidden result for this commit. Run `structure hidden` to store it, then run this report again.",
+            "type": "notice"
+          }
+        ],
+        "heading": "Hidden coupling",
+        "id": "hidden"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "What the run left out, with counts",
+            "columns": [
+              {
+                "key": "what",
+                "label": "Left out"
+              },
+              {
+                "align": "right",
+                "key": "count",
+                "label": "Count"
+              }
+            ],
+            "numbered": false,
+            "rows": [
+              {
+                "count": 46,
+                "what": "commits outside the analysis window"
+              },
+              {
+                "count": 0,
+                "what": "shallow boundary commits"
+              },
+              {
+                "count": 0,
+                "what": "commits of imported history"
+              },
+              {
+                "count": 0,
+                "what": "commits in the blame ignore file"
+              },
+              {
+                "count": 0,
+                "what": "commits by bots and service accounts"
+              },
+              {
+                "count": 0,
+                "what": "commits trailed by this suite"
+              },
+              {
+                "count": 0,
+                "what": "commits with no file left after filtering"
+              },
+              {
+                "count": 0,
+                "what": "file changes that only rename"
+              },
+              {
+                "count": 0,
+                "what": "file changes matching exclude globs"
+              },
+              {
+                "count": 0,
+                "what": "lockfile changes"
+              },
+              {
+                "count": 0,
+                "what": "generated file changes"
+              },
+              {
+                "count": 0,
+                "what": "vendored file changes"
+              },
+              {
+                "count": 0,
+                "what": "changes over the changeset limit of 30 files, counted on neither side of any ratio"
+              }
+            ],
+            "type": "ranked-table"
+          }
+        ],
+        "heading": "What was excluded",
+        "id": "excluded"
+      }
+    ],
+    "title": "Coupling report"
+  },
+  "instructions": "Write notes.json as { stamp, notes }: copy the stamp unchanged, and give each slot id an entry that follows the slot's shape.",
+  "protocol": 1,
+  "report": "coupling",
+  "slots": [
+    {
+      "about": {
+        "kind": "pair",
+        "label": "src/search/index.ts and src/search/ranking.ts",
+        "ref": "src/search/index.ts <-> src/search/ranking.ts"
+      },
+      "id": "pair-1",
+      "maxChars": 320,
+      "task": "Is this coupling real (a shared design decision) or incidental (files that change together for another reason)? Start the text with the reason: shared constants, a registry, a protocol, tests, generated code, a data format or another. The verdict names real or incidental and the handoff: locality-review (should the files live together), structure-break (a dependency to break) or leave. Cite only values shown here; say when the evidence makes it tentative.",
+      "title": "Judgement: pair 1",
+      "verdicts": [
+        "real-locality-review",
+        "real-structure-break",
+        "real-leave",
+        "incidental-locality-review",
+        "incidental-structure-break",
+        "incidental-leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "pair",
+        "label": "src/api/orders.ts and src/web/orders-view.ts",
+        "ref": "src/api/orders.ts <-> src/web/orders-view.ts"
+      },
+      "id": "pair-2",
+      "maxChars": 320,
+      "task": "Is this coupling real (a shared design decision) or incidental (files that change together for another reason)? Start the text with the reason: shared constants, a registry, a protocol, tests, generated code, a data format or another. The verdict names real or incidental and the handoff: locality-review (should the files live together), structure-break (a dependency to break) or leave. Cite only values shown here; say when the evidence makes it tentative.",
+      "title": "Judgement: pair 2",
+      "verdicts": [
+        "real-locality-review",
+        "real-structure-break",
+        "real-leave",
+        "incidental-locality-review",
+        "incidental-structure-break",
+        "incidental-leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "pair",
+        "label": "src/billing/ledger.test.ts and src/billing/ledger.ts",
+        "ref": "src/billing/ledger.test.ts <-> src/billing/ledger.ts"
+      },
+      "id": "pair-3",
+      "maxChars": 320,
+      "task": "Is this coupling real (a shared design decision) or incidental (files that change together for another reason)? Start the text with the reason: shared constants, a registry, a protocol, tests, generated code, a data format or another. The verdict names real or incidental and the handoff: locality-review (should the files live together), structure-break (a dependency to break) or leave. Cite only values shown here; say when the evidence makes it tentative.",
+      "title": "Judgement: pair 3",
+      "verdicts": [
+        "real-locality-review",
+        "real-structure-break",
+        "real-leave",
+        "incidental-locality-review",
+        "incidental-structure-break",
+        "incidental-leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "pair",
+        "label": "src/config/flags.ts and src/runtime/flags.ts",
+        "ref": "src/config/flags.ts <-> src/runtime/flags.ts"
+      },
+      "id": "pair-4",
+      "maxChars": 320,
+      "task": "Is this coupling real (a shared design decision) or incidental (files that change together for another reason)? Start the text with the reason: shared constants, a registry, a protocol, tests, generated code, a data format or another. The verdict names real or incidental and the handoff: locality-review (should the files live together), structure-break (a dependency to break) or leave. Cite only values shown here; say when the evidence makes it tentative.",
+      "title": "Judgement: pair 4",
+      "verdicts": [
+        "real-locality-review",
+        "real-structure-break",
+        "real-leave",
+        "incidental-locality-review",
+        "incidental-structure-break",
+        "incidental-leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "report",
+        "label": "the repository",
+        "ref": "coupling"
+      },
+      "id": "summary",
+      "maxChars": 500,
+      "task": "In at most three sentences, say what the pairs, sums, clusters and trends together show, and where to look first. Cite only values shown in this report. Say when the evidence grade makes it tentative.",
+      "title": "Judgement: what the coupling says about this repository",
+      "verdicts": []
+    },
+    {
+      "about": {
+        "kind": "report",
+        "label": "the repository",
+        "ref": "coupling"
+      },
+      "id": "limits",
+      "maxChars": 500,
+      "task": "In at most three sentences, say what limits how far these results can be trusted for this repository, using only the evidence, the exclusions, the trend window and the missing results shown above.",
+      "title": "Judgement: what limits these results",
+      "verdicts": []
+    }
+  ],
+  "stamp": {
+    "config": "0000000000000000",
+    "head": "8f8f40240b6e83b43f5b0513636448cf4ee76478",
+    "inputs": {
+      "degreeGuideline": 30,
+      "minSupport": 5,
+      "since": null,
+      "storedResultsRead": [],
+      "trendTolerance": 10,
+      "until": null
+    },
+    "kind": "coupling",
+    "protocol": 1
+  }
+}

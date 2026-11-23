@@ -1238,9 +1238,9 @@ function suppressSqliteWarning() {
   suppressed = true;
   const emitWarning = process.emitWarning.bind(process);
   process.emitWarning = ((warning, ...rest) => {
-    const text3 = typeof warning === "string" ? warning : warning?.message ?? "";
+    const text4 = typeof warning === "string" ? warning : warning?.message ?? "";
     const type = typeof rest[0] === "string" ? rest[0] : warning?.name;
-    if (type === "ExperimentalWarning" && /SQLite/i.test(text3)) return;
+    if (type === "ExperimentalWarning" && /SQLite/i.test(text4)) return;
     emitWarning(warning, ...rest);
   });
 }
@@ -1852,10 +1852,10 @@ function ensureLocalState(root) {
   if (!existsSync6(ignore)) writeFileSync2(ignore, "*\n");
 }
 var KINDS = /* @__PURE__ */ new Set(["bot", "service", "agent", "person"]);
-function parse(text3, file) {
+function parse(text4, file) {
   let value;
   try {
-    value = JSON.parse(text3);
+    value = JSON.parse(text4);
   } catch (error) {
     throw configError(`${file}: not valid JSON (${error instanceof Error ? error.message : String(error)})`);
   }
@@ -2031,13 +2031,13 @@ function overridesPath(root) {
 function readOverrides(root) {
   const file = overridesPath(root);
   if (!existsSync7(file)) return { active: /* @__PURE__ */ new Set(), inactive: /* @__PURE__ */ new Set(), stamp: null };
-  const text3 = readFileSync6(file, "utf8");
+  const text4 = readFileSync6(file, "utf8");
   const fail = (what) => {
     throw configError(`${file}: ${what}`);
   };
   let value;
   try {
-    value = JSON.parse(text3);
+    value = JSON.parse(text4);
   } catch (error) {
     return fail(`not valid JSON (${error instanceof Error ? error.message : String(error)})`);
   }
@@ -2055,7 +2055,7 @@ function readOverrides(root) {
   const inactive = list("inactive");
   const both = [...active].filter((k) => inactive.has(k));
   if (both.length > 0) fail("an identity cannot be both active and inactive");
-  return { active, inactive, stamp: createHash3("sha256").update(text3).digest("hex").slice(0, 16) };
+  return { active, inactive, stamp: createHash3("sha256").update(text4).digest("hex").slice(0, 16) };
 }
 function readRank(context, settings) {
   const value = context.values.rank;
@@ -2336,6 +2336,8 @@ var cochangeConfig = {
     /** Coupling degree guideline, as a percentage (Tornhill's code-maat default). Orders and labels pairs. Only cluster membership cuts on it. */
     minDegree: 30,
     minDistance: 2,
+    /** Percentage points of degree within which a pair's coupling is stable between two windows (`coupling --trend`). A judgement call. */
+    couplingTrendTolerance: 10,
     /** The change-risk skill: see risk/settings.ts. */
     risk: riskDefaults,
     identities: {
@@ -2377,6 +2379,10 @@ function readSettings(config) {
   const identities = readIdentities(section2.identities, at);
   const minDegree = positive("minDegree");
   if (minDegree > 100) throw configError(`code-health.json: ${at("minDegree")} is a percentage, at most 100`);
+  const tolerance = section2.couplingTrendTolerance;
+  if (typeof tolerance !== "number" || !Number.isInteger(tolerance) || tolerance < 0 || tolerance > 100) {
+    throw configError(`code-health.json: ${at("couplingTrendTolerance")} is a number of percentage points, from 0 to 100`);
+  }
   const evidence = section2.evidence;
   return {
     ref: branch ?? "HEAD",
@@ -2392,6 +2398,7 @@ function readSettings(config) {
     minSupport: positive("minSupport"),
     minDegree,
     minDistance: positive("minDistance"),
+    couplingTrendTolerance: tolerance,
     exclude: config.effective.exclude,
     botPatterns: section2.botPatterns,
     identities,
@@ -2471,10 +2478,10 @@ function emailLocalPart(email) {
   return at === -1 ? normalised : normalised.slice(0, at);
 }
 function normaliseName(name18) {
-  let text3 = name18.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g, " ").replace(/_/g, " ");
-  const comma = text3.indexOf(",");
-  if (comma !== -1 && text3.indexOf(",", comma + 1) === -1) text3 = `${text3.slice(comma + 1)} ${text3.slice(0, comma)}`;
-  return text3.replace(/[.,]/g, " ").split(/\s+/).filter((t) => t !== "").join(" ");
+  let text4 = name18.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g, " ").replace(/_/g, " ");
+  const comma = text4.indexOf(",");
+  if (comma !== -1 && text4.indexOf(",", comma + 1) === -1) text4 = `${text4.slice(comma + 1)} ${text4.slice(0, comma)}`;
+  return text4.replace(/[.,]/g, " ").split(/\s+/).filter((t) => t !== "").join(" ");
 }
 function nameTokens(name18) {
   return normaliseName(name18).split(" ").filter((t) => t !== "");
@@ -2629,12 +2636,12 @@ function createNonPersonMatcher(rules10) {
     if (decision) {
       return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity };
     }
-    const text3 = `${name18} <${email}>`;
-    const fromConfig = config.find((c) => c.re.test(text3));
+    const text4 = `${name18} <${email}>`;
+    const fromConfig = config.find((c) => c.re.test(text4));
     if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
-    const agent = builtinAgents.find((c) => c.re.test(text3));
+    const agent = builtinAgents.find((c) => c.re.test(text4));
     if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern };
-    const bot = builtin.find((c) => c.re.test(text3));
+    const bot = builtin.find((c) => c.re.test(text4));
     if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
     const normalised = normaliseName(name18);
     if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
@@ -2907,14 +2914,14 @@ function bucketLabel(start, bucket) {
   const iso2 = new Date(start * 1e3).toISOString();
   return bucket === "month" ? iso2.slice(0, 7) : iso2.slice(0, 10);
 }
-function parseDate(text3) {
-  const day2 = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text3);
+function parseDate(text4) {
+  const day2 = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text4);
   if (!day2) return null;
   const midnight = Date.UTC(Number(day2[1]), Number(day2[2]) - 1, Number(day2[3]));
-  if (new Date(midnight).toISOString().slice(0, 10) !== text3.slice(0, 10)) return null;
+  if (new Date(midnight).toISOString().slice(0, 10) !== text4.slice(0, 10)) return null;
   if (day2[4] === void 0) return midnight / 1e3;
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text3)) return null;
-  const ms = Date.parse(text3);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text4)) return null;
+  const ms = Date.parse(text4);
   return Number.isNaN(ms) ? null : Math.floor(ms / 1e3);
 }
 
@@ -3547,18 +3554,18 @@ function counterEvidenceWithin(group) {
 import { createHash as createHash5 } from "node:crypto";
 var PLATFORM_KEYS = /* @__PURE__ */ new Set(["gpg:B5690EEEBB952194"]);
 var isPlatformKey = (key) => PLATFORM_KEYS.has(key);
-function armoredBody(text3, kind) {
-  const begin = text3.indexOf(`-----BEGIN ${kind}-----`);
-  const end = text3.indexOf(`-----END ${kind}-----`);
+function armoredBody(text4, kind) {
+  const begin = text4.indexOf(`-----BEGIN ${kind}-----`);
+  const end = text4.indexOf(`-----END ${kind}-----`);
   if (begin === -1 || end === -1 || end < begin) return void 0;
-  const lines = text3.slice(begin + `-----BEGIN ${kind}-----`.length, end).split("\n").map((line) => line.trim());
+  const lines = text4.slice(begin + `-----BEGIN ${kind}-----`.length, end).split("\n").map((line) => line.trim());
   const blank = lines.indexOf("");
   const body = (blank > 0 ? lines.slice(blank + 1) : lines).filter((line) => line !== "" && !line.startsWith("="));
   const bytes = Buffer.from(body.join(""), "base64");
   return bytes.length === 0 ? void 0 : bytes;
 }
-function sshKey(text3) {
-  const bytes = armoredBody(text3, "SSH SIGNATURE");
+function sshKey(text4) {
+  const bytes = armoredBody(text4, "SSH SIGNATURE");
   if (bytes === void 0 || bytes.length < 14 || bytes.subarray(0, 6).toString("latin1") !== "SSHSIG") return void 0;
   const length = bytes.readUInt32BE(10);
   if (length === 0 || 14 + length > bytes.length) return void 0;
@@ -3595,8 +3602,8 @@ function issuerOf(packet) {
   }
   return fingerprint !== void 0 ? fingerprint.slice(-16) : keyId;
 }
-function pgpKey(text3) {
-  const bytes = armoredBody(text3, "PGP SIGNATURE");
+function pgpKey(text4) {
+  const bytes = armoredBody(text4, "PGP SIGNATURE");
   if (bytes === void 0) return void 0;
   const first = bytes[0];
   if ((first & 128) === 0) return void 0;
@@ -3828,7 +3835,7 @@ import { existsSync as existsSync9 } from "node:fs";
 import { join as join6 } from "node:path";
 var GREP_CHUNK = 200;
 async function textFilesAt(root, sha, paths) {
-  const text3 = /* @__PURE__ */ new Set();
+  const text4 = /* @__PURE__ */ new Set();
   const prefix = `${sha}:`;
   for (let i = 0; i < paths.length; i += GREP_CHUNK) {
     let out;
@@ -3839,10 +3846,10 @@ async function textFilesAt(root, sha, paths) {
     }
     for (const record of out.split("\n")) {
       const [pathPart] = record.split("\0");
-      if (pathPart?.startsWith(prefix)) text3.add(pathPart.slice(prefix.length));
+      if (pathPart?.startsWith(prefix)) text4.add(pathPart.slice(prefix.length));
     }
   }
-  return text3;
+  return text4;
 }
 async function authoredFilesAt(root, sha, exclude = []) {
   const excluded = compileGlobs(exclude);
@@ -4124,9 +4131,9 @@ async function refreshBlame(repoPath, options = {}) {
         const reusedKeys = new Set(reusable.map((f) => f.path));
         moveFilesTo(db, settings.id, sha, reusable.filter((f) => f.atCommit !== sha));
         const missing = authored.filter((f) => !reusedKeys.has(f.path));
-        const text3 = await textFilesAt(root, sha, missing.map((f) => f.path));
-        const toBlame = missing.filter((f) => text3.has(f.path));
-        const noText = missing.filter((f) => !text3.has(f.path));
+        const text4 = await textFilesAt(root, sha, missing.map((f) => f.path));
+        const toBlame = missing.filter((f) => text4.has(f.path));
+        const noText = missing.filter((f) => !text4.has(f.path));
         const description = `-w -M${settings.copyDetection ? " -C" : ""}, ${settings.ignoreRevs.length} ignored revisions`;
         putBlamedFiles(db, settings.id, description, sha, noText.map((f) => ({ path: f.path, blob: f.blob, ranges: [] })));
         const ignoreFile = settings.ignoreRevs.length > 0 ? join7(location.cacheDir, `ignore-revs-${settings.id}.txt`) : void 0;
@@ -4876,9 +4883,9 @@ async function readLandings(root, tip) {
   const assigned = new Set(line.map((c) => c.sha));
   const landings = [];
   for (const entry of line) {
-    const { title, text: text3 } = landedText(entry.message);
+    const { title, text: text4 } = landedText(entry.message);
     if (entry.parents.length < 2) {
-      landings.push({ id: entry.sha, time: entry.time, how: "direct", title: title ?? entry.message.split("\n", 1)[0].trim(), text: text3, members: [entry.sha], branch: [] });
+      landings.push({ id: entry.sha, time: entry.time, how: "direct", title: title ?? entry.message.split("\n", 1)[0].trim(), text: text4, members: [entry.sha], branch: [] });
       continue;
     }
     const stack = entry.parents.slice(1);
@@ -4899,7 +4906,7 @@ async function readLandings(root, tip) {
       time: entry.time,
       how: "merge",
       title: title ?? entry.message.split("\n", 1)[0].trim(),
-      text: text3,
+      text: text4,
       members: branch.map((commit) => commit.sha),
       branch
     });
@@ -5567,16 +5574,16 @@ function detectIndentUnit(lines) {
   }
   return best;
 }
-function leadingSpaces(text3) {
+function leadingSpaces(text4) {
   let width = 0;
-  while (text3[width] === " ") width++;
+  while (text4[width] === " ") width++;
   return width;
 }
-function levelOf(text3, unit) {
+function levelOf(text4, unit) {
   let tabs = 0;
-  while (text3[tabs] === "	") tabs++;
+  while (text4[tabs] === "	") tabs++;
   let spaces = 0;
-  while (text3[tabs + spaces] === " ") spaces++;
+  while (text4[tabs + spaces] === " ") spaces++;
   return tabs + Math.floor(spaces / unit);
 }
 function indentationMetrics(lines) {
@@ -5625,15 +5632,15 @@ function classifyHeader(segments, profile) {
     return trimmed !== "" && !noise.some((pattern) => pattern.test(trimmed));
   });
   if (kept.length === 0) return { kind: "other" };
-  const text3 = kept.map((segment2) => segment2.text.trim()).join(" ").replace(/\s+/g, " ");
+  const text4 = kept.map((segment2) => segment2.text.trim()).join(" ").replace(/\s+/g, " ");
   const line = kept[0].line;
-  if (control.test(text3)) return { kind: "other" };
+  if (control.test(text4)) return { kind: "other" };
   for (const pattern of types) {
-    const match = pattern.exec(text3);
+    const match = pattern.exec(text4);
     if (match?.groups?.name !== void 0) return { kind: "type", name: cleanName(match.groups.name), line };
   }
   for (const pattern of functions) {
-    const match = pattern.exec(text3);
+    const match = pattern.exec(text4);
     if (match !== null) {
       const name18 = match.groups?.name;
       return { kind: "function", name: name18 === void 0 ? void 0 : cleanName(name18), line };
@@ -5669,12 +5676,12 @@ function isPlainEquals(code, index2) {
   return code[index2 + 1] !== "=" && code[index2 + 1] !== ">" && !/[-+*/%&|^!<>=]/.test(code[index2 - 1] ?? "");
 }
 function endsStatement(code, following) {
-  const text3 = code.trimEnd();
-  if (text3 === "" || /[-+*/%&|^?:=<.,([!~]$/.test(text3) || /(?:^|\s)>$/.test(text3) || text3.endsWith("->")) return false;
+  const text4 = code.trimEnd();
+  if (text4 === "" || /[-+*/%&|^?:=<.,([!~]$/.test(text4) || /(?:^|\s)>$/.test(text4) || text4.endsWith("->")) return false;
   return !continuesFromStart.test(following) && !following.startsWith("{") && !/^else\b/.test(following);
 }
-function angleBalanced(text3) {
-  const flat = text3.replace(/=>|->/g, "");
+function angleBalanced(text4) {
+  const flat = text4.replace(/=>|->/g, "");
   return (flat.match(/</g)?.length ?? 0) <= (flat.match(/>/g)?.length ?? 0);
 }
 function findBracedBlocks(lines, profile) {
@@ -5721,20 +5728,20 @@ function findBracedBlocks(lines, profile) {
     if (top2?.typeOnly === true || parenDepth > 0) return false;
     const kept = [...header2, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
     if (kept.length === 0) return false;
-    const text3 = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
+    const text4 = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
     let name18;
     let matched = false;
     const members = compile3(profile).members;
     if (members !== void 0) {
-      const found = members.map((pattern) => pattern.exec(text3)).find((match) => match !== null);
+      const found = members.map((pattern) => pattern.exec(text4)).find((match) => match !== null);
       if (found === void 0) return false;
       name18 = found?.groups?.name;
       matched = true;
     }
     for (const [i, pattern] of members === void 0 ? [...boundArrow.entries()] : []) {
-      const match = pattern.exec(text3);
+      const match = pattern.exec(text4);
       if (match === null) continue;
-      if (i === 0 && !inDeclaration && !keywordAssignment.test(text3) && top2?.name === void 0) continue;
+      if (i === 0 && !inDeclaration && !keywordAssignment.test(text4) && top2?.name === void 0) continue;
       if (i === 1 && (top2 === void 0 || top2.name !== void 0)) continue;
       name18 = match.groups?.name;
       matched = true;
@@ -5747,7 +5754,7 @@ function findBracedBlocks(lines, profile) {
       block.name = cleanName(name18);
       block.qualifiedName = qualify(names, block.name);
     }
-    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text3) };
+    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text4) };
     return true;
   };
   for (const [index2, line] of codeLines.entries()) {
@@ -5851,9 +5858,9 @@ function findBracedBlocks(lines, profile) {
     if (parenDepth === 0 && arrow === void 0 && endsLineWithoutSemicolon(line)) header2 = [];
     if (profile.newlineEndsStatements === true && arrow === void 0 && parenDepth === 0 && endsStatement(code, codeLines[index2 + 1]?.code.trim() ?? "")) header2 = [];
     if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
-      const text3 = code.trimEnd();
+      const text4 = code.trimEnd();
       const following = codeLines[index2 + 1]?.code.trim() ?? "";
-      if (text3 !== "" && !continuesExpression.test(text3) && !continuesFromStart.test(following) && !(profile.expressionBodies === true && /^else\b/.test(following))) {
+      if (text4 !== "" && !continuesExpression.test(text4) && !continuesFromStart.test(following) && !(profile.expressionBodies === true && /^else\b/.test(following))) {
         closeArrow();
         header2 = [];
       }
@@ -6037,12 +6044,12 @@ function stripSource(rawContent, profile) {
   const mask = profile === void 0 ? new Uint8Array(content.length) : maskLiterals(content, profile);
   const lines = [];
   let start = 0;
-  let number2 = 1;
+  let number3 = 1;
   while (start <= content.length) {
     let end = content.indexOf("\n", start);
     if (end === -1) end = content.length;
     if (end === content.length && start === content.length && start > 0) break;
-    const text3 = content.slice(start, end);
+    const text4 = content.slice(start, end);
     let code = "";
     let sawComment = false;
     for (let i = start; i < end; i++) {
@@ -6054,12 +6061,12 @@ function stripSource(rawContent, profile) {
     }
     const startsInString = start > 0 && mask[start - 1] === STRING;
     let kind;
-    if (text3.trim() === "") kind = "blank";
+    if (text4.trim() === "") kind = "blank";
     else if (startsInString && code.trim() === "") kind = "literal";
     else if (code.trim() !== "") kind = "code";
     else kind = sawComment || start > 0 && mask[start - 1] === COMMENT ? "comment" : "code";
-    lines.push({ number: number2, text: text3, code, kind, startsInLiteral: startsInString });
-    number2++;
+    lines.push({ number: number3, text: text4, code, kind, startsInLiteral: startsInString });
+    number3++;
     start = end + 1;
   }
   return lines;
@@ -6220,8 +6227,8 @@ function releaseFunctions(profileName, mapped, blocks, options) {
 }
 
 // packages/lexical/src/indentation-complexity.ts
-function indentationComplexity(text3, path = "") {
-  return analyseSource(path, text3).file.indentationComplexity;
+function indentationComplexity(text4, path = "") {
+  return analyseSource(path, text4).file.indentationComplexity;
 }
 
 // packages/cochange/src/complexity-source.ts
@@ -6270,8 +6277,8 @@ async function loadComplexity(context, headSha, paths) {
     const slice = paths.slice(start, start + batch);
     const texts = await Promise.all(slice.map((path) => readBlobAt(context.repo.root, headSha, path)));
     slice.forEach((path, i) => {
-      const text3 = texts[i];
-      values.set(path, text3 === void 0 || text3.includes("\0") ? null : indentationComplexity(text3, path));
+      const text4 = texts[i];
+      values.set(path, text4 === void 0 || text4.includes("\0") ? null : indentationComplexity(text4, path));
     });
   }
   return { source: "indentation", values, input: null };
@@ -7149,6 +7156,26 @@ async function focusPath(context, history, requested) {
   return present.includes(requested) ? requested : history.view.renames.resolve(requested, -1);
 }
 
+// packages/cochange/src/coupling-trend.ts
+var tenths = (value) => Math.round(value * 10);
+var keyOf = (a, b) => `${a}\0${b}`;
+function pairIndex(pairs) {
+  return new Map(pairs.map((pair) => [keyOf(pair.a, pair.b), pair]));
+}
+function pairTrend(current2, previous, tolerance) {
+  if (previous === void 0) return { previousDegree: null, previousSupport: null, degreeChange: null, trend: null };
+  const before = previous.get(keyOf(current2.a, current2.b));
+  const previousDegree = before === void 0 ? 0 : coChangeDegree(before.support, before.changesA, before.changesB);
+  const degree = coChangeDegree(current2.support, current2.changesA, current2.changesB);
+  const change2 = tenths(degree) - tenths(previousDegree);
+  return {
+    previousDegree: tenths(previousDegree) / 10,
+    previousSupport: before?.support ?? 0,
+    degreeChange: change2 / 10,
+    trend: Math.abs(change2) <= tolerance * 10 ? "stable" : change2 > 0 ? "stronger" : "weaker"
+  };
+}
+
 // packages/cochange/src/commands/coupling.ts
 var name5 = "coupling";
 var ASYMMETRY = { high: 80, low: 30 };
@@ -7184,7 +7211,7 @@ var rules4 = {
 var round1 = (value) => Math.round(value * 10) / 10;
 var derived2 = {
   command: name5,
-  stated: ({ values }) => ({ file: values.file, minDegree: values["min-degree"], minSupport: values["min-support"] })
+  stated: ({ values }) => ({ file: values.file, minDegree: values["min-degree"], minSupport: values["min-support"], trend: values.trend === true ? true : void 0 })
 };
 var command4 = analysisCommand(name5, {
   summary: "Pairs of files that change together, with degree, confidence both ways, support and distance",
@@ -7192,7 +7219,8 @@ var command4 = analysisCommand(name5, {
   options: {
     file: { type: "string" },
     "min-degree": { type: "string" },
-    "min-support": { type: "string" }
+    "min-support": { type: "string" },
+    trend: { type: "boolean" }
   },
   partial: ({ values }) => values.file !== void 0 || values["min-degree"] !== void 0 || values["min-support"] !== void 0,
   analyse: ({ context, history }) => couplingOutput(context, history)
@@ -7205,18 +7233,40 @@ async function couplingOutput(context, history) {
   const languages = context.config.effective.languages;
   const requested = context.values.file;
   const focus = typeof requested === "string" ? await focusPath(context, history, requested) : void 0;
-  const rows5 = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings, minDegree, (path) => isCodePath(path, languages) ? "code" : "non-code")).sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
+  const previous = context.values.trend === true ? await previousWindow(context, history) : void 0;
+  const tolerance = settings.couplingTrendTolerance;
+  const rows5 = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings, minDegree, previous === void 0 ? void 0 : pairTrend(pair, previous.index, tolerance), (path) => isCodePath(path, languages) ? "code" : "non-code")).sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
   return {
-    inputs: { file: focus ?? null, degreeGuideline: minDegree, minSupport, asymmetry: ASYMMETRY },
+    inputs: {
+      file: focus ?? null,
+      degreeGuideline: minDegree,
+      minSupport,
+      asymmetry: ASYMMETRY,
+      ...context.values.trend === true ? { trend: { toleranceGuideline: tolerance } } : {}
+    },
     results: rows5,
-    columns: ["path", "pathKind", "with", "withKind", "degree", "aboveGuideline", "confidence", "reverseConfidence", "support", "distance", "findings"],
+    columns: [
+      "path",
+      "pathKind",
+      "with",
+      "withKind",
+      "degree",
+      "aboveGuideline",
+      "confidence",
+      "reverseConfidence",
+      "support",
+      "distance",
+      ...context.values.trend === true ? ["trend", "degreeChange"] : [],
+      "findings"
+    ],
     extra: {
       population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
+      ...previous === void 0 ? {} : { trendWindows: previous.windows },
       note: rows5.length === 0 ? `No pair shares at least ${minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.` : null
     }
   };
 }
-function describe(pair, focus, settings, guideline, kindOf2) {
+function describe(pair, focus, settings, guideline, trend, kindOf2) {
   const flipped = focus !== void 0 && pair.b === focus;
   const [path, other] = flipped ? [pair.b, pair.a] : [pair.a, pair.b];
   const [changesPath, changesWith] = flipped ? [pair.changesB, pair.changesA] : [pair.changesA, pair.changesB];
@@ -7250,7 +7300,22 @@ function describe(pair, focus, settings, guideline, kindOf2) {
     distance,
     findings,
     dependent,
+    ...trend === void 0 ? {} : trend,
     evidence: { support: pair.support, changesPath, changesWith, clearsMinimum }
+  };
+}
+async function previousWindow(context, history) {
+  const { since, until } = history.window;
+  const earlierSince = since - (until - since);
+  const earlier = await loadHistory(context, { noRefresh: true, window: { since: earlierSince, until: since } });
+  const counts = countCoupling(
+    earlier.filtered.changes.map((change2) => ({ files: change2.files.map((file) => file.fileId), oversized: change2.oversized })),
+    { minSupport: 1 }
+  );
+  const iso2 = (seconds) => new Date(seconds * 1e3).toISOString();
+  return {
+    index: counts.eligibleChanges === 0 ? void 0 : pairIndex(counts.pairs),
+    windows: { previous: { since: iso2(earlierSince), until: iso2(since), eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges } }
   };
 }
 
@@ -7440,9 +7505,9 @@ var command6 = analysisCommand(name7, {
     const head = await analysedSha(context);
     const stored = storedSources(context, head, window);
     const activity = readStored(context, stored.activity);
-    const coupling = readStored(context, stored.coupling);
+    const coupling2 = readStored(context, stored.coupling);
     const hotspots = readStored(context, stored.hotspots);
-    if (activity === void 0 || coupling === void 0 || hotspots === void 0) return void 0;
+    if (activity === void 0 || coupling2 === void 0 || hotspots === void 0) return void 0;
     const present = new Set(await listTree(context.repo.root, head));
     if (context.positionals.some((raw) => !present.has(repoRelative(context.repo.root, raw)))) return void 0;
     hotspots.restoreLeftOut();
@@ -7450,10 +7515,10 @@ var command6 = analysisCommand(name7, {
       context,
       readSettings(context.config),
       present,
-      { hotspots: hotspots.output, coupling: coupling.output, activity: activity.output },
+      { hotspots: hotspots.output, coupling: coupling2.output, activity: activity.output },
       (path) => path
     );
-    const named = [activity, coupling, hotspots].map((hit) => hit.input);
+    const named = [activity, coupling2, hotspots].map((hit) => hit.input);
     return { ...output, inputs: { ...output.inputs, resultsCache: named } };
   },
   async analyse({ context, history }) {
@@ -7466,10 +7531,10 @@ var command6 = analysisCommand(name7, {
       return output;
     };
     const activity = await finish(activityOutput(history), stored.activity);
-    const coupling = await finish(await couplingOutput(context, history), stored.coupling);
+    const coupling2 = await finish(await couplingOutput(context, history), stored.coupling);
     const hotspots = await finish(await rankedOutput(context, history), stored.hotspots);
     const present = new Set(await listTree(context.repo.root, history.view.headSha));
-    return briefOutput(context, history.settings, present, { hotspots, coupling, activity }, (asked) => history.view.renames.resolve(asked, -1));
+    return briefOutput(context, history.settings, present, { hotspots, coupling: coupling2, activity }, (asked) => history.view.renames.resolve(asked, -1));
   }
 });
 
@@ -7893,11 +7958,11 @@ function address(value, where) {
 function readDecisionsInput(path, root) {
   const file = isAbsolute2(path) ? path : resolve(root, path);
   if (!existsSync13(file)) throw usageError(`--from: ${path} does not exist`);
-  const text3 = readFileSync9(file, "utf8");
-  const hash = createHash7("sha256").update(text3).digest("hex").slice(0, 16);
+  const text4 = readFileSync9(file, "utf8");
+  const hash = createHash7("sha256").update(text4).digest("hex").slice(0, 16);
   let value;
   try {
-    value = JSON.parse(text3);
+    value = JSON.parse(text4);
   } catch (error) {
     throw usageError(`--from: ${path} is not valid JSON (${error instanceof Error ? error.message : String(error)})`);
   }
@@ -8268,7 +8333,7 @@ function tokenize(source) {
   const tokens = [];
   const pending = [];
   let expectDelimiter = null;
-  let text3 = "";
+  let text4 = "";
   let unquoted = "";
   let inWord = false;
   let dynamic = false;
@@ -8278,7 +8343,7 @@ function tokenize(source) {
   const flush = () => {
     if (!inWord) return;
     const hasBrace = /\{[^{}]*(,|\.\.)[^{}]*\}/.test(unquoted);
-    const word = { t: "word", text: text3, dynamic: dynamic || hasBrace, glob, quoted };
+    const word = { t: "word", text: text4, dynamic: dynamic || hasBrace, glob, quoted };
     if (!word.dynamic) word.text = plain(word);
     if (expectDelimiter !== null) {
       pending.push({ delimiter: plain(word), strip: expectDelimiter.strip });
@@ -8286,7 +8351,7 @@ function tokenize(source) {
     } else {
       tokens.push(word);
     }
-    text3 = "";
+    text4 = "";
     unquoted = "";
     inWord = false;
     dynamic = false;
@@ -8295,7 +8360,7 @@ function tokenize(source) {
   };
   const add = (char, isQuoted) => {
     inWord = true;
-    text3 += char;
+    text4 += char;
     if (!isQuoted) unquoted += char;
     else quoted = true;
   };
@@ -8305,7 +8370,7 @@ function tokenize(source) {
     if (next === "'" && !insideDouble) {
       dynamic = true;
       inWord = true;
-      text3 += "$";
+      text4 += "$";
       i++;
       return true;
     }
@@ -8314,24 +8379,24 @@ function tokenize(source) {
       dynamic = true;
       const end = source.indexOf("}", i);
       if (end === -1) return false;
-      text3 += source.slice(i, end + 1);
+      text4 += source.slice(i, end + 1);
       i = end + 1;
       return true;
     }
     const name18 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i + 1));
     if (name18 !== null) {
       dynamic = true;
-      text3 += `$${name18[0]}`;
+      text4 += `$${name18[0]}`;
       i += 1 + name18[0].length;
       return true;
     }
     if (next === void 0 || /\s|["'`]/.test(next)) {
-      text3 += LITERAL_DOLLAR;
+      text4 += LITERAL_DOLLAR;
       i++;
       return true;
     }
     dynamic = true;
-    text3 += `$${next}`;
+    text4 += `$${next}`;
     i += 2;
     return true;
   };
@@ -8370,7 +8435,7 @@ function tokenize(source) {
       if (end === -1) return null;
       inWord = true;
       quoted = true;
-      text3 += source.slice(i + 1, end).replaceAll("$", LITERAL_DOLLAR);
+      text4 += source.slice(i + 1, end).replaceAll("$", LITERAL_DOLLAR);
       i = end + 1;
       continue;
     }
@@ -8392,10 +8457,10 @@ function tokenize(source) {
           if (escaped === "\n") {
             i += 2;
           } else if ('"\\$`'.includes(escaped)) {
-            text3 += escaped === "$" ? LITERAL_DOLLAR : escaped;
+            text4 += escaped === "$" ? LITERAL_DOLLAR : escaped;
             i += 2;
           } else {
-            text3 += `\\${escaped}`;
+            text4 += `\\${escaped}`;
             i += 2;
           }
           continue;
@@ -8404,7 +8469,7 @@ function tokenize(source) {
           if (!dollar(true)) return null;
           continue;
         }
-        text3 += c;
+        text4 += c;
         i++;
       }
       if (!closed) return null;
@@ -8425,8 +8490,8 @@ function tokenize(source) {
     if (operator !== void 0) {
       if ((operator === "<" || operator === ">") && source[i + 1] === "(") return null;
       const redirect = /^[0-9<>&|]/.test(operator) && operator !== "&&" && operator !== "||" && operator !== "|" && operator !== "|&" && operator !== "&";
-      if (redirect && inWord && /^[0-9]+$/.test(text3) && unquoted === text3) {
-        text3 = "";
+      if (redirect && inWord && /^[0-9]+$/.test(text4) && unquoted === text4) {
+        text4 = "";
         unquoted = "";
         inWord = false;
         quoted = false;
@@ -8505,20 +8570,20 @@ function parseArgs2(args, spec) {
   let ended = false;
   for (let k = 0; k < args.length; k++) {
     const word = args[k];
-    const text3 = plain(word);
-    if (ended || word.quoted || !text3.startsWith("-") || text3 === "-") {
+    const text4 = plain(word);
+    if (ended || word.quoted || !text4.startsWith("-") || text4 === "-") {
       operands.push(word);
       continue;
     }
     if (word.dynamic) return null;
-    if (text3 === "--") {
+    if (text4 === "--") {
       ended = true;
-    } else if (text3.startsWith("--")) {
-      const equals = text3.indexOf("=");
-      const name18 = equals === -1 ? text3 : text3.slice(0, equals);
+    } else if (text4.startsWith("--")) {
+      const equals = text4.indexOf("=");
+      const name18 = equals === -1 ? text4 : text4.slice(0, equals);
       flags.add(name18);
       if (equals !== -1) {
-        values.push({ name: name18, value: text3.slice(equals + 1) });
+        values.push({ name: name18, value: text4.slice(equals + 1) });
       } else if (spec.valueLong?.includes(name18)) {
         const next = args[k + 1];
         if (next === void 0) return null;
@@ -8526,12 +8591,12 @@ function parseArgs2(args, spec) {
         k++;
       }
     } else {
-      for (let c = 1; c < text3.length; c++) {
-        const char = text3[c];
+      for (let c = 1; c < text4.length; c++) {
+        const char = text4[c];
         flags.add(char);
         if (spec.suffixShort === char) break;
         if (spec.valueShort?.includes(char)) {
-          const rest = text3.slice(c + 1);
+          const rest = text4.slice(c + 1);
           if (rest !== "") {
             values.push({ name: char, value: rest });
           } else {
@@ -8549,11 +8614,11 @@ function parseArgs2(args, spec) {
 }
 var GREP_VALUE_LONG = ["--regexp", "--file", "--max-count", "--after-context", "--before-context", "--context", "--include", "--exclude", "--exclude-dir", "--exclude-from", "--label", "--directories", "--devices", "--binary-files"];
 var RG_VALUE_LONG = ["--regexp", "--file", "--glob", "--iglob", "--type", "--type-not", "--max-count", "--after-context", "--before-context", "--context", "--threads", "--max-columns", "--max-depth", "--replace", "--ignore-file", "--pre", "--sort", "--sortr", "--encoding", "--type-add"];
-var looksLikeFile = (text3) => {
-  const last = text3.split("/").at(-1) ?? "";
+var looksLikeFile = (text4) => {
+  const last = text4.split("/").at(-1) ?? "";
   return last !== "" && last !== "." && last !== ".." && last.includes(".") && !last.endsWith(".");
 };
-var endsLikeDirectory = (text3) => text3.endsWith("/");
+var endsLikeDirectory = (text4) => text4.endsWith("/");
 var Interpretation = class {
   access = { reads: [], searches: [], edits: [] };
   ok = true;
@@ -8568,13 +8633,13 @@ var Interpretation = class {
     this.ok = false;
   }
   /** The path a literal word names, resolved against the working directory. Null (and the line is unparsed) when it cannot be. */
-  resolve(text3) {
-    if (text3.startsWith("/") || text3.startsWith("~") || /^[A-Za-z]:[\\/]/.test(text3)) return text3;
+  resolve(text4) {
+    if (text4.startsWith("/") || text4.startsWith("~") || /^[A-Za-z]:[\\/]/.test(text4)) return text4;
     if (this.cwd === null) {
       this.fail();
       return null;
     }
-    return this.cwd === void 0 ? text3 : posix2.join(this.cwd, text3);
+    return this.cwd === void 0 ? text4 : posix2.join(this.cwd, text4);
   }
   substitute(word) {
     if (!word.dynamic || !word.text.includes("$")) return word;
@@ -8619,13 +8684,13 @@ var Interpretation = class {
 function redirections(command17, run2) {
   for (const { op, target } of command17.redirects) {
     if (target === null || op === "<<<") continue;
-    const text3 = plain(target);
-    if ((op === ">&" || op === "<&") && (/^[0-9]+$/.test(text3) || text3 === "-")) continue;
+    const text4 = plain(target);
+    if ((op === ">&" || op === "<&") && (/^[0-9]+$/.test(text4) || text4 === "-")) continue;
     if (target.dynamic) {
       run2.fail();
       continue;
     }
-    if (text3.startsWith("/dev/")) continue;
+    if (text4.startsWith("/dev/")) continue;
     if (op === "<" || op === "<&") run2.read(target);
     else run2.edit(target);
   }
@@ -8648,29 +8713,29 @@ function perlLike(args, run2) {
   const rest = [];
   for (let k = 0; k < args.length; k++) {
     const word = args[k];
-    const text3 = plain(word);
-    if (word.quoted || !text3.startsWith("-") || text3 === "-") {
+    const text4 = plain(word);
+    if (word.quoted || !text4.startsWith("-") || text4 === "-") {
       rest.push(...args.slice(k));
       break;
     }
     if (word.dynamic) return run2.fail();
-    if (text3 === "--") {
+    if (text4 === "--") {
       rest.push(...args.slice(k + 1));
       break;
     }
-    for (let c = 1; c < text3.length; c++) {
-      const char = text3[c];
+    for (let c = 1; c < text4.length; c++) {
+      const char = text4[c];
       if (char === "i") {
         inPlace = true;
         break;
       }
       if (char === "e" || char === "E") {
         hasScript = true;
-        if (text3.slice(c + 1) === "") k++;
+        if (text4.slice(c + 1) === "") k++;
         break;
       }
       if ("IMmx".includes(char)) {
-        if (text3.slice(c + 1) === "") k++;
+        if (text4.slice(c + 1) === "") k++;
         break;
       }
     }
@@ -8732,16 +8797,16 @@ function gitLike(args, run2) {
   const saved = run2.cwd;
   let k = 0;
   while (k < args.length) {
-    const text3 = plain(args[k]);
+    const text4 = plain(args[k]);
     if (args[k].dynamic) return run2.fail();
-    if (text3 === "-C") {
+    if (text4 === "-C") {
       const dir = args[k + 1];
       if (dir === void 0 || dir.dynamic) return run2.fail();
       run2.cwd = run2.resolve(plain(dir));
       k += 2;
-    } else if (text3 === "-c" || text3 === "--git-dir" || text3 === "--work-tree" || text3 === "--namespace") {
+    } else if (text4 === "-c" || text4 === "--git-dir" || text4 === "--work-tree" || text4 === "--namespace") {
       k += 2;
-    } else if (text3.startsWith("-")) {
+    } else if (text4.startsWith("-")) {
       k++;
     } else {
       break;
@@ -8752,9 +8817,9 @@ function gitLike(args, run2) {
   if (sub === "show") {
     for (const word of rest) {
       if (word.dynamic) return run2.fail();
-      const text3 = plain(word);
-      const colon = text3.indexOf(":");
-      if (!text3.startsWith("-") && colon > 0 && colon < text3.length - 1) run2.access.reads.push(text3.slice(colon + 1));
+      const text4 = plain(word);
+      const colon = text4.indexOf(":");
+      if (!text4.startsWith("-") && colon > 0 && colon < text4.length - 1) run2.access.reads.push(text4.slice(colon + 1));
     }
   } else if (sub === "mv" || sub === "rm") {
     moveLike(sub === "mv" ? "mv" : "rm", rest, run2);
@@ -8823,8 +8888,8 @@ function interpreterLike(args, command17, run2, name18) {
 function findLike(args, run2) {
   const paths = [];
   for (const word of args) {
-    const text3 = plain(word);
-    if (!word.quoted && (text3.startsWith("-") || text3 === "(" || text3 === "!")) break;
+    const text4 = plain(word);
+    if (!word.quoted && (text4.startsWith("-") || text4 === "(" || text4 === "!")) break;
     paths.push(word);
   }
   for (const word of args) {
@@ -8840,11 +8905,11 @@ function execute2(command17, run2, piped) {
   while (words2[0] !== void 0 && !words2[0].quoted && !words2[0].dynamic && SKIPPED_KEYWORDS.has(plain(words2[0]))) words2 = words2.slice(1);
   if (words2[0] !== void 0 && !words2[0].quoted && UNPARSED_KEYWORDS.has(plain(words2[0]))) return run2.fail();
   while (words2[0] !== void 0 && !words2[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words2[0]))) {
-    const text3 = plain(words2[0]);
-    const equals = text3.indexOf("=");
-    const name19 = text3.slice(0, equals);
+    const text4 = plain(words2[0]);
+    const equals = text4.indexOf("=");
+    const name19 = text4.slice(0, equals);
     if (words2[0].glob) run2.variables.delete(name19);
-    else run2.variables.set(name19, text3.slice(equals + 1));
+    else run2.variables.set(name19, text4.slice(equals + 1));
     words2 = words2.slice(1);
   }
   redirections(substituted, run2);
@@ -8852,8 +8917,8 @@ function execute2(command17, run2, piped) {
   for (; ; ) {
     const head2 = words2[0];
     if (head2.dynamic) return run2.fail();
-    const text3 = plain(head2);
-    if (!WRAPPERS.has(text3)) break;
+    const text4 = plain(head2);
+    if (!WRAPPERS.has(text4)) break;
     words2 = words2.slice(1);
     while (words2[0] !== void 0 && (plain(words2[0]).startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words2[0])))) words2 = words2.slice(1);
     if (words2.length === 0) return;
@@ -9003,8 +9068,8 @@ function shellActionsOf(block, cwd) {
   ];
 }
 var INTERRUPT_MARKER = "[Request interrupted by user";
-function isHumanText(text3) {
-  return typeof text3 === "string" && !text3.startsWith(INTERRUPT_MARKER);
+function isHumanText(text4) {
+  return typeof text4 === "string" && !text4.startsWith(INTERRUPT_MARKER);
 }
 function isHumanPrompt(line, message) {
   if (line["isMeta"] === true || line["toolUseResult"] !== void 0) return false;
@@ -9040,10 +9105,10 @@ function earliest(lines) {
   }
   return best;
 }
-function parseTranscript(text3, scope = "main") {
+function parseTranscript(text4, scope = "main") {
   const lines = [];
   let skippedLines = 0;
-  const body = text3.charCodeAt(0) === 65279 ? text3.slice(1) : text3;
+  const body = text4.charCodeAt(0) === 65279 ? text4.slice(1) : text4;
   for (const raw of body.split(/\r?\n/)) {
     if (raw === "") continue;
     try {
@@ -9160,8 +9225,8 @@ function sessionFiles(projectsDir, root) {
 }
 
 // packages/transcripts/src/session-edits.ts
-function readSessionEdits(text3, sessionId, roots, effort = "all") {
-  const parsed = parseTranscript(text3);
+function readSessionEdits(text4, sessionId, roots, effort = "all") {
+  const parsed = parseTranscript(text4);
   if (parsed.status !== "recognised") return null;
   const edits = [];
   for (const event of parsed.events) {
@@ -9184,15 +9249,15 @@ function readRepoSessionEdits(options) {
     for (const file of sessionFiles(projectsDir, root)) {
       if (seen.has(file.path) || !existsSync15(file.path)) continue;
       seen.add(file.path);
-      let text3;
+      let text4;
       try {
-        text3 = readFileSync11(file.path, "utf8");
+        text4 = readFileSync11(file.path, "utf8");
       } catch {
         continue;
       }
-      const parsed = parseTranscript(text3);
+      const parsed = parseTranscript(text4);
       if (parsed.cwds.length > 0 && !parsed.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;
-      const result = readSessionEdits(text3, file.sessionId, repoRoots, options.effort ?? "all");
+      const result = readSessionEdits(text4, file.sessionId, repoRoots, options.effort ?? "all");
       if (result !== null && inWindow(window, result.startedAt)) sessions.push(result);
     }
   }
@@ -9541,16 +9606,16 @@ function pieceProblems(where, slot, piece, allowed) {
   const problems = [];
   const extra = Object.keys(piece).filter((key) => key !== "verdict" && key !== "text" && !allowed.includes(key));
   if (extra.length > 0) problems.push(`${where} has fields the slot does not take: ${extra.join(", ")}`);
-  const { verdict, text: text3 } = piece;
+  const { verdict, text: text4 } = piece;
   if (slot.verdicts.length > 0) {
     if (typeof verdict !== "string" || verdict === "") problems.push(`${where} needs a verdict, one of: ${slot.verdicts.join(", ")}`);
     else if (!slot.verdicts.includes(verdict)) problems.push(`${where} has verdict "${verdict}", which is not one of: ${slot.verdicts.join(", ")}`);
   } else if (verdict !== void 0) {
     problems.push(`${where} has a verdict, and this slot takes text only`);
   }
-  if (typeof text3 !== "string") problems.push(`${where} needs text, a string`);
-  else if (text3.trim() === "") problems.push(`${where} has empty text`);
-  else if (text3.length > slot.maxChars) problems.push(`${where} has ${text3.length} characters of text and the limit is ${slot.maxChars}`);
+  if (typeof text4 !== "string") problems.push(`${where} needs text, a string`);
+  else if (text4.trim() === "") problems.push(`${where} has empty text`);
+  else if (text4.length > slot.maxChars) problems.push(`${where} has ${text4.length} characters of text and the limit is ${slot.maxChars}`);
   return problems;
 }
 function entryProblems(slot, entry) {
@@ -9597,21 +9662,21 @@ ${problems.map((p) => `  - ${p}`).join("\n")}`);
 
 // packages/report/src/text.ts
 import { createHash as createHash9 } from "node:crypto";
-function escapeHtml(text3) {
-  return text3.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function escapeHtml(text4) {
+  return text4.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function oneLine(text3) {
-  return text3.replace(/\s+/g, " ").trim();
+function oneLine(text4) {
+  return text4.replace(/\s+/g, " ").trim();
 }
 var MD_SPECIAL = /[\\|*<>[\]]/g;
-function escapeMd(text3) {
-  const line = oneLine(text3);
+function escapeMd(text4) {
+  const line = oneLine(text4);
   const balanced = (line.match(/`/g) ?? []).length % 2 === 0;
   if (!balanced) return line.replace(/[\\|*`<>[\]]/g, (c) => `\\${c}`);
   return line.split("`").map((part, i) => i % 2 === 1 ? part.replace(/\|/g, "\\|") : part.replace(MD_SPECIAL, (c) => `\\${c}`)).join("`");
 }
-function inlineHtml(text3) {
-  const escaped = escapeHtml(text3);
+function inlineHtml(text4) {
+  const escaped = escapeHtml(text4);
   return (escaped.match(/`/g) ?? []).length % 2 === 0 ? escaped.replace(/`([^`]+)`/g, "<code>$1</code>") : escaped;
 }
 function formatNumber(value) {
@@ -9621,15 +9686,15 @@ function formatNumber(value) {
 function shortHash(content) {
   return createHash9("sha256").update(content).digest("hex").slice(0, 6);
 }
-function slug(text3) {
-  return text3.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
+function slug(text4) {
+  return text4.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
 }
 function count2(n, singular, plural = `${singular}s`) {
   return `${formatNumber(n)} ${n === 1 ? singular : plural}`;
 }
-function clip(text3, max) {
+function clip(text4, max) {
   if (max < 1) return "";
-  return text3.length <= max ? text3 : `${text3.slice(0, Math.max(0, max - 1))}…`;
+  return text4.length <= max ? text4 : `${text4.slice(0, Math.max(0, max - 1))}…`;
 }
 
 // packages/report/src/components/evidence-list.ts
@@ -9656,8 +9721,8 @@ function htmlTable(caption, columns6, rows5, options = {}) {
   const head = columns6.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
   const body = rows5.map((row2) => {
     const cells = row2.map((cell, i) => {
-      const number2 = columns6[i]?.align === "right" ? ' class="number"' : "";
-      return i === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number2}>${cell}</td>`;
+      const number3 = columns6[i]?.align === "right" ? ' class="number"' : "";
+      return i === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number3}>${cell}</td>`;
     });
     return `<tr>${cells.join("")}</tr>`;
   }).join("\n");
@@ -10319,7 +10384,7 @@ ${body}
 }
 function limitsSection(report, notes2) {
   const slot = report.slots.find((s) => s.id === "limits");
-  const fixed = report.limits.map((text3) => `<li>${inlineHtml(text3)}</li>`).join("\n");
+  const fixed = report.limits.map((text4) => `<li>${inlineHtml(text4)}</li>`).join("\n");
   const judged = slot === void 0 ? "" : renderBlock({ type: "judgement", slot: slot.id }, "html", { slots: report.slots, notes: notes2 });
   return `<section id="limits" aria-labelledby="limits-heading">
 <h2 id="limits-heading">Limits</h2>
@@ -10389,7 +10454,7 @@ function header(report, compact) {
 }
 function markdownPage(report, notes2, options = {}) {
   const context = { slots: report.slots, notes: notes2 };
-  const limits = report.limits.map((text3) => `- ${escapeMd(text3)}`);
+  const limits = report.limits.map((text4) => `- ${escapeMd(text4)}`);
   const slot = report.slots.find((s) => s.id === "limits");
   const judged = slot === void 0 ? [] : [renderBlock({ type: "judgement", slot: slot.id }, "md", context)];
   return [
@@ -10463,11 +10528,11 @@ function reportCommand(kinds) {
         stamp: makeStamp(name18, context.repo.head, context.config.hash, build.inputs)
       };
       try {
-        const text3 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
-        if (request.out === void 0) return { results: [], text: text3 };
+        const text4 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
+        if (request.out === void 0) return { results: [], text: text4 };
         const file = resolve2(context.cwd, request.out);
         mkdirSync4(dirname3(file), { recursive: true });
-        writeFileSync5(file, text3);
+        writeFileSync5(file, text4);
         return { results: [], text: `wrote ${request.out}
 ` };
       } catch (error) {
@@ -10478,15 +10543,15 @@ function reportCommand(kinds) {
   };
 }
 function readRequest(context) {
-  const { slots: slots2, notes: notes2, format: format2, out, compact } = context.values;
-  const text3 = (value, option) => {
+  const { slots: slots3, notes: notes2, format: format2, out, compact } = context.values;
+  const text4 = (value, option) => {
     if (value === void 0) return void 0;
     if (typeof value !== "string" || value === "") throw usageError(`--${option} needs a value`);
     return value;
   };
-  const chosen = text3(format2, "format");
+  const chosen = text4(format2, "format");
   if (chosen !== void 0 && chosen !== "html" && chosen !== "md") throw usageError(`--format must be html or md, got "${chosen}"`);
-  const request = { slots: slots2 === true, notes: text3(notes2, "notes"), format: chosen, out: text3(out, "out"), compact: compact === true };
+  const request = { slots: slots3 === true, notes: text4(notes2, "notes"), format: chosen, out: text4(out, "out"), compact: compact === true };
   if (request.slots) {
     if (request.notes !== void 0 || request.format !== void 0 || request.compact) throw usageError("--slots prints the slots and takes no --notes, --format or --compact");
   } else if (request.notes === void 0 && request.format !== "md") {
@@ -10537,13 +10602,28 @@ function readSiblingResult(root, tool, command17, head) {
   };
 }
 
-// packages/cochange/src/reports/overview.ts
-var TOP = 5;
-var FIRST_LOOK_MAX = 3;
-var isoDate2 = (seconds) => new Date(typeof seconds === "number" ? seconds * 1e3 : seconds).toISOString().slice(0, 10);
-var percent2 = (share3) => `${Math.round(share3 * 1e3) / 10}%`;
-var number = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
+// packages/cochange/src/reports/coupling.ts
+var TOP_PAIRS = 15;
+var TOP_FILES = 15;
+var TOP_CLUSTERS = 10;
+var TOP_HIDDEN = 10;
+var JUDGED_PAIRS = 5;
+var MEMBERS_SHOWN = 4;
+var MATRIX_LABEL = 30;
+var PAIR_VERDICTS = [
+  "real-locality-review",
+  "real-structure-break",
+  "real-leave",
+  "incidental-locality-review",
+  "incidental-structure-break",
+  "incidental-leave"
+];
+var isoDate2 = (value) => value.slice(0, 10);
 var text2 = (value) => typeof value === "string" ? value : null;
+var number = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
+var round14 = (value) => Math.round(value * 10) / 10;
+var byBytes4 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
+var signed = (value) => `${value > 0 ? "+" : ""}${value}`;
 var COMMIT_FILTERS = [
   ["outsideWindow", "commits outside the analysis window"],
   ["shallowBoundaryCommits", "shallow boundary commits"],
@@ -10564,8 +10644,330 @@ var FILE_KINDS = { generated: "generated files", vendored: "vendored files", non
 function excludedCounts(filters, files, builtin) {
   return [
     ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
-    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files`, count: filters.oversizedChanges },
+    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files, counted on neither side of any ratio`, count: filters.oversizedChanges },
     ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of the rankings`, count: count3 })),
+    ...Object.entries(builtin).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
+  ];
+}
+var TREND_ARROW = { stronger: "↑", stable: "→", weaker: "↓" };
+function trendCell(row2) {
+  if (row2.trend === null || row2.degreeChange === null) return "no earlier window";
+  const never = row2.previousSupport === 0 ? ", shared no change before" : "";
+  return `${TREND_ARROW[row2.trend]} ${row2.trend} (${signed(row2.degreeChange)} points${never})`;
+}
+var pairRef = (row2) => `${row2.path} <-> ${row2.with}`;
+function pairsSection(rows5, total, settings, previous) {
+  const shown = rows5.slice(0, TOP_PAIRS);
+  const counts = { stronger: 0, stable: 0, weaker: 0 };
+  for (const row2 of rows5) if (row2.trend !== null) counts[row2.trend]++;
+  const blocks = [
+    {
+      type: "ranked-table",
+      caption: "Most strongly coupled pairs of files, with how each moved since the previous window",
+      noun: "pairs",
+      total,
+      columns: [
+        { key: "file", label: "File" },
+        { key: "with", label: "Changes with" },
+        { key: "degree", label: "Degree (%)", align: "right", guideline: { value: settings.minDegree, note: "cochange.minDegree" } },
+        { key: "support", label: "Shared changes", align: "right" },
+        { key: "confidence", label: "Confidence file to with (%)", align: "right" },
+        { key: "reverse", label: "Confidence with to file (%)", align: "right" },
+        { key: "distance", label: "Distance (folder hops)", align: "right" },
+        { key: "trend", label: "Trend" }
+      ],
+      rows: shown.map((row2) => ({
+        file: row2.path,
+        with: row2.with,
+        degree: row2.degree,
+        support: row2.support,
+        confidence: row2.confidence,
+        reverse: row2.reverseConfidence,
+        distance: row2.distance,
+        trend: trendCell(row2)
+      }))
+    }
+  ];
+  if (previous === void 0 || previous.eligibleChanges === 0) {
+    blocks.push({ type: "notice", level: "notice", text: "The window before the current one holds no eligible change, so no pair has a trend." });
+  } else {
+    blocks.push({
+      type: "facts",
+      caption: `Trend of all ${total} pairs against ${isoDate2(previous.since)} to ${isoDate2(previous.until)}`,
+      facts: [
+        { label: "Stronger", value: String(counts.stronger) },
+        { label: "Stable", value: String(counts.stable) },
+        { label: "Weaker", value: String(counts.weaker) },
+        { label: "Pairs that shared no change in the previous window", value: String(rows5.filter((row2) => row2.previousSupport === 0).length) },
+        { label: "Stable means a change in degree of at most", value: `${settings.tolerance} points (guideline cochange.couplingTrendTolerance, a judgement call)` },
+        { label: "Eligible changes in the previous window", value: String(previous.eligibleChanges) }
+      ]
+    });
+  }
+  return blocks;
+}
+function sumsOf(rows5) {
+  const sums = /* @__PURE__ */ new Map();
+  const add = (file, row2) => {
+    const sum = sums.get(file) ?? { file, shared: 0, partners: 0, strongest: 0 };
+    sum.shared += row2.support;
+    sum.partners++;
+    sum.strongest = Math.max(sum.strongest, row2.degree);
+    sums.set(file, sum);
+  };
+  for (const row2 of rows5) {
+    add(row2.path, row2);
+    add(row2.with, row2);
+  }
+  return [...sums.values()].sort((x, y) => y.shared - x.shared || y.partners - x.partners || byBytes4(x.file, y.file));
+}
+var shortLabel = (file) => file.length <= MATRIX_LABEL ? file : `…${file.slice(file.length - MATRIX_LABEL + 1)}`;
+function sumSection(sums) {
+  return [
+    {
+      type: "ranked-table",
+      caption: "Sum of coupling per file: the shared changes of all the pairs a file is in",
+      noun: "files",
+      total: sums.length,
+      columns: [
+        { key: "file", label: "File" },
+        { key: "shared", label: "Sum of shared changes", align: "right" },
+        { key: "partners", label: "Coupled files", align: "right" },
+        { key: "strongest", label: "Strongest degree (%)", align: "right" }
+      ],
+      rows: sums.slice(0, TOP_FILES).map((s) => ({ file: s.file, shared: s.shared, partners: s.partners, strongest: round14(s.strongest) }))
+    }
+  ];
+}
+function matrixSection(rows5, sums, minSupport) {
+  const files = sums.slice(0, TOP_FILES).map((s) => s.file);
+  if (files.length < 2) return [];
+  const shared = new Map(rows5.map((row2) => [`${row2.path}\0${row2.with}`, row2.support]));
+  const between = (a, b) => shared.get(`${a}\0${b}`) ?? shared.get(`${b}\0${a}`) ?? null;
+  const labels = files.map(shortLabel);
+  return [
+    {
+      type: "matrix",
+      title: `Shared changes between the top ${files.length} files by sum of coupling`,
+      valueLabel: `shared changes (none where the pair shares fewer than ${minSupport}, the support floor)`,
+      rows: labels,
+      columns: labels,
+      cells: files.map((a) => files.map((b) => a === b ? null : between(a, b)))
+    }
+  ];
+}
+function degreeHistogram(rows5) {
+  const bins = Array.from({ length: 10 }, (_, i) => ({ label: `${i * 10} to ${i === 9 ? 100 : (i + 1) * 10 - 1}`, count: 0 }));
+  for (const row2 of rows5) bins[Math.min(9, Math.floor(row2.degree / 10))].count++;
+  return { type: "histogram", title: "Distribution of pair degrees (percent)", unit: "pairs", bins };
+}
+function clustersSection(rows5) {
+  if (rows5.length === 0) return [{ type: "notice", level: "notice", text: "No cluster: no pair reaches both the support floor and the degree guideline, which a cluster requires." }];
+  const members = (row2) => {
+    const listed = row2.files.slice(0, MEMBERS_SHOWN).join(", ");
+    return row2.files.length > MEMBERS_SHOWN ? `${listed} and ${row2.files.length - MEMBERS_SHOWN} more` : listed;
+  };
+  return [
+    {
+      type: "ranked-table",
+      caption: "Clusters of mutually coupled files, with their spread",
+      noun: "clusters",
+      total: rows5.length,
+      columns: [
+        { key: "files", label: "Files" },
+        { key: "size", label: "Files in cluster", align: "right" },
+        { key: "folders", label: "Folders", align: "right" },
+        { key: "spread", label: "Spread (mean tree distance)", align: "right" },
+        { key: "degree", label: "Mean degree (%)", align: "right" },
+        { key: "findings", label: "Findings" }
+      ],
+      rows: rows5.slice(0, TOP_CLUSTERS).map((row2) => ({
+        files: members(row2),
+        size: row2.size,
+        folders: row2.folders,
+        spread: row2.spread,
+        degree: row2.meanDegree,
+        findings: row2.findings.length === 0 ? null : row2.findings.join(", ")
+      }))
+    }
+  ];
+}
+function hiddenSection(stored) {
+  if (stored === void 0) {
+    return {
+      blocks: [{ type: "notice", level: "notice", text: "No stored structure hidden result for this commit. Run `structure hidden` to store it, then run this report again." }],
+      read: null
+    };
+  }
+  const rows5 = stored.rows;
+  const coChange = (row2) => typeof row2.coChange === "object" && row2.coChange !== null ? row2.coChange : {};
+  const statics = (row2) => typeof row2.staticCoupling === "object" && row2.staticCoupling !== null ? row2.staticCoupling : {};
+  return {
+    read: { report: stored.report, head: stored.head, config: stored.config },
+    blocks: rows5.length === 0 ? [{ type: "notice", level: "notice", text: "The stored structure hidden result lists no pair with high co-change and low static coupling." }] : [
+      {
+        type: "ranked-table",
+        caption: "Pairs with high co-change and low static coupling, from structure hidden",
+        noun: "pairs",
+        total: rows5.length,
+        columns: [
+          { key: "from", label: "Module" },
+          { key: "to", label: "Module" },
+          { key: "level", label: "Level" },
+          { key: "shared", label: "Shared changes", align: "right" },
+          { key: "expected", label: "Expected by chance", align: "right" },
+          { key: "sites", label: "Static reference sites", align: "right" }
+        ],
+        rows: rows5.slice(0, TOP_HIDDEN).map((row2) => ({
+          from: text2(row2.from),
+          to: text2(row2.to),
+          level: text2(row2.level),
+          shared: number(coChange(row2).shared),
+          expected: number(coChange(row2).expected) === null ? null : round14(number(coChange(row2).expected)),
+          sites: number(statics(row2).sites)
+        }))
+      }
+    ]
+  };
+}
+function excludedBlock(excluded) {
+  return {
+    type: "ranked-table",
+    caption: "What the run left out, with counts",
+    numbered: false,
+    columns: [
+      { key: "what", label: "Left out" },
+      { key: "count", label: "Count", align: "right" }
+    ],
+    rows: excluded.map((e) => ({ what: e.what, count: e.count }))
+  };
+}
+function slots(judged) {
+  const pairSlots = judged.map((row2, i) => ({
+    id: `pair-${i + 1}`,
+    title: `Judgement: pair ${i + 1}`,
+    about: { kind: "pair", ref: pairRef(row2), label: `${row2.path} and ${row2.with}` },
+    task: "Is this coupling real (a shared design decision) or incidental (files that change together for another reason)? Start the text with the reason: shared constants, a registry, a protocol, tests, generated code, a data format or another. The verdict names real or incidental and the handoff: locality-review (should the files live together), structure-break (a dependency to break) or leave. Cite only values shown here; say when the evidence makes it tentative.",
+    verdicts: PAIR_VERDICTS,
+    maxChars: 320
+  }));
+  return [
+    ...pairSlots,
+    {
+      id: "summary",
+      title: "Judgement: what the coupling says about this repository",
+      about: { kind: "report", ref: "coupling", label: "the repository" },
+      task: "In at most three sentences, say what the pairs, sums, clusters and trends together show, and where to look first. Cite only values shown in this report. Say when the evidence grade makes it tentative.",
+      verdicts: [],
+      maxChars: 500
+    },
+    {
+      id: "limits",
+      title: "Judgement: what limits these results",
+      about: { kind: "report", ref: "coupling", label: "the repository" },
+      task: "In at most three sentences, say what limits how far these results can be trusted for this repository, using only the evidence, the exclusions, the trend window and the missing results shown above.",
+      verdicts: [],
+      maxChars: 500
+    }
+  ];
+}
+function limitsOf(evidence, settings, previous, hiddenMissing) {
+  return [
+    "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+    `Coupling counts changes that touched both files in the window, over changes at or below the changeset limit; a larger change counts on neither side. A pair that shares fewer than ${settings.minSupport} changes (the support floor) is not listed.`,
+    "Files that change together may share a design decision, or only a shared constant, a registry, a protocol, tests or generated code. The numbers cannot tell these apart; the judgements say which it is.",
+    `Each table shows the top rows of its result and says how many rows it leaves out; \`cochange coupling\` and \`cochange clusters\` print the rest.`,
+    previous === void 0 || previous.eligibleChanges === 0 ? "The window before the current one holds no eligible change, so no trend is shown." : `The trend compares each pair's degree with its degree in the previous window of the same length (${isoDate2(previous.since)} to ${isoDate2(previous.until)}, ${previous.eligibleChanges} eligible changes). A pair that was young or rare then has a noisy earlier degree, and stable means a change of at most ${settings.tolerance} points.`,
+    ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
+    ...evidence.truncated.shallow ? ["The clone is shallow, so history before its boundary is missing, and the previous window may be cut short."] : [],
+    ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
+    ...hiddenMissing ? ["Hidden coupling is read from structure's stored result and never computed here, so none is shown until `structure hidden` has run for this commit."] : []
+  ];
+}
+var coupling = {
+  summary: "Coupled pairs with their trend, sum of coupling per file, a matrix of the top files, clusters and hidden coupling, with a judgement of each top pair",
+  options: { ...windowOptions, "no-refresh": { type: "boolean" }, ...noCacheOption },
+  optionHelp: {
+    since: "analyse history from this date (ISO 8601); needed on a shallow clone",
+    until: "analyse history up to this date (ISO 8601, exclusive)",
+    "no-refresh": "read the history cache without bringing it up to date",
+    "no-cache": "compute the pairs and clusters again instead of reading the stored ones"
+  },
+  async build(context) {
+    const pairContext = { ...context, values: { ...context.values, trend: true } };
+    const pairOutput = await command4.run(pairContext);
+    const clusterOutput = await command7.run(context);
+    const extra = pairOutput.extra;
+    const { evidence } = extra;
+    const rows5 = pairOutput.results;
+    const clusters = clusterOutput.results;
+    const previous = extra.trendWindows?.previous;
+    const settings = readSettings(context.config);
+    const guideline = { minDegree: settings.minDegree, tolerance: settings.couplingTrendTolerance };
+    const hidden = hiddenSection(readSiblingResult(context.repo.root, "structure", "hidden", context.repo.head));
+    const sums = sumsOf(rows5);
+    const judged = rows5.slice(0, JUDGED_PAIRS);
+    const excluded = excludedCounts(extra.filtersApplied, droppedCounts(), builtinOmissions());
+    const inputs = pairOutput.inputs;
+    const pairsHeading = rows5.length === 0 ? [{ type: "notice", level: "notice", text: `No pair shares at least ${inputs.minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.` }] : [...pairsSection(rows5, rows5.length, guideline, previous), ...judged.map((_, i) => ({ type: "judgement", slot: `pair-${i + 1}` })), degreeHistogram(rows5)];
+    return {
+      title: "Coupling report",
+      inputs: {
+        since: context.values.since ?? null,
+        until: context.values.until ?? null,
+        minSupport: inputs.minSupport,
+        degreeGuideline: settings.minDegree,
+        trendTolerance: settings.couplingTrendTolerance,
+        storedResultsRead: hidden.read === null ? [] : [hidden.read]
+      },
+      header: {
+        evidenceGrade: evidence.grade,
+        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate2(extra.window.since)} to ${isoDate2(extra.window.until)}${previous === void 0 ? "" : `; the previous window for trends is ${isoDate2(previous.since)} to ${isoDate2(previous.until)}`}`,
+        excluded: excluded.filter((e) => e.count > 0)
+      },
+      sections: [
+        { id: "summary", heading: "What the coupling says", blocks: [{ type: "judgement", slot: "summary" }] },
+        { id: "pairs", heading: "Coupled pairs", blocks: pairsHeading },
+        { id: "sums", heading: "Sum of coupling per file", blocks: [...sumSection(sums), ...matrixSection(rows5, sums, inputs.minSupport)] },
+        { id: "clusters", heading: "Clusters", blocks: clustersSection(clusters) },
+        { id: "hidden", heading: "Hidden coupling", blocks: hidden.blocks },
+        { id: "excluded", heading: "What was excluded", blocks: [excludedBlock(excluded)] }
+      ],
+      limits: limitsOf(evidence, { minSupport: inputs.minSupport, tolerance: settings.couplingTrendTolerance }, previous, hidden.read === null),
+      slots: slots(judged)
+    };
+  }
+};
+
+// packages/cochange/src/reports/overview.ts
+var TOP = 5;
+var FIRST_LOOK_MAX = 3;
+var isoDate3 = (seconds) => new Date(typeof seconds === "number" ? seconds * 1e3 : seconds).toISOString().slice(0, 10);
+var percent2 = (share3) => `${Math.round(share3 * 1e3) / 10}%`;
+var number2 = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
+var text3 = (value) => typeof value === "string" ? value : null;
+var COMMIT_FILTERS2 = [
+  ["outsideWindow", "commits outside the analysis window"],
+  ["shallowBoundaryCommits", "shallow boundary commits"],
+  ["importedCommits", "commits of imported history"],
+  ["blameIgnoredCommits", "commits in the blame ignore file"],
+  ["botCommits", "commits by bots and service accounts"],
+  ["suiteCommits", "commits trailed by this suite"],
+  ["emptyAfterFiltering", "commits with no file left after filtering"]
+];
+var CHANGE_FILTERS2 = [
+  ["pureRenames", "file changes that only rename"],
+  ["excludedByGlob", "file changes matching exclude globs"],
+  ["lockfiles", "lockfile changes"],
+  ["generated", "generated file changes"],
+  ["vendored", "vendored file changes"]
+];
+var FILE_KINDS2 = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
+function excludedCounts2(filters, files, builtin) {
+  return [
+    ...[...COMMIT_FILTERS2, ...CHANGE_FILTERS2].map(([key, what]) => ({ what, count: filters.dropped[key] })),
+    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files`, count: filters.oversizedChanges },
+    ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS2[kind] ?? kind} left out of the rankings`, count: count3 })),
     ...Object.entries(builtin).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
   ];
 }
@@ -10654,7 +11056,7 @@ function complexityResult(stored) {
   return resultFrom(stored, "complexity analyse result", "complexity analyse", (s) => {
     const rows5 = top(s.rows);
     return {
-      candidates: rows5.flatMap((row2) => text2(row2.id) === null ? [] : [{ ref: `complexity:${text2(row2.id)}`, label: `${text2(row2.id)} (complexity)` }]),
+      candidates: rows5.flatMap((row2) => text3(row2.id) === null ? [] : [{ ref: `complexity:${text3(row2.id)}`, label: `${text3(row2.id)} (complexity)` }]),
       block: {
         type: "ranked-table",
         caption: "Most complex units, from complexity analyse",
@@ -10669,11 +11071,11 @@ function complexityResult(stored) {
           { key: "labels", label: "Labels" }
         ],
         rows: rows5.map((row2) => ({
-          id: text2(row2.id) ?? text2(row2.path),
-          cognitive: number(row2.cognitive),
-          cyclomatic: number(row2.cyclomatic),
-          nesting: number(row2.nesting),
-          length: number(row2.length),
+          id: text3(row2.id) ?? text3(row2.path),
+          cognitive: number2(row2.cognitive),
+          cyclomatic: number2(row2.cyclomatic),
+          nesting: number2(row2.nesting),
+          length: number2(row2.length),
           labels: Array.isArray(row2.labels) && row2.labels.length > 0 ? row2.labels.join(", ") : null
         }))
       }
@@ -10684,7 +11086,7 @@ function cyclesResult(stored) {
   return resultFrom(stored, "structure cycles result", "structure cycles", (s) => {
     const rows5 = top(s.rows);
     return {
-      candidates: rows5.flatMap((row2) => text2(row2.id) === null ? [] : [{ ref: `structure:${text2(row2.id)}`, label: `${text2(row2.id)} (import cycle)` }]),
+      candidates: rows5.flatMap((row2) => text3(row2.id) === null ? [] : [{ ref: `structure:${text3(row2.id)}`, label: `${text3(row2.id)} (import cycle)` }]),
       block: {
         type: "ranked-table",
         caption: "Largest import cycles, from structure cycles",
@@ -10698,11 +11100,11 @@ function cyclesResult(stored) {
           { key: "unblockedGain", label: "Unblocked gain", align: "right" }
         ],
         rows: rows5.map((row2) => ({
-          id: text2(row2.id),
-          size: number(row2.size),
-          method: text2(row2.method),
-          coChangeAcross: number(row2.coChangeAcross),
-          unblockedGain: number(row2.unblockedGain)
+          id: text3(row2.id),
+          size: number2(row2.size),
+          method: text3(row2.method),
+          coChangeAcross: number2(row2.coChangeAcross),
+          unblockedGain: number2(row2.unblockedGain)
         }))
       }
     };
@@ -10712,9 +11114,9 @@ function localityResult(stored) {
   return resultFrom(stored, "locality analyse result", "locality analyse", (s) => {
     const rows5 = top(s.rows);
     const ranking = (row2) => typeof row2.ranking === "object" && row2.ranking !== null ? row2.ranking : {};
-    const guideline = rows5.map((row2) => number(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
+    const guideline = rows5.map((row2) => number2(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
     return {
-      candidates: rows5.flatMap((row2) => text2(row2.path) === null ? [] : [{ ref: `locality:${text2(row2.path)}`, label: `${text2(row2.path)} (locality)` }]),
+      candidates: rows5.flatMap((row2) => text3(row2.path) === null ? [] : [{ ref: `locality:${text3(row2.path)}`, label: `${text3(row2.path)} (locality)` }]),
       block: {
         type: "ranked-table",
         caption: "Units furthest from where they are used, from locality analyse",
@@ -10723,16 +11125,16 @@ function localityResult(stored) {
         columns: [
           { key: "path", label: "Unit" },
           { key: "recommendation", label: "Recommendation" },
-          { key: "gain", label: `Gain (${text2(rows5[0]?.scoreUnit) ?? "score"})`, align: "right", ...guideline === void 0 ? {} : { guideline: { value: guideline, note: "locality.minDistance gain guideline" } } },
+          { key: "gain", label: `Gain (${text3(rows5[0]?.scoreUnit) ?? "score"})`, align: "right", ...guideline === void 0 ? {} : { guideline: { value: guideline, note: "locality.minDistance gain guideline" } } },
           { key: "distance", label: "Distance", align: "right" },
           { key: "target", label: "Target" }
         ],
         rows: rows5.map((row2) => ({
-          path: text2(row2.path),
-          recommendation: text2(row2.recommendation),
-          gain: number(ranking(row2).value) ?? number(row2.score),
-          distance: number(row2.distance),
-          target: text2(row2.target)
+          path: text3(row2.path),
+          recommendation: text3(row2.recommendation),
+          gain: number2(ranking(row2).value) ?? number2(row2.score),
+          distance: number2(row2.distance),
+          target: text3(row2.target)
         }))
       }
     };
@@ -10769,7 +11171,7 @@ function scoreHistogram(rows5) {
   for (const row2 of rows5) if (row2.score !== null) bins[Math.min(9, Math.floor(row2.score * 10))].count++;
   return { type: "histogram", title: "Distribution of hotspot scores", unit: "files", bins };
 }
-function slots(candidates) {
+function slots2(candidates) {
   return [
     {
       id: "first-look",
@@ -10790,12 +11192,12 @@ function slots(candidates) {
     }
   ];
 }
-function limitsOf(evidence, missing, complexitySource) {
+function limitsOf2(evidence, missing, complexitySource) {
   return [
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
     `Each table shows the top ${TOP} of its result and says how many rows it leaves out; the command prints the rest.`,
     ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
-    ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate2(evidence.truncated.availableSince)} is missing.`] : [],
+    ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate3(evidence.truncated.availableSince)} is missing.`] : [],
     ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
     ...complexitySource === "indentation" ? ["Hotspot complexity is the indentation proxy, because no complexity report covers this commit."] : [],
     ...missing.length === 0 ? [] : [`Not stored for this commit: ${missing.join(", ")}. The overview reads other plugins' stored results and never computes them.`]
@@ -10825,7 +11227,7 @@ var overview = {
     ];
     const candidates = results.flatMap((r) => r.candidates);
     const missing = results.flatMap((r) => r.missing === null ? [] : [r.missing]);
-    const excluded = excludedCounts(extra.filtersApplied, droppedCounts(), builtinOmissions());
+    const excluded = excludedCounts2(extra.filtersApplied, droppedCounts(), builtinOmissions());
     const inputs = output.inputs ?? {};
     return {
       title: "Code health overview",
@@ -10837,7 +11239,7 @@ var overview = {
       },
       header: {
         evidenceGrade: grade(evidence),
-        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate2(extra.window.since)} to ${isoDate2(extra.window.until)}`,
+        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate3(extra.window.since)} to ${isoDate3(extra.window.until)}`,
         excluded: excluded.filter((e) => e.count > 0)
       },
       sections: [
@@ -10847,15 +11249,15 @@ var overview = {
         { id: "excluded", heading: "What was excluded", blocks: excludedBlocks(excluded) },
         { id: "results", heading: "Top results of each plugin", blocks: results.flatMap((r) => r.blocks) }
       ],
-      limits: limitsOf(evidence, missing, extra.complexitySource),
-      slots: slots(candidates)
+      limits: limitsOf2(evidence, missing, extra.complexitySource),
+      slots: slots2(candidates)
     };
   }
 };
 
 // packages/cochange/src/commands/report.ts
 var name13 = "report";
-var command12 = reportCommand({ overview });
+var command12 = reportCommand({ overview, coupling });
 
 // packages/cochange/src/commands/risk.ts
 var risk_exports = {};
@@ -11393,21 +11795,21 @@ function readEvidence(root, files, change2) {
   const stamps = [];
   for (const file of files) {
     const path = isAbsolute4(file) ? file : join11(root, file);
-    let text3;
+    let text4;
     try {
-      text3 = readFileSync15(path, "utf8");
+      text4 = readFileSync15(path, "utf8");
     } catch {
       throw usageError(`--evidence ${file}: cannot read it (a relative path is taken from the repository root)`);
     }
     let document;
     try {
-      document = JSON.parse(text3);
+      document = JSON.parse(text4);
     } catch {
       throw usageError(`--evidence ${file}: not JSON; pass the output of \`complexity diff --json\` or \`structure check --json\``);
     }
     const tool = String(document.tool ?? "");
     const command17 = String(document.command ?? "");
-    const stamp2 = { tool, command: command17, hash: createHash10("sha256").update(text3).digest("hex").slice(0, 16) };
+    const stamp2 = { tool, command: command17, hash: createHash10("sha256").update(text4).digest("hex").slice(0, 16) };
     if (!Array.isArray(document.results)) throw usageError(`--evidence ${file}: no results list`);
     checkAgainst(file, document, change2);
     if (tool === "complexity" && command17 === "diff") {
@@ -12479,8 +12881,8 @@ function summarise(scored, all, outcomes, risk) {
     }
     return changes === 0 ? null : troubled2 / changes;
   };
-  const rows5 = (keys, keyOf) => keys.map((band) => {
-    const members = known.filter((s) => keyOf(s) === band);
+  const rows5 = (keys, keyOf2) => keys.map((band) => {
+    const members = known.filter((s) => keyOf2(s) === band);
     const troubled2 = members.filter(troubledOf).length;
     const bases = members.map(baseOf).filter((b) => b !== null);
     return {
@@ -13390,14 +13792,14 @@ var command16 = analysisCommand(name17, {
     if (revisions.length === 0) throw usageError(`no revisions of "${requested}" in the analysed history`);
     const rows5 = await Promise.all(
       pickSamples(revisions, samples).map(async (revision) => {
-        const [text3, bytes] = await Promise.all([readBlob(context.repo.root, revision.blob), blobSize(context.repo.root, revision.blob)]);
-        const binary = text3.includes("\0");
+        const [text4, bytes] = await Promise.all([readBlob(context.repo.root, revision.blob), blobSize(context.repo.root, revision.blob)]);
+        const binary = text4.includes("\0");
         return {
           commit: revision.commit,
           date: isoDate(revision.committerDate),
           path: revision.path,
-          complexity: binary ? null : indentationComplexity(text3, revision.path),
-          lines: binary ? null : text3 === "" ? 0 : text3.replace(/\n$/, "").split("\n").length,
+          complexity: binary ? null : indentationComplexity(text4, revision.path),
+          lines: binary ? null : text4 === "" ? 0 : text4.replace(/\n$/, "").split("\n").length,
           bytes
         };
       })
