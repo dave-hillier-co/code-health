@@ -3,7 +3,7 @@ import { droppedCounts } from "@code-health/cli-kit/dropped-files";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import type { ReportKind } from "@code-health/cli-kit/report-command";
 import { folderDistance, folderOf } from "@code-health/graph/tree-distance";
-import { historyWindowText } from "@code-health/history/report-header";
+import { FILE_KINDS, FILES_READ, historyWindowText, READ_BY_COMMANDS } from "@code-health/history/report-header";
 import { dropEmptySlots } from "@code-health/report/empty-block";
 import { capRows } from "@code-health/report/table-cap";
 import { clip } from "@code-health/report/text";
@@ -374,7 +374,7 @@ export const localityReport: ReportKind = {
     const unresolved = Object.entries(extra.unresolved).sort(byText);
     const excluded: ExcludedCount[] = [
       ...omitted,
-      ...Object.entries(droppedCounts()).map(([kind, count]) => ({ what: `${kind} files left out of the analysis`, count: count ?? 0 })),
+      ...Object.entries(droppedCounts()).map(([kind, count]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of the analysis${READ_BY_COMMANDS.has(kind) ? FILES_READ : ""}`, count: count ?? 0 })),
       ...Object.entries(builtinOmissions()).map(([entry, count]) => ({ what: `files under the built-in exclude ${entry}`, count })),
     ];
 

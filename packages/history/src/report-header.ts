@@ -22,7 +22,8 @@ const CHANGE_FILTERS: [keyof FiltersApplied["dropped"], string][] = [
   ["vendored", "vendored file changes"],
 ];
 
-const FILE_KINDS: Record<string, string> = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
+/** How a page names each kind of file a filter leaves out. */
+export const FILE_KINDS: Record<string, string> = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
 
 /**
  * The count of generated and vendored files is of the files the report's commands read, so two reports of one commit
