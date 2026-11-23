@@ -32,47 +32,41 @@
 | Recommended scrutinise | 1 |
 | Recommended split | 1 |
 
-**Candidates, ordered by gain over the locality.minDistance guideline**
+**Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline**
 
-| # | Unit | Kind | Gain (net distance removed) | Gain over guideline | Consumer files | Consumer folders | Distance | Confidence |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | src/shared/helpers/mixed.ts | split | 4 ▲ | 3 | 2 | 2 | 2 | normal |
-| 2 | src/shared/pair | move | 6 ▲ | 3 | 2 | 1 | 3 | normal |
-| 3 | src/shared/utils/money.ts | move | 4 ▲ | 2 | 2 | 2 | 2 | normal |
-| 4 | src/shared/cycle/a.ts | move | 3 ▲ | 1.5 | 1 | 1 | 3 | normal |
-| 5 | src/shared/utils/invoice.ts | move | 3 ▲ | 1.5 | 1 | 1 | 3 | normal |
-| 6 | src/shared/utils/slug.ts | inline | 3 ▲ | 1.5 | 1 | 1 | 3 | normal |
-| 7 | src/shared/format.ts | scrutinise | 16 ▲ | 1 | 8 | 1 | 2 | normal |
-| 8 | src/orders/place.ts | review | 2 | 1 | 1 | 1 | 1 | normal |
-| 9 | src/shared/log.ts | move | 2 | 1 | 2 | 2 | 1 | normal |
-| 10 | src/billing/index.ts | inline | 0 | 0 | 0 | 0 | 0 | normal |
-| 11 | src/orders/audit.ts | inline | 0 | 0 | 1 | 1 | 0 | normal |
+| # | Unit | Kind | Target | Gain (net distance removed) | Gain over guideline | Unit files | Consumer files | Consumer folders | Distance | Confidence |
+| ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | src/shared/pair | move | src/reports | 6 ▲ | 3 | 3 | 2 | 1 | 3 | normal |
+| 2 | src/shared/utils/money.ts | move | src | 4 ▲ | 2 | 1 | 2 | 2 | 2 | normal |
+| 3 | src/shared/cycle/a.ts | move | src/orders | 3 ▲ | 1.5 | 2 | 1 | 1 | 3 | normal |
+| 4 | src/shared/utils/invoice.ts | move | src/billing | 3 ▲ | 1.5 | 1 | 1 | 1 | 3 | normal |
+| 5 | src/shared/log.ts | move | src | 2 | 1 | 1 | 2 | 2 | 1 | normal |
 
 _Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it._
 
-## 1. src/shared/helpers/mixed.ts
+**Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline**
 
-**Candidate 1: src/shared/helpers/mixed.ts**
+| # | Unit | Kind | Target | Gain (net distance removed) | Gain over guideline | Unit files | Consumer files | Consumer folders | Distance | Confidence |
+| ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | src/shared/helpers/mixed.ts | split | src | 4 ▲ | 3 | 1 | 2 | 2 | 2 | normal |
+| 2 | src/shared/utils/slug.ts | inline | src/orders | 3 ▲ | 1.5 | 1 | 1 | 1 | 3 | normal |
+| 3 | src/orders/place.ts | review | src/shared | 2 | 1 | 5 | 1 | 1 | 1 | normal |
+| 4 | src/billing/index.ts | inline | src/billing | 0 | 0 | 1 | 0 | 0 | 0 | normal |
+| 5 | src/orders/audit.ts | inline | src/orders | 0 | 0 | 1 | 1 | 1 | 0 | normal |
 
-| Measure | Value |
-| --- | --- |
-| Kind | split (rule mixed-exports) |
-| Reason | Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split. |
-| Gain | 4 of net distance removed, against the locality.minDistance guideline of 2 |
-| Net distance | 6 now, 2 at the target src |
-| Consumers | 2 files in 2 folders |
-| Size | 1 file, 6 lines |
-| Confidence | normal |
-| Blockers | none |
-| Move plan (dry run) | no plan: needs-reason; first: the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway |
+_Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it._
 
-**Judgement: src/shared/helpers/mixed.ts**
+**High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline**
 
-1. **src/shared/helpers/mixed.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+| # | Unit | Consumer files | Consumer files over guideline | Consumer folders | Gain (net distance removed) | Confidence |
+| ---: | --- | ---: | ---: | ---: | ---: | --- |
+| 1 | src/shared/format.ts | 8 | 1 | 1 | 16 | normal |
 
-## 2. src/shared/pair
+_Guidelines order and label the rows and decide nothing. Consumer files 8 (locality.highFanIn), ▲ marks a value above it._
 
-**Candidate 2: src/shared/pair**
+## 1. src/shared/pair
+
+**Candidate 1: src/shared/pair**
 
 | Measure | Value |
 | --- | --- |
@@ -90,9 +84,9 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 
 1. **src/shared/pair** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
 
-## 3. src/shared/utils/money.ts
+## 2. src/shared/utils/money.ts
 
-**Candidate 3: src/shared/utils/money.ts**
+**Candidate 2: src/shared/utils/money.ts**
 
 | Measure | Value |
 | --- | --- |
@@ -110,9 +104,9 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 
 1. **src/shared/utils/money.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
 
-## 4. src/shared/cycle/a.ts
+## 3. src/shared/cycle/a.ts
 
-**Candidate 4: src/shared/cycle/a.ts**
+**Candidate 3: src/shared/cycle/a.ts**
 
 | Measure | Value |
 | --- | --- |
@@ -130,9 +124,9 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 
 1. **src/shared/cycle/a.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
 
-## 5. src/shared/utils/invoice.ts
+## 4. src/shared/utils/invoice.ts
 
-**Candidate 5: src/shared/utils/invoice.ts**
+**Candidate 4: src/shared/utils/invoice.ts**
 
 | Measure | Value |
 | --- | --- |
@@ -150,9 +144,49 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 
 1. **src/shared/utils/invoice.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
 
-## 6. src/shared/utils/slug.ts
+## 5. src/shared/log.ts
 
-**Candidate 6: src/shared/utils/slug.ts**
+**Candidate 5: src/shared/log.ts**
+
+| Measure | Value |
+| --- | --- |
+| Kind | move (rule two-consumers) |
+| Reason | Two consumers: move to the target. |
+| Gain | 2 of net distance removed, against the locality.minDistance guideline of 2 |
+| Net distance | 4 now, 2 at the target src |
+| Consumers | 2 files in 2 folders |
+| Size | 1 file, 3 lines |
+| Confidence | normal |
+| Blockers | none |
+| Move plan (dry run) | 1 file moved to src, 2 imports rewritten in 2 files |
+
+**Judgement: src/shared/log.ts**
+
+1. **src/shared/log.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+
+## 6. src/shared/helpers/mixed.ts
+
+**Candidate 6: src/shared/helpers/mixed.ts**
+
+| Measure | Value |
+| --- | --- |
+| Kind | split (rule mixed-exports) |
+| Reason | Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split. |
+| Gain | 4 of net distance removed, against the locality.minDistance guideline of 2 |
+| Net distance | 6 now, 2 at the target src |
+| Consumers | 2 files in 2 folders |
+| Size | 1 file, 6 lines |
+| Confidence | normal |
+| Blockers | none |
+| Move plan (dry run) | no plan: needs-reason; first: the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway |
+
+**Judgement: src/shared/helpers/mixed.ts**
+
+1. **src/shared/helpers/mixed.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+
+## 7. src/shared/utils/slug.ts
+
+**Candidate 7: src/shared/utils/slug.ts**
 
 | Measure | Value |
 | --- | --- |
@@ -169,26 +203,6 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 **Judgement: src/shared/utils/slug.ts**
 
 1. **src/shared/utils/slug.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
-
-## 7. src/shared/format.ts
-
-**Candidate 7: src/shared/format.ts**
-
-| Measure | Value |
-| --- | --- |
-| Kind | scrutinise (rule high-fan-in) |
-| Reason | Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design. `locality move` needs --reason for a scrutinise. |
-| Gain | 16 of net distance removed, against the locality.minDistance guideline of 2 |
-| Net distance | 16 now, 0 at the target src/features |
-| Consumers | 8 files in 1 folder |
-| Size | 1 file, 3 lines |
-| Confidence | normal |
-| Blockers | none |
-| Move plan (dry run) | no plan: needs-reason; first: the analyser recommends scrutinise (high-fan-in), not a move: pass --reason to record why it moves anyway |
-
-**Judgement: src/shared/format.ts**
-
-1. **src/shared/format.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## 8. src/orders/place.ts
 
@@ -210,29 +224,9 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 
 1. **src/orders/place.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
 
-## 9. src/shared/log.ts
+## 9. src/billing/index.ts
 
-**Candidate 9: src/shared/log.ts**
-
-| Measure | Value |
-| --- | --- |
-| Kind | move (rule two-consumers) |
-| Reason | Two consumers: move to the target. |
-| Gain | 2 of net distance removed, against the locality.minDistance guideline of 2 |
-| Net distance | 4 now, 2 at the target src |
-| Consumers | 2 files in 2 folders |
-| Size | 1 file, 3 lines |
-| Confidence | normal |
-| Blockers | none |
-| Move plan (dry run) | 1 file moved to src, 2 imports rewritten in 2 files |
-
-**Judgement: src/shared/log.ts**
-
-1. **src/shared/log.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
-
-## 10. src/billing/index.ts
-
-**Candidate 10: src/billing/index.ts**
+**Candidate 9: src/billing/index.ts**
 
 | Measure | Value |
 | --- | --- |
@@ -249,6 +243,26 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 **Judgement: src/billing/index.ts**
 
 1. **src/billing/index.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
+
+## 10. src/orders/audit.ts
+
+**Candidate 10: src/orders/audit.ts**
+
+| Measure | Value |
+| --- | --- |
+| Kind | inline (rule pass-through) |
+| Reason | A pass-through with one consumer: inline it. |
+| Gain | 0 of net distance removed, against the locality.minDistance guideline of 2 |
+| Net distance | 2 now, 2 at the target src/orders |
+| Consumers | 1 file in 1 folder |
+| Size | 1 file, 4 lines |
+| Confidence | normal |
+| Blockers | none |
+| Move plan (dry run) | no plan: no-change; first: the unit already lives in src/orders |
+
+**Judgement: src/orders/audit.ts**
+
+1. **src/orders/audit.ts** (verdict: do-it): It has few consumers and nothing blocks it. Risk: a missed consumer.
 
 ## Consumer distance
 
@@ -291,7 +305,7 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 ## Limits
 
 - Guidelines order and label results. They are heuristics for investigation and decide nothing.
-- The table shows the top 15 candidates and says how many it leaves out; the move plans and judgements cover the top 10.
+- Three tables list candidates by kind: moves (top 15), reviews, splits and inlines (top 10) and scrutinise (top 10). Each says how many rows it leaves out. Move plans and judgements cover the first 10 of the moves, then the reviews and splits. A unit of kind blocked is listed only in the blocked table.
 - A move plan is a dry run of the proposed move. The report never applies one.
 - Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.
 - The evidence grade is weak, so history-based evidence is tentative and the structure leads.

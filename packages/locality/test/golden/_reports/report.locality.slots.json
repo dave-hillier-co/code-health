@@ -20,7 +20,7 @@
     },
     "limits": [
       "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-      "The table shows the top 15 candidates and says how many it leaves out; the move plans and judgements cover the top 10.",
+      "Three tables list candidates by kind: moves (top 15), reviews, splits and inlines (top 10) and scrutinise (top 10). Each says how many rows it leaves out. Move plans and judgements cover the first 10 of the moves, then the reviews and splits. A unit of kind blocked is listed only in the blocked table.",
       "A move plan is a dry run of the proposed move. The report never applies one.",
       "Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.",
       "The evidence grade is weak, so history-based evidence is tentative and the structure leads."
@@ -81,7 +81,7 @@
             "type": "facts"
           },
           {
-            "caption": "Candidates, ordered by gain over the locality.minDistance guideline",
+            "caption": "Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline",
             "columns": [
               {
                 "key": "path",
@@ -90,6 +90,10 @@
               {
                 "key": "kind",
                 "label": "Kind"
+              },
+              {
+                "key": "target",
+                "label": "Target"
               },
               {
                 "align": "right",
@@ -104,6 +108,11 @@
                 "align": "right",
                 "key": "ratio",
                 "label": "Gain over guideline"
+              },
+              {
+                "align": "right",
+                "key": "files",
+                "label": "Unit files"
               },
               {
                 "align": "right",
@@ -125,120 +134,240 @@
                 "label": "Confidence"
               }
             ],
+            "emptyText": "No candidate has kind move, so no unit can be planned without --reason.",
+            "noun": "moves",
+            "rows": [
+              {
+                "confidence": "normal",
+                "consumers": 2,
+                "distance": 3,
+                "files": 3,
+                "folders": 1,
+                "gain": 6,
+                "kind": "move",
+                "path": "src/shared/pair",
+                "ratio": 3,
+                "target": "src/reports"
+              },
+              {
+                "confidence": "normal",
+                "consumers": 2,
+                "distance": 2,
+                "files": 1,
+                "folders": 2,
+                "gain": 4,
+                "kind": "move",
+                "path": "src/shared/utils/money.ts",
+                "ratio": 2,
+                "target": "src"
+              },
+              {
+                "confidence": "normal",
+                "consumers": 1,
+                "distance": 3,
+                "files": 2,
+                "folders": 1,
+                "gain": 3,
+                "kind": "move",
+                "path": "src/shared/cycle/a.ts",
+                "ratio": 1.5,
+                "target": "src/orders"
+              },
+              {
+                "confidence": "normal",
+                "consumers": 1,
+                "distance": 3,
+                "files": 1,
+                "folders": 1,
+                "gain": 3,
+                "kind": "move",
+                "path": "src/shared/utils/invoice.ts",
+                "ratio": 1.5,
+                "target": "src/billing"
+              },
+              {
+                "confidence": "normal",
+                "consumers": 2,
+                "distance": 1,
+                "files": 1,
+                "folders": 2,
+                "gain": 2,
+                "kind": "move",
+                "path": "src/shared/log.ts",
+                "ratio": 1,
+                "target": "src"
+              }
+            ],
+            "type": "ranked-table"
+          },
+          {
+            "caption": "Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline",
+            "columns": [
+              {
+                "key": "path",
+                "label": "Unit"
+              },
+              {
+                "key": "kind",
+                "label": "Kind"
+              },
+              {
+                "key": "target",
+                "label": "Target"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "locality.minDistance",
+                  "value": 2
+                },
+                "key": "gain",
+                "label": "Gain (net distance removed)"
+              },
+              {
+                "align": "right",
+                "key": "ratio",
+                "label": "Gain over guideline"
+              },
+              {
+                "align": "right",
+                "key": "files",
+                "label": "Unit files"
+              },
+              {
+                "align": "right",
+                "key": "consumers",
+                "label": "Consumer files"
+              },
+              {
+                "align": "right",
+                "key": "folders",
+                "label": "Consumer folders"
+              },
+              {
+                "align": "right",
+                "key": "distance",
+                "label": "Distance"
+              },
+              {
+                "key": "confidence",
+                "label": "Confidence"
+              }
+            ],
+            "emptyText": "No candidate has kind review, split or inline.",
             "noun": "candidates",
             "rows": [
               {
                 "confidence": "normal",
                 "consumers": 2,
                 "distance": 2,
+                "files": 1,
                 "folders": 2,
                 "gain": 4,
                 "kind": "split",
                 "path": "src/shared/helpers/mixed.ts",
-                "ratio": 3
-              },
-              {
-                "confidence": "normal",
-                "consumers": 2,
-                "distance": 3,
-                "folders": 1,
-                "gain": 6,
-                "kind": "move",
-                "path": "src/shared/pair",
-                "ratio": 3
-              },
-              {
-                "confidence": "normal",
-                "consumers": 2,
-                "distance": 2,
-                "folders": 2,
-                "gain": 4,
-                "kind": "move",
-                "path": "src/shared/utils/money.ts",
-                "ratio": 2
+                "ratio": 3,
+                "target": "src"
               },
               {
                 "confidence": "normal",
                 "consumers": 1,
                 "distance": 3,
-                "folders": 1,
-                "gain": 3,
-                "kind": "move",
-                "path": "src/shared/cycle/a.ts",
-                "ratio": 1.5
-              },
-              {
-                "confidence": "normal",
-                "consumers": 1,
-                "distance": 3,
-                "folders": 1,
-                "gain": 3,
-                "kind": "move",
-                "path": "src/shared/utils/invoice.ts",
-                "ratio": 1.5
-              },
-              {
-                "confidence": "normal",
-                "consumers": 1,
-                "distance": 3,
+                "files": 1,
                 "folders": 1,
                 "gain": 3,
                 "kind": "inline",
                 "path": "src/shared/utils/slug.ts",
-                "ratio": 1.5
-              },
-              {
-                "confidence": "normal",
-                "consumers": 8,
-                "distance": 2,
-                "folders": 1,
-                "gain": 16,
-                "kind": "scrutinise",
-                "path": "src/shared/format.ts",
-                "ratio": 1
+                "ratio": 1.5,
+                "target": "src/orders"
               },
               {
                 "confidence": "normal",
                 "consumers": 1,
                 "distance": 1,
+                "files": 5,
                 "folders": 1,
                 "gain": 2,
                 "kind": "review",
                 "path": "src/orders/place.ts",
-                "ratio": 1
-              },
-              {
-                "confidence": "normal",
-                "consumers": 2,
-                "distance": 1,
-                "folders": 2,
-                "gain": 2,
-                "kind": "move",
-                "path": "src/shared/log.ts",
-                "ratio": 1
+                "ratio": 1,
+                "target": "src/shared"
               },
               {
                 "confidence": "normal",
                 "consumers": 0,
                 "distance": 0,
+                "files": 1,
                 "folders": 0,
                 "gain": 0,
                 "kind": "inline",
                 "path": "src/billing/index.ts",
-                "ratio": 0
+                "ratio": 0,
+                "target": "src/billing"
               },
               {
                 "confidence": "normal",
                 "consumers": 1,
                 "distance": 0,
+                "files": 1,
                 "folders": 1,
                 "gain": 0,
                 "kind": "inline",
                 "path": "src/orders/audit.ts",
-                "ratio": 0
+                "ratio": 0,
+                "target": "src/orders"
               }
             ],
-            "total": 11,
+            "type": "ranked-table"
+          },
+          {
+            "caption": "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline",
+            "columns": [
+              {
+                "key": "path",
+                "label": "Unit"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "locality.highFanIn",
+                  "value": 8
+                },
+                "key": "fanIn",
+                "label": "Consumer files"
+              },
+              {
+                "align": "right",
+                "key": "ratio",
+                "label": "Consumer files over guideline"
+              },
+              {
+                "align": "right",
+                "key": "folders",
+                "label": "Consumer folders"
+              },
+              {
+                "align": "right",
+                "key": "gain",
+                "label": "Gain (net distance removed)"
+              },
+              {
+                "key": "confidence",
+                "label": "Confidence"
+              }
+            ],
+            "emptyText": "No unit has kind scrutinise.",
+            "noun": "units",
+            "rows": [
+              {
+                "confidence": "normal",
+                "fanIn": 8,
+                "folders": 1,
+                "gain": 16,
+                "path": "src/shared/format.ts",
+                "ratio": 1
+              }
+            ],
             "type": "ranked-table"
           }
         ],
@@ -248,59 +377,7 @@
       {
         "blocks": [
           {
-            "caption": "Candidate 1: src/shared/helpers/mixed.ts",
-            "facts": [
-              {
-                "label": "Kind",
-                "value": "split (rule mixed-exports)"
-              },
-              {
-                "label": "Reason",
-                "value": "Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split."
-              },
-              {
-                "label": "Gain",
-                "value": "4 of net distance removed, against the locality.minDistance guideline of 2"
-              },
-              {
-                "label": "Net distance",
-                "value": "6 now, 2 at the target src"
-              },
-              {
-                "label": "Consumers",
-                "value": "2 files in 2 folders"
-              },
-              {
-                "label": "Size",
-                "value": "1 file, 6 lines"
-              },
-              {
-                "label": "Confidence",
-                "value": "normal"
-              },
-              {
-                "label": "Blockers",
-                "value": "none"
-              },
-              {
-                "label": "Move plan (dry run)",
-                "value": "no plan: needs-reason; first: the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway"
-              }
-            ],
-            "type": "facts"
-          },
-          {
-            "slot": "candidate-1",
-            "type": "judgement"
-          }
-        ],
-        "heading": "1. src/shared/helpers/mixed.ts",
-        "id": "candidate-1"
-      },
-      {
-        "blocks": [
-          {
-            "caption": "Candidate 2: src/shared/pair",
+            "caption": "Candidate 1: src/shared/pair",
             "facts": [
               {
                 "label": "Kind",
@@ -342,17 +419,17 @@
             "type": "facts"
           },
           {
-            "slot": "candidate-2",
+            "slot": "candidate-1",
             "type": "judgement"
           }
         ],
-        "heading": "2. src/shared/pair",
-        "id": "candidate-2"
+        "heading": "1. src/shared/pair",
+        "id": "candidate-1"
       },
       {
         "blocks": [
           {
-            "caption": "Candidate 3: src/shared/utils/money.ts",
+            "caption": "Candidate 2: src/shared/utils/money.ts",
             "facts": [
               {
                 "label": "Kind",
@@ -394,17 +471,17 @@
             "type": "facts"
           },
           {
-            "slot": "candidate-3",
+            "slot": "candidate-2",
             "type": "judgement"
           }
         ],
-        "heading": "3. src/shared/utils/money.ts",
-        "id": "candidate-3"
+        "heading": "2. src/shared/utils/money.ts",
+        "id": "candidate-2"
       },
       {
         "blocks": [
           {
-            "caption": "Candidate 4: src/shared/cycle/a.ts",
+            "caption": "Candidate 3: src/shared/cycle/a.ts",
             "facts": [
               {
                 "label": "Kind",
@@ -446,17 +523,17 @@
             "type": "facts"
           },
           {
-            "slot": "candidate-4",
+            "slot": "candidate-3",
             "type": "judgement"
           }
         ],
-        "heading": "4. src/shared/cycle/a.ts",
-        "id": "candidate-4"
+        "heading": "3. src/shared/cycle/a.ts",
+        "id": "candidate-3"
       },
       {
         "blocks": [
           {
-            "caption": "Candidate 5: src/shared/utils/invoice.ts",
+            "caption": "Candidate 4: src/shared/utils/invoice.ts",
             "facts": [
               {
                 "label": "Kind",
@@ -498,17 +575,121 @@
             "type": "facts"
           },
           {
+            "slot": "candidate-4",
+            "type": "judgement"
+          }
+        ],
+        "heading": "4. src/shared/utils/invoice.ts",
+        "id": "candidate-4"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Candidate 5: src/shared/log.ts",
+            "facts": [
+              {
+                "label": "Kind",
+                "value": "move (rule two-consumers)"
+              },
+              {
+                "label": "Reason",
+                "value": "Two consumers: move to the target."
+              },
+              {
+                "label": "Gain",
+                "value": "2 of net distance removed, against the locality.minDistance guideline of 2"
+              },
+              {
+                "label": "Net distance",
+                "value": "4 now, 2 at the target src"
+              },
+              {
+                "label": "Consumers",
+                "value": "2 files in 2 folders"
+              },
+              {
+                "label": "Size",
+                "value": "1 file, 3 lines"
+              },
+              {
+                "label": "Confidence",
+                "value": "normal"
+              },
+              {
+                "label": "Blockers",
+                "value": "none"
+              },
+              {
+                "label": "Move plan (dry run)",
+                "value": "1 file moved to src, 2 imports rewritten in 2 files"
+              }
+            ],
+            "type": "facts"
+          },
+          {
             "slot": "candidate-5",
             "type": "judgement"
           }
         ],
-        "heading": "5. src/shared/utils/invoice.ts",
+        "heading": "5. src/shared/log.ts",
         "id": "candidate-5"
       },
       {
         "blocks": [
           {
-            "caption": "Candidate 6: src/shared/utils/slug.ts",
+            "caption": "Candidate 6: src/shared/helpers/mixed.ts",
+            "facts": [
+              {
+                "label": "Kind",
+                "value": "split (rule mixed-exports)"
+              },
+              {
+                "label": "Reason",
+                "value": "Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split."
+              },
+              {
+                "label": "Gain",
+                "value": "4 of net distance removed, against the locality.minDistance guideline of 2"
+              },
+              {
+                "label": "Net distance",
+                "value": "6 now, 2 at the target src"
+              },
+              {
+                "label": "Consumers",
+                "value": "2 files in 2 folders"
+              },
+              {
+                "label": "Size",
+                "value": "1 file, 6 lines"
+              },
+              {
+                "label": "Confidence",
+                "value": "normal"
+              },
+              {
+                "label": "Blockers",
+                "value": "none"
+              },
+              {
+                "label": "Move plan (dry run)",
+                "value": "no plan: needs-reason; first: the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway"
+              }
+            ],
+            "type": "facts"
+          },
+          {
+            "slot": "candidate-6",
+            "type": "judgement"
+          }
+        ],
+        "heading": "6. src/shared/helpers/mixed.ts",
+        "id": "candidate-6"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Candidate 7: src/shared/utils/slug.ts",
             "facts": [
               {
                 "label": "Kind",
@@ -550,63 +731,11 @@
             "type": "facts"
           },
           {
-            "slot": "candidate-6",
-            "type": "judgement"
-          }
-        ],
-        "heading": "6. src/shared/utils/slug.ts",
-        "id": "candidate-6"
-      },
-      {
-        "blocks": [
-          {
-            "caption": "Candidate 7: src/shared/format.ts",
-            "facts": [
-              {
-                "label": "Kind",
-                "value": "scrutinise (rule high-fan-in)"
-              },
-              {
-                "label": "Reason",
-                "value": "Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design. `locality move` needs --reason for a scrutinise."
-              },
-              {
-                "label": "Gain",
-                "value": "16 of net distance removed, against the locality.minDistance guideline of 2"
-              },
-              {
-                "label": "Net distance",
-                "value": "16 now, 0 at the target src/features"
-              },
-              {
-                "label": "Consumers",
-                "value": "8 files in 1 folder"
-              },
-              {
-                "label": "Size",
-                "value": "1 file, 3 lines"
-              },
-              {
-                "label": "Confidence",
-                "value": "normal"
-              },
-              {
-                "label": "Blockers",
-                "value": "none"
-              },
-              {
-                "label": "Move plan (dry run)",
-                "value": "no plan: needs-reason; first: the analyser recommends scrutinise (high-fan-in), not a move: pass --reason to record why it moves anyway"
-              }
-            ],
-            "type": "facts"
-          },
-          {
             "slot": "candidate-7",
             "type": "judgement"
           }
         ],
-        "heading": "7. src/shared/format.ts",
+        "heading": "7. src/shared/utils/slug.ts",
         "id": "candidate-7"
       },
       {
@@ -664,59 +793,7 @@
       {
         "blocks": [
           {
-            "caption": "Candidate 9: src/shared/log.ts",
-            "facts": [
-              {
-                "label": "Kind",
-                "value": "move (rule two-consumers)"
-              },
-              {
-                "label": "Reason",
-                "value": "Two consumers: move to the target."
-              },
-              {
-                "label": "Gain",
-                "value": "2 of net distance removed, against the locality.minDistance guideline of 2"
-              },
-              {
-                "label": "Net distance",
-                "value": "4 now, 2 at the target src"
-              },
-              {
-                "label": "Consumers",
-                "value": "2 files in 2 folders"
-              },
-              {
-                "label": "Size",
-                "value": "1 file, 3 lines"
-              },
-              {
-                "label": "Confidence",
-                "value": "normal"
-              },
-              {
-                "label": "Blockers",
-                "value": "none"
-              },
-              {
-                "label": "Move plan (dry run)",
-                "value": "1 file moved to src, 2 imports rewritten in 2 files"
-              }
-            ],
-            "type": "facts"
-          },
-          {
-            "slot": "candidate-9",
-            "type": "judgement"
-          }
-        ],
-        "heading": "9. src/shared/log.ts",
-        "id": "candidate-9"
-      },
-      {
-        "blocks": [
-          {
-            "caption": "Candidate 10: src/billing/index.ts",
+            "caption": "Candidate 9: src/billing/index.ts",
             "facts": [
               {
                 "label": "Kind",
@@ -758,11 +835,63 @@
             "type": "facts"
           },
           {
+            "slot": "candidate-9",
+            "type": "judgement"
+          }
+        ],
+        "heading": "9. src/billing/index.ts",
+        "id": "candidate-9"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Candidate 10: src/orders/audit.ts",
+            "facts": [
+              {
+                "label": "Kind",
+                "value": "inline (rule pass-through)"
+              },
+              {
+                "label": "Reason",
+                "value": "A pass-through with one consumer: inline it."
+              },
+              {
+                "label": "Gain",
+                "value": "0 of net distance removed, against the locality.minDistance guideline of 2"
+              },
+              {
+                "label": "Net distance",
+                "value": "2 now, 2 at the target src/orders"
+              },
+              {
+                "label": "Consumers",
+                "value": "1 file in 1 folder"
+              },
+              {
+                "label": "Size",
+                "value": "1 file, 4 lines"
+              },
+              {
+                "label": "Confidence",
+                "value": "normal"
+              },
+              {
+                "label": "Blockers",
+                "value": "none"
+              },
+              {
+                "label": "Move plan (dry run)",
+                "value": "no plan: no-change; first: the unit already lives in src/orders"
+              }
+            ],
+            "type": "facts"
+          },
+          {
             "slot": "candidate-10",
             "type": "judgement"
           }
         ],
-        "heading": "10. src/billing/index.ts",
+        "heading": "10. src/orders/audit.ts",
         "id": "candidate-10"
       },
       {
@@ -946,26 +1075,10 @@
     {
       "about": {
         "kind": "unit",
-        "label": "src/shared/helpers/mixed.ts",
-        "ref": "src/shared/helpers/mixed.ts"
-      },
-      "id": "candidate-1",
-      "maxChars": 400,
-      "task": "Say whether to make the proposed split of src/shared/helpers/mixed.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
-      "title": "Judgement: src/shared/helpers/mixed.ts",
-      "verdicts": [
-        "do-it",
-        "do-it-differently",
-        "leave"
-      ]
-    },
-    {
-      "about": {
-        "kind": "unit",
         "label": "src/shared/pair",
         "ref": "src/shared/pair"
       },
-      "id": "candidate-2",
+      "id": "candidate-1",
       "maxChars": 400,
       "task": "Say whether to make the proposed move of src/shared/pair: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
       "title": "Judgement: src/shared/pair",
@@ -981,7 +1094,7 @@
         "label": "src/shared/utils/money.ts",
         "ref": "src/shared/utils/money.ts"
       },
-      "id": "candidate-3",
+      "id": "candidate-2",
       "maxChars": 400,
       "task": "Say whether to make the proposed move of src/shared/utils/money.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
       "title": "Judgement: src/shared/utils/money.ts",
@@ -997,7 +1110,7 @@
         "label": "src/shared/cycle/a.ts",
         "ref": "src/shared/cycle/a.ts"
       },
-      "id": "candidate-4",
+      "id": "candidate-3",
       "maxChars": 400,
       "task": "Say whether to make the proposed move of src/shared/cycle/a.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
       "title": "Judgement: src/shared/cycle/a.ts",
@@ -1013,7 +1126,7 @@
         "label": "src/shared/utils/invoice.ts",
         "ref": "src/shared/utils/invoice.ts"
       },
-      "id": "candidate-5",
+      "id": "candidate-4",
       "maxChars": 400,
       "task": "Say whether to make the proposed move of src/shared/utils/invoice.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
       "title": "Judgement: src/shared/utils/invoice.ts",
@@ -1026,13 +1139,13 @@
     {
       "about": {
         "kind": "unit",
-        "label": "src/shared/utils/slug.ts",
-        "ref": "src/shared/utils/slug.ts"
+        "label": "src/shared/log.ts",
+        "ref": "src/shared/log.ts"
       },
-      "id": "candidate-6",
+      "id": "candidate-5",
       "maxChars": 400,
-      "task": "Say whether to make the proposed inline of src/shared/utils/slug.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
-      "title": "Judgement: src/shared/utils/slug.ts",
+      "task": "Say whether to make the proposed move of src/shared/log.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
+      "title": "Judgement: src/shared/log.ts",
       "verdicts": [
         "do-it",
         "do-it-differently",
@@ -1042,13 +1155,29 @@
     {
       "about": {
         "kind": "unit",
-        "label": "src/shared/format.ts",
-        "ref": "src/shared/format.ts"
+        "label": "src/shared/helpers/mixed.ts",
+        "ref": "src/shared/helpers/mixed.ts"
+      },
+      "id": "candidate-6",
+      "maxChars": 400,
+      "task": "Say whether to make the proposed split of src/shared/helpers/mixed.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
+      "title": "Judgement: src/shared/helpers/mixed.ts",
+      "verdicts": [
+        "do-it",
+        "do-it-differently",
+        "leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "unit",
+        "label": "src/shared/utils/slug.ts",
+        "ref": "src/shared/utils/slug.ts"
       },
       "id": "candidate-7",
       "maxChars": 400,
-      "task": "Say whether to make the proposed scrutinise of src/shared/format.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
-      "title": "Judgement: src/shared/format.ts",
+      "task": "Say whether to make the proposed inline of src/shared/utils/slug.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
+      "title": "Judgement: src/shared/utils/slug.ts",
       "verdicts": [
         "do-it",
         "do-it-differently",
@@ -1074,13 +1203,13 @@
     {
       "about": {
         "kind": "unit",
-        "label": "src/shared/log.ts",
-        "ref": "src/shared/log.ts"
+        "label": "src/billing/index.ts",
+        "ref": "src/billing/index.ts"
       },
       "id": "candidate-9",
       "maxChars": 400,
-      "task": "Say whether to make the proposed move of src/shared/log.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
-      "title": "Judgement: src/shared/log.ts",
+      "task": "Say whether to make the proposed inline of src/billing/index.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
+      "title": "Judgement: src/billing/index.ts",
       "verdicts": [
         "do-it",
         "do-it-differently",
@@ -1090,13 +1219,13 @@
     {
       "about": {
         "kind": "unit",
-        "label": "src/billing/index.ts",
-        "ref": "src/billing/index.ts"
+        "label": "src/orders/audit.ts",
+        "ref": "src/orders/audit.ts"
       },
       "id": "candidate-10",
       "maxChars": 400,
-      "task": "Say whether to make the proposed inline of src/billing/index.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
-      "title": "Judgement: src/billing/index.ts",
+      "task": "Say whether to make the proposed inline of src/orders/audit.ts: do-it, do-it-differently or leave. Give the reason, then the risk as \"Risk: ...\" in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.",
+      "title": "Judgement: src/orders/audit.ts",
       "verdicts": [
         "do-it",
         "do-it-differently",

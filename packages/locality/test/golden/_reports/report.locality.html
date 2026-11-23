@@ -113,16 +113,16 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <ul>
 <li><a href="#summary">Summary</a></li>
 <li><a href="#candidates">Candidates</a></li>
-<li><a href="#candidate-1">1. src/shared/helpers/mixed.ts</a></li>
-<li><a href="#candidate-2">2. src/shared/pair</a></li>
-<li><a href="#candidate-3">3. src/shared/utils/money.ts</a></li>
-<li><a href="#candidate-4">4. src/shared/cycle/a.ts</a></li>
-<li><a href="#candidate-5">5. src/shared/utils/invoice.ts</a></li>
-<li><a href="#candidate-6">6. src/shared/utils/slug.ts</a></li>
-<li><a href="#candidate-7">7. src/shared/format.ts</a></li>
+<li><a href="#candidate-1">1. src/shared/pair</a></li>
+<li><a href="#candidate-2">2. src/shared/utils/money.ts</a></li>
+<li><a href="#candidate-3">3. src/shared/cycle/a.ts</a></li>
+<li><a href="#candidate-4">4. src/shared/utils/invoice.ts</a></li>
+<li><a href="#candidate-5">5. src/shared/log.ts</a></li>
+<li><a href="#candidate-6">6. src/shared/helpers/mixed.ts</a></li>
+<li><a href="#candidate-7">7. src/shared/utils/slug.ts</a></li>
 <li><a href="#candidate-8">8. src/orders/place.ts</a></li>
-<li><a href="#candidate-9">9. src/shared/log.ts</a></li>
-<li><a href="#candidate-10">10. src/billing/index.ts</a></li>
+<li><a href="#candidate-9">9. src/billing/index.ts</a></li>
+<li><a href="#candidate-10">10. src/orders/audit.ts</a></li>
 <li><a href="#distance">Consumer distance</a></li>
 <li><a href="#unresolved">Unresolved imports</a></li>
 <li><a href="#omitted">Omitted, by reason</a></li>
@@ -157,52 +157,42 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </tbody>
 </table>
 <table class="ranked">
-<caption>Candidates, ordered by gain over the locality.minDistance guideline</caption>
-<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain over guideline</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
+<caption>Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col">Target</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain over guideline</th><th scope="col" class="number">Unit files</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/shared/helpers/mixed.ts</td><td>split</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
-<tr><td class="number">2</td><td>src/shared/pair</td><td>move</td><td class="number">6 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">2</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
-<tr><td class="number">3</td><td>src/shared/utils/money.ts</td><td>move</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
-<tr><td class="number">4</td><td>src/shared/cycle/a.ts</td><td>move</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
-<tr><td class="number">5</td><td>src/shared/utils/invoice.ts</td><td>move</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
-<tr><td class="number">6</td><td>src/shared/utils/slug.ts</td><td>inline</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
-<tr><td class="number">7</td><td>src/shared/format.ts</td><td>scrutinise</td><td class="number">16 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1</td><td class="number">8</td><td class="number">1</td><td class="number">2</td><td>normal</td></tr>
-<tr><td class="number">8</td><td>src/orders/place.ts</td><td>review</td><td class="number">2</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td>normal</td></tr>
-<tr><td class="number">9</td><td>src/shared/log.ts</td><td>move</td><td class="number">2</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">1</td><td>normal</td></tr>
-<tr><td class="number">10</td><td>src/billing/index.ts</td><td>inline</td><td class="number">0</td><td class="number">0</td><td class="number">0</td><td class="number">0</td><td class="number">0</td><td>normal</td></tr>
-<tr><td class="number">11</td><td>src/orders/audit.ts</td><td>inline</td><td class="number">0</td><td class="number">0</td><td class="number">1</td><td class="number">1</td><td class="number">0</td><td>normal</td></tr>
+<tr><td class="number">1</td><td>src/shared/pair</td><td>move</td><td>src/reports</td><td class="number">6 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">3</td><td class="number">2</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
+<tr><td class="number">2</td><td>src/shared/utils/money.ts</td><td>move</td><td>src</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">2</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
+<tr><td class="number">3</td><td>src/shared/cycle/a.ts</td><td>move</td><td>src/orders</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">2</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
+<tr><td class="number">4</td><td>src/shared/utils/invoice.ts</td><td>move</td><td>src/billing</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
+<tr><td class="number">5</td><td>src/shared/log.ts</td><td>move</td><td>src</td><td class="number">2</td><td class="number">1</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">1</td><td>normal</td></tr>
 </tbody>
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it.</p>
-</section>
-<section id="candidate-1" aria-labelledby="candidate-1-heading">
-<h2 id="candidate-1-heading">1. src/shared/helpers/mixed.ts</h2>
-<table class="facts">
-<caption>Candidate 1: src/shared/helpers/mixed.ts</caption>
-<thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
+<table class="ranked">
+<caption>Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col">Target</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain over guideline</th><th scope="col" class="number">Unit files</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
 <tbody>
-<tr><th scope="row">Kind</th><td>split (rule mixed-exports)</td></tr>
-<tr><th scope="row">Reason</th><td>Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split.</td></tr>
-<tr><th scope="row">Gain</th><td>4 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
-<tr><th scope="row">Net distance</th><td>6 now, 2 at the target src</td></tr>
-<tr><th scope="row">Consumers</th><td>2 files in 2 folders</td></tr>
-<tr><th scope="row">Size</th><td>1 file, 6 lines</td></tr>
-<tr><th scope="row">Confidence</th><td>normal</td></tr>
-<tr><th scope="row">Blockers</th><td>none</td></tr>
-<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason; first: the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway</td></tr>
+<tr><td class="number">1</td><td>src/shared/helpers/mixed.ts</td><td>split</td><td>src</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
+<tr><td class="number">2</td><td>src/shared/utils/slug.ts</td><td>inline</td><td>src/orders</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
+<tr><td class="number">3</td><td>src/orders/place.ts</td><td>review</td><td>src/shared</td><td class="number">2</td><td class="number">1</td><td class="number">5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td>normal</td></tr>
+<tr><td class="number">4</td><td>src/billing/index.ts</td><td>inline</td><td>src/billing</td><td class="number">0</td><td class="number">0</td><td class="number">1</td><td class="number">0</td><td class="number">0</td><td class="number">0</td><td>normal</td></tr>
+<tr><td class="number">5</td><td>src/orders/audit.ts</td><td>inline</td><td>src/orders</td><td class="number">0</td><td class="number">0</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">0</td><td>normal</td></tr>
 </tbody>
 </table>
-<section class="judgement">
-<h3>Judgement: src/shared/helpers/mixed.ts</h3>
-<ol>
-<li><strong class="subject">src/shared/helpers/mixed.ts</strong> <span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</li>
-</ol>
+<p class="legend">Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it.</p>
+<table class="ranked">
+<caption>High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer files over guideline</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col">Confidence</th></tr></thead>
+<tbody>
+<tr><td class="number">1</td><td>src/shared/format.ts</td><td class="number">8</td><td class="number">1</td><td class="number">1</td><td class="number">16</td><td>normal</td></tr>
+</tbody>
+</table>
+<p class="legend">Guidelines order and label the rows and decide nothing. Consumer files 8 (locality.highFanIn), ▲ marks a value above it.</p>
 </section>
-</section>
-<section id="candidate-2" aria-labelledby="candidate-2-heading">
-<h2 id="candidate-2-heading">2. src/shared/pair</h2>
+<section id="candidate-1" aria-labelledby="candidate-1-heading">
+<h2 id="candidate-1-heading">1. src/shared/pair</h2>
 <table class="facts">
-<caption>Candidate 2: src/shared/pair</caption>
+<caption>Candidate 1: src/shared/pair</caption>
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>move (rule two-consumers)</td></tr>
@@ -223,10 +213,10 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </ol>
 </section>
 </section>
-<section id="candidate-3" aria-labelledby="candidate-3-heading">
-<h2 id="candidate-3-heading">3. src/shared/utils/money.ts</h2>
+<section id="candidate-2" aria-labelledby="candidate-2-heading">
+<h2 id="candidate-2-heading">2. src/shared/utils/money.ts</h2>
 <table class="facts">
-<caption>Candidate 3: src/shared/utils/money.ts</caption>
+<caption>Candidate 2: src/shared/utils/money.ts</caption>
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>move (rule two-consumers)</td></tr>
@@ -247,10 +237,10 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </ol>
 </section>
 </section>
-<section id="candidate-4" aria-labelledby="candidate-4-heading">
-<h2 id="candidate-4-heading">4. src/shared/cycle/a.ts</h2>
+<section id="candidate-3" aria-labelledby="candidate-3-heading">
+<h2 id="candidate-3-heading">3. src/shared/cycle/a.ts</h2>
 <table class="facts">
-<caption>Candidate 4: src/shared/cycle/a.ts</caption>
+<caption>Candidate 3: src/shared/cycle/a.ts</caption>
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>move (rule single-consumer-tiny)</td></tr>
@@ -271,10 +261,10 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </ol>
 </section>
 </section>
-<section id="candidate-5" aria-labelledby="candidate-5-heading">
-<h2 id="candidate-5-heading">5. src/shared/utils/invoice.ts</h2>
+<section id="candidate-4" aria-labelledby="candidate-4-heading">
+<h2 id="candidate-4-heading">4. src/shared/utils/invoice.ts</h2>
 <table class="facts">
-<caption>Candidate 5: src/shared/utils/invoice.ts</caption>
+<caption>Candidate 4: src/shared/utils/invoice.ts</caption>
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>move (rule single-consumer-large)</td></tr>
@@ -295,10 +285,58 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </ol>
 </section>
 </section>
-<section id="candidate-6" aria-labelledby="candidate-6-heading">
-<h2 id="candidate-6-heading">6. src/shared/utils/slug.ts</h2>
+<section id="candidate-5" aria-labelledby="candidate-5-heading">
+<h2 id="candidate-5-heading">5. src/shared/log.ts</h2>
 <table class="facts">
-<caption>Candidate 6: src/shared/utils/slug.ts</caption>
+<caption>Candidate 5: src/shared/log.ts</caption>
+<thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
+<tbody>
+<tr><th scope="row">Kind</th><td>move (rule two-consumers)</td></tr>
+<tr><th scope="row">Reason</th><td>Two consumers: move to the target.</td></tr>
+<tr><th scope="row">Gain</th><td>2 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
+<tr><th scope="row">Net distance</th><td>4 now, 2 at the target src</td></tr>
+<tr><th scope="row">Consumers</th><td>2 files in 2 folders</td></tr>
+<tr><th scope="row">Size</th><td>1 file, 3 lines</td></tr>
+<tr><th scope="row">Confidence</th><td>normal</td></tr>
+<tr><th scope="row">Blockers</th><td>none</td></tr>
+<tr><th scope="row">Move plan (dry run)</th><td>1 file moved to src, 2 imports rewritten in 2 files</td></tr>
+</tbody>
+</table>
+<section class="judgement">
+<h3>Judgement: src/shared/log.ts</h3>
+<ol>
+<li><strong class="subject">src/shared/log.ts</strong> <span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</li>
+</ol>
+</section>
+</section>
+<section id="candidate-6" aria-labelledby="candidate-6-heading">
+<h2 id="candidate-6-heading">6. src/shared/helpers/mixed.ts</h2>
+<table class="facts">
+<caption>Candidate 6: src/shared/helpers/mixed.ts</caption>
+<thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
+<tbody>
+<tr><th scope="row">Kind</th><td>split (rule mixed-exports)</td></tr>
+<tr><th scope="row">Reason</th><td>Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split.</td></tr>
+<tr><th scope="row">Gain</th><td>4 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
+<tr><th scope="row">Net distance</th><td>6 now, 2 at the target src</td></tr>
+<tr><th scope="row">Consumers</th><td>2 files in 2 folders</td></tr>
+<tr><th scope="row">Size</th><td>1 file, 6 lines</td></tr>
+<tr><th scope="row">Confidence</th><td>normal</td></tr>
+<tr><th scope="row">Blockers</th><td>none</td></tr>
+<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason; first: the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway</td></tr>
+</tbody>
+</table>
+<section class="judgement">
+<h3>Judgement: src/shared/helpers/mixed.ts</h3>
+<ol>
+<li><strong class="subject">src/shared/helpers/mixed.ts</strong> <span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</li>
+</ol>
+</section>
+</section>
+<section id="candidate-7" aria-labelledby="candidate-7-heading">
+<h2 id="candidate-7-heading">7. src/shared/utils/slug.ts</h2>
+<table class="facts">
+<caption>Candidate 7: src/shared/utils/slug.ts</caption>
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>inline (rule single-consumer-tiny)</td></tr>
@@ -316,30 +354,6 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <h3>Judgement: src/shared/utils/slug.ts</h3>
 <ol>
 <li><strong class="subject">src/shared/utils/slug.ts</strong> <span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</li>
-</ol>
-</section>
-</section>
-<section id="candidate-7" aria-labelledby="candidate-7-heading">
-<h2 id="candidate-7-heading">7. src/shared/format.ts</h2>
-<table class="facts">
-<caption>Candidate 7: src/shared/format.ts</caption>
-<thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
-<tbody>
-<tr><th scope="row">Kind</th><td>scrutinise (rule high-fan-in)</td></tr>
-<tr><th scope="row">Reason</th><td>Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design. `locality move` needs --reason for a scrutinise.</td></tr>
-<tr><th scope="row">Gain</th><td>16 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
-<tr><th scope="row">Net distance</th><td>16 now, 0 at the target src/features</td></tr>
-<tr><th scope="row">Consumers</th><td>8 files in 1 folder</td></tr>
-<tr><th scope="row">Size</th><td>1 file, 3 lines</td></tr>
-<tr><th scope="row">Confidence</th><td>normal</td></tr>
-<tr><th scope="row">Blockers</th><td>none</td></tr>
-<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason; first: the analyser recommends scrutinise (high-fan-in), not a move: pass --reason to record why it moves anyway</td></tr>
-</tbody>
-</table>
-<section class="judgement">
-<h3>Judgement: src/shared/format.ts</h3>
-<ol>
-<li><strong class="subject">src/shared/format.ts</strong> <span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</li>
 </ol>
 </section>
 </section>
@@ -368,33 +382,9 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </section>
 </section>
 <section id="candidate-9" aria-labelledby="candidate-9-heading">
-<h2 id="candidate-9-heading">9. src/shared/log.ts</h2>
+<h2 id="candidate-9-heading">9. src/billing/index.ts</h2>
 <table class="facts">
-<caption>Candidate 9: src/shared/log.ts</caption>
-<thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
-<tbody>
-<tr><th scope="row">Kind</th><td>move (rule two-consumers)</td></tr>
-<tr><th scope="row">Reason</th><td>Two consumers: move to the target.</td></tr>
-<tr><th scope="row">Gain</th><td>2 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
-<tr><th scope="row">Net distance</th><td>4 now, 2 at the target src</td></tr>
-<tr><th scope="row">Consumers</th><td>2 files in 2 folders</td></tr>
-<tr><th scope="row">Size</th><td>1 file, 3 lines</td></tr>
-<tr><th scope="row">Confidence</th><td>normal</td></tr>
-<tr><th scope="row">Blockers</th><td>none</td></tr>
-<tr><th scope="row">Move plan (dry run)</th><td>1 file moved to src, 2 imports rewritten in 2 files</td></tr>
-</tbody>
-</table>
-<section class="judgement">
-<h3>Judgement: src/shared/log.ts</h3>
-<ol>
-<li><strong class="subject">src/shared/log.ts</strong> <span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</li>
-</ol>
-</section>
-</section>
-<section id="candidate-10" aria-labelledby="candidate-10-heading">
-<h2 id="candidate-10-heading">10. src/billing/index.ts</h2>
-<table class="facts">
-<caption>Candidate 10: src/billing/index.ts</caption>
+<caption>Candidate 9: src/billing/index.ts</caption>
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>inline (rule single-consumer-barrel)</td></tr>
@@ -412,6 +402,30 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <h3>Judgement: src/billing/index.ts</h3>
 <ol>
 <li><strong class="subject">src/billing/index.ts</strong> <span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</li>
+</ol>
+</section>
+</section>
+<section id="candidate-10" aria-labelledby="candidate-10-heading">
+<h2 id="candidate-10-heading">10. src/orders/audit.ts</h2>
+<table class="facts">
+<caption>Candidate 10: src/orders/audit.ts</caption>
+<thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
+<tbody>
+<tr><th scope="row">Kind</th><td>inline (rule pass-through)</td></tr>
+<tr><th scope="row">Reason</th><td>A pass-through with one consumer: inline it.</td></tr>
+<tr><th scope="row">Gain</th><td>0 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
+<tr><th scope="row">Net distance</th><td>2 now, 2 at the target src/orders</td></tr>
+<tr><th scope="row">Consumers</th><td>1 file in 1 folder</td></tr>
+<tr><th scope="row">Size</th><td>1 file, 4 lines</td></tr>
+<tr><th scope="row">Confidence</th><td>normal</td></tr>
+<tr><th scope="row">Blockers</th><td>none</td></tr>
+<tr><th scope="row">Move plan (dry run)</th><td>no plan: no-change; first: the unit already lives in src/orders</td></tr>
+</tbody>
+</table>
+<section class="judgement">
+<h3>Judgement: src/orders/audit.ts</h3>
+<ol>
+<li><strong class="subject">src/orders/audit.ts</strong> <span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</li>
 </ol>
 </section>
 </section>
@@ -473,7 +487,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <h2 id="limits-heading">Limits</h2>
 <ul>
 <li>Guidelines order and label results. They are heuristics for investigation and decide nothing.</li>
-<li>The table shows the top 15 candidates and says how many it leaves out; the move plans and judgements cover the top 10.</li>
+<li>Three tables list candidates by kind: moves (top 15), reviews, splits and inlines (top 10) and scrutinise (top 10). Each says how many rows it leaves out. Move plans and judgements cover the first 10 of the moves, then the reviews and splits. A unit of kind blocked is listed only in the blocked table.</li>
 <li>A move plan is a dry run of the proposed move. The report never applies one.</li>
 <li>Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.</li>
 <li>The evidence grade is weak, so history-based evidence is tentative and the structure leads.</li>
