@@ -30,15 +30,15 @@ Colour bands are rank steps of the files shown: the band edges sit at the 50th, 
 
 ## Friction list
 
-1 of 4 files reach the top 50 percent in change frequency and in complexity at once. Both percentiles are ranks among the files ranked, and the list is ordered by hotspot score.
+1 of 4 files are in the top 50 percent in change frequency and are complex. A file is complex here when it has a function above the cognitive complexity guideline, read from the stored `complexity analyse` result. The list is ordered by hotspot score.
 
-**Friction list: files in the top change-frequency percentile and above the complexity guideline, by hotspot score**
+**Friction list: files in the top change-frequency percentile with a function above the cognitive guideline, by hotspot score**
 
-| # | File | Revisions | Frequency percentile | Complexity (indentation) | Complexity percentile | Last changed | Fix share (%) | Fixes landed | Fixes in review | Flag |
-| ---: | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |
-| 1 | src/core/engine.ts | 5 | 75 ▲ | 36 | 87.5 ▲ | 2024-06-15 | 0 | 0 | 0 | hotspot |
+| # | File | Revisions | Frequency percentile | Functions above the cognitive guideline | Complexity (indentation) | Complexity percentile | Last changed | Fix share (%) | Fixes landed | Fixes in review | Flag |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |
+| 1 | src/core/engine.ts | 5 | 75 ▲ | 1 | 36 | 87.5 | 2024-06-15 | 0 | 0 | 0 | hotspot |
 
-_Guidelines order and label the rows and decide nothing. Frequency percentile 50 (cochange.hotspotPercentile), ▲ marks a value above it; Complexity percentile 50 (cochange.hotspotPercentile), ▲ marks a value above it._
+_Guidelines order and label the rows and decide nothing. Frequency percentile 50 (cochange.hotspotPercentile), ▲ marks a value above it._
 
 **Judgement: src/core/engine.ts, red flag or code smell**
 
@@ -73,21 +73,21 @@ _Guidelines order and label the rows and decide nothing. Change in complexity (%
 
 **X-Ray of src/core/engine.ts: its functions, most complex first**
 
-| # | Function | Lines | Length | Cognitive | Nesting | Cyclomatic | Revisions | Fixes | Code smells |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | tune | 1-20 | 14 | 30 ▲ | 6 ▲ | 12 ▲ | 5 | 2 | cognitive-high, nesting-warn |
-| 2 | start | 1-20 | 14 | 4 | 6 ▲ | 12 ▲ | – | 0 | none |
+| # | Function | Lines | Length | Cognitive | Nesting | Cyclomatic | Fixes | Code smells |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | tune | 1-20 | 14 | 30 ▲ | 6 ▲ | 12 ▲ | 2 | cognitive-high, nesting-warn |
+| 2 | start | 1-20 | 14 | 4 | 6 ▲ | 12 ▲ | 0 | none |
 
 _Guidelines order and label the rows and decide nothing. Cognitive 15 (complexity.guidelines, the warn level), ▲ marks a value above it; Nesting 4 (complexity.guidelines, the warn level), ▲ marks a value above it; Cyclomatic 10 (complexity.guidelines, the warn level), ▲ marks a value above it._
 
-> **Notice:** The stored fix result lists the functions that have a fix, so revisions show only for those and a dash means the figure is not stored.
+> **Notice:** The table has no revisions column: the stored fix result lists only the functions that have a fix, so it cannot give the revisions of the others. `complexity report xray src/core/engine.ts` shows them for its most complex functions, and `complexity analyse src/core/engine.ts --with-fixes --limit all` for every function.
 
 ## Limits
 
 - Guidelines order and label results. They are heuristics for investigation and decide nothing.
-- The friction list is the files at or above the 50th percentile (cochange.hotspotPercentile) of both change frequency and complexity. A percentile is a rank among the 4 files ranked, so it moves when files are added.
-- The friction list shows 1 of 1 files; the history covers the first 1 and the X-Ray the first 1.
-- Complexity is the indentation proxy, because no complexity files report covers this commit.
+- The friction list is the files at or above the 50th percentile of change frequency (cochange.hotspotPercentile) that have a function above the cognitive complexity guideline (from the stored `complexity analyse` result). A percentile is a rank among the 4 files ranked, so it moves when files are added.
+- The friction list shows 1 of 1 files; the judgement covers the first 1 (cochange.hotspotJudged), the history table covers the first 1 (sparklines of the first 1) and the X-Ray the first 1.
+- The Complexity column is the file's indentation complexity computed by this report; `complexity files` stores the same figure for this commit.
 - Revisions count every commit that touched the file in the window. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.
 - The evidence grade is weak, so history-based results are tentative and static signals should lead.
 

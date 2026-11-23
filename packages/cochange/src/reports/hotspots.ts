@@ -11,6 +11,10 @@ import { noCacheOption } from "@code-health/history/results-cache";
 import { readBlobAt } from "@code-health/history/tree";
 import type { Block } from "@code-health/report/block";
 import type { Cell } from "@code-health/report/components/ranked-table";
+import { dropEmptySlots } from "@code-health/report/empty-block";
+import { capRows } from "@code-health/report/table-cap";
+import { reportPath } from "@code-health/history/reports";
+import { statSync } from "node:fs";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild, Section } from "@code-health/report/report-model";
 import { FLAG_VERDICTS, xrayBlocks, type XrayData, type XrayFunction } from "@code-health/report/xray";
@@ -24,39 +28,70 @@ import { windowOptions } from "../window-options.ts";
 /** Files in the friction list unless `--top` says otherwise. */
 export const DEFAULT_FRICTION = 20;
 /** Friction files whose history is drawn. */
-const TREND_FILES = 10;
+const TREND_FILES = 5;
 /** Friction files that get an X-Ray section. */
-const XRAY_FILES = 5;
+const XRAY_FILES = 3;
 /** Functions each X-Ray section lists. */
-const XRAY_ROWS = 15;
+const XRAY_ROWS = 8;
 /** Files in the treemap data. The treemap draws the largest of them and counts the rest. */
-const MAP_FILES = 150;
+const MAP_FILES = 20;
 const TREND_SAMPLES = 10;
+/** Friction files whose history is drawn as a sparkline; the history table lists all `TREND_FILES`. */
+const SPARKLINES = 1;
 const RECOMMENDATIONS = ["refactor", "split", "leave", "review", "dismiss"];
 
 const number = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
 const percentOf = (share: number) => Math.round(share * 1000) / 10;
 const byScore = (a: HotspotRow, b: HotspotRow) => (b.score ?? -1) - (a.score ?? -1) || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
-/** A file of the friction list: both percentiles are at or above the guideline. */
+/** A file of the friction list: change frequency is at or above the guideline percentile, and the file is complex. */
 interface Friction {
   row: HotspotRow;
   frequencyPercentile: number;
-  complexityPercentile: number;
+  complexityPercentile: number | null;
+  /** Functions of the file above the cognitive guideline, or null when no function-level result was read. */
+  functionsAbove: number | null;
 }
 
-/** Percentiles as the ranking takes them: change frequency among all the files, complexity among those that have one. */
-function frictionOf(rows: readonly HotspotRow[], percentile: number): { all: Friction[]; guideline: number } {
+/** How a file counts as complex: it has a function above the cognitive guideline, or its complexity percentile is at the guideline. */
+type ComplexityBasis = "functions" | "percentile";
+
+/**
+ * The functions of each file above the cognitive guideline, from the stored `complexity analyse` result: a
+ * function labelled `cognitive-warn` or `cognitive-high`. Undefined when the result is absent.
+ */
+function cognitiveAbove(analyse: SiblingResult | undefined): Map<string, number> | undefined {
+  if (analyse === undefined) return undefined;
+  const above = new Map<string, number>();
+  for (const row of analyse.rows) {
+    if (typeof row.path !== "string" || !Array.isArray(row.labels)) continue;
+    if (row.labels.some((label) => label === "cognitive-warn" || label === "cognitive-high")) above.set(row.path, (above.get(row.path) ?? 0) + 1);
+  }
+  return above;
+}
+
+/**
+ * The friction list. Change frequency is a percentile among all the files. With the stored `complexity analyse`
+ * result a file is complex when it has a function above the cognitive guideline, which is how CodeScene derives
+ * file health from function-level code smells. Without it a file is complex when its complexity percentile, among
+ * the files that have a complexity, is at or above the same guideline percentile as frequency.
+ */
+function frictionOf(rows: readonly HotspotRow[], percentile: number, above: ReadonlyMap<string, number> | undefined): { all: Friction[]; basis: ComplexityBasis } {
   const frequency = midRankPercentiles(rows.map((row) => row.frequency));
   const scored = rows.flatMap((row, i) => (row.complexity === null ? [] : [i]));
   const complexity = new Map(midRankPercentiles(scored.map((i) => rows[i]!.complexity!)).map((p, k) => [scored[k]!, p]));
   const guideline = percentile / 100;
   const all = rows.flatMap((row, i): Friction[] => {
+    if (frequency[i]! < guideline) return [];
     const c = complexity.get(i);
-    if (c === undefined) return [];
-    return frequency[i]! >= guideline && c >= guideline ? [{ row, frequencyPercentile: percentOf(frequency[i]!), complexityPercentile: percentOf(c) }] : [];
+    const complexityPercentile = c === undefined ? null : percentOf(c);
+    if (above !== undefined) {
+      const count = above.get(row.path) ?? 0;
+      return count > 0 ? [{ row, frequencyPercentile: percentOf(frequency[i]!), complexityPercentile, functionsAbove: count }] : [];
+    }
+    return c !== undefined && c >= guideline ? [{ row, frequencyPercentile: percentOf(frequency[i]!), complexityPercentile, functionsAbove: null }] : [];
   });
-  return { all: all.sort((a, b) => byScore(a.row, b.row)), guideline: percentile };
+  return { all: all.sort((a, b) => byScore(a.row, b.row)), basis: above === undefined ? "percentile" : "functions" };
 }
 
 /** Physical lines of each file at HEAD, for the files that are text. */
@@ -103,39 +138,55 @@ function mapBlocks(rows: readonly HotspotRow[], lines: ReadonlyMap<string, numbe
   return blocks;
 }
 
-function frictionBlocks(friction: readonly Friction[], shown: readonly Friction[], percentile: number, complexityLabel: string, considered: number): Block[] {
-  const table: Block = {
-    type: "ranked-table",
-    caption: `Friction list: files in the top change-frequency percentile and above the complexity guideline, by hotspot score`,
-    noun: "files",
-    total: friction.length,
-    columns: [
-      { key: "path", label: "File" },
-      { key: "revisions", label: "Revisions", align: "right" },
-      { key: "frequencyPercentile", label: "Frequency percentile", align: "right", guideline: { value: percentile, note: "cochange.hotspotPercentile" } },
-      { key: "complexity", label: complexityLabel, align: "right" },
-      { key: "complexityPercentile", label: "Complexity percentile", align: "right", guideline: { value: percentile, note: "cochange.hotspotPercentile" } },
-      { key: "lastChanged", label: "Last changed" },
-      { key: "fixShare", label: "Fix share (%)", align: "right" },
-      { key: "fixes", label: "Fixes landed", align: "right" },
-      { key: "reviewFixes", label: "Fixes in review", align: "right" },
-      { key: "flag", label: "Flag" },
-    ],
-    rows: shown.map(({ row, frequencyPercentile, complexityPercentile }): Record<string, Cell> => ({
-      path: row.path,
-      revisions: row.frequency,
-      frequencyPercentile,
-      complexity: row.complexity,
-      complexityPercentile,
-      lastChanged: isoDate(row.lastChanged),
-      fixShare: row.fixShare === null ? null : percentOf(row.fixShare),
-      fixes: row.fixes,
-      reviewFixes: row.reviewFixes,
-      flag: row.recommendation,
-    })),
-  };
-  const blocks: Block[] = [{ type: "paragraph", text: `${friction.length} of ${considered} files reach the top ${100 - percentile} percent in change frequency and in complexity at once. Both percentiles are ranks among the files ranked, and the list is ordered by hotspot score.` }, table];
-  for (const { row } of shown) {
+function frictionBlocks(friction: readonly Friction[], shown: readonly Friction[], judged: readonly Friction[], percentile: number, basis: ComplexityBasis, complexityLabel: string, considered: number, judgedGuideline: number): Block[] {
+  const byFunctions = basis === "functions";
+  const table = capRows(
+    {
+      caption: byFunctions
+        ? "Friction list: files in the top change-frequency percentile with a function above the cognitive guideline, by hotspot score"
+        : "Friction list: files in the top change-frequency percentile and the top complexity percentile, by hotspot score",
+      noun: "files",
+      total: friction.length,
+      emptyText: "No file is on the friction list.",
+      columns: [
+        { key: "path", label: "File" },
+        { key: "revisions", label: "Revisions", align: "right" },
+        { key: "frequencyPercentile", label: "Frequency percentile", align: "right", guideline: { value: percentile, note: "cochange.hotspotPercentile" } },
+        ...(byFunctions ? [{ key: "functionsAbove", label: "Functions above the cognitive guideline", align: "right" as const }] : []),
+        { key: "complexity", label: complexityLabel, align: "right" },
+        { key: "complexityPercentile", label: "Complexity percentile", align: "right", ...(byFunctions ? {} : { guideline: { value: percentile, note: "cochange.hotspotPercentile" } }) },
+        { key: "lastChanged", label: "Last changed" },
+        { key: "fixShare", label: "Fix share (%)", align: "right" },
+        { key: "fixes", label: "Fixes landed", align: "right" },
+        { key: "reviewFixes", label: "Fixes in review", align: "right" },
+        { key: "flag", label: "Flag" },
+      ],
+      rows: shown.map(({ row, frequencyPercentile, complexityPercentile, functionsAbove }): Record<string, Cell> => ({
+        path: row.path,
+        revisions: row.frequency,
+        frequencyPercentile,
+        functionsAbove,
+        complexity: row.complexity,
+        complexityPercentile,
+        lastChanged: isoDate(row.lastChanged),
+        fixShare: row.fixShare === null ? null : percentOf(row.fixShare),
+        fixes: row.fixes,
+        reviewFixes: row.reviewFixes,
+        flag: row.recommendation,
+      })),
+    },
+    shown.length,
+    `cochange report hotspots --top ${friction.length}`,
+  );
+  const how = byFunctions
+    ? `A file is complex here when it has a function above the cognitive complexity guideline, read from the stored \`complexity analyse\` result.`
+    : `A file is complex here when its complexity percentile is at or above ${percentile}, because no stored \`complexity analyse\` result covers this commit. Run \`complexity analyse\` and then this report again to use the functions above the cognitive guideline instead.`;
+  const blocks: Block[] = [
+    { type: "paragraph", text: `${friction.length} of ${considered} files are in the top ${100 - percentile} percent in change frequency and are complex. ${how} The list is ordered by hotspot score.` },
+    { type: "ranked-table", ...table },
+  ];
+  if (friction.length > judged.length) blocks.push({ type: "paragraph", text: `The first ${judged.length} files have a judgement (cochange.hotspotJudged is ${judgedGuideline}, a guideline for the length of the page); the other ${friction.length - judged.length} are in the table only.` });
+  for (const { row } of judged) {
     blocks.push({ type: "judgement", slot: `flag:${row.path}` }, { type: "judgement", slot: `recommend:${row.path}` });
   }
   return blocks;
@@ -165,6 +216,7 @@ function historyBlocks(trends: readonly (Trend | undefined)[], paths: readonly s
       caption: "Complexity and size of the first friction files across their history (cochange trend)",
       noun: "friction files",
       total: paths.length + omitted,
+      emptyText: "No friction file has a history to sample.",
       columns: [
         { key: "path", label: "File" },
         { key: "revisions", label: "Revisions in history", align: "right" },
@@ -185,7 +237,7 @@ function historyBlocks(trends: readonly (Trend | undefined)[], paths: readonly s
       })),
     },
   ];
-  for (const t of found) {
+  for (const t of found.slice(0, SPARKLINES)) {
     const points = t.samples.flatMap((s) => (s.complexity === null ? [] : [{ label: s.date.slice(0, 10), value: s.complexity }]));
     if (points.length > 0) blocks.push({ type: "sparkline", title: `${t.path}: indentation complexity across its history`, unit: "indentation complexity", points });
   }
@@ -220,8 +272,8 @@ function xrayFunctions(path: string, analyse: SiblingResult, fixes: SiblingResul
         nesting: number(row.nesting),
         cyclomatic: number(row.cyclomatic),
         labels: Array.isArray(row.labels) ? row.labels.map(String) : [],
-        // The stored fix result lists the functions with a fix, so a function it does not list has none and its revisions are not stored.
-        revisions: measured === undefined ? null : number(measured.unitRevisions),
+        // The stored fix result lists only the functions with a fix, so it cannot give the revisions of the others, and the table omits the column rather than disagree with `complexity report xray`. A function it does not list has no fix.
+        revisions: null,
         fixes: fixes === undefined ? null : (number(measured?.fixCommits) ?? 0),
       };
     });
@@ -242,7 +294,7 @@ function xraySections(shown: readonly Friction[], analyse: SiblingResult | undef
     if (functions.length === 0) return { id, heading, blocks: [{ type: "notice", level: "notice", text: `The stored complexity analyse result lists no functions of ${row.path}, so there is nothing to X-Ray.` }] };
     const data: XrayData = { file: row.path, functions, guidelines: guidelinesOf(analyse), rows: XRAY_ROWS };
     const table = xrayBlocks(data).filter((block) => block.type !== "notice");
-    const revisions: Block[] = fixes === undefined ? [] : [{ type: "notice", level: "notice", text: "The stored fix result lists the functions that have a fix, so revisions show only for those and a dash means the figure is not stored." }];
+    const revisions: Block[] = [{ type: "notice", level: "notice", text: `The table has no revisions column: the stored fix result lists only the functions that have a fix, so it cannot give the revisions of the others. \`complexity report xray ${row.path}\` shows them for its most complex functions, and \`complexity analyse ${row.path} --with-fixes --limit all\` for every function.` }];
     return { id, heading, blocks: [...table, ...missing, ...revisions] };
   });
 }
@@ -302,8 +354,19 @@ export const hotspots: ReportKind = {
     since: "analyse history from this date (ISO 8601); needed on a shallow clone",
     until: "analyse history up to this date (ISO 8601, exclusive)",
     "no-refresh": "read the history cache without bringing it up to date",
-    top: `files in the friction list (default ${DEFAULT_FRICTION}); each gets judgement slots, and the first ${TREND_FILES} a history and the first ${XRAY_FILES} an X-Ray`,
+    top: `files in the friction list (default ${DEFAULT_FRICTION}); the first cochange.hotspotJudged get judgement slots, the first ${TREND_FILES} a history and the first ${XRAY_FILES} an X-Ray`,
     "no-cache": "compute the hotspot ranking again instead of reading the stored one",
+  },
+  /** The stored complexity results the page reads: the friction list, the X-Ray and the fix figures change when one is stored or replaced. */
+  dependsOn(context: CommandContext) {
+    return ["analyse", "fixes"].map((command) => {
+      try {
+        const stat = statSync(reportPath(context.repo.root, "complexity", command));
+        return [command, stat.mtimeMs, stat.size];
+      } catch {
+        return [command, null, null];
+      }
+    });
   },
   async build(context: CommandContext): Promise<ReportBuild> {
     const limit = top(context);
@@ -318,12 +381,13 @@ export const hotspots: ReportKind = {
     const settings = readSettings(context.config);
     const percentile = settings.hotspotPercentile;
 
-    const { all: friction } = frictionOf(rows, percentile);
-    const shown = friction.slice(0, limit);
-    const lines = await linesOf(root, head, rows.map((row) => row.path));
-
     const analyse = readSiblingResult(root, "complexity", "analyse", head);
     const fixes = readSiblingResult(root, "complexity", "fixes", head);
+    const { all: friction, basis } = frictionOf(rows, percentile, cognitiveAbove(analyse));
+    const shown = friction.slice(0, limit);
+    const judged = shown.slice(0, settings.hotspotJudged);
+    const lines = await linesOf(root, head, rows.map((row) => row.path));
+
     const trendPaths = shown.slice(0, TREND_FILES).map((f) => f.row.path);
     const trends = await Promise.all(trendPaths.map((path) => trendOf(context, path)));
     const complexityLabel = extra.complexitySource === "complexity-report" ? "Complexity (complexity files)" : "Complexity (indentation)";
@@ -339,17 +403,16 @@ export const hotspots: ReportKind = {
         heading: "Friction list",
         blocks:
           friction.length === 0
-            ? [{ type: "notice", level: "notice", text: `No file is in the top ${100 - percentile} percent of both change frequency and complexity among the ${rows.length} files ranked.` }]
+            ? [{ type: "notice", level: "notice", text: basis === "functions" ? `No file in the top ${100 - percentile} percent of change frequency among the ${rows.length} files ranked has a function above the cognitive guideline.` : `No file is in the top ${100 - percentile} percent of both change frequency and complexity among the ${rows.length} files ranked.` }]
             : [
-                ...frictionBlocks(friction, shown, percentile, complexityLabel, rows.length),
-                ...(friction.length > shown.length ? [{ type: "notice" as const, level: "limit" as const, text: `${friction.length - shown.length} more files are on the friction list; --top lists more.` }] : []),
+                ...frictionBlocks(friction, shown, judged, percentile, basis, complexityLabel, rows.length, settings.hotspotJudged),
               ],
       },
       { id: "history", heading: "History of the top files", blocks: trendPaths.length === 0 ? [{ type: "notice", level: "notice", text: "There is no friction file to draw." }] : historyBlocks(trends, trendPaths, Math.max(0, shown.length - trendPaths.length)) },
       ...xraySections(shown, analyse, fixes),
     ];
 
-    return {
+    return dropEmptySlots({
       title: "Hotspots",
       inputs: {
         since: context.values.since ?? null,
@@ -366,16 +429,18 @@ export const hotspots: ReportKind = {
       sections,
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        `The friction list is the files at or above the ${percentile}th percentile (cochange.hotspotPercentile) of both change frequency and complexity. A percentile is a rank among the ${rows.length} files ranked, so it moves when files are added.`,
-        `The friction list shows ${shown.length} of ${friction.length} files; the history covers the first ${Math.min(TREND_FILES, shown.length)} and the X-Ray the first ${Math.min(XRAY_FILES, shown.length)}.`,
-        extra.complexitySource === "indentation" ? "Complexity is the indentation proxy, because no complexity files report covers this commit." : "Complexity is the complexity plugin's file-level value.",
+        basis === "functions"
+          ? `The friction list is the files at or above the ${percentile}th percentile of change frequency (cochange.hotspotPercentile) that have a function above the cognitive complexity guideline (from the stored \`complexity analyse\` result). A percentile is a rank among the ${rows.length} files ranked, so it moves when files are added.`
+          : `The friction list is the files at or above the ${percentile}th percentile (cochange.hotspotPercentile) of both change frequency and complexity, because no stored \`complexity analyse\` result covers this commit; run \`complexity analyse\` and this report again to list files with a function above the cognitive guideline instead. A percentile is a rank among the ${rows.length} files ranked, so it moves when files are added.`,
+        `The friction list shows ${shown.length} of ${friction.length} files; the judgement covers the first ${judged.length} (cochange.hotspotJudged), the history table covers the first ${Math.min(TREND_FILES, shown.length)} (sparklines of the first ${Math.min(SPARKLINES, shown.length)}) and the X-Ray the first ${Math.min(XRAY_FILES, shown.length)}.`,
+        extra.complexitySource === "indentation" ? "The Complexity column is the file's indentation complexity computed by this report; \`complexity files\` stores the same figure for this commit." : "The Complexity column is the file's indentation complexity from the stored \`complexity files\` result.",
         "Revisions count every commit that touched the file in the window. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.",
         ...(evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : []),
         ...(evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate(evidence.truncated.availableSince)} is missing.`] : []),
         ...(evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : []),
         ...(analyse === undefined || fixes === undefined ? ["The X-Ray reads the complexity plugin's stored results and never computes them; a missing one is named in the section."] : []),
       ],
-      slots: slots(shown),
-    };
+      slots: slots(judged),
+    });
   },
 };

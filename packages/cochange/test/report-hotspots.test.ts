@@ -187,3 +187,58 @@ test("rendering is refused with exit 2 and a message naming the problem", async 
   await refused({ stamp: document.stamp, notes: { ...good.notes, "flag:src/other.ts": { verdict: "none-applies", text: "x" } } }, 'an entry "flag:src/other.ts"');
   await refused({ stamp: document.stamp, notes: { ...good.notes, summary: { text: "x".repeat(501) } } }, "501 characters of text and the limit is 500");
 });
+
+const frictionTable = (document: { data: { sections: { id: string; blocks: { type: string; rows?: Record<string, unknown>[]; total?: number; columns?: { key: string }[]; fullIn?: string }[] }[] } }) =>
+  document.data.sections.find((s) => s.id === "friction")!.blocks.find((b) => b.type === "ranked-table")!;
+
+test("with a stored analyse result a file is complex when a function is above the cognitive guideline, whatever its complexity percentile", async () => {
+  const head = repo.git("rev-parse", "HEAD").trim();
+  const guidelines = { cognitiveWarn: 15, cyclomaticWarn: 10, nesting: 4, overrides: 0 };
+  writeStored("analyse", head, [{ ...unit("tidy", 20, ["cognitive-warn"]), id: "src/core/util.ts#tidy", path: "src/core/util.ts" }, unit("tune", 9, [])], { guidelines });
+  const document = await slots();
+  const table = frictionTable(document);
+  expect(table.rows!.map((row) => row.path)).toEqual(["src/core/util.ts"]);
+  expect(table.columns!.map((c) => c.key)).toContain("functionsAbove");
+  expect(table.rows![0]!.functionsAbove).toBe(1);
+  const md = (await run("--notes", writeNotes("notes-functions.json", fullNotes(document)), "--format", "md")).stdout;
+  expect(md).toContain("A file is complex here when it has a function above the cognitive complexity guideline, read from the stored `complexity analyse` result.");
+});
+
+test("without a stored analyse result a file is complex by its complexity percentile, and the page says which command stores the function-level result", async () => {
+  const document = await slots();
+  const table = frictionTable(document);
+  expect(table.rows!.map((row) => row.path)).toEqual(["src/core/engine.ts"]);
+  expect(table.columns!.map((c) => c.key)).not.toContain("functionsAbove");
+  const md = (await run("--notes", writeNotes("notes-percentile.json", fullNotes(document)), "--format", "md")).stdout;
+  expect(md).toContain("its complexity percentile is at or above 50, because no stored `complexity analyse` result covers this commit. Run `complexity analyse` and then this report again");
+});
+
+test("only the first cochange.hotspotJudged friction files have judgement slots, and the table lists the rest", async () => {
+  writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { hotspotPercentile: 1, hotspotJudged: 1 } }));
+  const document = await slots();
+  const table = frictionTable(document);
+  expect(table.rows!.length).toBeGreaterThan(1);
+  const ids: string[] = document.slots.map((s: { id: string }) => s.id);
+  expect(ids).toEqual(["summary", `flag:${table.rows![0]!.path}`, `recommend:${table.rows![0]!.path}`, "limits"]);
+  const md = (await run("--notes", writeNotes("notes-judged.json", fullNotes(document)), "--format", "md")).stdout;
+  expect(md).toContain("The first 1 files have a judgement (cochange.hotspotJudged is 1");
+});
+
+test("a friction table cut by --top says how many it omits and the command that lists them", async () => {
+  writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { hotspotPercentile: 1 } }));
+  const table = frictionTable(JSON.parse((await run("--slots", "--top", "2")).stdout));
+  expect(table.rows).toHaveLength(2);
+  expect(table.total).toBeGreaterThan(2);
+  expect(table.fullIn).toBe(`cochange report hotspots --top ${table.total}`);
+});
+
+test("the X-Ray has no revisions column, because the stored fix result lists only functions with a fix, and says where to read them", async () => {
+  storeXray(repo.git("rev-parse", "HEAD").trim());
+  const document = await slots();
+  const section = document.data.sections.find((s: { id: string }) => s.id === "xray-1");
+  const table = section.blocks.find((b: { type: string }) => b.type === "ranked-table");
+  expect(table.columns.map((c: { key: string }) => c.key)).not.toContain("revisions");
+  expect(table.columns.map((c: { key: string }) => c.key)).toContain("fixes");
+  const notice = section.blocks.find((b: { type: string; text?: string }) => b.type === "notice" && b.text?.includes("no revisions column"));
+  expect(notice.text).toContain("complexity report xray src/core/engine.ts");
+});

@@ -45,7 +45,7 @@ _Guidelines order and label the rows and decide nothing. Cognitive 15 (complexit
 ## Limits
 
 - Guidelines order and label results. They are heuristics for investigation and decide nothing.
-- The table lists every function of the file. Length has no guideline: a long, linear function is often clearer than five shallow fragments.
+- The table lists every function of the file, sorted by cognitive complexity, then cyclomatic complexity, highest first. Length has no guideline: a long, linear function is often clearer than five shallow fragments.
 - Revisions and fixes are counts of landed changes in the window that touched the function, and a fix is a count of commit messages, not of defects.
 - Only the first 2 functions have a judgement, because the table is ordered by cognitive complexity.
 

@@ -5,7 +5,7 @@ import { analyseHistory } from "@code-health/history/evidence";
 import { noCacheOption } from "@code-health/history/results-cache";
 import type { Block } from "@code-health/report/block";
 import type { ReportBuild } from "@code-health/report/report-model";
-import { xrayBlocks, xraySlots, type XrayData, type XrayFunction } from "@code-health/report/xray";
+import { XRAY_ROWS, xrayBlocks, xraySlots, type XrayData, type XrayFunction } from "@code-health/report/xray";
 import { command as analyse } from "../commands/analyse.ts";
 import { readSettings, guidelinesFor } from "../config.ts";
 import { currentTree, normalisePaths } from "../current-tree.ts";
@@ -80,6 +80,7 @@ export const xray: ReportKind = {
     const data: XrayData = {
       file,
       functions: rows.map((row) => functionOf(row, fixes)),
+      allCommand: `complexity analyse ${file} --with-fixes --limit all`,
       guidelines: {
         cognitive: limitOf(guidelines, "cognitive"),
         cyclomatic: limitOf(guidelines, "cyclomatic"),
@@ -131,7 +132,7 @@ export const xray: ReportKind = {
       ],
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        "The table lists every function of the file. Length has no guideline: a long, linear function is often clearer than five shallow fragments.",
+        `${data.functions.length <= XRAY_ROWS ? `The table lists every function of the file` : `The table lists the ${XRAY_ROWS} most complex of the file's ${data.functions.length} functions; \`complexity analyse ${file} --with-fixes --limit all\` lists every one`}, sorted by cognitive complexity, then cyclomatic complexity, highest first. Length has no guideline: a long, linear function is often clearer than five shallow fragments.`,
         "Revisions and fixes are counts of landed changes in the window that touched the function, and a fix is a count of commit messages, not of defects.",
         ...(header?.shallow === true ? ["The clone is shallow, so history before its boundary is missing."] : []),
         ...(commits !== undefined && commits.skipped > 0 ? [`${commits.skipped} of ${commits.inWindow} commits in the window were not analysed (see what was excluded).`] : []),

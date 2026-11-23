@@ -16,9 +16,9 @@
     },
     "limits": [
       "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-      "The friction list is the files at or above the 50th percentile (cochange.hotspotPercentile) of both change frequency and complexity. A percentile is a rank among the 4 files ranked, so it moves when files are added.",
-      "The friction list shows 1 of 1 files; the history covers the first 1 and the X-Ray the first 1.",
-      "Complexity is the indentation proxy, because no complexity files report covers this commit.",
+      "The friction list is the files at or above the 50th percentile of change frequency (cochange.hotspotPercentile) that have a function above the cognitive complexity guideline (from the stored `complexity analyse` result). A percentile is a rank among the 4 files ranked, so it moves when files are added.",
+      "The friction list shows 1 of 1 files; the judgement covers the first 1 (cochange.hotspotJudged), the history table covers the first 1 (sparklines of the first 1) and the X-Ray the first 1.",
+      "The Complexity column is the file's indentation complexity computed by this report; `complexity files` stores the same figure for this commit.",
       "Revisions count every commit that touched the file in the window. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.",
       "The evidence grade is weak, so history-based results are tentative and static signals should lead."
     ],
@@ -80,11 +80,11 @@
       {
         "blocks": [
           {
-            "text": "1 of 4 files reach the top 50 percent in change frequency and in complexity at once. Both percentiles are ranks among the files ranked, and the list is ordered by hotspot score.",
+            "text": "1 of 4 files are in the top 50 percent in change frequency and are complex. A file is complex here when it has a function above the cognitive complexity guideline, read from the stored `complexity analyse` result. The list is ordered by hotspot score.",
             "type": "paragraph"
           },
           {
-            "caption": "Friction list: files in the top change-frequency percentile and above the complexity guideline, by hotspot score",
+            "caption": "Friction list: files in the top change-frequency percentile with a function above the cognitive guideline, by hotspot score",
             "columns": [
               {
                 "key": "path",
@@ -106,15 +106,16 @@
               },
               {
                 "align": "right",
+                "key": "functionsAbove",
+                "label": "Functions above the cognitive guideline"
+              },
+              {
+                "align": "right",
                 "key": "complexity",
                 "label": "Complexity (indentation)"
               },
               {
                 "align": "right",
-                "guideline": {
-                  "note": "cochange.hotspotPercentile",
-                  "value": 50
-                },
                 "key": "complexityPercentile",
                 "label": "Complexity percentile"
               },
@@ -142,6 +143,7 @@
                 "label": "Flag"
               }
             ],
+            "emptyText": "No file is on the friction list.",
             "noun": "files",
             "rows": [
               {
@@ -151,6 +153,7 @@
                 "fixes": 0,
                 "flag": "hotspot",
                 "frequencyPercentile": 75,
+                "functionsAbove": 1,
                 "lastChanged": "2024-06-15",
                 "path": "src/core/engine.ts",
                 "reviewFixes": 0,
@@ -215,6 +218,7 @@
                 "label": "Lines at last sample"
               }
             ],
+            "emptyText": "No friction file has a history to sample.",
             "noun": "friction files",
             "rows": [
               {
@@ -312,11 +316,6 @@
               },
               {
                 "align": "right",
-                "key": "revisions",
-                "label": "Revisions"
-              },
-              {
-                "align": "right",
                 "key": "fixes",
                 "label": "Fixes"
               },
@@ -335,7 +334,7 @@
                 "length": 14,
                 "lines": "1-20",
                 "nesting": 6,
-                "revisions": 5,
+                "revisions": null,
                 "smells": "cognitive-high, nesting-warn"
               },
               {
@@ -355,7 +354,7 @@
           },
           {
             "level": "notice",
-            "text": "The stored fix result lists the functions that have a fix, so revisions show only for those and a dash means the figure is not stored.",
+            "text": "The table has no revisions column: the stored fix result lists only the functions that have a fix, so it cannot give the revisions of the others. `complexity report xray src/core/engine.ts` shows them for its most complex functions, and `complexity analyse src/core/engine.ts --with-fixes --limit all` for every function.",
             "type": "notice"
           }
         ],

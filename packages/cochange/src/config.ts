@@ -20,6 +20,12 @@ export const cochangeConfig: PluginConfigSpec = {
     /** A hotspot's score must be in the top (100 - this) percent of scored files. */
     hotspotPercentile: 90,
     /**
+     * A guideline for the hotspots report: the friction files it asks for a judgement of, the most hotspot score
+     * first. Each judged file costs two slots, so ten keeps a page to a length a person reads in one sitting; the
+     * rest of the friction list is still in the table. It sets length, not what counts as a hotspot.
+     */
+    hotspotJudged: 10,
+    /**
      * How commits form logical changes: "off" (each commit is its own change), "issue-key" (commits
      * sharing an issue key in the message) or "author-window" (one author's commits close in time).
      */
@@ -71,6 +77,8 @@ export interface CochangeSettings {
   recentMonths: number;
   staleMonths: number;
   hotspotPercentile: number;
+  /** The friction files the hotspots report asks a judgement of. */
+  hotspotJudged: number;
   /** How commits form logical changes. */
   grouping: Grouping;
   maxChangesetSize: number;
@@ -129,6 +137,7 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
     recentMonths: positive("recentMonths"),
     staleMonths: positive("staleMonths"),
     hotspotPercentile: hotspotPercentile(),
+    hotspotJudged: positive("hotspotJudged"),
     grouping,
     maxChangesetSize: positive("maxChangesetSize"),
     minSupport: positive("minSupport"),

@@ -177,6 +177,7 @@ In the `cochange` section of the suite config:
 
 - Shared history settings, read from the top-level `history` section of the suite config ([suite.md](suite.md#configuration)) and overridable here under the same names: `branch`, `firstParent`, `renameSimilarity`, `renameLimit`, `windowMonths` (default 12 months), `maxChangesetSize`, `botPatterns`, `fixPatterns`, `revertPatterns`, `fixMatchBody` and `evidence`. The last three define a fix commit for change-risk (see [suite.md](suite.md#configuration)): `cochange.risk.fixPatterns` and `cochange.risk.revertPatterns` were removed in favour of `history.fixPatterns` and `history.revertPatterns`.
 - Recent window (default 3 months) and stale window.
+- `hotspotPercentile` (default 90): the percentile of change frequency (and, without a stored `complexity analyse` result, of complexity) at which a file is on the hotspots report's friction list. `hotspotJudged` (default 10): how many friction files the report asks a judgement of. It is a guideline for the length of the page (each file costs two slots), taken from nothing measured, and it changes no ranking; the rest of the list is in the table.
 - Logical change grouping: off, by issue-key pattern, or by author and time window.
 - Minimum support, minimum degree, minimum coupling distance, and the coupling trend tolerance (`couplingTrendTolerance`, default 10 percentage points).
 - Identity settings, including service patterns, under `cochange.identities` ([identities.md](identities.md#configuration)).

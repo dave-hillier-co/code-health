@@ -27,6 +27,7 @@ test("defaults follow the spec", () => {
     windowMonths: 12,
     recentMonths: 3,
     hotspotPercentile: 90,
+    hotspotJudged: 10,
     maxChangesetSize: 30,
     botPatterns: [],
     windowStated: false,
