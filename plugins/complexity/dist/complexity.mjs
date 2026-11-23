@@ -22097,6 +22097,9 @@ function judgementMd(data) {
   const items = parts2(data.slot, data.entry).map((p, i2) => `${i2 + 1}. **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
   return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
 }
+function judgedLineMd(slot, entry) {
+  return parts2(slot, entry).map((p) => `- **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`).join("\n");
+}
 
 // packages/report/src/components/matrix.ts
 var CELL_W = 64;
@@ -22210,6 +22213,29 @@ function slotOf(id, context) {
   if (slot === void 0) throw new ReportError(`a judgement block names slot "${id}", which the report does not define`);
   return slot;
 }
+var verdictOf = (entry) => entry !== void 0 && "verdict" in entry ? entry.verdict : void 0;
+function renderJudgedItems(block, format2, context) {
+  const { fold } = block;
+  const rendered = [];
+  const folded = /* @__PURE__ */ new Map();
+  for (const item of block.items) {
+    const entry = context.notes?.[item.slot];
+    const verdict = verdictOf(entry);
+    if (fold !== void 0 && entry !== void 0 && verdict !== void 0 && !fold.keep.includes(verdict)) {
+      folded.set(verdict, (folded.get(verdict) ?? 0) + 1);
+      continue;
+    }
+    const shown2 = item.blocks.map((b) => renderBlock(b, format2, context));
+    shown2.push(fold !== void 0 && entry !== void 0 && format2 === "md" ? judgedLineMd(slotOf(item.slot, context), entry) : renderBlock({ type: "judgement", slot: item.slot }, format2, context));
+    rendered.push(shown2.join(format2 === "html" ? "\n" : "\n\n"));
+  }
+  const counts = [...folded].map(([verdict, n]) => `${n} judged ${fold.labels[verdict] ?? verdict}`);
+  const paragraphs = [...rendered.length === 0 ? [block.emptyText] : [], ...counts.length === 0 ? [] : [`${counts.join(", ")}; ${fold.pointer}.`]];
+  const prose = (text3) => format2 === "html" ? `<p>${escapeHtml(text3)}</p>` : text3;
+  const head = rendered.length === 0 ? paragraphs.slice(0, 1) : [];
+  const tail2 = rendered.length === 0 ? paragraphs.slice(1) : paragraphs;
+  return [...head.map(prose), ...rendered, ...tail2.map(prose)].join("\n\n");
+}
 function renderBlock(block, format2, context) {
   switch (block.type) {
     case "paragraph":
@@ -22238,6 +22264,8 @@ function renderBlock(block, format2, context) {
       return format2 === "html" ? evidenceListHtml(block) : evidenceListMd(block);
     case "notice":
       return format2 === "html" ? noticeHtml(block) : noticeMd(block);
+    case "judged-items":
+      return renderJudgedItems(block, format2, context);
     case "judgement": {
       const slot = slotOf(block.slot, context);
       const data = { slot, entry: context.notes?.[slot.id] };
@@ -22693,7 +22721,22 @@ function repoName(root) {
   return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
 }
 
+// packages/report/src/table-cap.ts
+function capRows(table3, max, command10) {
+  const total = Math.max(table3.total ?? table3.rows.length, table3.rows.length);
+  if (table3.rows.length <= max && total === table3.rows.length) return table3;
+  return { ...table3, rows: table3.rows.slice(0, max), total, fullIn: command10 };
+}
+
 // packages/report/src/xray.ts
+var XRAY_ROWS = 25;
+function displayName(name11) {
+  return name11.replace(/~(\d+)/g, " (variant $1)");
+}
+function byComplexity(a, b) {
+  const desc = (x2, y2) => (y2 ?? -1) - (x2 ?? -1);
+  return desc(a.cognitive, b.cognitive) || desc(a.cyclomatic, b.cyclomatic) || a.startLine - b.startLine;
+}
 var FLAG_VERDICTS = [
   "none-applies",
   "nonobvious-code",
@@ -22714,13 +22757,13 @@ var XRAY_JUDGED = 5;
 var guidelineOf = (value, guidelines) => value === void 0 || guidelines === void 0 ? {} : { guideline: { value, note: guidelines.note } };
 var lines = (fn) => `${fn.startLine}-${fn.endLine}`;
 function xrayBlocks(data) {
-  const shown2 = data.rows === void 0 ? data.functions : data.functions.slice(0, data.rows);
   const withFixes = data.functions.some((fn) => fn.fixes !== null);
-  const table3 = {
-    type: "ranked-table",
+  const withRevisions = data.functions.some((fn) => fn.revisions !== null);
+  const sorted = [...data.functions].sort(byComplexity);
+  const full = {
     caption: `X-Ray of ${data.file}: its functions, most complex first`,
     noun: "functions",
-    total: data.functions.length,
+    total: sorted.length,
     columns: [
       { key: "function", label: "Function" },
       { key: "lines", label: "Lines" },
@@ -22728,12 +22771,12 @@ function xrayBlocks(data) {
       { key: "cognitive", label: "Cognitive", align: "right", ...guidelineOf(data.guidelines?.cognitive, data.guidelines) },
       { key: "nesting", label: "Nesting", align: "right", ...guidelineOf(data.guidelines?.nesting, data.guidelines) },
       { key: "cyclomatic", label: "Cyclomatic", align: "right", ...guidelineOf(data.guidelines?.cyclomatic, data.guidelines) },
-      { key: "revisions", label: "Revisions", align: "right" },
+      ...withRevisions ? [{ key: "revisions", label: "Revisions", align: "right" }] : [],
       { key: "fixes", label: "Fixes", align: "right" },
       { key: "smells", label: "Code smells" }
     ],
-    rows: shown2.map((fn) => ({
-      function: fn.name,
+    rows: sorted.map((fn) => ({
+      function: displayName(fn.name),
       lines: lines(fn),
       length: fn.length,
       cognitive: fn.cognitive,
@@ -22744,16 +22787,17 @@ function xrayBlocks(data) {
       smells: fn.labels.length === 0 ? "none" : fn.labels.join(", ")
     }))
   };
+  const cut = { ...capRows(full, data.rows ?? XRAY_ROWS, data.allCommand ?? `complexity analyse ${data.file} --with-fixes --limit all`), type: "ranked-table" };
   return [
-    table3,
+    cut,
     ...withFixes ? [] : [{ type: "notice", level: "notice", text: "No fix result covers these functions, so revisions and fixes are not shown." }]
   ];
 }
 function xraySlots(data) {
-  return data.functions.slice(0, XRAY_JUDGED).map((fn) => ({
+  return [...data.functions].sort(byComplexity).slice(0, XRAY_JUDGED).map((fn) => ({
     id: `function:${fn.id}`,
-    title: `Judgement: ${fn.name}`,
-    about: { kind: "unit", ref: fn.id, label: `${fn.name} (${data.file}, lines ${lines(fn)})` },
+    title: `Judgement: ${displayName(fn.name)}`,
+    about: { kind: "unit", ref: fn.id, label: `${displayName(fn.name)} (${data.file}, lines ${lines(fn)})` },
     task: "Read the function in the file. Give the red flag or code smell you judge present in it, or none-applies, and in one or two sentences say what makes it hard to read or change and the smallest next step, citing only the values the table shows. A long linear function with low nesting is not a smell on its own.",
     verdicts: FLAG_VERDICTS,
     maxChars: 400
@@ -22810,6 +22854,7 @@ var xray = {
     const data = {
       file,
       functions: rows7.map((row) => functionOf(row, fixes)),
+      allCommand: `complexity analyse ${file} --with-fixes --limit all`,
       guidelines: {
         cognitive: limitOf(guidelines, "cognitive"),
         cyclomatic: limitOf(guidelines, "cyclomatic"),
@@ -22858,7 +22903,7 @@ var xray = {
       ],
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        "The table lists every function of the file. Length has no guideline: a long, linear function is often clearer than five shallow fragments.",
+        `${data.functions.length <= XRAY_ROWS ? `The table lists every function of the file` : `The table lists the ${XRAY_ROWS} most complex of the file's ${data.functions.length} functions; \`complexity analyse ${file} --with-fixes --limit all\` lists every one`}, sorted by cognitive complexity, then cyclomatic complexity, highest first. Length has no guideline: a long, linear function is often clearer than five shallow fragments.`,
         "Revisions and fixes are counts of landed changes in the window that touched the function, and a fix is a count of commit messages, not of defects.",
         ...header2?.shallow === true ? ["The clone is shallow, so history before its boundary is missing."] : [],
         ...commits !== void 0 && commits.skipped > 0 ? [`${commits.skipped} of ${commits.inWindow} commits in the window were not analysed (see what was excluded).`] : [],

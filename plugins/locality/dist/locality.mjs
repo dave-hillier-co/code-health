@@ -6371,6 +6371,26 @@ function emptySection(section2) {
   if (lines2.some((l) => l === void 0) || !section2.blocks.some((b) => b.type !== "notice")) return void 0;
   return lines2.join(" ");
 }
+function dropEmptySlots(build) {
+  const dropped = /* @__PURE__ */ new Set();
+  const sections = build.sections.map((section2) => {
+    const blocks = [];
+    let group = [];
+    for (const block of section2.blocks) {
+      if (block.type === "judgement") {
+        const content = group.filter((b) => b.type !== "notice");
+        if (content.length > 0 && content.every((b) => emptyNotice(b) !== void 0)) dropped.add(block.slot);
+        else blocks.push(block);
+        group = [];
+      } else {
+        blocks.push(block);
+        group.push(block);
+      }
+    }
+    return { ...section2, blocks };
+  });
+  return { ...build, sections, slots: build.slots.filter((slot) => !dropped.has(slot.id)) };
+}
 
 // packages/report/src/components/bands.ts
 var BAND_COUNT = 5;
@@ -6774,6 +6794,9 @@ function judgementMd(data) {
   const items = parts(data.slot, data.entry).map((p, i) => `${i + 1}. **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
   return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
 }
+function judgedLineMd(slot, entry) {
+  return parts(slot, entry).map((p) => `- **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`).join("\n");
+}
 
 // packages/report/src/components/matrix.ts
 var CELL_W = 64;
@@ -6887,6 +6910,29 @@ function slotOf(id, context) {
   if (slot === void 0) throw new ReportError(`a judgement block names slot "${id}", which the report does not define`);
   return slot;
 }
+var verdictOf2 = (entry) => entry !== void 0 && "verdict" in entry ? entry.verdict : void 0;
+function renderJudgedItems(block, format2, context) {
+  const { fold } = block;
+  const rendered = [];
+  const folded = /* @__PURE__ */ new Map();
+  for (const item of block.items) {
+    const entry = context.notes?.[item.slot];
+    const verdict = verdictOf2(entry);
+    if (fold !== void 0 && entry !== void 0 && verdict !== void 0 && !fold.keep.includes(verdict)) {
+      folded.set(verdict, (folded.get(verdict) ?? 0) + 1);
+      continue;
+    }
+    const shown2 = item.blocks.map((b) => renderBlock(b, format2, context));
+    shown2.push(fold !== void 0 && entry !== void 0 && format2 === "md" ? judgedLineMd(slotOf(item.slot, context), entry) : renderBlock({ type: "judgement", slot: item.slot }, format2, context));
+    rendered.push(shown2.join(format2 === "html" ? "\n" : "\n\n"));
+  }
+  const counts = [...folded].map(([verdict, n]) => `${n} judged ${fold.labels[verdict] ?? verdict}`);
+  const paragraphs = [...rendered.length === 0 ? [block.emptyText] : [], ...counts.length === 0 ? [] : [`${counts.join(", ")}; ${fold.pointer}.`]];
+  const prose = (text2) => format2 === "html" ? `<p>${escapeHtml(text2)}</p>` : text2;
+  const head = rendered.length === 0 ? paragraphs.slice(0, 1) : [];
+  const tail2 = rendered.length === 0 ? paragraphs.slice(1) : paragraphs;
+  return [...head.map(prose), ...rendered, ...tail2.map(prose)].join("\n\n");
+}
 function renderBlock(block, format2, context) {
   switch (block.type) {
     case "paragraph":
@@ -6915,6 +6961,8 @@ function renderBlock(block, format2, context) {
       return format2 === "html" ? evidenceListHtml(block) : evidenceListMd(block);
     case "notice":
       return format2 === "html" ? noticeHtml(block) : noticeMd(block);
+    case "judged-items":
+      return renderJudgedItems(block, format2, context);
     case "judgement": {
       const slot = slotOf(block.slot, context);
       const data = { slot, entry: context.notes?.[slot.id] };
@@ -7378,27 +7426,41 @@ function historyWindowText(evidence, window, suffix = "") {
   return `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate2(window.since)} to ${isoDate2(window.until)}${suffix}`;
 }
 
+// packages/report/src/table-cap.ts
+function capRows(table, max, command9) {
+  const total = Math.max(table.total ?? table.rows.length, table.rows.length);
+  if (table.rows.length <= max && total === table.rows.length) return table;
+  return { ...table, rows: table.rows.slice(0, max), total, fullIn: command9 };
+}
+
 // packages/locality/src/reports/locality.ts
 var TOP2 = 15;
 var PLANNED = 10;
 var VERDICTS = ["do-it", "do-it-differently", "leave"];
 var KINDS = ["move", "split", "inline", "scrutinise", "review"];
 var DISTANCE_BINS = 5;
+var TOP_OMITTED = 10;
+var TOP_BLOCKED = 10;
+var BLOCKERS_PER_UNIT = 3;
+var REFUSAL_DETAIL_CHARS = 120;
+var OMITTED_DETAIL_CHARS = 200;
 var plural2 = (count3, noun) => `${count3} ${noun}${count3 === 1 ? "" : "s"}`;
 var byText = ([a], [b]) => a < b ? -1 : a > b ? 1 : 0;
 function consumersOf(candidate) {
   return [...new Set([...candidate.directCalls, ...candidate.otherRefs].map((entry) => entry.path))].sort();
 }
 var consumerFolders = (candidate) => new Set(consumersOf(candidate).map(folderOf));
+var folderText = (folder) => folder === "" ? "the repository root" : folder;
 var confidenceOf = (candidate) => candidate.confidence === void 0 ? "normal" : `low: ${candidate.confidence.reason}`;
-function groupRefusals(refusals) {
-  const groups = /* @__PURE__ */ new Map();
-  for (const refusal of refusals) groups.set(refusal.code, [...groups.get(refusal.code) ?? [], refusal]);
-  return [...groups].map(([code, list]) => `${code}${list.length > 1 ? ` x${list.length}` : ""} (${list[0].detail})`);
+function refusalLine(refusals) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const refusal of refusals) counts.set(refusal.code, (counts.get(refusal.code) ?? 0) + 1);
+  const codes = [...counts].map(([code, n]) => n > 1 ? `${code} x${n}` : code).join(", ");
+  return `${codes}; first: ${clip(refusals[0].detail, REFUSAL_DETAIL_CHARS)}`;
 }
 async function dryRun(context, candidate, settings, files) {
   const plan = planMove(candidate, settings, files, {});
-  const base = { destination: plan.destination, filesMoved: plan.operations.length, refusals: groupRefusals(plan.refusals) };
+  const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null };
   try {
     const { performMove } = await import("./chunk-7DJASEST.mjs");
@@ -7410,7 +7472,7 @@ async function dryRun(context, candidate, settings, files) {
   }
 }
 function planText(plan) {
-  if (plan.refusals.length > 0) return `no plan: ${plan.refusals.join(", ")}`;
+  if (plan.refusal !== null) return `no plan: ${plan.refusal}`;
   if (plan.failure !== null) return `the dry run failed: ${plan.failure}`;
   return `${plural2(plan.filesMoved, "file")} moved to ${plan.destination === "" ? "the repository root" : plan.destination}, ${plural2(plan.rewrites, "import")} rewritten in ${plural2(plan.filesRewritten, "file")}`;
 }
@@ -7453,10 +7515,12 @@ function candidateSection(rank, candidate, plan, settings) {
         caption: `Candidate ${rank}: ${candidate.path}`,
         facts: [
           { label: "Kind", value: `${candidate.recommendation} (rule ${candidate.rule})` },
+          { label: "Reason", value: candidate.reason },
           { label: "Gain", value: `${candidate.gain} of net distance removed, against the locality.minDistance guideline of ${settings.minDistance}` },
           { label: "Net distance", value: `${candidate.netDistance.current} now, ${candidate.netDistance.atTarget} at the target ${candidate.target === "" ? "(the repository root)" : candidate.target}` },
           { label: "Consumers", value: `${plural2(consumers.length, "file")} in ${plural2(consumerFolders(candidate).size, "folder")}` },
           { label: "Size", value: `${plural2(candidate.size.files, "file")}, ${plural2(candidate.size.lines, "line")}` },
+          ...candidate.unusableTarget === void 0 ? [] : [{ label: "Better folder refused", value: `${folderText(candidate.unusableTarget.target)}, with gain ${candidate.unusableTarget.gain}, is refused: ${candidate.unusableTarget.reason}` }],
           { label: "Confidence", value: confidenceOf(candidate) },
           { label: "Blockers", value: candidate.blockers.length === 0 ? "none" : candidate.blockers.map((b) => b.path).join(", ") },
           { label: "Move plan (dry run)", value: planText(plan) }
@@ -7482,11 +7546,65 @@ var REASON_WORDS = {
 function omittedRows(structural, history) {
   return [
     { what: "units already beside their consumers (rule near-consumers)", count: structural.placed },
-    { what: "candidates recommended blocked, held back by a dependency", count: structural.blocked },
-    { what: "candidates recommended keep", count: structural.keep },
+    ...Object.entries(structural.byReason).sort(byText).map(([reason, count3]) => ({ what: `units with no proposed move: ${reason}`, count: count3 })),
+    { what: "units recommended blocked, held back by a dependency (listed below with their blockers)", count: structural.blocked },
+    { what: "units recommended keep, with nothing to move", count: structural.keep },
     { what: `candidates past the top ${TOP2} of the table`, count: structural.notShown },
     ...Object.entries(history.omitted).map(([reason, count3]) => ({ what: REASON_WORDS[reason] ?? reason, count: count3 }))
   ];
+}
+function omittedUnitsTable(units) {
+  const sorted = [...units].sort((a, b) => b.gain - a.gain || (a.path < b.path ? -1 : 1));
+  return {
+    type: "ranked-table",
+    ...capRows(
+      {
+        caption: "Units with no proposed move, by gain of the folder their neighbours pull them towards",
+        noun: "units",
+        emptyText: "No unit was left without a proposed move.",
+        columns: [
+          { key: "path", label: "Unit" },
+          { key: "reason", label: "Reason" },
+          { key: "detail", label: "Detail" },
+          { key: "target", label: "Pulled towards" },
+          { key: "gain", label: "Gain", align: "right" },
+          { key: "files", label: "Files", align: "right" }
+        ],
+        rows: sorted.map((u) => ({ path: u.path, reason: u.reason, detail: clip(u.detail, OMITTED_DETAIL_CHARS), target: folderText(u.target), gain: u.gain, files: u.files }))
+      },
+      TOP_OMITTED,
+      "locality analyse --json"
+    )
+  };
+}
+function blockedTable(units) {
+  return {
+    type: "ranked-table",
+    ...capRows(
+      {
+        caption: "Units recommended blocked, with the files that hold them back",
+        noun: "units",
+        emptyText: "No unit is recommended blocked.",
+        columns: [
+          { key: "path", label: "Unit" },
+          { key: "gain", label: "Gain", align: "right" },
+          { key: "blockers", label: "Blockers" }
+        ],
+        rows: units.map((c) => ({
+          path: c.path,
+          gain: c.gain,
+          blockers: nameList(c.blockers.map((b) => b.path), BLOCKERS_PER_UNIT)
+        }))
+      },
+      TOP_BLOCKED,
+      "locality analyse --recommendation blocked"
+    )
+  };
+}
+function nameList(names, shown2) {
+  if (names.length === 0) return "none";
+  if (names.length <= shown2) return names.join(", ");
+  return `${names.slice(0, shown2).join(", ")} and ${names.length - shown2} more`;
 }
 function slotsFor(planned) {
   return [
@@ -7532,7 +7650,8 @@ var localityReport = {
     const plans = [];
     for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files));
     const byKind = extra.summary.byRecommendation;
-    const omitted2 = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shown2.length }, historyOnly2);
+    const blocked = all.filter((c) => c.recommendation === "blocked");
+    const omitted2 = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shown2.length, byReason: extra.summary.omitted }, historyOnly2);
     const unresolved = Object.entries(extra.unresolved).sort(byText);
     const excluded = [
       ...omitted2,
@@ -7591,14 +7710,17 @@ var localityReport = {
               { key: "what", label: "Left out" },
               { key: "count", label: "Count", align: "right" }
             ],
-            rows: omitted2.map((o) => ({ what: o.what, count: o.count }))
+            emptyText: "Nothing was left out.",
+            rows: omitted2.filter((o) => o.count > 0).map((o) => ({ what: o.what, count: o.count }))
           },
+          omittedUnitsTable(extra.omitted),
+          blockedTable(blocked),
           ...historyOnly2.reason === null ? [] : [{ type: "notice", level: "notice", text: `The history counts are zero because ${historyOnly2.reason}.` }]
         ]
       }
     ];
     const lowConfidence = ofKind.filter((c) => c.confidence !== void 0).length;
-    return {
+    return dropEmptySlots({
       title: "Locality report",
       inputs: { source: "structural", entrySource: inputs.entrySource, entries: inputs.entries },
       header: {
@@ -7616,7 +7738,7 @@ var localityReport = {
         ...history === null ? ["No history was read, so co-change evidence is not used."] : history.grade === "weak" ? ["The evidence grade is weak, so history-based evidence is tentative and the structure leads."] : []
       ],
       slots: slotsFor(planned)
-    };
+    });
   }
 };
 

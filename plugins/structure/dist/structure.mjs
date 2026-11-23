@@ -18229,6 +18229,8 @@ var structureConfig = {
     minVolatilityRatio: 2,
     /** Guideline (a judgement call): a dependency is above the guideline for structural stability when the depended-on side's instability exceeds the dependant's by at least this many percentage points. It orders and annotates rows and hides none. */
     minInstabilityGap: 20,
+    /** Evidence floor (a judgement call): the report lists a dependency against stability only when the depended-on folder has at least this many files, because a one-file folder's revisions per file and instability are the figures of one file. `stability` still lists every dependency, and the report counts the ones it leaves out. */
+    minTargetFiles: 2,
     /**
      * The mechanism census. Every list adds to what is built in. Names are matched exactly:
      * folder names against a folder's own name, call names against the called method on any receiver.
@@ -18343,6 +18345,7 @@ function readSettings(config) {
     minRevisions: positive("minRevisions"),
     minVolatilityRatio: positive("minVolatilityRatio"),
     minInstabilityGap,
+    minTargetFiles: positive("minTargetFiles"),
     minStaticCoupling: positive("minStaticCoupling"),
     minSupport: positive("minSupport"),
     minAgentTasks: positive("minAgentTasks"),
@@ -25104,6 +25107,26 @@ function emptySection(section2) {
   if (lines.some((l) => l === void 0) || !section2.blocks.some((b) => b.type !== "notice")) return void 0;
   return lines.join(" ");
 }
+function dropEmptySlots(build) {
+  const dropped2 = /* @__PURE__ */ new Set();
+  const sections = build.sections.map((section2) => {
+    const blocks = [];
+    let group = [];
+    for (const block of section2.blocks) {
+      if (block.type === "judgement") {
+        const content = group.filter((b) => b.type !== "notice");
+        if (content.length > 0 && content.every((b) => emptyNotice(b) !== void 0)) dropped2.add(block.slot);
+        else blocks.push(block);
+        group = [];
+      } else {
+        blocks.push(block);
+        group.push(block);
+      }
+    }
+    return { ...section2, blocks };
+  });
+  return { ...build, sections, slots: build.slots.filter((slot) => !dropped2.has(slot.id)) };
+}
 
 // packages/report/src/components/bands.ts
 var BAND_COUNT = 5;
@@ -25507,6 +25530,9 @@ function judgementMd(data) {
   const items = parts2(data.slot, data.entry).map((p, i2) => `${i2 + 1}. **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
   return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
 }
+function judgedLineMd(slot, entry) {
+  return parts2(slot, entry).map((p) => `- **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`).join("\n");
+}
 
 // packages/report/src/components/matrix.ts
 var CELL_W = 64;
@@ -25620,6 +25646,29 @@ function slotOf(id, context) {
   if (slot === void 0) throw new ReportError(`a judgement block names slot "${id}", which the report does not define`);
   return slot;
 }
+var verdictOf2 = (entry) => entry !== void 0 && "verdict" in entry ? entry.verdict : void 0;
+function renderJudgedItems(block, format2, context) {
+  const { fold } = block;
+  const rendered = [];
+  const folded = /* @__PURE__ */ new Map();
+  for (const item of block.items) {
+    const entry = context.notes?.[item.slot];
+    const verdict = verdictOf2(entry);
+    if (fold !== void 0 && entry !== void 0 && verdict !== void 0 && !fold.keep.includes(verdict)) {
+      folded.set(verdict, (folded.get(verdict) ?? 0) + 1);
+      continue;
+    }
+    const shown2 = item.blocks.map((b) => renderBlock(b, format2, context));
+    shown2.push(fold !== void 0 && entry !== void 0 && format2 === "md" ? judgedLineMd(slotOf(item.slot, context), entry) : renderBlock({ type: "judgement", slot: item.slot }, format2, context));
+    rendered.push(shown2.join(format2 === "html" ? "\n" : "\n\n"));
+  }
+  const counts = [...folded].map(([verdict, n]) => `${n} judged ${fold.labels[verdict] ?? verdict}`);
+  const paragraphs = [...rendered.length === 0 ? [block.emptyText] : [], ...counts.length === 0 ? [] : [`${counts.join(", ")}; ${fold.pointer}.`]];
+  const prose = (text3) => format2 === "html" ? `<p>${escapeHtml(text3)}</p>` : text3;
+  const head = rendered.length === 0 ? paragraphs.slice(0, 1) : [];
+  const tail2 = rendered.length === 0 ? paragraphs.slice(1) : paragraphs;
+  return [...head.map(prose), ...rendered, ...tail2.map(prose)].join("\n\n");
+}
 function renderBlock(block, format2, context) {
   switch (block.type) {
     case "paragraph":
@@ -25648,6 +25697,8 @@ function renderBlock(block, format2, context) {
       return format2 === "html" ? evidenceListHtml(block) : evidenceListMd(block);
     case "notice":
       return format2 === "html" ? noticeHtml(block) : noticeMd(block);
+    case "judged-items":
+      return renderJudgedItems(block, format2, context);
     case "judgement": {
       const slot = slotOf(block.slot, context);
       const data = { slot, entry: context.notes?.[slot.id] };
@@ -26204,7 +26255,7 @@ var TOP_LAYER_VIOLATIONS = 15;
 var TOP_HUBS = 10;
 var SYMBOLS_PER_EDGE = 3;
 var NODES_PER_CYCLE = 4;
-var TOP_PACKAGES = 40;
+var TOP_PACKAGES = 15;
 var yesNo = (value) => value ? "yes" : "no";
 var plural = (n, noun, many = `${noun}s`) => `${n} ${n === 1 ? noun : many}`;
 function nameList(names, shown2) {
@@ -26241,13 +26292,18 @@ async function gather(context, settings) {
     include: note === void 0 ? null : { section: note.value, notice: note.notice }
   };
 }
-function cycleBlocks(rows7) {
+function projectFolderCyclesText(cycles) {
+  if (cycles.count === 0) return "No folder cycle lies inside one C# project (structure.csharpFolderCycles is true).";
+  const largest = cycles.largest.map((c) => `${nameList(c.nodes, NODES_PER_CYCLE)} in ${c.project}`).join("; ");
+  return `${plural(cycles.count, "folder cycle")} lie${cycles.count === 1 ? "s" : ""} inside one C# project and ${cycles.count === 1 ? "is" : "are"} not in the table (structure.csharpFolderCycles is true). Largest: ${largest}.`;
+}
+function cycleBlocks(rows7, projectFolderCycles) {
   const shown2 = rows7.slice(0, TOP_CYCLES);
   const slots = [];
   const blocks = [
     {
       type: "paragraph",
-      text: "Cycles are found at the default level: a Go package for Go, a folder for C# and a file for every other language. The breaking set is the smallest set of edges whose removal makes the cycle acyclic, and between equally small sets the one whose sides co-change least. Nested folder cycles, a folder and its own sub-folder, sort last."
+      text: "Cycles are found at the default level: a Go package for Go, a project for C# and a file for every other language. The breaking set is the smallest set of edges whose removal makes the cycle acyclic, and between equally small sets the one whose sides co-change least. Nested folder cycles, a folder and its own sub-folder, sort last."
     },
     {
       type: "ranked-table",
@@ -26307,6 +26363,7 @@ function cycleBlocks(rows7) {
     });
   });
   if (rows7.length === 0) blocks.push({ type: "notice", level: "notice", text: "No import cycle at the default level." });
+  if (projectFolderCycles !== void 0) blocks.push({ type: "notice", level: "notice", text: projectFolderCyclesText(projectFolderCycles) });
   return { blocks, slots };
 }
 function layerBlocks(rows7, settings) {
@@ -26337,15 +26394,22 @@ function layerBlocks(rows7, settings) {
   ];
 }
 var round32 = (value) => Math.round(value * 1e3) / 1e3;
-function stabilityBlocks(packageRows2, against, settings) {
+function withEvidenceFloor(against, settings) {
+  const listed = against.filter((row) => row.stability.to.change.files >= settings.minTargetFiles);
+  return { listed, belowFloor: against.length - listed.length };
+}
+function stabilityBlocks(packageRows2, allAgainst, settings) {
+  const { listed: against, belowFloor } = withEvidenceFloor(allAgainst, settings);
+  const noTypes = packageRows2.filter((row) => row.abstractness !== null && row.exportedTypes === 0).length;
   const measured = packageRows2.flatMap(
-    (row) => row.instability === null || row.abstractness === null || row.distance === null ? [] : [{ name: row.id, instability: row.instability, abstractness: row.abstractness, distance: row.distance, ca: row.ca, ce: row.ce, exportedTypes: row.exportedTypes ?? 0, weak: row.abstractnessWeak }]
+    (row) => row.instability === null || row.abstractness === null || row.distance === null || (row.exportedTypes ?? 0) === 0 ? [] : [{ name: row.id, instability: row.instability, abstractness: row.abstractness, distance: row.distance, ca: row.ca, ce: row.ce, exportedTypes: row.exportedTypes ?? 0, weak: row.abstractnessWeak }]
   );
   const points = measured.sort((a, b) => b.distance - a.distance || (a.name < b.name ? -1 : 1));
   const shown2 = against.slice(0, TOP_AGAINST);
   const slots = [];
   const blocks = [
-    { type: "stability-chart", title: "Packages by instability and abstractness", zoneDistance: settings.packages.zoneDistance, zoneSource: "structure.packages.zoneDistance, a judgement call", points, maxPoints: TOP_PACKAGES, total: packageRows2.length, noun: "packages" },
+    { type: "stability-chart", title: "Packages by instability and abstractness", zoneDistance: settings.packages.zoneDistance, zoneSource: "structure.packages.zoneDistance, a judgement call", points, maxPoints: TOP_PACKAGES, total: packageRows2.length - noTypes, noun: "packages" },
+    ...noTypes === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(noTypes, "package")} export${noTypes === 1 ? "s" : ""} no types, so abstractness is not measured for ${noTypes === 1 ? "it" : "them"}. ${noTypes === 1 ? "It is" : "They are"} left out of the chart and its table and are not placed in a zone.` }],
     {
       type: "paragraph",
       text: "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one."
@@ -26354,6 +26418,7 @@ function stabilityBlocks(packageRows2, against, settings) {
       type: "ranked-table",
       caption: "Dependencies pointing towards less stable folders",
       noun: "dependencies",
+      emptyText: belowFloor === 0 ? "No dependency points towards a less stable folder." : `No dependency points towards a less stable folder that has at least ${settings.minTargetFiles} files; ${plural(belowFloor, "dependency", "dependencies")} onto smaller folders ${belowFloor === 1 ? "is" : "are"} left out.`,
       total: against.length,
       columns: [
         { key: "from", label: "From (depends)" },
@@ -26383,7 +26448,7 @@ function stabilityBlocks(packageRows2, against, settings) {
       maxChars: 320
     });
   });
-  if (against.length === 0) blocks.push({ type: "notice", level: "notice", text: "No dependency points towards a less stable folder." });
+  if (belowFloor > 0) blocks.push({ type: "notice", level: "notice", text: `${plural(belowFloor, "dependency", "dependencies")} onto a folder of fewer than ${settings.minTargetFiles} files ${belowFloor === 1 ? "is" : "are"} left out, because the figures of a one-file folder are the figures of one file (evidence floor structure.minTargetFiles, a judgement call). \`structure stability\` lists them.` });
   return { blocks, slots };
 }
 function censusBlocks(rows7) {
@@ -26492,9 +26557,9 @@ function limitsOf(results, settings) {
   const { evidence: evidence2 } = results.extra;
   return [
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-    `Each list shows its top rows and says how many it leaves out: ${TOP_CYCLES} cycles, ${TOP_AGAINST} dependencies against stability, ${TOP_LAYER_VIOLATIONS} layer violations, ${TOP_HUBS} hubs and ${TOP_PACKAGES} packages in the stability table (the chart draws every measured package). The commands print the rest.`,
+    `Each list shows its top rows and says how many it leaves out: ${TOP_CYCLES} cycles, ${TOP_AGAINST} dependencies against stability, ${TOP_LAYER_VIOLATIONS} layer violations, ${TOP_HUBS} hubs and ${TOP_PACKAGES} packages in the stability table (the chart draws every package that exports types). The commands print the rest.`,
     "Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. `structure cycles --level` shows the other levels.",
-    "Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, and a package that exports fewer than 3 types is marked weak. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.",
+    "Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, a package that exports fewer than 3 types is marked weak, and a package that exports none is not measured and is left out of the chart. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.",
     "The zones of the chart are geometric. `structure packages coupling` raises a finding only when a package in a zone also has dependents and changes often.",
     "The census finds mechanisms by name and shape, so a look-alike can be counted and a custom convention missed.",
     ...settings.layers.length === 0 ? ["No layers are configured in structure.layers, so no layer rule was checked."] : [],
@@ -26515,9 +26580,10 @@ var structure = {
     const settings = readSettings(context.config);
     const results = await gather(context, settings);
     const { evidence: evidence2 } = results.extra;
-    const cycle = cycleBlocks(results.cycles);
+    const cycle = cycleBlocks(results.cycles, results.extra.projectFolderCycles);
     const dependency = stabilityBlocks(results.packages, results.against, settings);
-    const aboveGuideline = results.against.filter((row) => row.aboveGuideline).length;
+    const listedAgainst = withEvidenceFloor(results.against, settings).listed;
+    const aboveGuideline = listedAgainst.filter((row) => row.aboveGuideline).length;
     const excluded = excludedCounts(results.extra.filtersApplied, droppedCounts(), builtinOmissions()).filter((e) => e.count > 0);
     const sections = [
       {
@@ -26530,7 +26596,7 @@ var structure = {
             facts: [
               { label: "Import cycles at the default level", value: String(results.cycles.length) },
               { label: "Layer violations", value: results.layerViolations === null ? "no layers configured" : String(results.layerViolations.length) },
-              { label: "Dependencies pointing towards less stable folders", value: `${results.against.length}, of which ${aboveGuideline} reach a guideline` },
+              { label: "Dependencies pointing towards less stable folders", value: `${listedAgainst.length}, of which ${aboveGuideline} reach a guideline` },
               { label: "Registration hubs", value: String(results.hubs.length) },
               { label: "Packages", value: String(results.packages.length) }
             ]
@@ -26545,7 +26611,7 @@ var structure = {
       { id: "hubs", heading: "Hubs", blocks: hubBlocks(results.hubs, results.hubNotices) },
       ...results.include === null ? [] : [{ id: "includes", heading: "C and C++ include resolution", blocks: includeBlocks(results.include) }]
     ];
-    return {
+    return dropEmptySlots({
       title: "Structure report",
       inputs: { since: context.values.since ?? null, until: context.values.until ?? null, ...results.inputs },
       header: {
@@ -26556,7 +26622,7 @@ var structure = {
       sections,
       limits: limitsOf(results, settings),
       slots: slotsOf([...cycle.slots, ...dependency.slots])
-    };
+    });
   }
 };
 
