@@ -125,7 +125,7 @@ function mapBlocks(rows: readonly HotspotRow[], lines: ReadonlyMap<string, numbe
   const blocks: Block[] = [
     {
       type: "treemap",
-      title: "Code by folder: size is lines, colour is revisions in the window",
+      title: `The ${largest.length} largest files, nested by folder: size is lines, colour is revisions in the window`,
       sizeLabel: "lines",
       colourLabel: "revisions in the window",
       items: largest,
@@ -133,7 +133,7 @@ function mapBlocks(rows: readonly HotspotRow[], lines: ReadonlyMap<string, numbe
     },
   ];
   blocks.push({ type: "paragraph", text: "Colour bands are rank steps of the files shown: the band edges sit at the 50th, 75th, 90th and 97th percentile of their revisions, so band 5 is the most changed and says nothing about good or bad." });
-  if (sized.length > largest.length) blocks.push({ type: "notice", level: "limit", text: `The map holds the ${largest.length} largest of ${sized.length} files by lines; the ${sized.length - largest.length} smaller files are not in it.` });
+  if (sized.length > largest.length) blocks.push({ type: "notice", level: "limit", text: `The map and its table show the ${largest.length} files with the most lines of ${sized.length} ranked files; the ${sized.length - largest.length} smaller files are not in it.` });
   if (rows.length > sized.length) blocks.push({ type: "notice", level: "limit", text: `${rows.length - sized.length} ranked files have no text lines to size and are not in the map.` });
   return blocks;
 }

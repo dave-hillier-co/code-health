@@ -51,6 +51,8 @@ const notAppliedTable = (caption: string, consequence: string): Block => ({
 });
 
 const percent = (share: number): number => Math.round(share * 1000) / 10;
+/** A percentage to one decimal computed from the two counts printed beside it, so the figure matches them; a share rounded to four places first can round up twice. */
+export const percentOfCounts = (part: number, whole: number): number => (whole === 0 ? 0 : Math.round((part / whole) * 1000) / 10);
 const oneDecimal = (value: number): number => Math.round(value * 10) / 10;
 
 const VERDICTS = ["pair", "document", "rotate-reviews", "leave"];
@@ -270,9 +272,9 @@ async function abandonmentBlocks(p: Prepared, measured: MeasuredPatterns): Promi
       caption: "Knowledge lost so far, at the analysed commit",
       facts: [
         { label: "Files with lines held by people", value: String(summary.files.measured) },
-        { label: `Files abandoned (${p.settings.abandonmentGuideline}% or more of the lines held by people belong to people who have left)`, value: `${summary.files.abandoned} (${percent(summary.files.share)}%)` },
+        { label: `Files abandoned (${p.settings.abandonmentGuideline}% or more of the lines held by people belong to people who have left)`, value: `${summary.files.abandoned} (${percentOfCounts(summary.files.abandoned, summary.files.measured)}%)` },
         { label: "Lines held by people", value: String(summary.lines.people) },
-        { label: "Of those, held by people who have left", value: `${summary.lines.abandoned} (${percent(summary.lines.share)}%)` },
+        { label: "Of those, held by people who have left", value: `${summary.lines.abandoned} (${percentOfCounts(summary.lines.abandoned, summary.lines.people)}%)` },
         { label: "Lines of bots, services and agents, on neither side", value: String(summary.lines.nonPerson) },
         { label: "Lines with an unknown commit", value: String(summary.lines.unattributed) },
         { label: "Developers active, and who have left", value: `${model.developers.filter((d) => d.active).length} active, ${model.developers.filter((d) => !d.active).length} left` },

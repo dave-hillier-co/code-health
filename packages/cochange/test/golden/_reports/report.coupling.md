@@ -43,7 +43,7 @@ _Guidelines order and label the rows and decide nothing. Degree (%) 30 (cochange
 
 > **Notice:** 1 pair is an expected pair (1 a test and the code it tests). Expected pairs are not judged; the table below lists them.
 
-**Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.**
+**Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.**
 
 | # | File | Changes with | Why expected | Degree (%) | Shared changes |
 | ---: | --- | --- | --- | ---: | ---: |

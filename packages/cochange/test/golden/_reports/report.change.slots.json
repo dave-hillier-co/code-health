@@ -66,6 +66,7 @@
       {
         "blocks": [
           {
+            "emptyText": "The finding has no evidence item to list.",
             "items": [
               {
                 "id": "src/billing/invoice.test.ts",
@@ -85,6 +86,7 @@
             "type": "judgement"
           },
           {
+            "emptyText": "The finding has no evidence item to list.",
             "items": [
               {
                 "id": "src/billing/invoice.ts",
@@ -100,6 +102,7 @@
             "type": "judgement"
           },
           {
+            "emptyText": "The finding has no evidence item to list.",
             "items": [
               {
                 "id": "cycle:src/billing+src/reports",
@@ -115,6 +118,7 @@
             "type": "judgement"
           },
           {
+            "emptyText": "The finding has no evidence item to list.",
             "items": [
               {
                 "id": "src/billing/invoice.ts->src/reports/summary.ts",
@@ -130,6 +134,7 @@
             "type": "judgement"
           },
           {
+            "emptyText": "The finding has no evidence item to list.",
             "items": [
               {
                 "id": "cognitive",
@@ -145,6 +150,7 @@
             "type": "judgement"
           },
           {
+            "emptyText": "The finding has no evidence item to list.",
             "items": [
               {
                 "id": "cognitive",

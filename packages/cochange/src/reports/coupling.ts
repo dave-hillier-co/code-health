@@ -177,7 +177,7 @@ function expectedSection(expected: readonly ClassifiedPair[], settings: { minDeg
   const counts = EXPECTED_REASONS.map((reason) => ({ reason, count: expected.filter((e) => e.reason === reason).length })).filter((c) => c.count > 0);
   const table = cappedTable(
     {
-      caption: `Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. ${PAIR_ORDER}`,
+      caption: `Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. ${PAIR_ORDER}`,
       noun: "pairs",
       total: expected.length,
       emptyText: "No pair is an expected pair: every pair that reaches the support floor is a pair of production files.",

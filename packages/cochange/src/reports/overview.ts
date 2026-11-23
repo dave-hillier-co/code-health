@@ -197,35 +197,47 @@ function cyclesResult(stored: SiblingResult | undefined): Result {
   });
 }
 
+/** The locality kinds with a proposed move or split, whose score is a gain; scrutinise and blocked units are ranked by other measures. */
+const MOVE_KINDS = ["move", "review", "split", "inline"];
+
 function localityResult(stored: SiblingResult | undefined): Result {
-  return resultFrom(stored, "locality analyse result", "locality analyse", (s) => {
-    const rows = top(s.rows);
-    const ranking = (row: Record<string, unknown>) => (typeof row.ranking === "object" && row.ranking !== null ? (row.ranking as Record<string, unknown>) : {});
-    const guideline = rows.map((row) => number(ranking(row).guideline)).find((g) => g !== null) ?? undefined;
-    return {
-      candidates: rows.flatMap((row) => (text(row.path) === null ? [] : [{ ref: `locality:${text(row.path)}`, label: `${text(row.path)} (locality)` }])),
-      block: topTable({
-        caption: "Units furthest from where they are used, from locality analyse",
-        noun: "units",
-        total: s.rows.length,
-        emptyText: "The stored locality analyse result lists no unit.",
-        columns: [
-          { key: "path", label: "Unit" },
-          { key: "recommendation", label: "Recommendation" },
-          { key: "gain", label: `Gain (${text(rows[0]?.scoreUnit) ?? "score"})`, align: "right", ...(guideline === undefined ? {} : { guideline: { value: guideline, note: "locality.minDistance gain guideline" } }) },
-          { key: "distance", label: "Distance", align: "right" },
-          { key: "target", label: "Target" },
-        ],
-        rows: rows.map((row): Record<string, Cell> => ({
-          path: text(row.path),
-          recommendation: text(row.recommendation),
-          gain: number(ranking(row).value) ?? number(row.score),
-          distance: number(row.distance),
-          target: text(row.target),
-        })),
-      }, "locality analyse"),
-    };
-  });
+  if (stored === undefined) return missingResult("locality analyse result", "locality analyse");
+  const ranking = (row: Record<string, unknown>) => (typeof row.ranking === "object" && row.ranking !== null ? (row.ranking as Record<string, unknown>) : {});
+  const gainOf = (row: Record<string, unknown>) => number(ranking(row).value) ?? number(row.score);
+  const moves = stored.rows.filter((row) => MOVE_KINDS.includes(text(row.recommendation) ?? "") && (gainOf(row) ?? 0) > 0);
+  const rows = top(moves);
+  const others = stored.rows.length - moves.length;
+  const guideline = rows.map((row) => number(ranking(row).guideline)).find((g) => g !== null) ?? undefined;
+  const table = topTable({
+    caption: "Units with a proposed move, split or inline, by gain, from locality analyse",
+    noun: "units",
+    total: moves.length,
+    emptyText: "The stored locality analyse result lists no unit with a proposed move.",
+    columns: [
+      { key: "path", label: "Unit" },
+      { key: "recommendation", label: "Recommendation" },
+      { key: "gain", label: "Gain", align: "right", ...(guideline === undefined ? {} : { guideline: { value: guideline, note: "locality.minDistance gain guideline" } }) },
+      { key: "measure", label: "Gain measure" },
+      { key: "distance", label: "Distance", align: "right" },
+      { key: "target", label: "Target" },
+    ],
+    rows: rows.map((row): Record<string, Cell> => ({
+      path: text(row.path),
+      recommendation: text(row.recommendation),
+      gain: gainOf(row),
+      measure: text(row.scoreUnit),
+      distance: number(row.distance),
+      target: text(row.target),
+    })),
+  }, "locality analyse");
+  const blocks: Block[] = [table];
+  if (others > 0) blocks.push({ type: "notice", level: "notice", text: `${others} other ${others === 1 ? "unit is" : "units are"} not listed here: units to scrutinise for high fan-in, blocked units and units to keep. \`locality analyse\` and the locality report list them with their own measures.` });
+  return {
+    candidates: rows.flatMap((row) => (text(row.path) === null ? [] : [{ ref: `locality:${text(row.path)}`, label: `${text(row.path)} (locality)` }])),
+    blocks,
+    read: { report: stored.report, head: stored.head, config: stored.config },
+    missing: null,
+  };
 }
 
 function hotspotResult(rows: readonly HotspotRow[]): Result {

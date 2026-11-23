@@ -17,7 +17,7 @@ Nesting and change meet in one file, and the history is short.
 
 ## Map of the code
 
-**Code by folder: size is lines, colour is revisions in the window** (the items by lines, largest first; band is revisions in the window, band 1: 2 to 5, band 2: 5 to 6, band 3: 6 to 7, band 4: 7 to 8, band 5: 8 to 8)
+**The 4 largest files, nested by folder: size is lines, colour is revisions in the window** (the items by lines, largest first; band is revisions in the window, band 1: 2 to 5, band 2: 5 to 6, band 3: 6 to 7, band 4: 7 to 8, band 5: 8 to 8)
 
 | Path | Size (lines) | Colour (revisions in the window) | Band |
 | --- | ---: | ---: | ---: |
