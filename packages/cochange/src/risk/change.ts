@@ -19,6 +19,8 @@ export interface BranchChange {
   head: string;
   /** What the base was taken against, for the output: the configured main branch, a named ref, or null. */
   against: string | null;
+  /** How many landed changes the range covers: the commits on the first-parent line from the base to the tip. More than one means the per-change factors describe their union. */
+  landed: number;
   worktree: boolean;
   /** Commits of `BASE..HEAD`, oldest first. */
   commits: { sha: string; message: string }[];
@@ -68,8 +70,16 @@ export async function findMainBranch(root: string, configured: string | null): P
   return null;
 }
 
-/** Resolves `BASE`, `BASE..HEAD` or `BASE...HEAD` to a merge base and a tip. */
-export async function resolveRange(root: string, request: RangeRequest): Promise<{ base: string; head: string; against: string | null }> {
+/** The words `against` carries when no range was given and the tip is already on the main branch, so the change is the last one that landed. */
+export const LAST_LANDED = "the last landed change (first parent of HEAD)";
+
+/**
+ * Resolves `BASE`, `BASE..HEAD` or `BASE...HEAD` to a merge base and a tip. With no range, the change is the branch
+ * since the merge base with the main branch; when the tip is already on the main branch that is empty, so the change is
+ * the last landed change on the main line: the first parent of the tip to the tip, for a merge, a squash or a direct commit.
+ * `landed` counts the landed changes between the base and the tip on the first-parent line.
+ */
+export async function resolveRange(root: string, request: RangeRequest): Promise<{ base: string; head: string; against: string | null; landed: number }> {
   const parts = request.range === undefined ? null : /^(.*?)(\.\.\.?)(.*)$/.exec(request.range);
   const named = parts === null ? request.range : parts[1] || undefined;
   const tip = parts === null ? "HEAD" : parts[3] || "HEAD";
@@ -96,7 +106,11 @@ export async function resolveRange(root: string, request: RangeRequest): Promise
   } catch {
     throw usageError(`"${against}" and "${tip}" have no common ancestor`);
   }
-  return { base, head, against };
+  if (request.range === undefined && !request.worktree && base === head && (await exists(root, `${head}^1`))) {
+    return { base: await git(root, ["rev-parse", `${head}^1`]), head, against: LAST_LANDED, landed: 1 };
+  }
+  const landed = Number(await git(root, ["rev-list", "--first-parent", "--count", `${base}..${head}`]));
+  return { base, head, against, landed };
 }
 
 function parseStatus(raw: string): { status: ChangeStatus; similarity: number | null } {
@@ -163,7 +177,7 @@ export interface ExtractOptions {
 export async function extractChange(
   root: string,
   view: HistoryView,
-  range: { base: string; head: string; against: string | null },
+  range: { base: string; head: string; against: string | null; landed: number },
   worktree: boolean,
   options: ExtractOptions,
 ): Promise<BranchChange> {

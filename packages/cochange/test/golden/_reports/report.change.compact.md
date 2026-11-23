@@ -6,29 +6,9 @@
 
 ## Needs attention
 
-**Judgement: missing-co-change**
+Nothing needs attention.
 
-1. **2 files that usually change with the touched files are not in the change: src/billing/invoice.test.ts, src/billing/tax.ts** (verdict: accepted-with-reason): The author's reason is the one the history supports.
-
-**Judgement: test-evidence**
-
-1. **1 source file changed without the tests that usually change with it, or tests deleted: src/billing/invoice.ts** (verdict: accepted-with-reason): The author's reason is the one the history supports.
-
-**Judgement: new import cycle cycle:src/billing+src/reports**
-
-1. **new import cycle cycle:src/billing+src/reports: 2 modules at the folder level: src/billing, src/reports** (verdict: accepted-with-reason): The author's reason is the one the history supports.
-
-**Judgement: new layer violation src/billing/invoice.ts-\>src/reports/summary.ts**
-
-1. **new layer violation src/billing/invoice.ts-\>src/reports/summary.ts: domain imports reporting** (verdict: accepted-with-reason): The author's reason is the one the history supports.
-
-**Judgement: complexity of src/billing/invoice.ts#total**
-
-1. **src/billing/invoice.ts#total (worsened): cognitive 18 to 27 (guideline 15)** (verdict: accepted-with-reason): The author's reason is the one the history supports.
-
-**Judgement: complexity of src/billing/tax.ts#surcharge**
-
-1. **src/billing/tax.ts#surcharge (new): cognitive 22 (guideline 15)** (verdict: accepted-with-reason): The author's reason is the one the history supports.
+6 judged accepted with a reason; see the full report.
 
 ## Reviewer guidance
 

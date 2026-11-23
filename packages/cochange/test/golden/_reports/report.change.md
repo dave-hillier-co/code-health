@@ -86,20 +86,20 @@ Each band compares the change with the 16 merged changes measured as of their ow
 
 | Factor | Band | Value | Guideline | Evidence items |
 | --- | --- | --- | --- | ---: |
-| size | low | lines 40, files 1 | lines: moderate above 80, high above 80 | 0 |
-| spread | low | spread 0, folders 1 | spread: moderate above 0, high above 0 | 0 |
-| entropy | low | entropy 0, files 1 | entropy: moderate above 1.5, high above 1.5 | 0 |
+| size | low | lines 40, files 1 | lines: above 80 is high, with no moderate band: the moderate and high cutoffs are the same value | 0 |
+| spread | low | spread 0, folders 1 | spread: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value | 0 |
+| entropy | low | entropy 0, files 1 | entropy: above 1.5 is high, with no moderate band: the moderate and high cutoffs are the same value | 0 |
 | mixed-purpose | low | moved 0, edited 1, editedWhileMoved 0 | count: moderate from 1, high from 3 | 0 |
-| hotspots-touched | low | share 1, hotFiles 1 | share: moderate above 1, high above 1 | 1 |
+| hotspots-touched | low | share 1, hotFiles 1 | share: above 1 is high, with no moderate band: the moderate and high cutoffs are the same value | 1 |
 | defect-history | unavailable | share 0.142857, fixes 1, revisions 7 | share: no cutoff, the baseline is too small | 1 |
 | contention | low | authors 0 | authors: moderate above 0, high above 1 | 0 |
-| age | low | stale 0, settling 0, known 1 | stale: moderate above 0, high above 0; settling: moderate above 0, high above 0 | 0 |
+| age | low | stale 0, settling 0, known 1 | stale: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value; settling: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value | 0 |
 | missing-co-change | moderate | count 2 | count: moderate from 1, high from 3 | 2 |
 | novel-coupling | low | count 0 | count: moderate from 1, high from 3 | 0 |
 | test-evidence | moderate | count 1 | count: moderate from 1, high from 3 | 1 |
 | blast-radius | moderate | files 2, signatureChanges 0, symbolFanIn 0 | files: moderate above 0, high above 2 | 2 |
 | sensitive-paths | low | count 0 | count: moderate from 1, high from 3 | 0 |
-| complexity-delta | low | count 0, files 1 | count: moderate from 1, high from 3 | 0 |
+| complexity-delta | low | count 0, files 1, newFiles 0 | count: moderate from 1, high from 3 | 0 |
 | structure-delta | moderate | count 2 | count: moderate from 1, high from 3 | 2 |
 | abandoned-touched | unavailable | none | none | 0 |
 
@@ -150,13 +150,17 @@ _Guidelines order and label the rows and decide nothing. Confidence (%) 80 (coch
 | Hot files touched | 1 |
 | Share of the change's churn in hot files | 100% |
 | Band | low |
-| Guideline | share: moderate above 1, high above 1 |
+| Guideline | share: above 1 is high, with no moderate band: the moderate and high cutoffs are the same value |
 
 **Hot files the change touches, by revisions in the window**
 
 | # | File | Revisions |
 | ---: | --- | ---: |
 | 1 | src/billing/invoice.ts | 7 |
+
+## Abandoned files touched
+
+> **Notice:** Abandoned touched files could not be computed: knowledge analysis is not enabled (cochange.knowledge.enabled).
 
 ## Evidence behind the factors
 

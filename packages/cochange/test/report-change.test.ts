@@ -372,3 +372,56 @@ test("the report command lists the change report with its evidence option", asyn
   const sub = (await runCochange(repo.path, ["report", "change", "--help"])).stdout;
   expect(sub).toContain("--evidence <evidence>");
 });
+
+test("with no range on the main branch, the change is the last landed change, and risk reads the same range", async () => {
+  const document = await slots();
+  expect(document.stamp.inputs.range).toBeNull();
+  expect(document.stamp.inputs.base).toBe(sha("main^1"));
+  expect(document.stamp.inputs.head).toBe(sha("main"));
+  const risk = JSON.parse((await runCochange(repo.path, ["risk"])).stdout);
+  expect(risk.results.change).toMatchObject({ base: sha("main^1"), head: sha("main"), landedChanges: 1 });
+});
+
+test("a range that covers several landed changes says the per-change factors describe their union", async () => {
+  const { stdout } = await run("main~3..main", "--format", "md");
+  expect(stdout).toContain("This range covers 3 landed changes and 3 commits, so the per-change factors");
+  const compact = await run("main~3..main", "--format", "md", "--compact");
+  expect(compact.stdout).toContain("This range covers 3 landed changes");
+  const single = await run("main~1..main", "--format", "md");
+  expect(single.stdout).not.toContain("landed changes");
+});
+
+test("the compact form lists the items judged needs-change and counts the others by verdict", async () => {
+  const args = evidenceArgs();
+  const document = await slots("main..missing", ...args);
+  const verdicts = ["needs-change", "false-positive", "accepted-with-reason"];
+  const notes: Record<string, unknown> = {};
+  document.slots.forEach((slot: Slot, i: number) => {
+    notes[slot.id] = slot.verdicts.length === 0 ? { text: "Look at the tables first." } : { verdict: verdicts[i === 0 ? 0 : 1 + (i % 2)], text: `Reason ${i}.` };
+  });
+  const { stdout } = await run("main..missing", "--notes", writeJson("notes-fold.json", { stamp: document.stamp, notes }), "--format", "md", "--compact", ...args);
+  const attention = stdout.slice(stdout.indexOf("## Needs attention"), stdout.indexOf("## Reviewer guidance"));
+  expect(attention.match(/^- \*\*/gm)).toHaveLength(1);
+  expect(attention).toContain("(verdict: needs-change)");
+  expect(attention).not.toContain("Judgement:");
+  expect(attention).toContain("3 judged accepted with a reason, 2 judged false positive; see the full report.");
+});
+
+test("the compact form says nothing needs attention when every item was judged not to", async () => {
+  const args = evidenceArgs();
+  const document = await slots("main..missing", ...args);
+  const notes: Record<string, unknown> = {};
+  for (const slot of document.slots as Slot[]) notes[slot.id] = slot.verdicts.length === 0 ? { text: "Look at the tables first." } : { verdict: "false-positive", text: "It does not apply." };
+  const { stdout } = await run("main..missing", "--notes", writeJson("notes-none.json", { stamp: document.stamp, notes }), "--format", "md", "--compact", ...args);
+  const attention = stdout.slice(stdout.indexOf("## Needs attention"), stdout.indexOf("## Reviewer guidance"));
+  expect(attention).toContain("Nothing needs attention.");
+  expect(attention).toMatch(/\d+ judged false positive; see the full report\./);
+});
+
+test("no complexity finding appears without a comparison passed in, and a new file is not a rise from zero", async () => {
+  const document = await slots("main..missing");
+  expect(document.slots.map((s: Slot) => s.id).filter((id: string) => id.includes("complexity"))).toEqual([]);
+  const risk = JSON.parse((await runCochange(repo.path, ["risk", "main..missing"])).stdout);
+  const factor = risk.results.factors.find((f: { name: string }) => f.name === "complexity-delta");
+  expect(factor.evidence.filter((e: { before?: number }) => e.before === 0)).toEqual([]);
+});

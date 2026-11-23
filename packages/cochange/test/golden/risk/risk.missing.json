@@ -132,6 +132,7 @@
       "files": 1,
       "filteredPaths": 0,
       "head": "d9e663050c424ee3d4da436198a547a528153a88",
+      "landedChanges": 1,
       "moved": 0,
       "paths": [
         {
@@ -489,7 +490,8 @@
         "status": "ok",
         "value": {
           "count": 0,
-          "files": 1
+          "files": 1,
+          "newFiles": 0
         }
       },
       {

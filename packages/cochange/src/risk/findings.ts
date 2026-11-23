@@ -172,7 +172,7 @@ export function findingsOf(assessed: Assessed, placement: PlacementOutcome | nul
   const tests = get("test-evidence");
   if (atLeastModerate(tests)) found.push(make("test-evidence", tests, `${count(tests)} source file${count(tests) === 1 ? "" : "s"} changed without the tests that usually change with ${count(tests) === 1 ? "it" : "them"}, or tests deleted`, tests.evidence));
   const abandoned = get("abandoned-touched");
-  if (atLeastModerate(abandoned)) found.push(make("abandoned-touched", abandoned, `${count(abandoned)} touched file${count(abandoned) === 1 ? " is" : "s are"} abandoned or likely to be: nobody active holds most of ${count(abandoned) === 1 ? "its" : "their"} lines`, abandoned.evidence));
+  if (atLeastModerate(abandoned)) found.push(make("abandoned-touched", abandoned, `${count(abandoned)} touched file${count(abandoned) === 1 ? " is" : "s are"} abandoned or likely to be: nobody active holds most of ${count(abandoned) === 1 ? "its" : "their"} lines${typeof abandoned.value.baseline === "number" ? `, or their probability is above the repository's baseline of ${abandoned.value.baseline}` : ""}`, abandoned.evidence));
   const complexity = get("complexity-delta");
   if (atLeastModerate(complexity)) found.push(make("complexity-delta", complexity, `${count(complexity)} unit${count(complexity) === 1 ? "" : "s"} or file${count(complexity) === 1 ? "" : "s"} gained complexity`, complexity.evidence));
   const novel = get("novel-coupling");
