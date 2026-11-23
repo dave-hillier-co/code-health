@@ -31,7 +31,8 @@
             "no-change",
             "package-boundary",
             "package-entry",
-            "package-main"
+            "package-main",
+            "unexported-use"
           ]
         },
         "detail": { "type": "string" }
