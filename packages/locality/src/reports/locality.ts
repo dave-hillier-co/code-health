@@ -3,6 +3,7 @@ import { droppedCounts } from "@code-health/cli-kit/dropped-files";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import type { ReportKind } from "@code-health/cli-kit/report-command";
 import { folderDistance, folderOf } from "@code-health/graph/tree-distance";
+import { historyWindowText } from "@code-health/history/report-header";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import type { Block } from "@code-health/report/block";
 import type { Cell } from "@code-health/report/components/ranked-table";
@@ -40,7 +41,6 @@ interface PlanSummary {
   failure: string | null;
 }
 
-const isoDate = (seconds: number) => new Date(seconds * 1000).toISOString().slice(0, 10);
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 const byText = ([a]: [string, unknown], [b]: [string, unknown]) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -290,7 +290,7 @@ export const localityReport: ReportKind = {
         historyWindow:
           history === null
             ? "No history was read, so the candidates rest on the import graph alone."
-            : `${history.usableHistoryMonths} months of usable history; the analysis window is ${history.window.months} months, ${isoDate(history.window.since)} to ${isoDate(history.window.until)}`,
+            : historyWindowText(history, history.window),
         excluded: excluded.filter((e) => e.count > 0),
       },
       sections,

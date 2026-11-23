@@ -44,7 +44,7 @@ function slotOf(id: string, context: BlockContext): Slot {
   return slot;
 }
 
-/** Renders one block as html or markdown. */
+/** Renders one block as html or markdown. A block with nothing to show prints one notice line (see `emptyNotice`). */
 export function renderBlock(block: Block, format: Format, context: BlockContext): string {
   switch (block.type) {
     case "paragraph": return format === "html" ? paragraphHtml(block) : paragraphMd(block);

@@ -2,7 +2,7 @@
 
 - Repository `demo` at `0123456789ab` on 2025-06-01; config hash `abcdef0123456789`
 - Evidence grade: moderate. History window: 8 months of history
-- Excluded: generated files: 3
+- Excluded: 3 in total across 1 kind; the full report lists each
 
 ## Overview
 

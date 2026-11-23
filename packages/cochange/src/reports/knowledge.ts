@@ -6,6 +6,7 @@ import type { Block } from "@code-health/report/block";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild } from "@code-health/report/report-model";
+import { excludedCounts, historyWindowText } from "@code-health/history/report-header";
 import type { FiltersApplied } from "@code-health/history/noise";
 import { measureCurrent, round4, summariseCurrent } from "../abandonment/current.ts";
 import type { KnowledgeModel } from "../abandonment/knowledge-model.ts";
@@ -34,7 +35,6 @@ interface PatternInfo {
 
 const percent = (share: number): number => Math.round(share * 1000) / 10;
 const oneDecimal = (value: number): number => Math.round(value * 10) / 10;
-const isoDate = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);
 
 const VERDICTS = ["pair", "document", "rotate-reviews", "leave"];
 const INCONCLUSIVE_VERDICTS = ["map-identities", "leave"];
@@ -88,33 +88,6 @@ const PATTERN_INFO: Record<Pattern, PatternInfo> = {
 const slotId = (pattern: Pattern): string => `pattern-${pattern}`;
 
 /** Commit filters and the file kinds left out, with the words the page uses. */
-const COMMIT_FILTERS: [keyof FiltersApplied["dropped"], string][] = [
-  ["outsideWindow", "commits outside the analysis window"],
-  ["shallowBoundaryCommits", "shallow boundary commits"],
-  ["importedCommits", "commits of imported history"],
-  ["blameIgnoredCommits", "commits in the blame ignore file"],
-  ["botCommits", "commits by bots and service accounts"],
-  ["suiteCommits", "commits trailed by this suite"],
-  ["emptyAfterFiltering", "commits with no file left after filtering"],
-];
-const CHANGE_FILTERS: [keyof FiltersApplied["dropped"], string][] = [
-  ["pureRenames", "file changes that only rename"],
-  ["excludedByGlob", "file changes matching exclude globs"],
-  ["lockfiles", "lockfile changes"],
-  ["generated", "generated file changes"],
-  ["vendored", "vendored file changes"],
-];
-const FILE_KINDS: Record<string, string> = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
-
-function excludedCounts(filters: FiltersApplied, files: Record<string, number>, builtin: Record<string, number>): ExcludedCount[] {
-  return [
-    ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
-    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files`, count: filters.oversizedChanges },
-    ...Object.entries(files).map(([kind, count]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of the hotspot ranking`, count })),
-    ...Object.entries(builtin).map(([entry, count]) => ({ what: `files under the built-in exclude ${entry}`, count })),
-  ];
-}
-
 /** The active developers who hold lines in a file, the largest holder first. Never a developer who has left. */
 function activeHolders(model: KnowledgeModel, byPath: ReadonlyMap<string, KnowledgeModel["files"][number]>, path: string): string {
   const file = byPath.get(path);
@@ -463,14 +436,14 @@ export const knowledge: ReportKind = {
     const abandonment = await abandonmentBlocks(p, measured);
     const simulation = await simulationBlocks(context, p);
     const withFiles = PATTERNS.filter((pattern) => measured.summary.counts.find((c) => c.pattern === pattern)!.primary > 0);
-    const excluded = excludedCounts(p.history.filtersApplied, droppedCounts(), builtinOmissions());
+    const excluded = excludedCounts(p.history.filtersApplied, droppedCounts(), builtinOmissions(), { leftOutOf: "the hotspot ranking" });
     const { evidence, window } = p.history;
     return {
       title: "Knowledge report",
       inputs: { ...commonInputs(p, "report", { names: names.enabled, guidelines: measured.guidelines, complexityReport: measured.complexity.input }) },
       header: {
         evidenceGrade: evidence.grade,
-        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate(window.since)} to ${isoDate(window.until)}; authorship is the blame at the analysed commit`,
+        historyWindow: historyWindowText(evidence, window, "; authorship is the blame at the analysed commit"),
         excluded: excluded.filter((e) => e.count > 0),
       },
       sections: [

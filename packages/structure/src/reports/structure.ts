@@ -25,7 +25,7 @@ import type { LayerViolation } from "../layers.ts";
 import type { PackageRow } from "../packaging/list.ts";
 import type { CensusRow } from "../census/rows.ts";
 import type { UnstableDependency } from "../unstable.ts";
-import { excludedCounts } from "./excluded.ts";
+import { excludedCounts, historyWindowText, isoDate } from "@code-health/history/report-header";
 
 /** How many rows each list shows. The rest are counted on the page, and the command prints them. */
 const TOP_CYCLES = 5;
@@ -36,7 +36,6 @@ const SYMBOLS_PER_EDGE = 3;
 const NODES_PER_CYCLE = 4;
 const TOP_PACKAGES = 40;
 
-const isoDate = (seconds: number | string) => new Date(typeof seconds === "number" ? seconds * 1000 : seconds).toISOString().slice(0, 10);
 const yesNo = (value: boolean) => (value ? "yes" : "no");
 const plural = (n: number, noun: string, many = `${noun}s`) => `${n} ${n === 1 ? noun : many}`;
 
@@ -429,7 +428,7 @@ export const structure: ReportKind = {
       inputs: { since: context.values.since ?? null, until: context.values.until ?? null, ...results.inputs },
       header: {
         evidenceGrade: evidence.grade,
-        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate(results.extra.window.since)} to ${isoDate(results.extra.window.until)}`,
+        historyWindow: historyWindowText(evidence, results.extra.window),
         excluded,
       },
       sections,

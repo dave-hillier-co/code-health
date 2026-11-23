@@ -6,6 +6,7 @@ import type { Block } from "@code-health/report/block";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild } from "@code-health/report/report-model";
+import { excludedCounts, historyWindowText, isoDate } from "@code-health/history/report-header";
 import type { Evidence } from "@code-health/history/evidence";
 import type { FiltersApplied } from "@code-health/history/noise";
 import { noCacheOption } from "@code-health/history/results-cache";
@@ -67,39 +68,11 @@ interface PreviousWindow {
   eligibleChanges: number;
 }
 
-const isoDate = (value: string) => value.slice(0, 10);
 const text = (value: unknown): string | null => (typeof value === "string" ? value : null);
 const number = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
 const round1 = (value: number) => Math.round(value * 10) / 10;
 const byBytes = (a: string, b: string) => Buffer.compare(Buffer.from(a), Buffer.from(b));
 const signed = (value: number) => `${value > 0 ? "+" : ""}${value}`;
-
-const COMMIT_FILTERS: [keyof FiltersApplied["dropped"], string][] = [
-  ["outsideWindow", "commits outside the analysis window"],
-  ["shallowBoundaryCommits", "shallow boundary commits"],
-  ["importedCommits", "commits of imported history"],
-  ["blameIgnoredCommits", "commits in the blame ignore file"],
-  ["botCommits", "commits by bots and service accounts"],
-  ["suiteCommits", "commits trailed by this suite"],
-  ["emptyAfterFiltering", "commits with no file left after filtering"],
-];
-const CHANGE_FILTERS: [keyof FiltersApplied["dropped"], string][] = [
-  ["pureRenames", "file changes that only rename"],
-  ["excludedByGlob", "file changes matching exclude globs"],
-  ["lockfiles", "lockfile changes"],
-  ["generated", "generated file changes"],
-  ["vendored", "vendored file changes"],
-];
-const FILE_KINDS: Record<string, string> = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
-
-function excludedCounts(filters: FiltersApplied, files: Record<string, number>, builtin: Record<string, number>): ExcludedCount[] {
-  return [
-    ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
-    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files, counted on neither side of any ratio`, count: filters.oversizedChanges },
-    ...Object.entries(files).map(([kind, count]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of the rankings`, count })),
-    ...Object.entries(builtin).map(([entry, count]) => ({ what: `files under the built-in exclude ${entry}`, count })),
-  ];
-}
 
 const TREND_ARROW: Record<CouplingTrend, string> = { stronger: "↑", stable: "→", weaker: "↓" };
 
@@ -389,7 +362,7 @@ export const coupling: ReportKind = {
     const hidden = hiddenSection(readSiblingResult(context.repo.root, "structure", "hidden", context.repo.head));
     const sums = sumsOf(rows);
     const judged = rows.slice(0, JUDGED_PAIRS);
-    const excluded = excludedCounts(extra.filtersApplied, droppedCounts(), builtinOmissions());
+    const excluded = excludedCounts(extra.filtersApplied, droppedCounts(), builtinOmissions(), { leftOutOf: "the rankings", oversizedNote: "counted on neither side of any ratio" });
     const inputs = pairOutput.inputs as { minSupport: number };
 
     const pairsHeading: Block[] =
@@ -409,7 +382,7 @@ export const coupling: ReportKind = {
       },
       header: {
         evidenceGrade: evidence.grade,
-        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate(extra.window.since)} to ${isoDate(extra.window.until)}${previous === undefined ? "" : `; the previous window for trends is ${isoDate(previous.since)} to ${isoDate(previous.until)}`}`,
+        historyWindow: historyWindowText(evidence, extra.window, previous === undefined ? "" : `; the previous window for trends is ${isoDate(previous.since)} to ${isoDate(previous.until)}`),
         excluded: excluded.filter((e) => e.count > 0),
       },
       sections: [

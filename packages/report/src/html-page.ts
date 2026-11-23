@@ -1,3 +1,4 @@
+import { emptySection } from "./empty-block.ts";
 import { renderBlock } from "./block.ts";
 import type { Notes } from "./protocol.ts";
 import type { Report, Section } from "./report-model.ts";
@@ -23,6 +24,8 @@ function headerFacts(report: Report): string {
 }
 
 function section(s: Section, report: Report, notes: Notes): string {
+  const empty = emptySection(s);
+  if (empty !== undefined) return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">\n<p class="empty"><strong id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}:</strong> ${escapeHtml(empty)}</p>\n</section>`;
   const body = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes })).join("\n");
   return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">\n<h2 id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}</h2>\n${body}\n</section>`;
 }

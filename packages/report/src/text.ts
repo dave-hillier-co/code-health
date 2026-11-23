@@ -57,3 +57,12 @@ export function clip(text: string, max: number): string {
   if (max < 1) return "";
   return text.length <= max ? text : `${text.slice(0, Math.max(0, max - 1))}…`;
 }
+
+/** Markdown code span for text taken from outside the report, such as a folder name: the fence is longer than any run of backticks inside. */
+export function codeSpan(text: string): string {
+  const line = oneLine(text);
+  const longest = Math.max(0, ...(line.match(/`+/g) ?? []).map((run) => run.length));
+  const fence = "`".repeat(longest + 1);
+  const pad = line.startsWith("`") || line.endsWith("`") ? " " : "";
+  return `${fence}${pad}${line}${pad}${fence}`;
+}

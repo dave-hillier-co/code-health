@@ -1,6 +1,7 @@
 import { clip, escapeHtml, escapeMd, formatNumber } from "../text.ts";
 import { htmlTable, mdTable } from "../tables.ts";
 import { figureHtml } from "./figure.ts";
+import { noticeHtml, noticeMd } from "./notice.ts";
 
 export interface StabilityPoint {
   name: string;
@@ -30,9 +31,20 @@ export interface StabilityChartData {
   total: number;
   /** What the packages are, for the counts: "packages". */
   noun?: string;
+  /** Replaces the line printed instead of the chart when it has fewer than `MIN_POINTS` points. */
+  emptyText?: string;
 }
 
 export const DEFAULT_MAX_POINTS = 40;
+/** A scatter of fewer points says nothing a table does not, so the chart prints a notice instead. */
+export const MIN_POINTS = 3;
+
+/** The one-line notice that replaces a chart of fewer than three points, or undefined when the chart is drawn. */
+export function stabilityChartEmpty(data: StabilityChartData): string | undefined {
+  if (data.points.length >= MIN_POINTS) return undefined;
+  const noun = data.noun ?? "packages";
+  return data.emptyText ?? `${data.title}: ${formatNumber(data.points.length)} of ${formatNumber(data.total)} ${noun} have both instability and abstractness; a chart needs at least ${MIN_POINTS}.`;
+}
 
 export type Position = "zone of pain" | "zone of uselessness" | "outside the zones";
 
@@ -105,6 +117,8 @@ function notes(data: StabilityChartData): string[] {
 }
 
 export function stabilityChartHtml(data: StabilityChartData): string {
+  const empty = stabilityChartEmpty(data);
+  if (empty !== undefined) return noticeHtml({ level: "notice", text: empty });
   const d = data.zoneDistance;
   const points = data.points;
   const limit = shown(data).length;
@@ -149,5 +163,7 @@ export function stabilityChartHtml(data: StabilityChartData): string {
 }
 
 export function stabilityChartMd(data: StabilityChartData): string {
+  const empty = stabilityChartEmpty(data);
+  if (empty !== undefined) return noticeMd({ level: "notice", text: empty });
   return [`**${escapeMd(data.title)}** (instability I against abstractness A)`, "", mdTable(columns, rows(data).map((r) => r.map((cell, i) => (i === 1 ? clip(cell, 80) : cell)))), "", notes(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
 }

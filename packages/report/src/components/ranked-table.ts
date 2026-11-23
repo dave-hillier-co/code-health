@@ -1,4 +1,5 @@
-import { escapeHtml, escapeMd, formatNumber } from "../text.ts";
+import { escapeHtml, escapeMd, formatNumber, inlineHtml } from "../text.ts";
+import { noticeHtml, noticeMd } from "./notice.ts";
 import { htmlTable, mdTable, type Align } from "../tables.ts";
 
 export type Cell = string | number | null;
@@ -29,6 +30,15 @@ export interface RankedTableData {
   noun?: string;
   /** Print a rank in a first column. Default true; a table that lists counts by kind has no order to number. */
   numbered?: boolean;
+  /** What to print when `rows` is empty, and why: "No cycles were found at the default level." Without it the line is "<caption>: no rows." */
+  emptyText?: string;
+  /** The command whose output lists every row, set by `capRows`. With it the omitted-rows line reads "N of M shown; the rest are in `<command>` output." */
+  fullIn?: string;
+}
+
+/** The one-line notice for a table with no rows, or undefined when it has rows. */
+export function rankedTableEmpty(data: RankedTableData): string | undefined {
+  return data.rows.length > 0 ? undefined : (data.emptyText ?? `${data.caption}: no rows.`);
 }
 
 /** The marker printed beside a value on the marked side of its column's guideline. */
@@ -59,10 +69,13 @@ function legend(data: RankedTableData): string | undefined {
 function omitted(data: RankedTableData): string | undefined {
   if (data.total === undefined || data.total <= data.rows.length) return undefined;
   const left = data.total - data.rows.length;
+  if (data.fullIn !== undefined) return `${formatNumber(data.rows.length)} of ${formatNumber(data.total)} shown; the rest are in \`${data.fullIn}\` output.`;
   return `Showing ${formatNumber(data.rows.length)} of ${formatNumber(data.total)}${data.noun === undefined ? "" : ` ${data.noun}`}; ${formatNumber(left)} not shown.`;
 }
 
 export function rankedTableHtml(data: RankedTableData): string {
+  const empty = rankedTableEmpty(data);
+  if (empty !== undefined) return noticeHtml({ level: "notice", text: empty });
   const cell = (column: RankedColumn, value: Cell): string => {
     const shown = escapeHtml(text(value));
     if (!marked(column, value)) return shown;
@@ -71,18 +84,20 @@ export function rankedTableHtml(data: RankedTableData): string {
   };
   const columns = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
   const rows = data.rows.map((row, i) => [...rankCell(data, i), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
-  const table = data.rows.length === 0 ? `<p class="empty">${escapeHtml(data.caption)}: no rows.</p>` : htmlTable(data.caption, columns, rows, { rowHeaders: data.numbered === false, className: "ranked" });
-  const notes = [legend(data), omitted(data)].flatMap((n) => (n === undefined ? [] : [`<p class="legend">${escapeHtml(n)}</p>`]));
+  const table = htmlTable(data.caption, columns, rows, { rowHeaders: data.numbered === false, className: "ranked" });
+  const notes = [legend(data), omitted(data)].flatMap((n) => (n === undefined ? [] : [`<p class="legend">${inlineHtml(n)}</p>`]));
   return [table, ...notes].join("\n");
 }
 
 export function rankedTableMd(data: RankedTableData): string {
+  const empty = rankedTableEmpty(data);
+  if (empty !== undefined) return noticeMd({ level: "notice", text: empty });
   const columns = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
   const rows = data.rows.map((row, i) => [...rankCell(data, i), ...data.columns.map((c) => `${text(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
   return [
     `**${escapeMd(data.caption)}**`,
     "",
-    data.rows.length === 0 ? "No rows." : mdTable(columns, rows),
+    mdTable(columns, rows),
     ...[legend(data), omitted(data)].flatMap((n) => (n === undefined ? [] : ["", `_${escapeMd(n)}_`])),
   ].join("\n");
 }
