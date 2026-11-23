@@ -56,7 +56,7 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 
 _Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it._
 
-**High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline**
+**High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline. Consumer files are the distinct production files that use the unit; test files are not counted**
 
 | # | Unit | Consumer files | Consumer files over guideline | Consumer folders | Gain (net distance removed) | Confidence |
 | ---: | --- | ---: | ---: | ---: | ---: | --- |
@@ -292,20 +292,20 @@ Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consu
 
 > **Notice:** No unit was left without a proposed move.
 
-**Units recommended blocked, with the files that hold them back**
+**Units held back by blockers, by the gain if the blockers were resolved: units recommended blocked, and units of kind move that still have blockers (a blocker is a file the unit depends on that stays behind and lowers the gain)**
 
-| # | Unit | Gain | Blockers |
-| ---: | --- | ---: | --- |
-| 1 | src/lib/kernel/tool.ts | 0 | src/lib/kernel/core.ts |
-| 2 | src/shared/pair/a.ts | 0 | src/shared/pair/core.ts |
-| 3 | src/shared/pair/b.ts | 0 | src/shared/pair/core.ts |
+| # | Unit | Kind | Gain now (net distance removed) | Gain if the blockers were resolved (net distance removed) | Blockers |
+| ---: | --- | --- | ---: | ---: | --- |
+| 1 | src/lib/kernel/tool.ts | blocked | 0 | 4 | src/lib/kernel/core.ts |
+| 2 | src/shared/pair/a.ts | blocked | 0 | 3 | src/shared/pair/core.ts |
+| 3 | src/shared/pair/b.ts | blocked | 0 | 3 | src/shared/pair/core.ts |
 
 > **Notice:** The history counts are zero because history is weak (12 months, 34 logical changes in the window, 1 contributors); history-only candidates need moderate or strong evidence.
 
 ## Limits
 
 - Guidelines order and label results. They are heuristics for investigation and decide nothing.
-- Three tables list candidates by kind: moves (top 15), reviews, splits and inlines (top 10) and scrutinise (top 10). Each says how many rows it leaves out. Move plans and judgements cover the first 10 of the moves, then the reviews and splits. A unit of kind blocked is listed only in the blocked table.
+- Three tables list candidates by kind: moves (top 15), reviews, splits and inlines (top 10) and scrutinise (top 10). Each says how many rows it leaves out. Move plans and judgements cover the first 10 of the moves, then the reviews and splits. A unit of kind blocked, and a unit of kind move that has blockers, is listed only in the blocked table.
 - A move plan is a dry run of the proposed move. The report never applies one.
 - Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.
 - The evidence grade is weak, so history-based evidence is tentative and the structure leads.

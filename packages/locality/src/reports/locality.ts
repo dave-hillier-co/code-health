@@ -16,6 +16,8 @@ import type { Candidate, OmittedUnit } from "../candidates.ts";
 import { command as analyseCommand } from "../commands/analyse.ts";
 import { readSettings, type LocalitySettings } from "../config.ts";
 import { planMove, type Refusal } from "../move-plan.ts";
+import type { GoPackages } from "../placement.ts";
+import { goPackagesOf, loadProject } from "../project.ts";
 
 /** Rows of the candidate table, and how many of them get a move plan and a judgement. */
 const TOP = 15;
@@ -76,8 +78,8 @@ function refusalLine(refusals: Refusal[]): string {
 }
 
 /** A dry run of the move the analyser proposes, as `locality move` plans it without `--apply`. */
-async function dryRun(context: CommandContext, candidate: Candidate, settings: LocalitySettings, files: Set<string>): Promise<PlanSummary> {
-  const plan = planMove(candidate, settings, files, {});
+async function dryRun(context: CommandContext, candidate: Candidate, settings: LocalitySettings, files: Set<string>, go: GoPackages): Promise<PlanSummary> {
+  const plan = planMove(candidate, settings, files, {}, go);
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null };
   try {
@@ -164,7 +166,7 @@ function scrutiniseTable(rows: Candidate[], settings: LocalitySettings): Block {
     type: "ranked-table",
     ...capRows(
       {
-        caption: "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline",
+        caption: "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline. Consumer files are the distinct production files that use the unit; test files are not counted",
         noun: "units",
         emptyText: "No unit has kind scrutinise.",
         columns: [
@@ -177,7 +179,7 @@ function scrutiniseTable(rows: Candidate[], settings: LocalitySettings): Block {
         ],
         rows: rows.map((c): Record<string, Cell> => ({
           path: c.path,
-          fanIn: consumersOf(c).length,
+          fanIn: c.fanIn,
           ratio: c.guidelines.fanIn.ratio,
           folders: consumerFolders(c).size,
           gain: c.gain,
@@ -235,11 +237,12 @@ const REASON_WORDS: Record<string, string> = {
 };
 
 /** The units with no proposed move and the units that are recommended blocked or keep, counted by reason. */
-function omittedRows(structural: { placed: number; blocked: number; keep: number; notShown: number; byReason: Record<string, number> }, history: HistoryExtra["historyOnly"]): ExcludedCount[] {
+function omittedRows(structural: { placed: number; blocked: number; keep: number; notShown: number; heldMoves: number; byReason: Record<string, number> }, history: HistoryExtra["historyOnly"]): ExcludedCount[] {
   return [
     { what: "units already beside their consumers (rule near-consumers)", count: structural.placed },
     ...Object.entries(structural.byReason).sort(byText).map(([reason, count]) => ({ what: `units with no proposed move: ${reason}`, count })),
     { what: "units recommended blocked, held back by a dependency (listed below with their blockers)", count: structural.blocked },
+    { what: "units of kind move that have blockers (listed in the blocked table, not as moves)", count: structural.heldMoves },
     { what: "units recommended keep, with nothing to move", count: structural.keep },
     { what: `candidates past the rows of the three candidate tables`, count: structural.notShown },
     ...Object.entries(history.omitted).map(([reason, count]) => ({ what: REASON_WORDS[reason] ?? reason, count })),
@@ -271,21 +274,27 @@ function omittedUnitsTable(units: OmittedUnit[]): Block {
 }
 
 function blockedTable(units: Candidate[]): Block {
+  const sorted = [...units].sort((a, b) => b.unblockedGain - a.unblockedGain || (a.path < b.path ? -1 : 1));
   return {
     type: "ranked-table",
     ...capRows(
     {
-      caption: "Units recommended blocked, with the files that hold them back",
+      caption:
+        "Units held back by blockers, by the gain if the blockers were resolved: units recommended blocked, and units of kind move that still have blockers (a blocker is a file the unit depends on that stays behind and lowers the gain)",
       noun: "units",
-      emptyText: "No unit is recommended blocked.",
+      emptyText: "No unit is held back by blockers.",
       columns: [
         { key: "path", label: "Unit" },
-        { key: "gain", label: "Gain", align: "right" },
+        { key: "kind", label: "Kind" },
+        { key: "gain", label: "Gain now (net distance removed)", align: "right" },
+        { key: "unblocked", label: "Gain if the blockers were resolved (net distance removed)", align: "right" },
         { key: "blockers", label: "Blockers" },
       ],
-      rows: units.map((c): Record<string, Cell> => ({
+      rows: sorted.map((c): Record<string, Cell> => ({
         path: c.path,
+        kind: c.recommendation,
         gain: c.gain,
+        unblocked: c.unblockedGain,
         blockers: nameList(c.blockers.map((b) => b.path), BLOCKERS_PER_UNIT),
       })),
     },
@@ -344,7 +353,9 @@ export const localityReport: ReportKind = {
     const historyOnly = (historyOutput.extra as unknown as HistoryExtra).historyOnly;
 
     const ofKind = all.filter((c) => KINDS.includes(c.recommendation));
-    const moves = ofKind.filter((c) => c.recommendation === "move");
+    // A unit with blockers is held back, so it is listed in the blocked table and not as a move the planner can plan.
+    const moves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length === 0);
+    const heldMoves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length > 0);
     const reviews = ofKind.filter((c) => c.recommendation === "review" || c.recommendation === "split" || c.recommendation === "inline");
     const scrutinise = ofKind
       .filter((c) => c.recommendation === "scrutinise")
@@ -353,12 +364,13 @@ export const localityReport: ReportKind = {
     const planned = [...moves, ...reviews].slice(0, PLANNED);
     const shownCount = Math.min(moves.length, TOP) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
     const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
+    const go = goPackagesOf(await loadProject(context.repo.root, "HEAD", settings));
     const plans: PlanSummary[] = [];
-    for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files));
+    for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files, go));
 
     const byKind = extra.summary.byRecommendation;
-    const blocked = all.filter((c) => c.recommendation === "blocked");
-    const omitted = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount, byReason: extra.summary.omitted }, historyOnly);
+    const blocked = [...all.filter((c) => c.recommendation === "blocked"), ...heldMoves];
+    const omitted = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount - heldMoves.length, heldMoves: heldMoves.length, byReason: extra.summary.omitted }, historyOnly);
     const unresolved = Object.entries(extra.unresolved).sort(byText);
     const excluded: ExcludedCount[] = [
       ...omitted,
@@ -449,7 +461,7 @@ export const localityReport: ReportKind = {
       sections,
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        `Three tables list candidates by kind: moves (top ${TOP}), reviews, splits and inlines (top ${TOP_REVIEW}) and scrutinise (top ${TOP_SCRUTINISE}). Each says how many rows it leaves out. Move plans and judgements cover the first ${PLANNED} of the moves, then the reviews and splits. A unit of kind blocked is listed only in the blocked table.`,
+        `Three tables list candidates by kind: moves (top ${TOP}), reviews, splits and inlines (top ${TOP_REVIEW}) and scrutinise (top ${TOP_SCRUTINISE}). Each says how many rows it leaves out. Move plans and judgements cover the first ${PLANNED} of the moves, then the reviews and splits. A unit of kind blocked, and a unit of kind move that has blockers, is listed only in the blocked table.`,
         "A move plan is a dry run of the proposed move. The report never applies one.",
         "Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.",
         ...(lowConfidence > 0 ? [`${plural(lowConfidence, "candidate")} rest on includes that found no file, so a consumer may be missing and the result is a lower bound.`] : []),

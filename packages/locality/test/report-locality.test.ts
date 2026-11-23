@@ -253,10 +253,10 @@ test("a candidate shows its reason and the better folder the placement rules ref
   }
 });
 
-test("the page lists the blockers of the units recommended blocked", async () => {
+test("the page lists the blockers of the units recommended blocked, with the gain they would have if the blockers were resolved", async () => {
   const { stdout } = await run("--format", "md");
-  expect(stdout).toContain("Units recommended blocked, with the files that hold them back");
-  expect(stdout).toContain("| src/lib/kernel/tool.ts | 0 | src/lib/kernel/core.ts |");
+  expect(stdout).toContain("Units held back by blockers");
+  expect(stdout).toContain("| src/lib/kernel/tool.ts | blocked | 0 | 4 | src/lib/kernel/core.ts |");
 });
 
 test("a refused move plan is one line: the codes with counts, then the first detail cut short", async () => {

@@ -167,7 +167,7 @@
         "ratio": 2,
         "value": 4
       },
-      "reason": "1 consumer file use it as a value, not a call, so callsite counts are not reliable and the move is for judgement. `locality move` needs --reason for a review.",
+      "reason": "1 consumer file uses it as a value, not a call, so callsite counts are not reliable and the move is for judgement. `locality move` needs --reason for a review.",
       "recommendation": "review",
       "rule": "other-references",
       "score": 4,

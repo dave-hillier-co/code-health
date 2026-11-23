@@ -3,6 +3,7 @@ import type { Command, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { runGit } from "@code-health/history/git";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { readSettings } from "../config.ts";
+import { goPackagesOf } from "../project.ts";
 import { planMove } from "../move-plan.ts";
 import { analyseRevision } from "../unit-analysis.ts";
 
@@ -32,14 +33,14 @@ export const command: Command = {
     }
 
     // The plan is made from the code as it stood before the commit, so it cannot depend on what the commit did.
-    const { analysis } = await analyseRevision(context, settings, parent);
+    const { analysis, project } = await analyseRevision(context, settings, parent);
     const candidate = [...analysis.candidates, ...analysis.placed, ...analysis.unproposed].find((entry) => entry.path === unitPath);
     if (candidate === undefined) throw usageError(`"${unitPath}" is not a unit the analyser reports for ${parent.slice(0, 10)}, the parent of ${ref}`);
 
     const parentTree = await treeFromRef(root, parent);
     const commitTree = await treeFromRef(root, ref);
     // Whether the analyser recommends the move is not what is being verified, so a reason always stands in for it.
-    const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to: to as string | undefined, reason: "verification" });
+    const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to: to as string | undefined, reason: "verification" }, goPackagesOf(project));
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
     const { verifyMove } = await import("../move-verify.ts");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);

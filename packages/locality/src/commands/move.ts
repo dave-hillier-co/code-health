@@ -3,6 +3,7 @@ import type { Command, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { readSettings } from "../config.ts";
 import { applyMove, isClean, moveMessage, textMentions } from "../move-apply.ts";
+import { goPackagesOf } from "../project.ts";
 import { planMove, type Refusal } from "../move-plan.ts";
 import { isSourceFile } from "../movers/language.ts";
 import { analyseRevision } from "../unit-analysis.ts";
@@ -37,14 +38,14 @@ export const command: Command = {
     const commit = context.values["no-commit"] !== true;
     if (!apply && context.values["no-commit"] === true) throw usageError("--no-commit only applies with --apply");
 
-    const { analysis } = await analyseRevision(context, settings, "HEAD");
+    const { analysis, project } = await analyseRevision(context, settings, "HEAD");
     const candidate = [...analysis.candidates, ...analysis.placed, ...analysis.unproposed].find((entry) => entry.path === unitPath);
     if (candidate === undefined) {
       throw usageError(`"${unitPath}" is not a unit the analyser reports: run \`locality analyse\` and name one of its paths`);
     }
 
     const tree = await treeFromRef(context.repo.root, "HEAD");
-    const plan = planMove(candidate, settings, new Set(tree.files.keys()), { to: to as string | undefined, reason: reason as string | undefined });
+    const plan = planMove(candidate, settings, new Set(tree.files.keys()), { to: to as string | undefined, reason: reason as string | undefined }, goPackagesOf(project));
     const refusals: Refusal[] = [...plan.refusals];
     if (apply && !(await isClean(context.repo.root))) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });

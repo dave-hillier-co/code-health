@@ -160,8 +160,9 @@ test("a Go folder is a package: internal is not a target, and two folders that t
   const consumers = { "internal/a/a.go": goUses("a", "Use"), "internal/b/b.go": goUses("b", "Use") };
   const { rows, summary, omitted } = await analyse(repository({ entryPoints: ["cmd/main.go"] }, goLayout(consumers)));
   expect(rows.map((row) => row.path)).not.toContain("internal/util/util.go");
-  expect(summary.omitted).toEqual({ "no single target: 2 folders tie": 1 });
-  expect(omitted).toEqual([expect.objectContaining({ path: "internal/util/util.go", reason: "no single target: 2 folders tie", detail: expect.stringContaining("internal/a, internal/b") })]);
+  // The consumers a.go and b.go import internal/util, so neither can move into it: that is why they have no usable target.
+  expect(summary.omitted).toEqual({ "no single target: 2 folders tie": 1, "no usable target: crosses internal/": 2 });
+  expect(omitted.filter((unit) => unit.path === "internal/util/util.go")).toEqual([expect.objectContaining({ reason: "no single target: 2 folders tie", detail: expect.stringContaining("internal/a, internal/b") })]);
 });
 
 test("the grouping folder rule applies to Go only by default, and locality.groupingLanguages is the opt-out", async () => {
@@ -188,7 +189,7 @@ test("when internal is refused and one folder is strictly better than the rest, 
   const files = { ...goLayout(consumers), "cmd/main.go": goMain("internal/a", "internal/a/sub", "internal/b") };
   const { rows, omitted } = await analyse(repository({ entryPoints: ["cmd/main.go"] }, files));
   expect(rows.find((row) => row.path === "internal/util/util.go")).toMatchObject({ target: "internal/a" });
-  expect(omitted).toEqual([]);
+  expect(omitted.map((unit) => unit.path)).not.toContain("internal/util/util.go");
 });
 
 test("a Go file is not proposed for the repository root, since it would join the root package", async () => {

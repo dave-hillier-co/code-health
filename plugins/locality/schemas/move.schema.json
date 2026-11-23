@@ -25,11 +25,13 @@
             "dirty-working-tree",
             "fixed-point",
             "fixed-point-destination",
+            "import-cycle",
             "invalid-destination",
             "needs-reason",
             "no-change",
             "package-boundary",
-            "package-entry"
+            "package-entry",
+            "package-main"
           ]
         },
         "detail": { "type": "string" }

@@ -7,6 +7,7 @@ import { recordRunNote } from "@code-health/cli-kit/run-notes";
 import { readBuildConfigs } from "@code-health/parse/build-configs";
 import { describeIncludeResolution } from "@code-health/parse/include-resolution";
 import type { LocalitySettings } from "./config.ts";
+import { goPackages, type GoPackages } from "./placement.ts";
 
 /** Everything read from the analysed revision: the parsed project and the text of its production files. */
 export interface Project {
@@ -54,6 +55,12 @@ export async function loadProject(root: string, ref: string, settings: LocalityS
   const texts = await tree.readMany(production);
   const packageEntries = await readPackageEntries(tree);
   return { analysis, production, isTest: isTestPath, texts, packageEntries, tree: new Set(fullTree.files.keys()) };
+}
+
+/** What the Go placement rules read from a project: which Go file uses which, and the `package main` folders. */
+export function goPackagesOf(project: Project): GoPackages {
+  const production = new Set(project.production);
+  return goPackages(project.analysis.importEdges.filter((edge) => production.has(edge.from) && production.has(edge.to)), project.texts);
 }
 
 /** The source lines of a unit, as the structural layer delimits it. */

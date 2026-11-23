@@ -179,7 +179,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it.</p>
 <table class="ranked">
-<caption>High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline</caption>
+<caption>High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline. Consumer files are the distinct production files that use the unit; test files are not counted</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer files over guideline</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col">Confidence</th></tr></thead>
 <tbody>
 <tr><td class="number">1</td><td>src/shared/format.ts</td><td class="number">8</td><td class="number">1</td><td class="number">1</td><td class="number">16</td><td>normal</td></tr>
@@ -451,12 +451,12 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </table>
 <aside class="notice notice" role="note"><strong>Notice:</strong> No unit was left without a proposed move.</aside>
 <table class="ranked">
-<caption>Units recommended blocked, with the files that hold them back</caption>
-<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col" class="number">Gain</th><th scope="col">Blockers</th></tr></thead>
+<caption>Units held back by blockers, by the gain if the blockers were resolved: units recommended blocked, and units of kind move that still have blockers (a blocker is a file the unit depends on that stays behind and lowers the gain)</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col" class="number">Gain now (net distance removed)</th><th scope="col" class="number">Gain if the blockers were resolved (net distance removed)</th><th scope="col">Blockers</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/lib/kernel/tool.ts</td><td class="number">0</td><td>src/lib/kernel/core.ts</td></tr>
-<tr><td class="number">2</td><td>src/shared/pair/a.ts</td><td class="number">0</td><td>src/shared/pair/core.ts</td></tr>
-<tr><td class="number">3</td><td>src/shared/pair/b.ts</td><td class="number">0</td><td>src/shared/pair/core.ts</td></tr>
+<tr><td class="number">1</td><td>src/lib/kernel/tool.ts</td><td>blocked</td><td class="number">0</td><td class="number">4</td><td>src/lib/kernel/core.ts</td></tr>
+<tr><td class="number">2</td><td>src/shared/pair/a.ts</td><td>blocked</td><td class="number">0</td><td class="number">3</td><td>src/shared/pair/core.ts</td></tr>
+<tr><td class="number">3</td><td>src/shared/pair/b.ts</td><td>blocked</td><td class="number">0</td><td class="number">3</td><td>src/shared/pair/core.ts</td></tr>
 </tbody>
 </table>
 <aside class="notice notice" role="note"><strong>Notice:</strong> The history counts are zero because history is weak (12 months, 34 logical changes in the window, 1 contributors); history-only candidates need moderate or strong evidence.</aside>
@@ -465,7 +465,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <h2 id="limits-heading">Limits</h2>
 <ul>
 <li>Guidelines order and label results. They are heuristics for investigation and decide nothing.</li>
-<li>Three tables list candidates by kind: moves (top 15), reviews, splits and inlines (top 10) and scrutinise (top 10). Each says how many rows it leaves out. Move plans and judgements cover the first 10 of the moves, then the reviews and splits. A unit of kind blocked is listed only in the blocked table.</li>
+<li>Three tables list candidates by kind: moves (top 15), reviews, splits and inlines (top 10) and scrutinise (top 10). Each says how many rows it leaves out. Move plans and judgements cover the first 10 of the moves, then the reviews and splits. A unit of kind blocked, and a unit of kind move that has blockers, is listed only in the blocked table.</li>
 <li>A move plan is a dry run of the proposed move. The report never applies one.</li>
 <li>Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.</li>
 <li>The evidence grade is weak, so history-based evidence is tentative and the structure leads.</li>

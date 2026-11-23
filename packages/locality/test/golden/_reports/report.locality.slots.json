@@ -20,7 +20,7 @@
     },
     "limits": [
       "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-      "Three tables list candidates by kind: moves (top 15), reviews, splits and inlines (top 10) and scrutinise (top 10). Each says how many rows it leaves out. Move plans and judgements cover the first 10 of the moves, then the reviews and splits. A unit of kind blocked is listed only in the blocked table.",
+      "Three tables list candidates by kind: moves (top 15), reviews, splits and inlines (top 10) and scrutinise (top 10). Each says how many rows it leaves out. Move plans and judgements cover the first 10 of the moves, then the reviews and splits. A unit of kind blocked, and a unit of kind move that has blockers, is listed only in the blocked table.",
       "A move plan is a dry run of the proposed move. The report never applies one.",
       "Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.",
       "The evidence grade is weak, so history-based evidence is tentative and the structure leads."
@@ -321,7 +321,7 @@
             "type": "ranked-table"
           },
           {
-            "caption": "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline",
+            "caption": "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline. Consumer files are the distinct production files that use the unit; test files are not counted",
             "columns": [
               {
                 "key": "path",
@@ -1007,39 +1007,54 @@
             "type": "ranked-table"
           },
           {
-            "caption": "Units recommended blocked, with the files that hold them back",
+            "caption": "Units held back by blockers, by the gain if the blockers were resolved: units recommended blocked, and units of kind move that still have blockers (a blocker is a file the unit depends on that stays behind and lowers the gain)",
             "columns": [
               {
                 "key": "path",
                 "label": "Unit"
               },
               {
+                "key": "kind",
+                "label": "Kind"
+              },
+              {
                 "align": "right",
                 "key": "gain",
-                "label": "Gain"
+                "label": "Gain now (net distance removed)"
+              },
+              {
+                "align": "right",
+                "key": "unblocked",
+                "label": "Gain if the blockers were resolved (net distance removed)"
               },
               {
                 "key": "blockers",
                 "label": "Blockers"
               }
             ],
-            "emptyText": "No unit is recommended blocked.",
+            "emptyText": "No unit is held back by blockers.",
             "noun": "units",
             "rows": [
               {
                 "blockers": "src/lib/kernel/core.ts",
                 "gain": 0,
-                "path": "src/lib/kernel/tool.ts"
+                "kind": "blocked",
+                "path": "src/lib/kernel/tool.ts",
+                "unblocked": 4
               },
               {
                 "blockers": "src/shared/pair/core.ts",
                 "gain": 0,
-                "path": "src/shared/pair/a.ts"
+                "kind": "blocked",
+                "path": "src/shared/pair/a.ts",
+                "unblocked": 3
               },
               {
                 "blockers": "src/shared/pair/core.ts",
                 "gain": 0,
-                "path": "src/shared/pair/b.ts"
+                "kind": "blocked",
+                "path": "src/shared/pair/b.ts",
+                "unblocked": 3
               }
             ],
             "type": "ranked-table"
