@@ -7,6 +7,7 @@ import * as explain from "./commands/explain.ts";
 import * as files from "./commands/files.ts";
 import * as fixes from "./commands/fixes.ts";
 import * as outcome from "./commands/outcome.ts";
+import * as report from "./commands/report.ts";
 
 /** What a module in `commands/` exports. */
 export interface CommandModule {
@@ -31,6 +32,7 @@ export const commandModules: CommandModule[] = [
   files,
   fixes,
   outcome,
+  report,
 ];
 
 export const commands: Record<string, Command> = Object.fromEntries(commandModules.map((m) => [m.name, m.command]));

@@ -507,9 +507,9 @@ function renderTable(rows5, columns6, truncated) {
   const numeric = columns6.map((column) => rows5.every((row2) => row2[column] == null || typeof row2[column] === "number"));
   const widths = columns6.map((column, i) => Math.max(column.length, ...cells.map((line) => line[i]?.length ?? 0)));
   const render = (line) => line.map((cell, i) => numeric[i] ? cell.padStart(widths[i] ?? 0) : cell.padEnd(widths[i] ?? 0)).join("  ").trimEnd();
-  const lines = [render(columns6), ...cells.map(render)];
-  if (truncated.cut > 0) lines.push(`${truncated.cut} more not shown (use --limit N or --limit all)`);
-  return lines.join("\n") + "\n";
+  const lines2 = [render(columns6), ...cells.map(render)];
+  if (truncated.cut > 0) lines2.push(`${truncated.cut} more not shown (use --limit N or --limit all)`);
+  return lines2.join("\n") + "\n";
 }
 function format(value) {
   if (value === null || value === void 0) return "-";
@@ -1551,8 +1551,8 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
     ["-c", `mailmap.file=${file}`, "-c", `mailmap.blob=${blob}`, "check-mailmap", "--stdin"],
     { input: identities.join("\n") + "\n" }
   );
-  const lines = out.split("\n");
-  const mapped = new Map(identities.map((identity, i) => [identity, lines[i] ?? identity]));
+  const lines2 = out.split("\n");
+  const mapped = new Map(identities.map((identity, i) => [identity, lines2[i] ?? identity]));
   for (const commit of view.commits) {
     const line = mapped.get(`${commit.authorName} <${commit.authorEmail}>`) ?? "";
     const open = line.lastIndexOf("<");
@@ -3117,9 +3117,9 @@ async function mapThroughMailmap(root, identities, localMailmap) {
   const out = await runGit(root, ["-c", `mailmap.file=${localMailmap ?? ""}`, "-c", "mailmap.blob=", "check-mailmap", "--stdin"], {
     input: keys.join("\n") + "\n"
   });
-  const lines = out.split("\n");
+  const lines2 = out.split("\n");
   keys.forEach((key, i) => {
-    const line = lines[i] ?? key;
+    const line = lines2[i] ?? key;
     const open = line.lastIndexOf("<");
     const close = line.lastIndexOf(">");
     mapped.set(
@@ -3551,9 +3551,9 @@ function armoredBody(text3, kind) {
   const begin = text3.indexOf(`-----BEGIN ${kind}-----`);
   const end = text3.indexOf(`-----END ${kind}-----`);
   if (begin === -1 || end === -1 || end < begin) return void 0;
-  const lines = text3.slice(begin + `-----BEGIN ${kind}-----`.length, end).split("\n").map((line) => line.trim());
-  const blank = lines.indexOf("");
-  const body = (blank > 0 ? lines.slice(blank + 1) : lines).filter((line) => line !== "" && !line.startsWith("="));
+  const lines2 = text3.slice(begin + `-----BEGIN ${kind}-----`.length, end).split("\n").map((line) => line.trim());
+  const blank = lines2.indexOf("");
+  const body = (blank > 0 ? lines2.slice(blank + 1) : lines2).filter((line) => line !== "" && !line.startsWith("="));
   const bytes = Buffer.from(body.join(""), "base64");
   return bytes.length === 0 ? void 0 : bytes;
 }
@@ -4239,7 +4239,7 @@ function buildKnowledgeModel(input) {
   for (const file of snapshot.files.values()) {
     const shares2 = lineShares(file.ranges, owners);
     if (shares2.people === 0) continue;
-    const holders = [...shares2.byOwner].map(([key, lines]) => ({ dev: index2.get(key), lines })).sort((a, b) => a.dev - b.dev);
+    const holders = [...shares2.byOwner].map(([key, lines2]) => ({ dev: index2.get(key), lines: lines2 })).sort((a, b) => a.dev - b.dev);
     files.push({ path: file.path, people: shares2.people, nonPerson: shares2.nonPerson, unattributed: shares2.unattributed, holders });
   }
   files.sort((a, b) => compareBytes2(a.path, b.path));
@@ -4247,9 +4247,9 @@ function buildKnowledgeModel(input) {
 }
 var reachesGuideline = (goneLines, people, guidelinePercent) => people > 0 && 100 * goneLines >= guidelinePercent * people;
 function goneLinesOf(file, developers) {
-  let lines = 0;
-  for (const h of file.holders) if (!developers[h.dev].active) lines += h.lines;
-  return lines;
+  let lines2 = 0;
+  for (const h of file.holders) if (!developers[h.dev].active) lines2 += h.lines;
+  return lines2;
 }
 
 // packages/cochange/src/abandonment/load.ts
@@ -4305,11 +4305,11 @@ async function measureMapping(context, analysis, options) {
   }
   const linesByNode = /* @__PURE__ */ new Map();
   let unattributed = 0;
-  for (const [sha2, lines] of bySha) {
+  for (const [sha2, lines2] of bySha) {
     const author = facts.authorOfCommit.get(sha2);
     const node = author && nodeOfRaw.get(identityKey(author));
-    if (!node) unattributed += lines;
-    else linesByNode.set(node, (linesByNode.get(node) ?? 0) + lines);
+    if (!node) unattributed += lines2;
+    else linesByNode.set(node, (linesByNode.get(node) ?? 0) + lines2);
   }
   const windowCommitsByNode = /* @__PURE__ */ new Map();
   for (const [raw, count3] of facts.windowCommits) {
@@ -4343,9 +4343,9 @@ async function mappedShareNotices(context, settings) {
     `Identities that are settled hold ${share3}% of the lines held by people, under the guideline of ${settings.mappedShareGuideline}% (cochange.knowledge.mappedShareGuideline), so these results depend on unmapped identities; run cochange identities propose to review them${strongClause(measurement3.headLines)}`
   ];
 }
-function strongClause(lines) {
-  if (lines.unmappedStrong === 0) return "";
-  const percent3 = Math.round(lines.unmappedStrong / lines.people * 1e3) / 10;
+function strongClause(lines2) {
+  if (lines2.unmappedStrong === 0) return "";
+  const percent3 = Math.round(lines2.unmappedStrong / lines2.people * 1e3) / 10;
   return `; ${percent3}% of the lines held by people are in strong proposals, which the identities skill applies without asking`;
 }
 function turnoverNotices(settings, turnover, usesHistory) {
@@ -4582,13 +4582,13 @@ function simulate(model, options) {
   };
   for (let t = 0; t < trials; t++) {
     probabilitySum += draw(selection, poolSize, trialRng(seed, t), leave);
-    let lines = 0;
+    let lines2 = 0;
     for (let p = 0; p < poolSize; p++) {
       if (!leave[p]) continue;
-      lines += compiled.poolLines[p];
+      lines2 += compiled.poolLines[p];
       for (const [c, l] of compiled.poolComponentLines[p]) componentLines[c][t] += l;
     }
-    incrementLines[t] = lines;
+    incrementLines[t] = lines2;
     let files = 0;
     abandoned((r) => {
       files++;
@@ -4664,7 +4664,7 @@ function scorePredictions(predicted, actual) {
 async function backtestCommand(context) {
   const settings = requireKnowledge(context);
   const sim = readSimulationSettings(context, settings);
-  const top2 = integerOption(context, "top", 20, 1, 1e5);
+  const top3 = integerOption(context, "top", 20, 1, 1e5);
   const noRefresh = context.values["no-refresh"] === true;
   const history = await loadHistory(context, { noRefresh });
   const { root } = context.repo;
@@ -4718,7 +4718,7 @@ async function backtestCommand(context) {
     score: round4(probability.get(id)),
     probability: round4(probability.get(id)),
     outcome: predicted.has(id) ? actual.has(id) ? "hit" : "false-alarm" : "missed"
-  })).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))).slice(0, top2);
+  })).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))).slice(0, top3);
   return {
     inputs: {
       subcommand: "backtest",
@@ -4837,12 +4837,12 @@ function shareStrictlyAbove(values, value) {
 }
 
 // packages/history/src/landings.ts
-var firstContent = (lines, skip) => lines.findIndex((line) => line.trim() !== "" && !skip.test(line.trim()));
+var firstContent = (lines2, skip) => lines2.findIndex((line) => line.trim() !== "" && !skip.test(line.trim()));
 function landedText(message) {
   const normalised = message.replace(/\r\n/g, "\n").trim();
-  const lines = normalised.split("\n");
-  const subject = lines[0].trim();
-  const body = lines.slice(1);
+  const lines2 = normalised.split("\n");
+  const subject = lines2[0].trim();
+  const body = lines2.slice(1);
   const bodyTitle = (skip) => {
     const at = firstContent(body, skip);
     if (at === -1) return { title: null, text: normalised };
@@ -5543,10 +5543,10 @@ var MAX_UNIT = 8;
 function isIndentLine(line) {
   return line.kind === "code" && !line.startsInLiteral;
 }
-function detectIndentUnit(lines) {
+function detectIndentUnit(lines2) {
   const votes = /* @__PURE__ */ new Map();
   let previous = 0;
-  for (const line of lines) {
+  for (const line of lines2) {
     if (!isIndentLine(line)) continue;
     if (line.text.startsWith("	")) {
       previous = 0;
@@ -5579,11 +5579,11 @@ function levelOf(text3, unit) {
   while (text3[tabs + spaces] === " ") spaces++;
   return tabs + Math.floor(spaces / unit);
 }
-function indentationMetrics(lines) {
-  const indentUnit = detectIndentUnit(lines);
+function indentationMetrics(lines2) {
+  const indentUnit = detectIndentUnit(lines2);
   let indentationComplexity2 = 0;
   let maxIndent = 0;
-  for (const line of lines) {
+  for (const line of lines2) {
     if (!isIndentLine(line)) continue;
     const level = levelOf(line.text, indentUnit);
     indentationComplexity2 += level;
@@ -5591,14 +5591,14 @@ function indentationMetrics(lines) {
   }
   return { indentUnit, indentationComplexity: indentationComplexity2, maxIndent };
 }
-function lengthMetrics(lines) {
+function lengthMetrics(lines2) {
   let nonBlankLines = 0;
   let codeLines = 0;
-  for (const line of lines) {
+  for (const line of lines2) {
     if (line.kind !== "blank") nonBlankLines++;
     if (line.kind === "code" || line.kind === "literal") codeLines++;
   }
-  return { lineCount: lines.length, nonBlankLines, codeLines };
+  return { lineCount: lines2.length, nonBlankLines, codeLines };
 }
 
 // packages/lexical/src/blocks.ts
@@ -5644,8 +5644,8 @@ function classifyHeader(segments, profile) {
 function cleanName(name18) {
   return name18.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
 }
-function findFunctionBlocks(lines, profile) {
-  const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines, profile) : findBracedBlocks(lines, profile);
+function findFunctionBlocks(lines2, profile) {
+  const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines2, profile) : findBracedBlocks(lines2, profile);
   return blocks.sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
 }
 function qualify(scopes, name18) {
@@ -5677,10 +5677,10 @@ function angleBalanced(text3) {
   const flat = text3.replace(/=>|->/g, "");
   return (flat.match(/</g)?.length ?? 0) <= (flat.match(/>/g)?.length ?? 0);
 }
-function findBracedBlocks(lines, profile) {
+function findBracedBlocks(lines2, profile) {
   const closed = [];
   const stack = [];
-  const codeLines = lines.filter((line) => line.kind === "code");
+  const codeLines = lines2.filter((line) => line.kind === "code");
   let header2 = [];
   let parenDepth = 0;
   let arrow;
@@ -5699,8 +5699,8 @@ function findBracedBlocks(lines, profile) {
     arrow = void 0;
   };
   const openExpressionBody = (before, line) => {
-    const top2 = stack[stack.length - 1];
-    if (top2?.typeOnly === true) return false;
+    const top3 = stack[stack.length - 1];
+    if (top3?.typeOnly === true) return false;
     const kept = [...header2, { line: line.number, text: before }];
     const classification = classifyHeader(kept, profile);
     if (classification.kind !== "function") return false;
@@ -5717,8 +5717,8 @@ function findBracedBlocks(lines, profile) {
     const rest = line.code.slice(column + 1).trim();
     const nextLine = codeLines[index2 + 1]?.code.trim();
     if (rest.startsWith("{") || rest === "" && nextLine?.startsWith("{")) return false;
-    const top2 = stack[stack.length - 1];
-    if (top2?.typeOnly === true || parenDepth > 0) return false;
+    const top3 = stack[stack.length - 1];
+    if (top3?.typeOnly === true || parenDepth > 0) return false;
     const kept = [...header2, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
     if (kept.length === 0) return false;
     const text3 = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
@@ -5734,8 +5734,8 @@ function findBracedBlocks(lines, profile) {
     for (const [i, pattern] of members === void 0 ? [...boundArrow.entries()] : []) {
       const match = pattern.exec(text3);
       if (match === null) continue;
-      if (i === 0 && !inDeclaration && !keywordAssignment.test(text3) && top2?.name === void 0) continue;
-      if (i === 1 && (top2 === void 0 || top2.name !== void 0)) continue;
+      if (i === 0 && !inDeclaration && !keywordAssignment.test(text3) && top3?.name === void 0) continue;
+      if (i === 1 && (top3 === void 0 || top3.name !== void 0)) continue;
       name18 = match.groups?.name;
       matched = true;
       break;
@@ -5865,8 +5865,8 @@ function findBracedBlocks(lines, profile) {
 function previousCodeLine(codeLines, index2) {
   return codeLines[Math.max(0, index2 - 1)].number;
 }
-function findIndentedBlocks(lines, profile) {
-  const unit = detectIndentUnit(lines);
+function findIndentedBlocks(lines2, profile) {
+  const unit = detectIndentUnit(lines2);
   const closed = [];
   const stack = [];
   let lastBodyLine = 0;
@@ -5877,7 +5877,7 @@ function findIndentedBlocks(lines, profile) {
     scope.block.endLine = Math.max(lastBodyLine, scope.block.startLine);
     closed.push(scope.block);
   };
-  for (const line of lines) {
+  for (const line of lines2) {
     if (line.kind === "literal") {
       lastBodyLine = line.number;
       continue;
@@ -5935,27 +5935,27 @@ function openerPattern(profile) {
   }
   return pattern;
 }
-function keywordComplexity(lines, profile, from = 1, to = lines.length) {
+function keywordComplexity(lines2, profile, from = 1, to = lines2.length) {
   const pattern = keywordPattern(profile);
   let count3 = 0;
   for (let n = from; n <= to; n++) {
-    const line = lines[n - 1];
+    const line = lines2[n - 1];
     if (line === void 0 || line.kind !== "code") continue;
     count3 += line.code.match(pattern)?.length ?? 0;
   }
   return count3;
 }
-function blockMetrics(lines, block, profile, options = {}) {
-  const unit = options.indentUnit ?? detectIndentUnit(lines);
+function blockMetrics(lines2, block, profile, options = {}) {
+  const unit = options.indentUnit ?? detectIndentUnit(lines2);
   const threshold = options.bumpDepth ?? DEFAULT_BUMP_DEPTH;
-  const header2 = lines[block.startLine - 1];
+  const header2 = lines2[block.startLine - 1];
   const base = levelOf(header2.text, unit);
   let length = 0;
   let indentationComplexity2 = 0;
   let maxRelative = 0;
   const codeLines = [];
   for (let n = block.startLine; n <= block.endLine; n++) {
-    const line = lines[n - 1];
+    const line = lines2[n - 1];
     if (line.kind === "code" || line.kind === "literal") length++;
     if (line.kind !== "code" || line.startsInLiteral) continue;
     const relative4 = Math.max(0, levelOf(line.text, unit) - base);
@@ -5967,7 +5967,7 @@ function blockMetrics(lines, block, profile, options = {}) {
     length,
     indentationComplexity: indentationComplexity2,
     maxNesting: Math.max(0, maxRelative - 1),
-    keywordComplexity: keywordComplexity(lines, profile, block.startLine, block.endLine),
+    keywordComplexity: keywordComplexity(lines2, profile, block.startLine, block.endLine),
     ...findBumps(codeLines, profile, threshold)
   };
 }
@@ -6035,9 +6035,9 @@ function compileRules(profile) {
 function stripSource(rawContent, profile) {
   const content = normaliseNewlines(rawContent);
   const mask = profile === void 0 ? new Uint8Array(content.length) : maskLiterals(content, profile);
-  const lines = [];
+  const lines2 = [];
   let start = 0;
-  let number2 = 1;
+  let number3 = 1;
   while (start <= content.length) {
     let end = content.indexOf("\n", start);
     if (end === -1) end = content.length;
@@ -6058,11 +6058,11 @@ function stripSource(rawContent, profile) {
     else if (startsInString && code.trim() === "") kind = "literal";
     else if (code.trim() !== "") kind = "code";
     else kind = sawComment || start > 0 && mask[start - 1] === COMMENT ? "comment" : "code";
-    lines.push({ number: number2, text: text3, code, kind, startsInLiteral: startsInString });
-    number2++;
+    lines2.push({ number: number3, text: text3, code, kind, startsInLiteral: startsInString });
+    number3++;
     start = end + 1;
   }
-  return lines;
+  return lines2;
 }
 function maskLiterals(content, profile) {
   const mask = new Uint8Array(content.length);
@@ -6178,8 +6178,8 @@ var DEFAULT_AGREEMENT_BAR = 0.9;
 function analyseSource(path, content, options = {}) {
   const selection = selectProfile(path, options.mappings);
   const profile = selection?.profile;
-  const lines = stripSource(content, profile);
-  const file = { ...indentationMetrics(lines), ...lengthMetrics(lines) };
+  const lines2 = stripSource(content, profile);
+  const file = { ...indentationMetrics(lines2), ...lengthMetrics(lines2) };
   const skipped = [];
   const blocks = [];
   if (profile === void 0) {
@@ -6188,9 +6188,9 @@ function analyseSource(path, content, options = {}) {
     skipped.push(`keywordComplexity: ${reason}`);
     skipped.push(`function blocks: ${reason}`);
   } else {
-    file.keywordComplexity = keywordComplexity(lines, profile);
-    for (const block of findFunctionBlocks(lines, profile)) {
-      const metrics = blockMetrics(lines, block, profile, {
+    file.keywordComplexity = keywordComplexity(lines2, profile);
+    for (const block of findFunctionBlocks(lines2, profile)) {
+      const metrics = blockMetrics(lines2, block, profile, {
         indentUnit: file.indentUnit,
         ...options.bumpDepth === void 0 ? {} : { bumpDepth: options.bumpDepth }
       });
@@ -6489,8 +6489,8 @@ function successorsOf(path, index2, model) {
       coupledChanges += partner.degree / 100 * changes;
       evidence.push({ path: partner.path, degree: round4(partner.degree), changes });
     }
-    const lines = file?.holders.find((h) => h.dev === i)?.lines ?? 0;
-    const ownShare = file === void 0 || file.people === 0 ? 0 : lines / file.people;
+    const lines2 = file?.holders.find((h) => h.dev === i)?.lines ?? 0;
+    const ownShare = file === void 0 || file.people === 0 ? 0 : lines2 / file.people;
     if (coupledChanges === 0 && ownShare === 0) return;
     successors.push({ developer: dev.key, score: round4(coupledChanges + ownShare), coupledChanges: round4(coupledChanges), ownShare: round4(ownShare), evidence });
   });
@@ -6513,13 +6513,13 @@ function measureAdoption(input) {
   return abandoned.map((path) => {
     const touching2 = changes.filter((c) => c.files.includes(path));
     const adopters = new Set(touching2.flatMap((c) => c.authors.map((a) => a.toLowerCase())).filter((email) => activeAfter.has(email)));
-    const top2 = new Set(successorsOf(path, index2, before).slice(0, recommended).map((s) => emailOf2(s.developer)));
+    const top3 = new Set(successorsOf(path, index2, before).slice(0, recommended).map((s) => emailOf2(s.developer)));
     const adopted = adopters.size > 0;
     return {
       path,
       changed: touching2.length > 0,
       adopted,
-      byRecommended: [...adopters].some((email) => top2.has(email)),
+      byRecommended: [...adopters].some((email) => top3.has(email)),
       byNewcomer: adopted && [...adopters].every(isNewcomer)
     };
   });
@@ -6772,7 +6772,7 @@ async function turnoverCommand(context) {
 }
 async function simulateCommand(context) {
   const sim = readSimulationSettings(context, requireKnowledge(context));
-  const top2 = integerOption(context, "top", 20, 1, 1e5);
+  const top3 = integerOption(context, "top", 20, 1, 1e5);
   const p = await prepare(context);
   const { settings } = p;
   const { model } = p.knowledge;
@@ -6870,7 +6870,7 @@ async function simulateCommand(context) {
   };
   if (isConfiguredRun(context, sim.mode)) await writeReport2(context, REPORT, output, p.history.view.headSha);
   const results = output.results;
-  return { ...output, results: { ...results, files: results.files.slice(0, top2), components: results.components.slice(0, top2) } };
+  return { ...output, results: { ...results, files: results.files.slice(0, top3), components: results.components.slice(0, top3) } };
 }
 var REPORT = "abandonment.simulate";
 function isConfiguredRun(context, mode) {
@@ -7441,19 +7441,19 @@ var command6 = analysisCommand(name7, {
     const stored = storedSources(context, head, window);
     const activity = readStored(context, stored.activity);
     const coupling = readStored(context, stored.coupling);
-    const hotspots = readStored(context, stored.hotspots);
-    if (activity === void 0 || coupling === void 0 || hotspots === void 0) return void 0;
+    const hotspots2 = readStored(context, stored.hotspots);
+    if (activity === void 0 || coupling === void 0 || hotspots2 === void 0) return void 0;
     const present = new Set(await listTree(context.repo.root, head));
     if (context.positionals.some((raw) => !present.has(repoRelative(context.repo.root, raw)))) return void 0;
-    hotspots.restoreLeftOut();
+    hotspots2.restoreLeftOut();
     const output = briefOutput(
       context,
       readSettings(context.config),
       present,
-      { hotspots: hotspots.output, coupling: coupling.output, activity: activity.output },
+      { hotspots: hotspots2.output, coupling: coupling.output, activity: activity.output },
       (path) => path
     );
-    const named = [activity, coupling, hotspots].map((hit) => hit.input);
+    const named = [activity, coupling, hotspots2].map((hit) => hit.input);
     return { ...output, inputs: { ...output.inputs, resultsCache: named } };
   },
   async analyse({ context, history }) {
@@ -7467,9 +7467,9 @@ var command6 = analysisCommand(name7, {
     };
     const activity = await finish(activityOutput(history), stored.activity);
     const coupling = await finish(await couplingOutput(context, history), stored.coupling);
-    const hotspots = await finish(await rankedOutput(context, history), stored.hotspots);
+    const hotspots2 = await finish(await rankedOutput(context, history), stored.hotspots);
     const present = new Set(await listTree(context.repo.root, history.view.headSha));
-    return briefOutput(context, history.settings, present, { hotspots, coupling, activity }, (asked) => history.view.renames.resolve(asked, -1));
+    return briefOutput(context, history.settings, present, { hotspots: hotspots2, coupling, activity }, (asked) => history.view.renames.resolve(asked, -1));
   }
 });
 
@@ -8063,18 +8063,18 @@ function checkMapping(analysis, detail) {
   }
   const peopleLines = detail.measurement.headLines.people;
   for (const node of analysis.nodes.filter((n) => analysis.unresolved.has(n.key))) {
-    const lines = detail.linesByNode.get(node.key) ?? 0;
+    const lines2 = detail.linesByNode.get(node.key) ?? 0;
     const commits = detail.windowCommitsByNode.get(node.key) ?? 0;
     const related = analysis.proposals.filter((p) => p.members.includes(node.key)).flatMap((p) => p.members).filter((m) => m !== node.key);
     findings.push({
-      score: lines,
+      score: lines2,
       kind: "unmapped",
       identities: [node.key],
       detail: `proposed to be the same person as ${[...new Set(related)].sort(compare5).join("; ")}, last active ${isoDay2(node.last)}`,
       commits,
-      lines,
-      linesShare: peopleLines === 0 ? 0 : Math.round(lines / peopleLines * 1e3) / 10,
-      aboveGuideline: lines > 0 || commits >= significantCommits
+      lines: lines2,
+      linesShare: peopleLines === 0 ? 0 : Math.round(lines2 / peopleLines * 1e3) / 10,
+      aboveGuideline: lines2 > 0 || commits >= significantCommits
     });
   }
   findings.sort((x, y) => y.score - x.score || (y.commits ?? 0) - (x.commits ?? 0) || compare5(x.kind, y.kind) || compare5(x.identities.join(), y.identities.join()));
@@ -9027,10 +9027,10 @@ function compareVersions(a, b) {
   }
   return 0;
 }
-function earliest(lines) {
+function earliest(lines2) {
   let best = null;
   let bestMs = Number.POSITIVE_INFINITY;
-  for (const line of lines) {
+  for (const line of lines2) {
     const timestamp = asString(line["timestamp"]);
     const ms = timestamp === null ? Number.NaN : Date.parse(timestamp);
     if (timestamp !== null && ms < bestMs) {
@@ -9041,19 +9041,19 @@ function earliest(lines) {
   return best;
 }
 function parseTranscript(text3, scope = "main") {
-  const lines = [];
+  const lines2 = [];
   let skippedLines = 0;
   const body = text3.charCodeAt(0) === 65279 ? text3.slice(1) : text3;
   for (const raw of body.split(/\r?\n/)) {
     if (raw === "") continue;
     try {
       const parsed = JSON.parse(raw);
-      if (isObject(parsed)) lines.push(parsed);
+      if (isObject(parsed)) lines2.push(parsed);
     } catch {
       skippedLines++;
     }
   }
-  const messageLines = lines.filter((line) => line["type"] === "user" || line["type"] === "assistant");
+  const messageLines = lines2.filter((line) => line["type"] === "user" || line["type"] === "assistant");
   const cwds = [...new Set(messageLines.flatMap((line) => typeof line["cwd"] === "string" ? [line["cwd"]] : []))].sort();
   const notMeasured = (version, reason) => ({
     status: "not-measured",
@@ -9476,8 +9476,8 @@ var command11 = {
 // packages/cochange/src/commands/report.ts
 var report_exports = {};
 __export(report_exports, {
-  command: () => command12,
-  name: () => name13
+  command: () => command13,
+  name: () => name14
 });
 
 // packages/cli-kit/src/report-command.ts
@@ -9656,8 +9656,8 @@ function htmlTable(caption, columns6, rows5, options = {}) {
   const head = columns6.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
   const body = rows5.map((row2) => {
     const cells = row2.map((cell, i) => {
-      const number2 = columns6[i]?.align === "right" ? ' class="number"' : "";
-      return i === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number2}>${cell}</td>`;
+      const number3 = columns6[i]?.align === "right" ? ' class="number"' : "";
+      return i === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number3}>${cell}</td>`;
     });
     return `<tr>${cells.join("")}</tr>`;
   }).join("\n");
@@ -10064,11 +10064,11 @@ function squarify(sizes, rect) {
     const sum = row2.reduce((a, b) => a + b, 0);
     if (w >= h) {
       const width = h === 0 ? 0 : sum / h;
-      let top2 = y;
+      let top3 = y;
       for (const area of row2) {
         const height = width === 0 ? 0 : area / width;
-        out.push({ x, y: top2, w: width, h: height });
-        top2 += height;
+        out.push({ x, y: top3, w: width, h: height });
+        top3 += height;
       }
       x += width;
       w -= width;
@@ -10478,7 +10478,7 @@ function reportCommand(kinds) {
   };
 }
 function readRequest(context) {
-  const { slots: slots2, notes: notes2, format: format2, out, compact } = context.values;
+  const { slots: slots3, notes: notes2, format: format2, out, compact } = context.values;
   const text3 = (value, option) => {
     if (value === void 0) return void 0;
     if (typeof value !== "string" || value === "") throw usageError(`--${option} needs a value`);
@@ -10486,7 +10486,7 @@ function readRequest(context) {
   };
   const chosen = text3(format2, "format");
   if (chosen !== void 0 && chosen !== "html" && chosen !== "md") throw usageError(`--format must be html or md, got "${chosen}"`);
-  const request = { slots: slots2 === true, notes: text3(notes2, "notes"), format: chosen, out: text3(out, "out"), compact: compact === true };
+  const request = { slots: slots3 === true, notes: text3(notes2, "notes"), format: chosen, out: text3(out, "out"), compact: compact === true };
   if (request.slots) {
     if (request.notes !== void 0 || request.format !== void 0 || request.compact) throw usageError("--slots prints the slots and takes no --notes, --format or --compact");
   } else if (request.notes === void 0 && request.format !== "md") {
@@ -10511,6 +10511,153 @@ function produce(report, request, cwd) {
 function repoName(root) {
   return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
 }
+
+// packages/report/src/xray.ts
+var FLAG_VERDICTS = [
+  "none-applies",
+  "nonobvious-code",
+  "bumpy-road",
+  "shallow-module",
+  "information-leakage",
+  "special-general-mixture",
+  "overexposure",
+  "pass-through-method",
+  "conjoined-methods",
+  "temporal-decomposition",
+  "repetition",
+  "vague-name",
+  "hard-to-describe",
+  "other"
+];
+var guidelineOf = (value, guidelines) => value === void 0 || guidelines === void 0 ? {} : { guideline: { value, note: guidelines.note } };
+var lines = (fn) => `${fn.startLine}-${fn.endLine}`;
+function xrayBlocks(data) {
+  const shown = data.rows === void 0 ? data.functions : data.functions.slice(0, data.rows);
+  const withFixes = data.functions.some((fn) => fn.fixes !== null);
+  const table = {
+    type: "ranked-table",
+    caption: `X-Ray of ${data.file}: its functions, most complex first`,
+    noun: "functions",
+    total: data.functions.length,
+    columns: [
+      { key: "function", label: "Function" },
+      { key: "lines", label: "Lines" },
+      { key: "length", label: "Length", align: "right" },
+      { key: "cognitive", label: "Cognitive", align: "right", ...guidelineOf(data.guidelines?.cognitive, data.guidelines) },
+      { key: "nesting", label: "Nesting", align: "right", ...guidelineOf(data.guidelines?.nesting, data.guidelines) },
+      { key: "cyclomatic", label: "Cyclomatic", align: "right", ...guidelineOf(data.guidelines?.cyclomatic, data.guidelines) },
+      { key: "revisions", label: "Revisions", align: "right" },
+      { key: "fixes", label: "Fixes", align: "right" },
+      { key: "smells", label: "Code smells" }
+    ],
+    rows: shown.map((fn) => ({
+      function: fn.name,
+      lines: lines(fn),
+      length: fn.length,
+      cognitive: fn.cognitive,
+      nesting: fn.nesting,
+      cyclomatic: fn.cyclomatic,
+      revisions: fn.revisions,
+      fixes: fn.fixes,
+      smells: fn.labels.length === 0 ? "none" : fn.labels.join(", ")
+    }))
+  };
+  return [
+    table,
+    ...withFixes ? [] : [{ type: "notice", level: "notice", text: "No fix result covers these functions, so revisions and fixes are not shown." }]
+  ];
+}
+
+// packages/cochange/src/commands/trend.ts
+var trend_exports = {};
+__export(trend_exports, {
+  DEFAULT_SAMPLES: () => DEFAULT_SAMPLES,
+  MAX_SAMPLES: () => MAX_SAMPLES,
+  TREND_GUIDELINE: () => TREND_GUIDELINE,
+  command: () => command12,
+  name: () => name13,
+  pickSamples: () => pickSamples
+});
+var name13 = "trend";
+var DEFAULT_SAMPLES = 10;
+var MAX_SAMPLES = 500;
+var TREND_GUIDELINE = 0.2;
+function pickSamples(revisions, count3) {
+  if (revisions.length <= count3) return [...revisions];
+  const last = revisions.length - 1;
+  return Array.from({ length: count3 }, (_, i) => revisions[Math.round(i * last / (count3 - 1))]);
+}
+function changeRatioOf(first, last) {
+  if (first === null || last === null) return null;
+  return first === 0 ? last === 0 ? 0 : 1 : (last - first) / first;
+}
+function directionOf(ratio, samples) {
+  if (samples < 2 || ratio === null) return "insufficient";
+  if (ratio >= TREND_GUIDELINE) return "worsening";
+  if (ratio <= -TREND_GUIDELINE) return "improving";
+  return "stable";
+}
+var delta = (first, last) => ({
+  first,
+  last,
+  change: first === null || last === null ? null : last - first
+});
+var command12 = analysisCommand(name13, {
+  summary: "Indentation complexity and size of one file sampled across its history, from blobs",
+  options: { samples: { type: "string" } },
+  wholeHistory: true,
+  partial: () => true,
+  async analyse({ context, history }) {
+    const [requested, ...rest] = context.positionals;
+    if (requested === void 0 || rest.length > 0) throw usageError("usage: trend PATH [--samples N]");
+    const samples = integerOption(context, "samples", DEFAULT_SAMPLES, 2, MAX_SAMPLES);
+    const file = await focusPath(context, history, requested);
+    const revisions = [];
+    for (const change2 of history.filtered.changes) {
+      const touched = change2.files.find((f) => f.fileId === file && f.blob !== null);
+      if (touched) {
+        revisions.push({ commit: change2.shas.at(-1), committerDate: change2.committerDate, path: touched.path, blob: touched.blob });
+      }
+    }
+    if (revisions.length === 0) throw usageError(`no revisions of "${requested}" in the analysed history`);
+    const rows5 = await Promise.all(
+      pickSamples(revisions, samples).map(async (revision) => {
+        const [text3, bytes] = await Promise.all([readBlob(context.repo.root, revision.blob), blobSize(context.repo.root, revision.blob)]);
+        const binary = text3.includes("\0");
+        return {
+          commit: revision.commit,
+          date: isoDate(revision.committerDate),
+          path: revision.path,
+          complexity: binary ? null : indentationComplexity(text3, revision.path),
+          lines: binary ? null : text3 === "" ? 0 : text3.replace(/\n$/, "").split("\n").length,
+          bytes
+        };
+      })
+    );
+    const first = rows5[0];
+    const last = rows5.at(-1);
+    const changeRatio = changeRatioOf(first.complexity, last.complexity);
+    const measured = rows5.filter((r) => r.complexity !== null);
+    const peak = measured.reduce((best, r) => best === null || r.complexity > best.complexity ? r : best, null);
+    return {
+      inputs: { path: file, samples, guideline: TREND_GUIDELINE },
+      results: {
+        path: file,
+        revisions: revisions.length,
+        samples: rows5,
+        summary: {
+          direction: directionOf(changeRatio, rows5.length),
+          changeRatio: changeRatio === null ? null : Math.round(changeRatio * 1e4) / 1e4,
+          guideline: TREND_GUIDELINE,
+          peak: peak === null ? null : { complexity: peak.complexity, date: peak.date, commit: peak.commit },
+          complexity: delta(first.complexity, last.complexity),
+          lines: delta(first.lines, last.lines)
+        }
+      },
+      extra: { complexitySource: "indentation" }
+    };
+  }
+});
 
 // packages/cochange/src/sibling-reports.ts
 import { existsSync as existsSync16, readFileSync as readFileSync13 } from "node:fs";
@@ -10537,13 +10684,18 @@ function readSiblingResult(root, tool, command17, head) {
   };
 }
 
-// packages/cochange/src/reports/overview.ts
-var TOP = 5;
-var FIRST_LOOK_MAX = 3;
+// packages/cochange/src/reports/hotspots.ts
+var DEFAULT_FRICTION = 20;
+var TREND_FILES = 10;
+var XRAY_FILES = 5;
+var XRAY_ROWS = 15;
+var MAP_FILES = 150;
+var TREND_SAMPLES = 10;
+var RECOMMENDATIONS = ["refactor", "split", "leave", "review", "dismiss"];
 var isoDate2 = (seconds) => new Date(typeof seconds === "number" ? seconds * 1e3 : seconds).toISOString().slice(0, 10);
-var percent2 = (share3) => `${Math.round(share3 * 1e3) / 10}%`;
 var number = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
-var text2 = (value) => typeof value === "string" ? value : null;
+var percentOf = (share3) => Math.round(share3 * 1e3) / 10;
+var byScore = (a, b) => (b.score ?? -1) - (a.score ?? -1) || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 var COMMIT_FILTERS = [
   ["outsideWindow", "commits outside the analysis window"],
   ["shallowBoundaryCommits", "shallow boundary commits"],
@@ -10566,6 +10718,339 @@ function excludedCounts(filters, files, builtin) {
     ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
     { what: `changes over the changeset limit of ${filters.maxChangesetSize} files`, count: filters.oversizedChanges },
     ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of the rankings`, count: count3 })),
+    ...Object.entries(builtin).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
+  ];
+}
+function frictionOf(rows5, percentile2) {
+  const frequency = midRankPercentiles(rows5.map((row2) => row2.frequency));
+  const scored = rows5.flatMap((row2, i) => row2.complexity === null ? [] : [i]);
+  const complexity = new Map(midRankPercentiles(scored.map((i) => rows5[i].complexity)).map((p, k) => [scored[k], p]));
+  const guideline = percentile2 / 100;
+  const all = rows5.flatMap((row2, i) => {
+    const c = complexity.get(i);
+    if (c === void 0) return [];
+    return frequency[i] >= guideline && c >= guideline ? [{ row: row2, frequencyPercentile: percentOf(frequency[i]), complexityPercentile: percentOf(c) }] : [];
+  });
+  return { all: all.sort((a, b) => byScore(a.row, b.row)), guideline: percentile2 };
+}
+async function linesOf(root, head, paths) {
+  const lines2 = /* @__PURE__ */ new Map();
+  const batch = 32;
+  for (let start = 0; start < paths.length; start += batch) {
+    const slice = paths.slice(start, start + batch);
+    const texts = await Promise.all(slice.map((path) => readBlobAt(root, head, path)));
+    slice.forEach((path, i) => {
+      const text3 = texts[i];
+      if (text3 === void 0 || text3.includes("\0")) return;
+      lines2.set(path, text3 === "" ? 0 : text3.replace(/\n$/, "").split("\n").length);
+    });
+  }
+  return lines2;
+}
+function bandBreaks(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const at = (share3) => sorted[Math.min(sorted.length - 1, Math.floor(share3 * sorted.length))] ?? 0;
+  const breaks = [];
+  for (const share3 of [0.5, 0.75, 0.9, 0.97]) breaks.push(Math.max(at(share3), (breaks.at(-1) ?? 0) + 1));
+  return breaks;
+}
+function mapBlocks(rows5, lines2) {
+  const sized = rows5.flatMap((row2) => lines2.has(row2.path) ? [{ path: row2.path, size: lines2.get(row2.path), colour: row2.frequency }] : []);
+  const largest = [...sized].sort((a, b) => b.size - a.size || (a.path < b.path ? -1 : 1)).slice(0, MAP_FILES);
+  const blocks = [
+    {
+      type: "treemap",
+      title: "Code by folder: size is lines, colour is revisions in the window",
+      sizeLabel: "lines",
+      colourLabel: "revisions in the window",
+      items: largest,
+      breaks: bandBreaks(largest.map((item) => item.colour))
+    }
+  ];
+  blocks.push({ type: "paragraph", text: "Colour bands are rank steps of the files shown: the band edges sit at the 50th, 75th, 90th and 97th percentile of their revisions, so band 5 is the most changed and says nothing about good or bad." });
+  if (sized.length > largest.length) blocks.push({ type: "notice", level: "limit", text: `The map holds the ${largest.length} largest of ${sized.length} files by lines; the ${sized.length - largest.length} smaller files are not in it.` });
+  if (rows5.length > sized.length) blocks.push({ type: "notice", level: "limit", text: `${rows5.length - sized.length} ranked files have no text lines to size and are not in the map.` });
+  return blocks;
+}
+function frictionBlocks(friction, shown, percentile2, complexityLabel, considered) {
+  const table = {
+    type: "ranked-table",
+    caption: `Friction list: files in the top change-frequency percentile and above the complexity guideline, by hotspot score`,
+    noun: "files",
+    total: friction.length,
+    columns: [
+      { key: "path", label: "File" },
+      { key: "revisions", label: "Revisions", align: "right" },
+      { key: "frequencyPercentile", label: "Frequency percentile", align: "right", guideline: { value: percentile2, note: "cochange.hotspotPercentile" } },
+      { key: "complexity", label: complexityLabel, align: "right" },
+      { key: "complexityPercentile", label: "Complexity percentile", align: "right", guideline: { value: percentile2, note: "cochange.hotspotPercentile" } },
+      { key: "lastChanged", label: "Last changed" },
+      { key: "fixShare", label: "Fix share (%)", align: "right" },
+      { key: "fixes", label: "Fixes landed", align: "right" },
+      { key: "reviewFixes", label: "Fixes in review", align: "right" },
+      { key: "flag", label: "Flag" }
+    ],
+    rows: shown.map(({ row: row2, frequencyPercentile, complexityPercentile }) => ({
+      path: row2.path,
+      revisions: row2.frequency,
+      frequencyPercentile,
+      complexity: row2.complexity,
+      complexityPercentile,
+      lastChanged: isoDate2(row2.lastChanged),
+      fixShare: row2.fixShare === null ? null : percentOf(row2.fixShare),
+      fixes: row2.fixes,
+      reviewFixes: row2.reviewFixes,
+      flag: row2.recommendation
+    }))
+  };
+  const blocks = [{ type: "paragraph", text: `${friction.length} of ${considered} files reach the top ${100 - percentile2} percent in change frequency and in complexity at once. Both percentiles are ranks among the files ranked, and the list is ordered by hotspot score.` }, table];
+  for (const { row: row2 } of shown) {
+    blocks.push({ type: "judgement", slot: `flag:${row2.path}` }, { type: "judgement", slot: `recommend:${row2.path}` });
+  }
+  return blocks;
+}
+async function trendOf2(context, path) {
+  try {
+    const output = await command12.run({ ...context, positionals: [path], values: { ...context.values, samples: String(TREND_SAMPLES) } });
+    return output.results;
+  } catch {
+    return void 0;
+  }
+}
+function historyBlocks(trends, paths, omitted2) {
+  const found = trends.flatMap((t) => t === void 0 ? [] : [t]);
+  const blocks = [
+    {
+      type: "ranked-table",
+      caption: "Complexity and size of the first friction files across their history (cochange trend)",
+      noun: "friction files",
+      total: paths.length + omitted2,
+      columns: [
+        { key: "path", label: "File" },
+        { key: "revisions", label: "Revisions in history", align: "right" },
+        { key: "direction", label: "Direction" },
+        { key: "change", label: "Change in complexity (%)", align: "right", guideline: { value: TREND_GUIDELINE * 100, note: "the trend guideline for worsening" } },
+        { key: "peak", label: "Peak complexity", align: "right" },
+        { key: "linesFirst", label: "Lines at first sample", align: "right" },
+        { key: "linesLast", label: "Lines at last sample", align: "right" }
+      ],
+      rows: found.map((t) => ({
+        path: t.path,
+        revisions: t.revisions,
+        direction: t.summary.direction,
+        change: t.summary.changeRatio === null ? null : percentOf(t.summary.changeRatio),
+        peak: t.summary.peak?.complexity ?? null,
+        linesFirst: t.summary.lines.first,
+        linesLast: t.summary.lines.last
+      }))
+    }
+  ];
+  for (const t of found) {
+    const points = t.samples.flatMap((s) => s.complexity === null ? [] : [{ label: s.date.slice(0, 10), value: s.complexity }]);
+    if (points.length > 0) blocks.push({ type: "sparkline", title: `${t.path}: indentation complexity across its history`, unit: "indentation complexity", points });
+  }
+  const missing = paths.length - found.length;
+  if (missing > 0) blocks.push({ type: "notice", level: "limit", text: `${missing} of these files have no history to sample, so they are not drawn.` });
+  return blocks;
+}
+var xrayRunLines = (what, command17) => `No stored ${what} for this commit. Run \`${command17}\` to store it, then run the report again.`;
+function guidelinesOf(analyse) {
+  const g = analyse.extra.guidelines;
+  if (g === void 0 || number(g.cognitiveWarn) === null || number(g.cyclomaticWarn) === null || number(g.nesting) === null) return void 0;
+  const overrides = number(g.overrides) ?? 0;
+  return { cognitive: g.cognitiveWarn, cyclomatic: g.cyclomaticWarn, nesting: g.nesting, note: overrides === 0 ? "complexity.guidelines, the warn level" : `complexity.guidelines defaults; ${overrides} path overrides are configured and the smells column reflects them` };
+}
+function xrayFunctions(path, analyse, fixes) {
+  const fixed = new Map((fixes?.rows ?? []).flatMap((row2) => typeof row2.id === "string" ? [[row2.id, row2]] : []));
+  return analyse.rows.filter((row2) => row2.path === path).map((row2) => {
+    const id = String(row2.id);
+    const measured = fixed.get(id);
+    return {
+      id,
+      name: String(row2.unit ?? id),
+      startLine: number(row2.startLine) ?? 0,
+      endLine: number(row2.endLine) ?? 0,
+      length: number(row2.length),
+      cognitive: number(row2.cognitive),
+      nesting: number(row2.nesting),
+      cyclomatic: number(row2.cyclomatic),
+      labels: Array.isArray(row2.labels) ? row2.labels.map(String) : [],
+      // The stored fix result lists the functions with a fix, so a function it does not list has none and its revisions are not stored.
+      revisions: measured === void 0 ? null : number(measured.unitRevisions),
+      fixes: fixes === void 0 ? null : number(measured?.fixCommits) ?? 0
+    };
+  });
+}
+function xraySections(shown, analyse, fixes) {
+  const files = shown.slice(0, XRAY_FILES);
+  if (files.length === 0) return [{ id: "xray", heading: "X-Ray", blocks: [{ type: "notice", level: "notice", text: "No file is on the friction list, so there is no file to X-Ray." }] }];
+  const missing = [
+    ...analyse === void 0 ? [{ type: "notice", level: "notice", text: xrayRunLines("complexity analyse result", "complexity analyse") }] : [],
+    ...fixes === void 0 ? [{ type: "notice", level: "notice", text: xrayRunLines("complexity fixes result", "complexity fixes") }] : []
+  ];
+  return files.map(({ row: row2 }, i) => {
+    const heading = `X-Ray: ${row2.path}`;
+    const id = `xray-${i + 1}`;
+    if (analyse === void 0) return { id, heading, blocks: missing };
+    const functions = xrayFunctions(row2.path, analyse, fixes);
+    if (functions.length === 0) return { id, heading, blocks: [{ type: "notice", level: "notice", text: `The stored complexity analyse result lists no functions of ${row2.path}, so there is nothing to X-Ray.` }] };
+    const data = { file: row2.path, functions, guidelines: guidelinesOf(analyse), rows: XRAY_ROWS };
+    const table = xrayBlocks(data).filter((block) => block.type !== "notice");
+    const revisions = fixes === void 0 ? [] : [{ type: "notice", level: "notice", text: "The stored fix result lists the functions that have a fix, so revisions show only for those and a dash means the figure is not stored." }];
+    return { id, heading, blocks: [...table, ...missing, ...revisions] };
+  });
+}
+function slots(shown) {
+  const report = { kind: "report", ref: "hotspots", label: "the repository" };
+  return [
+    {
+      id: "summary",
+      title: "Judgement: what the picture says",
+      about: report,
+      task: "In at most three sentences, say where change and size concentrate and whether the friction list points at a few files or many, citing only values this report shows. When the evidence grade is weak, say the history-based results are tentative.",
+      verdicts: [],
+      maxChars: 500
+    },
+    ...shown.flatMap(({ row: row2 }) => [
+      {
+        id: `flag:${row2.path}`,
+        title: `Judgement: ${row2.path}, red flag or code smell`,
+        about: { kind: "file", ref: row2.path, label: row2.path },
+        task: "Read the file, and its X-Ray when the report has one. Give the red flag or code smell you judge present, or none-applies. In one or two sentences say what in the file shows it. Cite only values this report shows. A fix is a count of commit messages, not of defects.",
+        verdicts: FLAG_VERDICTS,
+        maxChars: 400
+      },
+      {
+        id: `recommend:${row2.path}`,
+        title: `Judgement: ${row2.path}, recommendation`,
+        about: { kind: "file", ref: row2.path, label: row2.path },
+        task: "Recommend one: refactor (reduce complexity in place), split (separate responsibilities into files), leave (the signal does not call for work), review (a person should look first), or dismiss (a false positive such as generated or data-table code; the text records why). Give the reason in one or two sentences.",
+        verdicts: RECOMMENDATIONS,
+        maxChars: 400
+      }
+    ]),
+    {
+      id: "limits",
+      title: "Judgement: what limits these results",
+      about: report,
+      task: "In at most three sentences, say what limits how far these results can be trusted for this repository, using only the evidence, the exclusions and the missing results shown above.",
+      verdicts: [],
+      maxChars: 500
+    }
+  ];
+}
+function top(context) {
+  const value = context.values.top;
+  if (value === void 0) return DEFAULT_FRICTION;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) throw usageError(`--top must be an integer of at least 1, got "${String(value)}"`);
+  return parsed;
+}
+var hotspots = {
+  summary: "Where change and complexity meet: a treemap of the code, the friction list with each file's history, and an X-Ray of the top files, with a judgement of each file",
+  options: { ...windowOptions, "no-refresh": { type: "boolean" }, top: { type: "string" }, ...noCacheOption },
+  optionHelp: {
+    since: "analyse history from this date (ISO 8601); needed on a shallow clone",
+    until: "analyse history up to this date (ISO 8601, exclusive)",
+    "no-refresh": "read the history cache without bringing it up to date",
+    top: `files in the friction list (default ${DEFAULT_FRICTION}); each gets judgement slots, and the first ${TREND_FILES} a history and the first ${XRAY_FILES} an X-Ray`,
+    "no-cache": "compute the hotspot ranking again instead of reading the stored one"
+  },
+  async build(context) {
+    const limit = top(context);
+    const output = await command5.run(context);
+    const excluded = excludedCounts(output.extra.filtersApplied, droppedCounts(), builtinOmissions());
+    const extra = output.extra;
+    const { evidence } = extra;
+    const rows5 = [...output.results].sort(byScore);
+    const root = context.repo.root;
+    const head = context.repo.head;
+    const settings = readSettings(context.config);
+    const percentile2 = settings.hotspotPercentile;
+    const { all: friction } = frictionOf(rows5, percentile2);
+    const shown = friction.slice(0, limit);
+    const lines2 = await linesOf(root, head, rows5.map((row2) => row2.path));
+    const analyse = readSiblingResult(root, "complexity", "analyse", head);
+    const fixes = readSiblingResult(root, "complexity", "fixes", head);
+    const trendPaths = shown.slice(0, TREND_FILES).map((f) => f.row.path);
+    const trends = await Promise.all(trendPaths.map((path) => trendOf2(context, path)));
+    const complexityLabel = extra.complexitySource === "complexity-report" ? "Complexity (complexity files)" : "Complexity (indentation)";
+    const inputs = output.inputs ?? {};
+    const read = [analyse, fixes].flatMap((s) => s === void 0 ? [] : [{ report: s.report, head: s.head, config: s.config }]);
+    const sections = [
+      { id: "summary", heading: "What the picture says", blocks: [{ type: "judgement", slot: "summary" }] },
+      { id: "map", heading: "Map of the code", blocks: mapBlocks(rows5, lines2) },
+      {
+        id: "friction",
+        heading: "Friction list",
+        blocks: friction.length === 0 ? [{ type: "notice", level: "notice", text: `No file is in the top ${100 - percentile2} percent of both change frequency and complexity among the ${rows5.length} files ranked.` }] : [
+          ...frictionBlocks(friction, shown, percentile2, complexityLabel, rows5.length),
+          ...friction.length > shown.length ? [{ type: "notice", level: "limit", text: `${friction.length - shown.length} more files are on the friction list; --top lists more.` }] : []
+        ]
+      },
+      { id: "history", heading: "History of the top files", blocks: trendPaths.length === 0 ? [{ type: "notice", level: "notice", text: "There is no friction file to draw." }] : historyBlocks(trends, trendPaths, Math.max(0, shown.length - trendPaths.length)) },
+      ...xraySections(shown, analyse, fixes)
+    ];
+    return {
+      title: "Hotspots",
+      inputs: {
+        since: context.values.since ?? null,
+        until: context.values.until ?? null,
+        top: limit,
+        complexityReport: inputs.complexityReport ?? null,
+        storedResultsRead: read
+      },
+      header: {
+        evidenceGrade: evidence.grade,
+        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate2(extra.window.since)} to ${isoDate2(extra.window.until)}`,
+        excluded: excluded.filter((e) => e.count > 0)
+      },
+      sections,
+      limits: [
+        "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+        `The friction list is the files at or above the ${percentile2}th percentile (cochange.hotspotPercentile) of both change frequency and complexity. A percentile is a rank among the ${rows5.length} files ranked, so it moves when files are added.`,
+        `The friction list shows ${shown.length} of ${friction.length} files; the history covers the first ${Math.min(TREND_FILES, shown.length)} and the X-Ray the first ${Math.min(XRAY_FILES, shown.length)}.`,
+        extra.complexitySource === "indentation" ? "Complexity is the indentation proxy, because no complexity files report covers this commit." : "Complexity is the complexity plugin's file-level value.",
+        "Revisions count every commit that touched the file in the window. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.",
+        ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
+        ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate2(evidence.truncated.availableSince)} is missing.`] : [],
+        ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
+        ...analyse === void 0 || fixes === void 0 ? ["The X-Ray reads the complexity plugin's stored results and never computes them; a missing one is named in the section."] : []
+      ],
+      slots: slots(shown)
+    };
+  }
+};
+
+// packages/cochange/src/reports/overview.ts
+var TOP = 5;
+var FIRST_LOOK_MAX = 3;
+var isoDate3 = (seconds) => new Date(typeof seconds === "number" ? seconds * 1e3 : seconds).toISOString().slice(0, 10);
+var percent2 = (share3) => `${Math.round(share3 * 1e3) / 10}%`;
+var number2 = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
+var text2 = (value) => typeof value === "string" ? value : null;
+var COMMIT_FILTERS2 = [
+  ["outsideWindow", "commits outside the analysis window"],
+  ["shallowBoundaryCommits", "shallow boundary commits"],
+  ["importedCommits", "commits of imported history"],
+  ["blameIgnoredCommits", "commits in the blame ignore file"],
+  ["botCommits", "commits by bots and service accounts"],
+  ["suiteCommits", "commits trailed by this suite"],
+  ["emptyAfterFiltering", "commits with no file left after filtering"]
+];
+var CHANGE_FILTERS2 = [
+  ["pureRenames", "file changes that only rename"],
+  ["excludedByGlob", "file changes matching exclude globs"],
+  ["lockfiles", "lockfile changes"],
+  ["generated", "generated file changes"],
+  ["vendored", "vendored file changes"]
+];
+var FILE_KINDS2 = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
+function excludedCounts2(filters, files, builtin) {
+  return [
+    ...[...COMMIT_FILTERS2, ...CHANGE_FILTERS2].map(([key, what]) => ({ what, count: filters.dropped[key] })),
+    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files`, count: filters.oversizedChanges },
+    ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS2[kind] ?? kind} left out of the rankings`, count: count3 })),
     ...Object.entries(builtin).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
   ];
 }
@@ -10649,10 +11134,10 @@ function resultFrom(stored, title, command17, build) {
   const { block, candidates } = build(stored);
   return { candidates, blocks: [block], read: { report: stored.report, head: stored.head, config: stored.config }, missing: null };
 }
-var top = (rows5) => rows5.slice(0, TOP);
+var top2 = (rows5) => rows5.slice(0, TOP);
 function complexityResult(stored) {
   return resultFrom(stored, "complexity analyse result", "complexity analyse", (s) => {
-    const rows5 = top(s.rows);
+    const rows5 = top2(s.rows);
     return {
       candidates: rows5.flatMap((row2) => text2(row2.id) === null ? [] : [{ ref: `complexity:${text2(row2.id)}`, label: `${text2(row2.id)} (complexity)` }]),
       block: {
@@ -10670,10 +11155,10 @@ function complexityResult(stored) {
         ],
         rows: rows5.map((row2) => ({
           id: text2(row2.id) ?? text2(row2.path),
-          cognitive: number(row2.cognitive),
-          cyclomatic: number(row2.cyclomatic),
-          nesting: number(row2.nesting),
-          length: number(row2.length),
+          cognitive: number2(row2.cognitive),
+          cyclomatic: number2(row2.cyclomatic),
+          nesting: number2(row2.nesting),
+          length: number2(row2.length),
           labels: Array.isArray(row2.labels) && row2.labels.length > 0 ? row2.labels.join(", ") : null
         }))
       }
@@ -10682,7 +11167,7 @@ function complexityResult(stored) {
 }
 function cyclesResult(stored) {
   return resultFrom(stored, "structure cycles result", "structure cycles", (s) => {
-    const rows5 = top(s.rows);
+    const rows5 = top2(s.rows);
     return {
       candidates: rows5.flatMap((row2) => text2(row2.id) === null ? [] : [{ ref: `structure:${text2(row2.id)}`, label: `${text2(row2.id)} (import cycle)` }]),
       block: {
@@ -10699,10 +11184,10 @@ function cyclesResult(stored) {
         ],
         rows: rows5.map((row2) => ({
           id: text2(row2.id),
-          size: number(row2.size),
+          size: number2(row2.size),
           method: text2(row2.method),
-          coChangeAcross: number(row2.coChangeAcross),
-          unblockedGain: number(row2.unblockedGain)
+          coChangeAcross: number2(row2.coChangeAcross),
+          unblockedGain: number2(row2.unblockedGain)
         }))
       }
     };
@@ -10710,9 +11195,9 @@ function cyclesResult(stored) {
 }
 function localityResult(stored) {
   return resultFrom(stored, "locality analyse result", "locality analyse", (s) => {
-    const rows5 = top(s.rows);
+    const rows5 = top2(s.rows);
     const ranking = (row2) => typeof row2.ranking === "object" && row2.ranking !== null ? row2.ranking : {};
-    const guideline = rows5.map((row2) => number(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
+    const guideline = rows5.map((row2) => number2(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
     return {
       candidates: rows5.flatMap((row2) => text2(row2.path) === null ? [] : [{ ref: `locality:${text2(row2.path)}`, label: `${text2(row2.path)} (locality)` }]),
       block: {
@@ -10730,8 +11215,8 @@ function localityResult(stored) {
         rows: rows5.map((row2) => ({
           path: text2(row2.path),
           recommendation: text2(row2.recommendation),
-          gain: number(ranking(row2).value) ?? number(row2.score),
-          distance: number(row2.distance),
+          gain: number2(ranking(row2).value) ?? number2(row2.score),
+          distance: number2(row2.distance),
           target: text2(row2.target)
         }))
       }
@@ -10739,7 +11224,7 @@ function localityResult(stored) {
   });
 }
 function hotspotResult(rows5) {
-  const shown = top(rows5);
+  const shown = top2(rows5);
   return {
     candidates: shown.map((row2) => ({ ref: `hotspot:${row2.path}`, label: `${row2.path} (hotspot ranking)` })),
     read: null,
@@ -10769,7 +11254,7 @@ function scoreHistogram(rows5) {
   for (const row2 of rows5) if (row2.score !== null) bins[Math.min(9, Math.floor(row2.score * 10))].count++;
   return { type: "histogram", title: "Distribution of hotspot scores", unit: "files", bins };
 }
-function slots(candidates) {
+function slots2(candidates) {
   return [
     {
       id: "first-look",
@@ -10795,7 +11280,7 @@ function limitsOf(evidence, missing, complexitySource) {
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
     `Each table shows the top ${TOP} of its result and says how many rows it leaves out; the command prints the rest.`,
     ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
-    ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate2(evidence.truncated.availableSince)} is missing.`] : [],
+    ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate3(evidence.truncated.availableSince)} is missing.`] : [],
     ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
     ...complexitySource === "indentation" ? ["Hotspot complexity is the indentation proxy, because no complexity report covers this commit."] : [],
     ...missing.length === 0 ? [] : [`Not stored for this commit: ${missing.join(", ")}. The overview reads other plugins' stored results and never computes them.`]
@@ -10825,7 +11310,7 @@ var overview = {
     ];
     const candidates = results.flatMap((r) => r.candidates);
     const missing = results.flatMap((r) => r.missing === null ? [] : [r.missing]);
-    const excluded = excludedCounts(extra.filtersApplied, droppedCounts(), builtinOmissions());
+    const excluded = excludedCounts2(extra.filtersApplied, droppedCounts(), builtinOmissions());
     const inputs = output.inputs ?? {};
     return {
       title: "Code health overview",
@@ -10837,7 +11322,7 @@ var overview = {
       },
       header: {
         evidenceGrade: grade(evidence),
-        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate2(extra.window.since)} to ${isoDate2(extra.window.until)}`,
+        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate3(extra.window.since)} to ${isoDate3(extra.window.until)}`,
         excluded: excluded.filter((e) => e.count > 0)
       },
       sections: [
@@ -10848,20 +11333,20 @@ var overview = {
         { id: "results", heading: "Top results of each plugin", blocks: results.flatMap((r) => r.blocks) }
       ],
       limits: limitsOf(evidence, missing, extra.complexitySource),
-      slots: slots(candidates)
+      slots: slots2(candidates)
     };
   }
 };
 
 // packages/cochange/src/commands/report.ts
-var name13 = "report";
-var command12 = reportCommand({ overview });
+var name14 = "report";
+var command13 = reportCommand({ hotspots, overview });
 
 // packages/cochange/src/commands/risk.ts
 var risk_exports = {};
 __export(risk_exports, {
-  command: () => command13,
-  name: () => name14,
+  command: () => command14,
+  name: () => name15,
   rules: () => rules8
 });
 
@@ -11766,10 +12251,10 @@ function measureHistoryLayer(facts, state, context) {
   ];
 }
 function size(facts) {
-  const lines = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
+  const lines2 = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
   return measurement2("size", "size-and-diffusion", "history", "percentile", "history", {
-    series: { lines },
-    value: { lines, files: facts.files.length }
+    series: { lines: lines2 },
+    value: { lines: lines2, files: facts.files.length }
   });
 }
 function spread(facts, context) {
@@ -12879,9 +13364,9 @@ async function blameFacts(context, assessed, authorKeys, noRefresh) {
     const held = shareHeldBy(shares2, authorKeys);
     let distantOwner = null;
     let hasActiveHolder = false;
-    for (const [key, lines] of [...shares2.byOwner].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))) {
+    for (const [key, lines2] of [...shares2.byOwner].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))) {
       const owner = byKey.get(key);
-      const share3 = lines / shares2.people;
+      const share3 = lines2 / shares2.people;
       if (!active(owner)) continue;
       if (share3 * 100 >= risk.regularShare) hasActiveHolder = true;
       if (distantOwner === null && share3 * 100 >= risk.ownerShare && !authorKeys.has(key)) {
@@ -13044,10 +13529,10 @@ async function reviewersFor(context, assessed, noRefresh) {
       if (counted.people === 0) continue;
       const byEmail = /* @__PURE__ */ new Map();
       const person = new Map([...owners.values()].map((o) => [o.key, o]));
-      for (const [key, lines] of counted.byOwner) {
+      for (const [key, lines2] of counted.byOwner) {
         const owner = person.get(key);
         const seen = byEmail.get(owner.email.toLowerCase());
-        byEmail.set(owner.email.toLowerCase(), { name: owner.name, email: owner.email, share: (seen?.share ?? 0) + lines / counted.people });
+        byEmail.set(owner.email.toLowerCase(), { name: owner.name, email: owner.email, share: (seen?.share ?? 0) + lines2 / counted.people });
       }
       shares2.set(file.fileId, byEmail);
     }
@@ -13156,7 +13641,7 @@ async function runReviewers(context, history, range) {
 }
 
 // packages/cochange/src/commands/risk.ts
-var name14 = "risk";
+var name15 = "risk";
 var rules8 = findingRules;
 var SUBCOMMANDS4 = ["explain", "reviewers", "backtest"];
 function parse2(positionals) {
@@ -13167,7 +13652,7 @@ function rangeOf(rest) {
   if (rest.length > 1) throw usageError("usage: risk [BASE[..HEAD]] [--worktree]");
   return rest[0];
 }
-var command13 = analysisCommand(name14, {
+var command14 = analysisCommand(name15, {
   summary: "How much a branch puts at risk before it is merged, and how to review it: risk [BASE[..HEAD]] | explain | reviewers",
   options: { worktree: { type: "boolean" }, evidence: { type: "string", multiple: true }, names: { type: "boolean" }, since: { type: "string" }, adopted: { type: "string" } },
   subcommands: {
@@ -13214,10 +13699,10 @@ var command13 = analysisCommand(name14, {
 // packages/cochange/src/commands/spread.ts
 var spread_exports = {};
 __export(spread_exports, {
-  command: () => command14,
-  name: () => name15
+  command: () => command15,
+  name: () => name16
 });
-var name15 = "spread";
+var name16 = "spread";
 function distribution(changes, excludedByTrailer) {
   const measured = changes.filter((c) => !c.oversized).map((c) => changeSpread(c.files.map((f) => f.path)));
   const oversized = changes.length - measured.length;
@@ -13241,7 +13726,7 @@ function bucketOption(context) {
   if (value === "week" || value === "month") return value;
   throw usageError(`--bucket must be "week" or "month", not "${String(value)}"`);
 }
-var command14 = analysisCommand(name15, {
+var command15 = analysisCommand(name16, {
   summary: "Change-spread distribution (mean pairwise tree distance per logical change) per week or month",
   options: { since: { type: "string" }, until: { type: "string" }, bucket: { type: "string" } },
   window: (context) => statedWindow(context, readSettings(context.config).windowMonths),
@@ -13285,17 +13770,17 @@ var command14 = analysisCommand(name15, {
 // packages/cochange/src/commands/successors.ts
 var successors_exports = {};
 __export(successors_exports, {
-  command: () => command15,
-  name: () => name16
+  command: () => command16,
+  name: () => name17
 });
-var name16 = "successors";
-var command15 = {
+var name17 = "successors";
+var command16 = {
   summary: "Ranked successors for files at risk, from the files that change with them",
   options: { names: { type: "boolean" }, top: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
     if (context.positionals.length === 0) throw usageError("usage: successors PATH... [--names]");
     const names = context.values.names === true;
-    const top2 = integerOption(context, "top", 5, 1, 1e3);
+    const top3 = integerOption(context, "top", 5, 1, 1e3);
     const p = await prepare(context);
     const { model } = p.knowledge;
     const present = new Set(await listTree(context.repo.root, p.history.view.headSha));
@@ -13312,7 +13797,7 @@ var command15 = {
         coupledFiles: [...index2.partners.get(path) ?? []].map((c) => ({ path: c.path, degree: round4(c.degree), support: c.support })).sort((a, b) => b.degree - a.degree || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))),
         candidates: successors.length,
         noSuccessor: hasNoSuccessor(successors),
-        successors: successors.slice(0, top2).map((s, i) => ({
+        successors: successors.slice(0, top3).map((s, i) => ({
           rank: i + 1,
           ...names ? { developer: s.developer } : {},
           score: s.score,
@@ -13326,7 +13811,7 @@ var command15 = {
       inputs: commonInputs(p, "successors", {
         paths: rows5.map((r) => r.path),
         names,
-        top: top2,
+        top: top3,
         minSupport: p.history.settings.minSupport
       }),
       extra: commonExtra(p),
@@ -13335,97 +13820,6 @@ var command15 = {
     };
   }
 };
-
-// packages/cochange/src/commands/trend.ts
-var trend_exports = {};
-__export(trend_exports, {
-  DEFAULT_SAMPLES: () => DEFAULT_SAMPLES,
-  MAX_SAMPLES: () => MAX_SAMPLES,
-  TREND_GUIDELINE: () => TREND_GUIDELINE,
-  command: () => command16,
-  name: () => name17,
-  pickSamples: () => pickSamples
-});
-var name17 = "trend";
-var DEFAULT_SAMPLES = 10;
-var MAX_SAMPLES = 500;
-var TREND_GUIDELINE = 0.2;
-function pickSamples(revisions, count3) {
-  if (revisions.length <= count3) return [...revisions];
-  const last = revisions.length - 1;
-  return Array.from({ length: count3 }, (_, i) => revisions[Math.round(i * last / (count3 - 1))]);
-}
-function changeRatioOf(first, last) {
-  if (first === null || last === null) return null;
-  return first === 0 ? last === 0 ? 0 : 1 : (last - first) / first;
-}
-function directionOf(ratio, samples) {
-  if (samples < 2 || ratio === null) return "insufficient";
-  if (ratio >= TREND_GUIDELINE) return "worsening";
-  if (ratio <= -TREND_GUIDELINE) return "improving";
-  return "stable";
-}
-var delta = (first, last) => ({
-  first,
-  last,
-  change: first === null || last === null ? null : last - first
-});
-var command16 = analysisCommand(name17, {
-  summary: "Indentation complexity and size of one file sampled across its history, from blobs",
-  options: { samples: { type: "string" } },
-  wholeHistory: true,
-  partial: () => true,
-  async analyse({ context, history }) {
-    const [requested, ...rest] = context.positionals;
-    if (requested === void 0 || rest.length > 0) throw usageError("usage: trend PATH [--samples N]");
-    const samples = integerOption(context, "samples", DEFAULT_SAMPLES, 2, MAX_SAMPLES);
-    const file = await focusPath(context, history, requested);
-    const revisions = [];
-    for (const change2 of history.filtered.changes) {
-      const touched = change2.files.find((f) => f.fileId === file && f.blob !== null);
-      if (touched) {
-        revisions.push({ commit: change2.shas.at(-1), committerDate: change2.committerDate, path: touched.path, blob: touched.blob });
-      }
-    }
-    if (revisions.length === 0) throw usageError(`no revisions of "${requested}" in the analysed history`);
-    const rows5 = await Promise.all(
-      pickSamples(revisions, samples).map(async (revision) => {
-        const [text3, bytes] = await Promise.all([readBlob(context.repo.root, revision.blob), blobSize(context.repo.root, revision.blob)]);
-        const binary = text3.includes("\0");
-        return {
-          commit: revision.commit,
-          date: isoDate(revision.committerDate),
-          path: revision.path,
-          complexity: binary ? null : indentationComplexity(text3, revision.path),
-          lines: binary ? null : text3 === "" ? 0 : text3.replace(/\n$/, "").split("\n").length,
-          bytes
-        };
-      })
-    );
-    const first = rows5[0];
-    const last = rows5.at(-1);
-    const changeRatio = changeRatioOf(first.complexity, last.complexity);
-    const measured = rows5.filter((r) => r.complexity !== null);
-    const peak = measured.reduce((best, r) => best === null || r.complexity > best.complexity ? r : best, null);
-    return {
-      inputs: { path: file, samples, guideline: TREND_GUIDELINE },
-      results: {
-        path: file,
-        revisions: revisions.length,
-        samples: rows5,
-        summary: {
-          direction: directionOf(changeRatio, rows5.length),
-          changeRatio: changeRatio === null ? null : Math.round(changeRatio * 1e4) / 1e4,
-          guideline: TREND_GUIDELINE,
-          peak: peak === null ? null : { complexity: peak.complexity, date: peak.date, commit: peak.commit },
-          complexity: delta(first.complexity, last.complexity),
-          lines: delta(first.lines, last.lines)
-        }
-      },
-      extra: { complexitySource: "indentation" }
-    };
-  }
-});
 
 // packages/cochange/src/commands.ts
 var commandModules = [

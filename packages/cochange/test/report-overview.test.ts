@@ -173,7 +173,7 @@ test("html without notes, a missing report name, an unknown report and --slots w
     expect(stderr).toContain(expected);
   };
   await usage(["overview", "--format", "html"], "html needs notes");
-  await usage([], "report needs a report name: overview");
+  await usage([], "report needs a report name: hotspots, overview");
   await usage(["nothing"], 'unknown report "nothing"');
   await usage(["overview", "--slots", "--format", "md"], "--slots prints the slots");
   await usage(["overview"], "say what to print");

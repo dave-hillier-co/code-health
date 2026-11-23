@@ -227,4 +227,4 @@ When you finish, report in this order and keep it short:
 - [references/ci.md](references/ci.md): `check` and `diff` in CI and pre-commit, exit codes, and choosing a base.
 - [references/red-flags.md](references/red-flags.md): the shared design vocabulary.
 
-To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).
+To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md). `report xray FILE` is the X-Ray of one file, with a judgement of each of its top 5 functions.

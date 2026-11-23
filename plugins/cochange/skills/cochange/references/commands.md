@@ -62,6 +62,10 @@ Updates the shared history cache and reports commits added. Analysis commands do
 
 Writes the overview page: the evidence, the fix convention check, what was excluded and the top 5 of each plugin's main result, read from the stored results for HEAD (a result that is not stored is a line naming the command to run). `--slots` prints the data and the two judgement slots (what to look at first, and the limits) as JSON. `--notes FILE --format html|md [--out PATH]` renders your notes, and exits with 2 naming the problem when they do not fit. `--format md` alone prints a draft. The steps are in [reports.md](reports.md).
 
+## report hotspots [--top N] [--since DATE] [--until DATE]
+
+Writes the hotspots page: a treemap of the code by folder (size is lines, colour is revisions in the window), the friction list (the top N files, default 20, in the top `cochange.hotspotPercentile` of both change frequency and complexity, with revisions, recency, fix share, landed fixes and fixes during review), a sparkline of complexity across the history of the first 10, and an X-Ray of the first 5 read from the stored `complexity analyse` and `complexity fixes` results for HEAD (a result that is not stored is a line naming the command to run; run them before `--slots`). Each friction file has two slots: the red flag or code smell you judge present, or `none-applies`, and a recommendation (`refactor`, `split`, `leave`, `review`, or `dismiss`, which records the reason a signal is a false positive). There is also a summary slot and the limits. The steps are in [reports.md](reports.md). `complexity report xray FILE` is the X-Ray of one file.
+
 ## explain [rule]
 
 Describes a recommendation rule: `hotspot`, `cold`, `distant-coupling`, `asymmetric-coupling`. `config explain` prints the effective config and where each value came from.
