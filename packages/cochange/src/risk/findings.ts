@@ -159,7 +159,7 @@ export function findingsOf(assessed: Assessed, placement: PlacementOutcome | nul
 
   const missing = get("missing-co-change");
   if (atLeastModerate(missing)) {
-    found.push(make("missing-co-change", missing, `${count(missing)} file${count(missing) === 1 ? "" : "s"} that usually change with the touched files ${count(missing) === 1 ? "is" : "are"} not in the change`, missing.evidence));
+    found.push(make("missing-co-change", missing, `${count(missing)} file${count(missing) === 1 ? " that usually changes" : "s that usually change"} with the touched files ${count(missing) === 1 ? "is" : "are"} not in the change`, missing.evidence));
   }
   const mixed = get("mixed-purpose");
   if (atLeastModerate(mixed)) found.push(make("mixed-purpose", mixed, `${count(mixed)} moved or renamed file${count(mixed) === 1 ? "" : "s"} in a change that also edits content`, mixed.evidence));
