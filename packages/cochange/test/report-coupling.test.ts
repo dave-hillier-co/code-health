@@ -97,7 +97,8 @@ test("--slots prints the stamp, the data and one slot per top pair, the whole re
   expect(validate(document), JSON.stringify(validate.errors)).toBe(true);
   expect(document.report).toBe("coupling");
   expect(document.stamp).toMatchObject({ kind: "coupling", head: repo.git("rev-parse", "HEAD").trim(), inputs: { storedResultsRead: [], trendTolerance: 10, minSupport: 5 } });
-  expect(document.slots.map((s: { id: string }) => s.id)).toEqual(["pair-1", "pair-2", "pair-3", "pair-4", "summary", "limits"]);
+  // The ledger and its test are an expected pair: they are listed apart and get no judgement.
+  expect(document.slots.map((s: { id: string }) => s.id)).toEqual(["pair-1", "pair-2", "pair-3", "summary", "limits"]);
   expect(document.slots[0]).toMatchObject({ about: { kind: "pair", ref: "src/search/index.ts <-> src/search/ranking.ts" } });
   expect(document.slots[0].verdicts).toEqual([
     "real-locality-review",
@@ -130,7 +131,8 @@ test("the page shows the pairs with their trend, the sums, the matrix, the clust
   const { stdout } = await run("--notes", writeNotes("notes-page.json", fullNotes(document)), "--format", "md");
   for (const label of ["Repository:", "Analysed commit:", "Date:", "Config hash:", "Evidence grade:", "History window:", "Excluded:", "## Limits"]) expect(stdout).toContain(label);
   expect(stdout).toContain("↑ stronger (+60 points)");
-  expect(stdout).toContain("→ stable (+10 points)");
+  expect(stdout).toContain("Expected pairs, listed apart and not judged");
+  expect(stdout).toContain("a test and the code it tests");
   expect(stdout).toContain("↓ weaker (-40 points)");
   expect(stdout).toContain("↑ stronger (+100 points, shared no change before)");
   expect(stdout).toContain("## Sum of coupling per file");
@@ -143,8 +145,10 @@ test("the page shows the pairs with their trend, the sums, the matrix, the clust
 test("every number on the page is the CLI's: pairs beyond the top are counted, none is hidden silently", async () => {
   const document = await slots();
   const pairs = document.data.sections.find((s: { id: string }) => s.id === "pairs").blocks.find((b: { type: string }) => b.type === "ranked-table");
-  expect(pairs.rows).toHaveLength(4);
-  expect(pairs.total).toBe(4);
+  expect(pairs.rows).toHaveLength(3);
+  expect(pairs.total).toBe(3);
+  const expected = document.data.sections.find((s: { id: string }) => s.id === "pairs").blocks.filter((b: { type: string }) => b.type === "ranked-table")[1];
+  expect(expected.rows.map((r: { file: string }) => r.file)).toEqual(["src/billing/ledger.test.ts"]);
 });
 
 test("a stored structure hidden result for HEAD is shown and named in the stamp; an older one is not read", async () => {
@@ -249,5 +253,6 @@ test("a repository with no pair at the support floor says so and still renders",
   const notes = writeNotes("notes-empty.json", fullNotes(document));
   const md = await runCochange(repo.path, ["report", "coupling", "--since", "2025-12-01", "--notes", notes, "--format", "md"]);
   expect(md.code).toBe(ExitCode.Success);
-  expect(md.stdout).toContain("No pair shares at least 5 changes");
+  expect(md.stdout).toContain("0 pairs reach the support floor of 5 shared changes");
+  expect(md.stdout).toContain("The floor was not lowered");
 });

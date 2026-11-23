@@ -10,9 +10,14 @@ import { excludedCounts, historyWindowText, isoDate } from "@code-health/history
 import type { Evidence } from "@code-health/history/evidence";
 import type { FiltersApplied } from "@code-health/history/noise";
 import { noCacheOption } from "@code-health/history/results-cache";
+import { dropEmptySlots } from "@code-health/report/empty-block";
+import { capRows } from "@code-health/report/table-cap";
+import type { RankedTableData } from "@code-health/report/components/ranked-table";
+import { testClassifier } from "@code-health/parse/test-files";
 import { command as clustersCommand } from "../commands/clusters.ts";
 import { command as couplingCommand } from "../commands/coupling.ts";
 import { readSettings } from "../config.ts";
+import { EXPECTED_LABEL, EXPECTED_REASONS, expectedReason, type ExpectedReason } from "../expected-pair.ts";
 import type { CouplingTrend } from "../coupling-trend.ts";
 import { readSiblingResult, type SiblingResult } from "../sibling-reports.ts";
 import { windowOptions } from "../window-options.ts";
@@ -22,6 +27,13 @@ const TOP_PAIRS = 15;
 const TOP_FILES = 15;
 const TOP_CLUSTERS = 10;
 const TOP_HIDDEN = 10;
+/** Rows of the table of expected pairs, and of the pairs just under the support floor. */
+const TOP_EXPECTED = 10;
+const TOP_BELOW_FLOOR = 10;
+/** Fewer qualifying pairs than this is thin data: the report says how many there are and how many fall just under the floor. */
+const FEW_PAIRS = 5;
+/** How far under the support floor "just below" reaches, in shared changes. */
+const BELOW_FLOOR_REACH = 2;
 /** The pairs that get a judgement slot. */
 const JUDGED_PAIRS = 5;
 const MEMBERS_SHOWN = 4;
@@ -38,7 +50,9 @@ export const PAIR_VERDICTS = [
 
 interface PairRow {
   path: string;
+  pathKind: string;
   with: string;
+  withKind: string;
   degree: number;
   aboveGuideline: boolean;
   confidence: number;
@@ -50,6 +64,12 @@ interface PairRow {
   degreeChange: number | null;
   previousDegree: number | null;
   previousSupport: number | null;
+}
+
+/** A pair with the reason it is expected, or null for a pair of production files. */
+interface ClassifiedPair {
+  row: PairRow;
+  reason: ExpectedReason | null;
 }
 
 interface ClusterRow {
@@ -84,55 +104,114 @@ function trendCell(row: PairRow): string {
 
 const pairRef = (row: PairRow) => `${row.path} <-> ${row.with}`;
 
-function pairsSection(rows: readonly PairRow[], total: number, settings: { minDegree: number; tolerance: number }, previous: PreviousWindow | undefined): Block[] {
-  const shown = rows.slice(0, TOP_PAIRS);
+/** A ranked table cut to its first rows, with the command that lists the rest. */
+const cappedTable = (table: RankedTableData, max: number, command: string): Block => ({ type: "ranked-table", ...capRows(table, max, command) });
+
+const PAIR_ORDER = "Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.";
+
+const trendOf = (previous: PreviousWindow | undefined): boolean => previous !== undefined && previous.eligibleChanges > 0;
+
+function pairColumns(guideline: { minDegree: number } | null, withTrend: boolean) {
+  return [
+    { key: "file", label: "File" },
+    { key: "with", label: "Changes with" },
+    { key: "degree", label: "Degree (%)", align: "right" as const, ...(guideline === null ? {} : { guideline: { value: guideline.minDegree, note: "cochange.minDegree" } }) },
+    { key: "support", label: "Shared changes", align: "right" as const },
+    { key: "confidence", label: "Confidence file to with (%)", align: "right" as const },
+    { key: "reverse", label: "Confidence with to file (%)", align: "right" as const },
+    { key: "distance", label: "Distance (folder hops)", align: "right" as const },
+    ...(withTrend ? [{ key: "trend", label: "Trend" }] : []),
+  ];
+}
+
+const pairCells = (row: PairRow, withTrend: boolean): Record<string, Cell> => ({
+  file: row.path,
+  with: row.with,
+  degree: row.degree,
+  support: row.support,
+  confidence: row.confidence,
+  reverse: row.reverseConfidence,
+  distance: row.distance,
+  ...(withTrend ? { trend: trendCell(row) } : {}),
+});
+
+function pairsSection(production: readonly PairRow[], total: number, settings: { minDegree: number }, withTrend: boolean): Block[] {
+  return [
+    cappedTable(
+      {
+        caption: `Most strongly coupled pairs of production files${withTrend ? ", with how each moved since the previous window" : ""}. ${PAIR_ORDER}`,
+        noun: "pairs",
+        total: production.length,
+        emptyText: `None of the ${total} pairs that reach the support floor is a pair of production files; they are all in the table of expected pairs.`,
+        columns: pairColumns(settings, withTrend),
+        rows: production.map((row) => pairCells(row, withTrend)),
+      },
+      TOP_PAIRS,
+      "cochange coupling",
+    ),
+  ];
+}
+
+function expectedSection(expected: readonly ClassifiedPair[], settings: { minDegree: number }): Block[] {
+  const counts = EXPECTED_REASONS.map((reason) => ({ reason, count: expected.filter((e) => e.reason === reason).length })).filter((c) => c.count > 0);
+  const table = cappedTable(
+    {
+      caption: `Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, or two data files of one format. ${PAIR_ORDER}`,
+      noun: "pairs",
+      total: expected.length,
+      emptyText: "No pair is an expected pair: every pair that reaches the support floor is a pair of production files.",
+      columns: [{ key: "file", label: "File" }, { key: "with", label: "Changes with" }, { key: "why", label: "Why expected" }, ...pairColumns(settings, false).filter((c) => ["degree", "support"].includes(c.key))],
+      rows: expected.map(({ row, reason }): Record<string, Cell> => ({ file: row.path, with: row.with, why: EXPECTED_LABEL[reason!], degree: row.degree, support: row.support })),
+    },
+    TOP_EXPECTED,
+    "cochange coupling",
+  );
+  return [
+    ...(counts.length === 0 ? [] : [{ type: "notice" as const, level: "notice" as const, text: `${expected.length} ${expected.length === 1 ? "pair is an expected pair" : "pairs are expected pairs"} (${counts.map((c) => `${c.count} ${EXPECTED_LABEL[c.reason]}`).join(", ")}). Expected pairs are not judged; the table below lists them.` }]),
+    table,
+  ];
+}
+
+function trendBlocks(rows: readonly PairRow[], total: number, settings: { tolerance: number }, previous: PreviousWindow | undefined): Block[] {
+  if (!trendOf(previous)) return [{ type: "notice", level: "notice", text: "The window before the current one holds no eligible change, so no pair has a trend." }];
   const counts = { stronger: 0, stable: 0, weaker: 0 };
   for (const row of rows) if (row.trend !== null) counts[row.trend]++;
-  const blocks: Block[] = [
+  return [
     {
-      type: "ranked-table",
-      caption: "Most strongly coupled pairs of files, with how each moved since the previous window",
-      noun: "pairs",
-      total,
-      columns: [
-        { key: "file", label: "File" },
-        { key: "with", label: "Changes with" },
-        { key: "degree", label: "Degree (%)", align: "right", guideline: { value: settings.minDegree, note: "cochange.minDegree" } },
-        { key: "support", label: "Shared changes", align: "right" },
-        { key: "confidence", label: "Confidence file to with (%)", align: "right" },
-        { key: "reverse", label: "Confidence with to file (%)", align: "right" },
-        { key: "distance", label: "Distance (folder hops)", align: "right" },
-        { key: "trend", label: "Trend" },
-      ],
-      rows: shown.map((row): Record<string, Cell> => ({
-        file: row.path,
-        with: row.with,
-        degree: row.degree,
-        support: row.support,
-        confidence: row.confidence,
-        reverse: row.reverseConfidence,
-        distance: row.distance,
-        trend: trendCell(row),
-      })),
-    },
-  ];
-  if (previous === undefined || previous.eligibleChanges === 0) {
-    blocks.push({ type: "notice", level: "notice", text: "The window before the current one holds no eligible change, so no pair has a trend." });
-  } else {
-    blocks.push({
       type: "facts",
-      caption: `Trend of all ${total} pairs against ${isoDate(previous.since)} to ${isoDate(previous.until)}`,
+      caption: `Trend of all ${total} pairs against ${isoDate(previous!.since)} to ${isoDate(previous!.until)}`,
       facts: [
         { label: "Stronger", value: String(counts.stronger) },
         { label: "Stable", value: String(counts.stable) },
         { label: "Weaker", value: String(counts.weaker) },
         { label: "Pairs that shared no change in the previous window", value: String(rows.filter((row) => row.previousSupport === 0).length) },
         { label: "Stable means a change in degree of at most", value: `${settings.tolerance} points (guideline cochange.couplingTrendTolerance, a judgement call)` },
-        { label: "Eligible changes in the previous window", value: String(previous.eligibleChanges) },
+        { label: "Eligible changes in the previous window", value: String(previous!.eligibleChanges) },
       ],
-    });
-  }
-  return blocks;
+    },
+  ];
+}
+
+/** The line for thin data, then the pairs just under the support floor as a capped list that gets no judgement. */
+function thinBlocks(total: number, minSupport: number, below: readonly PairRow[]): Block[] {
+  const low = Math.max(1, minSupport - BELOW_FLOOR_REACH);
+  const range = low === minSupport - 1 ? `${low}` : `${low} to ${minSupport - 1}`;
+  const reach = `${total} ${total === 1 ? "pair reaches" : "pairs reach"} the support floor of ${minSupport} shared changes (cochange.minSupport), which is too few to rank. The floor was not lowered.`;
+  if (below.length === 0) return [{ type: "notice", level: "notice", text: `${reach} No other pair shares ${range} changes.` }];
+  return [
+    { type: "notice", level: "notice", text: `${reach} ${below.length} further ${below.length === 1 ? "pair shares" : "pairs share"} ${range} changes, just below it.` },
+    cappedTable(
+      {
+        caption: `Pairs just below the support floor, with ${range} shared changes. They are not judged. ${PAIR_ORDER}`,
+        noun: "pairs",
+        total: below.length,
+        columns: pairColumns(null, false),
+        rows: below.map((row) => pairCells(row, false)),
+      },
+      TOP_BELOW_FLOOR,
+      `cochange coupling --min-support ${low}`,
+    ),
+  ];
 }
 
 interface FileSum {
@@ -164,9 +243,10 @@ function sumSection(sums: readonly FileSum[]): Block[] {
   return [
     {
       type: "ranked-table",
-      caption: "Sum of coupling per file: the shared changes of all the pairs a file is in",
+      caption: "Sum of coupling per file: the shared changes of all the production pairs a file is in. Sorted by sum, then coupled files, then path",
       noun: "files",
       total: sums.length,
+      emptyText: "No production pair reaches the support floor, so no file has a sum of coupling.",
       columns: [
         { key: "file", label: "File" },
         { key: "shared", label: "Sum of shared changes", align: "right" },
@@ -203,7 +283,17 @@ function degreeHistogram(rows: readonly PairRow[]): Block {
 }
 
 function clustersSection(rows: readonly ClusterRow[]): Block[] {
-  if (rows.length === 0) return [{ type: "notice", level: "notice", text: "No cluster: no pair reaches both the support floor and the degree guideline, which a cluster requires." }];
+  if (rows.length === 0) {
+    return [
+      {
+        type: "ranked-table",
+        caption: "Clusters of mutually coupled files, with their spread",
+        columns: [{ key: "files", label: "Files" }],
+        rows: [],
+        emptyText: "No cluster: no pair reaches both the support floor and the degree guideline, which a cluster requires.",
+      },
+    ];
+  }
   const members = (row: ClusterRow) => {
     const listed = row.files.slice(0, MEMBERS_SHOWN).join(", ");
     return row.files.length > MEMBERS_SHOWN ? `${listed} and ${row.files.length - MEMBERS_SHOWN} more` : listed;
@@ -276,6 +366,14 @@ function hiddenSection(stored: SiblingResult | undefined): { blocks: Block[]; re
   };
 }
 
+/** The pairs that share fewer changes than the support floor, down to BELOW_FLOOR_REACH changes under it. */
+async function pairsBelowFloor(context: CommandContext, minSupport: number): Promise<PairRow[]> {
+  const low = Math.max(1, minSupport - BELOW_FLOOR_REACH);
+  if (low >= minSupport) return [];
+  const output = await couplingCommand.run({ ...context, values: { ...context.values, "min-support": String(low) } });
+  return (output.results as unknown as PairRow[]).filter((row) => row.support < minSupport);
+}
+
 function excludedBlock(excluded: ExcludedCount[]): Block {
   return {
     type: "ranked-table",
@@ -325,6 +423,7 @@ function slots(judged: readonly PairRow[]): Slot[] {
 function limitsOf(evidence: Evidence, settings: { minSupport: number; tolerance: number }, previous: PreviousWindow | undefined, hiddenMissing: boolean): string[] {
   return [
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+    "A pair where either side is a test, a fixture or a golden file, or where both sides are data or configuration files of one format, is an expected pair. It is listed in its own table and not judged.",
     `Coupling counts changes that touched both files in the window, over changes at or below the changeset limit; a larger change counts on neither side. A pair that shares fewer than ${settings.minSupport} changes (the support floor) is not listed.`,
     "Files that change together may share a design decision, or only a shared constant, a registry, a protocol, tests or generated code. The numbers cannot tell these apart; the judgements say which it is.",
     `Each table shows the top rows of its result and says how many rows it leaves out; \`cochange coupling\` and \`cochange clusters\` print the rest.`,
@@ -360,17 +459,32 @@ export const coupling: ReportKind = {
     const guideline = { minDegree: settings.minDegree, tolerance: settings.couplingTrendTolerance };
 
     const hidden = hiddenSection(readSiblingResult(context.repo.root, "structure", "hidden", context.repo.head));
-    const sums = sumsOf(rows);
-    const judged = rows.slice(0, JUDGED_PAIRS);
+    const isTest = testClassifier(context.config.effective.testPatterns);
+    const classified = rows.map((row): ClassifiedPair => ({ row, reason: expectedReason({ path: row.path, code: row.pathKind === "code" }, { path: row.with, code: row.withKind === "code" }, isTest) }));
+    const production = classified.filter((c) => c.reason === null).map((c) => c.row);
+    const expected = classified.filter((c) => c.reason !== null);
+    const sums = sumsOf(production);
+    const judged = production.slice(0, JUDGED_PAIRS);
     const excluded = excludedCounts(extra.filtersApplied, droppedCounts(), builtinOmissions(), { leftOutOf: "the rankings", oversizedNote: "counted on neither side of any ratio" });
     const inputs = pairOutput.inputs as { minSupport: number };
+    const withTrend = trendOf(previous);
+    const thin = rows.length < FEW_PAIRS;
+    const below = thin ? await pairsBelowFloor(context, inputs.minSupport) : [];
 
-    const pairsHeading: Block[] =
-      rows.length === 0
-        ? [{ type: "notice", level: "notice", text: `No pair shares at least ${inputs.minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.` }]
-        : [...pairsSection(rows, rows.length, guideline, previous), ...judged.map((_, i): Block => ({ type: "judgement", slot: `pair-${i + 1}` })), degreeHistogram(rows)];
+    const pairsHeading: Block[] = [
+      ...(thin ? thinBlocks(rows.length, inputs.minSupport, below) : []),
+      ...(rows.length === 0
+        ? []
+        : [
+            ...pairsSection(production, rows.length, guideline, withTrend),
+            ...judged.map((_, i): Block => ({ type: "judgement", slot: `pair-${i + 1}` })),
+            ...expectedSection(expected, guideline),
+            ...trendBlocks(rows, rows.length, guideline, previous),
+            degreeHistogram(rows),
+          ]),
+    ];
 
-    return {
+    return dropEmptySlots({
       title: "Coupling report",
       inputs: {
         since: context.values.since ?? null,
@@ -395,6 +509,6 @@ export const coupling: ReportKind = {
       ],
       limits: limitsOf(evidence, { minSupport: inputs.minSupport, tolerance: settings.couplingTrendTolerance }, previous, hidden.read === null),
       slots: slots(judged),
-    };
+    });
   },
 };

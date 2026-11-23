@@ -3,7 +3,9 @@ import { droppedCounts } from "@code-health/cli-kit/dropped-files";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import type { ReportKind } from "@code-health/cli-kit/report-command";
 import type { Block } from "@code-health/report/block";
-import type { Cell } from "@code-health/report/components/ranked-table";
+import type { Cell, RankedTableData } from "@code-health/report/components/ranked-table";
+import { dropEmptySlots } from "@code-health/report/empty-block";
+import { capRows } from "@code-health/report/table-cap";
 import type { Candidate, ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild } from "@code-health/report/report-model";
 import { excludedCounts, historyWindowText, isoDate } from "@code-health/history/report-header";
@@ -130,6 +132,9 @@ function resultFrom(stored: SiblingResult | undefined, title: string, command: s
   return { candidates, blocks: [block], read: { report: stored.report, head: stored.head, config: stored.config }, missing: null };
 }
 
+/** A ranked table whose rows are the top of a longer result, with the command that prints the rest. */
+const topTable = (table: RankedTableData, command: string): Block => ({ type: "ranked-table", ...capRows(table, TOP, command) });
+
 const top = <T>(rows: readonly T[]): T[] => rows.slice(0, TOP);
 
 function complexityResult(stored: SiblingResult | undefined): Result {
@@ -137,11 +142,11 @@ function complexityResult(stored: SiblingResult | undefined): Result {
     const rows = top(s.rows);
     return {
       candidates: rows.flatMap((row) => (text(row.id) === null ? [] : [{ ref: `complexity:${text(row.id)}`, label: `${text(row.id)} (complexity)` }])),
-      block: {
-        type: "ranked-table",
+      block: topTable({
         caption: "Most complex units, from complexity analyse",
         noun: "units",
         total: s.rows.length,
+        emptyText: "The stored complexity analyse result lists no unit.",
         columns: [
           { key: "id", label: "Unit" },
           { key: "cognitive", label: "Cognitive", align: "right" },
@@ -158,7 +163,7 @@ function complexityResult(stored: SiblingResult | undefined): Result {
           length: number(row.length),
           labels: Array.isArray(row.labels) && row.labels.length > 0 ? row.labels.join(", ") : null,
         })),
-      },
+      }, "complexity analyse"),
     };
   });
 }
@@ -168,11 +173,11 @@ function cyclesResult(stored: SiblingResult | undefined): Result {
     const rows = top(s.rows);
     return {
       candidates: rows.flatMap((row) => (text(row.id) === null ? [] : [{ ref: `structure:${text(row.id)}`, label: `${text(row.id)} (import cycle)` }])),
-      block: {
-        type: "ranked-table",
+      block: topTable({
         caption: "Largest import cycles, from structure cycles",
         noun: "cycles",
         total: s.rows.length,
+        emptyText: "The stored structure cycles result lists no import cycle.",
         columns: [
           { key: "id", label: "Cycle" },
           { key: "size", label: "Modules", align: "right" },
@@ -187,7 +192,7 @@ function cyclesResult(stored: SiblingResult | undefined): Result {
           coChangeAcross: number(row.coChangeAcross),
           unblockedGain: number(row.unblockedGain),
         })),
-      },
+      }, "structure cycles"),
     };
   });
 }
@@ -199,11 +204,11 @@ function localityResult(stored: SiblingResult | undefined): Result {
     const guideline = rows.map((row) => number(ranking(row).guideline)).find((g) => g !== null) ?? undefined;
     return {
       candidates: rows.flatMap((row) => (text(row.path) === null ? [] : [{ ref: `locality:${text(row.path)}`, label: `${text(row.path)} (locality)` }])),
-      block: {
-        type: "ranked-table",
+      block: topTable({
         caption: "Units furthest from where they are used, from locality analyse",
         noun: "units",
         total: s.rows.length,
+        emptyText: "The stored locality analyse result lists no unit.",
         columns: [
           { key: "path", label: "Unit" },
           { key: "recommendation", label: "Recommendation" },
@@ -218,7 +223,7 @@ function localityResult(stored: SiblingResult | undefined): Result {
           distance: number(row.distance),
           target: text(row.target),
         })),
-      },
+      }, "locality analyse"),
     };
   });
 }
@@ -230,11 +235,11 @@ function hotspotResult(rows: readonly HotspotRow[]): Result {
     read: null,
     missing: null,
     blocks: [
-      {
-        type: "ranked-table",
+      topTable({
         caption: "Highest hotspot scores, from cochange hotspots",
         noun: "files",
         total: rows.length,
+        emptyText: "The hotspot ranking lists no file.",
         columns: [
           { key: "path", label: "File" },
           { key: "score", label: "Score", align: "right" },
@@ -244,7 +249,7 @@ function hotspotResult(rows: readonly HotspotRow[]): Result {
           { key: "recommendation", label: "Flag" },
         ],
         rows: shown.map((row): Record<string, Cell> => ({ path: row.path, score: row.score, frequency: row.frequency, complexity: row.complexity, fixes: row.fixes, recommendation: row.recommendation })),
-      },
+      }, "cochange hotspots"),
       scoreHistogram(rows),
     ],
   };
@@ -317,7 +322,7 @@ export const overview: ReportKind = {
     const missing = results.flatMap((r) => (r.missing === null ? [] : [r.missing]));
     const excluded = excludedCounts(extra.filtersApplied, droppedCounts(), builtinOmissions(), { leftOutOf: "the rankings" });
     const inputs = (output.inputs ?? {}) as Record<string, unknown>;
-    return {
+    return dropEmptySlots({
       title: "Code health overview",
       inputs: {
         since: context.values.since ?? null,
@@ -339,6 +344,6 @@ export const overview: ReportKind = {
       ],
       limits: limitsOf(evidence, missing, extra.complexitySource),
       slots: slots(candidates),
-    };
+    });
   },
 };

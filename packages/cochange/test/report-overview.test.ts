@@ -144,7 +144,7 @@ test("a stored complexity result for HEAD is shown as a top 5 and named in the s
   const { stdout } = await run("--notes", writeNotes("notes-c.json", fullNotes(document)), "--format", "md");
   expect(stdout).toContain("src/f5.ts#fn5");
   expect(stdout).not.toContain("src/f6.ts#fn6");
-  expect(stdout).toContain("Showing 5 of 7 units; 2 not shown.");
+  expect(stdout).toContain("5 of 7 shown; the rest are in `complexity analyse` output.");
   expect(stdout).toContain("No stored structure cycles result for this commit. Run `structure cycles`");
 
   writeComplexityAnalyse("a".repeat(40), rows);
