@@ -300,6 +300,9 @@ function missingBlocks(assessed: Assessed): Block[] {
   }
   const skipped = number(factor.value.manifestPartnersSkipped) ?? 0;
   const skippedNotice: Block[] = skipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(skipped, "partner")} left out of this list because the pairing is with a build manifest that lists source files (such as CMakeLists.txt): a manifest counts as missing only when the change adds, removes or renames a code file in its folder, and a touched manifest does not make its source files missing.` }];
+  const toolchainSkipped = number(factor.value.buildManifestPartnersSkipped) ?? 0;
+  const toolchainNotice: Block[] = toolchainSkipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(toolchainSkipped, "partner")} left out of this list because it and the touched file are build or packaging manifests of one toolchain (such as go.mod and go.work), which a change often edits one without the other.` }];
+  skippedNotice.push(...toolchainNotice);
   if (factor.evidence.length === 0) return [...skippedNotice, { type: "notice", level: "notice", text: "No file that usually changes with a touched file is missing from the change." }];
   const rows = factor.evidence.map((e): Record<string, Cell> => ({ file: text(e.file), towards: text(e.towards), confidence: number(e.confidence), support: number(e.support) }));
   return [

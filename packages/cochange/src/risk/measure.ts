@@ -4,7 +4,7 @@ import type { FixMatch } from "@code-health/history/fix-commits";
 import { monthsBefore } from "@code-health/history/evidence";
 import { compileGlobs } from "@code-health/history/glob";
 import type { HistoryChange } from "@code-health/history/read";
-import { folderPrefix, listsSourceFiles } from "../expected-pair.ts";
+import { expectedReason, folderPrefix, listsSourceFiles } from "../expected-pair.ts";
 import { componentOf, type Component } from "../components.ts";
 import { isTestPath, siblingTestOf } from "../sibling-test.ts";
 import { changeSpread } from "../spread-measure.ts";
@@ -272,6 +272,19 @@ function manifestExpected(manifest: string, facts: ChangeFacts): boolean {
 }
 
 /**
+ * Whether a partner and the touched file it is strongest towards are build or packaging manifests of one toolchain
+ * (`go.mod` and `go.work`, `package.json` and a lockfile), by the same rule the coupling report uses for its
+ * `build-manifests` expected pairs. Such files change together when a dependency changes, and a change that edits one
+ * without the other is common. A lockfile missing from a change that edits its manifest's dependency list is a real
+ * expectation, but the change facts carry no diff, so it is skipped with the other manifests.
+ */
+function sameToolchainManifests(partner: Partner, facts: ChangeFacts): boolean {
+  const touched = facts.files.find((file) => file.fileId === partner.towards);
+  const never = () => false;
+  return touched !== undefined && expectedReason({ path: touched.path, code: false }, { path: partner.file, code: false }, never) === "build-manifests";
+}
+
+/**
  * The files missing from the change, and how many partners were skipped because the pairing is with a build manifest
  * that lists sources. A manifest partner of a touched file counts only when the change adds, removes or renames a code
  * file in its folder or below; a touched manifest is not a reason to expect its sources, because the edit is mostly the
@@ -281,11 +294,17 @@ function missingCoChange(facts: ChangeFacts, state: HistoryState, context: Measu
   const touched = new Set(facts.files.map((file) => file.fileId));
   const absent = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
   const withoutManifests = coupledPartners({ ...facts, files: facts.files.filter((file) => !listsSourceFiles(file.fileId)) }, state, context);
-  const missing = withoutManifests.filter((partner) => !touched.has(partner.file) && (!listsSourceFiles(partner.file) || manifestExpected(partner.file, facts)));
-  const skipped = absent.length - missing.length;
+  const candidates = withoutManifests.filter((partner) => !touched.has(partner.file) && (!listsSourceFiles(partner.file) || manifestExpected(partner.file, facts)));
+  const missing = candidates.filter((partner) => !sameToolchainManifests(partner, facts));
+  const skipped = absent.length - candidates.length;
+  const toolchainSkipped = candidates.length - missing.length;
   return measurement("missing-co-change", "completeness", "history", "count", "history", {
     series: { count: missing.length },
-    value: skipped === 0 ? { count: missing.length } : { count: missing.length, manifestPartnersSkipped: skipped },
+    value: {
+      count: missing.length,
+      ...(skipped === 0 ? {} : { manifestPartnersSkipped: skipped }),
+      ...(toolchainSkipped === 0 ? {} : { buildManifestPartnersSkipped: toolchainSkipped }),
+    },
     evidence: missing.map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence, support: partner.support })),
   });
 }
