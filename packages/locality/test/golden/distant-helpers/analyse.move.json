@@ -30,6 +30,7 @@
     "singleFileFolders": 4,
     "totalWeightedDistance": 60
   },
+  "omitted": [],
   "repo": {
     "dirty": false,
     "head": "78ddadd4de155734ef2b56a253b72b25b5f87053"
@@ -96,6 +97,7 @@
         "ratio": 3,
         "value": 6
       },
+      "reason": "Two consumers: move to the target.",
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 6,
@@ -217,6 +219,7 @@
         "ratio": 2,
         "value": 4
       },
+      "reason": "Two consumers: move to the target.",
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 4,
@@ -307,6 +310,7 @@
         "ratio": 1.5,
         "value": 3
       },
+      "reason": "One consumer, and the unit is tiny: inline it.",
       "recommendation": "move",
       "rule": "single-consumer-tiny",
       "score": 3,
@@ -394,6 +398,7 @@
         "ratio": 1.5,
         "value": 3
       },
+      "reason": "One consumer and a large unit: move it next to the consumer, as its own module.",
       "recommendation": "move",
       "rule": "single-consumer-large",
       "score": 3,
@@ -490,6 +495,7 @@
         "ratio": 1,
         "value": 2
       },
+      "reason": "Two consumers: move to the target.",
       "recommendation": "move",
       "rule": "two-consumers",
       "score": 2,
@@ -532,6 +538,7 @@
       "split": 1
     },
     "files": 31,
+    "omitted": {},
     "placed": 16,
     "units": 30
   },

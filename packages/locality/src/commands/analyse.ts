@@ -69,6 +69,7 @@ export const command: Command = {
       },
       extra: {
         summary: analysis.summary,
+        omitted: analysis.omitted,
         metrics: analysis.metrics,
         unreachable: model.unreachable,
         barrels: project.analysis.barrels,
@@ -81,6 +82,13 @@ export const command: Command = {
       },
       results: rows,
       columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"],
+      ...(analysis.omitted.length === 0
+        ? {}
+        : {
+            notices: [
+              `Omitted, with no proposed move: ${Object.entries(analysis.summary.omitted).map(([reason, count]) => `${reason} ${count}`).join(", ")} (listed in omitted; guidelines locality.maxMoveFiles ${settings.maxMoveFiles}, locality.minTargetDepth ${settings.minTargetDepth})`,
+            ],
+          }),
     };
     if (!partial) await writeReport(context, name, output);
     else skipReport(context, "the run was limited by path arguments, --recommendation or --source");

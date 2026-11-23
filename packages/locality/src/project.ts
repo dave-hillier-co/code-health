@@ -18,6 +18,8 @@ export interface Project {
   texts: ReadonlyMap<string, string>;
   /** Files that a non-private package publishes as its main, module, types, bin or exports. */
   packageEntries: ReadonlySet<string>;
+  /** Every path of the revision, excluded files too: where a moved file may land, and the manifests that bound packages. */
+  tree: ReadonlySet<string>;
 }
 
 /** The tree without the files the suite config excludes. */
@@ -40,7 +42,8 @@ export function countLines(text: string): number {
 
 /** Parses the revision (through the shared parse cache) and reads the production files. */
 export async function loadProject(root: string, ref: string, settings: LocalitySettings): Promise<Project> {
-  const tree = withoutExcluded(await treeFromRef(root, ref), settings.exclude);
+  const fullTree = await treeFromRef(root, ref);
+  const tree = withoutExcluded(fullTree, settings.exclude);
   const analysis = await analyseTree(tree, { cache: await ParseCache.forRepository(root), extraConfigs: readBuildConfigs(root, tree), includeRoots: settings.includeRoots });
   if (analysis.includeResolution !== undefined) {
     const report = describeIncludeResolution(analysis.includeResolution, settings.unresolvedIncludePercent, "locality");
@@ -50,7 +53,7 @@ export async function loadProject(root: string, ref: string, settings: LocalityS
   const production = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !generated.has(path));
   const texts = await tree.readMany(production);
   const packageEntries = await readPackageEntries(tree);
-  return { analysis, production, isTest: isTestPath, texts, packageEntries };
+  return { analysis, production, isTest: isTestPath, texts, packageEntries, tree: new Set(fullTree.files.keys()) };
 }
 
 /** The source lines of a unit, as the structural layer delimits it. */

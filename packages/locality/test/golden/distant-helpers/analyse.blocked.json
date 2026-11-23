@@ -30,6 +30,7 @@
     "singleFileFolders": 4,
     "totalWeightedDistance": 60
   },
+  "omitted": [],
   "repo": {
     "dirty": false,
     "head": "78ddadd4de155734ef2b56a253b72b25b5f87053"
@@ -104,6 +105,7 @@
         "ratio": 2,
         "value": 4
       },
+      "reason": "The gain is below the minimum, but would clear it if a dependency were resolved. `locality move` needs --reason for a blocked.",
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 4,
@@ -205,6 +207,7 @@
         "ratio": 1.5,
         "value": 3
       },
+      "reason": "The gain is below the minimum, but would clear it if a dependency were resolved. `locality move` needs --reason for a blocked.",
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 3,
@@ -306,6 +309,7 @@
         "ratio": 1.5,
         "value": 3
       },
+      "reason": "The gain is below the minimum, but would clear it if a dependency were resolved. `locality move` needs --reason for a blocked.",
       "recommendation": "blocked",
       "rule": "blocked-by-dependency",
       "score": 3,
@@ -350,6 +354,7 @@
       "split": 1
     },
     "files": 31,
+    "omitted": {},
     "placed": 16,
     "units": 30
   },

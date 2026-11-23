@@ -14,16 +14,6 @@
       "until": 1704067200
     }
   },
-  "includeResolution": {
-    "aboveGuideline": false,
-    "compileCommands": null,
-    "configuredRoots": [],
-    "guideline": 20,
-    "includes": 0,
-    "inferredRoots": [],
-    "unresolved": 0,
-    "unresolvedShare": 0
-  },
   "inputs": {
     "entries": [
       "a/a.go",
@@ -45,6 +35,7 @@
     "singleFileFolders": 2,
     "totalWeightedDistance": 0
   },
+  "omitted": [],
   "repo": {
     "dirty": false,
     "head": "58b3280d7a5ca2c14190434e0f82abb8031bf75e"
@@ -54,6 +45,7 @@
   "summary": {
     "byRecommendation": {},
     "files": 8,
+    "omitted": {},
     "placed": 0,
     "units": 0
   },

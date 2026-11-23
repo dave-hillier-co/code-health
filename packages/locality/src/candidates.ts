@@ -11,7 +11,9 @@ import { bestTarget, type BoundaryEdge } from "./footprint.ts";
 import { ageDays, isoDate, pairing, type History } from "./history-evidence.ts";
 import type { Edge, Model, RawUnit } from "./model.ts";
 import { countLines, unitText, type Project } from "./project.ts";
+import { manifestFolders, placementRefusals, relocate } from "./placement.ts";
 import { recommend, type Decision, type RecommendInput } from "./recommend.ts";
+import { reasonFor } from "./reason.ts";
 import { flagParameters, isPassThrough, vagueSegment } from "./signals.ts";
 
 export interface PathCount {
@@ -110,10 +112,17 @@ export interface Candidate {
   guidelines: { gain: GuidelineReading; fanIn: GuidelineReading };
   recommendation: Decision["recommendation"];
   rule: string;
+  /** Why the unit has this recommendation, in one sentence, with the values behind it. */
+  reason: string;
   source: "structural";
   unit: { kind: RawUnit["kind"] | "barrel"; root: string; entries: string[]; files: string[]; tests: string[]; cycle: boolean };
   location: string;
   target: string;
+  /**
+   * Present only when a folder with a larger gain exists but the language placement rules refuse it (a Go `internal/`
+   * boundary, a package boundary, a name collision). `target` and `gain` are for the best folder that can be used.
+   */
+  unusableTarget?: { target: string; gain: number; reason: string };
   distance: number;
   gain: number;
   unblockedGain: number;
@@ -149,11 +158,34 @@ export interface AnalysisSummary {
   units: number;
   /** Units left out of the candidates because they already sit beside their consumers (rule `near-consumers`). */
   placed: number;
+  /** Units left out of the candidates because no move of them is proposed, by reason. Each is listed in `AnalysisResult.omitted`. */
+  omitted: Record<string, number>;
   byRecommendation: Record<string, number>;
 }
 
+/** A unit that is not ranked because no move of it can be proposed, with the reason and the figures behind it. */
+export interface OmittedUnit {
+  path: string;
+  /** The reason it is counted under in `summary.omitted`. */
+  reason: string;
+  detail: string;
+  /** The folder the unit's neighbours pull it towards, and the gain of moving there, for reference. */
+  target: string;
+  gain: number;
+  files: number;
+}
+
+/** The reasons a unit is omitted, as `summary.omitted` counts them. */
+export const OMITTED_REASONS = {
+  folderSized: "folder-sized unit",
+  rootTarget: "target is a root folder",
+  noUsableTarget: (label: string) => `no usable target: ${label}`,
+};
+
 export interface AnalysisResult {
   candidates: Candidate[];
+  /** Units that have no proposed move, with the reason. They are not ranked and `summary.omitted` counts them by reason. */
+  omitted: OmittedUnit[];
   /**
    * Units already beside their consumers, which the analysis does not report because there is nothing to
    * propose for them. They are not printed. `move` and `verify-move` read them, so that a unit can be moved
@@ -369,9 +401,23 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     return signals.sort((a, b) => compareIds(a.name, b.name));
   }
 
+  const manifests = manifestFolders(project.tree);
+  /** For a unit's files, the first language placement rule that refuses moving them to a folder, or undefined when it is usable. */
+  function refusalOf(files: readonly string[], tests: readonly string[], base: string): (folder: string) => { label: string; detail: string } | undefined {
+    const memo = new Map<string, { label: string; detail: string } | undefined>();
+    return (folder) => {
+      if (!memo.has(folder)) {
+        const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree);
+        memo.set(folder, first === undefined ? undefined : { label: first.label, detail: first.detail });
+      }
+      return memo.get(folder);
+    };
+  }
+
   function scoreComponent(path: string, component: ExportComponent): ScoredComponent {
     const symbols = new Set(component.symbols);
     const base = folderOf(path);
+    const refusal = refusalOf([path], [], base);
     const own = (consumersTo.get(path) ?? []).filter(
       (consumer) => consumer.toSymbol !== undefined && symbols.has(consumer.toSymbol) && consumer.kind !== "test" && consumer.from !== path && live(consumer.from),
     );
@@ -384,7 +430,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       ...own.map((consumer) => ({ inner: "", outer: folderOf(consumer.from), weight: consumer.count })),
       ...outward.map((consumer) => ({ inner: "", outer: folderOf(consumer.to), weight: consumer.count })),
     ];
-    const choice = bestTarget(boundary, base, { maxDepth: settings.maxDepth, forbidden });
+    const choice = bestTarget(boundary, base, { maxDepth: settings.maxDepth, forbidden: (folder) => forbidden(folder) || refusal(folder) !== undefined });
     const units = exportedUnits(path).filter((unit) => symbols.has(unit.qualifiedName));
     const componentLines = units.reduce((sum, unit) => sum + unit.endLine - unit.startLine + 1, 0);
     const only = component.consumers.length === 1 ? (component.consumers[0] as string) : undefined;
@@ -420,7 +466,24 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     };
   }
 
-  function candidateFor(unit: RawUnit): Candidate {
+  /** Why a unit is not proposed as a move to a target, from the unit's size and the target's depth. */
+  function withheldBy(fileCount: number, base: string, target: string): { reason: string; detail: string } | undefined {
+    if (fileCount > settings.maxMoveFiles) {
+      return {
+        reason: OMITTED_REASONS.folderSized,
+        detail: `${fileCount} files, above the locality.maxMoveFiles guideline of ${settings.maxMoveFiles}: moving a folder is a reorganisation, not one relocation`,
+      };
+    }
+    if (fileCount > 1 && under(base, target) && depthOf(target) < settings.minTargetDepth) {
+      return {
+        reason: OMITTED_REASONS.rootTarget,
+        detail: `${target === "" ? "the repository root" : target} is an ancestor of the unit at depth ${depthOf(target)}, shallower than the locality.minTargetDepth guideline of ${settings.minTargetDepth}: a unit of ${fileCount} files is not moved up to a root`,
+      };
+    }
+    return undefined;
+  }
+
+  function candidateFor(unit: RawUnit): { candidate: Candidate } | { omitted: OmittedUnit } {
     const importerCount = (model.importers.get(unit.root) ?? []).filter(live).length;
     const barrelAlone = barrels.has(unit.root) && importerCount === 1;
     const files = barrelAlone ? [unit.root] : unit.files;
@@ -437,8 +500,13 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       ...incoming.map((edge) => ({ inner: relative(folderOf(edge.to), base), outer: folderOf(edge.from), weight: edge.weight })),
       ...outbound.map((edge) => ({ inner: relative(folderOf(edge.from), base), outer: folderOf(edge.to), weight: edge.weight })),
     ];
-    const options = { maxDepth: settings.maxDepth, forbidden };
-    const choice = barrelAlone ? { target: base, current: 0, distance: 0, gain: 0 } : bestTarget(boundaryOf(outgoing), base, options);
+    const tests = testsOf(fileSet);
+    const refusal = refusalOf(files, tests.owned, base);
+    const options = { maxDepth: settings.maxDepth, forbidden: (folder: string) => forbidden(folder) || refusal(folder) !== undefined };
+    let choice = barrelAlone ? { target: base, current: 0, distance: 0, gain: 0 } : bestTarget(boundaryOf(outgoing), base, options);
+    // The best folder if the language placement rules were not applied, to report what they cost.
+    const unrestricted = barrelAlone ? choice : bestTarget(boundaryOf(outgoing), base, { maxDepth: settings.maxDepth, forbidden });
+    const unusable = unrestricted.gain > choice.gain ? refusal(unrestricted.target) : undefined;
 
     const consumerFiles = barrelAlone
       ? (model.importers.get(unit.root) ?? []).filter(live)
@@ -479,7 +547,6 @@ export function analyseProject(project: Project, model: Model, settings: Localit
         (consumersTo.get(file) ?? []).filter((c) => c.kind === "reference" && !fileSet.has(c.from) && live(c.from)).map((c): [string, number] => [c.from, c.count]),
       ),
     );
-    const tests = testsOf(fileSet);
     const coChange = unitCoChange(history, fileSet, consumerFiles, settings.minCoChangeChanges);
     const createsCycle = choice.gain >= settings.minDistance && choice.target !== base && movingCreatesCycle(files, base, choice.target);
     const totalLines = files.reduce((sum, file) => sum + lines(file), 0);
@@ -508,6 +575,20 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     };
     const decision = recommend(input);
 
+    // Units that cannot be proposed as a move are counted, not ranked.
+    const omit = (reason: string, detail: string): { omitted: OmittedUnit } => ({
+      omitted: { path: unit.path, reason, detail, target: choice.target, gain: choice.gain, files: files.length },
+    });
+    if (unusable !== undefined && unrestricted.gain >= settings.minDistance && (decision.rule === "near-consumers" || decision.rule === "blocked-by-dependency")) {
+      return omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`);
+    }
+    const withheld = choice.gain >= settings.minDistance && choice.target !== base ? withheldBy(files.length, base, choice.target) : undefined;
+    if (withheld !== undefined) {
+      if (decision.recommendation === "move" || decision.recommendation === "review") return omit(withheld.reason, withheld.detail);
+      // A split is proposed for the file's exports, which are scored one by one: the whole unit does not move.
+      if (decision.recommendation === "split") choice = { target: base, current: choice.current, distance: choice.current, gain: 0 };
+    }
+
     const scored = cohesion?.mixed ? cohesion.components.map((component) => scoreComponent(unit.root, component)) : undefined;
     const score =
       decision.recommendation === "blocked"
@@ -528,7 +609,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
           : decision.recommendation === "scrutinise"
             ? "fan-in"
             : "gain";
-    return {
+    const candidate: Candidate = {
       path: unit.path,
       score,
       scoreUnit,
@@ -536,6 +617,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       fanInPercentile: 0,
       guidelines: { gain: readAgainst(choice.gain, settings.minDistance), fanIn: readAgainst(consumerFiles.length, settings.highFanIn) },
       ...decision,
+      reason: reasonFor(input, decision),
       source: "structural",
       unit: {
         kind: barrelAlone ? "barrel" : unit.kind,
@@ -547,6 +629,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       },
       location: base,
       target: choice.target,
+      ...(unusable === undefined ? {} : { unusableTarget: { target: unrestricted.target, gain: unrestricted.gain, reason: unusable.label } }),
       distance: folderDistance(base, choice.target),
       gain: choice.gain,
       unblockedGain: unblocked,
@@ -568,9 +651,14 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       ...(unresolvedReason === undefined ? {} : { confidence: { level: "low" as const, reason: unresolvedReason } }),
       ...(cohesion ? { cohesion: { components: scored ?? cohesion.components, mixed: cohesion.mixed } } : {}),
     };
+    return { candidate };
   }
 
-  const all = model.units.map(candidateFor);
+  const outcomes = model.units.map(candidateFor);
+  const all = outcomes.flatMap((outcome) => ("candidate" in outcome ? [outcome.candidate] : []));
+  const omitted = outcomes.flatMap((outcome) => ("omitted" in outcome ? [outcome.omitted] : [])).sort((a, b) => compareIds(a.path, b.path));
+  const omittedByReason: Record<string, number> = {};
+  for (const unit of omitted) omittedByReason[unit.reason] = (omittedByReason[unit.reason] ?? 0) + 1;
   const reported = all
     .filter((candidate) => candidate.rule !== "near-consumers")
     .sort((a, b) => b.ranking.ratio - a.ranking.ratio || b.score - a.score || compareIds(a.path, b.path));
@@ -584,8 +672,9 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   for (const file of project.production) folders.set(folderOf(file), (folders.get(folderOf(file)) ?? 0) + 1);
   return {
     candidates: reported,
+    omitted,
     placed,
-    summary: { files: project.production.length, units: all.length, placed: placed.length, byRecommendation },
+    summary: { files: project.production.length, units: outcomes.length, placed: placed.length, omitted: omittedByReason, byRecommendation },
     metrics: {
       totalWeightedDistance: model.edges
         .filter((edge) => model.reachable.has(edge.from))

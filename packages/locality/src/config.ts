@@ -23,6 +23,10 @@ export const localityConfig: PluginConfigSpec = {
     highFanIn: 8,
     /** Deepest folder nesting a target may have. A judgement call: a depth cap stops code being buried to lower its distance. */
     maxDepth: 6,
+    /** Guideline: a unit of more than this many files is a folder, and moving a folder reorganises the code base instead of relocating one module. Such a unit is not proposed as a move: it is counted in `summary.omitted` and listed in `omitted`. A judgement call: 20 is above the largest multi-file units that looked like single modules in Orleans (19 files) and below the folders Solent proposed moving whole (58 and 76 files). */
+    maxMoveFiles: 20,
+    /** Guideline: a target shallower than this depth that is an ancestor of the unit (the repository root, or a top-level folder such as src or pkg) is a root. A unit of more than one file is not moved up to a root: it is counted in `summary.omitted` and listed in `omitted`. A single file still moves to a root, because that is where its consumers' lowest common ancestor can be. A judgement call. */
+    minTargetDepth: 2,
     /** Read co-change, age and churn from the history cache, so the history guards and rules can fire. */
     useHistory: true,
     /** Guideline: a unit younger than this many days is reviewed, not inlined or moved, because one callsite is only evidence once reuse has had time. A judgement call. */
@@ -55,6 +59,10 @@ export interface LocalitySettings {
   inlineHostLines: number;
   highFanIn: number;
   maxDepth: number;
+  /** Units of more files than this are not proposed as moves. */
+  maxMoveFiles: number;
+  /** A target shallower than this that is an ancestor of the unit is a root, and a unit of several files is not moved up to it. */
+  minTargetDepth: number;
   fixedPoints: string[];
   useHistory: boolean;
   graceDays: number;
@@ -124,6 +132,8 @@ export function readSettings(config: LoadedConfig): LocalitySettings {
     inlineHostLines: positive("inlineHostLines"),
     highFanIn: positive("highFanIn"),
     maxDepth: positive("maxDepth"),
+    maxMoveFiles: positive("maxMoveFiles"),
+    minTargetDepth: positive("minTargetDepth"),
     fixedPoints: fixedPoints as string[],
     useHistory: section.useHistory === true,
     graceDays: positive("graceDays"),
