@@ -32,6 +32,8 @@ export const cochangeConfig: PluginConfigSpec = {
     /** Coupling degree guideline, as a percentage (Tornhill's code-maat default). Orders and labels pairs. Only cluster membership cuts on it. */
     minDegree: 30,
     minDistance: 2,
+    /** Percentage points of degree within which a pair's coupling is stable between two windows (`coupling --trend`). A judgement call. */
+    couplingTrendTolerance: 10,
     /** The change-risk skill: see risk/settings.ts. */
     risk: riskDefaults,
     identities: {
@@ -75,6 +77,7 @@ export interface CochangeSettings {
   minSupport: number;
   minDegree: number;
   minDistance: number;
+  couplingTrendTolerance: number;
   /** The suite's shared `exclude` globs. */
   exclude: string[];
   botPatterns: string[];
@@ -111,6 +114,10 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
   const identities = readIdentities(section.identities as Record<string, unknown>, at);
   const minDegree = positive("minDegree");
   if (minDegree > 100) throw configError(`code-health.json: ${at("minDegree")} is a percentage, at most 100`);
+  const tolerance = section.couplingTrendTolerance;
+  if (typeof tolerance !== "number" || !Number.isInteger(tolerance) || tolerance < 0 || tolerance > 100) {
+    throw configError(`code-health.json: ${at("couplingTrendTolerance")} is a number of percentage points, from 0 to 100`);
+  }
   const evidence = section.evidence as EvidenceGuidelines;
 
   return {
@@ -127,6 +134,7 @@ export function readSettings(config: LoadedConfig): CochangeSettings {
     minSupport: positive("minSupport"),
     minDegree,
     minDistance: positive("minDistance"),
+    couplingTrendTolerance: tolerance,
     exclude: config.effective.exclude,
     botPatterns: section.botPatterns as string[],
     identities,

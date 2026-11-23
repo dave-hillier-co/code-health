@@ -1,0 +1,250 @@
+{
+  "command": "coupling",
+  "config": "0000000000000000",
+  "evidence": {
+    "activeContributors": 2,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 2,
+      "shifted": true
+    },
+    "grade": "weak",
+    "guidelines": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "importedHistory": [],
+    "logicalChangesInWindow": 46,
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 23,
+    "window": {
+      "months": 12,
+      "since": 1735635600,
+      "until": 1767171600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 0,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 46,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "nonPerson": {
+      "builtinBotPatterns": [
+        "\\[bot\\]",
+        "^dependabot",
+        "^renovate",
+        "^github-actions",
+        "^greenkeeper",
+        "^snyk-bot",
+        "^mergify",
+        "^imgbot",
+        "^allcontributors",
+        "^pre-commit-ci",
+        "<bot@renovateapp\\.com>"
+      ],
+      "builtinServiceNames": [
+        "build",
+        "builds",
+        "buildbot",
+        "jenkins",
+        "release",
+        "releases",
+        "ci",
+        "deploy",
+        "deployer",
+        "automation",
+        "teamcity",
+        "travis",
+        "circleci",
+        "gitlab ci",
+        "azure pipelines",
+        "service account"
+      ],
+      "decisions": 0,
+      "servicePatterns": []
+    },
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "asymmetry": {
+      "high": 80,
+      "low": 30
+    },
+    "degreeGuideline": 30,
+    "file": null,
+    "minSupport": 5,
+    "trend": {
+      "toleranceGuideline": 10
+    }
+  },
+  "note": null,
+  "population": {
+    "eligibleChanges": 46,
+    "oversizedExcluded": 0
+  },
+  "repo": {
+    "dirty": false,
+    "head": "8f8f40240b6e83b43f5b0513636448cf4ee76478"
+  },
+  "results": [
+    {
+      "aboveGuideline": true,
+      "confidence": 100,
+      "degree": 100,
+      "degreeChange": 100,
+      "dependent": null,
+      "distance": 0,
+      "evidence": {
+        "changesPath": 5,
+        "changesWith": 5,
+        "clearsMinimum": true,
+        "support": 5
+      },
+      "findings": [],
+      "path": "src/search/index.ts",
+      "pathKind": "code",
+      "previousDegree": 0,
+      "previousSupport": 0,
+      "reverseConfidence": 100,
+      "score": 100,
+      "support": 5,
+      "trend": "stronger",
+      "with": "src/search/ranking.ts",
+      "withKind": "code"
+    },
+    {
+      "aboveGuideline": true,
+      "confidence": 80,
+      "degree": 80,
+      "degreeChange": 60,
+      "dependent": null,
+      "distance": 2,
+      "evidence": {
+        "changesPath": 10,
+        "changesWith": 10,
+        "clearsMinimum": true,
+        "support": 8
+      },
+      "findings": [
+        "distant-coupling"
+      ],
+      "path": "src/api/orders.ts",
+      "pathKind": "code",
+      "previousDegree": 20,
+      "previousSupport": 2,
+      "reverseConfidence": 80,
+      "score": 80,
+      "support": 8,
+      "trend": "stronger",
+      "with": "src/web/orders-view.ts",
+      "withKind": "code"
+    },
+    {
+      "aboveGuideline": true,
+      "confidence": 70,
+      "degree": 70,
+      "degreeChange": 10,
+      "dependent": null,
+      "distance": 0,
+      "evidence": {
+        "changesPath": 10,
+        "changesWith": 10,
+        "clearsMinimum": true,
+        "support": 7
+      },
+      "findings": [],
+      "path": "src/billing/ledger.test.ts",
+      "pathKind": "code",
+      "previousDegree": 60,
+      "previousSupport": 6,
+      "reverseConfidence": 70,
+      "score": 70,
+      "support": 7,
+      "trend": "stable",
+      "with": "src/billing/ledger.ts",
+      "withKind": "code"
+    },
+    {
+      "aboveGuideline": true,
+      "confidence": 50,
+      "degree": 50,
+      "degreeChange": -40,
+      "dependent": null,
+      "distance": 2,
+      "evidence": {
+        "changesPath": 10,
+        "changesWith": 10,
+        "clearsMinimum": true,
+        "support": 5
+      },
+      "findings": [
+        "distant-coupling"
+      ],
+      "path": "src/config/flags.ts",
+      "pathKind": "code",
+      "previousDegree": 90,
+      "previousSupport": 9,
+      "reverseConfidence": 50,
+      "score": 50,
+      "support": 5,
+      "trend": "weaker",
+      "with": "src/runtime/flags.ts",
+      "withKind": "code"
+    }
+  ],
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "trendWindows": {
+    "previous": {
+      "eligibleChanges": 46,
+      "oversizedExcluded": 0,
+      "since": "2024-01-01T09:00:00.000Z",
+      "until": "2024-12-31T09:00:00.000Z"
+    }
+  },
+  "truncated": {
+    "cut": 0,
+    "limit": 20,
+    "total": 4
+  },
+  "window": {
+    "since": "2024-12-31T09:00:00.000Z",
+    "until": "2025-12-31T09:00:00.000Z"
+  }
+}

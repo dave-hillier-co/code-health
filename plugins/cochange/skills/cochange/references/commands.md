@@ -36,9 +36,9 @@ Files (or components) sorted by fix count, then path. Code only, unless `--all-f
 
 First-seen and last-changed over all usable history, oldest change first. Fields: `ageDays`, `firstSeen`, `lastChanged`, `revisions`, `recommendation` (`cold` when not changed within `cochange.staleMonths`).
 
-## coupling [--file PATH] [--min-degree D] [--min-support S]
+## coupling [--file PATH] [--min-degree D] [--min-support S] [--trend]
 
-Pairs of files that changed in the same logical change. Fields: `path`, `pathKind`, `with`, `withKind` (`code` or `non-code`: a lockfile changing with its manifest is listed and labelled), `degree`, `aboveGuideline` (degree at or above `cochange.minDegree`; pairs under it come after the others), `confidence` (path to with), `reverseConfidence`, `support`, `distance`, `findings` (`distant-coupling`, `asymmetric-coupling`), `dependent` (for an asymmetric pair, the file that depends on the other). With `--file`, the named file leads every row. The output states the eligible population, and a `note` when no pair reaches the support floor. Lowering `--min-support` lists weaker pairs, marks them low confidence (`evidence.clearsMinimum` false) and never promotes them to findings.
+Pairs of files that changed in the same logical change. Fields: `path`, `pathKind`, `with`, `withKind` (`code` or `non-code`: a lockfile changing with its manifest is listed and labelled), `degree`, `aboveGuideline` (degree at or above `cochange.minDegree`; pairs under it come after the others), `confidence` (path to with), `reverseConfidence`, `support`, `distance`, `findings` (`distant-coupling`, `asymmetric-coupling`), `dependent` (for an asymmetric pair, the file that depends on the other). With `--file`, the named file leads every row. The output states the eligible population, and a `note` when no pair reaches the support floor. Lowering `--min-support` lists weaker pairs, marks them low confidence (`evidence.clearsMinimum` false) and never promotes them to findings. `--trend` compares each pair with the window before the current one, of the same length: `previousDegree`, `previousSupport`, `degreeChange` (points) and `trend` (`stronger`, `stable` or `weaker`; stable is a change of at most `couplingTrendTolerance` points, default 10, a judgement call). A pair that shared no change before is stronger with `previousSupport` 0, and `trend` is null when the previous window holds no eligible change.
 
 Counts are over eligible logical changes: those at or below `history.maxChangesetSize` (default 30 files, overridable as `cochange.maxChangesetSize`), after noise filtering. Bulk edits are left out of both sides of every ratio.
 
@@ -57,6 +57,10 @@ Change-spread distribution per bucket, with an `overall` row. Dates are ISO 8601
 ## refresh
 
 Updates the shared history cache and reports commits added. Analysis commands do this themselves.
+
+## report coupling [--since DATE] [--until DATE]
+
+Writes the coupling page: the top 15 coupled pairs with degree, shared changes, confidence both ways, distance and trend; the sum of coupling per file and a matrix of the top 15 files; the clusters with their spread; and hidden coupling, read from the stored `structure hidden` result for HEAD (a line naming the command when it is not stored). `--slots` prints the data and the slots: one per top pair (up to 5), `summary` and `limits`. A pair slot takes a verdict that names real or incidental coupling and the handoff (`real-locality-review`, `real-structure-break`, `real-leave`, `incidental-locality-review`, `incidental-structure-break`, `incidental-leave`), and its text starts with the reason: shared constants, a registry, a protocol, tests, generated code or a data format. The steps are in [reports.md](reports.md).
 
 ## report overview [--since DATE] [--until DATE]
 
@@ -96,4 +100,5 @@ The settings of the section itself:
 |---|---|---|
 | `recentMonths`, `staleMonths` | 3, 12 | Recent and stale windows, back from the analysed commit's date. |
 | `minSupport`, `minDegree`, `minDistance` | 5, 30, 2 | Support is an evidence floor, degree and distance are guidelines (degree in percent). |
+| `couplingTrendTolerance` | 10 | Points of degree within which a pair's coupling is stable between two windows (`coupling --trend`). A judgement call. |
 | `hotspotPercentile` | 90 | A hotspot is in the top (100 minus this) percent. |

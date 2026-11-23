@@ -13,6 +13,13 @@
                 "file": { "type": ["string", "null"], "description": "The file the listing is limited to, resolved through renames to its current path." },
         "degreeGuideline": { "type": "integer", "minimum": 0, "maximum": 100, "description": "The degree percentage that pairs are marked against (cochange.minDegree, or --min-degree)." },
         "minSupport": { "type": "integer", "minimum": 1 },
+        "trend": {
+          "type": "object",
+          "description": "Present with --trend.",
+          "properties": { "toleranceGuideline": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Percentage points of degree within which a pair is stable between the two windows (cochange.couplingTrendTolerance)." } },
+          "required": ["toleranceGuideline"],
+          "additionalProperties": false
+        },
         "asymmetry": {
           "type": "object",
           "description": "Confidence percentages for asymmetric-coupling: one direction at least `high`, the other at most `low`.",
@@ -37,6 +44,25 @@
       "required": ["eligibleChanges", "oversizedExcluded"],
       "additionalProperties": false
     },
+    "trendWindows": {
+      "description": "Present with --trend: the window before the current one, of the same length, that the pairs were compared with.",
+      "type": "object",
+      "properties": {
+        "previous": {
+          "type": "object",
+          "properties": {
+            "since": { "type": "string", "format": "date-time" },
+            "until": { "type": "string", "format": "date-time", "description": "Exclusive: the start of the current window." },
+            "eligibleChanges": { "$ref": "common.schema.json#/$defs/count", "description": "Zero means the trend of every pair is null." },
+            "oversizedExcluded": { "$ref": "common.schema.json#/$defs/count" }
+          },
+          "required": ["since", "until", "eligibleChanges", "oversizedExcluded"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["previous"],
+      "additionalProperties": false
+    },
     "note": { "type": ["string", "null"], "description": "Set when no pair reaches the support floor. The floor is never lowered." },
     "results": {
       "type": "array",
@@ -54,6 +80,10 @@
           "reverseConfidence": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of changes to `with` that also touch `path`." },
           "support": { "type": "integer", "minimum": 1, "description": "Eligible logical changes touching both files." },
           "distance": { "type": "integer", "minimum": 0, "description": "Folder-tree distance between the two files, as they are now." },
+          "previousDegree": { "type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "With --trend: the pair's degree in the previous window, 0 when it shared no change there. Null when that window holds no eligible change." },
+          "previousSupport": { "type": ["integer", "null"], "minimum": 0, "description": "With --trend: eligible changes touching both files in the previous window." },
+          "degreeChange": { "type": ["number", "null"], "description": "With --trend: the degree minus the previous degree, in percentage points, each rounded to one decimal first." },
+          "trend": { "enum": ["stronger", "stable", "weaker", null], "description": "With --trend: stronger or weaker when the degree moved by more than the tolerance, stable within it. Null when the previous window holds no eligible change." },
           "findings": {
             "type": "array",
             "items": { "enum": ["distant-coupling", "asymmetric-coupling"] },

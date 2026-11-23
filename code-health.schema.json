@@ -234,6 +234,10 @@
           "type": "number",
           "default": 2
         },
+        "couplingTrendTolerance": {
+          "type": "number",
+          "default": 10
+        },
         "risk": {
           "type": "object",
           "properties": {
