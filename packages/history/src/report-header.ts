@@ -24,6 +24,14 @@ const CHANGE_FILTERS: [keyof FiltersApplied["dropped"], string][] = [
 
 const FILE_KINDS: Record<string, string> = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
 
+/**
+ * The count of generated and vendored files is of the files the report's commands read, so two reports of one commit
+ * can differ: a history-only report counts the files changed in its window or range, and a report that also reads
+ * the tree counts those in the tree at HEAD as well.
+ */
+export const READ_BY_COMMANDS = new Set(["generated", "vendored"]);
+export const FILES_READ = " (counted over the files this report's commands read: changed in the window or range, and in the tree at HEAD where the report reads it)";
+
 /** Where a report's wording differs from the default. */
 export interface ExcludedWording {
   /** What the files left out were left out of: "the rankings" gives "generated files left out of the rankings". Default "the results". */
@@ -42,7 +50,7 @@ export function excludedCounts(filters: FiltersApplied, files: Record<string, nu
   return [
     ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
     { what: `changes over the changeset limit of ${filters.maxChangesetSize} files${wording.oversizedNote === undefined ? "" : `, ${wording.oversizedNote}`}`, count: filters.oversizedChanges },
-    ...Object.entries(files).map(([kind, count]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of ${leftOutOf}`, count })),
+    ...Object.entries(files).map(([kind, count]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of ${leftOutOf}${READ_BY_COMMANDS.has(kind) ? FILES_READ : ""}`, count })),
     ...Object.entries(builtin).map(([entry, count]) => ({ what: `files under the built-in exclude ${entry}`, count })),
   ];
 }

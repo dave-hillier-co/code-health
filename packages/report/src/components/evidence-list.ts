@@ -13,6 +13,8 @@ export interface EvidenceListData {
   items: EvidenceItem[];
   /** How many more there are than the items listed, so the list never hides them silently. */
   omitted?: number;
+  /** What an empty list prints. Default "None.". */
+  emptyText?: string;
 }
 
 const tail = (data: EvidenceListData) => (data.omitted === undefined || data.omitted <= 0 ? undefined : `${formatNumber(data.omitted)} more not listed.`);
@@ -20,11 +22,11 @@ const tail = (data: EvidenceListData) => (data.omitted === undefined || data.omi
 export function evidenceListHtml(data: EvidenceListData): string {
   const items = data.items.map((item) => `<li><code>${escapeHtml(item.id)}</code> ${escapeHtml(item.text)}${item.detail === undefined ? "" : ` <span class="detail">(${escapeHtml(item.detail)})</span>`}</li>`);
   const more = tail(data);
-  return `<section class="evidence">\n<h3>${escapeHtml(data.title)}</h3>\n${items.length === 0 ? '<p class="empty">None.</p>' : `<ul>\n${items.join("\n")}\n</ul>`}\n${more === undefined ? "" : `<p class="omitted">${escapeHtml(more)}</p>\n`}</section>`;
+  return `<section class="evidence">\n<h3>${escapeHtml(data.title)}</h3>\n${items.length === 0 ? `<p class="empty">${escapeHtml(data.emptyText ?? "None.")}</p>` : `<ul>\n${items.join("\n")}\n</ul>`}\n${more === undefined ? "" : `<p class="omitted">${escapeHtml(more)}</p>\n`}</section>`;
 }
 
 export function evidenceListMd(data: EvidenceListData): string {
   const items = data.items.map((item) => `- \`${item.id.replace(/`/g, "")}\` ${escapeMd(item.text)}${item.detail === undefined ? "" : ` (${escapeMd(item.detail)})`}`);
   const more = tail(data);
-  return [`**${escapeMd(data.title)}**`, "", ...(items.length === 0 ? ["None."] : items), ...(more === undefined ? [] : ["", `_${more}_`])].join("\n");
+  return [`**${escapeMd(data.title)}**`, "", ...(items.length === 0 ? [escapeMd(data.emptyText ?? "None.")] : items), ...(more === undefined ? [] : ["", `_${more}_`])].join("\n");
 }

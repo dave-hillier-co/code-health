@@ -38,11 +38,15 @@ export function restoreDropped(counts: Partial<Record<DroppedKind, number>>): vo
   }
 }
 
-/** The number of distinct files left out of this run per kind. Kinds that left out nothing are not listed. */
+/**
+ * The number of distinct files left out of this run per kind. Kinds that left out nothing are not listed. A report
+ * that runs several commands can have one command's count restored from a stored result and another's recorded
+ * from a fresh run over the same files; the larger of the two is the count, so those files are counted once.
+ */
 export function droppedCounts(): Partial<Record<DroppedKind, number>> {
   const counts: Partial<Record<DroppedKind, number>> = {};
   for (const kind of DROPPED_KINDS) {
-    const total = (dropped.get(kind)?.size ?? 0) + (restored.get(kind) ?? 0);
+    const total = Math.max(dropped.get(kind)?.size ?? 0, restored.get(kind) ?? 0);
     if (total > 0) counts[kind] = total;
   }
   return counts;

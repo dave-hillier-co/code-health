@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { builtinOmissions } from "@code-health/cli-kit/builtin-excludes";
 import { usageError } from "@code-health/cli-kit/errors";
+import { FILES_READ, READ_BY_COMMANDS } from "@code-health/history/report-header";
 import { droppedCounts } from "@code-health/cli-kit/dropped-files";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import type { ReportKind } from "@code-health/cli-kit/report-command";
@@ -461,7 +462,7 @@ function attentionSection(assessed: Assessed, items: Item[], total: number, comp
           emptyText: "Nothing needs attention.",
         },
       ]
-    : items.flatMap((item): Block[] => [{ type: "evidence-list", title: item.heading, items: item.evidence, omitted: item.omitted }, { type: "judgement", slot: item.slot.id }]);
+    : items.flatMap((item): Block[] => [{ type: "evidence-list", title: item.heading, items: item.evidence, omitted: item.omitted, emptyText: "The finding has no evidence item to list." }, { type: "judgement", slot: item.slot.id }]);
   if (total > items.length) blocks.push({ type: "notice", level: "notice", text: `${plural(total - items.length, "more item")} need attention and have no judgement slot, to keep the summary short. ${compact ? "The full report lists them" : "The tables below list them"}.` });
   return { id: "attention", heading: "Needs attention", blocks };
 }
@@ -487,7 +488,7 @@ function excludedOf(assessed: Assessed): ExcludedCount[] {
     { what: "changed paths under the noise filters", count: assessed.change.filtered },
     ...labels.map(([key, what]) => ({ what: `baseline: ${what}`, count: dropped.dropped[key] })),
     { what: `baseline: changes over ${dropped.maxChangesetSize} files`, count: dropped.oversizedChanges },
-    ...Object.entries(droppedCounts()).map(([kind, count]) => ({ what: `${kinds[kind] ?? kind} left out of rankings`, count: count ?? 0 })),
+    ...Object.entries(droppedCounts()).map(([kind, count]) => ({ what: `${kinds[kind] ?? kind} left out of rankings${READ_BY_COMMANDS.has(kind) ? FILES_READ : ""}`, count: count ?? 0 })),
     ...Object.entries(builtinOmissions()).map(([entry, count]) => ({ what: `files under built-in exclude ${entry}`, count })),
   ].filter((e) => e.count > 0);
 }

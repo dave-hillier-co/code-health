@@ -13,7 +13,7 @@ describe("excludedCounts", () => {
     const counts = excludedCounts(filters, { generated: 5, nonCode: 2 }, { "node_modules": 9 });
     expect(counts.find((c) => c.what === "commits by bots and service accounts")?.count).toBe(2);
     expect(counts.find((c) => c.what === "changes over the changeset limit of 50 files")?.count).toBe(4);
-    expect(counts.find((c) => c.what === "generated files left out of the results")?.count).toBe(5);
+    expect(counts.find((c) => c.what.startsWith("generated files left out of the results (counted over the files this report's commands read"))?.count).toBe(5);
     expect(counts.find((c) => c.what === "files under the built-in exclude node_modules")?.count).toBe(9);
   });
 

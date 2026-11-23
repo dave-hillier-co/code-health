@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { testClassifier } from "@code-health/parse/test-files";
-import { expectedReason, isFixturePath, manifestFamily } from "../src/expected-pair.ts";
+import { EXPECTED_LABEL, expectedReason, isFixturePath, manifestFamily } from "../src/expected-pair.ts";
 
 const isTest = testClassifier([]);
 const code = (path: string) => ({ path, code: true });
@@ -9,6 +9,11 @@ const data = (path: string) => ({ path, code: false });
 test("a pair with a test on either side is expected, whichever side it is", () => {
   expect(expectedReason(code("src/a.ts"), code("src/a.test.ts"), isTest)).toBe("test");
   expect(expectedReason(code("pkg/a_test.go"), code("pkg/a.go"), isTest)).toBe("test");
+});
+
+test("a pair of two tests is labelled as two test files, not as a test and the code it tests", () => {
+  expect(expectedReason(code("pkg/query/intersection_test.go"), code("pkg/query/union_test.go"), isTest)).toBe("two-tests");
+  expect(EXPECTED_LABEL["two-tests"]).toBe("two test files");
 });
 
 test("the shared testPatterns make a path a test", () => {

@@ -153,6 +153,28 @@ test("a stored complexity result for HEAD is shown as a top 5 and named in the s
   expect((await run("--format", "md")).stdout).toContain("Run `complexity analyse`");
 });
 
+test("the locality table lists only units with a proposed move, labels the gain and counts the other units", async () => {
+  const head = repo.git("rev-parse", "HEAD").trim();
+  const dir = join(repo.path, ".cache", "code-health", "reports");
+  mkdirSync(dir, { recursive: true });
+  const row = (path: string, recommendation: string, scoreUnit: string, value: number, distance: number) => ({ path, recommendation, scoreUnit, score: value, distance, target: "src/x", ranking: { value, guideline: 2 } });
+  const rows = [
+    row("src/fan.h", "scrutinise", "fan-in", 929, 0),
+    row("src/blocked.cs", "blocked", "unblocked-gain", 128, 0),
+    row("src/review.ts", "review", "gain", 104, 2),
+    row("src/zero.ts", "review", "gain", 0, 1),
+    row("src/split.ts", "split", "component-gain", 60, 3),
+  ];
+  writeFileSync(join(dir, "locality.analyse.json"), JSON.stringify({ schemaVersion: 1, tool: "locality", command: "analyse", repo: { head, dirty: false }, config: "1".repeat(16), results: rows }));
+  const { stdout } = await run("--notes", writeNotes("notes-l.json", fullNotes(await slots())), "--format", "md");
+  expect(stdout).toContain("| src/review.ts | review | 104");
+  expect(stdout).toContain("| src/split.ts | split | 60");
+  expect(stdout).toContain("component-gain");
+  for (const left of ["src/fan.h", "src/blocked.cs", "src/zero.ts"]) expect(stdout).not.toContain(`| ${left} |`);
+  expect(stdout).not.toContain("Gain (");
+  expect(stdout).toContain("3 other units are not listed here");
+});
+
 test("notes written before a stored result appeared are refused, because the stamp's inputs changed", async () => {
   const before = await slots();
   const notes = writeNotes("notes-stale.json", fullNotes(before));
