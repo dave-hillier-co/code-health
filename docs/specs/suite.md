@@ -337,6 +337,7 @@ Components are pure functions from data to strings, one for HTML (with inline SV
 | `histogram` | Counts per bin as bars with printed counts, and a table with shares. |
 | `matrix` | A heatmap of rows by columns with the values printed in the cells, and a table. |
 | `guideline-bars` | Values each against its guideline, with the ratio and "above guideline", "at guideline" or "below guideline". |
+| `stability-chart` | A scatter of instability against abstractness with the main sequence and the zones of pain and uselessness labelled. Every measured point is drawn, the furthest from the main sequence are numbered and tabled with their position in words, and the legend counts all points by position. |
 | `trend-marker` | A later window against an earlier one: the word stronger, stable or weaker, an arrow and both values. |
 | `evidence-list` | Commits or findings, each with an id, text and detail as plain text, and a count of those not listed. |
 | `notice` | A line that opens with the word Notice, Limit or Warning. |
@@ -352,7 +353,7 @@ Components are pure functions from data to strings, one for HTML (with inline SV
 | coupling | cochange | `cochange report coupling` | The coupled pairs with their support. |
 | knowledge | cochange | `cochange report knowledge` | Knowledge concentration and loss. It requires `cochange.knowledge.enabled` and follows the privacy rules of [abandonment](abandonment.md). |
 | change summary | cochange | `cochange report change [BASE..HEAD]` | What a range of changes touched and the evidence around it. It has a compact Markdown form for a pull request comment. |
-| structure | structure | `structure report structure` | Cycles, dependencies against stability and the mechanisms in use. |
+| structure | structure | `structure report structure` | Cycles with their smallest breaking sets, size and co-change at the default level per language; layer violations when layers are configured; an instability against abstractness chart of the packages with the main sequence and the zones, and its table; dependencies against stability; the census of decoupling mechanisms; hubs; and for C++ the include resolution with its warning. Slots: per cycle which edge to break and how (or leave, with a reason), per dependency against stability a verdict, the whole report and the limits. |
 | locality | locality | `locality report locality` | Units far from where they are used, with their blockers. |
 
 ## Testing

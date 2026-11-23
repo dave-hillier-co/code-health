@@ -1,0 +1,660 @@
+{
+  "data": {
+    "header": {
+      "commit": "5c72cdf8d3f476ab7dde9b33dad8138317cc81a8",
+      "configHash": "0000000000000000",
+      "date": "2024-05-25",
+      "evidenceGrade": "weak",
+      "excluded": [
+        {
+          "count": 1,
+          "what": "commits of imported history"
+        }
+      ],
+      "historyWindow": "3.7 months of usable history; the analysis window is 12 months, 2023-05-25 to 2024-05-25",
+      "repo": "repo"
+    },
+    "limits": [
+      "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+      "Each list shows its top rows and says how many it leaves out: 5 cycles, 8 dependencies against stability, 15 layer violations, 10 hubs and 40 packages in the stability table (the chart draws every measured package). The commands print the rest.",
+      "Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. `structure cycles --level` shows the other levels.",
+      "Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, and a package that exports fewer than 3 types is marked weak. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.",
+      "The zones of the chart are geometric. `structure packages coupling` raises a finding only when a package in a zone also has dependents and changes often.",
+      "The census finds mechanisms by name and shape, so a look-alike can be counted and a custom convention missed.",
+      "The evidence grade is weak, so change stability and the co-change counts are tentative and the static structure should lead."
+    ],
+    "sections": [
+      {
+        "blocks": [
+          {
+            "caption": "The structure at a glance",
+            "facts": [
+              {
+                "label": "Import cycles at the default level",
+                "value": "2"
+              },
+              {
+                "label": "Layer violations",
+                "value": "1"
+              },
+              {
+                "label": "Dependencies pointing towards less stable folders",
+                "value": "1, of which 0 reach a guideline"
+              },
+              {
+                "label": "Registration hubs",
+                "value": "0"
+              },
+              {
+                "label": "Packages",
+                "value": "4"
+              }
+            ],
+            "type": "facts"
+          },
+          {
+            "slot": "summary",
+            "type": "judgement"
+          }
+        ],
+        "heading": "What to look at first",
+        "id": "summary"
+      },
+      {
+        "blocks": [
+          {
+            "text": "Cycles are found at the default level: a Go package for Go, a folder for C# and a file for every other language. The breaking set is the smallest set of edges whose removal makes the cycle acyclic, and between equally small sets the one whose sides co-change least. Nested folder cycles, a folder and its own sub-folder, sort last.",
+            "type": "paragraph"
+          },
+          {
+            "caption": "Import cycles, largest first",
+            "columns": [
+              {
+                "key": "modules",
+                "label": "Modules in the cycle"
+              },
+              {
+                "align": "right",
+                "key": "size",
+                "label": "Size"
+              },
+              {
+                "key": "method",
+                "label": "Breaking set found by"
+              },
+              {
+                "align": "right",
+                "key": "edges",
+                "label": "Edges to break"
+              },
+              {
+                "align": "right",
+                "key": "coChange",
+                "label": "Changes touching two members"
+              },
+              {
+                "key": "nested",
+                "label": "Nested folders"
+              }
+            ],
+            "noun": "cycles",
+            "rows": [
+              {
+                "coChange": 5,
+                "edges": 1,
+                "gain": null,
+                "method": "exact",
+                "modules": "src/c.ts, src/d.ts, src/e.ts",
+                "nested": "no",
+                "size": 3
+              },
+              {
+                "coChange": 0,
+                "edges": 1,
+                "gain": null,
+                "method": "exact",
+                "modules": "src/a.ts, src/b.ts",
+                "nested": "no",
+                "size": 2
+              }
+            ],
+            "total": 2,
+            "type": "ranked-table"
+          },
+          {
+            "caption": "Cycle 1: the breaking set of 1 edge (exact)",
+            "columns": [
+              {
+                "key": "edge",
+                "label": "Edge to break"
+              },
+              {
+                "align": "right",
+                "key": "coChange",
+                "label": "Changes touching both sides"
+              },
+              {
+                "align": "right",
+                "key": "fileEdges",
+                "label": "File imports"
+              },
+              {
+                "key": "typeOnly",
+                "label": "Type only"
+              },
+              {
+                "key": "symbols",
+                "label": "Symbols used across it"
+              }
+            ],
+            "numbered": false,
+            "rows": [
+              {
+                "coChange": 0,
+                "edge": "src/e.ts → src/c.ts",
+                "fileEdges": 1,
+                "symbols": "src/c.ts#gamma (1 site)",
+                "typeOnly": "no"
+              }
+            ],
+            "type": "ranked-table"
+          },
+          {
+            "slot": "cycle-1",
+            "type": "judgement"
+          },
+          {
+            "caption": "Cycle 2: the breaking set of 1 edge (exact)",
+            "columns": [
+              {
+                "key": "edge",
+                "label": "Edge to break"
+              },
+              {
+                "align": "right",
+                "key": "coChange",
+                "label": "Changes touching both sides"
+              },
+              {
+                "align": "right",
+                "key": "fileEdges",
+                "label": "File imports"
+              },
+              {
+                "key": "typeOnly",
+                "label": "Type only"
+              },
+              {
+                "key": "symbols",
+                "label": "Symbols used across it"
+              }
+            ],
+            "numbered": false,
+            "rows": [
+              {
+                "coChange": 0,
+                "edge": "src/a.ts → src/b.ts",
+                "fileEdges": 1,
+                "symbols": "src/b.ts#beta (1 site)",
+                "typeOnly": "no"
+              }
+            ],
+            "type": "ranked-table"
+          },
+          {
+            "slot": "cycle-2",
+            "type": "judgement"
+          }
+        ],
+        "heading": "Import cycles",
+        "id": "cycles"
+      },
+      {
+        "blocks": [
+          {
+            "text": "Layers are declared in order, top first, in structure.layers: ui, core. Each row is one file import that crosses to a layer its rule does not allow. Value imports come first, then type-only imports.",
+            "type": "paragraph"
+          },
+          {
+            "caption": "Imports that break the layer rules",
+            "columns": [
+              {
+                "key": "from",
+                "label": "Importing file"
+              },
+              {
+                "key": "to",
+                "label": "Imported file"
+              },
+              {
+                "key": "layers",
+                "label": "Layers"
+              },
+              {
+                "key": "typeOnly",
+                "label": "Type only"
+              },
+              {
+                "key": "symbols",
+                "label": "Symbols used"
+              }
+            ],
+            "noun": "violations",
+            "rows": [
+              {
+                "from": "src/core/model.ts",
+                "layers": "core → ui",
+                "symbols": "src/ui/format.ts#format",
+                "to": "src/ui/format.ts",
+                "typeOnly": "no"
+              }
+            ],
+            "total": 1,
+            "type": "ranked-table"
+          }
+        ],
+        "heading": "Layer violations",
+        "id": "layers"
+      },
+      {
+        "blocks": [
+          {
+            "maxPoints": 40,
+            "noun": "packages",
+            "points": [
+              {
+                "abstractness": 1,
+                "ca": 0,
+                "ce": 1,
+                "distance": 1,
+                "exportedTypes": 3,
+                "instability": 1,
+                "name": "packages/p4",
+                "weak": false
+              },
+              {
+                "abstractness": 0,
+                "ca": 1,
+                "ce": 1,
+                "distance": 0.5,
+                "exportedTypes": 0,
+                "instability": 0.5,
+                "name": "packages/p2",
+                "weak": true
+              },
+              {
+                "abstractness": 0,
+                "ca": 1,
+                "ce": 2,
+                "distance": 0.333,
+                "exportedTypes": 0,
+                "instability": 0.667,
+                "name": "packages/p1",
+                "weak": true
+              },
+              {
+                "abstractness": 0.667,
+                "ca": 2,
+                "ce": 0,
+                "distance": 0.333,
+                "exportedTypes": 3,
+                "instability": 0,
+                "name": "packages/p3",
+                "weak": false
+              }
+            ],
+            "title": "Packages by instability and abstractness",
+            "total": 4,
+            "type": "stability-chart",
+            "zoneDistance": 0.5,
+            "zoneSource": "structure.packages.zoneDistance, a judgement call"
+          },
+          {
+            "text": "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one.",
+            "type": "paragraph"
+          },
+          {
+            "caption": "Dependencies pointing towards less stable folders",
+            "columns": [
+              {
+                "key": "from",
+                "label": "From (depends)"
+              },
+              {
+                "key": "to",
+                "label": "To (depended on)"
+              },
+              {
+                "key": "basis",
+                "label": "Decided by"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "structure.minVolatilityRatio",
+                  "value": 2
+                },
+                "key": "ratio",
+                "label": "Revisions per file, to over from"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "structure.minInstabilityGap",
+                  "value": 20
+                },
+                "key": "gap",
+                "label": "Instability gap in points"
+              },
+              {
+                "align": "right",
+                "key": "imports",
+                "label": "File imports"
+              },
+              {
+                "key": "disagree",
+                "label": "Measures disagree"
+              }
+            ],
+            "noun": "dependencies",
+            "rows": [
+              {
+                "basis": "structure",
+                "disagree": "no",
+                "from": "packages/p2/src",
+                "gap": 16.7,
+                "imports": 1,
+                "ratio": null,
+                "to": "packages/p1/src"
+              }
+            ],
+            "total": 1,
+            "type": "ranked-table"
+          },
+          {
+            "slot": "against-1",
+            "type": "judgement"
+          }
+        ],
+        "heading": "Stability",
+        "id": "stability"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Decoupling mechanisms the codebase uses today",
+            "columns": [
+              {
+                "key": "mechanism",
+                "label": "Mechanism"
+              },
+              {
+                "align": "right",
+                "key": "count",
+                "label": "Occurrences"
+              },
+              {
+                "align": "right",
+                "key": "files",
+                "label": "Files"
+              },
+              {
+                "key": "variants",
+                "label": "Variants"
+              },
+              {
+                "key": "folders",
+                "label": "Busiest folders"
+              },
+              {
+                "key": "example",
+                "label": "Example"
+              }
+            ],
+            "numbered": false,
+            "rows": [
+              {
+                "count": 0,
+                "example": null,
+                "files": 0,
+                "folders": null,
+                "mechanism": "callbacks",
+                "variants": null
+              },
+              {
+                "count": 0,
+                "example": null,
+                "files": 0,
+                "folders": null,
+                "mechanism": "interfaces",
+                "variants": null
+              },
+              {
+                "count": 0,
+                "example": null,
+                "files": 0,
+                "folders": null,
+                "mechanism": "dependency-injection",
+                "variants": null
+              },
+              {
+                "count": 0,
+                "example": null,
+                "files": 0,
+                "folders": null,
+                "mechanism": "events",
+                "variants": null
+              },
+              {
+                "count": 0,
+                "example": null,
+                "files": 0,
+                "folders": null,
+                "mechanism": "handlers",
+                "variants": null
+              },
+              {
+                "count": 0,
+                "example": null,
+                "files": 0,
+                "folders": null,
+                "mechanism": "registries",
+                "variants": null
+              },
+              {
+                "count": 0,
+                "example": null,
+                "files": 0,
+                "folders": null,
+                "mechanism": "ports-and-adapters",
+                "variants": null
+              }
+            ],
+            "type": "ranked-table"
+          },
+          {
+            "level": "notice",
+            "text": "The census describes and does not judge. A count of zero is a finding: callbacks, interfaces, dependency-injection, events, handlers, registries, ports-and-adapters are not in use here, so choosing one would introduce something new.",
+            "type": "notice"
+          }
+        ],
+        "heading": "Decoupling mechanisms in use",
+        "id": "census"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Registration hubs: files every feature edits",
+            "columns": [
+              {
+                "key": "file",
+                "label": "File"
+              },
+              {
+                "align": "right",
+                "key": "reached",
+                "label": "Signals reached of 4"
+              },
+              {
+                "key": "signals",
+                "label": "Which"
+              },
+              {
+                "align": "right",
+                "key": "features",
+                "label": "Features"
+              },
+              {
+                "align": "right",
+                "key": "revisions",
+                "label": "Revisions"
+              }
+            ],
+            "noun": "hubs",
+            "rows": [],
+            "total": 0,
+            "type": "ranked-table"
+          },
+          {
+            "level": "notice",
+            "text": "Omitted 2 of 2 files with at least 3 changes: each reached fewer than 2 of the 4 signals (2 of them without reading their diffs, because the other three signals left them unable to reach 2). 7 more files have fewer than 3 changes",
+            "type": "notice"
+          }
+        ],
+        "heading": "Hubs",
+        "id": "hubs"
+      }
+    ],
+    "title": "Structure report"
+  },
+  "instructions": "Write notes.json as { stamp, notes }: copy the stamp unchanged, and give each slot id an entry that follows the slot's shape.",
+  "protocol": 1,
+  "report": "structure",
+  "slots": [
+    {
+      "about": {
+        "kind": "report",
+        "label": "the repository",
+        "ref": "structure"
+      },
+      "id": "summary",
+      "maxChars": 700,
+      "task": "In at most four sentences say where the structure of this repository needs attention first, using only values shown in this report: the cycles, the dependencies against stability, the layer violations when layers are configured, and the hubs. When the evidence grade is weak, say the change-based results are tentative.",
+      "title": "Judgement: what to look at first",
+      "verdicts": []
+    },
+    {
+      "about": {
+        "kind": "finding",
+        "label": "cycle 1 (src/c.ts, src/d.ts and 1 more)",
+        "ref": "cycle:default:src/c.ts"
+      },
+      "id": "cycle-1",
+      "maxChars": 400,
+      "task": "Say which edge of this cycle's breaking set to break and how (move the symbol the edge uses, invert the dependency, pass a value or a callback), or say to leave the cycle and why. You may name an edge outside the breaking set when you give the reason. Prefer a mechanism the census section shows in use. Cite only values shown in this report.",
+      "title": "Judgement: cycle 1 (src/c.ts, src/d.ts and 1 more)",
+      "verdicts": [
+        "break-the-listed-edge",
+        "break-another-edge",
+        "leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "finding",
+        "label": "cycle 2 (src/a.ts, src/b.ts)",
+        "ref": "cycle:default:src/a.ts"
+      },
+      "id": "cycle-2",
+      "maxChars": 400,
+      "task": "Say which edge of this cycle's breaking set to break and how (move the symbol the edge uses, invert the dependency, pass a value or a callback), or say to leave the cycle and why. You may name an edge outside the breaking set when you give the reason. Prefer a mechanism the census section shows in use. Cite only values shown in this report.",
+      "title": "Judgement: cycle 2 (src/a.ts, src/b.ts)",
+      "verdicts": [
+        "break-the-listed-edge",
+        "break-another-edge",
+        "leave"
+      ]
+    },
+    {
+      "about": {
+        "kind": "finding",
+        "label": "dependency 1 (packages/p2/src → packages/p1/src)",
+        "ref": "unstable:folder:packages/p2/src->packages/p1/src"
+      },
+      "id": "against-1",
+      "maxChars": 320,
+      "task": "Say whether this dependency from the more stable folder onto the less stable one is worth fixing, and why. Change evidence outranks structure when the measures disagree, and with a weak evidence grade say the verdict is tentative. Cite only values shown in this report.",
+      "title": "Judgement: dependency 1 (packages/p2/src → packages/p1/src)",
+      "verdicts": [
+        "worth-fixing",
+        "leave",
+        "evidence-too-weak"
+      ]
+    },
+    {
+      "about": {
+        "kind": "report",
+        "label": "the repository",
+        "ref": "structure"
+      },
+      "id": "limits",
+      "maxChars": 500,
+      "task": "In at most three sentences, say what limits how far these results can be trusted for this repository, using only the evidence, the exclusions and the warnings shown above.",
+      "title": "Judgement: what limits these results",
+      "verdicts": []
+    }
+  ],
+  "stamp": {
+    "config": "0000000000000000",
+    "head": "5c72cdf8d3f476ab7dde9b33dad8138317cc81a8",
+    "inputs": {
+      "census": {
+        "census": {
+          "eventCalls": [],
+          "folderNames": [
+            "ports",
+            "adapters",
+            "infrastructure"
+          ],
+          "handlerCalls": [],
+          "registerCalls": []
+        }
+      },
+      "cycles": {
+        "exactLimit": 16,
+        "level": "default",
+        "locality": null
+      },
+      "hubs": {
+        "by": "folder",
+        "contentionDays": 14,
+        "maxFeatureCoupling": 20,
+        "minAppendShare": 60,
+        "minAuthors": 3,
+        "minConfidence": 50,
+        "minFeatures": 3,
+        "minOutward": 50,
+        "minRevisions": 3,
+        "minSupport": 3,
+        "significanceLevel": 0.01
+      },
+      "layers": {
+        "analysed": "5c72cdf8d3f476ab7dde9b33dad8138317cc81a8",
+        "layers": [
+          "ui",
+          "core"
+        ]
+      },
+      "since": null,
+      "stability": {
+        "by": "folder",
+        "minInstabilityGap": 20,
+        "minRevisions": 3,
+        "minVolatilityRatio": 2
+      },
+      "until": null
+    },
+    "kind": "structure",
+    "protocol": 1
+  }
+}
