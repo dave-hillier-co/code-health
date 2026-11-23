@@ -152,14 +152,14 @@
               {
                 "confidence": "normal",
                 "consumers": 2,
-                "distance": 2,
+                "distance": 3,
                 "files": 1,
                 "folders": 2,
                 "gain": 4,
                 "kind": "move",
                 "path": "src/shared/utils/money.ts",
                 "ratio": 2,
-                "target": "src"
+                "target": "src/billing"
               },
               {
                 "confidence": "normal",
@@ -188,14 +188,14 @@
               {
                 "confidence": "normal",
                 "consumers": 2,
-                "distance": 1,
+                "distance": 2,
                 "files": 1,
                 "folders": 2,
                 "gain": 2,
                 "kind": "move",
                 "path": "src/shared/log.ts",
                 "ratio": 1,
-                "target": "src"
+                "target": "src/billing"
               }
             ],
             "type": "ranked-table"
@@ -260,14 +260,14 @@
               {
                 "confidence": "normal",
                 "consumers": 2,
-                "distance": 2,
+                "distance": 3,
                 "files": 1,
                 "folders": 2,
                 "gain": 4,
                 "kind": "split",
                 "path": "src/shared/helpers/mixed.ts",
                 "ratio": 3,
-                "target": "src"
+                "target": "src/billing"
               },
               {
                 "confidence": "normal",
@@ -445,7 +445,7 @@
               },
               {
                 "label": "Net distance",
-                "value": "6 now, 2 at the target src"
+                "value": "6 now, 2 at the target src/billing"
               },
               {
                 "label": "Consumers",
@@ -465,7 +465,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "1 file moved to src, 3 imports rewritten in 3 files"
+                "value": "1 file moved to src/billing, 3 imports rewritten in 3 files"
               }
             ],
             "type": "facts"
@@ -601,7 +601,7 @@
               },
               {
                 "label": "Net distance",
-                "value": "4 now, 2 at the target src"
+                "value": "4 now, 2 at the target src/billing"
               },
               {
                 "label": "Consumers",
@@ -621,7 +621,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "1 file moved to src, 2 imports rewritten in 2 files"
+                "value": "1 file moved to src/billing, 2 imports rewritten in 2 files"
               }
             ],
             "type": "facts"
@@ -653,7 +653,7 @@
               },
               {
                 "label": "Net distance",
-                "value": "6 now, 2 at the target src"
+                "value": "6 now, 2 at the target src/billing"
               },
               {
                 "label": "Consumers",

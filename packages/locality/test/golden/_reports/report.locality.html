@@ -159,10 +159,10 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col">Target</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain over guideline</th><th scope="col" class="number">Unit files</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
 <tbody>
 <tr><td class="number">1</td><td>src/shared/pair</td><td>move</td><td>src/reports</td><td class="number">6 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">3</td><td class="number">2</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
-<tr><td class="number">2</td><td>src/shared/utils/money.ts</td><td>move</td><td>src</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">2</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
+<tr><td class="number">2</td><td>src/shared/utils/money.ts</td><td>move</td><td>src/billing</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">2</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">3</td><td>normal</td></tr>
 <tr><td class="number">3</td><td>src/shared/cycle/a.ts</td><td>move</td><td>src/orders</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">2</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
 <tr><td class="number">4</td><td>src/shared/utils/invoice.ts</td><td>move</td><td>src/billing</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
-<tr><td class="number">5</td><td>src/shared/log.ts</td><td>move</td><td>src</td><td class="number">2</td><td class="number">1</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">1</td><td>normal</td></tr>
+<tr><td class="number">5</td><td>src/shared/log.ts</td><td>move</td><td>src/billing</td><td class="number">2</td><td class="number">1</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
 </tbody>
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it.</p>
@@ -170,7 +170,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col">Target</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain over guideline</th><th scope="col" class="number">Unit files</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/shared/helpers/mixed.ts</td><td>split</td><td>src</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
+<tr><td class="number">1</td><td>src/shared/helpers/mixed.ts</td><td>split</td><td>src/billing</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">3</td><td>normal</td></tr>
 <tr><td class="number">2</td><td>src/shared/utils/slug.ts</td><td>inline</td><td>src/orders</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
 <tr><td class="number">3</td><td>src/orders/place.ts</td><td>review</td><td>src/shared</td><td class="number">2</td><td class="number">1</td><td class="number">5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td>normal</td></tr>
 <tr><td class="number">4</td><td>src/billing/index.ts</td><td>inline</td><td>src/billing</td><td class="number">0</td><td class="number">0</td><td class="number">1</td><td class="number">0</td><td class="number">0</td><td class="number">0</td><td>normal</td></tr>
@@ -218,12 +218,12 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Kind</th><td>move (rule two-consumers)</td></tr>
 <tr><th scope="row">Reason</th><td>Two consumers: move to the target.</td></tr>
 <tr><th scope="row">Gain</th><td>4 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
-<tr><th scope="row">Net distance</th><td>6 now, 2 at the target src</td></tr>
+<tr><th scope="row">Net distance</th><td>6 now, 2 at the target src/billing</td></tr>
 <tr><th scope="row">Consumers</th><td>2 files in 2 folders</td></tr>
 <tr><th scope="row">Size</th><td>1 file, 6 lines</td></tr>
 <tr><th scope="row">Confidence</th><td>normal</td></tr>
 <tr><th scope="row">Blockers</th><td>none</td></tr>
-<tr><th scope="row">Move plan (dry run)</th><td>1 file moved to src, 3 imports rewritten in 3 files</td></tr>
+<tr><th scope="row">Move plan (dry run)</th><td>1 file moved to src/billing, 3 imports rewritten in 3 files</td></tr>
 </tbody>
 </table>
 <section class="judgement">
@@ -284,12 +284,12 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Kind</th><td>move (rule two-consumers)</td></tr>
 <tr><th scope="row">Reason</th><td>Two consumers: move to the target.</td></tr>
 <tr><th scope="row">Gain</th><td>2 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
-<tr><th scope="row">Net distance</th><td>4 now, 2 at the target src</td></tr>
+<tr><th scope="row">Net distance</th><td>4 now, 2 at the target src/billing</td></tr>
 <tr><th scope="row">Consumers</th><td>2 files in 2 folders</td></tr>
 <tr><th scope="row">Size</th><td>1 file, 3 lines</td></tr>
 <tr><th scope="row">Confidence</th><td>normal</td></tr>
 <tr><th scope="row">Blockers</th><td>none</td></tr>
-<tr><th scope="row">Move plan (dry run)</th><td>1 file moved to src, 2 imports rewritten in 2 files</td></tr>
+<tr><th scope="row">Move plan (dry run)</th><td>1 file moved to src/billing, 2 imports rewritten in 2 files</td></tr>
 </tbody>
 </table>
 <section class="judgement">
@@ -306,7 +306,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Kind</th><td>split (rule mixed-exports)</td></tr>
 <tr><th scope="row">Reason</th><td>Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split.</td></tr>
 <tr><th scope="row">Gain</th><td>4 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
-<tr><th scope="row">Net distance</th><td>6 now, 2 at the target src</td></tr>
+<tr><th scope="row">Net distance</th><td>6 now, 2 at the target src/billing</td></tr>
 <tr><th scope="row">Consumers</th><td>2 files in 2 folders</td></tr>
 <tr><th scope="row">Size</th><td>1 file, 6 lines</td></tr>
 <tr><th scope="row">Confidence</th><td>normal</td></tr>

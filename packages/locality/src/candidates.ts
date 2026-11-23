@@ -181,6 +181,7 @@ type Omission = Omit<OmittedUnit, "path">;
 export const OMITTED_REASONS = {
   folderSized: "folder-sized unit",
   rootTarget: "target is a root folder",
+  groupingTarget: "target is a grouping folder",
   noUsableTarget: (label: string) => `no usable target: ${label}`,
 };
 
@@ -406,13 +407,25 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   }
 
   const manifests = manifestFolders(project.tree);
-  /** For a unit's files, the first language placement rule that refuses moving them to a folder, or undefined when it is usable. */
+  /** Why a folder is a grouping folder and not a home for code: its name is in `locality.groupingFolders`, or (for a single file) it is shallower than `locality.minTargetDepth`. */
+  function groupingRefusal(folder: string, fileCount: number): { label: string; detail: string } | undefined {
+    const name = folder.split("/").pop() as string;
+    if (folder !== "" && settings.groupingFolders.includes(name)) {
+      return { label: OMITTED_REASONS.groupingTarget, detail: `${folder} is named ${name}, one of the locality.groupingFolders (layout roots that group code and are not a home for it)` };
+    }
+    if (fileCount === 1 && depthOf(folder) < settings.minTargetDepth) {
+      return { label: OMITTED_REASONS.groupingTarget, detail: `${folder === "" ? "the repository root" : folder} is at depth ${depthOf(folder)}, shallower than the locality.minTargetDepth guideline of ${settings.minTargetDepth}` };
+    }
+    return undefined;
+  }
+
+  /** For a unit's files, the first language placement rule, or else the grouping folder rule, that refuses moving them to a folder, or undefined when it is usable. */
   function refusalOf(files: readonly string[], tests: readonly string[], base: string): (folder: string) => { label: string; detail: string } | undefined {
     const memo = new Map<string, { label: string; detail: string } | undefined>();
     return (folder) => {
       if (!memo.has(folder)) {
         const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree);
-        memo.set(folder, first === undefined ? undefined : { label: first.label, detail: first.detail });
+        memo.set(folder, first === undefined ? groupingRefusal(folder, files.length) : { label: first.label, detail: first.detail });
       }
       return memo.get(folder);
     };
@@ -582,11 +595,11 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     // Units that cannot be proposed as a move are counted, not ranked.
     // The unit is still built in full, because `move` reads it: moving it anywhere, with a reason, is the user's call.
     let omission: Omission | undefined;
-    const omit = (reason: string, detail: string) => {
-      omission = { reason, detail, target: choice.target, gain: choice.gain, files: files.length };
+    const omit = (reason: string, detail: string, shown: { target: string; gain: number } = choice) => {
+      omission = { reason, detail, target: shown.target, gain: shown.gain, files: files.length };
     };
     if (unusable !== undefined && unrestricted.gain >= settings.minDistance && (decision.rule === "near-consumers" || decision.rule === "blocked-by-dependency")) {
-      omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`);
+      omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`, unrestricted);
     }
     const withheld = choice.gain >= settings.minDistance && choice.target !== base ? withheldBy(files.length, base, choice.target) : undefined;
     if (withheld !== undefined) {

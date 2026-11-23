@@ -16,7 +16,7 @@
   },
   "inputs": {
     "entries": [
-      "src/app/main.ts"
+      "src/cli/main.ts"
     ],
     "entrySource": "config",
     "paths": [],
@@ -31,7 +31,7 @@
   "omitted": [],
   "repo": {
     "dirty": false,
-    "head": "13641675e2751ee3600e485c81c868dd105a2c9a"
+    "head": "74ae84ce4b68605e9b91d36e1a13664be289d9df"
   },
   "results": [
     {
@@ -44,7 +44,7 @@
           {
             "consumerChanges": 1,
             "degree": 100,
-            "path": "src/app/main.ts",
+            "path": "src/cli/main.ts",
             "support": 1
           }
         ]
@@ -52,7 +52,7 @@
       "directCalls": [
         {
           "count": 1,
-          "path": "src/app/main.ts"
+          "path": "src/cli/main.ts"
         }
       ],
       "distance": 2,
@@ -98,7 +98,7 @@
       },
       "source": "structural",
       "strays": [],
-      "target": "src/app",
+      "target": "src/cli",
       "testRefs": {
         "external": [],
         "owned": []
@@ -126,7 +126,7 @@
           {
             "consumerChanges": 1,
             "degree": 100,
-            "path": "src/app/main.ts",
+            "path": "src/cli/main.ts",
             "support": 1
           }
         ]
@@ -157,7 +157,7 @@
       "otherRefs": [
         {
           "count": 1,
-          "path": "src/app/main.ts"
+          "path": "src/cli/main.ts"
         }
       ],
       "ownDeps": [],
@@ -180,7 +180,7 @@
       },
       "source": "structural",
       "strays": [],
-      "target": "src/app",
+      "target": "src/cli",
       "testRefs": {
         "external": [],
         "owned": []

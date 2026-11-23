@@ -12,7 +12,7 @@ const featureCount = 8;
 
 /**
  * Guards: a published package entry point, a function used as a value, and generated code that the suite
- * config excludes. The only entry point is src/app/main.ts.
+ * config excludes. The only entry point is src/cli/main.ts.
  */
 export function guardedUnits(): GitFixture {
   return GitFixture.build([
@@ -21,10 +21,10 @@ export function guardedUnits(): GitFixture {
       message: "Add the app and its library",
       date: "2024-01-01T09:00:00Z",
       changes: [
-        add("code-health.json", JSON.stringify({ entryPoints: ["src/app/main.ts"], exclude: ["src/generated"] })),
+        add("code-health.json", JSON.stringify({ entryPoints: ["src/cli/main.ts"], exclude: ["src/generated"] })),
         add("package.json", JSON.stringify({ name: "lib", main: "src/shared/api.ts" })),
         add(
-          "src/app/main.ts",
+          "src/cli/main.ts",
           [
             'import { api } from "../shared/api.ts";',
             'import { helper } from "../shared/helper.ts";',

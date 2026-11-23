@@ -907,6 +907,24 @@
           "type": "number",
           "default": 2
         },
+        "groupingFolders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "internal",
+            "pkg",
+            "src",
+            "lib",
+            "app",
+            "cmd",
+            "source",
+            "sources",
+            "modules",
+            "packages"
+          ]
+        },
         "useHistory": {
           "type": "boolean",
           "default": true

@@ -22,7 +22,7 @@
     {
       "from": "src/shared/utils/money.ts",
       "role": "unit",
-      "to": "src/money.ts"
+      "to": "src/billing/money.ts"
     }
   ],
   "rewrites": [
@@ -30,19 +30,19 @@
       "from": "../shared/utils/money.ts",
       "line": 1,
       "path": "src/billing/charge.ts",
-      "to": "../money.ts"
+      "to": "./money.ts"
     },
     {
       "from": "../shared/utils/money.ts",
       "line": 1,
       "path": "src/legacy/dead.ts",
-      "to": "../money.ts"
+      "to": "../billing/money.ts"
     },
     {
       "from": "../shared/utils/money.ts",
       "line": 1,
       "path": "src/orders/place.ts",
-      "to": "../money.ts"
+      "to": "../billing/money.ts"
     }
   ],
   "schemaVersion": 1,
@@ -53,7 +53,7 @@
     "total": 1
   },
   "unit": {
-    "destination": "src",
+    "destination": "src/billing",
     "fanIn": 2,
     "path": "src/shared/utils/money.ts",
     "recommendation": "move",
