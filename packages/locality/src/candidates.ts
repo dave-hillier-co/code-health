@@ -411,11 +411,11 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   const manifests = manifestFolders(project.tree);
   /** Why a folder is a grouping folder and not a home for these files: its name is in `locality.groupingFolders` and a file is of a language in `locality.groupingLanguages`. */
   function groupingRefusal(files: readonly string[], folder: string): { label: string; detail: string } | undefined {
-    if (folder === "") return undefined;
-    const name = folder.split("/").pop() as string;
-    if (!settings.groupingFolders.includes(name)) return undefined;
+    const name = folder === "" ? undefined : (folder.split("/").pop() as string);
+    if (name !== undefined && !settings.groupingFolders.includes(name)) return undefined;
     const language = files.map((file) => adapterForPath(file)?.id).find((id) => id !== undefined && settings.groupingLanguages.includes(id));
     if (language === undefined) return undefined;
+    if (name === undefined) return { label: OMITTED_REASONS.groupingTarget, detail: `the target is the repository root, and a ${language} folder is a package, so a file there joins the root package` };
     return { label: OMITTED_REASONS.groupingTarget, detail: `${folder} is named ${name}, one of the locality.groupingFolders, and a ${language} folder is a package, so a file there joins a package named ${name}` };
   }
 

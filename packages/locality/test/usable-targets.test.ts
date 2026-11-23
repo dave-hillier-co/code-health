@@ -190,3 +190,17 @@ test("when internal is refused and one folder is strictly better than the rest, 
   expect(rows.find((row) => row.path === "internal/util/util.go")).toMatchObject({ target: "internal/a" });
   expect(omitted).toEqual([]);
 });
+
+test("a Go file is not proposed for the repository root, since it would join the root package", async () => {
+  const files = {
+    "go.mod": "module example.com/m\n\ngo 1.22\n",
+    "main.go": `package main\n\nimport (\n\t"example.com/m/a"\n\t"example.com/m/b"\n)\n\nfunc main() {\n\t_ = a.Use() + b.Use()\n}\n`,
+    "a/a.go": 'package a\n\nimport "example.com/m/deep/er/util"\n\nfunc Use() int {\n\treturn util.Run()\n}\n',
+    "b/b.go": 'package b\n\nimport "example.com/m/deep/er/util"\n\nfunc Use() int {\n\treturn util.Run()\n}\n',
+    "deep/er/util/util.go": goUnit("util"),
+  };
+  const { rows, omitted } = await analyse(repository({ entryPoints: ["main.go"] }, files));
+  expect(rows.find((row) => row.path === "deep/er/util/util.go")?.target).not.toBe("");
+  // With the root refused, the next best folders a and b tie, so no move is proposed.
+  expect(omitted.find((unit) => unit.path === "deep/er/util/util.go")).toMatchObject({ reason: "no single target: 2 folders tie" });
+});
