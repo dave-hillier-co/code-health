@@ -2640,6 +2640,7 @@ function percentileRank(value, values) {
 var OMITTED_REASONS = {
   folderSized: "folder-sized unit",
   rootTarget: "target is a root folder",
+  groupingTarget: "target is a grouping folder",
   noUsableTarget: (label) => `no usable target: ${label}`
 };
 function commonFolder(folders) {
@@ -2821,12 +2822,22 @@ function analyseProject(project, model, settings, history) {
     return signals.sort((a, b) => compareIds(a.name, b.name));
   }
   const manifests = manifestFolders(project.tree);
+  function groupingRefusal(folder, fileCount) {
+    const name9 = folder.split("/").pop();
+    if (folder !== "" && settings.groupingFolders.includes(name9)) {
+      return { label: OMITTED_REASONS.groupingTarget, detail: `${folder} is named ${name9}, one of the locality.groupingFolders (layout roots that group code and are not a home for it)` };
+    }
+    if (fileCount === 1 && depthOf(folder) < settings.minTargetDepth) {
+      return { label: OMITTED_REASONS.groupingTarget, detail: `${folder === "" ? "the repository root" : folder} is at depth ${depthOf(folder)}, shallower than the locality.minTargetDepth guideline of ${settings.minTargetDepth}` };
+    }
+    return void 0;
+  }
   function refusalOf(files, tests, base) {
     const memo = /* @__PURE__ */ new Map();
     return (folder) => {
       if (!memo.has(folder)) {
         const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree);
-        memo.set(folder, first === void 0 ? void 0 : { label: first.label, detail: first.detail });
+        memo.set(folder, first === void 0 ? groupingRefusal(folder, files.length) : { label: first.label, detail: first.detail });
       }
       return memo.get(folder);
     };
@@ -2979,11 +2990,11 @@ function analyseProject(project, model, settings, history) {
     };
     const decision = recommend(input);
     let omission;
-    const omit = (reason, detail) => {
-      omission = { reason, detail, target: choice.target, gain: choice.gain, files: files.length };
+    const omit = (reason, detail, shown2 = choice) => {
+      omission = { reason, detail, target: shown2.target, gain: shown2.gain, files: files.length };
     };
     if (unusable !== void 0 && unrestricted.gain >= settings.minDistance && (decision.rule === "near-consumers" || decision.rule === "blocked-by-dependency")) {
-      omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`);
+      omit(OMITTED_REASONS.noUsableTarget(unusable.label), `the best target ${unrestricted.target || "(repository root)"} (gain ${unrestricted.gain}) is refused: ${unusable.detail}; the best usable target has gain ${choice.gain}, below the locality.minDistance guideline of ${settings.minDistance}`, unrestricted);
     }
     const withheld = choice.gain >= settings.minDistance && choice.target !== base ? withheldBy(files.length, base, choice.target) : void 0;
     if (withheld !== void 0) {
@@ -3092,8 +3103,10 @@ var localityConfig = {
     maxDepth: 6,
     /** Guideline: a unit of more than this many files is a folder, and moving a folder reorganises the code base instead of relocating one module. Such a unit is not proposed as a move: it is counted in `summary.omitted` and listed in `omitted`. A judgement call: 20 is above the largest multi-file units that looked like single modules in Orleans (19 files) and below the folders Solent proposed moving whole (58 and 76 files). */
     maxMoveFiles: 20,
-    /** Guideline: a target shallower than this depth that is an ancestor of the unit (the repository root, or a top-level folder such as src or pkg) is a root. A unit of more than one file is not moved up to a root: it is counted in `summary.omitted` and listed in `omitted`. A single file still moves to a root, because that is where its consumers' lowest common ancestor can be. A judgement call. */
+    /** Guideline: a target shallower than this depth that is an ancestor of the unit (the repository root, or a top-level folder such as src or pkg) is a root. A unit of more than one file is not moved up to a root: it is counted in `summary.omitted` and listed in `omitted`. A single file is not moved to a target shallower than this either (see groupingFolders). A judgement call. */
     minTargetDepth: 2,
+    /** Folder names that group code without being a home for it: common layout roots in Go (`internal`, `pkg`, `cmd`), JavaScript and TypeScript (`src`, `lib`, `app`, `packages`), Java and Kotlin (`src`, `modules`) and C and C++ (`src`, `lib`, `source`, `sources`). A folder with one of these names is never proposed as a move target, because "move it to internal" is not advice a person acts on. Matched against the last segment of the target, case-sensitive. A judgement call. */
+    groupingFolders: ["internal", "pkg", "src", "lib", "app", "cmd", "source", "sources", "modules", "packages"],
     /** Read co-change, age and churn from the history cache, so the history guards and rules can fire. */
     useHistory: true,
     /** Guideline: a unit younger than this many days is reviewed, not inlined or moved, because one callsite is only evidence once reuse has had time. A judgement call. */
@@ -3132,6 +3145,10 @@ function readSettings(config) {
   if (!Array.isArray(fixedPoints) || fixedPoints.some((item) => typeof item !== "string")) {
     throw configError(`code-health.json: ${at2("fixedPoints")} must be an array of strings`);
   }
+  const groupingFolders = section2.groupingFolders;
+  if (!Array.isArray(groupingFolders) || groupingFolders.some((item) => typeof item !== "string")) {
+    throw configError(`code-health.json: ${at2("groupingFolders")} must be an array of strings`);
+  }
   const tinyLines = positive("tinyLines");
   const largeLines = positive("largeLines");
   if (tinyLines >= largeLines) {
@@ -3158,6 +3175,7 @@ function readSettings(config) {
     maxDepth: positive("maxDepth"),
     maxMoveFiles: positive("maxMoveFiles"),
     minTargetDepth: positive("minTargetDepth"),
+    groupingFolders,
     fixedPoints,
     useHistory: section2.useHistory === true,
     graceDays: positive("graceDays"),

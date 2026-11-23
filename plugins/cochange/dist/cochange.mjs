@@ -12051,15 +12051,26 @@ function manifestExpected(manifest, facts) {
     return paths.some((path) => path.startsWith(folder) && !listsSourceFiles(path) && hasAdapter(path));
   });
 }
+function sameToolchainManifests(partner, facts) {
+  const touched = facts.files.find((file) => file.fileId === partner.towards);
+  const never = () => false;
+  return touched !== void 0 && expectedReason({ path: touched.path, code: false }, { path: partner.file, code: false }, never) === "build-manifests";
+}
 function missingCoChange(facts, state, context) {
   const touched = new Set(facts.files.map((file) => file.fileId));
   const absent = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
   const withoutManifests = coupledPartners({ ...facts, files: facts.files.filter((file) => !listsSourceFiles(file.fileId)) }, state, context);
-  const missing = withoutManifests.filter((partner) => !touched.has(partner.file) && (!listsSourceFiles(partner.file) || manifestExpected(partner.file, facts)));
-  const skipped = absent.length - missing.length;
+  const candidates = withoutManifests.filter((partner) => !touched.has(partner.file) && (!listsSourceFiles(partner.file) || manifestExpected(partner.file, facts)));
+  const missing = candidates.filter((partner) => !sameToolchainManifests(partner, facts));
+  const skipped = absent.length - candidates.length;
+  const toolchainSkipped = candidates.length - missing.length;
   return measurement2("missing-co-change", "completeness", "history", "count", "history", {
     series: { count: missing.length },
-    value: skipped === 0 ? { count: missing.length } : { count: missing.length, manifestPartnersSkipped: skipped },
+    value: {
+      count: missing.length,
+      ...skipped === 0 ? {} : { manifestPartnersSkipped: skipped },
+      ...toolchainSkipped === 0 ? {} : { buildManifestPartnersSkipped: toolchainSkipped }
+    },
     evidence: missing.map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence, support: partner.support }))
   });
 }
@@ -13043,6 +13054,9 @@ function missingBlocks(assessed) {
   }
   const skipped = number2(factor.value.manifestPartnersSkipped) ?? 0;
   const skippedNotice = skipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(skipped, "partner")} left out of this list because the pairing is with a build manifest that lists source files (such as CMakeLists.txt): a manifest counts as missing only when the change adds, removes or renames a code file in its folder, and a touched manifest does not make its source files missing.` }];
+  const toolchainSkipped = number2(factor.value.buildManifestPartnersSkipped) ?? 0;
+  const toolchainNotice = toolchainSkipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(toolchainSkipped, "partner")} left out of this list because it and the touched file are build or packaging manifests of one toolchain (such as go.mod and go.work), which a change often edits one without the other.` }];
+  skippedNotice.push(...toolchainNotice);
   if (factor.evidence.length === 0) return [...skippedNotice, { type: "notice", level: "notice", text: "No file that usually changes with a touched file is missing from the change." }];
   const rows7 = factor.evidence.map((e) => ({ file: text3(e.file), towards: text3(e.towards), confidence: number2(e.confidence), support: number2(e.support) }));
   return [
@@ -15106,7 +15120,7 @@ var FACTOR_DOCS = [
     layer: "history",
     banding: "count",
     signal: "Files that usually change with a touched file and are missing from the change",
-    definition: "Files whose confidence towards a touched file is at least cochange.risk.missingConfidence percent, with support of at least cochange.minSupport, over the eligible changes of the analysis window, that exist and are not touched by the change. Confidence is shared changes divided by the touched file's changes. A partner that is a build manifest listing sources (`CMakeLists.txt`, `Makefile`, `meson.build`, Bazel `BUILD`) counts only when the change adds, removes or renames a code file in its folder or below, and a touched build manifest does not make its source files missing, because such a manifest mostly changes when sources are added or removed; the partners skipped for that are counted in `manifestPartnersSkipped`. Banded on the count.",
+    definition: "Files whose confidence towards a touched file is at least cochange.risk.missingConfidence percent, with support of at least cochange.minSupport, over the eligible changes of the analysis window, that exist and are not touched by the change. Confidence is shared changes divided by the touched file's changes. A partner that is a build manifest listing sources (`CMakeLists.txt`, `Makefile`, `meson.build`, Bazel `BUILD`) counts only when the change adds, removes or renames a code file in its folder or below, and a touched build manifest does not make its source files missing, because such a manifest mostly changes when sources are added or removed; the partners skipped for that are counted in `manifestPartnersSkipped`. A partner that is a build or packaging manifest of the same toolchain as the touched file it is strongest towards (`go.mod` and `go.work`, `package.json` and a lockfile, two Dockerfile variants; the `build-manifests` rule of the coupling report) is skipped, because a change that edits one without the other is common; those are counted in `buildManifestPartnersSkipped`. A lockfile missing from a change that edits its manifest's dependency list would be a real expectation, but the measure reads no diff, so lockfiles are skipped with the rest. Banded on the count.",
     why: "The strongest single completeness signal: these files have needed changing every other time."
   },
   {
