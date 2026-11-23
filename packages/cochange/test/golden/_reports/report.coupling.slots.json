@@ -16,6 +16,7 @@
     },
     "limits": [
       "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+      "A pair where either side is a test, a fixture or a golden file, or where both sides are data or configuration files of one format, is an expected pair. It is listed in its own table and not judged.",
       "Coupling counts changes that touched both files in the window, over changes at or below the changeset limit; a larger change counts on neither side. A pair that shares fewer than 5 changes (the support floor) is not listed.",
       "Files that change together may share a design decision, or only a shared constant, a registry, a protocol, tests or generated code. The numbers cannot tell these apart; the judgements say which it is.",
       "Each table shows the top rows of its result and says how many rows it leaves out; `cochange coupling` and `cochange clusters` print the rest.",
@@ -38,7 +39,12 @@
       {
         "blocks": [
           {
-            "caption": "Most strongly coupled pairs of files, with how each moved since the previous window",
+            "level": "notice",
+            "text": "4 pairs reach the support floor of 5 shared changes (cochange.minSupport), which is too few to rank. The floor was not lowered. No other pair shares 3 to 4 changes.",
+            "type": "notice"
+          },
+          {
+            "caption": "Most strongly coupled pairs of production files, with how each moved since the previous window. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.",
             "columns": [
               {
                 "key": "file",
@@ -82,6 +88,7 @@
                 "label": "Trend"
               }
             ],
+            "emptyText": "None of the 4 pairs that reach the support floor is a pair of production files; they are all in the table of expected pairs.",
             "noun": "pairs",
             "rows": [
               {
@@ -105,16 +112,6 @@
                 "with": "src/web/orders-view.ts"
               },
               {
-                "confidence": 70,
-                "degree": 70,
-                "distance": 0,
-                "file": "src/billing/ledger.test.ts",
-                "reverse": 70,
-                "support": 7,
-                "trend": "→ stable (+10 points)",
-                "with": "src/billing/ledger.ts"
-              },
-              {
                 "confidence": 50,
                 "degree": 50,
                 "distance": 2,
@@ -125,7 +122,68 @@
                 "with": "src/runtime/flags.ts"
               }
             ],
-            "total": 4,
+            "total": 3,
+            "type": "ranked-table"
+          },
+          {
+            "slot": "pair-1",
+            "type": "judgement"
+          },
+          {
+            "slot": "pair-2",
+            "type": "judgement"
+          },
+          {
+            "slot": "pair-3",
+            "type": "judgement"
+          },
+          {
+            "level": "notice",
+            "text": "1 pair is an expected pair (1 a test and the code it tests). Expected pairs are not judged; the table below lists them.",
+            "type": "notice"
+          },
+          {
+            "caption": "Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, or two data files of one format. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.",
+            "columns": [
+              {
+                "key": "file",
+                "label": "File"
+              },
+              {
+                "key": "with",
+                "label": "Changes with"
+              },
+              {
+                "key": "why",
+                "label": "Why expected"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "note": "cochange.minDegree",
+                  "value": 30
+                },
+                "key": "degree",
+                "label": "Degree (%)"
+              },
+              {
+                "align": "right",
+                "key": "support",
+                "label": "Shared changes"
+              }
+            ],
+            "emptyText": "No pair is an expected pair: every pair that reaches the support floor is a pair of production files.",
+            "noun": "pairs",
+            "rows": [
+              {
+                "degree": 70,
+                "file": "src/billing/ledger.test.ts",
+                "support": 7,
+                "why": "a test and the code it tests",
+                "with": "src/billing/ledger.ts"
+              }
+            ],
+            "total": 1,
             "type": "ranked-table"
           },
           {
@@ -157,22 +215,6 @@
               }
             ],
             "type": "facts"
-          },
-          {
-            "slot": "pair-1",
-            "type": "judgement"
-          },
-          {
-            "slot": "pair-2",
-            "type": "judgement"
-          },
-          {
-            "slot": "pair-3",
-            "type": "judgement"
-          },
-          {
-            "slot": "pair-4",
-            "type": "judgement"
           },
           {
             "bins": [
@@ -228,7 +270,7 @@
       {
         "blocks": [
           {
-            "caption": "Sum of coupling per file: the shared changes of all the pairs a file is in",
+            "caption": "Sum of coupling per file: the shared changes of all the production pairs a file is in. Sorted by sum, then coupled files, then path",
             "columns": [
               {
                 "key": "file",
@@ -250,6 +292,7 @@
                 "label": "Strongest degree (%)"
               }
             ],
+            "emptyText": "No production pair reaches the support floor, so no file has a sum of coupling.",
             "noun": "files",
             "rows": [
               {
@@ -263,18 +306,6 @@
                 "partners": 1,
                 "shared": 8,
                 "strongest": 80
-              },
-              {
-                "file": "src/billing/ledger.test.ts",
-                "partners": 1,
-                "shared": 7,
-                "strongest": 70
-              },
-              {
-                "file": "src/billing/ledger.ts",
-                "partners": 1,
-                "shared": 7,
-                "strongest": 70
               },
               {
                 "file": "src/config/flags.ts",
@@ -301,7 +332,7 @@
                 "strongest": 100
               }
             ],
-            "total": 8,
+            "total": 6,
             "type": "ranked-table"
           },
           {
@@ -312,8 +343,6 @@
                 null,
                 null,
                 null,
-                null,
-                null,
                 null
               ],
               [
@@ -322,33 +351,9 @@
                 null,
                 null,
                 null,
-                null,
-                null,
                 null
               ],
               [
-                null,
-                null,
-                null,
-                7,
-                null,
-                null,
-                null,
-                null
-              ],
-              [
-                null,
-                null,
-                7,
-                null,
-                null,
-                null,
-                null,
-                null
-              ],
-              [
-                null,
-                null,
                 null,
                 null,
                 null,
@@ -359,16 +364,12 @@
               [
                 null,
                 null,
-                null,
-                null,
                 5,
                 null,
                 null,
                 null
               ],
               [
-                null,
-                null,
                 null,
                 null,
                 null,
@@ -381,8 +382,6 @@
                 null,
                 null,
                 null,
-                null,
-                null,
                 5,
                 null
               ]
@@ -390,8 +389,6 @@
             "columns": [
               "src/api/orders.ts",
               "src/web/orders-view.ts",
-              "src/billing/ledger.test.ts",
-              "src/billing/ledger.ts",
               "src/config/flags.ts",
               "src/runtime/flags.ts",
               "src/search/index.ts",
@@ -400,14 +397,12 @@
             "rows": [
               "src/api/orders.ts",
               "src/web/orders-view.ts",
-              "src/billing/ledger.test.ts",
-              "src/billing/ledger.ts",
               "src/config/flags.ts",
               "src/runtime/flags.ts",
               "src/search/index.ts",
               "src/search/ranking.ts"
             ],
-            "title": "Shared changes between the top 8 files by sum of coupling",
+            "title": "Shared changes between the top 6 files by sum of coupling",
             "type": "matrix",
             "valueLabel": "shared changes (none where the pair shares fewer than 5, the support floor)"
           }
@@ -626,32 +621,13 @@
     {
       "about": {
         "kind": "pair",
-        "label": "src/billing/ledger.test.ts and src/billing/ledger.ts",
-        "ref": "src/billing/ledger.test.ts <-> src/billing/ledger.ts"
+        "label": "src/config/flags.ts and src/runtime/flags.ts",
+        "ref": "src/config/flags.ts <-> src/runtime/flags.ts"
       },
       "id": "pair-3",
       "maxChars": 320,
       "task": "Is this coupling real (a shared design decision) or incidental (files that change together for another reason)? Start the text with the reason: shared constants, a registry, a protocol, tests, generated code, a data format or another. The verdict names real or incidental and the handoff: locality-review (should the files live together), structure-break (a dependency to break) or leave. Cite only values shown here; say when the evidence makes it tentative.",
       "title": "Judgement: pair 3",
-      "verdicts": [
-        "real-locality-review",
-        "real-structure-break",
-        "real-leave",
-        "incidental-locality-review",
-        "incidental-structure-break",
-        "incidental-leave"
-      ]
-    },
-    {
-      "about": {
-        "kind": "pair",
-        "label": "src/config/flags.ts and src/runtime/flags.ts",
-        "ref": "src/config/flags.ts <-> src/runtime/flags.ts"
-      },
-      "id": "pair-4",
-      "maxChars": 320,
-      "task": "Is this coupling real (a shared design decision) or incidental (files that change together for another reason)? Start the text with the reason: shared constants, a registry, a protocol, tests, generated code, a data format or another. The verdict names real or incidental and the handoff: locality-review (should the files live together), structure-break (a dependency to break) or leave. Cite only values shown here; say when the evidence makes it tentative.",
-      "title": "Judgement: pair 4",
       "verdicts": [
         "real-locality-review",
         "real-structure-break",

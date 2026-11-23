@@ -10,6 +10,7 @@ import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { GOLDEN_DIR } from "./support/golden.ts";
 import { runCochange } from "./support/run.ts";
 import { knowledgeHistory } from "./support/knowledge-scenario.ts";
+import { pairHistory } from "./support/pair-history.ts";
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -265,4 +266,19 @@ test("the html page is accessible, self-contained and themed, and the treemap ma
   expect(html).toContain("<title>src/api/auth.ts: 10 lines held by people, First pattern Single-owner hotspot</title>");
   // Values beside their guidelines carry words as well as the triangle.
   expect(html).toContain("above guideline");
+});
+
+test("a repository with one contributor says that bus-factor and turnover figures do not apply, and leaves out the sections that would be empty", async () => {
+  const solo = pairHistory([["src/a.ts", "src/b.ts", 6]], 1);
+  try {
+    writeFileSync(join(solo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { enabled: true, turnoverRate: 15, trials: 100 } } }));
+    const { code, stdout } = await runCochange(solo.path, ["report", "knowledge", "--format", "md"]);
+    expect(code).toBe(ExitCode.Success);
+    expect(stdout).toContain("The repository has one contributor in the window, so bus-factor and turnover figures do not apply.");
+    expect(stdout).not.toContain("## Bus factor of the top hotspots");
+    expect(stdout).not.toContain("## Simulated turnover");
+    expect(stdout).toContain("Simulated turnover: not listed. The repository has one contributor in the window");
+  } finally {
+    solo.dispose();
+  }
 });

@@ -3,7 +3,9 @@ import { droppedCounts } from "@code-health/cli-kit/dropped-files";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import type { ReportKind } from "@code-health/cli-kit/report-command";
 import type { Block } from "@code-health/report/block";
-import type { Cell } from "@code-health/report/components/ranked-table";
+import type { Cell, RankedTableData } from "@code-health/report/components/ranked-table";
+import { dropEmptySlots } from "@code-health/report/empty-block";
+import { capRows } from "@code-health/report/table-cap";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild } from "@code-health/report/report-model";
 import { excludedCounts, historyWindowText } from "@code-health/history/report-header";
@@ -32,6 +34,21 @@ interface PatternInfo {
   /** The verdicts the slot allows. */
   verdicts: string[];
 }
+
+/** A ranked table cut to its first rows, with the command that lists the rest. */
+const cappedTable = (table: RankedTableData, command: string): Block => ({ type: "ranked-table", ...capRows(table, TOP, command) });
+
+const ONE_CONTRIBUTOR =
+  "The repository has one contributor in the window, so bus-factor and turnover figures do not apply. The blame holds one developer and none who has left. The report omits the bus-factor table and the turnover simulation, and still prints the pattern counts and the knowledge held by people who have left.";
+
+/** A table with no rows that says why: the figure does not apply to a repository with one contributor. */
+const notAppliedTable = (caption: string, consequence: string): Block => ({
+  type: "ranked-table",
+  caption,
+  columns: [{ key: "path", label: "File" }],
+  rows: [],
+  emptyText: `${caption}: not listed. The repository has one contributor in the window, so ${consequence}.`,
+});
 
 const percent = (share: number): number => Math.round(share * 1000) / 10;
 const oneDecimal = (value: number): number => Math.round(value * 10) / 10;
@@ -125,8 +142,7 @@ function patternRow(file: PatternFile, names: Names): Record<string, Cell> {
 
 function patternTable(pattern: Pattern, files: readonly PatternFile[], names: Names): Block {
   const own = files.filter((f) => f.pattern === pattern);
-  return {
-    type: "ranked-table",
+  return cappedTable({
     caption: `Top files whose first pattern is ${PATTERN_INFO[pattern].label.toLowerCase()}, hottest first`,
     noun: "files",
     total: own.length,
@@ -142,8 +158,9 @@ function patternTable(pattern: Pattern, files: readonly PatternFile[], names: Na
       { key: "bus", label: "Bus factor", align: "right" },
       ...holdersColumn(names, "Active developers holding lines"),
     ],
-    rows: own.slice(0, TOP).map((f) => patternRow(f, names)),
-  };
+    emptyText: `No file's first pattern is ${PATTERN_INFO[pattern].label.toLowerCase()}.`,
+    rows: own.map((f) => patternRow(f, names)),
+  }, "cochange abandonment patterns");
 }
 
 function countsTable(p: Prepared, measured: MeasuredPatterns): Block {
@@ -202,7 +219,7 @@ function treemapBlock(measured: MeasuredPatterns): Block[] {
 function busFactorTable(p: Prepared, measured: MeasuredPatterns, names: Names): Block[] {
   const byPath = new Map(measured.files.map((f) => [f.path, f]));
   const hotspots = measured.hotspotRows.filter((r) => r.recommendation === "hotspot" && r.role !== "test").sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
-  const rows = hotspots.slice(0, TOP).map((h): Record<string, Cell> => {
+  const rows = hotspots.map((h): Record<string, Cell> => {
     const f = byPath.get(h.path);
     return {
       path: h.path,
@@ -217,8 +234,7 @@ function busFactorTable(p: Prepared, measured: MeasuredPatterns, names: Names): 
     };
   });
   return [
-    {
-      type: "ranked-table",
+    cappedTable({
       caption: `Bus factor of the top hotspots: the fewest active developers who together hold ${p.settings.busFactorShare}% of a file's lines held by people`,
       noun: "hotspots",
       total: hotspots.length,
@@ -233,9 +249,10 @@ function busFactorTable(p: Prepared, measured: MeasuredPatterns, names: Names): 
         { key: "pattern", label: "First pattern" },
         ...holdersColumn(names, "Active developers holding lines"),
       ],
+      emptyText: "No production file is flagged as a hotspot, so no bus factor is listed.",
       rows,
-    },
-    { type: "notice", level: "notice", text: `A dash in the bus factor column means active developers together hold less than ${p.settings.busFactorShare}% of the file's lines held by people, so the rest sits with developers who have left or with lines nobody holds.` },
+    }, "cochange hotspots"),
+    ...(rows.length === 0 ? [] : [{ type: "notice" as const, level: "notice" as const, text: `A dash in the bus factor column means active developers together hold less than ${p.settings.busFactorShare}% of the file's lines held by people, so the rest sits with developers who have left or with lines nobody holds.` }]),
   ];
 }
 
@@ -261,8 +278,7 @@ async function abandonmentBlocks(p: Prepared, measured: MeasuredPatterns): Promi
         { label: "Developers active, and who have left", value: `${model.developers.filter((d) => d.active).length} active, ${model.developers.filter((d) => !d.active).length} left` },
       ],
     },
-    {
-      type: "ranked-table",
+    cappedTable({
       caption: `Files with the most knowledge held by people who have left, ranked ${p.settings.rank === "hotspot" ? "by abandoned share weighted by hotspot percentile" : "by lines lost"}`,
       noun: "files",
       total: listed.length,
@@ -275,7 +291,8 @@ async function abandonmentBlocks(p: Prepared, measured: MeasuredPatterns): Promi
         { key: "former", label: "Former holders", align: "right" },
         { key: "hotspot", label: "Hotspot" },
       ],
-      rows: listed.slice(0, TOP).map(({ f }): Record<string, Cell> => ({
+      emptyText: "No file has lines held by people who have left.",
+      rows: listed.map(({ f }): Record<string, Cell> => ({
         path: f.path,
         share: percent(f.abandonedShare),
         lines: f.abandonedLines,
@@ -284,7 +301,7 @@ async function abandonmentBlocks(p: Prepared, measured: MeasuredPatterns): Promi
         former: f.formerAuthors,
         hotspot: measured.weights.get(f.path)?.hot === true ? "yes" : "no",
       })),
-    },
+    }, "cochange abandonment current"),
     ...(files.length > listed.length
       ? [{ type: "notice" as const, level: "notice" as const, text: `${files.length - listed.length} of ${files.length} measured files have no lines held by people who have left and are not listed.` }]
       : []),
@@ -332,8 +349,7 @@ async function simulationBlocks(context: CommandContext, p: Prepared): Promise<{
           { label: "Expected further lines lost", value: `${oneDecimal(r.loss.lines.increment.expected)} of ${r.loss.lines.population} lines held by people (${percent(r.loss.lines.increment.expectedShare)}%)` },
         ],
       },
-      {
-        type: "ranked-table",
+      cappedTable({
         caption: "Files most likely to lose their authors within the horizon, hotspot-weighted",
         noun: "files",
         total: r.files.length,
@@ -346,7 +362,8 @@ async function simulationBlocks(context: CommandContext, p: Prepared): Promise<{
           { key: "former", label: "Former holders", align: "right" },
           { key: "findings", label: "Findings" },
         ],
-        rows: r.files.slice(0, TOP).map((f): Record<string, Cell> => ({
+        emptyText: "No file has a probability of losing its authors within the horizon.",
+        rows: r.files.map((f): Record<string, Cell> => ({
           path: f.path,
           probability: percent(f.probability),
           abandoned: f.abandoned ? "yes" : "no",
@@ -355,9 +372,8 @@ async function simulationBlocks(context: CommandContext, p: Prepared): Promise<{
           former: f.formerAuthors,
           findings: f.findings.length === 0 ? null : f.findings.join(", "),
         })),
-      },
-      {
-        type: "ranked-table",
+      }, "cochange abandonment simulate --top 100000"),
+      cappedTable({
         caption: "Components by expected loss, with the tail ratio against its guideline",
         noun: "components",
         total: r.components.length,
@@ -367,8 +383,9 @@ async function simulationBlocks(context: CommandContext, p: Prepared): Promise<{
           { key: "people", label: "Lines held by people", align: "right" },
           { key: "tail", label: "Tail ratio", align: "right", guideline: { value: p.settings.concentratedTailRatio, note: "cochange.knowledge.concentratedTailRatio" } },
         ],
-        rows: r.components.slice(0, TOP).map((c): Record<string, Cell> => ({ path: c.path, expected: oneDecimal(c.expectedLoss), people: c.peopleLines, tail: c.tailRatio })),
-      },
+        emptyText: "No component has an expected loss.",
+        rows: r.components.map((c): Record<string, Cell> => ({ path: c.path, expected: oneDecimal(c.expectedLoss), people: c.peopleLines, tail: c.tailRatio })),
+      }, "cochange abandonment simulate --top 100000"),
       ...notices.map((text): Block => ({ type: "notice", level: "notice", text })),
     ],
   };
@@ -433,12 +450,13 @@ export const knowledge: ReportKind = {
     const measured = await measurePatterns(context, p);
     const { model } = p.knowledge;
     const names: Names = { enabled: context.values.names === true, model, byPath: new Map(model.files.map((f) => [f.path, f])) };
+    const { evidence, window } = p.history;
+    const single = model.developers.length === 1;
     const abandonment = await abandonmentBlocks(p, measured);
-    const simulation = await simulationBlocks(context, p);
+    const simulation = single ? { blocks: [notAppliedTable("Simulated turnover", "no turnover is simulated")], notices: [] } : await simulationBlocks(context, p);
     const withFiles = PATTERNS.filter((pattern) => measured.summary.counts.find((c) => c.pattern === pattern)!.primary > 0);
     const excluded = excludedCounts(p.history.filtersApplied, droppedCounts(), builtinOmissions(), { leftOutOf: "the hotspot ranking" });
-    const { evidence, window } = p.history;
-    return {
+    return dropEmptySlots({
       title: "Knowledge report",
       inputs: { ...commonInputs(p, "report", { names: names.enabled, guidelines: measured.guidelines, complexityReport: measured.complexity.input }) },
       header: {
@@ -447,7 +465,14 @@ export const knowledge: ReportKind = {
         excluded: excluded.filter((e) => e.count > 0),
       },
       sections: [
-        { id: "summary", heading: "Where knowledge is concentrated", blocks: [{ type: "judgement", slot: "summary" }] },
+        {
+          id: "summary",
+          heading: "Where knowledge is concentrated",
+          blocks: [
+            ...(single ? [{ type: "notice" as const, level: "notice" as const, text: ONE_CONTRIBUTOR }] : []),
+            { type: "judgement", slot: "summary" },
+          ],
+        },
         {
           id: "patterns",
           heading: "Knowledge-risk patterns",
@@ -458,12 +483,12 @@ export const knowledge: ReportKind = {
             ...withFiles.flatMap((pattern): Block[] => [patternTable(pattern, measured.files, names), { type: "judgement", slot: slotId(pattern) }]),
           ],
         },
-        { id: "bus-factor", heading: "Bus factor of the top hotspots", blocks: busFactorTable(p, measured, names) },
+        { id: "bus-factor", heading: "Bus factor of the top hotspots", blocks: single ? [notAppliedTable("Bus factor of the top hotspots", "the bus factor is 1 for every file")] : busFactorTable(p, measured, names) },
         { id: "knowledge-lost", heading: "Knowledge lost so far", blocks: abandonment },
         { id: "simulation", heading: "Simulated turnover", blocks: simulation.blocks },
       ],
       limits: limitsOf(p, measured, simulation.notices),
       slots: slots(measured, p),
-    };
+    });
   },
 };

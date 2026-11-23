@@ -132,29 +132,17 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </section>
 <section id="pairs" aria-labelledby="pairs-heading">
 <h2 id="pairs-heading">Coupled pairs</h2>
+<aside class="notice notice" role="note"><strong>Notice:</strong> 4 pairs reach the support floor of 5 shared changes (cochange.minSupport), which is too few to rank. The floor was not lowered. No other pair shares 3 to 4 changes.</aside>
 <table class="ranked">
-<caption>Most strongly coupled pairs of files, with how each moved since the previous window</caption>
+<caption>Most strongly coupled pairs of production files, with how each moved since the previous window. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col">Changes with</th><th scope="col" class="number">Degree (%)</th><th scope="col" class="number">Shared changes</th><th scope="col" class="number">Confidence file to with (%)</th><th scope="col" class="number">Confidence with to file (%)</th><th scope="col" class="number">Distance (folder hops)</th><th scope="col">Trend</th></tr></thead>
 <tbody>
 <tr><td class="number">1</td><td>src/search/index.ts</td><td>src/search/ranking.ts</td><td class="number">100 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">5</td><td class="number">100</td><td class="number">100</td><td class="number">0</td><td>↑ stronger (+100 points, shared no change before)</td></tr>
 <tr><td class="number">2</td><td>src/api/orders.ts</td><td>src/web/orders-view.ts</td><td class="number">80 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">8</td><td class="number">80</td><td class="number">80</td><td class="number">2</td><td>↑ stronger (+60 points)</td></tr>
-<tr><td class="number">3</td><td>src/billing/ledger.test.ts</td><td>src/billing/ledger.ts</td><td class="number">70 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">7</td><td class="number">70</td><td class="number">70</td><td class="number">0</td><td>→ stable (+10 points)</td></tr>
-<tr><td class="number">4</td><td>src/config/flags.ts</td><td>src/runtime/flags.ts</td><td class="number">50 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">5</td><td class="number">50</td><td class="number">50</td><td class="number">2</td><td>↓ weaker (-40 points)</td></tr>
+<tr><td class="number">3</td><td>src/config/flags.ts</td><td>src/runtime/flags.ts</td><td class="number">50 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">5</td><td class="number">50</td><td class="number">50</td><td class="number">2</td><td>↓ weaker (-40 points)</td></tr>
 </tbody>
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Degree (%) 30 (cochange.minDegree), ▲ marks a value above it.</p>
-<table class="facts">
-<caption>Trend of all 4 pairs against 2024-01-01 to 2024-12-31</caption>
-<thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
-<tbody>
-<tr><th scope="row">Stronger</th><td>2</td></tr>
-<tr><th scope="row">Stable</th><td>1</td></tr>
-<tr><th scope="row">Weaker</th><td>1</td></tr>
-<tr><th scope="row">Pairs that shared no change in the previous window</th><td>1</td></tr>
-<tr><th scope="row">Stable means a change in degree of at most</th><td>10 points (guideline cochange.couplingTrendTolerance, a judgement call)</td></tr>
-<tr><th scope="row">Eligible changes in the previous window</th><td>46</td></tr>
-</tbody>
-</table>
 <section class="judgement">
 <h3>Judgement: pair 1</h3>
 <ol>
@@ -170,15 +158,30 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <section class="judgement">
 <h3>Judgement: pair 3</h3>
 <ol>
-<li><strong class="subject">src/billing/ledger.test.ts and src/billing/ledger.ts</strong> <span class="verdict">Verdict: real-locality-review.</span> Shared design decision: the two files change in one commit.</li>
-</ol>
-</section>
-<section class="judgement">
-<h3>Judgement: pair 4</h3>
-<ol>
 <li><strong class="subject">src/config/flags.ts and src/runtime/flags.ts</strong> <span class="verdict">Verdict: real-locality-review.</span> Shared design decision: the two files change in one commit.</li>
 </ol>
 </section>
+<aside class="notice notice" role="note"><strong>Notice:</strong> 1 pair is an expected pair (1 a test and the code it tests). Expected pairs are not judged; the table below lists them.</aside>
+<table class="ranked">
+<caption>Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, or two data files of one format. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col">Changes with</th><th scope="col">Why expected</th><th scope="col" class="number">Degree (%)</th><th scope="col" class="number">Shared changes</th></tr></thead>
+<tbody>
+<tr><td class="number">1</td><td>src/billing/ledger.test.ts</td><td>src/billing/ledger.ts</td><td>a test and the code it tests</td><td class="number">70 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">7</td></tr>
+</tbody>
+</table>
+<p class="legend">Guidelines order and label the rows and decide nothing. Degree (%) 30 (cochange.minDegree), ▲ marks a value above it.</p>
+<table class="facts">
+<caption>Trend of all 4 pairs against 2024-01-01 to 2024-12-31</caption>
+<thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
+<tbody>
+<tr><th scope="row">Stronger</th><td>2</td></tr>
+<tr><th scope="row">Stable</th><td>1</td></tr>
+<tr><th scope="row">Weaker</th><td>1</td></tr>
+<tr><th scope="row">Pairs that shared no change in the previous window</th><td>1</td></tr>
+<tr><th scope="row">Stable means a change in degree of at most</th><td>10 points (guideline cochange.couplingTrendTolerance, a judgement call)</td></tr>
+<tr><th scope="row">Eligible changes in the previous window</th><td>46</td></tr>
+</tbody>
+</table>
 <figure class="chart histogram">
 <figcaption>Distribution of pair degrees (percent)</figcaption>
 <svg role="img" aria-labelledby="distribution-of-pair-degrees-percent-af0b7f-title distribution-of-pair-degrees-percent-af0b7f-desc" viewBox="0 0 640 220" preserveAspectRatio="xMinYMin meet">
@@ -216,117 +219,81 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <section id="sums" aria-labelledby="sums-heading">
 <h2 id="sums-heading">Sum of coupling per file</h2>
 <table class="ranked">
-<caption>Sum of coupling per file: the shared changes of all the pairs a file is in</caption>
+<caption>Sum of coupling per file: the shared changes of all the production pairs a file is in. Sorted by sum, then coupled files, then path</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col" class="number">Sum of shared changes</th><th scope="col" class="number">Coupled files</th><th scope="col" class="number">Strongest degree (%)</th></tr></thead>
 <tbody>
 <tr><td class="number">1</td><td>src/api/orders.ts</td><td class="number">8</td><td class="number">1</td><td class="number">80</td></tr>
 <tr><td class="number">2</td><td>src/web/orders-view.ts</td><td class="number">8</td><td class="number">1</td><td class="number">80</td></tr>
-<tr><td class="number">3</td><td>src/billing/ledger.test.ts</td><td class="number">7</td><td class="number">1</td><td class="number">70</td></tr>
-<tr><td class="number">4</td><td>src/billing/ledger.ts</td><td class="number">7</td><td class="number">1</td><td class="number">70</td></tr>
-<tr><td class="number">5</td><td>src/config/flags.ts</td><td class="number">5</td><td class="number">1</td><td class="number">50</td></tr>
-<tr><td class="number">6</td><td>src/runtime/flags.ts</td><td class="number">5</td><td class="number">1</td><td class="number">50</td></tr>
-<tr><td class="number">7</td><td>src/search/index.ts</td><td class="number">5</td><td class="number">1</td><td class="number">100</td></tr>
-<tr><td class="number">8</td><td>src/search/ranking.ts</td><td class="number">5</td><td class="number">1</td><td class="number">100</td></tr>
+<tr><td class="number">3</td><td>src/config/flags.ts</td><td class="number">5</td><td class="number">1</td><td class="number">50</td></tr>
+<tr><td class="number">4</td><td>src/runtime/flags.ts</td><td class="number">5</td><td class="number">1</td><td class="number">50</td></tr>
+<tr><td class="number">5</td><td>src/search/index.ts</td><td class="number">5</td><td class="number">1</td><td class="number">100</td></tr>
+<tr><td class="number">6</td><td>src/search/ranking.ts</td><td class="number">5</td><td class="number">1</td><td class="number">100</td></tr>
 </tbody>
 </table>
 <figure class="chart matrix">
-<figcaption>Shared changes between the top 8 files by sum of coupling</figcaption>
-<svg role="img" aria-labelledby="shared-changes-between-the-top-8-files-by-sum-of-coupling-21fb04-title shared-changes-between-the-top-8-files-by-sum-of-coupling-21fb04-desc" viewBox="0 0 732 302" preserveAspectRatio="xMinYMin meet">
-<title id="shared-changes-between-the-top-8-files-by-sum-of-coupling-21fb04-title">Shared changes between the top 8 files by sum of coupling</title>
-<desc id="shared-changes-between-the-top-8-files-by-sum-of-coupling-21fb04-desc">A grid of 8 rows by 8 columns holding shared changes (none where the pair shares fewer than 5, the support floor). Each cell prints its value; the table below lists the same values.</desc>
+<figcaption>Shared changes between the top 6 files by sum of coupling</figcaption>
+<svg role="img" aria-labelledby="shared-changes-between-the-top-6-files-by-sum-of-coupling-db42fd-title shared-changes-between-the-top-6-files-by-sum-of-coupling-db42fd-desc" viewBox="0 0 604 250" preserveAspectRatio="xMinYMin meet">
+<title id="shared-changes-between-the-top-6-files-by-sum-of-coupling-db42fd-title">Shared changes between the top 6 files by sum of coupling</title>
+<desc id="shared-changes-between-the-top-6-files-by-sum-of-coupling-db42fd-desc">A grid of 6 rows by 6 columns holding shared changes (none where the pair shares fewer than 5, the support floor). Each cell prints its value; the table below lists the same values.</desc>
 <text x="212" y="84" transform="rotate(-35 212 84)">src/api/orders.ts</text>
 <text x="276" y="84" transform="rotate(-35 276 84)">src/web/orders-view.ts</text>
-<text x="340" y="84" transform="rotate(-35 340 84)">src/billing/ledger.test.ts</text>
-<text x="404" y="84" transform="rotate(-35 404 84)">src/billing/ledger.ts</text>
-<text x="468" y="84" transform="rotate(-35 468 84)">src/config/flags.ts</text>
-<text x="532" y="84" transform="rotate(-35 532 84)">src/runtime/flags.ts</text>
-<text x="596" y="84" transform="rotate(-35 596 84)">src/search/index.ts</text>
-<text x="660" y="84" transform="rotate(-35 660 84)">src/search/ranking.ts</text>
+<text x="340" y="84" transform="rotate(-35 340 84)">src/config/flags.ts</text>
+<text x="404" y="84" transform="rotate(-35 404 84)">src/runtime/flags.ts</text>
+<text x="468" y="84" transform="rotate(-35 468 84)">src/search/index.ts</text>
+<text x="532" y="84" transform="rotate(-35 532 84)">src/search/ranking.ts</text>
 <text x="174" y="107" text-anchor="end">src/api/orders.ts</text>
 <text x="174" y="133" text-anchor="end">src/web/orders-view.ts</text>
-<text x="174" y="159" text-anchor="end">src/billing/ledger.test.ts</text>
-<text x="174" y="185" text-anchor="end">src/billing/ledger.ts</text>
-<text x="174" y="211" text-anchor="end">src/config/flags.ts</text>
-<text x="174" y="237" text-anchor="end">src/runtime/flags.ts</text>
-<text x="174" y="263" text-anchor="end">src/search/index.ts</text>
-<text x="174" y="289" text-anchor="end">src/search/ranking.ts</text>
+<text x="174" y="159" text-anchor="end">src/config/flags.ts</text>
+<text x="174" y="185" text-anchor="end">src/runtime/flags.ts</text>
+<text x="174" y="211" text-anchor="end">src/search/index.ts</text>
+<text x="174" y="237" text-anchor="end">src/search/ranking.ts</text>
 <g class="cell band-none"><rect x="180" y="90" width="62" height="24"/><text x="211" y="106" text-anchor="middle">none</text></g>
 <g class="cell band-5"><rect x="244" y="90" width="62" height="24"/><text x="275" y="106" text-anchor="middle">8</text></g>
 <g class="cell band-none"><rect x="308" y="90" width="62" height="24"/><text x="339" y="106" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="372" y="90" width="62" height="24"/><text x="403" y="106" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="436" y="90" width="62" height="24"/><text x="467" y="106" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="500" y="90" width="62" height="24"/><text x="531" y="106" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="90" width="62" height="24"/><text x="595" y="106" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="90" width="62" height="24"/><text x="659" y="106" text-anchor="middle">none</text></g>
 <g class="cell band-5"><rect x="180" y="116" width="62" height="24"/><text x="211" y="132" text-anchor="middle">8</text></g>
 <g class="cell band-none"><rect x="244" y="116" width="62" height="24"/><text x="275" y="132" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="308" y="116" width="62" height="24"/><text x="339" y="132" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="372" y="116" width="62" height="24"/><text x="403" y="132" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="436" y="116" width="62" height="24"/><text x="467" y="132" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="500" y="116" width="62" height="24"/><text x="531" y="132" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="116" width="62" height="24"/><text x="595" y="132" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="116" width="62" height="24"/><text x="659" y="132" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="180" y="142" width="62" height="24"/><text x="211" y="158" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="244" y="142" width="62" height="24"/><text x="275" y="158" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="308" y="142" width="62" height="24"/><text x="339" y="158" text-anchor="middle">none</text></g>
-<g class="cell band-4"><rect x="372" y="142" width="62" height="24"/><text x="403" y="158" text-anchor="middle">7</text></g>
+<g class="cell band-1"><rect x="372" y="142" width="62" height="24"/><text x="403" y="158" text-anchor="middle">5</text></g>
 <g class="cell band-none"><rect x="436" y="142" width="62" height="24"/><text x="467" y="158" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="500" y="142" width="62" height="24"/><text x="531" y="158" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="142" width="62" height="24"/><text x="595" y="158" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="142" width="62" height="24"/><text x="659" y="158" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="180" y="168" width="62" height="24"/><text x="211" y="184" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="244" y="168" width="62" height="24"/><text x="275" y="184" text-anchor="middle">none</text></g>
-<g class="cell band-4"><rect x="308" y="168" width="62" height="24"/><text x="339" y="184" text-anchor="middle">7</text></g>
+<g class="cell band-1"><rect x="308" y="168" width="62" height="24"/><text x="339" y="184" text-anchor="middle">5</text></g>
 <g class="cell band-none"><rect x="372" y="168" width="62" height="24"/><text x="403" y="184" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="436" y="168" width="62" height="24"/><text x="467" y="184" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="500" y="168" width="62" height="24"/><text x="531" y="184" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="168" width="62" height="24"/><text x="595" y="184" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="168" width="62" height="24"/><text x="659" y="184" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="180" y="194" width="62" height="24"/><text x="211" y="210" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="244" y="194" width="62" height="24"/><text x="275" y="210" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="308" y="194" width="62" height="24"/><text x="339" y="210" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="372" y="194" width="62" height="24"/><text x="403" y="210" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="436" y="194" width="62" height="24"/><text x="467" y="210" text-anchor="middle">none</text></g>
 <g class="cell band-1"><rect x="500" y="194" width="62" height="24"/><text x="531" y="210" text-anchor="middle">5</text></g>
-<g class="cell band-none"><rect x="564" y="194" width="62" height="24"/><text x="595" y="210" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="194" width="62" height="24"/><text x="659" y="210" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="180" y="220" width="62" height="24"/><text x="211" y="236" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="244" y="220" width="62" height="24"/><text x="275" y="236" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="308" y="220" width="62" height="24"/><text x="339" y="236" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="372" y="220" width="62" height="24"/><text x="403" y="236" text-anchor="middle">none</text></g>
 <g class="cell band-1"><rect x="436" y="220" width="62" height="24"/><text x="467" y="236" text-anchor="middle">5</text></g>
 <g class="cell band-none"><rect x="500" y="220" width="62" height="24"/><text x="531" y="236" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="220" width="62" height="24"/><text x="595" y="236" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="220" width="62" height="24"/><text x="659" y="236" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="180" y="246" width="62" height="24"/><text x="211" y="262" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="244" y="246" width="62" height="24"/><text x="275" y="262" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="308" y="246" width="62" height="24"/><text x="339" y="262" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="372" y="246" width="62" height="24"/><text x="403" y="262" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="436" y="246" width="62" height="24"/><text x="467" y="262" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="500" y="246" width="62" height="24"/><text x="531" y="262" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="246" width="62" height="24"/><text x="595" y="262" text-anchor="middle">none</text></g>
-<g class="cell band-1"><rect x="628" y="246" width="62" height="24"/><text x="659" y="262" text-anchor="middle">5</text></g>
-<g class="cell band-none"><rect x="180" y="272" width="62" height="24"/><text x="211" y="288" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="244" y="272" width="62" height="24"/><text x="275" y="288" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="308" y="272" width="62" height="24"/><text x="339" y="288" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="372" y="272" width="62" height="24"/><text x="403" y="288" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="436" y="272" width="62" height="24"/><text x="467" y="288" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="500" y="272" width="62" height="24"/><text x="531" y="288" text-anchor="middle">none</text></g>
-<g class="cell band-1"><rect x="564" y="272" width="62" height="24"/><text x="595" y="288" text-anchor="middle">5</text></g>
-<g class="cell band-none"><rect x="628" y="272" width="62" height="24"/><text x="659" y="288" text-anchor="middle">none</text></g>
 </svg>
 <table>
-<caption>Shared changes between the top 8 files by sum of coupling: shared changes (none where the pair shares fewer than 5, the support floor)</caption>
-<thead><tr><th scope="col"></th><th scope="col" class="number">src/api/orders.ts</th><th scope="col" class="number">src/web/orders-view.ts</th><th scope="col" class="number">src/billing/ledger.test.ts</th><th scope="col" class="number">src/billing/ledger.ts</th><th scope="col" class="number">src/config/flags.ts</th><th scope="col" class="number">src/runtime/flags.ts</th><th scope="col" class="number">src/search/index.ts</th><th scope="col" class="number">src/search/ranking.ts</th></tr></thead>
+<caption>Shared changes between the top 6 files by sum of coupling: shared changes (none where the pair shares fewer than 5, the support floor)</caption>
+<thead><tr><th scope="col"></th><th scope="col" class="number">src/api/orders.ts</th><th scope="col" class="number">src/web/orders-view.ts</th><th scope="col" class="number">src/config/flags.ts</th><th scope="col" class="number">src/runtime/flags.ts</th><th scope="col" class="number">src/search/index.ts</th><th scope="col" class="number">src/search/ranking.ts</th></tr></thead>
 <tbody>
-<tr><th scope="row">src/api/orders.ts</th><td class="number">none</td><td class="number">8</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/web/orders-view.ts</th><td class="number">8</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/billing/ledger.test.ts</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">7</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/billing/ledger.ts</th><td class="number">none</td><td class="number">none</td><td class="number">7</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/config/flags.ts</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">5</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/runtime/flags.ts</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">5</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/search/index.ts</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">5</td></tr>
-<tr><th scope="row">src/search/ranking.ts</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">5</td><td class="number">none</td></tr>
+<tr><th scope="row">src/api/orders.ts</th><td class="number">none</td><td class="number">8</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
+<tr><th scope="row">src/web/orders-view.ts</th><td class="number">8</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
+<tr><th scope="row">src/config/flags.ts</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">5</td><td class="number">none</td><td class="number">none</td></tr>
+<tr><th scope="row">src/runtime/flags.ts</th><td class="number">none</td><td class="number">none</td><td class="number">5</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
+<tr><th scope="row">src/search/index.ts</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">5</td></tr>
+<tr><th scope="row">src/search/ranking.ts</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">5</td><td class="number">none</td></tr>
 </tbody>
 </table>
 <p class="legend">Colour is shared changes (none where the pair shares fewer than 5, the support floor) in five bands, and each cell prints its value: band 1: 5 to 5.6, band 2: 5.6 to 6.2, band 3: 6.2 to 6.8, band 4: 6.8 to 7.4, band 5: 7.4 to 8. Hatched cells have no value.</p>
@@ -375,6 +342,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <h2 id="limits-heading">Limits</h2>
 <ul>
 <li>Guidelines order and label results. They are heuristics for investigation and decide nothing.</li>
+<li>A pair where either side is a test, a fixture or a golden file, or where both sides are data or configuration files of one format, is an expected pair. It is listed in its own table and not judged.</li>
 <li>Coupling counts changes that touched both files in the window, over changes at or below the changeset limit; a larger change counts on neither side. A pair that shares fewer than 5 changes (the support floor) is not listed.</li>
 <li>Files that change together may share a design decision, or only a shared constant, a registry, a protocol, tests or generated code. The numbers cannot tell these apart; the judgements say which it is.</li>
 <li>Each table shows the top rows of its result and says how many rows it leaves out; <code>cochange coupling</code> and <code>cochange clusters</code> print the rest.</li>

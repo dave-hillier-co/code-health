@@ -89,7 +89,7 @@ export async function couplingOutput(context: CommandContext, history: LoadedHis
   const rows = counts.pairs
     .filter((pair) => focus === undefined || pair.a === focus || pair.b === focus)
     .map((pair) => describe(pair, focus, settings, minDegree, previous === undefined ? undefined : pairTrend(pair, previous.index, tolerance), (path) => (isCodePath(path, languages) ? "code" : "non-code")))
-    .sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
+    .sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || y.support - x.support || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
 
   return {
     inputs: {
