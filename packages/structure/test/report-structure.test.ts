@@ -125,7 +125,7 @@ test("notes render to html and markdown that match the goldens", async () => {
 test("the page shows the cycles with their breaking sets, the chart with its table, the layer violations, the census and the hubs", async () => {
   const document = await slots();
   const { stdout } = await run("--notes", writeNotes("notes-p.json", fullNotes(document)), "--format", "md");
-  for (const text of ["## Import cycles", "Cycle 1: the breaking set", "## Layer violations", "src/core/model.ts", "## Stability", "Packages by instability and abstractness", "zone of pain", "## Decoupling mechanisms in use", "## Hubs"]) {
+  for (const text of ["## Import cycles", "Cycle 1: the breaking set", "## Layer violations", "src/core/model.ts", "## Stability", "Packages by instability and abstractness", "zone of pain", "## Decoupling mechanisms in use", "**Hubs:** Registration hubs: files every feature edits: no rows."]) {
     expect(stdout, text).toContain(text);
   }
   expect(stdout).toContain("packages/p3");

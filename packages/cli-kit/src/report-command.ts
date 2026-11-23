@@ -9,6 +9,7 @@ import { makeStamp } from "@code-health/report/stamp";
 import type { OptionSpec } from "./args.ts";
 import { usageError } from "./errors.ts";
 import type { Command, CommandContext, CommandOutput, SubcommandHelp } from "./run-cli.ts";
+import { cachedBuild } from "./report-build-cache.ts";
 import { serialise } from "./serialise.ts";
 
 /** One kind of report a plugin offers: the word typed after `report`, and the data and slots it builds. */
@@ -27,6 +28,13 @@ export interface ReportKind {
    * in `inputs`.
    */
   build(context: CommandContext): ReportBuild | Promise<ReportBuild>;
+  /**
+   * Whatever else the build depends on that is not HEAD, the config, the arguments, the stored results, the
+   * history store or the identity files, which the kit already checks (see `report-build-cache.ts`): the commits
+   * a branch name resolves to, the content of a file named by an option. Return plain JSON; the stored build is
+   * reused only when it is equal. Cheap: it runs on every call, before the build is looked up.
+   */
+  dependsOn?(context: CommandContext): unknown | Promise<unknown>;
 }
 
 const protocolOptions = {
@@ -35,6 +43,7 @@ const protocolOptions = {
   format: { type: "string" },
   out: { type: "string" },
   compact: { type: "boolean" },
+  "no-cache": { type: "boolean" },
 } satisfies OptionSpec;
 
 const protocolOptionHelp: Record<string, string> = {
@@ -43,6 +52,7 @@ const protocolOptionHelp: Record<string, string> = {
   format: "html or md. md without --notes is a data-only draft; html needs --notes",
   out: "write the output to this file instead of stdout",
   compact: "md only: the short header used in a pull request comment",
+  "no-cache": "compute the report and its analyses again instead of reading what an earlier run stored, and store the new report build",
 };
 
 const protocolOptionNames = Object.keys(protocolOptions);
@@ -52,13 +62,14 @@ const protocolOptionNames = Object.keys(protocolOptions);
  * the slots), and `--notes FILE --format html|md` renders the agent's notes. Rendering exits with 2, naming every
  * problem, when the stamp does not match, a slot has no entry or an empty one, an entry names no slot, or a
  * shape or length is wrong. `--format md` alone prints a draft with the slots marked "not yet written".
- * A plugin adds a report by adding a kind here.
+ * The build is stored under `.cache/code-health/report-builds/` and read back when the second step runs, so
+ * rendering does not compute the report again (`--no-cache` computes it again). A plugin adds a report by adding a kind here.
  */
 export function reportCommand(kinds: Record<string, ReportKind>): Command {
   const names = Object.keys(kinds);
   const kindOptions = Object.assign({}, ...Object.values(kinds).map((k) => k.options ?? {})) as OptionSpec;
   const subcommands: Record<string, SubcommandHelp> = Object.fromEntries(
-    Object.entries(kinds).map(([name, kind]): [string, SubcommandHelp] => [name, { summary: kind.summary, options: [...protocolOptionNames, ...Object.keys(kind.options ?? {})] }]),
+    Object.entries(kinds).map(([name, kind]): [string, SubcommandHelp] => [name, { summary: kind.summary, options: [...new Set([...protocolOptionNames, ...Object.keys(kind.options ?? {})])] }]),
   );
   return {
     summary: "Write a report: --slots prints its data and judgement slots, --notes renders the notes as html or markdown",
@@ -72,7 +83,8 @@ export function reportCommand(kinds: Record<string, ReportKind>): Command {
       const kind = kinds[name];
       if (kind === undefined) throw usageError(`unknown report "${name}"; reports: ${names.join(", ")}`);
       const request = readRequest(context);
-      const build = await kind.build({ ...context, positionals: args });
+      const own = { ...context, positionals: args };
+      const build = await cachedBuild(own, name, kind.dependsOn === undefined ? undefined : () => kind.dependsOn!(own), async () => kind.build(own));
       const report: Report = {
         ...build,
         kind: name,

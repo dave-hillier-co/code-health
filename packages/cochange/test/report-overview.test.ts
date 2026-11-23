@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Ajv2020Module from "ajv/dist/2020.js";
@@ -79,6 +79,21 @@ test("--slots prints the stamp, the data and the slots, and matches its schema",
   expect(document.slots[0].choose.max).toBe(3);
   expect(document.data.header).toMatchObject({ repo: "repo", date: "2024-06-01" });
   expectGolden("report.overview.slots.json", masked(stdout, document.stamp.config));
+});
+
+test("--slots stores the build, and rendering reads it instead of computing the report again", async () => {
+  const builds = join(repo.path, ".cache", "code-health", "report-builds");
+  const document = await slots();
+  expect(readdirSync(builds).filter((name) => name.startsWith("overview."))).toHaveLength(1);
+  const file = join(builds, readdirSync(builds).find((name) => name.startsWith("overview."))!);
+  const stored = JSON.parse(readFileSync(file, "utf8"));
+  stored.build.title = "Title from the stored build";
+  writeFileSync(file, JSON.stringify(stored));
+  const rendered = await run("--notes", writeNotes("notes-cache.json", fullNotes(document)), "--format", "md");
+  expect(rendered.stdout).toContain("# Title from the stored build");
+  const again = await run("--notes", writeNotes("notes-cache.json", fullNotes(document)), "--format", "md", "--no-cache");
+  expect(again.stdout).toContain("# Code health overview");
+  expect(existsSync(file)).toBe(true);
 });
 
 test("--slots twice gives the same bytes", async () => {

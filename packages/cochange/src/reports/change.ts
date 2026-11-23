@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
 import { builtinOmissions } from "@code-health/cli-kit/builtin-excludes";
 import { usageError } from "@code-health/cli-kit/errors";
 import { droppedCounts } from "@code-health/cli-kit/dropped-files";
@@ -478,6 +481,17 @@ export const change: ReportKind = {
   optionHelp: {
     evidence: "complexity check, complexity diff or structure check output (JSON) for this change's base; repeat for several files",
     "no-refresh": "read the history cache without bringing it up to date",
+  },
+  async dependsOn(context: CommandContext) {
+    const resolved = await resolveRange(context.repo.root, { range: context.positionals[0], mainBranch: readRiskSettings(context.config).mainBranch, worktree: false });
+    const files = evidenceFiles(context).map((file) => {
+      try {
+        return createHash("sha256").update(readFileSync(isAbsolute(file) ? file : join(context.repo.root, file))).digest("hex");
+      } catch {
+        return null;
+      }
+    });
+    return { base: resolved.base, head: resolved.head, evidence: files };
   },
   async build(context: CommandContext): Promise<ReportBuild> {
     if (context.positionals.length > 1) throw usageError("usage: report change [BASE[..HEAD]] [--evidence FILE...]");

@@ -46,6 +46,7 @@ describe("a section of empty blocks", () => {
     expect(emptySection({ ...section, blocks: [table(0), table(2)] })).toBeUndefined();
     expect(emptySection({ ...section, blocks: [table(0), { type: "judgement", slot: "j" }] })).toBeUndefined();
     expect(emptySection({ id: "x", heading: "X", blocks: [{ type: "notice", level: "notice", text: "t" }] })).toBeUndefined();
+    expect(emptySection({ ...section, blocks: [table(0), { type: "notice", level: "limit", text: "Omitted 2 files." }] })).toBe("Hubs: no rows. Omitted 2 files.");
   });
 
   it("renders as one line in both formats and keeps the anchor", () => {

@@ -154,7 +154,17 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<p>.mjs *)
 
 ### Adding a report
 
-A plugin adds a report as one entry in the `reportCommand({ ... })` registration of its `commands/report.ts` (see `packages/cochange/src/commands/report.ts`). The entry is a `ReportKind` from `@code-health/cli-kit/report-command`: its `build` returns the title, the stamp inputs, the header facts, sections of blocks (components from `@code-health/report`), the fixed limits and the slots. Test it with a real git fixture end to end: `--slots`, then notes, then HTML and Markdown, plus the refusal cases, as `packages/cochange/test/report-overview.test.ts` does.
+A plugin adds a report as one entry in the `reportCommand({ ... })` registration of its `commands/report.ts` (see `packages/cochange/src/commands/report.ts`). The entry is a `ReportKind` from `@code-health/cli-kit/report-command`: its `build` returns the title, the stamp inputs, the header facts, sections of blocks (components from `@code-health/report`), the fixed limits and the slots. Three helpers keep the page short and honest, all from `@code-health/report`:
+
+- **Empty content.** A `ranked-table` with no rows and a `stability-chart` with fewer than 3 points print one notice line, and a section whose blocks are all empty or notices prints as one line. Set `emptyText` on the block to say why it is empty ("No hubs: no file reached 2 of the 4 signals."); without it the line is "<caption>: no rows.".
+- **Slots for empty content.** Return `dropEmptySlots({ title, inputs, header, sections, limits, slots })` from `empty-block.ts` instead of the plain build. It removes each `judgement` block, and its slot, that follows only empty blocks in its section (back to the previous judgement block or the section start; notices do not count), so the agent is never asked to judge nothing. A judgement with no block before it, such as a section's summary, is kept.
+- **Capping a long table.** `capRows(table, max, command)` from `table-cap.ts` keeps the first `max` rows and sets `total` and `fullIn`, so the table prints "N of M shown; the rest are in `<command>` output." Name the command that lists every row, as the user would type it. A cap that leaves rows out must always say so.
+
+Shared header text lives in `packages/history/src/report-header.ts`: `excludedCounts(filters, droppedCounts(), builtinOmissions(), { leftOutOf?, oversizedNote? })` for the header's excluded list, `historyWindowText(evidence, window, suffix?)` for its history window and `isoDate`. Do not copy them into a report.
+
+The kit stores each kind's build, so a render reads what `--slots` computed (see "Stored build" in `docs/specs/suite.md`). A build that depends on something the kit does not check, such as a branch name or a file named by an option, returns it from `ReportKind.dependsOn` (see the change report); the result must be plain JSON and cheap to compute.
+
+Test it with a real git fixture end to end: `--slots`, then notes, then HTML and Markdown, plus the refusal cases, as `packages/cochange/test/report-overview.test.ts` does.
 
 ## Adding a language
 

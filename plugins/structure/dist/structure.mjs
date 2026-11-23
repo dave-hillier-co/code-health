@@ -762,7 +762,7 @@ var GitError = class extends Error {
   }
 };
 function runGit(cwd, args2, options2 = {}) {
-  return new Promise((resolve2, reject) => {
+  return new Promise((resolve3, reject) => {
     const child2 = spawn("git", args2, {
       cwd,
       env: {
@@ -784,7 +784,7 @@ function runGit(cwd, args2, options2 = {}) {
     child2.stdin.on("error", () => {
     });
     child2.on("close", (code) => {
-      if (code === 0) resolve2(Buffer.concat(out2).toString("utf8"));
+      if (code === 0) resolve3(Buffer.concat(out2).toString("utf8"));
       else reject(new GitError(args2, code, Buffer.concat(err2).toString("utf8")));
     });
     child2.stdin.end(options2.input ?? "");
@@ -1136,7 +1136,7 @@ async function readBlobHeads(repoPath, blobs) {
   return heads;
 }
 function catFileBatch(cwd, input) {
-  return new Promise((resolve2, reject) => {
+  return new Promise((resolve3, reject) => {
     const child2 = spawn2("git", ["cat-file", "--batch"], {
       cwd,
       env: { ...process.env, LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" },
@@ -1147,12 +1147,12 @@ function catFileBatch(cwd, input) {
     child2.on("error", reject);
     child2.stdin.on("error", () => {
     });
-    child2.on("close", (code) => code === 0 ? resolve2(Buffer.concat(out2)) : reject(new Error(`git cat-file --batch failed (${code})`)));
+    child2.on("close", (code) => code === 0 ? resolve3(Buffer.concat(out2)) : reject(new Error(`git cat-file --batch failed (${code})`)));
     child2.stdin.end(input);
   });
 }
-async function generatedByHeader(repoPath, sources, read) {
-  const reader = read ?? ((missing2) => readBlobHeads(repoPath, [...new Set(missing2.map((m) => m.blob))]));
+async function generatedByHeader(repoPath, sources, read2) {
+  const reader = read2 ?? ((missing2) => readBlobHeads(repoPath, [...new Set(missing2.map((m) => m.blob))]));
   const missing = sources.filter((source) => !verdicts.has(source.blob));
   if (missing.length > 0) {
     const heads = await reader(missing);
@@ -2145,7 +2145,7 @@ function sortedMap(entries) {
   return new Map(entries.sort(([a], [b]) => Buffer.compare(Buffer.from(a), Buffer.from(b))));
 }
 function git2(cwd, args2, input) {
-  return new Promise((resolve2, reject) => {
+  return new Promise((resolve3, reject) => {
     const child2 = spawn3("git", args2, {
       cwd,
       env: {
@@ -2165,7 +2165,7 @@ function git2(cwd, args2, input) {
     child2.stdin.on("error", () => {
     });
     child2.on("close", (code) => {
-      if (code === 0) resolve2(Buffer.concat(out2));
+      if (code === 0) resolve3(Buffer.concat(out2));
       else reject(new Error(`git ${args2.join(" ")} failed (${code}): ${Buffer.concat(err2).toString("utf8").trim()}`));
     });
     child2.stdin.end(input ?? "");
@@ -3869,13 +3869,13 @@ async function Module2(moduleArg = {}) {
       }
       readAsync = /* @__PURE__ */ __name(async (url) => {
         if (isFileURI(url)) {
-          return new Promise((resolve2, reject) => {
+          return new Promise((resolve3, reject) => {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
             xhr.responseType = "arraybuffer";
             xhr.onload = () => {
               if (xhr.status == 200 || xhr.status == 0 && xhr.response) {
-                resolve2(xhr.response);
+                resolve3(xhr.response);
                 return;
               }
               reject(xhr.status);
@@ -4071,9 +4071,9 @@ async function Module2(moduleArg = {}) {
     __name(receiveInstantiationResult, "receiveInstantiationResult");
     var info2 = getWasmImports();
     if (Module["instantiateWasm"]) {
-      return new Promise((resolve2, reject) => {
+      return new Promise((resolve3, reject) => {
         Module["instantiateWasm"](info2, (mod, inst) => {
-          resolve2(receiveInstance(mod, inst));
+          resolve3(receiveInstance(mod, inst));
         });
       });
     }
@@ -5406,8 +5406,8 @@ async function Module2(moduleArg = {}) {
   if (runtimeInitialized) {
     moduleRtn = Module;
   } else {
-    moduleRtn = new Promise((resolve2, reject) => {
-      readyPromiseResolve = resolve2;
+    moduleRtn = new Promise((resolve3, reject) => {
+      readyPromiseResolve = resolve3;
       readyPromiseReject = reject;
     });
   }
@@ -16944,16 +16944,16 @@ function parseJson(text3) {
 }
 var record = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
 var strings2 = (value) => Array.isArray(value) ? value.filter((v) => typeof v === "string") : [];
-async function npmPackages(paths, read, ignored) {
+async function npmPackages(paths, read2, ignored) {
   const manifests = /* @__PURE__ */ new Map();
   for (const path of paths.filter((p) => baseOf(p) === "package.json" && !p.split("/").includes("node_modules"))) {
-    const json = parseJson(await read(path));
+    const json = parseJson(await read2(path));
     if (json) manifests.set(dirOf(path), json);
   }
   const root = manifests.get(".");
   const workspaces = record(root?.workspaces);
   let globs = [...strings2(root?.workspaces), ...strings2(workspaces.packages)];
-  const pnpm = await read("pnpm-workspace.yaml");
+  const pnpm = await read2("pnpm-workspace.yaml");
   if (pnpm !== void 0) globs = [...globs, ...pnpmPackages(pnpm)];
   let dirs;
   if (globs.length > 0) {
@@ -17009,12 +17009,12 @@ function xmlAttribute(tag, attribute2) {
 function xmlElement(text3, element2) {
   return new RegExp(`<${element2}>\\s*([^<]*?)\\s*</${element2}>`, "i").exec(text3)?.[1];
 }
-async function dotnetPackages(paths, read, ignored) {
+async function dotnetPackages(paths, read2, ignored) {
   const result = [];
   for (const path of paths.filter((p) => /\.(cs|fs|vb)proj$/.test(p)).sort(compareIds)) {
     const dir = dirOf(path);
     if (ignored(dir)) continue;
-    const text3 = xmlWithoutComments(await read(path) ?? "");
+    const text3 = xmlWithoutComments(await read2(path) ?? "");
     const name14 = baseOf(path).replace(/\.(cs|fs|vb)proj$/, "");
     const dependencies = [];
     for (const tag of text3.match(/<ProjectReference\b[^>]*>/gi) ?? []) {
@@ -17045,12 +17045,12 @@ async function dotnetPackages(paths, read, ignored) {
   return result;
 }
 var cmakeKeywords = /* @__PURE__ */ new Set(["PUBLIC", "PRIVATE", "INTERFACE", "DEBUG", "OPTIMIZED", "GENERAL"]);
-async function cmakePackages(paths, read, ignored) {
+async function cmakePackages(paths, read2, ignored) {
   const result = [];
   for (const path of paths.filter((p) => baseOf(p) === "CMakeLists.txt").sort(compareIds)) {
     const dir = dirOf(path);
     if (ignored(dir)) continue;
-    const text3 = (await read(path))?.replace(/#.*$/gm, "") ?? "";
+    const text3 = (await read2(path))?.replace(/#.*$/gm, "") ?? "";
     const targets = [];
     for (const match of text3.matchAll(/\badd_(library|executable)\s*\(\s*([^\s)]+)([^)]*)\)/gi)) {
       const [, kind, name14, rest] = match;
@@ -17084,12 +17084,12 @@ async function cmakePackages(paths, read, ignored) {
   }
   return result;
 }
-async function gradlePackages(paths, read, ignored) {
+async function gradlePackages(paths, read2, ignored) {
   const fileSet = new Set(paths);
   const result = [];
   for (const settings of paths.filter((p) => /(^|\/)settings\.gradle(\.kts)?$/.test(p)).sort(compareIds)) {
     const base = dirOf(settings);
-    const text3 = (await read(settings))?.replace(/\/\/.*$/gm, "") ?? "";
+    const text3 = (await read2(settings))?.replace(/\/\/.*$/gm, "") ?? "";
     const projects = /* @__PURE__ */ new Set();
     for (const statement of text3.matchAll(/\binclude\b\s*\(?((?:\s*["'][^"']+["']\s*,?)+)/g)) {
       for (const quoted of statement[1].matchAll(/["']([^"']+)["']/g)) projects.add(quoted[1]);
@@ -17098,7 +17098,7 @@ async function gradlePackages(paths, read, ignored) {
       const dir = child(base, project.replace(/^:/, "").replaceAll(":", "/"));
       const buildFile = ["build.gradle.kts", "build.gradle"].map((f) => child(dir, f)).find((f) => fileSet.has(f));
       if (buildFile === void 0 || ignored(dir)) continue;
-      const build = (await read(buildFile))?.replace(/\/\/.*$/gm, "") ?? "";
+      const build = (await read2(buildFile))?.replace(/\/\/.*$/gm, "") ?? "";
       const dependencies = [];
       for (const match of build.matchAll(/\b([A-Za-z]+)\s*\(?\s*project\s*\(\s*(?:path\s*[:=]\s*)?["']([^"']+)["']/g)) {
         const configuration = match[1];
@@ -17122,12 +17122,12 @@ async function gradlePackages(paths, read, ignored) {
   }
   return result;
 }
-async function mavenPackages(paths, read, ignored) {
+async function mavenPackages(paths, read2, ignored) {
   const result = [];
   for (const path of paths.filter((p) => baseOf(p) === "pom.xml").sort(compareIds)) {
     const dir = dirOf(path);
     if (ignored(dir)) continue;
-    const text3 = xmlWithoutComments(await read(path) ?? "").replace(/<parent>[\s\S]*?<\/parent>/g, "").replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, "").replace(/<build>[\s\S]*?<\/build>/g, "").replace(/<profiles>[\s\S]*?<\/profiles>/g, "");
+    const text3 = xmlWithoutComments(await read2(path) ?? "").replace(/<parent>[\s\S]*?<\/parent>/g, "").replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, "").replace(/<build>[\s\S]*?<\/build>/g, "").replace(/<profiles>[\s\S]*?<\/profiles>/g, "");
     const artifact = xmlElement(text3.replace(/<dependencies>[\s\S]*?<\/dependencies>/g, ""), "artifactId");
     const packaging = xmlElement(text3, "packaging") ?? "jar";
     if (artifact === void 0 || packaging === "pom" && /<modules>/.test(text3)) continue;
@@ -17155,12 +17155,12 @@ async function mavenPackages(paths, read, ignored) {
 var normalisePython = (name14) => name14.toLowerCase().replace(/[-_.]+/g, "-");
 var pythonName = (requirement) => /^[A-Za-z0-9][A-Za-z0-9._-]*/.exec(requirement.trim())?.[0];
 var devExtras = /* @__PURE__ */ new Set(["dev", "test", "tests", "testing", "lint", "docs", "typing"]);
-async function pythonPackages(paths, read, ignored) {
+async function pythonPackages(paths, read2, ignored) {
   const result = [];
   for (const path of paths.filter((p) => baseOf(p) === "pyproject.toml").sort(compareIds)) {
     const dir = dirOf(path);
     if (ignored(dir)) continue;
-    const toml = parseToml(await read(path) ?? "");
+    const toml = parseToml(await read2(path) ?? "");
     const project = toml.project ?? {};
     const poetry = toml.tool?.poetry ?? {};
     const name14 = project.name ?? poetry.name;
@@ -17200,13 +17200,13 @@ async function pythonPackages(paths, read, ignored) {
   }
   return result;
 }
-async function cargoPackages(paths, read, ignored) {
+async function cargoPackages(paths, read2, ignored) {
   const fileSet = new Set(paths);
   const result = [];
   for (const path of paths.filter((p) => baseOf(p) === "Cargo.toml").sort(compareIds)) {
     const dir = dirOf(path);
     if (ignored(dir)) continue;
-    const toml = parseToml(await read(path) ?? "");
+    const toml = parseToml(await read2(path) ?? "");
     const pkg = record(toml.package);
     if (typeof pkg.name !== "string") continue;
     const dependencies = [];
@@ -17237,13 +17237,13 @@ async function cargoPackages(paths, read, ignored) {
   return result;
 }
 var isUnbuiltGoDir = (relative) => relative.split("/").some((part) => part === "testdata" || part === "vendor" || part.startsWith(".") || part.startsWith("_"));
-async function goPackages(paths, read, ignored) {
+async function goPackages(paths, read2, ignored) {
   const fileSet = new Set(paths);
   const modules = /* @__PURE__ */ new Map();
   for (const path of paths.filter((p) => baseOf(p) === "go.mod").sort(compareIds)) {
     const dir = dirOf(path);
     if (ignored(dir)) continue;
-    const text3 = (await read(path) ?? "").replace(/\/\/.*$/gm, "");
+    const text3 = (await read2(path) ?? "").replace(/\/\/.*$/gm, "");
     const name14 = /^\s*module\s+(\S+)/m.exec(text3)?.[1];
     if (name14 !== void 0) modules.set(dir, { name: name14, manifest: path });
   }
@@ -17295,13 +17295,13 @@ async function discoverPackages(tree, options2) {
   const ignoredDirs = compileGlobs([...options2.ignore]);
   const paths = [...tree.files.keys()].filter((p) => !excluded(p) && !p.split("/").includes("node_modules"));
   const cache = /* @__PURE__ */ new Map();
-  const read = (path) => {
+  const read2 = (path) => {
     if (!cache.has(path)) cache.set(path, tree.read(path));
     return cache.get(path);
   };
   const ignored = (dir) => ignoredDirs(dir) || options2.ignore.some((glob) => dir.startsWith(`${glob}/`));
   const raws = [];
-  for (const [, readManifests] of readers) raws.push(...await readManifests(paths, read, ignored));
+  for (const [, readManifests] of readers) raws.push(...await readManifests(paths, read2, ignored));
   for (const dir of [...options2.extra].sort(compareIds)) {
     if (raws.some((r) => r.dir === dir)) continue;
     raws.push({ name: baseOf(dir), ecosystem: "component", dir, manifest: "", private: null, version: null, entry: false, testSupport: isTestSupport(baseOf(dir), dir), aliases: [], dependencies: [] });
@@ -20097,7 +20097,7 @@ function agentReadsAcross(tasks, from, to, fileEdges) {
   const follows = (task, edited, other) => {
     const editedHere = task.editedPaths.filter((path) => edited.has(path));
     if (editedHere.length === 0 || task.editedPaths.some((path) => other.has(path))) return false;
-    return task.readPaths.some((read) => other.has(read) && editedHere.some((path) => linked.has(edgeKey(path, read))));
+    return task.readPaths.some((read2) => other.has(read2) && editedHere.some((path) => linked.has(edgeKey(path, read2))));
   };
   return tasks.filter((task) => follows(task, sideFrom, sideTo) || follows(task, sideTo, sideFrom)).length;
 }
@@ -21924,7 +21924,7 @@ async function readEntries3(model) {
     const files = /* @__PURE__ */ new Set();
     let wildcard = false;
     const hasExportsMap = manifest.exports !== void 0 && manifest.exports !== null;
-    const resolve2 = (subpath) => {
+    const resolve3 = (subpath) => {
       const found = resolver.resolve(`${dir === "." ? "" : `${dir}/`}x.ts`, `${pkg.name}${subpath === "." ? "" : subpath.slice(1)}`);
       if (found.kind === "file") files.add(found.path);
     };
@@ -21933,7 +21933,7 @@ async function readEntries3(model) {
       const subpaths = Object.keys(map).some((key) => key.startsWith(".")) ? map : { ".": manifest.exports };
       for (const [key, target2] of Object.entries(subpaths)) {
         if (!key.includes("*")) {
-          resolve2(key);
+          resolve3(key);
           continue;
         }
         wildcard = true;
@@ -21943,7 +21943,7 @@ async function readEntries3(model) {
         }
       }
     } else {
-      resolve2(".");
+      resolve3(".");
     }
     entries.set(pkg.id, { id: pkg.id, files: new Set([...files].sort(compareIds)), wildcard, hasExportsMap });
   }
@@ -23368,7 +23368,7 @@ function versionsAreFixed(model) {
 }
 var matcher = (pattern) => new RegExp(`^${pattern.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
 async function readVersionPolicy(model) {
-  const read = async (path) => {
+  const read2 = async (path) => {
     const text3 = await model.tree.read(path);
     if (text3 === null || text3 === void 0) return null;
     try {
@@ -23378,15 +23378,15 @@ async function readVersionPolicy(model) {
     }
   };
   const policy = { everything: false, groups: [] };
-  const changesets = await read(".changeset/config.json");
+  const changesets = await read2(".changeset/config.json");
   for (const key of ["fixed", "linked"]) {
     for (const group of Array.isArray(changesets?.[key]) ? changesets[key] : []) {
       if (Array.isArray(group)) policy.groups.push(group.filter((name14) => typeof name14 === "string"));
     }
   }
-  const lerna = await read("lerna.json");
+  const lerna = await read2("lerna.json");
   if (lerna !== null && typeof lerna.version === "string" && lerna.version !== "independent") policy.everything = true;
-  const nx = await read("nx.json");
+  const nx = await read2("nx.json");
   if (nx?.release?.projectsRelationship === "fixed") policy.everything = true;
   return policy;
 }
@@ -24371,15 +24371,15 @@ function medianDistance(model, reuse) {
 }
 var day2 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 async function measureOutcome2(root, settings, changes, anchor, options2) {
-  const resolve2 = async (rev) => {
+  const resolve3 = async (rev) => {
     try {
       return (await runGit(root, ["rev-parse", "--verify", `${rev}^{commit}`])).trim();
     } catch {
       throw usageError(`"${rev}" is not a revision of this repository`);
     }
   };
-  const at2 = await resolve2(options2.at);
-  const first = options2.from === void 0 ? at2 : await resolve2(options2.from);
+  const at2 = await resolve3(options2.at);
+  const first = options2.from === void 0 ? at2 : await resolve3(options2.from);
   let beforeSha;
   try {
     beforeSha = (await runGit(root, ["rev-parse", "--verify", `${first}^`])).trim();
@@ -24673,8 +24673,8 @@ __export(report_exports, {
 });
 
 // packages/cli-kit/src/report-command.ts
-import { mkdirSync as mkdirSync3, readFileSync as readFileSync9, writeFileSync as writeFileSync3 } from "node:fs";
-import { dirname as dirname3, resolve } from "node:path";
+import { mkdirSync as mkdirSync4, readFileSync as readFileSync10, writeFileSync as writeFileSync4 } from "node:fs";
+import { dirname as dirname4, resolve as resolve2 } from "node:path";
 
 // packages/report/src/json.ts
 var FLOAT_PRECISION2 = 6;
@@ -24823,6 +24823,22 @@ function clip(text3, max) {
   if (max < 1) return "";
   return text3.length <= max ? text3 : `${text3.slice(0, Math.max(0, max - 1))}…`;
 }
+function codeSpan(text3) {
+  const line = oneLine(text3);
+  const longest = Math.max(0, ...(line.match(/`+/g) ?? []).map((run3) => run3.length));
+  const fence = "`".repeat(longest + 1);
+  const pad = line.startsWith("`") || line.endsWith("`") ? " " : "";
+  return `${fence}${pad}${line}${pad}${fence}`;
+}
+
+// packages/report/src/components/notice.ts
+var WORD = { notice: "Notice", limit: "Limit", warning: "Warning" };
+function noticeHtml(data) {
+  return `<aside class="notice ${data.level}" role="note"><strong>${WORD[data.level]}:</strong> ${inlineHtml(data.text)}</aside>`;
+}
+function noticeMd(data) {
+  return `> **${WORD[data.level]}:** ${escapeMd(data.text)}`;
+}
 
 // packages/report/src/tables.ts
 function htmlTable(caption, columns8, rows7, options2 = {}) {
@@ -24849,6 +24865,62 @@ function mdTable(columns8, rows7) {
   return [head, rule2, ...body2].join("\n");
 }
 
+// packages/report/src/components/ranked-table.ts
+function rankedTableEmpty(data) {
+  return data.rows.length > 0 ? void 0 : data.emptyText ?? `${data.caption}: no rows.`;
+}
+var MARK = { above: "▲", below: "▼" };
+function marked(column, value) {
+  if (typeof value !== "number" || column.guideline === void 0) return false;
+  return column.guideline.direction === "below" ? value < column.guideline.value : value > column.guideline.value;
+}
+var rankColumn = (data) => data.numbered === false ? [] : [{ label: "#", align: "right" }];
+var rankCell = (data, index) => data.numbered === false ? [] : [String(index + 1)];
+function text2(value) {
+  return value === null ? "–" : typeof value === "number" ? formatNumber(value) : value;
+}
+function legend(data) {
+  const entries = data.columns.flatMap((column) => {
+    if (column.guideline === void 0) return [];
+    const side = column.guideline.direction === "below" ? "below" : "above";
+    return [`${column.label} ${formatNumber(column.guideline.value)}${column.guideline.note === void 0 ? "" : ` (${column.guideline.note})`}, ${MARK[side]} marks a value ${side} it`];
+  });
+  return entries.length === 0 ? void 0 : `Guidelines order and label the rows and decide nothing. ${entries.join("; ")}.`;
+}
+function omitted2(data) {
+  if (data.total === void 0 || data.total <= data.rows.length) return void 0;
+  const left = data.total - data.rows.length;
+  if (data.fullIn !== void 0) return `${formatNumber(data.rows.length)} of ${formatNumber(data.total)} shown; the rest are in \`${data.fullIn}\` output.`;
+  return `Showing ${formatNumber(data.rows.length)} of ${formatNumber(data.total)}${data.noun === void 0 ? "" : ` ${data.noun}`}; ${formatNumber(left)} not shown.`;
+}
+function rankedTableHtml(data) {
+  const empty = rankedTableEmpty(data);
+  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const cell = (column, value) => {
+    const shown2 = escapeHtml(text2(value));
+    if (!marked(column, value)) return shown2;
+    const side = column.guideline?.direction === "below" ? "below" : "above";
+    return `${shown2} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
+  };
+  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows7 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
+  const table4 = htmlTable(data.caption, columns8, rows7, { rowHeaders: data.numbered === false, className: "ranked" });
+  const notes3 = [legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${inlineHtml(n)}</p>`]);
+  return [table4, ...notes3].join("\n");
+}
+function rankedTableMd(data) {
+  const empty = rankedTableEmpty(data);
+  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows7 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => `${text2(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
+  return [
+    `**${escapeMd(data.caption)}**`,
+    "",
+    mdTable(columns8, rows7),
+    ...[legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : ["", `_${escapeMd(n)}_`])
+  ].join("\n");
+}
+
 // packages/report/src/components/figure.ts
 function figureHtml(parts3) {
   const id = `${slug(parts3.title)}-${shortHash(parts3.drawing)}`;
@@ -24862,6 +24934,139 @@ ${parts3.drawing}
 ${svg}
 ${parts3.table}
 ${parts3.notes ?? ""}</figure>`;
+}
+
+// packages/report/src/components/stability-chart.ts
+var DEFAULT_MAX_POINTS = 40;
+var MIN_POINTS = 3;
+function stabilityChartEmpty(data) {
+  if (data.points.length >= MIN_POINTS) return void 0;
+  const noun = data.noun ?? "packages";
+  return data.emptyText ?? `${data.title}: ${formatNumber(data.points.length)} of ${formatNumber(data.total)} ${noun} have both instability and abstractness; a chart needs at least ${MIN_POINTS}.`;
+}
+function positionOf(point, zoneDistance) {
+  const sum = point.instability + point.abstractness;
+  if (sum <= 1 - zoneDistance) return "zone of pain";
+  if (sum >= 1 + zoneDistance) return "zone of uselessness";
+  return "outside the zones";
+}
+var SIZE = 360;
+var LEFT = 56;
+var TOP = 16;
+var WIDTH = LEFT + SIZE + 24;
+var HEIGHT = TOP + SIZE + 48;
+var x = (instability) => LEFT + instability * SIZE;
+var y = (abstractness) => TOP + (1 - abstractness) * SIZE;
+var at = (value) => value.toFixed(1);
+var shown = (data) => data.points.slice(0, data.maxPoints ?? DEFAULT_MAX_POINTS);
+var columns = [
+  { label: "#", align: "right" },
+  { label: "Package" },
+  { label: "Instability I", align: "right" },
+  { label: "Abstractness A", align: "right" },
+  { label: "Distance", align: "right" },
+  { label: "Ca", align: "right" },
+  { label: "Ce", align: "right" },
+  { label: "Exported types", align: "right" },
+  { label: "Position" }
+];
+function rows(data) {
+  return shown(data).map((p, i2) => [
+    String(i2 + 1),
+    p.name,
+    formatNumber(p.instability),
+    formatNumber(p.abstractness),
+    formatNumber(p.distance),
+    formatNumber(p.ca),
+    formatNumber(p.ce),
+    `${formatNumber(p.exportedTypes)}${p.weak ? " (A weak)" : ""}`,
+    positionOf(p, data.zoneDistance)
+  ]);
+}
+function positionCounts(data) {
+  const counts = { "zone of pain": 0, "zone of uselessness": 0, "outside the zones": 0 };
+  for (const point of data.points) counts[positionOf(point, data.zoneDistance)]++;
+  return counts;
+}
+function notes2(data) {
+  const noun = data.noun ?? "packages";
+  const left = data.total - shown(data).length;
+  const unplotted = data.total - data.points.length;
+  const cut = data.points.length - shown(data).length;
+  const why = unplotted > 0 ? `${formatNumber(unplotted)} have no instability (no dependency in or out) or no abstractness (no language adapter reads them)` : "";
+  const drawn = cut > 0 ? `${formatNumber(cut)} are measured and drawn as small points without a number` : "";
+  const counts = positionCounts(data);
+  return [
+    `The dashed diagonal is the main sequence, where A + I = 1. A zone starts ${formatNumber(data.zoneDistance)} from it${data.zoneSource === void 0 ? "" : ` (${data.zoneSource})`}: the zone of pain is concrete and stable (A + I at most ${formatNumber(1 - data.zoneDistance)}) and the zone of uselessness is abstract and unstable (A + I at least ${formatNumber(1 + data.zoneDistance)}). Square points are inside a zone, round points are not, and the table gives each position in words. A guideline orders and labels results; it decides nothing.`,
+    `Of the ${formatNumber(data.points.length)} measured ${noun}, ${formatNumber(counts["zone of pain"])} are in the zone of pain, ${formatNumber(counts["zone of uselessness"])} in the zone of uselessness and ${formatNumber(counts["outside the zones"])} outside the zones.`,
+    `The table lists ${formatNumber(shown(data).length)} of ${formatNumber(data.total)} ${noun}, furthest from the main sequence first; ${formatNumber(left)} not listed${left > 0 ? `: ${[why, drawn].filter((s) => s !== "").join("; ")}` : ""}.`
+  ];
+}
+function stabilityChartHtml(data) {
+  const empty = stabilityChartEmpty(data);
+  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const d = data.zoneDistance;
+  const points = data.points;
+  const limit = shown(data).length;
+  const frame = `<rect x="${LEFT}" y="${TOP}" width="${SIZE}" height="${SIZE}" fill="none" stroke="currentColor" stroke-opacity="0.5"/>`;
+  const pain = `<polygon points="${at(x(0))},${at(y(0))} ${at(x(1 - d))},${at(y(0))} ${at(x(0))},${at(y(1 - d))}" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="3 3"/>`;
+  const useless = `<polygon points="${at(x(1))},${at(y(1))} ${at(x(d))},${at(y(1))} ${at(x(1))},${at(y(d))}" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="3 3"/>`;
+  const sequence = `<line x1="${at(x(0))}" y1="${at(y(1))}" x2="${at(x(1))}" y2="${at(y(0))}" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+  const labels = [
+    `<text x="${at(x(0) + 6)}" y="${at(y(0) - 8)}">Zone of pain</text>`,
+    `<text x="${at(x(1) - 6)}" y="${at(y(1) + 16)}" text-anchor="end">Zone of uselessness</text>`,
+    `<text x="${at(x(0.5) + 6)}" y="${at(y(0.5) - 6)}" transform="rotate(45 ${at(x(0.5))} ${at(y(0.5))})" text-anchor="middle">Main sequence</text>`
+  ];
+  const ticks = [0, 0.5, 1].flatMap((v) => [
+    `<text x="${at(x(v))}" y="${TOP + SIZE + 16}" text-anchor="middle">${v}</text>`,
+    `<text x="${LEFT - 8}" y="${at(y(v) + 4)}" text-anchor="end">${v}</text>`
+  ]);
+  const axes = [
+    `<text x="${at(x(0.5))}" y="${TOP + SIZE + 36}" text-anchor="middle">Instability I (outgoing over all dependencies)</text>`,
+    `<text transform="rotate(-90 14 ${at(y(0.5))})" x="14" y="${at(y(0.5))}" text-anchor="middle">Abstractness A</text>`
+  ];
+  const dots = points.map((p, i2) => {
+    const cx = x(p.instability);
+    const cy = y(p.abstractness);
+    const inside = positionOf(p, d) !== "outside the zones";
+    const numbered = i2 < limit;
+    const half = numbered ? 4 : 2.5;
+    const mark = inside ? `<rect x="${at(cx - half)}" y="${at(cy - half)}" width="${half * 2}" height="${half * 2}" fill="currentColor"/>` : `<circle cx="${at(cx)}" cy="${at(cy)}" r="${half}"/>`;
+    return `<g class="point">${mark}${numbered ? `<text x="${at(cx + 7)}" y="${at(cy - 5)}">${i2 + 1}</text>` : ""}</g>`;
+  });
+  return figureHtml({
+    kind: "stability-chart",
+    title: data.title,
+    description: `A scatter of ${formatNumber(points.length)} ${data.noun ?? "packages"} by instability (horizontal) and abstractness (vertical), with the main sequence and the zone of pain and the zone of uselessness marked. The ${formatNumber(limit)} furthest from the main sequence have a number that the table below gives with their figures and their position in words; the legend counts all of them by position.`,
+    width: WIDTH,
+    height: HEIGHT,
+    drawing: [pain, useless, frame, sequence, ...labels, ...ticks, ...axes, ...dots].join("\n"),
+    table: htmlTable(`${data.title}: the same points with their figures`, columns, rows(data).map((r) => r.map(escapeHtml)), { rowHeaders: false }),
+    notes: notes2(data).map((n) => `<p class="legend">${escapeHtml(n)}</p>
+`).join("")
+  });
+}
+function stabilityChartMd(data) {
+  const empty = stabilityChartEmpty(data);
+  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  return [`**${escapeMd(data.title)}** (instability I against abstractness A)`, "", mdTable(columns, rows(data).map((r) => r.map((cell, i2) => i2 === 1 ? clip(cell, 80) : cell))), "", notes2(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
+}
+
+// packages/report/src/empty-block.ts
+function emptyNotice(block) {
+  switch (block.type) {
+    case "ranked-table":
+      return rankedTableEmpty(block);
+    case "stability-chart":
+      return stabilityChartEmpty(block);
+    default:
+      return void 0;
+  }
+}
+function emptySection(section2) {
+  const lines = section2.blocks.map((b) => b.type === "notice" ? b.text : emptyNotice(b));
+  if (lines.some((l) => l === void 0) || !section2.blocks.some((b) => b.type !== "notice")) return void 0;
+  return lines.join(" ");
 }
 
 // packages/report/src/components/bands.ts
@@ -24891,8 +25096,8 @@ function bandLegend(bands) {
 }
 
 // packages/report/src/components/treemap.ts
-var WIDTH = 960;
-var HEIGHT = 520;
+var WIDTH2 = 960;
+var HEIGHT2 = 520;
 var HEADER = 14;
 var PAD = 2;
 var DEFAULT_MAX_TILES = 80;
@@ -24977,7 +25182,7 @@ function squarify(sizes, rect) {
   }
   return out2;
 }
-function layoutTreemap(items, width = WIDTH, height = HEIGHT) {
+function layoutTreemap(items, width = WIDTH2, height = HEIGHT2) {
   const tiles = [];
   const folders = [];
   const place = (node, rect) => {
@@ -25011,8 +25216,8 @@ function omissions(prepared) {
   if (prepared.notDrawn.unsized > 0) out2.push(`${count2(prepared.notDrawn.unsized, "item")} of no size not drawn`);
   return out2;
 }
-var rows = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
-function columns(data) {
+var rows2 = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
+function columns2(data) {
   return [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: `Colour (${data.colourLabel})`, align: "right" }, { label: "Band", align: "right" }];
 }
 function treemapHtml(data) {
@@ -25036,10 +25241,10 @@ ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</
     kind: "treemap",
     title: data.title,
     description: `A treemap of ${count2(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; colour is ${data.colourLabel}. The table below lists the same items.`,
-    width: WIDTH,
-    height: HEIGHT,
+    width: WIDTH2,
+    height: HEIGHT2,
     drawing,
-    table: htmlTable(`${data.title}: the items drawn, largest first`, columns(data), rows(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: the items drawn, largest first`, columns2(data), rows2(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
     notes: notes3
   });
 }
@@ -25049,14 +25254,14 @@ function treemapMd(data) {
   return [
     `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)})`,
     "",
-    mdTable(columns(data), rows(prepared)),
+    mdTable(columns2(data), rows2(prepared)),
     ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
   ].join("\n");
 }
 
 // packages/report/src/components/category-treemap.ts
-var WIDTH2 = 960;
-var HEIGHT2 = 520;
+var WIDTH3 = 960;
+var HEIGHT3 = 520;
 var DEFAULT_MAX_TILES2 = 80;
 var byName2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function prepare2(data) {
@@ -25071,8 +25276,8 @@ function omissions2(prepared) {
   if (prepared.unsized > 0) out2.push(`${count2(prepared.unsized, "item")} of no size not drawn`);
   return out2;
 }
-var rows2 = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), prepared.categoryOf(item)?.label ?? "none"]);
-var columns2 = (data) => [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: data.categoryLabel }];
+var rows3 = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), prepared.categoryOf(item)?.label ?? "none"]);
+var columns3 = (data) => [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: data.categoryLabel }];
 function drawnPerCategory(prepared) {
   const counts = /* @__PURE__ */ new Map();
   for (const item of prepared.drawn) counts.set(item.category ?? "", (counts.get(item.category ?? "") ?? 0) + 1);
@@ -25108,10 +25313,10 @@ ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</
     kind: "treemap category-treemap",
     title: data.title,
     description: `A treemap of ${count2(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; each tile is marked with its ${data.categoryLabel.toLowerCase()}. The table below lists the same items.`,
-    width: WIDTH2,
-    height: HEIGHT2,
+    width: WIDTH3,
+    height: HEIGHT3,
     drawing,
-    table: htmlTable(`${data.title}: the items drawn, largest first`, columns2(data), rows2(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: the items drawn, largest first`, columns3(data), rows3(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
     notes: notes3
   });
 }
@@ -25123,7 +25328,7 @@ function categoryTreemapMd(data) {
   return [
     `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; marks: ${key})`,
     "",
-    mdTable(columns2(data), rows2(prepared)),
+    mdTable(columns3(data), rows3(prepared)),
     ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
   ].join("\n");
 }
@@ -25148,20 +25353,20 @@ function evidenceListMd(data) {
 }
 
 // packages/report/src/components/facts.ts
-var columns3 = [{ label: "Measure" }, { label: "Value" }];
+var columns4 = [{ label: "Measure" }, { label: "Value" }];
 function factsHtml(data) {
-  return htmlTable(data.caption, columns3, data.facts.map((f) => [escapeHtml(f.label), escapeHtml(f.value)]), { rowHeaders: true, className: "facts" });
+  return htmlTable(data.caption, columns4, data.facts.map((f) => [escapeHtml(f.label), escapeHtml(f.value)]), { rowHeaders: true, className: "facts" });
 }
 function factsMd(data) {
-  return [`**${escapeMd(data.caption)}**`, "", mdTable(columns3, data.facts.map((f) => [f.label, f.value]))].join("\n");
+  return [`**${escapeMd(data.caption)}**`, "", mdTable(columns4, data.facts.map((f) => [f.label, f.value]))].join("\n");
 }
 
 // packages/report/src/components/guideline-bar.ts
-var WIDTH3 = 720;
+var WIDTH4 = 720;
 var ROW = 28;
 var LABEL = 200;
 var BAR_MAX = 360;
-function positionOf(bar) {
+function positionOf2(bar) {
   return bar.value > bar.guideline ? "above guideline" : bar.value === bar.guideline ? "at guideline" : "below guideline";
 }
 function ratioOf2(bar) {
@@ -25171,8 +25376,8 @@ var ratioText = (bar) => {
   const ratio = ratioOf2(bar);
   return ratio === null ? "none" : `${Number(ratio.toPrecision(2))}x`;
 };
-var columns4 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
-var rows3 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf(b)]);
+var columns5 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
+var rows4 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf2(b)]);
 function guidelineBarsHtml(data) {
   const greatest = Math.max(1, ...data.bars.flatMap((b) => [b.value, b.guideline]));
   const scale = BAR_MAX / greatest;
@@ -25187,29 +25392,29 @@ function guidelineBarsHtml(data) {
     kind: "guideline-bars",
     title: data.title,
     description: `${data.bars.length} values of ${data.unit}, each against its guideline. A bar longer than its marker is above guideline, shown with a triangle and the words in the table.`,
-    width: WIDTH3,
+    width: WIDTH4,
     height: Math.max(ROW, data.bars.length * ROW),
     drawing,
-    table: htmlTable(`${data.title}: each value against its guideline`, columns4(data), rows3(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: each value against its guideline`, columns5(data), rows4(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
     notes: `<p class="legend">The vertical line marks the guideline and ▲ marks a value above it. A guideline orders and labels results; it decides nothing.${data.source === void 0 ? "" : ` ${escapeHtml(data.source)}`}</p>
 `
   });
 }
 function guidelineBarsMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns4(data), rows3(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns5(data), rows4(data))].join("\n");
 }
 
 // packages/report/src/components/histogram.ts
-var WIDTH4 = 640;
+var WIDTH5 = 640;
 var ROW2 = 22;
 var LABEL2 = 150;
 var BAR_MAX2 = 400;
-var columns5 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
+var columns6 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
 function shares(data) {
   const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
   return data.bins.map((bin) => total === 0 ? "0%" : `${formatNumber(bin.count / total * 100)}%`);
 }
-var rows4 = (data) => {
+var rows5 = (data) => {
   const share2 = shares(data);
   return data.bins.map((bin, i2) => [bin.label, formatNumber(bin.count), share2[i2]]);
 };
@@ -25225,14 +25430,14 @@ function histogramHtml(data) {
     kind: "histogram",
     title: data.title,
     description: `${formatNumber(total)} ${data.unit} in ${data.bins.length} bins. Each bar prints its count; the table below lists the same counts.`,
-    width: WIDTH4,
+    width: WIDTH5,
     height: Math.max(ROW2, data.bins.length * ROW2),
     drawing,
-    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns5(data), rows4(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns6(data), rows5(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function histogramMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns5(data), rows4(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns6(data), rows5(data))].join("\n");
 }
 
 // packages/report/src/components/judgement.ts
@@ -25310,172 +25515,9 @@ function matrixMd(data) {
   ].join("\n");
 }
 
-// packages/report/src/components/notice.ts
-var WORD = { notice: "Notice", limit: "Limit", warning: "Warning" };
-function noticeHtml(data) {
-  return `<aside class="notice ${data.level}" role="note"><strong>${WORD[data.level]}:</strong> ${inlineHtml(data.text)}</aside>`;
-}
-function noticeMd(data) {
-  return `> **${WORD[data.level]}:** ${escapeMd(data.text)}`;
-}
-
 // packages/report/src/components/paragraph.ts
 var paragraphHtml = (data) => `<p>${inlineHtml(data.text)}</p>`;
 var paragraphMd = (data) => escapeMd(data.text);
-
-// packages/report/src/components/ranked-table.ts
-var MARK = { above: "▲", below: "▼" };
-function marked(column, value) {
-  if (typeof value !== "number" || column.guideline === void 0) return false;
-  return column.guideline.direction === "below" ? value < column.guideline.value : value > column.guideline.value;
-}
-var rankColumn = (data) => data.numbered === false ? [] : [{ label: "#", align: "right" }];
-var rankCell = (data, index) => data.numbered === false ? [] : [String(index + 1)];
-function text2(value) {
-  return value === null ? "–" : typeof value === "number" ? formatNumber(value) : value;
-}
-function legend(data) {
-  const entries = data.columns.flatMap((column) => {
-    if (column.guideline === void 0) return [];
-    const side = column.guideline.direction === "below" ? "below" : "above";
-    return [`${column.label} ${formatNumber(column.guideline.value)}${column.guideline.note === void 0 ? "" : ` (${column.guideline.note})`}, ${MARK[side]} marks a value ${side} it`];
-  });
-  return entries.length === 0 ? void 0 : `Guidelines order and label the rows and decide nothing. ${entries.join("; ")}.`;
-}
-function omitted2(data) {
-  if (data.total === void 0 || data.total <= data.rows.length) return void 0;
-  const left = data.total - data.rows.length;
-  return `Showing ${formatNumber(data.rows.length)} of ${formatNumber(data.total)}${data.noun === void 0 ? "" : ` ${data.noun}`}; ${formatNumber(left)} not shown.`;
-}
-function rankedTableHtml(data) {
-  const cell = (column, value) => {
-    const shown2 = escapeHtml(text2(value));
-    if (!marked(column, value)) return shown2;
-    const side = column.guideline?.direction === "below" ? "below" : "above";
-    return `${shown2} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
-  };
-  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows7 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
-  const table4 = data.rows.length === 0 ? `<p class="empty">${escapeHtml(data.caption)}: no rows.</p>` : htmlTable(data.caption, columns8, rows7, { rowHeaders: data.numbered === false, className: "ranked" });
-  const notes3 = [legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${escapeHtml(n)}</p>`]);
-  return [table4, ...notes3].join("\n");
-}
-function rankedTableMd(data) {
-  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows7 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => `${text2(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
-  return [
-    `**${escapeMd(data.caption)}**`,
-    "",
-    data.rows.length === 0 ? "No rows." : mdTable(columns8, rows7),
-    ...[legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : ["", `_${escapeMd(n)}_`])
-  ].join("\n");
-}
-
-// packages/report/src/components/stability-chart.ts
-var DEFAULT_MAX_POINTS = 40;
-function positionOf2(point, zoneDistance) {
-  const sum = point.instability + point.abstractness;
-  if (sum <= 1 - zoneDistance) return "zone of pain";
-  if (sum >= 1 + zoneDistance) return "zone of uselessness";
-  return "outside the zones";
-}
-var SIZE = 360;
-var LEFT = 56;
-var TOP = 16;
-var WIDTH5 = LEFT + SIZE + 24;
-var HEIGHT3 = TOP + SIZE + 48;
-var x = (instability) => LEFT + instability * SIZE;
-var y = (abstractness) => TOP + (1 - abstractness) * SIZE;
-var at = (value) => value.toFixed(1);
-var shown = (data) => data.points.slice(0, data.maxPoints ?? DEFAULT_MAX_POINTS);
-var columns6 = [
-  { label: "#", align: "right" },
-  { label: "Package" },
-  { label: "Instability I", align: "right" },
-  { label: "Abstractness A", align: "right" },
-  { label: "Distance", align: "right" },
-  { label: "Ca", align: "right" },
-  { label: "Ce", align: "right" },
-  { label: "Exported types", align: "right" },
-  { label: "Position" }
-];
-function rows5(data) {
-  return shown(data).map((p, i2) => [
-    String(i2 + 1),
-    p.name,
-    formatNumber(p.instability),
-    formatNumber(p.abstractness),
-    formatNumber(p.distance),
-    formatNumber(p.ca),
-    formatNumber(p.ce),
-    `${formatNumber(p.exportedTypes)}${p.weak ? " (A weak)" : ""}`,
-    positionOf2(p, data.zoneDistance)
-  ]);
-}
-function positionCounts(data) {
-  const counts = { "zone of pain": 0, "zone of uselessness": 0, "outside the zones": 0 };
-  for (const point of data.points) counts[positionOf2(point, data.zoneDistance)]++;
-  return counts;
-}
-function notes2(data) {
-  const noun = data.noun ?? "packages";
-  const left = data.total - shown(data).length;
-  const unplotted = data.total - data.points.length;
-  const cut = data.points.length - shown(data).length;
-  const why = unplotted > 0 ? `${formatNumber(unplotted)} have no instability (no dependency in or out) or no abstractness (no language adapter reads them)` : "";
-  const drawn = cut > 0 ? `${formatNumber(cut)} are measured and drawn as small points without a number` : "";
-  const counts = positionCounts(data);
-  return [
-    `The dashed diagonal is the main sequence, where A + I = 1. A zone starts ${formatNumber(data.zoneDistance)} from it${data.zoneSource === void 0 ? "" : ` (${data.zoneSource})`}: the zone of pain is concrete and stable (A + I at most ${formatNumber(1 - data.zoneDistance)}) and the zone of uselessness is abstract and unstable (A + I at least ${formatNumber(1 + data.zoneDistance)}). Square points are inside a zone, round points are not, and the table gives each position in words. A guideline orders and labels results; it decides nothing.`,
-    `Of the ${formatNumber(data.points.length)} measured ${noun}, ${formatNumber(counts["zone of pain"])} are in the zone of pain, ${formatNumber(counts["zone of uselessness"])} in the zone of uselessness and ${formatNumber(counts["outside the zones"])} outside the zones.`,
-    `The table lists ${formatNumber(shown(data).length)} of ${formatNumber(data.total)} ${noun}, furthest from the main sequence first; ${formatNumber(left)} not listed${left > 0 ? `: ${[why, drawn].filter((s) => s !== "").join("; ")}` : ""}.`
-  ];
-}
-function stabilityChartHtml(data) {
-  const d = data.zoneDistance;
-  const points = data.points;
-  const limit = shown(data).length;
-  const frame = `<rect x="${LEFT}" y="${TOP}" width="${SIZE}" height="${SIZE}" fill="none" stroke="currentColor" stroke-opacity="0.5"/>`;
-  const pain = `<polygon points="${at(x(0))},${at(y(0))} ${at(x(1 - d))},${at(y(0))} ${at(x(0))},${at(y(1 - d))}" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="3 3"/>`;
-  const useless = `<polygon points="${at(x(1))},${at(y(1))} ${at(x(d))},${at(y(1))} ${at(x(1))},${at(y(d))}" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="3 3"/>`;
-  const sequence = `<line x1="${at(x(0))}" y1="${at(y(1))}" x2="${at(x(1))}" y2="${at(y(0))}" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 4"/>`;
-  const labels = [
-    `<text x="${at(x(0) + 6)}" y="${at(y(0) - 8)}">Zone of pain</text>`,
-    `<text x="${at(x(1) - 6)}" y="${at(y(1) + 16)}" text-anchor="end">Zone of uselessness</text>`,
-    `<text x="${at(x(0.5) + 6)}" y="${at(y(0.5) - 6)}" transform="rotate(45 ${at(x(0.5))} ${at(y(0.5))})" text-anchor="middle">Main sequence</text>`
-  ];
-  const ticks = [0, 0.5, 1].flatMap((v) => [
-    `<text x="${at(x(v))}" y="${TOP + SIZE + 16}" text-anchor="middle">${v}</text>`,
-    `<text x="${LEFT - 8}" y="${at(y(v) + 4)}" text-anchor="end">${v}</text>`
-  ]);
-  const axes = [
-    `<text x="${at(x(0.5))}" y="${TOP + SIZE + 36}" text-anchor="middle">Instability I (outgoing over all dependencies)</text>`,
-    `<text transform="rotate(-90 14 ${at(y(0.5))})" x="14" y="${at(y(0.5))}" text-anchor="middle">Abstractness A</text>`
-  ];
-  const dots = points.map((p, i2) => {
-    const cx = x(p.instability);
-    const cy = y(p.abstractness);
-    const inside = positionOf2(p, d) !== "outside the zones";
-    const numbered = i2 < limit;
-    const half = numbered ? 4 : 2.5;
-    const mark = inside ? `<rect x="${at(cx - half)}" y="${at(cy - half)}" width="${half * 2}" height="${half * 2}" fill="currentColor"/>` : `<circle cx="${at(cx)}" cy="${at(cy)}" r="${half}"/>`;
-    return `<g class="point">${mark}${numbered ? `<text x="${at(cx + 7)}" y="${at(cy - 5)}">${i2 + 1}</text>` : ""}</g>`;
-  });
-  return figureHtml({
-    kind: "stability-chart",
-    title: data.title,
-    description: `A scatter of ${formatNumber(points.length)} ${data.noun ?? "packages"} by instability (horizontal) and abstractness (vertical), with the main sequence and the zone of pain and the zone of uselessness marked. The ${formatNumber(limit)} furthest from the main sequence have a number that the table below gives with their figures and their position in words; the legend counts all of them by position.`,
-    width: WIDTH5,
-    height: HEIGHT3,
-    drawing: [pain, useless, frame, sequence, ...labels, ...ticks, ...axes, ...dots].join("\n"),
-    table: htmlTable(`${data.title}: the same points with their figures`, columns6, rows5(data).map((r) => r.map(escapeHtml)), { rowHeaders: false }),
-    notes: notes2(data).map((n) => `<p class="legend">${escapeHtml(n)}</p>
-`).join("")
-  });
-}
-function stabilityChartMd(data) {
-  return [`**${escapeMd(data.title)}** (instability I against abstractness A)`, "", mdTable(columns6, rows5(data).map((r) => r.map((cell, i2) => i2 === 1 ? clip(cell, 80) : cell))), "", notes2(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
-}
 
 // packages/report/src/components/sparkline.ts
 var WIDTH6 = 240;
@@ -25687,6 +25729,10 @@ ${rows7.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
 </dl>`;
 }
 function section(s, report, notes3) {
+  const empty = emptySection(s);
+  if (empty !== void 0) return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
+<p class="empty"><strong id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}:</strong> ${inlineHtml(empty)}</p>
+</section>`;
   const body2 = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes3 })).join("\n");
   return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
 <h2 id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}</h2>
@@ -25745,10 +25791,11 @@ ${headerFacts(report)}
 // packages/report/src/markdown-page.ts
 function header(report, compact) {
   const h = report.header;
-  const excluded = h.excluded.length === 0 ? "nothing" : h.excluded.map((e) => `${escapeMd(e.what)}: ${formatNumber(e.count)}`).join(", ");
   if (compact) {
+    const total = h.excluded.reduce((sum, e) => sum + e.count, 0);
+    const excluded = h.excluded.length === 0 ? "nothing" : `${formatNumber(total)} in total across ${formatNumber(h.excluded.length)} ${h.excluded.length === 1 ? "kind" : "kinds"}; the full report lists each`;
     return [
-      `- Repository \`${h.repo}\` at \`${h.commit.slice(0, 12)}\` on ${h.date}; config hash \`${h.configHash}\``,
+      `- Repository ${codeSpan(h.repo)} at \`${h.commit.slice(0, 12)}\` on ${h.date}; config hash \`${h.configHash}\``,
       `- Evidence grade: ${escapeMd(h.evidenceGrade)}. History window: ${escapeMd(h.historyWindow)}`,
       `- Excluded: ${excluded}`
     ];
@@ -25771,7 +25818,10 @@ function markdownPage(report, notes3, options2 = {}) {
   return [
     `# ${escapeMd(report.title)}`,
     header(report, options2.compact === true).join("\n"),
-    ...report.sections.map((s) => [`## ${escapeMd(s.heading)}`, ...s.blocks.map((b) => renderBlock(b, "md", context))].join("\n\n")),
+    ...report.sections.map((s) => {
+      const empty = emptySection(s);
+      return empty === void 0 ? [`## ${escapeMd(s.heading)}`, ...s.blocks.map((b) => renderBlock(b, "md", context))].join("\n\n") : `**${escapeMd(s.heading)}:** ${escapeMd(empty)}`;
+    }),
     ["## Limits", ...limits.length === 0 ? [] : [limits.join("\n")], ...judged].join("\n\n")
   ].join("\n\n") + "\n";
 }
@@ -25797,27 +25847,155 @@ function slotsDocument(report) {
   });
 }
 
+// packages/cli-kit/src/report-build-cache.ts
+import { createHash as createHash7, randomUUID as randomUUID4 } from "node:crypto";
+import { execFileSync as execFileSync2 } from "node:child_process";
+import { existsSync as existsSync13, mkdirSync as mkdirSync3, readdirSync as readdirSync4, readFileSync as readFileSync9, realpathSync, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { basename as basename3, dirname as dirname3, join as join13, resolve } from "node:path";
+var FORMAT2 = 1;
+var OUTPUT_KEYS = ["slots", "notes", "format", "out", "no-cache"];
+var WATCHED = [".mailmap", ".code-health/identity-decisions.json", ".code-health/local/mailmap", ".code-health/local/identity-decisions.json", ".gitattributes"];
+function git3(cwd, ...args2) {
+  return execFileSync2("git", args2, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+}
+function stat(file) {
+  try {
+    const s = statSync3(file);
+    return `${s.size}:${s.mtimeMs}`;
+  } catch {
+    return "-";
+  }
+}
+function statDirectory(dir, accept) {
+  if (!existsSync13(dir)) return [];
+  return readdirSync4(dir).filter(accept).sort().map((name14) => `${name14}=${stat(join13(dir, name14))}`);
+}
+function dependencyState(root) {
+  const common = git3(root, "rev-parse", "--path-format=absolute", "--git-common-dir");
+  const written = statDirectory(join13(root, ".cache", "code-health", "reports"), (name14) => name14.endsWith(".json")).map((s) => `reports/${s}`);
+  const other = [...WATCHED.map((file) => `${file}=${stat(join13(root, file))}`), `shallow=${stat(join13(common, "shallow"))}`];
+  return { written: written.join("\n"), other: other.join("\n") };
+}
+var digest = (value) => createHash7("sha256").update(value).digest("hex");
+function programId() {
+  const script = process.argv[1];
+  return script === void 0 ? "-" : stat(script);
+}
+function canonical2(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical2).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const record4 = value;
+    return `{${Object.keys(record4).filter((key) => record4[key] !== void 0).sort().map((key) => `${JSON.stringify(key)}:${canonical2(record4[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+function real(path) {
+  try {
+    return join13(realpathSync(dirname3(path)), basename3(path));
+  } catch {
+    return path;
+  }
+}
+function isClean(context) {
+  const root = context.repo.root;
+  const own = [context.values.notes, context.values.out].flatMap((value) => typeof value === "string" ? [real(resolve(context.cwd, value))] : []);
+  try {
+    const entries = execFileSync2("git", ["status", "--porcelain", "-z", "--untracked-files=normal"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\0").filter((entry) => entry !== "");
+    return entries.every((entry) => entry.startsWith("?? ") && own.includes(real(resolve(root, entry.slice(3)))));
+  } catch {
+    return false;
+  }
+}
+function entryFile(context, kind, dependsOn) {
+  const values = Object.fromEntries(Object.entries(context.values).filter(([key2]) => !OUTPUT_KEYS.includes(key2)));
+  const key = digest(canonical2({ positionals: context.positionals, values, cwd: context.cwd, dependsOn })).slice(0, 16);
+  return join13(context.repo.root, ".cache", "code-health", "report-builds", `${kind}.${key}.json`);
+}
+function read(file) {
+  try {
+    const entry = JSON.parse(readFileSync9(file, "utf8"));
+    return entry.format === FORMAT2 ? entry : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function write(file, entry) {
+  const dir = dirname3(file);
+  mkdirSync3(dir, { recursive: true });
+  const ignore = join13(dir, ".gitignore");
+  if (!existsSync13(ignore)) writeFileSync3(ignore, "*\n");
+  const temporary = `${file}.${randomUUID4()}.tmp`;
+  try {
+    writeFileSync3(temporary, JSON.stringify(entry));
+    renameSync3(temporary, file);
+  } catch {
+    rmSync4(temporary, { force: true });
+  }
+}
+async function cachedBuild(context, kind, dependsOn, compute) {
+  const root = context.repo.root;
+  if (!isClean(context)) return compute();
+  const extra = dependsOn === void 0 ? null : await dependsOn();
+  const file = entryFile(context, kind, extra);
+  const program = programId();
+  const before = dependencyState(root);
+  if (context.values["no-cache"] !== true) {
+    const entry = read(file);
+    if (entry !== void 0 && entry.head === context.repo.head && entry.config === context.config.hash && entry.program === program && canonical2(entry.dependsOn) === canonical2(extra) && entry.state === digest(`${before.written}
+--
+${before.other}`)) {
+      context.stderrNotices = [...context.stderrNotices ?? [], ...entry.stderrNotices];
+      return entry.build;
+    }
+  }
+  const notices = context.stderrNotices?.length ?? 0;
+  const build = await compute();
+  const after = dependencyState(root);
+  if (after.other !== before.other || !isClean(context)) return build;
+  let stored;
+  try {
+    stored = JSON.parse(JSON.stringify(build));
+  } catch {
+    return build;
+  }
+  write(file, {
+    format: FORMAT2,
+    head: context.repo.head,
+    config: context.config.hash,
+    program,
+    dependsOn: extra,
+    state: digest(`${after.written}
+--
+${after.other}`),
+    build: stored,
+    stderrNotices: (context.stderrNotices ?? []).slice(notices)
+  });
+  return stored;
+}
+
 // packages/cli-kit/src/report-command.ts
 var protocolOptions = {
   slots: { type: "boolean" },
   notes: { type: "string" },
   format: { type: "string" },
   out: { type: "string" },
-  compact: { type: "boolean" }
+  compact: { type: "boolean" },
+  "no-cache": { type: "boolean" }
 };
 var protocolOptionHelp = {
   slots: "print the report's data and judgement slots as JSON",
   notes: "the notes file to render: { stamp, notes }, with one entry per slot id",
   format: "html or md. md without --notes is a data-only draft; html needs --notes",
   out: "write the output to this file instead of stdout",
-  compact: "md only: the short header used in a pull request comment"
+  compact: "md only: the short header used in a pull request comment",
+  "no-cache": "compute the report and its analyses again instead of reading what an earlier run stored, and store the new report build"
 };
 var protocolOptionNames = Object.keys(protocolOptions);
 function reportCommand(kinds2) {
   const names = Object.keys(kinds2);
   const kindOptions = Object.assign({}, ...Object.values(kinds2).map((k) => k.options ?? {}));
   const subcommands2 = Object.fromEntries(
-    Object.entries(kinds2).map(([name14, kind]) => [name14, { summary: kind.summary, options: [...protocolOptionNames, ...Object.keys(kind.options ?? {})] }])
+    Object.entries(kinds2).map(([name14, kind]) => [name14, { summary: kind.summary, options: [.../* @__PURE__ */ new Set([...protocolOptionNames, ...Object.keys(kind.options ?? {})])] }])
   );
   return {
     summary: "Write a report: --slots prints its data and judgement slots, --notes renders the notes as html or markdown",
@@ -25831,7 +26009,8 @@ function reportCommand(kinds2) {
       const kind = kinds2[name14];
       if (kind === void 0) throw usageError(`unknown report "${name14}"; reports: ${names.join(", ")}`);
       const request = readRequest(context);
-      const build = await kind.build({ ...context, positionals: args2 });
+      const own = { ...context, positionals: args2 };
+      const build = await cachedBuild(own, name14, kind.dependsOn === void 0 ? void 0 : () => kind.dependsOn(own), async () => kind.build(own));
       const report = {
         ...build,
         kind: name14,
@@ -25841,9 +26020,9 @@ function reportCommand(kinds2) {
       try {
         const text3 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
         if (request.out === void 0) return { results: [], text: text3 };
-        const file = resolve(context.cwd, request.out);
-        mkdirSync3(dirname3(file), { recursive: true });
-        writeFileSync3(file, text3);
+        const file = resolve2(context.cwd, request.out);
+        mkdirSync4(dirname4(file), { recursive: true });
+        writeFileSync4(file, text3);
         return { results: [], text: `wrote ${request.out}
 ` };
       } catch (error) {
@@ -25878,7 +26057,7 @@ function produce(report, request, cwd) {
   if (request.notes === void 0) return renderReport(report, format2, void 0, { compact: request.compact });
   let document;
   try {
-    document = JSON.parse(readFileSync9(resolve(cwd, request.notes), "utf8"));
+    document = JSON.parse(readFileSync10(resolve2(cwd, request.notes), "utf8"));
   } catch (error) {
     throw new ReportError(`cannot read the notes file ${request.notes}: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -25948,7 +26127,7 @@ var command11 = analysisCommand(name12, {
   }
 });
 
-// packages/structure/src/reports/excluded.ts
+// packages/history/src/report-header.ts
 var COMMIT_FILTERS = [
   ["outsideWindow", "commits outside the analysis window"],
   ["shallowBoundaryCommits", "shallow boundary commits"],
@@ -25966,13 +26145,20 @@ var CHANGE_FILTERS = [
   ["vendored", "vendored file changes"]
 ];
 var FILE_KINDS = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
-function excludedCounts(filters, files, builtin) {
+function excludedCounts(filters, files, builtin, wording = {}) {
+  const leftOutOf = wording.leftOutOf ?? "the results";
   return [
     ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
-    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files`, count: filters.oversizedChanges },
-    ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of the results`, count: count3 })),
+    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files${wording.oversizedNote === void 0 ? "" : `, ${wording.oversizedNote}`}`, count: filters.oversizedChanges },
+    ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of ${leftOutOf}`, count: count3 })),
     ...Object.entries(builtin).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
   ];
+}
+function isoDate(value) {
+  return new Date(typeof value === "number" ? value * 1e3 : value).toISOString().slice(0, 10);
+}
+function historyWindowText(evidence2, window2, suffix = "") {
+  return `${evidence2.usableHistoryMonths} months of usable history; the analysis window is ${evidence2.window.months} months, ${isoDate(window2.since)} to ${isoDate(window2.until)}${suffix}`;
 }
 
 // packages/structure/src/reports/structure.ts
@@ -25983,7 +26169,6 @@ var TOP_HUBS = 10;
 var SYMBOLS_PER_EDGE = 3;
 var NODES_PER_CYCLE = 4;
 var TOP_PACKAGES = 40;
-var isoDate = (seconds) => new Date(typeof seconds === "number" ? seconds * 1e3 : seconds).toISOString().slice(0, 10);
 var yesNo = (value) => value ? "yes" : "no";
 var plural = (n, noun, many = `${noun}s`) => `${n} ${n === 1 ? noun : many}`;
 function nameList(names, shown2) {
@@ -26329,7 +26514,7 @@ var structure = {
       inputs: { since: context.values.since ?? null, until: context.values.until ?? null, ...results.inputs },
       header: {
         evidenceGrade: evidence2.grade,
-        historyWindow: `${evidence2.usableHistoryMonths} months of usable history; the analysis window is ${evidence2.window.months} months, ${isoDate(results.extra.window.since)} to ${isoDate(results.extra.window.until)}`,
+        historyWindow: historyWindowText(evidence2, results.extra.window),
         excluded
       },
       sections,

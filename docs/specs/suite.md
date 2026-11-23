@@ -315,6 +315,8 @@ Rendering refuses, with exit 2 and a message that names every problem, when the 
 
 A report reads other plugins' stored results only through the results cache, as [Shared caches](#shared-caches) says, names each one it read in the stamp's `inputs`, and never computes another plugin's result. A result that is missing becomes a line saying which command to run.
 
+**Stored build.** `--slots` stores the report's build in `.cache/code-health/report-builds/`, and the rendering step reads it instead of computing the report again, so a render takes as long as reading a file. A stored build is reused only when all of these are unchanged: the kind, its arguments, its option values (except `--slots`, `--notes`, `--format`, `--out` and `--no-cache`), the directory the command ran from, HEAD, the config hash, the running program file, whatever the kind names in its optional `dependsOn` (the change report names the commits its range resolves to and the content of its `--evidence` files), and the size and modification time of the stored results in `.cache/code-health/reports/`, the identity files (`.mailmap`, `.code-health/identity-decisions.json` and the local ones), `.gitattributes` and the shallow file. A tree with an edit to a tracked file or an untracked file that is not ignored (the `--notes` and `--out` files excepted) neither reads nor stores a build. The history and blame stores are not compared: they are keyed by commit and blob. `--no-cache` computes the report again and stores the new build. One entry is kept per kind and arguments, so the folder does not grow with each commit.
+
 The `--slots` output has the schema `report.schema.json` in the plugin's `schemas/`. A report's goldens (slots, HTML and Markdown) sit in `test/golden/_reports/`, and its tests cover the refusal cases.
 
 ### Page rules
@@ -322,6 +324,9 @@ The `--slots` output has the schema `report.schema.json` in the plugin's `schema
 - **HTML** is one self-contained file: inline CSS and inline SVG, no script needed to read it, no external request. It uses semantic elements (header, nav, main, section, table with caption, `th scope`, figure and figcaption). Class names say what a thing is and never how it looks. Every chart has a text table of the same data. Colour is never the only signal: values are printed, and a value beside its guideline has a marker and words. Text and fills meet WCAG AA contrast. A light and a dark theme follow `prefers-color-scheme`, and print styles drop the navigation and keep charts and tables whole.
 - **Markdown** uses headings, lists and tables only, and reads on GitHub and in a terminal.
 - **Header.** Every report shows the repository, the analysed commit, the date (HEAD's committer date, never the wall clock), the config hash, the evidence grade, the history window and what was excluded, with counts. A **Limits** section closes every report: fixed statements that follow from the data, then the agent's own limits slot when the report defines one.
+- **Empty content.** A ranked table with no rows and a stability chart with fewer than 3 points print one line that begins "Notice:" in place of the block, naming what is empty (and why, when the block's `emptyText` says). A section whose blocks are all empty or notices prints as one line, `Heading: ...`, in place of its heading and blocks, and keeps its anchor in the navigation. A report builder calls `dropEmptySlots` on its finished build so that no judgement slot is asked for about content that is empty.
+- **Capped tables.** A builder that cuts a ranked table to its first N rows uses `capRows`, and the table then prints "N of M shown; the rest are in `<command>` output." with the command that lists every row.
+- **Compact header.** `--compact` prints the repository as a code span (escaped when the name has backticks) and the excluded counts as a total and the number of kinds, such as "Excluded: 420 in total across 5 kinds; the full report lists each". The full header lists each count.
 - **Guidelines** are shown as legend values beside the numbers and never as a single score or a red, yellow and green rating. A list is a distribution or a top-N and says how many rows it leaves out. No headline figure is an average weighted by lines of code.
 - **Names of people** appear only where the plugin already allows them (abandonment and successors with `--names`), and the knowledge report follows the same rule.
 
@@ -331,14 +336,14 @@ Components are pure functions from data to strings, one for HTML (with inline SV
 
 | Block `type` | What it renders |
 |---|---|
-| `ranked-table` | Rows in the order given, an optional rank column, and a guideline legend with a marker on the marked side of each column's guideline. |
+| `ranked-table` | Rows in the order given, an optional rank column, and a guideline legend with a marker on the marked side of each column's guideline. With no rows it prints one notice line, from `emptyText` or "<caption>: no rows.". `capRows` cuts it and sets `fullIn`, the command that lists every row. |
 | `treemap` | A squarified treemap nested by folder. The caller chooses the size and colour keys. Tiles print their name and value, colour is five numbered bands, and a table lists the tiles. Tiles not drawn are counted. |
 | `category-treemap` | A squarified treemap nested by folder whose tiles are coloured by kind rather than by a value. Each tile prints its name and a short mark of its kind, hatched tiles have no kind, a legend lists the marks in words with their tile counts, and a table lists the tiles. Tiles not drawn are counted. |
 | `sparkline` | A small line over periods, with a table of the values. |
 | `histogram` | Counts per bin as bars with printed counts, and a table with shares. |
 | `matrix` | A heatmap of rows by columns with the values printed in the cells, and a table. |
 | `guideline-bars` | Values each against its guideline, with the ratio and "above guideline", "at guideline" or "below guideline". |
-| `stability-chart` | A scatter of instability against abstractness with the main sequence and the zones of pain and uselessness labelled. Every measured point is drawn, the furthest from the main sequence are numbered and tabled with their position in words, and the legend counts all points by position. |
+| `stability-chart` | With fewer than 3 points, one notice line (`emptyText` or a default) instead of a chart. Otherwise a scatter of instability against abstractness with the main sequence and the zones of pain and uselessness labelled. Every measured point is drawn, the furthest from the main sequence are numbered and tabled with their position in words, and the legend counts all points by position. |
 | `trend-marker` | A later window against an earlier one: the word stronger, stable or weaker, an arrow and both values. |
 | `evidence-list` | Commits or findings, each with an id, text and detail as plain text, and a count of those not listed. |
 | `notice` | A line that opens with the word Notice, Limit or Warning. |
