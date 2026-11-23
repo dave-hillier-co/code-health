@@ -94,10 +94,27 @@ test("notes render to html and markdown that match the goldens", async () => {
   expectGolden("report.locality.md", masked(md.stdout, document.stamp.config));
 });
 
+test("moves come first in their own table, reviews and splits follow, and scrutinise units are ranked by consumer files apart from them", async () => {
+  const document = await slots();
+  const { stdout } = await run("--notes", writeNotes("notes-grouping.json", fullNotes(document)), "--format", "md");
+  const moves = stdout.indexOf("**Moves the planner can plan without --reason");
+  const reviews = stdout.indexOf("**Reviews, splits and inlines");
+  const scrutinise = stdout.indexOf("**High fan-in units (kind scrutinise)");
+  expect(moves).toBeGreaterThan(-1);
+  expect(reviews).toBeGreaterThan(moves);
+  expect(scrutinise).toBeGreaterThan(reviews);
+  const rows = (from: number, to: number) => stdout.slice(from, to).split("\n").filter((line) => /^\| \d+ \|/.test(line));
+  for (const row of rows(moves, reviews)) expect(row).toMatch(/\| move \|/);
+  for (const row of rows(reviews, scrutinise)) expect(row).not.toMatch(/\| (move|scrutinise|blocked) \|/);
+  expect(rows(scrutinise, stdout.indexOf("## 1.")).join("\n")).toContain("src/shared/format.ts");
+  // The first planned candidates are the moves, so each has a dry-run plan rather than needs-reason.
+  expect(stdout.indexOf("## 1. src/shared/pair")).toBeGreaterThan(-1);
+});
+
 test("the page shows the candidates, a dry-run plan, the distance histogram, unresolved imports and what was omitted", async () => {
   const document = await slots();
   const { stdout } = await run("--notes", writeNotes("notes-content.json", fullNotes(document)), "--format", "md");
-  for (const text of ["Candidates, ordered by gain", "Move plan (dry run)", "imports? rewritten", "Distance from each unit's folder", "Unresolved imports", "Omitted, by reason", "near-consumers"]) {
+  for (const text of ["Moves the planner can plan without --reason", "Move plan (dry run)", "imports? rewritten", "Distance from each unit's folder", "Unresolved imports", "Omitted, by reason", "near-consumers"]) {
     expect(stdout).toMatch(new RegExp(text.replace(/[()']/g, "\\$&")));
   }
   expect(stdout).toContain("src/shared/utils/money.ts");

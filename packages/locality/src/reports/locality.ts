@@ -20,6 +20,9 @@ import { planMove, type Refusal } from "../move-plan.ts";
 /** Rows of the candidate table, and how many of them get a move plan and a judgement. */
 const TOP = 15;
 const PLANNED = 10;
+/** Rows of the review and split table and of the scrutinise table. */
+const TOP_REVIEW = 10;
+const TOP_SCRUTINISE = 10;
 const VERDICTS = ["do-it", "do-it-differently", "leave"];
 const KINDS = ["move", "split", "inline", "scrutinise", "review"];
 const DISTANCE_BINS = 5;
@@ -60,7 +63,8 @@ function consumersOf(candidate: Candidate): string[] {
 }
 
 const consumerFolders = (candidate: Candidate) => new Set(consumersOf(candidate).map(folderOf));
-const folderText = (folder: string) => (folder === "" ? "the repository root" : folder);
+const ROOT_TEXT = "the repository root (/)";
+const folderText = (folder: string) => (folder === "" ? ROOT_TEXT : folder);
 const confidenceOf = (candidate: Candidate) => (candidate.confidence === undefined ? "normal" : `low: ${candidate.confidence.reason}`);
 
 /** One literal line: the refusal codes with their counts, then the detail of the first refusal, cut to one short sentence. */
@@ -89,35 +93,100 @@ async function dryRun(context: CommandContext, candidate: Candidate, settings: L
 function planText(plan: PlanSummary): string {
   if (plan.refusal !== null) return `no plan: ${plan.refusal}`;
   if (plan.failure !== null) return `the dry run failed: ${plan.failure}`;
-  return `${plural(plan.filesMoved, "file")} moved to ${plan.destination === "" ? "the repository root" : plan.destination}, ${plural(plan.rewrites, "import")} rewritten in ${plural(plan.filesRewritten, "file")}`;
+  return `${plural(plan.filesMoved, "file")} moved to ${folderText(plan.destination)}, ${plural(plan.rewrites, "import")} rewritten in ${plural(plan.filesRewritten, "file")}`;
 }
 
-function candidateTable(rows: Candidate[], total: number, settings: LocalitySettings): Block {
+const gainColumns = (settings: LocalitySettings) => [
+  { key: "path", label: "Unit" },
+  { key: "kind", label: "Kind" },
+  { key: "target", label: "Target" },
+  { key: "gain", label: "Gain (net distance removed)", align: "right" as const, guideline: { value: settings.minDistance, note: "locality.minDistance" } },
+  { key: "ratio", label: "Gain over guideline", align: "right" as const },
+  { key: "files", label: "Unit files", align: "right" as const },
+  { key: "consumers", label: "Consumer files", align: "right" as const },
+  { key: "folders", label: "Consumer folders", align: "right" as const },
+  { key: "distance", label: "Distance", align: "right" as const },
+  { key: "confidence", label: "Confidence" },
+];
+
+const gainRow = (c: Candidate): Record<string, Cell> => ({
+  path: c.path,
+  kind: c.recommendation,
+  target: folderText(c.target),
+  gain: c.gain,
+  ratio: c.ranking.ratio,
+  files: c.size.files,
+  consumers: consumersOf(c).length,
+  folders: consumerFolders(c).size,
+  distance: c.distance,
+  confidence: confidenceOf(c),
+});
+
+/** Units the planner can plan without a reason: kind move, ordered by gain over the locality.minDistance guideline. */
+function moveTable(rows: Candidate[], settings: LocalitySettings): Block {
   return {
     type: "ranked-table",
-    caption: "Candidates, ordered by gain over the locality.minDistance guideline",
-    noun: "candidates",
-    total,
-    columns: [
-      { key: "path", label: "Unit" },
-      { key: "kind", label: "Kind" },
-      { key: "gain", label: "Gain (net distance removed)", align: "right", guideline: { value: settings.minDistance, note: "locality.minDistance" } },
-      { key: "ratio", label: "Gain over guideline", align: "right" },
-      { key: "consumers", label: "Consumer files", align: "right" },
-      { key: "folders", label: "Consumer folders", align: "right" },
-      { key: "distance", label: "Distance", align: "right" },
-      { key: "confidence", label: "Confidence" },
-    ],
-    rows: rows.map((c): Record<string, Cell> => ({
-      path: c.path,
-      kind: c.recommendation,
-      gain: c.gain,
-      ratio: c.ranking.ratio,
-      consumers: consumersOf(c).length,
-      folders: consumerFolders(c).size,
-      distance: c.distance,
-      confidence: confidenceOf(c),
-    })),
+    ...capRows(
+      {
+        caption: "Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline",
+        noun: "moves",
+        emptyText: "No candidate has kind move, so no unit can be planned without --reason.",
+        columns: gainColumns(settings),
+        rows: rows.map(gainRow),
+      },
+      TOP,
+      "locality analyse --recommendation move",
+    ),
+  };
+}
+
+/** Units whose move or split needs a reason or a decision first: kind review, split or inline. */
+function reviewTable(rows: Candidate[], settings: LocalitySettings): Block {
+  return {
+    type: "ranked-table",
+    ...capRows(
+      {
+        caption: "Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline",
+        noun: "candidates",
+        emptyText: "No candidate has kind review, split or inline.",
+        columns: gainColumns(settings),
+        rows: rows.map(gainRow),
+      },
+      TOP_REVIEW,
+      "locality analyse --recommendation review",
+    ),
+  };
+}
+
+/** Units already in their target folder whose consumers are many: location is earned, so the design is what to read. */
+function scrutiniseTable(rows: Candidate[], settings: LocalitySettings): Block {
+  return {
+    type: "ranked-table",
+    ...capRows(
+      {
+        caption: "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline",
+        noun: "units",
+        emptyText: "No unit has kind scrutinise.",
+        columns: [
+          { key: "path", label: "Unit" },
+          { key: "fanIn", label: "Consumer files", align: "right", guideline: { value: settings.highFanIn, note: "locality.highFanIn" } },
+          { key: "ratio", label: "Consumer files over guideline", align: "right" },
+          { key: "folders", label: "Consumer folders", align: "right" },
+          { key: "gain", label: "Gain (net distance removed)", align: "right" },
+          { key: "confidence", label: "Confidence" },
+        ],
+        rows: rows.map((c): Record<string, Cell> => ({
+          path: c.path,
+          fanIn: consumersOf(c).length,
+          ratio: c.guidelines.fanIn.ratio,
+          folders: consumerFolders(c).size,
+          gain: c.gain,
+          confidence: confidenceOf(c),
+        })),
+      },
+      TOP_SCRUTINISE,
+      "locality analyse --recommendation scrutinise",
+    ),
   };
 }
 
@@ -134,7 +203,7 @@ function candidateSection(rank: number, candidate: Candidate, plan: PlanSummary,
           { label: "Kind", value: `${candidate.recommendation} (rule ${candidate.rule})` },
           { label: "Reason", value: candidate.reason },
           { label: "Gain", value: `${candidate.gain} of net distance removed, against the locality.minDistance guideline of ${settings.minDistance}` },
-          { label: "Net distance", value: `${candidate.netDistance.current} now, ${candidate.netDistance.atTarget} at the target ${candidate.target === "" ? "(the repository root)" : candidate.target}` },
+          { label: "Net distance", value: `${candidate.netDistance.current} now, ${candidate.netDistance.atTarget} at the target ${folderText(candidate.target)}` },
           { label: "Consumers", value: `${plural(consumers.length, "file")} in ${plural(consumerFolders(candidate).size, "folder")}` },
           { label: "Size", value: `${plural(candidate.size.files, "file")}, ${plural(candidate.size.lines, "line")}` },
           ...(candidate.unusableTarget === undefined
@@ -172,7 +241,7 @@ function omittedRows(structural: { placed: number; blocked: number; keep: number
     ...Object.entries(structural.byReason).sort(byText).map(([reason, count]) => ({ what: `units with no proposed move: ${reason}`, count })),
     { what: "units recommended blocked, held back by a dependency (listed below with their blockers)", count: structural.blocked },
     { what: "units recommended keep, with nothing to move", count: structural.keep },
-    { what: `candidates past the top ${TOP} of the table`, count: structural.notShown },
+    { what: `candidates past the rows of the three candidate tables`, count: structural.notShown },
     ...Object.entries(history.omitted).map(([reason, count]) => ({ what: REASON_WORDS[reason] ?? reason, count })),
   ];
 }
@@ -275,15 +344,21 @@ export const localityReport: ReportKind = {
     const historyOnly = (historyOutput.extra as unknown as HistoryExtra).historyOnly;
 
     const ofKind = all.filter((c) => KINDS.includes(c.recommendation));
-    const shown = ofKind.slice(0, TOP);
-    const planned = shown.slice(0, PLANNED);
+    const moves = ofKind.filter((c) => c.recommendation === "move");
+    const reviews = ofKind.filter((c) => c.recommendation === "review" || c.recommendation === "split" || c.recommendation === "inline");
+    const scrutinise = ofKind
+      .filter((c) => c.recommendation === "scrutinise")
+      .sort((a, b) => b.fanIn - a.fanIn || (a.path < b.path ? -1 : 1));
+    // Moves are planned first, then reviews and splits; a scrutinise unit has nothing to move and is not planned.
+    const planned = [...moves, ...reviews].slice(0, PLANNED);
+    const shownCount = Math.min(moves.length, TOP) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
     const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
     const plans: PlanSummary[] = [];
     for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files));
 
     const byKind = extra.summary.byRecommendation;
     const blocked = all.filter((c) => c.recommendation === "blocked");
-    const omitted = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shown.length, byReason: extra.summary.omitted }, historyOnly);
+    const omitted = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount, byReason: extra.summary.omitted }, historyOnly);
     const unresolved = Object.entries(extra.unresolved).sort(byText);
     const excluded: ExcludedCount[] = [
       ...omitted,
@@ -311,7 +386,8 @@ export const localityReport: ReportKind = {
           },
           ofKind.length === 0
             ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." }
-            : candidateTable(shown, ofKind.length, settings),
+            : moveTable(moves, settings),
+          ...(ofKind.length === 0 ? [] : [reviewTable(reviews, settings), scrutiniseTable(scrutinise, settings)]),
         ],
       },
       ...planned.map((candidate, index) => candidateSection(index + 1, candidate, plans[index]!, settings)),
@@ -373,7 +449,7 @@ export const localityReport: ReportKind = {
       sections,
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        `The table shows the top ${TOP} candidates and says how many it leaves out; the move plans and judgements cover the top ${PLANNED}.`,
+        `Three tables list candidates by kind: moves (top ${TOP}), reviews, splits and inlines (top ${TOP_REVIEW}) and scrutinise (top ${TOP_SCRUTINISE}). Each says how many rows it leaves out. Move plans and judgements cover the first ${PLANNED} of the moves, then the reviews and splits. A unit of kind blocked is listed only in the blocked table.`,
         "A move plan is a dry run of the proposed move. The report never applies one.",
         "Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.",
         ...(lowConfidence > 0 ? [`${plural(lowConfidence, "candidate")} rest on includes that found no file, so a consumer may be missing and the result is a lower bound.`] : []),
