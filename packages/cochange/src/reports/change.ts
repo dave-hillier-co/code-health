@@ -299,7 +299,7 @@ function missingBlocks(assessed: Assessed): Block[] {
     return [{ type: "notice", level: "notice", text: `Missing co-change partners could not be computed: ${factor?.reason ?? "the factor is not available"}.` }];
   }
   const skipped = number(factor.value.manifestPartnersSkipped) ?? 0;
-  const skippedNotice: Block[] = skipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(skipped, "build manifest")} that list${skipped === 1 ? "s" : ""} source files (such as CMakeLists.txt) usually change with a touched file and are not in the change; ${skipped === 1 ? "it is" : "they are"} not counted as missing, because the change adds, removes or renames no code file in ${skipped === 1 ? "its" : "their"} folder.` }];
+  const skippedNotice: Block[] = skipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(skipped, "partner")} left out of this list because the pairing is with a build manifest that lists source files (such as CMakeLists.txt): a manifest counts as missing only when the change adds, removes or renames a code file in its folder, and a touched manifest does not make its source files missing.` }];
   if (factor.evidence.length === 0) return [...skippedNotice, { type: "notice", level: "notice", text: "No file that usually changes with a touched file is missing from the change." }];
   const rows = factor.evidence.map((e): Record<string, Cell> => ({ file: text(e.file), towards: text(e.towards), confidence: number(e.confidence), support: number(e.support) }));
   return [

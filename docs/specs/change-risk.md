@@ -87,7 +87,7 @@ Each row is a factor. The history and lexical layers supply most of them, so the
 
 | Factor | Signal | Why it matters |
 |---|---|---|
-| `missing-co-change` | Files with confidence at or above the confidence guideline towards a touched file, with support above the minimum, that the change does not touch. A partner that is a build manifest listing sources (`CMakeLists.txt`, `Makefile`, `meson.build`, Bazel `BUILD`) counts only when the change adds, removes or renames a code file in its folder or below; the partners skipped are counted in `manifestPartnersSkipped` and the change report says how many | The strongest single completeness signal: these files have needed changing every other time |
+| `missing-co-change` | Files with confidence at or above the confidence guideline towards a touched file, with support above the minimum, that the change does not touch. A partner that is a build manifest listing sources (`CMakeLists.txt`, `Makefile`, `meson.build`, Bazel `BUILD`) counts only when the change adds, removes or renames a code file in its folder or below, and a touched build manifest does not make its source files missing; the partners skipped are counted in `manifestPartnersSkipped` and the change report says how many | The strongest single completeness signal: these files have needed changing every other time |
 | `novel-coupling` | Pairs of touched files at high tree distance that have never changed together before | The change may be introducing a dependency between areas that were independent |
 | `test-evidence` | Source files changed without the test files that usually change with them, and test deletions | Behaviour may have changed without tests following |
 
