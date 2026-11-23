@@ -33,6 +33,13 @@
       "required": ["by", "allFiles", "includeTests", "complexityReport"],
       "additionalProperties": false
     },
+    "contributors": {
+      "description": "The authors in the window, split into people and agent identities by the identity rules. The overview reads it; agent identities are not counted as people.",
+      "type": "object",
+      "properties": { "people": { "type": "integer", "minimum": 0 }, "agents": { "type": "integer", "minimum": 0 } },
+      "required": ["people", "agents"],
+      "additionalProperties": false
+    },
     "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" },
     "complexitySource": {
       "description": "Where the complexity column came from: the complexity plugin's file report, or indentation complexity computed from the files at the analysed commit.",
