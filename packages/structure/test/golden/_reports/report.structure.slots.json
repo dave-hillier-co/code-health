@@ -1,7 +1,7 @@
 {
   "data": {
     "header": {
-      "commit": "5c72cdf8d3f476ab7dde9b33dad8138317cc81a8",
+      "commit": "15d0025597eb9e7c8a2acaf7fcdbbce7858dc064",
       "configHash": "0000000000000000",
       "date": "2024-05-25",
       "evidenceGrade": "weak",
@@ -16,9 +16,9 @@
     },
     "limits": [
       "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-      "Each list shows its top rows and says how many it leaves out: 5 cycles, 8 dependencies against stability, 15 layer violations, 10 hubs and 40 packages in the stability table (the chart draws every measured package). The commands print the rest.",
+      "Each list shows its top rows and says how many it leaves out: 5 cycles, 8 dependencies against stability, 15 layer violations, 10 hubs and 15 packages in the stability table (the chart draws every package that exports types). The commands print the rest.",
       "Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. `structure cycles --level` shows the other levels.",
-      "Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, and a package that exports fewer than 3 types is marked weak. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.",
+      "Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums, a package that exports fewer than 3 types is marked weak, and a package that exports none is not measured and is left out of the chart. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.",
       "The zones of the chart are geometric. `structure packages coupling` raises a finding only when a package in a zone also has dependents and changes often.",
       "The census finds mechanisms by name and shape, so a look-alike can be counted and a custom convention missed.",
       "The evidence grade is weak, so change stability and the co-change counts are tentative and the static structure should lead."
@@ -39,7 +39,7 @@
               },
               {
                 "label": "Dependencies pointing towards less stable folders",
-                "value": "1, of which 0 reach a guideline"
+                "value": "1, of which 1 reach a guideline"
               },
               {
                 "label": "Registration hubs",
@@ -47,7 +47,7 @@
               },
               {
                 "label": "Packages",
-                "value": "4"
+                "value": "5"
               }
             ],
             "type": "facts"
@@ -63,7 +63,7 @@
       {
         "blocks": [
           {
-            "text": "Cycles are found at the default level: a Go package for Go, a folder for C# and a file for every other language. The breaking set is the smallest set of edges whose removal makes the cycle acyclic, and between equally small sets the one whose sides co-change least. Nested folder cycles, a folder and its own sub-folder, sort last.",
+            "text": "Cycles are found at the default level: a Go package for Go, a project for C# and a file for every other language. The breaking set is the smallest set of edges whose removal makes the cycle acyclic, and between equally small sets the one whose sides co-change least. Nested folder cycles, a folder and its own sub-folder, sort last.",
             "type": "paragraph"
           },
           {
@@ -259,7 +259,7 @@
       {
         "blocks": [
           {
-            "maxPoints": 40,
+            "maxPoints": 15,
             "noun": "packages",
             "points": [
               {
@@ -275,22 +275,12 @@
               {
                 "abstractness": 0,
                 "ca": 1,
-                "ce": 1,
-                "distance": 0.5,
-                "exportedTypes": 0,
-                "instability": 0.5,
-                "name": "packages/p2",
-                "weak": true
-              },
-              {
-                "abstractness": 0,
-                "ca": 1,
-                "ce": 2,
-                "distance": 0.333,
-                "exportedTypes": 0,
-                "instability": 0.667,
-                "name": "packages/p1",
-                "weak": true
+                "ce": 0,
+                "distance": 1,
+                "exportedTypes": 3,
+                "instability": 0,
+                "name": "packages/p5",
+                "weak": false
               },
               {
                 "abstractness": 0.667,
@@ -304,10 +294,15 @@
               }
             ],
             "title": "Packages by instability and abstractness",
-            "total": 4,
+            "total": 3,
             "type": "stability-chart",
             "zoneDistance": 0.5,
             "zoneSource": "structure.packages.zoneDistance, a judgement call"
+          },
+          {
+            "level": "notice",
+            "text": "2 packages export no types, so abstractness is not measured for them. They are left out of the chart and its table and are not placed in a zone.",
+            "type": "notice"
           },
           {
             "text": "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one.",
@@ -356,13 +351,14 @@
                 "label": "Measures disagree"
               }
             ],
+            "emptyText": "No dependency points towards a less stable folder.",
             "noun": "dependencies",
             "rows": [
               {
                 "basis": "structure",
                 "disagree": "no",
                 "from": "packages/p2/src",
-                "gap": 16.7,
+                "gap": 25,
                 "imports": 1,
                 "ratio": null,
                 "to": "packages/p1/src"
@@ -517,7 +513,7 @@
           },
           {
             "level": "notice",
-            "text": "Omitted 2 of 2 files with at least 3 changes: each reached fewer than 2 of the 4 signals (2 of them without reading their diffs, because the other three signals left them unable to reach 2). 7 more files have fewer than 3 changes",
+            "text": "Omitted 2 of 2 files with at least 3 changes: each reached fewer than 2 of the 4 signals (2 of them without reading their diffs, because the other three signals left them unable to reach 2). 8 more files have fewer than 3 changes",
             "type": "notice"
           }
         ],
@@ -606,7 +602,7 @@
   ],
   "stamp": {
     "config": "0000000000000000",
-    "head": "5c72cdf8d3f476ab7dde9b33dad8138317cc81a8",
+    "head": "15d0025597eb9e7c8a2acaf7fcdbbce7858dc064",
     "inputs": {
       "census": {
         "census": {
@@ -639,7 +635,7 @@
         "significanceLevel": 0.01
       },
       "layers": {
-        "analysed": "5c72cdf8d3f476ab7dde9b33dad8138317cc81a8",
+        "analysed": "15d0025597eb9e7c8a2acaf7fcdbbce7858dc064",
         "layers": [
           "ui",
           "core"

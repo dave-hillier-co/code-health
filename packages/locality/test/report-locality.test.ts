@@ -5,7 +5,7 @@ import Ajv2020Module from "ajv/dist/2020.js";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import { GOLDEN_CONFIG_HASH } from "@code-health/fixtures/cli-testing";
-import type { GitFixture } from "@code-health/fixtures/git-fixture";
+import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { GOLDEN_DIR } from "./support/golden.ts";
 import { runLocality } from "./support/run.ts";
 import { distantHelpers } from "./support/scenarios.ts";
@@ -191,4 +191,60 @@ test("the report command is listed by --help", async () => {
   const help = (await runLocality(repo.path, ["report", "--help"])).stdout;
   expect(help).toMatch(/locality\s+Units far/);
   expect(help).toContain("--slots");
+});
+
+const add = (path: string, content: string) => ({ op: "add" as const, path, content });
+const goUnit = (name: string) => `package ${name}\n\nfunc Run() int {\n\treturn 1\n}\n`;
+const goImports = (pkg: string, imported: string) => `package ${pkg}\n\nimport "example.com/m/${imported}"\n\nfunc Use() int {\n\treturn ${imported.split("/").pop()}.Run()\n}\n`;
+
+const goRepository = (entry: string, files: Record<string, string>) =>
+  GitFixture.build([
+    { type: "commit", message: "Add the code", date: "2024-01-01T09:00:00Z", changes: [add("code-health.json", JSON.stringify({ entryPoints: ["cmd/main.go"] })), add("go.mod", "module example.com/m\n\ngo 1.22\n"), add("cmd/main.go", entry), ...Object.entries(files).map(([path, content]) => add(path, content))] },
+    { type: "commit", message: "Add notes", date: "2025-01-01T09:00:00Z", changes: [add("NOTES.md", "Notes.\n")] },
+  ]);
+
+test("the page shows the omitted counts by reason and the omitted units with their detail", async () => {
+  const go = goRepository('package main\n\nimport (\n\t"example.com/m/pkg/svc"\n\t"example.com/m/pkg/other"\n)\n\nfunc main() {\n\t_ = svc.Use() + other.Use()\n}\n', {
+    "pkg/svc/one.go": goImports("svc", "lib/internal/store"),
+    "pkg/other/two.go": goImports("other", "lib/internal/store"),
+    "lib/internal/store/store.go": goUnit("store"),
+  });
+  try {
+    const { code, stdout } = await runLocality(go.path, ["report", "locality", "--format", "md"]);
+    expect(code).toBe(ExitCode.Success);
+    expect(stdout).toContain("| units with no proposed move: no usable target: crosses internal/ | 1 |");
+    expect(stdout).toContain("Units with no proposed move");
+    expect(stdout).toMatch(/\| 1 \| lib\/internal\/store\/store\.go \| no usable target: crosses internal\/ \| .*internal\/.* \|/);
+  } finally {
+    go.dispose();
+  }
+});
+
+test("a candidate shows its reason and the better folder the placement rules refuse", async () => {
+  const go = goRepository('package main\n\nimport (\n\t"example.com/m/m/lib/internal/a/x"\n\t"example.com/m/m/lib/internal/b/y"\n)\n\nfunc main() {\n\t_ = x.Use() + y.Use()\n}\n', {
+    "m/lib/internal/a/x/x.go": goImports("x", "m/lib/store"),
+    "m/lib/internal/b/y/y.go": goImports("y", "m/lib/store"),
+    "m/lib/store/store.go": goUnit("store"),
+  });
+  try {
+    const { stdout } = await runLocality(go.path, ["report", "locality", "--format", "md"]);
+    expect(stdout).toMatch(/\| Reason \| .+ \|/);
+    expect(stdout).toContain("| Better folder refused | m/lib/internal, with gain");
+    expect(stdout).toContain("is refused: crosses internal/");
+  } finally {
+    go.dispose();
+  }
+});
+
+test("the page lists the blockers of the units recommended blocked", async () => {
+  const { stdout } = await run("--format", "md");
+  expect(stdout).toContain("Units recommended blocked, with the files that hold them back");
+  expect(stdout).toContain("| src/lib/kernel/tool.ts | 0 | src/lib/kernel/core.ts |");
+});
+
+test("a refused move plan is one line: the codes with counts, then the first detail cut short", async () => {
+  const { stdout } = await run("--format", "md");
+  const plans = stdout.split("\n").filter((line) => line.startsWith("| Move plan (dry run) | no plan:"));
+  expect(plans.length).toBeGreaterThan(0);
+  for (const line of plans) expect(line).toMatch(/^\| Move plan \(dry run\) \| no plan: [a-z-]+( x\d+)?(, [a-z-]+( x\d+)?)*; first: .{1,121} \|$/);
 });

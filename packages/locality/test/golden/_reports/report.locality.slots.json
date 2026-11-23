@@ -12,7 +12,7 @@
         },
         {
           "count": 3,
-          "what": "candidates recommended blocked, held back by a dependency"
+          "what": "units recommended blocked, held back by a dependency (listed below with their blockers)"
         }
       ],
       "historyWindow": "12 months of usable history; the analysis window is 12 months, 2024-01-01 to 2025-01-01",
@@ -255,6 +255,10 @@
                 "value": "split (rule mixed-exports)"
               },
               {
+                "label": "Reason",
+                "value": "Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split."
+              },
+              {
                 "label": "Gain",
                 "value": "4 of net distance removed, against the locality.minDistance guideline of 2"
               },
@@ -280,7 +284,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "no plan: needs-reason (the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway)"
+                "value": "no plan: needs-reason; first: the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway"
               }
             ],
             "type": "facts"
@@ -301,6 +305,10 @@
               {
                 "label": "Kind",
                 "value": "move (rule two-consumers)"
+              },
+              {
+                "label": "Reason",
+                "value": "Two consumers: move to the target."
               },
               {
                 "label": "Gain",
@@ -351,6 +359,10 @@
                 "value": "move (rule two-consumers)"
               },
               {
+                "label": "Reason",
+                "value": "Two consumers: move to the target."
+              },
+              {
                 "label": "Gain",
                 "value": "4 of net distance removed, against the locality.minDistance guideline of 2"
               },
@@ -397,6 +409,10 @@
               {
                 "label": "Kind",
                 "value": "move (rule single-consumer-tiny)"
+              },
+              {
+                "label": "Reason",
+                "value": "One consumer, and the unit is tiny: inline it."
               },
               {
                 "label": "Gain",
@@ -447,6 +463,10 @@
                 "value": "move (rule single-consumer-large)"
               },
               {
+                "label": "Reason",
+                "value": "One consumer and a large unit: move it next to the consumer, as its own module."
+              },
+              {
                 "label": "Gain",
                 "value": "3 of net distance removed, against the locality.minDistance guideline of 2"
               },
@@ -495,6 +515,10 @@
                 "value": "inline (rule single-consumer-tiny)"
               },
               {
+                "label": "Reason",
+                "value": "One consumer, and the unit is tiny: inline it."
+              },
+              {
                 "label": "Gain",
                 "value": "3 of net distance removed, against the locality.minDistance guideline of 2"
               },
@@ -520,7 +544,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "no plan: needs-reason (the analyser recommends inline (single-consumer-tiny), not a move: pass --reason to record why it moves anyway)"
+                "value": "no plan: needs-reason; first: the analyser recommends inline (single-consumer-tiny), not a move: pass --reason to record why it moves anyway"
               }
             ],
             "type": "facts"
@@ -541,6 +565,10 @@
               {
                 "label": "Kind",
                 "value": "scrutinise (rule high-fan-in)"
+              },
+              {
+                "label": "Reason",
+                "value": "Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design. `locality move` needs --reason for a scrutinise."
               },
               {
                 "label": "Gain",
@@ -568,7 +596,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "no plan: needs-reason (the analyser recommends scrutinise (high-fan-in), not a move: pass --reason to record why it moves anyway)"
+                "value": "no plan: needs-reason; first: the analyser recommends scrutinise (high-fan-in), not a move: pass --reason to record why it moves anyway"
               }
             ],
             "type": "facts"
@@ -589,6 +617,10 @@
               {
                 "label": "Kind",
                 "value": "review (rule scattered-unit)"
+              },
+              {
+                "label": "Reason",
+                "value": "Guard: the unit's files live outside its entry file's folder, so its leaves are scored on their own. `locality move` needs --reason for a review."
               },
               {
                 "label": "Gain",
@@ -616,7 +648,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "no plan: needs-reason (the analyser recommends review (scattered-unit), not a move: pass --reason to record why it moves anyway)"
+                "value": "no plan: needs-reason; first: the analyser recommends review (scattered-unit), not a move: pass --reason to record why it moves anyway"
               }
             ],
             "type": "facts"
@@ -637,6 +669,10 @@
               {
                 "label": "Kind",
                 "value": "move (rule two-consumers)"
+              },
+              {
+                "label": "Reason",
+                "value": "Two consumers: move to the target."
               },
               {
                 "label": "Gain",
@@ -687,6 +723,10 @@
                 "value": "inline (rule single-consumer-barrel)"
               },
               {
+                "label": "Reason",
+                "value": "A barrel with one importing file: inline it by rewriting imports to the real definitions."
+              },
+              {
                 "label": "Gain",
                 "value": "0 of net distance removed, against the locality.minDistance guideline of 2"
               },
@@ -712,7 +752,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "no plan: barrel (a barrel is inlined by rewriting its importer to the real definitions, not moved)"
+                "value": "no plan: barrel; first: a barrel is inlined by rewriting its importer to the real definitions, not moved"
               }
             ],
             "type": "facts"
@@ -788,6 +828,7 @@
                 "label": "Count"
               }
             ],
+            "emptyText": "Nothing was left out.",
             "numbered": false,
             "rows": [
               {
@@ -796,31 +837,80 @@
               },
               {
                 "count": 3,
-                "what": "candidates recommended blocked, held back by a dependency"
+                "what": "units recommended blocked, held back by a dependency (listed below with their blockers)"
+              }
+            ],
+            "type": "ranked-table"
+          },
+          {
+            "caption": "Units with no proposed move, by gain of the folder their neighbours pull them towards",
+            "columns": [
+              {
+                "key": "path",
+                "label": "Unit"
               },
               {
-                "count": 0,
-                "what": "candidates recommended keep"
+                "key": "reason",
+                "label": "Reason"
               },
               {
-                "count": 0,
-                "what": "candidates past the top 15 of the table"
+                "key": "detail",
+                "label": "Detail"
               },
               {
-                "count": 0,
-                "what": "history candidates whose distance the co-change evidence does not earn"
+                "key": "target",
+                "label": "Pulled towards"
               },
               {
-                "count": 0,
-                "what": "history candidates whose target is a fixed point"
+                "align": "right",
+                "key": "gain",
+                "label": "Gain"
               },
               {
-                "count": 0,
-                "what": "history candidates whose gain is below the locality.minDistance guideline"
+                "align": "right",
+                "key": "files",
+                "label": "Files"
+              }
+            ],
+            "emptyText": "No unit was left without a proposed move.",
+            "noun": "units",
+            "rows": [],
+            "type": "ranked-table"
+          },
+          {
+            "caption": "Units recommended blocked, with the files that hold them back",
+            "columns": [
+              {
+                "key": "path",
+                "label": "Unit"
               },
               {
-                "count": 0,
-                "what": "history candidates that a structural candidate already covers"
+                "align": "right",
+                "key": "gain",
+                "label": "Gain"
+              },
+              {
+                "key": "blockers",
+                "label": "Blockers"
+              }
+            ],
+            "emptyText": "No unit is recommended blocked.",
+            "noun": "units",
+            "rows": [
+              {
+                "blockers": "src/lib/kernel/core.ts",
+                "gain": 0,
+                "path": "src/lib/kernel/tool.ts"
+              },
+              {
+                "blockers": "src/shared/pair/core.ts",
+                "gain": 0,
+                "path": "src/shared/pair/a.ts"
+              },
+              {
+                "blockers": "src/shared/pair/core.ts",
+                "gain": 0,
+                "path": "src/shared/pair/b.ts"
               }
             ],
             "type": "ranked-table"

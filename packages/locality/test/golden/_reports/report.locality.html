@@ -106,7 +106,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <dt>Config hash</dt><dd><code>0000000000000000</code></dd>
 <dt>Evidence grade</dt><dd>weak</dd>
 <dt>History window</dt><dd>12 months of usable history; the analysis window is 12 months, 2024-01-01 to 2025-01-01</dd>
-<dt>Excluded</dt><dd><ul><li>units already beside their consumers (rule near-consumers): 16</li><li>candidates recommended blocked, held back by a dependency: 3</li></ul></dd>
+<dt>Excluded</dt><dd><ul><li>units already beside their consumers (rule near-consumers): 16</li><li>units recommended blocked, held back by a dependency (listed below with their blockers): 3</li></ul></dd>
 </dl>
 </header>
 <nav aria-label="Sections">
@@ -182,13 +182,14 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>split (rule mixed-exports)</td></tr>
+<tr><th scope="row">Reason</th><td>Exports with disjoint consumers in different folders: split the file. `locality move` needs --reason for a split.</td></tr>
 <tr><th scope="row">Gain</th><td>4 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
 <tr><th scope="row">Net distance</th><td>6 now, 2 at the target src</td></tr>
 <tr><th scope="row">Consumers</th><td>2 files in 2 folders</td></tr>
 <tr><th scope="row">Size</th><td>1 file, 6 lines</td></tr>
 <tr><th scope="row">Confidence</th><td>normal</td></tr>
 <tr><th scope="row">Blockers</th><td>none</td></tr>
-<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason (the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway)</td></tr>
+<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason; first: the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway</td></tr>
 </tbody>
 </table>
 <section class="judgement">
@@ -205,6 +206,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>move (rule two-consumers)</td></tr>
+<tr><th scope="row">Reason</th><td>Two consumers: move to the target.</td></tr>
 <tr><th scope="row">Gain</th><td>6 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
 <tr><th scope="row">Net distance</th><td>6 now, 0 at the target src/reports</td></tr>
 <tr><th scope="row">Consumers</th><td>2 files in 1 folder</td></tr>
@@ -228,6 +230,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>move (rule two-consumers)</td></tr>
+<tr><th scope="row">Reason</th><td>Two consumers: move to the target.</td></tr>
 <tr><th scope="row">Gain</th><td>4 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
 <tr><th scope="row">Net distance</th><td>6 now, 2 at the target src</td></tr>
 <tr><th scope="row">Consumers</th><td>2 files in 2 folders</td></tr>
@@ -251,6 +254,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>move (rule single-consumer-tiny)</td></tr>
+<tr><th scope="row">Reason</th><td>One consumer, and the unit is tiny: inline it.</td></tr>
 <tr><th scope="row">Gain</th><td>3 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
 <tr><th scope="row">Net distance</th><td>3 now, 0 at the target src/orders</td></tr>
 <tr><th scope="row">Consumers</th><td>1 file in 1 folder</td></tr>
@@ -274,6 +278,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>move (rule single-consumer-large)</td></tr>
+<tr><th scope="row">Reason</th><td>One consumer and a large unit: move it next to the consumer, as its own module.</td></tr>
 <tr><th scope="row">Gain</th><td>3 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
 <tr><th scope="row">Net distance</th><td>3 now, 0 at the target src/billing</td></tr>
 <tr><th scope="row">Consumers</th><td>1 file in 1 folder</td></tr>
@@ -297,13 +302,14 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>inline (rule single-consumer-tiny)</td></tr>
+<tr><th scope="row">Reason</th><td>One consumer, and the unit is tiny: inline it.</td></tr>
 <tr><th scope="row">Gain</th><td>3 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
 <tr><th scope="row">Net distance</th><td>3 now, 0 at the target src/orders</td></tr>
 <tr><th scope="row">Consumers</th><td>1 file in 1 folder</td></tr>
 <tr><th scope="row">Size</th><td>1 file, 3 lines</td></tr>
 <tr><th scope="row">Confidence</th><td>normal</td></tr>
 <tr><th scope="row">Blockers</th><td>none</td></tr>
-<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason (the analyser recommends inline (single-consumer-tiny), not a move: pass --reason to record why it moves anyway)</td></tr>
+<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason; first: the analyser recommends inline (single-consumer-tiny), not a move: pass --reason to record why it moves anyway</td></tr>
 </tbody>
 </table>
 <section class="judgement">
@@ -320,13 +326,14 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>scrutinise (rule high-fan-in)</td></tr>
+<tr><th scope="row">Reason</th><td>Fan-in at or above the locality.highFanIn guideline: the location looks earned, so review the design. `locality move` needs --reason for a scrutinise.</td></tr>
 <tr><th scope="row">Gain</th><td>16 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
 <tr><th scope="row">Net distance</th><td>16 now, 0 at the target src/features</td></tr>
 <tr><th scope="row">Consumers</th><td>8 files in 1 folder</td></tr>
 <tr><th scope="row">Size</th><td>1 file, 3 lines</td></tr>
 <tr><th scope="row">Confidence</th><td>normal</td></tr>
 <tr><th scope="row">Blockers</th><td>none</td></tr>
-<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason (the analyser recommends scrutinise (high-fan-in), not a move: pass --reason to record why it moves anyway)</td></tr>
+<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason; first: the analyser recommends scrutinise (high-fan-in), not a move: pass --reason to record why it moves anyway</td></tr>
 </tbody>
 </table>
 <section class="judgement">
@@ -343,13 +350,14 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>review (rule scattered-unit)</td></tr>
+<tr><th scope="row">Reason</th><td>Guard: the unit's files live outside its entry file's folder, so its leaves are scored on their own. `locality move` needs --reason for a review.</td></tr>
 <tr><th scope="row">Gain</th><td>2 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
 <tr><th scope="row">Net distance</th><td>9 now, 7 at the target src/shared</td></tr>
 <tr><th scope="row">Consumers</th><td>1 file in 1 folder</td></tr>
 <tr><th scope="row">Size</th><td>5 files, 23 lines</td></tr>
 <tr><th scope="row">Confidence</th><td>normal</td></tr>
 <tr><th scope="row">Blockers</th><td>none</td></tr>
-<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason (the analyser recommends review (scattered-unit), not a move: pass --reason to record why it moves anyway)</td></tr>
+<tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason; first: the analyser recommends review (scattered-unit), not a move: pass --reason to record why it moves anyway</td></tr>
 </tbody>
 </table>
 <section class="judgement">
@@ -366,6 +374,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>move (rule two-consumers)</td></tr>
+<tr><th scope="row">Reason</th><td>Two consumers: move to the target.</td></tr>
 <tr><th scope="row">Gain</th><td>2 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
 <tr><th scope="row">Net distance</th><td>4 now, 2 at the target src</td></tr>
 <tr><th scope="row">Consumers</th><td>2 files in 2 folders</td></tr>
@@ -389,13 +398,14 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Measure</th><th scope="col">Value</th></tr></thead>
 <tbody>
 <tr><th scope="row">Kind</th><td>inline (rule single-consumer-barrel)</td></tr>
+<tr><th scope="row">Reason</th><td>A barrel with one importing file: inline it by rewriting imports to the real definitions.</td></tr>
 <tr><th scope="row">Gain</th><td>0 of net distance removed, against the locality.minDistance guideline of 2</td></tr>
 <tr><th scope="row">Net distance</th><td>0 now, 0 at the target src/billing</td></tr>
 <tr><th scope="row">Consumers</th><td>0 files in 0 folders</td></tr>
 <tr><th scope="row">Size</th><td>1 file, 1 line</td></tr>
 <tr><th scope="row">Confidence</th><td>normal</td></tr>
 <tr><th scope="row">Blockers</th><td>none</td></tr>
-<tr><th scope="row">Move plan (dry run)</th><td>no plan: barrel (a barrel is inlined by rewriting its importer to the real definitions, not moved)</td></tr>
+<tr><th scope="row">Move plan (dry run)</th><td>no plan: barrel; first: a barrel is inlined by rewriting its importer to the real definitions, not moved</td></tr>
 </tbody>
 </table>
 <section class="judgement">
@@ -444,13 +454,17 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <thead><tr><th scope="col">Left out</th><th scope="col" class="number">Count</th></tr></thead>
 <tbody>
 <tr><th scope="row">units already beside their consumers (rule near-consumers)</th><td class="number">16</td></tr>
-<tr><th scope="row">candidates recommended blocked, held back by a dependency</th><td class="number">3</td></tr>
-<tr><th scope="row">candidates recommended keep</th><td class="number">0</td></tr>
-<tr><th scope="row">candidates past the top 15 of the table</th><td class="number">0</td></tr>
-<tr><th scope="row">history candidates whose distance the co-change evidence does not earn</th><td class="number">0</td></tr>
-<tr><th scope="row">history candidates whose target is a fixed point</th><td class="number">0</td></tr>
-<tr><th scope="row">history candidates whose gain is below the locality.minDistance guideline</th><td class="number">0</td></tr>
-<tr><th scope="row">history candidates that a structural candidate already covers</th><td class="number">0</td></tr>
+<tr><th scope="row">units recommended blocked, held back by a dependency (listed below with their blockers)</th><td class="number">3</td></tr>
+</tbody>
+</table>
+<aside class="notice notice" role="note"><strong>Notice:</strong> No unit was left without a proposed move.</aside>
+<table class="ranked">
+<caption>Units recommended blocked, with the files that hold them back</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col" class="number">Gain</th><th scope="col">Blockers</th></tr></thead>
+<tbody>
+<tr><td class="number">1</td><td>src/lib/kernel/tool.ts</td><td class="number">0</td><td>src/lib/kernel/core.ts</td></tr>
+<tr><td class="number">2</td><td>src/shared/pair/a.ts</td><td class="number">0</td><td>src/shared/pair/core.ts</td></tr>
+<tr><td class="number">3</td><td>src/shared/pair/b.ts</td><td class="number">0</td><td>src/shared/pair/core.ts</td></tr>
 </tbody>
 </table>
 <aside class="notice notice" role="note"><strong>Notice:</strong> The history counts are zero because history is weak (12 months, 34 logical changes in the window, 1 contributors); history-only candidates need moderate or strong evidence.</aside>
