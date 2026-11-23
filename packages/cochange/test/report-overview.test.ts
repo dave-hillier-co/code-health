@@ -153,7 +153,7 @@ test("a stored complexity result for HEAD is shown as a top 5 and named in the s
   expect((await run("--format", "md")).stdout).toContain("Run `complexity analyse`");
 });
 
-test("the locality table lists only units with a proposed move, labels the gain and counts the other units", async () => {
+test("the locality table lists only units with a proposed move, labels the gain and counts the other units by kind", async () => {
   const head = repo.git("rev-parse", "HEAD").trim();
   const dir = join(repo.path, ".cache", "code-health", "reports");
   mkdirSync(dir, { recursive: true });
@@ -172,7 +172,8 @@ test("the locality table lists only units with a proposed move, labels the gain 
   expect(stdout).toContain("component-gain");
   for (const left of ["src/fan.h", "src/blocked.cs", "src/zero.ts"]) expect(stdout).not.toContain(`| ${left} |`);
   expect(stdout).not.toContain("Gain (");
-  expect(stdout).toContain("3 other units are not listed here");
+  expect(stdout).toContain("1 unit has a gain of 0 and is not listed here: 1 review.");
+  expect(stdout).toContain("2 units are ranked by other measures and not listed here: 1 to scrutinise for high fan-in, 1 blocked.");
 });
 
 test("notes written before a stored result appeared are refused, because the stamp's inputs changed", async () => {

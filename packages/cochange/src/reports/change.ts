@@ -1,3 +1,4 @@
+import { percentText } from "../percent-text.ts";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
@@ -263,12 +264,13 @@ function abandonedBlocks(assessed: Assessed): Block[] {
 }
 
 function evidenceBlocks(assessed: Assessed): Block[] {
-  return assessed.factors
+  const blocks = assessed.factors
     .filter((f) => f.status === "ok" && f.evidence.length > 0 && f.name !== "abandoned-touched")
     .map((f): Block => {
       const { items, omitted } = evidenceItems(f.evidence);
       return { type: "evidence-list", title: `Evidence for ${f.name}`, items, omitted };
     });
+  return blocks.length > 0 ? blocks : [{ type: "notice", level: "notice", text: "No factor has evidence items to list." }];
 }
 
 function levelBlocks(level: LevelResult): Block[] {
@@ -393,13 +395,15 @@ function hotspotBlocks(assessed: Assessed): Block[] {
   }
   const hot = number(factor.value.hotFiles) ?? 0;
   const share = number(factor.value.share) ?? 0;
+  const nonCode = number(factor.value.nonCodeHotFiles) ?? 0;
   const blocks: Block[] = [
     {
       type: "facts",
       caption: "Hotspots the change touches",
       facts: [
         { label: "Hot files touched", value: String(hot) },
-        { label: "Share of the change's churn in hot files", value: `${Math.round(share * 1000) / 10}%` },
+        { label: "Share of the change's churn in hot files", value: percentText(share) },
+        ...(nonCode > 0 ? [{ label: "Hot files left out because they are not code", value: String(nonCode) }] : []),
         { label: "Band", value: bandText(factor) },
         { label: "Guideline", value: guidelineText(factor) },
       ],

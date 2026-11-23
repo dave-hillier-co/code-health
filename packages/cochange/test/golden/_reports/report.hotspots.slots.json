@@ -19,7 +19,7 @@
       "The friction list is the files at or above the 50th percentile of change frequency (cochange.hotspotPercentile) that have a function above the cognitive complexity guideline (from the stored `complexity analyse` result). A percentile is a rank among the 4 files ranked, so it moves when files are added.",
       "The friction list shows 1 of 1 files; the judgement covers the first 1 (cochange.hotspotJudged), the history table covers the first 1 (sparklines of the first 1) and the X-Ray the first 1.",
       "The Complexity column is the file's indentation complexity computed by this report; `complexity files` stores the same figure for this commit.",
-      "Revisions count every commit that touched the file in the window. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.",
+      "Revisions count every commit that touched the file in the window. Landed changes count the merged changes (a pull request, or a commit on the main line) that touched it, so they are fewer than revisions when a change has several commits; the fix share is fixes landed divided by landed changes. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.",
       "The evidence grade is weak, so history-based results are tentative and static signals should lead."
     ],
     "sections": [
@@ -125,13 +125,18 @@
               },
               {
                 "align": "right",
-                "key": "fixShare",
-                "label": "Fix share (%)"
+                "key": "landedChanges",
+                "label": "Landed changes"
               },
               {
                 "align": "right",
                 "key": "fixes",
                 "label": "Fixes landed"
+              },
+              {
+                "align": "right",
+                "key": "fixShare",
+                "label": "Fix share of landed changes (%)"
               },
               {
                 "align": "right",
@@ -154,6 +159,7 @@
                 "flag": "hotspot",
                 "frequencyPercentile": 75,
                 "functionsAbove": 1,
+                "landedChanges": 5,
                 "lastChanged": "2024-06-15",
                 "path": "src/core/engine.ts",
                 "reviewFixes": 0,

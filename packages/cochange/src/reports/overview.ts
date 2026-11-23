@@ -1,3 +1,5 @@
+import { contributorsText, type Contributors } from "../contributors.ts";
+import { percentText } from "../percent-text.ts";
 import { builtinOmissions } from "@code-health/cli-kit/builtin-excludes";
 import { droppedCounts } from "@code-health/cli-kit/dropped-files";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
@@ -30,14 +32,14 @@ interface FixConvention {
   share: number;
 }
 
-const percent = (share: number) => `${Math.round(share * 1000) / 10}%`;
+const percent = percentText;
 const number = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
 const text = (value: unknown): string | null => (typeof value === "string" ? value : null);
 
 /** Commits the history read dropped, and the file changes it dropped, each with the words the page uses. */
 const grade = (evidence: Evidence): string => evidence.grade;
 
-function evidenceBlocks(evidence: Evidence): Block[] {
+function evidenceBlocks(evidence: Evidence, contributors: Contributors): Block[] {
   const g = evidence.guidelines.strong;
   const share = (value: number, guideline: number) => (guideline === 0 ? 0 : (value / guideline) * 100);
   const merge = evidence.commitSize;
@@ -48,7 +50,7 @@ function evidenceBlocks(evidence: Evidence): Block[] {
       facts: [
         { label: "Evidence grade", value: evidence.grade },
         { label: "Months of usable history", value: String(evidence.usableHistoryMonths) },
-        { label: "Active contributors in the window", value: String(evidence.activeContributors) },
+        { label: "Active contributors in the window", value: contributorsText(contributors) },
         { label: "Logical changes in the window", value: String(evidence.logicalChangesInWindow) },
         { label: "Shallow clone", value: evidence.truncated.shallow ? `yes, ${evidence.truncated.boundaryCommits} boundary commits` : "no" },
         { label: "Imported history", value: evidence.importedHistory.length === 0 ? "none detected" : `${evidence.importedHistory.length} detected` },
@@ -68,7 +70,7 @@ function evidenceBlocks(evidence: Evidence): Block[] {
       bars: [
         { label: `Months of history (${evidence.usableHistoryMonths} of ${g.months})`, value: share(evidence.usableHistoryMonths, g.months), guideline: 100 },
         { label: `Logical changes (${evidence.logicalChangesInWindow} of ${g.logicalChanges})`, value: share(evidence.logicalChangesInWindow, g.logicalChanges), guideline: 100 },
-        { label: `Contributors (${evidence.activeContributors} of ${g.contributors})`, value: share(evidence.activeContributors, g.contributors), guideline: 100 },
+        { label: `Contributors (${contributors.people} of ${g.contributors})`, value: share(contributors.people, g.contributors), guideline: 100 },
       ],
     },
     { type: "trend-marker", label: "Median files per logical change", earlier: merge.earlierMedian, later: merge.laterMedian, windows: ["the earlier half", "the later half"] },
@@ -200,13 +202,42 @@ function cyclesResult(stored: SiblingResult | undefined): Result {
 /** The locality kinds with a proposed move or split, whose score is a gain; scrutinise and blocked units are ranked by other measures. */
 const MOVE_KINDS = ["move", "review", "split", "inline"];
 
+const LEFT_OUT_LABELS: readonly [string, string][] = [
+  ["scrutinise", "to scrutinise for high fan-in"],
+  ["blocked", "blocked"],
+  ["keep", "to keep"],
+];
+
+/**
+ * The sentence naming the stored locality units the overview table leaves out, counted by recommendation over
+ * the whole stored result: move, review, split and inline units whose gain is 0, then the units that are ranked
+ * by other measures. Null when nothing is left out.
+ */
+export function localityLeftOutNotice(all: readonly Record<string, unknown>[]): string | null {
+  const ranking = (row: Record<string, unknown>) => (typeof row.ranking === "object" && row.ranking !== null ? (row.ranking as Record<string, unknown>) : {});
+  const gainOf = (row: Record<string, unknown>) => number(ranking(row).value) ?? number(row.score);
+  const count = (kind: string, predicate: (row: Record<string, unknown>) => boolean) => all.filter((row) => text(row.recommendation) === kind && predicate(row)).length;
+  const parts: string[] = [];
+  const zero = MOVE_KINDS.map((kind) => [kind, count(kind, (row) => (gainOf(row) ?? 0) <= 0)] as const).filter(([, n]) => n > 0);
+  if (zero.length > 0) {
+    const total = zero.reduce((sum, [, n]) => sum + n, 0);
+    parts.push(`${total} ${total === 1 ? "unit has" : "units have"} a gain of 0 and ${total === 1 ? "is" : "are"} not listed here: ${zero.map(([kind, n]) => `${n} ${kind}`).join(", ")}.`);
+  }
+  const other = LEFT_OUT_LABELS.map(([kind, label]) => [label, count(kind, () => true)] as const).filter(([, n]) => n > 0);
+  if (other.length > 0) {
+    const total = other.reduce((sum, [, n]) => sum + n, 0);
+    parts.push(`${total} ${total === 1 ? "unit is" : "units are"} ranked by other measures and not listed here: ${other.map(([label, n]) => `${n} ${label}`).join(", ")}.`);
+  }
+  if (parts.length === 0) return null;
+  return `${parts.join(" ")} \`locality analyse\` and the locality report list them with their own measures.`;
+}
+
 function localityResult(stored: SiblingResult | undefined): Result {
   if (stored === undefined) return missingResult("locality analyse result", "locality analyse");
   const ranking = (row: Record<string, unknown>) => (typeof row.ranking === "object" && row.ranking !== null ? (row.ranking as Record<string, unknown>) : {});
   const gainOf = (row: Record<string, unknown>) => number(ranking(row).value) ?? number(row.score);
   const moves = stored.rows.filter((row) => MOVE_KINDS.includes(text(row.recommendation) ?? "") && (gainOf(row) ?? 0) > 0);
   const rows = top(moves);
-  const others = stored.rows.length - moves.length;
   const guideline = rows.map((row) => number(ranking(row).guideline)).find((g) => g !== null) ?? undefined;
   const table = topTable({
     caption: "Units with a proposed move, split or inline, by gain, from locality analyse",
@@ -231,7 +262,8 @@ function localityResult(stored: SiblingResult | undefined): Result {
     })),
   }, "locality analyse");
   const blocks: Block[] = [table];
-  if (others > 0) blocks.push({ type: "notice", level: "notice", text: `${others} other ${others === 1 ? "unit is" : "units are"} not listed here: units to scrutinise for high fan-in, blocked units and units to keep. \`locality analyse\` and the locality report list them with their own measures.` });
+  const notice = localityLeftOutNotice(stored.rows);
+  if (notice !== null) blocks.push({ type: "notice", level: "notice", text: notice });
   return {
     candidates: rows.flatMap((row) => (text(row.path) === null ? [] : [{ ref: `locality:${text(row.path)}`, label: `${text(row.path)} (locality)` }])),
     blocks,
@@ -319,8 +351,9 @@ export const overview: ReportKind = {
   },
   async build(context: CommandContext): Promise<ReportBuild> {
     const output = await hotspotsCommand.run(context);
-    const extra = output.extra as { evidence: Evidence; filtersApplied: FiltersApplied; fixConvention: FixConvention; complexitySource: unknown; window: { since: string; until: string } };
+    const extra = output.extra as { evidence: Evidence; filtersApplied: FiltersApplied; fixConvention: FixConvention; complexitySource: unknown; window: { since: string; until: string }; contributors?: Contributors };
     const { evidence } = extra;
+    const contributors = extra.contributors ?? { people: evidence.activeContributors, agents: 0 };
     const rows = output.results as HotspotRow[];
     const root = context.repo.root;
     const head = context.repo.head;
@@ -349,7 +382,7 @@ export const overview: ReportKind = {
       },
       sections: [
         { id: "first-look", heading: "What to look at first", blocks: [{ type: "judgement", slot: "first-look" }] },
-        { id: "evidence", heading: "Evidence", blocks: evidenceBlocks(evidence) },
+        { id: "evidence", heading: "Evidence", blocks: evidenceBlocks(evidence, contributors) },
         { id: "fix-convention", heading: "Fix convention", blocks: fixBlocks(extra.fixConvention) },
         { id: "excluded", heading: "What was excluded", blocks: excludedBlocks(excluded) },
         { id: "results", heading: "Top results of each plugin", blocks: results.flatMap((r) => r.blocks) },

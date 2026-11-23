@@ -34,9 +34,9 @@ Colour bands are rank steps of the files shown: the band edges sit at the 50th, 
 
 **Friction list: files in the top change-frequency percentile with a function above the cognitive guideline, by hotspot score**
 
-| # | File | Revisions | Frequency percentile | Functions above the cognitive guideline | Complexity (indentation) | Complexity percentile | Last changed | Fix share (%) | Fixes landed | Fixes in review | Flag |
-| ---: | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |
-| 1 | src/core/engine.ts | 5 | 75 ▲ | 1 | 36 | 87.5 | 2024-06-15 | 0 | 0 | 0 | hotspot |
+| # | File | Revisions | Frequency percentile | Functions above the cognitive guideline | Complexity (indentation) | Complexity percentile | Last changed | Landed changes | Fixes landed | Fix share of landed changes (%) | Fixes in review | Flag |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | --- |
+| 1 | src/core/engine.ts | 5 | 75 ▲ | 1 | 36 | 87.5 | 2024-06-15 | 5 | 0 | 0 | 0 | hotspot |
 
 _Guidelines order and label the rows and decide nothing. Frequency percentile 50 (cochange.hotspotPercentile), ▲ marks a value above it._
 
@@ -88,7 +88,7 @@ _Guidelines order and label the rows and decide nothing. Cognitive 15 (complexit
 - The friction list is the files at or above the 50th percentile of change frequency (cochange.hotspotPercentile) that have a function above the cognitive complexity guideline (from the stored `complexity analyse` result). A percentile is a rank among the 4 files ranked, so it moves when files are added.
 - The friction list shows 1 of 1 files; the judgement covers the first 1 (cochange.hotspotJudged), the history table covers the first 1 (sparklines of the first 1) and the X-Ray the first 1.
 - The Complexity column is the file's indentation complexity computed by this report; `complexity files` stores the same figure for this commit.
-- Revisions count every commit that touched the file in the window. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.
+- Revisions count every commit that touched the file in the window. Landed changes count the merged changes (a pull request, or a commit on the main line) that touched it, so they are fewer than revisions when a change has several commits; the fix share is fixes landed divided by landed changes. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.
 - The evidence grade is weak, so history-based results are tentative and static signals should lead.
 
 **Judgement: what limits these results**

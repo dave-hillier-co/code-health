@@ -1,6 +1,7 @@
 import type { CommandContext, CommandOutput, Rule } from "@code-health/cli-kit/run-cli";
 import type { LoadedHistory } from "../history-access.ts";
 import { analysisCommand } from "../analysis-command.ts";
+import { contributorsOf } from "../contributors.ts";
 import { complexityReportInput } from "../complexity-source.ts";
 import type { Derived } from "../derived-results.ts";
 import { rankHotspots } from "../hotspot-ranking.ts";
@@ -79,7 +80,7 @@ export async function rankedOutput(context: CommandContext, history: LoadedHisto
       "recommendation",
       ...(by === "file" ? ["siblingTest", "findings"] : []),
     ],
-    extra: { complexitySource: complexity.source, fixConvention },
+    extra: { complexitySource: complexity.source, fixConvention, contributors: contributorsOf(history) },
     notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
   };
 }

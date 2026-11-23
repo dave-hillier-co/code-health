@@ -50,6 +50,7 @@ export function measureContext(context: CommandContext, history: LoadedHistory, 
     staleMonths: history.settings.staleMonths,
     hotspotPercentile: history.settings.hotspotPercentile,
     components: readComponents(context.config.effective.components),
+    languages: context.config.effective.languages,
   };
 }
 

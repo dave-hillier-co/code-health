@@ -1,3 +1,4 @@
+import { percentText, percentTextOfCounts } from "../percent-text.ts";
 import { builtinOmissions } from "@code-health/cli-kit/builtin-excludes";
 import { droppedCounts } from "@code-health/cli-kit/dropped-files";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
@@ -272,9 +273,9 @@ async function abandonmentBlocks(p: Prepared, measured: MeasuredPatterns): Promi
       caption: "Knowledge lost so far, at the analysed commit",
       facts: [
         { label: "Files with lines held by people", value: String(summary.files.measured) },
-        { label: `Files abandoned (${p.settings.abandonmentGuideline}% or more of the lines held by people belong to people who have left)`, value: `${summary.files.abandoned} (${percentOfCounts(summary.files.abandoned, summary.files.measured)}%)` },
+        { label: `Files abandoned (${p.settings.abandonmentGuideline}% or more of the lines held by people belong to people who have left)`, value: `${summary.files.abandoned} (${percentTextOfCounts(summary.files.abandoned, summary.files.measured)})` },
         { label: "Lines held by people", value: String(summary.lines.people) },
-        { label: "Of those, held by people who have left", value: `${summary.lines.abandoned} (${percentOfCounts(summary.lines.abandoned, summary.lines.people)}%)` },
+        { label: "Of those, held by people who have left", value: `${summary.lines.abandoned} (${percentTextOfCounts(summary.lines.abandoned, summary.lines.people)})` },
         { label: "Lines of bots, services and agents, on neither side", value: String(summary.lines.nonPerson) },
         { label: "Lines with an unknown commit", value: String(summary.lines.unattributed) },
         { label: "Developers active, and who have left", value: `${model.developers.filter((d) => d.active).length} active, ${model.developers.filter((d) => !d.active).length} left` },
@@ -293,7 +294,7 @@ async function abandonmentBlocks(p: Prepared, measured: MeasuredPatterns): Promi
         { key: "former", label: "Former holders", align: "right" },
         { key: "hotspot", label: "Hotspot" },
       ],
-      emptyText: "No file has lines held by people who have left.",
+      emptyText: `No file has lines held by people who have left: 0 of ${files.length} measured files.`,
       rows: listed.map(({ f }): Record<string, Cell> => ({
         path: f.path,
         share: percent(f.abandonedShare),
@@ -304,7 +305,7 @@ async function abandonmentBlocks(p: Prepared, measured: MeasuredPatterns): Promi
         hotspot: measured.weights.get(f.path)?.hot === true ? "yes" : "no",
       })),
     }, "cochange abandonment current"),
-    ...(files.length > listed.length
+    ...(listed.length > 0 && files.length > listed.length
       ? [{ type: "notice" as const, level: "notice" as const, text: `${files.length - listed.length} of ${files.length} measured files have no lines held by people who have left and are not listed.` }]
       : []),
   ];
@@ -334,7 +335,7 @@ async function simulationBlocks(context: CommandContext, p: Prepared): Promise<{
   const notices = output.notices ?? [];
   const karFacts = r.loss.files.increment.atRisk.map((a) => ({
     label: `Knowledge at risk at the ${a.alpha}th percentile, in files`,
-    value: `${a.kar} of ${r.loss.files.population} files (${percent(a.karShare)}%), ${a.tailRatio === null ? "no tail ratio" : `${oneDecimal(a.tailRatio)} times the expected loss`}`,
+    value: `${a.kar} of ${r.loss.files.population} files (${percentText(a.karShare)}), ${a.tailRatio === null ? "no tail ratio" : `${oneDecimal(a.tailRatio)} times the expected loss`}`,
   }));
   return {
     notices,
@@ -343,12 +344,12 @@ async function simulationBlocks(context: CommandContext, p: Prepared): Promise<{
         type: "facts",
         caption: `Simulated turnover over ${r.horizonPeriods} periods of ${p.settings.periodMonths} months, ${r.trials} trials, seed ${r.seed}`,
         facts: [
-          { label: "Model", value: `${r.mode}; leaver rate per period ${r.selection.ratePerPeriod === null ? "not applicable" : `${percent(r.selection.ratePerPeriod)}%`} (${r.selection.source})` },
+          { label: "Model", value: `${r.mode}; leaver rate per period ${r.selection.ratePerPeriod === null ? "not applicable" : `${percentText(r.selection.ratePerPeriod)}`} (${r.selection.source})` },
           { label: "Active developers", value: String(r.population.activeDevelopers) },
           { label: "Files already abandoned", value: `${r.loss.files.baseline} of ${r.loss.files.population}` },
-          { label: "Expected further files lost", value: `${oneDecimal(r.loss.files.increment.expected)} (${percent(r.loss.files.increment.expectedShare)}% of files)` },
+          { label: "Expected further files lost", value: `${oneDecimal(r.loss.files.increment.expected)} (${percentText(r.loss.files.increment.expectedShare)} of files)` },
           ...karFacts,
-          { label: "Expected further lines lost", value: `${oneDecimal(r.loss.lines.increment.expected)} of ${r.loss.lines.population} lines held by people (${percent(r.loss.lines.increment.expectedShare)}%)` },
+          { label: "Expected further lines lost", value: `${oneDecimal(r.loss.lines.increment.expected)} of ${r.loss.lines.population} lines held by people (${percentText(r.loss.lines.increment.expectedShare)})` },
         ],
       },
       cappedTable({

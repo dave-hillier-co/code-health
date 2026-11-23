@@ -697,7 +697,7 @@
                 "label": "Hotspot"
               }
             ],
-            "emptyText": "No file has lines held by people who have left.",
+            "emptyText": "No file has lines held by people who have left: 0 of 8 measured files.",
             "noun": "files",
             "rows": [
               {

@@ -1,3 +1,4 @@
+import { isCodePath } from "@code-health/parse/code-files";
 import { hasAdapter } from "@code-health/parse/languages";
 import { folderOf, treeDistance } from "@code-health/graph/tree-distance";
 import type { FixMatch } from "@code-health/history/fix-commits";
@@ -39,6 +40,8 @@ export interface MeasureContext {
   staleMonths: number;
   hotspotPercentile: number;
   components: readonly Component[];
+  /** The configured language adapters: a hot file counts only when one of them claims it as code, as in the hotspot ranking. */
+  languages?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -145,16 +148,19 @@ function mixedPurpose(facts: ChangeFacts): Measurement {
 function hotspotsTouched(facts: ChangeFacts, state: HistoryState, context: MeasureContext): Measurement {
   const recentSince = monthsBefore(facts.time, context.recentMonths);
   const line = state.hotRevisionCount((100 - context.hotspotPercentile) / 100);
-  const hot = facts.files.filter((file) => {
+  const busy = facts.files.filter((file) => {
     const last = state.lastChanged(file.fileId);
     return state.present(file.fileId) && last !== null && last >= recentSince && state.revisionsInWindow(file.fileId) >= line;
   });
+  // The hotspot ranking leaves out files that are not code (a changelog, a manifest, data), so a hot file here is code too.
+  const hot = busy.filter((file) => isCodePath(file.fileId, context.languages));
+  const nonCodeHot = busy.length - hot.length;
   const total = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
   const inHot = hot.reduce((sum, file) => sum + churnOf(file), 0);
   const share = total === 0 ? 0 : round(inHot / total);
   return measurement("hotspots-touched", "history", "history", "percentile", "history", {
     series: { share },
-    value: { share, hotFiles: hot.length },
+    value: { share, hotFiles: hot.length, ...(nonCodeHot > 0 ? { nonCodeHotFiles: nonCodeHot } : {}) },
     evidence: hot
       .map((file) => ({ file: file.fileId, revisions: state.revisionsInWindow(file.fileId) }))
       .sort((a, b) => b.revisions - a.revisions || (a.file < b.file ? -1 : 1))

@@ -2,6 +2,10 @@
   "command": "hotspots",
   "complexitySource": "complexity-report",
   "config": "0000000000000000",
+  "contributors": {
+    "agents": 0,
+    "people": 2
+  },
   "evidence": {
     "activeContributors": 2,
     "commitSize": {

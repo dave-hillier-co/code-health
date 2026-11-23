@@ -25,7 +25,7 @@
 | --- | --- |
 | Evidence grade | weak |
 | Months of usable history | 4.7 |
-| Active contributors in the window | 2 |
+| Active contributors in the window | 2 people |
 | Logical changes in the window | 6 |
 | Shallow clone | no |
 | Imported history | none detected |
