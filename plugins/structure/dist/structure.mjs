@@ -390,7 +390,7 @@ var restored2 = /* @__PURE__ */ new Map();
 function droppedCounts() {
   const counts = {};
   for (const kind of DROPPED_KINDS) {
-    const total = (dropped.get(kind)?.size ?? 0) + (restored2.get(kind) ?? 0);
+    const total = Math.max(dropped.get(kind)?.size ?? 0, restored2.get(kind) ?? 0);
     if (total > 0) counts[kind] = total;
   }
   return counts;
@@ -25401,7 +25401,7 @@ function evidenceListHtml(data) {
   const more = tail(data);
   return `<section class="evidence">
 <h3>${escapeHtml(data.title)}</h3>
-${items.length === 0 ? '<p class="empty">None.</p>' : `<ul>
+${items.length === 0 ? `<p class="empty">${escapeHtml(data.emptyText ?? "None.")}</p>` : `<ul>
 ${items.join("\n")}
 </ul>`}
 ${more === void 0 ? "" : `<p class="omitted">${escapeHtml(more)}</p>
@@ -25410,7 +25410,7 @@ ${more === void 0 ? "" : `<p class="omitted">${escapeHtml(more)}</p>
 function evidenceListMd(data) {
   const items = data.items.map((item) => `- \`${item.id.replace(/`/g, "")}\` ${escapeMd(item.text)}${item.detail === void 0 ? "" : ` (${escapeMd(item.detail)})`}`);
   const more = tail(data);
-  return [`**${escapeMd(data.title)}**`, "", ...items.length === 0 ? ["None."] : items, ...more === void 0 ? [] : ["", `_${more}_`]].join("\n");
+  return [`**${escapeMd(data.title)}**`, "", ...items.length === 0 ? [escapeMd(data.emptyText ?? "None.")] : items, ...more === void 0 ? [] : ["", `_${more}_`]].join("\n");
 }
 
 // packages/report/src/components/facts.ts
@@ -26251,12 +26251,14 @@ var CHANGE_FILTERS = [
   ["vendored", "vendored file changes"]
 ];
 var FILE_KINDS = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
+var READ_BY_COMMANDS = /* @__PURE__ */ new Set(["generated", "vendored"]);
+var FILES_READ = " (counted over the files this report's commands read: changed in the window or range, and in the tree at HEAD where the report reads it)";
 function excludedCounts(filters, files, builtin, wording = {}) {
   const leftOutOf = wording.leftOutOf ?? "the results";
   return [
     ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
     { what: `changes over the changeset limit of ${filters.maxChangesetSize} files${wording.oversizedNote === void 0 ? "" : `, ${wording.oversizedNote}`}`, count: filters.oversizedChanges },
-    ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of ${leftOutOf}`, count: count3 })),
+    ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of ${leftOutOf}${READ_BY_COMMANDS.has(kind) ? FILES_READ : ""}`, count: count3 })),
     ...Object.entries(builtin).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
   ];
 }

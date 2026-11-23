@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-QKW5NUND.mjs";
+} from "./chunk-U4DA7C6U.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -36,7 +36,7 @@ import {
   resetDropped,
   runGit,
   treeFromRef
-} from "./chunk-M2UXSTYU.mjs";
+} from "./chunk-JT6DRCII.mjs";
 import {
   analyseTree
 } from "./chunk-F46LLJIS.mjs";
@@ -1052,6 +1052,128 @@ function readIfCompileCommands(file) {
   }
 }
 
+// packages/locality/src/placement.ts
+import { posix as posix2 } from "node:path";
+function relativeTo(folder, base) {
+  if (folder === base) return "";
+  return base === "" ? folder : folder.slice(base.length + 1);
+}
+function manifestFolders(tree) {
+  return new Set([...tree].filter((path) => isBoundaryManifest(path)).map((path) => posix2.dirname(path) === "." ? "" : posix2.dirname(path)));
+}
+function packageRoot(path, boundaries) {
+  let folder = posix2.dirname(path);
+  for (; ; ) {
+    const dir = folder === "." ? "" : folder;
+    if (boundaries.has(dir)) return dir;
+    if (dir === "") return "";
+    folder = posix2.dirname(folder);
+  }
+}
+function internalScopes(path) {
+  const folders = posix2.dirname(path).split("/");
+  return folders.flatMap((folder, index) => folder === "internal" ? [folders.slice(0, index + 1).join("/")] : []);
+}
+function relocate(files, tests, base, destination) {
+  const operations = [];
+  for (const file of files) {
+    const offset = relativeTo(posix2.dirname(file) === "." ? "" : posix2.dirname(file), base);
+    operations.push({ from: file, to: posix2.join(destination, offset, posix2.basename(file)), role: "unit" });
+  }
+  for (const test of tests) {
+    const folder = posix2.dirname(test) === "." ? "" : posix2.dirname(test);
+    const inside = base === "" || folder === base || folder.startsWith(`${base}/`);
+    const offset = inside ? relativeTo(folder, base) : "";
+    operations.push({ from: test, to: posix2.join(destination, offset, posix2.basename(test)), role: "test" });
+  }
+  return operations.sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
+}
+var MAIN_PACKAGE = /^package\s+main\b/m;
+function goPackages(edges, texts) {
+  const uses = /* @__PURE__ */ new Map();
+  for (const edge of edges) {
+    if (edge.from === edge.to || !edge.from.endsWith(".go") || !edge.to.endsWith(".go")) continue;
+    const list = uses.get(edge.from);
+    if (list === void 0) uses.set(edge.from, [edge.to]);
+    else list.push(edge.to);
+  }
+  const mainFiles = new Set([...texts].filter(([path, text2]) => path.endsWith(".go") && MAIN_PACKAGE.test(text2)).map(([path]) => path));
+  return { uses, mainFolders: new Set([...mainFiles].map((path) => posix2.dirname(path))), mainFiles };
+}
+function goRefusals(operations, go) {
+  const refusals = [];
+  const moved = new Map(operations.filter((operation) => operation.from.endsWith(".go") && operation.role === "unit").map((operation) => [operation.from, operation.to]));
+  if (moved.size === 0) return refusals;
+  const newPath = (path) => moved.get(path) ?? path;
+  for (const [from, to] of moved) {
+    const source = posix2.dirname(from);
+    const destination = posix2.dirname(to);
+    if (source === destination) continue;
+    const isMain = go.mainFiles.has(from);
+    const toMain = go.mainFolders.has(destination);
+    if (!isMain && toMain) {
+      refusals.push({ code: "package-main", detail: `${from} is a library file and ${destination} is a package main folder, which no package can import`, label: "package main folder" });
+    } else if (isMain && !toMain) {
+      refusals.push({ code: "package-main", detail: `${from} declares package main, which no package can import once it is in ${destination}`, label: "package main folder" });
+    }
+    for (const used of go.uses.get(from) ?? []) {
+      if (posix2.dirname(newPath(used)) === destination && posix2.dirname(used) !== source) {
+        refusals.push({ code: "import-cycle", detail: `import cycle: ${from} imports ${posix2.dirname(used)}, so in ${destination} it would import its own package`, label: "import cycle" });
+        break;
+      }
+    }
+  }
+  const folderGraph = (mapping) => {
+    const graph = /* @__PURE__ */ new Map();
+    for (const [from, targets] of go.uses) {
+      const folder = posix2.dirname(mapping(from));
+      for (const target of targets) {
+        const other = posix2.dirname(mapping(target));
+        if (other === folder) continue;
+        if (!graph.has(folder)) graph.set(folder, /* @__PURE__ */ new Set());
+        graph.get(folder).add(other);
+        if (!graph.has(other)) graph.set(other, /* @__PURE__ */ new Set());
+      }
+    }
+    return new Map([...graph].map(([folder, targets]) => [folder, [...targets]]));
+  };
+  const cyclic = (graph) => new Set(stronglyConnectedComponents(graph).filter((component) => component.length > 1).flat());
+  const before = cyclic(folderGraph((path) => path));
+  const after = folderGraph(newPath);
+  const cycleAfter = stronglyConnectedComponents(after).filter((component) => component.length > 1);
+  for (const component of cycleAfter) {
+    const fresh = component.filter((folder) => !before.has(folder));
+    const touched = component.some((folder) => [...moved].some(([from, to]) => posix2.dirname(from) === folder || posix2.dirname(to) === folder));
+    if (fresh.length === 0 || !touched) continue;
+    const members = [...component].sort();
+    refusals.push({ code: "import-cycle", detail: `import cycle: ${members.join(" and ")} would import each other`, label: "import cycle" });
+    break;
+  }
+  return refusals;
+}
+function placementRefusals(operations, manifests, tree, go) {
+  const refusals = [];
+  const leaving = new Set(operations.map((operation) => operation.from));
+  const landing = /* @__PURE__ */ new Set();
+  for (const operation of operations) {
+    if (packageRoot(operation.from, manifests) !== packageRoot(operation.to, manifests)) {
+      refusals.push({ code: "package-boundary", detail: `${operation.from} would leave its package for ${operation.to}`, label: "crosses a package boundary" });
+    }
+    if (operation.from.endsWith(".go") && internalScopes(operation.from).join("\0") !== internalScopes(operation.to).join("\0")) {
+      refusals.push({
+        code: "fixed-point",
+        detail: `${operation.from} to ${operation.to} crosses an internal/ directory, which the Go compiler restricts to code under its parent`,
+        label: "crosses internal/"
+      });
+    }
+    if (landing.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} is the destination of two files`, label: "name collision" });
+    else if (tree.has(operation.to) && !leaving.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} already exists`, label: "name collision" });
+    landing.add(operation.to);
+  }
+  if (go !== void 0) refusals.push(...goRefusals(operations, go));
+  return refusals;
+}
+
 // packages/locality/src/project.ts
 function withoutExcluded(tree, exclude) {
   if (exclude.length === 0) return tree;
@@ -1081,6 +1203,10 @@ async function loadProject(root, ref, settings) {
   const texts = await tree.readMany(production);
   const packageEntries = await readPackageEntries(tree);
   return { analysis, production, isTest: isTestPath, texts, packageEntries, tree: new Set(fullTree.files.keys()) };
+}
+function goPackagesOf(project) {
+  const production = new Set(project.production);
+  return goPackages(project.analysis.importEdges.filter((edge) => production.has(edge.from) && production.has(edge.to)), project.texts);
 }
 function unitText(project, unit) {
   const text2 = project.texts.get(unit.path);
@@ -2250,64 +2376,6 @@ function pairing(history, group, file) {
 }
 var round1 = (value) => Math.round(value * 10) / 10;
 
-// packages/locality/src/placement.ts
-import { posix as posix2 } from "node:path";
-function relativeTo(folder, base) {
-  if (folder === base) return "";
-  return base === "" ? folder : folder.slice(base.length + 1);
-}
-function manifestFolders(tree) {
-  return new Set([...tree].filter((path) => isBoundaryManifest(path)).map((path) => posix2.dirname(path) === "." ? "" : posix2.dirname(path)));
-}
-function packageRoot(path, boundaries) {
-  let folder = posix2.dirname(path);
-  for (; ; ) {
-    const dir = folder === "." ? "" : folder;
-    if (boundaries.has(dir)) return dir;
-    if (dir === "") return "";
-    folder = posix2.dirname(folder);
-  }
-}
-function internalScopes(path) {
-  const folders = posix2.dirname(path).split("/");
-  return folders.flatMap((folder, index) => folder === "internal" ? [folders.slice(0, index + 1).join("/")] : []);
-}
-function relocate(files, tests, base, destination) {
-  const operations = [];
-  for (const file of files) {
-    const offset = relativeTo(posix2.dirname(file) === "." ? "" : posix2.dirname(file), base);
-    operations.push({ from: file, to: posix2.join(destination, offset, posix2.basename(file)), role: "unit" });
-  }
-  for (const test of tests) {
-    const folder = posix2.dirname(test) === "." ? "" : posix2.dirname(test);
-    const inside = base === "" || folder === base || folder.startsWith(`${base}/`);
-    const offset = inside ? relativeTo(folder, base) : "";
-    operations.push({ from: test, to: posix2.join(destination, offset, posix2.basename(test)), role: "test" });
-  }
-  return operations.sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
-}
-function placementRefusals(operations, manifests, tree) {
-  const refusals = [];
-  const leaving = new Set(operations.map((operation) => operation.from));
-  const landing = /* @__PURE__ */ new Set();
-  for (const operation of operations) {
-    if (packageRoot(operation.from, manifests) !== packageRoot(operation.to, manifests)) {
-      refusals.push({ code: "package-boundary", detail: `${operation.from} would leave its package for ${operation.to}`, label: "crosses a package boundary" });
-    }
-    if (operation.from.endsWith(".go") && internalScopes(operation.from).join("\0") !== internalScopes(operation.to).join("\0")) {
-      refusals.push({
-        code: "fixed-point",
-        detail: `${operation.from} to ${operation.to} crosses an internal/ directory, which the Go compiler restricts to code under its parent`,
-        label: "crosses internal/"
-      });
-    }
-    if (landing.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} is the destination of two files`, label: "name collision" });
-    else if (tree.has(operation.to) && !leaving.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} already exists`, label: "name collision" });
-    landing.add(operation.to);
-  }
-  return refusals;
-}
-
 // packages/locality/src/recommend.ts
 function recommend(input) {
   if (input.fixedPoint) return { recommendation: "keep", rule: "fixed-point" };
@@ -2548,15 +2616,16 @@ var plural = (count3, noun) => `${count3} ${noun}${count3 === 1 ? "" : "s"}`;
 function reasonFor(input, decision) {
   const needsReason = decision.recommendation === "move" || decision.recommendation === "inline" ? "" : ` \`locality move\` needs --reason for ${decision.recommendation === "review" ? "a review" : `a ${decision.recommendation}`}.`;
   const consumers = plural(input.fanIn, "consumer file");
+  const use = (count3) => count3 === 1 ? "uses" : "use";
   switch (decision.rule) {
     case "three-or-more-consumers": {
       const coChange = input.consumerCoChange === null ? "whether they change together is not known (the history gives fewer than locality.minCoChangeChanges changes touching them, or is not available)" : `their median co-change is ${input.consumerCoChange} percent, below the locality.highCoChange guideline of ${input.highCoChange} percent`;
-      return `${consumers} use it, so whether it moves is for judgement; ${coChange}.${needsReason}`;
+      return `${consumers} ${use(input.fanIn)} it, so whether it moves is for judgement; ${coChange}.${needsReason}`;
     }
     case "other-references":
-      return `${plural(input.otherRefs, "consumer file")} use it as a value, not a call, so callsite counts are not reliable and the move is for judgement.${needsReason}`;
+      return `${plural(input.otherRefs, "consumer file")} ${use(input.otherRefs)} it as a value, not a call, so callsite counts are not reliable and the move is for judgement.${needsReason}`;
     case "independent-consumers":
-      return `${consumers} use it and their median co-change is ${input.consumerCoChange} percent, at or below the locality.lowCoChange guideline of ${input.lowCoChange} percent, which suggests coincidental reuse.${needsReason}`;
+      return `${consumers} ${use(input.fanIn)} it and their median co-change is ${input.consumerCoChange} percent, at or below the locality.lowCoChange guideline of ${input.lowCoChange} percent, which suggests coincidental reuse.${needsReason}`;
     case "within-grace-period":
       return `its entry file first appeared ${input.age} days before HEAD, inside the locality.graceDays guideline of ${input.graceDays} days, so one callsite is not yet evidence of reuse.${needsReason}`;
     case "no-production-consumers":
@@ -2832,6 +2901,7 @@ function analyseProject(project, model, settings, history) {
     return signals.sort((a, b) => compareIds(a.name, b.name));
   }
   const manifests = manifestFolders(project.tree);
+  const go = goPackagesOf(project);
   function groupingRefusal(files, folder) {
     const name9 = folder === "" ? void 0 : folder.split("/").pop();
     if (name9 !== void 0 && !settings.groupingFolders.includes(name9)) return void 0;
@@ -2844,7 +2914,7 @@ function analyseProject(project, model, settings, history) {
     const memo = /* @__PURE__ */ new Map();
     return (folder) => {
       if (!memo.has(folder)) {
-        const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree);
+        const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree, go);
         memo.set(folder, first === void 0 ? groupingRefusal(files, folder) : { label: first.label, detail: first.detail });
       }
       return memo.get(folder);
@@ -5880,7 +5950,7 @@ function normaliseFolder(folder) {
   if (normal.startsWith("/") || normal === ".." || normal.startsWith("../")) return void 0;
   return normal;
 }
-function planMove(candidate, settings, tree, request = {}) {
+function planMove(candidate, settings, tree, request = {}, go) {
   const refusals = [];
   const refuse = (code, detail) => refusals.push({ code, detail });
   const requested = request.to ?? candidate.target;
@@ -5916,7 +5986,7 @@ function planMove(candidate, settings, tree, request = {}) {
     refuse("package-entry", "a published package names a file of the unit as an entry point, so outside consumers may exist");
   }
   const operations = relocate(candidate.unit.files, candidate.unit.tests, base, destination);
-  for (const refusal of placementRefusals(operations, manifestFolders(tree), tree)) refuse(refusal.code, refusal.detail);
+  for (const refusal of placementRefusals(operations, manifestFolders(tree), tree, go)) refuse(refusal.code, refusal.detail);
   if (candidate.recommendation !== "move" && (request.reason === void 0 || request.reason.trim() === "")) {
     refuse(
       "needs-reason",
@@ -5963,18 +6033,18 @@ var command4 = {
     const apply = context.values.apply === true;
     const commit = context.values["no-commit"] !== true;
     if (!apply && context.values["no-commit"] === true) throw usageError("--no-commit only applies with --apply");
-    const { analysis } = await analyseRevision(context, settings, "HEAD");
+    const { analysis, project } = await analyseRevision(context, settings, "HEAD");
     const candidate = [...analysis.candidates, ...analysis.placed, ...analysis.unproposed].find((entry) => entry.path === unitPath);
     if (candidate === void 0) {
       throw usageError(`"${unitPath}" is not a unit the analyser reports: run \`locality analyse\` and name one of its paths`);
     }
     const tree = await treeFromRef(context.repo.root, "HEAD");
-    const plan = planMove(candidate, settings, new Set(tree.files.keys()), { to, reason });
+    const plan = planMove(candidate, settings, new Set(tree.files.keys()), { to, reason }, goPackagesOf(project));
     const refusals = [...plan.refusals];
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-KMIFTMLA.mjs");
+    const { performMove } = await import("./chunk-5667DYHG.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     let sha = null;
@@ -6698,7 +6768,7 @@ function evidenceListHtml(data) {
   const more = tail(data);
   return `<section class="evidence">
 <h3>${escapeHtml(data.title)}</h3>
-${items.length === 0 ? '<p class="empty">None.</p>' : `<ul>
+${items.length === 0 ? `<p class="empty">${escapeHtml(data.emptyText ?? "None.")}</p>` : `<ul>
 ${items.join("\n")}
 </ul>`}
 ${more === void 0 ? "" : `<p class="omitted">${escapeHtml(more)}</p>
@@ -6707,7 +6777,7 @@ ${more === void 0 ? "" : `<p class="omitted">${escapeHtml(more)}</p>
 function evidenceListMd(data) {
   const items = data.items.map((item) => `- \`${item.id.replace(/`/g, "")}\` ${escapeMd(item.text)}${item.detail === void 0 ? "" : ` (${escapeMd(item.detail)})`}`);
   const more = tail(data);
-  return [`**${escapeMd(data.title)}**`, "", ...items.length === 0 ? ["None."] : items, ...more === void 0 ? [] : ["", `_${more}_`]].join("\n");
+  return [`**${escapeMd(data.title)}**`, "", ...items.length === 0 ? [escapeMd(data.emptyText ?? "None.")] : items, ...more === void 0 ? [] : ["", `_${more}_`]].join("\n");
 }
 
 // packages/report/src/components/facts.ts
@@ -7471,6 +7541,9 @@ function repoName(root) {
 }
 
 // packages/history/src/report-header.ts
+var FILE_KINDS = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
+var READ_BY_COMMANDS = /* @__PURE__ */ new Set(["generated", "vendored"]);
+var FILES_READ = " (counted over the files this report's commands read: changed in the window or range, and in the tree at HEAD where the report reads it)";
 function isoDate2(value) {
   return new Date(typeof value === "number" ? value * 1e3 : value).toISOString().slice(0, 10);
 }
@@ -7513,12 +7586,12 @@ function refusalLine(refusals) {
   const codes = [...counts].map(([code, n]) => n > 1 ? `${code} x${n}` : code).join(", ");
   return `${codes}; first: ${clip(refusals[0].detail, REFUSAL_DETAIL_CHARS)}`;
 }
-async function dryRun(context, candidate, settings, files) {
-  const plan = planMove(candidate, settings, files, {});
+async function dryRun(context, candidate, settings, files, go) {
+  const plan = planMove(candidate, settings, files, {}, go);
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null };
   try {
-    const { performMove } = await import("./chunk-KMIFTMLA.mjs");
+    const { performMove } = await import("./chunk-5667DYHG.mjs");
     const tree = await treeFromRef(context.repo.root, "HEAD");
     const moved = await performMove(tree, plan.operations);
     return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null };
@@ -7592,7 +7665,7 @@ function scrutiniseTable(rows7, settings) {
     type: "ranked-table",
     ...capRows(
       {
-        caption: "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline",
+        caption: "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline. Consumer files are the distinct production files that use the unit; test files are not counted",
         noun: "units",
         emptyText: "No unit has kind scrutinise.",
         columns: [
@@ -7605,7 +7678,7 @@ function scrutiniseTable(rows7, settings) {
         ],
         rows: rows7.map((c) => ({
           path: c.path,
-          fanIn: consumersOf(c).length,
+          fanIn: c.fanIn,
           ratio: c.guidelines.fanIn.ratio,
           folders: consumerFolders(c).size,
           gain: c.gain,
@@ -7661,6 +7734,7 @@ function omittedRows(structural, history) {
     { what: "units already beside their consumers (rule near-consumers)", count: structural.placed },
     ...Object.entries(structural.byReason).sort(byText).map(([reason, count3]) => ({ what: `units with no proposed move: ${reason}`, count: count3 })),
     { what: "units recommended blocked, held back by a dependency (listed below with their blockers)", count: structural.blocked },
+    { what: "units of kind move that have blockers (listed in the blocked table, not as moves)", count: structural.heldMoves },
     { what: "units recommended keep, with nothing to move", count: structural.keep },
     { what: `candidates past the rows of the three candidate tables`, count: structural.notShown },
     ...Object.entries(history.omitted).map(([reason, count3]) => ({ what: REASON_WORDS[reason] ?? reason, count: count3 }))
@@ -7691,21 +7765,26 @@ function omittedUnitsTable(units) {
   };
 }
 function blockedTable(units) {
+  const sorted = [...units].sort((a, b) => b.unblockedGain - a.unblockedGain || (a.path < b.path ? -1 : 1));
   return {
     type: "ranked-table",
     ...capRows(
       {
-        caption: "Units recommended blocked, with the files that hold them back",
+        caption: "Units held back by blockers, by the gain if the blockers were resolved: units recommended blocked, and units of kind move that still have blockers (a blocker is a file the unit depends on that stays behind and lowers the gain)",
         noun: "units",
-        emptyText: "No unit is recommended blocked.",
+        emptyText: "No unit is held back by blockers.",
         columns: [
           { key: "path", label: "Unit" },
-          { key: "gain", label: "Gain", align: "right" },
+          { key: "kind", label: "Kind" },
+          { key: "gain", label: "Gain now (net distance removed)", align: "right" },
+          { key: "unblocked", label: "Gain if the blockers were resolved (net distance removed)", align: "right" },
           { key: "blockers", label: "Blockers" }
         ],
-        rows: units.map((c) => ({
+        rows: sorted.map((c) => ({
           path: c.path,
+          kind: c.recommendation,
           gain: c.gain,
+          unblocked: c.unblockedGain,
           blockers: nameList(c.blockers.map((b) => b.path), BLOCKERS_PER_UNIT)
         }))
       },
@@ -7757,21 +7836,23 @@ var localityReport = {
     const historyOutput = await command.run({ ...context, positionals: [], values: { source: "history" } });
     const historyOnly2 = historyOutput.extra.historyOnly;
     const ofKind = all.filter((c) => KINDS.includes(c.recommendation));
-    const moves = ofKind.filter((c) => c.recommendation === "move");
+    const moves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length === 0);
+    const heldMoves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length > 0);
     const reviews = ofKind.filter((c) => c.recommendation === "review" || c.recommendation === "split" || c.recommendation === "inline");
     const scrutinise = ofKind.filter((c) => c.recommendation === "scrutinise").sort((a, b) => b.fanIn - a.fanIn || (a.path < b.path ? -1 : 1));
     const planned = [...moves, ...reviews].slice(0, PLANNED);
     const shownCount = Math.min(moves.length, TOP2) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
     const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
+    const go = goPackagesOf(await loadProject(context.repo.root, "HEAD", settings));
     const plans = [];
-    for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files));
+    for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files, go));
     const byKind = extra.summary.byRecommendation;
-    const blocked = all.filter((c) => c.recommendation === "blocked");
-    const omitted2 = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount, byReason: extra.summary.omitted }, historyOnly2);
+    const blocked = [...all.filter((c) => c.recommendation === "blocked"), ...heldMoves];
+    const omitted2 = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount - heldMoves.length, heldMoves: heldMoves.length, byReason: extra.summary.omitted }, historyOnly2);
     const unresolved = Object.entries(extra.unresolved).sort(byText);
     const excluded = [
       ...omitted2,
-      ...Object.entries(droppedCounts()).map(([kind, count3]) => ({ what: `${kind} files left out of the analysis`, count: count3 ?? 0 })),
+      ...Object.entries(droppedCounts()).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of the analysis${READ_BY_COMMANDS.has(kind) ? FILES_READ : ""}`, count: count3 ?? 0 })),
       ...Object.entries(builtinOmissions()).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
     ];
     const history = extra.history;
@@ -7848,7 +7929,7 @@ var localityReport = {
       sections,
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        `Three tables list candidates by kind: moves (top ${TOP2}), reviews, splits and inlines (top ${TOP_REVIEW}) and scrutinise (top ${TOP_SCRUTINISE}). Each says how many rows it leaves out. Move plans and judgements cover the first ${PLANNED} of the moves, then the reviews and splits. A unit of kind blocked is listed only in the blocked table.`,
+        `Three tables list candidates by kind: moves (top ${TOP2}), reviews, splits and inlines (top ${TOP_REVIEW}) and scrutinise (top ${TOP_SCRUTINISE}). Each says how many rows it leaves out. Move plans and judgements cover the first ${PLANNED} of the moves, then the reviews and splits. A unit of kind blocked, and a unit of kind move that has blockers, is listed only in the blocked table.`,
         "A move plan is a dry run of the proposed move. The report never applies one.",
         "Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.",
         ...lowConfidence > 0 ? [`${plural2(lowConfidence, "candidate")} rest on includes that found no file, so a consumer may be missing and the result is a lower bound.`] : [],
@@ -8098,14 +8179,14 @@ var command8 = {
     } catch (error) {
       throw usageError(`${ref} cannot be verified as a move: ${error instanceof Error ? error.message : String(error)}`);
     }
-    const { analysis } = await analyseRevision(context, settings, parent);
+    const { analysis, project } = await analyseRevision(context, settings, parent);
     const candidate = [...analysis.candidates, ...analysis.placed, ...analysis.unproposed].find((entry) => entry.path === unitPath);
     if (candidate === void 0) throw usageError(`"${unitPath}" is not a unit the analyser reports for ${parent.slice(0, 10)}, the parent of ${ref}`);
     const parentTree = await treeFromRef(root, parent);
     const commitTree = await treeFromRef(root, ref);
-    const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" });
+    const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" }, goPackagesOf(project));
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-U6HTNMLQ.mjs");
+    const { verifyMove } = await import("./chunk-2H7BQ3LA.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

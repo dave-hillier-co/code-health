@@ -32,7 +32,7 @@ import {
   restoreBuiltinOmissions,
   restoreDropped,
   runGit
-} from "./chunk-OKO2JROO.mjs";
+} from "./chunk-WZBMGDBT.mjs";
 
 // packages/cli-kit/src/args.ts
 import { parseArgs } from "node:util";
@@ -10412,7 +10412,7 @@ function evidenceListHtml(data) {
   const more = tail(data);
   return `<section class="evidence">
 <h3>${escapeHtml(data.title)}</h3>
-${items.length === 0 ? '<p class="empty">None.</p>' : `<ul>
+${items.length === 0 ? `<p class="empty">${escapeHtml(data.emptyText ?? "None.")}</p>` : `<ul>
 ${items.join("\n")}
 </ul>`}
 ${more === void 0 ? "" : `<p class="omitted">${escapeHtml(more)}</p>
@@ -10421,7 +10421,7 @@ ${more === void 0 ? "" : `<p class="omitted">${escapeHtml(more)}</p>
 function evidenceListMd(data) {
   const items = data.items.map((item) => `- \`${item.id.replace(/`/g, "")}\` ${escapeMd(item.text)}${item.detail === void 0 ? "" : ` (${escapeMd(item.detail)})`}`);
   const more = tail(data);
-  return [`**${escapeMd(data.title)}**`, "", ...items.length === 0 ? ["None."] : items, ...more === void 0 ? [] : ["", `_${more}_`]].join("\n");
+  return [`**${escapeMd(data.title)}**`, "", ...items.length === 0 ? [escapeMd(data.emptyText ?? "None.")] : items, ...more === void 0 ? [] : ["", `_${more}_`]].join("\n");
 }
 
 // packages/report/src/components/facts.ts
@@ -11189,6 +11189,42 @@ import { createHash as createHash13 } from "node:crypto";
 import { readFileSync as readFileSync19 } from "node:fs";
 import { isAbsolute as isAbsolute6, join as join15 } from "node:path";
 
+// packages/history/src/report-header.ts
+var COMMIT_FILTERS = [
+  ["outsideWindow", "commits outside the analysis window"],
+  ["shallowBoundaryCommits", "shallow boundary commits"],
+  ["importedCommits", "commits of imported history"],
+  ["blameIgnoredCommits", "commits in the blame ignore file"],
+  ["botCommits", "commits by bots and service accounts"],
+  ["suiteCommits", "commits trailed by this suite"],
+  ["emptyAfterFiltering", "commits with no file left after filtering"]
+];
+var CHANGE_FILTERS = [
+  ["pureRenames", "file changes that only rename"],
+  ["excludedByGlob", "file changes matching exclude globs"],
+  ["lockfiles", "lockfile changes"],
+  ["generated", "generated file changes"],
+  ["vendored", "vendored file changes"]
+];
+var FILE_KINDS = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
+var READ_BY_COMMANDS = /* @__PURE__ */ new Set(["generated", "vendored"]);
+var FILES_READ = " (counted over the files this report's commands read: changed in the window or range, and in the tree at HEAD where the report reads it)";
+function excludedCounts(filters, files, builtin, wording = {}) {
+  const leftOutOf = wording.leftOutOf ?? "the results";
+  return [
+    ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
+    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files${wording.oversizedNote === void 0 ? "" : `, ${wording.oversizedNote}`}`, count: filters.oversizedChanges },
+    ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of ${leftOutOf}${READ_BY_COMMANDS.has(kind) ? FILES_READ : ""}`, count: count3 })),
+    ...Object.entries(builtin).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
+  ];
+}
+function isoDate2(value) {
+  return new Date(typeof value === "number" ? value * 1e3 : value).toISOString().slice(0, 10);
+}
+function historyWindowText(evidence, window, suffix = "") {
+  return `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate2(window.since)} to ${isoDate2(window.until)}${suffix}`;
+}
+
 // packages/report/src/table-cap.ts
 function capRows(table, max, command17) {
   const total = Math.max(table.total ?? table.rows.length, table.rows.length);
@@ -11829,12 +11865,13 @@ var HistoryState = class {
 // packages/cochange/src/expected-pair.ts
 var EXPECTED_LABEL = {
   test: "a test and the code it tests",
+  "two-tests": "two test files",
   "fixture-or-golden": "a fixture or golden file and what it checks",
   "header-and-source": "a C or C++ header and its source file",
   "build-manifests": "two build or packaging manifests of one toolchain",
   "same-format-data": "two data or configuration files of one format"
 };
-var EXPECTED_REASONS = ["test", "fixture-or-golden", "header-and-source", "build-manifests", "same-format-data"];
+var EXPECTED_REASONS = ["test", "two-tests", "fixture-or-golden", "header-and-source", "build-manifests", "same-format-data"];
 var FIXTURE_FOLDER = /(^|\/)(testdata|test-data|fixtures?|__fixtures__|__snapshots__|__mocks__|snapshots?|goldens?|golden-files)\//i;
 var FIXTURE_NAME = /[._-](golden|snap|approved|received)(\.[^/.]+)?$/i;
 function isFixturePath(path) {
@@ -11873,6 +11910,7 @@ function manifestFamily(path) {
   return FAMILIES.find((entry) => entry.name.test(base))?.family ?? null;
 }
 function expectedReason(a, b, isTest) {
+  if (isTest(a.path) && isTest(b.path)) return "two-tests";
   if (isTest(a.path) || isTest(b.path)) return "test";
   if (isFixturePath(a.path) || isFixturePath(b.path)) return "fixture-or-golden";
   if (isHeaderAndSource(a.path, b.path)) return "header-and-source";
@@ -12448,7 +12486,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change3.head);
   const touched = change3.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-3OVP4473.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-PQO6DNSA.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change3);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);
@@ -12830,7 +12868,7 @@ var MAX_ITEMS = 8;
 var ROWS = 15;
 var EVIDENCE_ITEMS = 6;
 var ITEM_VERDICTS = ["needs-change", "accepted-with-reason", "false-positive"];
-var isoDate2 = (iso2) => iso2.slice(0, 10);
+var isoDate3 = (iso2) => iso2.slice(0, 10);
 var text3 = (value) => typeof value === "string" ? value : null;
 var number2 = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
 var plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -12971,7 +13009,7 @@ function factorBlocks(assessed, compact) {
   const blocks = [
     {
       type: "paragraph",
-      text: `Each band compares the change with the ${plural(baseline.population, "merged change")} measured as of their own time since ${isoDate2(baseline.since)}, and counts are met from a stated value. A band labels the value beside it and decides nothing.`
+      text: `Each band compares the change with the ${plural(baseline.population, "merged change")} measured as of their own time since ${isoDate3(baseline.since)}, and counts are met from a stated value. A band labels the value beside it and decides nothing.`
     },
     {
       type: "ranked-table",
@@ -13205,7 +13243,7 @@ function attentionSection(assessed, items, total, compact) {
       fold: { keep: ["needs-change"], labels: { "false-positive": "false positive", "accepted-with-reason": "accepted with a reason" }, pointer: "see the full report" },
       emptyText: "Nothing needs attention."
     }
-  ] : items.flatMap((item) => [{ type: "evidence-list", title: item.heading, items: item.evidence, omitted: item.omitted }, { type: "judgement", slot: item.slot.id }]);
+  ] : items.flatMap((item) => [{ type: "evidence-list", title: item.heading, items: item.evidence, omitted: item.omitted, emptyText: "The finding has no evidence item to list." }, { type: "judgement", slot: item.slot.id }]);
   if (total > items.length) blocks.push({ type: "notice", level: "notice", text: `${plural(total - items.length, "more item")} need attention and have no judgement slot, to keep the summary short. ${compact ? "The full report lists them" : "The tables below list them"}.` });
   return { id: "attention", heading: "Needs attention", blocks };
 }
@@ -13230,7 +13268,7 @@ function excludedOf(assessed) {
     { what: "changed paths under the noise filters", count: assessed.change.filtered },
     ...labels.map(([key, what]) => ({ what: `baseline: ${what}`, count: dropped.dropped[key] })),
     { what: `baseline: changes over ${dropped.maxChangesetSize} files`, count: dropped.oversizedChanges },
-    ...Object.entries(droppedCounts()).map(([kind, count3]) => ({ what: `${kinds[kind] ?? kind} left out of rankings`, count: count3 ?? 0 })),
+    ...Object.entries(droppedCounts()).map(([kind, count3]) => ({ what: `${kinds[kind] ?? kind} left out of rankings${READ_BY_COMMANDS.has(kind) ? FILES_READ : ""}`, count: count3 ?? 0 })),
     ...Object.entries(builtinOmissions()).map(([entry, count3]) => ({ what: `files under built-in exclude ${entry}`, count: count3 }))
   ].filter((e) => e.count > 0);
 }
@@ -13331,7 +13369,7 @@ var change2 = {
       },
       header: {
         evidenceGrade: hist.grade,
-        historyWindow: `${hist.usableHistoryMonths} months of usable history; the baseline is the ${plural(assessed.baseline.population, "merged change")} since ${isoDate2(assessed.baseline.since)}`,
+        historyWindow: `${hist.usableHistoryMonths} months of usable history; the baseline is the ${plural(assessed.baseline.population, "merged change")} since ${isoDate3(assessed.baseline.since)}`,
         excluded: excludedOf(assessed)
       },
       sections,
@@ -13340,40 +13378,6 @@ var change2 = {
     });
   }
 };
-
-// packages/history/src/report-header.ts
-var COMMIT_FILTERS = [
-  ["outsideWindow", "commits outside the analysis window"],
-  ["shallowBoundaryCommits", "shallow boundary commits"],
-  ["importedCommits", "commits of imported history"],
-  ["blameIgnoredCommits", "commits in the blame ignore file"],
-  ["botCommits", "commits by bots and service accounts"],
-  ["suiteCommits", "commits trailed by this suite"],
-  ["emptyAfterFiltering", "commits with no file left after filtering"]
-];
-var CHANGE_FILTERS = [
-  ["pureRenames", "file changes that only rename"],
-  ["excludedByGlob", "file changes matching exclude globs"],
-  ["lockfiles", "lockfile changes"],
-  ["generated", "generated file changes"],
-  ["vendored", "vendored file changes"]
-];
-var FILE_KINDS = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
-function excludedCounts(filters, files, builtin, wording = {}) {
-  const leftOutOf = wording.leftOutOf ?? "the results";
-  return [
-    ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
-    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files${wording.oversizedNote === void 0 ? "" : `, ${wording.oversizedNote}`}`, count: filters.oversizedChanges },
-    ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of ${leftOutOf}`, count: count3 })),
-    ...Object.entries(builtin).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
-  ];
-}
-function isoDate3(value) {
-  return new Date(typeof value === "number" ? value * 1e3 : value).toISOString().slice(0, 10);
-}
-function historyWindowText(evidence, window, suffix = "") {
-  return `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate3(window.since)} to ${isoDate3(window.until)}${suffix}`;
-}
 
 // packages/cochange/src/sibling-reports.ts
 import { existsSync as existsSync20, readFileSync as readFileSync20 } from "node:fs";
@@ -13492,7 +13496,7 @@ function expectedSection(expected, settings) {
   const counts = EXPECTED_REASONS.map((reason) => ({ reason, count: expected.filter((e) => e.reason === reason).length })).filter((c) => c.count > 0);
   const table = cappedTable(
     {
-      caption: `Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. ${PAIR_ORDER}`,
+      caption: `Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. ${PAIR_ORDER}`,
       noun: "pairs",
       total: expected.length,
       emptyText: "No pair is an expected pair: every pair that reaches the support floor is a pair of production files.",
@@ -13514,7 +13518,7 @@ function trendBlocks(rows7, total, settings, previous) {
   return [
     {
       type: "facts",
-      caption: `Trend of all ${total} pairs against ${isoDate3(previous.since)} to ${isoDate3(previous.until)}`,
+      caption: `Trend of all ${total} pairs against ${isoDate2(previous.since)} to ${isoDate2(previous.until)}`,
       facts: [
         { label: "Stronger", value: String(counts.stronger) },
         { label: "Stable", value: String(counts.stable) },
@@ -13735,7 +13739,7 @@ function limitsOf2(evidence, settings, previous, hiddenMissing) {
     `Coupling counts changes that touched both files in the window, over changes at or below the changeset limit; a larger change counts on neither side. A pair that shares fewer than ${settings.minSupport} changes (the support floor) is not listed.`,
     "Files that change together may share a design decision, or only a shared constant, a registry, a protocol, tests or generated code. The numbers cannot tell these apart; the judgements say which it is.",
     `Each table shows the top rows of its result and says how many rows it leaves out; \`cochange coupling\` and \`cochange clusters\` print the rest.`,
-    previous === void 0 || previous.eligibleChanges === 0 ? "The window before the current one holds no eligible change, so no trend is shown." : `The trend compares each pair's degree with its degree in the previous window of the same length (${isoDate3(previous.since)} to ${isoDate3(previous.until)}, ${previous.eligibleChanges} eligible changes). A pair that was young or rare then has a noisy earlier degree, and stable means a change of at most ${settings.tolerance} points.`,
+    previous === void 0 || previous.eligibleChanges === 0 ? "The window before the current one holds no eligible change, so no trend is shown." : `The trend compares each pair's degree with its degree in the previous window of the same length (${isoDate2(previous.since)} to ${isoDate2(previous.until)}, ${previous.eligibleChanges} eligible changes). A pair that was young or rare then has a noisy earlier degree, and stable means a change of at most ${settings.tolerance} points.`,
     ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
     ...evidence.truncated.shallow ? ["The clone is shallow, so history before its boundary is missing, and the previous window may be cut short."] : [],
     ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
@@ -13798,7 +13802,7 @@ var coupling = {
       },
       header: {
         evidenceGrade: evidence.grade,
-        historyWindow: historyWindowText(evidence, extra.window, previous === void 0 ? "" : `; the previous window for trends is ${isoDate3(previous.since)} to ${isoDate3(previous.until)}`),
+        historyWindow: historyWindowText(evidence, extra.window, previous === void 0 ? "" : `; the previous window for trends is ${isoDate2(previous.since)} to ${isoDate2(previous.until)}`),
         excluded: excluded.filter((e) => e.count > 0)
       },
       sections: [
@@ -14039,7 +14043,7 @@ function mapBlocks(rows7, lines2) {
   const blocks = [
     {
       type: "treemap",
-      title: "Code by folder: size is lines, colour is revisions in the window",
+      title: `The ${largest.length} largest files, nested by folder: size is lines, colour is revisions in the window`,
       sizeLabel: "lines",
       colourLabel: "revisions in the window",
       items: largest,
@@ -14047,7 +14051,7 @@ function mapBlocks(rows7, lines2) {
     }
   ];
   blocks.push({ type: "paragraph", text: "Colour bands are rank steps of the files shown: the band edges sit at the 50th, 75th, 90th and 97th percentile of their revisions, so band 5 is the most changed and says nothing about good or bad." });
-  if (sized.length > largest.length) blocks.push({ type: "notice", level: "limit", text: `The map holds the ${largest.length} largest of ${sized.length} files by lines; the ${sized.length - largest.length} smaller files are not in it.` });
+  if (sized.length > largest.length) blocks.push({ type: "notice", level: "limit", text: `The map and its table show the ${largest.length} files with the most lines of ${sized.length} ranked files; the ${sized.length - largest.length} smaller files are not in it.` });
   if (rows7.length > sized.length) blocks.push({ type: "notice", level: "limit", text: `${rows7.length - sized.length} ranked files have no text lines to size and are not in the map.` });
   return blocks;
 }
@@ -14079,7 +14083,7 @@ function frictionBlocks(friction, shown2, judged, percentile2, basis, complexity
         functionsAbove,
         complexity: row2.complexity,
         complexityPercentile,
-        lastChanged: isoDate3(row2.lastChanged),
+        lastChanged: isoDate2(row2.lastChanged),
         fixShare: row2.fixShare === null ? null : percentOf(row2.fixShare),
         fixes: row2.fixes,
         reviewFixes: row2.reviewFixes,
@@ -14316,7 +14320,7 @@ var hotspots = {
         extra.complexitySource === "indentation" ? "The Complexity column is the file's indentation complexity computed by this report; `complexity files` stores the same figure for this commit." : "The Complexity column is the file's indentation complexity from the stored `complexity files` result.",
         "Revisions count every commit that touched the file in the window. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.",
         ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
-        ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate3(evidence.truncated.availableSince)} is missing.`] : [],
+        ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate2(evidence.truncated.availableSince)} is missing.`] : [],
         ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
         ...analyse === void 0 || fixes === void 0 ? ["The X-Ray reads the complexity plugin's stored results and never computes them; a missing one is named in the section."] : []
       ],
@@ -14338,6 +14342,7 @@ var notAppliedTable = (caption, consequence) => ({
   emptyText: `${caption}: not listed. The repository has one contributor in the window, so ${consequence}.`
 });
 var percent2 = (share3) => Math.round(share3 * 1e3) / 10;
+var percentOfCounts = (part, whole) => whole === 0 ? 0 : Math.round(part / whole * 1e3) / 10;
 var oneDecimal = (value) => Math.round(value * 10) / 10;
 var VERDICTS = ["pair", "document", "rotate-reviews", "leave"];
 var INCONCLUSIVE_VERDICTS = ["map-identities", "leave"];
@@ -14529,9 +14534,9 @@ async function abandonmentBlocks(p, measured) {
       caption: "Knowledge lost so far, at the analysed commit",
       facts: [
         { label: "Files with lines held by people", value: String(summary.files.measured) },
-        { label: `Files abandoned (${p.settings.abandonmentGuideline}% or more of the lines held by people belong to people who have left)`, value: `${summary.files.abandoned} (${percent2(summary.files.share)}%)` },
+        { label: `Files abandoned (${p.settings.abandonmentGuideline}% or more of the lines held by people belong to people who have left)`, value: `${summary.files.abandoned} (${percentOfCounts(summary.files.abandoned, summary.files.measured)}%)` },
         { label: "Lines held by people", value: String(summary.lines.people) },
-        { label: "Of those, held by people who have left", value: `${summary.lines.abandoned} (${percent2(summary.lines.share)}%)` },
+        { label: "Of those, held by people who have left", value: `${summary.lines.abandoned} (${percentOfCounts(summary.lines.abandoned, summary.lines.people)}%)` },
         { label: "Lines of bots, services and agents, on neither side", value: String(summary.lines.nonPerson) },
         { label: "Lines with an unknown commit", value: String(summary.lines.unattributed) },
         { label: "Developers active, and who have left", value: `${model.developers.filter((d) => d.active).length} active, ${model.developers.filter((d) => !d.active).length} left` }
@@ -14874,35 +14879,45 @@ function cyclesResult(stored) {
     };
   });
 }
+var MOVE_KINDS = ["move", "review", "split", "inline"];
 function localityResult(stored) {
-  return resultFrom(stored, "locality analyse result", "locality analyse", (s) => {
-    const rows7 = top2(s.rows);
-    const ranking = (row2) => typeof row2.ranking === "object" && row2.ranking !== null ? row2.ranking : {};
-    const guideline = rows7.map((row2) => number5(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
-    return {
-      candidates: rows7.flatMap((row2) => text5(row2.path) === null ? [] : [{ ref: `locality:${text5(row2.path)}`, label: `${text5(row2.path)} (locality)` }]),
-      block: topTable({
-        caption: "Units furthest from where they are used, from locality analyse",
-        noun: "units",
-        total: s.rows.length,
-        emptyText: "The stored locality analyse result lists no unit.",
-        columns: [
-          { key: "path", label: "Unit" },
-          { key: "recommendation", label: "Recommendation" },
-          { key: "gain", label: `Gain (${text5(rows7[0]?.scoreUnit) ?? "score"})`, align: "right", ...guideline === void 0 ? {} : { guideline: { value: guideline, note: "locality.minDistance gain guideline" } } },
-          { key: "distance", label: "Distance", align: "right" },
-          { key: "target", label: "Target" }
-        ],
-        rows: rows7.map((row2) => ({
-          path: text5(row2.path),
-          recommendation: text5(row2.recommendation),
-          gain: number5(ranking(row2).value) ?? number5(row2.score),
-          distance: number5(row2.distance),
-          target: text5(row2.target)
-        }))
-      }, "locality analyse")
-    };
-  });
+  if (stored === void 0) return missingResult("locality analyse result", "locality analyse");
+  const ranking = (row2) => typeof row2.ranking === "object" && row2.ranking !== null ? row2.ranking : {};
+  const gainOf = (row2) => number5(ranking(row2).value) ?? number5(row2.score);
+  const moves = stored.rows.filter((row2) => MOVE_KINDS.includes(text5(row2.recommendation) ?? "") && (gainOf(row2) ?? 0) > 0);
+  const rows7 = top2(moves);
+  const others = stored.rows.length - moves.length;
+  const guideline = rows7.map((row2) => number5(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
+  const table = topTable({
+    caption: "Units with a proposed move, split or inline, by gain, from locality analyse",
+    noun: "units",
+    total: moves.length,
+    emptyText: "The stored locality analyse result lists no unit with a proposed move.",
+    columns: [
+      { key: "path", label: "Unit" },
+      { key: "recommendation", label: "Recommendation" },
+      { key: "gain", label: "Gain", align: "right", ...guideline === void 0 ? {} : { guideline: { value: guideline, note: "locality.minDistance gain guideline" } } },
+      { key: "measure", label: "Gain measure" },
+      { key: "distance", label: "Distance", align: "right" },
+      { key: "target", label: "Target" }
+    ],
+    rows: rows7.map((row2) => ({
+      path: text5(row2.path),
+      recommendation: text5(row2.recommendation),
+      gain: gainOf(row2),
+      measure: text5(row2.scoreUnit),
+      distance: number5(row2.distance),
+      target: text5(row2.target)
+    }))
+  }, "locality analyse");
+  const blocks = [table];
+  if (others > 0) blocks.push({ type: "notice", level: "notice", text: `${others} other ${others === 1 ? "unit is" : "units are"} not listed here: units to scrutinise for high fan-in, blocked units and units to keep. \`locality analyse\` and the locality report list them with their own measures.` });
+  return {
+    candidates: rows7.flatMap((row2) => text5(row2.path) === null ? [] : [{ ref: `locality:${text5(row2.path)}`, label: `${text5(row2.path)} (locality)` }]),
+    blocks,
+    read: { report: stored.report, head: stored.head, config: stored.config },
+    missing: null
+  };
 }
 function hotspotResult(rows7) {
   const shown2 = top2(rows7);
@@ -14961,7 +14976,7 @@ function limitsOf4(evidence, missing, complexitySource) {
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
     `Each table shows the top ${TOP3} of its result and says how many rows it leaves out; the command prints the rest.`,
     ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
-    ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate3(evidence.truncated.availableSince)} is missing.`] : [],
+    ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate2(evidence.truncated.availableSince)} is missing.`] : [],
     ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
     ...complexitySource === "indentation" ? ["Hotspot complexity is the indentation proxy, because no complexity report covers this commit."] : [],
     ...missing.length === 0 ? [] : [`Not stored for this commit: ${missing.join(", ")}. The overview reads other plugins' stored results and never computes them.`]

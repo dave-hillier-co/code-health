@@ -10080,7 +10080,7 @@ function restoreDropped(counts) {
 function droppedCounts() {
   const counts = {};
   for (const kind of DROPPED_KINDS) {
-    const total = (dropped.get(kind)?.size ?? 0) + (restored2.get(kind) ?? 0);
+    const total = Math.max(dropped.get(kind)?.size ?? 0, restored2.get(kind) ?? 0);
     if (total > 0) counts[kind] = total;
   }
   return counts;

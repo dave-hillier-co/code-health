@@ -55,7 +55,7 @@ var language5 = {
 // packages/locality/src/movers/python.ts
 var language6 = {
   id: "python",
-  load: async () => (await import("./chunk-DDJUFTEP.mjs")).load()
+  load: async () => (await import("./chunk-SQG45SZ6.mjs")).load()
 };
 
 // packages/locality/src/movers/go.ts
