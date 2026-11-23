@@ -171,6 +171,7 @@ Subcommands of the cochange CLI. Every one supports `--json` with a versioned sc
 | `cochange risk [BASE[..HEAD]] [--worktree] [--evidence FILE...]` | The level (when backtested), the impact and placement bands, every factor with its value, band, evidence and source, and the findings with their responses |
 | `cochange risk explain [FACTOR]` | The rules behind the level, or one factor's definition, guidelines and the files that drove it |
 | `cochange risk reviewers [BASE[..HEAD]] [--names]` | Suggested reviewers per touched area: active developers ranked by authorship and by changes to coupled files |
+| `cochange report change [BASE[..HEAD]] [--evidence FILE...] [--slots \| --notes FILE --format html\|md [--compact] [--out PATH]]` | The change summary page for a branch or pull request, from the same assessment as `risk`, with the agent's judgement of each item needing attention. It leaves placement out, so it shows the level only where a stored backtest says the levels separate past changes, read with placement unknown. See [Reports](suite.md#reports) |
 
 `risk` is advisory and exits 0 whatever the level. It exits non-zero only on usage and environment errors.
 

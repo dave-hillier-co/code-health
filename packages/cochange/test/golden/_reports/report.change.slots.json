@@ -1,0 +1,788 @@
+{
+  "data": {
+    "header": {
+      "commit": "a8315ddcd7fd55944a8c26867938cd8591afee71",
+      "configHash": "0000000000000000",
+      "date": "2024-05-06",
+      "evidenceGrade": "weak",
+      "excluded": [],
+      "historyWindow": "5 months of usable history; the baseline is the 16 merged changes since 2023-06-07",
+      "repo": "repo"
+    },
+    "limits": [
+      "Guidelines order and label what is shown. They are heuristics for review and decide nothing.",
+      "The evidence grade is weak, so the history-based bands are tentative and the static results should lead.",
+      "No band for defect-history, abandoned-touched: the factor could not be computed.",
+      "No level is shown, because no stored backtest of this repository says the levels separate past changes.",
+      "Who wrote the touched code (placement) is about people, so this report leaves it out. Names of people appear nowhere on this page."
+    ],
+    "sections": [
+      {
+        "blocks": [
+          {
+            "caption": "The change",
+            "facts": [
+              {
+                "label": "Range",
+                "value": "a8315dd..d9e6630, against main"
+              },
+              {
+                "label": "Commits",
+                "value": "1"
+              },
+              {
+                "label": "Files changed",
+                "value": "1"
+              },
+              {
+                "label": "Lines added and deleted",
+                "value": "20 and 20"
+              },
+              {
+                "label": "Files moved or renamed",
+                "value": "0"
+              },
+              {
+                "label": "Commits with an agent trailer",
+                "value": "0"
+              }
+            ],
+            "type": "facts"
+          }
+        ],
+        "heading": "The change",
+        "id": "change"
+      },
+      {
+        "blocks": [
+          {
+            "slot": "guidance",
+            "type": "judgement"
+          }
+        ],
+        "heading": "Reviewer guidance",
+        "id": "guidance"
+      },
+      {
+        "blocks": [
+          {
+            "items": [
+              {
+                "id": "src/billing/invoice.test.ts",
+                "text": "towards src/billing/invoice.ts, confidence 85.7, support 6"
+              },
+              {
+                "id": "src/billing/tax.ts",
+                "text": "towards src/billing/invoice.ts, confidence 85.7, support 6"
+              }
+            ],
+            "omitted": 0,
+            "title": "missing-co-change (moderate): 2 files that usually change with the touched files are not in the change",
+            "type": "evidence-list"
+          },
+          {
+            "slot": "finding-missing-co-change",
+            "type": "judgement"
+          },
+          {
+            "items": [
+              {
+                "id": "src/billing/invoice.ts",
+                "text": "test src/billing/invoice.test.ts, kind not-updated, together 6, revisions 7"
+              }
+            ],
+            "omitted": 0,
+            "title": "test-evidence (moderate): 1 source file changed without the tests that usually change with it, or tests deleted",
+            "type": "evidence-list"
+          },
+          {
+            "slot": "finding-test-evidence",
+            "type": "judgement"
+          },
+          {
+            "items": [
+              {
+                "id": "cycle:src/billing+src/reports",
+                "text": "2 modules at the folder level: src/billing, src/reports"
+              }
+            ],
+            "omitted": 0,
+            "title": "new import cycle: cycle:src/billing+src/reports",
+            "type": "evidence-list"
+          },
+          {
+            "slot": "structure-1",
+            "type": "judgement"
+          },
+          {
+            "items": [
+              {
+                "id": "src/billing/invoice.ts->src/reports/summary.ts",
+                "text": "domain imports reporting"
+              }
+            ],
+            "omitted": 0,
+            "title": "new layer violation: src/billing/invoice.ts->src/reports/summary.ts",
+            "type": "evidence-list"
+          },
+          {
+            "slot": "structure-2",
+            "type": "judgement"
+          },
+          {
+            "items": [
+              {
+                "id": "cognitive",
+                "text": "worsened: before 18, after 27, guideline 15"
+              }
+            ],
+            "omitted": 0,
+            "title": "src/billing/invoice.ts#total: existing function above guideline that got worse",
+            "type": "evidence-list"
+          },
+          {
+            "slot": "complexity-1",
+            "type": "judgement"
+          },
+          {
+            "items": [
+              {
+                "id": "cognitive",
+                "text": "new function: after 22, guideline 15"
+              }
+            ],
+            "omitted": 0,
+            "title": "src/billing/tax.ts#surcharge: new function above guideline",
+            "type": "evidence-list"
+          },
+          {
+            "slot": "complexity-2",
+            "type": "judgement"
+          }
+        ],
+        "heading": "Needs attention",
+        "id": "attention"
+      },
+      {
+        "blocks": [
+          {
+            "text": "Each band compares the change with the 16 merged changes measured as of their own time since 2023-06-07, and counts are met from a stated value. A band labels the value beside it and decides nothing.",
+            "type": "paragraph"
+          },
+          {
+            "caption": "Risk factors with their values and bands",
+            "columns": [
+              {
+                "key": "factor",
+                "label": "Factor"
+              },
+              {
+                "key": "band",
+                "label": "Band"
+              },
+              {
+                "key": "value",
+                "label": "Value"
+              },
+              {
+                "key": "guideline",
+                "label": "Guideline"
+              },
+              {
+                "align": "right",
+                "key": "evidence",
+                "label": "Evidence items"
+              }
+            ],
+            "numbered": false,
+            "rows": [
+              {
+                "band": "low",
+                "evidence": 0,
+                "factor": "size",
+                "guideline": "lines: moderate above 80, high above 80",
+                "value": "lines 40, files 1"
+              },
+              {
+                "band": "low",
+                "evidence": 0,
+                "factor": "spread",
+                "guideline": "spread: moderate above 0, high above 0",
+                "value": "spread 0, folders 1"
+              },
+              {
+                "band": "low",
+                "evidence": 0,
+                "factor": "entropy",
+                "guideline": "entropy: moderate above 1.5, high above 1.5",
+                "value": "entropy 0, files 1"
+              },
+              {
+                "band": "low",
+                "evidence": 0,
+                "factor": "mixed-purpose",
+                "guideline": "count: moderate from 1, high from 3",
+                "value": "moved 0, edited 1, editedWhileMoved 0"
+              },
+              {
+                "band": "low",
+                "evidence": 1,
+                "factor": "hotspots-touched",
+                "guideline": "share: moderate above 1, high above 1",
+                "value": "share 1, hotFiles 1"
+              },
+              {
+                "band": "unavailable",
+                "evidence": 1,
+                "factor": "defect-history",
+                "guideline": "share: no cutoff, the baseline is too small",
+                "value": "share 0.142857, fixes 1, revisions 7"
+              },
+              {
+                "band": "low",
+                "evidence": 0,
+                "factor": "contention",
+                "guideline": "authors: moderate above 0, high above 1",
+                "value": "authors 0"
+              },
+              {
+                "band": "low",
+                "evidence": 0,
+                "factor": "age",
+                "guideline": "stale: moderate above 0, high above 0; settling: moderate above 0, high above 0",
+                "value": "stale 0, settling 0, known 1"
+              },
+              {
+                "band": "moderate",
+                "evidence": 2,
+                "factor": "missing-co-change",
+                "guideline": "count: moderate from 1, high from 3",
+                "value": "count 2"
+              },
+              {
+                "band": "low",
+                "evidence": 0,
+                "factor": "novel-coupling",
+                "guideline": "count: moderate from 1, high from 3",
+                "value": "count 0"
+              },
+              {
+                "band": "moderate",
+                "evidence": 1,
+                "factor": "test-evidence",
+                "guideline": "count: moderate from 1, high from 3",
+                "value": "count 1"
+              },
+              {
+                "band": "moderate",
+                "evidence": 2,
+                "factor": "blast-radius",
+                "guideline": "files: moderate above 0, high above 2",
+                "value": "files 2, signatureChanges 0, symbolFanIn 0"
+              },
+              {
+                "band": "low",
+                "evidence": 0,
+                "factor": "sensitive-paths",
+                "guideline": "count: moderate from 1, high from 3",
+                "value": "count 0"
+              },
+              {
+                "band": "low",
+                "evidence": 0,
+                "factor": "complexity-delta",
+                "guideline": "count: moderate from 1, high from 3",
+                "value": "count 0, files 1"
+              },
+              {
+                "band": "moderate",
+                "evidence": 2,
+                "factor": "structure-delta",
+                "guideline": "count: moderate from 1, high from 3",
+                "value": "count 2"
+              },
+              {
+                "band": "unavailable",
+                "evidence": 0,
+                "factor": "abandoned-touched",
+                "guideline": "none",
+                "value": "none"
+              }
+            ],
+            "type": "ranked-table"
+          },
+          {
+            "items": [
+              {
+                "id": "defect-history",
+                "text": "unavailable: fewer than 10 merged changes in the baseline, so a value of 0.142857 cannot be placed"
+              },
+              {
+                "id": "abandoned-touched",
+                "text": "unavailable: knowledge analysis is not enabled (cochange.knowledge.enabled)"
+              }
+            ],
+            "title": "Factors with no band",
+            "type": "evidence-list"
+          },
+          {
+            "level": "notice",
+            "text": "No level is shown: a level is shown only where a stored backtest shows that the levels separate past changes, and none is stored for this configuration.",
+            "type": "notice"
+          }
+        ],
+        "heading": "Risk factors",
+        "id": "factors"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Files that usually change with a touched file and are not in the change",
+            "columns": [
+              {
+                "key": "file",
+                "label": "Missing file"
+              },
+              {
+                "key": "towards",
+                "label": "Usually changes with"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "direction": "below",
+                  "note": "cochange.risk.missingConfidence",
+                  "value": 80
+                },
+                "key": "confidence",
+                "label": "Confidence (%)"
+              },
+              {
+                "align": "right",
+                "guideline": {
+                  "direction": "below",
+                  "note": "cochange.minSupport",
+                  "value": 5
+                },
+                "key": "support",
+                "label": "Shared changes"
+              }
+            ],
+            "noun": "partners",
+            "rows": [
+              {
+                "confidence": 85.7,
+                "file": "src/billing/invoice.test.ts",
+                "support": 6,
+                "towards": "src/billing/invoice.ts"
+              },
+              {
+                "confidence": 85.7,
+                "file": "src/billing/tax.ts",
+                "support": 6,
+                "towards": "src/billing/invoice.ts"
+              }
+            ],
+            "total": 2,
+            "type": "ranked-table"
+          }
+        ],
+        "heading": "Missing co-change partners",
+        "id": "missing-co-change"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Functions above a complexity guideline that are new or got worse, from complexity check",
+            "columns": [
+              {
+                "key": "unit",
+                "label": "Function"
+              },
+              {
+                "key": "metric",
+                "label": "Metric"
+              },
+              {
+                "key": "change",
+                "label": "Change"
+              },
+              {
+                "align": "right",
+                "key": "before",
+                "label": "Before"
+              },
+              {
+                "align": "right",
+                "key": "after",
+                "label": "After"
+              },
+              {
+                "align": "right",
+                "key": "guideline",
+                "label": "Guideline"
+              },
+              {
+                "key": "against",
+                "label": "Against the guideline"
+              }
+            ],
+            "noun": "rows",
+            "numbered": false,
+            "rows": [
+              {
+                "after": 27,
+                "against": "above guideline by 12",
+                "before": 18,
+                "change": "worsened",
+                "guideline": 15,
+                "metric": "cognitive",
+                "unit": "src/billing/invoice.ts#total"
+              },
+              {
+                "after": 22,
+                "against": "above guideline by 7",
+                "before": null,
+                "change": "new",
+                "guideline": 15,
+                "metric": "cognitive",
+                "unit": "src/billing/tax.ts#surcharge"
+              }
+            ],
+            "total": 2,
+            "type": "ranked-table"
+          },
+          {
+            "level": "limit",
+            "text": "1 changed file could not be parsed, so its functions were not compared.",
+            "type": "notice"
+          }
+        ],
+        "heading": "Complexity before and after",
+        "id": "complexity"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Import cycles and layer violations the change adds, from structure check",
+            "columns": [
+              {
+                "key": "kind",
+                "label": "Kind"
+              },
+              {
+                "key": "id",
+                "label": "Finding"
+              },
+              {
+                "key": "detail",
+                "label": "Detail"
+              }
+            ],
+            "noun": "findings",
+            "numbered": false,
+            "rows": [
+              {
+                "detail": "2 modules at the folder level: src/billing, src/reports",
+                "id": "cycle:src/billing+src/reports",
+                "kind": "cycle"
+              },
+              {
+                "detail": "domain imports reporting",
+                "id": "src/billing/invoice.ts->src/reports/summary.ts",
+                "kind": "layer-violation"
+              }
+            ],
+            "total": 2,
+            "type": "ranked-table"
+          }
+        ],
+        "heading": "Structure findings the change adds",
+        "id": "structure"
+      },
+      {
+        "blocks": [
+          {
+            "caption": "Hotspots the change touches",
+            "facts": [
+              {
+                "label": "Hot files touched",
+                "value": "1"
+              },
+              {
+                "label": "Share of the change's churn in hot files",
+                "value": "100%"
+              },
+              {
+                "label": "Band",
+                "value": "low"
+              },
+              {
+                "label": "Guideline",
+                "value": "share: moderate above 1, high above 1"
+              }
+            ],
+            "type": "facts"
+          },
+          {
+            "caption": "Hot files the change touches, by revisions in the window",
+            "columns": [
+              {
+                "key": "file",
+                "label": "File"
+              },
+              {
+                "align": "right",
+                "key": "revisions",
+                "label": "Revisions"
+              }
+            ],
+            "noun": "files",
+            "rows": [
+              {
+                "file": "src/billing/invoice.ts",
+                "revisions": 7
+              }
+            ],
+            "total": 1,
+            "type": "ranked-table"
+          }
+        ],
+        "heading": "Hotspots touched",
+        "id": "hotspots"
+      },
+      {
+        "blocks": [
+          {
+            "items": [
+              {
+                "id": "src/billing/invoice.ts",
+                "text": "revisions 7"
+              }
+            ],
+            "omitted": 0,
+            "title": "Evidence for hotspots-touched",
+            "type": "evidence-list"
+          },
+          {
+            "items": [
+              {
+                "id": "src/billing/invoice.test.ts",
+                "text": "towards src/billing/invoice.ts, confidence 85.7, support 6"
+              },
+              {
+                "id": "src/billing/tax.ts",
+                "text": "towards src/billing/invoice.ts, confidence 85.7, support 6"
+              }
+            ],
+            "omitted": 0,
+            "title": "Evidence for missing-co-change",
+            "type": "evidence-list"
+          },
+          {
+            "items": [
+              {
+                "id": "src/billing/invoice.ts",
+                "text": "test src/billing/invoice.test.ts, kind not-updated, together 6, revisions 7"
+              }
+            ],
+            "omitted": 0,
+            "title": "Evidence for test-evidence",
+            "type": "evidence-list"
+          },
+          {
+            "items": [
+              {
+                "id": "src/billing/invoice.test.ts",
+                "text": "towards src/billing/invoice.ts, confidence 85.7"
+              },
+              {
+                "id": "src/billing/tax.ts",
+                "text": "towards src/billing/invoice.ts, confidence 85.7"
+              }
+            ],
+            "omitted": 0,
+            "title": "Evidence for blast-radius",
+            "type": "evidence-list"
+          },
+          {
+            "items": [
+              {
+                "id": "cycle:src/billing+src/reports",
+                "text": "kind cycle"
+              },
+              {
+                "id": "src/billing/invoice.ts->src/reports/summary.ts",
+                "text": "kind layer-violation"
+              }
+            ],
+            "omitted": 0,
+            "title": "Evidence for structure-delta",
+            "type": "evidence-list"
+          }
+        ],
+        "heading": "Evidence behind the factors",
+        "id": "evidence"
+      }
+    ],
+    "title": "Change summary a8315dd..d9e6630"
+  },
+  "instructions": "Write notes.json as { stamp, notes }: copy the stamp unchanged, and give each slot id an entry that follows the slot's shape.",
+  "protocol": 1,
+  "report": "change",
+  "slots": [
+    {
+      "about": {
+        "kind": "finding",
+        "label": "2 files that usually change with the touched files are not in the change: src/billing/invoice.test.ts, src/billing/tax.ts",
+        "ref": "risk:missing-co-change"
+      },
+      "id": "finding-missing-co-change",
+      "maxChars": 300,
+      "task": "Finding \"missing-co-change\": 2 files that usually change with the touched files are not in the change. The risk response is: Open the named files and decide, for each, whether it needs changing. Record the ones deliberately left alone. The usual red flag is Information leakage. Give a verdict and one or two sentences. needs-change: the change should be altered before it merges, and the text says what. accepted-with-reason: the change stays as it is, and the text gives the reason. false-positive: the finding does not apply, and the text says why. Cite only values shown in this report.",
+      "title": "Judgement: missing-co-change",
+      "verdicts": [
+        "needs-change",
+        "accepted-with-reason",
+        "false-positive"
+      ]
+    },
+    {
+      "about": {
+        "kind": "finding",
+        "label": "1 source file changed without the tests that usually change with it, or tests deleted: src/billing/invoice.ts",
+        "ref": "risk:test-evidence"
+      },
+      "id": "finding-test-evidence",
+      "maxChars": 300,
+      "task": "Finding \"test-evidence\": 1 source file changed without the tests that usually change with it, or tests deleted. The risk response is: Add or update the tests that usually change with these files, or say why not. Give a verdict and one or two sentences. needs-change: the change should be altered before it merges, and the text says what. accepted-with-reason: the change stays as it is, and the text gives the reason. false-positive: the finding does not apply, and the text says why. Cite only values shown in this report.",
+      "title": "Judgement: test-evidence",
+      "verdicts": [
+        "needs-change",
+        "accepted-with-reason",
+        "false-positive"
+      ]
+    },
+    {
+      "about": {
+        "kind": "finding",
+        "label": "new import cycle cycle:src/billing+src/reports: 2 modules at the folder level: src/billing, src/reports",
+        "ref": "structure:cycle:src/billing+src/reports"
+      },
+      "id": "structure-1",
+      "maxChars": 300,
+      "task": "Structure check says this change adds a new import cycle (cycle:src/billing+src/reports). Say whether the dependency is intended. Give a verdict and one or two sentences. needs-change: the change should be altered before it merges, and the text says what. accepted-with-reason: the change stays as it is, and the text gives the reason. false-positive: the finding does not apply, and the text says why. Cite only values shown in this report.",
+      "title": "Judgement: new import cycle cycle:src/billing+src/reports",
+      "verdicts": [
+        "needs-change",
+        "accepted-with-reason",
+        "false-positive"
+      ]
+    },
+    {
+      "about": {
+        "kind": "finding",
+        "label": "new layer violation src/billing/invoice.ts->src/reports/summary.ts: domain imports reporting",
+        "ref": "structure:src/billing/invoice.ts->src/reports/summary.ts"
+      },
+      "id": "structure-2",
+      "maxChars": 300,
+      "task": "Structure check says this change adds a new layer violation (src/billing/invoice.ts->src/reports/summary.ts). Say whether the dependency is intended. Give a verdict and one or two sentences. needs-change: the change should be altered before it merges, and the text says what. accepted-with-reason: the change stays as it is, and the text gives the reason. false-positive: the finding does not apply, and the text says why. Cite only values shown in this report.",
+      "title": "Judgement: new layer violation src/billing/invoice.ts->src/reports/summary.ts",
+      "verdicts": [
+        "needs-change",
+        "accepted-with-reason",
+        "false-positive"
+      ]
+    },
+    {
+      "about": {
+        "kind": "unit",
+        "label": "src/billing/invoice.ts#total (worsened): cognitive 18 to 27 (guideline 15)",
+        "ref": "src/billing/invoice.ts#total"
+      },
+      "id": "complexity-1",
+      "maxChars": 300,
+      "task": "The function src/billing/invoice.ts#total is above a complexity guideline and got worse. Say whether it should be simplified before merge. Give a verdict and one or two sentences. needs-change: the change should be altered before it merges, and the text says what. accepted-with-reason: the change stays as it is, and the text gives the reason. false-positive: the finding does not apply, and the text says why. Cite only values shown in this report.",
+      "title": "Judgement: complexity of src/billing/invoice.ts#total",
+      "verdicts": [
+        "needs-change",
+        "accepted-with-reason",
+        "false-positive"
+      ]
+    },
+    {
+      "about": {
+        "kind": "unit",
+        "label": "src/billing/tax.ts#surcharge (new): cognitive 22 (guideline 15)",
+        "ref": "src/billing/tax.ts#surcharge"
+      },
+      "id": "complexity-2",
+      "maxChars": 300,
+      "task": "The function src/billing/tax.ts#surcharge is new and above a complexity guideline. Say whether it should be simplified before merge. Give a verdict and one or two sentences. needs-change: the change should be altered before it merges, and the text says what. accepted-with-reason: the change stays as it is, and the text gives the reason. false-positive: the finding does not apply, and the text says why. Cite only values shown in this report.",
+      "title": "Judgement: complexity of src/billing/tax.ts#surcharge",
+      "verdicts": [
+        "needs-change",
+        "accepted-with-reason",
+        "false-positive"
+      ]
+    },
+    {
+      "about": {
+        "kind": "report",
+        "label": "the change",
+        "ref": "change"
+      },
+      "id": "guidance",
+      "maxChars": 500,
+      "task": "In at most three sentences, tell the reviewer where to look first and what to ask the author, using only the findings and values shown in this report. When nothing needs attention, say what a quick review can skip. Do not name people.",
+      "title": "Judgement: reviewer guidance",
+      "verdicts": []
+    },
+    {
+      "about": {
+        "kind": "report",
+        "label": "the change",
+        "ref": "change"
+      },
+      "id": "limits",
+      "maxChars": 500,
+      "task": "In at most three sentences, say what limits how far this summary can be trusted for this change, using only the evidence grade, the unavailable factors and the missing results shown above.",
+      "title": "Judgement: what limits this summary",
+      "verdicts": []
+    }
+  ],
+  "stamp": {
+    "config": "0000000000000000",
+    "head": "a8315ddcd7fd55944a8c26867938cd8591afee71",
+    "inputs": {
+      "abandonment": null,
+      "backtest": null,
+      "base": "a8315ddcd7fd55944a8c26867938cd8591afee71",
+      "baseline": {
+        "direct": 14,
+        "mergedChanges": 16,
+        "merges": 2,
+        "population": 16,
+        "since": "2023-06-07T09:00:00.000Z"
+      },
+      "evidence": [
+        {
+          "command": "check",
+          "hash": "ffd93f117bf67b11",
+          "tool": "complexity"
+        },
+        {
+          "command": "check",
+          "hash": "9b28c267b1cb6554",
+          "tool": "structure"
+        }
+      ],
+      "head": "d9e663050c424ee3d4da436198a547a528153a88",
+      "locality": null,
+      "range": "main..missing"
+    },
+    "kind": "change",
+    "protocol": 1
+  }
+}
