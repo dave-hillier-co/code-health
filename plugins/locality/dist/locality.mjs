@@ -107,9 +107,9 @@ function parseArguments(argv, commandOptions = {}) {
     throw usageError(error instanceof Error ? error.message : String(error));
   }
   const { json, help, limit, fields, ...values } = parsed.values;
-  const [command8, ...positionals] = parsed.positionals;
+  const [command9, ...positionals] = parsed.positionals;
   return {
-    command: command8,
+    command: command9,
     positionals,
     json: json === true,
     help: help === true,
@@ -257,22 +257,22 @@ function loadConfig(root, spec) {
   }
   const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
   const defaults = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
-  const rows = /* @__PURE__ */ new Map();
+  const rows5 = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
-    effective[key] = merge(defaults[key], document?.[key], key, rows);
+    effective[key] = merge(defaults[key], document?.[key], key, rows5);
   }
   readHistory(effective.history, "history");
   const pluginDocument = document?.[spec.plugin];
   const override = Object.fromEntries(historyKeys.filter((key) => pluginDocument?.[key] !== void 0).map((key) => [key, pluginDocument[key]]));
   readHistory(override, spec.plugin);
-  const section = effective[spec.plugin];
+  const section2 = effective[spec.plugin];
   for (const key of historyKeys) {
-    section[key] = overlay(effective.history[key], pluginDocument?.[key]);
-    inheritSources(rows, spec.plugin, key);
+    section2[key] = overlay(effective.history[key], pluginDocument?.[key]);
+    inheritSources(rows5, spec.plugin, key);
   }
   const sources2 = {};
-  for (const row of rows.values()) sources2[row.path] = row.source;
+  for (const row of rows5.values()) sources2[row.path] = row.source;
   const hash = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash, sources: sources2 };
 }
@@ -283,13 +283,13 @@ function overlay(shared, own) {
   }
   return own;
 }
-function inheritSources(rows, plugin, key) {
+function inheritSources(rows5, plugin, key) {
   const own = `${plugin}.${key}`;
-  for (const row of [...rows.values()]) {
+  for (const row of [...rows5.values()]) {
     if (row.path !== own && !row.path.startsWith(`${own}.`)) continue;
     if (row.source === "file") continue;
-    const shared = rows.get(`history${row.path.slice(plugin.length)}`);
-    if (shared !== void 0) rows.set(row.path, { ...row, source: shared.source });
+    const shared = rows5.get(`history${row.path.slice(plugin.length)}`);
+    if (shared !== void 0) rows5.set(row.path, { ...row, source: shared.source });
   }
 }
 function readHistory(history, where) {
@@ -327,12 +327,12 @@ function readLanguages(value) {
   return mapped;
 }
 function explainConfig(config) {
-  const rows = [];
+  const rows5 = [];
   flatten(config.effective, "", (path, value) => {
-    rows.push({ path, value, source: config.sources[path] ?? "default" });
+    rows5.push({ path, value, source: config.sources[path] ?? "default" });
   });
-  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
-  return rows.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows5.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
+  return rows5.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 function parseDocument(file) {
   let parsed;
@@ -344,15 +344,15 @@ function parseDocument(file) {
   if (!isPlainObject(parsed)) throw configError(`${CONFIG_FILE} must be a JSON object`);
   return parsed;
 }
-function merge(defaultValue, fileValue, path, rows) {
+function merge(defaultValue, fileValue, path, rows5) {
   if (fileValue === void 0) {
-    flatten(defaultValue, path, (leaf, value) => rows.set(leaf, { path: leaf, value, source: "default" }));
+    flatten(defaultValue, path, (leaf, value) => rows5.set(leaf, { path: leaf, value, source: "default" }));
     return defaultValue;
   }
   if (isPlainObject(defaultValue)) {
     if (!isPlainObject(fileValue)) throw configError(`${CONFIG_FILE}: ${path} must be an object`);
     if (Object.keys(defaultValue).length === 0) {
-      flatten(fileValue, path, (leaf, value) => rows.set(leaf, { path: leaf, value, source: "file" }));
+      flatten(fileValue, path, (leaf, value) => rows5.set(leaf, { path: leaf, value, source: "file" }));
       return fileValue;
     }
     for (const key of Object.keys(fileValue)) {
@@ -360,14 +360,14 @@ function merge(defaultValue, fileValue, path, rows) {
     }
     const merged = {};
     for (const key of Object.keys(defaultValue)) {
-      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows);
+      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows5);
     }
     return merged;
   }
   if (defaultValue !== null && kindOf(fileValue) !== kindOf(defaultValue)) {
     throw configError(`${CONFIG_FILE}: ${path} must be ${article(kindOf(defaultValue))}`);
   }
-  rows.set(path, { path, value: fileValue, source: "file" });
+  rows5.set(path, { path, value: fileValue, source: "file" });
   return fileValue;
 }
 var removedSettings = {
@@ -408,21 +408,21 @@ var ENVELOPE_KEYS = [
   "truncated",
   "meta"
 ];
-function buildDocument(parts) {
-  for (const key of Object.keys(parts.extra ?? {})) {
+function buildDocument(parts2) {
+  for (const key of Object.keys(parts2.extra ?? {})) {
     if (ENVELOPE_KEYS.includes(key)) throw new Error(`extra section "${key}" would replace an envelope field`);
   }
   return {
-    schemaVersion: parts.schemaVersion,
-    tool: parts.tool,
-    command: parts.command,
-    repo: parts.repo,
-    config: parts.configHash,
-    inputs: parts.inputs ?? {},
-    ...parts.extra,
-    results: parts.results,
-    truncated: parts.truncated,
-    ...parts.meta ? { meta: parts.meta } : {}
+    schemaVersion: parts2.schemaVersion,
+    tool: parts2.tool,
+    command: parts2.command,
+    repo: parts2.repo,
+    config: parts2.configHash,
+    inputs: parts2.inputs ?? {},
+    ...parts2.extra,
+    results: parts2.results,
+    truncated: parts2.truncated,
+    ...parts2.meta ? { meta: parts2.meta } : {}
   };
 }
 
@@ -474,11 +474,11 @@ function git(cwd, ...args) {
 // packages/cli-kit/src/results.ts
 function shapeResults(results, options) {
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
-  const { limit, fields, columns } = options;
-  if (fields && columns && columns.length > 0) {
-    const unknown = fields.filter((field) => !columns.includes(field));
+  const { limit, fields, columns: columns6 } = options;
+  if (fields && columns6 && columns6.length > 0) {
+    const unknown = fields.filter((field) => !columns6.includes(field));
     if (unknown.length > 0) {
-      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns.join(", ")}`);
+      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns6.join(", ")}`);
     }
   }
   const sorted = options.presorted === true ? results : [...results].sort(byScoreThenPath);
@@ -522,13 +522,13 @@ function runNotes() {
 }
 
 // packages/cli-kit/src/table.ts
-function renderTable(rows, columns, truncated) {
-  if (rows.length === 0) return "No results.\n";
-  const cells = rows.map((row) => columns.map((column) => format(row[column])));
-  const numeric = columns.map((column) => rows.every((row) => row[column] == null || typeof row[column] === "number"));
-  const widths = columns.map((column, i) => Math.max(column.length, ...cells.map((line) => line[i]?.length ?? 0)));
+function renderTable(rows5, columns6, truncated) {
+  if (rows5.length === 0) return "No results.\n";
+  const cells = rows5.map((row) => columns6.map((column) => format(row[column])));
+  const numeric = columns6.map((column) => rows5.every((row) => row[column] == null || typeof row[column] === "number"));
+  const widths = columns6.map((column, i) => Math.max(column.length, ...cells.map((line) => line[i]?.length ?? 0)));
   const render = (line) => line.map((cell, i) => numeric[i] ? cell.padStart(widths[i] ?? 0) : cell.padEnd(widths[i] ?? 0)).join("  ").trimEnd();
-  const lines2 = [render(columns), ...cells.map(render)];
+  const lines2 = [render(columns6), ...cells.map(render)];
   if (truncated.cut > 0) lines2.push(`${truncated.cut} more not shown (use --limit N or --limit all)`);
   return lines2.join("\n") + "\n";
 }
@@ -564,8 +564,8 @@ async function runCli(cli2, io) {
 }
 async function execute(cli2, io) {
   const started = Date.now();
-  const name8 = discoverCommand(io.argv);
-  if (name8 === void 0) {
+  const name9 = discoverCommand(io.argv);
+  if (name9 === void 0) {
     if (io.argv.includes("--help")) {
       io.stdout.write(helpText(cli2));
       return ExitCode.Success;
@@ -573,16 +573,16 @@ async function execute(cli2, io) {
     io.stderr.write(helpText(cli2));
     return ExitCode.Usage;
   }
-  if (name8 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
-  const command8 = name8 === "config" ? configExplain : cli2.commands[name8];
-  if (!command8) throw usageError(`unknown command "${name8}"; run with --help to list commands`);
-  const args = parseArguments(io.argv, command8.options);
+  if (name9 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
+  const command9 = name9 === "config" ? configExplain : cli2.commands[name9];
+  if (!command9) throw usageError(`unknown command "${name9}"; run with --help to list commands`);
+  const args = parseArguments(io.argv, command9.options);
   if (args.help) {
-    io.stdout.write(commandHelp(cli2, name8, command8, args.positionals[0]));
+    io.stdout.write(commandHelp(cli2, name9, command9, args.positionals[0]));
     return ExitCode.Success;
   }
-  let commandName = name8;
-  if (name8 === "config") {
+  let commandName = name9;
+  if (name9 === "config") {
     if (args.positionals[0] !== "explain") throw usageError("usage: config explain");
     commandName = "config explain";
   }
@@ -592,7 +592,7 @@ async function execute(cli2, io) {
   resetBuiltinOmissions();
   resetRunNotes();
   resetDropped();
-  const output = await command8.run(context);
+  const output = await command9.run(context);
   if (output.text !== void 0) {
     for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
 `);
@@ -608,8 +608,8 @@ async function execute(cli2, io) {
 `);
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
-  const columns = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns, presorted: output.presorted });
+  const columns6 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
+  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns: columns6, presorted: output.presorted });
   if (args.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -639,20 +639,20 @@ async function execute(cli2, io) {
       )
     );
   } else if (Array.isArray(results)) {
-    io.stdout.write(renderTable(results, args.fields ?? columns, truncated));
+    io.stdout.write(renderTable(results, args.fields ?? columns6, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
 `);
     for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
 `);
     const counted = Object.entries(builtin);
     if (counted.length > 0) {
-      io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count2]) => `${count2} ${count2 === 1 ? "file" : "files"} (${entry})`).join(", ")}.
+      io.stdout.write(`Notice: built-in excludes omitted ${counted.map(([entry, count3]) => `${count3} ${count3 === 1 ? "file" : "files"} (${entry})`).join(", ")}.
 `);
     }
     const left = Object.entries(leftOut);
     if (left.length > 0) {
       const names = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" };
-      io.stdout.write(`Notice: omitted ${left.map(([kind, count2]) => `${count2} ${names[kind]} ${count2 === 1 ? "file" : "files"}`).join(", ")}.
+      io.stdout.write(`Notice: omitted ${left.map(([kind, count3]) => `${count3} ${names[kind]} ${count3 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
@@ -691,38 +691,38 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands2 = [
-    ...Object.entries(cli2.commands).map(([name8, command8]) => [name8, command8.summary]),
+    ...Object.entries(cli2.commands).map(([name9, command9]) => [name9, command9.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
-  const width = Math.max(...commands2.map(([name8]) => name8.length));
+  const width = Math.max(...commands2.map(([name9]) => name9.length));
   return [
     `Usage: ${cli2.tool} <command> [options]`,
     "",
     "Commands:",
-    ...commands2.map(([name8, summary]) => `  ${name8.padEnd(width)}  ${summary}`),
+    ...commands2.map(([name9, summary]) => `  ${name9.padEnd(width)}  ${summary}`),
     "",
     "Options:",
     ...commonOptionHelp,
     ""
   ].join("\n");
 }
-function commandHelp(cli2, name8, command8, requested) {
-  const sub = requested === void 0 ? void 0 : command8.subcommands?.[requested];
+function commandHelp(cli2, name9, command9, requested) {
+  const sub = requested === void 0 ? void 0 : command9.subcommands?.[requested];
   const optionLines = (entries) => {
     const flags = entries.map(([option, spec]) => [
       `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
-      command8.optionHelp?.[option] ?? ""
+      command9.optionHelp?.[option] ?? ""
     ]);
     const width2 = Math.max(0, ...flags.map(([flag]) => flag.length));
     return flags.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
   };
-  const all = Object.entries(command8.options ?? {});
-  const hiddenOptions = new Set(command8.hiddenOptions ?? []);
+  const all = Object.entries(command9.options ?? {});
+  const hiddenOptions = new Set(command9.hiddenOptions ?? []);
   if (sub !== void 0) {
     const taken = new Set(sub.options ?? []);
     return [
-      `Usage: ${cli2.tool} ${name8} ${requested}${command8.usage === void 0 ? "" : ` ${command8.usage}`} [options]`,
+      `Usage: ${cli2.tool} ${name9} ${requested}${command9.usage === void 0 ? "" : ` ${command9.usage}`} [options]`,
       "",
       sub.summary,
       "",
@@ -732,14 +732,14 @@ function commandHelp(cli2, name8, command8, requested) {
       ""
     ].join("\n");
   }
-  const subcommands = Object.entries(command8.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
+  const subcommands = Object.entries(command9.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
   const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli2.tool} ${name8}${command8.usage === void 0 ? "" : ` ${command8.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
+    `Usage: ${cli2.tool} ${name9}${command9.usage === void 0 ? "" : ` ${command9.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
-    command8.summary,
+    command9.summary,
     "",
-    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name8} <subcommand> --help for the options of one.`, ""] : [],
+    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name9} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
     ...optionLines(all.filter(([option]) => !hiddenOptions.has(option))),
     ...commonOptionHelp,
@@ -794,13 +794,13 @@ function ensureSelfIgnoring(directory) {
 }
 
 // packages/history/src/reports.ts
-function reportPath(root, tool, command8, variant) {
-  return join3(root, ".cache", "code-health", "reports", `${tool}.${command8}${variant === void 0 ? "" : `.${variant}`}.json`);
+function reportPath(root, tool, command9, variant) {
+  return join3(root, ".cache", "code-health", "reports", `${tool}.${command9}${variant === void 0 ? "" : `.${variant}`}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
 }
-async function writeReport(context, identity, command8, output, analysedHead, options = {}) {
+async function writeReport(context, identity, command9, output, analysedHead, options = {}) {
   if (options.describesCommit !== true) {
     if (context.repo.dirty) {
       skipReport(context, "the working tree has uncommitted changes");
@@ -823,7 +823,7 @@ async function writeReport(context, identity, command8, output, analysedHead, op
   const document = buildDocument({
     schemaVersion: identity.schemaVersion,
     tool: identity.tool,
-    command: command8,
+    command: command9,
     repo: { head: analysedHead, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
@@ -836,7 +836,7 @@ async function writeReport(context, identity, command8, output, analysedHead, op
     truncated,
     ...options.replayable === true ? { meta: { printed } } : {}
   });
-  const file = reportPath(context.repo.root, identity.tool, command8, options.variant);
+  const file = reportPath(context.repo.root, identity.tool, command9, options.variant);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join3(context.repo.root, ".cache", "code-health") });
   mkdirSync2(join3(file, ".."), { recursive: true });
@@ -937,11 +937,11 @@ function describeIncludeResolution(resolution, guidelinePercent, plugin) {
   const share = `${resolution.unresolved} of ${resolution.includes} includes (${(resolution.unresolvedShare * 100).toFixed(1)}%) found no file`;
   const source = resolution.compileCommands !== null ? `include directories from ${resolution.compileCommands.paths.join(", ")}${resolution.compileCommands.tracked ? "" : " (not tracked by git)"}` : resolution.configuredRoots.length > 0 ? `include directories from the includeRoots setting` : resolution.inferredRoots.length > 0 ? `no compile_commands.json and no includeRoots setting, so ${resolution.inferredRoots.length} include directories were inferred` : "no compile_commands.json and no includeRoots setting, and no include directory could be inferred";
   const advice = `${plugin}: set includeRoots in code-health.json, or generate a compile_commands.json (CMAKE_EXPORT_COMPILE_COMMANDS=ON) at the repository root or in build/`;
-  const text = `${share}, above the ${plugin}.unresolvedIncludePercent guideline of ${guidelinePercent}% (${source}), so dependencies, consumers and the results that rest on them are incomplete and the affected units are marked low confidence`;
+  const text2 = `${share}, above the ${plugin}.unresolvedIncludePercent guideline of ${guidelinePercent}% (${source}), so dependencies, consumers and the results that rest on them are incomplete and the affected units are marked low confidence`;
   return {
     section: { ...resolution, guideline: guidelinePercent, aboveGuideline: above },
-    notice: above ? text : void 0,
-    warning: above ? `Warning: ${text}. ${advice}` : void 0
+    notice: above ? text2 : void 0,
+    warning: above ? `Warning: ${text2}. ${advice}` : void 0
   };
 }
 function lowConfidenceReader(unresolved) {
@@ -950,19 +950,19 @@ function lowConfidenceReader(unresolved) {
   for (const entry of unresolved) {
     if (entry.specifier === null || entry.specifier.startsWith("<") || !isCppPath(entry.from)) continue;
     own.set(entry.from, (own.get(entry.from) ?? 0) + 1);
-    const name8 = posix.basename(entry.specifier);
-    named.set(name8, (named.get(name8) ?? 0) + 1);
+    const name9 = posix.basename(entry.specifier);
+    named.set(name9, (named.get(name9) ?? 0) + 1);
   }
   return (path) => {
     if (!isCppPath(path)) return void 0;
     const ownCount = own.get(path) ?? 0;
     const namedCount = named.get(posix.basename(path)) ?? 0;
     if (ownCount === 0 && namedCount === 0) return void 0;
-    const parts = [
+    const parts2 = [
       ...ownCount > 0 ? [`${ownCount} of its own includes found no file`] : [],
       ...namedCount > 0 ? [`${namedCount} includes of a file named ${posix.basename(path)} found no file, so a consumer may be missing`] : []
     ];
-    return parts.join("; ");
+    return parts2.join("; ");
   };
 }
 
@@ -1014,9 +1014,9 @@ function readBuildConfigs(root, tree) {
   for (const path of tree.files.keys()) if (path === "compile_commands.json" || path.endsWith("/compile_commands.json")) return found;
   for (const directory of candidateDirectories(root)) {
     const path = directory === "" ? "compile_commands.json" : `${directory}/compile_commands.json`;
-    const text = readIfCompileCommands(join5(root, path));
-    if (text !== void 0) {
-      found.set(path, text);
+    const text2 = readIfCompileCommands(join5(root, path));
+    if (text2 !== void 0) {
+      found.set(path, text2);
       return found;
     }
   }
@@ -1031,7 +1031,7 @@ function subdirectories(root, directory) {
 }
 function candidateDirectories(root) {
   const directories = ["", "build", "out"];
-  directories.push(...subdirectories(root, "").filter((name8) => name8.startsWith("cmake-build-")));
+  directories.push(...subdirectories(root, "").filter((name9) => name9.startsWith("cmake-build-")));
   for (const parent of ["build", "out"]) {
     for (const child of subdirectories(root, parent)) {
       directories.push(`${parent}/${child}`);
@@ -1043,9 +1043,9 @@ function candidateDirectories(root) {
 function readIfCompileCommands(file) {
   try {
     if (!existsSync3(file) || !statSync(file).isFile()) return void 0;
-    const text = readFileSync2(file, "utf8");
-    const parsed = JSON.parse(text);
-    return Array.isArray(parsed) && parsed.length > 0 ? text : void 0;
+    const text2 = readFileSync2(file, "utf8");
+    const parsed = JSON.parse(text2);
+    return Array.isArray(parsed) && parsed.length > 0 ? text2 : void 0;
   } catch {
     return void 0;
   }
@@ -1062,10 +1062,10 @@ function withoutExcluded(tree, exclude) {
     readMany: (paths) => tree.readMany(paths.filter((path) => files.has(path)))
   };
 }
-function countLines(text) {
-  if (text === "") return 0;
-  const breaks = text.split("\n").length - 1;
-  return text.endsWith("\n") ? breaks : breaks + 1;
+function countLines(text2) {
+  if (text2 === "") return 0;
+  const breaks = text2.split("\n").length - 1;
+  return text2.endsWith("\n") ? breaks : breaks + 1;
 }
 async function loadProject(root, ref, settings) {
   const tree = withoutExcluded(await treeFromRef(root, ref), settings.exclude);
@@ -1081,9 +1081,9 @@ async function loadProject(root, ref, settings) {
   return { analysis, production, isTest: isTestPath, texts, packageEntries };
 }
 function unitText(project, unit) {
-  const text = project.texts.get(unit.path);
-  if (text === void 0) return "";
-  return text.split("\n").slice(unit.startLine - 1, unit.endLine).join("\n");
+  const text2 = project.texts.get(unit.path);
+  if (text2 === void 0) return "";
+  return text2.split("\n").slice(unit.startLine - 1, unit.endLine).join("\n");
 }
 async function readPackageEntries(tree) {
   const entries = /* @__PURE__ */ new Set();
@@ -1095,21 +1095,21 @@ async function readPackageEntries(tree) {
 }
 
 // packages/locality/src/cohesion.ts
-function escapeRegExp(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function escapeRegExp(text2) {
+  return text2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function fileCohesion(project, path, isLive) {
   const exported = project.analysis.units.filter((unit) => unit.path === path && unit.exported && unit.parent === void 0);
   if (exported.length < 2) return void 0;
-  const consumersOf = new Map(exported.map((unit) => [unit.qualifiedName, /* @__PURE__ */ new Set()]));
+  const consumersOf2 = new Map(exported.map((unit) => [unit.qualifiedName, /* @__PURE__ */ new Set()]));
   for (const consumer of project.analysis.consumers) {
     if (consumer.to !== path || consumer.toSymbol === void 0 || consumer.kind === "test") continue;
     if (consumer.from === path || !isLive(consumer.from)) continue;
-    consumersOf.get(consumer.toSymbol)?.add(consumer.from);
+    consumersOf2.get(consumer.toSymbol)?.add(consumer.from);
   }
   const parent = new Map(exported.map((unit) => [unit.qualifiedName, unit.qualifiedName]));
-  const find = (name8) => {
-    let root = name8;
+  const find = (name9) => {
+    let root = name9;
     while (parent.get(root) !== root) root = parent.get(root);
     return root;
   };
@@ -1120,8 +1120,8 @@ function fileCohesion(project, path, isLive) {
   for (const a of exported) {
     for (const b of exported) {
       if (a === b) continue;
-      const shared = [...consumersOf.get(a.qualifiedName)].some(
-        (file) => consumersOf.get(b.qualifiedName).has(file)
+      const shared = [...consumersOf2.get(a.qualifiedName)].some(
+        (file) => consumersOf2.get(b.qualifiedName).has(file)
       );
       const mentioned = new RegExp(`(?<![\\w$.])${escapeRegExp(b.qualifiedName)}(?![\\w$])`).test(unitText(project, a));
       if (shared || mentioned) link(a.qualifiedName, b.qualifiedName);
@@ -1133,7 +1133,7 @@ function fileCohesion(project, path, isLive) {
     groups.set(root, [...groups.get(root) ?? [], unit.qualifiedName]);
   }
   const components = [...groups.values()].map((symbols) => {
-    const consumers = new Set(symbols.flatMap((symbol) => [...consumersOf.get(symbol)]));
+    const consumers = new Set(symbols.flatMap((symbol) => [...consumersOf2.get(symbol)]));
     return {
       symbols: symbols.sort(compareIds),
       consumers: [...consumers].sort(compareIds),
@@ -1160,8 +1160,8 @@ function netDistance(edges, base) {
 }
 function chain(folder) {
   if (folder === "") return [""];
-  const parts = folder.split("/");
-  return ["", ...parts.map((_, index) => parts.slice(0, index + 1).join("/"))];
+  const parts2 = folder.split("/");
+  return ["", ...parts2.map((_, index) => parts2.slice(0, index + 1).join("/"))];
 }
 function prefers(a, b) {
   return depthOf(a) !== depthOf(b) ? depthOf(a) < depthOf(b) : compareIds(a, b) < 0;
@@ -1618,12 +1618,12 @@ function parseLog(output) {
 }
 function parseRecord(record) {
   const tokens = record.split("\0");
-  const header = tokens.shift() ?? "";
-  const fields = header.split(US);
+  const header2 = tokens.shift() ?? "";
+  const fields = header2.split(US);
   const [sha, parents, authorName, authorEmail, authorDate, committerDate] = fields;
   const message = fields.slice(6).join(US).replace(/\n+$/, "");
   if (sha === void 0 || parents === void 0 || authorDate === void 0 || committerDate === void 0) {
-    throw new Error(`Malformed git log record: ${JSON.stringify(header)}`);
+    throw new Error(`Malformed git log record: ${JSON.stringify(header2)}`);
   }
   if (tokens[0]?.startsWith("\n")) tokens[0] = tokens[0].slice(1);
   while (tokens.length > 0 && tokens[tokens.length - 1] === "") tokens.pop();
@@ -1693,9 +1693,9 @@ function suppressSqliteWarning() {
   suppressed = true;
   const emitWarning = process.emitWarning.bind(process);
   process.emitWarning = ((warning, ...rest) => {
-    const text = typeof warning === "string" ? warning : warning?.message ?? "";
+    const text2 = typeof warning === "string" ? warning : warning?.message ?? "";
     const type = typeof rest[0] === "string" ? rest[0] : warning?.name;
-    if (type === "ExperimentalWarning" && /SQLite/i.test(text)) return;
+    if (type === "ExperimentalWarning" && /SQLite/i.test(text2)) return;
     emitWarning(warning, ...rest);
   });
 }
@@ -1807,12 +1807,12 @@ function setMeta(db, key, value) {
   );
 }
 function storedShas(db) {
-  const rows = db.prepare("SELECT sha FROM commits").all();
-  return new Set(rows.map((r) => r.sha));
+  const rows5 = db.prepare("SELECT sha FROM commits").all();
+  return new Set(rows5.map((r) => r.sha));
 }
 function storedBoundaryShas(db) {
-  const rows = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
-  return rows.map((r) => r.sha);
+  const rows5 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
+  return rows5.map((r) => r.sha);
 }
 function deleteCommits(db, shas) {
   const statements = ["commits", "commit_parents", "changes"].map((t) => db.prepare(`DELETE FROM ${t} WHERE sha = ?`));
@@ -2019,7 +2019,7 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
 function select(db, ref, headSha, firstParent) {
   const head = db.prepare("SELECT committer_date FROM commits WHERE sha = ?").get(headSha);
   if (!head) throw new NoCacheError(`Commit ${headSha} is not in the history cache. Run refresh first.`);
-  const rows = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
+  const rows5 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
   const changeRows = db.prepare(
     `${REACH(firstParent)}
        SELECT ch.* FROM changes ch JOIN reach ON reach.sha = ch.sha ORDER BY ch.sha, ch.idx`
@@ -2041,7 +2041,7 @@ function select(db, ref, headSha, firstParent) {
     if (list) list.push(row);
     else changesBySha.set(row.sha, [row]);
   }
-  const ordered = topologicalOrder(rows, parents);
+  const ordered = topologicalOrder(rows5, parents);
   const renames = new RenameMap();
   const commits = [];
   for (const row of ordered) {
@@ -2083,9 +2083,9 @@ function select(db, ref, headSha, firstParent) {
   }
   return { ref, headSha, headDate: head.committer_date, firstParent, commits, renames };
 }
-function topologicalOrder(rows, parents) {
-  const bySha = new Map(rows.map((r) => [r.sha, r]));
-  const sorted = [...rows].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
+function topologicalOrder(rows5, parents) {
+  const bySha = new Map(rows5.map((r) => [r.sha, r]));
+  const sorted = [...rows5].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
   const done = /* @__PURE__ */ new Set();
   const out = [];
   for (const start of sorted) {
@@ -2287,40 +2287,40 @@ function guard(input, decision) {
 // packages/locality/src/signals.ts
 var arrowForm = /^(?:export\s+)?(?:default\s+)?(?:(?:const|let|var)\s+[\w$]+\s*(?::[^=]+)?=\s*)?(?:async\s+)?(?:\(([^)]*)\)|([\w$]+))\s*(?::\s*[^=>{]+?)?\s*=>\s*([^]*?);?$/;
 var functionForm = /^(?:export\s+)?(?:default\s+)?(?:(?:public|private|protected|static|async|readonly|override)\s+)*(?:function\s*\*?\s*)?[\w$]*\s*(?:<[^>]*>)?\s*\(([^)]*)\)\s*(?::\s*[^{]+?)?\s*\{([^]*)\}$/;
-function splitTopLevel(text) {
-  const parts = [];
+function splitTopLevel(text2) {
+  const parts2 = [];
   let depth = 0;
   let current = "";
-  for (const char of text) {
+  for (const char of text2) {
     if ("<([{".includes(char)) depth++;
     else if (">)]}".includes(char)) depth--;
     if (char === "," && depth === 0) {
-      parts.push(current);
+      parts2.push(current);
       current = "";
     } else {
       current += char;
     }
   }
-  parts.push(current);
-  return parts.map((part) => part.trim()).filter((part) => part !== "");
+  parts2.push(current);
+  return parts2.map((part) => part.trim()).filter((part) => part !== "");
 }
 function singleStatement(body) {
-  let text = body.trim();
-  if (text.startsWith("{") && text.endsWith("}")) text = text.slice(1, -1).trim();
-  text = text.replace(/;\s*$/, "");
-  if (text.includes(";")) return void 0;
-  text = text.replace(/^return\s+/, "").replace(/^await\s+/, "");
-  while (text.startsWith("(") && text.endsWith(")") && !text.slice(1, -1).includes("(")) text = text.slice(1, -1);
-  return text.trim();
+  let text2 = body.trim();
+  if (text2.startsWith("{") && text2.endsWith("}")) text2 = text2.slice(1, -1).trim();
+  text2 = text2.replace(/;\s*$/, "");
+  if (text2.includes(";")) return void 0;
+  text2 = text2.replace(/^return\s+/, "").replace(/^await\s+/, "");
+  while (text2.startsWith("(") && text2.endsWith(")") && !text2.slice(1, -1).includes("(")) text2 = text2.slice(1, -1);
+  return text2.trim();
 }
 function signatureOf(source) {
-  const text = source.replace(/\s+/g, " ").trim();
-  const arrow = arrowForm.exec(text);
+  const text2 = source.replace(/\s+/g, " ").trim();
+  const arrow = arrowForm.exec(text2);
   if (arrow) {
     const params = arrow[1] !== void 0 ? splitTopLevel(arrow[1]) : [arrow[2]];
     return { params, statement: singleStatement(arrow[3]) };
   }
-  const fn = functionForm.exec(text);
+  const fn = functionForm.exec(text2);
   if (fn) return { params: splitTopLevel(fn[1]), statement: singleStatement(fn[2]) };
   return void 0;
 }
@@ -2334,7 +2334,7 @@ function isPassThrough(source) {
   if (!call) return false;
   const names = signature.params.map(parameterName);
   const args = splitTopLevel(call[2]);
-  return names.length === args.length && names.every((name8, index) => name8 === args[index]);
+  return names.length === args.length && names.every((name9, index) => name9 === args[index]);
 }
 function flagParameters(source) {
   const signature = signatureOf(source);
@@ -2363,9 +2363,9 @@ function percentileRank(value, values) {
 function commonFolder(folders) {
   let shared = folders[0].split("/").filter((part) => part !== "");
   for (const folder of folders) {
-    const parts = folder.split("/").filter((part) => part !== "");
+    const parts2 = folder.split("/").filter((part) => part !== "");
     let length = 0;
-    while (length < shared.length && length < parts.length && shared[length] === parts[length]) length++;
+    while (length < shared.length && length < parts2.length && shared[length] === parts2[length]) length++;
     shared = shared.slice(0, length);
   }
   return shared.join("/");
@@ -2379,8 +2379,8 @@ function under(folder, ancestor) {
 }
 function countBy(entries) {
   const totals = /* @__PURE__ */ new Map();
-  for (const [path, count2] of entries) totals.set(path, (totals.get(path) ?? 0) + count2);
-  return [...totals].map(([path, count2]) => ({ path, count: count2 })).sort((a, b) => compareIds(a.path, b.path));
+  for (const [path, count3] of entries) totals.set(path, (totals.get(path) ?? 0) + count3);
+  return [...totals].map(([path, count3]) => ({ path, count: count3 })).sort((a, b) => compareIds(a.path, b.path));
 }
 function blockerCoChange(history, unitFiles, blocker) {
   if (history === void 0) return null;
@@ -2501,7 +2501,7 @@ function analyseProject(project, model, settings, history) {
     }
   }
   function notHelperOf(paths, symbols) {
-    const within = (name8) => symbols === void 0 || [...symbols].some((symbol) => name8 === symbol || name8.startsWith(`${symbol}.`));
+    const within = (name9) => symbols === void 0 || [...symbols].some((symbol) => name9 === symbol || name9.startsWith(`${symbol}.`));
     if (paths.some((path) => symbols === void 0 ? interfaces.has(path) : [...symbols].some((symbol) => interfaces.has(`${path}#${symbol}`)))) return "interface";
     const units = paths.flatMap((path) => unitsByFile.get(path) ?? []).filter((unit) => within(unit.qualifiedName));
     if (units.some((unit) => unit.override === true)) return "override";
@@ -2544,7 +2544,7 @@ function analyseProject(project, model, settings, history) {
     const own = (consumersTo.get(path) ?? []).filter(
       (consumer) => consumer.toSymbol !== void 0 && symbols.has(consumer.toSymbol) && consumer.kind !== "test" && consumer.from !== path && live(consumer.from)
     );
-    const within = (name8) => name8 !== void 0 && [...symbols].some((symbol) => name8 === symbol || name8.startsWith(`${symbol}.`));
+    const within = (name9) => name9 !== void 0 && [...symbols].some((symbol) => name9 === symbol || name9.startsWith(`${symbol}.`));
     const outward = analysis.consumers.filter(
       (consumer) => consumer.from === path && within(consumer.fromUnit) && consumer.to !== path && productionSet.has(consumer.to)
     );
@@ -2727,7 +2727,7 @@ function analyseProject(project, model, settings, history) {
     summary: { files: project.production.length, units: all.length, placed: placed.length, byRecommendation },
     metrics: {
       totalWeightedDistance: model.edges.filter((edge) => model.reachable.has(edge.from)).reduce((sum, edge) => sum + edge.weight * treeDistance(edge.from, edge.to), 0),
-      singleFileFolders: [...folders.values()].filter((count2) => count2 === 1).length,
+      singleFileFolders: [...folders.values()].filter((count3) => count3 === 1).length,
       maxDepth: Math.max(0, ...[...folders.keys()].map(depthOf))
     }
   };
@@ -2779,16 +2779,16 @@ var localityConfig = {
   }
 };
 function readSettings(config) {
-  const section = config.effective[TOOL];
+  const section2 = config.effective[TOOL];
   const at = (key) => `${TOOL}.${key}`;
   const positive = (key) => {
-    const value = section[key];
+    const value = section2[key];
     if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
       throw configError(`code-health.json: ${at(key)} must be a positive integer`);
     }
     return value;
   };
-  const fixedPoints = section.fixedPoints;
+  const fixedPoints = section2.fixedPoints;
   if (!Array.isArray(fixedPoints) || fixedPoints.some((item) => typeof item !== "string")) {
     throw configError(`code-health.json: ${at("fixedPoints")} must be an array of strings`);
   }
@@ -2798,7 +2798,7 @@ function readSettings(config) {
     throw configError(`code-health.json: ${at("tinyLines")} must be below ${at("largeLines")}`);
   }
   const percent = (key) => {
-    const value = section[key];
+    const value = section2[key];
     if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 100) {
       throw configError(`code-health.json: ${at(key)} must be a percentage from 0 to 100`);
     }
@@ -2817,11 +2817,11 @@ function readSettings(config) {
     highFanIn: positive("highFanIn"),
     maxDepth: positive("maxDepth"),
     fixedPoints,
-    useHistory: section.useHistory === true,
+    useHistory: section2.useHistory === true,
     graceDays: positive("graceDays"),
     windowMonths: positive("windowMonths"),
     maxChangesetSize: positive("maxChangesetSize"),
-    botPatterns: section.botPatterns,
+    botPatterns: section2.botPatterns,
     lowCoChange,
     highCoChange,
     minCoChangeChanges: positive("minCoChangeChanges"),
@@ -3180,12 +3180,12 @@ function clusters(history, present, settings) {
   return result;
 }
 function analyseByHistory(history, files, settings) {
-  const omitted = { "earned-distance": 0, "fixed-point": 0, "near-partners": 0, superseded: 0 };
+  const omitted2 = { "earned-distance": 0, "fixed-point": 0, "near-partners": 0, superseded: 0 };
   if (history.evidence.grade === "weak") {
     return {
       candidates: [],
       sortMethod: SORT_METHOD,
-      omitted,
+      omitted: omitted2,
       reason: `history is weak (${history.evidence.usableHistoryMonths} months, ${history.evidence.logicalChangesInWindow} logical changes in the window, ${history.evidence.activeContributors} contributors); history-only candidates need moderate or strong evidence`
     };
   }
@@ -3202,14 +3202,14 @@ function analyseByHistory(history, files, settings) {
     if (partners.length === 0) continue;
     const root = unitFiles[0];
     if (unitFiles.some((file) => isFixed(file))) {
-      omitted["fixed-point"]++;
+      omitted2["fixed-point"]++;
       continue;
     }
     const base = folderOf(root);
     const edges = partners.map((partner) => ({ inner: "", outer: folderOf(partner.path), weight: partner.weight }));
     const choice = bestTarget(edges, base, { maxDepth: settings.maxDepth, forbidden });
     if (choice.gain < settings.minDistance) {
-      omitted["near-partners"]++;
+      omitted2["near-partners"]++;
       continue;
     }
     let among = null;
@@ -3229,7 +3229,7 @@ function analyseByHistory(history, files, settings) {
     if (age !== null && age < settings.graceDays) decision = { recommendation: "review", rule: "history-within-grace-period" };
     else if (partners.length >= 3) {
       if (among !== null && among >= settings.highCoChange) {
-        omitted["earned-distance"]++;
+        omitted2["earned-distance"]++;
         continue;
       }
       decision = { recommendation: "review", rule: "history-many-partners" };
@@ -3266,23 +3266,23 @@ function analyseByHistory(history, files, settings) {
   for (const candidate of candidates) {
     const winner = candidate.unit.files.map((file) => claimedBy.get(file)).find((other) => other !== void 0);
     if (winner !== void 0) {
-      omitted.superseded++;
+      omitted2.superseded++;
       winner.supersedes.push({ path: candidate.path, gain: candidate.gain });
       continue;
     }
     kept.push(candidate);
     for (const partner of candidate.consumers) if (!claimedBy.has(partner.path)) claimedBy.set(partner.path, candidate);
   }
-  return { candidates: kept, sortMethod: SORT_METHOD, omitted, reason: null };
+  return { candidates: kept, sortMethod: SORT_METHOD, omitted: omitted2, reason: null };
 }
 
 // packages/locality/src/reports.ts
-function writeReport2(context, command8, output) {
-  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command8, output, context.repo.head);
+function writeReport2(context, command9, output) {
+  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command9, output, context.repo.head);
 }
 
 // packages/locality/src/rules.ts
-var lines = (...text) => text.join("\n");
+var lines = (...text2) => text2.join("\n");
 var ruleDescriptions = {
   "single-consumer-tiny": {
     summary: "One consumer, and the unit is tiny: inline it",
@@ -3502,7 +3502,7 @@ var command = {
     const model = buildModel(project, settings, history);
     const analysis = analyseProject(project, model, settings, history);
     const partial = prefixes.length > 0 || wanted !== void 0 || source !== "structural";
-    const rows = analysis.candidates.filter(
+    const rows5 = analysis.candidates.filter(
       (candidate) => (wanted === void 0 || candidate.recommendation === wanted) && (prefixes.length === 0 || prefixes.some((prefix) => candidate.path === prefix || candidate.path.startsWith(`${prefix}/`)))
     );
     const unresolved = {};
@@ -3527,7 +3527,7 @@ var command = {
         ...project.analysis.filesWithMacroCode.length === 0 ? {} : { filesWithMacroCode: project.analysis.filesWithMacroCode },
         ...source === "both" ? await crossCheck(context.repo.root, history, settings, model, analysis.candidates) : {}
       },
-      results: rows,
+      results: rows5,
       columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"]
     };
     if (!partial) await writeReport2(context, name, output);
@@ -3551,7 +3551,7 @@ async function historyResult(root, history, settings) {
 }
 async function historyOnly(root, history, settings, prefixes, wanted) {
   const result = await historyResult(root, history, settings);
-  const rows = result.candidates.filter(
+  const rows5 = result.candidates.filter(
     (candidate) => (wanted === void 0 || candidate.recommendation === wanted) && (prefixes.length === 0 || prefixes.some((prefix) => candidate.path === prefix || candidate.path.startsWith(`${prefix}/`)))
   );
   return {
@@ -3560,10 +3560,10 @@ async function historyOnly(root, history, settings, prefixes, wanted) {
       historyOnly: { sortMethod: result.sortMethod, omitted: result.omitted, reason: result.reason },
       history: history === void 0 ? null : { window: history.window, ...history.evidence }
     },
-    results: rows,
+    results: rows5,
     columns: historyColumns,
     notices: [
-      `Omitted by reason: ${Object.entries(result.omitted).map(([reason, count2]) => `${reason} ${count2}`).join(", ")} (near-partners are units whose gain is below the locality.minDistance guideline of ${settings.minDistance})`,
+      `Omitted by reason: ${Object.entries(result.omitted).map(([reason, count3]) => `${reason} ${count3}`).join(", ")} (near-partners are units whose gain is below the locality.minDistance guideline of ${settings.minDistance})`,
       `sorted by ${result.sortMethod}: the gain divided by the locality.minDistance guideline (${settings.minDistance}), highest first, then by gain, then by path`
     ]
   };
@@ -3691,7 +3691,7 @@ function tokenize(source) {
   const tokens = [];
   const pending = [];
   let expectDelimiter = null;
-  let text = "";
+  let text2 = "";
   let unquoted = "";
   let inWord = false;
   let dynamic = false;
@@ -3701,7 +3701,7 @@ function tokenize(source) {
   const flush = () => {
     if (!inWord) return;
     const hasBrace = /\{[^{}]*(,|\.\.)[^{}]*\}/.test(unquoted);
-    const word = { t: "word", text, dynamic: dynamic || hasBrace, glob, quoted };
+    const word = { t: "word", text: text2, dynamic: dynamic || hasBrace, glob, quoted };
     if (!word.dynamic) word.text = plain(word);
     if (expectDelimiter !== null) {
       pending.push({ delimiter: plain(word), strip: expectDelimiter.strip });
@@ -3709,7 +3709,7 @@ function tokenize(source) {
     } else {
       tokens.push(word);
     }
-    text = "";
+    text2 = "";
     unquoted = "";
     inWord = false;
     dynamic = false;
@@ -3718,7 +3718,7 @@ function tokenize(source) {
   };
   const add = (char, isQuoted) => {
     inWord = true;
-    text += char;
+    text2 += char;
     if (!isQuoted) unquoted += char;
     else quoted = true;
   };
@@ -3728,7 +3728,7 @@ function tokenize(source) {
     if (next === "'" && !insideDouble) {
       dynamic = true;
       inWord = true;
-      text += "$";
+      text2 += "$";
       i++;
       return true;
     }
@@ -3737,24 +3737,24 @@ function tokenize(source) {
       dynamic = true;
       const end = source.indexOf("}", i);
       if (end === -1) return false;
-      text += source.slice(i, end + 1);
+      text2 += source.slice(i, end + 1);
       i = end + 1;
       return true;
     }
-    const name8 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i + 1));
-    if (name8 !== null) {
+    const name9 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i + 1));
+    if (name9 !== null) {
       dynamic = true;
-      text += `$${name8[0]}`;
-      i += 1 + name8[0].length;
+      text2 += `$${name9[0]}`;
+      i += 1 + name9[0].length;
       return true;
     }
     if (next === void 0 || /\s|["'`]/.test(next)) {
-      text += LITERAL_DOLLAR;
+      text2 += LITERAL_DOLLAR;
       i++;
       return true;
     }
     dynamic = true;
-    text += `$${next}`;
+    text2 += `$${next}`;
     i += 2;
     return true;
   };
@@ -3793,7 +3793,7 @@ function tokenize(source) {
       if (end === -1) return null;
       inWord = true;
       quoted = true;
-      text += source.slice(i + 1, end).replaceAll("$", LITERAL_DOLLAR);
+      text2 += source.slice(i + 1, end).replaceAll("$", LITERAL_DOLLAR);
       i = end + 1;
       continue;
     }
@@ -3815,10 +3815,10 @@ function tokenize(source) {
           if (escaped === "\n") {
             i += 2;
           } else if ('"\\$`'.includes(escaped)) {
-            text += escaped === "$" ? LITERAL_DOLLAR : escaped;
+            text2 += escaped === "$" ? LITERAL_DOLLAR : escaped;
             i += 2;
           } else {
-            text += `\\${escaped}`;
+            text2 += `\\${escaped}`;
             i += 2;
           }
           continue;
@@ -3827,7 +3827,7 @@ function tokenize(source) {
           if (!dollar(true)) return null;
           continue;
         }
-        text += c;
+        text2 += c;
         i++;
       }
       if (!closed) return null;
@@ -3848,8 +3848,8 @@ function tokenize(source) {
     if (operator !== void 0) {
       if ((operator === "<" || operator === ">") && source[i + 1] === "(") return null;
       const redirect = /^[0-9<>&|]/.test(operator) && operator !== "&&" && operator !== "||" && operator !== "|" && operator !== "|&" && operator !== "&";
-      if (redirect && inWord && /^[0-9]+$/.test(text) && unquoted === text) {
-        text = "";
+      if (redirect && inWord && /^[0-9]+$/.test(text2) && unquoted === text2) {
+        text2 = "";
         unquoted = "";
         inWord = false;
         quoted = false;
@@ -3928,33 +3928,33 @@ function parseArgs2(args, spec) {
   let ended = false;
   for (let k = 0; k < args.length; k++) {
     const word = args[k];
-    const text = plain(word);
-    if (ended || word.quoted || !text.startsWith("-") || text === "-") {
+    const text2 = plain(word);
+    if (ended || word.quoted || !text2.startsWith("-") || text2 === "-") {
       operands.push(word);
       continue;
     }
     if (word.dynamic) return null;
-    if (text === "--") {
+    if (text2 === "--") {
       ended = true;
-    } else if (text.startsWith("--")) {
-      const equals = text.indexOf("=");
-      const name8 = equals === -1 ? text : text.slice(0, equals);
-      flags.add(name8);
+    } else if (text2.startsWith("--")) {
+      const equals = text2.indexOf("=");
+      const name9 = equals === -1 ? text2 : text2.slice(0, equals);
+      flags.add(name9);
       if (equals !== -1) {
-        values.push({ name: name8, value: text.slice(equals + 1) });
-      } else if (spec.valueLong?.includes(name8)) {
+        values.push({ name: name9, value: text2.slice(equals + 1) });
+      } else if (spec.valueLong?.includes(name9)) {
         const next = args[k + 1];
         if (next === void 0) return null;
-        values.push({ name: name8, value: plain(next) });
+        values.push({ name: name9, value: plain(next) });
         k++;
       }
     } else {
-      for (let c = 1; c < text.length; c++) {
-        const char = text[c];
+      for (let c = 1; c < text2.length; c++) {
+        const char = text2[c];
         flags.add(char);
         if (spec.suffixShort === char) break;
         if (spec.valueShort?.includes(char)) {
-          const rest = text.slice(c + 1);
+          const rest = text2.slice(c + 1);
           if (rest !== "") {
             values.push({ name: char, value: rest });
           } else {
@@ -3972,11 +3972,11 @@ function parseArgs2(args, spec) {
 }
 var GREP_VALUE_LONG = ["--regexp", "--file", "--max-count", "--after-context", "--before-context", "--context", "--include", "--exclude", "--exclude-dir", "--exclude-from", "--label", "--directories", "--devices", "--binary-files"];
 var RG_VALUE_LONG = ["--regexp", "--file", "--glob", "--iglob", "--type", "--type-not", "--max-count", "--after-context", "--before-context", "--context", "--threads", "--max-columns", "--max-depth", "--replace", "--ignore-file", "--pre", "--sort", "--sortr", "--encoding", "--type-add"];
-var looksLikeFile = (text) => {
-  const last = text.split("/").at(-1) ?? "";
+var looksLikeFile = (text2) => {
+  const last = text2.split("/").at(-1) ?? "";
   return last !== "" && last !== "." && last !== ".." && last.includes(".") && !last.endsWith(".");
 };
-var endsLikeDirectory = (text) => text.endsWith("/");
+var endsLikeDirectory = (text2) => text2.endsWith("/");
 var Interpretation = class {
   access = { reads: [], searches: [], edits: [] };
   ok = true;
@@ -3991,13 +3991,13 @@ var Interpretation = class {
     this.ok = false;
   }
   /** The path a literal word names, resolved against the working directory. Null (and the line is unparsed) when it cannot be. */
-  resolve(text) {
-    if (text.startsWith("/") || text.startsWith("~") || /^[A-Za-z]:[\\/]/.test(text)) return text;
+  resolve(text2) {
+    if (text2.startsWith("/") || text2.startsWith("~") || /^[A-Za-z]:[\\/]/.test(text2)) return text2;
     if (this.cwd === null) {
       this.fail();
       return null;
     }
-    return this.cwd === void 0 ? text : posix3.join(this.cwd, text);
+    return this.cwd === void 0 ? text2 : posix3.join(this.cwd, text2);
   }
   substitute(word) {
     if (!word.dynamic || !word.text.includes("$")) return word;
@@ -4039,16 +4039,16 @@ var Interpretation = class {
     else this.access.edits.push(operand.path);
   }
 };
-function redirections(command8, run2) {
-  for (const { op, target } of command8.redirects) {
+function redirections(command9, run2) {
+  for (const { op, target } of command9.redirects) {
     if (target === null || op === "<<<") continue;
-    const text = plain(target);
-    if ((op === ">&" || op === "<&") && (/^[0-9]+$/.test(text) || text === "-")) continue;
+    const text2 = plain(target);
+    if ((op === ">&" || op === "<&") && (/^[0-9]+$/.test(text2) || text2 === "-")) continue;
     if (target.dynamic) {
       run2.fail();
       continue;
     }
-    if (text.startsWith("/dev/")) continue;
+    if (text2.startsWith("/dev/")) continue;
     if (op === "<" || op === "<&") run2.read(target);
     else run2.edit(target);
   }
@@ -4071,29 +4071,29 @@ function perlLike(args, run2) {
   const rest = [];
   for (let k = 0; k < args.length; k++) {
     const word = args[k];
-    const text = plain(word);
-    if (word.quoted || !text.startsWith("-") || text === "-") {
+    const text2 = plain(word);
+    if (word.quoted || !text2.startsWith("-") || text2 === "-") {
       rest.push(...args.slice(k));
       break;
     }
     if (word.dynamic) return run2.fail();
-    if (text === "--") {
+    if (text2 === "--") {
       rest.push(...args.slice(k + 1));
       break;
     }
-    for (let c = 1; c < text.length; c++) {
-      const char = text[c];
+    for (let c = 1; c < text2.length; c++) {
+      const char = text2[c];
       if (char === "i") {
         inPlace = true;
         break;
       }
       if (char === "e" || char === "E") {
         hasScript = true;
-        if (text.slice(c + 1) === "") k++;
+        if (text2.slice(c + 1) === "") k++;
         break;
       }
       if ("IMmx".includes(char)) {
-        if (text.slice(c + 1) === "") k++;
+        if (text2.slice(c + 1) === "") k++;
         break;
       }
     }
@@ -4115,8 +4115,8 @@ function awkLike(args, run2) {
     run2.read(word);
   }
 }
-function grepLike(name8, args, run2, piped, hasInput) {
-  const ripgrep = name8 === "rg";
+function grepLike(name9, args, run2, piped, hasInput) {
+  const ripgrep = name9 === "rg";
   const parsed = parseArgs2(args, {
     valueShort: ripgrep ? "efgtTABCmjMEdr" : "efmABCdD",
     valueLong: ripgrep ? RG_VALUE_LONG : GREP_VALUE_LONG
@@ -4155,16 +4155,16 @@ function gitLike(args, run2) {
   const saved = run2.cwd;
   let k = 0;
   while (k < args.length) {
-    const text = plain(args[k]);
+    const text2 = plain(args[k]);
     if (args[k].dynamic) return run2.fail();
-    if (text === "-C") {
+    if (text2 === "-C") {
       const dir = args[k + 1];
       if (dir === void 0 || dir.dynamic) return run2.fail();
       run2.cwd = run2.resolve(plain(dir));
       k += 2;
-    } else if (text === "-c" || text === "--git-dir" || text === "--work-tree" || text === "--namespace") {
+    } else if (text2 === "-c" || text2 === "--git-dir" || text2 === "--work-tree" || text2 === "--namespace") {
       k += 2;
-    } else if (text.startsWith("-")) {
+    } else if (text2.startsWith("-")) {
       k++;
     } else {
       break;
@@ -4175,21 +4175,21 @@ function gitLike(args, run2) {
   if (sub === "show") {
     for (const word of rest) {
       if (word.dynamic) return run2.fail();
-      const text = plain(word);
-      const colon = text.indexOf(":");
-      if (!text.startsWith("-") && colon > 0 && colon < text.length - 1) run2.access.reads.push(text.slice(colon + 1));
+      const text2 = plain(word);
+      const colon = text2.indexOf(":");
+      if (!text2.startsWith("-") && colon > 0 && colon < text2.length - 1) run2.access.reads.push(text2.slice(colon + 1));
     }
   } else if (sub === "mv" || sub === "rm") {
     moveLike(sub === "mv" ? "mv" : "rm", rest, run2);
   }
   run2.cwd = saved;
 }
-function moveLike(name8, args, run2) {
+function moveLike(name9, args, run2) {
   const parsed = parseArgs2(args, { valueShort: "tS", valueLong: ["--target-directory", "--suffix"] });
   if (parsed === null) return run2.fail();
   const recursive = parsed.flags.has("r") || parsed.flags.has("R") || parsed.flags.has("d") || parsed.flags.has("--recursive") || parsed.flags.has("a");
   const operands = parsed.operands.filter((word) => !endsLikeDirectory(plain(word)) || word.dynamic);
-  if (name8 === "rm") {
+  if (name9 === "rm") {
     if (recursive) return;
     for (const word of operands) run2.edit(word);
     return;
@@ -4221,16 +4221,16 @@ function moveLike(name8, args, run2) {
   for (const word of sources2) {
     if (word.dynamic || word.glob && !word.quoted) return run2.fail();
   }
-  if (name8 === "mv") {
+  if (name9 === "mv") {
     for (const word of sources2) if (!recursive && !endsLikeDirectory(plain(word))) run2.edit(word);
   }
-  if (recursive && name8 === "cp") return;
+  if (recursive && name9 === "cp") return;
   run2.access.edits.push(...targets);
 }
-function interpreterLike(args, command8, run2, name8) {
-  if (command8.heredoc) return run2.fail();
+function interpreterLike(args, command9, run2, name9) {
+  if (command9.heredoc) return run2.fail();
   const parsed = parseArgs2(args, {
-    valueShort: name8.startsWith("python") ? "WXmc" : "rCeEpr",
+    valueShort: name9.startsWith("python") ? "WXmc" : "rCeEpr",
     valueLong: ["--require", "--import", "--loader", "--eval", "--print", "--experimental-loader"]
   });
   if (parsed === null) return run2.fail();
@@ -4246,8 +4246,8 @@ function interpreterLike(args, command8, run2, name8) {
 function findLike(args, run2) {
   const paths = [];
   for (const word of args) {
-    const text = plain(word);
-    if (!word.quoted && (text.startsWith("-") || text === "(" || text === "!")) break;
+    const text2 = plain(word);
+    if (!word.quoted && (text2.startsWith("-") || text2 === "(" || text2 === "!")) break;
     paths.push(word);
   }
   for (const word of args) {
@@ -4256,97 +4256,97 @@ function findLike(args, run2) {
   if (paths.length === 0) run2.search(null);
   for (const word of paths) run2.search(word);
 }
-function execute2(command8, run2, piped) {
-  let words = command8.words.map((word) => run2.substitute(word));
-  const redirects = command8.redirects.map((r) => ({ ...r, target: r.target === null ? null : run2.substitute(r.target) }));
-  const substituted = { ...command8, words, redirects };
-  while (words[0] !== void 0 && !words[0].quoted && !words[0].dynamic && SKIPPED_KEYWORDS.has(plain(words[0]))) words = words.slice(1);
-  if (words[0] !== void 0 && !words[0].quoted && UNPARSED_KEYWORDS.has(plain(words[0]))) return run2.fail();
-  while (words[0] !== void 0 && !words[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words[0]))) {
-    const text = plain(words[0]);
-    const equals = text.indexOf("=");
-    const name9 = text.slice(0, equals);
-    if (words[0].glob) run2.variables.delete(name9);
-    else run2.variables.set(name9, text.slice(equals + 1));
-    words = words.slice(1);
+function execute2(command9, run2, piped) {
+  let words2 = command9.words.map((word) => run2.substitute(word));
+  const redirects = command9.redirects.map((r) => ({ ...r, target: r.target === null ? null : run2.substitute(r.target) }));
+  const substituted = { ...command9, words: words2, redirects };
+  while (words2[0] !== void 0 && !words2[0].quoted && !words2[0].dynamic && SKIPPED_KEYWORDS.has(plain(words2[0]))) words2 = words2.slice(1);
+  if (words2[0] !== void 0 && !words2[0].quoted && UNPARSED_KEYWORDS.has(plain(words2[0]))) return run2.fail();
+  while (words2[0] !== void 0 && !words2[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words2[0]))) {
+    const text2 = plain(words2[0]);
+    const equals = text2.indexOf("=");
+    const name10 = text2.slice(0, equals);
+    if (words2[0].glob) run2.variables.delete(name10);
+    else run2.variables.set(name10, text2.slice(equals + 1));
+    words2 = words2.slice(1);
   }
   redirections(substituted, run2);
-  if (words.length === 0) return;
+  if (words2.length === 0) return;
   for (; ; ) {
-    const head2 = words[0];
+    const head2 = words2[0];
     if (head2.dynamic) return run2.fail();
-    const text = plain(head2);
-    if (!WRAPPERS.has(text)) break;
-    words = words.slice(1);
-    while (words[0] !== void 0 && (plain(words[0]).startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words[0])))) words = words.slice(1);
-    if (words.length === 0) return;
+    const text2 = plain(head2);
+    if (!WRAPPERS.has(text2)) break;
+    words2 = words2.slice(1);
+    while (words2[0] !== void 0 && (plain(words2[0]).startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words2[0])))) words2 = words2.slice(1);
+    if (words2.length === 0) return;
   }
-  const head = words[0];
+  const head = words2[0];
   if (head.dynamic) return run2.fail();
-  const name8 = posix3.basename(plain(head));
-  const args = words.slice(1);
-  const hasInput = command8.redirects.some((r) => r.op === "<" || r.op === "<<<") || command8.heredoc;
-  if (HIDING_COMMANDS.has(name8)) return run2.fail();
-  if (SHELLS.has(name8)) {
+  const name9 = posix3.basename(plain(head));
+  const args = words2.slice(1);
+  const hasInput = command9.redirects.some((r) => r.op === "<" || r.op === "<<<") || command9.heredoc;
+  if (HIDING_COMMANDS.has(name9)) return run2.fail();
+  if (SHELLS.has(name9)) {
     const parsed = parseArgs2(args, { valueShort: "co" });
-    if (parsed === null || parsed.flags.has("c") || command8.heredoc) return run2.fail();
+    if (parsed === null || parsed.flags.has("c") || command9.heredoc) return run2.fail();
     const script = parsed.operands[0];
     if (script !== void 0 && !(script.dynamic === false && !looksLikeFile(plain(script)))) run2.read(script);
     return;
   }
-  if (name8 === "cd") {
+  if (name9 === "cd") {
     const target = args.find((word) => !/^-[A-Za-z]+$/.test(plain(word)) || word.quoted);
     if (target === void 0) run2.cwd = "~";
     else if (target.dynamic || plain(target) === "-") run2.cwd = null;
     else run2.cwd = run2.resolve(plain(target));
     return;
   }
-  if (name8 === "pushd" || name8 === "popd") {
+  if (name9 === "pushd" || name9 === "popd") {
     run2.cwd = null;
     return;
   }
-  if (READERS.has(name8)) {
-    const parsed = parseArgs2(args, { valueShort: name8 === "head" || name8 === "tail" ? "nc" : "", valueLong: ["--lines", "--bytes", "--files0-from"] });
+  if (READERS.has(name9)) {
+    const parsed = parseArgs2(args, { valueShort: name9 === "head" || name9 === "tail" ? "nc" : "", valueLong: ["--lines", "--bytes", "--files0-from"] });
     if (parsed === null) return run2.fail();
     for (const word of parsed.operands) run2.read(word);
     return;
   }
-  if (name8 === "sed") return sedLike(args, run2);
-  if (name8 === "perl") return perlLike(args, run2);
-  if (name8 === "awk" || name8 === "gawk" || name8 === "mawk") return awkLike(args, run2);
-  if (name8 === "grep" || name8 === "egrep" || name8 === "fgrep" || name8 === "rg") return grepLike(name8 === "rg" ? "rg" : "grep", args, run2, piped, hasInput);
-  if (name8 === "diff") return diffLike(args, run2);
-  if (name8 === "git") return gitLike(args, run2);
-  if (name8 === "tee") {
+  if (name9 === "sed") return sedLike(args, run2);
+  if (name9 === "perl") return perlLike(args, run2);
+  if (name9 === "awk" || name9 === "gawk" || name9 === "mawk") return awkLike(args, run2);
+  if (name9 === "grep" || name9 === "egrep" || name9 === "fgrep" || name9 === "rg") return grepLike(name9 === "rg" ? "rg" : "grep", args, run2, piped, hasInput);
+  if (name9 === "diff") return diffLike(args, run2);
+  if (name9 === "git") return gitLike(args, run2);
+  if (name9 === "tee") {
     const parsed = parseArgs2(args, {});
     if (parsed === null) return run2.fail();
     for (const word of parsed.operands) if (plain(word) !== "-" && !plain(word).startsWith("/dev/")) run2.edit(word);
     return;
   }
-  if (name8 === "cp" || name8 === "mv" || name8 === "rm") return moveLike(name8, args, run2);
-  if (name8 === "find") return findLike(args, run2);
-  if (INTERPRETERS.has(name8)) return interpreterLike(args, command8, run2, name8);
+  if (name9 === "cp" || name9 === "mv" || name9 === "rm") return moveLike(name9, args, run2);
+  if (name9 === "find") return findLike(args, run2);
+  if (INTERPRETERS.has(name9)) return interpreterLike(args, command9, run2, name9);
 }
-var headOf = (command8) => {
-  const word = command8.words.find((candidate) => candidate.quoted || !SKIPPED_KEYWORDS.has(plain(candidate)));
+var headOf = (command9) => {
+  const word = command9.words.find((candidate) => candidate.quoted || !SKIPPED_KEYWORDS.has(plain(candidate)));
   return word === void 0 || word.quoted ? null : plain(word);
 };
 function run(commands2, from, to, interpretation) {
   let i = from;
   while (i < to && interpretation.ok) {
-    const command8 = commands2[i];
-    if (command8.marker === "(") {
+    const command9 = commands2[i];
+    if (command9.marker === "(") {
       interpretation.stack.push(interpretation.cwd);
       i++;
       continue;
     }
-    if (command8.marker === ")") {
+    if (command9.marker === ")") {
       if (interpretation.stack.length === 0) return interpretation.fail();
       interpretation.cwd = interpretation.stack.pop();
       i++;
       continue;
     }
-    const head = headOf(command8);
+    const head = headOf(command9);
     if (head === "done") return interpretation.fail();
     if (head === "for") {
       let depth = 1;
@@ -4357,9 +4357,9 @@ function run(commands2, from, to, interpretation) {
         else if (inner === "done" && --depth === 0) break;
       }
       if (j >= to) return interpretation.fail();
-      const start = command8.words.findIndex((word) => !word.quoted && plain(word) === "for");
-      const words = command8.words.slice(start + 1).map((word) => interpretation.substitute(word));
-      const [variable, keyword, ...items] = words;
+      const start = command9.words.findIndex((word) => !word.quoted && plain(word) === "for");
+      const words2 = command9.words.slice(start + 1).map((word) => interpretation.substitute(word));
+      const [variable, keyword, ...items] = words2;
       if (variable === void 0 || keyword === void 0 || plain(keyword) !== "in" || variable.dynamic) return interpretation.fail();
       if (items.some((item) => item.dynamic || item.glob && !item.quoted)) return interpretation.fail();
       if (commands2[j].redirects.length > 0) return interpretation.fail();
@@ -4372,12 +4372,12 @@ function run(commands2, from, to, interpretation) {
       continue;
     }
     const previous = i > from ? commands2[i - 1].separator : "";
-    execute2(command8, interpretation, previous === "|" || previous === "|&");
+    execute2(command9, interpretation, previous === "|" || previous === "|&");
     i++;
   }
 }
-function shellAccess(command8, cwd) {
-  const tokens = tokenize(command8);
+function shellAccess(command9, cwd) {
+  const tokens = tokenize(command9);
   if (tokens === null) return null;
   const commands2 = segment(tokens);
   if (commands2 === null) return null;
@@ -4405,19 +4405,19 @@ function pathOf(input) {
   return asString(input["file_path"]) ?? asString(input["notebook_path"]) ?? asString(input["path"]);
 }
 function actionOf(block) {
-  const name8 = asString(block["name"]);
-  if (name8 === null) return null;
+  const name9 = asString(block["name"]);
+  if (name9 === null) return null;
   const input = isObject(block["input"]) ? block["input"] : {};
-  if (READ_TOOLS.has(name8)) return { kind: "read", origin: "tool", path: pathOf(input) };
-  if (SEARCH_TOOLS.has(name8)) return { kind: "search", origin: "tool", path: pathOf(input) };
-  if (EDIT_TOOLS.has(name8)) return { kind: "edit", origin: "tool", path: pathOf(input) };
+  if (READ_TOOLS.has(name9)) return { kind: "read", origin: "tool", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name9)) return { kind: "search", origin: "tool", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name9)) return { kind: "edit", origin: "tool", path: pathOf(input) };
   return null;
 }
 var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash"]);
 function shellActionsOf(block, cwd) {
   const input = isObject(block["input"]) ? block["input"] : {};
-  const command8 = asString(input["command"]);
-  const access = command8 === null ? null : shellAccess(command8, cwd);
+  const command9 = asString(input["command"]);
+  const access = command9 === null ? null : shellAccess(command9, cwd);
   if (access === null) return null;
   return [
     ...access.reads.map((path) => ({ kind: "read", origin: "shell", path })),
@@ -4426,8 +4426,8 @@ function shellActionsOf(block, cwd) {
   ];
 }
 var INTERRUPT_MARKER = "[Request interrupted by user";
-function isHumanText(text) {
-  return typeof text === "string" && !text.startsWith(INTERRUPT_MARKER);
+function isHumanText(text2) {
+  return typeof text2 === "string" && !text2.startsWith(INTERRUPT_MARKER);
 }
 function isHumanPrompt(line, message) {
   if (line["isMeta"] === true || line["toolUseResult"] !== void 0) return false;
@@ -4463,10 +4463,10 @@ function earliest(lines2) {
   }
   return best;
 }
-function parseTranscript(text, scope = "main") {
+function parseTranscript(text2, scope = "main") {
   const lines2 = [];
   let skippedLines = 0;
-  const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+  const body = text2.charCodeAt(0) === 65279 ? text2.slice(1) : text2;
   for (const raw of body.split(/\r?\n/)) {
     if (raw === "") continue;
     try {
@@ -4535,8 +4535,8 @@ function parseTranscript(text, scope = "main") {
     }
     for (const block of message["content"]) {
       if (!isObject(block) || block["type"] !== "tool_use") continue;
-      const name8 = asString(block["name"]);
-      if (name8 !== null && SHELL_TOOLS.has(name8)) {
+      const name9 = asString(block["name"]);
+      if (name9 !== null && SHELL_TOOLS.has(name9)) {
         const actions = shellActionsOf(block, asString(line["cwd"]));
         turn.shell.calls++;
         if (actions === null) turn.shell.unparsed++;
@@ -4641,8 +4641,8 @@ function measureTask(origin, taskIndex, startedAt, turns, roots, effortMode) {
 function mainOrigin(sessionId) {
   return { sessionId, source: "main", agentId: null, agentType: null, description: null };
 }
-function measureSubagent(text, sessionId, agentId, roots, meta, effortMode = "all") {
-  const parsed = parseTranscript(text, "sidechain");
+function measureSubagent(text2, sessionId, agentId, roots, meta, effortMode = "all") {
+  const parsed = parseTranscript(text2, "sidechain");
   if (parsed.status === "not-measured") {
     return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
   }
@@ -4661,8 +4661,8 @@ function measureSubagent(text, sessionId, agentId, roots, meta, effortMode = "al
   const task = start === void 0 ? null : measureTask(origin, 0, start.timestamp, turns, mapRoots, effortMode);
   return { status: "measured", sessionId, version: parsed.version, tasks: task === null || task.edits === 0 ? [] : [task], cwds: parsed.cwds };
 }
-function measureSession(text, sessionId, roots, effortMode = "all") {
-  const parsed = parseTranscript(text);
+function measureSession(text2, sessionId, roots, effortMode = "all") {
+  const parsed = parseTranscript(text2);
   if (parsed.status === "not-measured") {
     return { status: "not-measured", sessionId, version: parsed.version, reason: parsed.reason, startedAt: parsed.startedAt, cwds: parsed.cwds };
   }
@@ -4740,8 +4740,8 @@ function subagentFiles(projectsDir, root) {
     const subagents = join7(dir, entry.name, "subagents");
     if (!entry.isDirectory() || !existsSync7(subagents)) continue;
     for (const path of agentFilesUnder(subagents)) {
-      const name8 = path.slice(path.lastIndexOf("/") + 1);
-      files.push({ sessionId: entry.name, agentId: name8.slice("agent-".length, -".jsonl".length), path });
+      const name9 = path.slice(path.lastIndexOf("/") + 1);
+      files.push({ sessionId: entry.name, agentId: name9.slice("agent-".length, -".jsonl".length), path });
     }
   }
   return files.sort((a, b) => compareBytes2(a.path, b.path));
@@ -4778,14 +4778,14 @@ function measureRepo(options) {
       for (const file of subagentFiles(projectsDir, root)) {
         if (seen.has(file.path)) continue;
         seen.add(file.path);
-        let text;
+        let text2;
         try {
-          text = readFileSync5(file.path, "utf8");
+          text2 = readFileSync5(file.path, "utf8");
         } catch {
           continue;
         }
         const meta = readMeta2(file.path);
-        const result = measureSubagent(text, file.sessionId, file.agentId, repoRoots, meta, effort);
+        const result = measureSubagent(text2, file.sessionId, file.agentId, repoRoots, meta, effort);
         const places = meta?.worktreePath == null ? repoRoots : [...repoRoots, meta.worktreePath];
         if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, places))) continue;
         if (result.status === "not-measured") {
@@ -4801,13 +4801,13 @@ function measureRepo(options) {
     for (const file of sessionFiles(projectsDir, root)) {
       if (seen.has(file.path)) continue;
       seen.add(file.path);
-      let text;
+      let text2;
       try {
-        text = readFileSync5(file.path, "utf8");
+        text2 = readFileSync5(file.path, "utf8");
       } catch {
         continue;
       }
-      const result = measureSession(text, file.sessionId, repoRoots, effort);
+      const result = measureSession(text2, file.sessionId, repoRoots, effort);
       if (result.cwds.length > 0 && !result.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;
       if (result.status === "not-measured") {
         if (result.startedAt !== null && inWindow(window, result.startedAt)) {
@@ -4859,11 +4859,11 @@ function ensureLocalState(root) {
 // packages/locality/src/baseline-store.ts
 var footprintOf = (candidate) => [.../* @__PURE__ */ new Set([...candidate.files, ...candidate.consumers])].sort();
 var NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-function baselinePath(root, name8) {
-  if (!NAME.test(name8)) throw usageError(`--name must be letters, digits, dots, dashes and underscores, not "${name8}"`);
-  return join9(identityFiles(root).localDir, `${TOOL}.baseline.${name8}.json`);
+function baselinePath(root, name9) {
+  if (!NAME.test(name9)) throw usageError(`--name must be letters, digits, dots, dashes and underscores, not "${name9}"`);
+  return join9(identityFiles(root).localDir, `${TOOL}.baseline.${name9}.json`);
 }
-var baselineExists = (root, name8) => existsSync9(baselinePath(root, name8));
+var baselineExists = (root, name9) => existsSync9(baselinePath(root, name9));
 function writeBaseline(root, baseline2) {
   ensureLocalState(root);
   const path = baselinePath(root, baseline2.name);
@@ -4872,10 +4872,10 @@ function writeBaseline(root, baseline2) {
   renameSync4(temporary, path);
   return path;
 }
-function readBaseline(root, name8) {
-  const path = baselinePath(root, name8);
+function readBaseline(root, name9) {
+  const path = baselinePath(root, name9);
   if (!existsSync9(path)) {
-    throw usageError(`no baseline named "${name8}": run \`locality measure baseline\` before the first tidy-up`);
+    throw usageError(`no baseline named "${name9}": run \`locality measure baseline\` before the first tidy-up`);
   }
   let value;
   try {
@@ -4947,7 +4947,7 @@ function tasksTouching(tasks, files) {
 function readHeat(tasks, limit) {
   const counts = /* @__PURE__ */ new Map();
   for (const task of tasks) for (const path of task.readPaths) counts.set(path, (counts.get(path) ?? 0) + 1);
-  return [...counts].map(([path, count2]) => ({ path, tasks: count2 })).sort((a, b) => b.tasks - a.tasks || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))).slice(0, limit);
+  return [...counts].map(([path, count3]) => ({ path, tasks: count3 })).sort((a, b) => b.tasks - a.tasks || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))).slice(0, limit);
 }
 
 // packages/locality/src/measure-history.ts
@@ -5226,11 +5226,11 @@ function guidedDifferenceOf(actedOn, comparison, minSamples, noisePercent) {
 
 // packages/locality/src/verdict.ts
 var differenceOf2 = guidedDifferenceOf;
-function effortConclusion(parts) {
-  if (parts.every((part) => part === "not-measured")) return "not-measured";
-  if (parts.some((part) => part === "insufficient-sample" || part === "not-measured")) return "insufficient-sample";
-  const lower = parts.filter((part) => part === "lower").length;
-  const higher = parts.filter((part) => part === "higher").length;
+function effortConclusion(parts2) {
+  if (parts2.every((part) => part === "not-measured")) return "not-measured";
+  if (parts2.some((part) => part === "insufficient-sample" || part === "not-measured")) return "insufficient-sample";
+  const lower = parts2.filter((part) => part === "lower").length;
+  const higher = parts2.filter((part) => part === "higher").length;
   if (lower >= 2 && higher === 0) return "lower";
   if (higher >= 2 && lower === 0) return "higher";
   if (lower === 0 && higher === 0) return "no-change";
@@ -5314,16 +5314,16 @@ function effortOption(context) {
 function measureName(context) {
   return stringOption(context, "name") ?? DEFAULT_NAME;
 }
-var localPath = (context, name8) => relative2(context.repo.root, baselinePath(context.repo.root, name8)).split("\\").join("/");
+var localPath = (context, name9) => relative2(context.repo.root, baselinePath(context.repo.root, name9)).split("\\").join("/");
 async function baseline(context, settings) {
   const { root } = context.repo;
-  const name8 = measureName(context);
+  const name9 = measureName(context);
   const requested = stringOption(context, "candidates");
   if (requested !== void 0 && !/^[1-9]\d*$/.test(requested)) throw usageError("--candidates must be a positive integer");
   const keep = requested === void 0 ? DEFAULT_CANDIDATES : Number(requested);
-  if (baselineExists(root, name8) && context.values.force !== true) {
+  if (baselineExists(root, name9) && context.values.force !== true) {
     throw usageError(
-      `a baseline named "${name8}" already exists and cannot be regenerated once code has moved: pass --force to replace it, or --name for another`
+      `a baseline named "${name9}" already exists and cannot be regenerated once code has moved: pass --force to replace it, or --name for another`
     );
   }
   const analysis = await readMeasureHistory(root, settings);
@@ -5354,7 +5354,7 @@ async function baseline(context, settings) {
   const record = {
     schemaVersion: 1,
     tool: "locality",
-    name: name8,
+    name: name9,
     head: view.headSha,
     headDate: new Date(view.headDate * 1e3).toISOString(),
     window,
@@ -5378,11 +5378,11 @@ async function baseline(context, settings) {
   writeBaseline(root, record);
   noticeShell(context, effort.summary.shell);
   return {
-    inputs: { name: name8, transcripts: { tasks: effort.tasks.length, stamp: record.effort.stamp } },
+    inputs: { name: name9, transcripts: { tasks: effort.tasks.length, stamp: record.effort.stamp } },
     extra: { evidence: record.evidence },
     results: {
-      name: name8,
-      file: localPath(context, name8),
+      name: name9,
+      file: localPath(context, name9),
       head: record.head,
       window,
       spread,
@@ -5414,11 +5414,11 @@ async function structureNow(context, settings) {
 var EFFORT_FIGURES = ["filesRead", "foldersVisited", "reReads", "tokens"];
 async function compare(context, settings) {
   const { root } = context.repo;
-  const name8 = measureName(context);
-  const before = readBaseline(root, name8);
+  const name9 = measureName(context);
+  const before = readBaseline(root, name9);
   if (before.sortMethod !== SORT_METHOD) {
     throw usageError(
-      `the baseline "${name8}" ranked candidates by ${before.sortMethod ?? "an earlier method"} and this version ranks by ${SORT_METHOD}, so the ranks are not comparable: take a new baseline with --name`
+      `the baseline "${name9}" ranked candidates by ${before.sortMethod ?? "an earlier method"} and this version ranks by ${SORT_METHOD}, so the ranks are not comparable: take a new baseline with --name`
     );
   }
   const analysis = await readMeasureHistory(root, settings);
@@ -5432,13 +5432,13 @@ async function compare(context, settings) {
   const movedByHand = new Set(done.untrailered.map((action) => action.from));
   const untrailered = before.candidates.filter((candidate) => !actedOn.includes(candidate) && candidate.files.some((file) => movedByHand.has(file))).length;
   const common = {
-    inputs: { name: name8, baseline: { head: before.head, stamp: before.effort.stamp } }
+    inputs: { name: name9, baseline: { head: before.head, stamp: before.effort.stamp } }
   };
   if (actedOn.length === 0) {
     return {
       ...common,
       results: {
-        name: name8,
+        name: name9,
         status: "nothing-acted-on",
         baseline: { head: before.head, window: before.window },
         suite: { commits: done.commits, actedOn: 0, untrailered }
@@ -5474,12 +5474,12 @@ async function compare(context, settings) {
   const recordedSource = before.effort.source ?? "main";
   const requestedSource = sourceOption(context);
   if (requestedSource !== void 0 && requestedSource !== recordedSource) {
-    throw usageError(`the baseline "${name8}" read ${recordedSource} tasks, so the comparison reads them too: drop --source or take a new baseline with --name`);
+    throw usageError(`the baseline "${name9}" read ${recordedSource} tasks, so the comparison reads them too: drop --source or take a new baseline with --name`);
   }
   const recordedMode = before.effort.mode ?? "tools";
   const requestedMode = effortOption(context);
   if (requestedMode !== void 0 && requestedMode !== recordedMode) {
-    throw usageError(`the baseline "${name8}" counted ${recordedMode} for effort, so the comparison counts the same: drop --effort or take a new baseline with --name`);
+    throw usageError(`the baseline "${name9}" counted ${recordedMode} for effort, so the comparison counts the same: drop --effort or take a new baseline with --name`);
   }
   const afterEffort = readEffort(projectsDirectory(context), await checkouts(root), after, recordedSource, recordedMode);
   const arms = (g) => ({
@@ -5510,7 +5510,7 @@ async function compare(context, settings) {
       since: requested ?? null
     },
     results: {
-      name: name8,
+      name: name9,
       status: "compared",
       baseline: { head: before.head, window: before.window, spread: before.spread, effort: before.effort.summary },
       spreadReproduced: reproduced(recomputed, before.spread),
@@ -5672,7 +5672,7 @@ async function applyMove(root, plan, result, message, commit) {
   return commitTexts(root, result.texts, message, commit);
 }
 async function commitTexts(root, texts, message, commit) {
-  for (const [path, text] of texts) writeFileSync5(join11(root, path), text);
+  for (const [path, text2] of texts) writeFileSync5(join11(root, path), text2);
   if (texts.size > 0) await git2(root, ["add", "--", ...texts.keys()]);
   if (!commit) return null;
   const identity = await hasIdentity(root) ? {} : { GIT_AUTHOR_NAME: "code-health", GIT_AUTHOR_EMAIL: "code-health@localhost", GIT_COMMITTER_NAME: "code-health", GIT_COMMITTER_EMAIL: "code-health@localhost" };
@@ -5852,14 +5852,1300 @@ var command4 = {
   }
 };
 
-// packages/locality/src/commands/scrutinise.ts
-var scrutinise_exports = {};
-__export(scrutinise_exports, {
+// packages/locality/src/commands/report.ts
+var report_exports = {};
+__export(report_exports, {
   command: () => command5,
   name: () => name5
 });
-var name5 = "scrutinise";
-var command5 = {
+
+// packages/cli-kit/src/report-command.ts
+import { mkdirSync as mkdirSync5, readFileSync as readFileSync8, writeFileSync as writeFileSync6 } from "node:fs";
+import { dirname as dirname4, resolve } from "node:path";
+
+// packages/report/src/json.ts
+var FLOAT_PRECISION2 = 6;
+function normalise4(value) {
+  return normaliseValue(value);
+}
+function normaliseValue(value) {
+  if (typeof value === "number") return Number(value.toFixed(FLOAT_PRECISION2));
+  if (Array.isArray(value)) return value.map(normaliseValue);
+  if (value !== null && typeof value === "object") {
+    const record = value;
+    const sorted = {};
+    for (const key of Object.keys(record).sort()) if (record[key] !== void 0) sorted[key] = normaliseValue(record[key]);
+    return sorted;
+  }
+  return value;
+}
+function canonical(value) {
+  return JSON.stringify(normaliseValue(value)) ?? "null";
+}
+
+// packages/report/src/protocol.ts
+var PROTOCOL_VERSION = 1;
+var ReportError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ReportError";
+  }
+};
+
+// packages/report/src/stamp.ts
+function makeStamp(kind, head, config, inputs) {
+  return normalise4({ protocol: PROTOCOL_VERSION, kind, head, config, inputs });
+}
+var short = (sha) => typeof sha === "string" ? sha.slice(0, 7) : String(sha);
+function stampProblems(expected, actual) {
+  if (actual === null || typeof actual !== "object" || Array.isArray(actual)) return ["the notes have no stamp object; copy the stamp from --slots unchanged"];
+  const given = actual;
+  const problems = [];
+  if (given.protocol !== expected.protocol) problems.push(`the stamp is for protocol ${String(given.protocol)} and this report uses protocol ${expected.protocol}`);
+  if (given.kind !== expected.kind) problems.push(`the stamp is for the "${String(given.kind)}" report and this is "${expected.kind}"`);
+  if (given.head !== expected.head) problems.push(`the stamp is for HEAD ${short(given.head)} and the repository is at ${short(expected.head)}; run --slots again and write the notes from its output`);
+  if (given.config !== expected.config) problems.push(`the stamp has config hash ${String(given.config)} and the effective config hash is ${expected.config}; run --slots again`);
+  if (canonical(given.inputs ?? null) !== canonical(expected.inputs)) {
+    const was = given.inputs ?? {};
+    const keys = [.../* @__PURE__ */ new Set([...Object.keys(was), ...Object.keys(expected.inputs)])].sort().filter((key) => canonical(was[key] ?? null) !== canonical(expected.inputs[key] ?? null));
+    problems.push(`the stamp's inputs differ from this run's${keys.length === 0 ? "" : ` (${keys.join(", ")})`}; run --slots again with the same arguments`);
+  }
+  return problems;
+}
+
+// packages/report/src/notes.ts
+var isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+function pieceProblems(where, slot, piece, allowed) {
+  if (!isRecord(piece)) return [`${where} must be an object with ${slot.verdicts.length > 0 ? "a verdict and " : ""}text`];
+  const problems = [];
+  const extra = Object.keys(piece).filter((key) => key !== "verdict" && key !== "text" && !allowed.includes(key));
+  if (extra.length > 0) problems.push(`${where} has fields the slot does not take: ${extra.join(", ")}`);
+  const { verdict, text: text2 } = piece;
+  if (slot.verdicts.length > 0) {
+    if (typeof verdict !== "string" || verdict === "") problems.push(`${where} needs a verdict, one of: ${slot.verdicts.join(", ")}`);
+    else if (!slot.verdicts.includes(verdict)) problems.push(`${where} has verdict "${verdict}", which is not one of: ${slot.verdicts.join(", ")}`);
+  } else if (verdict !== void 0) {
+    problems.push(`${where} has a verdict, and this slot takes text only`);
+  }
+  if (typeof text2 !== "string") problems.push(`${where} needs text, a string`);
+  else if (text2.trim() === "") problems.push(`${where} has empty text`);
+  else if (text2.length > slot.maxChars) problems.push(`${where} has ${text2.length} characters of text and the limit is ${slot.maxChars}`);
+  return problems;
+}
+function entryProblems(slot, entry) {
+  const where = `slot "${slot.id}"`;
+  if (slot.choose === void 0) return pieceProblems(where, slot, entry, []);
+  if (!isRecord(entry) || !Array.isArray(entry.items)) return [`${where} must be an object with an "items" list of at most ${slot.choose.max} subjects chosen from its candidates`];
+  const problems = [];
+  const extra = Object.keys(entry).filter((key) => key !== "items");
+  if (extra.length > 0) problems.push(`${where} has fields the slot does not take: ${extra.join(", ")}`);
+  const { items } = entry;
+  if (items.length === 0) problems.push(`${where} needs at least one item`);
+  if (items.length > slot.choose.max) problems.push(`${where} has ${items.length} items and the limit is ${slot.choose.max}`);
+  const refs = slot.choose.candidates.map((c) => c.ref);
+  const seen = /* @__PURE__ */ new Set();
+  items.forEach((item, i) => {
+    const at = `${where} item ${i + 1}`;
+    problems.push(...pieceProblems(at, slot, item, ["subject"]));
+    const subject = isRecord(item) ? item.subject : void 0;
+    if (typeof subject !== "string") problems.push(`${at} needs a subject, one of the slot's candidates`);
+    else if (!refs.includes(subject)) problems.push(`${at} names subject "${subject}", which is not one of the candidates: ${refs.join(", ")}`);
+    else if (seen.has(subject)) problems.push(`${at} repeats subject "${subject}"`);
+    else seen.add(subject);
+  });
+  return problems;
+}
+function validateNotes(report, document) {
+  if (!isRecord(document)) throw new ReportError("the notes file must be a JSON object with a stamp and a notes object");
+  const problems = stampProblems(report.stamp, document.stamp);
+  const given = document.notes;
+  if (!isRecord(given)) {
+    problems.push('the notes file has no "notes" object with one entry per slot id');
+  } else {
+    const ids = report.slots.map((slot) => slot.id);
+    for (const slot of report.slots) {
+      if (!(slot.id in given)) problems.push(`slot "${slot.id}" has no entry in the notes`);
+      else problems.push(...entryProblems(slot, given[slot.id]));
+    }
+    for (const id of Object.keys(given)) if (!ids.includes(id)) problems.push(`the notes have an entry "${id}", and the report has no such slot; slots: ${ids.join(", ")}`);
+  }
+  if (problems.length > 0) throw new ReportError(`the notes were rejected, ${problems.length} ${problems.length === 1 ? "problem" : "problems"}:
+${problems.map((p) => `  - ${p}`).join("\n")}`);
+  return given;
+}
+
+// packages/report/src/text.ts
+import { createHash as createHash4 } from "node:crypto";
+function escapeHtml(text2) {
+  return text2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function oneLine(text2) {
+  return text2.replace(/\s+/g, " ").trim();
+}
+var MD_SPECIAL = /[\\|*<>[\]]/g;
+function escapeMd(text2) {
+  const line = oneLine(text2);
+  const balanced = (line.match(/`/g) ?? []).length % 2 === 0;
+  if (!balanced) return line.replace(/[\\|*`<>[\]]/g, (c) => `\\${c}`);
+  return line.split("`").map((part, i) => i % 2 === 1 ? part.replace(/\|/g, "\\|") : part.replace(MD_SPECIAL, (c) => `\\${c}`)).join("`");
+}
+function inlineHtml(text2) {
+  const escaped = escapeHtml(text2);
+  return (escaped.match(/`/g) ?? []).length % 2 === 0 ? escaped.replace(/`([^`]+)`/g, "<code>$1</code>") : escaped;
+}
+function formatNumber(value) {
+  if (Number.isInteger(value)) return String(value);
+  return String(Number(value.toFixed(2)));
+}
+function shortHash(content) {
+  return createHash4("sha256").update(content).digest("hex").slice(0, 6);
+}
+function slug(text2) {
+  return text2.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
+}
+function count2(n, singular, plural2 = `${singular}s`) {
+  return `${formatNumber(n)} ${n === 1 ? singular : plural2}`;
+}
+function clip(text2, max) {
+  if (max < 1) return "";
+  return text2.length <= max ? text2 : `${text2.slice(0, Math.max(0, max - 1))}…`;
+}
+
+// packages/report/src/components/evidence-list.ts
+var tail = (data) => data.omitted === void 0 || data.omitted <= 0 ? void 0 : `${formatNumber(data.omitted)} more not listed.`;
+function evidenceListHtml(data) {
+  const items = data.items.map((item) => `<li><code>${escapeHtml(item.id)}</code> ${escapeHtml(item.text)}${item.detail === void 0 ? "" : ` <span class="detail">(${escapeHtml(item.detail)})</span>`}</li>`);
+  const more = tail(data);
+  return `<section class="evidence">
+<h3>${escapeHtml(data.title)}</h3>
+${items.length === 0 ? '<p class="empty">None.</p>' : `<ul>
+${items.join("\n")}
+</ul>`}
+${more === void 0 ? "" : `<p class="omitted">${escapeHtml(more)}</p>
+`}</section>`;
+}
+function evidenceListMd(data) {
+  const items = data.items.map((item) => `- \`${item.id.replace(/`/g, "")}\` ${escapeMd(item.text)}${item.detail === void 0 ? "" : ` (${escapeMd(item.detail)})`}`);
+  const more = tail(data);
+  return [`**${escapeMd(data.title)}**`, "", ...items.length === 0 ? ["None."] : items, ...more === void 0 ? [] : ["", `_${more}_`]].join("\n");
+}
+
+// packages/report/src/tables.ts
+function htmlTable(caption, columns6, rows5, options = {}) {
+  const head = columns6.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
+  const body = rows5.map((row) => {
+    const cells = row.map((cell, i) => {
+      const number = columns6[i]?.align === "right" ? ' class="number"' : "";
+      return i === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number}>${cell}</td>`;
+    });
+    return `<tr>${cells.join("")}</tr>`;
+  }).join("\n");
+  return `<table${options.className === void 0 ? "" : ` class="${options.className}"`}>
+<caption>${escapeHtml(caption)}</caption>
+<thead><tr>${head}</tr></thead>
+<tbody>
+${body}
+</tbody>
+</table>`;
+}
+function mdTable(columns6, rows5) {
+  const head = `| ${columns6.map((c) => escapeMd(c.label)).join(" | ")} |`;
+  const rule = `| ${columns6.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
+  const body = rows5.map((row) => `| ${row.map((cell) => escapeMd(cell)).join(" | ")} |`);
+  return [head, rule, ...body].join("\n");
+}
+
+// packages/report/src/components/facts.ts
+var columns = [{ label: "Measure" }, { label: "Value" }];
+function factsHtml(data) {
+  return htmlTable(data.caption, columns, data.facts.map((f) => [escapeHtml(f.label), escapeHtml(f.value)]), { rowHeaders: true, className: "facts" });
+}
+function factsMd(data) {
+  return [`**${escapeMd(data.caption)}**`, "", mdTable(columns, data.facts.map((f) => [f.label, f.value]))].join("\n");
+}
+
+// packages/report/src/components/figure.ts
+function figureHtml(parts2) {
+  const id = `${slug(parts2.title)}-${shortHash(parts2.drawing)}`;
+  const svg = `<svg role="img" aria-labelledby="${id}-title ${id}-desc" viewBox="0 0 ${parts2.width} ${parts2.height}" preserveAspectRatio="xMinYMin meet">
+<title id="${id}-title">${escapeHtml(parts2.title)}</title>
+<desc id="${id}-desc">${escapeHtml(parts2.description)}</desc>
+${parts2.drawing}
+</svg>`;
+  return `<figure class="chart ${parts2.kind}">
+<figcaption>${escapeHtml(parts2.title)}</figcaption>
+${svg}
+${parts2.table}
+${parts2.notes ?? ""}</figure>`;
+}
+
+// packages/report/src/components/guideline-bar.ts
+var WIDTH = 720;
+var ROW = 28;
+var LABEL = 200;
+var BAR_MAX = 360;
+function positionOf(bar) {
+  return bar.value > bar.guideline ? "above guideline" : bar.value === bar.guideline ? "at guideline" : "below guideline";
+}
+function ratioOf2(bar) {
+  return bar.guideline === 0 ? null : bar.value / bar.guideline;
+}
+var ratioText = (bar) => {
+  const ratio = ratioOf2(bar);
+  return ratio === null ? "none" : `${Number(ratio.toPrecision(2))}x`;
+};
+var columns2 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
+var rows = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf(b)]);
+function guidelineBarsHtml(data) {
+  const greatest = Math.max(1, ...data.bars.flatMap((b) => [b.value, b.guideline]));
+  const scale = BAR_MAX / greatest;
+  const drawing = data.bars.map((b, i) => {
+    const y = i * ROW;
+    const width = b.value * scale;
+    const marker = LABEL + b.guideline * scale;
+    const above = b.value > b.guideline;
+    return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y + 18}" text-anchor="end">${escapeHtml(b.label)}</text><rect x="${LABEL}" y="${y + 5}" width="${width.toFixed(1)}" height="${ROW - 10}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y + 2}" y2="${y + ROW - 2}"/><text x="${(LABEL + Math.max(width, b.guideline * scale) + 8).toFixed(1)}" y="${y + 18}">${above ? "▲ " : ""}${formatNumber(b.value)} (guideline ${formatNumber(b.guideline)})</text></g>`;
+  }).join("\n");
+  return figureHtml({
+    kind: "guideline-bars",
+    title: data.title,
+    description: `${data.bars.length} values of ${data.unit}, each against its guideline. A bar longer than its marker is above guideline, shown with a triangle and the words in the table.`,
+    width: WIDTH,
+    height: Math.max(ROW, data.bars.length * ROW),
+    drawing,
+    table: htmlTable(`${data.title}: each value against its guideline`, columns2(data), rows(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    notes: `<p class="legend">The vertical line marks the guideline and ▲ marks a value above it. A guideline orders and labels results; it decides nothing.${data.source === void 0 ? "" : ` ${escapeHtml(data.source)}`}</p>
+`
+  });
+}
+function guidelineBarsMd(data) {
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns2(data), rows(data))].join("\n");
+}
+
+// packages/report/src/components/histogram.ts
+var WIDTH2 = 640;
+var ROW2 = 22;
+var LABEL2 = 150;
+var BAR_MAX2 = 400;
+var columns3 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
+function shares(data) {
+  const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
+  return data.bins.map((bin) => total === 0 ? "0%" : `${formatNumber(bin.count / total * 100)}%`);
+}
+var rows2 = (data) => {
+  const share = shares(data);
+  return data.bins.map((bin, i) => [bin.label, formatNumber(bin.count), share[i]]);
+};
+function histogramHtml(data) {
+  const greatest = Math.max(1, ...data.bins.map((bin) => bin.count));
+  const drawing = data.bins.map((bin, i) => {
+    const y = i * ROW2;
+    const width = bin.count / greatest * BAR_MAX2;
+    return `<g class="bin"><text x="${LABEL2 - 6}" y="${y + 15}" text-anchor="end">${escapeHtml(bin.label)}</text><rect x="${LABEL2}" y="${y + 3}" width="${width.toFixed(1)}" height="${ROW2 - 6}"/><text x="${(LABEL2 + width + 6).toFixed(1)}" y="${y + 15}">${formatNumber(bin.count)}</text></g>`;
+  }).join("\n");
+  const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
+  return figureHtml({
+    kind: "histogram",
+    title: data.title,
+    description: `${formatNumber(total)} ${data.unit} in ${data.bins.length} bins. Each bar prints its count; the table below lists the same counts.`,
+    width: WIDTH2,
+    height: Math.max(ROW2, data.bins.length * ROW2),
+    drawing,
+    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns3(data), rows2(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+  });
+}
+function histogramMd(data) {
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns3(data), rows2(data))].join("\n");
+}
+
+// packages/report/src/components/judgement.ts
+var isChoice = (entry) => "items" in entry;
+function labelOf(slot, ref) {
+  return slot.choose?.candidates.find((c) => c.ref === ref)?.label ?? ref;
+}
+function parts(slot, entry) {
+  if (isChoice(entry)) return entry.items.map((item) => ({ subject: labelOf(slot, item.subject), verdict: item.verdict, text: item.text }));
+  const note = entry;
+  return [{ subject: slot.about.label, verdict: note.verdict, text: note.text }];
+}
+function judgementHtml(data) {
+  const heading = `<h3>${escapeHtml(data.slot.title)}</h3>`;
+  if (data.entry === void 0) return `<section class="judgement unwritten">
+${heading}
+<p class="empty">Judgement not yet written.</p>
+</section>`;
+  const items = parts(data.slot, data.entry).map(
+    (p) => `<li><strong class="subject">${escapeHtml(p.subject)}</strong>${p.verdict === void 0 ? "" : ` <span class="verdict">Verdict: ${escapeHtml(p.verdict)}.</span>`} ${escapeHtml(oneLine(p.text))}</li>`
+  );
+  return `<section class="judgement">
+${heading}
+<ol>
+${items.join("\n")}
+</ol>
+</section>`;
+}
+function judgementMd(data) {
+  if (data.entry === void 0) return [`**${escapeMd(data.slot.title)}**`, "", `_Judgement not yet written: ${escapeMd(data.slot.task)}_`].join("\n");
+  const items = parts(data.slot, data.entry).map((p, i) => `${i + 1}. **${escapeMd(p.subject)}**${p.verdict === void 0 ? "" : ` (verdict: ${escapeMd(p.verdict)})`}: ${escapeMd(p.text)}`);
+  return [`**${escapeMd(data.slot.title)}**`, "", ...items].join("\n");
+}
+
+// packages/report/src/components/bands.ts
+var BAND_COUNT = 5;
+function makeBands(values, breaks) {
+  if (breaks !== void 0 && breaks.length === BAND_COUNT - 1) {
+    const edges = [...breaks];
+    const least2 = Math.min(...values, edges[0] ?? 0);
+    const greatest2 = Math.max(...values, edges[edges.length - 1] ?? 0);
+    const lower = [least2, ...edges];
+    const upper = [...edges, greatest2];
+    return {
+      ranges: lower.map((from, i) => ({ band: i + 1, from, to: upper[i] ?? greatest2 })),
+      of: (value) => 1 + edges.filter((edge) => edge <= value).length
+    };
+  }
+  const least = values.length === 0 ? 0 : Math.min(...values);
+  const greatest = values.length === 0 ? 0 : Math.max(...values);
+  const step = (greatest - least) / BAND_COUNT;
+  return {
+    ranges: Array.from({ length: BAND_COUNT }, (_, i) => ({ band: i + 1, from: least + i * step, to: i === BAND_COUNT - 1 ? greatest : least + (i + 1) * step })),
+    of: (value) => step === 0 ? 1 : Math.min(BAND_COUNT, 1 + Math.floor((value - least) / step))
+  };
+}
+function bandLegend(bands) {
+  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+}
+
+// packages/report/src/components/matrix.ts
+var CELL_W = 64;
+var CELL_H = 26;
+var ROW_LABEL = 180;
+var COLUMN_LABEL = 90;
+var display = (value) => value === null ? "none" : formatNumber(value);
+function matrixHtml(data) {
+  const present = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
+  const bands = makeBands(present, data.breaks);
+  const labels = [
+    ...data.columns.map((c, j) => `<text x="${ROW_LABEL + j * CELL_W + CELL_W / 2}" y="${COLUMN_LABEL - 6}" transform="rotate(-35 ${ROW_LABEL + j * CELL_W + CELL_W / 2} ${COLUMN_LABEL - 6})">${escapeHtml(c)}</text>`),
+    ...data.rows.map((r, i) => `<text x="${ROW_LABEL - 6}" y="${COLUMN_LABEL + i * CELL_H + 17}" text-anchor="end">${escapeHtml(r)}</text>`)
+  ];
+  const cells = data.rows.flatMap(
+    (_, i) => data.columns.map((_2, j) => {
+      const value = data.cells[i]?.[j] ?? null;
+      const x = ROW_LABEL + j * CELL_W;
+      const y = COLUMN_LABEL + i * CELL_H;
+      return `<g class="cell band-${value === null ? "none" : bands.of(value)}"><rect x="${x}" y="${y}" width="${CELL_W - 2}" height="${CELL_H - 2}"/><text x="${x + CELL_W / 2 - 1}" y="${y + 16}" text-anchor="middle">${display(value)}</text></g>`;
+    })
+  );
+  return figureHtml({
+    kind: "matrix",
+    title: data.title,
+    description: `A grid of ${data.rows.length} rows by ${data.columns.length} columns holding ${data.valueLabel}. Each cell prints its value; the table below lists the same values.`,
+    width: ROW_LABEL + data.columns.length * CELL_W + 40,
+    height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
+    drawing: [...labels, ...cells].join("\n"),
+    table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i) => [escapeHtml(r), ...data.columns.map((_, j) => escapeHtml(display(data.cells[i]?.[j] ?? null)))]), { rowHeaders: true }),
+    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in five bands, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
+`
+  });
+}
+function matrixMd(data) {
+  const present = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
+  const bands = makeBands(present, data.breaks);
+  return [
+    `**${escapeMd(data.title)}** (${escapeMd(data.valueLabel)}; ${bandLegend(bands)})`,
+    "",
+    mdTable([{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i) => [r, ...data.columns.map((_, j) => display(data.cells[i]?.[j] ?? null))]))
+  ].join("\n");
+}
+
+// packages/report/src/components/notice.ts
+var WORD = { notice: "Notice", limit: "Limit", warning: "Warning" };
+function noticeHtml(data) {
+  return `<aside class="notice ${data.level}" role="note"><strong>${WORD[data.level]}:</strong> ${inlineHtml(data.text)}</aside>`;
+}
+function noticeMd(data) {
+  return `> **${WORD[data.level]}:** ${escapeMd(data.text)}`;
+}
+
+// packages/report/src/components/paragraph.ts
+var paragraphHtml = (data) => `<p>${inlineHtml(data.text)}</p>`;
+var paragraphMd = (data) => escapeMd(data.text);
+
+// packages/report/src/components/ranked-table.ts
+var MARK = { above: "▲", below: "▼" };
+function marked(column, value) {
+  if (typeof value !== "number" || column.guideline === void 0) return false;
+  return column.guideline.direction === "below" ? value < column.guideline.value : value > column.guideline.value;
+}
+var rankColumn = (data) => data.numbered === false ? [] : [{ label: "#", align: "right" }];
+var rankCell = (data, index) => data.numbered === false ? [] : [String(index + 1)];
+function text(value) {
+  return value === null ? "–" : typeof value === "number" ? formatNumber(value) : value;
+}
+function legend(data) {
+  const entries = data.columns.flatMap((column) => {
+    if (column.guideline === void 0) return [];
+    const side = column.guideline.direction === "below" ? "below" : "above";
+    return [`${column.label} ${formatNumber(column.guideline.value)}${column.guideline.note === void 0 ? "" : ` (${column.guideline.note})`}, ${MARK[side]} marks a value ${side} it`];
+  });
+  return entries.length === 0 ? void 0 : `Guidelines order and label the rows and decide nothing. ${entries.join("; ")}.`;
+}
+function omitted(data) {
+  if (data.total === void 0 || data.total <= data.rows.length) return void 0;
+  const left = data.total - data.rows.length;
+  return `Showing ${formatNumber(data.rows.length)} of ${formatNumber(data.total)}${data.noun === void 0 ? "" : ` ${data.noun}`}; ${formatNumber(left)} not shown.`;
+}
+function rankedTableHtml(data) {
+  const cell = (column, value) => {
+    const shown = escapeHtml(text(value));
+    if (!marked(column, value)) return shown;
+    const side = column.guideline?.direction === "below" ? "below" : "above";
+    return `${shown} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
+  };
+  const columns6 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows5 = data.rows.map((row, i) => [...rankCell(data, i), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
+  const table = data.rows.length === 0 ? `<p class="empty">${escapeHtml(data.caption)}: no rows.</p>` : htmlTable(data.caption, columns6, rows5, { rowHeaders: data.numbered === false, className: "ranked" });
+  const notes2 = [legend(data), omitted(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${escapeHtml(n)}</p>`]);
+  return [table, ...notes2].join("\n");
+}
+function rankedTableMd(data) {
+  const columns6 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows5 = data.rows.map((row, i) => [...rankCell(data, i), ...data.columns.map((c) => `${text(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
+  return [
+    `**${escapeMd(data.caption)}**`,
+    "",
+    data.rows.length === 0 ? "No rows." : mdTable(columns6, rows5),
+    ...[legend(data), omitted(data)].flatMap((n) => n === void 0 ? [] : ["", `_${escapeMd(n)}_`])
+  ].join("\n");
+}
+
+// packages/report/src/components/sparkline.ts
+var WIDTH3 = 240;
+var HEIGHT = 48;
+var MARGIN = 6;
+var columns4 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
+var rows3 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
+function sparklineCoordinates(points) {
+  const values = points.map((p) => p.value);
+  const least = Math.min(...values);
+  const greatest = Math.max(...values);
+  const span = greatest - least;
+  return points.map((p, i) => [
+    points.length === 1 ? WIDTH3 / 2 : MARGIN + i * (WIDTH3 - 2 * MARGIN) / (points.length - 1),
+    span === 0 ? HEIGHT / 2 : HEIGHT - MARGIN - (p.value - least) * (HEIGHT - 2 * MARGIN) / span
+  ]);
+}
+function sparklineHtml(data) {
+  const coordinates = sparklineCoordinates(data.points);
+  const last = coordinates[coordinates.length - 1];
+  const line = coordinates.length > 1 ? `<polyline points="${coordinates.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ")}"/>` : "";
+  const end = last === void 0 ? "" : `<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3"/>`;
+  const values = data.points.map((p) => p.value);
+  const range = values.length === 0 ? "no points" : `from ${formatNumber(values[0])} to ${formatNumber(values[values.length - 1])}, least ${formatNumber(Math.min(...values))}, greatest ${formatNumber(Math.max(...values))}`;
+  return figureHtml({
+    kind: "sparkline",
+    title: data.title,
+    description: `${data.unit} over ${data.points.length} periods, ${range}. The table below lists every value.`,
+    width: WIDTH3,
+    height: HEIGHT,
+    drawing: `${line}${end}`,
+    table: htmlTable(`${data.title}: ${data.unit} by period`, columns4(data), rows3(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+  });
+}
+function sparklineMd(data) {
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns4(data), rows3(data))].join("\n");
+}
+
+// packages/report/src/components/trend-marker.ts
+var ARROW = { stronger: "↑", stable: "→", weaker: "↓" };
+function trendOf(earlier, later, tolerance = 0.2) {
+  if (later === earlier) return "stable";
+  const base = Math.abs(earlier);
+  if (base === 0) return later > 0 ? "stronger" : "weaker";
+  if (Math.abs(later - earlier) <= tolerance * base) return "stable";
+  return later > earlier ? "stronger" : "weaker";
+}
+function words(data) {
+  const trend = trendOf(data.earlier, data.later, data.tolerance);
+  return { trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
+}
+function trendMarkerHtml(data) {
+  const { trend, detail } = words(data);
+  return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${trend} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
+}
+function trendMarkerMd(data) {
+  const { trend, detail } = words(data);
+  return `${ARROW[trend]} ${trend} (${escapeMd(detail)})`;
+}
+
+// packages/report/src/components/treemap.ts
+var WIDTH4 = 960;
+var HEIGHT2 = 520;
+var HEADER = 14;
+var PAD = 2;
+var DEFAULT_MAX_TILES = 80;
+var byName = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function buildTree(items) {
+  const root = { name: "", path: "", size: 0, children: [] };
+  for (const item of items) {
+    let at = root;
+    const parts2 = item.path.split("/");
+    parts2.forEach((part, i) => {
+      const path = parts2.slice(0, i + 1).join("/");
+      let next = at.children.find((child) => child.name === part && i < parts2.length - 1 === (child.item === void 0));
+      if (next === void 0) {
+        next = { name: part, path, size: 0, children: [] };
+        at.children.push(next);
+      }
+      if (i === parts2.length - 1) next.item = item;
+      at = next;
+    });
+  }
+  const total = (node) => {
+    node.size = node.item !== void 0 ? node.item.size : node.children.reduce((sum, child) => sum + total(child), 0);
+    return node.size;
+  };
+  total(root);
+  const collapse = (node) => {
+    for (const child of node.children) {
+      while (child.item === void 0 && child.children.length === 1 && child.children[0].item === void 0) {
+        const only = child.children[0];
+        child.name = `${child.name}/${only.name}`;
+        child.path = only.path;
+        child.children = only.children;
+      }
+      collapse(child);
+    }
+  };
+  collapse(root);
+  return root;
+}
+function squarify(sizes, rect) {
+  const total = sizes.reduce((sum, size) => sum + size, 0);
+  const out = [];
+  if (total <= 0) return sizes.map(() => ({ x: rect.x, y: rect.y, w: 0, h: 0 }));
+  const scale = rect.w * rect.h / total;
+  const areas = sizes.map((size) => size * scale);
+  let { x, y, w, h } = rect;
+  let start = 0;
+  const worst = (row, side) => {
+    const sum = row.reduce((a, b) => a + b, 0);
+    const largest = Math.max(...row);
+    const smallest = Math.min(...row);
+    return Math.max(side * side * largest / (sum * sum), sum * sum / (side * side * smallest));
+  };
+  while (start < areas.length) {
+    const side = Math.min(w, h);
+    let end = start + 1;
+    while (end < areas.length && worst(areas.slice(start, end + 1), side) <= worst(areas.slice(start, end), side)) end++;
+    const row = areas.slice(start, end);
+    const sum = row.reduce((a, b) => a + b, 0);
+    if (w >= h) {
+      const width = h === 0 ? 0 : sum / h;
+      let top = y;
+      for (const area of row) {
+        const height = width === 0 ? 0 : area / width;
+        out.push({ x, y: top, w: width, h: height });
+        top += height;
+      }
+      x += width;
+      w -= width;
+    } else {
+      const height = w === 0 ? 0 : sum / w;
+      let left = x;
+      for (const area of row) {
+        const width = height === 0 ? 0 : area / height;
+        out.push({ x: left, y, w: width, h: height });
+        left += width;
+      }
+      y += height;
+      h -= height;
+    }
+    start = end;
+  }
+  return out;
+}
+function layoutTreemap(items, width = WIDTH4, height = HEIGHT2) {
+  const tiles = [];
+  const folders = [];
+  const place2 = (node, rect) => {
+    const children = [...node.children].sort((a, b) => b.size - a.size || byName(a.name, b.name));
+    const rects = squarify(children.map((c) => c.size), rect);
+    children.forEach((child, i) => {
+      const r = rects[i];
+      if (child.item !== void 0) {
+        tiles.push({ ...r, path: child.path, name: child.name, item: child.item });
+        return;
+      }
+      folders.push({ ...r, path: child.path, name: child.name });
+      const header2 = r.h > HEADER * 2 && r.w > 40 ? HEADER : 0;
+      place2(child, { x: r.x + PAD, y: r.y + PAD + header2, w: Math.max(0, r.w - PAD * 2), h: Math.max(0, r.h - PAD * 2 - header2) });
+    });
+  };
+  place2(buildTree(items), { x: 0, y: 0, w: width, h: height });
+  return { tiles, folders };
+}
+function prepare(data) {
+  const sized = data.items.filter((item) => item.size > 0).sort((a, b) => b.size - a.size || byName(a.path, b.path));
+  const limit = data.maxTiles ?? DEFAULT_MAX_TILES;
+  const drawn = sized.slice(0, limit);
+  const coloured = drawn.flatMap((item) => item.colour === null ? [] : [item.colour]);
+  return { drawn, notDrawn: { unsized: data.items.length - sized.length, beyondLimit: sized.length - drawn.length }, bands: makeBands(coloured, data.breaks) };
+}
+var bandName = (item, bands) => item.colour === null ? "none" : String(bands.of(item.colour));
+function omissions(prepared) {
+  const out = [];
+  if (prepared.notDrawn.beyondLimit > 0) out.push(`${count2(prepared.notDrawn.beyondLimit, "smaller item")} not drawn`);
+  if (prepared.notDrawn.unsized > 0) out.push(`${count2(prepared.notDrawn.unsized, "item")} of no size not drawn`);
+  return out;
+}
+var rows4 = (prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
+function columns5(data) {
+  return [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: `Colour (${data.colourLabel})`, align: "right" }, { label: "Band", align: "right" }];
+}
+function treemapHtml(data) {
+  const prepared = prepare(data);
+  const { tiles, folders } = layoutTreemap(prepared.drawn);
+  const fmt = (n) => n.toFixed(1);
+  const drawing = [
+    ...folders.map((f) => `<g class="folder"><rect x="${fmt(f.x)}" y="${fmt(f.y)}" width="${fmt(f.w)}" height="${fmt(f.h)}"/>${f.w > 40 && f.h > HEADER * 2 ? `<text x="${fmt(f.x + 4)}" y="${fmt(f.y + 11)}">${escapeHtml(clip(f.name, Math.floor((f.w - 8) / 6.2)))}</text>` : ""}</g>`),
+    ...tiles.map((t) => {
+      const room = Math.floor((t.w - 6) / 6.2);
+      const labels = t.w >= 36 && t.h >= 16 ? [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(clip(t.name, room))}</text>`] : [];
+      if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(t.item.colour === null ? "none" : formatNumber(t.item.colour), room))}</text>`);
+      return `<g class="tile band-${bandName(t.item, prepared.bands)}"><title>${escapeHtml(`${t.path}: ${formatNumber(t.item.size)} ${data.sizeLabel}, ${t.item.colour === null ? "no" : formatNumber(t.item.colour)} ${data.colourLabel}`)}</title><rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>${labels.join("")}</g>`;
+    })
+  ].join("\n");
+  const left = omissions(prepared);
+  const notes2 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
+${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
+`}`;
+  return figureHtml({
+    kind: "treemap",
+    title: data.title,
+    description: `A treemap of ${count2(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; colour is ${data.colourLabel}. The table below lists the same items.`,
+    width: WIDTH4,
+    height: HEIGHT2,
+    drawing,
+    table: htmlTable(`${data.title}: the items drawn, largest first`, columns5(data), rows4(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    notes: notes2
+  });
+}
+function treemapMd(data) {
+  const prepared = prepare(data);
+  const left = omissions(prepared);
+  return [
+    `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)})`,
+    "",
+    mdTable(columns5(data), rows4(prepared)),
+    ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
+  ].join("\n");
+}
+
+// packages/report/src/block.ts
+function slotOf(id, context) {
+  const slot = context.slots.find((s) => s.id === id);
+  if (slot === void 0) throw new ReportError(`a judgement block names slot "${id}", which the report does not define`);
+  return slot;
+}
+function renderBlock(block, format2, context) {
+  switch (block.type) {
+    case "paragraph":
+      return format2 === "html" ? paragraphHtml(block) : paragraphMd(block);
+    case "facts":
+      return format2 === "html" ? factsHtml(block) : factsMd(block);
+    case "ranked-table":
+      return format2 === "html" ? rankedTableHtml(block) : rankedTableMd(block);
+    case "treemap":
+      return format2 === "html" ? treemapHtml(block) : treemapMd(block);
+    case "sparkline":
+      return format2 === "html" ? sparklineHtml(block) : sparklineMd(block);
+    case "histogram":
+      return format2 === "html" ? histogramHtml(block) : histogramMd(block);
+    case "matrix":
+      return format2 === "html" ? matrixHtml(block) : matrixMd(block);
+    case "guideline-bars":
+      return format2 === "html" ? guidelineBarsHtml(block) : guidelineBarsMd(block);
+    case "trend-marker":
+      return format2 === "html" ? `<p>${trendMarkerHtml(block)}</p>` : trendMarkerMd(block);
+    case "evidence-list":
+      return format2 === "html" ? evidenceListHtml(block) : evidenceListMd(block);
+    case "notice":
+      return format2 === "html" ? noticeHtml(block) : noticeMd(block);
+    case "judgement": {
+      const slot = slotOf(block.slot, context);
+      const data = { slot, entry: context.notes?.[slot.id] };
+      return format2 === "html" ? judgementHtml(data) : judgementMd(data);
+    }
+  }
+}
+
+// packages/report/src/theme.ts
+var themeCss = `
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff; --text: #16181d; --muted: #4a4f5c; --rule: #c9ced8; --panel: #f4f6fa;
+  --link: #0b4fb3; --focus: #0b4fb3;
+  --band-1: #eef3fb; --on-band-1: #12233f;
+  --band-2: #cfdff5; --on-band-2: #12233f;
+  --band-3: #9fbfe8; --on-band-3: #0d1f3a;
+  --band-4: #3f78c4; --on-band-4: #ffffff;
+  --band-5: #1c4587; --on-band-5: #ffffff;
+  --bar: #3f78c4; --bar-above: #1c4587; --marker: #16181d;
+  --notice-bg: #fff8e1; --notice-rule: #8a6100;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151b; --text: #e8eaf0; --muted: #b4bac8; --rule: #3a4150; --panel: #1b2029;
+    --link: #8db8ff; --focus: #8db8ff;
+    --band-1: #1b2535; --on-band-1: #dbe6f7;
+    --band-2: #25406a; --on-band-2: #e8f0fc;
+    --band-3: #3566a8; --on-band-3: #ffffff;
+    --band-4: #7ba6e0; --on-band-4: #0b1830;
+    --band-5: #b9d3f5; --on-band-5: #0b1830;
+    --bar: #7ba6e0; --bar-above: #b9d3f5; --marker: #e8eaf0;
+    --notice-bg: #2a2310; --notice-rule: #e0b84a;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+body > header, body > nav, body > main, body > footer { max-width: 72rem; margin: 0 auto; padding: 0 1rem; }
+body > header { padding-top: 1.5rem; border-bottom: 1px solid var(--rule); }
+h1 { margin: 0 0 .75rem; font-size: 1.75rem; line-height: 1.2; }
+h2 { margin: 2rem 0 .75rem; font-size: 1.35rem; border-bottom: 1px solid var(--rule); padding-bottom: .25rem; }
+h3 { margin: 1.25rem 0 .5rem; font-size: 1.1rem; }
+a { color: var(--link); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 1rem; top: 1rem; background: var(--bg); padding: .5rem; z-index: 1; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+dl.header { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; margin: 0 0 1rem; }
+dl.header dt { color: var(--muted); }
+dl.header dd { margin: 0; overflow-wrap: anywhere; }
+dl.header ul { margin: 0; padding-left: 1.1rem; }
+nav { padding-top: .75rem; padding-bottom: .75rem; }
+nav ul { display: flex; flex-wrap: wrap; gap: .25rem 1rem; list-style: none; margin: 0; padding: 0; }
+main { overflow-wrap: anywhere; padding-bottom: 2rem; }
+table { border-collapse: collapse; margin: .5rem 0; max-width: 100%; }
+caption { text-align: left; font-weight: 600; padding: .25rem 0; }
+th, td { border: 1px solid var(--rule); padding: .25rem .6rem; text-align: left; vertical-align: top; }
+thead th { background: var(--panel); }
+th[scope="row"] { font-weight: 600; background: var(--panel); }
+.number { text-align: right; font-variant-numeric: tabular-nums; }
+.legend, .omitted { color: var(--muted); font-size: .9rem; margin: .25rem 0 1rem; }
+.empty { color: var(--muted); font-style: italic; }
+.marker { white-space: nowrap; }
+figure.chart { margin: 1rem 0; }
+figure.chart figcaption { font-weight: 600; margin-bottom: .25rem; }
+figure.chart svg { display: block; width: 100%; height: auto; max-width: 60rem; font: 11px system-ui, sans-serif; }
+figure.sparkline svg { max-width: 16rem; }
+figure.chart svg text { fill: var(--text); }
+svg .folder rect { fill: none; stroke: var(--rule); }
+svg .folder text { fill: var(--muted); }
+svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
+svg .band-1 rect { fill: var(--band-1); } svg .band-1 text { fill: var(--on-band-1); }
+svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band-2); }
+svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
+svg .band-4 rect { fill: var(--band-4); } svg .band-4 text { fill: var(--on-band-4); }
+svg .band-5 rect { fill: var(--band-5); } svg .band-5 text { fill: var(--on-band-5); }
+svg .band-none rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
+svg .bin rect { fill: var(--bar); }
+svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
+svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
+.notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
+.judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
+.judgement ol { margin: 0; padding-left: 1.25rem; }
+.judgement li { margin: .4rem 0; }
+.evidence ul { margin: 0; padding-left: 1.25rem; }
+.trend .trend-detail, .evidence .detail { color: var(--muted); }
+body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-size: .9rem; padding-top: .75rem; padding-bottom: 1.5rem; }
+@media (max-width: 40rem) { dl.header { grid-template-columns: 1fr; } table { font-size: .9rem; } }
+@media print {
+  :root { --bg: #ffffff; --text: #000000; --muted: #333333; --rule: #888888; --panel: #f0f0f0; --link: #000000; }
+  nav, .skip { display: none; }
+  body { font-size: 11pt; }
+  figure.chart, table, .judgement, .notice { break-inside: avoid; }
+  h2 { break-after: avoid; }
+  a { text-decoration: none; }
+}
+`;
+
+// packages/report/src/html-page.ts
+function headerFacts(report) {
+  const { header: header2 } = report;
+  const excluded = header2.excluded.length === 0 ? "nothing" : `<ul>${header2.excluded.map((e) => `<li>${escapeHtml(e.what)}: ${formatNumber(e.count)}</li>`).join("")}</ul>`;
+  const rows5 = [
+    ["Repository", escapeHtml(header2.repo)],
+    ["Analysed commit", `<code>${escapeHtml(header2.commit)}</code>`],
+    ["Date", escapeHtml(header2.date)],
+    ["Config hash", `<code>${escapeHtml(header2.configHash)}</code>`],
+    ["Evidence grade", escapeHtml(header2.evidenceGrade)],
+    ["History window", escapeHtml(header2.historyWindow)],
+    ["Excluded", excluded]
+  ];
+  return `<dl class="header">
+${rows5.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
+</dl>`;
+}
+function section(s, report, notes2) {
+  const body = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes2 })).join("\n");
+  return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
+<h2 id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}</h2>
+${body}
+</section>`;
+}
+function limitsSection(report, notes2) {
+  const slot = report.slots.find((s) => s.id === "limits");
+  const fixed = report.limits.map((text2) => `<li>${inlineHtml(text2)}</li>`).join("\n");
+  const judged = slot === void 0 ? "" : renderBlock({ type: "judgement", slot: slot.id }, "html", { slots: report.slots, notes: notes2 });
+  return `<section id="limits" aria-labelledby="limits-heading">
+<h2 id="limits-heading">Limits</h2>
+${fixed === "" ? "" : `<ul>
+${fixed}
+</ul>
+`}${judged}
+</section>`;
+}
+function htmlPage(report, notes2) {
+  const ids = [...report.sections.map((s) => [s.id, s.heading]), ["limits", "Limits"]];
+  const nav = `<nav aria-label="Sections">
+<ul>
+${ids.map(([id, heading]) => `<li><a href="#${escapeHtml(id)}">${escapeHtml(heading)}</a></li>`).join("\n")}
+</ul>
+</nav>`;
+  return [
+    "<!doctype html>",
+    '<html lang="en">',
+    "<head>",
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<meta name="color-scheme" content="light dark">',
+    `<title>${escapeHtml(report.title)}</title>`,
+    `<style>${themeCss}</style>`,
+    "</head>",
+    "<body>",
+    '<a class="skip" href="#main">Skip to the report</a>',
+    `<header>
+<h1>${escapeHtml(report.title)}</h1>
+${headerFacts(report)}
+</header>`,
+    nav,
+    '<main id="main">',
+    ...report.sections.map((s) => section(s, report, notes2)),
+    limitsSection(report, notes2),
+    "</main>",
+    `<footer>
+<p>Report <code>${escapeHtml(report.kind)}</code> for commit <code>${escapeHtml(report.header.commit.slice(0, 12))}</code>. Every number comes from the command's data. The judgements were written by an agent from that data and checked against the report's slots.</p>
+</footer>`,
+    "</body>",
+    "</html>",
+    ""
+  ].join("\n");
+}
+
+// packages/report/src/markdown-page.ts
+function header(report, compact) {
+  const h = report.header;
+  const excluded = h.excluded.length === 0 ? "nothing" : h.excluded.map((e) => `${escapeMd(e.what)}: ${formatNumber(e.count)}`).join(", ");
+  if (compact) {
+    return [
+      `- Repository \`${h.repo}\` at \`${h.commit.slice(0, 12)}\` on ${h.date}; config hash \`${h.configHash}\``,
+      `- Evidence grade: ${escapeMd(h.evidenceGrade)}. History window: ${escapeMd(h.historyWindow)}`,
+      `- Excluded: ${excluded}`
+    ];
+  }
+  return [
+    `- Repository: ${escapeMd(h.repo)}`,
+    `- Analysed commit: \`${h.commit}\``,
+    `- Date: ${h.date}`,
+    `- Config hash: \`${h.configHash}\``,
+    `- Evidence grade: ${escapeMd(h.evidenceGrade)}`,
+    `- History window: ${escapeMd(h.historyWindow)}`,
+    ...h.excluded.length === 0 ? ["- Excluded: nothing"] : ["- Excluded:", ...h.excluded.map((e) => `  - ${escapeMd(e.what)}: ${formatNumber(e.count)}`)]
+  ];
+}
+function markdownPage(report, notes2, options = {}) {
+  const context = { slots: report.slots, notes: notes2 };
+  const limits = report.limits.map((text2) => `- ${escapeMd(text2)}`);
+  const slot = report.slots.find((s) => s.id === "limits");
+  const judged = slot === void 0 ? [] : [renderBlock({ type: "judgement", slot: slot.id }, "md", context)];
+  return [
+    `# ${escapeMd(report.title)}`,
+    header(report, options.compact === true).join("\n"),
+    ...report.sections.map((s) => [`## ${escapeMd(s.heading)}`, ...s.blocks.map((b) => renderBlock(b, "md", context))].join("\n\n")),
+    ["## Limits", ...limits.length === 0 ? [] : [limits.join("\n")], ...judged].join("\n\n")
+  ].join("\n\n") + "\n";
+}
+
+// packages/report/src/render.ts
+function renderReport(report, format2, notes2, options = {}) {
+  if (format2 === "html") {
+    if (notes2 === void 0) throw new ReportError("html needs notes: run --slots, write the notes file, then render with --notes FILE --format html");
+    return htmlPage(report, notes2);
+  }
+  return markdownPage(report, notes2, options);
+}
+
+// packages/report/src/slots-document.ts
+function slotsDocument(report) {
+  return normalise4({
+    protocol: PROTOCOL_VERSION,
+    report: report.kind,
+    stamp: report.stamp,
+    data: { title: report.title, header: report.header, sections: report.sections, limits: report.limits },
+    slots: report.slots,
+    instructions: "Write notes.json as { stamp, notes }: copy the stamp unchanged, and give each slot id an entry that follows the slot's shape."
+  });
+}
+
+// packages/cli-kit/src/report-command.ts
+var protocolOptions = {
+  slots: { type: "boolean" },
+  notes: { type: "string" },
+  format: { type: "string" },
+  out: { type: "string" },
+  compact: { type: "boolean" }
+};
+var protocolOptionHelp = {
+  slots: "print the report's data and judgement slots as JSON",
+  notes: "the notes file to render: { stamp, notes }, with one entry per slot id",
+  format: "html or md. md without --notes is a data-only draft; html needs --notes",
+  out: "write the output to this file instead of stdout",
+  compact: "md only: the short header used in a pull request comment"
+};
+var protocolOptionNames = Object.keys(protocolOptions);
+function reportCommand(kinds) {
+  const names = Object.keys(kinds);
+  const kindOptions = Object.assign({}, ...Object.values(kinds).map((k) => k.options ?? {}));
+  const subcommands = Object.fromEntries(
+    Object.entries(kinds).map(([name9, kind]) => [name9, { summary: kind.summary, options: [...protocolOptionNames, ...Object.keys(kind.options ?? {})] }])
+  );
+  return {
+    summary: "Write a report: --slots prints its data and judgement slots, --notes renders the notes as html or markdown",
+    usage: "<report> [args]",
+    options: { ...kindOptions, ...protocolOptions },
+    optionHelp: Object.assign({}, ...Object.values(kinds).map((k) => k.optionHelp ?? {}), protocolOptionHelp),
+    subcommands,
+    async run(context) {
+      const [name9, ...args] = context.positionals;
+      if (name9 === void 0) throw usageError(`report needs a report name: ${names.join(", ")}`);
+      const kind = kinds[name9];
+      if (kind === void 0) throw usageError(`unknown report "${name9}"; reports: ${names.join(", ")}`);
+      const request = readRequest(context);
+      const build = await kind.build({ ...context, positionals: args });
+      const report = {
+        ...build,
+        kind: name9,
+        header: { repo: repoName(context.repo.root), commit: context.repo.head, date: context.repo.headCommitDate.slice(0, 10), configHash: context.config.hash, ...build.header },
+        stamp: makeStamp(name9, context.repo.head, context.config.hash, build.inputs)
+      };
+      try {
+        const text2 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
+        if (request.out === void 0) return { results: [], text: text2 };
+        const file = resolve(context.cwd, request.out);
+        mkdirSync5(dirname4(file), { recursive: true });
+        writeFileSync6(file, text2);
+        return { results: [], text: `wrote ${request.out}
+` };
+      } catch (error) {
+        if (error instanceof ReportError) throw usageError(error.message);
+        throw error;
+      }
+    }
+  };
+}
+function readRequest(context) {
+  const { slots, notes: notes2, format: format2, out, compact } = context.values;
+  const text2 = (value, option) => {
+    if (value === void 0) return void 0;
+    if (typeof value !== "string" || value === "") throw usageError(`--${option} needs a value`);
+    return value;
+  };
+  const chosen = text2(format2, "format");
+  if (chosen !== void 0 && chosen !== "html" && chosen !== "md") throw usageError(`--format must be html or md, got "${chosen}"`);
+  const request = { slots: slots === true, notes: text2(notes2, "notes"), format: chosen, out: text2(out, "out"), compact: compact === true };
+  if (request.slots) {
+    if (request.notes !== void 0 || request.format !== void 0 || request.compact) throw usageError("--slots prints the slots and takes no --notes, --format or --compact");
+  } else if (request.notes === void 0 && request.format !== "md") {
+    throw usageError(
+      request.format === "html" ? "html needs notes: run with --slots, write the notes file, then run with --notes FILE --format html" : "say what to print: --slots for the data and slots, --notes FILE --format html|md to render notes, or --format md for a draft without notes"
+    );
+  }
+  if (request.compact && (request.format ?? "md") !== "md") throw usageError("--compact is for --format md");
+  return request;
+}
+function produce(report, request, cwd) {
+  const format2 = request.format ?? "md";
+  if (request.notes === void 0) return renderReport(report, format2, void 0, { compact: request.compact });
+  let document;
+  try {
+    document = JSON.parse(readFileSync8(resolve(cwd, request.notes), "utf8"));
+  } catch (error) {
+    throw new ReportError(`cannot read the notes file ${request.notes}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  return renderReport(report, format2, validateNotes(report, document), { compact: request.compact });
+}
+function repoName(root) {
+  return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
+}
+
+// packages/locality/src/reports/locality.ts
+var TOP = 15;
+var PLANNED = 10;
+var VERDICTS = ["do-it", "do-it-differently", "leave"];
+var KINDS = ["move", "split", "inline", "scrutinise", "review"];
+var DISTANCE_BINS = 5;
+var isoDate2 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
+var plural = (count3, noun) => `${count3} ${noun}${count3 === 1 ? "" : "s"}`;
+var byText = ([a], [b]) => a < b ? -1 : a > b ? 1 : 0;
+function consumersOf(candidate) {
+  return [...new Set([...candidate.directCalls, ...candidate.otherRefs].map((entry) => entry.path))].sort();
+}
+var consumerFolders = (candidate) => new Set(consumersOf(candidate).map(folderOf));
+var confidenceOf = (candidate) => candidate.confidence === void 0 ? "normal" : `low: ${candidate.confidence.reason}`;
+function groupRefusals(refusals) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const refusal of refusals) groups.set(refusal.code, [...groups.get(refusal.code) ?? [], refusal]);
+  return [...groups].map(([code, list]) => `${code}${list.length > 1 ? ` x${list.length}` : ""} (${list[0].detail})`);
+}
+async function dryRun(context, candidate, settings, files) {
+  const plan = planMove(candidate, settings, files, {});
+  const base = { destination: plan.destination, filesMoved: plan.operations.length, refusals: groupRefusals(plan.refusals) };
+  if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null };
+  try {
+    const { performMove } = await import("./chunk-TUT26HLJ.mjs");
+    const tree = await treeFromRef(context.repo.root, "HEAD");
+    const moved = await performMove(tree, plan.operations);
+    return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null };
+  } catch (error) {
+    return { ...base, rewrites: 0, filesRewritten: 0, failure: error instanceof Error ? error.message : String(error) };
+  }
+}
+function planText(plan) {
+  if (plan.refusals.length > 0) return `no plan: ${plan.refusals.join(", ")}`;
+  if (plan.failure !== null) return `the dry run failed: ${plan.failure}`;
+  return `${plural(plan.filesMoved, "file")} moved to ${plan.destination === "" ? "the repository root" : plan.destination}, ${plural(plan.rewrites, "import")} rewritten in ${plural(plan.filesRewritten, "file")}`;
+}
+function candidateTable(rows5, total, settings) {
+  return {
+    type: "ranked-table",
+    caption: "Candidates, ordered by gain over the locality.minDistance guideline",
+    noun: "candidates",
+    total,
+    columns: [
+      { key: "path", label: "Unit" },
+      { key: "kind", label: "Kind" },
+      { key: "gain", label: "Gain (net distance removed)", align: "right", guideline: { value: settings.minDistance, note: "locality.minDistance" } },
+      { key: "ratio", label: "Gain over guideline", align: "right" },
+      { key: "consumers", label: "Consumer files", align: "right" },
+      { key: "folders", label: "Consumer folders", align: "right" },
+      { key: "distance", label: "Distance", align: "right" },
+      { key: "confidence", label: "Confidence" }
+    ],
+    rows: rows5.map((c) => ({
+      path: c.path,
+      kind: c.recommendation,
+      gain: c.gain,
+      ratio: c.ranking.ratio,
+      consumers: consumersOf(c).length,
+      folders: consumerFolders(c).size,
+      distance: c.distance,
+      confidence: confidenceOf(c)
+    }))
+  };
+}
+function candidateSection(rank, candidate, plan, settings) {
+  const consumers = consumersOf(candidate);
+  return {
+    id: `candidate-${rank}`,
+    heading: `${rank}. ${candidate.path}`,
+    blocks: [
+      {
+        type: "facts",
+        caption: `Candidate ${rank}: ${candidate.path}`,
+        facts: [
+          { label: "Kind", value: `${candidate.recommendation} (rule ${candidate.rule})` },
+          { label: "Gain", value: `${candidate.gain} of net distance removed, against the locality.minDistance guideline of ${settings.minDistance}` },
+          { label: "Net distance", value: `${candidate.netDistance.current} now, ${candidate.netDistance.atTarget} at the target ${candidate.target === "" ? "(the repository root)" : candidate.target}` },
+          { label: "Consumers", value: `${plural(consumers.length, "file")} in ${plural(consumerFolders(candidate).size, "folder")}` },
+          { label: "Size", value: `${plural(candidate.size.files, "file")}, ${plural(candidate.size.lines, "line")}` },
+          { label: "Confidence", value: confidenceOf(candidate) },
+          { label: "Blockers", value: candidate.blockers.length === 0 ? "none" : candidate.blockers.map((b) => b.path).join(", ") },
+          { label: "Move plan (dry run)", value: planText(plan) }
+        ]
+      },
+      { type: "judgement", slot: `candidate-${rank}` }
+    ]
+  };
+}
+function distanceHistogram(all) {
+  const bins = Array.from({ length: DISTANCE_BINS + 1 }, (_, i) => ({ label: i === DISTANCE_BINS ? `${DISTANCE_BINS} or more` : String(i), count: 0 }));
+  for (const candidate of all) {
+    for (const consumer of consumersOf(candidate)) bins[Math.min(DISTANCE_BINS, folderDistance(candidate.location, folderOf(consumer)))].count++;
+  }
+  return { type: "histogram", title: "Distance from each unit's folder to its consumers' folders, in folder hops", unit: "unit and consumer file pairs", bins };
+}
+var REASON_WORDS = {
+  "earned-distance": "history candidates whose distance the co-change evidence does not earn",
+  "fixed-point": "history candidates whose target is a fixed point",
+  "near-partners": "history candidates whose gain is below the locality.minDistance guideline",
+  superseded: "history candidates that a structural candidate already covers"
+};
+function omittedRows(structural, history) {
+  return [
+    { what: "units already beside their consumers (rule near-consumers)", count: structural.placed },
+    { what: "candidates recommended blocked, held back by a dependency", count: structural.blocked },
+    { what: "candidates recommended keep", count: structural.keep },
+    { what: `candidates past the top ${TOP} of the table`, count: structural.notShown },
+    ...Object.entries(history.omitted).map(([reason, count3]) => ({ what: REASON_WORDS[reason] ?? reason, count: count3 }))
+  ];
+}
+function slotsFor(planned) {
+  return [
+    {
+      id: "summary",
+      title: "Judgement: what this report says",
+      about: { kind: "report", ref: "locality", label: "the repository" },
+      task: "In at most three sentences, say what the candidates have in common and where to start, using only values shown in this report. Do not add numbers the report does not show.",
+      verdicts: [],
+      maxChars: 500
+    },
+    ...planned.map((candidate, index) => ({
+      id: `candidate-${index + 1}`,
+      title: `Judgement: ${candidate.path}`,
+      about: { kind: "unit", ref: candidate.path, label: candidate.path },
+      task: `Say whether to make the proposed ${candidate.recommendation} of ${candidate.path}: do-it, do-it-differently or leave. Give the reason, then the risk as "Risk: ..." in the last sentence, using only the facts, blockers, confidence and dry-run plan shown for this candidate. Do not add numbers the report does not show. The plan is a dry run and the report never applies a move.`,
+      verdicts: VERDICTS,
+      maxChars: 400
+    })),
+    {
+      id: "limits",
+      title: "Judgement: what limits these results",
+      about: { kind: "report", ref: "locality", label: "the repository" },
+      task: "In at most three sentences, say what limits how far these results can be trusted for this repository, using only the unresolved imports, the omitted counts, the confidence column and the evidence grade shown above.",
+      verdicts: [],
+      maxChars: 500
+    }
+  ];
+}
+var localityReport = {
+  summary: "Units far from where they are used: the top candidates with a dry-run move plan, consumer distances and what was left out",
+  async build(context) {
+    const settings = readSettings(context.config);
+    const output = await command.run({ ...context, positionals: [], values: { source: "structural" } });
+    const extra = output.extra;
+    const all = output.results;
+    const historyOutput = await command.run({ ...context, positionals: [], values: { source: "history" } });
+    const historyOnly2 = historyOutput.extra.historyOnly;
+    const ofKind = all.filter((c) => KINDS.includes(c.recommendation));
+    const shown = ofKind.slice(0, TOP);
+    const planned = shown.slice(0, PLANNED);
+    const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
+    const plans = [];
+    for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files));
+    const byKind = extra.summary.byRecommendation;
+    const omitted2 = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shown.length }, historyOnly2);
+    const unresolved = Object.entries(extra.unresolved).sort(byText);
+    const excluded = [
+      ...omitted2,
+      ...Object.entries(droppedCounts()).map(([kind, count3]) => ({ what: `${kind} files left out of the analysis`, count: count3 ?? 0 })),
+      ...Object.entries(builtinOmissions()).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
+    ];
+    const history = extra.history;
+    const inputs = output.inputs;
+    const sections = [
+      { id: "summary", heading: "Summary", blocks: [{ type: "judgement", slot: "summary" }] },
+      {
+        id: "candidates",
+        heading: "Candidates",
+        blocks: [
+          {
+            type: "facts",
+            caption: "What the analysis covered",
+            facts: [
+              { label: "Files analysed", value: String(extra.summary.files) },
+              { label: "Units", value: String(extra.summary.units) },
+              { label: "Candidates of kind move, split, inline, scrutinise or review", value: String(ofKind.length) },
+              ...Object.entries(byKind).sort(byText).map(([kind, count3]) => ({ label: `Recommended ${kind}`, value: String(count3) }))
+            ]
+          },
+          ofKind.length === 0 ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." } : candidateTable(shown, ofKind.length, settings)
+        ]
+      },
+      ...planned.map((candidate, index) => candidateSection(index + 1, candidate, plans[index], settings)),
+      { id: "distance", heading: "Consumer distance", blocks: [distanceHistogram(all)] },
+      {
+        id: "unresolved",
+        heading: "Unresolved imports",
+        blocks: unresolved.length === 0 ? [{ type: "notice", level: "notice", text: "Every import the analysis read resolved, so no consumer is missing for that reason." }] : [
+          {
+            type: "ranked-table",
+            caption: "Imports the analysis could not resolve, by reason",
+            numbered: false,
+            columns: [
+              { key: "reason", label: "Reason" },
+              { key: "count", label: "Imports", align: "right" }
+            ],
+            rows: unresolved.map(([reason, count3]) => ({ reason, count: count3 }))
+          },
+          { type: "notice", level: "limit", text: "A unit used through an unresolved import has a consumer the analysis cannot see, so its distance and gain are lower bounds." }
+        ]
+      },
+      {
+        id: "omitted",
+        heading: "Omitted, by reason",
+        blocks: [
+          {
+            type: "ranked-table",
+            caption: "What the analysis and this report left out, by reason",
+            numbered: false,
+            columns: [
+              { key: "what", label: "Left out" },
+              { key: "count", label: "Count", align: "right" }
+            ],
+            rows: omitted2.map((o) => ({ what: o.what, count: o.count }))
+          },
+          ...historyOnly2.reason === null ? [] : [{ type: "notice", level: "notice", text: `The history counts are zero because ${historyOnly2.reason}.` }]
+        ]
+      }
+    ];
+    const lowConfidence = ofKind.filter((c) => c.confidence !== void 0).length;
+    return {
+      title: "Locality report",
+      inputs: { source: "structural", entrySource: inputs.entrySource, entries: inputs.entries },
+      header: {
+        evidenceGrade: history === null ? "not available: no history was read" : history.grade,
+        historyWindow: history === null ? "No history was read, so the candidates rest on the import graph alone." : `${history.usableHistoryMonths} months of usable history; the analysis window is ${history.window.months} months, ${isoDate2(history.window.since)} to ${isoDate2(history.window.until)}`,
+        excluded: excluded.filter((e) => e.count > 0)
+      },
+      sections,
+      limits: [
+        "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+        `The table shows the top ${TOP} candidates and says how many it leaves out; the move plans and judgements cover the top ${PLANNED}.`,
+        "A move plan is a dry run of the proposed move. The report never applies one.",
+        "Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.",
+        ...lowConfidence > 0 ? [`${plural(lowConfidence, "candidate")} rest on includes that found no file, so a consumer may be missing and the result is a lower bound.`] : [],
+        ...history === null ? ["No history was read, so co-change evidence is not used."] : history.grade === "weak" ? ["The evidence grade is weak, so history-based evidence is tentative and the structure leads."] : []
+      ],
+      slots: slotsFor(planned)
+    };
+  }
+};
+
+// packages/locality/src/commands/report.ts
+var name5 = "report";
+var command5 = reportCommand({ locality: localityReport });
+
+// packages/locality/src/commands/scrutinise.ts
+var scrutinise_exports = {};
+__export(scrutinise_exports, {
+  command: () => command6,
+  name: () => name6
+});
+var name6 = "scrutinise";
+var command6 = {
   usage: "[<path>...]",
   summary: "Review the widely used units: the red flags their interfaces and call sites show, with the counts behind each",
   async run(context) {
@@ -5891,8 +7177,8 @@ var command5 = {
 // packages/locality/src/commands/update-namespaces.ts
 var update_namespaces_exports = {};
 __export(update_namespaces_exports, {
-  command: () => command6,
-  name: () => name6
+  command: () => command7,
+  name: () => name7
 });
 
 // packages/locality/src/movers/csharp-namespaces.ts
@@ -5907,14 +7193,14 @@ function namespaceAfterMove(namespace, from, to) {
   while (shared < before.length && shared < after.length && before[shared] === after[shared]) shared++;
   const leaving = before.slice(shared);
   const arriving = after.slice(shared);
-  const parts = namespace.split(".");
+  const parts2 = namespace.split(".");
   if (leaving.length === 0) {
     const folder = before.at(-1);
-    return folder !== void 0 && parts.at(-1) === folder && arriving.length > 0 ? [...parts, ...arriving].join(".") : void 0;
+    return folder !== void 0 && parts2.at(-1) === folder && arriving.length > 0 ? [...parts2, ...arriving].join(".") : void 0;
   }
-  const tail = parts.slice(parts.length - leaving.length);
-  if (tail.length !== leaving.length || tail.some((part, index) => part !== leaving[index])) return void 0;
-  return [...parts.slice(0, parts.length - leaving.length), ...arriving].join(".");
+  const tail2 = parts2.slice(parts2.length - leaving.length);
+  if (tail2.length !== leaving.length || tail2.some((part, index) => part !== leaving[index])) return void 0;
+  return [...parts2.slice(0, parts2.length - leaving.length), ...arriving].join(".");
 }
 async function planNamespaceUpdate(tree, operations) {
   const moved = new Map(operations.filter((operation) => operation.to.endsWith(".cs")).map((operation) => [operation.to, operation.from]));
@@ -5961,14 +7247,14 @@ async function planNamespaceUpdate(tree, operations) {
       if (declared !== null && moved.has(path) && renamed.has(declared[2])) {
         from = declared[2];
         to = renamed.get(from);
-        next = line.replace(declaration, (_all, head, _name, tail) => `${head}${to}${tail}`);
+        next = line.replace(declaration, (_all, head, _name, tail2) => `${head}${to}${tail2}`);
       }
-      next = next.replace(/^(\s*(?:global\s+)?using\s+(?:static\s+)?(?:\w+\s*=\s*)?)([\w.]+)(\s*;)/, (all, head, name8, tail) => {
+      next = next.replace(/^(\s*(?:global\s+)?using\s+(?:static\s+)?(?:\w+\s*=\s*)?)([\w.]+)(\s*;)/, (all, head, name9, tail2) => {
         for (const [old, replacement] of renamed) {
-          if (name8 !== old && !name8.startsWith(`${old}.`)) continue;
+          if (name9 !== old && !name9.startsWith(`${old}.`)) continue;
           from = old;
           to = replacement;
-          return `${head}${replacement}${name8.slice(old.length)}${tail}`;
+          return `${head}${replacement}${name9.slice(old.length)}${tail2}`;
         }
         return all;
       });
@@ -5993,7 +7279,7 @@ async function planNamespaceUpdate(tree, operations) {
 }
 
 // packages/locality/src/commands/update-namespaces.ts
-var name6 = "update-namespaces";
+var name7 = "update-namespaces";
 async function renamedFiles(root, parent, ref) {
   const out = await runGit(root, ["diff", "--name-status", "-M", "-z", parent, ref]);
   const fields = out.split("\0");
@@ -6007,7 +7293,7 @@ async function renamedFiles(root, parent, ref) {
   }
   return operations.filter((operation) => operation.to.endsWith(".cs"));
 }
-var command6 = {
+var command7 = {
   summary: "After a C# move commit, plan or with --apply make the optional second commit that makes namespaces follow the folders",
   options: { commit: { type: "string" }, apply: { type: "boolean" }, "no-commit": { type: "boolean" } },
   optionHelp: { commit: "the move commit to follow (default HEAD)", apply: "make the namespace commit instead of only planning it", "no-commit": "with --apply, leave the change in the working tree" },
@@ -6062,11 +7348,11 @@ function namespaceMessage(moveSha, renamed) {
 // packages/locality/src/commands/verify-move.ts
 var verify_move_exports = {};
 __export(verify_move_exports, {
-  command: () => command7,
-  name: () => name7
+  command: () => command8,
+  name: () => name8
 });
-var name7 = "verify-move";
-var command7 = {
+var name8 = "verify-move";
+var command8 = {
   summary: "Check that a commit made by hand reproduces the planned move of one unit, and changes nothing else",
   usage: "<unit path>",
   options: { commit: { type: "string" }, to: { type: "string" } },
@@ -6121,6 +7407,7 @@ var commandModules = [
   history_exports,
   measure_exports,
   move_exports,
+  report_exports,
   scrutinise_exports,
   update_namespaces_exports,
   verify_move_exports
