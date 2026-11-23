@@ -23,7 +23,8 @@ export type RefusalCode =
   | "no-change"
   | "package-boundary"
   | "package-entry"
-  | "package-main";
+  | "package-main"
+  | "unexported-use";
 
 export interface Refusal {
   code: RefusalCode;
@@ -93,11 +94,24 @@ export interface GoPackages {
   mainFolders: ReadonlySet<string>;
   /** Production Go files that declare `package main`. */
   mainFiles: ReadonlySet<string>;
+  /** For each production Go file, the unexported names it declares that another production file of the same folder uses. */
+  unexportedUses: ReadonlyMap<string, readonly { name: string; by: string }[]>;
+  /** The package name each production Go file declares. */
+  packageNames: ReadonlyMap<string, string>;
+}
+
+/** One use of a definition by a file, as the analysis records it. */
+export interface GoUse {
+  from: string;
+  to: string;
+  toExport: string;
+  toSymbol?: string;
 }
 
 const MAIN_PACKAGE = /^package\s+main\b/m;
+const PACKAGE_CLAUSE = /^package\s+([A-Za-z_][A-Za-z0-9_]*)/m;
 
-export function goPackages(edges: Iterable<{ from: string; to: string }>, texts: ReadonlyMap<string, string>): GoPackages {
+export function goPackages(edges: Iterable<{ from: string; to: string }>, texts: ReadonlyMap<string, string>, consumers: Iterable<GoUse> = []): GoPackages {
   const uses = new Map<string, string[]>();
   for (const edge of edges) {
     if (edge.from === edge.to || !edge.from.endsWith(".go") || !edge.to.endsWith(".go")) continue;
@@ -106,7 +120,16 @@ export function goPackages(edges: Iterable<{ from: string; to: string }>, texts:
     else list.push(edge.to);
   }
   const mainFiles = new Set([...texts].filter(([path, text]) => path.endsWith(".go") && MAIN_PACKAGE.test(text)).map(([path]) => path));
-  return { uses, mainFolders: new Set([...mainFiles].map((path) => posix.dirname(path))), mainFiles };
+  const unexportedUses = new Map<string, { name: string; by: string }[]>();
+  for (const use of consumers) {
+    const name = use.toSymbol ?? use.toExport;
+    if (use.from === use.to || !use.from.endsWith(".go") || !use.to.endsWith(".go") || posix.dirname(use.from) !== posix.dirname(use.to)) continue;
+    if (!/^[a-z_]/.test(name.split(".").pop() ?? "")) continue;
+    const list = unexportedUses.get(use.to) ?? [];
+    if (!list.some((entry) => entry.name === name && entry.by === use.from)) list.push({ name, by: use.from });
+    unexportedUses.set(use.to, list);
+  }
+  return { uses, mainFolders: new Set([...mainFiles].map((path) => posix.dirname(path))), mainFiles, unexportedUses, packageNames: new Map([...texts].flatMap(([path, text]): [string, string][] => (path.endsWith(".go") && PACKAGE_CLAUSE.test(text) ? [[path, PACKAGE_CLAUSE.exec(text)![1]!]] : []))) };
 }
 
 /** The Go package rules for a set of moves: a file never joins a `package main` folder or leaves one, and a move never makes a package import itself or two packages import each other. */
@@ -130,6 +153,15 @@ function goRefusals(operations: readonly FileOperation[], go: GoPackages): Place
       if (posix.dirname(newPath(used)) === destination && posix.dirname(used) !== source) {
         refusals.push({ code: "import-cycle", detail: `import cycle: ${from} imports ${posix.dirname(used)}, so in ${destination} it would import its own package`, label: "import cycle" });
         break;
+      }
+    }
+  }
+  // An unexported name is reached only from its own package, so its declaring file and the files that use it stay in one folder.
+  unexported: for (const [declared, uses] of go.unexportedUses) {
+    for (const { name, by } of uses) {
+      if ((moved.has(declared) || moved.has(by)) && posix.dirname(newPath(declared)) !== posix.dirname(newPath(by))) {
+        refusals.push({ code: "unexported-use", detail: `unexported symbol used in its package: ${name} used by ${by}`, label: "unexported symbol used in its package" });
+        break unexported;
       }
     }
   }

@@ -107,7 +107,7 @@
               {
                 "align": "right",
                 "key": "ratio",
-                "label": "Gain over guideline"
+                "label": "Gain ÷ guideline (2)"
               },
               {
                 "align": "right",
@@ -227,7 +227,7 @@
               {
                 "align": "right",
                 "key": "ratio",
-                "label": "Gain over guideline"
+                "label": "Gain ÷ guideline (2)"
               },
               {
                 "align": "right",
@@ -321,7 +321,7 @@
             "type": "ranked-table"
           },
           {
-            "caption": "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline. Consumer files are the distinct production files that use the unit; test files are not counted",
+            "caption": "High fan-in units (kind scrutinise): consumer files are above the locality.highFanIn guideline, so no move is proposed. Ordered by consumer files. Consumer files are the distinct production files that use the unit; test files are not counted",
             "columns": [
               {
                 "key": "path",
@@ -339,17 +339,12 @@
               {
                 "align": "right",
                 "key": "ratio",
-                "label": "Consumer files over guideline"
+                "label": "Consumer files ÷ guideline (8)"
               },
               {
                 "align": "right",
                 "key": "folders",
                 "label": "Consumer folders"
-              },
-              {
-                "align": "right",
-                "key": "gain",
-                "label": "Gain (net distance removed)"
               },
               {
                 "key": "confidence",
@@ -363,7 +358,6 @@
                 "confidence": "normal",
                 "fanIn": 8,
                 "folders": 1,
-                "gain": 16,
                 "path": "src/shared/format.ts",
                 "ratio": 1
               }

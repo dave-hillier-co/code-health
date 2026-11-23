@@ -156,7 +156,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </table>
 <table class="ranked">
 <caption>Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline</caption>
-<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col">Target</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain over guideline</th><th scope="col" class="number">Unit files</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col">Target</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain ÷ guideline (2)</th><th scope="col" class="number">Unit files</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
 <tbody>
 <tr><td class="number">1</td><td>src/shared/pair</td><td>move</td><td>src/reports</td><td class="number">6 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">3</td><td class="number">2</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
 <tr><td class="number">2</td><td>src/shared/utils/money.ts</td><td>move</td><td>src</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">2</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
@@ -168,7 +168,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <p class="legend">Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it.</p>
 <table class="ranked">
 <caption>Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline</caption>
-<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col">Target</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain over guideline</th><th scope="col" class="number">Unit files</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col">Target</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain ÷ guideline (2)</th><th scope="col" class="number">Unit files</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
 <tbody>
 <tr><td class="number">1</td><td>src/shared/helpers/mixed.ts</td><td>split</td><td>src</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
 <tr><td class="number">2</td><td>src/shared/utils/slug.ts</td><td>inline</td><td>src/orders</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
@@ -179,10 +179,10 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it.</p>
 <table class="ranked">
-<caption>High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline. Consumer files are the distinct production files that use the unit; test files are not counted</caption>
-<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer files over guideline</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col">Confidence</th></tr></thead>
+<caption>High fan-in units (kind scrutinise): consumer files are above the locality.highFanIn guideline, so no move is proposed. Ordered by consumer files. Consumer files are the distinct production files that use the unit; test files are not counted</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer files ÷ guideline (8)</th><th scope="col" class="number">Consumer folders</th><th scope="col">Confidence</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/shared/format.ts</td><td class="number">8</td><td class="number">1</td><td class="number">1</td><td class="number">16</td><td>normal</td></tr>
+<tr><td class="number">1</td><td>src/shared/format.ts</td><td class="number">8</td><td class="number">1</td><td class="number">1</td><td>normal</td></tr>
 </tbody>
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Consumer files 8 (locality.highFanIn), ▲ marks a value above it.</p>

@@ -85,7 +85,7 @@ This is a dry run. It changes nothing and reports:
 
 - `results`: the exact file operations (`from`, `to`, and `role` `unit` or `test`).
 - `rewrites`: every import specifier it would change, with file and line. Specifiers keep the extension style the repository writes (`.ts`, `.js` or none).
-- `refusals`: why it will not move the unit. Guards (`package-entry`, `fixed-point`, `fixed-point-destination`, `package-boundary`, `import-cycle`, `package-main`, `collision`, `barrel`, `no-change`, `invalid-destination`) cannot be overridden. Stop and report them.
+- `refusals`: why it will not move the unit. Guards (`package-entry`, `fixed-point`, `fixed-point-destination`, `package-boundary`, `import-cycle`, `package-main`, `unexported-use`, `collision`, `barrel`, `no-change`, `invalid-destination`) cannot be overridden. Stop and report them.
 - `mentions`: files outside the source (docs, config, scripts) that name a moved path. The mover does not edit them. Update them yourself in the same commit, or say why not.
 - `warnings`: an import that could not be repaired, or an alias that became a relative path. Read each one.
 - `confirmations`: for each language that moved and has a confirming tool, `confirmed` or `not confirmed` with the tool's detail. Not confirmed is not a failure, often the tool is not installed: say so to the user and check the move with the build and the tests.

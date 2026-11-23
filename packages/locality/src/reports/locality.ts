@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import { builtinOmissions } from "@code-health/cli-kit/builtin-excludes";
 import { droppedCounts } from "@code-health/cli-kit/dropped-files";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
@@ -33,6 +34,8 @@ const TOP_OMITTED = 10;
 const TOP_BLOCKED = 10;
 const BLOCKERS_PER_UNIT = 3;
 const REFUSAL_DETAIL_CHARS = 120;
+const WARNINGS_SHOWN = 3;
+const WARNING_CHARS = 160;
 const OMITTED_DETAIL_CHARS = 200;
 
 interface AnalyseExtra {
@@ -54,6 +57,8 @@ interface PlanSummary {
   filesRewritten: number;
   refusal: string | null;
   failure: string | null;
+  /** What the mover could not rewrite, one line each. */
+  warnings: string[];
 }
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
@@ -81,21 +86,25 @@ function refusalLine(refusals: Refusal[]): string {
 async function dryRun(context: CommandContext, candidate: Candidate, settings: LocalitySettings, files: Set<string>, go: GoPackages): Promise<PlanSummary> {
   const plan = planMove(candidate, settings, files, {}, go);
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
-  if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null };
+  if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null, warnings: [] };
   try {
     const { performMove } = await import("../move-engine.ts");
     const tree = await treeFromRef(context.repo.root, "HEAD");
     const moved = await performMove(tree, plan.operations);
-    return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null };
+    return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null, warnings: moved.warnings };
   } catch (error) {
-    return { ...base, rewrites: 0, filesRewritten: 0, failure: error instanceof Error ? error.message : String(error) };
+    return { ...base, rewrites: 0, filesRewritten: 0, failure: error instanceof Error ? error.message : String(error), warnings: [] };
   }
 }
 
 function planText(plan: PlanSummary): string {
   if (plan.refusal !== null) return `no plan: ${plan.refusal}`;
   if (plan.failure !== null) return `the dry run failed: ${plan.failure}`;
-  return `${plural(plan.filesMoved, "file")} moved to ${folderText(plan.destination)}, ${plural(plan.rewrites, "import")} rewritten in ${plural(plan.filesRewritten, "file")}`;
+  const moved = `${plural(plan.filesMoved, "file")} moved to ${folderText(plan.destination)}, ${plural(plan.rewrites, "import")} rewritten in ${plural(plan.filesRewritten, "file")}`;
+  if (plan.warnings.length === 0) return moved;
+  const shown = plan.warnings.slice(0, WARNINGS_SHOWN).map((warning) => clip(warning, WARNING_CHARS));
+  const rest = plan.warnings.length > shown.length ? `; and ${plan.warnings.length - shown.length} more` : "";
+  return `${moved}; ${plural(plan.warnings.length, "warning")} from the mover: ${shown.join("; ")}${rest}`;
 }
 
 const gainColumns = (settings: LocalitySettings) => [
@@ -103,13 +112,36 @@ const gainColumns = (settings: LocalitySettings) => [
   { key: "kind", label: "Kind" },
   { key: "target", label: "Target" },
   { key: "gain", label: "Gain (net distance removed)", align: "right" as const, guideline: { value: settings.minDistance, note: "locality.minDistance" } },
-  { key: "ratio", label: "Gain over guideline", align: "right" as const },
+  { key: "ratio", label: `Gain ÷ guideline (${settings.minDistance})`, align: "right" as const },
   { key: "files", label: "Unit files", align: "right" as const },
   { key: "consumers", label: "Consumer files", align: "right" as const },
   { key: "folders", label: "Consumer folders", align: "right" as const },
   { key: "distance", label: "Distance", align: "right" as const },
   { key: "confidence", label: "Confidence" },
 ];
+
+/**
+ * For Go moves, a note when other listed moves land in the same folder, which holds no Go file, under a different package name: each file
+ * keeps its package name there, and a folder holds one package, so only one of the moves can be made as listed.
+ */
+function folderConflicts(moves: readonly Candidate[], files: ReadonlySet<string>, go: GoPackages): Map<string, string> {
+  const goFolders = new Set([...files].filter((file) => file.endsWith(".go")).map((file) => posix.dirname(file)));
+  const byTarget = new Map<string, { path: string; name: string }[]>();
+  for (const move of moves) {
+    const names = new Set(move.unit.files.flatMap((file) => go.packageNames.get(file) ?? []));
+    if (names.size !== 1 || goFolders.has(move.target === "" ? "." : move.target)) continue;
+    byTarget.set(move.target, [...(byTarget.get(move.target) ?? []), { path: move.path, name: [...names][0]! }]);
+  }
+  const notes = new Map<string, string>();
+  for (const [target, group] of byTarget) {
+    if (new Set(group.map((entry) => entry.name)).size < 2) continue;
+    for (const entry of group) {
+      const others = group.filter((other) => other.name !== entry.name);
+      notes.set(entry.path, `${folderText(target)} has no Go file, and ${nameList(others.map((other) => `${other.path} (package ${other.name})`), 3)} also lands there; a folder holds one package, but this file keeps package ${entry.name}`);
+    }
+  }
+  return notes;
+}
 
 const gainRow = (c: Candidate): Record<string, Cell> => ({
   path: c.path,
@@ -125,7 +157,8 @@ const gainRow = (c: Candidate): Record<string, Cell> => ({
 });
 
 /** Units the planner can plan without a reason: kind move, ordered by gain over the locality.minDistance guideline. */
-function moveTable(rows: Candidate[], settings: LocalitySettings): Block {
+function moveTable(rows: Candidate[], settings: LocalitySettings, notes: ReadonlyMap<string, string>): Block {
+  const noted = rows.some((c) => notes.has(c.path));
   return {
     type: "ranked-table",
     ...capRows(
@@ -133,8 +166,8 @@ function moveTable(rows: Candidate[], settings: LocalitySettings): Block {
         caption: "Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline",
         noun: "moves",
         emptyText: "No candidate has kind move, so no unit can be planned without --reason.",
-        columns: gainColumns(settings),
-        rows: rows.map(gainRow),
+        columns: noted ? [...gainColumns(settings), { key: "note", label: "Note" }] : gainColumns(settings),
+        rows: rows.map((c) => (noted ? { ...gainRow(c), note: notes.get(c.path) ?? "" } : gainRow(c))),
       },
       TOP,
       "locality analyse --recommendation move",
@@ -166,15 +199,14 @@ function scrutiniseTable(rows: Candidate[], settings: LocalitySettings): Block {
     type: "ranked-table",
     ...capRows(
       {
-        caption: "High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline. Consumer files are the distinct production files that use the unit; test files are not counted",
+        caption: "High fan-in units (kind scrutinise): consumer files are above the locality.highFanIn guideline, so no move is proposed. Ordered by consumer files. Consumer files are the distinct production files that use the unit; test files are not counted",
         noun: "units",
         emptyText: "No unit has kind scrutinise.",
         columns: [
           { key: "path", label: "Unit" },
           { key: "fanIn", label: "Consumer files", align: "right", guideline: { value: settings.highFanIn, note: "locality.highFanIn" } },
-          { key: "ratio", label: "Consumer files over guideline", align: "right" },
+          { key: "ratio", label: `Consumer files ÷ guideline (${settings.highFanIn})`, align: "right" },
           { key: "folders", label: "Consumer folders", align: "right" },
-          { key: "gain", label: "Gain (net distance removed)", align: "right" },
           { key: "confidence", label: "Confidence" },
         ],
         rows: rows.map((c): Record<string, Cell> => ({
@@ -182,7 +214,6 @@ function scrutiniseTable(rows: Candidate[], settings: LocalitySettings): Block {
           fanIn: c.fanIn,
           ratio: c.guidelines.fanIn.ratio,
           folders: consumerFolders(c).size,
-          gain: c.gain,
           confidence: confidenceOf(c),
         })),
       },
@@ -266,7 +297,7 @@ function omittedUnitsTable(units: OmittedUnit[]): Block {
         { key: "gain", label: "Gain", align: "right" },
         { key: "files", label: "Files", align: "right" },
       ],
-      rows: sorted.map((u): Record<string, Cell> => ({ path: u.path, reason: u.reason, detail: clip(u.detail, OMITTED_DETAIL_CHARS), target: folderText(u.target), gain: u.gain, files: u.files })),
+      rows: sorted.map((u): Record<string, Cell> => ({ path: u.path, reason: u.reason, detail: clip(u.detail, OMITTED_DETAIL_CHARS), target: u.target === folderOf(u.path) ? "stays: no other folder lowers its distance" : folderText(u.target), gain: u.gain, files: u.files })),
     },
     TOP_OMITTED,
     "locality analyse --json",
@@ -398,7 +429,7 @@ export const localityReport: ReportKind = {
           },
           ofKind.length === 0
             ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." }
-            : moveTable(moves, settings),
+            : moveTable(moves, settings, folderConflicts(moves, files, go)),
           ...(ofKind.length === 0 ? [] : [reviewTable(reviews, settings), scrutiniseTable(scrutinise, settings)]),
         ],
       },

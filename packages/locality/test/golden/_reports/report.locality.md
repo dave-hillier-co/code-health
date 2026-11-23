@@ -34,7 +34,7 @@ The helpers sit far from their consumers.
 
 **Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline**
 
-| # | Unit | Kind | Target | Gain (net distance removed) | Gain over guideline | Unit files | Consumer files | Consumer folders | Distance | Confidence |
+| # | Unit | Kind | Target | Gain (net distance removed) | Gain ÷ guideline (2) | Unit files | Consumer files | Consumer folders | Distance | Confidence |
 | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | 1 | src/shared/pair | move | src/reports | 6 ▲ | 3 | 3 | 2 | 1 | 3 | normal |
 | 2 | src/shared/utils/money.ts | move | src | 4 ▲ | 2 | 1 | 2 | 2 | 2 | normal |
@@ -46,7 +46,7 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 
 **Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline**
 
-| # | Unit | Kind | Target | Gain (net distance removed) | Gain over guideline | Unit files | Consumer files | Consumer folders | Distance | Confidence |
+| # | Unit | Kind | Target | Gain (net distance removed) | Gain ÷ guideline (2) | Unit files | Consumer files | Consumer folders | Distance | Confidence |
 | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | 1 | src/shared/helpers/mixed.ts | split | src | 4 ▲ | 3 | 1 | 2 | 2 | 2 | normal |
 | 2 | src/shared/utils/slug.ts | inline | src/orders | 3 ▲ | 1.5 | 1 | 1 | 1 | 3 | normal |
@@ -56,11 +56,11 @@ _Guidelines order and label the rows and decide nothing. Gain (net distance remo
 
 _Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it._
 
-**High fan-in units (kind scrutinise) with nothing to move, ordered by consumer files over the locality.highFanIn guideline. Consumer files are the distinct production files that use the unit; test files are not counted**
+**High fan-in units (kind scrutinise): consumer files are above the locality.highFanIn guideline, so no move is proposed. Ordered by consumer files. Consumer files are the distinct production files that use the unit; test files are not counted**
 
-| # | Unit | Consumer files | Consumer files over guideline | Consumer folders | Gain (net distance removed) | Confidence |
-| ---: | --- | ---: | ---: | ---: | ---: | --- |
-| 1 | src/shared/format.ts | 8 | 1 | 1 | 16 | normal |
+| # | Unit | Consumer files | Consumer files ÷ guideline (8) | Consumer folders | Confidence |
+| ---: | --- | ---: | ---: | ---: | --- |
+| 1 | src/shared/format.ts | 8 | 1 | 1 | normal |
 
 _Guidelines order and label the rows and decide nothing. Consumer files 8 (locality.highFanIn), ▲ marks a value above it._
 
